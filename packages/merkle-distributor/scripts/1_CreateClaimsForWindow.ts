@@ -17,8 +17,8 @@
 
 // example execution: ts-node ./scripts/1_CreateClaimsForWindow.ts -i ./scripts/example.json
 
-const assert = require("assert");
-const path = require("path");
+import assert from "assert";
+import path from "path";
 import { program } from "commander";
 import fs from "fs";
 const { getWeb3 } = require("@uma/common");
@@ -86,4 +86,7 @@ async function main() {
   console.log("🗄  File successfully written to", savePath);
 }
 
-main();
+main().catch(e => {
+  console.log(e);
+  process.exit(1);
+});

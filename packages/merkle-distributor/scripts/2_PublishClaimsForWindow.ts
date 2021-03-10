@@ -29,7 +29,7 @@
 
 // example execution: ts-node ./scripts/2_PublishClaimsForWindow.ts -i ./proof-files/chain-id-42-reward-window-0-claims-file.json -m 0xAfCd2405298C2FABB2F7fCcEB919B4505A6bdDFC --network kovan_mnemonic
 
-const assert = require("assert");
+import assert from "assert";
 import { program } from "commander";
 import fs from "fs";
 
@@ -123,4 +123,7 @@ async function main() {
   console.log("Your merkle root has been added on-chain! 🕺 tx:", setWindowTtx.transactionHash);
 }
 
-main();
+main().catch(e => {
+  console.log(e);
+  process.exit(1);
+});
