@@ -17,6 +17,15 @@ const defaultConfigs = {
     lookback: 7200,
     expression: "USDETH / 100" // Must be between [-1e-5, +1e-5]
   },
+  ETHUSD: {
+    type: "medianizer",
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "ethusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
+      { type: "cryptowatch", exchange: "kraken", pair: "ethusd" }
+    ]
+  },
   "COMP/USD": {
     // Kovan uses the "/"
     type: "medianizer",
