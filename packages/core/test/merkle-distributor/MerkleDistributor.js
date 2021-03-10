@@ -501,7 +501,7 @@ contract("MerkleDistributor.js", function(accounts) {
         const txn = await merkleDistributor.claimMulti(batchedClaims);
         assert.equal(
           Math.floor(txn.receipt.gasUsed / (rewardLeafs.length * Object.keys(SamplePayouts.exampleRecipients).length)),
-          38174
+          37131
         );
       });
       it("gas for making each claim individually", async function() {
@@ -687,7 +687,7 @@ contract("MerkleDistributor.js", function(accounts) {
         }
         await sortClaimsByAccountAndToken();
         const tx = await merkleDistributor.claimMulti(batchedClaims);
-        assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 49943);
+        assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 49867);
       });
       it("one tree: gas amortized first 25", async function() {
         for (let i = 0; i < 25; i++) {
@@ -703,7 +703,7 @@ contract("MerkleDistributor.js", function(accounts) {
         }
         await sortClaimsByAccountAndToken();
         const tx = await merkleDistributor.claimMulti(batchedClaims);
-        assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 40813);
+        assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 40376);
       });
       it("many trees, many reward tokens: gas amortized for claims for one account", async function() {
         // This is a realistic scenario where the caller is making their claims for various
@@ -750,7 +750,7 @@ contract("MerkleDistributor.js", function(accounts) {
 
         await sortClaimsByAccountAndToken();
         const tx = await merkleDistributor.claimMulti(batchedClaims);
-        assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 65750);
+        assert.equal(Math.floor(tx.receipt.gasUsed / batchedClaims.length), 65721);
       });
     });
   });

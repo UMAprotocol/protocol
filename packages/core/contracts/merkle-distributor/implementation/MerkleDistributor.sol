@@ -142,9 +142,12 @@ contract MerkleDistributor is Ownable {
             uint256 nextI = i + 1;
             address currentRewardToken = address(merkleWindows[_claim.windowIndex].rewardToken);
             if (
-                nextI == claimCount || // This claim is last claim.
-                address(merkleWindows[claims[nextI].windowIndex].rewardToken) != currentRewardToken || // Next claim reward token is different than current one.
-                claims[nextI].account != _claim.account // Next claim account is different than current one.
+                nextI == claimCount ||
+                // This claim is last claim.
+                claims[nextI].account != _claim.account ||
+                // Next claim account is different than current one.
+                address(merkleWindows[claims[nextI].windowIndex].rewardToken) != currentRewardToken
+                // Next claim reward token is different than current one.
             ) {
                 uint256 amountToDisburse = batchedAmount;
                 batchedAmount = 0;
