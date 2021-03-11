@@ -583,9 +583,8 @@ const defaultConfigs = {
     type: "expression",
     // Note: lower-case variables are intermediate, upper-case are configured feeds.
     expression: `
-      digg_wbtc = mean(DIGG_WBTC_SUSHI, DIGG_WBTC_UNI);
       wbtc_eth = mean(WBTC_ETH_SUSHI, WBTC_ETH_UNI);
-      digg_wbtc * wbtc_eth
+      DIGGBTC * wbtc_eth
     `,
     lookback: 7200,
     minTimeBetweenUpdates: 60,
@@ -603,10 +602,7 @@ const defaultConfigs = {
     // Note: lower-case variables are intermediate, upper-case are configured feeds.
     expression: `
       eth_usd = 1 / USDETH;
-      digg_wbtc = mean(DIGG_WBTC_SUSHI, DIGG_WBTC_UNI);
-      wbtc_eth = mean(WBTC_ETH_SUSHI, WBTC_ETH_UNI);
-      digg_eth = digg_wbtc * wbtc_eth;
-      digg_eth * eth_usd
+      DIGGETH * eth_usd
     `,
     lookback: 7200,
     minTimeBetweenUpdates: 60,
