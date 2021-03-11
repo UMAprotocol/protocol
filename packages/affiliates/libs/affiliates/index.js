@@ -1,5 +1,7 @@
 module.exports = {
-  // TODO: rename this to DevMining
   DevMining: require("./devmining"),
-  DappMining: require("./dappmining")
+  DappMining: {
+    v1: require("./dappmining_v1"),
+    v2: require("./dappmining_v2")
+  }
 };

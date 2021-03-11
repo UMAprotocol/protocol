@@ -58,15 +58,16 @@ function devMiningPrTemplate({
   totalRewards,
   startTime,
   endTime,
-  empWhiteList,
+  empWhitelist,
   weekNumber,
   fallbackPrices = []
 }) {
+  console.log({ issueNumber });
   assert(issueNumber, "requires issue number");
   assert(totalRewards, "requires totalRewards");
   assert(endTime, "requires endTime");
   assert(startTime, "requires starTime");
-  assert(empWhiteList, "requires empWhiteList");
+  assert(empWhitelist, "requires empWhiteList");
   assert(weekNumber, "requires weekNumber");
   const startDate = moment(startTime)
     .utc()
@@ -75,14 +76,14 @@ function devMiningPrTemplate({
     .utc()
     .format("YYYY/MM/DD");
   return {
-    title: `Run Dev Mining rewards for week ${weekNumber + 1} between ${startDate} and ${endDate}`,
+    title: `improve(affiliates): Dev Mining rewards for week ${weekNumber}`,
     body: `
 **Motivation**
 #${issueNumber}
 
 **Summary**
 
-Dev Mining results for week ${weekNumber}
+Dev Mining results for week ${weekNumber} between ${startDate} (${startTime}) and ${endDate} (${endTime})
 
 **Details**
 In order to run create a config.json with this data:
@@ -91,13 +92,13 @@ In order to run create a config.json with this data:
     "startTime": ${startTime},
     "endTime": ${endTime},
     "totalRewards": ${totalRewards},
-    "empWhitelist": ${empWhiteList},
-    "fallbackPrices": ${fallbackPrices},
+    "empWhitelist": ${JSON.stringify(empWhitelist)},
+    "fallbackPrices": ${JSON.stringify(fallbackPrices)},
 }
 \`\`\`
 
-then run 
-\`node app \`
+Then within the affiliates package run: 
+\`cat config.json | node apps/DevMiningRewards --network=mainnet_mnemonic\`
 
 
 closes #${issueNumber}
