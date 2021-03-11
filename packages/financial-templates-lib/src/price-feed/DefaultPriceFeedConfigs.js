@@ -563,6 +563,102 @@ const defaultConfigs = {
     uniswapAddress: "0xedf187890af846bd59f560827ebd2091c49b75df",
     twapLength: 7200,
     invertPrice: true
+  },
+  USDAAVE: {
+    type: "medianizer",
+    invertPrice: true,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "aaveusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "aaveusdt" },
+      { type: "cryptowatch", exchange: "okex", pair: "aaveusdt" }
+    ]
+  },
+  AAVEUSD: {
+    type: "medianizer",
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "aaveusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "aaveusdt" },
+      { type: "cryptowatch", exchange: "okex", pair: "aaveusdt" }
+    ]
+  },
+  USDLINK: {
+    type: "medianizer",
+    invertPrice: true,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "linkusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "linkusdt" },
+      { type: "cryptowatch", exchange: "okex", pair: "linkusdt" }
+    ]
+  },
+  LINKUSD: {
+    type: "medianizer",
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "linkusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "linkusdt" },
+      { type: "cryptowatch", exchange: "okex", pair: "linkusdt" }
+    ]
+  },
+  USDSNX: {
+    type: "medianizer",
+    invertPrice: true,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "snxusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "snxusdt" },
+      { type: "cryptowatch", exchange: "okex", pair: "snxusdt" }
+    ]
+  },
+  SNXUSD: {
+    type: "medianizer",
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "snxusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "snxusdt" },
+      { type: "cryptowatch", exchange: "okex", pair: "snxusdt" }
+    ]
+  },
+  USDUMA: {
+    type: "medianizer",
+    invertPrice: true,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "umausd" },
+      { type: "cryptowatch", exchange: "binance", pair: "umausdt" },
+      { type: "cryptowatch", exchange: "okex", pair: "umausdt" }
+    ]
+  },
+  UMAUSD: {
+    type: "medianizer",
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "umausd" },
+      { type: "cryptowatch", exchange: "binance", pair: "umausdt" },
+      { type: "cryptowatch", exchange: "okex", pair: "umausdt" }
+    ]
+  },
+  USDUNI: {
+    type: "medianizer",
+    invertPrice: true,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "uniusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "uniusdt" },
+      { type: "cryptowatch", exchange: "okex", pair: "uniusdt" }
+    ]
+  },
+  UNIUSD: {
+    type: "medianizer",
+    invertPrice: true,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "uniusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "uniusdt" },
+      { type: "cryptowatch", exchange: "okex", pair: "uniusdt" }
+    ]
   }
 };
 
