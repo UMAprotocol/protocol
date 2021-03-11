@@ -9,7 +9,7 @@ const fixedPointAdjustment = toBN(toWei("1"));
 
 // Returns the current UMA TVL over all functions as a string and the currentTime.
 export async function calculateCurrentTvl() {
-  const allFinancialContractsData = await fetchAllFinancialContractsData();
+  const allFinancialContractsData = await getAllFinancialContractsData();
   const collateralInfoWithValue = await evaluateFinancialContractCollateral(allFinancialContractsData);
   const currentTvl = collateralInfoWithValue
     .reduce((accumulator: typeof web3.BN, obj: any) => {
@@ -17,15 +17,15 @@ export async function calculateCurrentTvl() {
     }, toBN("0"))
     .div(fixedPointAdjustment)
     .toString();
-
+  console.log("currentTvl", currentTvl);
   return { currentTvl, currentTime: Math.round(new Date().getTime() / 1000) };
 }
 
 // Fetches information on all financial contracts.
-export async function fetchAllFinancialContractsData() {
-  const registeredContracts: Array<string> = await fetchAllRegisteredContracts();
-  const collateralAddresses: Array<string> = await fetchCollateralForFinancialContracts(registeredContracts);
-  const { collateralBalances, collateralDecimals, collateralPricesInUsd } = await fetchCollateralInfo(
+export async function getAllFinancialContractsData() {
+  const registeredContracts: Array<string> = await getAllRegisteredContracts();
+  const collateralAddresses: Array<string> = await getCollateralForFinancialContracts(registeredContracts);
+  const { collateralBalances, collateralDecimals, collateralPricesInUsd } = await getCollateralInfo(
     collateralAddresses,
     registeredContracts
   );
@@ -65,11 +65,11 @@ export function evaluateFinancialContractCollateral(
 
 // For an array of collateral types associated with an array of financial contracts, compute the balance in collateral
 // of the financial contract, the collateral decimals and the value In USD of each unit of collateral.
-export async function fetchCollateralInfo(collateralAddresses: Array<string>, registeredContracts: Array<string>) {
+export async function getCollateralInfo(collateralAddresses: Array<string>, registeredContracts: Array<string>) {
   const [collateralBalances, collateralDecimals, collateralPricesInUsd] = await Promise.all([
-    fetchCollateralBalances(collateralAddresses, registeredContracts),
-    fetchCollateralDecimals(collateralAddresses),
-    fetchCollateralValue(collateralAddresses)
+    getTokenBalances(collateralAddresses, registeredContracts),
+    getContractDecimals(collateralAddresses),
+    getContractPrices(collateralAddresses)
   ]);
 
   return { collateralBalances, collateralDecimals, collateralPricesInUsd };
@@ -77,8 +77,8 @@ export async function fetchCollateralInfo(collateralAddresses: Array<string>, re
 
 // Return an array of all registered contracts found in the Registry. Note that some non-financial contracts are included
 // in this list, such as the Optimistic oracle. These will have `null` values for their collateral type, balance and price.
-// They are filtered out later on in the `fetchAllFinancialContractsData` method.
-export async function fetchAllRegisteredContracts() {
+// They are filtered out later on in the `getAllFinancialContractsData` method.
+export async function getAllRegisteredContracts() {
   const mainnetRegistry = new web3.eth.Contract(getAbi("Registry"), getAddress("Registry", 1));
   const events = await mainnetRegistry.getPastEvents("NewContractRegistered", { fromBlock: 0, toBlock: "latest" });
   return events.map((event: any) => event.returnValues.contractAddress);
@@ -86,7 +86,7 @@ export async function fetchAllRegisteredContracts() {
 
 // Returns an array of collateral types for an array of financial contract addresses. Note that `FeePayer` is the simplest
 // ABI implementation that provides the `collateralCurrency` public method.
-export async function fetchCollateralForFinancialContracts(financialContractAddresses: Array<string>) {
+export async function getCollateralForFinancialContracts(financialContractAddresses: Array<string>) {
   const contractInstances = financialContractAddresses.map(
     (address: string) => new web3.eth.Contract(getAbi("FeePayer"), address)
   );
@@ -103,10 +103,10 @@ export async function fetchCollateralForFinancialContracts(financialContractAddr
   );
 }
 
-// Returns an array of decimals associated with an array of collateral addresses. Note if any contract is not implemented
+// Returns an array of decimals associated with an array of token addresses. Note if any contract is not implemented
 // (null) or the decimals method is not implemented this will return null for that collateral token.
-export async function fetchCollateralDecimals(collateralTokenAddresses: Array<string>) {
-  const contractInstances = collateralTokenAddresses.map((address: string) =>
+export async function getContractDecimals(ContractAddresses: Array<string>) {
+  const contractInstances = ContractAddresses.map((address: string) =>
     address ? new web3.eth.Contract(getAbi("ExpandedERC20"), address) : null
   );
 
@@ -116,13 +116,10 @@ export async function fetchCollateralDecimals(collateralTokenAddresses: Array<st
   return collateralDecimals.map((response: any) => (response.status === "fulfilled" ? response.value : null));
 }
 
-// Returns an array of balances associated with an array of collateral addresses and financial contract addresses. Note
+// Returns an array of balances associated with an array of token addresses and financial contract addresses. Note
 // if any contract is not implemented (null) null for that collateral token.
-export async function fetchCollateralBalances(
-  collateralTokenAddresses: Array<string>,
-  financialContractAddresses: Array<string>
-) {
-  const contractInstances = collateralTokenAddresses.map((address: string) =>
+export async function getTokenBalances(ContractAddresses: Array<string>, financialContractAddresses: Array<string>) {
+  const contractInstances = ContractAddresses.map((address: string) =>
     address ? new web3.eth.Contract(getAbi("ExpandedERC20"), address) : null
   );
 
@@ -137,18 +134,19 @@ export async function fetchCollateralBalances(
 
 // Return an array of spot prices for an array of collateral addresses in one async call. Note we might in future
 // want to change this to re-use the bot's price feeds for more complex collateral types like LP tokens.
-export async function fetchCollateralValue(collateralTokenAddresses: Array<string>) {
+export async function getContractPrices(ContractAddresses: Array<string>, currency = "usd") {
   const hostApi = "https://api.coingecko.com/api/v3/simple/token_price/ethereum";
-  const currency = "usd";
 
   // Generate a unique set with no repeated. join the set with the required coingecko delimiter.
-  const tokenAddressArray = [...new Set(collateralTokenAddresses.filter(n => n))].join("%2C");
+  const tokenAddressArray = [...new Set(ContractAddresses.filter(n => n))].join("%2C");
 
   const response = await nodeFetch(`${hostApi}?contract_addresses=${tokenAddressArray}&vs_currencies=${currency}`);
   const prices = await response.json();
 
-  // Map the returned values back to all provided collateralTokenAddresses.
-  return collateralTokenAddresses.map((address: string) =>
+  // Map the returned values back to all provided ContractAddresses.
+  return ContractAddresses.map((address: string) =>
     address && prices[address] ? prices[address].usd.toString() : null
   );
 }
+
+calculateCurrentTvl();
