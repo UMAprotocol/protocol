@@ -195,6 +195,15 @@ class FundingRateProposer {
         { rawValue: offchainFundingRate },
         requestTimestamp
       );
+      // console.log(
+      //   await runTransaction({
+      //     transaction: cachedContract.contract.methods.gulp(),
+      //     config: {
+      //       gasPrice: this.gasEstimator.getCurrentFastPrice(),
+      //       from: this.account
+      //     }
+      //   })
+      // )
       this.logger.debug({
         at: "PerpetualProposer#updateFundingRate",
         message: "Proposing new funding rate",
