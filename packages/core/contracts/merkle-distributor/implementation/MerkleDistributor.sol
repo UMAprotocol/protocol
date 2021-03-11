@@ -149,9 +149,8 @@ contract MerkleDistributor is Ownable {
                 address(merkleWindows[claims[nextI].windowIndex].rewardToken) != currentRewardToken
                 // Next claim reward token is different than current one.
             ) {
-                uint256 amountToDisburse = batchedAmount;
+                IERC20(currentRewardToken).safeTransfer(_claim.account, batchedAmount);
                 batchedAmount = 0;
-                IERC20(currentRewardToken).safeTransfer(_claim.account, amountToDisburse);
             }
         }
     }
