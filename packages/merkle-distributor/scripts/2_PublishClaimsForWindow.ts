@@ -33,8 +33,8 @@ import assert from "assert";
 import { program } from "commander";
 import fs from "fs";
 
-const { getAbi } = require("@uma/core");
-const { getWeb3, MAX_UINT_VAL } = require("@uma/common");
+import { getAbi } from "@uma/core";
+import { getWeb3, MAX_UINT_VAL } from "@uma/common";
 const web3 = getWeb3();
 const { toBN } = web3.utils;
 

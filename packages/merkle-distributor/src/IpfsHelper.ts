@@ -1,10 +1,10 @@
 // This script adds some useful functions for dealing with IPFS.
 
-const ipfsApi = require("ipfs-http-client");
-const nodeFetch = require("node-fetch");
+import ipfsApi from "ipfs-http-client";
+import nodeFetch from "node-fetch";
 
 export default (pinataApiKey: string | undefined, pinataApiSecret: string | undefined) => {
-  const ipfs = ipfsApi({ host: "ipfs.infura.io", port: "5001", protocol: "https" });
+  const ipfs = ipfsApi({ host: "ipfs.infura.io", port: 5001, protocol: "https" });
 
   async function uploadFile(file: any) {
     const { path } = await ipfs.add({ content: Buffer.from(JSON.stringify(file)) });
@@ -18,7 +18,7 @@ export default (pinataApiKey: string | undefined, pinataApiSecret: string | unde
 
   async function pinHash(hashToPin: string) {
     const infuraResponse = await nodeFetch(`https://ipfs.infura.io:5001/api/v0/pin/add?arg=${hashToPin}`);
-    if (infuraResponse.status != 200) throw { message: "Failed to pin on infura", error: new Error(infuraResponse) };
+    if (infuraResponse.status != 200) throw { infuraResponse, error: new Error("Failed to pin on infura") };
 
     if (pinataApiKey && pinataApiSecret) {
       const pinataResponse = await nodeFetch(`https://api.pinata.cloud/pinning/pinByHash`, {
@@ -30,7 +30,7 @@ export default (pinataApiKey: string | undefined, pinataApiSecret: string | unde
           pinata_secret_api_key: pinataApiSecret
         }
       });
-      if (pinataResponse.status != 200) throw { message: "Failed to pin on pinata", error: new Error(pinataResponse) };
+      if (pinataResponse.status != 200) throw { pinataResponse, error: new Error("Failed to pin on pinata") };
     }
   }
   return { uploadFile, viewFile, pinHash };

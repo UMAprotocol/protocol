@@ -5,11 +5,7 @@
 const { ethers } = require("ethers");
 const { assert } = require("chai");
 
-const {
-  createLeaf,
-  createMerkleDistributionProofs,
-  getClaimsForAddress
-} = require("../src/MerkleDistributorHelper.ts");
+import { createLeaf, createMerkleDistributionProofs, getClaimsForAddress } from "../src/MerkleDistributorHelper";
 
 import MerkleTree from "../src/MerkleTree";
 

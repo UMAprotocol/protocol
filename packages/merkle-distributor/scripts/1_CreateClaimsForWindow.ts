@@ -21,11 +21,11 @@ import assert from "assert";
 import path from "path";
 import { program } from "commander";
 import fs from "fs";
-const { getWeb3 } = require("@uma/common");
+import { getWeb3 } from "@uma/common";
 const web3 = getWeb3();
 const { toBN } = web3.utils;
 
-import MerkleDistributorHelper = require("../src/MerkleDistributorHelper");
+import * as MerkleDistributorHelper from "../src/MerkleDistributorHelper";
 
 program
   .requiredOption("-i, --input <path>", "input JSON file location containing a recipients payout")

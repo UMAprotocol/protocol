@@ -1,7 +1,7 @@
 // This file contains some helper functions to wrap cloudflare Key Value store.
 
-const nodeFetch = require("node-fetch");
-const assert = require("assert");
+import nodeFetch from "node-fetch";
+import assert from "assert";
 
 export default (accountId: string | undefined, namespaceId: string | undefined, token: string | undefined) => {
   assert(accountId, "Cloudflare helper requires an Account ID");

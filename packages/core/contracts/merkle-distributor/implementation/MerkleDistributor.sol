@@ -29,7 +29,11 @@ contract MerkleDistributor is Ownable {
         bytes32 merkleRoot;
         // Currency in which reward is processed.
         IERC20 rewardToken;
-        // IPFS hash of the merkle tree. Can by used to independently fetch recipient proofs.
+        // IPFS hash of the merkle tree. Can by used to independently fetch recipient proofs and tree. Note that the canonical
+        // data type for storing an IPFS hash is a multihash which is the concatenation of  <varint hash function code>
+        // <varint digest size in bytes><hash function output>. We opted to store this in a string type to make it easier
+        // for users to query the ipfs data without needing to reconstruct the multihash. to view the IPFS data simply
+        // go to https://cloudflare-ipfs.com/ipfs/<IPFS-HASH>.
         string ipfsHash;
     }
 
