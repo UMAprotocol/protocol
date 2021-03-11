@@ -2,7 +2,7 @@ const { createReferencePriceFeedForFinancialContract, Networker } = require("@um
 const winston = require("winston");
 const assert = require("assert");
 
-module.exports = ({ web3, apiKey, decimals = 18 } = {}) => {
+module.exports = ({ web3, cryptowatchApiKey, tradermadeApiKey, decimals = 18 } = {}) => {
   // Fetch historic synthetic prices for a given `empAddress` between timestamps `from` and `to.
   // Note timestamps are assumed to be js timestamps and are converted to unixtimestamps by dividing by 1000.
   async function getHistoricSynthPrices(empAddress, from, to) {
@@ -14,7 +14,7 @@ module.exports = ({ web3, apiKey, decimals = 18 } = {}) => {
       new Networker(),
       () => to, // starting time
       empAddress,
-      { priceFeedDecimals: decimals, lookback: to - from, ohlcPeriod: 900, apiKey } // price feed config. Use lookback to offset the from -> to
+      { priceFeedDecimals: decimals, lookback: to - from, ohlcPeriod: 900, cryptowatchApiKey, tradermadeApiKey } // price feed config. Use lookback to offset the from -> to
     );
 
     assert(priceFeed, "Create Reference price feed for emp returned an undefined value");
