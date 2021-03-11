@@ -1,6 +1,6 @@
 // This script adds some useful functions for dealing with IPFS.
 
-import ipfsApi from "ipfs-http-client";
+const ipfsApi = require("ipfs-http-client"); // using require import as the types on this package are broken in TS.
 import nodeFetch from "node-fetch";
 
 export default (pinataApiKey: string | undefined, pinataApiSecret: string | undefined) => {
