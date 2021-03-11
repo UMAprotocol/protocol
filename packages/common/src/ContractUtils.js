@@ -1,3 +1,7 @@
+// This is multiplied by the estimated gas amount in `runTransaction` to make sure that the amount is not an underestimation,
+// which could cause unexpected transaction reverts.
+const GAS_LIMIT_BUFFER = 1.25;
+
 /**
  * This is a hack to handle reverts for view/pure functions that don't actually revert on public networks.
  * See https://forum.openzeppelin.com/t/require-in-view-pure-functions-dont-revert-on-public-networks/1211 for more
@@ -49,7 +53,7 @@ const runTransaction = async ({ transaction, config }) => {
   // .call() succeeded, now broadcast transaction.
   let receipt;
   try {
-    receipt = await transaction.send({ ...config, gas: estimatedGas });
+    receipt = await transaction.send({ ...config, gas: Math.ceil(estimatedGas * GAS_LIMIT_BUFFER) });
     return {
       receipt,
       returnValue
