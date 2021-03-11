@@ -245,7 +245,7 @@ contract("MerkleDistributor.js", function(accounts) {
           },
           { from: rando }
         );
-        assert.equal(claimTx.receipt.gasUsed, 87248);
+        assert.equal(claimTx.receipt.gasUsed, 87259);
       });
       it("Can claim on another account's behalf", async function() {
         const claimerBalanceBefore = await rewardToken.balanceOf(leaf.account);
@@ -608,7 +608,7 @@ contract("MerkleDistributor.js", function(accounts) {
         amount: leaf.amount,
         merkleProof: proof
       });
-      assert.equal(tx.receipt.gasUsed, 99189);
+      assert.equal(tx.receipt.gasUsed, 99200);
     });
     it("gas deeper node", async function() {
       const leafIndex = 90000;
@@ -621,7 +621,7 @@ contract("MerkleDistributor.js", function(accounts) {
         amount: leaf.amount,
         merkleProof: proof
       });
-      assert.equal(tx.receipt.gasUsed, 99209);
+      assert.equal(tx.receipt.gasUsed, 99220);
     });
     it("gas average random distribution", async function() {
       let total = toBN(0);
@@ -640,7 +640,7 @@ contract("MerkleDistributor.js", function(accounts) {
         count++;
       }
       const average = total.divn(count);
-      assert.equal(Math.floor(average.toNumber()), 84817);
+      assert.equal(Math.floor(average.toNumber()), 84828);
     });
     // Claiming consecutive leaves should result in average gas savings
     // because of using single bits in the bitmap to track claims instead
@@ -662,7 +662,7 @@ contract("MerkleDistributor.js", function(accounts) {
         count++;
       }
       const average = total.divn(count);
-      assert.equal(Math.floor(average.toNumber()), 70404);
+      assert.equal(Math.floor(average.toNumber()), 70415);
     });
     it("no double claims in random distribution", async () => {
       for (let i = 0; i < 25; i += Math.floor(Math.random() * (NUM_LEAVES / SAMPLE_SIZE))) {
