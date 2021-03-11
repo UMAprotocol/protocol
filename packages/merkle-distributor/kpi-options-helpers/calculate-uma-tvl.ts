@@ -10,7 +10,7 @@ const fixedPointAdjustment = toBN(toWei("1"));
 // Returns the current UMA TVL over all functions as a string and the currentTime.
 export async function calculateCurrentTvl() {
   const allFinancialContractsData = await fetchAllFinancialContractsData();
-  const collateralInfoWithValue = await evaluateFinancialContractCollateral(allFinancialContractsData);
+  const collateralInfoWithValue = evaluateFinancialContractCollateral(allFinancialContractsData);
   const currentTvl = collateralInfoWithValue
     .reduce((accumulator: typeof web3.BN, obj: any) => {
       return accumulator.add(toBN(toWei(obj.collateralValueInUsd)));
