@@ -4,6 +4,7 @@ const truffleAssert = require("truffle-assertions");
 const { toBN, toWei, utf8ToHex } = web3.utils;
 const { MAX_UINT_VAL, didContractThrow } = require("@uma/common");
 const { assert } = require("chai");
+const Promise = require("bluebird");
 
 // Tested Contract
 const MerkleDistributor = artifacts.require("MerkleDistributor");
@@ -52,6 +53,11 @@ const createRewardRecipientsFromSampleData = SamplePayouts => {
       accountIndex: i
     };
   });
+};
+
+const assertApproximate = (expectedVal, testVal, errorPercent = 0.01) => {
+  // Asserts `testVal` is within some error bounds of `expectedVal`
+  assert.isTrue(testVal <= expectedVal * (1 + errorPercent) && testVal >= expectedVal * (1 - errorPercent));
 };
 
 contract("MerkleDistributor.js", function(accounts) {
@@ -245,7 +251,7 @@ contract("MerkleDistributor.js", function(accounts) {
           },
           { from: rando }
         );
-        assert.equal(claimTx.receipt.gasUsed, 87259);
+        assertApproximate(87259, claimTx.receipt.gasUsed);
       });
       it("Can claim on another account's behalf", async function() {
         const claimerBalanceBefore = await rewardToken.balanceOf(leaf.account);
@@ -389,13 +395,19 @@ contract("MerkleDistributor.js", function(accounts) {
     });
     describe("(claimMulti)", function() {
       // 3 Total Trees to test multiple combinations of (1) receiver accounts and (2) reward currencies.
-      let rewardRecipients = [];
-      let rewardLeafs = [];
-      let merkleTrees = [];
+      let rewardRecipients;
+      let rewardLeafs;
+      let merkleTrees;
       let alternateRewardToken;
+      let batchedClaims;
+      let lastUsedWindowIndex;
       beforeEach(async function() {
-        // Assume we start at first windowIndex.
-        windowIndex = 0;
+        // Reset arrays between tests:
+        batchedClaims = [];
+        rewardLeafs = [];
+        rewardRecipients = [];
+        merkleTrees = [];
+        lastUsedWindowIndex = 0;
 
         // First tree reward recipients are same as other tests
         rewardRecipients.push(createRewardRecipientsFromSampleData(SamplePayouts));
@@ -462,102 +474,83 @@ contract("MerkleDistributor.js", function(accounts) {
           merkleTrees[2].getRoot(),
           sampleIpfsHash
         );
+
+        // Construct claims for all trees assuming that each tree index is equal to its window index.
+        for (let i = 0; i < rewardLeafs.length; i++) {
+          rewardLeafs[i].forEach(leaf => {
+            batchedClaims.push({
+              windowIndex: lastUsedWindowIndex + i,
+              account: leaf.account,
+              accountIndex: leaf.accountIndex,
+              amount: leaf.amount,
+              merkleProof: merkleTrees[i].getProof(leaf.leaf)
+            });
+          });
+        }
       });
       it("Can make multiple claims in one transaction", async function() {
-        // Batch claim for account[0].
-        const leaf1 = rewardLeafs[0][0];
-        const leaf2 = rewardLeafs[1][0];
+        // The same accounts make claims on all three trees, we will track their balances. This allows
+        // us to query the recipients from the first window (index 0) to track all of the recipients.
+        const allRecipients = rewardRecipients[0];
+        const balancesRewardToken = [];
+        const balancesAltRewardToken = [];
+        for (let recipient of allRecipients) {
+          const account = recipient.account;
+          balancesRewardToken.push(await rewardToken.balanceOf(account));
+          balancesAltRewardToken.push(await alternateRewardToken.balanceOf(account));
+        }
 
-        const accountBalanceBefore = await rewardToken.balanceOf(leaf1.account);
+        // Batch claim and check balances.
+        await merkleDistributor.claimMulti(batchedClaims);
+        for (let i = 0; i < allRecipients.length; i++) {
+          // Trees 0 and 1 payout in rewardToken.
+          const expectedPayoutRewardToken = toBN(rewardLeafs[0][i].amount).add(toBN(rewardLeafs[1][i].amount));
+          // Trees 2 payout in altRewardToken
+          const expectedPayoutAltRewardToken = toBN(rewardLeafs[2][i].amount);
 
-        const claims = [
-          {
-            windowIndex: windowIndex,
-            account: leaf1.account,
-            accountIndex: leaf1.accountIndex,
-            amount: leaf1.amount,
-            merkleProof: merkleTrees[0].getProof(leaf1.leaf)
-          },
-          {
-            windowIndex: windowIndex + 1,
-            account: leaf2.account,
-            accountIndex: leaf2.accountIndex,
-            amount: leaf2.amount,
-            merkleProof: merkleTrees[1].getProof(leaf2.leaf)
-          }
-        ];
-        await merkleDistributor.claimMulti(claims, rewardToken.address, leaf1.account, { from: rando });
-
-        // Account 0 should have gained claimed amount from both leaves.
-        const batchedClaimAmount = toBN(leaf1.amount).add(toBN(leaf2.amount));
-        assert.equal(
-          (await rewardToken.balanceOf(leaf1.account)).toString(),
-          accountBalanceBefore.add(batchedClaimAmount).toString()
-        );
+          const account = allRecipients[i].account;
+          assert.equal(
+            balancesRewardToken[i].add(expectedPayoutRewardToken).toString(),
+            (await rewardToken.balanceOf(account)).toString()
+          );
+          assert.equal(
+            balancesAltRewardToken[i].add(expectedPayoutAltRewardToken).toString(),
+            (await alternateRewardToken.balanceOf(account)).toString()
+          );
+        }
 
         // One Claimed event should have been emitted for each batched claim.
         const claimedEvents = await merkleDistributor.getPastEvents("Claimed");
-        assert.equal(claimedEvents.length, claims.length);
+        assert.equal(claimedEvents.length, allRecipients.length * 3);
       });
-      it("One tree: Can only batch claim for one account", async function() {
-        // Leaf 2 is for account[1], can't batch claim for two different accounts.
-        const leaf1 = rewardLeafs[0][0];
-        const leaf2 = rewardLeafs[0][1];
-
-        const invalidClaims = [
-          {
-            windowIndex: windowIndex,
-            account: leaf1.account,
-            accountIndex: leaf1.accountIndex,
-            amount: leaf1.amount,
-            merkleProof: merkleTrees[0].getProof(leaf1.leaf)
-          },
-          {
-            windowIndex: windowIndex,
-            account: leaf2.account,
-            accountIndex: leaf2.accountIndex,
-            amount: leaf2.amount,
-            merkleProof: merkleTrees[0].getProof(leaf2.leaf)
-          }
-        ];
-
-        // Show that verifyProof works for claims individually.
-        for (let claim of invalidClaims) {
-          assert.isTrue(await merkleDistributor.verifyClaim(claim));
-        }
-
-        // But batching them together fails.
-        assert(await didContractThrow(merkleDistributor.claimMulti(invalidClaims, rewardToken.address, leaf1.account)));
+      it("gas", async function() {
+        const txn = await merkleDistributor.claimMulti(batchedClaims);
+        assertApproximate(
+          37146,
+          Math.floor(txn.receipt.gasUsed / (rewardLeafs.length * Object.keys(SamplePayouts.exampleRecipients).length))
+        );
       });
-      it("Two trees: Can only batch claim for one reward currency", async function() {
-        // Leaf 2 is for a different reward token, can't batch claim for two different currencies.
-        const leaf1 = rewardLeafs[0][0];
-        const leaf2 = rewardLeafs[2][0];
-
-        const invalidClaims = [
-          {
-            windowIndex: windowIndex,
-            account: leaf1.account,
-            accountIndex: leaf1.accountIndex,
-            amount: leaf1.amount,
-            merkleProof: merkleTrees[0].getProof(leaf1.leaf)
-          },
-          {
-            windowIndex: windowIndex + 2,
-            account: leaf2.account,
-            accountIndex: leaf2.accountIndex,
-            amount: leaf2.amount,
-            merkleProof: merkleTrees[2].getProof(leaf2.leaf)
-          }
-        ];
-
-        // Show that verifyProof works for claims individually.
-        for (let claim of invalidClaims) {
-          assert.isTrue(await merkleDistributor.verifyClaim(claim));
+      it("gas for making each claim individually", async function() {
+        let totalGas = toBN(0);
+        for (let claim of batchedClaims) {
+          const txn = await merkleDistributor.claim(claim);
+          totalGas = totalGas.addn(txn.receipt.gasUsed);
         }
-
-        // But batching them together fails.
-        assert(await didContractThrow(merkleDistributor.claimMulti(invalidClaims, rewardToken.address, leaf1.account)));
+        assertApproximate(
+          65559,
+          Math.floor(totalGas.divn(rewardLeafs.length * Object.keys(SamplePayouts.exampleRecipients).length).toNumber())
+        );
+      });
+      it("Fails if any individual claim fails", async function() {
+        // Push an invalid claim with an incorrect window index.
+        batchedClaims.push({
+          windowIndex: 9,
+          account: rewardLeafs[0][0].account,
+          accountIndex: rewardLeafs[0][0].accountIndex,
+          amount: rewardLeafs[0][0].amount,
+          merkleProof: merkleTrees[0].getProof(rewardLeafs[0][0].leaf)
+        });
+        assert(await didContractThrow(merkleDistributor.claimMulti(batchedClaims)));
       });
     });
   });
@@ -569,25 +562,29 @@ contract("MerkleDistributor.js", function(accounts) {
     const NUM_LEAVES = 100000;
     // # of leaves we will claim and fetch gas costs for.
     const SAMPLE_SIZE = 25;
+    let batchedClaims;
+    const possibleRecipients = Object.keys(SamplePayouts.exampleRecipients);
+    // Use same claim amount for each recipient since this won't affect gas.
+    const claimData = { amount: 100 };
+    const totalRewardsDistributed = claimData.amount * NUM_LEAVES;
 
     beforeEach(async function() {
+      batchedClaims = [];
       windowIndex = 0;
-
-      // Use same claim data for each recipient.
-      const claimData = { account: rando, amount: 100 };
 
       // Construct leaves and give each a unique accountIndex:
       rewardLeafs = [];
       for (let i = 0; i < NUM_LEAVES; i++) {
-        const _claimData = { ...claimData, accountIndex: i };
+        // Claimant is one of the recipients in SampleJson. We use different recipients
+        // to test how `claimMulti` performs when paying different accounts.
+        const _claimAccount = possibleRecipients[i % possibleRecipients.length];
+        const _claimData = { ...claimData, accountIndex: i, account: _claimAccount };
         rewardLeafs.push({
           ..._claimData,
           leaf: createLeaf(_claimData)
         });
       }
       merkleTree = new MerkleTree(rewardLeafs.map(item => item.leaf));
-
-      const totalRewardsDistributed = claimData.amount * NUM_LEAVES;
 
       // Seed the merkleDistributor with the root of the tree and additional information.
       await merkleDistributor.setWindow(
@@ -597,37 +594,10 @@ contract("MerkleDistributor.js", function(accounts) {
         sampleIpfsHash
       );
     });
-    it("gas middle node", async function() {
-      const leafIndex = 50000;
-      const leaf = rewardLeafs[leafIndex];
-      const proof = merkleTree.getProof(leaf.leaf);
-      const tx = await merkleDistributor.claim({
-        windowIndex: windowIndex,
-        account: leaf.account,
-        accountIndex: leaf.accountIndex,
-        amount: leaf.amount,
-        merkleProof: proof
-      });
-      assert.equal(tx.receipt.gasUsed, 99200);
-    });
-    it("gas deeper node", async function() {
-      const leafIndex = 90000;
-      const leaf = rewardLeafs[leafIndex];
-      const proof = merkleTree.getProof(leaf.leaf);
-      const tx = await merkleDistributor.claim({
-        windowIndex: windowIndex,
-        account: leaf.account,
-        accountIndex: leaf.accountIndex,
-        amount: leaf.amount,
-        merkleProof: proof
-      });
-      assert.equal(tx.receipt.gasUsed, 99220);
-    });
-    it("gas average random distribution", async function() {
-      let total = toBN(0);
-      let count = 0;
-      for (let i = 0; i < NUM_LEAVES; i += NUM_LEAVES / SAMPLE_SIZE) {
-        const leaf = rewardLeafs[i];
+    describe("(claim)", function() {
+      it("gas middle node", async function() {
+        const leafIndex = 50000;
+        const leaf = rewardLeafs[leafIndex];
         const proof = merkleTree.getProof(leaf.leaf);
         const tx = await merkleDistributor.claim({
           windowIndex: windowIndex,
@@ -636,20 +606,11 @@ contract("MerkleDistributor.js", function(accounts) {
           amount: leaf.amount,
           merkleProof: proof
         });
-        total = total.addn(tx.receipt.gasUsed);
-        count++;
-      }
-      const average = total.divn(count);
-      assert.equal(Math.floor(average.toNumber()), 84828);
-    });
-    // Claiming consecutive leaves should result in average gas savings
-    // because of using single bits in the bitmap to track claims instead
-    // of bools.
-    it("gas average first 25", async function() {
-      let total = toBN(0);
-      let count = 0;
-      for (let i = 0; i < 25; i++) {
-        const leaf = rewardLeafs[i];
+        assertApproximate(99220, tx.receipt.gasUsed);
+      });
+      it("gas deeper node", async function() {
+        const leafIndex = 90000;
+        const leaf = rewardLeafs[leafIndex];
         const proof = merkleTree.getProof(leaf.leaf);
         const tx = await merkleDistributor.claim({
           windowIndex: windowIndex,
@@ -658,35 +619,212 @@ contract("MerkleDistributor.js", function(accounts) {
           amount: leaf.amount,
           merkleProof: proof
         });
-        total = total.addn(tx.receipt.gasUsed);
-        count++;
-      }
-      const average = total.divn(count);
-      assert.equal(Math.floor(average.toNumber()), 70415);
+        assertApproximate(99222, tx.receipt.gasUsed);
+      });
+      it("gas average random distribution", async function() {
+        let total = toBN(0);
+        let count = 0;
+        for (let i = 0; i < NUM_LEAVES; i += NUM_LEAVES / SAMPLE_SIZE) {
+          const leaf = rewardLeafs[i];
+          const proof = merkleTree.getProof(leaf.leaf);
+          const tx = await merkleDistributor.claim({
+            windowIndex: windowIndex,
+            account: leaf.account,
+            accountIndex: leaf.accountIndex,
+            amount: leaf.amount,
+            merkleProof: proof
+          });
+          total = total.addn(tx.receipt.gasUsed);
+          count++;
+        }
+        const average = total.divn(count);
+        assertApproximate(84832, Math.floor(average.toNumber()));
+      });
+      // Claiming consecutive leaves should result in average gas savings
+      // because of using single bits in the bitmap to track claims instead
+      // of bools.
+      it("gas average first 25", async function() {
+        let total = toBN(0);
+        let count = 0;
+        for (let i = 0; i < 25; i++) {
+          const leaf = rewardLeafs[i];
+          const proof = merkleTree.getProof(leaf.leaf);
+          const tx = await merkleDistributor.claim({
+            windowIndex: windowIndex,
+            account: leaf.account,
+            accountIndex: leaf.accountIndex,
+            amount: leaf.amount,
+            merkleProof: proof
+          });
+          total = total.addn(tx.receipt.gasUsed);
+          count++;
+        }
+        const average = total.divn(count);
+        assertApproximate(75069, Math.floor(average.toNumber()));
+      });
+      it("no double claims in random distribution", async () => {
+        for (let i = 0; i < 25; i += Math.floor(Math.random() * (NUM_LEAVES / SAMPLE_SIZE))) {
+          const leaf = rewardLeafs[i];
+          const proof = merkleTree.getProof(leaf.leaf);
+          await merkleDistributor.claim({
+            windowIndex: windowIndex,
+            account: leaf.account,
+            accountIndex: leaf.accountIndex,
+            amount: leaf.amount,
+            merkleProof: proof
+          });
+          assert(
+            await didContractThrow(
+              merkleDistributor.claim({
+                windowIndex: windowIndex,
+                account: leaf.account,
+                accountIndex: leaf.accountIndex,
+                amount: leaf.amount,
+                merkleProof: proof
+              })
+            )
+          );
+        }
+      });
     });
-    it("no double claims in random distribution", async () => {
-      for (let i = 0; i < 25; i += Math.floor(Math.random() * (NUM_LEAVES / SAMPLE_SIZE))) {
-        const leaf = rewardLeafs[i];
-        const proof = merkleTree.getProof(leaf.leaf);
-        await merkleDistributor.claim({
-          windowIndex: windowIndex,
-          account: leaf.account,
-          accountIndex: leaf.accountIndex,
-          amount: leaf.amount,
-          merkleProof: proof
-        });
-        assert(
-          await didContractThrow(
-            merkleDistributor.claim({
-              windowIndex: windowIndex,
+    describe("(claimMulti)", function() {
+      // Reorders the claimsArray array so that claims for the same
+      // account and same token are next to each other.
+      const sortClaimsByAccountAndToken = async claimsArray => {
+        // Since .sort() comparison function must be synchrous, preload
+        // all reward tokens into the claim data before sorting:
+        return (
+          await Promise.map(claimsArray, _claim => {
+            // Returns window data for each claim:
+            return merkleDistributor.merkleWindows(_claim.windowIndex);
+          })
+        )
+          .map((windowData, i) => {
+            // Gets the reward token for the window data for this claim
+            // and injects it into the claim object.
+            return {
+              ...claimsArray[i],
+              rewardToken: windowData.rewardToken
+            };
+          })
+          .sort((a, b) => {
+            // If a.account == b.account, then sorts by rewardToken
+            return a.account.localeCompare(b.account) || a.rewardToken.localeCompare(b.rewardToken);
+          });
+      };
+
+      it("one tree: gas amortized random distribution", async function() {
+        for (let i = 0; i < NUM_LEAVES; i += NUM_LEAVES / SAMPLE_SIZE) {
+          const leaf = rewardLeafs[i];
+          const proof = merkleTree.getProof(leaf.leaf);
+          batchedClaims.push({
+            windowIndex: windowIndex,
+            account: leaf.account,
+            accountIndex: leaf.accountIndex,
+            amount: leaf.amount,
+            merkleProof: proof
+          });
+        }
+        const sortedClaims = await sortClaimsByAccountAndToken(batchedClaims);
+        const tx = await merkleDistributor.claimMulti(sortedClaims);
+        assertApproximate(49866, Math.floor(tx.receipt.gasUsed / sortedClaims.length));
+      });
+      it("one tree: gas amortized first 25", async function() {
+        for (let i = 0; i < 25; i++) {
+          const leaf = rewardLeafs[i];
+          const proof = merkleTree.getProof(leaf.leaf);
+          batchedClaims.push({
+            windowIndex: windowIndex,
+            account: leaf.account,
+            accountIndex: leaf.accountIndex,
+            amount: leaf.amount,
+            merkleProof: proof
+          });
+        }
+        const sortedClaims = await sortClaimsByAccountAndToken(batchedClaims);
+        const tx = await merkleDistributor.claimMulti(sortedClaims);
+        assertApproximate(40381, Math.floor(tx.receipt.gasUsed / sortedClaims.length));
+      });
+      it("many trees, many reward tokens, many accounts: gas amortized", async function() {
+        // This is a realistic scenario where the caller is making their claims for various
+        // reward currencies across several windows.
+
+        // Create new windows with different reward tokens. We'll cycle through a fixed
+        // set of reward tokens, which means that consecutive windows will use different
+        // reward tokens. This will test how the `claimMulti` handles unsorted versus
+        // sorted claim arrays.
+        const NUM_REWARD_TOKENS = 6;
+        const rewardTokens = [];
+        rewardTokens.push(rewardToken.address);
+        // Note: we start index `i=1` because we've already created a merkle tree window.
+        for (let i = 1; i < NUM_REWARD_TOKENS; i++) {
+          const newRewardToken = await Token.new(`UMA KPI Option #${i}`, `uKPI${i}`, 18);
+          await newRewardToken.addMember(1, contractCreator);
+          await newRewardToken.mint(contractCreator, MAX_UINT_VAL);
+          await newRewardToken.approve(merkleDistributor.address, MAX_UINT_VAL);
+          rewardTokens.push(newRewardToken.address);
+        }
+
+        // Now create and upload new merkle trees to the distributor contract:
+        const NUM_WINDOWS = 10;
+        // Note: we start index `i=1` because we've already created a merkle tree window.
+        for (let i = 1; i < NUM_WINDOWS; i++) {
+          await merkleDistributor.setWindow(
+            totalRewardsDistributed,
+            rewardTokens[i % NUM_REWARD_TOKENS],
+            merkleTree.getRoot(),
+            sampleIpfsHash
+            // Note re-use the same merkle tree since the claim amounts and recipients are the same
+          );
+        }
+
+        // Construct batched claims across windows for the specified number of accounts.
+        const ACCOUNT_INDICES_TO_CLAIM_FOR = [1, 2, 3];
+        for (let i = 0; i < NUM_WINDOWS; i++) {
+          ACCOUNT_INDICES_TO_CLAIM_FOR.forEach(accountIndex => {
+            const leaf = rewardLeafs[accountIndex];
+            const proof = merkleTree.getProof(leaf.leaf);
+            batchedClaims.push({
+              windowIndex: windowIndex + i,
               account: leaf.account,
               accountIndex: leaf.accountIndex,
               amount: leaf.amount,
               merkleProof: proof
-            })
-          )
-        );
-      }
+            });
+          });
+        }
+
+        // Check estimated gas for batch claiming unsorted array of claims:
+        const gasUnsorted = await merkleDistributor.claimMulti.estimateGas(batchedClaims);
+        assertApproximate(55883, Math.floor(gasUnsorted / batchedClaims.length));
+
+        // Sort the claims such that windows with the same reward currency end up next to each other.
+        const sortedClaims = await sortClaimsByAccountAndToken(batchedClaims);
+        const tx = await merkleDistributor.claimMulti(sortedClaims);
+        assertApproximate(53266, Math.floor(tx.receipt.gasUsed / sortedClaims.length));
+      });
+      it("batch cannot include double claims", async function() {
+        for (let i = 0; i < NUM_LEAVES; i += NUM_LEAVES / SAMPLE_SIZE) {
+          const leaf = rewardLeafs[i];
+          const proof = merkleTree.getProof(leaf.leaf);
+          batchedClaims.push({
+            windowIndex: windowIndex,
+            account: leaf.account,
+            accountIndex: leaf.accountIndex,
+            amount: leaf.amount,
+            merkleProof: proof
+          });
+        }
+        await merkleDistributor.claimMulti(batchedClaims);
+
+        // Making batch claims that include ANY of the already executed claims will fail:
+        for (let i = 0; i < batchedClaims.length; i++) {
+          console.log(batchedClaims.slice(0, batchedClaims.length - i).length);
+          assert(
+            await didContractThrow(merkleDistributor.claimMulti(batchedClaims.slice(0, batchedClaims.length - i)))
+          );
+        }
+      });
     });
   });
   describe("(setWindow)", function() {
