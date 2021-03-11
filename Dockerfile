@@ -34,7 +34,7 @@ RUN npx lerna bootstrap
 
 # Clean and run all package build steps, but exclude dapps (to save time).
 RUN yarn lerna run clean --ignore '*/*dapp*'
-RUN yarn lerna run build --ignore '*/*dapp*'
+RUN yarn qbuild
 
 # Command to run any command provided by the COMMAND env variable.
 ENTRYPOINT ["/bin/bash", "scripts/runCommand.sh"]
