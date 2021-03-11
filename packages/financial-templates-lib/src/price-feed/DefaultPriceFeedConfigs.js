@@ -652,7 +652,6 @@ const defaultConfigs = {
   },
   UNIUSD: {
     type: "medianizer",
-    invertPrice: true,
     minTimeBetweenUpdates: 60,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "uniusd" },
