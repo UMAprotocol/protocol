@@ -108,18 +108,22 @@ contract("DefiPulsePriceFeed.js", function() {
       transports: [new winston.transports.Console()]
     });
 
-    const badProjectPriceFeed = new DefiPulsePriceFeed(
-      dummyLogger,
-      web3,
-      defipulseApiKey,
-      lookback,
-      networker,
-      getTime,
-      minTimeBetweenUpdates,
-      decimals, // Add arbitrary decimal conversion and prove this works.
-      "NotAProject"
-    );
-
-    assert(badProjectPriceFeed instanceof assert.AssertionError);
+    let errorThrown = false;
+    try {
+      new DefiPulsePriceFeed(
+        dummyLogger,
+        web3,
+        defipulseApiKey,
+        lookback,
+        networker,
+        getTime,
+        minTimeBetweenUpdates,
+        decimals, // Add arbitrary decimal conversion and prove this works.
+        "NotAProject"
+      );
+    } catch (error) {
+      errorThrown = true;
+    }
+    assert.isTrue(errorThrown);
   });
 });
