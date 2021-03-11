@@ -1,7 +1,7 @@
-const nodeFetch = require("node-fetch");
+import nodeFetch from "node-fetch";
 
-const { getAbi, getAddress } = require("@uma/core");
-const { getWeb3, ConvertDecimals } = require("@uma/common");
+import { getAbi, getAddress } from "@uma/core";
+import { getWeb3, ConvertDecimals } from "@uma/common";
 const web3 = getWeb3();
 const { toWei, toBN, fromWei } = web3.utils;
 
@@ -17,7 +17,6 @@ export async function calculateCurrentTvl() {
     }, toBN("0"))
     .div(fixedPointAdjustment)
     .toString();
-  console.log("currentTvl", currentTvl);
   return { currentTvl, currentTime: Math.round(new Date().getTime() / 1000) };
 }
 
@@ -148,5 +147,3 @@ export async function getContractPrices(ContractAddresses: Array<string>, curren
     address && prices[address] ? prices[address].usd.toString() : null
   );
 }
-
-calculateCurrentTvl();
