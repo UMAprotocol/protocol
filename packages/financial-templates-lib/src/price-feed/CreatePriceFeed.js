@@ -109,13 +109,8 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     );
   } else if (config.type === "defipulse") {
     const requiredFields = ["lookback", "minTimeBetweenUpdates", "defipulseApiKey", "project"];
-    const VALID_PROJECTS = ["all", "SushiSwap", "Uniswap"];
 
     if (isMissingField(config, requiredFields, logger)) {
-      return null;
-    }
-
-    if (!VALID_PROJECTS.includes(config.project)) {
       return null;
     }
 

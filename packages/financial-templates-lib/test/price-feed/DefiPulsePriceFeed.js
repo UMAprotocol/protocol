@@ -101,4 +101,25 @@ contract("DefiPulsePriceFeed.js", function() {
     // Should return the mock time.
     assert.equal(defiPulsePriceFeed.getLastUpdateTime(), mockTime);
   });
+
+  it("Bad project name", async function() {
+    const dummyLogger = winston.createLogger({
+      level: "info",
+      transports: [new winston.transports.Console()]
+    });
+
+    const badProjectPriceFeed = new DefiPulsePriceFeed(
+      dummyLogger,
+      web3,
+      defipulseApiKey,
+      lookback,
+      networker,
+      getTime,
+      minTimeBetweenUpdates,
+      decimals, // Add arbitrary decimal conversion and prove this works.
+      "NotAProject"
+    );
+
+    assert(badProjectPriceFeed instanceof assert.AssertionError);
+  });
 });

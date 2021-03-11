@@ -37,10 +37,13 @@ class DefiPulsePriceFeed extends PriceFeedInterface {
     this.getTime = getTime;
     this.minTimeBetweenUpdates = minTimeBetweenUpdates;
     this.priceFeedDecimals = priceFeedDecimals;
-    this.project = project;
     this.uuid = `DefiPulse ${project}`;
     this.toWei = this.web3.utils.toWei;
     this.historicalPrices = [];
+
+    this.project = project;
+    const VALID_PROJECTS = ["all", "SushiSwap", "Uniswap"];
+    assert(VALID_PROJECTS.includes(this.project), "invalid project name");
   }
 
   getCurrentPrice() {

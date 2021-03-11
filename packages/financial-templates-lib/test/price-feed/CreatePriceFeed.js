@@ -1259,6 +1259,5 @@ contract("CreatePriceFeed.js", function(accounts) {
       await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, minTimeBetweenUpdates: undefined }),
       null
     );
-    assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, project: "wutang" }), null);
   });
 });
