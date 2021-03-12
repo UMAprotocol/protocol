@@ -23,12 +23,12 @@ jobs:
     working_directory: ~/protocol
     steps:
       - restore_cache:
-          key: v109-protocol-{{ .Environment.CIRCLE_SHA1 }}
+          key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run build
           command: yarn qbuild
       - save_cache:
-          key: v109-protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
           paths:
             - ~/protocol
             - ~/.ssh
