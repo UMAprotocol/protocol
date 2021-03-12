@@ -18,20 +18,12 @@ export async function fetchUmaEcosystemData() {
   //   const collateralInfoWithValue = evaluateFinancialContractCollateral(allFinancialContractsData);
 
   const allEmpPositions = await getAllEmpsPositions();
-  console.log("allEmpPositions", allEmpPositions[2].positions);
-  const sponsorsSubset = allEmpPositions[2].positions;
+  console.log("allEmpPositions", allEmpPositions);
+  console.log("allEmpPositions", allEmpPositions[7].positions);
+  const sponsorsSubset = allEmpPositions[7].positions;
   console.log("subset", sponsorsSubset[0]);
-  console.log("c", sponsorsSubset[0].collateral);
-  console.log("z", toBN(toWei(sponsorsSubset[0].collateral.toString()).toString()));
-  console.log(
-    "liquidationPrice",
-    calculateLiquidationPrice(
-      toBN(toWei(sponsorsSubset[0].collateral)),
-      toBN(toWei(sponsorsSubset[0].tokensOutstanding)),
-      toBN(toWei("1.25")),
-      true
-    )
-  );
+  console.log("collateral", sponsorsSubset[0].collateral);
+  console.log("tokensOutstanding", sponsorsSubset[0].tokensOutstanding);
 
   const logger = winston.createLogger({
     level: "info",
@@ -51,6 +43,20 @@ export async function fetchUmaEcosystemData() {
   console.log("inverted", samplePriceFeed.priceFeeds[0].invertPrice);
   console.log("CURRENT", samplePriceFeed.getCurrentPrice().toString());
   console.log("decimals", samplePriceFeed.getPriceFeedDecimals());
+
+  const positionCR = computeCollatererlizationRatio(
+    toBN(toWei(sponsorsSubset[0].collateral.toString()).toString()),
+    toBN(toWei(sponsorsSubset[0].tokensOutstanding.toString()).toString()),
+    ConvertDecimals(samplePriceFeed.getPriceFeedDecimals(), 18, web3)(samplePriceFeed.getCurrentPrice().toString())
+  );
+  console.log("positionCR", positionCR.toString());
+}
+
+function computeCollatererlizationRatio(collateral: any, debt: any, tokenPrice: any) {
+  return fixedPointAdjustment
+    .mul(fixedPointAdjustment)
+    .mul(collateral)
+    .div(debt.mul(tokenPrice));
 }
 
 function calculateLiquidationPrice(collateral: any, debt: any, collateralRequirement: any, invertedPrice: boolean) {
