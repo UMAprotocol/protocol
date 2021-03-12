@@ -36,15 +36,15 @@ const revertWrapper = result => {
  */
 const runTransaction = async ({ transaction, config }) => {
   // Multiplier applied to Truffle's estimated gas limit for a transaction to send.
-  GAS_LIMIT_BUFFER = 1.25;
-  
+  const GAS_LIMIT_BUFFER = 1.25;
+
   // First try to simulate transaction and also extract return value if its
   // a state-modifying transaction. If the function is state modifying, then successfully
   // sending it will return the transaction receipt, not the return value, so we grab it here.
   let returnValue, estimatedGas;
   try {
     [returnValue, estimatedGas] = await Promise.all([
-      transaction.call({ from: config.from }), 
+      transaction.call({ from: config.from }),
       transaction.estimateGas({ from: config.from })
     ]);
   } catch (error) {
