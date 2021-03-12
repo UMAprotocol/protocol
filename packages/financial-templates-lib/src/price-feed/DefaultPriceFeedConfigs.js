@@ -377,9 +377,26 @@ const defaultConfigs = {
     ]
   },
   DEFI_PULSE_TOTAL_TVL: {
-    type: "defipulsetotal",
+    type: "defipulse",
     lookback: 604800,
-    minTimeBetweenUpdates: 600
+    minTimeBetweenUpdates: 600,
+    project: "all"
+  },
+  DEFI_PULSE_SUSHI_TVL: {
+    type: "defipulse",
+    lookback: 604800,
+    minTimeBetweenUpdates: 600,
+    project: "SushiSwap"
+  },
+  DEFI_PULSE_UNISWAP_TVL: {
+    type: "defipulse",
+    lookback: 604800,
+    minTimeBetweenUpdates: 600,
+    project: "Uniswap"
+  },
+  SUSHIUNI: {
+    type: "expression",
+    expression: "10 * DEFI_PULSE_SUSHI_TVL / DEFI_PULSE_UNISWAP_TVL"
   },
   CNYUSD: {
     type: "tradermade",
