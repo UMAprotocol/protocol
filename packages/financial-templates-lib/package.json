@@ -22,7 +22,6 @@
   },
   "devDependencies": {
     "@tsconfig/node14": "^1.0.0",
-    "truffle": "^5.1.37",
     "typescript": "^4.1.3"
   },
   "homepage": "https://umaproject.org",

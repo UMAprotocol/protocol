@@ -26,6 +26,10 @@
     "type": "git",
     "url": "https://github.com/UMAprotocol/protocol.git"
   },
+  "dependencies": {
+    "truffle": "^5.2.3",
+    "web3": "^1.3.4"
+  },
   "devDependencies": {
     "@antora/cli": "^2.1.2",
     "@antora/site-generator-default": "^2.1.2",
@@ -51,8 +55,7 @@
     "prettier-plugin-solidity": "^1.0.0-beta.1",
     "pretty-quick": "^2.0.1",
     "secp256k1": "^3.7.1",
-    "solidity-docgen": "^0.5.3",
-    "truffle": "^5.1.33"
+    "solidity-docgen": "^0.5.3"
   },
   "resolutions": {
     "sse4_crc32": "npm:@node-rs/crc32@1.0.0"
