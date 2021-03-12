@@ -34,7 +34,7 @@ const revertWrapper = result => {
  * @param {*Object} config transaction config, e.g. { gasPrice, from }, passed to web3 transaction.
  * @return Error and type of error (originating from `.call()` or `.send()`) or transaction receipt and return value.
  */
-const runTransaction = async ({ transaction, config }) => {
+const runTransaction = async ({ transaction, config }, callOnly = false) => {
   // Multiplier applied to Truffle's estimated gas limit for a transaction to send.
   const GAS_LIMIT_BUFFER = 1.25;
 
@@ -52,6 +52,10 @@ const runTransaction = async ({ transaction, config }) => {
     throw error;
   }
 
+  if (callOnly) {
+    console.log(returnValue, estimatedGas);
+    return;
+  }
   // .call() succeeded, now broadcast transaction.
   let receipt;
   try {

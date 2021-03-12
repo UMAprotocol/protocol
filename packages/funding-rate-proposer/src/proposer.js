@@ -195,15 +195,16 @@ class FundingRateProposer {
         { rawValue: offchainFundingRate },
         requestTimestamp
       );
-      // console.log(
-      //   await runTransaction({
-      //     transaction: cachedContract.contract.methods.gulp(),
-      //     config: {
-      //       gasPrice: this.gasEstimator.getCurrentFastPrice(),
-      //       from: this.account
-      //     }
-      //   })
-      // )
+      // The `proposeFundingRate()` method will only work if `gulp()` or `applyFundingRate()` is called before hand.
+      console.log(
+        await runTransaction({
+          transaction: cachedContract.contract.methods.gulp(),
+          config: {
+            gasPrice: this.gasEstimator.getCurrentFastPrice(),
+            from: this.account
+          }
+        })
+      );
       this.logger.debug({
         at: "PerpetualProposer#updateFundingRate",
         message: "Proposing new funding rate",
@@ -215,13 +216,16 @@ class FundingRateProposer {
         proposer: this.account
       });
       try {
-        const transactionResult = await runTransaction({
-          transaction: proposal,
-          config: {
-            gasPrice: this.gasEstimator.getCurrentFastPrice(),
-            from: this.account
-          }
-        });
+        const transactionResult = await runTransaction(
+          {
+            transaction: proposal,
+            config: {
+              gasPrice: this.gasEstimator.getCurrentFastPrice(),
+              from: this.account
+            }
+          },
+          true
+        );
         let receipt = transactionResult.receipt;
         let returnValue = transactionResult.returnValue.toString();
 
