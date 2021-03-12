@@ -36,5 +36,8 @@
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
+  },
+  "devDependencies": {
+    "@types/ethereumjs-util": "^6.1.0"
   }
 }
