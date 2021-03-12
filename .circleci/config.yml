@@ -13,7 +13,7 @@ jobs:
           name: Install Dependencies
           command: yarn --frozen-lockfile
       - save_cache:
-          key: v111-protocol-{{ .Environment.CIRCLE_SHA1 }}
+          key: protocol-{{ .Environment.CIRCLE_SHA1 }}
           paths:
             - ~/protocol
             - ~/.ssh
@@ -23,12 +23,12 @@ jobs:
     working_directory: ~/protocol
     steps:
       - restore_cache:
-          key: v111-protocol-{{ .Environment.CIRCLE_SHA1 }}
+          key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run build
           command: yarn qbuild
       - save_cache:
-          key: v111-protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
           paths:
             - ~/protocol
             - ~/.ssh
@@ -38,7 +38,7 @@ jobs:
     working_directory: ~/protocol
     steps:
       - restore_cache:
-          key: v111-protocol-{{ .Environment.CIRCLE_SHA1 }}
+          key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Lint
           command: ./ci/lint.sh
@@ -48,7 +48,7 @@ jobs:
     working_directory: ~/protocol
     steps:
       - restore_cache:
-          key: v111-protocol-{{ .Environment.CIRCLE_SHA1 }}
+          key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Install Pandoc
           command: wget https://github.com/jgm/pandoc/releases/download/2.7.3/pandoc-2.7.3-linux.tar.gz
@@ -94,7 +94,7 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: v111-protocol-{{ .Environment.CIRCLE_SHA1 }}
+          key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run coverage
           command: ./ci/coverage.sh ~/protocol/packages/core
