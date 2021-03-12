@@ -57,14 +57,14 @@ function createBasicProvider(url) {
  * which load a hardcoded infura key. Default port is 9545.
  *
  */
-function getWeb3() {
+function getWeb3(parameterizedNetwork = "test") {
   // If a web3 instance has already been initialized, return it.
   if (web3) {
     return web3;
   }
 
   // Create basic web3 provider with no wallet connection based on the url alone.
-  const network = argv.network || "test"; // Default to the test network (local network).
+  const network = argv.network || parameterizedNetwork; // Default to the test network (local network).
   const basicProvider = createBasicProvider(getNodeUrl(network));
 
   // Use the basic provider to create a provider with an unlocked wallet. This piggybacks off the UMA common TruffleConfig
