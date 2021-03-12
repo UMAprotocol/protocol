@@ -1,7 +1,3 @@
-// This is multiplied by the estimated gas amount in `runTransaction` to make sure that the amount is not an underestimation,
-// which could cause unexpected transaction reverts.
-const GAS_LIMIT_BUFFER = 1.25;
-
 /**
  * This is a hack to handle reverts for view/pure functions that don't actually revert on public networks.
  * See https://forum.openzeppelin.com/t/require-in-view-pure-functions-dont-revert-on-public-networks/1211 for more
@@ -39,12 +35,18 @@ const revertWrapper = result => {
  * @return Error and type of error (originating from `.call()` or `.send()`) or transaction receipt and return value.
  */
 const runTransaction = async ({ transaction, config }) => {
+  // Multiplier applied to Truffle's estimated gas limit for a transaction to send.
+  const GAS_LIMIT_BUFFER = 1.25;
+
   // First try to simulate transaction and also extract return value if its
   // a state-modifying transaction. If the function is state modifying, then successfully
   // sending it will return the transaction receipt, not the return value, so we grab it here.
   let returnValue, estimatedGas;
   try {
-    [returnValue, estimatedGas] = await Promise.all([transaction.call(config), transaction.estimateGas(config)]);
+    [returnValue, estimatedGas] = await Promise.all([
+      transaction.call({ from: config.from }),
+      transaction.estimateGas({ from: config.from })
+    ]);
   } catch (error) {
     error.type = "call";
     throw error;
@@ -53,7 +55,7 @@ const runTransaction = async ({ transaction, config }) => {
   // .call() succeeded, now broadcast transaction.
   let receipt;
   try {
-    receipt = await transaction.send({ ...config, gas: Math.ceil(estimatedGas * GAS_LIMIT_BUFFER) });
+    receipt = await transaction.send({ ...config, gas: Math.floor(estimatedGas * GAS_LIMIT_BUFFER) });
     return {
       receipt,
       returnValue
