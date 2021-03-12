@@ -5,7 +5,6 @@
   "dependencies": {
     "@types/commander": "^2.12.2",
     "@types/node-fetch": "^2.5.8",
-    "@types/ethereumjs-util": "^6.1.0",
     "@uma/core": "^2.0.1",
     "chai": "^4.3.0",
     "commander": "^7.1.0",
