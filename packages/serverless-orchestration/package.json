@@ -5,8 +5,7 @@
   "dependencies": {
     "@truffle/contract": "^4.2.20",
     "@uma/common": "^2.0.1",
-    "@uma/financial-templates-lib": "^2.0.1",
-    "web3": "^1.3.4"
+    "@uma/financial-templates-lib": "^2.0.1"
   },
   "devDependencies": {
     "@awaitjs/express": "^0.3.0",
