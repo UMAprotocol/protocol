@@ -36,7 +36,7 @@
     "@nomiclabs/hardhat-etherscan": "^2.1.0",
     "@nomiclabs/hardhat-truffle5": "^2.0.0",
     "@nomiclabs/hardhat-web3": "^2.0.0",
-    "@truffle/hdwallet-provider": "^1.0.25",
+    "@truffle/hdwallet-provider": "^1.2.3",
     "@umaprotocol/truffle-ledger-provider": "^1.0.3",
     "abi-decoder": "github:UMAprotocol/abi-decoder",
     "bignumber.js": "^8.0.1",
