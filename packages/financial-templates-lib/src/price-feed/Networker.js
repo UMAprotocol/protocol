@@ -16,12 +16,7 @@ class Networker {
     const response = await fetch(url);
     const json = await response.json();
     if (!json) {
-      this.logger.error({
-        at: "Networker",
-        message: "Failed to get json response🚨",
-        url: url,
-        error: new Error(response)
-      });
+      throw new Error(`Networker failed to get json response. Response: ${response}`);
     }
     return json;
   }
