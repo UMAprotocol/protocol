@@ -16,6 +16,7 @@ class Networker {
     const response = await fetch(url);
     const json = await response.json();
     if (!json) {
+      // Throw if no error. Will result in a retry upstream.
       throw new Error(`Networker failed to get json response. Response: ${response}`);
     }
     return json;
