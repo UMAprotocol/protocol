@@ -6,7 +6,7 @@
 const { toWei, toBN } = web3.utils;
 const { getTruffleContract } = require("../../index");
 
-const argv = require("minimist")(process.argv.slice(), { string: ["emp", "to", "cversion"] });
+const argv = require("minimist")(process.argv.slice(), { string: ["emp", "collateral", "to", "cversion"] });
 const abiVersion = argv.cversion || "1.2.2"; // Default to most recent mainnet deployment, 1.2.2.
 
 // Deployed contract ABI's and addresses we need to fetch.
