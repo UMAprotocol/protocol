@@ -2,9 +2,11 @@ const { calculateCurrentTvl } = require("@uma/merkle-distributor");
 
 exports.calculateCurrentTvl = async (req, res) => {
   try {
-    res.status(200).send(await calculateCurrentTvl());
-  } catch (error) {
-    console.log("something went wrong fetching the tvl", error);
-    res.status(400).send({ message: "something went wrong fetching the tvl", error: error.message });
+    const tvl = await calculateCurrentTvl();
+    console.log(`Fetched current TVL: ${JSON.stringify(tvl)}`);
+    res.status(200).send(tvl);
+  } catch (e) {
+    console.error(e);
+    res.status(500).send({ message: "Error in fetching TVL", error: e instanceof Error ? e.message : e });
   }
 };

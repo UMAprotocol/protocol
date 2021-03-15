@@ -549,16 +549,6 @@
     retry-request "^4.0.0"
     teeny-request "^3.11.3"
 
-"@google-cloud/functions-framework@^1.7.1":
-  version "1.7.1"
-  resolved "https://registry.yarnpkg.com/@google-cloud/functions-framework/-/functions-framework-1.7.1.tgz#d29a27744a6eb2f95d840b86135b97b0d804a49e"
-  integrity sha512-jjG7nH94Thij97EPW2oQN28pVPRN3UEGcsCRi6RdaaiSyK32X40LN4WHntKVmQPBhqH+I0magHMk1pSb0McH2g==
-  dependencies:
-    body-parser "^1.18.3"
-    express "^4.16.4"
-    minimist "^1.2.0"
-    on-finished "^2.3.0"
-
 "@google-cloud/kms@^0.3.0":
   version "0.3.0"
   resolved "https://registry.yarnpkg.com/@google-cloud/kms/-/kms-0.3.0.tgz#38649a8384856fd57097da0040f1015a2157490e"
@@ -945,10 +935,10 @@
   dependencies:
     source-map-support "^0.5.19"
 
-"@truffle/blockchain-utils@^0.0.26":
-  version "0.0.26"
-  resolved "https://registry.yarnpkg.com/@truffle/blockchain-utils/-/blockchain-utils-0.0.26.tgz#f4ea794e0a18c74d73ea10e29a506c9ed0a503ee"
-  integrity sha512-M91NJkfapK1RqdzVwKSSenPEE2cHzAAFwC3aPhA8Y3DznRfzOcck4mDH6eY71sytVCrGaXGm/Wirn3drGSH+qQ==
+"@truffle/blockchain-utils@^0.0.27":
+  version "0.0.27"
+  resolved "https://registry.yarnpkg.com/@truffle/blockchain-utils/-/blockchain-utils-0.0.27.tgz#e8d4c337e5478bc316353a1f63a86fa1439e62c8"
+  integrity sha512-QldE+NNCPbRpVU82rd1JuOrsze79DTBXYkzZPSGjPCRU6hTGVbPrqeHlW2Ju7LREDsjWrzOaU2LxLME11xLwPA==
   dependencies:
     source-map-support "^0.5.19"
 
@@ -998,11 +988,11 @@
     debug "^4.3.1"
 
 "@truffle/contract@^4.2.20":
-  version "4.3.9"
-  resolved "https://registry.yarnpkg.com/@truffle/contract/-/contract-4.3.9.tgz#caf515df359e72f207edc6f1d4e7b8bca88566a7"
-  integrity sha512-yd6nejsKEReJrPjOdRHkypfsMr337yc43qxu5b4TF2JAf2Kz7ZAWasHhY3j3xRwra3AqNOm4p3njkq8T+mKytg==
+  version "4.3.10"
+  resolved "https://registry.yarnpkg.com/@truffle/contract/-/contract-4.3.10.tgz#7853c80fb2f374b00c06b32e919905a92b36c00a"
+  integrity sha512-un3pbyXKY78REdbFjFeF2tzrGoUSEkmN2dsSwddJjz+cXlmeesjXbeE6hAJCRfCp/V3e/WANx8lGP6lV2I7FPw==
   dependencies:
-    "@truffle/blockchain-utils" "^0.0.26"
+    "@truffle/blockchain-utils" "^0.0.27"
     "@truffle/contract-schema" "^3.3.4"
     "@truffle/debug-utils" "^5.0.11"
     "@truffle/error" "^0.0.12"
@@ -1053,9 +1043,9 @@
   integrity sha512-kZqqnPR9YDJG7KCDOcN1qH16Qs0oz1PzF0Y93AWdhXuL9S9HYo/RUUeqGKbPpRBEZldQUS8aa4EzfK08u5pu6g==
 
 "@truffle/hdwallet-provider@^1.0.25":
-  version "1.2.2"
-  resolved "https://registry.yarnpkg.com/@truffle/hdwallet-provider/-/hdwallet-provider-1.2.2.tgz#7b42f7cb7fc1f80751c573c72ba488e59690f8ea"
-  integrity sha512-gpE5M9c+G7uMR9Nn2xslY0BRdl8hvlrHxBJ451g/V3WnOI5rDQMXezz6VZMn3zvWDiQTPRknx1uUDfWvMuQwqg==
+  version "1.2.3"
+  resolved "https://registry.yarnpkg.com/@truffle/hdwallet-provider/-/hdwallet-provider-1.2.3.tgz#0d5991ccf6ae434880503545d6e811790a40f090"
+  integrity sha512-o8Mp7eJNQzy+7JmXObCZussrr933nnRWTA1x3qOn0cda6XzDUkCYyg1COvW4zbCTFyIPekHoBloGE4scbulRww==
   dependencies:
     "@trufflesuite/web3-provider-engine" "15.0.13-1"
     any-promise "^1.3.0"
@@ -2568,7 +2558,7 @@ bn.js@^5.0.0, bn.js@^5.1.1, bn.js@^5.1.2, bn.js@^5.1.3:
   resolved "https://registry.yarnpkg.com/bn.js/-/bn.js-5.2.0.tgz#358860674396c6997771a9d051fcc1b57d4ae002"
   integrity sha512-D7iWRBvnZE8ecXiLj/9wbxH7Tk79fAh8IHaTNq1RWRixsS02W+5qS+iE9yq6RYl0asXx5tw0bLhmT5pIfbSquw==
 
-body-parser@1.19.0, body-parser@^1.16.0, body-parser@^1.18.3:
+body-parser@1.19.0, body-parser@^1.16.0:
   version "1.19.0"
   resolved "https://registry.yarnpkg.com/body-parser/-/body-parser-1.19.0.tgz#96b2709e57c9c4e09a6fd66a8fd979844f69f08a"
   integrity sha512-dhEPs72UPbDnAQJ9ZKMNTP6ptJaionhP5cBb541nXPlW60Jepo9RV/a4fX4XWW9CuFNK22krhrj1+rgzifNCsw==
@@ -2830,9 +2820,9 @@ camelcase@^6.0.0:
   integrity sha512-c7wVvbw3f37nuobQNtgsgG9POC9qMbNuMQmTCqZv23b6MIz0fcYpBiOlv9gEN/hdLdnZTDQhg6e9Dq5M1vKvfg==
 
 caniuse-lite@^1.0.30000844, caniuse-lite@^1.0.30001181:
-  version "1.0.30001199"
-  resolved "https://registry.yarnpkg.com/caniuse-lite/-/caniuse-lite-1.0.30001199.tgz#062afccaad21023e2e647d767bac4274b8b8fd7f"
-  integrity sha512-ifbK2eChUCFUwGhlEzIoVwzFt1+iriSjyKKFYNfv6hN34483wyWpLLavYQXhnR036LhkdUYaSDpHg1El++VgHQ==
+  version "1.0.30001200"
+  resolved "https://registry.yarnpkg.com/caniuse-lite/-/caniuse-lite-1.0.30001200.tgz#25435af6ba907c2a9c86d21ce84950d4824e6620"
+  integrity sha512-ic/jXfa6tgiPBAISWk16jRI2q8YfjxHnSG7ddSL1ptrIP8Uy11SayFrjXRAk3NumHpDb21fdTkbTxb/hOrFrnQ==
 
 caseless@^0.12.0, caseless@~0.12.0:
   version "0.12.0"
@@ -2848,9 +2838,9 @@ cbor@^5.0.2, cbor@^5.1.0:
     nofilter "^1.0.4"
 
 chai@^4.2.0, chai@^4.3.0:
-  version "4.3.3"
-  resolved "https://registry.yarnpkg.com/chai/-/chai-4.3.3.tgz#f2b2ad9736999d07a7ff95cf1e7086c43a76f72d"
-  integrity sha512-MPSLOZwxxnA0DhLE84klnGPojWFK5KuhP7/j5dTsxpr2S3XlkqJP5WbyYl1gCTWvG2Z5N+HD4F472WsbEZL6Pw==
+  version "4.3.4"
+  resolved "https://registry.yarnpkg.com/chai/-/chai-4.3.4.tgz#b55e655b31e1eac7099be4c08c21964fce2e6c49"
+  integrity sha512-yS5H68VYOCtN1cjfwumDSuzn/9c+yza4f3reKXlE5rUg7SFcCEy90gJvydNgOYtblyf4Zi6jIWRnXOgErta0KA==
   dependencies:
     assertion-error "^1.1.0"
     check-error "^1.0.2"
@@ -4580,7 +4570,7 @@ expand-template@^2.0.3:
   resolved "https://registry.yarnpkg.com/expand-template/-/expand-template-2.0.3.tgz#6e14b3fcee0f3a6340ecb57d2e8918692052a47c"
   integrity sha512-XYfuKMvj4O35f/pOXLObndIRvyQ+/+6AhODh+OKWj9S9498pHHn/IMszH+gt0fBCRWMNfk1ZSp5x3AifmnI2vg==
 
-express@^4.14.0, express@^4.16.3, express@^4.16.4:
+express@^4.14.0, express@^4.16.3, express@^4.17.1:
   version "4.17.1"
   resolved "https://registry.yarnpkg.com/express/-/express-4.17.1.tgz#4491fc38605cf51f8629d39c2b5d026f98a4c134"
   integrity sha512-mHJ9O79RqluphRrcw2X/GTh3k9tVv8YcoyY4Kkh4WDMUYKRZUq0h1o0w2rrrxBqM7VoeUVqgb27xlEMXTnYt4g==
@@ -6072,9 +6062,9 @@ iso-random-stream@^1.1.0:
     readable-stream "^3.4.0"
 
 iso-url@^1.0.0:
-  version "1.1.4"
-  resolved "https://registry.yarnpkg.com/iso-url/-/iso-url-1.1.4.tgz#a3baf1993a5580d8fb3905fbca2a7ee9fff08aa1"
-  integrity sha512-Gzsd4pb2WAkobYj8cgAdoBYuRsC9O4dFlqjFcNZ1AdIlEzDXacP3SLbc4fOdvn2atKSVmRhGXYasCUmB8119ew==
+  version "1.1.5"
+  resolved "https://registry.yarnpkg.com/iso-url/-/iso-url-1.1.5.tgz#875a0f2bf33fa1fc200f8d89e3f49eee57a8f0d9"
+  integrity sha512-+3JqoKdBTGmyv9vOkS6b9iHhvK34UajfTibrH/1HOK8TI7K2VsM0qOCd+aJdWKtSOA8g3PqZfcwDmnR0p3klqQ==
 
 iso-url@~0.4.7:
   version "0.4.7"
@@ -7541,7 +7531,7 @@ oboe@2.1.5:
   dependencies:
     http-https "^1.0.0"
 
-on-finished@^2.3.0, on-finished@~2.3.0:
+on-finished@~2.3.0:
   version "2.3.0"
   resolved "https://registry.yarnpkg.com/on-finished/-/on-finished-2.3.0.tgz#20f1336481b083cd75337992a16971aa2d906947"
   integrity sha1-IPEzZIGwg811M3mSoWlxqi2QaUc=
@@ -8470,9 +8460,9 @@ sax@^1.2.4:
   integrity sha512-NqVDv9TpANUjFm0N8uM5GxL36UgKi9/atZw+x7YFnQ8ckwFGKrl4xX4yWtrey3UJm5nP1kUbnYgLopqWNSRhWw==
 
 sc-istanbul@^0.4.5:
-  version "0.4.5"
-  resolved "https://registry.yarnpkg.com/sc-istanbul/-/sc-istanbul-0.4.5.tgz#1896066484d55336cf2cdbcc7884dc79da50dc76"
-  integrity sha512-7wR5EZFLsC4w0wSm9BUuCgW+OGKAU7PNlW5L0qwVPbh+Q1sfVn2fyzfMXYCm6rkNA5ipaCOt94nApcguQwF5Gg==
+  version "0.4.6"
+  resolved "https://registry.yarnpkg.com/sc-istanbul/-/sc-istanbul-0.4.6.tgz#cf6784355ff2076f92d70d59047d71c13703e839"
+  integrity sha512-qJFF/8tW/zJsbyfh/iT/ZM5QNHE3CXxtLJbZsL+CzdJLBsPD7SedJZoUA4d8iAcN2IoMp/Dx80shOOd2x96X/g==
   dependencies:
     abbrev "1.0.x"
     async "1.x"
