@@ -7,6 +7,8 @@ const {
 const { createObjectFromDefaultProps, runTransaction } = require("@uma/common");
 const { getAbi } = require("@uma/core");
 const Promise = require("bluebird");
+const _ = require("lodash");
+const assert = require("assert");
 
 class FundingRateProposer {
   /**
@@ -196,6 +198,7 @@ class FundingRateProposer {
         requestTimestamp
       );
       // The `proposeFundingRate()` method will only work if `gulp()` or `applyFundingRate()` is called before hand.
+      const deepClone = Object.assign({}, cachedContract.contract);
       console.log(
         await runTransaction({
           transaction: cachedContract.contract.methods.gulp(),
@@ -205,6 +208,10 @@ class FundingRateProposer {
           }
         })
       );
+      // Check whether the web3 object is getting mutated by the above contract call.
+      const deepClonePost = Object.assign({}, cachedContract.contract);
+      assert(_.isEqual(deepClone, deepClonePost));
+
       this.logger.debug({
         at: "PerpetualProposer#updateFundingRate",
         message: "Proposing new funding rate",
@@ -224,6 +231,9 @@ class FundingRateProposer {
               from: this.account
             }
           },
+          // Set this to true to only make the .call() (no .send()), which
+          // allows for faster testing iterations. This should print out the correct
+          // proposal bond and estimated gas if the call were to succeed
           true
         );
         let receipt = transactionResult.receipt;
