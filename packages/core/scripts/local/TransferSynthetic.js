@@ -6,7 +6,7 @@
 const { toWei, toBN } = web3.utils;
 const { getTruffleContract } = require("../../index");
 
-const argv = require("minimist")(process.argv.slice(), { string: ["emp", "collateral", "to", "cversion"] });
+const argv = require("minimist")(process.argv.slice(), { string: ["emp", "synthetic", "to", "cversion"] });
 const abiVersion = argv.cversion || "1.2.2"; // Default to most recent mainnet deployment, 1.2.2.
 
 // Deployed contract ABI's and addresses we need to fetch.
@@ -15,10 +15,9 @@ const ExpandedERC20 = getTruffleContract("ExpandedERC20", web3, "1.2.2");
 
 async function transferSynthetic(callback) {
   try {
-    if (!argv.emp || !argv.token || !argv.to) {
+    if (!argv.emp || !argv.to) {
       throw new Error(`
       required: --emp must be the emp address.
-      required: --token must be the amount of synthetic to send.
       required: --to must be the recipient's address.
       `);
     }
@@ -26,8 +25,8 @@ async function transferSynthetic(callback) {
     const emp = await ExpiringMultiParty.at(argv.emp);
     const syntheticToken = await ExpandedERC20.at(await emp.tokenCurrency());
     const account = (await web3.eth.getAccounts())[0];
-    const synthetic = toBN(toWei(argv.token));
     const syntheticBalance = await syntheticToken.balanceOf(account);
+    const synthetic = argv.synthetic ? toBN(toWei(argv.synthetic)) : syntheticBalance;
     if (syntheticBalance.lt(synthetic)) {
       throw new Error("Insufficient synthetic balance");
     }

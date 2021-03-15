@@ -6,7 +6,7 @@
 const { toWei, toBN } = web3.utils;
 const { getTruffleContract } = require("../../index");
 
-const argv = require("minimist")(process.argv.slice(), { string: ["emp", "collateral", "to", "cversion"] });
+const argv = require("minimist")(process.argv.slice(), { string: ["emp", "to", "cversion"] });
 const abiVersion = argv.cversion || "1.2.2"; // Default to most recent mainnet deployment, 1.2.2.
 
 // Deployed contract ABI's and addresses we need to fetch.
@@ -15,10 +15,9 @@ const ExpandedERC20 = getTruffleContract("ExpandedERC20", web3, "1.2.2");
 
 async function transferCollateral(callback) {
   try {
-    if (!argv.emp || !argv.collateral || !argv.to) {
+    if (!argv.emp || !argv.to) {
       throw new Error(`
       required: --emp must be the emp address.
-      required: --collateral must be the amount of collateral to send.
       required: --to must be the recipient's address.
       `);
     }
@@ -26,8 +25,8 @@ async function transferCollateral(callback) {
     const emp = await ExpiringMultiParty.at(argv.emp);
     const collateralToken = await ExpandedERC20.at(await emp.collateralCurrency());
     const account = (await web3.eth.getAccounts())[0];
-    const collateral = toBN(toWei(argv.collateral));
     const collateralBalance = await collateralToken.balanceOf(account);
+    const collateral = argv.collateral ? toBN(toWei(argv.collateral)) : collateralBalance;
     if (collateralBalance.lt(collateral)) {
       throw new Error("Insufficient collateral balance");
     }
