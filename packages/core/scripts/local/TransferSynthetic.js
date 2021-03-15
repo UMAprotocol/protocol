@@ -26,13 +26,13 @@ async function transferSynthetic(callback) {
     const syntheticToken = await ExpandedERC20.at(await emp.tokenCurrency());
     const account = (await web3.eth.getAccounts())[0];
     const syntheticBalance = await syntheticToken.balanceOf(account);
-    const synthetic = argv.synthetic ? toBN(toWei(argv.synthetic)) : syntheticBalance;
-    if (syntheticBalance.lt(synthetic)) {
+    const syntheticAmount = argv.synthetic ? toBN(toWei(argv.synthetic)) : syntheticBalance;
+    if (syntheticBalance.lt(syntheticAmount)) {
       throw new Error("Insufficient synthetic balance");
     }
 
-    await syntheticToken.transfer(argv.to, synthetic, { from: (await web3.eth.getAccounts())[0] });
-    console.log(`Sent ${argv.token} ${await syntheticToken.symbol()} to ${argv.to}`);
+    await syntheticToken.transfer(argv.to, syntheticAmount, { from: (await web3.eth.getAccounts())[0] });
+    console.log(`Sent ${syntheticAmount} ${await syntheticToken.symbol()} to ${argv.to}`);
   } catch (err) {
     callback(err);
     return;

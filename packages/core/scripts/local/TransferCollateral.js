@@ -26,13 +26,13 @@ async function transferCollateral(callback) {
     const collateralToken = await ExpandedERC20.at(await emp.collateralCurrency());
     const account = (await web3.eth.getAccounts())[0];
     const collateralBalance = await collateralToken.balanceOf(account);
-    const collateral = argv.collateral ? toBN(toWei(argv.collateral)) : collateralBalance;
-    if (collateralBalance.lt(collateral)) {
+    const collateralAmount = argv.collateral ? toBN(toWei(argv.collateral)) : collateralBalance;
+    if (collateralBalance.lt(collateralAmount)) {
       throw new Error("Insufficient collateral balance");
     }
 
-    await collateralToken.transfer(argv.to, collateral, { from: (await web3.eth.getAccounts())[0] });
-    console.log(`Sent ${argv.collateral} ${await collateralToken.symbol()} to ${argv.to}`);
+    await collateralToken.transfer(argv.to, collateralAmount, { from: (await web3.eth.getAccounts())[0] });
+    console.log(`Sent ${collateralAmount} ${await collateralToken.symbol()} to ${argv.to}`);
   } catch (err) {
     callback(err);
     return;
