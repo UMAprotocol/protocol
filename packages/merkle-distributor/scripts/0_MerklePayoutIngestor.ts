@@ -1,9 +1,21 @@
+// Ingestor script that reads in a number of constituent payouts and generates a combined payouts file. An example of
+// this usage would be to take in a) liquidity b) developer and c) dapp mining payouts and produce one combined output
+// that would distribute all underlying rewards.
+
+// To use this script, you need to include a number of parameters. A number of these parameters are expected to be structured
+// as a sequential list of inputs. For example, when reading in multiple files a list of file paths is provided after
+// the `-i` flag. See the example execution for the KPI options token-distribution below.
+
+// ts-node ./scripts/0_MerklePayoutIngestor.ts --input ../../outputs/governance_recipients.json ../../outputs/uma_holder_recipients.json \
+// ../../outputs/uma_user_recipients.json -- key null null null -- d 18 18 18 -- reason "KPI Options drop 1: Governance Recipient" \
+// "KPI Options drop1: UMA Token Holder" "KPI Options drop1: UMA User" -- rewardToken 0x47B1EE6d02af0AA5082C90Ea1c2c14c70399186c -- chainId 42 -- windowIndex 0
+
 import assert from "assert";
 import path from "path";
 import { program } from "commander";
 import fs from "fs";
 import Web3 from "web3";
-const { toWei, toBN, isAddress } = Web3.utils;
+const { toBN, isAddress } = Web3.utils;
 import { ConvertDecimals } from "@uma/common";
 
 program
