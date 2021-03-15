@@ -26,13 +26,13 @@ const { interfaceName, ZERO_ADDRESS, parseFixed } = require("@uma/common");
 const { getAbi, getTruffleContract } = require("../../index");
 const argv = require("minimist")(process.argv.slice(), {
   boolean: ["test"],
-  string: ["identifier", "collateral", "cversion", "name", "symbol", "expiry"]
+  string: ["identifier", "collateral", "cversion", "name", "symbol", "duration"]
 });
 const abiVersion = argv.cversion || "1.2.2"; // Default to most recent mainnet deployment, 1.2.2.
 const syntheticName = argv.name || "Test Synth";
 const syntheticSymbol = argv.symbol || "SYNTH";
-const expiry = argv.expiry || 2;
-const expirationTimestamp = Math.ceil(Date.now() / 1000) + Number(expiry); // 2 minutes from now
+const duration = argv.duration || 2 * 60;
+const expirationTimestamp = Math.ceil(Date.now() / 1000) + Number(duration); // 2 minutes from now
 
 // Deployed contract ABI's and addresses we need to fetch.
 const ExpiringMultiPartyCreator = getTruffleContract("ExpiringMultiPartyCreator", web3, abiVersion);
