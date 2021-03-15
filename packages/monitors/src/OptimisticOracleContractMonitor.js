@@ -6,8 +6,10 @@ const {
   createEtherscanLinkMarkdown,
   createObjectFromDefaultProps,
   ZERO_ADDRESS,
-  createFormatFunction
+  createFormatFunction,
+  ConvertDecimals
 } = require("@uma/common");
+const { getAbi } = require("@uma/core");
 
 class OptimisticOracleContractMonitor {
   /**
@@ -83,13 +85,14 @@ class OptimisticOracleContractMonitor {
     latestEvents = latestEvents.filter(event => event.blockNumber > this.lastRequestPriceBlockNumber);
 
     for (let event of latestEvents) {
+      const convertCollateralDecimals = await this._getCollateralDecimalsConverted(event.requester);
       const mrkdwn =
         createEtherscanLinkMarkdown(event.requester, this.contractProps.networkId) +
         ` requested a price at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
         `The ancillary data field is ${event.ancillaryData}. ` +
         `Collateral currency address is ${event.currency}. Reward amount is ${this.formatDecimalString(
-          event.reward
-        )} and the final fee is ${this.formatDecimalString(event.finalFee)}. ` +
+          convertCollateralDecimals(event.reward)
+        )} and the final fee is ${this.formatDecimalString(convertCollateralDecimals(event.finalFee))}. ` +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
       this.logger[this.logOverrides.requestedPrice || "error"]({
@@ -178,11 +181,12 @@ class OptimisticOracleContractMonitor {
     latestEvents = latestEvents.filter(event => event.blockNumber > this.lastSettlementBlockNumber);
 
     for (let event of latestEvents) {
+      const convertCollateralDecimals = await this._getCollateralDecimalsConverted(event.requester);
       const mrkdwn =
         `Detected a price request settlement for the request made by ${event.requester} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
         `The proposer was ${event.proposer} and the disputer was ${event.disputer}. ` +
         `The settlement price is ${this.formatDecimalString(event.price)}. ` +
-        `The payout was ${this.formatDecimalString(event.payout)} made to the ${
+        `The payout was ${this.formatDecimalString(convertCollateralDecimals(event.payout))} made to the ${
           event.disputer === ZERO_ADDRESS ? "proposer" : "winner of the dispute"
         }. ` +
         `The ancillary data field is ${event.ancillaryData}. ` +
@@ -195,6 +199,16 @@ class OptimisticOracleContractMonitor {
       });
     }
     this.lastSettlementBlockNumber = this._getLastSeenBlockNumber(latestEvents);
+  }
+
+  // Returns helper method for converting collateral token associated with financial contract
+  // to human readable form.
+  async _getCollateralDecimalsConverted(financialContractAddress) {
+    const financialContract = new this.web3.eth.Contract(getAbi("FeePayer"), financialContractAddress);
+    const collateralAddress = await financialContract.methods.collateralCurrency().call();
+    const collateralContract = new this.web3.eth.Contract(getAbi("ExpandedERC20"), collateralAddress);
+    const collateralDecimals = await collateralContract.methods.decimals().call();
+    return ConvertDecimals(collateralDecimals.toString(), 18, this.web3);
   }
 
   _getLastSeenBlockNumber(eventArray) {
