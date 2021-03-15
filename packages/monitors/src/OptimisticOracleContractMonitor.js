@@ -2,7 +2,12 @@
 
 // TODO: Use pricefeed mapping from proposer bot to fetch approximate prices for each price request to give more log information. This probably means
 // refactoring the pricefeed mapping out of the proposer bot so it can be shared amongst clients.
-const { createEtherscanLinkMarkdown, createObjectFromDefaultProps, ZERO_ADDRESS } = require("@uma/common");
+const {
+  createEtherscanLinkMarkdown,
+  createObjectFromDefaultProps,
+  ZERO_ADDRESS,
+  createFormatFunction
+} = require("@uma/common");
 
 class OptimisticOracleContractMonitor {
   /**
@@ -26,6 +31,9 @@ class OptimisticOracleContractMonitor {
     this.lastProposePriceBlockNumber = 0;
     this.lastDisputePriceBlockNumber = 0;
     this.lastSettlementBlockNumber = 0;
+
+    // Formats an 18 decimal point string with a define number of decimals and precision for use in message generation.
+    this.formatDecimalString = createFormatFunction(this.web3, 2, 4, false);
 
     // Bot and ecosystem accounts to monitor, overridden by monitorConfig parameter.
     const defaultConfig = {
@@ -79,7 +87,9 @@ class OptimisticOracleContractMonitor {
         createEtherscanLinkMarkdown(event.requester, this.contractProps.networkId) +
         ` requested a price at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
         `The ancillary data field is ${event.ancillaryData}. ` +
-        `Collateral currency address is ${event.currency}. Reward amount is ${event.reward} and the final fee is ${event.finalFee}. ` +
+        `Collateral currency address is ${event.currency}. Reward amount is ${this.formatDecimalString(
+          event.reward
+        )} and the final fee is ${this.formatDecimalString(event.finalFee)}. ` +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
       this.logger[this.logOverrides.requestedPrice || "error"]({
@@ -108,7 +118,9 @@ class OptimisticOracleContractMonitor {
       const mrkdwn =
         createEtherscanLinkMarkdown(event.proposer, this.contractProps.networkId) +
         ` proposed a price for the request made by ${event.requester} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
-        `The proposal price of ${event.proposedPrice} will expire at ${event.expirationTimestamp}. ` +
+        `The proposal price of ${this.formatDecimalString(event.proposedPrice)} will expire at ${
+          event.expirationTimestamp
+        }. ` +
         `The ancillary data field is ${event.ancillaryData}. ` +
         `Collateral currency address is ${event.currency}. ` +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
@@ -139,7 +151,7 @@ class OptimisticOracleContractMonitor {
       const mrkdwn =
         createEtherscanLinkMarkdown(event.disputer, this.contractProps.networkId) +
         ` disputed a price for the request made by ${event.requester} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
-        `The proposer ${event.proposer} proposed a price of ${event.proposedPrice}. ` +
+        `The proposer ${event.proposer} proposed a price of ${this.formatDecimalString(event.proposedPrice)}. ` +
         `The ancillary data field is ${event.ancillaryData}. ` +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
@@ -169,8 +181,8 @@ class OptimisticOracleContractMonitor {
       const mrkdwn =
         `Detected a price request settlement for the request made by ${event.requester} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
         `The proposer was ${event.proposer} and the disputer was ${event.disputer}. ` +
-        `The settlement price is ${event.price}. ` +
-        `The payout was ${event.payout} made to the ${
+        `The settlement price is ${this.formatDecimalString(event.price)}. ` +
+        `The payout was ${this.formatDecimalString(event.payout)} made to the ${
           event.disputer === ZERO_ADDRESS ? "proposer" : "winner of the dispute"
         }. ` +
         `The ancillary data field is ${event.ancillaryData}. ` +
