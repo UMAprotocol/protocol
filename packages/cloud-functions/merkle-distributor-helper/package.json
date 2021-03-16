@@ -2,6 +2,6 @@
   "name": "merkle-distributor-helper",
   "version": "0.0.1",
   "dependencies": {
-    "@uma/merkle-distributor": "npm:@uma/merkle-distributor@1.0.3"
+    "@uma/merkle-distributor": "npm:@uma/merkle-distributor@1.0.4"
   }
 }
