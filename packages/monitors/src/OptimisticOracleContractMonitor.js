@@ -201,7 +201,7 @@ class OptimisticOracleContractMonitor {
     this.lastSettlementBlockNumber = this._getLastSeenBlockNumber(latestEvents);
   }
 
- // Returns helper method for converting collateral token associated with financial contract to human readable form.
+  // Returns helper method for converting collateral token associated with financial contract to human readable form.
   async _getCollateralDecimalsConverted(financialContractAddress) {
     const financialContract = new this.web3.eth.Contract(getAbi("FeePayer"), financialContractAddress);
     const collateralAddress = await financialContract.methods.collateralCurrency().call();
