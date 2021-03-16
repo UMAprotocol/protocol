@@ -3,20 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
-# [1.1.0](https://github.com/mrice32/protocol/compare/@uma/affiliates@1.0.1...@uma/affiliates@1.1.0) (2021-03-16)
+# [1.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.0.1...@uma/affiliates@1.1.0) (2021-03-16)
 
 ### Bug Fixes
 
-- **affiliates:** explicitly set version of emp abi ([#2662](https://github.com/mrice32/protocol/issues/2662)) ([9cf1e75](https://github.com/mrice32/protocol/commit/9cf1e754a6bd9b1dc39040d9b590c4d468d0be8c))
-- **affiliates:** winston logger configured to log only to stderr ([#2684](https://github.com/mrice32/protocol/issues/2684)) ([63fc198](https://github.com/mrice32/protocol/commit/63fc198e664a33d5f1290e1cc7539af1d229e72a))
+- **affiliates:** explicitly set version of emp abi ([#2662](https://github.com/UMAprotocol/protocol/issues/2662)) ([9cf1e75](https://github.com/UMAprotocol/protocol/commit/9cf1e754a6bd9b1dc39040d9b590c4d468d0be8c))
+- **affiliates:** winston logger configured to log only to stderr ([#2684](https://github.com/UMAprotocol/protocol/issues/2684)) ([63fc198](https://github.com/UMAprotocol/protocol/commit/63fc198e664a33d5f1290e1cc7539af1d229e72a))
 
 ### Features
 
-- **affiliates:** add composable dev/dapp mining apps for future automation ([#2595](https://github.com/mrice32/protocol/issues/2595)) ([859161f](https://github.com/mrice32/protocol/commit/859161fa558424135b114f6bb82f2653eccc6ec5))
-- **affiliates:** add minting lookback technique as dappmining v2 ([#2648](https://github.com/mrice32/protocol/issues/2648)) ([bfad236](https://github.com/mrice32/protocol/commit/bfad2360a5cd5ccfac2658ea56bce434efe18768))
-- **affiliates:** add pr template generation and app ([#2663](https://github.com/mrice32/protocol/issues/2663)) ([6727132](https://github.com/mrice32/protocol/commit/672713252b03e764c8d1908bbec5eaf2a680fbc9))
+- **affiliates:** add composable dev/dapp mining apps for future automation ([#2595](https://github.com/UMAprotocol/protocol/issues/2595)) ([859161f](https://github.com/UMAprotocol/protocol/commit/859161fa558424135b114f6bb82f2653eccc6ec5))
+- **affiliates:** add minting lookback technique as dappmining v2 ([#2648](https://github.com/UMAprotocol/protocol/issues/2648)) ([bfad236](https://github.com/UMAprotocol/protocol/commit/bfad2360a5cd5ccfac2658ea56bce434efe18768))
+- **affiliates:** add pr template generation and app ([#2663](https://github.com/UMAprotocol/protocol/issues/2663)) ([6727132](https://github.com/UMAprotocol/protocol/commit/672713252b03e764c8d1908bbec5eaf2a680fbc9))
 
-## [1.0.1](https://github.com/mrice32/protocol/compare/@uma/affiliates@1.0.0...@uma/affiliates@1.0.1) (2021-02-27)
+## [1.0.1](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.0.0...@uma/affiliates@1.0.1) (2021-02-27)
 
 **Note:** Version bump only for package @uma/affiliates
 
