@@ -3,6 +3,7 @@ const { ChainId, Token, Pair, TokenAmount } = require("@uniswap/sdk");
 const { MedianizerPriceFeed } = require("./MedianizerPriceFeed");
 const { FallBackPriceFeed } = require("./FallBackPriceFeed");
 const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
+const { ForexDailyPriceFeed } = require("./ForexDailyPriceFeed");
 const { DefiPulsePriceFeed } = require("./DefiPulsePriceFeed");
 const { UniswapPriceFeed } = require("./UniswapPriceFeed");
 const { BalancerPriceFeed } = require("./BalancerPriceFeed");
@@ -107,6 +108,30 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.invertPrice, // Not checked in config because this parameter just defaults to false.
       config.priceFeedDecimals, // This defaults to 18 unless supplied by user
       uniswapBlockCache
+    );
+  } else if (config.type === "forexdaily") {
+    const requiredFields = ["base", "symbol", "lookback"];
+
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating ForexDailyPriceFeed",
+      config
+    });
+
+    return new ForexDailyPriceFeed(
+      logger,
+      web3,
+      config.base,
+      config.symbol,
+      config.lookback,
+      networker,
+      getTime,
+      config.priceFeedDecimals, // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
+      config.minTimeBetweenUpdates // Defaults to 43200 (12 hours) unless supplied.
     );
   } else if (config.type === "defipulse") {
     const requiredFields = ["lookback", "minTimeBetweenUpdates", "defipulseApiKey", "project"];
