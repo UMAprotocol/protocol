@@ -22,11 +22,13 @@ const SHEET_COLUMNS = [
   ["identifier", 1],
   ["payoutAddress", 2, parseAddress],
   ["empAddress", 4, parseAddressFromEtherscan],
-  ["enabled", 5, isEnabled]
+  ["enabled", 5, isEnabled],
+  ["empVersion", 6],
+  ["fallbackValue", 7]
 ];
 
-function getRangeString(rows = 100, tab = "Developer Mining") {
-  return `${tab}!1:${rows}`;
+function getRangeString(rows = 100, tab = "Developer Mining", skipRow = 2) {
+  return `${tab}!${skipRow}:${rows}`;
 }
 
 // GDrive Specific: have to use oauth credentials.
@@ -82,7 +84,8 @@ function parseSheet(sheet, columns = SHEET_COLUMNS) {
       try {
         result[name] = map ? map(row[index]) : row[index];
       } catch (err) {
-        console.log("error in row:" + row, err);
+        // These errors can be distracting, and we really just ignore them for now.
+        // console.error("error in row:" + row, err);
       }
       return result;
     }, {});
@@ -118,7 +121,7 @@ async function run() {
     range: getRangeString(100)
   };
   const result = await sheets.spreadsheets.values.get(request);
-  return filterActive(parseSheet(result.data));
+  return JSON.stringify(filterActive(parseSheet(result.data)), null, 2);
 }
 
 run()

@@ -31,6 +31,7 @@ const configs = [
   { tokenSymbol: "Legacy BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
   { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 }
 ];
+const optimisticOracleLiveness = 7200;
 
 let iterationTestVersion; // store the test version between tests that is currently being tested.
 const startTime = "15798990420";
@@ -180,7 +181,7 @@ contract("ContractMonitor.js", function(accounts) {
             );
 
             await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier)));
-            optimisticOracle = await OptimisticOracle.new(7200, finder.address, timer.address);
+            optimisticOracle = await OptimisticOracle.new(optimisticOracleLiveness, finder.address, timer.address);
             await finder.changeImplementationAddress(
               utf8ToHex(interfaceName.OptimisticOracle),
               optimisticOracle.address
@@ -410,7 +411,7 @@ contract("ContractMonitor.js", function(accounts) {
           }
         );
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
-          "Winston correctly emits dispute events",
+          "Winston correctly emits dispute message",
           async function() {
             // Create liquidation to dispute.
             await financialContract.createLiquidation(
@@ -470,7 +471,7 @@ contract("ContractMonitor.js", function(accounts) {
           }
         );
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
-          "Return Dispute Settlement Events",
+          "Winston correctly emits dispute settlement message",
           async function() {
             // Create liquidation to liquidate sponsor1 from liquidator
             let liquidationTime = (await financialContract.getCurrentTime()).toNumber();
@@ -558,6 +559,45 @@ contract("ContractMonitor.js", function(accounts) {
             assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${txObject2.tx}`));
           }
         );
+        versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])(
+          "Winston correctly emits funding rate updated message",
+          async function() {
+            // Propose new funding rate.
+            const proposeAndPublishNewRate = async newRateWei => {
+              // Advance time forward by 1 to guarantee that proposal time > last update time.
+              let currentTime = await timer.getCurrentTime();
+              await timer.setCurrentTime(currentTime.toNumber() + 1);
+              let proposalTime = currentTime.toNumber() + 1;
+              await financialContract.proposeFundingRate({ rawValue: newRateWei }, proposalTime);
+              // Advance timer far enough such that funding rate proposal can be published,
+              // and publish it.
+              const proposalExpiry = proposalTime + optimisticOracleLiveness;
+              await timer.setCurrentTime(proposalExpiry);
+              return {
+                txObject: await financialContract.applyFundingRate(),
+                proposalTime
+              };
+            };
+
+            await eventClient.clearState();
+
+            // Even though the update has occurred on-chain, because we haven't updated the event client yet,
+            // the contract monitor should not report it and should skip it silently.
+            const existingCallsCount = spy.getCalls().length;
+            await contractMonitor.checkForNewFundingRateUpdatedEvents();
+            assert.equal(existingCallsCount, spy.getCalls().length);
+
+            // Update the eventClient and check it has the event stored correctly
+            const { txObject, proposalTime } = await proposeAndPublishNewRate(toWei("0.00001"));
+            await eventClient.update();
+            await contractMonitor.checkForNewFundingRateUpdatedEvents();
+
+            assert.isTrue(lastSpyLogIncludes(spy, "New funding rate published: 0.00001/second"));
+            assert.isTrue(lastSpyLogIncludes(spy, `proposal time was ${proposalTime}`));
+            assert.isTrue(lastSpyLogIncludes(spy, "reward of 0"));
+            assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${txObject.tx}`));
+          }
+        );
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Cannot set invalid config or financialContractProps",
           async function() {
@@ -614,7 +654,6 @@ contract("ContractMonitor.js", function(accounts) {
             assert.isTrue(errorThrown3);
           }
         );
-
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Can correctly create contract monitor with no config provided",
           async function() {

@@ -1,12 +1,12 @@
 // This file is meant to be run in the command line. It takes in a configuration to generate
 // final deployer reward output.
 // example: node apps/DevMiningRewards ./config.example.js --network=mainnet_mnemonic >> output.json
+require("dotenv").config();
 const assert = require("assert");
 const { getAbi } = require("@uma/core");
 const { BigQuery } = require("@google-cloud/bigquery");
 const Promise = require("bluebird");
 
-const Config = require("../libs/config");
 const { DevMining } = require("../libs/affiliates");
 const { Emp } = require("../libs/contracts");
 const Queries = require("../libs/bigquery");
@@ -14,36 +14,54 @@ const Coingecko = require("../libs/coingecko");
 const SynthPrices = require("../libs/synthPrices");
 const { getWeb3 } = require("@uma/common");
 
+const { makeUnixPipe } = require("../libs/affiliates/utils");
+
 // This is the main function which configures all data sources for the calculation.
-async function App(config, env) {
+const App = env => async params => {
   const web3 = getWeb3();
+  const { config } = params;
+  assert(config, "requires config object on params");
   let { empWhitelist = [], startTime, endTime, totalRewards, fallbackPrices } = config;
   assert(empWhitelist, "requires whitelist");
   assert(startTime, "requires startTime");
   assert(endTime, "requires endTime");
   assert(totalRewards, "requires totalRewards");
 
-  const empAbi = getAbi("ExpiringMultiParty");
-
   const emp = Emp({ web3 });
   const client = new BigQuery();
   const queries = Queries({ client });
   const coingecko = Coingecko();
-  const synthPrices = SynthPrices({ web3, apiKey: env.CRYPTOWATCH_KEY });
+  const synthPrices = SynthPrices({
+    web3,
+    cryptowatchApiKey: env.CRYPTOWATCH_KEY,
+    tradermadeApiKey: env.TRADERMADE_KEY
+  });
 
   const rewards = DevMining({
     queries,
-    empAbi,
     coingecko,
     synthPrices
   });
+
+  // This just sets a default abi version in case no abi is passed along with the emp address.
+  // This should default to the latest version
+  const defaultEmpAbi = getAbi("ExpiringMultiParty");
 
   // API has changed, we need to validate input. Emps will be required to include payout address.
   empWhitelist = empWhitelist.map(empInput => {
     rewards.utils.validateEmpInput(empInput);
     // convert to standard eth checksum address otherwise lookups through BQ or web3 will fail
     // Allow for non standard payout address at empInput[1] since this has no impact on processing.
-    return [rewards.utils.toChecksumAddress(empInput[0]), empInput[1]];
+    let [empAddress, payoutAddress, empVersion] = empInput;
+
+    // we want to make sure these addresses are standarized since we do many lookups internally
+    empAddress = rewards.utils.toChecksumAddress(empAddress);
+
+    // this converts a version number from the config into an abi which gets passed into the calculator
+    // so each emp contract will have the correct abi passed along with it.
+    const empAbi = empVersion ? getAbi("ExpiringMultiParty", empVersion) : defaultEmpAbi;
+
+    return [empAddress, payoutAddress, empAbi];
   });
 
   fallbackPrices = fallbackPrices.map(([empAddress, price]) => {
@@ -81,16 +99,13 @@ async function App(config, env) {
   });
 
   return {
-    config,
+    ...params,
     // result will contain deployer rewards as well as per emp rewards
-    ...result
+    result
   };
-}
+};
 
-const config = Config();
-
-App(config, process.env)
-  .then(x => console.log(JSON.stringify(x, null, 2)))
+makeUnixPipe(App(process.env))
+  .then(console.log)
   .catch(console.error)
-  // Process hangs if not forcibly closed. Unknown how to disconnect web3 or bigquery client.
   .finally(() => process.exit());

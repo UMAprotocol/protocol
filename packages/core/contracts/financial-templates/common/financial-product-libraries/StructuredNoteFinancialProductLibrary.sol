@@ -6,7 +6,7 @@ import "../../../common/implementation/Lockable.sol";
 
 /**
  * @title Structured Note Financial Product Library
- * @notice Adds custom price transformation logic to modify the behavior of the expiring multi party contract.  The
+ * @notice Adds custom price transformation logic to modify the behavior of the expiring multi party contract. The
  * contract holds say 1 WETH in collateral and pays out that 1 WETH if, at expiry, ETHUSD is below a set strike. If
  * ETHUSD is above that strike, the contract pays out a given dollar amount of ETH.
  * Example: expiry is DEC 31. Strike is $400. Each token is backed by 1 WETH

@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.0.1...@uma/common@2.1.0) (2021-03-16)
+
+### Bug Fixes
+
+- **contract-versions:** Add mainnet contract hash ([#2636](https://github.com/UMAprotocol/protocol/issues/2636)) ([8a40a88](https://github.com/UMAprotocol/protocol/commit/8a40a88fa5440b35d8f7b2040918f45a4062ebe1))
+- **PriceIdentifierUtils:** Remove identifiers that should be scaled to 18 decimals ([#2574](https://github.com/UMAprotocol/protocol/issues/2574)) ([898a230](https://github.com/UMAprotocol/protocol/commit/898a2308f0d8bef435e4c90ec13d292f98faed5c))
+
+### Features
+
+- **provider-utils:** enable network parameterization ([#2689](https://github.com/UMAprotocol/protocol/issues/2689)) ([c6e5572](https://github.com/UMAprotocol/protocol/commit/c6e55725fd1a0a9acb0b3a75eb85dbf50f986bd4))
+
 ## [2.0.1](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.0.0...@uma/common@2.0.1) (2021-02-27)
 
 ### Bug Fixes

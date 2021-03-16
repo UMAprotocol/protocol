@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.2.0](https://github.com/UMAprotocol/protocol/compare/@uma/trader@1.1.1...@uma/trader@1.2.0) (2021-03-16)
+
+### Features
+
+- **trader:** add Ranger Trader, Exchange Adapter and initial trader implementation ([#2579](https://github.com/UMAprotocol/protocol/issues/2579)) ([8bc3dad](https://github.com/UMAprotocol/protocol/commit/8bc3dad7f34abd805ce24638415cdd7cca6314ed))
+- **trader+DSProxyManager:** Few small tweaks after war games + useful DSProxy token management script ([#2656](https://github.com/UMAprotocol/protocol/issues/2656)) ([684f78f](https://github.com/UMAprotocol/protocol/commit/684f78f09e284466fac74c7388cab56d56aadd4c))
+
 ## [1.1.1](https://github.com/UMAprotocol/protocol/compare/@uma/trader@1.1.0...@uma/trader@1.1.1) (2021-02-27)
 
 **Note:** Version bump only for package @uma/trader
