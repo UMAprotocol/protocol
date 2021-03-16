@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.0.1...@uma/core@2.1.0) (2021-03-16)
+
+### Bug Fixes
+
+- **kovan:** update perp creator kovan address ([#2650](https://github.com/UMAprotocol/protocol/issues/2650)) ([6d2a0cb](https://github.com/UMAprotocol/protocol/commit/6d2a0cb89216a0d7a0d8d38d8af124b7d53fa1e0))
+
+### Features
+
+- **core:** ExecuteAdmin script can now execute multiple proposals ([#2618](https://github.com/UMAprotocol/protocol/issues/2618)) ([80988e5](https://github.com/UMAprotocol/protocol/commit/80988e53ab7e5d0e6a620cf1c004e59a6f9d803b))
+- **core:** general improvements to claim rewards script ([#2647](https://github.com/UMAprotocol/protocol/issues/2647)) ([0e560fa](https://github.com/UMAprotocol/protocol/commit/0e560fa0537d065bc7a7823a50ea38f81e896953))
+- **encoding:** add EncodeParams example script ([#2616](https://github.com/UMAprotocol/protocol/issues/2616)) ([8867ab9](https://github.com/UMAprotocol/protocol/commit/8867ab9d56473d7e897d6d6b00efcebfbab2c4b2))
+- **financial-product-library:** Create a covered call financial product library ([#2668](https://github.com/UMAprotocol/protocol/issues/2668)) ([fbbad6f](https://github.com/UMAprotocol/protocol/commit/fbbad6f4632077cac36ad451f4b1325e32b56443))
+- **KPI-Options:** add simple script for calculating UMA TVL ([#2682](https://github.com/UMAprotocol/protocol/issues/2682)) ([00f6dc3](https://github.com/UMAprotocol/protocol/commit/00f6dc3e3f6d93107f1183d5ddde1466dedb923c))
+- **merkle-distributor:** Initial Merkle Distribution contract + unit tests + merkle root generator script ([#2598](https://github.com/UMAprotocol/protocol/issues/2598)) ([b23d7cf](https://github.com/UMAprotocol/protocol/commit/b23d7cf4792bfb02d2068eb390e8bd4540aac26f))
+- **merkle-distributor:** Make claimMulti more generalized ([#2672](https://github.com/UMAprotocol/protocol/issues/2672)) ([c08f9de](https://github.com/UMAprotocol/protocol/commit/c08f9de95bd77a1af600ba4da4685be38f799d79))
+- **trader:** add Ranger Trader, Exchange Adapter and initial trader implementation ([#2579](https://github.com/UMAprotocol/protocol/issues/2579)) ([8bc3dad](https://github.com/UMAprotocol/protocol/commit/8bc3dad7f34abd805ce24638415cdd7cca6314ed))
+- **trader+DSProxyManager:** Few small tweaks after war games + useful DSProxy token management script ([#2656](https://github.com/UMAprotocol/protocol/issues/2656)) ([684f78f](https://github.com/UMAprotocol/protocol/commit/684f78f09e284466fac74c7388cab56d56aadd4c))
+- **voter-dapp:** fetch users 2key contract state, and show migration banner if required ([#2640](https://github.com/UMAprotocol/protocol/issues/2640)) ([d04d7f1](https://github.com/UMAprotocol/protocol/commit/d04d7f134460bb1e2f52b71a169c186d5d60e282))
+
 ## [2.0.1](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.0.0...@uma/core@2.0.1) (2021-02-27)
 
 **Note:** Version bump only for package @uma/core

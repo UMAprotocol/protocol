@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/voter-dapp@2.0.1...@uma/voter-dapp@2.1.0) (2021-03-16)
+
+### Features
+
+- **voter-dapp:** fetch users 2key contract state, and show migration banner if required ([#2640](https://github.com/UMAprotocol/protocol/issues/2640)) ([d04d7f1](https://github.com/UMAprotocol/protocol/commit/d04d7f134460bb1e2f52b71a169c186d5d60e282))
+
 ## [2.0.1](https://github.com/UMAprotocol/protocol/compare/@uma/voter-dapp@2.0.0...@uma/voter-dapp@2.0.1) (2021-02-27)
 
 **Note:** Version bump only for package @uma/voter-dapp
