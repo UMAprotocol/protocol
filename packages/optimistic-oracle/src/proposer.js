@@ -132,7 +132,7 @@ class OptimisticOracleProposer {
     if (!priceFeed) {
       this.logger.error({
         at: "OptimisticOracleProposer#sendProposals",
-        message: "Failed to construct a PriceFeed for price request",
+        message: "Failed to construct a PriceFeed for price request 📛",
         priceRequest
       });
       return;
@@ -146,7 +146,7 @@ class OptimisticOracleProposer {
     } catch (error) {
       this.logger.error({
         at: "OptimisticOracleProposer#sendProposals",
-        message: "Failed to query historical price for price request",
+        message: "Failed to query historical price for price request 📛",
         priceRequest,
         error
       });
@@ -223,7 +223,7 @@ class OptimisticOracleProposer {
     if (!priceFeed) {
       this.logger.error({
         at: "OptimisticOracleProposer#sendDisputes",
-        message: "Failed to construct a PriceFeed for price request",
+        message: "Failed to construct a PriceFeed for price request 📛",
         priceRequest
       });
       return;
@@ -237,7 +237,7 @@ class OptimisticOracleProposer {
     } catch (error) {
       this.logger.error({
         at: "OptimisticOracleProposer#sendDisputes",
-        message: "Failed to query historical price for price request",
+        message: "Failed to query historical price for price request 📛",
         priceRequest,
         error
       });
