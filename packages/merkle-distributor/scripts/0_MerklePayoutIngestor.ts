@@ -65,7 +65,7 @@ async function main() {
     const recipients = o.key == "null" ? inputFile[o.key] : inputFile;
     Object.keys(recipients).forEach((recipientAddress: string) => {
       const checkSumRecipientAddress = toChecksumAddress(recipientAddress); // Ensure consistent address case
-      
+
       // Scale the amount by the number of decimals for that particular input.
       const recipientAmountScaled = ConvertDecimals(0, o.decimals[i], Web3)(recipients[recipientAddress]);
 
