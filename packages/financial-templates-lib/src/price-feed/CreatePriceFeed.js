@@ -1,6 +1,7 @@
 const assert = require("assert");
 const { ChainId, Token, Pair, TokenAmount } = require("@uniswap/sdk");
 const { MedianizerPriceFeed } = require("./MedianizerPriceFeed");
+const { FallBackPriceFeed } = require("./FallBackPriceFeed");
 const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
 const { DefiPulsePriceFeed } = require("./DefiPulsePriceFeed");
 const { UniswapPriceFeed } = require("./UniswapPriceFeed");
@@ -154,6 +155,28 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
 
     // Loop over all the price feeds to medianize.
     return await _createMedianizerPriceFeed(config);
+  } else if (config.type === "fallback") {
+    const requiredFields = ["orderedFeeds"];
+
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    if (config.orderedFeeds.length === 0) {
+      logger.error({
+        at: "createPriceFeed",
+        message: "FallBackPriceFeed configured with 0 feeds🚨"
+      });
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating FallBackPriceFeed",
+      config
+    });
+
+    return await _createFallBackPriceFeed(config);
   } else if (config.type === "balancer") {
     const requiredFields = ["balancerAddress", "balancerTokenIn", "balancerTokenOut", "lookback", "twapLength"];
 
@@ -436,11 +459,22 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     return new ExpressionPriceFeed(priceFeedMap, expressionConfig.expression, expressionConfig.priceFeedDecimals);
   }
 
-  // Returns a MedianizerPriceFeed
   async function _createMedianizerPriceFeed(medianizerConfig) {
-    const priceFeedsToMedianize = [];
-    for (const _priceFeedConfig of medianizerConfig.medianizedFeeds) {
-      // The medianized feeds should inherit config options from the parent config if it doesn't define those values
+    const priceFeedsToMedianize = await _createConstituentPriceFeed(medianizerConfig.medianizedFeeds);
+    if (!priceFeedsToMedianize) return null;
+    return new MedianizerPriceFeed(priceFeedsToMedianize, medianizerConfig.computeMean);
+  }
+
+  async function _createFallBackPriceFeed(fallbackConfig) {
+    const orderedPriceFeeds = await _createConstituentPriceFeed(fallbackConfig.orderedFeeds);
+    if (!orderedPriceFeeds) return null;
+    return new FallBackPriceFeed(orderedPriceFeeds);
+  }
+
+  async function _createConstituentPriceFeed(priceFeedConfigs) {
+    const priceFeeds = [];
+    for (const _priceFeedConfig of priceFeedConfigs) {
+      // The constituent feeds should inherit config options from the parent config if it doesn't define those values
       // itself.
       // Note: ensure that type isn't inherited because this could create infinite recursion if the type isn't defined
       // on the nested config.
@@ -454,9 +488,9 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
         return null;
       }
 
-      priceFeedsToMedianize.push(priceFeed);
+      priceFeeds.push(priceFeed);
     }
-    return new MedianizerPriceFeed(priceFeedsToMedianize, medianizerConfig.computeMean);
+    return priceFeeds;
   }
 
   // Returns an array or "basket" of MedianizerPriceFeeds

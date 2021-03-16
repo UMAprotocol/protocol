@@ -26,6 +26,7 @@ const { UniswapPriceFeed } = require("../../src/price-feed/UniswapPriceFeed");
 const { BalancerPriceFeed } = require("../../src/price-feed/BalancerPriceFeed");
 const { BasketSpreadPriceFeed } = require("../../src/price-feed/BasketSpreadPriceFeed");
 const { MedianizerPriceFeed } = require("../../src/price-feed/MedianizerPriceFeed");
+const { FallBackPriceFeed } = require("../../src/price-feed/FallBackPriceFeed");
 const { CoinMarketCapPriceFeed } = require("../../src/price-feed/CoinMarketCapPriceFeed");
 const { CoinGeckoPriceFeed } = require("../../src/price-feed/CoinGeckoPriceFeed");
 const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
@@ -758,6 +759,98 @@ contract("CreatePriceFeed.js", function(accounts) {
     const medianizerFeed = await createPriceFeed(logger, web3, networker, getTime, config);
 
     assert.equal(medianizerFeed, null);
+  });
+
+  it("Valid Fallback inherited config", async function() {
+    const config = {
+      type: "fallback",
+      apiKey,
+      exchange,
+      pair,
+      lookback,
+      minTimeBetweenUpdates,
+      uniswapAddress,
+      twapLength,
+      orderedFeeds: [
+        {
+          type: "cryptowatch"
+        },
+        {
+          type: "uniswap"
+        }
+      ]
+    };
+
+    const validFallbackFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isTrue(validFallbackFeed instanceof FallBackPriceFeed);
+    assert.isTrue(validFallbackFeed.priceFeeds[0] instanceof CryptoWatchPriceFeed);
+    assert.isTrue(validFallbackFeed.priceFeeds[1] instanceof UniswapPriceFeed);
+
+    assert.equal(validFallbackFeed.priceFeeds[0].pair, pair);
+    assert.equal(validFallbackFeed.priceFeeds[1].uniswap.options.address, uniswapAddress);
+  });
+
+  it("Valid Fallback override config", async function() {
+    const lookbackOverride = 5;
+    const config = {
+      type: "fallback",
+      apiKey,
+      exchange,
+      pair,
+      lookback,
+      minTimeBetweenUpdates,
+      orderedFeeds: [
+        {
+          type: "cryptowatch",
+          lookback: lookbackOverride
+        }
+      ]
+    };
+
+    const validFallbackFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.equal(validFallbackFeed.priceFeeds[0].lookback, lookbackOverride);
+  });
+
+  it("Fallback feed cannot have 0 nested feeds to medianize", async function() {
+    const config = {
+      type: "fallback",
+      apiKey,
+      exchange,
+      pair,
+      lookback,
+      minTimeBetweenUpdates
+    };
+
+    await createPriceFeed(logger, web3, networker, getTime, config);
+
+    // medianizedFeeds is missing.
+    assert.equal(await createPriceFeed(logger, web3, networker, getTime, config), null);
+
+    // medianizedFeeds is 0 length.
+    assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...config, orderedFeeds: [] }), null);
+  });
+
+  it("Fallback feed cannot have a nested feed with an invalid config", async function() {
+    const config = {
+      type: "fallback",
+      apiKey,
+      exchange,
+      pair,
+      lookback,
+      minTimeBetweenUpdates,
+      orderedFeeds: [
+        {
+          type: "cryptowatch"
+        },
+        {} // Invalid because the second medianized feed has no type.
+      ]
+    };
+
+    const validFallbackFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.equal(validFallbackFeed, null);
   });
 
   it("ExpressionPriceFeed: invalid config, no expression", async function() {
