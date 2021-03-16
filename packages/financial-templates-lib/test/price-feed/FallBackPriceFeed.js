@@ -44,7 +44,7 @@ contract("FallBackPriceFeed.js", function() {
     beforeEach(async function() {
       //                currentPrice      historicalPrice    lastUpdatedTime
       priceFeeds = [
-        new InvalidPriceFeedMock(),
+        new InvalidPriceFeedMock(null, null, null, true),
         new PriceFeedMock(toBN(toWei("2")), toBN(toWei("57")), 50000),
         new PriceFeedMock(toBN(toWei("1")), toBN(toWei("25")), 100)
       ];
@@ -77,7 +77,7 @@ contract("FallBackPriceFeed.js", function() {
     let priceFeeds;
     beforeEach(async function() {
       //                currentPrice      historicalPrice    lastUpdatedTime
-      priceFeeds = [new InvalidPriceFeedMock(), new InvalidPriceFeedMock()];
+      priceFeeds = [new InvalidPriceFeedMock(null, null, null, true), new InvalidPriceFeedMock(null, null, null, true)];
 
       fallBackPriceFeed = new FallBackPriceFeed(priceFeeds);
     });
