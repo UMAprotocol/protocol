@@ -11,9 +11,9 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} web3 Provider from truffle instance to connect to Ethereum network.
    * @param {String} base The API defines the base as the three character symbol that the
-   *                 exchange rate is quoted in. e.g. "base=USD" returns "symbol" priced in USD.
-   * @param {String} symbol The API defines the symbol as the three character currency of the
-   *                 exchange rate to be returned. e.g. "symbol=EUR&base=USD" returns EUR priced in USD.
+   *                 exchange rate is returning the price of, quoted in the symbol.
+   *                 e.g. "base=EUR&symbol=USD" EUR priced in USD terms.
+   * @param {String} symbol See above explanation for `base`.
    * @param {Integer} lookback How far in the past the historical prices will be available using getHistoricalPrice.
    * @param {Object} networker Used to send the API requests.
    * @param {Function} getTime Returns the current time.
