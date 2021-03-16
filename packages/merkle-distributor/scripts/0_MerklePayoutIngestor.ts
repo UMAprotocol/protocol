@@ -15,7 +15,7 @@ import path from "path";
 import { program } from "commander";
 import fs from "fs";
 import Web3 from "web3";
-const { toBN, isAddress } = Web3.utils;
+const { toBN, isAddress, toChecksumAddress } = Web3.utils;
 import { ConvertDecimals } from "@uma/common";
 
 program
@@ -64,29 +64,36 @@ async function main() {
     // then the input file has no nested structures and only contains the recipients.
     const recipients = o.key == "null" ? inputFile[o.key] : inputFile;
     Object.keys(recipients).forEach((recipientAddress: string) => {
+      const checkSumRecipientAddress = toChecksumAddress(recipientAddress); // Ensure consistent address case
+      
       // Scale the amount by the number of decimals for that particular input.
       const recipientAmountScaled = ConvertDecimals(0, o.decimals[i], Web3)(recipients[recipientAddress]);
 
       // If the output file already contains information for this particular recipient, then append and add their rewards.
-      // Else, simply init the object with their values from the file. Note that accountIndex in both cases is set to 0.
+      // Else, simply init the object with their values from the file. Note that accountIndex in both cases is set to -1.
       // This will be set once the full data structure is built and ordered by payout amount.
-      if (outputObject.recipients[recipientAddress]) {
-        outputObject.recipients[recipientAddress] = {
-          amount: toBN(outputObject.recipients[recipientAddress].amount)
+      if (outputObject.recipients[checkSumRecipientAddress]) {
+        outputObject.recipients[checkSumRecipientAddress] = {
+          amount: toBN(outputObject.recipients[checkSumRecipientAddress].amount)
             .add(recipientAmountScaled)
             .toString(),
-          metaData: [...outputObject.recipients[recipientAddress].metaData, o.reason[i]],
-          accountIndex: 0
+          metaData: [...outputObject.recipients[checkSumRecipientAddress].metaData, o.reason[i]],
+          accountIndex: -1
         };
       } else {
-        outputObject.recipients[recipientAddress] = {
+        outputObject.recipients[checkSumRecipientAddress] = {
           amount: recipientAmountScaled.toString(),
           metaData: [o.reason[i]],
-          accountIndex: 0
+          accountIndex: -1
         };
       }
     });
   }
+
+  // There should be only unique indices within this outputObject. If there are not, then something when wrong
+  // in the previous step. This is critical to ensure that verifyProof works within the smart contracts.
+  const uniqueIndices = [...new Set(Object.keys(outputObject.recipients))];
+  assert(uniqueIndices.length === Object.keys(outputObject.recipients).length, "duplicate account indices");
 
   // Sort the outputs payment amount.
   outputObject.recipients = Object.fromEntries(
