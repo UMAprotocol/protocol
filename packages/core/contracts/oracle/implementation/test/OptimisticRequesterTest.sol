@@ -17,9 +17,8 @@ contract OptimisticRequesterTest is OptimisticRequester {
     uint256 public refund;
     int256 public price;
 
-    // Implement collateralCurrency so that this contract
-    // simulates a financial contract whose collateral token
-    // can be fetched by off-chain clients.
+    // Implement collateralCurrency so that this contract simulates a financial contract whose collateral
+    // token can be fetched by off-chain clients.
     IERC20 public collateralCurrency;
 
     constructor(OptimisticOracle _optimisticOracle) public {
