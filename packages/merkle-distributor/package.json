@@ -1,11 +1,11 @@
 {
   "name": "@uma/merkle-distributor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Simple script for dealing with Merkle distribution contracts and proofs hosted on IPFS",
   "dependencies": {
     "@types/commander": "^2.12.2",
     "@types/node-fetch": "^2.5.8",
-    "@uma/core": "^2.0.1",
+    "@uma/core": "^2.1.0",
     "chai": "^4.3.0",
     "commander": "^7.1.0",
     "ethers": "^5.0.31",
