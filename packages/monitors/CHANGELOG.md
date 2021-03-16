@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.0.1...@uma/monitors@2.1.0) (2021-03-16)
+
+### Features
+
+- **monitors:** Add FundingRateUpdate event messages to monitor ([#2664](https://github.com/UMAprotocol/protocol/issues/2664)) ([4a7afe8](https://github.com/UMAprotocol/protocol/commit/4a7afe81ac3131b63da9412e42900cf676a1f531))
+- **optimistic-oracle-monitor:** Support OptimisticOracle event monitoring ([#2597](https://github.com/UMAprotocol/protocol/issues/2597)) ([49e34d2](https://github.com/UMAprotocol/protocol/commit/49e34d21b465547b271bb6fdfc15537ee9cf196f))
+- **perpetual-proposer:** Initialize PerpetualFundingRateProposer package ([#2632](https://github.com/UMAprotocol/protocol/issues/2632)) ([42fe711](https://github.com/UMAprotocol/protocol/commit/42fe711788b2c95bef1be64c7c033e4bd1391e2a))
+
 ## [2.0.1](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.0.0...@uma/monitors@2.0.1) (2021-02-27)
 
 **Note:** Version bump only for package @uma/monitors
