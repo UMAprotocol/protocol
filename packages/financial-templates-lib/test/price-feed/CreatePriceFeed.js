@@ -37,6 +37,7 @@ const winston = require("winston");
 const sinon = require("sinon");
 
 const { ZERO_ADDRESS, interfaceName } = require("@uma/common");
+const { ForexDailyPriceFeed } = require("../../src/price-feed/ForexDailyPriceFeed");
 
 contract("CreatePriceFeed.js", function(accounts) {
   const { toChecksumAddress, randomHex } = web3.utils;
@@ -62,6 +63,8 @@ contract("CreatePriceFeed.js", function(accounts) {
   const symbol = "test-symbol";
   const quoteCurrency = "test-quoteCurrency";
   const contractAddress = "test-address";
+  const forexBase = "EUR";
+  const forexSymbol = "USD";
 
   before(async function() {
     identifierWhitelist = await IdentifierWhitelist.new();
@@ -1313,6 +1316,41 @@ contract("CreatePriceFeed.js", function(accounts) {
     );
     assert.equal(
       await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, minTimeBetweenUpdates: undefined }),
+      null
+    );
+  });
+  it("Valid ForexDaily config", async function() {
+    const config = {
+      type: "forexdaily",
+      base: forexBase,
+      symbol: forexSymbol,
+      lookback
+    };
+
+    const validForexDailyFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isTrue(validForexDailyFeed instanceof ForexDailyPriceFeed);
+    assert.equal(validForexDailyFeed.base, forexBase);
+    assert.equal(validForexDailyFeed.symbol, forexSymbol);
+    assert.equal(validForexDailyFeed.lookback, lookback);
+    assert.equal(validForexDailyFeed.getTime(), getTime());
+  });
+
+  it("Invalid ForexDaily config", async function() {
+    const validConfig = {
+      type: "forexdaily",
+      base: forexBase,
+      symbol: forexSymbol,
+      lookback
+    };
+
+    // Missing base
+    assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, base: undefined }), null);
+    // Missing symbol
+    assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, symbol: undefined }), null);
+    // Mising lookback
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, lookback: undefined }),
       null
     );
   });

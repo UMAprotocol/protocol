@@ -39,44 +39,8 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
     this.base = base.toUpperCase();
     this.symbol = symbol.toUpperCase();
 
-    // Base and Symbol are drawn from the same list:
-    const validSymbols = [
-      "CAD",
-      "HKD",
-      "ISK",
-      "PHP",
-      "DKK",
-      "HUF",
-      "CZK",
-      "AUD",
-      "RON",
-      "SEK",
-      "IDR",
-      "INR",
-      "BRL",
-      "RUB",
-      "HRK",
-      "JPY",
-      "THB",
-      "CHF",
-      "SGD",
-      "PLN",
-      "BGN",
-      "TRY",
-      "CNY",
-      "NOK",
-      "NZD",
-      "ZAR",
-      "USD",
-      "MXN",
-      "ILS",
-      "GBP",
-      "KRW",
-      "MYR",
-      "EUR"
-    ];
-    assert(validSymbols.includes(this.base), "invalid base");
-    assert(validSymbols.includes(this.symbol), "invalid symbol");
+    assert(VALID_SYMBOLS.includes(this.base), "invalid base");
+    assert(VALID_SYMBOLS.includes(this.symbol), "invalid symbol");
     this.uuid = `ForexDaily-${symbol}-${base}`;
     this.lookback = lookback;
     this.minTimeBetweenUpdates = minTimeBetweenUpdates;
@@ -264,6 +228,43 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
     return moment(inputDateTime, "YYYY-MM-DD").unix();
   }
 }
+
+// Base and Symbol are drawn from the same list:
+const VALID_SYMBOLS = [
+  "CAD",
+  "HKD",
+  "ISK",
+  "PHP",
+  "DKK",
+  "HUF",
+  "CZK",
+  "AUD",
+  "RON",
+  "SEK",
+  "IDR",
+  "INR",
+  "BRL",
+  "RUB",
+  "HRK",
+  "JPY",
+  "THB",
+  "CHF",
+  "SGD",
+  "PLN",
+  "BGN",
+  "TRY",
+  "CNY",
+  "NOK",
+  "NZD",
+  "ZAR",
+  "USD",
+  "MXN",
+  "ILS",
+  "GBP",
+  "KRW",
+  "MYR",
+  "EUR"
+];
 
 module.exports = {
   ForexDailyPriceFeed
