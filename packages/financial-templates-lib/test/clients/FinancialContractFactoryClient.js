@@ -1,6 +1,6 @@
 const winston = require("winston");
 
-const { toWei, utf8ToHex } = web3.utils;
+const { toWei, utf8ToHex, padRight } = web3.utils;
 
 const { FinancialContractFactoryClient } = require("../../src/clients/FinancialContractFactoryClient");
 const { interfaceName, advanceBlockAndSetTime, ZERO_ADDRESS, RegistryRolesEnum } = require("@uma/common");
@@ -39,7 +39,7 @@ contract("FinancialContractFactoryClient.js", function(accounts) {
   // Default testing values.
   let defaultCreationParams = {
     expirationTimestamp: "1950000000", // Fri Oct 17 2031 10:40:00 GMT+0000
-    priceFeedIdentifier: utf8ToHex("Test Identifier"),
+    priceFeedIdentifier: padRight(utf8ToHex("Test Identifier"), 64),
     syntheticName: "Test Synth",
     syntheticSymbol: "TEST-SYNTH",
     collateralRequirement: { rawValue: toWei("1.2") },
@@ -110,7 +110,7 @@ contract("FinancialContractFactoryClient.js", function(accounts) {
     };
     defaultPerpCreationParams = {
       ...defaultCreationParams,
-      fundingRateIdentifier: utf8ToHex("Test Funding Rate Identifier"),
+      fundingRateIdentifier: padRight(utf8ToHex("Test Funding Rate Identifier"), 64),
       tokenScaling: { rawValue: toWei("1") }
     };
 
