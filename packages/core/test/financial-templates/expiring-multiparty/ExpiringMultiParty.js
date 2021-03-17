@@ -1,5 +1,5 @@
 const { ZERO_ADDRESS } = require("@uma/common");
-const { toWei } = web3.utils;
+const { toWei, padRight, utf8ToHex } = web3.utils;
 
 // Tested Contract
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
@@ -29,7 +29,7 @@ contract("ExpiringMultiParty", function(accounts) {
       collateralAddress: collateralToken.address,
       tokenAddress: syntheticToken.address,
       finderAddress: finder.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("TEST_IDENTIFIER"),
+      priceFeedIdentifier: padRight(utf8ToHex("TEST_IDENTIFIER"), 64),
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPercentage: { rawValue: toWei("0.1") },

@@ -1,4 +1,5 @@
 const { didContractThrow } = require("@uma/common");
+const { hexToBytes, utf8ToHex, padRight } = web3.utils;
 
 const Finder = artifacts.require("Finder");
 
@@ -11,8 +12,8 @@ contract("Finder", function(accounts) {
   it("General methods", async function() {
     const finder = await Finder.deployed();
 
-    const interfaceName1 = web3.utils.hexToBytes(web3.utils.utf8ToHex("interface1"));
-    const interfaceName2 = web3.utils.hexToBytes(web3.utils.utf8ToHex("interface2"));
+    const interfaceName1 = hexToBytes(padRight(utf8ToHex("interface1"), 64));
+    const interfaceName2 = hexToBytes(padRight(utf8ToHex("interface2"), 64));
     const implementationAddress1 = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
     const implementationAddress2 = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
     const implementationAddress3 = web3.utils.toChecksumAddress(web3.utils.randomHex(20));

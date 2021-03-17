@@ -182,7 +182,7 @@ done
 # Setting up the 2 key wallet
 echo -e '\n####################################################################'
 echo '#                                                                  #'
-echo '# 11/16. Create a voting proxy contract                            #'
+echo '# 11/12. Create a voting proxy contract                            #'
 echo '#                                                                  #'
 echo -e '####################################################################\n'
 echo "- Follow this tutorial to set up your 2Key wallet via the voter dApp: https://docs.umaproject.org/uma-tokenholders/voting-2key. Use your current address as the Cold Wallet Address and transfer your tokens to the proxy contract. You will be prompted to connect again to the voter dApp, but if this doesn't happen automatically then you can simply refresh the page. The Resolved Requests will no longer show that you voted on the two resolved price requests because your voting account has changed to the proxy contract's address"
@@ -197,80 +197,8 @@ done
 # Prompt user to vote with the 2 key wallet
 echo -e '\n####################################################################'
 echo '#                                                                  #'
-echo '# 12/16. Committing with the 2 Key wallet                          #'
+echo '# 12/12. Committing with the 2 Key wallet                          #'
 echo '#                                                                  #'
 echo -e '####################################################################\n'
-echo "- Commit votes."
-select yn in "Continue" "Help" "Exit"; do
-    case $yn in
-        Continue ) break;;
-        Help ) echo "🚸 Committing is the same as without the 2 Key Contract.";;
-        Exit ) exit;;
-    esac
-done
-echo "- Advancing to the Reveal phase of the current voting round"
-yarn run truffle exec ../core/scripts/local/AdvanceToNextVotingPhase.js --network test
-
-# Snapshot the current round
-echo -e '\n####################################################################'
-echo '#                                                                  #'
-echo '# 13/16. Snapshotting voting token balances                        #'
-echo '#                                                                  #'
-echo -e '####################################################################\n'
-echo "- Before reveals can take place, a snapshot of current voting token balances must be taken"
-select yn in "Continue" "Help" "Exit"; do
-    case $yn in
-        Continue ) break;;
-        Help ) echo "🚸 Click and sign to generate snapshot for current round.";;
-        Exit ) exit;;
-    esac
-done
-
-# Prompt user to reveal votes
-echo -e '\n####################################################################'
-echo '#                                                                  #'
-echo '# 14/16. Revealing with the 2 Key wallet                           #'
-echo '#                                                                  #'
-echo -e '####################################################################\n'
-echo "- Reveal votes."
-select yn in "Continue" "Help" "Exit"; do
-    case $yn in
-        Continue ) break;;
-        Help ) echo "🚸 Revealing is the same as without the 2 Key Contract";;
-        Exit ) exit;;
-    esac
-done
-echo "- Advancing to the next Voting round"
-yarn run truffle exec ../core/scripts/local/AdvanceToNextVotingPhase.js --network test
-
-# Claim rewards
-echo -e '\n####################################################################'
-echo '#                                                                  #'
-echo '# 15/16. Claiming rewards                                          #'
-echo '#                                                                  #'
-echo -e '####################################################################\n'
-echo "- Claim rewards by clicking Claim Your Rewards under Retrieve Voting Rewards. You should receive your previous round's token balance (100,100,000) multiplied by the inflation rate (0.05%) (e,g, you should have received 50,050 new tokens). Note that you are the one and only voter so you should always have voted with the majority."
-select yn in "Continue" "Help" "Exit"; do
-    case $yn in
-        Continue ) break;;
-        Help ) echo "🚸 Click Claim Your Rewards under Retrieve Voting Rewards and submit the transaction via Metamask. You should receive 50,050 new tokens. Finally, hit Continue after you see your balance has successfully increased";;
-        Exit ) exit;;
-    esac
-done
-
-# Prompt user to verify Resolved Requests
-echo -e '\n####################################################################'
-echo '#                                                                  #'
-echo '# 16/16. Resolved Requests                                         #'
-echo '#                                                                  #'
-echo -e '####################################################################\n'
-echo "- Hit the Resolved Requests button and verify that your submitted votes are displayed properly. Hit continue once you've confirmed this"
-select yn in "Continue" "Help" "Exit"; do
-    case $yn in
-        Continue ) break;;
-        Help ) echo "🚸 Click Resolved Requests button and you should see the Your Vote and Correct Vote columns filled with your vote";;
-        Exit ) exit;;
-    esac
-done
-
+echo "- Restart this test script and this time use the 2 Key Wallet to vote."
 echo "🕺🏾💃🏻 Test complete!"

@@ -16,6 +16,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const VotingToken = artifacts.require("VotingToken");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 const snapshotMessage = "Sign For Snapshot";
+const { utf8ToHex, padRight } = web3.utils;
 
 contract("DesignatedVoting", function(accounts) {
   const umaAdmin = accounts[0];
@@ -77,12 +78,12 @@ contract("DesignatedVoting", function(accounts) {
     // Verify that there are no silent failures, and reverts get bubbled up.
     assert(
       await didContractThrow(
-        designatedVoting.commitVote(web3.utils.utf8ToHex("bad"), "100", "0x0", "0x123456", { from: voter })
+        designatedVoting.commitVote(padRight(utf8ToHex("bad"), 64), "100", "0x0", "0x123456", { from: voter })
       )
     );
     assert(
       await didContractThrow(
-        designatedVoting.revealVote(web3.utils.utf8ToHex("bad"), "100", "200", "0x123456", "300", { from: voter })
+        designatedVoting.revealVote(padRight(utf8ToHex("bad"), 64), "100", "200", "0x123456", "300", { from: voter })
       )
     );
   });
@@ -95,7 +96,7 @@ contract("DesignatedVoting", function(accounts) {
     await voting.setInflationRate({ rawValue: inflationRate });
 
     // Request a price.
-    const identifier = web3.utils.utf8ToHex("one-voter");
+    const identifier = padRight(utf8ToHex("one-voter"), 64);
     const time = "1000";
     const ancillaryData = "0x123456";
     await supportedIdentifiers.addSupportedIdentifier(identifier);
@@ -185,7 +186,7 @@ contract("DesignatedVoting", function(accounts) {
     await votingToken.transfer(designatedVoting.address, tokenBalance, { from: tokenOwner });
 
     // Request a price.
-    const identifier = web3.utils.utf8ToHex("batch");
+    const identifier = padRight(utf8ToHex("batch"), 64);
     const time1 = "1000";
     const ancillaryData1 = "0x11111111";
     const time2 = "2000";
