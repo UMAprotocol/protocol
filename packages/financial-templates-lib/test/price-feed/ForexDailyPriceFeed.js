@@ -2,14 +2,19 @@ const { ForexDailyPriceFeed } = require("../../src/price-feed/ForexDailyPriceFee
 const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
 const { spyLogIncludes, SpyTransport } = require("../../src/logger/SpyTransport");
 const winston = require("winston");
-const moment = require("moment");
+const moment = require("moment-timezone");
 const { parseFixed } = require("@uma/common");
 const sinon = require("sinon");
 
 contract("ForexDailyPriceFeed.js", function() {
   let forexPriceFeed;
-  // Keep test timezone consistent with price feed's.
-  let mockTime = moment("2021-03-12", "YYYY-MM-DD").unix();
+  // Keep test timezone consistent with price feed's. The API uses data published daily by the
+  // ECB at 16:00 CET. Therefore, to convert from datestring to unix,
+  // first convert to CET, and then add 16 hours, since the API "begins" days at 16:00.
+  let mockTime = moment
+    .tz("2021-03-12", "YYYY-MM-DD", "Europe/Berlin")
+    .add(16, "hours")
+    .unix();
   let networker;
   let spy;
 
