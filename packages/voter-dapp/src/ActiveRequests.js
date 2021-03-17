@@ -37,7 +37,7 @@ import {
   encryptMessage,
   getKeyGenMessage,
   computeVoteHashAncillary,
-  getRandomUnsignedInt,
+  getRandomSignedInt,
   BATCH_MAX_COMMITS,
   BATCH_MAX_REVEALS,
   getAdminRequestId,
@@ -398,7 +398,7 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
       }
       const identifierPrecision = getPrecisionForIdentifier(hexToUtf8(pendingRequests[index].identifier));
       const price = parseFixed(editState[index], identifierPrecision).toString();
-      const salt = getRandomUnsignedInt().toString();
+      const salt = getRandomSignedInt().toString();
       const ancillaryData = pendingRequests[index].ancillaryData || DEFAULT_ANCILLARY_DATA;
       const encryptedVote = await encryptMessage(
         decryptionKeys[account][currentRoundId].publicKey,

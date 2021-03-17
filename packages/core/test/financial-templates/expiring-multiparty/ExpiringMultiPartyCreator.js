@@ -1,4 +1,4 @@
-const { toWei, hexToUtf8 } = web3.utils;
+const { toWei, hexToUtf8, padRight, utf8ToHex } = web3.utils;
 const { didContractThrow, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
 const truffleAssert = require("truffle-assertions");
 
@@ -40,7 +40,7 @@ contract("ExpiringMultiPartyCreator", function(accounts) {
     constructorParams = {
       expirationTimestamp: "1898918401", // 2030-03-05T05:20:01.000Z
       collateralAddress: collateralToken.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("TEST_IDENTIFIER"),
+      priceFeedIdentifier: padRight(utf8ToHex("TEST_IDENTIFIER"), 64),
       syntheticName: "Test Synthetic Token",
       syntheticSymbol: "SYNTH",
       collateralRequirement: { rawValue: toWei("1.5") },
