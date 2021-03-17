@@ -32,8 +32,8 @@ async function runExport() {
   const identifierWhitelist = await IdentifierWhitelist.deployed();
 
   for (const identifier of identifiers) {
-    console.log(identifier, "verified.");
     assert.equal(await identifierWhitelist.isIdentifierSupported(web3.utils.utf8ToHex(identifier)), true);
+    console.log(identifier, "verified.");
   }
 
   console.log("Upgrade Verified!");
