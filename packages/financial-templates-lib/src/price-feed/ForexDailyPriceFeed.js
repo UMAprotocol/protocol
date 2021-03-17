@@ -184,10 +184,9 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
 
     // 3. Check responses.
     if (
-      !historyResponse ||
-      !historyResponse.rates ||
+      !historyResponse?.rates ||
       Object.keys(historyResponse.rates).length === 0 ||
-      !historyResponse.rates[Object.keys(historyResponse.rates)[0]][this.symbol]
+      Object.values(historyResponse.rates).some(rate => !rate[this.symbol])
     ) {
       throw new Error(`🚨Could not parse price result from url ${url}: ${JSON.stringify(historyResponse)}`);
     }

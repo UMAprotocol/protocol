@@ -53,16 +53,19 @@ class FallBackPriceFeed extends PriceFeedInterface {
     throw new Error("getHistoricalPricePeriods Unimplemented for FallBackPriceFeed");
   }
 
-  // Gets the update time for the first pricefeed that successfully updated.
+  // Gets the *most recent* update time for all constituent price feeds.
   getLastUpdateTime() {
-    for (let _priceFeed of this.priceFeeds) {
-      const lastUpdateTime = _priceFeed.getLastUpdateTime();
-      if (!lastUpdateTime) continue;
-      return lastUpdateTime;
-    }
+    // Filter out missing update times:
+    let lastUpdateTimes = this.priceFeeds
+      .map(priceFeed => priceFeed.getLastUpdateTime())
+      .filter(element => element !== undefined && element !== null);
 
-    // If no pricefeeds return successfully, indicate failure.
-    return null;
+    if (lastUpdateTimes.length > 0) {
+      // Take the most recent update time.
+      return Math.max(...lastUpdateTimes);
+    } else {
+      return null;
+    }
   }
 
   // Errors out if any price feed had a different number of decimals.
@@ -76,21 +79,24 @@ class FallBackPriceFeed extends PriceFeedInterface {
     return priceFeedDecimals[0];
   }
 
-  // Try to update constituent pricefeeds until one succeeds.
+  // Updates all constituent price feeds, but ignore errors since some might fail without
+  // causing this pricefeed's getPrice methods to fail. Only throw an error
+  // if all updates fail.
   async update() {
-    // If failure to update any constituent feeds, then throw
-    // array of errors.
     let errors = [];
-    for (let _priceFeed of this.priceFeeds) {
-      try {
-        return await _priceFeed.update();
-      } catch (err) {
-        errors.push(err);
-        continue;
-      }
-    }
+    // allSettled() does not short-circuit if any promises reject, instead it returns
+    // an array of ["fulfilled", "rejected"] statuses.
+    const results = await Promise.allSettled(this.priceFeeds.map(priceFeed => priceFeed.update()));
 
-    throw errors;
+    // Filter out rejected updates:
+    results.map(result => {
+      if (result.status === "rejected") {
+        errors.push(new Error(result.reason));
+      }
+    });
+
+    // If every update failed, then throw the errors:
+    if (errors.length === this.priceFeeds.length) throw errors;
   }
 }
 

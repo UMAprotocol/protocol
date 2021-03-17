@@ -406,14 +406,14 @@ const defaultConfigs = {
         pair: "CNYUSD",
         minTimeBetweenUpdates: 600,
         minuteLookback: 7200,
-        hourlyLookback: 604800,
+        hourlyLookback: 259200,
         ohlcPeriod: 10 // CNYUSD only available at 10 minute granularity
       },
       {
         type: "forexdaily",
         base: "CNY",
         symbol: "USD",
-        lookback: 604800
+        lookback: 259200
       }
     ]
   },
@@ -425,13 +425,13 @@ const defaultConfigs = {
         pair: "EURUSD",
         minTimeBetweenUpdates: 60,
         minuteLookback: 7200,
-        hourlyLookback: 604800
+        hourlyLookback: 259200
       },
       {
         type: "forexdaily",
         base: "EUR",
         symbol: "USD",
-        lookback: 604800
+        lookback: 259200
       }
     ]
   },
@@ -594,7 +594,7 @@ const defaultConfigs = {
     type: "tradermade",
     pair: "XAUUSD",
     minuteLookback: 7200,
-    hourlyLookback: 604800,
+    hourlyLookback: 259200,
     minTimeBetweenUpdates: 60
   },
   uSTONKS_APR21: {

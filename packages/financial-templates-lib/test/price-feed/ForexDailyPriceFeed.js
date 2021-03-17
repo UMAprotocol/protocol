@@ -182,7 +182,7 @@ contract("ForexDailyPriceFeed.js", function() {
     networker.getJsonReturns = [
       {
         rates: {
-          // Valid response, just no data points.
+          // Valid response, just missing some data points.
           "2021-03-09": {}
         }
       },

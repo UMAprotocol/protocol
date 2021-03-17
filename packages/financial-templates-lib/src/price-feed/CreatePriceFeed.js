@@ -485,18 +485,18 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
   }
 
   async function _createMedianizerPriceFeed(medianizerConfig) {
-    const priceFeedsToMedianize = await _createConstituentPriceFeed(medianizerConfig.medianizedFeeds);
+    const priceFeedsToMedianize = await _createConstituentPriceFeeds(medianizerConfig.medianizedFeeds);
     if (!priceFeedsToMedianize) return null;
     return new MedianizerPriceFeed(priceFeedsToMedianize, medianizerConfig.computeMean);
   }
 
   async function _createFallBackPriceFeed(fallbackConfig) {
-    const orderedPriceFeeds = await _createConstituentPriceFeed(fallbackConfig.orderedFeeds);
+    const orderedPriceFeeds = await _createConstituentPriceFeeds(fallbackConfig.orderedFeeds);
     if (!orderedPriceFeeds) return null;
     return new FallBackPriceFeed(orderedPriceFeeds);
   }
 
-  async function _createConstituentPriceFeed(priceFeedConfigs) {
+  async function _createConstituentPriceFeeds(priceFeedConfigs) {
     const priceFeeds = [];
     for (const _priceFeedConfig of priceFeedConfigs) {
       // The constituent feeds should inherit config options from the parent config if it doesn't define those values

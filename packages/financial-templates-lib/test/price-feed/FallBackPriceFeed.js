@@ -17,13 +17,17 @@ contract("FallBackPriceFeed.js", function() {
       fallBackPriceFeed = new FallBackPriceFeed(priceFeeds);
     });
     it("(update)", async function() {
-      await fallBackPriceFeed.update();
-      await fallBackPriceFeed.update();
+      try {
+        await fallBackPriceFeed.update();
+        await fallBackPriceFeed.update();
 
-      // The first pricefeed can be updated successfully, so it is updated twice
-      // and the others are not updated at all.
-      assert.equal(priceFeeds[0].updateCalled, 2);
-      assert.equal(priceFeeds[1].updateCalled, 0);
+        // All pricefeed update methods are called.
+        assert.equal(priceFeeds[0].updateCalled, 2);
+        assert.equal(priceFeeds[1].updateCalled, 2);
+      } catch (err) {
+        // No errors should be thrown:
+        assert(false, "update should not throw if at least one succeeded");
+      }
     });
     it("(getCurrentPrice)", async function() {
       const currentPrice = fallBackPriceFeed.getCurrentPrice();
@@ -31,7 +35,8 @@ contract("FallBackPriceFeed.js", function() {
     });
     it("(getLastUpdateTime)", async function() {
       const lastUpdateTime = fallBackPriceFeed.getLastUpdateTime();
-      assert.equal(lastUpdateTime, 100);
+      // Returns max successfully fetched update time.
+      assert.equal(lastUpdateTime, 50000);
     });
     it("(getHistoricalPrice)", async function() {
       const arbitraryHistoricalTimestamp = 1000;
@@ -55,9 +60,10 @@ contract("FallBackPriceFeed.js", function() {
       await fallBackPriceFeed.update();
       await fallBackPriceFeed.update();
 
-      // The first pricefeed fails to update, so the second is updated twice.
+      // The first pricefeed's update() method will fail, but that error should be caught and
+      // not cause the other updates to fail.
       assert.equal(priceFeeds[1].updateCalled, 2);
-      assert.equal(priceFeeds[2].updateCalled, 0);
+      assert.equal(priceFeeds[2].updateCalled, 2);
     });
     it("(getCurrentPrice)", async function() {
       const currentPrice = fallBackPriceFeed.getCurrentPrice();
@@ -82,6 +88,7 @@ contract("FallBackPriceFeed.js", function() {
       fallBackPriceFeed = new FallBackPriceFeed(priceFeeds);
     });
     it("(update)", async function() {
+      // If all updates throw, then all constituent errors should be thrown.
       fallBackPriceFeed.update().catch(errs => {
         assert.equal(errs.length, 2);
         errs.forEach(err => {
