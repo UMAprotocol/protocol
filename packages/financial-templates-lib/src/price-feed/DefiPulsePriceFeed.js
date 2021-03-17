@@ -104,7 +104,7 @@ class DefiPulsePriceFeed extends PriceFeedInterface {
     });
 
     // 1. Construct URLs.
-    const priceUrl = `https://data-api.defipulse.com/api/v1/defipulse/api/GetHistory?project=${this.project}&period=1w&api-key=${this.apiKey}`;
+    const priceUrl = `https://data-api.defipulse.com/api/v1/defipulse/api/GetHistory?project=${this.project}&period=1w&api-key=${this.defipulseApiKey}`;
 
     // 2. Send requests.
     const response = await this.networker.getJson(priceUrl);
