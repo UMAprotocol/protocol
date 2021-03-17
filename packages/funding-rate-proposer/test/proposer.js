@@ -1,7 +1,7 @@
 const winston = require("winston");
 const sinon = require("sinon");
 
-const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
+const { toWei, utf8ToHex, hexToUtf8, padRight } = web3.utils;
 
 const { FundingRateProposer } = require("../src/proposer");
 const {
@@ -53,16 +53,16 @@ contract("Perpetual: proposer.js", function(accounts) {
   // Because these identifier utf8 strings begin with "TEST", they will map to PriceFeedMock's,
   // which we can conveniently use to test how the bot queries funding rates.
   const fundingRateIdentifiersToTest = [
-    utf8ToHex("TEST18DECIMALS"),
-    utf8ToHex("TEST18DECIMALS_2"),
-    utf8ToHex("TEST18DECIMALS_3"),
-    utf8ToHex("TEST18DECIMALS_4")
+    padRight(utf8ToHex("TEST18DECIMALS"), 64),
+    padRight(utf8ToHex("TEST18DECIMALS_2"), 64),
+    padRight(utf8ToHex("TEST18DECIMALS_3"), 64),
+    padRight(utf8ToHex("TEST18DECIMALS_4"), 64)
   ];
 
   // Default testing values.
   let defaultCreationParams = {
     expirationTimestamp: "1950000000", // Fri Oct 17 2031 10:40:00 GMT+0000
-    priceFeedIdentifier: utf8ToHex("Test Identifier"),
+    priceFeedIdentifier: padRight(utf8ToHex("Test Identifier"), 64),
     syntheticName: "Test Synth",
     syntheticSymbol: "TEST-SYNTH",
     collateralRequirement: { rawValue: toWei("1.2") },

@@ -3,7 +3,7 @@ const Main = require("../index.js");
 const winston = require("winston");
 const sinon = require("sinon");
 
-const { toWei, utf8ToHex } = web3.utils;
+const { toWei, utf8ToHex, padRight } = web3.utils;
 
 const { SpyTransport, spyLogIncludes, spyLogLevel } = require("@uma/financial-templates-lib");
 const { addGlobalHardhatTestingAddress, interfaceName, RegistryRolesEnum } = require("@uma/common");
@@ -42,8 +42,8 @@ contract("index.js", function(accounts) {
   // Default testing values.
   let defaultCreationParams = {
     expirationTimestamp: "1950000000", // Fri Oct 17 2031 10:40:00 GMT+0000
-    priceFeedIdentifier: utf8ToHex("Test Identifier"),
-    fundingRateIdentifier: utf8ToHex("TEST18DECIMALS"),
+    priceFeedIdentifier: padRight(utf8ToHex("Test Identifier"), 64),
+    fundingRateIdentifier: padRight(utf8ToHex("TEST18DECIMALS"), 64),
     syntheticName: "Test Synth",
     syntheticSymbol: "TEST-SYNTH",
     collateralRequirement: { rawValue: toWei("1.2") },
