@@ -2,7 +2,6 @@ const {
   RegistryRolesEnum,
   didContractThrow,
   getRandomSignedInt,
-  getRandomUnsignedInt,
   computeVoteHashAncillary,
   signMessage
 } = require("@uma/common");
@@ -105,7 +104,7 @@ contract("DesignatedVoting", function(accounts) {
     let roundId = await voting.getCurrentRoundId();
 
     const price = getRandomSignedInt();
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     // Note: the "voter" address for this vote must be the designated voting contract since its the one that will ultimately
     // "reveal" the vote. Only the voter can call reveal through the designated voting contract.
     const hash = computeVoteHashAncillary({
@@ -199,7 +198,7 @@ contract("DesignatedVoting", function(accounts) {
     const roundId = await voting.getCurrentRoundId();
 
     const price1 = getRandomSignedInt();
-    const salt1 = getRandomUnsignedInt();
+    const salt1 = getRandomSignedInt();
     const hash1 = computeVoteHashAncillary({
       price: price1,
       salt: salt1,
@@ -212,7 +211,7 @@ contract("DesignatedVoting", function(accounts) {
     const message1 = web3.utils.randomHex(4);
 
     const price2 = getRandomSignedInt();
-    const salt2 = getRandomUnsignedInt();
+    const salt2 = getRandomSignedInt();
     const hash2 = computeVoteHashAncillary({
       price: price2,
       salt: salt2,
