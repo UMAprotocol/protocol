@@ -31,13 +31,14 @@ const { CoinMarketCapPriceFeed } = require("../../src/price-feed/CoinMarketCapPr
 const { CoinGeckoPriceFeed } = require("../../src/price-feed/CoinGeckoPriceFeed");
 const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
 const { DefiPulsePriceFeed } = require("../../src/price-feed/DefiPulsePriceFeed");
+const { ForexDailyPriceFeed } = require("../../src/price-feed/ForexDailyPriceFeed");
+const { QuandlPriceFeed } = require("../../src/price-feed/QuandlPriceFeed");
 const { SpyTransport } = require("../../src/logger/SpyTransport");
 
 const winston = require("winston");
 const sinon = require("sinon");
 
 const { ZERO_ADDRESS, interfaceName } = require("@uma/common");
-const { ForexDailyPriceFeed } = require("../../src/price-feed/ForexDailyPriceFeed");
 
 contract("CreatePriceFeed.js", function(accounts) {
   const { toChecksumAddress, randomHex } = web3.utils;
@@ -1351,6 +1352,54 @@ contract("CreatePriceFeed.js", function(accounts) {
     // Mising lookback
     assert.equal(
       await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, lookback: undefined }),
+      null
+    );
+  });
+  it("Valid Quandl config", async function() {
+    const config = {
+      type: "quandl",
+      datasetCode: forexBase, // Doesn't matter what we set here as long as its not null
+      databaseCode: forexSymbol, // Doesn't matter what we set here as long as its not null
+      lookback,
+      quandlApiKey: apiKey
+    };
+
+    const validQuandlFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isTrue(validQuandlFeed instanceof QuandlPriceFeed);
+    assert.equal(validQuandlFeed.datasetCode, forexBase);
+    assert.equal(validQuandlFeed.databaseCode, forexSymbol);
+    assert.equal(validQuandlFeed.lookback, lookback);
+    assert.equal(validQuandlFeed.getTime(), getTime());
+  });
+
+  it("Invalid Quandl config", async function() {
+    const validConfig = {
+      type: "quandl",
+      datasetCode: forexBase, // Doesn't matter what we set here as long as its not null
+      databaseCode: forexSymbol, // Doesn't matter what we set here as long as its not null
+      lookback,
+      quandlApiKey: apiKey
+    };
+
+    // Missing datasetCode
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, datasetCode: undefined }),
+      null
+    );
+    // Missing databaseCode
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, databaseCode: undefined }),
+      null
+    );
+    // Mising lookback
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, lookback: undefined }),
+      null
+    );
+    // Mising quandlApiKey
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, quandlApiKey: undefined }),
       null
     );
   });
