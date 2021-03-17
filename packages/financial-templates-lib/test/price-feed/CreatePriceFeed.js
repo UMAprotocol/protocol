@@ -29,7 +29,9 @@ const { MedianizerPriceFeed } = require("../../src/price-feed/MedianizerPriceFee
 const { CoinMarketCapPriceFeed } = require("../../src/price-feed/CoinMarketCapPriceFeed");
 const { CoinGeckoPriceFeed } = require("../../src/price-feed/CoinGeckoPriceFeed");
 const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
+const { DefiPulsePriceFeed } = require("../../src/price-feed/DefiPulsePriceFeed");
 const { SpyTransport } = require("../../src/logger/SpyTransport");
+
 const winston = require("winston");
 const sinon = require("sinon");
 
@@ -1212,6 +1214,43 @@ contract("CreatePriceFeed.js", function(accounts) {
       await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, quoteCurrency: undefined }),
       null
     );
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, lookback: undefined }),
+      null
+    );
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, minTimeBetweenUpdates: undefined }),
+      null
+    );
+  });
+  it("Valid DefiPulse config", async function() {
+    const config = {
+      type: "defipulse",
+      lookback: 604800,
+      defipulseApiKey: apiKey,
+      minTimeBetweenUpdates: 600,
+      project: "SushiSwap"
+    };
+
+    const validDefiPulsePriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isTrue(validDefiPulsePriceFeed instanceof DefiPulsePriceFeed);
+  });
+
+  it("Invalid DefiPulse config", async function() {
+    const validConfig = {
+      type: "defipulse",
+      lookback: 604800,
+      defipulseApiKey: apiKey,
+      minTimeBetweenUpdates: 600,
+      project: "SushiSwap"
+    };
+
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, defipulseApiKey: undefined }),
+      null
+    );
+    assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, project: undefined }), null);
     assert.equal(
       await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, lookback: undefined }),
       null

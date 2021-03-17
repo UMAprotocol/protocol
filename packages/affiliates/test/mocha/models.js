@@ -1,5 +1,5 @@
 const { assert } = require("chai");
-const { History, Balances, SharedAttributions, Prices } = require("../../libs/models");
+const { History, Balances, SharedAttributions, Prices, AttributionLookback } = require("../../libs/models");
 const Coingecko = require("../../libs/coingecko");
 // const SynthPrices = require("../../libs/synthPrices");
 const moment = require("moment");
@@ -110,32 +110,46 @@ describe("Contract Prices", function() {
   });
 });
 
-// TODO: Re-add back this test with mocked mainnet data
-// describe("Synthetic prices", function() {
-//   let prices, seed;
-//   const empAddress = "0x3605Ec11BA7bD208501cbb24cd890bC58D2dbA56";
-//   const startingTimestamp = moment("2020-09-23 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
-//   const endingTimestamp = moment("2020-10-05 23:00:00", "YYYY-MM-DD  HH:mm Z").valueOf();
-//   it("init", async function() {
-//     this.timeout(100000);
-//     seed = await SynthPrices({ web3 }).getHistoricSynthPrices(empAddress, startingTimestamp, endingTimestamp);
-//     prices = Prices(seed);
-//     assert.ok(seed);
-//     assert.ok(prices);
-//   });
-//   it("lookup", function() {
-//     const time = moment()
-//       .subtract(5, "days")
-//       .valueOf();
-//     const result = prices.lookup(time);
-//     assert.ok(result[0] <= time);
-//   });
-//   it("closest", function() {
-//     const time = moment()
-//       .subtract(5, "days")
-//       .valueOf();
-//     const result = prices.closest(time);
-//     assert.ok(result[0]);
-//     assert.ok(result[1]);
-//   });
-// });
+describe("AttributionLookback", function() {
+  let attributions;
+  it("init", function() {
+    attributions = AttributionLookback();
+    assert.ok(attributions);
+  });
+  it("create", function() {
+    let result = attributions.create("usera");
+    assert.ok(result);
+  });
+  it("attribution", function() {
+    let result = attributions.attribute("usera", "taga", "100");
+    assert.equal(result.length, 1);
+    assert.equal(result[0].user, "usera");
+    assert.equal(result[0].affiliate, "taga");
+    assert.equal(result[0].amount, "100");
+    result = attributions.attribute("usera", "tagb", "100");
+    // see that new tag is pushed to front of history array
+    assert.equal(result.length, 2);
+    assert.equal(result[0].user, "usera");
+    assert.equal(result[0].affiliate, "tagb");
+    assert.equal(result[0].amount, "100");
+  });
+  it("getAttributionPercents", function() {
+    let result = attributions.getAttributionPercents("usera", 200);
+    assert.equal(result["taga"], "500000000000000000");
+    assert.equal(result["tagb"], "500000000000000000");
+
+    // the oldest attribution only gets partially included while the youngest gets fully included (100 vs 50)
+    result = attributions.getAttributionPercents("usera", 150);
+    // 50 / 150
+    assert.equal(result["taga"], "333333333333333333");
+    // 100 / 150
+    assert.equal(result["tagb"], "666666666666666666");
+
+    try {
+      // this should throw, because not enough attributions can add up to 201
+      result = attributions.getAttributionPercents("usera", 201);
+    } catch (err) {
+      assert.ok(err);
+    }
+  });
+});

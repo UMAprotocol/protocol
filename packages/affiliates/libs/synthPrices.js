@@ -9,7 +9,14 @@ module.exports = ({ web3, cryptowatchApiKey, tradermadeApiKey, decimals = 18 } =
     from = from / 1000;
     to = to / 1000;
     const priceFeed = await createReferencePriceFeedForFinancialContract(
-      winston.createLogger({ transports: [new winston.transports.Console()] }),
+      winston.createLogger({
+        transports: [
+          new winston.transports.Console({
+            level: "error",
+            stderrLevels: ["error"]
+          })
+        ]
+      }),
       web3,
       new Networker(),
       () => to, // starting time

@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.0.1...@uma/serverless-orchestration@2.1.0) (2021-03-16)
+
+### Features
+
+- **optimistic-oracle-monitor:** Support OptimisticOracle event monitoring ([#2597](https://github.com/UMAprotocol/protocol/issues/2597)) ([49e34d2](https://github.com/UMAprotocol/protocol/commit/49e34d21b465547b271bb6fdfc15537ee9cf196f))
+
 ## [2.0.1](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.0.0...@uma/serverless-orchestration@2.0.1) (2021-02-27)
 
 **Note:** Version bump only for package @uma/serverless-orchestration

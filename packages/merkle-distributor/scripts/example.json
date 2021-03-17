@@ -1,0 +1,40 @@
+{
+  "chainId": 42,
+  "rewardToken": "0x47B1EE6d02af0AA5082C90Ea1c2c14c70399186c",
+  "windowIndex": 3,
+  "totalRewardsDistributed": "25000000000000000000",
+  "recipients": {
+    "0x00b591bc2b682a0b30dd72bac9406bfa13e5d3cd": {
+      "amount": "1000000000000000000",
+      "metaData": { "reason": ["YD-WETH-21 Liquidity Mining Week 27"] }
+    },
+    "0x00e4846e2971bb2b29cec7c9efc8fa686ae21342": {
+      "amount": "2000000000000000000",
+      "metaData": { "reason": ["YD-WETH-21 Liquidity Mining Week 27", "Governance Votes KPI Options Round 1"] }
+    },
+    "0x00e4f5a158ec094da8cf55f8d994b84b6f5f33d9": {
+      "amount": "3000000000000000000",
+      "metaData": {
+        "reason": [
+          "YD-WETH-21 Liquidity Mining Week 27",
+          "Governance Votes KPI Options Round 1",
+          "Token Minter KPI Options Round 1"
+        ]
+      }
+    },
+    "0x0156ff30a13abbe641cb17f33967eb67feafeb4e": {
+      "amount": "4000000000000000000",
+      "metaData": {
+        "reason": [
+          "YD-WETH-21 Liquidity Mining Week 27",
+          "Governance Votes KPI Options Round 1",
+          "Token Minter KPI Options Round 1"
+        ]
+      }
+    },
+    "0x01b01c6fb158e55c83883219a533f1efd2abfdf4": {
+      "amount": "15000000000000000000",
+      "metaData": { "reason": ["Governance Votes KPI Options Round 1"] }
+    }
+  }
+}

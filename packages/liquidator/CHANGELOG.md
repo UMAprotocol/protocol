@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/liquidator@2.0.1...@uma/liquidator@2.1.0) (2021-03-16)
+
+### Features
+
+- **perpetual-proposer:** Initialize PerpetualFundingRateProposer package ([#2632](https://github.com/UMAprotocol/protocol/issues/2632)) ([42fe711](https://github.com/UMAprotocol/protocol/commit/42fe711788b2c95bef1be64c7c033e4bd1391e2a))
+- **trader+DSProxyManager:** Few small tweaks after war games + useful DSProxy token management script ([#2656](https://github.com/UMAprotocol/protocol/issues/2656)) ([684f78f](https://github.com/UMAprotocol/protocol/commit/684f78f09e284466fac74c7388cab56d56aadd4c))
+
 ## [2.0.1](https://github.com/UMAprotocol/protocol/compare/@uma/liquidator@2.0.0...@uma/liquidator@2.0.1) (2021-02-27)
 
 **Note:** Version bump only for package @uma/liquidator
