@@ -1,7 +1,7 @@
 const winston = require("winston");
 const sinon = require("sinon");
 
-const { toWei, hexToUtf8, utf8ToHex, toBN } = web3.utils;
+const { toWei, hexToUtf8, utf8ToHex } = web3.utils;
 
 const { OptimisticOracleContractMonitor } = require("../src/OptimisticOracleContractMonitor");
 const { interfaceName, MAX_UINT_VAL } = require("@uma/common");
@@ -59,17 +59,6 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
   const initialUserBalance = toWei("100");
   const finalFee = toWei("1");
   const reward = toWei("3");
-  // Proposal & Dispute bond = 2 x final fee
-  const totalDefaultBond = toBN(finalFee)
-    .mul(toBN(2))
-    .toString(); // 2x final fee
-  const proposalPayout = toBN(totalDefaultBond)
-    .add(toBN(reward))
-    .toString(); // dispute bond + reward
-  const disputePayout = toBN(totalDefaultBond)
-    .add(toBN(reward))
-    .add(toBN(finalFee).div(toBN(2)))
-    .toString(); // dispute bond + reward +  50% of loser's bond
   const correctPrice = toWei("-17"); // Arbitrary price to use as the correct price for proposals + disputes
   const identifier = web3.utils.utf8ToHex("Test Identifier");
   const defaultAncillaryData = "0x";
@@ -211,8 +200,8 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, requestTime)); // Timestamp
     assert.isTrue(lastSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
     assert.isTrue(lastSpyLogIncludes(spy, collateral.address)); // Currency
-    assert.isTrue(lastSpyLogIncludes(spy, reward)); // Reward
-    assert.isTrue(lastSpyLogIncludes(spy, finalFee)); // Final Fee
+    assert.isTrue(lastSpyLogIncludes(spy, "3.00")); // Reward, formatted correctly
+    assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // Final Fee
     let spyCount = spy.callCount;
 
     // Make another request with different ancillary data.
@@ -247,7 +236,7 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, requestTime)); // Timestamp
     assert.isTrue(lastSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
     assert.isTrue(lastSpyLogIncludes(spy, collateral.address)); // Currency
-    assert.isTrue(lastSpyLogIncludes(spy, correctPrice)); // Proposed Price
+    assert.isTrue(lastSpyLogIncludes(spy, "-17.00")); // Proposed Price
     assert.isTrue(lastSpyLogIncludes(spy, (Number(proposalTime) + liveness).toString())); // Expiration time
     let spyCount = spy.callCount;
 
@@ -293,7 +282,7 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
     assert.isTrue(lastSpyLogIncludes(spy, requestTime)); // Timestamp
     assert.isTrue(lastSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
-    assert.isTrue(lastSpyLogIncludes(spy, correctPrice)); // Proposed Price
+    assert.isTrue(lastSpyLogIncludes(spy, "-17.00")); // Proposed Price
     let spyCount = spy.callCount;
 
     // Make another dispute with different ancillary data.
@@ -347,9 +336,11 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(identifier))); // Identifier
     assert.isTrue(lastSpyLogIncludes(spy, requestTime)); // Timestamp
     assert.isTrue(lastSpyLogIncludes(spy, defaultAncillaryData)); // Ancillary Data
-    assert.isTrue(lastSpyLogIncludes(spy, correctPrice)); // Price
+    assert.isTrue(lastSpyLogIncludes(spy, "17.00")); // Price
     // Proposal was disputed, payout made to winner of disputer
-    assert.isTrue(lastSpyLogIncludes(spy, `payout was ${disputePayout} made to the winner of the dispute`));
+    // Dispute reward equals: default bond (2x final fee) + proposal reward + 1/2 of loser's final fee
+    // = (2 * 1) + 3 + (0.5 * 1) = 5.5
+    assert.isTrue(lastSpyLogIncludes(spy, "payout was 5.50 made to the winner of the dispute"));
     let spyCount = spy.callCount;
 
     // Make another settlement without a dispute, with different ancillary data.
@@ -382,7 +373,9 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
     await contractMonitor.checkForSettlements();
     assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${newTxn.tx}`));
     // Proposal this time was not disputed so payout to the proposer.
-    assert.isTrue(lastSpyLogIncludes(spy, `payout was ${proposalPayout} made to the proposer`));
+    // Proposer reward equals: default bond (2x final fee) + proposal reward
+    // = (2 * 1) + 3 = 5
+    assert.isTrue(lastSpyLogIncludes(spy, "payout was 5.00 made to the proposer"));
     // Check that only one extra event was emitted since we already "checked" the original events.
     assert.equal(spy.callCount, spyCount + 1);
   });

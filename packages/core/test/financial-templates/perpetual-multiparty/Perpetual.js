@@ -1,4 +1,4 @@
-const { toWei } = web3.utils;
+const { toWei, padRight, utf8ToHex } = web3.utils;
 
 // Tested Contract
 const Perpetual = artifacts.require("Perpetual");
@@ -38,8 +38,8 @@ contract("Perpetual", function(accounts) {
       collateralAddress: collateralToken.address,
       tokenAddress: tokenCurrency.address,
       finderAddress: finder.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("TEST_IDENTIFIER"),
-      fundingRateIdentifier: web3.utils.utf8ToHex("TEST_FUNDING_IDENTIFIER"),
+      priceFeedIdentifier: padRight(utf8ToHex("TEST_IDENTIFIER"), 64),
+      fundingRateIdentifier: padRight(utf8ToHex("TEST_FUNDING_IDENTIFIER"), 64),
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPercentage: { rawValue: toWei("0.1") },

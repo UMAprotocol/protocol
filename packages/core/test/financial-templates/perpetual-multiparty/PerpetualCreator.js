@@ -1,4 +1,4 @@
-const { toWei, hexToUtf8, toBN } = web3.utils;
+const { toWei, hexToUtf8, toBN, padRight, utf8ToHex } = web3.utils;
 const { didContractThrow, MAX_UINT_VAL } = require("@uma/common");
 const truffleAssert = require("truffle-assertions");
 
@@ -47,8 +47,8 @@ contract("PerpetualCreator", function(accounts) {
 
     constructorParams = {
       collateralAddress: collateralToken.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("TEST_IDENTIFIER"),
-      fundingRateIdentifier: web3.utils.utf8ToHex("TEST_FUNDING_IDENTIFIER"),
+      priceFeedIdentifier: padRight(utf8ToHex("TEST_IDENTIFIER"), 64),
+      fundingRateIdentifier: padRight(utf8ToHex("TEST_FUNDING_IDENTIFIER"), 64),
       syntheticName: "Test Synthetic Token",
       syntheticSymbol: "SYNTH",
       collateralRequirement: { rawValue: toWei("1.5") },
