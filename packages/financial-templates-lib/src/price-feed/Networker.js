@@ -12,8 +12,8 @@ class Networker {
     this.logger = logger;
   }
 
-  async getJson(url) {
-    const response = await fetch(url);
+  async getJson(url, options) {
+    const response = await fetch(url, options);
     const json = await response.json();
     if (!json) {
       // Throw if no error. Will result in a retry upstream.

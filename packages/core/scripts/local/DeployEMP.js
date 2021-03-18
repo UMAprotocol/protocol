@@ -26,9 +26,13 @@ const { interfaceName, ZERO_ADDRESS, parseFixed } = require("@uma/common");
 const { getAbi, getTruffleContract } = require("../../index");
 const argv = require("minimist")(process.argv.slice(), {
   boolean: ["test"],
-  string: ["identifier", "collateral", "cversion"]
+  string: ["identifier", "collateral", "cversion", "name", "symbol", "duration"]
 });
 const abiVersion = argv.cversion || "1.2.2"; // Default to most recent mainnet deployment, 1.2.2.
+const syntheticName = argv.name || "Test Synth";
+const syntheticSymbol = argv.symbol || "SYNTH";
+const duration = argv.duration || 2 * 60;
+const expirationTimestamp = Math.ceil(Date.now() / 1000) + Number(duration); // 2 minutes from now
 
 // Deployed contract ABI's and addresses we need to fetch.
 const ExpiringMultiPartyCreator = getTruffleContract("ExpiringMultiPartyCreator", web3, abiVersion);
@@ -100,11 +104,11 @@ const deployEMP = async callback => {
 
     // Create a new EMP
     let constructorParams = {
-      expirationTimestamp: Math.ceil(Date.now() / 1000) + 60 * 2, // 2 minutes from now
+      expirationTimestamp: expirationTimestamp,
       collateralAddress: collateralToken.address,
       priceFeedIdentifier: priceFeedIdentifier,
-      syntheticName: "Test Synth",
-      syntheticSymbol: "SYNTH",
+      syntheticName: syntheticName,
+      syntheticSymbol: syntheticSymbol,
       collateralRequirement: { rawValue: toWei("1.35") },
       disputeBondPercentage: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPercentage: { rawValue: toWei("0.05") },
