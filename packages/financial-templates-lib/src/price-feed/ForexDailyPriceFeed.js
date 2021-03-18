@@ -205,8 +205,11 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
     const newHistoricalPricePeriods = Object.keys(historyResponse.rates)
       .map(dateString => ({
         // Output data should be a list of objects with only the open and close times and prices.
-        openTime: this._dateTimeToSecond(dateString) - 24 * 3600,
-        closeTime: this._dateTimeToSecond(dateString),
+        openTime: this._dateTimeToSecond(dateString),
+        closeTime: this._dateTimeToSecond(dateString, true),
+        // Note: We make the assumption that prices apply for a full 24 hours starting
+        // from the beginning of the day denoted by the datetime string. The beginning of the day
+        // begins at 16:00 CET.
         closePrice: this.convertPriceFeedDecimals(historyResponse.rates[dateString][this.symbol])
       }))
       .sort((a, b) => {
@@ -230,13 +233,21 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
       .subtract(16, "hours")
       .format("YYYY-MM-DD");
   }
-  _dateTimeToSecond(inputDateTime) {
+  _dateTimeToSecond(inputDateTime, endOfDay = false) {
     // To convert from date string to unix, we assume that the date string
-    // denotes CET time, and then we add 16 hours since the ECB "begins" days at 16:00 CET..
-    return moment
-      .tz(inputDateTime, "YYYY-MM-DD", "Europe/Berlin")
-      .add(16, "hours")
-      .unix();
+    // denotes CET time, and then we add 16 hours since the ECB "begins" days at 16:00 CET.
+    if (endOfDay) {
+      return moment
+        .tz(inputDateTime, "YYYY-MM-DD", "Europe/Berlin")
+        .endOf("day")
+        .add(16, "hours")
+        .unix();
+    } else {
+      return moment
+        .tz(inputDateTime, "YYYY-MM-DD", "Europe/Berlin")
+        .add(16, "hours")
+        .unix();
+    }
   }
 }
 

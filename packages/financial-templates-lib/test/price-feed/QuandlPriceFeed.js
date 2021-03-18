@@ -8,8 +8,11 @@ const sinon = require("sinon");
 
 contract("QuandlPriceFeed.js", function() {
   let quandlPriceFeed;
-  // Keep test timezone consistent with price feed's.
-  let mockTime = moment("2021-03-12", "YYYY-MM-DD").unix();
+  // Keep test timezone consistent with price feed's. Set mock time equal to
+  // close of the most recent day.
+  let mockTime = moment("2021-03-12", "YYYY-MM-DD")
+    .endOf("day")
+    .unix();
   let networker;
   let spy;
 

@@ -219,8 +219,10 @@ class QuandlPriceFeed extends PriceFeedInterface {
       .map(dailyData => ({
         // Output data should be a list of objects with only the open and close times and prices.
         // Note: Data is formatted as [Date, Open, High, Low, Last, Change, Settle, Volume, Previous Day Open Interest]
-        openTime: this._dateTimeToSecond(dailyData[0]) - 24 * 3600,
-        closeTime: this._dateTimeToSecond(dailyData[0]),
+        openTime: this._dateTimeToSecond(dailyData[0]),
+        closeTime: this._dateTimeToSecond(dailyData[0], true),
+        // Note: We make the assumption that prices apply for a full 24 hours starting
+        // from the beginning of the day denoted by the datetime string.
         openPrice: this.convertPriceFeedDecimals(dailyData[1]),
         closePrice: this.convertPriceFeedDecimals(dailyData[4])
       }))
@@ -238,8 +240,14 @@ class QuandlPriceFeed extends PriceFeedInterface {
   _secondToDateTime(inputSecond) {
     return moment.unix(inputSecond).format("YYYY-MM-DD");
   }
-  _dateTimeToSecond(inputDateTime) {
-    return moment(inputDateTime, "YYYY-MM-DD").unix();
+  _dateTimeToSecond(inputDateTime, endOfDay = false) {
+    if (endOfDay) {
+      return moment(inputDateTime, "YYYY-MM-DD")
+        .endOf("day")
+        .unix();
+    } else {
+      return moment(inputDateTime, "YYYY-MM-DD").unix();
+    }
   }
 }
 
