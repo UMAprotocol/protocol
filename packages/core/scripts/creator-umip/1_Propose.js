@@ -46,7 +46,7 @@ async function runExport() {
         data: addCreatorToRegistryTx
       }
     ],
-    { from: proposerWallet, gas: 2000000, gasPrice: gasEstimator.getCurrentFastPrice() }
+    { from: proposerWallet, gasPrice: gasEstimator.getCurrentFastPrice() }
   );
 
   console.log(`

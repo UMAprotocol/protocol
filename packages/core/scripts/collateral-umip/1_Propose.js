@@ -110,7 +110,6 @@ async function runExport() {
   await gasEstimator.update();
   const txn = await governor.propose(transactionList, {
     from: proposerWallet,
-    gas: 2000000,
     gasPrice: gasEstimator.getCurrentFastPrice()
   });
   console.log("Transaction: ", txn?.tx);
