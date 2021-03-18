@@ -141,7 +141,6 @@ contract("index.js", function(accounts) {
     await Main.run({
       logger: spyLogger,
       web3,
-      perpetualAddress: perpsCreated[0].address,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,

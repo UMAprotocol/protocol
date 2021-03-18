@@ -7,8 +7,6 @@ const {
 const { createObjectFromDefaultProps, runTransaction } = require("@uma/common");
 const { getAbi } = require("@uma/core");
 const Promise = require("bluebird");
-const _ = require("lodash");
-const assert = require("assert");
 
 class FundingRateProposer {
   /**
@@ -191,26 +189,13 @@ class FundingRateProposer {
       this.toBN(this.toWei(this.fundingRateErrorPercent.toString()))
     );
     if (shouldUpdateFundingRate) {
-      // Get successful transaction receipt and return value or error.
-      const requestTimestamp = priceFeed.getLastUpdateTime();
+      // Use the latest block's timestamp as the request timestamp so that the contract does
+      // not interpret `requestTimestamp` as being in the future:
+      const requestTimestamp = (await this.web3.eth.getBlock("latest")).timestamp;
       const proposal = cachedContract.contract.methods.proposeFundingRate(
         { rawValue: offchainFundingRate },
         requestTimestamp
       );
-      // The `proposeFundingRate()` method will only work if `gulp()` or `applyFundingRate()` is called before hand.
-      const deepClone = Object.assign({}, cachedContract.contract);
-      console.log(
-        await runTransaction({
-          transaction: cachedContract.contract.methods.gulp(),
-          config: {
-            gasPrice: this.gasEstimator.getCurrentFastPrice(),
-            from: this.account
-          }
-        })
-      );
-      // Check whether the web3 object is getting mutated by the above contract call.
-      const deepClonePost = Object.assign({}, cachedContract.contract);
-      assert(_.isEqual(deepClone, deepClonePost));
 
       this.logger.debug({
         at: "PerpetualProposer#updateFundingRate",
@@ -223,19 +208,14 @@ class FundingRateProposer {
         proposer: this.account
       });
       try {
-        const transactionResult = await runTransaction(
-          {
-            transaction: proposal,
-            config: {
-              gasPrice: this.gasEstimator.getCurrentFastPrice(),
-              from: this.account
-            }
-          },
-          // Set this to true to only make the .call() (no .send()), which
-          // allows for faster testing iterations. This should print out the correct
-          // proposal bond and estimated gas if the call were to succeed
-          true
-        );
+        // Get successful transaction receipt and return value or error.
+        const transactionResult = await runTransaction({
+          transaction: proposal,
+          config: {
+            gasPrice: this.gasEstimator.getCurrentFastPrice(),
+            from: this.account
+          }
+        });
         let receipt = transactionResult.receipt;
         let returnValue = transactionResult.returnValue.toString();
 

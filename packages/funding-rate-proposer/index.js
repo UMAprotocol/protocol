@@ -20,7 +20,6 @@ const { getWeb3 } = require("@uma/common");
  * @notice Runs strategies that request and propose new funding rates for Perpetual contracts.
  * @param {Object} logger Module responsible for sending logs.
  * @param {Object} web3 web3.js instance with unlocked wallets used for all on-chain connections.
- * @param {String} perpetualAddress Contract address of the Perpetual Contract.
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
  * @param {Number} errorRetries The number of times the execution loop will re-try before throwing if an error occurs.
@@ -32,7 +31,6 @@ const { getWeb3 } = require("@uma/common");
 async function run({
   logger,
   web3,
-  perpetualAddress,
   pollingDelay,
   errorRetries,
   errorRetriesTimeout,
@@ -46,7 +44,6 @@ async function run({
     logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "PerpetualFundingRateProposer#index",
       message: "Perpetual funding rate proposer started 🌝",
-      perpetualAddress,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
