@@ -1,4 +1,5 @@
 const { didContractThrow } = require("@uma/common");
+const { utf8ToHex } = web3.utils;
 
 const Finder = artifacts.require("Finder");
 
@@ -11,8 +12,8 @@ contract("Finder", function(accounts) {
   it("General methods", async function() {
     const finder = await Finder.deployed();
 
-    const interfaceName1 = web3.utils.hexToBytes(web3.utils.utf8ToHex("interface1"));
-    const interfaceName2 = web3.utils.hexToBytes(web3.utils.utf8ToHex("interface2"));
+    const interfaceName1 = utf8ToHex("interface1");
+    const interfaceName2 = utf8ToHex("interface2");
     const implementationAddress1 = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
     const implementationAddress2 = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
     const implementationAddress3 = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
@@ -38,7 +39,7 @@ contract("Finder", function(accounts) {
     const result = await finder.changeImplementationAddress(interfaceName1, implementationAddress3, { from: owner });
     truffleAssert.eventEmitted(result, "InterfaceImplementationChanged", ev => {
       return (
-        web3.utils.hexToUtf8(ev.interfaceName) === web3.utils.hexToUtf8(web3.utils.bytesToHex(interfaceName1)) &&
+        web3.utils.hexToUtf8(ev.interfaceName) === web3.utils.hexToUtf8(interfaceName1) &&
         ev.newImplementationAddress === implementationAddress3
       );
     });

@@ -817,7 +817,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     assert.equal(validFallbackFeed.priceFeeds[0].lookback, lookbackOverride);
   });
 
-  it("Fallback feed cannot have 0 nested feeds to medianize", async function() {
+  it("Fallback feed cannot have 0 nested feeds", async function() {
     const config = {
       type: "fallback",
       apiKey,

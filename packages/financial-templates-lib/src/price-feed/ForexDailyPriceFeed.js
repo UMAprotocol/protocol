@@ -1,6 +1,6 @@
 const { PriceFeedInterface } = require("./PriceFeedInterface");
 const { parseFixed } = require("@uma/common");
-const moment = require("moment");
+const moment = require("moment-timezone");
 const assert = require("assert");
 
 // An implementation of PriceFeedInterface that uses https://api.exchangeratesapi.io/ to
@@ -220,11 +220,23 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
     this.lastUpdateTime = currentTime;
   }
 
+  // ECB data is published every day at 16:00 CET (UTC+1).
   _secondToDateTime(inputSecond) {
-    return moment.unix(inputSecond).format("YYYY-MM-DD");
+    // To convert from unix to date string, first we convert to CET and then we subtract 16 hours since
+    // the ECB "begins" days at 16:00 CET. This reverses the calculation performed in `_dateTimeToSecond`.
+    return moment
+      .unix(inputSecond)
+      .tz("Europe/Berlin")
+      .subtract(16, "hours")
+      .format("YYYY-MM-DD");
   }
   _dateTimeToSecond(inputDateTime) {
-    return moment(inputDateTime, "YYYY-MM-DD").unix();
+    // To convert from date string to unix, we assume that the date string
+    // denotes CET time, and then we add 16 hours since the ECB "begins" days at 16:00 CET..
+    return moment
+      .tz(inputDateTime, "YYYY-MM-DD", "Europe/Berlin")
+      .add(16, "hours")
+      .unix();
   }
 }
 

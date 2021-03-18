@@ -10,6 +10,14 @@ For more information about running a monitor bot, see the [docs](https://docs.um
 yarn add @uma/monitors
 ```
 
+## Running the monitors
+
+The simplest way to run the monitors is:
+
+```bash
+EMP_ADDRESS=0x1234 CUSTOM_NODE_URL=https://your.node.url.io MNEMONIC="your mnemonic (12-word seed phrase) here" MONITOR_CONFIG="{optional monitor config object}" monitors --network mainnet_mnemonic
+```
+
 ## Monitors
 
 The four monitors available are:

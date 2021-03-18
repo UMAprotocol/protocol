@@ -393,7 +393,7 @@ contract("SignedFixedPoint", function() {
     // +-1e-18 / +-1e19 = -1e-37, which can't be represented and gets floor'd to 0.
     quotient = await fixedPoint.wrapDiv("-1", toWei(toWei("10")));
     assert.equal(quotient.toString(), "0");
-    quotient = await fixedPoint.wrapDiv("1", toWei(toWei("-10")));
+    quotient = await fixedPoint.wrapDiv("1", toBN(toWei(toWei("-10"))));
     assert.equal(quotient.toString(), "0");
   });
 
@@ -420,7 +420,7 @@ contract("SignedFixedPoint", function() {
     // +-1e-18 / +-1e19 = -1e-37, which can't be represented and gets rounded away from zero to -1.
     quotient = await fixedPoint.wrapDivAwayFromZero("-1", toWei(toWei("10")));
     assert.equal(quotient.toString(), "-1");
-    quotient = await fixedPoint.wrapDivAwayFromZero("1", toWei(toWei("-10")));
+    quotient = await fixedPoint.wrapDivAwayFromZero("1", toBN(toWei(toWei("-10"))));
     assert.equal(quotient.toString(), "-1");
   });
 

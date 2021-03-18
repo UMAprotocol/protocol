@@ -79,7 +79,7 @@ module.exports = ({ queries, coingecko, synthPrices, firstEmpDate }) => {
     try {
       return [await getSyntheticPriceHistory(empAddress, start, end), calculateValue];
     } catch (err) {
-      console.error(empAddress, "synthetic price failed", err);
+      console.error(empAddress, "synthetic price failed", err.message);
     }
     try {
       if (fallbackPrice) {
@@ -88,8 +88,9 @@ module.exports = ({ queries, coingecko, synthPrices, firstEmpDate }) => {
       }
       return [await getCoingeckoPriceHistory(syntheticAddress, "usd", start, end), calculateValueFromUsd];
     } catch (err) {
-      console.error(empAddress, "coingecko price failed", err);
+      console.error(empAddress, "coingecko price failed", err.message);
     }
+    throw new Error(`Unable to get a price for EMP: ${empAddress} and Synth: ${syntheticAddress}`);
   }
 
   // Need to convert seconds to MS
