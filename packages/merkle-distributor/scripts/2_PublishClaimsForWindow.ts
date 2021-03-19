@@ -78,7 +78,7 @@ async function main() {
   assert((await merkleDistributor.methods.owner().call()) == account, "Unlocked account does not own the distributor");
   assert((await web3.eth.net.getId()) == claimsObject.chainId, "The connected network not match your  JSON chainId");
   assert(web3.utils.isAddress(claimsObject.rewardToken), "Invalid rewardToken" + claimsObject.rewardToken);
-  assert((await merkleDistributor.methods.lastCreatedIndex().call()) == claimsObject.windowIndex, "Wrong windowIndex");
+  assert((await merkleDistributor.methods.nextCreatedIndex().call()) == claimsObject.windowIndex, "Wrong windowIndex");
 
   console.log("File passed the checks\n\n1. Adding claims file to IPFS 🛰");
 
