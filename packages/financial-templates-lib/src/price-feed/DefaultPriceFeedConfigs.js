@@ -2,28 +2,14 @@ const { getPrecisionForIdentifier } = require("@uma/common");
 
 // Default price feed configs for currently approved identifiers.
 const defaultConfigs = {
-  // "ETH/BTC": {
-  //   type: "medianizer",
-  //   pair: "ethbtc",
-  //   minTimeBetweenUpdates: 60,
-  //   medianizedFeeds: [
-  //     { type: "cryptowatch", exchange: "coinbase-pro" },
-  //     { type: "cryptowatch", exchange: "binance" },
-  //     { type: "cryptowatch", exchange: "bitstamp" }
-  //   ]
-  // },
   "ETH/BTC": {
-    type: "expression",
-    lookback: 7200,
-    expression: "USDETH / 100" // Must be between [-1e-5, +1e-5]
-  },
-  ETHUSD: {
     type: "medianizer",
+    pair: "ethbtc",
     minTimeBetweenUpdates: 60,
     medianizedFeeds: [
-      { type: "cryptowatch", exchange: "coinbase-pro", pair: "ethusd" },
-      { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
-      { type: "cryptowatch", exchange: "kraken", pair: "ethusd" }
+      { type: "cryptowatch", exchange: "coinbase-pro" },
+      { type: "cryptowatch", exchange: "binance" },
+      { type: "cryptowatch", exchange: "bitstamp" }
     ]
   },
   "COMP/USD": {
