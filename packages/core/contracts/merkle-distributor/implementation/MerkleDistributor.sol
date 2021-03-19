@@ -100,7 +100,7 @@ contract MerkleDistributor is Ownable {
      *      subsequently transfer in rewards or the following situation can occur).
      *      Example race situation:
      *          - Window 1 Tree: Owner sets `rewardsToDeposit=100` and insert proofs that give claimant A 50 tokens and
-     *            claimant B 51 tokens. The owner has made an error by not setting the `rewardsToDeposit` correctly to 101).
+     *            claimant B 51 tokens. The owner has made an error by not setting the `rewardsToDeposit` correctly to 101.
      *          - Window 2 Tree: Owner sets `rewardsToDeposit=1` and insert proofs that give claimant A 1 token. The owner
      *            correctly set `rewardsToDeposit` this time.
      *          - At this point contract owns 100 + 1 = 101 tokens. Now, imagine the following sequence:
