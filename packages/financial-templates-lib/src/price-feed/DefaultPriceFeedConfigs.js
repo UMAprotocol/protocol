@@ -399,19 +399,41 @@ const defaultConfigs = {
     expression: "10 * DEFI_PULSE_SUSHI_TVL / DEFI_PULSE_UNISWAP_TVL"
   },
   CNYUSD: {
-    type: "tradermade",
-    pair: "CNYUSD",
-    minTimeBetweenUpdates: 600,
-    minuteLookback: 7200,
-    hourlyLookback: 604800,
-    ohlcPeriod: 10 // CNYUSD only available at 10 minute granularity
+    type: "fallback",
+    orderedFeeds: [
+      {
+        type: "tradermade",
+        pair: "CNYUSD",
+        minTimeBetweenUpdates: 600,
+        minuteLookback: 7200,
+        hourlyLookback: 259200,
+        ohlcPeriod: 10 // CNYUSD only available at 10 minute granularity
+      },
+      {
+        type: "forexdaily",
+        base: "CNY",
+        symbol: "USD",
+        lookback: 259200
+      }
+    ]
   },
   EURUSD: {
-    type: "tradermade",
-    pair: "EURUSD",
-    minTimeBetweenUpdates: 60,
-    minuteLookback: 7200,
-    hourlyLookback: 604800
+    type: "fallback",
+    orderedFeeds: [
+      {
+        type: "tradermade",
+        pair: "EURUSD",
+        minTimeBetweenUpdates: 60,
+        minuteLookback: 7200,
+        hourlyLookback: 259200
+      },
+      {
+        type: "forexdaily",
+        base: "EUR",
+        symbol: "USD",
+        lookback: 259200
+      }
+    ]
   },
   PHPDAI: {
     type: "medianizer",
@@ -572,7 +594,7 @@ const defaultConfigs = {
     type: "tradermade",
     pair: "XAUUSD",
     minuteLookback: 7200,
-    hourlyLookback: 604800,
+    hourlyLookback: 259200,
     minTimeBetweenUpdates: 60
   },
   uSTONKS_APR21: {

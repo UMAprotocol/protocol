@@ -22,7 +22,11 @@ module.exports = {
   BATCH_MAX_REVEALS: 25,
   BATCH_MAX_RETRIEVALS: 100,
 
+  // maximum uint256 value: 2^256 - 1
   MAX_UINT_VAL: "115792089237316195423570985008687907853269984665640564039457584007913129639935",
+
+  // maximum allowance allowed by certain ERC20's like UNI: 2^96 - 1
+  MAX_SAFE_ALLOWANCE: "79228162514264337593543950335",
 
   // Max integer that can be safely stored in a vanilla js int.
   MAX_SAFE_JS_INT: 2147483647,

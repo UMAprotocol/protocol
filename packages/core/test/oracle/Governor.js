@@ -1,7 +1,7 @@
 const {
   RegistryRolesEnum,
   didContractThrow,
-  getRandomUnsignedInt,
+  getRandomSignedInt,
   computeVoteHash,
   signMessage
 } = require("@uma/common");
@@ -22,7 +22,7 @@ const Registry = artifacts.require("Registry");
 const Finder = artifacts.require("Finder");
 
 // Extract web3 functions into primary namespace.
-const { toBN, toWei, hexToUtf8, utf8ToHex } = web3.utils;
+const { toBN, toWei, hexToUtf8, utf8ToHex, padRight } = web3.utils;
 const snapshotMessage = "Sign For Snapshot";
 
 contract("Governor", function(accounts) {
@@ -182,14 +182,20 @@ contract("Governor", function(accounts) {
 
     // Check that the proposals shows up and that the identifiers are constructed correctly.
     assert.equal(pendingRequests.length, 2);
-    const request1 = pendingRequests[0];
-    const request2 = pendingRequests[1];
+    const request1 = {
+      ...pendingRequests[0],
+      identifier: padRight(pendingRequests[0].identifier, 64)
+    };
+    const request2 = {
+      ...pendingRequests[1],
+      identifier: padRight(pendingRequests[1].identifier, 64)
+    };
     assert.equal(web3.utils.hexToUtf8(request1.identifier), `Admin ${id1}`);
     assert.equal(web3.utils.hexToUtf8(request2.identifier), `Admin ${id2}`);
 
     // Execute the proposals to clean up.
     const vote = toWei("1");
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     const hash1 = computeVoteHash({
       price: vote,
       salt,
@@ -236,11 +242,14 @@ contract("Governor", function(accounts) {
     await moveToNextRound(voting);
     const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
-    const request = pendingRequests[0];
+    const request = {
+      ...pendingRequests[0],
+      identifier: padRight(pendingRequests[0].identifier, 64)
+    };
 
     // Vote the proposal through.
     const vote = toWei("1");
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     const hash = computeVoteHash({
       price: vote,
       salt,
@@ -280,11 +289,14 @@ contract("Governor", function(accounts) {
     await moveToNextRound(voting);
     const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
-    const request = pendingRequests[0];
+    const request = {
+      ...pendingRequests[0],
+      identifier: padRight(pendingRequests[0].identifier, 64)
+    };
 
     // Vote the proposal through.
     const vote = toWei("1");
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     const hash = computeVoteHash({
       price: vote,
       salt,
@@ -327,11 +339,14 @@ contract("Governor", function(accounts) {
     await moveToNextRound(voting);
     const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
-    const request = pendingRequests[0];
+    const request = {
+      ...pendingRequests[0],
+      identifier: padRight(pendingRequests[0].identifier, 64)
+    };
 
     // Vote the proposal through.
     const vote = toWei("1");
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     const hash = computeVoteHash({
       price: vote,
       salt,
@@ -380,11 +395,14 @@ contract("Governor", function(accounts) {
     await moveToNextRound(voting);
     const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
-    const request = pendingRequests[0];
+    const request = {
+      ...pendingRequests[0],
+      identifier: padRight(pendingRequests[0].identifier, 64)
+    };
 
     // Vote the proposal through.
     const vote = toWei("1");
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     const hash = computeVoteHash({
       price: vote,
       salt,
@@ -423,11 +441,14 @@ contract("Governor", function(accounts) {
     await moveToNextRound(voting);
     const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
-    const request = pendingRequests[0];
+    const request = {
+      ...pendingRequests[0],
+      identifier: padRight(pendingRequests[0].identifier, 64)
+    };
 
     // Vote the proposal through.
     const vote = toWei("1");
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     const hash = computeVoteHash({
       price: vote,
       salt,
@@ -468,11 +489,14 @@ contract("Governor", function(accounts) {
     await moveToNextRound(voting);
     const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
-    const request = pendingRequests[0];
+    const request = {
+      ...pendingRequests[0],
+      identifier: padRight(pendingRequests[0].identifier, 64)
+    };
 
     // Vote the proposal through.
     const vote = toWei("1");
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     const hash = computeVoteHash({
       price: vote,
       salt,
@@ -514,11 +538,14 @@ contract("Governor", function(accounts) {
     await moveToNextRound(voting);
     const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
-    const request = pendingRequests[0];
+    const request = {
+      ...pendingRequests[0],
+      identifier: padRight(pendingRequests[0].identifier, 64)
+    };
 
     // Vote down the proposal.
     const vote = "0";
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     const hash = computeVoteHash({
       price: vote,
       salt,
@@ -558,11 +585,14 @@ contract("Governor", function(accounts) {
     await moveToNextRound(voting);
     let roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
-    const request = pendingRequests[0];
+    const request = {
+      ...pendingRequests[0],
+      identifier: padRight(pendingRequests[0].identifier, 64)
+    };
 
     // Vote on the proposal, but don't reach the GAT.
     const vote = toWei("1");
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     const hash2 = computeVoteHash({
       price: vote,
       salt,
@@ -615,11 +645,14 @@ contract("Governor", function(accounts) {
     await moveToNextRound(voting);
     const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
-    const request = pendingRequests[0];
+    const request = {
+      ...pendingRequests[0],
+      identifier: padRight(pendingRequests[0].identifier, 64)
+    };
 
     // Vote the proposal through.
     const vote = toWei("1");
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     const hash = computeVoteHash({
       price: vote,
       salt,
@@ -667,9 +700,12 @@ contract("Governor", function(accounts) {
     await moveToNextRound(voting);
     const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
-    const request = pendingRequests[0];
+    const request = {
+      ...pendingRequests[0],
+      identifier: padRight(pendingRequests[0].identifier, 64)
+    };
     const vote = toWei("1");
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     const hash = computeVoteHash({
       price: vote,
       salt,
@@ -713,9 +749,12 @@ contract("Governor", function(accounts) {
     await moveToNextRound(voting);
     const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
-    const request = pendingRequests[0];
+    const request = {
+      ...pendingRequests[0],
+      identifier: padRight(pendingRequests[0].identifier, 64)
+    };
     const vote = toWei("1");
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     const hash = computeVoteHash({
       price: vote,
       salt,
@@ -793,11 +832,14 @@ contract("Governor", function(accounts) {
     await moveToNextRound(voting);
     const roundId = await voting.getCurrentRoundId();
     const pendingRequests = await voting.getPendingRequests();
-    const request = pendingRequests[0];
+    const request = {
+      ...pendingRequests[0],
+      identifier: padRight(pendingRequests[0].identifier, 64)
+    };
 
     // Vote the proposal through.
     const vote = toWei("1");
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     const hash = computeVoteHash({
       price: vote,
       salt,

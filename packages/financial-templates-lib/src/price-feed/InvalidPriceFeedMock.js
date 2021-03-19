@@ -2,7 +2,7 @@ const { PriceFeedInterface } = require("./PriceFeedInterface");
 
 // Simulates a pricefeed with bad data
 class InvalidPriceFeedMock extends PriceFeedInterface {
-  constructor(logger, web3, getTime) {
+  constructor(logger, web3, getTime, shouldUpdateThrow = false, decimals = 18) {
     super();
     this.logger = logger;
     this.web3 = web3;
@@ -10,6 +10,8 @@ class InvalidPriceFeedMock extends PriceFeedInterface {
 
     this.currentPrice = null;
     this.lastUpdateTime = null;
+    this.priceFeedDecimals = decimals;
+    this.shouldUpdateThrow = shouldUpdateThrow;
   }
   async getHistoricalPrice() {
     throw new Error("InvalidPriceFeedMock: expected missing historical price");
@@ -23,8 +25,13 @@ class InvalidPriceFeedMock extends PriceFeedInterface {
   getCurrentPrice() {
     return null;
   }
+  getPriceFeedDecimals() {
+    return this.priceFeedDecimals;
+  }
   async update() {
-    return;
+    if (this.shouldUpdateThrow) {
+      throw new Error("InvalidPriceFeedMock: expected update failure");
+    }
   }
 }
 

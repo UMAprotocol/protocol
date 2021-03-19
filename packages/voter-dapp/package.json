@@ -25,9 +25,6 @@
     "unstated-next": "^1.1.0",
     "utf-8-validate": "^5.0.2"
   },
-  "devDependencies": {
-    "truffle": "^5.1.37"
-  },
   "scripts": {
     "start": "SKIP_PREFLIGHT_CHECK=true react-scripts start",
     "build": "SKIP_PREFLIGHT_CHECK=true GENERATE_SOURCEMAP=false react-scripts build",

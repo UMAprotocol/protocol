@@ -1,7 +1,7 @@
 const { MerkleTree } = require("@uma/merkle-distributor");
 const SamplePayouts = require("./SamplePayout.json");
 const truffleAssert = require("truffle-assertions");
-const { toBN, toWei, utf8ToHex } = web3.utils;
+const { toBN, toWei, utf8ToHex, padRight } = web3.utils;
 const { MAX_UINT_VAL, didContractThrow } = require("@uma/common");
 const { assert } = require("chai");
 const Promise = require("bluebird");
@@ -383,7 +383,7 @@ contract("MerkleDistributor.js", function(accounts) {
         });
 
         // Invalid merkle proof:
-        const invalidProof = [utf8ToHex("0x")];
+        const invalidProof = [padRight(utf8ToHex("0x"), 64)];
         await isInvalidProof({
           windowIndex: windowIndex,
           account: leaf.account,
