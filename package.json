@@ -66,6 +66,6 @@
     "*.{js,ts,tsx}": "eslint --cache --fix"
   },
   "workspaces": [
-    "packages/*"
+    "packages/**"
   ]
 }
