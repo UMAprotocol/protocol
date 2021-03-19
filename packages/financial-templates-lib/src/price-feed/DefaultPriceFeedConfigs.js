@@ -697,6 +697,25 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "binance", pair: "uniusdt" },
       { type: "cryptowatch", exchange: "okex", pair: "uniusdt" }
     ]
+  },
+  USDOCEAN: {
+    type: "medianizer",
+    invertPrice: true,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "binance", pair: "oceanusdt" },
+      { type: "cryptowatch", exchange: "bittrex", pair: "oceanusdt" },
+      { type: "cryptowatch", exchange: "bitz", pair: "oceanusdt" }
+    ]
+  },
+  OCEANUSD: {
+    type: "medianizer",
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "binance", pair: "oceanusdt" },
+      { type: "cryptowatch", exchange: "bittrex", pair: "oceanusdt" },
+      { type: "cryptowatch", exchange: "bitz", pair: "oceanusdt" }
+    ]
   }
 };
 
