@@ -2,6 +2,7 @@ const { getClaimsForAddress } = require("@uma/merkle-distributor");
 
 exports.getClaimsForAddress = async (req, res) => {
   try {
+    res.set("Access-Control-Allow-Origin", "*"); // Resolves CORS scoping issues. Enables local development and production over HTTPS.
     const body = req.body;
     ["merkleDistributorAddress", "claimerAddress", "chainId"].forEach(requiredKey => {
       if (!Object.keys(body).includes(requiredKey))

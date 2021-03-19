@@ -3,6 +3,7 @@ const datastore = new Datastore();
 
 exports.fetchLatestTvl = async (req, res) => {
   try {
+    res.set("Access-Control-Allow-Origin", "*"); // Resolves CORS scoping issues. Enables local development and production over HTTPS.
     const [result] = await datastore.runQuery(
       datastore
         .createQuery("UmaTvl")
