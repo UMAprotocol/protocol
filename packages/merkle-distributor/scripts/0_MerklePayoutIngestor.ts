@@ -60,7 +60,7 @@ async function main() {
   for (let i = 0; i < o.input.length; i++) {
     const inputFile = JSON.parse(fs.readFileSync(o.input[i], { encoding: "utf8" }));
 
-    // Fetch the recipients from the input file. The key donates the identifier within the input file. if this is null
+    // Fetch the recipients from the input file. The key donates the identifier within the input file. If this is null
     // then the input file has no nested structures and only contains the recipients.
     const recipients = o.key[i] == "null" ? inputFile : inputFile[o.key[i]];
     Object.keys(recipients).forEach((recipientAddress: string) => {
