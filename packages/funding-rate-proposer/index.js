@@ -26,6 +26,8 @@ const { getWeb3 } = require("@uma/common");
  * @param {Number} errorRetriesTimeout The amount of milliseconds to wait between re-try iterations on failed loops.
  * @param {Object} [commonPriceFeedConfig] Common configuration to pass to all PriceFeeds constructed by proposer.
  * @param {Object} [perpetualProposerConfig] Configuration to construct the Perpetual funding rate proposer.
+ * @param {Boolean} [isTest] If set to true, then proposer bot will use the pricefeed's `lastUpdateTime` as the
+ *     request timestamp instead of `web3.eth.getBlock('latest').timestamp`.
  * @return None or throws an Error.
  */
 async function run({
@@ -35,7 +37,8 @@ async function run({
   errorRetries,
   errorRetriesTimeout,
   commonPriceFeedConfig,
-  perpetualProposerConfig
+  perpetualProposerConfig,
+  isTest = false
 }) {
   try {
     const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
@@ -81,7 +84,7 @@ async function run({
       await retry(
         async () => {
           await fundingRateProposer.update();
-          await fundingRateProposer.updateFundingRates();
+          await fundingRateProposer.updateFundingRates(isTest);
           return;
         },
         {

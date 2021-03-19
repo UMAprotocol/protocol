@@ -144,17 +144,18 @@ contract("index.js", function(accounts) {
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
-      commonPriceFeedConfig
+      commonPriceFeedConfig,
+      isTest: true // Need to set this to true so that proposal uses correct request timestamp for test environment
     });
 
     for (let i = 0; i < spy.callCount; i++) {
       assert.notStrictEqual(spyLogLevel(spy, i), "error");
     }
 
-    // The first log should indicate that the Proposer runner started successfully
-    // and auto detected the perpetual's deployed address.
+    // The first log should indicate that the Proposer runner started successfully,
+    // and the second to last log should indicate that a new rate was proposed.
     assert.isTrue(spyLogIncludes(spy, 0, "Perpetual funding rate proposer started"));
-    assert.isTrue(spyLogIncludes(spy, 0, perpsCreated[0].address));
+    assert.isTrue(spyLogIncludes(spy, spy.callCount - 2, "Proposed new funding rate"));
     assert.isTrue(spyLogIncludes(spy, spy.callCount - 1, "End of serverless execution loop - terminating process"));
   });
 });

@@ -98,7 +98,7 @@ class FundingRateProposer {
     ]);
   }
 
-  async updateFundingRates() {
+  async updateFundingRates(useRealTime = false) {
     this.logger.debug({
       at: "PerpetualProposer#updateFundingRates",
       message: "Checking for contract funding rates to update",
@@ -109,7 +109,7 @@ class FundingRateProposer {
     // bot strategically waits to submit funding rate proposals. Rewards
     // increase with time since last update.
     await Promise.map(Object.keys(this.contractCache), contractAddress => {
-      return this._updateFundingRate(contractAddress);
+      return this._updateFundingRate(contractAddress, useRealTime);
     });
   }
 
@@ -120,7 +120,7 @@ class FundingRateProposer {
    ************************************/
 
   // Check contract funding rates and request+propose to update them, or return early if an error is encountered.
-  async _updateFundingRate(contractAddress) {
+  async _updateFundingRate(contractAddress, useRealTime) {
     const cachedContract = this.contractCache[contractAddress];
     const currentFundingRateData = cachedContract.state.currentFundingRateData;
     const currentConfig = cachedContract.state.currentConfig;
@@ -190,8 +190,12 @@ class FundingRateProposer {
     );
     if (shouldUpdateFundingRate) {
       // Use the latest block's timestamp as the request timestamp so that the contract does
-      // not interpret `requestTimestamp` as being in the future:
-      const requestTimestamp = (await this.web3.eth.getBlock("latest")).timestamp;
+      // not interpret `requestTimestamp` as being in the future.
+      // Note: If `useRealTime=true`, then use the pricefeed's timestamp, which is useful
+      // for test environments.
+      const requestTimestamp = useRealTime
+        ? priceFeed.getLastUpdateTime()
+        : (await this.web3.eth.getBlock("latest")).timestamp;
       const proposal = cachedContract.contract.methods.proposeFundingRate(
         { rawValue: offchainFundingRate },
         requestTimestamp

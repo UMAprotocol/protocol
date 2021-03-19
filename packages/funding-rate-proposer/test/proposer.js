@@ -296,7 +296,7 @@ contract("Perpetual: proposer.js", function(accounts) {
       beforeEach(async function() {
         // Initial perpetual funding rate for all identifiers is 0,
         // bot should see a different current funding rate from the PriceFeedMockScaled and propose.
-        await proposer.updateFundingRates();
+        await proposer.updateFundingRates(true);
       });
       it("Detects each contract's current funding rate and proposes to update it if it has changed beyond some margin", async function() {
         // Check that the identifiers all have been proposed to.
@@ -320,7 +320,7 @@ contract("Perpetual: proposer.js", function(accounts) {
         // Running `updateFundingRates()` on updated contract state does nothing because all
         // identifiers have pending (undisputed) proposals.
         await proposer.update();
-        await proposer.updateFundingRates();
+        await proposer.updateFundingRates(true);
         assert.isTrue(spyLogIncludes(spy, -1, "Proposal is already pending"));
       });
       describe("Proposed rate is published, can now propose again", function() {
@@ -354,7 +354,7 @@ contract("Perpetual: proposer.js", function(accounts) {
           // latestProposalTime += 1
           // await timer.setCurrentTime(latestProposalTime);
           await proposer.update();
-          await proposer.updateFundingRates();
+          await proposer.updateFundingRates(true);
 
           for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
             await verifyOracleState(
@@ -381,7 +381,7 @@ contract("Perpetual: proposer.js", function(accounts) {
 
           // Update and check that an error log was emitted
           await proposer.update();
-          await proposer.updateFundingRates();
+          await proposer.updateFundingRates(true);
 
           // Check for the ERROR log emitted by the proposer.
           assert.equal(lastSpyLogLevel(spy), "error");
@@ -411,7 +411,7 @@ contract("Perpetual: proposer.js", function(accounts) {
     }
 
     // Error log should be emitted on `updateFundingRates()`.
-    await proposer.updateFundingRates();
+    await proposer.updateFundingRates(true);
     assert.equal(lastSpyLogLevel(spy), "error");
     assert.isTrue(spyLogIncludes(spy, -1, "Failed to create pricefeed for funding rate identifier"));
   });
@@ -429,7 +429,7 @@ contract("Perpetual: proposer.js", function(accounts) {
     await proposer.update();
 
     // Error log should be emitted on `updateFundingRates()`.
-    await proposer.updateFundingRates();
+    await proposer.updateFundingRates(true);
     assert.equal(lastSpyLogLevel(spy), "error");
     assert.isTrue(spyLogIncludes(spy, -1, "Failed to query current price for funding rate identifier"));
   });
