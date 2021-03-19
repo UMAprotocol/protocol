@@ -7,8 +7,8 @@
 // the `-i` flag. See the example execution for the KPI options token-distribution below.
 
 // ts-node ./scripts/0_MerklePayoutIngestor.ts --input ../../outputs/governance_recipients.json ../../outputs/uma_holder_recipients.json \
-// ../../outputs/uma_user_recipients.json -- key null null null -- d 18 18 18 -- reason "KPI Options drop 1: Governance Recipient" \
-// "KPI Options drop1: UMA Token Holder" "KPI Options drop1: UMA User" -- rewardToken 0x47B1EE6d02af0AA5082C90Ea1c2c14c70399186c -- chainId 42 -- windowIndex 0
+// ../../outputs/uma_user_recipients.json --key null null null --decimals 18 18 18 --reason "KPI Options drop 1: Governance Recipient" \
+// "KPI Options drop1: UMA Token Holder" "KPI Options drop1: UMA User" --rewardToken 0x47B1EE6d02af0AA5082C90Ea1c2c14c70399186c --chainId 42 --windowIndex 0
 
 import assert from "assert";
 import path from "path";
@@ -62,7 +62,7 @@ async function main() {
 
     // Fetch the recipients from the input file. The key donates the identifier within the input file. if this is null
     // then the input file has no nested structures and only contains the recipients.
-    const recipients = o.key == "null" ? inputFile[o.key] : inputFile;
+    const recipients = o.key[i] == "null" ? inputFile : inputFile[o.key[i]];
     Object.keys(recipients).forEach((recipientAddress: string) => {
       const checkSumRecipientAddress = toChecksumAddress(recipientAddress); // Ensure consistent address case
 
