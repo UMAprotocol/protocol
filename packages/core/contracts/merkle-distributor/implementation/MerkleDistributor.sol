@@ -45,26 +45,18 @@ contract MerkleDistributor is Ownable {
         bytes32[] merkleProof;
     }
 
-    /****************************************
-     * PUBLIC DATA STRUCTURES *
-     ****************************************/
-
     // Windows are mapped to arbitrary indices.
     mapping(uint256 => Window) public merkleWindows;
 
     // Index of next created Merkle root.
     uint256 public nextCreatedIndex;
 
-    /****************************************
-     * PRIVATE DATA STRUCTURES *
-     ****************************************/
-
     // Track which accounts have claimed for each window index.
     // Note: uses a packed array of bools for gas optimization on tracking certain claims. Copied from Uniswap's contract.
     mapping(uint256 => mapping(uint256 => uint256)) private claimedBitMap;
 
     /****************************************
-     *                EVENTS                *
+     *                EVENTS
      ****************************************/
     event Claimed(
         address indexed caller,
@@ -84,9 +76,7 @@ contract MerkleDistributor is Ownable {
     event DeleteWindow(uint256 indexed windowIndex, address owner);
 
     /****************************
-     *
-     * ADMIN FUNCTIONS
-     *
+     *      ADMIN FUNCTIONS
      ****************************/
 
     /**
@@ -148,9 +138,7 @@ contract MerkleDistributor is Ownable {
     }
 
     /****************************
-     *
-     * NON-ADMIN FUNCTIONS
-     *
+     *    NON-ADMIN FUNCTIONS
      ****************************/
 
     /**
@@ -228,9 +216,7 @@ contract MerkleDistributor is Ownable {
     }
 
     /****************************
-     *
-     * PRIVATE FUNCTIONS
-     *
+     *     PRIVATE FUNCTIONS
      ****************************/
 
     // Mark claim as completed for `accountIndex` for Merkle root at `windowIndex`.
