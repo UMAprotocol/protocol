@@ -4,6 +4,8 @@
   "description": "Suite of reporting utils to aid in monitoring UMA financial contracts",
   "main": "index.js",
   "dependencies": {
-    "excel4node": "^1.7.2"
+    "excel4node": "^1.7.2",
+    "@apollo/client": "^3.0.1",
+    "@uma/merkle-distributor": "merkle-distributor@1.0.4"
   }
 }
