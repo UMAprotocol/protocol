@@ -128,8 +128,8 @@ contract("MerkleDistributor.js", function(accounts) {
       assert.equal(windowState.rewardToken, rewardToken.address);
       assert.equal(windowState.ipfsHash, sampleIpfsHash);
 
-      // Check that latest created index has incremented.
-      assert.equal((await merkleDistributor.lastCreatedIndex()).toString(), (windowIndex + 1).toString());
+      // Check that next created index has incremented.
+      assert.equal((await merkleDistributor.nextCreatedIndex()).toString(), (windowIndex + 1).toString());
 
       // Claim for all accounts:
       for (let i = 0; i < rewardLeafs.length; i++) {
@@ -864,8 +864,8 @@ contract("MerkleDistributor.js", function(accounts) {
         (await rewardToken.balanceOf(contractCreator)).toString()
       );
     });
-    it("(lastCreatedIndex): starts at 1 and increments on each seed", async function() {
-      assert.equal((await merkleDistributor.lastCreatedIndex()).toString(), "0");
+    it("(nextCreatedIndex): starts at 0 and increments on each seed", async function() {
+      assert.equal((await merkleDistributor.nextCreatedIndex()).toString(), "0");
 
       await merkleDistributor.setWindow(
         SamplePayouts.totalRewardsDistributed,
@@ -875,7 +875,7 @@ contract("MerkleDistributor.js", function(accounts) {
         { from: contractCreator }
       );
 
-      assert.equal((await merkleDistributor.lastCreatedIndex()).toString(), "1");
+      assert.equal((await merkleDistributor.nextCreatedIndex()).toString(), "1");
     });
   });
   describe("Emergency admin functions", function() {

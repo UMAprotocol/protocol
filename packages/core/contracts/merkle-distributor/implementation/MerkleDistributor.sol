@@ -53,8 +53,8 @@ contract MerkleDistributor is Ownable {
     // Note: uses a packed array of bools for gas optimization on tracking certain claims. Copied from Uniswap's contract.
     mapping(uint256 => mapping(uint256 => uint256)) private claimedBitMap;
 
-    // Index of last created Merkle root. Next allocation to begin at `lastCreatedIndex + 1`.
-    uint256 public lastCreatedIndex;
+    // Index of next created Merkle root.
+    uint256 public nextCreatedIndex;
 
     // Events:
     event Claimed(
@@ -104,8 +104,8 @@ contract MerkleDistributor is Ownable {
         bytes32 merkleRoot,
         string memory ipfsHash
     ) external onlyOwner {
-        uint256 indexToSet = lastCreatedIndex;
-        lastCreatedIndex = indexToSet.add(1);
+        uint256 indexToSet = nextCreatedIndex;
+        nextCreatedIndex = indexToSet.add(1);
 
         _setWindow(indexToSet, rewardsToDeposit, rewardToken, merkleRoot, ipfsHash);
     }
