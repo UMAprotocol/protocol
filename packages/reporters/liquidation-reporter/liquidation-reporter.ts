@@ -36,7 +36,7 @@ export async function fetchUmaEcosystemData() {
   const allEmpPositions = await getAllEmpsPositions();
 
   // This data structure stores all information used in the final payout.
-  let uniqueCollateralTypes: {
+  const uniqueCollateralTypes: {
     [key: string]: {
       activeFinancialContracts: Array<any>;
       drawDownAmounts: Array<{
@@ -169,7 +169,7 @@ export async function fetchUmaEcosystemData() {
         // Next, using the value from the sample price feed, we can compute the drawdown intervals. These are steps
         // of 10% decrease from the current price. At each price point we can compute the CR of each position within
         // the financial contract. if it is below the contracts collateral Requirement add to the total liquidated amount.
-        let drawDownPrices: Array<string> = [];
+        const drawDownPrices: Array<string> = [];
         for (let i = 0; i < 10; i++) {
           const priceStep = (10 - i) / 10;
           const drawDownInterval = invertedPrice ? 1 / priceStep : priceStep;

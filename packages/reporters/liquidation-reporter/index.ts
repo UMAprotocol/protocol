@@ -12,4 +12,6 @@ fetchDataAndWriteToExcelFile()
       process.exit(0);
     }, 2000);
   })
-  .catch(() => {});
+  .catch(() => {
+    process.exit(1);
+  });
