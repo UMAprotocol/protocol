@@ -6,6 +6,6 @@
   "dependencies": {
     "excel4node": "^1.7.2",
     "@apollo/client": "^3.0.1",
-    "@uma/merkle-distributor": "merkle-distributor@1.0.4"
+    "@uma/merkle-distributor": "^1.0.4"
   }
 }

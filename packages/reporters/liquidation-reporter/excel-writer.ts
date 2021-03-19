@@ -94,9 +94,9 @@ export function createExcelSheetFromLiquidationDrawDownData(drawDownData: any) {
     sheet.column(2).setWidth("Drawdown Price(USD)".length);
     sheet
       .cell(6, 3)
-      .string(`Liquidated Collateral${collateralData.collateralSymbol}`)
+      .string(`Liquidated Collateral(${collateralData.collateralSymbol})`)
       .style(boldStyle);
-    sheet.column(3).setWidth(`Liquidated Collateral${collateralData.collateralSymbol}`.length);
+    sheet.column(3).setWidth(`Liquidated Collateral(${collateralData.collateralSymbol})`.length);
     sheet
       .cell(6, 4)
       .string("USD To Liquidate Collateral")
