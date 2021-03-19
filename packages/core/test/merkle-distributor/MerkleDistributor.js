@@ -913,7 +913,11 @@ contract("MerkleDistributor.js", function(accounts) {
           from: contractCreator
         });
         truffleAssert.eventEmitted(txn, "WithdrawRewards", ev => {
-          return ev.owner === contractCreator && ev.amount.toString() === withdrawAmount;
+          return (
+            ev.owner === contractCreator &&
+            ev.amount.toString() === withdrawAmount &&
+            ev.currency === rewardToken.address
+          );
         });
 
         assert.equal(

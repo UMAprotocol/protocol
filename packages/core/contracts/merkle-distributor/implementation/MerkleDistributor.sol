@@ -71,7 +71,7 @@ contract MerkleDistributor is Ownable {
         address indexed rewardToken,
         address owner
     );
-    event WithdrawRewards(address indexed owner, uint256 amount);
+    event WithdrawRewards(address indexed owner, uint256 amount, address indexed currency);
     event DeleteWindow(uint256 indexed windowIndex, address owner);
 
     /****************************
@@ -119,7 +119,7 @@ contract MerkleDistributor is Ownable {
     // Emergency method used to transfer rewards out of the contract incase the contract was configured improperly.
     function withdrawRewards(address rewardCurrency, uint256 amount) external onlyOwner {
         IERC20(rewardCurrency).safeTransfer(msg.sender, amount);
-        emit WithdrawRewards(msg.sender, amount);
+        emit WithdrawRewards(msg.sender, amount, rewardCurrency);
     }
 
     /****************************
