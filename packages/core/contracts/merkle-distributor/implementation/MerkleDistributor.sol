@@ -206,9 +206,9 @@ contract MerkleDistributor is Ownable {
         window.rewardToken = IERC20(rewardToken);
         window.ipfsHash = ipfsHash;
 
-        window.rewardToken.safeTransferFrom(msg.sender, address(this), rewardsDeposited);
-
         emit CreatedWindow(windowIndex, rewardsDeposited, rewardToken, msg.sender);
+
+        window.rewardToken.safeTransferFrom(msg.sender, address(this), rewardsDeposited);
     }
 
     // Verify claim is valid and mark it as completed in this contract.
