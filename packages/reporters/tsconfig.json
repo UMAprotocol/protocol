@@ -1,6 +1,6 @@
 {
   "extends": "@tsconfig/node14/tsconfig.json",
-  "include": ["./**/*.ts", "../../reporters/liquidation-reporter/emp-position-helper.ts"],
+  "include": ["./**/*.ts"],
   "compilerOptions": {
     "outDir": "../dist",
     "rootDir": "./",

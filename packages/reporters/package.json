@@ -1,0 +1,9 @@
+{
+  "name": "@uma/reporters",
+  "version": "1.0.0",
+  "description": "Suite of reporting utils to aid in monitoring UMA financial contracts",
+  "main": "index.js",
+  "dependencies": {
+    "excel4node": "^1.7.2"
+  }
+}
