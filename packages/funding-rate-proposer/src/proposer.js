@@ -98,7 +98,12 @@ class FundingRateProposer {
     ]);
   }
 
-  async updateFundingRates() {
+  // Set `usePriceFeedTime=true` if you want to use the corresponding pricefeed's "lastUpdateTime"
+  // as the request timestamp. This is ONLY useful in a test environment where the test can manually
+  // override the pricefeed's lastUpdateTime as well as the contract's time (using the Timer contract).
+  // By default we'd want this setting to be false so that the request time is set to the latest block time
+  // (i.e. web3.eth.getBlock("latest").timestamp).
+  async updateFundingRates(usePriceFeedTime = false) {
     this.logger.debug({
       at: "PerpetualProposer#updateFundingRates",
       message: "Checking for contract funding rates to update",
@@ -109,7 +114,7 @@ class FundingRateProposer {
     // bot strategically waits to submit funding rate proposals. Rewards
     // increase with time since last update.
     await Promise.map(Object.keys(this.contractCache), contractAddress => {
-      return this._updateFundingRate(contractAddress);
+      return this._updateFundingRate(contractAddress, usePriceFeedTime);
     });
   }
 
@@ -120,7 +125,7 @@ class FundingRateProposer {
    ************************************/
 
   // Check contract funding rates and request+propose to update them, or return early if an error is encountered.
-  async _updateFundingRate(contractAddress) {
+  async _updateFundingRate(contractAddress, usePriceFeedTime) {
     const cachedContract = this.contractCache[contractAddress];
     const currentFundingRateData = cachedContract.state.currentFundingRateData;
     const currentConfig = cachedContract.state.currentConfig;
@@ -189,12 +194,16 @@ class FundingRateProposer {
       this.toBN(this.toWei(this.fundingRateErrorPercent.toString()))
     );
     if (shouldUpdateFundingRate) {
-      // Get successful transaction receipt and return value or error.
-      const requestTimestamp = priceFeed.getLastUpdateTime();
+      // Unless `usePriceFeedTime=true`, use the latest block's timestamp as the request
+      // timestamp so that the contract does not interpret `requestTimestamp` as being in the future.
+      const requestTimestamp = usePriceFeedTime
+        ? priceFeed.getLastUpdateTime()
+        : (await this.web3.eth.getBlock("latest")).timestamp;
       const proposal = cachedContract.contract.methods.proposeFundingRate(
         { rawValue: offchainFundingRate },
         requestTimestamp
       );
+
       this.logger.debug({
         at: "PerpetualProposer#updateFundingRate",
         message: "Proposing new funding rate",
@@ -206,6 +215,7 @@ class FundingRateProposer {
         proposer: this.account
       });
       try {
+        // Get successful transaction receipt and return value or error.
         const transactionResult = await runTransaction({
           transaction: proposal,
           config: {
