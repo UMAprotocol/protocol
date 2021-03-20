@@ -13,6 +13,7 @@ contract("ForexDailyPriceFeed.js", function() {
   // first convert to CET, and then add 16 hours, since the API "begins" days at 16:00.
   let mockTime = moment
     .tz("2021-03-12", "YYYY-MM-DD", "Europe/Berlin")
+    .endOf("day")
     .add(16, "hours")
     .unix();
   let networker;

@@ -1,31 +1,30 @@
 const { PriceFeedInterface } = require("./PriceFeedInterface");
 const { parseFixed } = require("@uma/common");
-const moment = require("moment-timezone");
-const assert = require("assert");
+const moment = require("moment");
 
-// An implementation of PriceFeedInterface that uses https://api.exchangeratesapi.io/ to
-// daily forex prices published by the ECB
-class ForexDailyPriceFeed extends PriceFeedInterface {
+// An implementation of PriceFeedInterface that uses the Quandl free API to retrieve prices.
+// API details can be found here: https://docs.quandl.com/docs
+class QuandlPriceFeed extends PriceFeedInterface {
   /**
-   * @notice Constructs the CryptoWatchPriceFeed.
+   * @notice Constructs the QuandlPriceFeed.
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} web3 Provider from truffle instance to connect to Ethereum network.
-   * @param {String} base The API defines the base as the three character symbol that the
-   *                 exchange rate is returning the price of, quoted in the symbol.
-   *                 e.g. "base=EUR&symbol=USD" EUR priced in USD terms.
-   * @param {String} symbol See above explanation for `base`.
+   * @param {String} quandlApiKey Quandl Data API key. Will get rate-limited without an API key.
+   * @param {String} datasetCode Code identifying the database to which the dataset belongs. Example: "CHRIS".
+   * @param {String} databaseCode Code identifying the dataset. Example: "CME_MGC1".
    * @param {Integer} lookback How far in the past the historical prices will be available using getHistoricalPrice.
    * @param {Object} networker Used to send the API requests.
    * @param {Function} getTime Returns the current time.
    * @param {Number} priceFeedDecimals Number of priceFeedDecimals to use to convert price to wei.
    * @param {Integer} minTimeBetweenUpdates Min number of seconds between updates. If update() is called again before
-   *        this number of seconds has passed, it will be a no-op.
+   *      this number of seconds has passed, it will be a no-op.
    */
   constructor(
     logger,
     web3,
-    base,
-    symbol,
+    quandlApiKey,
+    datasetCode,
+    databaseCode,
     lookback,
     networker,
     getTime,
@@ -36,16 +35,15 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
     super();
     this.logger = logger;
     this.web3 = web3;
-    this.base = base.toUpperCase();
-    this.symbol = symbol.toUpperCase();
 
-    assert(VALID_SYMBOLS.includes(this.base), "invalid base");
-    assert(VALID_SYMBOLS.includes(this.symbol), "invalid symbol");
-    this.uuid = `ForexDaily-${symbol}-${base}`;
+    this.apiKey = quandlApiKey;
+    this.datasetCode = datasetCode.toUpperCase();
+    this.databaseCode = databaseCode.toUpperCase();
     this.lookback = lookback;
-    this.minTimeBetweenUpdates = minTimeBetweenUpdates;
+    this.uuid = `Quandl-${datasetCode}-${databaseCode}`;
     this.networker = networker;
     this.getTime = getTime;
+    this.minTimeBetweenUpdates = minTimeBetweenUpdates;
     this.priceFeedDecimals = priceFeedDecimals;
 
     this.toBN = this.web3.utils.toBN;
@@ -99,27 +97,31 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
     if (match === undefined) {
       returnPrice = this.currentPrice;
       if (verbose) {
-        console.group(`\n(${this.symbol}${this.base}) No daily price available @ ${time}`);
+        console.group(`\n(${this.datasetCode}:${this.databaseCode}) No OHLC available @ ${time}`);
         console.log(
           `- ✅ Time is later than earliest historical time, fetching current price: ${this.web3.utils.fromWei(
             returnPrice.toString()
           )}`
         );
         console.log(
-          `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n- https://exchangeratesapi.io/history?base=${this.base}&symbols=${this.symbol}`
+          `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n- https://www.quandl.com/api/v3/datasets/${this.datasetCode}/${this.databaseCode}/data.json`
         );
         console.groupEnd();
       }
       return returnPrice;
     }
 
-    returnPrice = match.closePrice;
+    returnPrice = match.openPrice;
     if (verbose) {
-      console.group(`\n(${this.symbol}${this.base}) Historical Daily Price @ ${match.closeTime}`);
-      console.log(`- ✅ Close Price:${this.web3.utils.fromWei(returnPrice.toString())}`);
+      console.group(`\n(${this.datasetCode}:${this.databaseCode}) Historical OHLC @ ${match.closeTime}`);
+      console.log(`- ✅ Open Price:${this.web3.utils.fromWei(returnPrice.toString())}`);
       console.log(
-        `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n- https://exchangeratesapi.io/history?base=${this.base}&symbols=${this.symbol}`
+        `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n- https://www.quandl.com/api/v3/datasets/${this.datasetCode}/${this.databaseCode}/data.json`
       );
+      console.log(
+        '- This will return an OHLC data packet as "result", which contains in order: \n- ["Date","Open","High","Low","Last","Change","Settle","Volume","Previous Day Open Interest"].'
+      );
+      console.log("- We use the OpenPrice to compute the median.");
       console.groupEnd();
     }
     return returnPrice;
@@ -130,7 +132,6 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
       return [historicalPrice.closeTime, historicalPrice.closePrice];
     });
   }
-
   getLastUpdateTime() {
     return this.lastUpdateTime;
   }
@@ -149,7 +150,7 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
     // Return early if the last call was too recent.
     if (this.lastUpdateTime !== undefined && this.lastUpdateTime + this.minTimeBetweenUpdates > currentTime) {
       this.logger.debug({
-        at: "ForexDailyPriceFeed",
+        at: "QuandlPriceFeed",
         message: "Update skipped because the last one was too recent",
         currentTime: currentTime,
         lastUpdateTimestamp: this.lastUpdateTime,
@@ -159,8 +160,8 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
     }
 
     this.logger.debug({
-      at: "ForexDailyPriceFeed",
-      message: "Updating ForexDailyPriceFeed",
+      at: "QuandlPriceFeed",
+      message: "Updating QuandlPriceFeed",
       currentTime: currentTime,
       lastUpdateTimestamp: this.lastUpdateTime
     });
@@ -172,11 +173,13 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
     const endDateString = this._secondToDateTime(currentTime);
 
     // 1. Construct URL.
-    // See https://exchangeratesapi.io/ for how this url is constructed.
+    // See https://docs.quandl.com/docs/parameters-2 for how this url is constructed.
     const url = [
-      "https://api.exchangeratesapi.io/history?",
-      `start_at=${startDateString}&end_at=${endDateString}`,
-      `&base=${this.base}&symbols=${this.symbol}`
+      `https://www.quandl.com/api/v3/datasets/${this.datasetCode}/${this.databaseCode}/data.json?`,
+      `start_date=${startDateString}&end_date=${endDateString}`,
+      `&collapse=daily&api_key=${this.apiKey}`
+      // Theoretically you could change granularity to be greater than daily but this doesn't seem
+      // useful to implement flexibility for right now.
     ].join("");
 
     // 2. Send request.
@@ -184,9 +187,9 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
 
     // 3. Check responses.
     if (
-      !historyResponse?.rates ||
-      Object.keys(historyResponse.rates).length === 0 ||
-      Object.values(historyResponse.rates).some(rate => !rate[this.symbol])
+      !historyResponse?.dataset_data?.data ||
+      historyResponse.dataset_data.data.length === 0 ||
+      historyResponse.dataset_data.data.some(dailyData => dailyData.length === 0)
     ) {
       throw new Error(`🚨Could not parse price result from url ${url}: ${JSON.stringify(historyResponse)}`);
     }
@@ -194,23 +197,34 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
     // 4. Parse results.
     // Return data structure:
     // {
-    //   "rates": {
-    //     "2021-03-16": {"EUR":0.8385041087},
-    //     "2021-03-15": {"EUR":0.8389261745},
-    //   },
-    //     "start_at": "2021-03-15",
-    //     "end_at": "2021-03-16",
-    //     "base": "USD"
+    //   "dataset_data": {
+    //     "data": [
+    //       [
+    //         "2021-03-16",
+    //          1730.2,
+    //          1740.5,
+    //          1724.4,
+    //          1730.1,
+    //          1.7,
+    //          1730.9,
+    //          41843.0,
+    //          21285.0
+    //       ]
+    //      ...more data for different days
+    //     ],
+    //     ...other data we don't care about
+    //   }
     // }
-    const newHistoricalPricePeriods = Object.keys(historyResponse.rates)
-      .map(dateString => ({
+    const newHistoricalPricePeriods = historyResponse.dataset_data.data
+      .map(dailyData => ({
         // Output data should be a list of objects with only the open and close times and prices.
-        openTime: this._dateTimeToSecond(dateString),
-        closeTime: this._dateTimeToSecond(dateString, true),
+        // Note: Data is formatted as [Date, Open, High, Low, Last, Change, Settle, Volume, Previous Day Open Interest]
+        openTime: this._dateTimeToSecond(dailyData[0]),
+        closeTime: this._dateTimeToSecond(dailyData[0], true),
         // Note: We make the assumption that prices apply for a full 24 hours starting
-        // from the beginning of the day denoted by the datetime string. The beginning of the day
-        // begins at 16:00 CET.
-        closePrice: this.convertPriceFeedDecimals(historyResponse.rates[dateString][this.symbol])
+        // from the beginning of the day denoted by the datetime string.
+        openPrice: this.convertPriceFeedDecimals(dailyData[1]),
+        closePrice: this.convertPriceFeedDecimals(dailyData[4])
       }))
       .sort((a, b) => {
         // Sorts the data such that the oldest elements come first.
@@ -223,71 +237,20 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
     this.lastUpdateTime = currentTime;
   }
 
-  // ECB data is published every day at 16:00 CET (UTC+1).
   _secondToDateTime(inputSecond) {
-    // To convert from unix to date string, first we convert to CET and then we subtract 16 hours since
-    // the ECB "begins" days at 16:00 CET. This reverses the calculation performed in `_dateTimeToSecond`.
-    return moment
-      .unix(inputSecond)
-      .tz("Europe/Berlin")
-      .subtract(16, "hours")
-      .format("YYYY-MM-DD");
+    return moment.unix(inputSecond).format("YYYY-MM-DD");
   }
   _dateTimeToSecond(inputDateTime, endOfDay = false) {
-    // To convert from date string to unix, we assume that the date string
-    // denotes CET time, and then we add 16 hours since the ECB "begins" days at 16:00 CET.
     if (endOfDay) {
-      return moment
-        .tz(inputDateTime, "YYYY-MM-DD", "Europe/Berlin")
+      return moment(inputDateTime, "YYYY-MM-DD")
         .endOf("day")
-        .add(16, "hours")
         .unix();
     } else {
-      return moment
-        .tz(inputDateTime, "YYYY-MM-DD", "Europe/Berlin")
-        .add(16, "hours")
-        .unix();
+      return moment(inputDateTime, "YYYY-MM-DD").unix();
     }
   }
 }
 
-// Base and Symbol are drawn from the same list:
-const VALID_SYMBOLS = [
-  "CAD",
-  "HKD",
-  "ISK",
-  "PHP",
-  "DKK",
-  "HUF",
-  "CZK",
-  "AUD",
-  "RON",
-  "SEK",
-  "IDR",
-  "INR",
-  "BRL",
-  "RUB",
-  "HRK",
-  "JPY",
-  "THB",
-  "CHF",
-  "SGD",
-  "PLN",
-  "BGN",
-  "TRY",
-  "CNY",
-  "NOK",
-  "NZD",
-  "ZAR",
-  "USD",
-  "MXN",
-  "ILS",
-  "GBP",
-  "KRW",
-  "MYR",
-  "EUR"
-];
-
 module.exports = {
-  ForexDailyPriceFeed
+  QuandlPriceFeed
 };

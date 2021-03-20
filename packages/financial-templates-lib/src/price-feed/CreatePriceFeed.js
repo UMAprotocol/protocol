@@ -4,6 +4,7 @@ const { MedianizerPriceFeed } = require("./MedianizerPriceFeed");
 const { FallBackPriceFeed } = require("./FallBackPriceFeed");
 const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
 const { ForexDailyPriceFeed } = require("./ForexDailyPriceFeed");
+const { QuandlPriceFeed } = require("./QuandlPriceFeed");
 const { DefiPulsePriceFeed } = require("./DefiPulsePriceFeed");
 const { UniswapPriceFeed } = require("./UniswapPriceFeed");
 const { BalancerPriceFeed } = require("./BalancerPriceFeed");
@@ -57,6 +58,31 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.invertPrice, // Not checked in config because this parameter just defaults to false.
       config.priceFeedDecimals, // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
       config.ohlcPeriod // Defaults to 60 unless supplied.
+    );
+  } else if (config.type === "quandl") {
+    const requiredFields = ["datasetCode", "databaseCode", "lookback", "quandlApiKey"];
+
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating QuandlPriceFeed",
+      config
+    });
+
+    return new QuandlPriceFeed(
+      logger,
+      web3,
+      config.quandlApiKey,
+      config.datasetCode,
+      config.databaseCode,
+      config.lookback,
+      networker,
+      getTime,
+      config.priceFeedDecimals, // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
+      config.minTimeBetweenUpdates // Defaults to 43200 (12 hours) unless supplied.
     );
   } else if (config.type === "domfi") {
     const requiredFields = ["pair", "lookback", "minTimeBetweenUpdates"];
