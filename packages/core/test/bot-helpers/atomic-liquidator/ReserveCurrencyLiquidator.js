@@ -17,13 +17,12 @@ const Token = getTruffleContract("ExpandedERC20", web3);
 const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
 const Store = artifacts.require("Store");
 const Finder = artifacts.require("Finder");
-const AddressWhitelist = artifacts.require("AddressWhitelist");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Timer = artifacts.require("Timer");
 const DSProxyFactory = getTruffleContract("DSProxyFactory", web3, "latest");
 const DSProxy = getTruffleContract("DSProxy", web3, "latest");
 
-//Tested contract
+// Tested contract
 let reserveCurrencyLiquidator;
 
 let reserveToken;
@@ -33,14 +32,16 @@ let factory;
 let router;
 let pair;
 let pairAddress;
+let dsProxy;
 let dsProxyFactory;
 let financialContract;
+let identifierWhitelist;
 let timer;
 let finder;
 let store;
 
 const priceFeedIdentifier = padRight(utf8ToHex("TEST_IDENTIFIER"), 64);
-const unreachableDeadline = 4772084478; //100 years in the future
+const unreachableDeadline = 4772084478; // 100 years in the future
 const finalFeeAmount = toBN(toWei("0.1"));
 
 // Returns the current spot price of a uniswap pool, scaled to 4 decimal points.
@@ -70,7 +71,6 @@ contract("ReserveTokenLiquidator", function(accounts) {
     store = await Store.deployed();
 
     timer = await Timer.deployed();
-    collateralWhitelist = await AddressWhitelist.deployed();
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
