@@ -251,6 +251,7 @@ class FinancialContractClient {
           .mul(this.latestCumulativeFundingRateMultiplier)
           .div(this.fixedPointAdjustment)
           .toString(),
+        rawTokens: position.tokensOutstanding.toString(),
         amountCollateral: this.toBN(position.rawCollateral.toString()) // Apply the current outstanding fees to collateral.
           .mul(this.cumulativeFeeMultiplier)
           .div(this.fixedPointAdjustment)

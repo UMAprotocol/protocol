@@ -478,6 +478,7 @@ contract("FinancialContractClient.js", function(accounts) {
                 {
                   sponsor: sponsor1,
                   numTokens: convertSynthetic("100"),
+                  rawTokens: convertSynthetic("100"),
                   amountCollateral: convertCollateral("150"),
                   hasPendingWithdrawal: false,
                   withdrawalRequestPassTimestamp: "0",
@@ -499,6 +500,7 @@ contract("FinancialContractClient.js", function(accounts) {
                 {
                   sponsor: sponsor1,
                   numTokens: convertSynthetic("100"),
+                  rawTokens: convertSynthetic("100"),
                   amountCollateral: convertCollateral("150"),
                   hasPendingWithdrawal: true,
                   withdrawalRequestPassTimestamp: (currentTime + 1000).toString(),
@@ -885,6 +887,7 @@ contract("FinancialContractClient.js", function(accounts) {
                 {
                   sponsor: sponsor1,
                   numTokens: convertSynthetic("100"),
+                  rawTokens: convertSynthetic("100"),
                   amountCollateral: convertCollateral("150"),
                   hasPendingWithdrawal: false,
                   withdrawalRequestPassTimestamp: "0",
@@ -909,6 +912,7 @@ contract("FinancialContractClient.js", function(accounts) {
                     .mul(toBN(toWei("1.01")))
                     .div(toBN(toWei("1")))
                     .toString(), // the funding rate should be applied to the num of tokens
+                  rawTokens: convertSynthetic("100"),
                   amountCollateral: convertCollateral("150"),
                   hasPendingWithdrawal: false,
                   withdrawalRequestPassTimestamp: "0",

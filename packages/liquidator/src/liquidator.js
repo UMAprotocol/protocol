@@ -237,7 +237,9 @@ class Liquidator {
       at: "Liquidator",
       message: "Checking for under collateralized positions",
       liquidatorOverridePrice: liquidatorOverridePrice ? liquidatorOverridePrice.toString() : null,
-      latestCumulativeFundingRateMultiplier: this.financialContractClient.getLatestCumulativeFundingRateMultiplier(),
+      latestCumulativeFundingRateMultiplier: this.financialContractClient
+        .getLatestCumulativeFundingRateMultiplier()
+        .toString(),
       inputPrice: price.toString(),
       scaledPrice: scaledPrice.toString(),
       financialContractCRRatio: this.financialContractCRRatio.toString(),
@@ -294,7 +296,7 @@ class Liquidator {
       const tokensToLiquidate = this.toBN(liquidationArgs[3].rawValue);
 
       // Send an alert if the bot is going to submit a partial liquidation instead of a full liquidation.
-      if (tokensToLiquidate.lt(this.toBN(position.numTokens))) {
+      if (tokensToLiquidate.lt(this.toBN(position.rawTokens))) {
         this.logger.error({
           at: "Liquidator",
           message: "Submitting a partial liquidation: not enough synthetic to initiate full liquidation⚠️",
