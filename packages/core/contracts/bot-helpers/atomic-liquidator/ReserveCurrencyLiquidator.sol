@@ -58,7 +58,7 @@ contract ReserveCurrencyLiquidator {
         FixedPoint.Unsigned memory totalCollateralNeeded =
             collateralToMintAtGcr.add(store.computeFinalFee(fc.collateralCurrency()));
 
-        // 3. swap reserve currency to get required collateral for the mint + final fee.
+        // 3. Swap reserve currency to get required collateral for the mint + final fee.
         address[] memory path = new address[](2);
         path[0] = reserveCurrency;
         path[1] = fc.collateralCurrency();
