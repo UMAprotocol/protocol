@@ -75,10 +75,10 @@ module.exports = (
     assert(currentBlockTime >= 0, "requires currentBlockTime");
     assert(maxCollateralPerToken, "requires maxCollateralPerToken");
     return [
-      sponsor,                                         // sponsor
-      { rawValue: liquidationMinPrice.toString() },    // minCollateralPerToken
-      { rawValue: maxCollateralPerToken.toString() },  // maxCollateralPerToken
-      { rawValue: tokensToLiquidate.toString() },      // maxTokensToLiquidate
+      sponsor, // sponsor
+      { rawValue: liquidationMinPrice.toString() }, // minCollateralPerToken
+      { rawValue: maxCollateralPerToken.toString() }, // maxCollateralPerToken
+      { rawValue: tokensToLiquidate.toString() }, // maxTokensToLiquidate
       parseInt(currentBlockTime) + liquidationDeadline // deadline
     ];
   }
