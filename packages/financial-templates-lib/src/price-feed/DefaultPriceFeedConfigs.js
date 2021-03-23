@@ -728,6 +728,16 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "bittrex", pair: "oceanusdt" },
       { type: "cryptowatch", exchange: "bitz", pair: "oceanusdt" }
     ]
+  },
+  USDBTC_18DEC: {
+    type: "medianizer",
+    invertPrice: true,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "btcusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "btcusdt" },
+      { type: "cryptowatch", exchange: "bitstamp", pair: "btcusd" }
+    ]
   }
 };
 
