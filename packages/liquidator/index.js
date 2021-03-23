@@ -26,7 +26,6 @@ const { getAbi } = require("@uma/core");
  * @param {Object} logger Module responsible for sending logs.
  * @param {Object} web3 web3.js instance with unlocked wallets used for all on-chain connections.
  * @param {String} financialContractAddress Contract address of the Financial Contract.
- * @param {String} oneSplitAddress Contract address of OneSplit.
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
  * @param {Number} errorRetries The number of times the execution loop will re-try before throwing if an error occurs.
@@ -42,7 +41,6 @@ async function run({
   logger,
   web3,
   financialContractAddress,
-  oneSplitAddress,
   pollingDelay,
   errorRetries,
   errorRetriesTimeout,
@@ -194,14 +192,6 @@ async function run({
     const gasEstimator = new GasEstimator(logger);
     await gasEstimator.update();
 
-    if (oneSplitAddress) {
-      logger.info({
-        at: "Liquidator#index",
-        message:
-          "WARNING: 1Inch functionality has been temporarily removed, oneSplitAddress setting will have no effect on bot logic"
-      });
-    }
-
     const liquidator = new Liquidator({
       logger,
       financialContractClient,
@@ -311,8 +301,6 @@ async function Poll(callback) {
     const executionParameters = {
       // Financial Contract Address. Should be an Ethereum address
       financialContractAddress: process.env.EMP_ADDRESS || process.env.FINANCIAL_CONTRACT_ADDRESS,
-      // One Split address. Should be an Ethereum address. Defaults to mainnet address 1split.eth
-      oneSplitAddress: process.env.ONE_SPLIT_ADDRESS,
       // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
       pollingDelay: process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60,
       // Default to 3 re-tries on error within the execution loop.
