@@ -861,6 +861,7 @@ contract("FinancialContractClient.js", function(accounts) {
               [
                 {
                   sponsor: sponsor1,
+                  rawTokens: convertSynthetic("50"),
                   numTokens: toBN(convertSynthetic("50"))
                     .mul(toBN(toWei("1.05")))
                     .div(toBN(toWei("1")))
