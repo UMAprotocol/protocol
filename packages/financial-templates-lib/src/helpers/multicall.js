@@ -1,6 +1,7 @@
 // Provides convenience methods for interacting with deployed Multicall contract on network.
 const { getAbi } = require("@uma/core");
 const multicallAddressMap = require("@makerdao/multicall/src/addresses.json");
+const assert = require("assert");
 
 // Simulate submitting a batch of `transactions` to the multicall contact
 // and return an array of simulated output values. Caller will need to
