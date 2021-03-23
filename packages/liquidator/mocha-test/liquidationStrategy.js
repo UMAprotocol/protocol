@@ -201,21 +201,21 @@ describe("LiquidatorStrategy", () => {
       minSponsorSize: "10"
     };
     let strat = Strategy(config, { toBN, BN });
-    // Balance > minimum && (position.numTokens - minimum >= minimum)
+    // Balance > minimum && (position.rawTokens - minimum >= minimum)
     let result = strat.utils.canLiquidateMinimum({
-      position: { numTokens: "20" },
+      position: { rawTokens: "20" },
       syntheticTokenBalance: "11"
     });
     assert(result);
-    // Balance > minimum && !(position.numTokens - minimum >= minimum)
+    // Balance > minimum && !(position.rawTokens - minimum >= minimum)
     result = strat.utils.canLiquidateMinimum({
-      position: { numTokens: "19" },
+      position: { rawTokens: "19" },
       syntheticTokenBalance: "11"
     });
     assert(!result);
     // Balance < minimum
     result = strat.utils.canLiquidateMinimum({
-      position: { numTokens: "20" },
+      position: { rawTokens: "20" },
       syntheticTokenBalance: "9"
     });
     assert(!result);
@@ -227,18 +227,18 @@ describe("LiquidatorStrategy", () => {
     let strat = Strategy(config, { toBN, BN });
     // Balance >= position size
     let result = strat.utils.canLiquidateFully({
-      position: { numTokens: "20" },
+      position: { rawTokens: "20" },
       syntheticTokenBalance: "20"
     });
     assert(result);
     result = strat.utils.canLiquidateFully({
-      position: { numTokens: "19" },
+      position: { rawTokens: "19" },
       syntheticTokenBalance: "20"
     });
     assert(result);
     // Balance < position size
     result = strat.utils.canLiquidateFully({
-      position: { numTokens: "21" },
+      position: { rawTokens: "21" },
       syntheticTokenBalance: "20"
     });
     assert(!result);
@@ -249,7 +249,7 @@ describe("LiquidatorStrategy", () => {
     };
     let strat = Strategy(config, { toBN, BN });
     let position = {
-      numTokens: "10000",
+      rawTokens: "10000",
       sponsor: "0x1234"
     };
     let positionWithPendingWithdrawal = {
@@ -299,7 +299,7 @@ describe("LiquidatorStrategy", () => {
       currentBlockTime: 500,
       maxCollateralPerToken: "0"
     });
-    assert.equal(result[3].rawValue, position.numTokens);
+    assert.equal(result[3].rawValue, position.rawTokens);
     //    - Cannot liquidate full position, not passed WDF activation %
     result = strat.processPosition({
       position: positionWithPendingWithdrawal,
@@ -338,7 +338,7 @@ describe("LiquidatorStrategy", () => {
     // - Respects maxTokensToLiquidateWei
     result = strat.processPosition({
       position: positionWithPendingWithdrawal,
-      syntheticTokenBalance: parseInt(position.numTokens),
+      syntheticTokenBalance: parseInt(position.rawTokens),
       currentBlockTime: 500,
       empMinSponsorSize: 10,
       maxCollateralPerToken: "0",
