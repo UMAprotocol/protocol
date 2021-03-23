@@ -88,6 +88,7 @@ contract("Perpetual: proposer.js", function(accounts) {
   let startTime;
   let latestProposalTime;
   let commonPriceFeedConfig;
+  let perpetualProposerConfig;
 
   const verifyOracleState = async (state, perpetualAddress, identifier, requestTime, ancillaryData) => {
     assert.equal(
@@ -211,9 +212,10 @@ contract("Perpetual: proposer.js", function(accounts) {
     // the proposal will fail because it is "in the future".
     await timer.setCurrentTime(latestProposalTime);
     // For this test, we'll dispute any proposals that are not equal to historical price up to a
-    // 10% margin of error
-    let optimisticOracleProposerConfig = {
-      fundingRateErrorPercent: 0.1
+    // 10% margin of error.
+    perpetualProposerConfig = {
+      fundingRateErrorPercent: 0.1,
+      timeToUpdateThreshold: 1000
     };
     proposer = new FundingRateProposer({
       logger: spyLogger,
@@ -221,7 +223,7 @@ contract("Perpetual: proposer.js", function(accounts) {
       gasEstimator: gasEstimator,
       account: botRunner,
       commonPriceFeedConfig,
-      optimisticOracleProposerConfig
+      perpetualProposerConfig
     });
   });
   describe("(update)", function() {
@@ -336,12 +338,12 @@ contract("Perpetual: proposer.js", function(accounts) {
           // Now, set pricefeed price to within 10% of the current rate and check
           // that the bot skips the proposal.
           // - New funding rate is: 0.000005
-          // - Bot will skip proposal if pricefeed is approximately between [0.00000477, 0.00000527].
+          // - Bot will skip proposal if pricefeed is approximately between [0.0000045, 0.0000055].
           let pricesToPropose = [
             "0.0000049", // Within error bounds, NOT proposed
             "0.0000051", // Within error bounds, NOT proposed
-            "0.0000046", // Outside error bounds, proposed
-            "0.0000054" // Outside error bounds, proposed
+            "0.0000044", // Outside error bounds, proposed
+            "0.0000056" // Outside error bounds, proposed
           ];
           assert.equal(pricesToPropose.length, fundingRateIdentifiersToTest.length);
           for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
@@ -391,6 +393,49 @@ contract("Perpetual: proposer.js", function(accounts) {
           assert.equal(spy.getCall(-1).lastArg.minFundingRate, configStoreParams.minFundingRate.rawValue.toString());
           assert.equal(spy.getCall(-1).lastArg.maxFundingRate, configStoreParams.maxFundingRate.rawValue.toString());
         });
+      });
+    });
+    describe("(applyFundingRate)", function() {
+      it("Publishes pending proposal if last appliation time far enough in past", async function() {
+        // Return count of all FundingRateUpdated events emitted across all created Perpetual contracts.
+        const countFundingRateUpdatedEvents = async () => {
+          let counter = 0;
+          for (let i = 0; i < perpsCreated.length; i++) {
+            const updateEvents = await (await Perpetual.at(perpsCreated[i].address)).getPastEvents(
+              "FundingRateUpdated",
+              { fromBlock: 0 }
+            );
+            counter += updateEvents.length;
+          }
+          return counter;
+        };
+
+        // Initial perpetual funding rate for all identifiers is 0,
+        // bot should see a different current funding rate from the PriceFeedMockScaled and propose.
+        await proposer.updateFundingRates(true);
+
+        // Advancing time before application time threshold should cause bot to skip calling applyFundingRate.
+        latestProposalTime += 1;
+        await timer.setCurrentTime(latestProposalTime);
+        await proposer.update();
+        await proposer.applyFundingRates();
+        assert.isTrue(spyLogIncludes(spy, -1, "Skipping"));
+        assert.equal(await countFundingRateUpdatedEvents(), 0);
+
+        // Now, advance time past application time threshold.
+        // Bot should call applyFundingRate on each Perpetual contract now that enough time has passed:
+        latestProposalTime += perpetualProposerConfig.timeToUpdateThreshold - 1;
+        await timer.setCurrentTime(latestProposalTime);
+        await proposer.update();
+        await proposer.applyFundingRates();
+        assert.isTrue(spyLogIncludes(spy, -1, "Applied new funding rate"));
+        assert.equal(await countFundingRateUpdatedEvents(), perpsCreated.length);
+
+        // Calling it again should emit a log about skipping because there is no pending proposal anymore.
+        await proposer.update();
+        await proposer.applyFundingRates();
+        assert.isTrue(spyLogIncludes(spy, -1, "Skipping"));
+        assert.equal(await countFundingRateUpdatedEvents(), perpsCreated.length);
       });
     });
   });

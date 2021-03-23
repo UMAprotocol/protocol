@@ -84,6 +84,7 @@ async function run({
       await retry(
         async () => {
           await fundingRateProposer.update();
+          await fundingRateProposer.applyFundingRates();
           await fundingRateProposer.updateFundingRates(isTest);
           return;
         },

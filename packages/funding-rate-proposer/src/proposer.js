@@ -129,7 +129,7 @@ class FundingRateProposer {
 
   // Publishes a pending funding rate if the current funding rate was last updated
   // more than some threshold of time ago.
-  async applyFundingRate() {
+  async applyFundingRates() {
     await Promise.map(Object.keys(this.contractCache), contractAddress => {
       return this._applyFundingRate(contractAddress);
     });
@@ -150,7 +150,7 @@ class FundingRateProposer {
     const fundingRateIdentifier = this.hexToUtf8(currentFundingRateData.identifier);
     const hasPendingProposal = this.toBN(currentFundingRateData.proposalTime.toString());
     const lastApplicationTime = this.toBN(currentFundingRateData.applicationTime.toString());
-    const currentContractTime = await cachedContract.methods.getCurrenTime().call();
+    const currentContractTime = await cachedContract.contract.methods.getCurrentTime().call();
 
     if (
       hasPendingProposal.gt(this.toBN(0)) &&
@@ -164,6 +164,7 @@ class FundingRateProposer {
         message: "Applying new funding rate",
         fundingRateIdentifier,
         lastApplicationTime: lastApplicationTime.toString(),
+        currentContractTime: currentContractTime.toString(),
         pendingProposalTime: hasPendingProposal.toString()
       });
       try {
@@ -182,6 +183,7 @@ class FundingRateProposer {
           caller: this.account,
           fundingRateIdentifier,
           lastApplicationTime: lastApplicationTime.toString(),
+          currentContractTime: currentContractTime.toString(),
           pendingProposalTime: hasPendingProposal.toString()
         };
         this.logger.info({
@@ -205,6 +207,7 @@ class FundingRateProposer {
         message: "Skipping because there is either no pending funding rate or last application time was too recent",
         fundingRateIdentifier,
         lastApplicationTime: lastApplicationTime.toString(),
+        currentContractTime: currentContractTime.toString(),
         pendingProposalTime: hasPendingProposal.toString()
       });
     }

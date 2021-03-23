@@ -150,6 +150,8 @@ contract("index.js", function(accounts) {
 
     for (let i = 0; i < spy.callCount; i++) {
       assert.notStrictEqual(spyLogLevel(spy, i), "error");
+      // `applyFundingRate()` should not have been called on startup:
+      assert.isFalse(spyLogIncludes(spy, i, "Applied new funding rate"));
     }
 
     // The first log should indicate that the Proposer runner started successfully,
