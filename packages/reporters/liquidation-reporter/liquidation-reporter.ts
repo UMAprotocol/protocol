@@ -184,7 +184,7 @@ export async function fetchUmaEcosystemData() {
         // by this reporter we care about the price action in collateral, not synthetics.
         contractPositionsInfo.positions.forEach((sponsor: any) => {
           drawDownPrices.forEach((drawDownPrice: string, drawDownIndex: number) => {
-            const positionCR = computeCollatererlizationRatio(
+            const positionCR = computeCollateralizationRatio(
               toBN(toWei(sponsor.collateral.toString()).toString()),
               toBN(toWei(sponsor.tokensOutstanding.toString()).toString()),
               ConvertDecimals(samplePriceFeed.getPriceFeedDecimals(), 18, web3)(drawDownPrice)
@@ -261,7 +261,7 @@ function removeItemFromArrayOfObjects(
   return array;
 }
 
-function computeCollatererlizationRatio(collateral: any, debt: any, tokenPrice: any) {
+function computeCollateralizationRatio(collateral: any, debt: any, tokenPrice: any) {
   return fixedPointAdjustment
     .mul(fixedPointAdjustment)
     .mul(collateral)
