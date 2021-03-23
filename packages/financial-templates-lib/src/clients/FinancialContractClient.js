@@ -2,6 +2,7 @@
 // positions, undisputed Liquidations, expired liquidations, disputed liquidations.
 
 const { ConvertDecimals, LiquidationStatesEnum, getFromBlock } = require("@uma/common");
+const { aggregateTransactionsAndCall, contractMethodABIs } = require("../helpers/multicall");
 const Promise = require("bluebird");
 class FinancialContractClient {
   /**
@@ -10,7 +11,7 @@ class FinancialContractClient {
    * @param {Object} financialContractAbi truffle ABI object to create a contract instance of the financial contract.
    * @param {Object} web3 Provider from Truffle instance to connect to Ethereum network.
    * @param {String} financialContractAddress Ethereum address of the Financial Contract contract deployed on the current network.
-   * @param {Object} multicallContractClient Client used to interact with Multicall contract.
+   * @param {Object} multicallContractAddress Address of deployed Multicall contract on provided network.
    * @param {Number} collateralDecimals Number of decimals within the collateral currency.
    * @param {Number} syntheticDecimals Number of decimals within the synthetic currency.
    * @param {Number} priceFeedDecimals Number of decimals a price feed returned by the DVM would be scaled by. For old
@@ -23,7 +24,7 @@ class FinancialContractClient {
     financialContractAbi,
     web3,
     financialContractAddress,
-    multicallContractClient,
+    multicallContractAddress,
     collateralDecimals = 18,
     syntheticDecimals = 18,
     priceFeedDecimals = 18,
@@ -36,8 +37,8 @@ class FinancialContractClient {
     this.financialContract = new web3.eth.Contract(financialContractAbi, financialContractAddress);
     this.financialContractAddress = financialContractAddress;
 
-    // Multicall Contract that we'll use to simulate certain contract interactions atomically.
-    this.multicallContractClient = multicallContractClient;
+    // We use this Multicall contract to simulate the results of batched state-modifying transactions.
+    this.multicallContractAddress = multicallContractAddress;
 
     // Financial Contract Data structures & values to enable synchronous returns of the financialContract state seen by the client.
     this.activeSponsors = [];
@@ -164,26 +165,35 @@ class FinancialContractClient {
     ]);
 
     if (this.contractType === "Perpetual") {
-      // Simulate calling `applyFundingRate()` on the perpetual before reading
-      // `fundingRate()`, in order to account for any unpublished, pending funding rates.
-      const applyFundingRateCall = {
-        target: this.financialContract.options.address,
-        callData: this.financialContract.methods.applyFundingRate().encodeABI()
-      };
-      const fundingRateCall = {
-        target: this.financialContract.options.address,
-        callData: this.financialContract.methods.fundingRate().encodeABI()
-      };
-      const outputs = await this.multicallContractClient.aggregateTransactionsAndCall([
-        applyFundingRateCall,
-        fundingRateCall
-      ]);
-      const fundingRateData = this.web3.eth.abi.decodeParameters(
-        FUNDING_RATE_METHOD_PARAMS,
-        // The return data for `fundingRate()` is the second return argument.
-        outputs.returnData[1]
-      );
-      this.latestCumulativeFundingRateMultiplier = this.toBN(fundingRateData.cumulativeMultiplier.rawValue);
+      if (!this.multicallContractAddress) {
+        // If no multicontract address set, then read the contract's on-chain CFRM. Note
+        // that this will not take into account any pending fundingrates that will be
+        // published on the next contract interaction.
+        this.latestCumulativeFundingRateMultiplier = this.toBN(
+          (await this.financialContract.methods.fundingRate().call()).cumulativeMultiplier.rawValue
+        );
+      } else {
+        // Simulate calling `applyFundingRate()` on the perpetual before reading
+        // `fundingRate()`, in order to account for any unpublished, pending funding rates.
+        const applyFundingRateCall = {
+          target: this.financialContract.options.address,
+          callData: this.financialContract.methods.applyFundingRate().encodeABI()
+        };
+        const fundingRateCall = {
+          target: this.financialContract.options.address,
+          callData: this.financialContract.methods.fundingRate().encodeABI()
+        };
+        const outputs = await aggregateTransactionsAndCall(this.multicallContractAddress, this.web3, [
+          applyFundingRateCall,
+          fundingRateCall
+        ]);
+        const fundingRateData = this.web3.eth.abi.decodeParameters(
+          contractMethodABIs["fundingRate"],
+          // The return data for `fundingRate()` is the second return argument.
+          outputs.returnData[1]
+        );
+        this.latestCumulativeFundingRateMultiplier = this.toBN(fundingRateData.cumulativeMultiplier.rawValue);
+      }
     } else {
       this.latestCumulativeFundingRateMultiplier = this.fixedPointAdjustment;
     }
@@ -316,52 +326,3 @@ class FinancialContractClient {
 }
 
 module.exports = { FinancialContractClient };
-
-// ABI for `Perpetual.fundingRate()` method that we can use to decode
-// to Javascript type.
-const FUNDING_RATE_METHOD_PARAMS = [
-  {
-    components: [
-      {
-        internalType: "int256",
-        name: "rawValue",
-        type: "int256"
-      }
-    ],
-    internalType: "struct FixedPoint.Signed",
-    name: "rate",
-    type: "tuple"
-  },
-  {
-    internalType: "bytes32",
-    name: "identifier",
-    type: "bytes32"
-  },
-  {
-    components: [
-      {
-        internalType: "uint256",
-        name: "rawValue",
-        type: "uint256"
-      }
-    ],
-    internalType: "struct FixedPoint.Unsigned",
-    name: "cumulativeMultiplier",
-    type: "tuple"
-  },
-  {
-    internalType: "uint256",
-    name: "updateTime",
-    type: "uint256"
-  },
-  {
-    internalType: "uint256",
-    name: "applicationTime",
-    type: "uint256"
-  },
-  {
-    internalType: "uint256",
-    name: "proposalTime",
-    type: "uint256"
-  }
-];

@@ -13,7 +13,6 @@ const { getTruffleContract } = require("@uma/core");
 
 // Script to test
 const { FinancialContractClient } = require("../../src/clients/FinancialContractClient");
-const { MulticallContractClient } = require("../../src/clients/MulticallContractClient");
 
 // Run the tests against 3 different kinds of token/synth decimal combinations:
 // 1) matching 18 & 18 for collateral for most token types with normal tokens.
@@ -104,7 +103,7 @@ contract("FinancialContractClient.js", function(accounts) {
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
     const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
-    const MulticallMock = getTruffleContract("MulticallMock", web3);
+    const MulticallMock = getTruffleContract("MulticallMock", web3, contractVersion.contractVersion);
 
     for (let testConfig of configs) {
       describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
@@ -207,7 +206,6 @@ contract("FinancialContractClient.js", function(accounts) {
 
           // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.
           await financialContract.setCurrentTime(startTime);
-          if (contractVersion.contractType == "Perpetual") await financialContract.applyFundingRate();
 
           // The FinancialContractClient does not emit any info `level` events.  Therefore no need to test Winston outputs.
           // DummyLogger will not print anything to console as only capture `info` level events.
@@ -216,13 +214,12 @@ contract("FinancialContractClient.js", function(accounts) {
             transports: [new winston.transports.Console()]
           });
 
-          const multicallClient = new MulticallContractClient(multicallContract.abi, web3, multicallContract.address);
           client = new FinancialContractClient(
             dummyLogger,
             financialContract.abi,
             web3,
             financialContract.address,
-            multicallClient,
+            multicallContract.address,
             testConfig.collateralDecimals,
             testConfig.syntheticDecimals,
             testConfig.priceFeedDecimals,
@@ -761,6 +758,7 @@ contract("FinancialContractClient.js", function(accounts) {
               financialContract.abi,
               web3,
               financialContract.address,
+              multicallContract.address,
               testConfig.collateralDecimals,
               testConfig.syntheticDecimals,
               testConfig.priceFeedDecimals
@@ -778,6 +776,7 @@ contract("FinancialContractClient.js", function(accounts) {
                 financialContract.abi,
                 web3,
                 financialContract.address,
+                multicallContract.address,
                 testConfig.collateralDecimals,
                 testConfig.syntheticDecimals,
                 testConfig.priceFeedDecimals,
@@ -794,6 +793,7 @@ contract("FinancialContractClient.js", function(accounts) {
                 financialContract.abi,
                 web3,
                 financialContract.address,
+                multicallContract.address,
                 testConfig.collateralDecimals,
                 testConfig.syntheticDecimals,
                 testConfig.priceFeedDecimals,
@@ -805,7 +805,7 @@ contract("FinancialContractClient.js", function(accounts) {
             assert.isTrue(didThrow);
           }
         );
-        versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }], true)(
+        versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])(
           "Fetches funding rate from the perpetual contract and correctly applies it to token debt",
           async function() {
             // Create a position and check that it is detected correctly from the client.
@@ -831,26 +831,20 @@ contract("FinancialContractClient.js", function(accounts) {
 
             // Set a funding rate
             await _setFundingRateAndAdvanceTime(toWei("0.000005"));
-            // await financialContract.applyFundingRate();
 
-            // // funding rate should be set within contract.
-            // assert.equal((await financialContract.fundingRate()).cumulativeMultiplier.toString(), toWei("1.05"));
+            // funding rate change is not detected until the client is updated.
+            assert.equal(client.getLatestCumulativeFundingRateMultiplier(), toWei("1"));
 
-            // // funding rate is not applied until the client is updated.
-            // assert.equal(client.getLatestCumulativeFundingRateMultiplier(), toWei("1"));
+            // After updating the client the pending funding rate should be detected.
+            await client.update();
+            assert.equal(client.getLatestCumulativeFundingRateMultiplier(), toWei("1.05"));
 
-            // // After updating the client the funding rate is applied.
-            // await client.update();
-            // assert.equal(client.getLatestCumulativeFundingRateMultiplier(), toWei("1.05"));
+            // But, the on-chain state has not changed! This is possible because the client
+            // uses the Multicall contract to simulate how `applyFundingRate()` would
+            // affect `fundingRate()`.
+            const onchainFundingRate = await financialContract.fundingRate();
+            assert.equal(onchainFundingRate.cumulativeMultiplier.rawValue, toWei("1"));
 
-            // after advancing time with the same funding rate the client value should not change
-            await _setFundingRateAndAdvanceTime(toWei("0"));
-            // await financialContract.applyFundingRate();
-            assert.equal(client.getLatestCumulativeFundingRateMultiplier().toString(), toWei("1.05"));
-
-            // Early return, because the above test should either succeed or fail depending if the
-            // Multicall simulation is working:
-            return;
             // Correctly scales sponsors token debt by the funding rate
             await updateAndVerify(
               client,
@@ -908,7 +902,8 @@ contract("FinancialContractClient.js", function(accounts) {
             // over 10k seconds resulting in 0.01 cumulative multiplier. At a price of 1 this works out to a CR of:
             // 150 / (100 * 1.01 * 1) = 1.485, which is less than the CR requirement of 1.5
             await _setFundingRateAndAdvanceTime(toWei("0.000001"));
-            await financialContract.applyFundingRate();
+            // Should not need to call `applyFundingRate()` in order for client to detect publishable
+            // funding rate proposals.
             await client.update();
 
             assert.deepStrictEqual(
