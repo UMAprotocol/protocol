@@ -72,6 +72,15 @@ class FundingRateProposer {
           // Negative allowed-margins might be useful based on the implementation
           // of `isDeviationOutsideErrorMargin()`
         }
+      },
+      timeToUpdateThreshold: {
+        //   "timeToUpdateThreshold":86400 ->  If the number of seconds between now and the last application
+        //                                     time is greater than this, then the bot will attempt to
+        //                                     publish a pending funding rate proposal.
+        value: 86400,
+        isValid: x => {
+          return !isNaN(x) && x > 0;
+        }
       }
     };
 
@@ -118,11 +127,88 @@ class FundingRateProposer {
     });
   }
 
+  // Publishes a pending funding rate if the current funding rate was last updated
+  // more than some threshold of time ago.
+  async applyFundingRate() {
+    await Promise.map(Object.keys(this.contractCache), contractAddress => {
+      return this._applyFundingRate(contractAddress);
+    });
+  }
+
   /** **********************************
    *
    * INTERNAL METHODS
    *
    ************************************/
+
+  async _applyFundingRate(contractAddress) {
+    // Compare current time of contract against last funding rate application time,
+    // and call `applyFundingRate()` if (1) the time delta is > the update time threshold
+    // and (2) there is a pending proposal.
+    const cachedContract = this.contractCache[contractAddress];
+    const currentFundingRateData = cachedContract.state.currentFundingRateData;
+    const fundingRateIdentifier = this.hexToUtf8(currentFundingRateData.identifier);
+    const hasPendingProposal = this.toBN(currentFundingRateData.proposalTime.toString());
+    const lastApplicationTime = this.toBN(currentFundingRateData.applicationTime.toString());
+    const currentContractTime = await cachedContract.methods.getCurrenTime().call();
+
+    if (
+      hasPendingProposal.gt(this.toBN(0)) &&
+      this.toBN(currentContractTime.toString())
+        .sub(lastApplicationTime)
+        .gte(this.toBN(this.timeToUpdateThreshold))
+    ) {
+      const applyFundingRate = cachedContract.contract.methods.applyFundingRate();
+      this.logger.debug({
+        at: "PerpetualProposer#applyFundingRate",
+        message: "Applying new funding rate",
+        fundingRateIdentifier,
+        lastApplicationTime: lastApplicationTime.toString(),
+        pendingProposalTime: hasPendingProposal.toString()
+      });
+      try {
+        // Get successful transaction receipt and return value or error.
+        const transactionResult = await runTransaction({
+          transaction: applyFundingRate,
+          config: {
+            gasPrice: this.gasEstimator.getCurrentFastPrice(),
+            from: this.account
+          }
+        });
+        let receipt = transactionResult.receipt;
+
+        const logResult = {
+          tx: receipt.transactionHash,
+          caller: this.account,
+          fundingRateIdentifier,
+          lastApplicationTime: lastApplicationTime.toString(),
+          pendingProposalTime: hasPendingProposal.toString()
+        };
+        this.logger.info({
+          at: "PerpetualProposer#applyFundingRate",
+          message: "Applied new funding rate!🆕",
+          applyResult: logResult
+        });
+      } catch (error) {
+        const message = error.type === "call" ? "Cannot apply funding rate ✋" : "Failed to apply funding rate🚨";
+        this.logger.error({
+          at: "PerpetualProposer#applyFundingRate",
+          message,
+          fundingRateIdentifier,
+          error
+        });
+        return;
+      }
+    } else {
+      this.logger.debug({
+        at: "PerpetualProposer#applyFundingRate",
+        message: "Skipping because there is either no pending funding rate or last application time was too recent",
+        fundingRateIdentifier,
+        lastApplicationTime: lastApplicationTime.toString(),
+        pendingProposalTime: hasPendingProposal.toString()
+      });
+    }
+  }
 
   // Check contract funding rates and request+propose to update them, or return early if an error is encountered.
   async _updateFundingRate(contractAddress, usePriceFeedTime) {
