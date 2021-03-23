@@ -103,7 +103,7 @@ contract("FinancialContractClient.js", function(accounts) {
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
     const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
-    const MulticallMock = getTruffleContract("MulticallMock", web3, contractVersion.contractVersion);
+    const MulticallMock = getTruffleContract("MulticallMock", web3, "latest");
 
     for (let testConfig of configs) {
       describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
