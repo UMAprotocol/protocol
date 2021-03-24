@@ -247,15 +247,23 @@ class FinancialContractClient {
         sponsor: this.activeSponsors[index],
         withdrawalRequestPassTimestamp: position.withdrawalRequestPassTimestamp,
         withdrawalRequestAmount: position.withdrawalRequestAmount.toString(),
-        numTokens: this.toBN(position.tokensOutstanding.toString()) // Apply the current funding rate to the sponsor debt.
+        numTokens: this.toBN(position.tokensOutstanding.toString())
           .mul(this.latestCumulativeFundingRateMultiplier)
           .div(this.fixedPointAdjustment)
           .toString(),
-        rawTokens: position.tokensOutstanding.toString(),
-        amountCollateral: this.toBN(position.rawCollateral.toString()) // Apply the current outstanding fees to collateral.
+        // Applies the current funding rate to the sponsor's raw amount of tokens outstanding. `numTokens` is equal
+        // to `rawTokens * cumulativeFundingRateMultplier`, and this client uses `numTokens` to determine whether
+        // a position is liquidatable or not. If a position is liquidatable, then `rawTokens` amount of debt needs
+        // to be repaid by the liquidator to liquidate the position.
+        rawTokens: position.tokensOutstanding.toString(), // Raw tokens is the `tokensOutstanding` parameter in the
+        // on-chain position struct. It represents the actual amount of tokens outstanding for a sponsor and is the
+        // maximum amount of tokens needed to fully liquidate a position. The liquidator bot therefore uses this
+        // amount.
+        amountCollateral: this.toBN(position.rawCollateral.toString())
           .mul(this.cumulativeFeeMultiplier)
           .div(this.fixedPointAdjustment)
           .toString(),
+        // Applies the current outstanding fees to collateral.
         hasPendingWithdrawal: position.withdrawalRequestPassTimestamp > 0
       };
     });
