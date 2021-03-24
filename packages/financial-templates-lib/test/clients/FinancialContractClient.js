@@ -933,6 +933,45 @@ contract("FinancialContractClient.js", function(accounts) {
               ],
               client.getUnderCollateralizedPositions(convertPrice("1"))
             );
+
+            // Now liquidate the position, advance some time so the current funding rate changes, and check that the
+            // client's stored liquidation state has the correct funding-rate adjusted amount of tokens outstanding for
+            // the liquidation time, not the current time.
+            await financialContract.createLiquidation(
+              sponsor1,
+              { rawValue: "0" },
+              { rawValue: toWei("9999999") },
+              // Note: Liquidates the full position of 100 tokens
+              { rawValue: toWei("100") },
+              unreachableDeadline,
+              { from: sponsor2 }
+            );
+            const currentTime = (await financialContract.getCurrentTime()).toNumber();
+            // Note: Advance < liquidationLiveness amount of time so that liquidation still appears under
+            // undisputedLiquidations struct:
+            await financialContract.setCurrentTime(currentTime + 999);
+            await financialContract.applyFundingRate();
+            const currentFundingRateData = await financialContract.fundingRate();
+            // Here we show that current funding rate multiplier has increased:
+            assert.isTrue(toBN(currentFundingRateData.cumulativeMultiplier.rawValue).gt(toWei("1.01")));
+            await client.update();
+            assert.deepStrictEqual(
+              [
+                {
+                  sponsor: sponsor1,
+                  id: "0",
+                  state: "1",
+                  liquidationTime: currentTime.toString(),
+                  // Here the `numTokens` should adjust for the CFRM at the time of liquidation, not the current one!
+                  numTokens: convertSynthetic("101"),
+                  liquidatedCollateral: convertCollateral("150"),
+                  lockedCollateral: convertCollateral("150"),
+                  liquidator: sponsor2,
+                  disputer: zeroAddress
+                }
+              ],
+              client.getUndisputedLiquidations()
+            );
           }
         );
       });

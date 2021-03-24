@@ -213,6 +213,8 @@ class FinancialContractClient {
           sponsor: liquidation.sponsor,
           id: id.toString(),
           state: liquidation.state,
+          // Note: The `tokensOutstanding` entry in the Perpetual's on-chain Liquidation struct is adjusted
+          // for the funding rate multiplier at the time of liquidation.
           numTokens: liquidation.tokensOutstanding.toString(),
           liquidatedCollateral: liquidation.liquidatedCollateral.toString(),
           lockedCollateral: liquidation.lockedCollateral.toString(),
