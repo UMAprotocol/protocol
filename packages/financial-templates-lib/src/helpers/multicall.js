@@ -27,10 +27,7 @@ const aggregateTransactionsAndCall = async (multicallAddress, web3, transactions
 
   // Decode return data, which is an array of the same length as `transactions`:
   const returnData = (await multicallContract.methods.aggregate(transactions).call()).returnData;
-  const decodedOutputs = [];
-  returnData.forEach((data, i) => {
-    decodedOutputs.push(_decodeOutput(transactions[i].callData, data, web3));
-  });
+  return returnData.map((data, i) => _decodeOutput(transactions[i].callData, data, web3));
   return decodedOutputs;
 };
 
