@@ -9,7 +9,7 @@ fi
 
 # First, generate the liquidation report.
 echo "Running liquidation report generator"
-ts-node ./liquidation-reporter/index.ts --network mainnet_mnemonic
+npx ts-node ./liquidation-reporter/index.ts --network mainnet_mnemonic
 
 # Configure the name of the file. Sample output: 2021-03-18-liquidation-drawdown-report.xlsx
 date=$(date +'%Y-%m-%d')
