@@ -6,6 +6,8 @@ const assert = require("assert");
 
 let cachedAbiDecoder;
 
+// Decode `returnData` into Javascript type using known contract ABI informtaion
+// from the `callData` originally used to produce `returnData`.
 function _decodeOutput(callData, returnData, web3) {
   let abiDecoder = cachedAbiDecoder || getAbiDecoder(); // Only load once because it's expensive.
   const methodAbi = abiDecoder.getMethodIDs()[callData.slice(2, 10)];
