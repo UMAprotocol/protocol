@@ -9,6 +9,7 @@ fi
 
 # First, generate the liquidation report.
 echo "Running liquidation report generator"
+cd ./packages/reporters
 npx ts-node ./liquidation-reporter/index.ts --network mainnet_mnemonic
 
 # Configure the name of the file. Sample output: 2021-03-18-liquidation-drawdown-report.xlsx
@@ -25,7 +26,7 @@ pathToFile="./"$fileName
 # Send a curl command to upload the file along with a message to the channel. Store response log for debugging.
 responseFileName="response.json"
 echo "Sending file as slack message $fileName"
-curl https://slack.com/api/files.upload -F token="${SLACK_TOKEN}" -F channels="${SLACK_CHANNEL}" -F title="${messageTitle}" -F fileName="${fileName}" -F file=@"${pathToFile}" | jq '.' >$responseFileName
+# curl https://slack.com/api/files.upload -F token="${SLACK_TOKEN}" -F channels="${SLACK_CHANNEL}" -F title="${messageTitle}" -F fileName="${fileName}" -F file=@"${pathToFile}" | jq '.' >$responseFileName
 echo "Slack API response logged in $responseFileName"
 
 # Verify that the 'ok' property of the response data is "true".
