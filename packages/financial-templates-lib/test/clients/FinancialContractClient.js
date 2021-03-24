@@ -623,7 +623,8 @@ contract("FinancialContractClient.js", function(accounts) {
                   state: "1",
                   liquidationTime: liquidationTime,
                   numTokens: convertSynthetic("100"),
-                  liquidatedCollateral: convertCollateral("140"), // This should `lockedCollateral` reduced by requested withdrawal amount
+                  liquidatedCollateral: convertCollateral("140"),
+                  // This should `lockedCollateral` reduced by requested withdrawal amount
                   lockedCollateral: convertCollateral("150"),
                   liquidator: liquidator,
                   disputer: zeroAddress
@@ -751,8 +752,8 @@ contract("FinancialContractClient.js", function(accounts) {
         versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "latest" }])(
           "Client correctly defaults to ExpiringMultiParty to enable backward compatibility",
           async function() {
-            // The constructor of the Financial Contract client does not contain any type. It should therefore default to the Financial Contract which
-            // ensures that packages that are yet to update.
+            // The constructor of the Financial Contract client does not contain any type.
+            // It should therefore default to the Financial Contract which ensures that packages that are yet to update.
             client = new FinancialContractClient(
               dummyLogger,
               financialContract.abi,

@@ -17,59 +17,7 @@ const aggregateTransactionsAndCall = async (multicallAddress, web3, transactions
   return await multicallContract.methods.aggregate(transactions).call();
 };
 
-// Dictionary of ABI's for contract methods that we can use to decode
-// to Javascript type.
-const contractMethodABIs = {
-  fundingRate: [
-    {
-      components: [
-        {
-          internalType: "int256",
-          name: "rawValue",
-          type: "int256"
-        }
-      ],
-      internalType: "struct FixedPoint.Signed",
-      name: "rate",
-      type: "tuple"
-    },
-    {
-      internalType: "bytes32",
-      name: "identifier",
-      type: "bytes32"
-    },
-    {
-      components: [
-        {
-          internalType: "uint256",
-          name: "rawValue",
-          type: "uint256"
-        }
-      ],
-      internalType: "struct FixedPoint.Unsigned",
-      name: "cumulativeMultiplier",
-      type: "tuple"
-    },
-    {
-      internalType: "uint256",
-      name: "updateTime",
-      type: "uint256"
-    },
-    {
-      internalType: "uint256",
-      name: "applicationTime",
-      type: "uint256"
-    },
-    {
-      internalType: "uint256",
-      name: "proposalTime",
-      type: "uint256"
-    }
-  ]
-};
-
 module.exports = {
   aggregateTransactionsAndCall,
-  contractMethodABIs,
   multicallAddressMap
 };
