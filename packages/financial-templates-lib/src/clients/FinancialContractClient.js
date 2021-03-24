@@ -192,12 +192,9 @@ class FinancialContractClient {
           applyFundingRateCall,
           fundingRateCall
         ]);
-        const fundingRateData = this.web3.eth.abi.decodeParameters(
-          this.financialContractAbi.find(method => method.name === "fundingRate").outputs,
-          // `returnData` is an array of return data bytes corresponding to the transactions passed to
-          // the multicall aggregate method. Therefore, `fundingRate()`'s return output is the second element.
-          outputs.returnData[1]
-        );
+        // `returnData` is an array of decoded return data bytes corresponding to the transactions passed to
+        // the multicall aggregate method. Therefore, `fundingRate()`'s return output is the second element.
+        const fundingRateData = outputs[1];
         this.latestCumulativeFundingRateMultiplier = this.toBN(fundingRateData.cumulativeMultiplier.rawValue);
       }
     } else {
