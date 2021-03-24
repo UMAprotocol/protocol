@@ -296,7 +296,7 @@ class Liquidator {
       const tokensToLiquidate = this.toBN(liquidationArgs[3].rawValue);
 
       // Send an alert if the bot is going to submit a partial liquidation instead of a full liquidation.
-      if (tokensToLiquidate.lt(this.toBN(position.rawTokens))) {
+      if (tokensToLiquidate.lt(this.toBN(position.numTokens))) {
         this.logger.error({
           at: "Liquidator",
           message: "Submitting a partial liquidation: not enough synthetic to initiate full liquidation⚠️",
