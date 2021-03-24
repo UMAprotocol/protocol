@@ -1,0 +1,54 @@
+const { assert } = require("chai");
+
+// Tested Contract
+const KpiOptionsFinancialProductLibrary = artifacts.require("KpiOptionsFinancialProductLibrary");
+
+// Helper contracts
+const Timer = artifacts.require("Timer");
+const ExpiringMultiPartyMock = artifacts.require("ExpiringMultiPartyMock");
+
+const { toWei, toBN, utf8ToHex } = web3.utils;
+const priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
+const collateralizationRatio = toBN(toWei("1")).addn(1);
+
+contract("KpiOptionsFinancialProductLibrary", function() {
+  let kpiFPL;
+  let expiringMultiParty;
+  let timer;
+  let expirationTime;
+
+  beforeEach(async () => {
+    timer = await Timer.deployed();
+
+    expirationTime = (await timer.getCurrentTime()) + 100; // use 100 seconds in the future as the expiration time.
+    kpiFPL = await KpiOptionsFinancialProductLibrary.new();
+    expiringMultiParty = await ExpiringMultiPartyMock.new(
+      kpiFPL.address,
+      expirationTime,
+      { rawValue: collateralizationRatio.toString() },
+      priceFeedIdentifier,
+      timer.address
+    );
+  });
+
+  describe("Collateralization ratio transformation", () => {
+    it("Library returns correctly transformed collateralization ratio", async () => {
+      // Under all scenarios, the collateral requirement of the contract should be 2.
+
+      // Check pre-expiration
+      assert.equal(
+        (await expiringMultiParty.transformCollateralRequirement({ rawValue: toWei("0.1") })).toString(),
+        toWei("2")
+      );
+
+      // advance the timer after expiration and ensure the CR is still 1.
+      await timer.setCurrentTime(expirationTime + 1);
+
+      // Check post-expiration
+      assert.equal(
+        (await expiringMultiParty.transformCollateralRequirement({ rawValue: toWei("0.2") })).toString(),
+        toWei("2")
+      );
+    });
+  });
+});
