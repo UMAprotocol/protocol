@@ -7,7 +7,7 @@ if [ -z "${BOT_IDENTIFIER}" ] || [ -z "${SLACK_TOKEN}" ] || [ -z "${SLACK_CHANNE
     exit 1
 fi
 
-# First, generate the liquidation report.
+# First, generate the liquidation report. To work correctly with typescript we need to be within the package directory.
 echo "Running liquidation report generator"
 cd ./packages/reporters
 npx ts-node ./liquidation-reporter/index.ts --network mainnet_mnemonic
