@@ -67,7 +67,7 @@ contract("KpiOptionsFinancialProductLibrary", function() {
             (await expiringMultiParty.getCurrentTime()).toString()
           )
         ).toString(),
-        "0.2"
+        toWei("0.2")
       );
     });
   });
