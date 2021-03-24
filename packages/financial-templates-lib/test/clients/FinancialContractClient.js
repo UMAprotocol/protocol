@@ -235,8 +235,8 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("50"),
                 numTokens: convertSynthetic("50"),
-                rawTokens: convertSynthetic("50"),
                 amountCollateral: convertCollateral("10"),
                 hasPendingWithdrawal: false,
                 withdrawalRequestPassTimestamp: "0",
@@ -257,8 +257,8 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("100"),
                 numTokens: convertSynthetic("100"),
-                rawTokens: convertSynthetic("100"),
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
                 withdrawalRequestPassTimestamp: "0",
@@ -279,8 +279,8 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("100"),
                 numTokens: convertSynthetic("100"),
-                rawTokens: convertSynthetic("100"),
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
                 withdrawalRequestPassTimestamp: "0",
@@ -288,8 +288,8 @@ contract("FinancialContractClient.js", function(accounts) {
               },
               {
                 sponsor: sponsor2,
+                adjustedTokens: convertSynthetic("45"),
                 numTokens: convertSynthetic("45"),
-                rawTokens: convertSynthetic("45"),
                 amountCollateral: convertCollateral("100"),
                 hasPendingWithdrawal: false,
                 withdrawalRequestPassTimestamp: "0",
@@ -322,8 +322,8 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("100"),
                 numTokens: convertSynthetic("100"),
-                rawTokens: convertSynthetic("100"),
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
                 withdrawalRequestPassTimestamp: "0",
@@ -363,8 +363,8 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("100"),
                 numTokens: convertSynthetic("100"),
-                rawTokens: convertSynthetic("100"),
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: true,
                 withdrawalRequestPassTimestamp: (await financialContract.getCurrentTime())
@@ -386,8 +386,8 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("100"),
                 numTokens: convertSynthetic("100"),
-                rawTokens: convertSynthetic("100"),
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
                 withdrawalRequestPassTimestamp: "0",
@@ -411,8 +411,8 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("100"),
                 numTokens: convertSynthetic("100"),
-                rawTokens: convertSynthetic("100"),
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
                 withdrawalRequestPassTimestamp: "0",
@@ -445,8 +445,8 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("100"),
                 numTokens: convertSynthetic("100"),
-                rawTokens: convertSynthetic("100"),
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
                 withdrawalRequestPassTimestamp: "0",
@@ -454,8 +454,8 @@ contract("FinancialContractClient.js", function(accounts) {
               },
               {
                 sponsor: sponsor2,
+                adjustedTokens: convertSynthetic("45"),
                 numTokens: convertSynthetic("45"),
-                rawTokens: convertSynthetic("45"),
                 amountCollateral: convertCollateral("100"),
                 hasPendingWithdrawal: false,
                 withdrawalRequestPassTimestamp: "0",
@@ -487,8 +487,8 @@ contract("FinancialContractClient.js", function(accounts) {
               [
                 {
                   sponsor: sponsor1,
+                  adjustedTokens: convertSynthetic("100"),
                   numTokens: convertSynthetic("100"),
-                  rawTokens: convertSynthetic("100"),
                   amountCollateral: convertCollateral("150"),
                   hasPendingWithdrawal: false,
                   withdrawalRequestPassTimestamp: "0",
@@ -509,8 +509,8 @@ contract("FinancialContractClient.js", function(accounts) {
               [
                 {
                   sponsor: sponsor1,
+                  adjustedTokens: convertSynthetic("100"),
                   numTokens: convertSynthetic("100"),
-                  rawTokens: convertSynthetic("100"),
                   amountCollateral: convertCollateral("150"),
                   hasPendingWithdrawal: true,
                   withdrawalRequestPassTimestamp: (currentTime + 1000).toString(),
@@ -825,8 +825,8 @@ contract("FinancialContractClient.js", function(accounts) {
               [
                 {
                   sponsor: sponsor1,
+                  adjustedTokens: convertSynthetic("50"),
                   numTokens: convertSynthetic("50"),
-                  rawTokens: convertSynthetic("50"),
                   amountCollateral: convertCollateral("10"),
                   hasPendingWithdrawal: false,
                   withdrawalRequestPassTimestamp: "0",
@@ -861,8 +861,8 @@ contract("FinancialContractClient.js", function(accounts) {
               [
                 {
                   sponsor: sponsor1,
-                  rawTokens: convertSynthetic("50"),
-                  numTokens: toBN(convertSynthetic("50"))
+                  numTokens: convertSynthetic("50"),
+                  adjustedTokens: toBN(convertSynthetic("50"))
                     .mul(toBN(toWei("1.05")))
                     .div(toBN(toWei("1")))
                     .toString(), // the funding rate should be applied to the num of tokens
@@ -898,8 +898,8 @@ contract("FinancialContractClient.js", function(accounts) {
               [
                 {
                   sponsor: sponsor1,
+                  adjustedTokens: convertSynthetic("100"),
                   numTokens: convertSynthetic("100"),
-                  rawTokens: convertSynthetic("100"),
                   amountCollateral: convertCollateral("150"),
                   hasPendingWithdrawal: false,
                   withdrawalRequestPassTimestamp: "0",
@@ -920,11 +920,11 @@ contract("FinancialContractClient.js", function(accounts) {
               [
                 {
                   sponsor: sponsor1,
-                  numTokens: toBN(convertSynthetic("100"))
+                  adjustedTokens: toBN(convertSynthetic("100"))
                     .mul(toBN(toWei("1.01")))
                     .div(toBN(toWei("1")))
                     .toString(), // the funding rate should be applied to the num of tokens
-                  rawTokens: convertSynthetic("100"),
+                  numTokens: convertSynthetic("100"),
                   amountCollateral: convertCollateral("150"),
                   hasPendingWithdrawal: false,
                   withdrawalRequestPassTimestamp: "0",

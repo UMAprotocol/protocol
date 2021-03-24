@@ -139,14 +139,14 @@ module.exports = (
       //     - This will include withdraws that have expired already.
       tokensToLiquidate = calculateTokensToLiquidate({
         syntheticTokenBalance,
-        positionTokens: position.rawTokens,
+        positionTokens: position.numTokens,
         maxTokensToLiquidateWei
       });
     } else if (canLiquidateFully({ position, syntheticTokenBalance })) {
       // 2) If you can fully liquidate, do it, regardless of whether WDF is activated.
       tokensToLiquidate = calculateTokensToLiquidate({
         syntheticTokenBalance,
-        positionTokens: position.rawTokens,
+        positionTokens: position.numTokens,
         maxTokensToLiquidateWei
       });
     } else if (
@@ -250,7 +250,7 @@ module.exports = (
 
   // Returns true of syntheticTokenBalance >= position.tokensOutstanding
   function canLiquidateFully({ position, syntheticTokenBalance }) {
-    return toBN(syntheticTokenBalance).gte(toBN(position.rawTokens));
+    return toBN(syntheticTokenBalance).gte(toBN(position.numTokens));
   }
 
   // Returns true of syntheticTokenBalance >= minSponsorSize and
@@ -263,7 +263,7 @@ module.exports = (
     if (syntheticTokenBalance.lt(financialContractMinSponsorSize)) return false;
     // position cant go below the minimum emp sponsor size
     if (
-      toBN(position.rawTokens)
+      toBN(position.numTokens)
         .sub(financialContractMinSponsorSize)
         .lt(financialContractMinSponsorSize)
     )
