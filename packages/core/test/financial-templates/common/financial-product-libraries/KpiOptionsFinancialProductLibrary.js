@@ -41,7 +41,7 @@ contract("KpiOptionsFinancialProductLibrary", function() {
         toWei("2")
       );
 
-      // advance the timer after expiration and ensure the CR is still 1.
+      // advance the timer after expiration and ensure the CR is still 2.
       await timer.setCurrentTime(expirationTime + 1);
 
       // Check post-expiration
