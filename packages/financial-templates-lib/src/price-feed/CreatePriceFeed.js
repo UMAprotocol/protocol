@@ -22,6 +22,7 @@ const { VaultPriceFeed } = require("./VaultPriceFeed");
 const { LPPriceFeed } = require("./LPPriceFeed");
 const { BlockFinder } = require("./utils");
 const { getPrecisionForIdentifier } = require("@uma/common");
+const { FundingRateMultiplierPriceFeed } = require("./FundingRateMultiplierPriceFeed");
 
 // Global cache for block (promises) used by uniswap price feeds.
 const uniswapBlockCache = {};
@@ -31,6 +32,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
   const ERC20 = getTruffleContract("ExpandedERC20", web3, "latest");
   const Balancer = getTruffleContract("Balancer", web3, "latest");
   const VaultInterface = getTruffleContract("VaultInterface", web3, "latest");
+  const Perpetual = getTruffleContract("Perpetual", web3, "latest");
 
   if (config.type === "cryptowatch") {
     const requiredFields = ["exchange", "pair", "lookback", "minTimeBetweenUpdates"];
@@ -433,6 +435,26 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       web3,
       getTime,
       erc20Abi: ERC20.abi,
+      blockFinder: getSharedBlockFinder(web3)
+    });
+  } else if (config.type === "frm") {
+    const requiredFields = ["perpetualAddress"];
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating FundingRateMultiplierPriceFeed",
+      config
+    });
+
+    return new FundingRateMultiplierPriceFeed({
+      ...config,
+      logger,
+      web3,
+      getTime,
+      perpetualAbi: Perpetual.abi,
       blockFinder: getSharedBlockFinder(web3)
     });
   }
