@@ -7,9 +7,10 @@ if [ -z "${BOT_IDENTIFIER}" ] || [ -z "${SLACK_TOKEN}" ] || [ -z "${SLACK_CHANNE
     exit 1
 fi
 
-# First, generate the liquidation report.
+# First, generate the liquidation report. To work correctly with typescript we need to be within the package directory.
 echo "Running liquidation report generator"
-ts-node ./liquidation-reporter/index.ts --network mainnet_mnemonic
+cd ./packages/reporters
+npx ts-node ./liquidation-reporter/index.ts --network mainnet_mnemonic
 
 # Configure the name of the file. Sample output: 2021-03-18-liquidation-drawdown-report.xlsx
 date=$(date +'%Y-%m-%d')

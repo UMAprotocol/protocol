@@ -87,40 +87,36 @@ class FinancialContractClient {
     return this.contractType;
   }
 
-  // Returns an array of { sponsor, numTokens, amountCollateral } for each open position.
+  // Returns an array of { sponsor, adjustedTokens, numTokens, amountCollateral } for each open position.
   getAllPositions() {
     return this.positions;
   }
 
-  // Returns an array of { sponsor, numTokens, amountCollateral } for each position that is undercollateralized
-  // according to the provided `tokenRedemptionValue`. Note that the `amountCollateral` fed into
-  // `_isUnderCollateralized` is taken as the positions `amountCollateral` minus any `withdrawalRequestAmount`. As a
-  // result this function will return positions that are undercollateralized due to too little collateral or a
-  // withdrawal that, if passed, would make the position undercollateralized.
+  // Returns an array of positions that are  undercollateralized according to the provided `tokenRedemptionValue`.
+  // Note that the `amountCollateral` fed into `_isUnderCollateralized` is taken as the positions `amountCollateral`
+  // minus any `withdrawalRequestAmount`. As a result this function will return positions that are undercollateralized
+  // due to too little collateral or a withdrawal that, if passed, would make the position undercollateralized.
   getUnderCollateralizedPositions(tokenRedemptionValue) {
     return this.positions.filter(position => {
       const collateralNetWithdrawal = this.toBN(position.amountCollateral)
         .sub(this.toBN(position.withdrawalRequestAmount))
         .toString();
-      return this._isUnderCollateralized(position.numTokens, collateralNetWithdrawal, tokenRedemptionValue);
+      return this._isUnderCollateralized(position.adjustedTokens, collateralNetWithdrawal, tokenRedemptionValue);
     });
   }
 
-  // Returns an array of { sponsor, id, numTokens, amountCollateral, liquidationTime } for each undisputed liquidation.
-  // To check whether a liquidation can be disputed, call `isDisputable` with the token redemption value at
-  // `liquidationTime`.
+  // Returns an array of undisputed liquidations. To check whether a liquidation can be disputed, call `isDisputable`
+  // with the liquidation's token redemption value at `liquidationTime`.
   getUndisputedLiquidations() {
     return this.undisputedLiquidations;
   }
 
-  // Returns an array of { sponsor, id, numTokens, amountCollateral, liquidationTime } for each undisputed liquidation.
-  // Liquidators can withdraw rewards from these expired liquidations.
+  // Returns an array of undisputed liquidations from which liquidators can withdraw rewards.
   getExpiredLiquidations() {
     return this.expiredLiquidations;
   }
 
-  // Returns an array of { sponsor, id, numTokens, amountCollateral, liquidationTime } for each undisputed liquidation.
-  // Liquidators can withdraw rewards from these disputed liquidations.
+  // Returns an array of disputed liquidations from which liquidators can withdraw rewards.
   getDisputedLiquidations() {
     return this.disputedLiquidations;
   }
@@ -254,6 +250,8 @@ class FinancialContractClient {
           sponsor: liquidation.sponsor,
           id: id.toString(),
           state: liquidation.state,
+          // Note: The `tokensOutstanding` entry in the Perpetual's on-chain Liquidation struct is adjusted
+          // for the funding rate multiplier at the time of liquidation.
           numTokens: liquidation.tokensOutstanding.toString(),
           liquidatedCollateral: liquidation.liquidatedCollateral.toString(),
           lockedCollateral: liquidation.lockedCollateral.toString(),
@@ -284,16 +282,22 @@ class FinancialContractClient {
         sponsor: this.activeSponsors[index],
         withdrawalRequestPassTimestamp: position.withdrawalRequestPassTimestamp,
         withdrawalRequestAmount: position.withdrawalRequestAmount.toString(),
-        // Apply the current funding rate to the sponsor debt.
-        numTokens: this.toBN(position.tokensOutstanding.toString())
+        adjustedTokens: this.toBN(position.tokensOutstanding.toString())
           .mul(this.latestCumulativeFundingRateMultiplier)
           .div(this.fixedPointAdjustment)
           .toString(),
-        // Apply the current outstanding fees to collateral.
+        // Applies the current funding rate to the sponsor's raw amount of tokens outstanding. `adjustedTokens` is equal
+        // to `numTokens * cumulativeFundingRateMultplier`, and this client uses `adjustedTokens` to determine whether
+        // a position is liquidatable or not. If a position is liquidatable, then `numTokens` amount of debt needs
+        // to be repaid by the liquidator to liquidate the position.
+        numTokens: position.tokensOutstanding.toString(), // This represents the actual amount of tokens outstanding
+        // for a sponsor and is the maximum amount of tokens needed to fully liquidate a position. The liquidator bot
+        // therefore can liquidate up to this amount of tokens.
         amountCollateral: this.toBN(position.rawCollateral.toString())
           .mul(this.cumulativeFeeMultiplier)
           .div(this.fixedPointAdjustment)
           .toString(),
+        // Applies the current outstanding fees to collateral.
         hasPendingWithdrawal: position.withdrawalRequestPassTimestamp > 0
       };
     });

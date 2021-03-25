@@ -239,6 +239,7 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("50"),
                 numTokens: convertSynthetic("50"),
                 amountCollateral: convertCollateral("10"),
                 hasPendingWithdrawal: false,
@@ -260,6 +261,7 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("100"),
                 numTokens: convertSynthetic("100"),
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
@@ -281,6 +283,7 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("100"),
                 numTokens: convertSynthetic("100"),
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
@@ -289,6 +292,7 @@ contract("FinancialContractClient.js", function(accounts) {
               },
               {
                 sponsor: sponsor2,
+                adjustedTokens: convertSynthetic("45"),
                 numTokens: convertSynthetic("45"),
                 amountCollateral: convertCollateral("100"),
                 hasPendingWithdrawal: false,
@@ -322,6 +326,7 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("100"),
                 numTokens: convertSynthetic("100"),
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
@@ -362,6 +367,7 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("100"),
                 numTokens: convertSynthetic("100"),
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: true,
@@ -384,6 +390,7 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("100"),
                 numTokens: convertSynthetic("100"),
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
@@ -408,6 +415,7 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("100"),
                 numTokens: convertSynthetic("100"),
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
@@ -441,6 +449,7 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("100"),
                 numTokens: convertSynthetic("100"),
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
@@ -449,6 +458,7 @@ contract("FinancialContractClient.js", function(accounts) {
               },
               {
                 sponsor: sponsor2,
+                adjustedTokens: convertSynthetic("45"),
                 numTokens: convertSynthetic("45"),
                 amountCollateral: convertCollateral("100"),
                 hasPendingWithdrawal: false,
@@ -481,6 +491,7 @@ contract("FinancialContractClient.js", function(accounts) {
               [
                 {
                   sponsor: sponsor1,
+                  adjustedTokens: convertSynthetic("100"),
                   numTokens: convertSynthetic("100"),
                   amountCollateral: convertCollateral("150"),
                   hasPendingWithdrawal: false,
@@ -502,6 +513,7 @@ contract("FinancialContractClient.js", function(accounts) {
               [
                 {
                   sponsor: sponsor1,
+                  adjustedTokens: convertSynthetic("100"),
                   numTokens: convertSynthetic("100"),
                   amountCollateral: convertCollateral("150"),
                   hasPendingWithdrawal: true,
@@ -821,6 +833,7 @@ contract("FinancialContractClient.js", function(accounts) {
               [
                 {
                   sponsor: sponsor1,
+                  adjustedTokens: convertSynthetic("50"),
                   numTokens: convertSynthetic("50"),
                   amountCollateral: convertCollateral("10"),
                   hasPendingWithdrawal: false,
@@ -853,7 +866,8 @@ contract("FinancialContractClient.js", function(accounts) {
               [
                 {
                   sponsor: sponsor1,
-                  numTokens: toBN(convertSynthetic("50"))
+                  numTokens: convertSynthetic("50"),
+                  adjustedTokens: toBN(convertSynthetic("50"))
                     .mul(toBN(toWei("1.05")))
                     .div(toBN(toWei("1")))
                     .toString(), // the funding rate should be applied to the num of tokens
@@ -889,6 +903,7 @@ contract("FinancialContractClient.js", function(accounts) {
               [
                 {
                   sponsor: sponsor1,
+                  adjustedTokens: convertSynthetic("100"),
                   numTokens: convertSynthetic("100"),
                   amountCollateral: convertCollateral("150"),
                   hasPendingWithdrawal: false,
@@ -911,10 +926,11 @@ contract("FinancialContractClient.js", function(accounts) {
               [
                 {
                   sponsor: sponsor1,
-                  numTokens: toBN(convertSynthetic("100"))
+                  adjustedTokens: toBN(convertSynthetic("100"))
                     .mul(toBN(toWei("1.01")))
                     .div(toBN(toWei("1")))
                     .toString(), // the funding rate should be applied to the num of tokens
+                  numTokens: convertSynthetic("100"),
                   amountCollateral: convertCollateral("150"),
                   hasPendingWithdrawal: false,
                   withdrawalRequestPassTimestamp: "0",
@@ -922,6 +938,45 @@ contract("FinancialContractClient.js", function(accounts) {
                 }
               ],
               client.getUnderCollateralizedPositions(convertPrice("1"))
+            );
+
+            // Now liquidate the position, advance some time so the current funding rate changes, and check that the
+            // client's stored liquidation state has the correct funding-rate adjusted amount of tokens outstanding for
+            // the liquidation time, not the current time.
+            await financialContract.createLiquidation(
+              sponsor1,
+              { rawValue: "0" },
+              { rawValue: toWei("9999999") },
+              // Note: Liquidates the full position of 100 tokens
+              { rawValue: toWei("100") },
+              unreachableDeadline,
+              { from: sponsor2 }
+            );
+            const currentTime = (await financialContract.getCurrentTime()).toNumber();
+            // Note: Advance < liquidationLiveness amount of time so that liquidation still appears under
+            // undisputedLiquidations struct:
+            await financialContract.setCurrentTime(currentTime + 999);
+            await financialContract.applyFundingRate();
+            const currentFundingRateData = await financialContract.fundingRate();
+            // Here we show that current funding rate multiplier has increased:
+            assert.isTrue(toBN(currentFundingRateData.cumulativeMultiplier.rawValue).gt(toWei("1.01")));
+            await client.update();
+            assert.deepStrictEqual(
+              [
+                {
+                  sponsor: sponsor1,
+                  id: "0",
+                  state: "1",
+                  liquidationTime: currentTime.toString(),
+                  // Here the `numTokens` should adjust for the CFRM at the time of liquidation, not the current one!
+                  numTokens: convertSynthetic("101"),
+                  liquidatedCollateral: convertCollateral("150"),
+                  lockedCollateral: convertCollateral("150"),
+                  liquidator: sponsor2,
+                  disputer: zeroAddress
+                }
+              ],
+              client.getUndisputedLiquidations()
             );
           }
         );
