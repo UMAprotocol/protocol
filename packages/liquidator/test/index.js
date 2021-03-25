@@ -283,6 +283,7 @@ contract("index.js", function(accounts) {
           [
             {
               sponsor: sponsorUndercollateralized,
+              adjustedTokens: toWei("100"),
               numTokens: toWei("100"),
               amountCollateral: toWei("110"),
               hasPendingWithdrawal: false,
@@ -337,6 +338,7 @@ contract("index.js", function(accounts) {
           [
             {
               sponsor: sponsorUndercollateralized,
+              adjustedTokens: toWei("100"),
               numTokens: toWei("100"),
               amountCollateral: toWei("110"),
               hasPendingWithdrawal: false,
