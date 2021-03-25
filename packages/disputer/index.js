@@ -9,6 +9,7 @@ const { findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = require("@uma/commo
 // JS libs
 const { Disputer } = require("./src/disputer");
 const {
+  multicallAddressMap,
   FinancialContractClient,
   GasEstimator,
   Logger,
@@ -21,7 +22,7 @@ const {
 
 // Truffle contracts.
 const { getAbi } = require("@uma/core");
-const { getWeb3 } = require("@uma/common");
+const { getWeb3, PublicNetworks } = require("@uma/common");
 
 /**
  * @notice Continuously attempts to dispute liquidations in the Financial Contract contract.
@@ -63,10 +64,12 @@ async function run({
     });
 
     // Load unlocked web3 accounts and get the networkId.
-    const [detectedContract, accounts] = await Promise.all([
+    const [detectedContract, accounts, networkId] = await Promise.all([
       findContractVersion(financialContractAddress, web3),
-      web3.eth.getAccounts()
+      web3.eth.getAccounts(),
+      web3.eth.net.getId()
     ]);
+    const networkName = PublicNetworks[Number(networkId)] ? PublicNetworks[Number(networkId)].name : null;
 
     // Append the contract version and type to the disputerConfig, if the disputerConfig does not already contain one.
     if (!disputerConfig) disputerConfig = {};
@@ -131,6 +134,7 @@ async function run({
       getAbi(disputerConfig.contractType, disputerConfig.contractVersion),
       web3,
       financialContractAddress,
+      networkName ? multicallAddressMap[networkName].multicall : null,
       collateralDecimals,
       syntheticDecimals,
       priceFeed.getPriceFeedDecimals(),
