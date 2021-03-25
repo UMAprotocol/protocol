@@ -76,7 +76,6 @@ async function main() {
   // Do some basic sanity checks.
   console.log("0. Running some basic sanity checks on the payout file 🔎");
   assert(web3.utils.isAddress(options.merkleDistributorAddress), "Invalid merkleDistributorAddress");
-  console.log({ options });
   console.log("Boolean(options.sendTransaction)", Boolean(options.sendTransaction));
   if (options.sendTransaction == "true")
     assert((await merkleDistributor.methods.owner().call()) == account, "Account is not the owner of the contract");
