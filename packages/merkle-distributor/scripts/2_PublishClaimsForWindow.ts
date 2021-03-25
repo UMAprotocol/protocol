@@ -27,7 +27,7 @@
 //   }... for all claims
 // }
 
-// example execution: ts-node ./scripts/2_PublishClaimsForWindow.ts -i ./proof-files/chain-id-42-reward-window-0-claims-file.json -m 0xAfCd2405298C2FABB2F7fCcEB919B4505A6bdDFC --network kovan_mnemonic
+// example execution: ts-node ./scripts/2_PublishClaimsForWindow.ts -input ./proof-files/chain-id-42-reward-window-0-claims-file.json --merkleDistributorAddress 0xAfCd2405298C2FABB2F7fCcEB919B4505A6bdDFC --network kovan_mnemonic --sendTransaction false
 
 import assert from "assert";
 import { program } from "commander";
@@ -51,6 +51,7 @@ program
   .option("-n --network")
   .requiredOption("-i, --input <path>", "input JSON file location containing a recipients payout")
   .requiredOption("-m, --merkleDistributorAddress <address>", "address of the merkle distributor contract")
+  .requiredOption("-s, --sendTransaction <bool>", "toggle if the script should send a tx or produce a table output")
   .parse(process.argv);
 
 const options = program.opts();
@@ -75,14 +76,17 @@ async function main() {
   // Do some basic sanity checks.
   console.log("0. Running some basic sanity checks on the payout file 🔎");
   assert(web3.utils.isAddress(options.merkleDistributorAddress), "Invalid merkleDistributorAddress");
-  assert((await merkleDistributor.methods.owner().call()) == account, "Unlocked account does not own the distributor");
+  console.log({ options });
+  console.log("Boolean(options.sendTransaction)", Boolean(options.sendTransaction));
+  if (options.sendTransaction == "true")
+    assert((await merkleDistributor.methods.owner().call()) == account, "Account is not the owner of the contract");
   assert((await web3.eth.net.getId()) == claimsObject.chainId, "The connected network not match your  JSON chainId");
   assert(web3.utils.isAddress(claimsObject.rewardToken), "Invalid rewardToken" + claimsObject.rewardToken);
   assert((await merkleDistributor.methods.nextCreatedIndex().call()) == claimsObject.windowIndex, "Wrong windowIndex");
 
   console.log("File passed the checks\n\n1. Adding claims file to IPFS 🛰");
 
-  const ipfsHash = await ipfsHelper.uploadFile(JSON.stringify(claimsObject.claims));
+  const ipfsHash = await ipfsHelper.uploadFile(JSON.stringify(claimsObject));
 
   console.log("Claims file added to IPFS with hash:", ipfsHash, "\n\n2. Pinning claims file to IPFS 📌");
 
@@ -107,20 +111,32 @@ async function main() {
   const rewardToken = new web3.eth.Contract(getAbi("ExpandedERC20"), claimsObject.rewardToken);
   const currentRewardAllowance = await rewardToken.methods.allowance(account, options.merkleDistributorAddress).call();
 
-  if (toBN(currentRewardAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
-    console.log("Reward token allowance is too little to make this payment. Sending a transaction to increase it...");
-    const approveTx = await rewardToken.methods
-      .approve(options.merkleDistributorAddress, MAX_UINT_VAL)
+  if (options.sendTransaction == "true") {
+    if (toBN(currentRewardAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
+      console.log("Reward token allowance is too little to make this payment. Sending a transaction to increase it...");
+      const approveTx = await rewardToken.methods
+        .approve(options.merkleDistributorAddress, MAX_UINT_VAL)
+        .send({ from: account });
+      console.log("Increased reward token allowance with tx:", approveTx.transactionHash);
+    } else console.log("Already have sufficient allowance on payment token");
+
+    console.log("\n6. Creating transaction to upload merkle root 🧙");
+    const setWindowTtx = await merkleDistributor.methods
+      .setWindow(claimsObject.totalRewardsDistributed, claimsObject.rewardToken, claimsObject.merkleRoot, ipfsHash)
       .send({ from: account });
-    console.log("Increased reward token allowance with tx:", approveTx.transactionHash);
-  } else console.log("Already have sufficient allowance on payment token");
 
-  console.log("\n6. Creating transaction to upload merkle root 🧙");
-  const setWindowTtx = await merkleDistributor.methods
-    .setWindow(claimsObject.totalRewardsDistributed, claimsObject.rewardToken, claimsObject.merkleRoot, ipfsHash)
-    .send({ from: account });
-
-  console.log("Your merkle root has been added on-chain! 🕺 tx:", setWindowTtx.transactionHash);
+    console.log("Your merkle root has been added on-chain! 🕺 tx:", setWindowTtx.transactionHash);
+  } else {
+    console.log(
+      `⚠️You have chosen to run the script in a mode that does not send the claims tx.\nThe table below shows the parameters you will need to call on the merkle distributor contract located at ${options.merkleDistributorAddress}.\nNote you might need to also add additional allowance to the payment token.`
+    );
+    console.table({
+      rewardsToDeposit: claimsObject.totalRewardsDistributed.toString(),
+      rewardToken: claimsObject.rewardToken,
+      merkleRoot: claimsObject.merkleRoot,
+      ipfsHash
+    });
+  }
 }
 
 main().catch(e => {
