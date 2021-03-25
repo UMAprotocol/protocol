@@ -278,6 +278,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
   }
 
   _computeTwap(endTime, ohlcs) {
+    // Combine open and close to get more data fidelity at the edges of the range.
     const priceTimes = lodash.flatten(
       ohlcs.map(pricePeriod => {
         return [
