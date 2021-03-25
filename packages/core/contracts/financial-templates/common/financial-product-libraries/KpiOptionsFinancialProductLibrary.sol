@@ -1,7 +1,6 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 import "./FinancialProductLibrary.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "../../../common/implementation/Lockable.sol";
 
 /**
@@ -10,7 +9,7 @@ import "../../../common/implementation/Lockable.sol";
  * If a price request is made pre-expiry, the price should always be set to 2 and the collateral requirement should be set to 1.
  * Post-expiry, the collateral requirement is left as 1 and the price is left unchanged.
  */
-contract KpiOptionsFinancialProductLibrary is FinancialProductLibrary, Ownable, Lockable {
+contract KpiOptionsFinancialProductLibrary is FinancialProductLibrary, Lockable {
     /**
      * @notice Returns a transformed price for pre-expiry price requests.
      * @param oraclePrice price from the oracle to be transformed.
