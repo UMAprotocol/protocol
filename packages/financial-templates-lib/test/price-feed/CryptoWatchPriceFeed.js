@@ -7,6 +7,7 @@ contract("CryptoWatchPriceFeed.js", function() {
   let invertedCryptoWatchPriceFeed;
   let mockTime = 1588376548;
   let networker;
+  let dummyLogger;
 
   const apiKey = "test-api-key";
   const exchange = "test-exchange";
@@ -47,7 +48,7 @@ contract("CryptoWatchPriceFeed.js", function() {
 
   beforeEach(async function() {
     networker = new NetworkerMock();
-    const dummyLogger = winston.createLogger({
+    dummyLogger = winston.createLogger({
       level: "info",
       transports: [new winston.transports.Console()]
     });
@@ -176,6 +177,87 @@ contract("CryptoWatchPriceFeed.js", function() {
 
     // After period 3 should return the most recent price.
     assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376521)).toString(), toWei("1.5"));
+  });
+
+  it("Basic TWAP price", async function() {
+    cryptoWatchPriceFeed = new CryptoWatchPriceFeed(
+      dummyLogger,
+      web3,
+      apiKey,
+      exchange,
+      pair,
+      lookback,
+      networker,
+      getTime,
+      minTimeBetweenUpdates,
+      false,
+      18, // Add arbitrary decimal conversion and prove this works.
+      undefined,
+      120
+    );
+
+    // Inject data.
+    networker.getJsonReturns = [...validResponses];
+
+    await cryptoWatchPriceFeed.update();
+
+    // ((12 * 32) + (13 * 60) + (14 * 28)) / 120
+    assert.equal(cryptoWatchPriceFeed.getCurrentPrice().toString(), "1296666666666666666");
+  });
+
+  it("Basic TWAP historical price", async function() {
+    cryptoWatchPriceFeed = new CryptoWatchPriceFeed(
+      dummyLogger,
+      web3,
+      apiKey,
+      exchange,
+      pair,
+      lookback,
+      networker,
+      getTime,
+      minTimeBetweenUpdates,
+      false,
+      18, // Add arbitrary decimal conversion and prove this works.
+      undefined,
+      120
+    );
+
+    // Inject data.
+    networker.getJsonReturns = [...validResponses];
+
+    await cryptoWatchPriceFeed.update();
+
+    // ((12 * 60) + (11 * 60)) / 120
+    assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376460)).toString(), web3.utils.toWei("1.15"));
+  });
+
+  it("TWAP fails if period starts before data", async function() {
+    cryptoWatchPriceFeed = new CryptoWatchPriceFeed(
+      dummyLogger,
+      web3,
+      apiKey,
+      exchange,
+      pair,
+      lookback,
+      networker,
+      getTime,
+      minTimeBetweenUpdates,
+      false,
+      18, // Add arbitrary decimal conversion and prove this works.
+      undefined,
+      500
+    );
+
+    // Inject data.
+    networker.getJsonReturns = [...validResponses];
+    const backupMockTime = mockTime;
+    mockTime = 1588376339; // 1 second before first data point.
+
+    await cryptoWatchPriceFeed.update();
+
+    assert.isNull(cryptoWatchPriceFeed.getCurrentPrice());
+    assert.isTrue(await cryptoWatchPriceFeed.getHistoricalPrice(mockTime).catch(() => true));
+    mockTime = backupMockTime;
   });
 
   it("Basic current price", async function() {
