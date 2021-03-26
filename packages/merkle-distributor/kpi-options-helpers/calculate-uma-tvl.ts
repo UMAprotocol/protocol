@@ -24,7 +24,7 @@ export async function calculateCurrentTvl() {
 export async function getAllFinancialContractsData() {
   const registeredContracts: Array<string> = await getAllRegisteredContracts();
   const collateralAddresses: Array<string> = await getCollateralForFinancialContracts(registeredContracts);
-  const { collateralBalances, collateralDecimals, collateralPricesInUsd } = await getCollateralInfo(
+  const { collateralBalances, collateralDecimals, collateralSymbols, collateralPricesInUsd } = await getCollateralInfo(
     collateralAddresses,
     registeredContracts
   );
@@ -38,6 +38,7 @@ export async function getAllFinancialContractsData() {
         collateralAddress: collateralAddresses[index],
         collateralBalance: collateralBalances[index],
         collateralDecimal: collateralDecimals[index],
+        collateralSymbol: collateralSymbols[index],
         collateralPriceInUsd: collateralPricesInUsd[index]
       };
     })
@@ -65,13 +66,14 @@ export function evaluateFinancialContractCollateral(
 // For an array of collateral types associated with an array of financial contracts, compute the balance in collateral
 // of the financial contract, the collateral decimals and the value In USD of each unit of collateral.
 export async function getCollateralInfo(collateralAddresses: Array<string>, registeredContracts: Array<string>) {
-  const [collateralBalances, collateralDecimals, collateralPricesInUsd] = await Promise.all([
+  const [collateralBalances, collateralDecimals, collateralSymbols, collateralPricesInUsd] = await Promise.all([
     getTokenBalances(collateralAddresses, registeredContracts),
-    getContractDecimals(collateralAddresses),
-    getContractPrices(collateralAddresses)
+    getTokenDecimals(collateralAddresses),
+    getTokenSymbol(collateralAddresses),
+    getTokenPrices(collateralAddresses)
   ]);
 
-  return { collateralBalances, collateralDecimals, collateralPricesInUsd };
+  return { collateralBalances, collateralDecimals, collateralSymbols, collateralPricesInUsd };
 }
 
 // Return an array of all registered contracts found in the Registry. Note that some non-financial contracts are included
@@ -104,13 +106,26 @@ export async function getCollateralForFinancialContracts(financialContractAddres
 
 // Returns an array of decimals associated with an array of token addresses. Note if any contract is not implemented
 // (null) or the decimals method is not implemented this will return null for that collateral token.
-export async function getContractDecimals(ContractAddresses: Array<string>) {
+export async function getTokenDecimals(ContractAddresses: Array<string>) {
   const contractInstances = ContractAddresses.map((address: string) =>
     address ? new web3.eth.Contract(getAbi("ExpandedERC20"), address) : null
   );
 
   const collateralDecimals = await Promise.allSettled(
     contractInstances.map(contractInstance => (contractInstance ? contractInstance.methods.decimals().call() : null))
+  );
+  return collateralDecimals.map((response: any) => (response.status === "fulfilled" ? response.value : null));
+}
+
+// Returns an array of decimals associated with an array of token addresses. Note if any contract is not implemented
+// (null) or the decimals method is not implemented this will return null for that collateral token.
+export async function getTokenSymbol(ContractAddresses: Array<string>) {
+  const contractInstances = ContractAddresses.map((address: string) =>
+    address ? new web3.eth.Contract(getAbi("ExpandedERC20"), address) : null
+  );
+
+  const collateralDecimals = await Promise.allSettled(
+    contractInstances.map(contractInstance => (contractInstance ? contractInstance.methods.symbol().call() : null))
   );
   return collateralDecimals.map((response: any) => (response.status === "fulfilled" ? response.value : null));
 }
@@ -133,7 +148,7 @@ export async function getTokenBalances(ContractAddresses: Array<string>, financi
 
 // Return an array of spot prices for an array of collateral addresses in one async call. Note we might in future
 // want to change this to re-use the bot's price feeds for more complex collateral types like LP tokens.
-export async function getContractPrices(ContractAddresses: Array<string>, currency = "usd") {
+export async function getTokenPrices(ContractAddresses: Array<string>, currency = "usd") {
   const hostApi = "https://api.coingecko.com/api/v3/simple/token_price/ethereum";
 
   // Generate a unique set with no repeated. join the set with the required coingecko delimiter.

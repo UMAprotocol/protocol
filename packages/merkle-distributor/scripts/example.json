@@ -1,8 +1,8 @@
 {
   "chainId": 42,
   "rewardToken": "0x47B1EE6d02af0AA5082C90Ea1c2c14c70399186c",
-  "windowIndex": 3,
-  "totalRewardsDistributed": "25000000000000000000",
+  "windowIndex": 0,
+  "totalRewardsDistributed": "15000000000000000000",
   "recipients": {
     "0x00b591bc2b682a0b30dd72bac9406bfa13e5d3cd": {
       "amount": "1000000000000000000",
@@ -33,7 +33,7 @@
       }
     },
     "0x01b01c6fb158e55c83883219a533f1efd2abfdf4": {
-      "amount": "15000000000000000000",
+      "amount": "5000000000000000000",
       "metaData": { "reason": ["Governance Votes KPI Options Round 1"] }
     }
   }

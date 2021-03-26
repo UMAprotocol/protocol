@@ -14,7 +14,8 @@ const {
   createReferencePriceFeedForFinancialContract,
   createTokenPriceFeedForFinancialContract,
   waitForLogger,
-  delay
+  delay,
+  multicallAddressMap
 } = require("@uma/financial-templates-lib");
 
 // Monitor modules to report on client state changes.
@@ -26,7 +27,7 @@ const { SyntheticPegMonitor } = require("./src/SyntheticPegMonitor");
 
 // Contract ABIs and network Addresses.
 const { getAbi, getAddress } = require("@uma/core");
-const { getWeb3, findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
+const { getWeb3, findContractVersion, SUPPORTED_CONTRACT_VERSIONS, PublicNetworks } = require("@uma/common");
 
 /**
  * @notice Continuously attempts to monitor contract positions and reports based on monitor modules.
@@ -91,7 +92,7 @@ async function run({
      *
      ***************************************/
     const [networkId, latestBlock] = await Promise.all([web3.eth.net.getId(), web3.eth.getBlock("latest")]);
-    // If startingBlock is set to null then use the `latest` block number for the `eventsFromBlockNumber` and leave the
+    const networkName = PublicNetworks[Number(networkId)] ? PublicNetworks[Number(networkId)].name : null; // If startingBlock is set to null then use the `latest` block number for the `eventsFromBlockNumber` and leave the
     // `endingBlock` as null.
     const eventsFromBlockNumber = startingBlock ? startingBlock : latestBlock.number;
     if (!monitorConfig) monitorConfig = {};
@@ -242,6 +243,7 @@ async function run({
         getAbi(monitorConfig.contractType, monitorConfig.contractVersion),
         web3,
         financialContractAddress,
+        networkName ? multicallAddressMap[networkName].multicall : null,
         collateralDecimals,
         syntheticDecimals,
         medianizerPriceFeed.getPriceFeedDecimals(),

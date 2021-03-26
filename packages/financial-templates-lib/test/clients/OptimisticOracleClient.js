@@ -95,7 +95,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
     startTime = (await optimisticOracle.getCurrentTime()).toNumber();
     requestTime = startTime - 10;
 
-    // The FinancialContractClient does not emit any info `level` events.  Therefore no need to test Winston outputs.
+    // The OptimisticOracleClient does not emit any info `level` events.  Therefore no need to test Winston outputs.
     // DummyLogger will not print anything to console as only capture `info` level events.
     dummyLogger = winston.createLogger({
       level: "info",
