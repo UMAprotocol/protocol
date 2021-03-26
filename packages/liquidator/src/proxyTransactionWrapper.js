@@ -227,7 +227,7 @@ class ProxyTransactionWrapper {
     const liquidationEvent = (
       await this.financialContract.getPastEvents("LiquidationCreated", {
         fromBlock: blockBeforeLiquidation,
-        filter: { liquidator: this.dsPƒroxyManager.getDSProxyAddress() }
+        filter: { liquidator: this.dsProxyManager.getDSProxyAddress() }
       })
     )[0];
 
