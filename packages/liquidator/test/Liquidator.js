@@ -1696,6 +1696,10 @@ contract("Liquidator.js", function(accounts) {
           let reserveToken;
           let uniswapFactory;
           let uniswapRouter;
+          let pairAddress;
+          let pair;
+          let dsProxyFactory;
+          let dsProxy;
 
           // Takes in a json object from a compiled contract and returns a truffle contract instance that can be deployed.
           // TODO: refactor this to be from a common file
@@ -1755,14 +1759,14 @@ contract("Liquidator.js", function(accounts) {
               web3,
               financialContract: financialContract.contract,
               gasEstimator,
-              syntheticToken:syntheticToken.contract,
-              collateralToken:collateralToken.contract,
+              syntheticToken: syntheticToken.contract,
+              collateralToken: collateralToken.contract,
               account: accounts[0],
               dsProxyManager,
               isUsingDsProxyToLiquidate: true,
               proxyTransactionWrapperConfig: {
                 uniswapRouterAddress: uniswapRouter.address,
-                uniswapFactoryAddress:uniswapFactory.address,
+                uniswapFactoryAddress: uniswapFactory.address,
                 liquidatorReserveCurrencyAddress: reserveToken.address
               }
             });
@@ -1805,14 +1809,14 @@ contract("Liquidator.js", function(accounts) {
                   web3,
                   financialContract: financialContract.contract,
                   gasEstimator,
-                  syntheticToken:syntheticToken.contract,
-                  collateralToken:collateralToken.contract,
+                  syntheticToken: syntheticToken.contract,
+                  collateralToken: collateralToken.contract,
                   account: accounts[0],
                   dsProxyManager,
                   isUsingDsProxyToLiquidate: true,
                   proxyTransactionWrapperConfig: {
                     uniswapRouterAddress: uniswapRouter.address,
-                    uniswapFactoryAddress:uniswapFactory.address,
+                    uniswapFactoryAddress: uniswapFactory.address,
                     liquidatorReserveCurrencyAddress: null
                   }
                 });
@@ -1824,8 +1828,8 @@ contract("Liquidator.js", function(accounts) {
                   web3,
                   financialContract: financialContract.contract,
                   gasEstimator,
-                  syntheticToken:syntheticToken.contract,
-                  collateralToken:collateralToken.contract,
+                  syntheticToken: syntheticToken.contract,
+                  collateralToken: collateralToken.contract,
                   account: accounts[0],
                   dsProxyManager,
                   isUsingDsProxyToLiquidate: true,
@@ -1841,14 +1845,14 @@ contract("Liquidator.js", function(accounts) {
                   web3,
                   financialContract: financialContract.contract,
                   gasEstimator,
-                  syntheticToken:syntheticToken.contract,
-                  collateralToken:collateralToken.contract,
+                  syntheticToken: syntheticToken.contract,
+                  collateralToken: collateralToken.contract,
                   account: accounts[0],
                   dsProxyManager: null,
                   isUsingDsProxyToLiquidate: true,
                   proxyTransactionWrapperConfig: {
                     uniswapRouterAddress: uniswapRouter.address,
-                    uniswapFactoryAddress:uniswapFactory.address,
+                    uniswapFactoryAddress: uniswapFactory.address,
                     liquidatorReserveCurrencyAddress: reserveToken.address
                   }
                 });
@@ -1870,14 +1874,14 @@ contract("Liquidator.js", function(accounts) {
                   web3,
                   financialContract: financialContract.contract,
                   gasEstimator,
-                  syntheticToken:syntheticToken.contract,
-                  collateralToken:collateralToken.contract,
+                  syntheticToken: syntheticToken.contract,
+                  collateralToken: collateralToken.contract,
                   account: accounts[0],
                   dsProxyManager,
                   isUsingDsProxyToLiquidate: true,
                   proxyTransactionWrapperConfig: {
                     uniswapRouterAddress: uniswapRouter.address,
-                    uniswapFactoryAddress:uniswapFactory.address,
+                    uniswapFactoryAddress: uniswapFactory.address,
                     liquidatorReserveCurrencyAddress: reserveToken.address
                   }
                 });
@@ -1941,37 +1945,38 @@ contract("Liquidator.js", function(accounts) {
               priceFeedMock.setCurrentPrice(convertPrice("1.3"));
               await liquidator.update();
               await liquidator.liquidatePositions(); // set the maxTokensToLiquidateWei to a large number.
-              // assert.equal(spy.callCount, 2); // 2 info level events should be sent at the conclusion of the 2 liquidations.
+              assert.equal(spy.callCount, 5); // 5 info level events should be sent at the conclusion of the 2 liquidations.
+              // 2 infos for each liquidation and 2 infos for each ds proxy execution. and 1 initial log when the DSProxy was deployed.
 
-              // // Sponsor1 should be in a liquidation state with the bot as the liquidator.
-              // let liquidationObject = (await financialContract.getLiquidations(sponsor1))[0];
-              // assert.equal(liquidationObject.sponsor, sponsor1);
-              // assert.equal(liquidationObject.liquidator, liquidatorBot);
-              // assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
-              // assert.equal(liquidationObject.liquidatedCollateral, convertCollateral("125"));
+              // Sponsor1 should be in a liquidation state with the bot as the liquidator.
+              let liquidationObject = (await financialContract.getLiquidations(sponsor1))[0];
+              assert.equal(liquidationObject.sponsor, sponsor1);
+              assert.equal(liquidationObject.liquidator, dsProxy.address);
+              assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+              assert.equal(liquidationObject.liquidatedCollateral, convertCollateral("125"));
 
-              // // Sponsor1 should have zero collateral left in their position from the liquidation.
-              // assert.equal((await financialContract.getCollateral(sponsor1)).rawValue, 0);
+              // Sponsor1 should have zero collateral left in their position from the liquidation.
+              assert.equal((await financialContract.getCollateral(sponsor1)).rawValue, 0);
 
-              // // Sponsor2 should be in a liquidation state with the bot as the liquidator.
-              // liquidationObject = (await financialContract.getLiquidations(sponsor2))[0];
-              // assert.equal(liquidationObject.sponsor, sponsor2);
-              // assert.equal(liquidationObject.liquidator, liquidatorBot);
-              // assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
-              // assert.equal(liquidationObject.liquidatedCollateral, convertCollateral("150"));
+              // Sponsor2 should be in a liquidation state with the bot as the liquidator.
+              liquidationObject = (await financialContract.getLiquidations(sponsor2))[0];
+              assert.equal(liquidationObject.sponsor, sponsor2);
+              assert.equal(liquidationObject.liquidator, dsProxy.address);
+              assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+              assert.equal(liquidationObject.liquidatedCollateral, convertCollateral("150"));
 
-              // // Sponsor2 should have zero collateral left in their position from the liquidation.
-              // assert.equal((await financialContract.getCollateral(sponsor2)).rawValue, 0);
+              // Sponsor2 should have zero collateral left in their position from the liquidation.
+              assert.equal((await financialContract.getCollateral(sponsor2)).rawValue, 0);
 
-              // // Sponsor3 should have all their collateral left and no liquidations.
-              // assert.deepStrictEqual(await financialContract.getLiquidations(sponsor3), []);
-              // assert.equal((await financialContract.getCollateral(sponsor3)).rawValue, convertCollateral("175"));
+              // Sponsor3 should have all their collateral left and no liquidations.
+              assert.deepStrictEqual(await financialContract.getLiquidations(sponsor3), []);
+              assert.equal((await financialContract.getCollateral(sponsor3)).rawValue, convertCollateral("175"));
 
-              // // Another query at the same price should execute no new liquidations.
-              // priceFeedMock.setCurrentPrice(convertPrice("1.3"));
-              // await liquidator.update();
-              // await liquidator.liquidatePositions();
-              // assert.equal(spy.callCount, 2);
+              // Another query at the same price should execute no new liquidations.
+              priceFeedMock.setCurrentPrice(convertPrice("1.3"));
+              await liquidator.update();
+              await liquidator.liquidatePositions();
+              assert.equal(spy.callCount, 5);
             }
           );
         });

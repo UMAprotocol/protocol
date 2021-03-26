@@ -16,9 +16,9 @@ const SUPPORTED_CONTRACT_VERSIONS = [
 // Versions that unit tests will test against. Note that there is no need to re-test anything less than 1.2.2 as
 // functionally these versions are identical to 1.2.2.
 const TESTED_CONTRACT_VERSIONS = [
-  { contractType: "ExpiringMultiParty", contractVersion: "1.2.2" },
-  { contractType: "ExpiringMultiParty", contractVersion: "latest" },
-  { contractType: "Perpetual", contractVersion: "latest" }
+  // { contractType: "ExpiringMultiParty", contractVersion: "1.2.2" },
+  { contractType: "ExpiringMultiParty", contractVersion: "latest" }
+  // { contractType: "Perpetual", contractVersion: "latest" }
 ];
 
 /**

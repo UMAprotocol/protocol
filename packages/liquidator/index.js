@@ -21,7 +21,7 @@ const {
 } = require("@uma/financial-templates-lib");
 
 // Contract ABIs and network Addresses.
-const { getAbi } = require("@uma/core");
+const { getAbi, getAddress } = require("@uma/core");
 
 /**
  * @notice Continuously attempts to liquidate positions in the Financial Contract contract.
@@ -74,7 +74,8 @@ async function run({
     });
 
     // Load unlocked web3 accounts and get the networkId.
-    const [detectedContract, accounts] = await Promise.all([
+    const [networkId, detectedContract, accounts] = await Promise.all([
+      web3.eth.net.getId(),
       findContractVersion(financialContractAddress, web3),
       web3.eth.getAccounts()
     ]);

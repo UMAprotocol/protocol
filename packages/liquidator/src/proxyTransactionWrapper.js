@@ -8,7 +8,6 @@ const { getAbi, getTruffleContract } = require("@uma/core");
 
 const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json");
 const IUniswapV2Pair = require("@uniswap/v2-core/build/IUniswapV2Pair.json");
-const UniswapV2Router02 = require("@uniswap/v2-periphery/build/UniswapV2Router02.json");
 
 class ProxyTransactionWrapper {
   constructor({
@@ -54,12 +53,12 @@ class ProxyTransactionWrapper {
         value: "",
         isValid: x => {
           return this.web3.utils.isAddress(x) || x === "";
-        },
-        maxReserverTokenSpent: {
-          value: this.toWei("500000").toString(),
-          isValid: x => {
-            return typeof x == "string";
-          }
+        }
+      },
+      maxReserverTokenSpent: {
+        value: this.toWei("500000").toString(),
+        isValid: x => {
+          return typeof x == "string";
         }
       }
     };
@@ -188,6 +187,7 @@ class ProxyTransactionWrapper {
     }
 
     return {
+      type: "Standard EOA liquidation",
       tx: receipt && receipt.transactionHash,
       sponsor: receipt.events.LiquidationCreated.returnValues.sponsor,
       liquidator: receipt.events.LiquidationCreated.returnValues.liquidator,
@@ -200,28 +200,51 @@ class ProxyTransactionWrapper {
   }
 
   async _executeLiquidationWithDsProxy(liquidationArgs) {
-    console.log("DSPROXYLiquidation");
+    const blockBeforeLiquidation = await this.web3.eth.getBlockNumber();
 
     const reserveCurrencyLiquidator = new this.web3.eth.Contract(this.ReserveCurrencyLiquidator.abi);
 
-    // TODO: Finish this params
+    // TODO: the liquidation args, as structured hare is hard to read and maintain. We should refactor the liquidation
+    // strategy to better pass around these parms as they are no longer directly fed into the liquidation method.
+
     const callData = reserveCurrencyLiquidator.methods
       .swapMintLiquidate(
         this.uniswapRouterAddress, // uniswapRouter
         this.financialContract._address, // financialContract
         this.reserveToken._address, // reserveCurrency
-        liquidationArgs.position.sponsor, // liquidatedSponsor
+        liquidationArgs[0], // liquidatedSponsor
         { rawValue: this.maxReserverTokenSpent }, // maxReserverTokenSpent
-        { rawValue: 0 }, // minCollateralPerTokenLiquidated
-        { rawValue: liquidationArgs.maxCollateralPerToken }, // maxCollateralPerTokenLiquidated. This number need to be >= the token price.
-        { rawValue: toWei("1000") }, // maxTokensToLiquidate. This is how many tokens the positions has (liquidated debt).
-        unreachableDeadline
+        { rawValue: liquidationArgs[1].rawValue }, // minCollateralPerTokenLiquidated
+        { rawValue: liquidationArgs[2].rawValue }, // maxCollateralPerTokenLiquidated. This number need to be >= the token price.
+        { rawValue: liquidationArgs[3].rawValue }, // maxTokensToLiquidate. This is how many tokens the positions has (liquidated debt).
+        liquidationArgs[4]
       )
       .encodeABI();
     const callCode = this.ReserveCurrencyLiquidator.bytecode;
 
     const dsProxyCallReturn = await this.dsProxyManager.callFunctionOnNewlyDeployedLibrary(callCode, callData);
-    console.log("dsProxyCallReturn", dsProxyCallReturn);
+
+    const liquidationEvent = (
+      await this.financialContract.getPastEvents("LiquidationCreated", {
+        fromBlock: blockBeforeLiquidation,
+        filter: { liquidator: this.dsPƒroxyManager.getDSProxyAddress() }
+      })
+    )[0];
+
+    return {
+      type: "DSProxy Swap, mint and liquidate transaction",
+      tx: dsProxyCallReturn.transactionHash,
+      sponsor: liquidationEvent.sponsor,
+      liquidator: liquidationEvent.liquidator,
+      liquidationId: liquidationEvent.liquidationId,
+      tokensOutstanding: liquidationEvent.tokensOutstanding,
+      lockedCollateral: liquidationEvent.lockedCollateral,
+      liquidatedCollateral: liquidationEvent.liquidatedCollateral,
+      txnConfig: {
+        from: dsProxyCallReturn.from,
+        gas: dsProxyCallReturn.gasUsed
+      }
+    };
   }
 }
 
