@@ -738,6 +738,79 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "binance", pair: "btcusdt" },
       { type: "cryptowatch", exchange: "bitstamp", pair: "btcusd" }
     ]
+  },
+  "STABLESPREAD/USDC_18DEC": {
+    type: "basketspread",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    experimentalPriceFeeds: [
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "bittrex", pair: "ustusdt" },
+          {
+            type: "uniswap",
+            uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38",
+            twapLength: 2
+          }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "binance", pair: "busdusdt" },
+          {
+            type: "uniswap",
+            uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd",
+            twapLength: 2
+          }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "bittrex", pair: "cusdusdt" }
+          // NOTE: The OKCoin exchange is not available on Cryptowatch for this pair,
+          // presumably because it has such low volume.
+          // { type: "cryptowatch", exchange: "okcoin" }
+        ]
+      }
+    ],
+    baselinePriceFeeds: [
+      {
+        type: "medianizer",
+        medianizedFeeds: [
+          {
+            type: "medianizer",
+            computeMean: true,
+            medianizedFeeds: [
+              { type: "cryptowatch", exchange: "bitfinex", pair: "usdtusd" },
+              { type: "cryptowatch", exchange: "kraken", pair: "usdtusd" }
+            ]
+          },
+          {
+            type: "medianizer",
+            computeMean: true,
+            medianizedFeeds: [
+              { type: "cryptowatch", exchange: "kraken", pair: "usdcusd" },
+              { type: "cryptowatch", exchange: "bitstamp", pair: "usdcusd" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  BCHNBTC_18DEC: {
+    type: "medianizer",
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "BCHBTC" },
+      { type: "cryptowatch", exchange: "binance", pair: "BCHBTC" },
+      { type: "cryptowatch", exchange: "huobi", pair: "BCHBTC" }
+    ]
   }
 };
 
