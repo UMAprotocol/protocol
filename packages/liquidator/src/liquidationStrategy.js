@@ -276,8 +276,7 @@ module.exports = (
   return {
     // Main function
     processPosition,
-    // Utility calls exposed for testing or other use
-    // Not really needed outside this module
+    // Utility calls exposed for testing or other use. Not really needed outside this module
     utils: {
       canLiquidateFully,
       canLiquidateMinimum,

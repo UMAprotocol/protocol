@@ -70,7 +70,7 @@ const _setFundingRateAndAdvanceTime = async fundingRate => {
 
 // If the current version being executed is part of the `supportedVersions` array then return `it` to run the test.
 // Else, do nothing. Can be used exactly in place of a normal `it` to parameterize contract types and versions supported
-// for a given test.eg: versionedIt(["Perpetual-latest"])("test name", async function () { assert.isTrue(true) })
+// for a given test.eg: versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])("test name", async function () { assert.isTrue(true) })
 // Note that a second param can be provided to make the test an `it.only` thereby ONLY running that single test, on
 // the provided version. This is very useful for debugging and writing single unit tests without having ro run all tests.
 const versionedIt = function(supportedVersions, shouldBeItOnly = false) {
