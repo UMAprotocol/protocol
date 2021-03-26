@@ -28,10 +28,12 @@ async function runExport() {
     identifiers = [argv.identifier];
   }
 
+  console.log("Testing identifiers:", identifiers);
   const identifierWhitelist = await IdentifierWhitelist.deployed();
 
   for (const identifier of identifiers) {
     assert.equal(await identifierWhitelist.isIdentifierSupported(web3.utils.utf8ToHex(identifier)), true);
+    console.log(identifier, "verified.");
   }
 
   console.log("Upgrade Verified!");

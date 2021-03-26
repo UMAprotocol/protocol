@@ -147,7 +147,7 @@ class CRMonitor {
       // No additional calculation should be required as a result.
       const collateral = positionInformation.amountCollateral;
       const withdrawalRequestAmount = positionInformation.withdrawalRequestAmount;
-      const tokensOutstanding = positionInformation.numTokens;
+      const tokensOutstanding = positionInformation.adjustedTokens;
 
       // If the values for collateral or price have yet to resolve, dont push a notification.
       if (collateral == null || tokensOutstanding == null) {

@@ -239,7 +239,9 @@ class Liquidator {
       at: "Liquidator",
       message: "Checking for under collateralized positions",
       liquidatorOverridePrice: liquidatorOverridePrice ? liquidatorOverridePrice.toString() : null,
-      latestCumulativeFundingRateMultiplier: this.financialContractClient.getLatestCumulativeFundingRateMultiplier(),
+      latestCumulativeFundingRateMultiplier: this.financialContractClient
+        .getLatestCumulativeFundingRateMultiplier()
+        .toString(),
       inputPrice: price.toString(),
       scaledPrice: scaledPrice.toString(),
       financialContractCRRatio: this.financialContractCRRatio.toString(),

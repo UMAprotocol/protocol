@@ -47,6 +47,7 @@ let collateralWhitelist;
 let optimisticOracle;
 let configStore;
 let constructorParams;
+let multicall;
 
 // Js Objects, clients and helpers
 let spy;
@@ -109,6 +110,7 @@ contract("Disputer.js", function(accounts) {
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
     const ConfigStore = getTruffleContract("ConfigStore", web3, "latest");
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, "latest");
+    const MulticallMock = getTruffleContract("MulticallMock", web3, "latest");
 
     for (let testConfig of configs) {
       describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
@@ -157,6 +159,8 @@ contract("Disputer.js", function(accounts) {
             collateralWhitelist.address
           );
           await collateralWhitelist.addToWhitelist(collateralToken.address);
+
+          multicall = await MulticallMock.new();
         });
         beforeEach(async function() {
           await timer.setCurrentTime(startTime - 1);
@@ -214,7 +218,6 @@ contract("Disputer.js", function(accounts) {
           financialContract = await FinancialContract.new(constructorParams);
           // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.
           await financialContract.setCurrentTime(startTime);
-          if (contractVersion.contractType == "Perpetual") await financialContract.applyFundingRate();
           await syntheticToken.addMinter(financialContract.address);
           await syntheticToken.addBurner(financialContract.address);
 
@@ -253,6 +256,7 @@ contract("Disputer.js", function(accounts) {
             FinancialContract.abi,
             web3,
             financialContract.address,
+            multicall.address,
             testConfig.collateralDecimals,
             testConfig.syntheticDecimals,
             testConfig.priceFeedDecimals

@@ -7,7 +7,7 @@
 const assert = require("assert").strict;
 
 const {
-  getRandomUnsignedInt,
+  getRandomSignedInt,
   advanceBlockAndSetTime,
   takeSnapshot,
   revertToSnapshot,
@@ -114,7 +114,7 @@ async function runExport() {
     const time = pendingRequests[pendingIndex].time.toString();
     const price = web3.utils.toWei("1"); // a "yes" vote
 
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     // Main net DVM uses the old commit reveal scheme of hashed concatenation of price and salt
     let voteHash;
     const request = pendingRequests[pendingIndex];

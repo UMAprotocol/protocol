@@ -47,6 +47,7 @@ let timer;
 let optimisticOracle;
 let configStore;
 let collateralWhitelist;
+let multicall;
 
 // Price feed mock
 let priceFeedMock;
@@ -108,6 +109,7 @@ contract("CRMonitor.js", function(accounts) {
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
     const ConfigStore = getTruffleContract("ConfigStore", web3, "latest");
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, "latest");
+    const MulticallMock = getTruffleContract("MulticallMock", web3, "latest");
 
     for (let testConfig of configs) {
       describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
@@ -149,6 +151,8 @@ contract("CRMonitor.js", function(accounts) {
             collateralWhitelist.address
           );
           await collateralWhitelist.addToWhitelist(collateralToken.address);
+
+          multicall = await MulticallMock.new();
         });
 
         beforeEach(async function() {
@@ -207,7 +211,6 @@ contract("CRMonitor.js", function(accounts) {
 
           // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.
           await financialContract.setCurrentTime(startTime);
-          if (contractVersion.contractType == "Perpetual") await financialContract.applyFundingRate();
 
           // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston
           // logs the correct text based on interactions with the financialContract. Note that only `info` level messages are captured.
@@ -224,6 +227,7 @@ contract("CRMonitor.js", function(accounts) {
             FinancialContract.abi,
             web3,
             financialContract.address,
+            multicall.address,
             testConfig.collateralDecimals,
             testConfig.syntheticDecimals,
             testConfig.priceFeedDecimals,
@@ -400,9 +404,12 @@ contract("CRMonitor.js", function(accounts) {
             // sponsor's debt. This becomes 100*1.1 = 110. Also, let's set the price to 1.1
             // The sponsor CR is now 250 / (100 * 1.1 * 1.1) = 2.066
             await _setFundingRateAndAdvanceTime(toWei("0.00001"));
-            await financialContract.applyFundingRate();
-            assert.equal((await financialContract.fundingRate()).cumulativeMultiplier.toString(), toWei("1.1"));
+
+            // Note: no need to call `applyFundingRate()` on Perpetual contract because client should
+            // be able to use Multicall contract to simulate calling that and anticipating what the
+            // effective funding rate charge will be.
             await financialContractClient.update();
+            assert.equal(financialContractClient.getLatestCumulativeFundingRateMultiplier(), toWei("1.1"));
             priceFeedMock.setCurrentPrice(convertPrice("1.1"));
             await crMonitor.checkWalletCrRatio();
             assert.equal(spy.callCount, 0);
@@ -411,9 +418,9 @@ contract("CRMonitor.js", function(accounts) {
             // another 0.05 is added onto the funding rate. The cumlative rate will become 1.1 * (1 + 0.000005 * 10000) = 1.155.
             // This will place the sponsors CR at 250 / (100 * 1.155 * 1.1) = 1.9677 which is below the 2 alerting threshold.
             await _setFundingRateAndAdvanceTime(toWei("0.000005"));
-            await financialContract.applyFundingRate();
-            assert.equal((await financialContract.fundingRate()).cumulativeMultiplier.toString(), toWei("1.155"));
             await financialContractClient.update();
+            assert.equal(financialContractClient.getLatestCumulativeFundingRateMultiplier(), toWei("1.155"));
+
             await crMonitor.checkWalletCrRatio();
             assert.equal(spy.callCount, 1);
             assert.isTrue(lastSpyLogIncludes(spy, "Collateralization ratio alert"));

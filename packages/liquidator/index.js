@@ -4,7 +4,7 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers
-const { getWeb3, findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
+const { getWeb3, findContractVersion, SUPPORTED_CONTRACT_VERSIONS, PublicNetworks } = require("@uma/common");
 // JS libs
 const { Liquidator } = require("./src/liquidator");
 const { ProxyTransactionWrapper } = require("./src/proxyTransactionWrapper");
@@ -17,7 +17,8 @@ const {
   waitForLogger,
   delay,
   setAllowance,
-  DSProxyManager
+  DSProxyManager,
+  multicallAddressMap
 } = require("@uma/financial-templates-lib");
 
 // Contract ABIs and network Addresses.
@@ -74,11 +75,12 @@ async function run({
     });
 
     // Load unlocked web3 accounts and get the networkId.
-    const [networkId, detectedContract, accounts] = await Promise.all([
-      web3.eth.net.getId(),
+    const [detectedContract, accounts, networkId] = await Promise.all([
       findContractVersion(financialContractAddress, web3),
-      web3.eth.getAccounts()
+      web3.eth.getAccounts(),
+      web3.eth.net.getId()
     ]);
+    const networkName = PublicNetworks[Number(networkId)] ? PublicNetworks[Number(networkId)].name : null;
     // Append the contract version and type to the liquidatorConfig, if the liquidatorConfig does not already contain one.
     if (!liquidatorConfig) liquidatorConfig = {};
     if (!liquidatorConfig.contractVersion) liquidatorConfig.contractVersion = detectedContract?.contractVersion;
@@ -190,6 +192,7 @@ async function run({
       getAbi(liquidatorConfig.contractType, liquidatorConfig.contractVersion),
       web3,
       financialContractAddress,
+      networkName ? multicallAddressMap[networkName].multicall : null,
       collateralDecimals,
       syntheticDecimals,
       priceFeed.getPriceFeedDecimals(),
