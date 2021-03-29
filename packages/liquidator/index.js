@@ -7,6 +7,7 @@ const retry = require("async-retry");
 const { getWeb3, findContractVersion, SUPPORTED_CONTRACT_VERSIONS, PublicNetworks } = require("@uma/common");
 // JS libs
 const { Liquidator } = require("./src/liquidator");
+const { ProxyTransactionWrapper } = require("./src/proxyTransactionWrapper");
 const {
   GasEstimator,
   FinancialContractClient,
@@ -16,18 +17,18 @@ const {
   waitForLogger,
   delay,
   setAllowance,
+  DSProxyManager,
   multicallAddressMap
 } = require("@uma/financial-templates-lib");
 
 // Contract ABIs and network Addresses.
-const { getAbi } = require("@uma/core");
+const { getAbi, getAddress } = require("@uma/core");
 
 /**
  * @notice Continuously attempts to liquidate positions in the Financial Contract contract.
  * @param {Object} logger Module responsible for sending logs.
  * @param {Object} web3 web3.js instance with unlocked wallets used for all on-chain connections.
  * @param {String} financialContractAddress Contract address of the Financial Contract.
- * @param {String} oneSplitAddress Contract address of OneSplit.
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
  * @param {Number} errorRetries The number of times the execution loop will re-try before throwing if an error occurs.
@@ -43,7 +44,6 @@ async function run({
   logger,
   web3,
   financialContractAddress,
-  oneSplitAddress,
   pollingDelay,
   errorRetries,
   errorRetriesTimeout,
@@ -51,7 +51,11 @@ async function run({
   liquidatorConfig,
   liquidatorOverridePrice,
   startingBlock,
-  endingBlock
+  endingBlock,
+  useDsProxyToLiquidate,
+  dsProxyFactoryAddress,
+  uniswapRouterAddress,
+  liquidatorReserveCurrencyAddress
 }) {
   try {
     const getTime = () => Math.round(new Date().getTime() / 1000);
@@ -198,17 +202,35 @@ async function run({
     const gasEstimator = new GasEstimator(logger);
     await gasEstimator.update();
 
-    if (oneSplitAddress) {
-      logger.info({
-        at: "Liquidator#index",
-        message:
-          "WARNING: 1Inch functionality has been temporarily removed, oneSplitAddress setting will have no effect on bot logic"
-      });
-    }
+    const dsProxyManager = new DSProxyManager({
+      logger,
+      web3,
+      gasEstimator,
+      account: accounts[0],
+      dsProxyFactoryAddress: dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
+      dsProxyFactoryAbi: getAbi("DSProxyFactory"),
+      dsProxyAbi: getAbi("DSProxy")
+    });
+
+    await dsProxyManager.initializeDSProxy();
+
+    const proxyTransactionWrapperConfig = { uniswapRouterAddress, liquidatorReserveCurrencyAddress };
+
+    const proxyTransactionWrapper = new ProxyTransactionWrapper({
+      web3,
+      financialContract,
+      gasEstimator,
+      syntheticToken,
+      account: accounts[0],
+      dsProxyManager,
+      isUsingDsProxyToLiquidate: useDsProxyToLiquidate,
+      proxyTransactionWrapperConfig
+    });
 
     const liquidator = new Liquidator({
       logger,
       financialContractClient,
+      proxyTransactionWrapper,
       gasEstimator,
       syntheticToken,
       priceFeed,
@@ -260,7 +282,7 @@ async function run({
           if (!isExpiredOrShutdown) {
             // Check for liquidatable positions and submit liquidations. Bounded by current synthetic balance and
             // considers override price if the user has specified one.
-            const currentSyntheticBalance = await syntheticToken.methods.balanceOf(accounts[0]).call();
+            const currentSyntheticBalance = await proxyTransactionWrapper.getSyntheticTokenBalance();
             await liquidator.liquidatePositions(currentSyntheticBalance, liquidatorOverridePrice);
           }
           // Check for any finished liquidations that can be withdrawn.
@@ -315,8 +337,6 @@ async function Poll(callback) {
     const executionParameters = {
       // Financial Contract Address. Should be an Ethereum address
       financialContractAddress: process.env.EMP_ADDRESS || process.env.FINANCIAL_CONTRACT_ADDRESS,
-      // One Split address. Should be an Ethereum address. Defaults to mainnet address 1split.eth
-      oneSplitAddress: process.env.ONE_SPLIT_ADDRESS,
       // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
       pollingDelay: process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60,
       // Default to 3 re-tries on error within the execution loop.
@@ -349,7 +369,18 @@ async function Poll(callback) {
       startingBlock: process.env.STARTING_BLOCK_NUMBER,
       // Block number to search for events to. If set, acts to limit from where the monitor bot will search for events up
       // until. If either startingBlock or endingBlock is not sent, then the bot will search for event.
-      endingBlock: process.env.ENDING_BLOCK_NUMBER
+      endingBlock: process.env.ENDING_BLOCK_NUMBER,
+      // If enabled, the bot will funnel liquidations via a DSProxy which will be deployed on the bots behalf. This
+      // enables the bots to store one reserve and operate over multiple financial contracts.
+      useDsProxyToLiquidate: process.env.USE_DSPROXY ? Boolean(process.env.USE_DSPROXY) : false,
+      // If provided, enables the bot runner to choose a diffrent DSPRoxy factory. Else, defaults the the UMA factory.
+      dsProxyFactoryAddress: process.env.DSPROXY_FACTORY_ADDRESS,
+      // If using a DSProxy to liquidate, define the reserve currency the bot should trade from when buying collateral
+      // to mint positions.
+      liquidatorReserveCurrencyAddress: process.env.RESERVE_CURRENCY,
+      // If using a DSProxy to liquidate, you can optionally override the uniswap router used for trades. Otherwise, this
+      // defaults to the mainnet router.
+      uniswapRouterAddress: process.env.UNISWAP_ROUTER_ADDRESS
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });

@@ -24,11 +24,6 @@ class DSProxyManager {
     this.dsProxyAddress = null;
 
     // Helper functions from web3.
-    this.BN = this.web3.utils.BN;
-    this.toBN = this.web3.utils.toBN;
-    this.toWei = this.web3.utils.toWei;
-    this.fromWei = this.web3.utils.fromWei;
-    this.utf8ToHex = this.web3.utils.utf8ToHex;
     this.isAddress = this.web3.utils.isAddress;
 
     // Multiplier applied to Truffle's estimated gas limit for a transaction to send.
