@@ -33,7 +33,7 @@ class FundingRateMultiplierPriceFeed extends PriceFeedInterface {
     assert(logger, "logger required");
     assert(perpetualAbi, "perpetualAbi required");
     assert(web3, "web3 required");
-    assert(perpetualAddress, "perpetualAddress required");
+    assert(web3.utils.isAddress(perpetualAddress), "perpetualAddress required");
     assert(getTime, "getTime required");
 
     this.logger = logger;
