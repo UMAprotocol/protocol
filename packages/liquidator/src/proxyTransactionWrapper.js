@@ -92,8 +92,7 @@ class ProxyTransactionWrapper {
 
   // Get the effective synthetic token balance. If the bot is executing in normal mode (liquidations sent from an EOA)
   // then this is simply the token balance of the unlocked account. If the liquidator is using a DSProxy to liquidate,
-  // then this is a bit more complex as this number is effectively the amount of synthetics that could be minted, considering
-  // all the reserve currency is swapped to collateral and used in the mint.
+  // then consider the synthetics could be minted, + any synthetics the DSProxy already has.
   async getSyntheticTokenBalance() {
     const syntheticTokenBallance = await this.syntheticToken.methods.balanceOf(this.account).call();
     if (!this.isUsingDsProxyToLiquidate) return syntheticTokenBallance;
@@ -105,15 +104,23 @@ class ProxyTransactionWrapper {
       const uniswapPair = await this.createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
 
       // We can now fetch the reserves. At the same time, we can batch a few other required async calls.
-      const [reserves, token0, contractPFC, contractTokensOutstanding, reserveTokenBalance] = await Promise.all([
+      const [
+        reserves,
+        token0,
+        contractPFC,
+        contractTokensOutstanding,
+        reserveTokenBalance,
+        collateralTokenBalance
+      ] = await Promise.all([
         uniswapPair.getReserves(),
         uniswapPair.token0(),
         this.financialContract.methods.pfc().call(),
         this.financialContract.methods.totalTokensOutstanding().call(),
-        this.reserveToken.methods.balanceOf(this.dsProxyManager.getDSProxyAddress()).call()
+        this.reserveToken.methods.balanceOf(this.dsProxyManager.getDSProxyAddress()).call(),
+        this.collateralToken.methods.balanceOf(this.dsProxyManager.getDSProxyAddress()).call()
       ]);
 
-      // Detect if the reserve currency is token0 or 1. this informs the order in the following computation.
+      // Detect if the reserve currency is token0 or 1. This informs the order in the following computation.
       const reserveToken0 = token0 == this.reserveToken._address;
 
       const reserveIn = reserveToken0 ? reserves.reserve0 : reserves.reserve1;
@@ -126,17 +133,21 @@ class ProxyTransactionWrapper {
 
       const maxPurchasableCollateral = numerator.div(denominator);
 
-      // Next, we need to figure out how many synthetics could be minted within 1 tx, given the collateral we can buy
-      // with the reserve currency.
+      // Compute how many synthetics could be minted, given the collateral we can buy with the reserve currency.
       const gcr = this.toBN(contractPFC.rawValue)
         .mul(this.toBN(this.toWei("1")))
         .div(this.toBN(contractTokensOutstanding));
 
-      const maxMinableSynthetics = maxPurchasableCollateral.mul(this.toBN(this.toWei("1"))).div(gcr);
+      // Calculate the max mintable synthetics with the collateral. Use the sum of the max that can be purchased and any
+      // collateral the DSProxy already has in the computation.
+      const maxMintableSynthetics = maxPurchasableCollateral
+        .add(this.toBN(collateralTokenBalance))
+        .mul(this.toBN(this.toWei("1")))
+        .div(gcr);
 
       // Finally, the effective synthetic balance is the sum of the max that can be minted using the collateral swapped
       // from reserve and the current synthetics within the DSProxy account.
-      return maxMinableSynthetics.add(this.toBN(syntheticTokenBallance));
+      return maxMintableSynthetics.add(this.toBN(syntheticTokenBallance));
     }
   }
 

@@ -215,6 +215,11 @@ contract("ReserveTokenLiquidator", function(accounts) {
 
     // The price in the uniswap pool should be greater than what it started at as we traded reserve for collateral.
     assert.equal(Number((await getPoolSpotPrice()) > Number(startingUniswapPrice)), 1);
+
+    // In this test the DSProxy should have swapped, minted and liquidated. We should expect to see exactly these events.
+    assert.equal((await financialContract.getPastEvents("PositionCreated")).length, 1);
+    assert.equal((await pair.getPastEvents("Swap")).length, 1);
+    assert.equal((await financialContract.getPastEvents("LiquidationCreated")).length, 1);
   });
   it("Reserve currency liquidator should use existing token and synthetic balances", async function() {
     // If the DSProxy already has any synthetics or collateral, the contract should use them all within the liquidation.
@@ -249,6 +254,11 @@ contract("ReserveTokenLiquidator", function(accounts) {
     // There should be one liquidation after the call and the properties on the liquidation should match what is expected.
     const liquidations = await financialContract.getLiquidations(sponsor1);
     await validateLiquidationOutput(liquidations);
+
+    // In this test the DSProxy should have swapped, minted and liquidated. We should expect to see exactly these events.
+    assert.equal((await financialContract.getPastEvents("PositionCreated")).length, 1);
+    assert.equal((await pair.getPastEvents("Swap")).length, 1);
+    assert.equal((await financialContract.getPastEvents("LiquidationCreated")).length, 1);
   });
   it("Reserve currency liquidator should correctly handel synthetic balance larger than liquidated position", async function() {
     // If the DSProxy's synthetic balance is larger than that to be liquidated, then it does not need to preform any
@@ -284,6 +294,11 @@ contract("ReserveTokenLiquidator", function(accounts) {
     // There should be one liquidation after the call and the properties on the liquidation should match what is expected.
     const liquidations = await financialContract.getLiquidations(sponsor1);
     await validateLiquidationOutput(liquidations);
+
+    // In this test the DSProxy did not need to mint. However, it did need to swap to pay the final fee.
+    assert.equal((await financialContract.getPastEvents("PositionCreated")).length, 0);
+    assert.equal((await pair.getPastEvents("Swap")).length, 1);
+    assert.equal((await financialContract.getPastEvents("LiquidationCreated")).length, 1);
   });
   it("Reserve currency liquidator should correctly handel collateral balance larger than required for synthetic position mint", async function() {
     // If the DSProxy's balance collateral balance is larger than then that to be minted, then it does not need to preform
@@ -322,5 +337,10 @@ contract("ReserveTokenLiquidator", function(accounts) {
     // There should be one liquidation after the call and the properties on the liquidation should match what is expected.
     const liquidations = await financialContract.getLiquidations(sponsor1);
     await validateLiquidationOutput(liquidations);
+
+    // In this test the DSProxy had enough collateral so did not need to swap. However, it needed to mint. Events should match.
+    assert.equal((await financialContract.getPastEvents("PositionCreated")).length, 1);
+    assert.equal((await pair.getPastEvents("Swap")).length, 0);
+    assert.equal((await financialContract.getPastEvents("LiquidationCreated")).length, 1);
   });
 });
