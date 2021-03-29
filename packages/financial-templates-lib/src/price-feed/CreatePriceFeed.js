@@ -450,12 +450,14 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config
     });
 
-    // Grab multicall address from network (will be undefined if any lookups fail).
-    const networkId = await web3.eth.net.getId();
-    const networkName = PublicNetworks[Number(networkId)]?.name;
-    const multicallAddress = multicallAddressMap[networkName]?.multicall;
+    let multicallAddress = config.multicallAddress;
+    if (!multicallAddress) {
+      const networkId = await web3.eth.net.getId();
+      const networkName = PublicNetworks[Number(networkId)]?.name;
+      multicallAddress = multicallAddressMap[networkName]?.multicall;
+    }
 
-    if (!multicallAddress && !config.multicallAddress) {
+    if (!multicallAddress) {
       logger.error({
         at: "createPriceFeed",
         message: "No multicall address provided by config or publicly provided for this network 🚨"
@@ -469,7 +471,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       web3,
       getTime,
       perpetualAbi: Perpetual.abi,
-      multicallAddress: config.multicallAddress || multicallAddress, // Prefer config value if one exists.
+      multicallAddress: multicallAddress,
       blockFinder: getSharedBlockFinder(web3)
     });
   }
