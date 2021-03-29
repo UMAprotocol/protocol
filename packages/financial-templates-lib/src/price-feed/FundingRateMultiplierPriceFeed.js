@@ -14,8 +14,7 @@ class FundingRateMultiplierPriceFeed extends PriceFeedInterface {
    * @param {String} multicallAddress Ethereum address of the multicall contract.
    * @param {Function} getTime Returns the current time.
    * @param {Function} [blockFinder] Optionally pass in a shared blockFinder instance (to share the cache).
-   * @param {Integer} [minTimeBetweenUpdates] Minimum amount of time that must pass before update will actually run
-   *                                        again.
+   * @param {Integer} [minTimeBetweenUpdates] Minimum time that must pass before update will actually run again.
    * @param {Integer} [priceFeedDecimals] Precision that the caller wants precision to be reported in.
    * @return None or throws an Error.
    */
@@ -36,8 +35,8 @@ class FundingRateMultiplierPriceFeed extends PriceFeedInterface {
     assert(logger, "logger required");
     assert(perpetualAbi, "perpetualAbi required");
     assert(web3, "web3 required");
-    assert(perpetualAddress, "perpetualAddress required");
     assert(web3.utils.isAddress(multicallAddress), "multicallAddress required");
+    assert(web3.utils.isAddress(perpetualAddress), "perpetualAddress required");
     assert(getTime, "getTime required");
 
     this.logger = logger;
