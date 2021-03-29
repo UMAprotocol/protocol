@@ -1735,9 +1735,12 @@ contract("Liquidator.js", function(accounts) {
             pair = await createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
 
             // Seed the market. This sets up the initial price to be 1/1 reserve to collateral token. As the collateral
-            // token is Dai this starts off the uniswap market at 1 reserve/collat.
+            // token is Dai this starts off the uniswap market at 1 reserve/collateral. Note the amount of collateral
+            // is scaled according to the collateral decimals.
             await reserveToken.mint(pairAddress, toBN(toWei("1000")).muln(10000000), { from: contractCreator });
-            await collateralToken.mint(pairAddress, toBN(toWei("1000")).muln(10000000), { from: contractCreator });
+            await collateralToken.mint(pairAddress, toBN(convertCollateral("1000")).muln(10000000), {
+              from: contractCreator
+            });
             await pair.sync({ from: contractCreator });
 
             dsProxyFactory = await DSProxyFactory.new({ from: contractCreator });
@@ -2030,7 +2033,7 @@ contract("Liquidator.js", function(accounts) {
               );
             }
           );
-          versionedIt([{ contractType: "any", contractVersion: "any" }])(
+          versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "1.2.2" }])(
             "Correctly handles WDF with the DSProxy funds",
             async () => {
               liquidatorConfig = {
@@ -2087,8 +2090,8 @@ contract("Liquidator.js", function(accounts) {
                 (await financialContract.getLiquidations(sponsor1))[0],
                 (await financialContract.getLiquidations(sponsor2))[0]
               ];
-              assert.equal(sponsor1Liquidation.tokensOutstanding, convertSynthetic("100"));
-              assert.equal(sponsor2Liquidation.tokensOutstanding, convertSynthetic("5"));
+              assert.equal(sponsor1Liquidation.tokensOutstanding.rawValue, convertSynthetic("100").toString());
+              assert.equal(sponsor2Liquidation.tokensOutstanding.rawValue, convertSynthetic("5").toString());
               // show position has been extended
               sponsor2Positions = await financialContract.positions(sponsor2);
               assert.equal(
@@ -2140,7 +2143,8 @@ contract("Liquidator.js", function(accounts) {
               assert.equal(sponsor2Liquidations.length, 3);
               // The liquidator at this point should have spent all its DSProxy funds. Note we check that this is less
               // than 10 wei as there could be a tiny bit of dust left due to rounding.
-              assert.isTrue((await reserveToken.balanceOf(dsProxy.address)).lt(toBN("10")));
+              console.log("B", (await reserveToken.balanceOf(dsProxy.address)).toString());
+              assert.isTrue((await reserveToken.balanceOf(dsProxy.address)).lt(toBN(toWei("0.000001"))));
             }
           );
         });
