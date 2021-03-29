@@ -9,17 +9,19 @@ const CONTRACT_VERSION = "latest";
 
 const PerpetualMock = getTruffleContract("PerpetualMock", web3, CONTRACT_VERSION);
 const Perpetual = getTruffleContract("Perpetual", web3, CONTRACT_VERSION);
+const MulticallMock = getTruffleContract("MulticallMock", web3, CONTRACT_VERSION);
 
 contract("FundingRateMultiplierPriceFeed.js", function() {
   let perpetualMock;
+  let multicallMock;
   let fundingRateMultiplierPriceFeed;
   let mockTime = 0;
   let dummyLogger;
   let priceFeedDecimals = 8;
 
-  const createFundingRateStructWithMultiplier = multiplier => {
+  const createFundingRateStructWithMultiplier = (multiplier, rate = "0") => {
     return {
-      rate: { rawValue: "0" },
+      rate: { rawValue: rate },
       identifier: web3.utils.padRight("0x1234", 64),
       cumulativeMultiplier: { rawValue: multiplier },
       updateTime: "0",
@@ -31,6 +33,7 @@ contract("FundingRateMultiplierPriceFeed.js", function() {
 
   beforeEach(async function() {
     perpetualMock = await PerpetualMock.new();
+    multicallMock = await MulticallMock.new();
 
     dummyLogger = winston.createLogger({
       level: "info",
@@ -41,6 +44,7 @@ contract("FundingRateMultiplierPriceFeed.js", function() {
       logger: dummyLogger,
       perpetualAbi: Perpetual.abi,
       perpetualAddress: perpetualMock.address,
+      multicallAddress: multicallMock.address,
       web3,
       getTime: () => mockTime,
       priceFeedDecimals
@@ -146,6 +150,7 @@ contract("FundingRateMultiplierPriceFeed.js", function() {
       getTime: () => mockTime,
       perpetualAbi: Perpetual.abi,
       perpetualAddress: perpetualMock.address,
+      multicallAddress: multicallMock.address,
       priceFeedDecimals,
       blockFinder
     });
@@ -153,5 +158,18 @@ contract("FundingRateMultiplierPriceFeed.js", function() {
     await fundingRateMultiplierPriceFeed.update();
     // Blockfinder is used to grab a historical price. Should throw.
     assert.isTrue(await fundingRateMultiplierPriceFeed.getHistoricalPrice(100).catch(() => true));
+  });
+
+  it("Multicall", async function() {
+    // Funding rate multiplier starts at one, but should be multiplied by 0.8 on a call to applyFundingRate.
+    await perpetualMock.setFundingRate(
+      createFundingRateStructWithMultiplier(parseFixed("1", 18).toString(), web3.utils.toWei("-.2"))
+    );
+    await fundingRateMultiplierPriceFeed.update();
+
+    assert.equal(
+      fundingRateMultiplierPriceFeed.getCurrentPrice().toString(),
+      parseFixed("0.8", priceFeedDecimals).toString()
+    );
   });
 });

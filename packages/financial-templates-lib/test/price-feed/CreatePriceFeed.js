@@ -1093,9 +1093,11 @@ contract("CreatePriceFeed.js", function(accounts) {
 
   it("FundingRateMultiplierPriceFeed: creation succeeds", async function() {
     const perpetualAddress = web3.utils.randomHex(20);
+    const multicallAddress = web3.utils.randomHex(20);
     const config = {
       type: "frm",
-      perpetualAddress
+      perpetualAddress,
+      multicallAddress
     };
 
     const frmPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
@@ -1103,11 +1105,27 @@ contract("CreatePriceFeed.js", function(accounts) {
     assert.equal(frmPriceFeed.minTimeBetweenUpdates, 60);
     assert.equal(frmPriceFeed.priceFeedDecimals, 18);
     assert.equal(frmPriceFeed.perpetual.options.address, web3.utils.toChecksumAddress(perpetualAddress));
+    assert.equal(
+      web3.utils.toChecksumAddress(frmPriceFeed.multicallAddress),
+      web3.utils.toChecksumAddress(multicallAddress)
+    );
   });
 
-  it("FundingRateMultiplierPriceFeed: creation fails", async function() {
+  it("FundingRateMultiplierPriceFeed: creation fails due to missing perpetual address", async function() {
     const config = {
-      type: "frm"
+      type: "frm",
+      multicallAddress: web3.utils.randomHex(20)
+    };
+
+    const frmPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isNull(frmPriceFeed);
+  });
+
+  it("FundingRateMultiplierPriceFeed: creation fails due to missing multicall address", async function() {
+    const config = {
+      type: "frm",
+      perpetualAddress: web3.utils.randomHex(20)
     };
 
     const frmPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);

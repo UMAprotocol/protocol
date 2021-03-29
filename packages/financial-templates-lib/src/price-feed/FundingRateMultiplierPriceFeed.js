@@ -1,6 +1,7 @@
 const { PriceFeedInterface } = require("./PriceFeedInterface");
 const { BlockFinder } = require("./utils");
 const { ConvertDecimals } = require("@uma/common");
+const { aggregateTransactionsAndCall } = require("../helpers/multicall");
 const assert = require("assert");
 
 class FundingRateMultiplierPriceFeed extends PriceFeedInterface {
@@ -10,6 +11,7 @@ class FundingRateMultiplierPriceFeed extends PriceFeedInterface {
    * @param {Object} perpetualAbi Perpetual abi object to create a contract instance.
    * @param {Object} web3 Provider from Truffle instance to connect to Ethereum network.
    * @param {String} perpetualAddress Ethereum address of the perpetual to monitor.
+   * @param {String} multicallAddress Ethereum address of the multicall contract.
    * @param {Function} getTime Returns the current time.
    * @param {Function} [blockFinder] Optionally pass in a shared blockFinder instance (to share the cache).
    * @param {Integer} [minTimeBetweenUpdates] Minimum amount of time that must pass before update will actually run
@@ -22,6 +24,7 @@ class FundingRateMultiplierPriceFeed extends PriceFeedInterface {
     perpetualAbi,
     web3,
     perpetualAddress,
+    multicallAddress,
     getTime,
     blockFinder,
     minTimeBetweenUpdates = 60,
@@ -34,12 +37,14 @@ class FundingRateMultiplierPriceFeed extends PriceFeedInterface {
     assert(perpetualAbi, "perpetualAbi required");
     assert(web3, "web3 required");
     assert(perpetualAddress, "perpetualAddress required");
+    assert(web3.utils.isAddress(multicallAddress), "multicallAddress required");
     assert(getTime, "getTime required");
 
     this.logger = logger;
     this.web3 = web3;
 
     this.perpetual = new web3.eth.Contract(perpetualAbi, perpetualAddress);
+    this.multicallAddress = multicallAddress;
     this.uuid = `FundingRateMultiplier-${perpetualAddress}`;
     this.getTime = getTime;
     this.priceFeedDecimals = priceFeedDecimals;
@@ -79,7 +84,19 @@ class FundingRateMultiplierPriceFeed extends PriceFeedInterface {
   }
 
   async _getPrice(blockNumber = "latest") {
-    const { cumulativeMultiplier } = await this.perpetual.methods.fundingRate().call(undefined, blockNumber);
+    const applyFundingRateData = this.perpetual.methods.applyFundingRate().encodeABI();
+    const getFundingRateData = this.perpetual.methods.fundingRate().encodeABI();
+    const target = this.perpetual.options.address;
+    const transactions = [
+      { target, callData: applyFundingRateData },
+      { target, callData: getFundingRateData }
+    ];
+    const [, { cumulativeMultiplier }] = await aggregateTransactionsAndCall(
+      this.multicallAddress,
+      this.web3,
+      transactions,
+      blockNumber
+    );
     return this.convertDecimals(cumulativeMultiplier.rawValue);
   }
 }

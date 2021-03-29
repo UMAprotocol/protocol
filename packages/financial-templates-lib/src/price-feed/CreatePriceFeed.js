@@ -21,8 +21,9 @@ const { ExpressionPriceFeed, math, escapeSpecialCharacters } = require("./Expres
 const { VaultPriceFeed } = require("./VaultPriceFeed");
 const { LPPriceFeed } = require("./LPPriceFeed");
 const { BlockFinder } = require("./utils");
-const { getPrecisionForIdentifier } = require("@uma/common");
+const { getPrecisionForIdentifier, PublicNetworks } = require("@uma/common");
 const { FundingRateMultiplierPriceFeed } = require("./FundingRateMultiplierPriceFeed");
+const { multicallAddressMap } = require("../helpers/multicall");
 
 // Global cache for block (promises) used by uniswap price feeds.
 const uniswapBlockCache = {};
@@ -449,12 +450,26 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config
     });
 
+    // Grab multicall address from network (will be undefined if any lookups fail).
+    const networkId = await web3.eth.net.getId();
+    const networkName = PublicNetworks[Number(networkId)]?.name;
+    const multicallAddress = multicallAddressMap[networkName]?.multicall;
+
+    if (!multicallAddress && !config.multicallAddress) {
+      logger.error({
+        at: "createPriceFeed",
+        message: "No multicall address provided by config or publicly provided for this network 🚨"
+      });
+      return null;
+    }
+
     return new FundingRateMultiplierPriceFeed({
       ...config,
       logger,
       web3,
       getTime,
       perpetualAbi: Perpetual.abi,
+      multicallAddress: config.multicallAddress || multicallAddress, // Prefer config value if one exists.
       blockFinder: getSharedBlockFinder(web3)
     });
   }
