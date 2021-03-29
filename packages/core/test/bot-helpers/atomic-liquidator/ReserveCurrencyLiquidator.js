@@ -82,7 +82,6 @@ contract("ReserveTokenLiquidator", function(accounts) {
 
     finder = await Finder.deployed();
     store = await Store.deployed();
-
     timer = await Timer.deployed();
 
     // Create identifier whitelist and register the price tracking ticker with it.
@@ -98,34 +97,24 @@ contract("ReserveTokenLiquidator", function(accounts) {
     collateralToken = await Token.new("collateralToken", "WETH", 18);
     syntheticToken = await Token.new("Test Synthetic Token", "SYNTH", 18);
 
-    await store.setFinalFee(collateralToken.address, {
-      rawValue: finalFeeAmount.toString()
-    });
+    await store.setFinalFee(collateralToken.address, { rawValue: finalFeeAmount.toString() });
 
     await reserveToken.addMember(1, deployer, { from: deployer });
-    await collateralToken.addMember(1, deployer, {
-      from: deployer
-    });
-    await syntheticToken.addMember(1, deployer, {
-      from: deployer
-    });
+    await collateralToken.addMember(1, deployer, { from: deployer });
+    await syntheticToken.addMember(1, deployer, { from: deployer });
 
     // Give the sponsors collateral Token to create positions.
     await collateralToken.mint(sponsor1, toWei("100000000000000"));
     await collateralToken.mint(sponsor2, toWei("100000000000000"));
 
     // deploy Uniswap V2 Factory & router.
-    factory = await createContractObjectFromJson(UniswapV2Factory).new(deployer, {
-      from: deployer
-    });
+    factory = await createContractObjectFromJson(UniswapV2Factory).new(deployer, { from: deployer });
     router = await createContractObjectFromJson(UniswapV2Router02).new(factory.address, collateralToken.address, {
       from: deployer
     });
 
     // initialize the pair
-    await factory.createPair(reserveToken.address, collateralToken.address, {
-      from: deployer
-    });
+    await factory.createPair(reserveToken.address, collateralToken.address, { from: deployer });
     pairAddress = await factory.getPair(reserveToken.address, collateralToken.address);
     pair = await createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
 
