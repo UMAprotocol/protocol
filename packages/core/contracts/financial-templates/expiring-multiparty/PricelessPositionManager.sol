@@ -431,6 +431,7 @@ contract PricelessPositionManager is FeePayer {
             ) || _checkCollateralization(collateralAmount, numTokens)),
             "Insufficient collateral"
         );
+
         require(positionData.withdrawalRequestPassTimestamp == 0, "Pending withdrawal");
         if (positionData.tokensOutstanding.isEqual(0)) {
             require(numTokens.isGreaterThanOrEqual(minSponsorTokens), "Below minimum sponsor position");
