@@ -1,7 +1,6 @@
 const { PriceFeedInterface } = require("./PriceFeedInterface");
 const { parseFixed } = require("@uma/common");
 const { computeTWAP } = require("./utils");
-const lodash = require("lodash");
 
 // An implementation of PriceFeedInterface that uses CryptoWatch to retrieve prices.
 class CryptoWatchPriceFeed extends PriceFeedInterface {
@@ -279,14 +278,14 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
   _computeTwap(endTime, ohlcs) {
     // Combine open and close to get more data fidelity at the edges of the range.
-    const priceTimes = lodash.flatten(
-      ohlcs.map(pricePeriod => {
+    const priceTimes = ohlcs
+      .map(pricePeriod => {
         return [
           [pricePeriod.openTime, pricePeriod.openPrice],
           [pricePeriod.closeTime, pricePeriod.closePrice]
         ];
       })
-    );
+      .flat();
     const startTime = endTime - this.twapLength;
 
     return computeTWAP(priceTimes, startTime, endTime, web3.utils.toBN("0"));
