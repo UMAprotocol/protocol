@@ -289,7 +289,7 @@ async function run({
           if (!isExpiredOrShutdown) {
             // Check for liquidatable positions and submit liquidations. Bounded by current synthetic balance and
             // considers override price if the user has specified one.
-            const currentSyntheticBalance = await proxyTransactionWrapper.getSyntheticTokenBalance();
+            const currentSyntheticBalance = await proxyTransactionWrapper.getEffectiveSyntheticTokenBalance();
             await liquidator.liquidatePositions(currentSyntheticBalance, liquidatorOverridePrice);
           }
           // Check for any finished liquidations that can be withdrawn.

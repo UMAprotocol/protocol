@@ -275,7 +275,7 @@ class Liquidator {
       // TODO: right now the `processPosition` method takes in maxTokensToLiquidateWei and syntheticTokenBalance. These
       // numbers are the same thing in production as the index file sets the maxTokensToLiquidateWei as the synthetic
       // token balance. This should be refactored (and simplified) to not repeat the same variable over and over.
-      const syntheticTokenBalance = await this.proxyTransactionWrapper.getSyntheticTokenBalance();
+      const syntheticTokenBalance = await this.proxyTransactionWrapper.getEffectiveSyntheticTokenBalance();
 
       // run strategy based on configs and current state
       // will return liquidation arguments or nothing
