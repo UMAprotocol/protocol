@@ -101,6 +101,7 @@ class ProxyTransactionWrapper {
     this.ReserveCurrencyLiquidator = getTruffleContract("ReserveCurrencyLiquidator", web3, "latest");
   }
 
+  // TODO: wrap this into a common util.
   createContractObjectFromJson(contractJsonObject) {
     let truffleContractCreator = truffleContract(contractJsonObject);
     truffleContractCreator.setProvider(web3.currentProvider);
@@ -168,6 +169,8 @@ class ProxyTransactionWrapper {
     }
   }
 
+  // Main entry point for submitting a liquidation. If the bot is not using a DSProxy then simply send a normal EOA tx.
+  // If the bot is using a DSProxy then route the tx via it.
   async submitLiquidationTransaction(liquidationArgs) {
     // If the liquidator is not using a DSProxy, use the old method of liquidating
     if (!this.isUsingDsProxyToLiquidate) return await this._executeLiquidationWithoutDsProxy(liquidationArgs);
@@ -234,7 +237,6 @@ class ProxyTransactionWrapper {
 
     // TODO: the liquidation args, as structured hare is hard to read and maintain. We should refactor the liquidation
     // strategy to better pass around these parms as they are no longer directly fed into the liquidation method.
-
     const callData = reserveCurrencyLiquidator.methods
       .swapMintLiquidate(
         this.uniswapRouterAddress, // uniswapRouter
@@ -259,6 +261,7 @@ class ProxyTransactionWrapper {
       })
     )[0];
 
+    // Return the same data sent back from the EOA liquidation.
     return {
       type: "DSProxy Swap, mint and liquidate transaction",
       tx: dsProxyCallReturn.transactionHash,
