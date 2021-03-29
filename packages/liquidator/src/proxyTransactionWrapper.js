@@ -3,13 +3,30 @@ const truffleContract = require("@truffle/contract");
 
 const ynatm = require("@umaprotocol/ynatm");
 
-const { createObjectFromDefaultProps } = require("@uma/common");
+const { createObjectFromDefaultProps, MAX_UINT_VAL } = require("@uma/common");
 const { getAbi, getTruffleContract } = require("@uma/core");
 
 const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json");
 const IUniswapV2Pair = require("@uniswap/v2-core/build/IUniswapV2Pair.json");
 
 class ProxyTransactionWrapper {
+  /**
+   * @notice Constructs new ProxyTransactionWrapper. This adds support DSProxy atomic liquidation support to the bots.
+   * @param {Object} web3 Provider from Truffle instance to connect to Ethereum network.
+   * @param {Object} financialContract instance of a financial contract. Either a EMP or a perp. Used to send liquidations.
+   * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
+   * @param {Object} syntheticToken Synthetic token issued by the financial contract(tokenCurrency).
+   * @param {Object} collateralToken Collateral token backing the financial contract.
+   * @param {String} account Ethereum account from which to send txns.
+   * @param {Object} dsProxyManager Module to send transactions via DSProxy. If null will use the unlocked account EOA.
+   * @param {Boolean} isUsingDsProxyToLiquidate Toggles the mode liquidations will be sent with. If true then then liquidations.
+   * are sent from the DSProxy. Else, Transactions are sent from the EOA. If true dsProxyManager must not be null.
+   * @param {Object} proxyTransactionWrapperConfig configuration object used to paramaterize how the DSProxy is used. Expected:
+   *      { uniswapRouterAddress: 0x123..., // uniswap router address. Defaults to mainnet router
+            uniswapFactoryAddress: 0x123..., // uniswap factory address. Defaults to mainnet factory
+            liquidatorReserveCurrencyAddress: 0x123... // address of the reserve currency for the bot to trade against
+            maxReserverTokenSpent: "10000" // define the maximum amount of reserve currency the bot should use in 1tx. }
+   * */
   constructor({
     web3,
     financialContract,
@@ -56,7 +73,7 @@ class ProxyTransactionWrapper {
         }
       },
       maxReserverTokenSpent: {
-        value: this.toWei("500000").toString(),
+        value: MAX_UINT_VAL,
         isValid: x => {
           return typeof x == "string";
         }

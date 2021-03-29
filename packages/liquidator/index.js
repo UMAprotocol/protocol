@@ -55,7 +55,9 @@ async function run({
   useDsProxyToLiquidate,
   dsProxyFactoryAddress,
   uniswapRouterAddress,
-  liquidatorReserveCurrencyAddress
+  uniswapFactoryAddress,
+  liquidatorReserveCurrencyAddress,
+  maxReserverTokenSpent
 }) {
   try {
     const getTime = () => Math.round(new Date().getTime() / 1000);
@@ -214,7 +216,12 @@ async function run({
 
     await dsProxyManager.initializeDSProxy();
 
-    const proxyTransactionWrapperConfig = { uniswapRouterAddress, liquidatorReserveCurrencyAddress };
+    const proxyTransactionWrapperConfig = {
+      uniswapRouterAddress,
+      uniswapFactoryAddress,
+      liquidatorReserveCurrencyAddress,
+      maxReserverTokenSpent
+    };
 
     const proxyTransactionWrapper = new ProxyTransactionWrapper({
       web3,
@@ -375,12 +382,16 @@ async function Poll(callback) {
       useDsProxyToLiquidate: process.env.USE_DSPROXY ? Boolean(process.env.USE_DSPROXY) : false,
       // If provided, enables the bot runner to choose a diffrent DSPRoxy factory. Else, defaults the the UMA factory.
       dsProxyFactoryAddress: process.env.DSPROXY_FACTORY_ADDRESS,
-      // If using a DSProxy to liquidate, define the reserve currency the bot should trade from when buying collateral
-      // to mint positions.
+      // If using DSProxy, define the reserve currency the bot should trade from when buying collateral to mint positions.
       liquidatorReserveCurrencyAddress: process.env.RESERVE_CURRENCY,
-      // If using a DSProxy to liquidate, you can optionally override the uniswap router used for trades. Otherwise, this
-      // defaults to the mainnet router.
-      uniswapRouterAddress: process.env.UNISWAP_ROUTER_ADDRESS
+      // If using DSProxy, optionally override the uniswap router used for trades. Otherwise, default to mainnet router.
+      uniswapRouterAddress: process.env.UNISWAP_ROUTER_ADDRESS,
+      // If using DSProxy, optionally override the uniswap factory used for trades. Otherwise, default to mainnet factory.
+      uniswapFactoryAddress: process.env.UNISWAP_FACTORY_ADDRESS,
+      // If using DSProxy, optionally define a maximum amount of reserve currency to spend in a liquidation tx. Note
+      // that this is separate to the WDF, which behaves as per usual and considers the maximum amount of synthetics that
+      // could be minted, given the current reserve balance.
+      maxReserverTokenSpent: process.env.MAX_RESERVE_TOKEN_SPENT
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
