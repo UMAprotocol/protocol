@@ -811,6 +811,20 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "binance", pair: "BCHBTC" },
       { type: "cryptowatch", exchange: "huobi", pair: "BCHBTC" }
     ]
+  },
+  ETHBTC_FR: {
+    type: "expression",
+    expression: `
+        ETHBTC_FV = ETH\\/BTC * PERP_FRM;
+        max(-0.00001, min(0.00001, (ETHBTC_FV - ETHBTC_PERP) / ETHBTC_FV / 86400))
+    `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    twapLength: 3600,
+    customFeeds: {
+      ETHBTC_PERP: { type: "uniswap", address: "0xETHBTC_PERP_POOL" },
+      PERP_FRM: { type: "frm", perpetualAddress: "0xPERP_ADDRESS" }
+    }
   }
 };
 
