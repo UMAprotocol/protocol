@@ -1,0 +1,7 @@
+{
+  "name": "bot-stratergy-runner",
+  "version": "1.0.0",
+  "description": "Scripts for running a set of UMA bots against a whitelist of addresses",
+  "main": "src/index.ts",
+  "license": "MIT"
+}
