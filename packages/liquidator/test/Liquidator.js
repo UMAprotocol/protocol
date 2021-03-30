@@ -1767,8 +1767,8 @@ contract("Liquidator.js", function(accounts) {
               collateralToken: collateralToken.contract,
               account: accounts[0],
               dsProxyManager,
-              isUsingDsProxyToLiquidate: true,
               proxyTransactionWrapperConfig: {
+                isUsingDsProxyToLiquidate: true,
                 uniswapRouterAddress: uniswapRouter.address,
                 uniswapFactoryAddress: uniswapFactory.address,
                 liquidatorReserveCurrencyAddress: reserveToken.address
@@ -1817,8 +1817,8 @@ contract("Liquidator.js", function(accounts) {
                   collateralToken: collateralToken.contract,
                   account: accounts[0],
                   dsProxyManager,
-                  isUsingDsProxyToLiquidate: true,
                   proxyTransactionWrapperConfig: {
+                    isUsingDsProxyToLiquidate: true,
                     uniswapRouterAddress: uniswapRouter.address,
                     uniswapFactoryAddress: uniswapFactory.address,
                     liquidatorReserveCurrencyAddress: null
@@ -1836,8 +1836,8 @@ contract("Liquidator.js", function(accounts) {
                   collateralToken: collateralToken.contract,
                   account: accounts[0],
                   dsProxyManager,
-                  isUsingDsProxyToLiquidate: true,
                   proxyTransactionWrapperConfig: {
+                    isUsingDsProxyToLiquidate: true,
                     uniswapRouterAddress: "not-an-address",
                     liquidatorReserveCurrencyAddress: reserveToken.address
                   }
@@ -1853,8 +1853,8 @@ contract("Liquidator.js", function(accounts) {
                   collateralToken: collateralToken.contract,
                   account: accounts[0],
                   dsProxyManager: null,
-                  isUsingDsProxyToLiquidate: true,
                   proxyTransactionWrapperConfig: {
+                    isUsingDsProxyToLiquidate: true,
                     uniswapRouterAddress: uniswapRouter.address,
                     uniswapFactoryAddress: uniswapFactory.address,
                     liquidatorReserveCurrencyAddress: reserveToken.address
@@ -1882,8 +1882,8 @@ contract("Liquidator.js", function(accounts) {
                   collateralToken: collateralToken.contract,
                   account: accounts[0],
                   dsProxyManager,
-                  isUsingDsProxyToLiquidate: true,
                   proxyTransactionWrapperConfig: {
+                    isUsingDsProxyToLiquidate: true,
                     uniswapRouterAddress: uniswapRouter.address,
                     uniswapFactoryAddress: uniswapFactory.address,
                     liquidatorReserveCurrencyAddress: reserveToken.address
@@ -1892,7 +1892,7 @@ contract("Liquidator.js", function(accounts) {
               });
             }
           );
-          versionedIt([{ contractType: "any", contractVersion: "any" }])(
+          versionedIt([{ contractType: "any", contractVersion: "any" }], true)(
             "Correctly liquidates positions using DSProxy",
             async function() {
               // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
@@ -1981,6 +1981,48 @@ contract("Liquidator.js", function(accounts) {
               await liquidator.update();
               await liquidator.liquidatePositions();
               assert.equal(spy.callCount, 5);
+
+              // Note we only test withdrawal logic on versions that are not 1.2.2 as withdrawing using a DSProxy is
+              // on legacy contracts is currently not supported. This is not a problem as almost all of these contracts
+              // are expired.
+              if (contractVersion.contractVersion != "1.2.2") {
+                // Finally, withdrawing liquidations should work without any issue. The bot should be able to do this
+                // directly from the EOA. Trying to withdraw before liveness should do nothing.
+                await liquidator.withdrawRewards();
+                assert.equal(spy.callCount, 5);
+
+                // Advance after liveness and withdraw.
+                const liquidationTime = (await financialContract.getLiquidations(sponsor1))[0].liquidationTime;
+                const liquidationLiveness = 1000;
+                await financialContract.setCurrentTime(Number(liquidationTime) + liquidationLiveness);
+
+                // Now that the liquidation has expired, the liquidator can withdraw rewards.
+                const collateralPreWithdraw = await collateralToken.balanceOf(dsProxy.address);
+                await liquidator.update();
+                await liquidator.withdrawRewards();
+                // assert.equal(spy.callCount, 2); // 1 new info level events should be sent at the conclusion of the withdrawal. Total 2.
+
+                // Liquidator should have their collateral increased by Sponsor1 + sponsor2 collateral.
+                const collateralPostWithdraw = await collateralToken.balanceOf(dsProxy.address);
+                console.log("collateralPostWithdraw", collateralPostWithdraw.toString());
+                assert.equal(
+                  toBN(collateralPreWithdraw)
+                    .add(toBN(convertCollateral("125")))
+                    .add(toBN(convertCollateral("150")))
+                    .toString(),
+                  collateralPostWithdraw.toString()
+                );
+
+                // Liquidation data should have been deleted.
+                assert.deepStrictEqual(
+                  (await financialContract.getLiquidations(sponsor1))[0].state,
+                  LiquidationStatesEnum.UNINITIALIZED
+                );
+                assert.deepStrictEqual(
+                  (await financialContract.getLiquidations(sponsor2))[0].state,
+                  LiquidationStatesEnum.UNINITIALIZED
+                );
+              }
             }
           );
 
