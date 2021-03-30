@@ -16,7 +16,7 @@ function _decodeOutput(callData, returnData, web3) {
 
 // Simulate submitting a batch of `transactions` to the multicall contact
 // and return an array of decoded, simulated output values.
-const aggregateTransactionsAndCall = async (multicallAddress, web3, transactions) => {
+const aggregateTransactionsAndCall = async (multicallAddress, web3, transactions, blockNumber) => {
   const multicallContract = new web3.eth.Contract(getAbi("Multicall"), multicallAddress);
   for (let i = 0; i < transactions.length; i++) {
     assert(
@@ -26,7 +26,7 @@ const aggregateTransactionsAndCall = async (multicallAddress, web3, transactions
   }
 
   // Decode return data, which is an array of the same length as `transactions`:
-  const returnData = (await multicallContract.methods.aggregate(transactions).call()).returnData;
+  const returnData = (await multicallContract.methods.aggregate(transactions).call(undefined, blockNumber)).returnData;
   return returnData.map((data, i) => _decodeOutput(transactions[i].callData, data, web3));
 };
 
