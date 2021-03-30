@@ -34,7 +34,7 @@ class ProxyTransactionWrapper {
     syntheticToken,
     collateralToken,
     account,
-    dsProxyManager = null,
+    dsProxyManager = undefined,
     isUsingDsProxyToLiquidate = false,
     proxyTransactionWrapperConfig
   }) {
@@ -54,6 +54,12 @@ class ProxyTransactionWrapper {
 
     // TODO: refactor the router to pull from a constant file.
     const defaultConfig = {
+      isUsingDsProxyToLiquidate: {
+        value: false,
+        isValid: x => {
+          return typeof x == "boolean";
+        }
+      },
       uniswapRouterAddress: {
         value: "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
         isValid: x => {
@@ -90,7 +96,7 @@ class ProxyTransactionWrapper {
         this.dsProxyManager && this.dsProxyManager.getDSProxyAddress(),
         "DSProxy Manger has not yet been initialized!"
       );
-      assert(this.dsProxyManager != null, "Cant use dsProxy to liquidate if the client is set to null!");
+      assert(this.dsProxyManager != undefined, "Cant use dsProxy to liquidate if the client is set to undefined!");
       assert(
         this.web3.utils.isAddress(this.liquidatorReserveCurrencyAddress),
         "Must provide a reserve currency address to use the proxy transaction wrapper!"

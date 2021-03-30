@@ -60,14 +60,11 @@ class DSProxyManager {
 
     if (this.dsProxy && this.dsProxyAddress) return this.dsProxyAddress;
     const fromBlock = await getFromBlock(this.web3);
-    const events = await this.dsProxyFactory.getPastEvents("Created", {
-      fromBlock,
-      filter: { owner: this.account }
-    });
+    const events = await this.dsProxyFactory.getPastEvents("Created", { fromBlock, filter: { owner: this.account } });
 
     // The user already has a DSProxy deployed. Load it in from the events.
     if (events.length > 0) {
-      this.dsProxyAddress = events[events.length - 1].returnValues.proxy;
+      this.dsProxyAddress = events[events.length - 1].returnValues.proxy; // use the most recent DSProxy (end index).
       this.dsProxy = new this.web3.eth.Contract(this.dsProxyAbi, this.dsProxyAddress);
       this.logger.debug({
         at: "DSProxyManager",

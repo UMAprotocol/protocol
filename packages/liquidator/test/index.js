@@ -1,4 +1,7 @@
-const { toWei, utf8ToHex, padRight } = web3.utils;
+const { toBN, toWei, utf8ToHex, padRight } = web3.utils;
+const truffleContract = require("@truffle/contract");
+const { assert } = require("chai");
+
 const {
   MAX_UINT_VAL,
   interfaceName,
@@ -13,6 +16,17 @@ const { getTruffleContract } = require("@uma/core");
 const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport, spyLogLevel, spyLogIncludes, FinancialContractClient } = require("@uma/financial-templates-lib");
+
+// Uniswap related contracts
+const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json");
+const IUniswapV2Pair = require("@uniswap/v2-core/build/IUniswapV2Pair.json");
+const UniswapV2Router02 = require("@uniswap/v2-periphery/build/UniswapV2Router02.json");
+
+const createContractObjectFromJson = contractJsonObject => {
+  let truffleContractCreator = truffleContract(contractJsonObject);
+  truffleContractCreator.setProvider(web3.currentProvider);
+  return truffleContractCreator;
+};
 
 // Script to test
 const Poll = require("../index.js");
@@ -32,6 +46,7 @@ let defaultPriceFeedConfig;
 let constructorParams;
 let spy;
 let spyLogger;
+let dsProxyFactory;
 
 let pollingDelay = 0; // 0 polling delay creates a serverless bot that yields after one full execution.
 let errorRetries = 1;
@@ -61,6 +76,7 @@ contract("index.js", function(accounts) {
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
     const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
+    const DSProxyFactory = getTruffleContract("DSProxyFactory", web3, "latest");
 
     describe(`Tests running on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
       before(async function() {
@@ -87,6 +103,9 @@ contract("index.js", function(accounts) {
 
         // Make the contract creator the admin to enable emergencyshutdown in tests.
         await finder.changeImplementationAddress(utf8ToHex(interfaceName.FinancialContractsAdmin), contractCreator);
+
+        dsProxyFactory = await DSProxyFactory.new();
+        addGlobalHardhatTestingAddress("DSProxyFactory", dsProxyFactory.address);
       });
 
       beforeEach(async function() {
@@ -100,6 +119,7 @@ contract("index.js", function(accounts) {
         // Create a new synthetic token & collateral token.
         syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractCreator });
         collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
+        await collateralToken.addMember(1, contractCreator, { from: contractCreator });
 
         collateralWhitelist = await AddressWhitelist.new();
         await finder.changeImplementationAddress(
@@ -244,9 +264,6 @@ contract("index.js", function(accounts) {
         // Create 2 positions, 1 undercollateralized and 1 sufficiently collateralized.
         // Liquidate the sufficiently collateralized one, and dispute the liquidation.
         // We'll assume that the dispute will resolve to a price of 1, so there must be 1.2 units of collateral for every 1 unit of synthetic.
-        await collateralToken.addMember(1, contractCreator, {
-          from: contractCreator
-        });
         await collateralToken.mint(sponsorUndercollateralized, toWei("110"), { from: contractCreator });
         await collateralToken.mint(sponsorOvercollateralized, toWei("130"), { from: contractCreator });
         await collateralToken.approve(financialContract.address, toWei("110"), { from: sponsorUndercollateralized });
@@ -430,7 +447,110 @@ contract("index.js", function(accounts) {
         // To verify decimal detection is correct for a standard feed, check the fifth log to see it matches expected.
         assert.isTrue(spyLogIncludes(spy, 5, `"contractVersion":"${contractVersion.contractVersion}"`));
         assert.isTrue(spyLogIncludes(spy, 5, `"contractType":"${contractVersion.contractType}"`));
+
+        // There should be no DSProxy deployed as we did not parametrize the bot to use one.
+        assert.equal((await dsProxyFactory.getPastEvents("Created")).length, 0);
       });
+      it("Can correctly initialize using a DSProxy", async function() {
+        // Deploy a reserve currency token.
+        const reserveToken = await Token.new("Reserve Token", "RTKN", 18);
+        await reserveToken.addMember(1, contractCreator);
+        // deploy Uniswap V2 Factory & router.
+        const factory = await createContractObjectFromJson(UniswapV2Factory).new(contractCreator);
+        const router = await createContractObjectFromJson(UniswapV2Router02).new(
+          factory.address,
+          collateralToken.address
+        );
+
+        // initialize the pair
+        await factory.createPair(reserveToken.address, collateralToken.address);
+        const pairAddress = await factory.getPair(reserveToken.address, collateralToken.address);
+        const pair = await createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
+
+        await reserveToken.mint(pairAddress, toBN(toWei("1000")).muln(10000000));
+        await collateralToken.mint(pairAddress, toBN(toWei("1")).muln(10000000));
+        await pair.sync();
+
+        spy = sinon.spy();
+        spyLogger = winston.createLogger({
+          level: "debug",
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+        });
+
+        // In order for some of the proxy transaction methods to work correctly, we require that the contract has a PFC
+        // and some amount of tokens outstanding. Mint a position to enable this.
+        await collateralToken.mint(sponsorOvercollateralized, toWei("130"), { from: contractCreator });
+        await collateralToken.approve(financialContract.address, toWei("130"), { from: sponsorOvercollateralized });
+        await financialContract.create(
+          { rawValue: toWei("130") },
+          { rawValue: toWei("100") },
+          { from: sponsorOvercollateralized }
+        );
+
+        await Poll.run({
+          logger: spyLogger,
+          web3,
+          financialContractAddress: financialContract.address,
+          pollingDelay,
+          errorRetries,
+          errorRetriesTimeout,
+          priceFeedConfig: defaultPriceFeedConfig,
+          proxyTransactionWrapperConfig: {
+            // min config. Don't define any uniswap addresses or max reserves to spend.
+            isUsingDsProxyToLiquidate: true,
+            liquidatorReserveCurrencyAddress: reserveToken.address,
+            uniswapRouterAddress: router.address,
+            uniswapFactoryAddress: factory.address
+          }
+        });
+
+        for (let i = 0; i < spy.callCount; i++) {
+          assert.notEqual(spyLogLevel(spy, i), "error");
+        }
+
+        // A log of a deployed DSProxy should be included.
+        assert.isTrue(spyLogIncludes(spy, 6, "No DSProxy found for EOA. Deploying new DSProxy"));
+        assert.isTrue(spyLogIncludes(spy, 7, "DSProxy has been deployed for the EOA"));
+        console.log("dsProxyFactory", dsProxyFactory.address);
+        const createdEvents = await dsProxyFactory.getPastEvents("Created", { fromBlock: 0 });
+        console.log("createdEvents", createdEvents);
+        assert.equal(createdEvents.length, 1);
+        assert.equal(createdEvents[0].returnValues.owner, liquidator);
+
+        // To verify contract type detection is correct for a standard feed, check the fifth log to see it matches expected.
+        assert.isTrue(spyLogIncludes(spy, 8, '"collateralDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 8, '"syntheticDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 8, '"priceFeedDecimals":18'));
+      });
+      it("Correctly detects contract type and rejects unknown contract types", async function() {
+        spy = sinon.spy();
+        spyLogger = winston.createLogger({
+          level: "debug",
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+        });
+
+        await Poll.run({
+          logger: spyLogger,
+          web3,
+          financialContractAddress: financialContract.address,
+          pollingDelay,
+          errorRetries,
+          errorRetriesTimeout,
+          priceFeedConfig: defaultPriceFeedConfig
+        });
+
+        for (let i = 0; i < spy.callCount; i++) {
+          assert.notEqual(spyLogLevel(spy, i), "error");
+        }
+
+        // To verify decimal detection is correct for a standard feed, check the fifth log to see it matches expected.
+        assert.isTrue(spyLogIncludes(spy, 5, `"contractVersion":"${contractVersion.contractVersion}"`));
+        assert.isTrue(spyLogIncludes(spy, 5, `"contractType":"${contractVersion.contractType}"`));
+
+        // There should be no DSProxy deployed as we did not parametrize the bot to use one.
+        assert.equal((await dsProxyFactory.getPastEvents("Created")).length, 0);
+      });
+
       it("Correctly rejects unknown contract types", async function() {
         // Should produce an error on a contract type that is unknown. set the financialContract as the finder, for example
         spy = sinon.spy();

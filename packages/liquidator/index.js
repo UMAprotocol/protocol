@@ -52,12 +52,7 @@ async function run({
   liquidatorOverridePrice,
   startingBlock,
   endingBlock,
-  useDsProxyToLiquidate,
-  dsProxyFactoryAddress,
-  uniswapRouterAddress,
-  uniswapFactoryAddress,
-  liquidatorReserveCurrencyAddress,
-  maxReserverTokenSpent
+  proxyTransactionWrapperConfig
 }) {
   try {
     const getTime = () => Math.round(new Date().getTime() / 1000);
@@ -73,7 +68,10 @@ async function run({
       errorRetriesTimeout,
       priceFeedConfig,
       liquidatorConfig,
-      liquidatorOverridePrice
+      liquidatorOverridePrice,
+      startingBlock,
+      endingBlock,
+      proxyTransactionWrapperConfig
     });
 
     // Load unlocked web3 accounts and get the networkId.
@@ -204,33 +202,30 @@ async function run({
     const gasEstimator = new GasEstimator(logger);
     await gasEstimator.update();
 
-    const dsProxyManager = new DSProxyManager({
-      logger,
-      web3,
-      gasEstimator,
-      account: accounts[0],
-      dsProxyFactoryAddress: dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
-      dsProxyFactoryAbi: getAbi("DSProxyFactory"),
-      dsProxyAbi: getAbi("DSProxy")
-    });
+    let dsProxyManager;
+    if (proxyTransactionWrapperConfig?.isUsingDsProxyToLiquidate) {
+      dsProxyManager = new DSProxyManager({
+        logger,
+        web3,
+        gasEstimator,
+        account: accounts[0],
+        dsProxyFactoryAddress:
+          proxyTransactionWrapperConfig?.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
+        dsProxyFactoryAbi: getAbi("DSProxyFactory"),
+        dsProxyAbi: getAbi("DSProxy")
+      });
 
-    await dsProxyManager.initializeDSProxy();
-
-    const proxyTransactionWrapperConfig = {
-      uniswapRouterAddress,
-      uniswapFactoryAddress,
-      liquidatorReserveCurrencyAddress,
-      maxReserverTokenSpent
-    };
+      await dsProxyManager.initializeDSProxy();
+    }
 
     const proxyTransactionWrapper = new ProxyTransactionWrapper({
       web3,
       financialContract,
       gasEstimator,
       syntheticToken,
+      collateralToken,
       account: accounts[0],
       dsProxyManager,
-      isUsingDsProxyToLiquidate: useDsProxyToLiquidate,
       proxyTransactionWrapperConfig
     });
 
@@ -377,21 +372,17 @@ async function Poll(callback) {
       // Block number to search for events to. If set, acts to limit from where the monitor bot will search for events up
       // until. If either startingBlock or endingBlock is not sent, then the bot will search for event.
       endingBlock: process.env.ENDING_BLOCK_NUMBER,
-      // If enabled, the bot will funnel liquidations via a DSProxy which will be deployed on the bots behalf. This
-      // enables the bots to store one reserve and operate over multiple financial contracts.
-      useDsProxyToLiquidate: process.env.USE_DSPROXY ? Boolean(process.env.USE_DSPROXY) : false,
-      // If provided, enables the bot runner to choose a diffrent DSPRoxy factory. Else, defaults the the UMA factory.
-      dsProxyFactoryAddress: process.env.DSPROXY_FACTORY_ADDRESS,
-      // If using DSProxy, define the reserve currency the bot should trade from when buying collateral to mint positions.
-      liquidatorReserveCurrencyAddress: process.env.RESERVE_CURRENCY,
-      // If using DSProxy, optionally override the uniswap router used for trades. Otherwise, default to mainnet router.
-      uniswapRouterAddress: process.env.UNISWAP_ROUTER_ADDRESS,
-      // If using DSProxy, optionally override the uniswap factory used for trades. Otherwise, default to mainnet factory.
-      uniswapFactoryAddress: process.env.UNISWAP_FACTORY_ADDRESS,
-      // If using DSProxy, optionally define a maximum amount of reserve currency to spend in a liquidation tx. Note
-      // that this is separate to the WDF, which behaves as per usual and considers the maximum amount of synthetics that
-      // could be minted, given the current reserve balance.
-      maxReserverTokenSpent: process.env.MAX_RESERVE_TOKEN_SPENT
+      // If there is a dsproxy config, the bot can be configured to send transactions via a smart contract wallet (DSProxy).
+      // This enables the bot to preform swap, mint liquidate, enabling a single reserve currency.
+      // Note that the DSProxy will be deployed on the first run of the bot. Subsequent runs will re-use the proxy. example:
+      // { "useDsProxyToLiquidate": "true", If enabled, the bot will send liquidations via a DSProxy.
+      //  "dsProxyFactoryAddress": "0x123..." -> Will default to an UMA deployed version if non provided.
+      // "liquidatorReserveCurrencyAddress": "0x123..." -> currency DSProxy will trade from when liquidating.
+      // "uniswapRouterAddress": "0x123..." -> uniswap router address to enable reserve trading. Defaults to mainnet router.
+      // "uniswapFactoryAddress": "0x123..." -> uniswap factory address. Defaults to mainnet factory.
+      // "maxReserverTokenSpent": "10000000000"} -> max amount to spend in reserve currency. scaled by reserve currency
+      // decimals. defaults to MAX_UINT (no limit). Note that this is separate to the WDF, which behaves as per usual and considers the maximum amount of synthetics that could be minted, given the current reserve balance.
+      proxyTransactionWrapperConfig: process.env.DSPROXY_CONFIG ? JSON.parse(process.env.DSPROXY_CONFIG) : {}
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
