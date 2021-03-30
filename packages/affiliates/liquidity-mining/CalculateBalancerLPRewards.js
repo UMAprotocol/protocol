@@ -116,11 +116,8 @@ async function _calculatePayoutsBetweenBlocks(
   );
   progressBar.start(snapshotsToTake, 0);
   for (let currentBlock = fromBlock; currentBlock < toBlock; currentBlock += blocksPerSnapshot) {
-    console.log("a");
     shareHolderPayout = await _updatePayoutAtBlock(bPool, currentBlock, shareHolderPayout, umaPerSnapshot);
-    console.log("b");
     progressBar.update(Math.ceil((currentBlock - fromBlock) / blocksPerSnapshot) + 1);
-    console.log("c");
   }
   progressBar.stop();
 
@@ -131,14 +128,8 @@ async function _calculatePayoutsBetweenBlocks(
 // payouts for a given `bPool` at a rate of `umaPerSnapshot`.
 async function _updatePayoutAtBlock(bPool, blockNumber, shareHolderPayout, umaPerSnapshot) {
   // Get the total supply of Balancer Pool tokens at the given snapshot's block number.
-  console.log("a.1");
-  let bptSupplyAtSnapshot;
-  try {
-    bptSupplyAtSnapshot = toBN(await bPool.methods.totalSupply().call(undefined, blockNumber));
-  } catch (error) {
-    return shareHolderPayout;
-  }
-  console.log("a.2");
+  const bptSupplyAtSnapshot = toBN(await bPool.methods.totalSupply().call(undefined, blockNumber));
+
   // Get the given holders balance at the given block. Generate an array of promises to resolve in parallel.
   const balanceResults = await Promise.map(
     Object.keys(shareHolderPayout),
