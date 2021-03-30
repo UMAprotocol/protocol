@@ -74,6 +74,11 @@ const versionMap = {
     // latest Perpetual deployed from hardhat tests.
     contractType: "Perpetual",
     contractVersion: "latest"
+  },
+  "0x8540e80983690e561f3546c311935a494196854f0994a8aaaa5f771073699ea2": {
+    // latest Perpetual deployed from hardhat tests.
+    contractType: "Perpetual",
+    contractVersion: "latest"
   }
 };
 
