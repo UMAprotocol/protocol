@@ -554,7 +554,7 @@ const defaultConfigs = {
         uniswapAddress: "0xcd7989894bc033581532d2cd88da5db0a4b12859",
         invertPrice: true
       },
-      BADGER_USD_HUOBI: { type: "cryptowatch", exchange: "huobi", pair: "badgerusdt" },
+      BADGER_USD_HUOBI: { type: "cryptowatch", exchange: "huobi", pair: "badgerusdt", twapLength: 0 },
       BBADGER_BADGER: { type: "vault", address: "0x19d97d8fa813ee2f51ad4b4e04ea08baf4dffc28" }
     }
   },
@@ -737,6 +737,79 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "btcusd" },
       { type: "cryptowatch", exchange: "binance", pair: "btcusdt" },
       { type: "cryptowatch", exchange: "bitstamp", pair: "btcusd" }
+    ]
+  },
+  "STABLESPREAD/USDC_18DEC": {
+    type: "basketspread",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    experimentalPriceFeeds: [
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "bittrex", pair: "ustusdt" },
+          {
+            type: "uniswap",
+            uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38",
+            twapLength: 2
+          }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "binance", pair: "busdusdt" },
+          {
+            type: "uniswap",
+            uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd",
+            twapLength: 2
+          }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "bittrex", pair: "cusdusdt" }
+          // NOTE: The OKCoin exchange is not available on Cryptowatch for this pair,
+          // presumably because it has such low volume.
+          // { type: "cryptowatch", exchange: "okcoin" }
+        ]
+      }
+    ],
+    baselinePriceFeeds: [
+      {
+        type: "medianizer",
+        medianizedFeeds: [
+          {
+            type: "medianizer",
+            computeMean: true,
+            medianizedFeeds: [
+              { type: "cryptowatch", exchange: "bitfinex", pair: "usdtusd" },
+              { type: "cryptowatch", exchange: "kraken", pair: "usdtusd" }
+            ]
+          },
+          {
+            type: "medianizer",
+            computeMean: true,
+            medianizedFeeds: [
+              { type: "cryptowatch", exchange: "kraken", pair: "usdcusd" },
+              { type: "cryptowatch", exchange: "bitstamp", pair: "usdcusd" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  BCHNBTC_18DEC: {
+    type: "medianizer",
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "BCHBTC" },
+      { type: "cryptowatch", exchange: "binance", pair: "BCHBTC" },
+      { type: "cryptowatch", exchange: "huobi", pair: "BCHBTC" }
     ]
   }
 };
