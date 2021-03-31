@@ -220,8 +220,7 @@ class FundingRateProposer {
           transaction: proposal,
           config: {
             gasPrice: this.gasEstimator.getCurrentFastPrice(),
-            from: this.account,
-            nonce: await this.web3.eth.getTransactionCount(this.account)
+            from: this.account
           }
         });
         let receipt = transactionResult.receipt;
