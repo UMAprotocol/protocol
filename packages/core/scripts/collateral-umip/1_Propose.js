@@ -90,7 +90,7 @@ async function runExport() {
 
       Collateral currency: ${collateral}
       Final fee: ${fee}
-      
+
       `);
     }
 
@@ -123,16 +123,12 @@ async function runExport() {
 
   const newAdminRequest = priceRequests[priceRequests.length - 1];
   console.log(
-    `New price request {identifier: ${
+    `New admin request {identifier: ${
       newAdminRequest.args.identifier
     }, timestamp: ${newAdminRequest.args.time.toString()}}`
   );
 
-  console.log(`
-
-Done!
-
-`);
+  console.log("Done!");
 }
 
 const run = async function(callback) {

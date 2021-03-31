@@ -2,13 +2,16 @@
 // fork of the main net or can be run directly on the main net to execute the upgrade transactions.
 // To run this on the localhost first fork main net into Ganache with the proposerWallet unlocked as follows:
 // ganache-cli --fork https://mainnet.infura.io/v3/d70106f59aef456c9e5bfbb0c2cc7164 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25
-// Then execute the script as: truffle exec ./scripts/identifier-umip/1_Propose.js --network mainnet-fork --identifier USDETH --identifier ETHBTC from core
+// Then execute the script as: yarn truffle exec ./scripts/identifier-umip/1_Propose.js --network mainnet-fork --identifier USDETH --identifier ETHBTC from core
 
 // Use the same ABI's as deployed contracts:
 const { getTruffleContract } = require("../../index");
 const Governor = getTruffleContract("Governor", web3, "1.1.0");
 const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, "1.1.0");
+const Finder = artifacts.require("Finder");
+const Voting = artifacts.require("Voting");
 
+const { interfaceName } = require("@uma/common");
 const { GasEstimator } = require("@uma/financial-templates-lib");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["identifier"] });
@@ -58,7 +61,10 @@ async function runExport() {
   });
 
   await gasEstimator.update();
-  await governor.propose(transactions, { from: proposerWallet, gasPrice: gasEstimator.getCurrentFastPrice() });
+  const txn = await governor.propose(transactions, {
+    from: proposerWallet,
+    gasPrice: gasEstimator.getCurrentFastPrice()
+  });
 
   const identifierTable = identifiers.map(identifier => {
     return {
@@ -70,6 +76,24 @@ async function runExport() {
   console.log(`
   Identifiers Proposed`);
   console.table(identifierTable);
+
+  console.log("Transaction: ", txn?.tx);
+
+  const finder = await Finder.deployed();
+  const oracleAddress = await finder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle));
+  console.log(`Governor submitting admin request to Voting @ ${oracleAddress}`);
+
+  const oracle = await Voting.at(oracleAddress);
+  const priceRequests = await oracle.getPastEvents("PriceRequestAdded");
+
+  const newAdminRequest = priceRequests[priceRequests.length - 1];
+  console.log(
+    `New admin request {identifier: ${
+      newAdminRequest.args.identifier
+    }, timestamp: ${newAdminRequest.args.time.toString()}}`
+  );
+
+  console.log("Done!");
 }
 
 const run = async function(callback) {
