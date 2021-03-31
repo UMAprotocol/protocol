@@ -14,10 +14,10 @@ const App = env => async params => {
   const issueTemplate = await dappMiningTemplate(config);
   const githubIssue = await createGithubIssue({ auth: env.github, ...issueTemplate });
   return {
+    ...params,
     // data.number is the issue number
     issueNumber: githubIssue.data.number,
-    issueTemplate,
-    ...params
+    issueTemplate
   };
 };
 
