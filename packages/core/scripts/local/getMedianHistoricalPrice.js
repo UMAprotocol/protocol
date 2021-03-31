@@ -67,7 +67,7 @@ async function getMedianHistoricalPrice(callback) {
       // Append price feed config params from environment such as "apiKey" for CryptoWatch price feeds.
       ...(process.env.PRICE_FEED_CONFIG ? JSON.parse(process.env.PRICE_FEED_CONFIG) : {})
     };
-    const medianizerPriceFeed = await createReferencePriceFeedForFinancialContract(
+    const defaultPriceFeed = await createReferencePriceFeedForFinancialContract(
       dummyLogger,
       web3,
       new Networker(dummyLogger),
@@ -76,15 +76,15 @@ async function getMedianHistoricalPrice(callback) {
       priceFeedConfig,
       queryIdentifier
     );
-    if (!medianizerPriceFeed) {
-      throw new Error(`Failed to construct medianizer price feed for the ${queryIdentifier} identifier`);
+    if (!defaultPriceFeed) {
+      throw new Error(`Failed to construct default price feed for the ${queryIdentifier} identifier`);
     }
 
-    await medianizerPriceFeed.update();
+    await defaultPriceFeed.update();
 
     // The default exchanges to fetch prices for (and from which the median is derived) are based on UMIP's and can be found in:
     // protocol/financial-templates-lib/src/price-feed/CreatePriceFeed.js
-    const queryPrice = await medianizerPriceFeed.getHistoricalPrice(queryTime, true);
+    const queryPrice = await defaultPriceFeed.getHistoricalPrice(queryTime, true);
     const precisionToUse = UMIP_PRECISION[queryIdentifier] ? UMIP_PRECISION[queryIdentifier] : DEFAULT_PRECISION;
     console.log(`\n⚠️ Truncating price to ${precisionToUse} decimals`);
     console.log(
