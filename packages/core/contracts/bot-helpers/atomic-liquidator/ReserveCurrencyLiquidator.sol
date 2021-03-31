@@ -56,7 +56,7 @@ contract ReserveCurrencyLiquidator {
             subOrZero(maxTokensToLiquidate, FixedPoint.Unsigned(IERC20(fc.tokenCurrency()).balanceOf(address(this))));
 
         // 2. Calculate how much collateral is needed to make up the token shortfall from minting new synthetics.
-        FixedPoint.Unsigned memory gcr = fc.pfc().div(fc.totalTokensOutstanding());
+        FixedPoint.Unsigned memory gcr = fc.pfc().divCeil(fc.totalTokensOutstanding());
         FixedPoint.Unsigned memory collateralToMintShortfall = tokenShortfall.mul(gcr);
 
         // 3. Calculate the total collateral required. This considers the final fee for the given collateral type + any
@@ -76,6 +76,7 @@ contract ReserveCurrencyLiquidator {
 
         // 4.a. If there is some collateral to be purchased, execute a trade on uniswap to meet the shortfall.
         // Note the path assumes a direct route from the reserve currency to the collateral currency.
+        // Note that if the reserve currency is equal to the collateral currency no trade will execute within the router.
         if (collateralToBePurchased.isGreaterThan(FixedPoint.fromUnscaledUint(0))) {
             IUniswapV2Router01 router = IUniswapV2Router01(uniswapRouter);
             address[] memory path = new address[](2);

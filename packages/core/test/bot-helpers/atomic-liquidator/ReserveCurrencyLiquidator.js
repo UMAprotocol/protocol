@@ -77,6 +77,23 @@ contract("ReserveTokenLiquidator", function(accounts) {
     assert.equal(liquidations[0].finalFee.toString(), finalFeeAmount.toString()); // The final fee should not match the expected amount
   };
 
+  // Generate common call data for unit tests.
+  const buildCallData = () => {
+    return reserveCurrencyLiquidator.contract.methods
+      .swapMintLiquidate(
+        router.address, // uniswapRouter
+        financialContract.address, // financialContract
+        reserveToken.address, // reserveCurrency
+        sponsor1, // liquidatedSponsor
+        { rawValue: MAX_UINT_VAL }, // maxReserverTokenSpent
+        { rawValue: 0 }, // minCollateralPerTokenLiquidated
+        { rawValue: MAX_SAFE_ALLOWANCE }, // maxCollateralPerTokenLiquidated. This number need to be >= the token price.
+        { rawValue: toWei("1000") }, // maxTokensToLiquidate. This is how many tokens the positions has (liquidated debt).
+        unreachableDeadline
+      )
+      .encodeABI();
+  };
+
   before(async () => {
     dsProxyFactory = await DSProxyFactory.new();
 
@@ -162,7 +179,7 @@ contract("ReserveTokenLiquidator", function(accounts) {
     dsProxy = await DSProxy.at((await dsProxyFactory.getPastEvents("Created"))[0].returnValues.proxy);
   });
 
-  it("Reserve currency liquidator can correctly swap,mint,liquidate", async function() {
+  it("can correctly swap,mint,liquidate", async function() {
     // Send tokens from liquidator to DSProxy. This would be done by seeding the common DSProxy shared between multiple bots.
     await reserveToken.mint(dsProxy.address, toWei("10000"));
 
@@ -176,19 +193,7 @@ contract("ReserveTokenLiquidator", function(accounts) {
     assert.equal((await financialContract.getLiquidations(sponsor1)).length, 0);
 
     // Build the transaction call data.
-    const callData = reserveCurrencyLiquidator.contract.methods
-      .swapMintLiquidate(
-        router.address, // uniswapRouter
-        financialContract.address, // financialContract
-        reserveToken.address, // reserveCurrency
-        sponsor1, // liquidatedSponsor
-        { rawValue: MAX_UINT_VAL }, // maxReserverTokenSpent
-        { rawValue: 0 }, // minCollateralPerTokenLiquidated
-        { rawValue: MAX_SAFE_ALLOWANCE }, // maxCollateralPerTokenLiquidated. This number need to be >= the token price.
-        { rawValue: toWei("1000") }, // maxTokensToLiquidate. This is how many tokens the positions has (liquidated debt).
-        unreachableDeadline
-      )
-      .encodeABI();
+    const callData = buildCallData();
 
     await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.address, callData).send({
       from: liquidator
@@ -210,26 +215,14 @@ contract("ReserveTokenLiquidator", function(accounts) {
     assert.equal((await pair.getPastEvents("Swap")).length, 1);
     assert.equal((await financialContract.getPastEvents("LiquidationCreated")).length, 1);
   });
-  it("Reserve currency liquidator should use existing token and synthetic balances", async function() {
+  it("should use existing token and synthetic balances", async function() {
     // If the DSProxy already has any synthetics or collateral, the contract should use them all within the liquidation.
     await reserveToken.mint(dsProxy.address, toWei("10000")); // mint some reserve tokens.
     await collateralToken.mint(dsProxy.address, toWei("0.5")); // send half of 1 eth to the DSProxy
     await syntheticToken.mint(dsProxy.address, toWei("200")); // send 200 synthetics to the DSProxy
 
     // Build the transaction call data.
-    const callData = reserveCurrencyLiquidator.contract.methods
-      .swapMintLiquidate(
-        router.address, // uniswapRouter
-        financialContract.address, // financialContract
-        reserveToken.address, // reserveCurrency
-        sponsor1, // liquidatedSponsor
-        { rawValue: MAX_UINT_VAL }, // maxReserverTokenSpent
-        { rawValue: 0 }, // minCollateralPerTokenLiquidated
-        { rawValue: MAX_SAFE_ALLOWANCE }, // maxCollateralPerTokenLiquidated. This number need to be >= the token price.
-        { rawValue: toWei("1000") }, // maxTokensToLiquidate. This is how many tokens the positions has (liquidated debt).
-        unreachableDeadline
-      )
-      .encodeABI();
+    const callData = buildCallData();
 
     await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.address, callData).send({
       from: liquidator
@@ -249,7 +242,7 @@ contract("ReserveTokenLiquidator", function(accounts) {
     assert.equal((await pair.getPastEvents("Swap")).length, 1);
     assert.equal((await financialContract.getPastEvents("LiquidationCreated")).length, 1);
   });
-  it("Reserve currency liquidator should correctly handel synthetic balance larger than liquidated position", async function() {
+  it("should correctly handel synthetic balance larger than liquidated position", async function() {
     // If the DSProxy's synthetic balance is larger than that to be liquidated, then it does not need to preform any
     // extra buys OR mints. Send the synthetic reserve token, of which it should use only enough to buy the final fee.
     // Send synthetics larger than the position liquidated.
@@ -257,19 +250,7 @@ contract("ReserveTokenLiquidator", function(accounts) {
     await syntheticToken.mint(dsProxy.address, toWei("2000")); // send 200 synthetics to the DSProxy
 
     // Build the transaction call data.
-    const callData = reserveCurrencyLiquidator.contract.methods
-      .swapMintLiquidate(
-        router.address, // uniswapRouter
-        financialContract.address, // financialContract
-        reserveToken.address, // reserveCurrency
-        sponsor1, // liquidatedSponsor
-        { rawValue: MAX_UINT_VAL }, // maxReserverTokenSpent
-        { rawValue: 0 }, // minCollateralPerTokenLiquidated
-        { rawValue: MAX_SAFE_ALLOWANCE }, // maxCollateralPerTokenLiquidated. This number need to be >= the token price.
-        { rawValue: toWei("1000") }, // maxTokensToLiquidate. This is how many tokens the positions has (liquidated debt).
-        unreachableDeadline
-      )
-      .encodeABI();
+    const callData = buildCallData();
 
     await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.address, callData).send({
       from: liquidator
@@ -289,7 +270,7 @@ contract("ReserveTokenLiquidator", function(accounts) {
     assert.equal((await pair.getPastEvents("Swap")).length, 1);
     assert.equal((await financialContract.getPastEvents("LiquidationCreated")).length, 1);
   });
-  it("Reserve currency liquidator should correctly handel collateral balance larger than required for synthetic position mint", async function() {
+  it("should correctly handel collateral balance larger than required for synthetic position mint", async function() {
     // If the DSProxy's balance collateral balance is larger than then that to be minted, then it does not need to preform
     // any extra buys. However, the DSProxy still needs to mint synthetics to preform the liquidation. Send the synthetic
     // reserve token, of which it should use none. Send collateral larger than needed to mint positions.
@@ -297,19 +278,7 @@ contract("ReserveTokenLiquidator", function(accounts) {
     await collateralToken.mint(dsProxy.address, toWei("10")); // send 10 collateral to the DSProxy.
 
     // Build the transaction call data.
-    const callData = reserveCurrencyLiquidator.contract.methods
-      .swapMintLiquidate(
-        router.address, // uniswapRouter
-        financialContract.address, // financialContract
-        reserveToken.address, // reserveCurrency
-        sponsor1, // liquidatedSponsor
-        { rawValue: MAX_UINT_VAL }, // maxReserverTokenSpent
-        { rawValue: 0 }, // minCollateralPerTokenLiquidated
-        { rawValue: MAX_SAFE_ALLOWANCE }, // maxCollateralPerTokenLiquidated. This number need to be >= the token price.
-        { rawValue: toWei("1000") }, // maxTokensToLiquidate. This is how many tokens the positions has (liquidated debt).
-        unreachableDeadline
-      )
-      .encodeABI();
+    const callData = buildCallData();
 
     await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.address, callData).send({
       from: liquidator
@@ -328,6 +297,54 @@ contract("ReserveTokenLiquidator", function(accounts) {
     await validateLiquidationOutput(liquidations);
 
     // In this test the DSProxy had enough collateral so did not need to swap. However, it needed to mint. Events should match.
+    assert.equal((await financialContract.getPastEvents("PositionCreated")).length, 1);
+    assert.equal((await pair.getPastEvents("Swap")).length, 0);
+    assert.equal((await financialContract.getPastEvents("LiquidationCreated")).length, 1);
+  });
+  it("can correctly deal with collateral and reserve being the same token", async function() {
+    // Send tokens from liquidator to DSProxy. This would be done by seeding the common DSProxy shared between multiple bots.
+    await collateralToken.mint(dsProxy.address, toWei("10000"));
+
+    // The DSProxy should not have any synthetics or collateral before the liquidation.
+    assert.equal((await collateralToken.balanceOf(dsProxy.address)).toString(), toWei("10000"));
+    assert.equal(await reserveToken.balanceOf(dsProxy.address), "0");
+    assert.equal(await syntheticToken.balanceOf(dsProxy.address), "0");
+
+    const startingUniswapPrice = await getPoolSpotPrice();
+
+    // There should be no liquidations before the transaction call.
+    assert.equal((await financialContract.getLiquidations(sponsor1)).length, 0);
+
+    // Build the transaction call data. This differs from the previous tests in that it uses the collateral as reserve token.
+    const callData = reserveCurrencyLiquidator.contract.methods
+      .swapMintLiquidate(
+        router.address, // uniswapRouter
+        financialContract.address, // financialContract
+        collateralToken.address, // reserveCurrency
+        sponsor1, // liquidatedSponsor
+        { rawValue: MAX_UINT_VAL }, // maxReserverTokenSpent
+        { rawValue: 0 }, // minCollateralPerTokenLiquidated
+        { rawValue: MAX_SAFE_ALLOWANCE }, // maxCollateralPerTokenLiquidated. This number need to be >= the token price.
+        { rawValue: toWei("1000") }, // maxTokensToLiquidate. This is how many tokens the positions has (liquidated debt).
+        unreachableDeadline
+      )
+      .encodeABI();
+
+    await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.address, callData).send({
+      from: liquidator
+    });
+
+    // The DSProxy should not have any synthetics or collateral after the liquidation as everything was used.
+    assert.equal(await syntheticToken.balanceOf(dsProxy.address), "0");
+
+    // There should be one liquidation after the call and the properties on the liquidation should match what is expected.
+    const liquidations = await financialContract.getLiquidations(sponsor1);
+    await validateLiquidationOutput(liquidations);
+
+    // The price in the uniswap pool should not have moved at all as no trade.
+    assert.equal(await getPoolSpotPrice(), startingUniswapPrice);
+
+    // In this test the DSProxy should not swapped, but should have minted and liquidated. We should expect to see exactly these events.
     assert.equal((await financialContract.getPastEvents("PositionCreated")).length, 1);
     assert.equal((await pair.getPastEvents("Swap")).length, 0);
     assert.equal((await financialContract.getPastEvents("LiquidationCreated")).length, 1);
