@@ -435,8 +435,8 @@ class Liquidator {
           logResult.paidToSponsor = receipt.events.LiquidationWithdrawn.returnValues.paidToSponsor;
         }
         this.logger.info({
-          at: "Disputer",
-          message: "Dispute withdrawn🤑",
+          at: "Liquidator",
+          message: "Liquidation withdrawn🤑",
           liquidation: liquidation,
           liquidationResult: logResult
         });
@@ -445,14 +445,14 @@ class Liquidator {
         // want to emit a high level log about this:
         if (error.type === "call") {
           this.logger.debug({
-            at: "Disputer",
+            at: "Liquidator",
             message: "No rewards to withdraw",
             liquidation: liquidation
           });
         } else {
-          const message = "Failed to withdraw dispute rewards🚨";
+          const message = "Failed to withdraw liquidation rewards🚨";
           this.logger.error({
-            at: "Disputer",
+            at: "Liquidator",
             message,
             disputer: this.account,
             liquidation: liquidation,
