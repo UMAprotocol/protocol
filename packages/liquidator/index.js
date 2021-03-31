@@ -38,6 +38,8 @@ const { getAbi, getAddress } = require("@uma/core");
  * @param {String} [liquidatorOverridePrice] Optional String representing a Wei number to override the liquidator price feed.
  * @param {Number} [startingBlock] Earliest block to query for contract events that the bot will log about.
  * @param {Number} [endingBlock] Latest block to query for contract events that the bot will log about.
+ * @param {Object} [proxyTransactionWrapperConfig] Configuration to construct the proxy transaction wrapper to enable DSProxy
+ *     liquidations. This facilitates atomic swap, mint and liquidate transactions against a reserve currency.
  * @return None or throws an Error.
  */
 async function run({
@@ -215,6 +217,7 @@ async function run({
         dsProxyAbi: getAbi("DSProxy")
       });
 
+      // Load in an existing DSProxy for the account EOA if one already exists or create a new one for the user.
       await dsProxyManager.initializeDSProxy();
     }
 

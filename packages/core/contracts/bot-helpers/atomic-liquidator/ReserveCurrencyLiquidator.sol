@@ -77,7 +77,7 @@ contract ReserveCurrencyLiquidator {
         // 4.a. If there is some collateral to be purchased, execute a trade on uniswap to meet the shortfall.
         // Note the path assumes a direct route from the reserve currency to the collateral currency.
         // Note that if the reserve currency is equal to the collateral currency no trade will execute within the router.
-        if (collateralToBePurchased.isGreaterThan(FixedPoint.fromUnscaledUint(0))) {
+        if (collateralToBePurchased.isGreaterThan(0)) {
             IUniswapV2Router01 router = IUniswapV2Router01(uniswapRouter);
             address[] memory path = new address[](2);
             path[0] = reserveCurrency;
@@ -96,7 +96,7 @@ contract ReserveCurrencyLiquidator {
         // If the DSProxy already has enough tokens (tokenShortfall = 0) we still preform the approval on the collateral
         // currency as this is needed to pay the final fee in the liquidation tx.
         TransferHelper.safeApprove(fc.collateralCurrency(), address(fc), totalCollateralRequired.rawValue);
-        if (tokenShortfall.isGreaterThan(FixedPoint.fromUnscaledUint(0))) {
+        if (tokenShortfall.isGreaterThan(0)) {
             fc.create(collateralToMintShortfall, tokenShortfall);
         }
 

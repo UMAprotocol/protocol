@@ -39,7 +39,7 @@ class DSProxyManager {
     return this.dsProxyAddress;
   }
 
-  // Load in an existing DSProxy for the account EOA if one already exists OR create a new one for the user. Note that
+  // Load in an existing DSProxy for the account EOA if one already exists or create a new one for the user. Note that
   // the user can provide a dsProxyAddress if they want to override the factory behaviour and load in a DSProxy directly.
   async initializeDSProxy(dsProxyAddress = null, shouldCreateProxy = true) {
     if (dsProxyAddress) {

@@ -118,8 +118,8 @@ class ProxyTransactionWrapper {
   // then this is simply the token balance of the unlocked account. If the liquidator is using a DSProxy to liquidate,
   // then consider the synthetics could be minted, + any synthetics the DSProxy already has.
   async getEffectiveSyntheticTokenBalance() {
-    const syntheticTokenBallance = await this.syntheticToken.methods.balanceOf(this.account).call();
-    if (!this.isUsingDsProxyToLiquidate) return syntheticTokenBallance;
+    const syntheticTokenBalance = await this.syntheticToken.methods.balanceOf(this.account).call();
+    if (!this.isUsingDsProxyToLiquidate) return syntheticTokenBalance;
     else {
       // Instantiate uniswap factory to fetch the pair address.
       const uniswapFactory = await this.createContractObjectFromJson(UniswapV2Factory).at(this.uniswapFactoryAddress);
@@ -171,7 +171,7 @@ class ProxyTransactionWrapper {
 
       // Finally, the effective synthetic balance is the sum of the max that can be minted using the collateral swapped
       // from reserve and the current synthetics within the DSProxy account.
-      return maxMintableSynthetics.add(this.toBN(syntheticTokenBallance));
+      return maxMintableSynthetics.add(this.toBN(syntheticTokenBalance));
     }
   }
 
