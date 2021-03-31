@@ -1,9 +1,7 @@
-const ynatm = require("@umaprotocol/ynatm");
-
 const {
   PostWithdrawLiquidationRewardsStatusTranslations,
   createObjectFromDefaultProps,
-  revertWrapper
+  runTransaction
 } = require("@uma/common");
 
 const LiquidationStrategy = require("./liquidationStrategy");
@@ -314,75 +312,59 @@ class Liquidator {
       // liquidation strategy will control how much to liquidate
       const liquidation = this.financialContract.methods.createLiquidation(...liquidationArgs);
 
-      // Send the transaction or report failure.
-      let receipt;
-      let txnConfig;
+      this.logger.debug({
+        at: "Liquidator",
+        message: "Liquidating position",
+        position: position,
+        inputPrice: scaledPrice.toString(),
+        minLiquidationPrice: this.liquidationMinPrice,
+        maxLiquidationPrice: maxCollateralPerToken.toString(),
+        tokensToLiquidate: tokensToLiquidate.toString()
+      });
       try {
-        // Configure tx config object
-        const gasEstimation = await liquidation.estimateGas({ from: this.account });
-        txnConfig = {
-          from: this.account,
-          gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
-          gasPrice: this.gasEstimator.getCurrentFastPrice()
+        // Get successful transaction receipt and return value or error.
+        const transactionResult = await runTransaction({
+          transaction: liquidation,
+          config: {
+            gasPrice: this.gasEstimator.getCurrentFastPrice(),
+            from: this.account,
+            nonce: await this.web3.eth.getTransactionCount(this.account)
+          }
+        });
+        let receipt = transactionResult.receipt;
+        let finalFeeBond = transactionResult.returnValue.finalFeeBond.toString();
+        const logResult = {
+          tx: receipt && receipt.transactionHash,
+          sponsor: receipt.events.LiquidationCreated.returnValues.sponsor,
+          liquidator: receipt.events.LiquidationCreated.returnValues.liquidator,
+          liquidationId: receipt.events.LiquidationCreated.returnValues.liquidationId,
+          tokensOutstanding: receipt.events.LiquidationCreated.returnValues.tokensOutstanding,
+          lockedCollateral: receipt.events.LiquidationCreated.returnValues.lockedCollateral,
+          liquidatedCollateral: receipt.events.LiquidationCreated.returnValues.liquidatedCollateral
         };
-
-        // Make sure to keep trying with this nonce
-        const nonce = await this.web3.eth.getTransactionCount(this.account);
-
-        // Min Gas Price, with a max gasPrice of x4
-        const minGasPrice = parseInt(this.gasEstimator.getCurrentFastPrice(), 10);
-        const maxGasPrice = 2 * 3 * minGasPrice;
-
-        // Doubles gasPrice every iteration
-        const gasPriceScalingFunction = ynatm.DOUBLES;
-
-        this.logger.debug({
+        // This log level can be overridden by specifying `positionLiquidated` in the `logOverrides`. Otherwise, use info.
+        this.logger[this.logOverrides.positionLiquidated || "info"]({
           at: "Liquidator",
-          message: "Liquidating position",
+          message: "Position has been liquidated!🔫",
           position: position,
           inputPrice: scaledPrice.toString(),
-          minLiquidationPrice: this.liquidationMinPrice,
-          maxLiquidationPrice: maxCollateralPerToken.toString(),
-          tokensToLiquidate: tokensToLiquidate.toString(),
-          txnConfig
-        });
-
-        // Receipt without events
-        receipt = await ynatm.send({
-          sendTransactionFunction: gasPrice => liquidation.send({ ...txnConfig, nonce, gasPrice }),
-          minGasPrice,
-          maxGasPrice,
-          gasPriceScalingFunction,
-          delay: 60000 // Tries and doubles gasPrice every minute if tx hasn't gone through
+          liquidationResult: logResult,
+          finalFeeBond: finalFeeBond
         });
       } catch (error) {
+        const message =
+          error.type === "call"
+            ? "Cannot submit liquidation: not enough collateral (or large enough approval)✋"
+            : "Failed to submit liquidation🚨";
         this.logger.error({
           at: "Liquidator",
-          message: "Failed to liquidate position🚨",
+          message,
+          liquidator: this.account,
+          position,
           error
         });
         continue;
       }
-
-      const logResult = {
-        tx: receipt && receipt.transactionHash,
-        sponsor: receipt.events.LiquidationCreated.returnValues.sponsor,
-        liquidator: receipt.events.LiquidationCreated.returnValues.liquidator,
-        liquidationId: receipt.events.LiquidationCreated.returnValues.liquidationId,
-        tokensOutstanding: receipt.events.LiquidationCreated.returnValues.tokensOutstanding,
-        lockedCollateral: receipt.events.LiquidationCreated.returnValues.lockedCollateral,
-        liquidatedCollateral: receipt.events.LiquidationCreated.returnValues.liquidatedCollateral
-      };
-
-      // This log level can be overridden by specifying `positionLiquidated` in the `logOverrides`. Otherwise, use info.
-      this.logger[this.logOverrides.positionLiquidated || "info"]({
-        at: "Liquidator",
-        message: "Position has been liquidated!🔫",
-        position: position,
-        inputPrice: scaledPrice.toString(),
-        txnConfig,
-        liquidationResult: logResult
-      });
     }
   }
 
@@ -418,106 +400,67 @@ class Liquidator {
 
       // Construct transaction.
       const withdraw = this.financialContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
-
-      // Confirm that liquidation has eligible rewards to be withdrawn.
-      let withdrawalCallResponse, gasEstimation;
-      try {
-        [withdrawalCallResponse, gasEstimation] = await Promise.all([
-          withdraw.call({ from: this.account }),
-          withdraw.estimateGas({ from: this.account })
-        ]);
-        // Mainnet view/pure functions sometimes don't revert, even if a require is not met. The revertWrapper ensures this
-        // caught correctly. see https://forum.openzeppelin.com/t/require-in-view-pure-functions-dont-revert-on-public-networks/1211
-        if (revertWrapper(withdrawalCallResponse) === null) {
-          throw new Error("Simulated reward withdrawal failed");
-        }
-      } catch (error) {
-        this.logger.debug({
-          at: "Liquidator",
-          message: "No rewards to withdraw",
-          liquidation: liquidation,
-          error
-        });
-        continue;
-      }
-
-      // In contract version 1.2.2 and below this function returns one value: the amount withdrawn by the function caller.
-      // In later versions it returns an object containing all payouts.
-      const amountWithdrawn = this.isLegacyEmpVersion
-        ? withdrawalCallResponse.rawValue.toString()
-        : withdrawalCallResponse.payToLiquidator.rawValue.toString();
-
-      const txnConfig = {
-        from: this.account,
-        gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
-        gasPrice: this.gasEstimator.getCurrentFastPrice()
-      };
-      // In contract version 1.2.2 and below this function returns one value: the amount withdrawn by the function caller.
-      // In later versions it returns an object containing all payouts.
       this.logger.debug({
         at: "Liquidator",
         message: "Withdrawing liquidation",
-        liquidation: liquidation,
-        amountWithdrawn,
-        txnConfig
+        liquidation: liquidation
       });
-
-      // Send the transaction or report failure.
-      let receipt;
       try {
-        const nonce = await this.web3.eth.getTransactionCount(this.account);
-
-        // Min Gas Price, with a max gasPrice of x6 (3 re-tries)
-        const minGasPrice = parseInt(this.gasEstimator.getCurrentFastPrice(), 10);
-        const maxGasPrice = 2 * 3 * minGasPrice;
-
-        // Doubles gasPrice every iteration
-        const gasPriceScalingFunction = ynatm.DOUBLES;
-
-        // Receipt without events
-        receipt = await ynatm.send({
-          sendTransactionFunction: gasPrice => withdraw.send({ ...txnConfig, nonce, gasPrice }),
-          minGasPrice,
-          maxGasPrice,
-          gasPriceScalingFunction,
-          delay: 60000 // Tries and doubles gasPrice every minute if tx hasn't gone through
+        // Get successful transaction receipt and return value or error.
+        const transactionResult = await runTransaction({
+          transaction: withdraw,
+          config: {
+            gasPrice: this.gasEstimator.getCurrentFastPrice(),
+            from: this.account,
+            nonce: await this.web3.eth.getTransactionCount(this.account)
+          }
+        });
+        let receipt = transactionResult.receipt;
+        let logResult = {
+          tx: receipt.transactionHash,
+          caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
+          settlementPrice: receipt.events.LiquidationWithdrawn.returnValues.settlementPrice,
+          liquidationStatus:
+            PostWithdrawLiquidationRewardsStatusTranslations[
+              receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
+            ]
+        };
+        // In contract version 1.2.2 and below this function returns one value: the amount withdrawn by the function caller.
+        // In later versions it returns an object containing all payouts.
+        if (this.isLegacyEmpVersion) {
+          logResult.withdrawalAmount = receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount;
+        } else {
+          logResult.paidToLiquidator = receipt.events.LiquidationWithdrawn.returnValues.paidToLiquidator;
+          logResult.paidToDisputer = receipt.events.LiquidationWithdrawn.returnValues.paidToDisputer;
+          logResult.paidToSponsor = receipt.events.LiquidationWithdrawn.returnValues.paidToSponsor;
+        }
+        this.logger.info({
+          at: "Disputer",
+          message: "Dispute withdrawn🤑",
+          liquidation: liquidation,
+          liquidationResult: logResult
         });
       } catch (error) {
-        this.logger.error({
-          at: "Liquidator",
-          message: "Failed to withdraw liquidation rewards🚨",
-          error
-        });
+        // If the withdrawal simulation fails, then it is likely that the dispute has not resolved yet, and we don't
+        // want to emit a high level log about this:
+        if (error.type === "call") {
+          this.logger.debug({
+            at: "Disputer",
+            message: "No rewards to withdraw",
+            liquidation: liquidation
+          });
+        } else {
+          const message = "Failed to withdraw dispute rewards🚨";
+          this.logger.error({
+            at: "Disputer",
+            message,
+            disputer: this.account,
+            liquidation: liquidation,
+            error
+          });
+        }
         continue;
       }
-
-      let logResult = {
-        tx: receipt.transactionHash,
-        caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
-        // Settlement price is possible undefined if liquidation expired without a dispute
-        settlementPrice: receipt.events.LiquidationWithdrawn.returnValues.settlementPrice,
-        liquidationStatus:
-          PostWithdrawLiquidationRewardsStatusTranslations[
-            receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
-          ]
-      };
-
-      // In contract version 1.2.2 and below this event returns one value, `withdrawalAmount`: the amount withdrawn by the function caller.
-      // In later versions it returns an object containing all payouts.
-      if (this.isLegacyEmpVersion) {
-        logResult.withdrawalAmount = receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount;
-      } else {
-        logResult.paidToLiquidator = receipt.events.LiquidationWithdrawn.returnValues.paidToLiquidator;
-        logResult.paidToDisputer = receipt.events.LiquidationWithdrawn.returnValues.paidToDisputer;
-        logResult.paidToSponsor = receipt.events.LiquidationWithdrawn.returnValues.paidToSponsor;
-      }
-
-      this.logger.info({
-        at: "Liquidator",
-        message: "Liquidation withdrawn🤑",
-        liquidation: liquidation,
-        liquidationResult: logResult
-      });
     }
   }
 }
