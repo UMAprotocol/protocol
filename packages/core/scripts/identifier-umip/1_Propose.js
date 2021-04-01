@@ -4,12 +4,13 @@
 // ganache-cli --fork https://mainnet.infura.io/v3/d70106f59aef456c9e5bfbb0c2cc7164 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25
 // Then execute the script as: yarn truffle exec ./scripts/identifier-umip/1_Propose.js --network mainnet-fork --identifier USDETH --identifier ETHBTC from core
 
-// Use the same ABI's as deployed contracts:
 const { getTruffleContract } = require("../../index");
-const Governor = getTruffleContract("Governor", web3, "1.1.0");
-const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, "1.1.0");
-const Finder = artifacts.require("Finder");
-const Voting = artifacts.require("Voting");
+
+// Use the same ABI's as deployed contracts:
+const Governor = getTruffleContract("Governor", web3, "latest");
+const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, "latest");
+const Finder = getTruffleContract("Finder", web3, "latest");
+const Voting = getTruffleContract("Voting", web3, "latest");
 
 const { interfaceName } = require("@uma/common");
 const { GasEstimator } = require("@uma/financial-templates-lib");
@@ -83,7 +84,7 @@ async function runExport() {
   const oracleAddress = await finder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle));
   console.log(`Governor submitting admin request to Voting @ ${oracleAddress}`);
 
-  const oracle = await Voting.at(oracleAddress);
+  const oracle = await Voting.deployed();
   const priceRequests = await oracle.getPastEvents("PriceRequestAdded");
 
   const newAdminRequest = priceRequests[priceRequests.length - 1];
