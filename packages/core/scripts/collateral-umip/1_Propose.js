@@ -14,11 +14,13 @@ const ERC20 = artifacts.require("ERC20");
 const Voting = artifacts.require("Voting");
 
 const { interfaceName } = require("@uma/common");
+const { GasEstimator } = require("@uma/financial-templates-lib");
 
 const { parseUnits } = require("@ethersproject/units");
 const { getDecimals } = require("./utils");
 
 const _ = require("lodash");
+const winston = require("winston");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["collateral", "fee", "decimals"] });
 
@@ -27,6 +29,14 @@ const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 async function runExport() {
   console.log("Running Upgrade🔥");
   console.log("Connected to network id", await web3.eth.net.getId());
+
+  const gasEstimator = new GasEstimator(
+    winston.createLogger({
+      silent: true
+    }),
+    60, // Time between updates.
+    100 // Default gas price.
+  );
 
   if (!argv.collateral || !argv.fee) {
     throw new Error("Must provide --fee and --collateral");
@@ -97,7 +107,11 @@ async function runExport() {
   console.log(`Sending to governor @ ${governor.address}`);
 
   // Send the proposal
-  const txn = await governor.propose(transactionList, { from: proposerWallet, gas: 2000000 });
+  await gasEstimator.update();
+  const txn = await governor.propose(transactionList, {
+    from: proposerWallet,
+    gasPrice: gasEstimator.getCurrentFastPrice()
+  });
   console.log("Transaction: ", txn?.tx);
 
   const finder = await Finder.deployed();

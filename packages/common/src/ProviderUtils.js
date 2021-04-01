@@ -48,23 +48,24 @@ function createBasicProvider(url) {
  * @notice Gets a web3 instance based on the network argument using the truffle config in this package.
  * Use this for compatibility for running with or without truffle.
  * @example
- *  If a node app uses getWeb3() and you want to load network 1 with a default wallet
- *  For full list of potential network names see common/src/TruffleConfig
- * node app --network=mainnet_mnemonic
+ *  If a node app uses getWeb3() and you want to load network 1 with a default wallet For full list of potential network
+ * names see common/src/TruffleConfig node app --network=mainnet_mnemonic
  *
- * @notice You can also specify environment variables
- * INFURA_API_KEY, CUSTOM_NODE_URL and CUSTOM_LOCAL_NODE_PORT. If not provided there are defaults
- * which load a hardcoded infura key. Default port is 9545.
+ * @notice You can also specify environment variables INFURA_API_KEY, CUSTOM_NODE_URL and CUSTOM_LOCAL_NODE_PORT.
+ * If not provided there are defaults which load a hardcoded infura key. Default port is 9545.
+ *
+ * @notice a parameterizedNetwork name can also be provided. This enables you to use the library without needing to define
+ * a `--network` argument. Useful in serverless or when running node scripts.
  *
  */
-function getWeb3() {
+function getWeb3(parameterizedNetwork = "test") {
   // If a web3 instance has already been initialized, return it.
   if (web3) {
     return web3;
   }
 
   // Create basic web3 provider with no wallet connection based on the url alone.
-  const network = argv.network || "test"; // Default to the test network (local network).
+  const network = argv.network || parameterizedNetwork; // Default to the test network (local network).
   const basicProvider = createBasicProvider(getNodeUrl(network));
 
   // Use the basic provider to create a provider with an unlocked wallet. This piggybacks off the UMA common TruffleConfig

@@ -1,7 +1,7 @@
 const winston = require("winston");
 const sinon = require("sinon");
 
-const { toWei, hexToUtf8, utf8ToHex, toBN } = web3.utils;
+const { toWei, hexToUtf8, utf8ToHex, toBN, padRight } = web3.utils;
 
 const {
   OptimisticOracleClient,
@@ -66,10 +66,10 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
   // a pricefeed that returns prices in 8 decimals. This is useful for testing that a bot is
   // constructing the right type of pricefeed by default. This mapping is stored in @uma/common/PriceIdentifierUtils.js
   const identifiersToTest = [
-    web3.utils.utf8ToHex("TEST8DECIMALS"),
-    web3.utils.utf8ToHex("TEST6DECIMALS"),
-    web3.utils.utf8ToHex("TEST18DECIMALS"),
-    web3.utils.utf8ToHex("TEST18DECIMALS")
+    padRight(utf8ToHex("TEST8DECIMALS"), 64),
+    padRight(utf8ToHex("TEST6DECIMALS"), 64),
+    padRight(utf8ToHex("TEST18DECIMALS"), 64),
+    padRight(utf8ToHex("TEST18DECIMALS"), 64)
   ];
   let collateralCurrenciesForIdentifier;
 
@@ -502,7 +502,7 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
   it("Skip price requests with historical prices that proposer fails to fetch", async function() {
     // Request a valid identifier that is getting bad data from the data source.
     // Note: "INVALID" maps specifically to the InvalidPriceFeedMock in the DefaultPriceFeedConfig.js file.
-    const invalidPriceFeedIdentifier = web3.utils.utf8ToHex("INVALID");
+    const invalidPriceFeedIdentifier = padRight(utf8ToHex("INVALID"), 64);
     await identifierWhitelist.addSupportedIdentifier(invalidPriceFeedIdentifier);
     await optimisticRequester.requestPrice(
       invalidPriceFeedIdentifier,

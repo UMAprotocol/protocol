@@ -1,5 +1,6 @@
 const { PriceFeedInterface } = require("./PriceFeedInterface");
 const { parseFixed } = require("@uma/common");
+const { computeTWAP } = require("./utils");
 
 // An implementation of PriceFeedInterface that uses CryptoWatch to retrieve prices.
 class CryptoWatchPriceFeed extends PriceFeedInterface {
@@ -33,7 +34,8 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     minTimeBetweenUpdates,
     invertPrice,
     priceFeedDecimals = 18,
-    ohlcPeriod = 60 // One minute is CryptoWatch's most granular option.
+    ohlcPeriod = 60, // One minute is CryptoWatch's most granular option.
+    twapLength = 0 // No TWAP by default.
   ) {
     super();
     this.logger = logger;
@@ -43,6 +45,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     this.exchange = exchange;
     this.pair = pair;
     this.lookback = lookback;
+    this.twapLength = twapLength;
     this.uuid = `CryptoWatch-${exchange}-${pair}`;
     this.networker = networker;
     this.getTime = getTime;
@@ -71,6 +74,15 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       throw new Error(`${this.uuid}: undefined lastUpdateTime`);
     }
 
+    // Return early if computing a TWAP.
+    if (this.twapLength) {
+      const twapPrice = this._computeTwap(time, this.historicalPricePeriods);
+      if (!twapPrice) {
+        throw new Error(`${this.uuid}: historical TWAP computation failed due to no data in the TWAP range`);
+      }
+      return twapPrice;
+    }
+
     // Set first price period in `historicalPricePeriods` to first non-null price.
     let firstPricePeriod;
     for (let p in this.historicalPricePeriods) {
@@ -80,7 +92,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       }
     }
 
-    // If there are no valid price periods, return null.
+    // If there are no valid price periods, throw.
     if (!firstPricePeriod) {
       throw new Error(`${this.uuid}: no valid price periods`);
     }
@@ -181,46 +193,56 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
     // Round down to the nearest ohlc period so the queries captures the OHLC of the period *before* this earliest
     // timestamp (because the close of that OHLC may be relevant).
-    const earliestHistoricalTimestamp = Math.floor((currentTime - this.lookback) / this.ohlcPeriod) * this.ohlcPeriod;
+    const earliestHistoricalTimestamp =
+      Math.floor((currentTime - (this.lookback + this.twapLength)) / this.ohlcPeriod) * this.ohlcPeriod;
 
-    // 1. Construct URLs.
+    const newHistoricalPricePeriods = await this._getOhlcPricePeriods(earliestHistoricalTimestamp, currentTime);
+    const newPrice = this.twapLength
+      ? this._computeTwap(currentTime, newHistoricalPricePeriods)
+      : await this._getImmediatePrice();
+
+    // 5. Store results.
+    this.currentPrice = newPrice;
+    this.historicalPricePeriods = newHistoricalPricePeriods;
+    this.lastUpdateTime = currentTime;
+  }
+
+  async _getImmediatePrice() {
     // See https://docs.cryptowat.ch/rest-api/markets/price for how this url is constructed.
     const priceUrl =
       `https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/price` +
       (this.apiKey ? `?apikey=${this.apiKey}` : "");
 
-    // See https://docs.cryptowat.ch/rest-api/markets/ohlc for how this url is constructed.
-    const ohlcUrl = [
-      `https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/ohlc`,
-      `?before=${currentTime}`,
-      `&after=${earliestHistoricalTimestamp}`,
-      `&periods=${this.ohlcPeriod}`,
-      this.apiKey ? `&apikey=${this.apiKey}` : ""
-    ].join("");
+    const priceResponse = await this.networker.getJson(priceUrl);
 
-    // 2. Send requests.
-    const [ohlcResponse, priceResponse] = await Promise.all([
-      this.networker.getJson(ohlcUrl),
-      this.networker.getJson(priceUrl)
-    ]);
-
-    // 3. Check responses.
     if (!priceResponse || !priceResponse.result || !priceResponse.result.price) {
       throw new Error(`🚨Could not parse price result from url ${priceUrl}: ${JSON.stringify(priceResponse)}`);
     }
 
-    if (!ohlcResponse || !ohlcResponse.result || !ohlcResponse.result[this.ohlcPeriod]) {
-      throw new Error(`🚨Could not parse ohlc result from url ${ohlcUrl}: ${JSON.stringify(ohlcResponse)}`);
-    }
-
-    // 4. Parse results.
     // Return data structure:
     // {
     //   "result": {
     //     "price": priceValue
     //   }
     // }
-    const newPrice = this.convertPriceFeedDecimals(priceResponse.result.price);
+    return this.convertPriceFeedDecimals(priceResponse.result.price);
+  }
+
+  async _getOhlcPricePeriods(fromTimestamp, toTimestamp) {
+    // See https://docs.cryptowat.ch/rest-api/markets/ohlc for how this url is constructed.
+    const ohlcUrl = [
+      `https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/ohlc`,
+      `?before=${toTimestamp}`,
+      `&after=${fromTimestamp}`,
+      `&periods=${this.ohlcPeriod}`,
+      this.apiKey ? `&apikey=${this.apiKey}` : ""
+    ].join("");
+
+    const ohlcResponse = await this.networker.getJson(ohlcUrl);
+
+    if (!ohlcResponse || !ohlcResponse.result || !ohlcResponse.result[this.ohlcPeriod]) {
+      throw new Error(`🚨Could not parse ohlc result from url ${ohlcUrl}: ${JSON.stringify(ohlcResponse)}`);
+    }
 
     // Return data structure:
     // {
@@ -240,7 +262,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     //   }
     // }
     // For more info, see: https://docs.cryptowat.ch/rest-api/markets/ohlc
-    const newHistoricalPricePeriods = ohlcResponse.result[this.ohlcPeriod.toString()]
+    return ohlcResponse.result[this.ohlcPeriod.toString()]
       .map(ohlc => ({
         // Output data should be a list of objects with only the open and close times and prices.
         openTime: ohlc[0] - this.ohlcPeriod,
@@ -252,11 +274,21 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
         // Sorts the data such that the oldest elements come first.
         return a.openTime - b.openTime;
       });
+  }
 
-    // 5. Store results.
-    this.currentPrice = newPrice;
-    this.historicalPricePeriods = newHistoricalPricePeriods;
-    this.lastUpdateTime = currentTime;
+  _computeTwap(endTime, ohlcs) {
+    // Combine open and close to get more data fidelity at the edges of the range.
+    const priceTimes = ohlcs
+      .map(pricePeriod => {
+        return [
+          [pricePeriod.openTime, pricePeriod.openPrice],
+          [pricePeriod.closeTime, pricePeriod.closePrice]
+        ];
+      })
+      .flat();
+    const startTime = endTime - this.twapLength;
+
+    return computeTWAP(priceTimes, startTime, endTime, web3.utils.toBN("0"));
   }
 
   _invertPriceSafely(priceBN) {

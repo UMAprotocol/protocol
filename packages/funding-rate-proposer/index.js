@@ -20,24 +20,25 @@ const { getWeb3 } = require("@uma/common");
  * @notice Runs strategies that request and propose new funding rates for Perpetual contracts.
  * @param {Object} logger Module responsible for sending logs.
  * @param {Object} web3 web3.js instance with unlocked wallets used for all on-chain connections.
- * @param {String} perpetualAddress Contract address of the Perpetual Contract.
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
  * @param {Number} errorRetries The number of times the execution loop will re-try before throwing if an error occurs.
  * @param {Number} errorRetriesTimeout The amount of milliseconds to wait between re-try iterations on failed loops.
  * @param {Object} [commonPriceFeedConfig] Common configuration to pass to all PriceFeeds constructed by proposer.
  * @param {Object} [perpetualProposerConfig] Configuration to construct the Perpetual funding rate proposer.
+ * @param {Boolean} [isTest] If set to true, then proposer bot will use the pricefeed's `lastUpdateTime` as the
+ *     request timestamp instead of `web3.eth.getBlock('latest').timestamp`.
  * @return None or throws an Error.
  */
 async function run({
   logger,
   web3,
-  perpetualAddress,
   pollingDelay,
   errorRetries,
   errorRetriesTimeout,
   commonPriceFeedConfig,
-  perpetualProposerConfig
+  perpetualProposerConfig,
+  isTest = false
 }) {
   try {
     const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
@@ -46,7 +47,6 @@ async function run({
     logger[pollingDelay === 0 ? "debug" : "info"]({
       at: "PerpetualFundingRateProposer#index",
       message: "Perpetual funding rate proposer started 🌝",
-      perpetualAddress,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
@@ -84,7 +84,7 @@ async function run({
       await retry(
         async () => {
           await fundingRateProposer.update();
-          await fundingRateProposer.updateFundingRates();
+          await fundingRateProposer.updateFundingRates(isTest);
           return;
         },
         {

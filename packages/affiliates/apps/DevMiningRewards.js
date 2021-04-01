@@ -27,27 +27,41 @@ const App = env => async params => {
   assert(endTime, "requires endTime");
   assert(totalRewards, "requires totalRewards");
 
-  const empAbi = getAbi("ExpiringMultiParty");
-
   const emp = Emp({ web3 });
   const client = new BigQuery();
   const queries = Queries({ client });
   const coingecko = Coingecko();
-  const synthPrices = SynthPrices({ web3, apiKey: env.CRYPTOWATCH_KEY });
+  const synthPrices = SynthPrices({
+    web3,
+    cryptowatchApiKey: env.CRYPTOWATCH_KEY,
+    tradermadeApiKey: env.TRADERMADE_KEY
+  });
 
   const rewards = DevMining({
     queries,
-    empAbi,
     coingecko,
     synthPrices
   });
+
+  // This just sets a default abi version in case no abi is passed along with the emp address.
+  // This should default to the latest version
+  const defaultEmpAbi = getAbi("ExpiringMultiParty");
 
   // API has changed, we need to validate input. Emps will be required to include payout address.
   empWhitelist = empWhitelist.map(empInput => {
     rewards.utils.validateEmpInput(empInput);
     // convert to standard eth checksum address otherwise lookups through BQ or web3 will fail
     // Allow for non standard payout address at empInput[1] since this has no impact on processing.
-    return [rewards.utils.toChecksumAddress(empInput[0]), empInput[1]];
+    let [empAddress, payoutAddress, empVersion] = empInput;
+
+    // we want to make sure these addresses are standarized since we do many lookups internally
+    empAddress = rewards.utils.toChecksumAddress(empAddress);
+
+    // this converts a version number from the config into an abi which gets passed into the calculator
+    // so each emp contract will have the correct abi passed along with it.
+    const empAbi = empVersion ? getAbi("ExpiringMultiParty", empVersion) : defaultEmpAbi;
+
+    return [empAddress, payoutAddress, empAbi];
   });
 
   fallbackPrices = fallbackPrices.map(([empAddress, price]) => {

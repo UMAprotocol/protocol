@@ -9,13 +9,25 @@ const { getTruffleContract } = require("../../index");
 const Governor = getTruffleContract("Governor", web3, "1.1.0");
 const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, "1.1.0");
 
+const { GasEstimator } = require("@uma/financial-templates-lib");
+
 const argv = require("minimist")(process.argv.slice(), { string: ["identifier"] });
+
+const winston = require("winston");
 
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 
 async function runExport() {
   console.log("Running Upgrade🔥");
   console.log("Connected to network id", await web3.eth.net.getId());
+
+  const gasEstimator = new GasEstimator(
+    winston.createLogger({
+      silent: true
+    }),
+    60, // Time between updates.
+    100 // Default gas price.
+  );
 
   if (!argv.identifier) {
     throw new Error("Must specify --identifier");
@@ -45,7 +57,8 @@ async function runExport() {
     };
   });
 
-  await governor.propose(transactions, { from: proposerWallet });
+  await gasEstimator.update();
+  await governor.propose(transactions, { from: proposerWallet, gasPrice: gasEstimator.getCurrentFastPrice() });
 
   const identifierTable = identifiers.map(identifier => {
     return {

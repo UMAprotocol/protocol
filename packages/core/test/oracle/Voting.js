@@ -3,7 +3,6 @@ const {
   VotePhasesEnum,
   didContractThrow,
   getRandomSignedInt,
-  getRandomUnsignedInt,
   decryptMessage,
   encryptMessage,
   deriveKeyPairFromSignatureTruffle,
@@ -25,6 +24,7 @@ const VotingToken = artifacts.require("VotingToken");
 const VotingTest = artifacts.require("VotingTest");
 const Timer = artifacts.require("Timer");
 const snapshotMessage = "Sign For Snapshot";
+const { utf8ToHex, padRight } = web3.utils;
 
 contract("Voting", function(accounts) {
   let voting;
@@ -148,7 +148,7 @@ contract("Voting", function(accounts) {
   });
 
   it("One voter, one request", async function() {
-    const identifier = web3.utils.utf8ToHex("one-voter");
+    const identifier = padRight(utf8ToHex("one-voter"), 64);
     const time = "1000";
     // Make the Oracle support this identifier.
     await supportedIdentifiers.addSupportedIdentifier(identifier);
@@ -161,7 +161,7 @@ contract("Voting", function(accounts) {
     const currentRoundId = await voting.getCurrentRoundId();
 
     const price = getRandomSignedInt();
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     const hash = computeVoteHash({
       price,
       salt,
@@ -179,7 +179,7 @@ contract("Voting", function(accounts) {
 
     // Voters can alter their commits.
     const newPrice = getRandomSignedInt();
-    const newSalt = getRandomUnsignedInt();
+    const newSalt = getRandomSignedInt();
     const newHash = computeVoteHash({
       price: newPrice,
       salt: newSalt,
@@ -223,7 +223,7 @@ contract("Voting", function(accounts) {
     // Can't reveal with incorrect identifier.
     assert(
       await didContractThrow(
-        voting.revealVote(web3.utils.utf8ToHex("wrong-identifier"), time, newPrice, newSalt, { from: account2 })
+        voting.revealVote(padRight(utf8ToHex("wrong-identifier"), 64), time, newPrice, newSalt, { from: account2 })
       )
     );
 
@@ -237,9 +237,9 @@ contract("Voting", function(accounts) {
   it("Overlapping request keys", async function() {
     // Verify that concurrent votes with the same identifier but different times, or the same time but different
     // identifiers don't cause any problems.
-    const identifier1 = web3.utils.utf8ToHex("overlapping-keys1");
+    const identifier1 = padRight(utf8ToHex("overlapping-keys1"), 64);
     const time1 = "1000";
-    const identifier2 = web3.utils.utf8ToHex("overlapping-keys2");
+    const identifier2 = padRight(utf8ToHex("overlapping-keys2"), 64);
     const time2 = "2000";
 
     // Make the Oracle support these two identifiers.
@@ -255,7 +255,7 @@ contract("Voting", function(accounts) {
     const roundId = (await voting.getCurrentRoundId()).toString();
 
     const price1 = getRandomSignedInt();
-    const salt1 = getRandomUnsignedInt();
+    const salt1 = getRandomSignedInt();
     const hash1 = computeVoteHash({
       price: price1,
       salt: salt1,
@@ -266,7 +266,7 @@ contract("Voting", function(accounts) {
     });
 
     const price2 = getRandomSignedInt();
-    const salt2 = getRandomUnsignedInt();
+    const salt2 = getRandomSignedInt();
     const hash2 = computeVoteHash({
       price: price2,
       salt: salt2,
@@ -296,9 +296,9 @@ contract("Voting", function(accounts) {
   });
 
   it("Request and retrieval", async function() {
-    const identifier1 = web3.utils.utf8ToHex("request-retrieval1");
+    const identifier1 = padRight(utf8ToHex("request-retrieval1"), 64);
     const time1 = "1000";
-    const identifier2 = web3.utils.utf8ToHex("request-retrieval2");
+    const identifier2 = padRight(utf8ToHex("request-retrieval2"), 64);
     const time2 = "2000";
 
     // Make the Oracle support these two identifiers.
@@ -321,7 +321,7 @@ contract("Voting", function(accounts) {
 
     // Commit vote 1.
     const price1 = getRandomSignedInt();
-    const salt1 = getRandomUnsignedInt();
+    const salt1 = getRandomSignedInt();
     const hash1 = computeVoteHash({
       price: price1,
       salt: salt1,
@@ -335,7 +335,7 @@ contract("Voting", function(accounts) {
 
     // Commit vote 2.
     const price2 = getRandomSignedInt();
-    const salt2 = getRandomUnsignedInt();
+    const salt2 = getRandomSignedInt();
     const hash2 = computeVoteHash({
       price: price2,
       salt: salt2,
@@ -387,7 +387,7 @@ contract("Voting", function(accounts) {
     await moveToNextRound(voting);
 
     const startingTime = await voting.getCurrentTime();
-    const identifier = web3.utils.utf8ToHex("future-request");
+    const identifier = padRight(utf8ToHex("future-request"), 64);
 
     // Make the Oracle support this identifier.
     await supportedIdentifiers.addSupportedIdentifier(identifier);
@@ -405,7 +405,7 @@ contract("Voting", function(accounts) {
     await moveToNextRound(voting);
     const roundId = (await voting.getCurrentRoundId()).toString();
     const price = getRandomSignedInt();
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     const hash = computeVoteHash({
       price: price,
       salt: salt,
@@ -427,7 +427,7 @@ contract("Voting", function(accounts) {
   it("Retrieval timing", async function() {
     await moveToNextRound(voting);
 
-    const identifier = web3.utils.utf8ToHex("retrieval-timing");
+    const identifier = padRight(utf8ToHex("retrieval-timing"), 64);
     const time = "1000";
 
     // Make the Oracle support this identifier.
@@ -448,7 +448,7 @@ contract("Voting", function(accounts) {
 
     // Commit vote.
     const price = getRandomSignedInt();
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     const hash = computeVoteHash({
       price,
       salt,
@@ -478,9 +478,9 @@ contract("Voting", function(accounts) {
   it("Pending Requests", async function() {
     await moveToNextRound(voting);
 
-    const identifier1 = web3.utils.utf8ToHex("pending-requests1");
+    const identifier1 = padRight(utf8ToHex("pending-requests1"), 64);
     const time1 = "1000";
-    const identifier2 = web3.utils.utf8ToHex("pending-requests2");
+    const identifier2 = padRight(utf8ToHex("pending-requests2"), 64);
     const time2 = "1001";
 
     // Make the Oracle support these identifiers.
@@ -517,7 +517,7 @@ contract("Voting", function(accounts) {
 
     // Commit votes.
     const price1 = getRandomSignedInt();
-    const salt1 = getRandomUnsignedInt();
+    const salt1 = getRandomSignedInt();
     const hash1 = computeVoteHash({
       price: price1,
       salt: salt1,
@@ -529,7 +529,7 @@ contract("Voting", function(accounts) {
     await voting.commitVote(identifier1, time1, hash1);
 
     const price2 = getRandomSignedInt();
-    const salt2 = getRandomUnsignedInt();
+    const salt2 = getRandomSignedInt();
     const hash2 = computeVoteHash({
       price: price2,
       salt: salt2,
@@ -555,7 +555,7 @@ contract("Voting", function(accounts) {
   });
 
   it("Supported identifiers", async function() {
-    const supported = web3.utils.utf8ToHex("supported");
+    const supported = padRight(utf8ToHex("supported"), 64);
 
     // No identifiers are originally suppported.
     assert.isFalse(await supportedIdentifiers.isIdentifierSupported(supported));
@@ -573,7 +573,7 @@ contract("Voting", function(accounts) {
   });
 
   it("Simple vote resolution", async function() {
-    const identifier = web3.utils.utf8ToHex("simple-vote");
+    const identifier = padRight(utf8ToHex("simple-vote"), 64);
     const time = "1000";
 
     // Make the Oracle support this identifier.
@@ -583,7 +583,7 @@ contract("Voting", function(accounts) {
     await voting.requestPrice(identifier, time, { from: registeredContract });
 
     const price = 123;
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     const invalidHash = computeVoteHash({
       price,
       salt,
@@ -623,7 +623,7 @@ contract("Voting", function(accounts) {
   });
 
   it("Equally split vote", async function() {
-    const identifier = web3.utils.utf8ToHex("equal-split");
+    const identifier = padRight(utf8ToHex("equal-split"), 64);
     const time = "1000";
 
     // Make the Oracle support this identifier.
@@ -636,7 +636,7 @@ contract("Voting", function(accounts) {
 
     // Commit votes.
     const price1 = 123;
-    const salt1 = getRandomUnsignedInt();
+    const salt1 = getRandomSignedInt();
     let hash1 = computeVoteHash({
       price: price1,
       salt: salt1,
@@ -648,7 +648,7 @@ contract("Voting", function(accounts) {
     await voting.commitVote(identifier, time, hash1, { from: account1 });
 
     const price2 = 456;
-    const salt2 = getRandomUnsignedInt();
+    const salt2 = getRandomSignedInt();
     const hash2 = computeVoteHash({
       price: price2,
       salt: salt2,
@@ -690,7 +690,7 @@ contract("Voting", function(accounts) {
   });
 
   it("Two thirds majority", async function() {
-    const identifier = web3.utils.utf8ToHex("two-thirds");
+    const identifier = padRight(utf8ToHex("two-thirds"), 64);
     const time = "1000";
 
     // Make the Oracle support this identifier.
@@ -703,7 +703,7 @@ contract("Voting", function(accounts) {
 
     // Commit votes.
     const losingPrice = 123;
-    const salt1 = getRandomUnsignedInt();
+    const salt1 = getRandomSignedInt();
     const hash1 = computeVoteHash({
       price: losingPrice,
       salt: salt1,
@@ -717,7 +717,7 @@ contract("Voting", function(accounts) {
     // Both account 2 and 3 vote for 456.
     const winningPrice = 456;
 
-    const salt2 = getRandomUnsignedInt();
+    const salt2 = getRandomSignedInt();
     const hash2 = computeVoteHash({
       price: winningPrice,
       salt: salt2,
@@ -728,7 +728,7 @@ contract("Voting", function(accounts) {
     });
     await voting.commitVote(identifier, time, hash2, { from: account2 });
 
-    const salt3 = getRandomUnsignedInt();
+    const salt3 = getRandomSignedInt();
     const hash3 = computeVoteHash({
       price: winningPrice,
       salt: salt3,
@@ -757,7 +757,7 @@ contract("Voting", function(accounts) {
   });
 
   it("GAT", async function() {
-    const identifier = web3.utils.utf8ToHex("gat");
+    const identifier = padRight(utf8ToHex("gat"), 64);
     let time = "1000";
 
     // Make the Oracle support this identifier.
@@ -770,7 +770,7 @@ contract("Voting", function(accounts) {
 
     // Commit vote.
     const price = 123;
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     let hash1 = computeVoteHash({
       price,
       salt,
@@ -887,7 +887,7 @@ contract("Voting", function(accounts) {
   });
 
   it("Basic Snapshotting", async function() {
-    const identifier = web3.utils.utf8ToHex("basic-snapshotting");
+    const identifier = padRight(utf8ToHex("basic-snapshotting"), 64);
     const time = "1000";
 
     // Make the Oracle support this identifier.
@@ -902,7 +902,7 @@ contract("Voting", function(accounts) {
 
     // account3 starts with only 1/3 of the tokens, but votes for 123.
     const winningPrice = 123;
-    const salt3 = getRandomUnsignedInt();
+    const salt3 = getRandomSignedInt();
     const hash3 = computeVoteHash({
       price: winningPrice,
       salt: salt3,
@@ -916,7 +916,7 @@ contract("Voting", function(accounts) {
     // Both account 2 and 3, who start with 2/3 of the tokens, vote for 456.
     const losingPrice = 456;
 
-    const salt1 = getRandomUnsignedInt();
+    const salt1 = getRandomSignedInt();
     const hash1 = computeVoteHash({
       price: losingPrice,
       salt: salt1,
@@ -927,7 +927,7 @@ contract("Voting", function(accounts) {
     });
     await voting.commitVote(identifier, time, hash1, { from: account1 });
 
-    const salt2 = getRandomUnsignedInt();
+    const salt2 = getRandomSignedInt();
     const hash2 = computeVoteHash({
       price: losingPrice,
       salt: salt2,
@@ -979,7 +979,7 @@ contract("Voting", function(accounts) {
   });
 
   it("Only registered contracts", async function() {
-    const identifier = web3.utils.utf8ToHex("only-registered");
+    const identifier = padRight(utf8ToHex("only-registered"), 64);
     const time = "1000";
 
     // Make the Oracle support this identifier.
@@ -993,7 +993,7 @@ contract("Voting", function(accounts) {
     await moveToNextRound(voting);
     const roundId = (await voting.getCurrentRoundId()).toString();
     const winningPrice = 123;
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     const hash = computeVoteHash({
       price: winningPrice,
       salt,
@@ -1020,7 +1020,7 @@ contract("Voting", function(accounts) {
   });
 
   it("View methods", async function() {
-    const identifier = web3.utils.utf8ToHex("view-methods");
+    const identifier = padRight(utf8ToHex("view-methods"), 64);
     const time = "1000";
 
     // Make the Oracle support this identifier.
@@ -1054,7 +1054,7 @@ contract("Voting", function(accounts) {
     const price = 123;
 
     // Accounts 1 and 2 commit votes.
-    const salt1 = getRandomUnsignedInt();
+    const salt1 = getRandomSignedInt();
     const hash1 = computeVoteHash({
       price,
       salt: salt1,
@@ -1065,7 +1065,7 @@ contract("Voting", function(accounts) {
     });
     await voting.commitVote(identifier, time, hash1, { from: account1 });
 
-    const salt2 = getRandomUnsignedInt();
+    const salt2 = getRandomSignedInt();
     const hash2 = computeVoteHash({
       price,
       salt: salt2,
@@ -1097,7 +1097,7 @@ contract("Voting", function(accounts) {
     // Set the inflation rate to 100% (for ease of computation).
     await setNewInflationRate(web3.utils.toWei("1", "ether"));
 
-    const identifier = web3.utils.utf8ToHex("rewards-expiration");
+    const identifier = padRight(utf8ToHex("rewards-expiration"), 64);
     const time = "1000";
 
     const initialTotalSupply = await votingToken.totalSupply();
@@ -1112,7 +1112,7 @@ contract("Voting", function(accounts) {
 
     const winningPrice = 456;
 
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     const hash = computeVoteHash({
       price: winningPrice,
       salt,
@@ -1184,7 +1184,7 @@ contract("Voting", function(accounts) {
     await voting.requestPrice(identifier, time2, { from: registeredContract });
     await moveToNextRound(voting);
     const price = 456;
-    const salt2 = getRandomUnsignedInt();
+    const salt2 = getRandomSignedInt();
     const hash2 = web3.utils.soliditySha3(price, salt2);
     await voting.commitVote(identifier, time2, hash2, { from: account1 });
     await moveToNextPhase(voting);
@@ -1201,7 +1201,7 @@ contract("Voting", function(accounts) {
     // Set the inflation rate to 100% (for ease of computation).
     await setNewInflationRate(web3.utils.toWei("1", "ether"));
 
-    const identifier = web3.utils.utf8ToHex("basic-inflation");
+    const identifier = padRight(utf8ToHex("basic-inflation"), 64);
     const time1 = "1000";
 
     // Cache balances for later comparison.
@@ -1221,7 +1221,7 @@ contract("Voting", function(accounts) {
 
     // Commit votes.
     const losingPrice = 123;
-    const salt1 = getRandomUnsignedInt();
+    const salt1 = getRandomSignedInt();
     const hash1 = computeVoteHash({
       price: losingPrice,
       salt: salt1,
@@ -1235,7 +1235,7 @@ contract("Voting", function(accounts) {
     // Both account 2 and 3 vote for 456.
     const winningPrice = 456;
 
-    const salt2 = getRandomUnsignedInt();
+    const salt2 = getRandomSignedInt();
     const hash2 = computeVoteHash({
       price: winningPrice,
       salt: salt2,
@@ -1246,7 +1246,7 @@ contract("Voting", function(accounts) {
     });
     await voting.commitVote(identifier, time1, hash2, { from: account2 });
 
-    const salt3 = getRandomUnsignedInt();
+    const salt3 = getRandomSignedInt();
     const hash3 = computeVoteHash({
       price: winningPrice,
       salt: salt3,
@@ -1316,7 +1316,7 @@ contract("Voting", function(accounts) {
     // Set the inflation rate to 100% (for ease of computation).
     await setNewInflationRate(web3.utils.toWei("1", "ether"));
 
-    const identifier = web3.utils.utf8ToHex("events");
+    const identifier = padRight(utf8ToHex("events"), 64);
     const time = "1000";
 
     let result = await supportedIdentifiers.addSupportedIdentifier(identifier);
@@ -1344,7 +1344,7 @@ contract("Voting", function(accounts) {
 
     // Commit vote.
     const price = 123;
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     let hash4 = computeVoteHash({
       price,
       salt,
@@ -1450,7 +1450,7 @@ contract("Voting", function(accounts) {
   });
 
   it("Commit and persist the encrypted price", async function() {
-    const identifier = web3.utils.utf8ToHex("commit-and-persist");
+    const identifier = padRight(utf8ToHex("commit-and-persist"), 64);
     const time = "1000";
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
@@ -1459,7 +1459,7 @@ contract("Voting", function(accounts) {
     let roundId = (await voting.getCurrentRoundId()).toString();
 
     const price = getRandomSignedInt();
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     const hash = computeVoteHash({
       price,
       salt,
@@ -1502,12 +1502,17 @@ contract("Voting", function(accounts) {
 
     await voting.snapshotCurrentRound(signature);
 
-    assert(await didContractThrow(voting.revealVote(identifier, time, getRandomSignedInt(), getRandomUnsignedInt())));
-    await voting.revealVote(identifier, time, retrievedVote.price, retrievedVote.salt);
+    assert(await didContractThrow(voting.revealVote(identifier, time, getRandomSignedInt(), getRandomSignedInt())));
+    await voting.revealVote(
+      identifier,
+      time,
+      web3.utils.toBN(retrievedVote.price),
+      web3.utils.toBN(retrievedVote.salt)
+    );
   });
 
   it("Commit and persist the encrypted price against the same identifier/time pair multiple times", async function() {
-    const identifier = web3.utils.utf8ToHex("commit-and-persist2");
+    const identifier = padRight(utf8ToHex("commit-and-persist2"), 64);
     const time = "1000";
     await supportedIdentifiers.addSupportedIdentifier(identifier);
 
@@ -1516,7 +1521,7 @@ contract("Voting", function(accounts) {
     const roundId = (await voting.getCurrentRoundId()).toString();
 
     const price = getRandomSignedInt();
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     const hash = computeVoteHash({
       price,
       salt,
@@ -1531,7 +1536,7 @@ contract("Voting", function(accounts) {
     const encryptedMessage = await encryptMessage(publicKey, JSON.stringify(vote));
     await voting.commitAndEmitEncryptedVote(identifier, time, hash, encryptedMessage);
 
-    const secondEncryptedMessage = await encryptMessage(publicKey, getRandomUnsignedInt());
+    const secondEncryptedMessage = await encryptMessage(publicKey, getRandomSignedInt());
     await voting.commitAndEmitEncryptedVote(identifier, time, hash, secondEncryptedMessage);
 
     const events = await voting.getPastEvents("EncryptedVote", { fromBlock: 0 });
@@ -1546,12 +1551,12 @@ contract("Voting", function(accounts) {
     const priceRequests = [];
 
     for (let i = 0; i < numRequests; i++) {
-      let identifier = web3.utils.utf8ToHex(`batch-request-${i}`);
+      let identifier = padRight(utf8ToHex(`batch-request-${i}`), 64);
       priceRequests.push({
         identifier,
         time: requestTime,
-        hash: web3.utils.soliditySha3(getRandomUnsignedInt()),
-        encryptedVote: web3.utils.utf8ToHex(`some encrypted message ${i}`)
+        hash: web3.utils.soliditySha3(getRandomSignedInt()),
+        encryptedVote: utf8ToHex(`some encrypted message ${i}`)
       });
 
       await supportedIdentifiers.addSupportedIdentifier(identifier);
@@ -1586,8 +1591,8 @@ contract("Voting", function(accounts) {
 
     // Edit a single commit
     const modifiedPriceRequest = priceRequests[0];
-    modifiedPriceRequest.hash = web3.utils.soliditySha3(getRandomUnsignedInt());
-    modifiedPriceRequest.encryptedVote = web3.utils.utf8ToHex("some other encrypted message");
+    modifiedPriceRequest.hash = web3.utils.soliditySha3(getRandomSignedInt());
+    modifiedPriceRequest.encryptedVote = utf8ToHex("some other encrypted message");
     await voting.commitAndEmitEncryptedVote(
       modifiedPriceRequest.identifier,
       modifiedPriceRequest.time,
@@ -1608,7 +1613,7 @@ contract("Voting", function(accounts) {
   });
 
   it("Batch reveal multiple commits", async function() {
-    const identifier = web3.utils.utf8ToHex("batch-reveal");
+    const identifier = padRight(utf8ToHex("batch-reveal"), 64);
     const time1 = "1000";
     const time2 = "1001";
     await supportedIdentifiers.addSupportedIdentifier(identifier);
@@ -1620,8 +1625,8 @@ contract("Voting", function(accounts) {
 
     const price1 = getRandomSignedInt();
     const price2 = getRandomSignedInt();
-    const salt1 = getRandomUnsignedInt();
-    const salt2 = getRandomUnsignedInt();
+    const salt1 = getRandomSignedInt();
+    const salt2 = getRandomSignedInt();
     const hash1 = computeVoteHash({
       price: price1,
       salt: salt1,
@@ -1687,7 +1692,7 @@ contract("Voting", function(accounts) {
   });
 
   it("Migration", async function() {
-    const identifier = web3.utils.utf8ToHex("migration");
+    const identifier = padRight(utf8ToHex("migration"), 64);
     const time1 = "1000";
     const time2 = "2000";
     // Deploy our own voting because this test case will migrate it.
@@ -1760,7 +1765,7 @@ contract("Voting", function(accounts) {
 
     await moveToNextRound(votingTest);
 
-    const identifier = web3.utils.utf8ToHex("array-size");
+    const identifier = padRight(utf8ToHex("array-size"), 64);
     const time = "1000";
     const startingLength = (await votingTest.getPendingPriceRequestsArray()).length;
 
@@ -1782,7 +1787,7 @@ contract("Voting", function(accounts) {
 
     // Commit vote.
     const price = getRandomSignedInt();
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     const hash = computeVoteHash({
       price,
       salt,
@@ -1809,15 +1814,15 @@ contract("Voting", function(accounts) {
     assert.equal((await votingTest.getPendingPriceRequestsArray()).length, 0);
   });
   it("Votes can correctly handle arbitrary ancillary data", async function() {
-    const identifier1 = web3.utils.utf8ToHex("request-retrieval");
+    const identifier1 = padRight(utf8ToHex("request-retrieval"), 64);
     const time1 = "1000";
-    const ancillaryData1 = web3.utils.utf8ToHex("some-random-extra-data"); // ancillary data should be able to store any extra dat
+    const ancillaryData1 = utf8ToHex("some-random-extra-data"); // ancillary data should be able to store any extra dat
 
     // Note for the second request we set the identifier and time to the same as the first to show that by simply having
     // a different ancillary data we can have multiple simultaneous requests that the DVM can differentiate.
     const identifier2 = identifier1;
     const time2 = time1;
-    const ancillaryData2 = web3.utils.utf8ToHex(`callerAddress:${account4}`);
+    const ancillaryData2 = utf8ToHex(`callerAddress:${account4}`);
 
     // Make the Oracle support these two identifiers.
     await supportedIdentifiers.addSupportedIdentifier(identifier1);
@@ -1869,7 +1874,7 @@ contract("Voting", function(accounts) {
 
     // Commit vote 1.
     const price1 = getRandomSignedInt();
-    const salt1 = getRandomUnsignedInt();
+    const salt1 = getRandomSignedInt();
     const hash1 = computeVoteHashAncillary({
       price: price1,
       salt: salt1,
@@ -1884,7 +1889,7 @@ contract("Voting", function(accounts) {
 
     // Commit vote 2.
     const price2 = getRandomSignedInt();
-    const salt2 = getRandomUnsignedInt();
+    const salt2 = getRandomSignedInt();
     const hash2 = computeVoteHashAncillary({
       price: price2,
       salt: salt2,
@@ -1933,7 +1938,7 @@ contract("Voting", function(accounts) {
     );
   });
   it("Stress testing the size of ancillary data", async function() {
-    let identifier = web3.utils.utf8ToHex("stress-test");
+    let identifier = padRight(utf8ToHex("stress-test"), 64);
     let time = "1000";
     const DATA_LIMIT_BYTES = 8192;
     let ancillaryData = web3.utils.randomHex(DATA_LIMIT_BYTES);
@@ -1972,7 +1977,7 @@ contract("Voting", function(accounts) {
 
     // Commit vote.
     const price = getRandomSignedInt();
-    const salt = getRandomUnsignedInt();
+    const salt = getRandomSignedInt();
     const hash = computeVoteHashAncillary({
       price,
       salt,
@@ -2016,11 +2021,11 @@ contract("Voting", function(accounts) {
     // Also, this test shows that the overloading syntax operates as expected.
 
     // Price request 1 that includes ancillary data.
-    const identifier1 = web3.utils.utf8ToHex("request-retrieval1b");
+    const identifier1 = padRight(utf8ToHex("request-retrieval1b"), 64);
     const time1 = "1000";
-    const ancillaryData1 = web3.utils.utf8ToHex("some-random-extra-data"); // ancillary data should be able to store any extra dat
+    const ancillaryData1 = utf8ToHex("some-random-extra-data"); // ancillary data should be able to store any extra dat
     // Price request 2 that will have no additional data added.
-    const identifier2 = web3.utils.utf8ToHex("request-retrieval2b");
+    const identifier2 = padRight(utf8ToHex("request-retrieval2b"), 64);
     const time2 = "2000";
 
     // Make the Oracle support these two identifiers.
@@ -2088,7 +2093,7 @@ contract("Voting", function(accounts) {
 
     // Commit vote 1.
     const price1 = getRandomSignedInt();
-    const salt1 = getRandomUnsignedInt();
+    const salt1 = getRandomSignedInt();
     const hash1 = computeVoteHashAncillary({
       price: price1,
       salt: salt1,
@@ -2103,7 +2108,7 @@ contract("Voting", function(accounts) {
 
     // Commit vote 2.
     const price2 = getRandomSignedInt();
-    const salt2 = getRandomUnsignedInt();
+    const salt2 = getRandomSignedInt();
     const hash2 = computeVoteHash({
       price: price2,
       salt: salt2,

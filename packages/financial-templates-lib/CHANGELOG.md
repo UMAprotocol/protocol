@@ -3,6 +3,25 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.0.1...@uma/financial-templates-lib@2.1.0) (2021-03-16)
+
+### Bug Fixes
+
+- **financial-templates-lib:** Change Basis configs to use median ([#2671](https://github.com/UMAprotocol/protocol/issues/2671)) ([85661e3](https://github.com/UMAprotocol/protocol/commit/85661e305e734dc6f0bce82af481682d3d7beeb3))
+- **networker:** throw on error rather than logging an error ([#2696](https://github.com/UMAprotocol/protocol/issues/2696)) ([a6cb5c5](https://github.com/UMAprotocol/protocol/commit/a6cb5c568082565074f6edddc74efe2a97e5f755))
+- correct PHPDAI default price feed config ([#2578](https://github.com/UMAprotocol/protocol/issues/2578)) ([bf168fa](https://github.com/UMAprotocol/protocol/commit/bf168fae3bb251adb1acee9bd918e7cd52bd61a0))
+
+### Features
+
+- **financial-templates-lib:** add uSTONKS default price feed ([#2637](https://github.com/UMAprotocol/protocol/issues/2637)) ([3d2eab4](https://github.com/UMAprotocol/protocol/commit/3d2eab49a3708bb8685d8352b920a194a38cac3c))
+- **financial-templates-lib:** Add various altcoin price feed configs ([#2688](https://github.com/UMAprotocol/protocol/issues/2688)) ([41e7173](https://github.com/UMAprotocol/protocol/commit/41e717351bcdd6e42bdce53f8d7d31d5749c7e3f))
+- **monitors:** Add FundingRateUpdate event messages to monitor ([#2664](https://github.com/UMAprotocol/protocol/issues/2664)) ([4a7afe8](https://github.com/UMAprotocol/protocol/commit/4a7afe81ac3131b63da9412e42900cf676a1f531))
+- **optimistic-oracle-monitor:** Support OptimisticOracle event monitoring ([#2597](https://github.com/UMAprotocol/protocol/issues/2597)) ([49e34d2](https://github.com/UMAprotocol/protocol/commit/49e34d21b465547b271bb6fdfc15537ee9cf196f))
+- **perpetual-proposer:** Initialize PerpetualFundingRateProposer package ([#2632](https://github.com/UMAprotocol/protocol/issues/2632)) ([42fe711](https://github.com/UMAprotocol/protocol/commit/42fe711788b2c95bef1be64c7c033e4bd1391e2a))
+- **price-feed:** generalizes the DefiPulseTotalPriceFeed to work for individual DeFi projects ([#2655](https://github.com/UMAprotocol/protocol/issues/2655)) ([cadccb0](https://github.com/UMAprotocol/protocol/commit/cadccb00a7cf01a82c2e30b1b5af263876419793))
+- **trader:** add Ranger Trader, Exchange Adapter and initial trader implementation ([#2579](https://github.com/UMAprotocol/protocol/issues/2579)) ([8bc3dad](https://github.com/UMAprotocol/protocol/commit/8bc3dad7f34abd805ce24638415cdd7cca6314ed))
+- **trader+DSProxyManager:** Few small tweaks after war games + useful DSProxy token management script ([#2656](https://github.com/UMAprotocol/protocol/issues/2656)) ([684f78f](https://github.com/UMAprotocol/protocol/commit/684f78f09e284466fac74c7388cab56d56aadd4c))
+
 ## [2.0.1](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.0.0...@uma/financial-templates-lib@2.0.1) (2021-02-27)
 
 **Note:** Version bump only for package @uma/financial-templates-lib

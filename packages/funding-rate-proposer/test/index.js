@@ -3,7 +3,7 @@ const Main = require("../index.js");
 const winston = require("winston");
 const sinon = require("sinon");
 
-const { toWei, utf8ToHex } = web3.utils;
+const { toWei, utf8ToHex, padRight } = web3.utils;
 
 const { SpyTransport, spyLogIncludes, spyLogLevel } = require("@uma/financial-templates-lib");
 const { addGlobalHardhatTestingAddress, interfaceName, RegistryRolesEnum } = require("@uma/common");
@@ -42,8 +42,8 @@ contract("index.js", function(accounts) {
   // Default testing values.
   let defaultCreationParams = {
     expirationTimestamp: "1950000000", // Fri Oct 17 2031 10:40:00 GMT+0000
-    priceFeedIdentifier: utf8ToHex("Test Identifier"),
-    fundingRateIdentifier: utf8ToHex("TEST18DECIMALS"),
+    priceFeedIdentifier: padRight(utf8ToHex("Test Identifier"), 64),
+    fundingRateIdentifier: padRight(utf8ToHex("TEST18DECIMALS"), 64),
     syntheticName: "Test Synth",
     syntheticSymbol: "TEST-SYNTH",
     collateralRequirement: { rawValue: toWei("1.2") },
@@ -141,21 +141,21 @@ contract("index.js", function(accounts) {
     await Main.run({
       logger: spyLogger,
       web3,
-      perpetualAddress: perpsCreated[0].address,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
-      commonPriceFeedConfig
+      commonPriceFeedConfig,
+      isTest: true // Need to set this to true so that proposal uses correct request timestamp for test environment
     });
 
     for (let i = 0; i < spy.callCount; i++) {
       assert.notStrictEqual(spyLogLevel(spy, i), "error");
     }
 
-    // The first log should indicate that the Proposer runner started successfully
-    // and auto detected the perpetual's deployed address.
+    // The first log should indicate that the Proposer runner started successfully,
+    // and the second to last log should indicate that a new rate was proposed.
     assert.isTrue(spyLogIncludes(spy, 0, "Perpetual funding rate proposer started"));
-    assert.isTrue(spyLogIncludes(spy, 0, perpsCreated[0].address));
+    assert.isTrue(spyLogIncludes(spy, spy.callCount - 2, "Proposed new funding rate"));
     assert.isTrue(spyLogIncludes(spy, spy.callCount - 1, "End of serverless execution loop - terminating process"));
   });
 });

@@ -53,6 +53,7 @@ let identifierWhitelist;
 let collateralWhitelist;
 let timer;
 let fundingRateIdentifier;
+let multicall;
 
 // Js Objects, clients and helpers
 let identifier;
@@ -115,6 +116,7 @@ contract("Liquidator.js", function(accounts) {
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
     const ConfigStore = getTruffleContract("ConfigStore", web3, "latest");
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, "latest");
+    const MulticallMock = getTruffleContract("MulticallMock", web3, "latest");
 
     for (let testConfig of configs) {
       describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
@@ -165,6 +167,8 @@ contract("Liquidator.js", function(accounts) {
             collateralWhitelist.address
           );
           await collateralWhitelist.addToWhitelist(collateralToken.address);
+
+          multicall = await MulticallMock.new();
         });
 
         beforeEach(async function() {
@@ -239,7 +243,6 @@ contract("Liquidator.js", function(accounts) {
 
           // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.
           await financialContract.setCurrentTime(startTime);
-          if (contractVersion.contractType == "Perpetual") await financialContract.applyFundingRate();
 
           spy = sinon.spy();
 
@@ -254,6 +257,7 @@ contract("Liquidator.js", function(accounts) {
             FinancialContract.abi,
             web3,
             financialContract.address,
+            multicall.address,
             testConfig.collateralDecimals,
             testConfig.syntheticDecimals,
             testConfig.priceFeedDecimals,
@@ -1557,11 +1561,13 @@ contract("Liquidator.js", function(accounts) {
               // So, if there is 150 collateral backing 105 token debt, with a collateral requirement of 1.2, then
               // the price must be <= 150 / 1.2 / 105 = 1.19. Any price above 1.19 will cause the dispute to fail.
               await _setFundingRateAndAdvanceTime(toWei("0.000004"));
-              await financialContract.applyFundingRate();
-              assert.equal((await financialContract.fundingRate()).cumulativeMultiplier.toString(), toWei("1.04"));
-
               priceFeedMock.setCurrentPrice(convertPrice("1"));
+
+              // Note: no need to call `applyFundingRate()` on Perpetual contract because client should
+              // be able to use Multicall contract to simulate calling that and anticipating what the
+              // effective funding rate charge will be.
               await liquidator.update();
+              assert.equal(financialContractClient.getLatestCumulativeFundingRateMultiplier(), toWei("1.04"));
               await liquidator.liquidatePositions();
               assert.equal(spy.callCount, 0); // No info level logs should be sent as no liquidations yet.
 
@@ -1575,15 +1581,14 @@ contract("Liquidator.js", function(accounts) {
               assert.equal((await financialContract.getCollateral(sponsor2)).rawValue, convertCollateral("150"));
               assert.equal((await financialContract.getCollateral(sponsor3)).rawValue, convertCollateral("175"));
 
-              // If either the price increase, funding ratemultiplier increase or the sponsors collateral decrease they
+              // If either the price increase, funding rate multiplier increase or the sponsors collateral decrease they
               // will be at risk of being liquidated. Say that the funding rate has another 0.01 added to it. The cumulative
               // funding rate will then be 1.04 * (1 + 0.000001 * 10000) = 1.0504. This will place sponsor1 underwater with
               // a CR of 125 / (100 * 1.0504 * 1) = 1.19 (which is less than 1.2) and they should get liquidated by the bot.
               await _setFundingRateAndAdvanceTime(toWei("0.000001"));
-              await financialContract.applyFundingRate();
-              assert.equal((await financialContract.fundingRate()).cumulativeMultiplier.toString(), toWei("1.0504"));
 
               await liquidator.update();
+              assert.equal(financialContractClient.getLatestCumulativeFundingRateMultiplier(), toWei("1.0504"));
               await liquidator.liquidatePositions();
               assert.equal(spy.callCount, 1); // There should be one log from the liquidation event.
 

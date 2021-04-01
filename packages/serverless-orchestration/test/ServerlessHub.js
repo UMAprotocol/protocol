@@ -1,4 +1,4 @@
-const { toWei, utf8ToHex } = web3.utils;
+const { toWei, utf8ToHex, padRight } = web3.utils;
 
 // Enables testing http requests to an express server.
 const request = require("supertest");
@@ -107,7 +107,7 @@ contract("ServerlessHub.js", function(accounts) {
       tokenAddress: syntheticToken.address,
       finderAddress: (await Finder.deployed()).address,
       tokenFactoryAddress: (await TokenFactory.deployed()).address,
-      priceFeedIdentifier: utf8ToHex("ETH/BTC"),
+      priceFeedIdentifier: padRight(utf8ToHex("ETH/BTC"), 64),
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.2") },
       disputeBondPct: { rawValue: toWei("0.1") },

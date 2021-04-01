@@ -9,12 +9,23 @@ const Governor = artifacts.require("Governor");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["creator"] });
 const { RegistryRolesEnum } = require("@uma/common");
+const { GasEstimator } = require("@uma/financial-templates-lib");
+
+const winston = require("winston");
 
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 
 async function runExport() {
   console.log("Running Upgrade🔥");
   console.log("Connected to network id", await web3.eth.net.getId());
+
+  const gasEstimator = new GasEstimator(
+    winston.createLogger({
+      silent: true
+    }),
+    60, // Time between updates.
+    100 // Default gas price.
+  );
 
   // The proposal will add this new contract creator to the Registry.
   const registry = await Registry.deployed();
@@ -26,6 +37,7 @@ async function runExport() {
 
   // Send the proposal
   const governor = await Governor.deployed();
+  await gasEstimator.update();
   await governor.propose(
     [
       {
@@ -34,7 +46,7 @@ async function runExport() {
         data: addCreatorToRegistryTx
       }
     ],
-    { from: proposerWallet, gas: 2000000 }
+    { from: proposerWallet, gasPrice: gasEstimator.getCurrentFastPrice() }
   );
 
   console.log(`

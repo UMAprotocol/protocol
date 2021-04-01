@@ -132,7 +132,7 @@ class OptimisticOracleProposer {
     if (!priceFeed) {
       this.logger.error({
         at: "OptimisticOracleProposer#sendProposals",
-        message: "Failed to construct a PriceFeed for price request",
+        message: "Failed to construct a PriceFeed for price request 📛",
         priceRequest
       });
       return;
@@ -146,7 +146,7 @@ class OptimisticOracleProposer {
     } catch (error) {
       this.logger.error({
         at: "OptimisticOracleProposer#sendProposals",
-        message: "Failed to query historical price for price request",
+        message: "Failed to query historical price for price request 📛",
         priceRequest,
         error
       });
@@ -173,7 +173,8 @@ class OptimisticOracleProposer {
         transaction: proposal,
         config: {
           gasPrice: this.gasEstimator.getCurrentFastPrice(),
-          from: this.account
+          from: this.account,
+          nonce: await this.web3.eth.getTransactionCount(this.account)
         }
       });
       let receipt = transactionResult.receipt;
@@ -223,7 +224,7 @@ class OptimisticOracleProposer {
     if (!priceFeed) {
       this.logger.error({
         at: "OptimisticOracleProposer#sendDisputes",
-        message: "Failed to construct a PriceFeed for price request",
+        message: "Failed to construct a PriceFeed for price request 📛",
         priceRequest
       });
       return;
@@ -237,7 +238,7 @@ class OptimisticOracleProposer {
     } catch (error) {
       this.logger.error({
         at: "OptimisticOracleProposer#sendDisputes",
-        message: "Failed to query historical price for price request",
+        message: "Failed to query historical price for price request 📛",
         priceRequest,
         error
       });
@@ -275,7 +276,8 @@ class OptimisticOracleProposer {
           transaction: dispute,
           config: {
             gasPrice: this.gasEstimator.getCurrentFastPrice(),
-            from: this.account
+            from: this.account,
+            nonce: await this.web3.eth.getTransactionCount(this.account)
           }
         });
         let receipt = transactionResult.receipt;

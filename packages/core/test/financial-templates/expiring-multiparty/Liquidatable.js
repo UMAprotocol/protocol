@@ -3,7 +3,7 @@ const { LiquidationStatesEnum, didContractThrow, MAX_UINT_VAL } = require("@uma/
 const { interfaceName } = require("@uma/common");
 const { assert } = require("chai");
 const truffleAssert = require("truffle-assertions");
-const { toWei, fromWei, hexToUtf8, toBN, utf8ToHex } = web3.utils;
+const { toWei, fromWei, hexToUtf8, toBN, utf8ToHex, padRight } = web3.utils;
 
 // Helper Contracts
 const Token = artifacts.require("ExpandedERC20");
@@ -107,7 +107,7 @@ contract("Liquidatable", function(accounts) {
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
-    priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
+    priceFeedIdentifier = padRight(utf8ToHex("TEST_IDENTIFIER"), 64);
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, {
       from: contractDeployer
     });

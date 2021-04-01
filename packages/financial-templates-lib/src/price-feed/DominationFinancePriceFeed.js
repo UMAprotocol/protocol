@@ -1,5 +1,5 @@
 const { PriceFeedInterface } = require("./PriceFeedInterface");
-const { parseFixed } = require("@ethersproject/bignumber");
+const { parseFixed, formatFixed } = require("@ethersproject/bignumber");
 
 // An implementation of PriceFeedInterface that uses DominationFinance's API to retrieve prices.
 class DominationFinancePriceFeed extends PriceFeedInterface {
@@ -102,10 +102,13 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
     if (match === undefined) {
       returnPrice = this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
       if (verbose) {
-        const priceDisplay = this.convertPriceFeedDecimals(returnPrice.toString());
-
         console.group(`\n(${this.pair}) No historical price available @ ${time}`);
-        console.log(`- ✅ Time is later than earliest historical time, fetching current price: ${priceDisplay}`);
+        console.log(
+          `- ✅ Time is later than earliest historical time, fetching current price: ${formatFixed(
+            returnPrice.toString(),
+            this.priceFeedDecimals
+          )}`
+        );
         console.log(
           `- ⚠️  If you want to manually verify the specific prices, you can make a GET request to: \n- ${this._priceUrl}`
         );
@@ -117,7 +120,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
     returnPrice = this.invertPrice ? this._invertPriceSafely(match.closePrice) : match.closePrice;
     if (verbose) {
       console.group(`\n(${this.pair}) Historical Prices @ ${match.closeTime}`);
-      console.log(`- ✅ Price: ${this.convertPriceFeedDecimals(returnPrice.toString())}`);
+      console.log(`- ✅ Price: ${formatFixed(returnPrice.toString(), this.priceFeedDecimals)}`);
       console.log(
         `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n  - ${this._historicalPricesUrl}`
       );

@@ -2,6 +2,7 @@
 // positions, undisputed Liquidations, expired liquidations, disputed liquidations.
 
 const { ConvertDecimals, LiquidationStatesEnum, getFromBlock } = require("@uma/common");
+const { aggregateTransactionsAndCall } = require("../helpers/multicall");
 const Promise = require("bluebird");
 class FinancialContractClient {
   /**
@@ -9,12 +10,15 @@ class FinancialContractClient {
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} financialContractAbi truffle ABI object to create a contract instance of the financial contract.
    * @param {Object} web3 Provider from Truffle instance to connect to Ethereum network.
-   * @param {String} financialContractAddress Ethereum address of the Financial Contract contract deployed on the current network.
+   * @param {String} financialContractAddress Ethereum address of the Financial Contract contract deployed on the
+   * current network.
+   * @param {Object} multicallContractAddress Address of deployed Multicall contract on provided network.
    * @param {Number} collateralDecimals Number of decimals within the collateral currency.
    * @param {Number} syntheticDecimals Number of decimals within the synthetic currency.
    * @param {Number} priceFeedDecimals Number of decimals a price feed returned by the DVM would be scaled by. For old
-   * Financial Contracts this is scaled to the number of decimals in the collateral currency (8 for BTC) and in new Financial Contracts this has been
-   * updated to always use 18 decimals, irrespective of the collateral type for consistency.
+   * Financial Contracts this is scaled to the number of decimals in the collateral currency (8 for BTC) and in new
+   * Financial Contracts this has been updated to always use 18 decimals, irrespective of the collateral type for
+   * consistency.
    * @return None or throws an Error.
    */
   constructor(
@@ -22,10 +26,13 @@ class FinancialContractClient {
     financialContractAbi,
     web3,
     financialContractAddress,
+    multicallContractAddress,
     collateralDecimals = 18,
     syntheticDecimals = 18,
     priceFeedDecimals = 18,
-    contractType = "ExpiringMultiParty" // Default to Expiring Multi Party for now to enable backwards compatibility with other bots. This will be removed as soon as the other bots have been updated to work with these contract types.
+    contractType = "ExpiringMultiParty"
+    // Default to Expiring Multi Party for now to enable backwards compatibility with other bots.
+    // This will be removed as soon as the other bots have been updated to work with these contract types.
   ) {
     this.logger = logger;
     this.web3 = web3;
@@ -33,8 +40,13 @@ class FinancialContractClient {
     // Financial Contract contract
     this.financialContract = new web3.eth.Contract(financialContractAbi, financialContractAddress);
     this.financialContractAddress = financialContractAddress;
+    this.financialContractAbi = financialContractAbi;
 
-    // Financial Contract Data structures & values to enable synchronous returns of the financialContract state seen by the client.
+    // We use this Multicall contract to simulate the results of batched state-modifying transactions.
+    this.multicallContractAddress = multicallContractAddress;
+
+    // Financial Contract Data structures & values to enable synchronous returns of the financialContract state seen by
+    // the client.
     this.activeSponsors = [];
     this.positions = [];
     this.undisputedLiquidations = [];
@@ -75,40 +87,36 @@ class FinancialContractClient {
     return this.contractType;
   }
 
-  // Returns an array of { sponsor, numTokens, amountCollateral } for each open position.
+  // Returns an array of { sponsor, adjustedTokens, numTokens, amountCollateral } for each open position.
   getAllPositions() {
     return this.positions;
   }
 
-  // Returns an array of { sponsor, numTokens, amountCollateral } for each position that is undercollateralized
-  // according to the provided `tokenRedemptionValue`. Note that the `amountCollateral` fed into
-  // `_isUnderCollateralized` is taken as the positions `amountCollateral` minus any `withdrawalRequestAmount`. As a
-  // result this function will return positions that are undercollateralized due to too little collateral or a withdrawal
-  // that, if passed, would make the position undercollateralized.
+  // Returns an array of positions that are  undercollateralized according to the provided `tokenRedemptionValue`.
+  // Note that the `amountCollateral` fed into `_isUnderCollateralized` is taken as the positions `amountCollateral`
+  // minus any `withdrawalRequestAmount`. As a result this function will return positions that are undercollateralized
+  // due to too little collateral or a withdrawal that, if passed, would make the position undercollateralized.
   getUnderCollateralizedPositions(tokenRedemptionValue) {
     return this.positions.filter(position => {
       const collateralNetWithdrawal = this.toBN(position.amountCollateral)
         .sub(this.toBN(position.withdrawalRequestAmount))
         .toString();
-      return this._isUnderCollateralized(position.numTokens, collateralNetWithdrawal, tokenRedemptionValue);
+      return this._isUnderCollateralized(position.adjustedTokens, collateralNetWithdrawal, tokenRedemptionValue);
     });
   }
 
-  // Returns an array of { sponsor, id, numTokens, amountCollateral, liquidationTime } for each undisputed liquidation.
-  // To check whether a liquidation can be disputed, call `isDisputable` with the token redemption value at
-  // `liquidationTime`.
+  // Returns an array of undisputed liquidations. To check whether a liquidation can be disputed, call `isDisputable`
+  // with the liquidation's token redemption value at `liquidationTime`.
   getUndisputedLiquidations() {
     return this.undisputedLiquidations;
   }
 
-  // Returns an array of { sponsor, id, numTokens, amountCollateral, liquidationTime } for each undisputed liquidation.
-  // Liquidators can withdraw rewards from these expired liquidations.
+  // Returns an array of undisputed liquidations from which liquidators can withdraw rewards.
   getExpiredLiquidations() {
     return this.expiredLiquidations;
   }
 
-  // Returns an array of { sponsor, id, numTokens, amountCollateral, liquidationTime } for each undisputed liquidation.
-  // Liquidators can withdraw rewards from these disputed liquidations.
+  // Returns an array of disputed liquidations from which liquidators can withdraw rewards.
   getDisputedLiquidations() {
     return this.disputedLiquidations;
   }
@@ -159,9 +167,32 @@ class FinancialContractClient {
     ]);
 
     if (this.contractType === "Perpetual") {
-      this.latestCumulativeFundingRateMultiplier = this.toBN(
-        (await this.financialContract.methods.fundingRate().call()).cumulativeMultiplier.rawValue
-      );
+      if (!this.multicallContractAddress) {
+        // If no multicontract address set, then read the contract's on-chain CFRM. Note that this will not take
+        // into account any pending funding rates that will be published on the next contract interaction.
+        this.latestCumulativeFundingRateMultiplier = this.toBN(
+          (await this.financialContract.methods.fundingRate().call()).cumulativeMultiplier.rawValue
+        );
+      } else {
+        // Simulate calling `applyFundingRate()` on the perpetual before reading `fundingRate()`, in order to
+        // account for any unpublished, pending funding rates.
+        const applyFundingRateCall = {
+          target: this.financialContractAddress,
+          callData: this.financialContract.methods.applyFundingRate().encodeABI()
+        };
+        const fundingRateCall = {
+          target: this.financialContractAddress,
+          callData: this.financialContract.methods.fundingRate().encodeABI()
+        };
+        const outputs = await aggregateTransactionsAndCall(this.multicallContractAddress, this.web3, [
+          applyFundingRateCall,
+          fundingRateCall
+        ]);
+        // `returnData` is an array of decoded return data bytes corresponding to the transactions passed to
+        // the multicall aggregate method. Therefore, `fundingRate()`'s return output is the second element.
+        const fundingRateData = outputs[1];
+        this.latestCumulativeFundingRateMultiplier = this.toBN(fundingRateData.cumulativeMultiplier.rawValue);
+      }
     } else {
       this.latestCumulativeFundingRateMultiplier = this.fixedPointAdjustment;
     }
@@ -177,7 +208,8 @@ class FinancialContractClient {
     // As a result, create a temp array `sponsorsToRemove` which is updated as sponsors are removed from the array.
     let sponsorsToRemove = endedSponsorAddresses; // temp array to contain address to remove.
     this.activeSponsors = newSponsorAddresses.filter(address => {
-      // If the sponsorsToRemove contains the current address, then that address should be removed from newSponsorAddresses.
+      // If the sponsorsToRemove contains the current address, then that address should be removed from
+      // newSponsorAddresses.
       const index = sponsorsToRemove.indexOf(address);
       // Update the `sponsorsToRemove` by removing the first instance of the address from the sponsorsToRemove array.
       if (index !== -1) {
@@ -190,7 +222,8 @@ class FinancialContractClient {
     // Array of all liquidated sponsors, over all time. Use a Set to ensure only contains unique elements.
     const liquidatedSponsors = [...new Set(liquidationCreatedEvents.map(e => e.returnValues.sponsor))];
 
-    // Fetch sponsor position & liquidation in parallel batches, 150 at a time, to be safe and not overload the web3 node.
+    // Fetch sponsor position & liquidation in parallel batches, 150 at a time, to be safe and not overload the web3
+    // node.
     const WEB3_CALLS_BATCH_SIZE = 150;
     const [activePositions, allLiquidations] = await Promise.all([
       Promise.map(this.activeSponsors, address => this.financialContract.methods.positions(address).call(), {
@@ -217,6 +250,8 @@ class FinancialContractClient {
           sponsor: liquidation.sponsor,
           id: id.toString(),
           state: liquidation.state,
+          // Note: The `tokensOutstanding` entry in the Perpetual's on-chain Liquidation struct is adjusted
+          // for the funding rate multiplier at the time of liquidation.
           numTokens: liquidation.tokensOutstanding.toString(),
           liquidatedCollateral: liquidation.liquidatedCollateral.toString(),
           lockedCollateral: liquidation.lockedCollateral.toString(),
@@ -247,14 +282,22 @@ class FinancialContractClient {
         sponsor: this.activeSponsors[index],
         withdrawalRequestPassTimestamp: position.withdrawalRequestPassTimestamp,
         withdrawalRequestAmount: position.withdrawalRequestAmount.toString(),
-        numTokens: this.toBN(position.tokensOutstanding.toString()) // Apply the current funding rate to the sponsor debt.
+        adjustedTokens: this.toBN(position.tokensOutstanding.toString())
           .mul(this.latestCumulativeFundingRateMultiplier)
           .div(this.fixedPointAdjustment)
           .toString(),
-        amountCollateral: this.toBN(position.rawCollateral.toString()) // Apply the current outstanding fees to collateral.
+        // Applies the current funding rate to the sponsor's raw amount of tokens outstanding. `adjustedTokens` is equal
+        // to `numTokens * cumulativeFundingRateMultplier`, and this client uses `adjustedTokens` to determine whether
+        // a position is liquidatable or not. If a position is liquidatable, then `numTokens` amount of debt needs
+        // to be repaid by the liquidator to liquidate the position.
+        numTokens: position.tokensOutstanding.toString(), // This represents the actual amount of tokens outstanding
+        // for a sponsor and is the maximum amount of tokens needed to fully liquidate a position. The liquidator bot
+        // therefore can liquidate up to this amount of tokens.
+        amountCollateral: this.toBN(position.rawCollateral.toString())
           .mul(this.cumulativeFeeMultiplier)
           .div(this.fixedPointAdjustment)
           .toString(),
+        // Applies the current outstanding fees to collateral.
         hasPendingWithdrawal: position.withdrawalRequestPassTimestamp > 0
       };
     });
@@ -266,12 +309,12 @@ class FinancialContractClient {
     });
   }
   // The formula for an undercollateralized position is: (numTokens * trv) * collateralRequirement > amountCollateral.
-  // This equation assumes the decimal points across the inputs are normalized to the same basis. However, this wont always
-  // be the case and so we need to consider arbitrary decimals coming into the equation. When considering decimals of
-  // each variable within the as collateral (cD), synthetic (sD), CR (1e18), trv (trvD) this equation becomes:
-  // numTokens * 10^sD * trv * 10^trvD * collateralRequirement * 10^18 > amountCollateral * 10^cD.
-  // To accommodate these different decimal points we can normalize each term to the 10^18 basis and then apply a "correction"
-  // factor due to the additional scalling from multiplying basis numbers.
+  // This equation assumes the decimal points across the inputs are normalized to the same basis. However, this wont
+  // always be the case and so we need to consider arbitrary decimals coming into the equation. When considering
+  // decimals of each variable within the as collateral (cD), synthetic (sD), CR (1e18), trv (trvD) this equation
+  // becomes: numTokens * 10^sD * trv * 10^trvD * collateralRequirement * 10^18 > amountCollateral * 10^cD.
+  // To accommodate these different decimal points we can normalize each term to the 10^18 basis and then apply a
+  // "correction" factor due to the additional scalling from multiplying basis numbers.
   _isUnderCollateralized(numTokens, amountCollateral, tokenRedemptionValue) {
     // Normalize the inputs. Now all terms are 18 decimal delimited and no extra conversion is needed.
     const normalizedNumTokens = this.normalizeSyntheticDecimals(numTokens);

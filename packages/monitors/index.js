@@ -14,7 +14,8 @@ const {
   createReferencePriceFeedForFinancialContract,
   createTokenPriceFeedForFinancialContract,
   waitForLogger,
-  delay
+  delay,
+  multicallAddressMap
 } = require("@uma/financial-templates-lib");
 
 // Monitor modules to report on client state changes.
@@ -26,7 +27,7 @@ const { SyntheticPegMonitor } = require("./src/SyntheticPegMonitor");
 
 // Contract ABIs and network Addresses.
 const { getAbi, getAddress } = require("@uma/core");
-const { getWeb3, findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
+const { getWeb3, findContractVersion, SUPPORTED_CONTRACT_VERSIONS, PublicNetworks } = require("@uma/common");
 
 /**
  * @notice Continuously attempts to monitor contract positions and reports based on monitor modules.
@@ -91,13 +92,16 @@ async function run({
      *
      ***************************************/
     const [networkId, latestBlock] = await Promise.all([web3.eth.net.getId(), web3.eth.getBlock("latest")]);
-    // If startingBlock is set to null then use the `latest` block number for the `eventsFromBlockNumber` and leave the
+    const networkName = PublicNetworks[Number(networkId)] ? PublicNetworks[Number(networkId)].name : null; // If startingBlock is set to null then use the `latest` block number for the `eventsFromBlockNumber` and leave the
     // `endingBlock` as null.
     const eventsFromBlockNumber = startingBlock ? startingBlock : latestBlock.number;
     if (!monitorConfig) monitorConfig = {};
 
     // List of promises to run in parallel during each iteration, each of which represents a monitor executing.
     let monitorRunners = [];
+    // At the beginning of each iteration, we'll need to repopulate the `monitorRunners` array with promises
+    // to run in parallel.
+    let populateMonitorRunnerHelpers = [];
 
     /** *************************************
      *
@@ -239,6 +243,7 @@ async function run({
         getAbi(monitorConfig.contractType, monitorConfig.contractVersion),
         web3,
         financialContractAddress,
+        networkName ? multicallAddressMap[networkName].multicall : null,
         collateralDecimals,
         syntheticDecimals,
         medianizerPriceFeed.getPriceFeedDecimals(),
@@ -276,33 +281,35 @@ async function run({
       });
 
       // Clients must be updated before monitors can run:
-      monitorRunners.push(
-        Promise.all([
-          financialContractClient.update(),
-          financialContractEventClient.update(),
-          tokenBalanceClient.update(),
-          medianizerPriceFeed.update(),
-          tokenPriceFeed.update(),
-          denominatorPriceFeed && denominatorPriceFeed.update()
-        ]).then(async () => {
-          await Promise.all([
-            // 1. Contract monitor. Check for liquidations, disputes, dispute settlement and sponsor events.
-            contractMonitor.checkForNewLiquidations(),
-            contractMonitor.checkForNewDisputeEvents(),
-            contractMonitor.checkForNewDisputeSettlementEvents(),
-            contractMonitor.checkForNewSponsors(),
-            contractMonitor.checkForNewFundingRateUpdatedEvents(),
-            // 2.  Wallet Balance monitor. Check if the bot balances have moved past thresholds.
-            balanceMonitor.checkBotBalances(),
-            // 3.  Position Collateralization Ratio monitor. Check if monitored wallets are still safely above CRs.
-            crMonitor.checkWalletCrRatio(),
-            // 4. Synthetic peg monitor. Check for peg deviation, peg volatility and synthetic volatility.
-            syntheticPegMonitor.checkPriceDeviation(),
-            syntheticPegMonitor.checkPegVolatility(),
-            syntheticPegMonitor.checkSyntheticVolatility()
-          ]);
-        })
-      );
+      populateMonitorRunnerHelpers.push(() => {
+        monitorRunners.push(
+          Promise.all([
+            financialContractClient.update(),
+            financialContractEventClient.update(),
+            tokenBalanceClient.update(),
+            medianizerPriceFeed.update(),
+            tokenPriceFeed.update(),
+            denominatorPriceFeed && denominatorPriceFeed.update()
+          ]).then(async () => {
+            await Promise.all([
+              // 1. Contract monitor. Check for liquidations, disputes, dispute settlement and sponsor events.
+              contractMonitor.checkForNewLiquidations(),
+              contractMonitor.checkForNewDisputeEvents(),
+              contractMonitor.checkForNewDisputeSettlementEvents(),
+              contractMonitor.checkForNewSponsors(),
+              contractMonitor.checkForNewFundingRateUpdatedEvents(),
+              // 2.  Wallet Balance monitor. Check if the bot balances have moved past thresholds.
+              balanceMonitor.checkBotBalances(),
+              // 3.  Position Collateralization Ratio monitor. Check if monitored wallets are still safely above CRs.
+              crMonitor.checkWalletCrRatio(),
+              // 4. Synthetic peg monitor. Check for peg deviation, peg volatility and synthetic volatility.
+              syntheticPegMonitor.checkPriceDeviation(),
+              syntheticPegMonitor.checkPegVolatility(),
+              syntheticPegMonitor.checkSyntheticVolatility()
+            ]);
+          })
+        );
+      });
     }
 
     /** *************************************
@@ -331,22 +338,29 @@ async function run({
       });
 
       // Clients must be updated before monitors can run:
-      monitorRunners.push(
-        Promise.all([optimisticOracleContractEventClient.update()]).then(async () => {
-          await Promise.all([
-            contractMonitor.checkForRequests(),
-            contractMonitor.checkForProposals(),
-            contractMonitor.checkForDisputes(),
-            contractMonitor.checkForSettlements()
-          ]);
-        })
-      );
+      populateMonitorRunnerHelpers.push(() => {
+        monitorRunners.push(
+          Promise.all([optimisticOracleContractEventClient.update()]).then(async () => {
+            await Promise.all([
+              contractMonitor.checkForRequests(),
+              contractMonitor.checkForProposals(),
+              contractMonitor.checkForDisputes(),
+              contractMonitor.checkForSettlements()
+            ]);
+          })
+        );
+      });
     }
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
       await retry(
         async function() {
+          // First populate monitorRunners array with promises to fulfill in parallel:
+          populateMonitorRunnerHelpers.forEach(helperFunc => {
+            helperFunc();
+          });
+          // Now that monitor runners is populated, run them in parallel.
           await Promise.all(monitorRunners);
         },
         {

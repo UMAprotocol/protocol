@@ -16,7 +16,9 @@ const IDENTIFIER_NON_18_PRECISION = {
   "COMPUSDC-APR-MAR28/USDC": 6,
   // The following identifiers are used in local test environments only:
   TEST8DECIMALS: 8,
-  TEST6DECIMALS: 6
+  TEST8DECIMALSANCIL: 8,
+  TEST6DECIMALS: 6,
+  TEST6DECIMALSANCIL: 6
 };
 
 const getPrecisionForIdentifier = identifier => {
