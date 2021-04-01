@@ -204,7 +204,6 @@ async function run({
     const gasEstimator = new GasEstimator(logger);
     await gasEstimator.update();
 
-    console.log("proxyTransactionWrapperConfig", proxyTransactionWrapperConfig);
     let dsProxyManager;
     if (proxyTransactionWrapperConfig?.useDsProxyToLiquidate) {
       dsProxyManager = new DSProxyManager({
