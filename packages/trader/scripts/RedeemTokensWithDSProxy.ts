@@ -1,12 +1,7 @@
-// This script a withdrawal transaction that will pull funds out of a DSProxy contract. The wallet you run the script
-// from should be the owner (or have sufficient permissions).
-// To execute the script, run: truffle exec ./scripts/WithdrawTokensFromDSProxy.ts --network kovan_mnemonic --dsProxyAddress 0x... --tokenAddress 0x... --amount max --recipientAddress 0x...
-// Note:
-// 1) if you do not provide the dsProxyAddress the script will try find one deployed at the unlocked wallet account.
-// 2) if you provide max for amount then the script will take all tokens. If you provide a specific number, it is assumed
-// to be a string. No internal scalling is done on the number. 1 eth should be therefore represented as 1000000000000000000
-// 3) if you don't provide recipientAddress then the script will send them to your currently unlocked account.
-// You can also optionally override the dsProxyFactoryAddress by providing it as a param
+// This script enables a DSProxy to redeem tokens from a contract. This should be used after a swap/mint/liquidate transaction
+// to close out a bots position. To execute the script, run:
+// truffle exec./ scripts / RedeemTokensWithDSProxy.ts--financialContractAddress 0x123 --numTokens 100000000000000000000 --dsProxyFactoryAddress 0x123 --network mainnet_mnemonic
+// Note if you do not provide the dsProxyAddress the script will try find one deployed at the unlocked wallet account.
 
 async function RedeemTokensWithDSProxy() {
   const winston = require("winston");
