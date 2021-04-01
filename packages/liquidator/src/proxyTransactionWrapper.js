@@ -19,7 +19,7 @@ class ProxyTransactionWrapper {
    * @param {Object} collateralToken Collateral token backing the financial contract.
    * @param {String} account Ethereum account from which to send txns.
    * @param {Object} dsProxyManager Module to send transactions via DSProxy. If null will use the unlocked account EOA.
-   * @param {Boolean} isUsingDsProxyToLiquidate Toggles the mode liquidations will be sent with. If true then then liquidations.
+   * @param {Boolean} useDsProxyToLiquidate Toggles the mode liquidations will be sent with. If true then then liquidations.
    * are sent from the DSProxy. Else, Transactions are sent from the EOA. If true dsProxyManager must not be null.
    * @param {Object} proxyTransactionWrapperConfig configuration object used to paramaterize how the DSProxy is used. Expected:
    *      { uniswapRouterAddress: 0x123..., // uniswap router address. Defaults to mainnet router
@@ -35,7 +35,7 @@ class ProxyTransactionWrapper {
     collateralToken,
     account,
     dsProxyManager = undefined,
-    isUsingDsProxyToLiquidate = false,
+    useDsProxyToLiquidate = false,
     proxyTransactionWrapperConfig
   }) {
     this.web3 = web3;
@@ -50,11 +50,11 @@ class ProxyTransactionWrapper {
     this.toBN = this.web3.utils.toBN;
     this.toWei = this.web3.utils.toWei;
 
-    this.isUsingDsProxyToLiquidate = isUsingDsProxyToLiquidate;
+    this.useDsProxyToLiquidate = useDsProxyToLiquidate;
 
     // TODO: refactor the router to pull from a constant file.
     const defaultConfig = {
-      isUsingDsProxyToLiquidate: {
+      useDsProxyToLiquidate: {
         value: false,
         isValid: x => {
           return typeof x == "boolean";
@@ -91,7 +91,7 @@ class ProxyTransactionWrapper {
     Object.assign(this, configWithDefaults);
 
     // Preform some basic initalization sanity checks.
-    if (this.isUsingDsProxyToLiquidate) {
+    if (this.useDsProxyToLiquidate) {
       assert(
         this.dsProxyManager && this.dsProxyManager.getDSProxyAddress(),
         "DSProxy Manger has not yet been initialized!"
@@ -103,14 +103,14 @@ class ProxyTransactionWrapper {
       );
     }
 
-    this.reserveToken = new web3.eth.Contract(getAbi("ExpandedERC20"), this.liquidatorReserveCurrencyAddress);
-    this.ReserveCurrencyLiquidator = getTruffleContract("ReserveCurrencyLiquidator", web3, "latest");
+    this.reserveToken = new this.web3.eth.Contract(getAbi("ExpandedERC20"), this.liquidatorReserveCurrencyAddress);
+    this.ReserveCurrencyLiquidator = getTruffleContract("ReserveCurrencyLiquidator", this.web3, "latest");
   }
 
   // TODO: wrap this into a common util.
   createContractObjectFromJson(contractJsonObject) {
     let truffleContractCreator = truffleContract(contractJsonObject);
-    truffleContractCreator.setProvider(web3.currentProvider);
+    truffleContractCreator.setProvider(this.web3.currentProvider);
     return truffleContractCreator;
   }
 
@@ -119,7 +119,7 @@ class ProxyTransactionWrapper {
   // then consider the synthetics could be minted, + any synthetics the DSProxy already has.
   async getEffectiveSyntheticTokenBalance() {
     const syntheticTokenBalance = await this.syntheticToken.methods.balanceOf(this.account).call();
-    if (!this.isUsingDsProxyToLiquidate) return syntheticTokenBalance;
+    if (!this.useDsProxyToLiquidate) return syntheticTokenBalance;
     else {
       // Instantiate uniswap factory to fetch the pair address.
       const uniswapFactory = await this.createContractObjectFromJson(UniswapV2Factory).at(this.uniswapFactoryAddress);
@@ -179,7 +179,7 @@ class ProxyTransactionWrapper {
   // If the bot is using a DSProxy then route the tx via it.
   async submitLiquidationTransaction(liquidationArgs) {
     // If the liquidator is not using a DSProxy, use the old method of liquidating
-    if (!this.isUsingDsProxyToLiquidate) return await this._executeLiquidationWithoutDsProxy(liquidationArgs);
+    if (!this.useDsProxyToLiquidate) return await this._executeLiquidationWithoutDsProxy(liquidationArgs);
     else return await this._executeLiquidationWithDsProxy(liquidationArgs);
   }
 
@@ -262,21 +262,22 @@ class ProxyTransactionWrapper {
 
     const liquidationEvent = (
       await this.financialContract.getPastEvents("LiquidationCreated", {
-        fromBlock: blockBeforeLiquidation,
+        fromBlock: blockBeforeLiquidation - 1,
         filter: { liquidator: this.dsProxyManager.getDSProxyAddress() }
       })
     )[0];
+    console.log("liquidationEvent", liquidationEvent);
 
     // Return the same data sent back from the EOA liquidation.
     return {
       type: "DSProxy Swap, mint and liquidate transaction",
       tx: dsProxyCallReturn.transactionHash,
-      sponsor: liquidationEvent.sponsor,
-      liquidator: liquidationEvent.liquidator,
-      liquidationId: liquidationEvent.liquidationId,
-      tokensOutstanding: liquidationEvent.tokensOutstanding,
-      lockedCollateral: liquidationEvent.lockedCollateral,
-      liquidatedCollateral: liquidationEvent.liquidatedCollateral,
+      sponsor: liquidationEvent.returnValues.sponsor,
+      liquidator: liquidationEvent.returnValues.liquidator,
+      liquidationId: liquidationEvent.returnValues.liquidationId,
+      tokensOutstanding: liquidationEvent.returnValues.tokensOutstanding,
+      lockedCollateral: liquidationEvent.returnValues.lockedCollateral,
+      liquidatedCollateral: liquidationEvent.returnValues.liquidatedCollateral,
       txnConfig: {
         from: dsProxyCallReturn.from,
         gas: dsProxyCallReturn.gasUsed

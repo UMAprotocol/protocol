@@ -57,7 +57,7 @@ contract ReserveCurrencyLiquidator {
 
         // 2. Calculate how much collateral is needed to make up the token shortfall from minting new synthetics.
         FixedPoint.Unsigned memory gcr = fc.pfc().divCeil(fc.totalTokensOutstanding());
-        FixedPoint.Unsigned memory collateralToMintShortfall = tokenShortfall.mul(gcr);
+        FixedPoint.Unsigned memory collateralToMintShortfall = tokenShortfall.mulCeil(gcr);
 
         // 3. Calculate the total collateral required. This considers the final fee for the given collateral type + any
         // collateral needed to mint the token short fall.

@@ -289,7 +289,7 @@ contract("Liquidator.js", function(accounts) {
             withdrawLiveness: await financialContract.withdrawalLiveness()
           };
 
-          // Set the proxyTransaction wrapper to act without the DSProxy by setting isUsingDsProxyToLiquidate to false.
+          // Set the proxyTransaction wrapper to act without the DSProxy by setting useDsProxyToLiquidate to false.
           // This will treat all liquidations in the "normal" way, executed from the bots's EOA.
           proxyTransactionWrapper = new ProxyTransactionWrapper({
             web3,
@@ -299,7 +299,7 @@ contract("Liquidator.js", function(accounts) {
             collateralToken: collateralToken.contract,
             account: accounts[0],
             dsProxyManager: null,
-            isUsingDsProxyToLiquidate: false,
+            useDsProxyToLiquidate: false,
             proxyTransactionWrapperConfig: {}
           });
 
@@ -447,7 +447,7 @@ contract("Liquidator.js", function(accounts) {
             priceFeedMock.setCurrentPrice(convertPrice("1"));
             await liquidator.update();
             await liquidator.liquidatePositions();
-            // assert.equal(spy.callCount, 0); // No info level logs should be sent.
+            assert.equal(spy.callCount, 0); // No info level logs should be sent.
 
             // There should be no liquidations created from any sponsor account
             assert.deepStrictEqual(await financialContract.getLiquidations(sponsor1), []);
@@ -465,7 +465,7 @@ contract("Liquidator.js", function(accounts) {
             priceFeedMock.setCurrentPrice(convertPrice("1"));
             await liquidator.update();
             await liquidator.liquidatePositions();
-            // assert.equal(spy.callCount, 1); // There should be one log from the liquidation event of the withdrawal.
+            assert.equal(spy.callCount, 1); // There should be one log from the liquidation event of the withdrawal.
 
             // There should be exactly one liquidation in sponsor1's account. The liquidated collateral should be the original
             // amount of collateral minus the collateral withdrawn. 125 - 10 = 115
@@ -485,7 +485,7 @@ contract("Liquidator.js", function(accounts) {
             const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
             await liquidator.update();
             await liquidator.withdrawRewards();
-            // assert.equal(spy.callCount, 2); // 1 new info level events should be sent at the conclusion of the withdrawal. total 2.
+            assert.equal(spy.callCount, 2); // 1 new info level events should be sent at the conclusion of the withdrawal. total 2.
 
             // Liquidator should have their collateral increased by Sponsor1's collateral.
             const collateralPostWithdraw = await collateralToken.balanceOf(liquidatorBot);
@@ -530,7 +530,7 @@ contract("Liquidator.js", function(accounts) {
             priceFeedMock.setCurrentPrice(convertPrice("1.3"));
             await liquidator.update();
             await liquidator.liquidatePositions();
-            // assert.equal(spy.callCount, 1); // 1 info level events should be sent at the conclusion of the liquidation.
+            assert.equal(spy.callCount, 1); // 1 info level events should be sent at the conclusion of the liquidation.
 
             // Advance the timer to the liquidation expiry.
             const liquidationTime = (await financialContract.getLiquidations(sponsor1))[0].liquidationTime;
@@ -541,7 +541,7 @@ contract("Liquidator.js", function(accounts) {
             const collateralPreWithdraw = await collateralToken.balanceOf(liquidatorBot);
             await liquidator.update();
             await liquidator.withdrawRewards();
-            // assert.equal(spy.callCount, 2); // 1 new info level events should be sent at the conclusion of the withdrawal. Total 2.
+            assert.equal(spy.callCount, 2); // 1 new info level events should be sent at the conclusion of the withdrawal. Total 2.
 
             // Liquidator should have their collateral increased by Sponsor1's collateral.
             const collateralPostWithdraw = await collateralToken.balanceOf(liquidatorBot);
@@ -1570,7 +1570,7 @@ contract("Liquidator.js", function(accounts) {
               priceFeedMock.setCurrentPrice(convertPrice("1"));
               await liquidator.update();
               await liquidator.liquidatePositions();
-              // assert.equal(spy.callCount, 0); // No info level logs should be sent.
+              assert.equal(spy.callCount, 0); // No info level logs should be sent.
 
               // There should be no liquidations created from any sponsor account
               assert.deepStrictEqual(await financialContract.getLiquidations(sponsor1), []);
@@ -1768,7 +1768,7 @@ contract("Liquidator.js", function(accounts) {
               account: accounts[0],
               dsProxyManager,
               proxyTransactionWrapperConfig: {
-                isUsingDsProxyToLiquidate: true,
+                useDsProxyToLiquidate: true,
                 uniswapRouterAddress: uniswapRouter.address,
                 uniswapFactoryAddress: uniswapFactory.address,
                 liquidatorReserveCurrencyAddress: reserveToken.address
@@ -1797,7 +1797,7 @@ contract("Liquidator.js", function(accounts) {
               // The initialization in the before-each should be correct.
               assert.isTrue(isAddress(dsProxy.address));
               assert.equal(await dsProxy.owner(), liquidatorBot);
-              assert.isTrue(liquidator.proxyTransactionWrapper.isUsingDsProxyToLiquidate);
+              assert.isTrue(liquidator.proxyTransactionWrapper.useDsProxyToLiquidate);
               assert.equal(liquidator.proxyTransactionWrapper.uniswapRouterAddress, uniswapRouter.address);
               assert.equal(liquidator.proxyTransactionWrapper.dsProxyManager.getDSProxyAddress(), dsProxy.address);
               assert.equal(liquidator.proxyTransactionWrapper.liquidatorReserveCurrencyAddress, reserveToken.address);
@@ -1818,7 +1818,7 @@ contract("Liquidator.js", function(accounts) {
                   account: accounts[0],
                   dsProxyManager,
                   proxyTransactionWrapperConfig: {
-                    isUsingDsProxyToLiquidate: true,
+                    useDsProxyToLiquidate: true,
                     uniswapRouterAddress: uniswapRouter.address,
                     uniswapFactoryAddress: uniswapFactory.address,
                     liquidatorReserveCurrencyAddress: null
@@ -1837,7 +1837,7 @@ contract("Liquidator.js", function(accounts) {
                   account: accounts[0],
                   dsProxyManager,
                   proxyTransactionWrapperConfig: {
-                    isUsingDsProxyToLiquidate: true,
+                    useDsProxyToLiquidate: true,
                     uniswapRouterAddress: "not-an-address",
                     liquidatorReserveCurrencyAddress: reserveToken.address
                   }
@@ -1854,7 +1854,7 @@ contract("Liquidator.js", function(accounts) {
                   account: accounts[0],
                   dsProxyManager: null,
                   proxyTransactionWrapperConfig: {
-                    isUsingDsProxyToLiquidate: true,
+                    useDsProxyToLiquidate: true,
                     uniswapRouterAddress: uniswapRouter.address,
                     uniswapFactoryAddress: uniswapFactory.address,
                     liquidatorReserveCurrencyAddress: reserveToken.address
@@ -1883,7 +1883,7 @@ contract("Liquidator.js", function(accounts) {
                   account: accounts[0],
                   dsProxyManager,
                   proxyTransactionWrapperConfig: {
-                    isUsingDsProxyToLiquidate: true,
+                    useDsProxyToLiquidate: true,
                     uniswapRouterAddress: uniswapRouter.address,
                     uniswapFactoryAddress: uniswapFactory.address,
                     liquidatorReserveCurrencyAddress: reserveToken.address
@@ -1892,7 +1892,7 @@ contract("Liquidator.js", function(accounts) {
               });
             }
           );
-          versionedIt([{ contractType: "any", contractVersion: "any" }], true)(
+          versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Correctly liquidates positions using DSProxy",
             async function() {
               // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
@@ -2000,7 +2000,7 @@ contract("Liquidator.js", function(accounts) {
                 const collateralPreWithdraw = await collateralToken.balanceOf(dsProxy.address);
                 await liquidator.update();
                 await liquidator.withdrawRewards();
-                // assert.equal(spy.callCount, 2); // 1 new info level events should be sent at the conclusion of the withdrawal. Total 2.
+                assert.equal(spy.callCount, 7); // 7 new info level events should be sent at the conclusion of the 2 withdrawals
 
                 // Liquidator should have their collateral increased by Sponsor1 + sponsor2 collateral.
                 const collateralPostWithdraw = await collateralToken.balanceOf(dsProxy.address);

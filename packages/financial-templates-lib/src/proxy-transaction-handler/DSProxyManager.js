@@ -90,7 +90,7 @@ class DSProxyManager {
       this.dsProxy = new this.web3.eth.Contract(this.dsProxyAbi, this.dsProxyAddress);
       this.logger.info({
         at: "DSProxyManager",
-        message: "DSProxy has been deployed for the EOA 🚀",
+        message: "DSProxy deployed for your EOA 🚀",
         dsProxyAddress: this.dsProxyAddress,
         tx: dsProxyCreateTx.transactionHash,
         account: this.account

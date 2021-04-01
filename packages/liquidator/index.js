@@ -204,8 +204,9 @@ async function run({
     const gasEstimator = new GasEstimator(logger);
     await gasEstimator.update();
 
+    console.log("proxyTransactionWrapperConfig", proxyTransactionWrapperConfig);
     let dsProxyManager;
-    if (proxyTransactionWrapperConfig?.isUsingDsProxyToLiquidate) {
+    if (proxyTransactionWrapperConfig?.useDsProxyToLiquidate) {
       dsProxyManager = new DSProxyManager({
         logger,
         web3,
@@ -254,25 +255,27 @@ async function run({
       liquidatorConfig
     });
 
-    // The Financial Contract requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
-    // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-    const [collateralApproval, syntheticApproval] = await Promise.all([
-      setAllowance(web3, gasEstimator, accounts[0], financialContractAddress, collateralTokenAddress),
-      setAllowance(web3, gasEstimator, accounts[0], financialContractAddress, syntheticTokenAddress)
-    ]);
-    if (collateralApproval) {
-      logger.info({
-        at: "Liquidator#index",
-        message: "Approved Financial Contract to transfer unlimited collateral tokens 💰",
-        collateralApprovalTx: collateralApproval.tx.transactionHash
-      });
-    }
-    if (syntheticApproval) {
-      logger.info({
-        at: "Liquidator#index",
-        message: "Approved Financial Contract to transfer unlimited synthetic tokens 💰",
-        syntheticApprovalTx: syntheticApproval.tx.transactionHash
-      });
+    if (proxyTransactionWrapperConfig == {} || !proxyTransactionWrapperConfig?.useDsProxyToLiquidate) {
+      // The Financial Contract requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
+      // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
+      const [collateralApproval, syntheticApproval] = await Promise.all([
+        setAllowance(web3, gasEstimator, accounts[0], financialContractAddress, collateralTokenAddress),
+        setAllowance(web3, gasEstimator, accounts[0], financialContractAddress, syntheticTokenAddress)
+      ]);
+      if (collateralApproval) {
+        logger.info({
+          at: "Liquidator#index",
+          message: "Approved Financial Contract to transfer unlimited collateral tokens 💰",
+          collateralApprovalTx: collateralApproval.tx.transactionHash
+        });
+      }
+      if (syntheticApproval) {
+        logger.info({
+          at: "Liquidator#index",
+          message: "Approved Financial Contract to transfer unlimited synthetic tokens 💰",
+          syntheticApprovalTx: syntheticApproval.tx.transactionHash
+        });
+      }
     }
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
@@ -288,6 +291,7 @@ async function run({
             // Check for liquidatable positions and submit liquidations. Bounded by current synthetic balance and
             // considers override price if the user has specified one.
             const currentSyntheticBalance = await proxyTransactionWrapper.getEffectiveSyntheticTokenBalance();
+
             await liquidator.liquidatePositions(currentSyntheticBalance, liquidatorOverridePrice);
           }
           // Check for any finished liquidations that can be withdrawn.
@@ -384,7 +388,8 @@ async function Poll(callback) {
       // "uniswapRouterAddress": "0x123..." -> uniswap router address to enable reserve trading. Defaults to mainnet router.
       // "uniswapFactoryAddress": "0x123..." -> uniswap factory address. Defaults to mainnet factory.
       // "maxReserverTokenSpent": "10000000000"} -> max amount to spend in reserve currency. scaled by reserve currency
-      // decimals. defaults to MAX_UINT (no limit). Note that this is separate to the WDF, which behaves as per usual and considers the maximum amount of synthetics that could be minted, given the current reserve balance.
+      //      decimals. defaults to MAX_UINT (no limit). Note that this is separate to the WDF, which behaves as per usual
+      //      and considers the maximum amount of synthetics that could be minted, given the current reserve balance.
       proxyTransactionWrapperConfig: process.env.DSPROXY_CONFIG ? JSON.parse(process.env.DSPROXY_CONFIG) : {}
     };
 
