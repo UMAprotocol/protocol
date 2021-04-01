@@ -22,6 +22,22 @@ contract PerpetualMock {
 
     FundingRate public fundingRate;
 
+    // Interface functions required to be implemented in order for an instance of this contract to be passed into the
+    // off-chain FinancialContractClient helper module:
+    FixedPoint.Unsigned public collateralRequirement;
+    uint256 public liquidationLiveness;
+    FixedPoint.Unsigned public cumulativeFeeMultiplier;
+    mapping(address => uint256) public positions;
+    mapping(address => uint256) public liquidations;
+    event NewSponsor(address indexed sponsor);
+    event EndedSponsorPosition();
+    event LiquidationCreated();
+
+    function getCurrentTime() public view returns (uint256) {
+        return now;
+    }
+
+    // Public methods that are useful for tests:
     function setFundingRate(FundingRate memory _fundingRate) external {
         fundingRate = _fundingRate;
     }
