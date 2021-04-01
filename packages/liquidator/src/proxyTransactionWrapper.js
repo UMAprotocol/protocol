@@ -266,7 +266,6 @@ class ProxyTransactionWrapper {
         filter: { liquidator: this.dsProxyManager.getDSProxyAddress() }
       })
     )[0];
-    console.log("liquidationEvent", liquidationEvent);
 
     // Return the same data sent back from the EOA liquidation.
     return {
