@@ -822,7 +822,7 @@ const defaultConfigs = {
     minTimeBetweenUpdates: 60,
     twapLength: 3600,
     customFeeds: {
-      ETHBTC_PERP: { type: "uniswap", uniswapAddress: "0x899a45ee5a03d8cc57447157a17ce4ea4745b199" },
+      ETHBTC_PERP: { type: "uniswap", invertPrice: true, uniswapAddress: "0x899a45ee5a03d8cc57447157a17ce4ea4745b199" },
       PERP_FRM: { type: "frm", perpetualAddress: "0x32f0405834c4b50be53199628c45603cea3a28aa" }
     }
   }
