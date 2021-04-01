@@ -37,6 +37,7 @@
     "@nomiclabs/hardhat-truffle5": "^2.0.0",
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@umaprotocol/truffle-ledger-provider": "^1.0.5",
+    "@umaprotocol/ynatm": "^0.0.1",
     "@truffle/hdwallet-provider": "^1.2.3",
     "abi-decoder": "github:UMAprotocol/abi-decoder",
     "bignumber.js": "^8.0.1",

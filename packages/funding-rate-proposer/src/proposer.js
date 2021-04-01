@@ -221,6 +221,10 @@ class FundingRateProposer {
           config: {
             gasPrice: this.gasEstimator.getCurrentFastPrice(),
             from: this.account
+            // Since this method is called within a Promise.all, it is sending transactions in parallel with other
+            // transactions, making it difficult to determine which nonce is the correct once to set for ynatm.
+            // Future work should build nonce management logic into the runTransactions method. See more here:
+            // https://github.com/ChainSafe/web3.js/issues/1846
           }
         });
         let receipt = transactionResult.receipt;

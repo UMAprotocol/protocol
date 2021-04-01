@@ -173,7 +173,8 @@ class OptimisticOracleProposer {
         transaction: proposal,
         config: {
           gasPrice: this.gasEstimator.getCurrentFastPrice(),
-          from: this.account
+          from: this.account,
+          nonce: await this.web3.eth.getTransactionCount(this.account)
         }
       });
       let receipt = transactionResult.receipt;
@@ -275,7 +276,8 @@ class OptimisticOracleProposer {
           transaction: dispute,
           config: {
             gasPrice: this.gasEstimator.getCurrentFastPrice(),
-            from: this.account
+            from: this.account,
+            nonce: await this.web3.eth.getTransactionCount(this.account)
           }
         });
         let receipt = transactionResult.receipt;
