@@ -21,7 +21,9 @@ const { ExpressionPriceFeed, math, escapeSpecialCharacters } = require("./Expres
 const { VaultPriceFeed } = require("./VaultPriceFeed");
 const { LPPriceFeed } = require("./LPPriceFeed");
 const { BlockFinder } = require("./utils");
-const { getPrecisionForIdentifier } = require("@uma/common");
+const { getPrecisionForIdentifier, PublicNetworks } = require("@uma/common");
+const { FundingRateMultiplierPriceFeed } = require("./FundingRateMultiplierPriceFeed");
+const { multicallAddressMap } = require("../helpers/multicall");
 
 // Global cache for block (promises) used by uniswap price feeds.
 const uniswapBlockCache = {};
@@ -31,6 +33,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
   const ERC20 = getTruffleContract("ExpandedERC20", web3, "latest");
   const Balancer = getTruffleContract("Balancer", web3, "latest");
   const VaultInterface = getTruffleContract("VaultInterface", web3, "latest");
+  const Perpetual = getTruffleContract("Perpetual", web3, "latest");
 
   if (config.type === "cryptowatch") {
     const requiredFields = ["exchange", "pair", "lookback", "minTimeBetweenUpdates"];
@@ -57,7 +60,8 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.minTimeBetweenUpdates,
       config.invertPrice, // Not checked in config because this parameter just defaults to false.
       config.priceFeedDecimals, // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
-      config.ohlcPeriod // Defaults to 60 unless supplied.
+      config.ohlcPeriod, // Defaults to 60 unless supplied.
+      config.twapLength
     );
   } else if (config.type === "quandl") {
     const requiredFields = ["datasetCode", "databaseCode", "lookback", "quandlApiKey"];
@@ -433,6 +437,42 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       web3,
       getTime,
       erc20Abi: ERC20.abi,
+      blockFinder: getSharedBlockFinder(web3)
+    });
+  } else if (config.type === "frm") {
+    const requiredFields = ["perpetualAddress"];
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating FundingRateMultiplierPriceFeed",
+      config
+    });
+
+    let multicallAddress = config.multicallAddress;
+    if (!multicallAddress) {
+      const networkId = await web3.eth.net.getId();
+      const networkName = PublicNetworks[Number(networkId)]?.name;
+      multicallAddress = multicallAddressMap[networkName]?.multicall;
+    }
+
+    if (!multicallAddress) {
+      logger.error({
+        at: "createPriceFeed",
+        message: "No multicall address provided by config or publicly provided for this network 🚨"
+      });
+      return null;
+    }
+
+    return new FundingRateMultiplierPriceFeed({
+      ...config,
+      logger,
+      web3,
+      getTime,
+      perpetualAbi: Perpetual.abi,
+      multicallAddress: multicallAddress,
       blockFinder: getSharedBlockFinder(web3)
     });
   }

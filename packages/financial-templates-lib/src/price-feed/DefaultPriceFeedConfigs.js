@@ -554,7 +554,7 @@ const defaultConfigs = {
         uniswapAddress: "0xcd7989894bc033581532d2cd88da5db0a4b12859",
         invertPrice: true
       },
-      BADGER_USD_HUOBI: { type: "cryptowatch", exchange: "huobi", pair: "badgerusdt" },
+      BADGER_USD_HUOBI: { type: "cryptowatch", exchange: "huobi", pair: "badgerusdt", twapLength: 0 },
       BBADGER_BADGER: { type: "vault", address: "0x19d97d8fa813ee2f51ad4b4e04ea08baf4dffc28" }
     }
   },
