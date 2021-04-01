@@ -656,7 +656,7 @@ const defaultConfigs = {
     lookback: 7200,
     minTimeBetweenUpdates: 60,
     twapLength: 1800,
-    priceFeedDecimals: 6,
+    priceFeedDecimals: 6
   },
   USDAAVE: {
     type: "medianizer",
