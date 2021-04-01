@@ -8,11 +8,11 @@
 // 3) if you don't provide recipientAddress then the script will send them to your currently unlocked account.
 // You can also optionally override the dsProxyFactoryAddress by providing it as a param
 
-async function WithdrawTokensFromDSProxy() {
+async function RedeemTokensWithDSProxy() {
   const winston = require("winston");
   const assert = require("assert");
   const argv = require("minimist")(process.argv.slice(), {
-    string: ["tokenAddress", "amount", "dsProxyAddress", "dsProxyFactoryAddress", "recipientAddress"]
+    string: ["financialContractAddress", "numTokens", "dsProxyAddress", "dsProxyFactoryAddress"]
   });
 
   const { getWeb3 } = require("@uma/common");
@@ -21,11 +21,9 @@ async function WithdrawTokensFromDSProxy() {
   const { getAbi, getAddress, getTruffleContract } = require("@uma/core");
   const { DSProxyManager, GasEstimator } = require("@uma/financial-templates-lib");
 
-  assert(
-    argv.tokenAddress && argv.amount,
-    "Provide `tokenAddress` and `amount`. Amount can be `max` to pull all tokens."
-  );
-  assert(web3.utils.isAddress(argv.tokenAddress), "`tokenAddress` needs to be a valid address");
+  assert(argv.numTokens, "Must provide the number of tokens to redeem");
+
+  assert(web3.utils.isAddress(argv.financialContractAddress), "`financialContractAddress` needs to be a valid address");
   console.log("Running Token withdrawal script 💰");
 
   const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
@@ -54,26 +52,16 @@ async function WithdrawTokensFromDSProxy() {
 
   const dsProxyAddress = dsProxyManager.getDSProxyAddress();
   if (!dsProxyAddress) throw new Error("DSProxy Address was not found or parameterized");
-  const token = new web3.eth.Contract(getAbi("ExpandedERC20"), argv.tokenAddress);
 
-  // Figure out how many tokens to withdraw. If max, then query the full balance of the account. Else, use specified.
-  const amountToWithdraw = (argv.amount == "max"
-    ? await token.methods.balanceOf(dsProxyAddress).call()
-    : argv.amount
-  ).toString();
-
-  // Figure out where to withdraw tokens to. If specified, then send them there else use the unlocked account.
-  const tokenRecipient = argv.recipientAddress ? argv.recipientAddress : accounts[0];
-
-  // Create the callData as the encoded tx against the tokenSender contract
-  const TokenSender = getTruffleContract("TokenSender", web3);
-  const tokenSenderInstance = new web3.eth.Contract(TokenSender.abi);
-  const callData = tokenSenderInstance.methods
-    .transferERC20(argv.tokenAddress, tokenRecipient, amountToWithdraw)
+  // Create the callData as the encoded tx against the TokenRedeemer contract.
+  const TokenRedeemer = getTruffleContract("TokenRedeemer", web3);
+  const TokenRedeemerInstance = new web3.eth.Contract(TokenRedeemer.abi);
+  const callData = TokenRedeemerInstance.methods
+    .redeem(argv.financialContractAddress, { rawValue: argv.numTokens })
     .encodeABI();
 
   // The library also needs the code of the contract to deploy.
-  const callCode = TokenSender.bytecode;
+  const callCode = TokenRedeemer.bytecode;
 
   // Send the transaction against the DSProxy manager.
   const dsProxyCallReturn = await dsProxyManager.callFunctionOnNewlyDeployedLibrary(callCode, callData);
@@ -83,7 +71,7 @@ async function WithdrawTokensFromDSProxy() {
 
 const run = async function(callback) {
   try {
-    await WithdrawTokensFromDSProxy();
+    await RedeemTokensWithDSProxy();
   } catch (err) {
     console.error(err);
     callback(err);
@@ -92,5 +80,5 @@ const run = async function(callback) {
   callback();
 };
 
-run.WithdrawTokensFromDSProxy = WithdrawTokensFromDSProxy;
+run.RedeemTokensWithDSProxy = RedeemTokensWithDSProxy;
 module.exports = run;
