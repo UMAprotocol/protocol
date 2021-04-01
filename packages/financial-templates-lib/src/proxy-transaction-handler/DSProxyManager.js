@@ -1,6 +1,6 @@
 const assert = require("assert");
 
-const { getFromBlock } = require("@uma/common");
+const { getFromBlock, runTransaction } = require("@uma/common");
 class DSProxyManager {
   /**
    * @notice Constructs new Liquidator bot.
@@ -110,9 +110,13 @@ class DSProxyManager {
       callData
     });
 
-    const executeTransaction = await this.dsProxy.methods["execute(address,bytes)"](libraryAddress, callData).send({
-      from: this.account,
-      gasPrice: this.gasEstimator.getCurrentFastPrice()
+    const executeTransaction = await runTransaction({
+      transaction: this.dsProxy.methods["execute(address,bytes)"](libraryAddress, callData),
+      config: {
+        gasPrice: this.gasEstimator.getCurrentFastPrice(),
+        from: this.account,
+        nonce: await this.web3.eth.getTransactionCount(this.account)
+      }
     });
 
     this.logger.info({
@@ -136,16 +140,20 @@ class DSProxyManager {
       callCode
     });
 
-    const executeTransaction = await this.dsProxy.methods["execute(bytes,bytes)"](callCode, callData).send({
-      from: this.account,
-      gasPrice: this.gasEstimator.getCurrentFastPrice()
+    const executeTransaction = await runTransaction({
+      transaction: this.dsProxy.methods["execute(bytes,bytes)"](callCode, callData),
+      config: {
+        gasPrice: this.gasEstimator.getCurrentFastPrice(),
+        from: this.account,
+        nonce: await this.web3.eth.getTransactionCount(this.account)
+      }
     });
 
     this.logger.info({
       at: "DSProxyManager",
       message: "Executed function on a freshly deployed library, created in the same tx 🤗",
       callData,
-      tx: executeTransaction.transactionHash
+      tx: executeTransaction.receipt.transactionHash
     });
     return executeTransaction;
   }
