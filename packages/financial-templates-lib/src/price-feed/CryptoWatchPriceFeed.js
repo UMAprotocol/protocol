@@ -288,7 +288,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       .flat();
     const startTime = endTime - this.twapLength;
 
-    return computeTWAP(priceTimes, startTime, endTime, web3.utils.toBN("0"));
+    return computeTWAP(priceTimes, startTime, endTime, this.web3.utils.toBN("0"));
   }
 
   _invertPriceSafely(priceBN) {
