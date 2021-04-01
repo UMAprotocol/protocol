@@ -550,16 +550,26 @@ contract("Disputer.js", function(accounts) {
 
             await disputer.update();
             await disputer.withdrawRewards();
-            assert.equal(spy.callCount, 3); // One additional info level event for the successful withdrawal.
+            // If the EMP is a legacy EMP, then one of the withdrawals will fail to simulate because the disputer
+            // gets nothing. The bot will silently skip this withdrawal. So, if the EMP is legacy, there will be
+            // one additional info level event, otherwise 2.
+            assert.equal(spy.callCount, contractVersion.contractVersion == "1.2.2" ? 3 : 4);
 
-            // sponsor1's dispute was unsuccessful, so the disputeBot should not have called the withdraw method.
-            assert.equal((await financialContract.getLiquidations(sponsor1))[0].disputer, disputeBot);
+            // sponsor1's dispute was unsuccessful, and the disputeBot should have called the withdraw method if the
+            // EMP was not a legacy one, otherwise the dispute should still be seen as pending because the bot skipped
+            // the withdrawal.
+            assert.equal(
+              (await financialContract.getLiquidations(sponsor1))[0].disputer,
+              contractVersion.contractVersion == "1.2.2" ? disputeBot : ZERO_ADDRESS
+            );
             assert.equal(
               (await financialContract.getLiquidations(sponsor1))[0].state,
-              LiquidationStatesEnum.PENDING_DISPUTE
+              contractVersion.contractVersion == "1.2.2"
+                ? LiquidationStatesEnum.PENDING_DISPUTE
+                : LiquidationStatesEnum.UNINITIALIZED
             );
 
-            // sponsor2's dispute was successful, so the disputeBot should've called the withdraw method.
+            // sponsor2's dispute was successful, and the disputeBot should've called the withdraw method.
             assert.equal((await financialContract.getLiquidations(sponsor2))[0].disputer, ZERO_ADDRESS);
             assert.equal(
               (await financialContract.getLiquidations(sponsor2))[0].state,
@@ -587,7 +597,7 @@ contract("Disputer.js", function(accounts) {
             // After the dispute is resolved, the liquidation should still exist but the disputer should no longer be able to withdraw any rewards.
             await disputer.update();
             await disputer.withdrawRewards();
-            assert.equal(spy.callCount, 3);
+            assert.equal(spy.callCount, contractVersion.contractVersion == "1.2.2" ? 3 : 4);
           }
         );
 
