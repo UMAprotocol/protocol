@@ -1801,7 +1801,7 @@ contract("Liquidator.js", function(accounts) {
               assert.equal(liquidator.proxyTransactionWrapper.uniswapRouterAddress, uniswapRouter.address);
               assert.equal(liquidator.proxyTransactionWrapper.dsProxyManager.getDSProxyAddress(), dsProxy.address);
               assert.equal(liquidator.proxyTransactionWrapper.liquidatorReserveCurrencyAddress, reserveToken.address);
-              assert.isTrue(spy.getCall(-1).lastArg.message.includes("DSProxy has been deployed"));
+              assert.isTrue(spy.getCall(-1).lastArg.message.includes("DSProxy deployed for your EOA"));
             }
           );
           versionedIt([{ contractType: "any", contractVersion: "any" }])(

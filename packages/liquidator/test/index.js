@@ -496,8 +496,7 @@ contract("index.js", function(accounts) {
           errorRetriesTimeout,
           priceFeedConfig: defaultPriceFeedConfig,
           proxyTransactionWrapperConfig: {
-            // min config. Don't define any uniswap addresses or max reserves to spend.
-            isUsingDsProxyToLiquidate: true,
+            useDsProxyToLiquidate: true,
             liquidatorReserveCurrencyAddress: reserveToken.address,
             uniswapRouterAddress: router.address,
             uniswapFactoryAddress: factory.address
@@ -510,7 +509,7 @@ contract("index.js", function(accounts) {
 
         // A log of a deployed DSProxy should be included.
         assert.isTrue(spyLogIncludes(spy, 6, "No DSProxy found for EOA. Deploying new DSProxy"));
-        assert.isTrue(spyLogIncludes(spy, 7, "DSProxy has been deployed for the EOA"));
+        assert.isTrue(spyLogIncludes(spy, 7, "DSProxy deployed for your EOA"));
         console.log("dsProxyFactory", dsProxyFactory.address);
         const createdEvents = await dsProxyFactory.getPastEvents("Created", { fromBlock: 0 });
         console.log("createdEvents", createdEvents);
