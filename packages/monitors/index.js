@@ -266,7 +266,8 @@ async function run({
         medianizerPriceFeed,
         denominatorPriceFeed,
         monitorConfig,
-        financialContractProps
+        financialContractProps,
+        financialContractClient
       });
 
       logger.debug({
