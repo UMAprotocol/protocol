@@ -4,7 +4,7 @@ const {
   setAllowance,
   isDeviationOutsideErrorMargin
 } = require("@uma/financial-templates-lib");
-const { createObjectFromDefaultProps, runTransaction } = require("@uma/common");
+const { createObjectFromDefaultProps, runTransaction, parseFixed, formatFixed } = require("@uma/common");
 const { getAbi } = require("@uma/core");
 const Promise = require("bluebird");
 
@@ -170,13 +170,14 @@ class FundingRateProposer {
       });
       return;
     }
-    offchainFundingRate = offchainFundingRate.toString();
-    // Set `offchainFundingRate` to correct precision by converting fromWei, fixing decimals, and back toWei:
-    offchainFundingRate = this.toWei(
-      Number(this.fromWei(offchainFundingRate))
+    // Set `offchainFundingRate` to correct precision by converting back and forth between the pricefeed's output
+    // precision:
+    offchainFundingRate = parseFixed(
+      Number(formatFixed(offchainFundingRate.toString(), priceFeed.getPriceFeedDecimals()))
         .toFixed(this.precision)
-        .toString()
-    );
+        .toString(),
+      priceFeed.getPriceFeedDecimals()
+    ).toString();
     let onchainFundingRate = currentFundingRateData.rate.toString();
 
     // Check that offchainFundingRate is within [configStore.minFundingRate, configStore.maxFundingRate]
