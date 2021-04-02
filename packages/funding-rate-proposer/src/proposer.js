@@ -4,7 +4,7 @@ const {
   setAllowance,
   isDeviationOutsideErrorMargin
 } = require("@uma/financial-templates-lib");
-const { createObjectFromDefaultProps, runTransaction } = require("@uma/common");
+const { createObjectFromDefaultProps, runTransaction, parseFixed, formatFixed } = require("@uma/common");
 const { getAbi } = require("@uma/core");
 const Promise = require("bluebird");
 
@@ -71,6 +71,13 @@ class FundingRateProposer {
           return !isNaN(x);
           // Negative allowed-margins might be useful based on the implementation
           // of `isDeviationOutsideErrorMargin()`
+        }
+      },
+      precision: {
+        //   "precision":9 ->  # of decimals to round fundingRate to.
+        value: 9,
+        isValid: x => {
+          return !isNaN(x) && x >= 0 && x <= 18;
         }
       }
     };
@@ -163,7 +170,14 @@ class FundingRateProposer {
       });
       return;
     }
-    offchainFundingRate = offchainFundingRate.toString();
+    // Set `offchainFundingRate` to correct precision by converting back and forth between the pricefeed's output
+    // precision:
+    offchainFundingRate = parseFixed(
+      Number(formatFixed(offchainFundingRate.toString(), priceFeed.getPriceFeedDecimals()))
+        .toFixed(this.precision)
+        .toString(),
+      priceFeed.getPriceFeedDecimals()
+    ).toString();
     let onchainFundingRate = currentFundingRateData.rate.toString();
 
     // Check that offchainFundingRate is within [configStore.minFundingRate, configStore.maxFundingRate]
