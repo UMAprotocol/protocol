@@ -72,6 +72,13 @@ class FundingRateProposer {
           // Negative allowed-margins might be useful based on the implementation
           // of `isDeviationOutsideErrorMargin()`
         }
+      },
+      precision: {
+        //   "precision":9 ->  # of decimals to round fundingRate to.
+        value: 9,
+        isValid: x => {
+          return !isNaN(x) && x >= 0 && x <= 18;
+        }
       }
     };
 
@@ -164,6 +171,12 @@ class FundingRateProposer {
       return;
     }
     offchainFundingRate = offchainFundingRate.toString();
+    // Set `offchainFundingRate` to correct precision by converting fromWei, fixing decimals, and back toWei:
+    offchainFundingRate = this.toWei(
+      Number(this.fromWei(offchainFundingRate))
+        .toFixed(this.precision)
+        .toString()
+    );
     let onchainFundingRate = currentFundingRateData.rate.toString();
 
     // Check that offchainFundingRate is within [configStore.minFundingRate, configStore.maxFundingRate]
