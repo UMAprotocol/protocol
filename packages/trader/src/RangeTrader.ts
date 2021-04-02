@@ -34,8 +34,8 @@ export class RangeTrader {
     readonly referencePriceFeed: any,
     readonly exchangeAdapter: typeof ExchangeAdapterInterface,
     readonly rangeTraderConfig: {
-      tradeExecutionThreshold: number;
-      targetPriceSpread: number;
+      tradeExecutionThreshold?: number;
+      targetPriceSpread?: number;
     }
   ) {
     assert(tokenPriceFeed.getPriceFeedDecimals() === referencePriceFeed.getPriceFeedDecimals(), "decimals must match");

@@ -16,6 +16,7 @@ export class TraderConfig {
   readonly tokenPriceFeedConfig: any;
   readonly referencePriceFeedConfig: any;
   readonly exchangeAdapterConfig: any;
+  readonly rangeTraderConfig: any;
 
   constructor(env: ProcessEnv) {
     const {
@@ -26,7 +27,8 @@ export class TraderConfig {
       ERROR_RETRIES_TIMEOUT,
       DS_PROXY_FACTORY_ADDRESS,
       REFERENCE_PRICE_FEED_CONFIG,
-      EXCHANGE_ADAPTER_CONFIG
+      EXCHANGE_ADAPTER_CONFIG,
+      RANGE_TRADER_CONFIG
     } = env;
     assert(EMP_ADDRESS, "EMP_ADDRESS required");
     this.financialContractAddress = Web3.utils.toChecksumAddress(EMP_ADDRESS);
@@ -39,5 +41,6 @@ export class TraderConfig {
     this.tokenPriceFeedConfig = TOKEN_PRICE_FEED_CONFIG ? JSON.parse(TOKEN_PRICE_FEED_CONFIG) : null;
     this.referencePriceFeedConfig = REFERENCE_PRICE_FEED_CONFIG ? JSON.parse(REFERENCE_PRICE_FEED_CONFIG) : null;
     this.exchangeAdapterConfig = EXCHANGE_ADAPTER_CONFIG ? JSON.parse(EXCHANGE_ADAPTER_CONFIG) : null;
+    this.rangeTraderConfig = RANGE_TRADER_CONFIG ? JSON.parse(RANGE_TRADER_CONFIG) : {};
   }
 }
