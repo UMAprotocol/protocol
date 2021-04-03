@@ -95,7 +95,10 @@ class OptimisticOracleContractMonitor {
         )} and the final fee is ${this.formatDecimalString(convertCollateralDecimals(event.finalFee))}. ` +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
-      this.logger[this.logOverrides.requestedPrice || "error"]({
+      // The default log level should be reduced to "info" for funding rate identifiers:
+      this.logger[
+        this.logOverrides.requestedPrice || (this._isFundingRateIdentifier(event.identifier) ? "info" : "error")
+      ]({
         at: "OptimisticOracleContractMonitor",
         message: "Price Request Alert 👮🏻!",
         mrkdwn: mrkdwn
@@ -128,7 +131,10 @@ class OptimisticOracleContractMonitor {
         `Collateral currency address is ${event.currency}. ` +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
-      this.logger[this.logOverrides.proposedPrice || "error"]({
+      // The default log level should be reduced to "info" for funding rate identifiers:
+      this.logger[
+        this.logOverrides.proposedPrice || (this._isFundingRateIdentifier(event.identifier) ? "info" : "error")
+      ]({
         at: "OptimisticOracleContractMonitor",
         message: "Price Proposal Alert 🧞‍♂️!",
         mrkdwn: mrkdwn
@@ -158,7 +164,9 @@ class OptimisticOracleContractMonitor {
         `The ancillary data field is ${event.ancillaryData}. ` +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
-      this.logger[this.logOverrides.disputedPrice || "error"]({
+      this.logger[
+        this._isFundingRateIdentifier(event.identifier) ? "info" : this.logOverrides.disputedPrice || "error"
+      ]({
         at: "OptimisticOracleContractMonitor",
         message: "Price Dispute Alert ⛔️!",
         mrkdwn: mrkdwn
@@ -215,6 +223,12 @@ class OptimisticOracleContractMonitor {
       return 0;
     }
     return eventArray[eventArray.length - 1].blockNumber;
+  }
+
+  // We make the assumption that identifiers that end with "_fr" like "ethbtc_fr" are funding rate identifiers,
+  // and we should lower the alert levels for such price requests because we expect them to appear often.
+  _isFundingRateIdentifier(identifier) {
+    return identifier.toLowerCase().endsWith("_fr");
   }
 }
 
