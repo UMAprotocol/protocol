@@ -1367,7 +1367,8 @@ contract("CreatePriceFeed.js", function(accounts) {
       type: "forexdaily",
       base: forexBase,
       symbol: forexSymbol,
-      lookback
+      lookback,
+      forexDailyApiKey: apiKey
     };
 
     const validForexDailyFeed = await createPriceFeed(logger, web3, networker, getTime, config);
@@ -1384,7 +1385,8 @@ contract("CreatePriceFeed.js", function(accounts) {
       type: "forexdaily",
       base: forexBase,
       symbol: forexSymbol,
-      lookback
+      lookback,
+      forexDailyApiKey: apiKey
     };
 
     // Missing base
@@ -1394,6 +1396,11 @@ contract("CreatePriceFeed.js", function(accounts) {
     // Mising lookback
     assert.equal(
       await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, lookback: undefined }),
+      null
+    );
+    // Mising apiKey
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, forexDailyApiKey: undefined }),
       null
     );
   });

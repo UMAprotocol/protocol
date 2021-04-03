@@ -19,6 +19,7 @@ contract("ForexDailyPriceFeed.js", function() {
   let networker;
   let spy;
 
+  const apiKey = "XXX";
   const base = "EUR";
   const symbol = "USD";
   const lookback = 0; // Lookback doesn't matter in this test since we populate the Networker
@@ -70,6 +71,7 @@ contract("ForexDailyPriceFeed.js", function() {
       lookback,
       networker,
       getTime,
+      apiKey,
       pricePrecision // Add arbitrary decimal conversion.
     );
   });
@@ -95,6 +97,7 @@ contract("ForexDailyPriceFeed.js", function() {
         lookback,
         networker,
         getTime,
+        apiKey,
         6 // Add arbitrary decimal conversion.
       );
     } catch (err) {
@@ -115,6 +118,7 @@ contract("ForexDailyPriceFeed.js", function() {
         lookback,
         networker,
         getTime,
+        apiKey,
         6 // Add arbitrary decimal conversion.
       );
     } catch (err) {

@@ -17,6 +17,7 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
    * @param {Integer} lookback How far in the past the historical prices will be available using getHistoricalPrice.
    * @param {Object} networker Used to send the API requests.
    * @param {Function} getTime Returns the current time.
+   * @param {String} apiKey optional Forex Daily API key.
    * @param {Number} priceFeedDecimals Number of priceFeedDecimals to use to convert price to wei.
    * @param {Integer} minTimeBetweenUpdates Min number of seconds between updates. If update() is called again before
    *        this number of seconds has passed, it will be a no-op.
@@ -29,6 +30,7 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
     lookback,
     networker,
     getTime,
+    apiKey,
     priceFeedDecimals = 18,
     minTimeBetweenUpdates = 43200
     // 12 hours is a reasonable default since this pricefeed returns daily granularity at best.
@@ -47,6 +49,7 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
     this.networker = networker;
     this.getTime = getTime;
     this.priceFeedDecimals = priceFeedDecimals;
+    this.apiKey = apiKey;
 
     this.toBN = this.web3.utils.toBN;
 
@@ -176,7 +179,8 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
     const url = [
       "https://api.exchangeratesapi.io/history?",
       `start_at=${startDateString}&end_at=${endDateString}`,
-      `&base=${this.base}&symbols=${this.symbol}`
+      `&base=${this.base}&symbols=${this.symbol}`,
+      `&access_key=${this.apiKey}`
     ].join("");
 
     // 2. Send request.
