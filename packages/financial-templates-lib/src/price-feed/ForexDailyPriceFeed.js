@@ -17,7 +17,7 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
    * @param {Integer} lookback How far in the past the historical prices will be available using getHistoricalPrice.
    * @param {Object} networker Used to send the API requests.
    * @param {Function} getTime Returns the current time.
-   * @param {String} apiKey optional CW API key. Note: these API keys are rate-limited.
+   * @param {String} apiKey optional Forex Daily API key.
    * @param {Number} priceFeedDecimals Number of priceFeedDecimals to use to convert price to wei.
    * @param {Integer} minTimeBetweenUpdates Min number of seconds between updates. If update() is called again before
    *        this number of seconds has passed, it will be a no-op.
