@@ -164,9 +164,7 @@ class OptimisticOracleContractMonitor {
         `The ancillary data field is ${event.ancillaryData}. ` +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
-      this.logger[
-        this._isFundingRateIdentifier(event.identifier) ? "info" : this.logOverrides.disputedPrice || "error"
-      ]({
+      this.logger[this.logOverrides.disputedPrice || "error"]({
         at: "OptimisticOracleContractMonitor",
         message: "Price Dispute Alert ⛔️!",
         mrkdwn: mrkdwn
