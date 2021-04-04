@@ -3,7 +3,7 @@ const { parseFixed } = require("@uma/common");
 const moment = require("moment-timezone");
 const assert = require("assert");
 
-// An implementation of PriceFeedInterface that uses https://api.exchangeratesapi.io/ to
+// An implementation of PriceFeedInterface that uses https://exchangerate.host/#/docs to
 // daily forex prices published by the ECB
 class ForexDailyPriceFeed extends PriceFeedInterface {
   /**
@@ -17,7 +17,6 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
    * @param {Integer} lookback How far in the past the historical prices will be available using getHistoricalPrice.
    * @param {Object} networker Used to send the API requests.
    * @param {Function} getTime Returns the current time.
-   * @param {String} apiKey optional Forex Daily API key.
    * @param {Number} priceFeedDecimals Number of priceFeedDecimals to use to convert price to wei.
    * @param {Integer} minTimeBetweenUpdates Min number of seconds between updates. If update() is called again before
    *        this number of seconds has passed, it will be a no-op.
@@ -30,7 +29,6 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
     lookback,
     networker,
     getTime,
-    apiKey,
     priceFeedDecimals = 18,
     minTimeBetweenUpdates = 43200
     // 12 hours is a reasonable default since this pricefeed returns daily granularity at best.
@@ -49,7 +47,6 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
     this.networker = networker;
     this.getTime = getTime;
     this.priceFeedDecimals = priceFeedDecimals;
-    this.apiKey = apiKey;
 
     this.toBN = this.web3.utils.toBN;
 
@@ -109,7 +106,7 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
           )}`
         );
         console.log(
-          `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n- https://exchangeratesapi.io/history?base=${this.base}&symbols=${this.symbol}`
+          `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n- https://api.exchangerate.host/timeseries?base=${this.base}&symbols=${this.symbol}`
         );
         console.groupEnd();
       }
@@ -121,7 +118,7 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
       console.group(`\n(${this.symbol}${this.base}) Historical Daily Price @ ${match.closeTime}`);
       console.log(`- ✅ Close Price:${this.web3.utils.fromWei(returnPrice.toString())}`);
       console.log(
-        `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n- https://exchangeratesapi.io/history?base=${this.base}&symbols=${this.symbol}`
+        `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n- https://api.exchangerate.host/timeseries?base=${this.base}&symbols=${this.symbol}`
       );
       console.groupEnd();
     }
@@ -175,12 +172,11 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
     const endDateString = this._secondToDateTime(currentTime);
 
     // 1. Construct URL.
-    // See https://exchangeratesapi.io/ for how this url is constructed.
+    // See https://exchangerate.host/#/docs for how this url is constructed.
     const url = [
-      "https://api.exchangeratesapi.io/history?",
-      `start_at=${startDateString}&end_at=${endDateString}`,
-      `&base=${this.base}&symbols=${this.symbol}`,
-      `&access_key=${this.apiKey}`
+      "https://api.exchangerate.host/timeseries?",
+      `start_date=${startDateString}&end_date=${endDateString}`,
+      `&base=${this.base}&symbols=${this.symbol}`
     ].join("");
 
     // 2. Send request.
@@ -201,10 +197,7 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
     //   "rates": {
     //     "2021-03-16": {"EUR":0.8385041087},
     //     "2021-03-15": {"EUR":0.8389261745},
-    //   },
-    //     "start_at": "2021-03-15",
-    //     "end_at": "2021-03-16",
-    //     "base": "USD"
+    //   }
     // }
     const newHistoricalPricePeriods = Object.keys(historyResponse.rates)
       .map(dateString => ({
