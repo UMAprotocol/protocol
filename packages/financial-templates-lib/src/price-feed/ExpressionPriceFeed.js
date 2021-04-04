@@ -72,6 +72,7 @@ class ExpressionPriceFeed extends PriceFeedInterface {
       throw errors;
     }
 
+    console.log(historicalPrices);
     return this._convertToFixed(this.expressionCode.evaluate(historicalPrices), this.getPriceFeedDecimals());
   }
 
@@ -112,6 +113,7 @@ class ExpressionPriceFeed extends PriceFeedInterface {
       }
     });
 
+    console.log(prices);
     if (errors.length > 0) return null;
 
     return this._convertToFixed(this.expressionCode.evaluate(prices), this.getPriceFeedDecimals());

@@ -7,12 +7,14 @@ const {
 const { createObjectFromDefaultProps, runTransaction, parseFixed, formatFixed } = require("@uma/common");
 const { getAbi } = require("@uma/core");
 const Promise = require("bluebird");
+const assert = require("assert");
 
 class FundingRateProposer {
   /**
    * @notice Constructs new Perpetual FundingRate Proposer bot.
    * @param {Object} logger Module used to send logs.
    * @param {Object} perpetualFactoryClient Module used to query for live perpetual contracts.
+   * @param {Object} optimisticOracleClient Module used to query OO information on-chain.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {String} account Ethereum account from which to send txns.
    * @param {Object} commonPriceFeedConfig Default configuration to construct all price feed objects.
@@ -21,6 +23,7 @@ class FundingRateProposer {
   constructor({
     logger,
     perpetualFactoryClient,
+    optimisticOracleClient,
     gasEstimator,
     account,
     commonPriceFeedConfig,
@@ -29,6 +32,7 @@ class FundingRateProposer {
     this.logger = logger;
     this.account = account;
     this.perpetualFactoryClient = perpetualFactoryClient;
+    this.optimisticOracleClient = optimisticOracleClient;
     this.web3 = this.perpetualFactoryClient.web3;
     this.commonPriceFeedConfig = commonPriceFeedConfig;
 
@@ -88,7 +92,11 @@ class FundingRateProposer {
   }
 
   async update() {
-    await Promise.all([this.perpetualFactoryClient.update(), this.gasEstimator.update()]);
+    await Promise.all([
+      this.perpetualFactoryClient.update(),
+      this.optimisticOracleClient.update(),
+      this.gasEstimator.update()
+    ]);
 
     // Once PerpFactory client is updated, cache contract instances for each address deployed.
     // These will be saved to this.contractCache. Additionally, precompute state that we'll
@@ -122,6 +130,18 @@ class FundingRateProposer {
     // increase with time since last update.
     await Promise.map(Object.keys(this.contractCache), contractAddress => {
       return this._updateFundingRate(contractAddress, usePriceFeedTime);
+    });
+  }
+
+  async applyFundingRates() {
+    this.logger.debug({
+      at: "PerpetualProposer#applyFundingRates",
+      message: "Checking for pending funding rates to publish",
+      perpetualsChecked: Object.keys(this.contractCache)
+    });
+
+    await Promise.map(Object.keys(this.contractCache), contractAddress => {
+      return this._applyFundingRate(contractAddress);
     });
   }
 
@@ -284,6 +304,127 @@ class FundingRateProposer {
       });
     }
   }
+
+  // If there is a pending funding rate that can be published, AND the current offchain price differs from the pending
+  // rate more than some threshold, than publish the pending rate
+  async _applyFundingRate(contractAddress) {
+    const cachedContract = this.contractCache[contractAddress];
+    const currentFundingRateData = cachedContract.state.currentFundingRateData;
+    const fundingRateIdentifier = this.hexToUtf8(currentFundingRateData.identifier);
+
+    // Get `getSettleableProposals` in which the proposer was this bot account. Return early if there are no
+    // pending proposals.
+    const publishableProposals = this.optimisticOracleClient.getSettleableProposals(this.account).filter(proposal => {
+      return proposal.requester === contractAddress;
+    });
+    if (publishableProposals.length === 0) {
+      this.logger.debug({
+        at: "PerpetualProposer#applyFundingRate",
+        message: "No pending proposals",
+        fundingRateIdentifier
+      });
+      return;
+    }
+    assert(publishableProposals.length === 1, "Should be a maximum of 1 pending proposal for any identifier");
+    const publishableFundingRate = publishableProposals[0].proposedPrice.toString();
+
+    // !!TODO: Refactor the following logic of fetching an off-chain price and comparing it to some other
+    // price, which is duplicated in _updateFundingRate():
+
+    // Compare the proposed rates to the offchain rate.
+    const priceFeed = this.priceFeedCache[fundingRateIdentifier];
+    if (!priceFeed) {
+      this.logger.error({
+        at: "PerpetualProposer#applyFundingRate",
+        message: "Failed to create pricefeed for funding rate identifier",
+        fundingRateIdentifier
+      });
+      return;
+    }
+    let offchainFundingRate = priceFeed.getCurrentPrice();
+    if (!offchainFundingRate) {
+      this.logger.error({
+        at: "PerpetualProposer#applyFundingRate",
+        message: "Failed to query current price for funding rate identifier",
+        fundingRateIdentifier
+      });
+      return;
+    }
+
+    // If they differ by more than `fundingRateErrorPercent`, then call `applyFundingRate`.
+    // - Set `offchainFundingRate` to correct precision by converting back and forth between the pricefeed's output
+    //   precision:
+    offchainFundingRate = parseFixed(
+      Number(formatFixed(offchainFundingRate.toString(), priceFeed.getPriceFeedDecimals()))
+        .toFixed(this.precision)
+        .toString(),
+      priceFeed.getPriceFeedDecimals()
+    ).toString();
+    let shouldUpdateFundingRate = isDeviationOutsideErrorMargin(
+      this.toBN(publishableFundingRate), // ObservedValue
+      this.toBN(offchainFundingRate), // ExpectedValue
+      this.toBN(this.toWei("1")),
+      this.toBN(this.toWei(this.fundingRateErrorPercent.toString()))
+    );
+    if (shouldUpdateFundingRate) {
+      const apply = cachedContract.contract.methods.applyFundingRate();
+      this.logger.debug({
+        at: "PerpetualProposer#applyFundingRate",
+        message: "Applying new funding rate",
+        fundingRateIdentifier,
+        currentRate: offchainFundingRate,
+        pendingRateToPublish: publishableFundingRate,
+        allowedError: this.fundingRateErrorPercent
+      });
+      try {
+        // Get successful transaction receipt and return value or error.
+        const transactionResult = await runTransaction({
+          transaction: apply,
+          config: {
+            gasPrice: this.gasEstimator.getCurrentFastPrice(),
+            from: this.account
+            // Since this method is called within a Promise.all, it is sending transactions in parallel with other
+            // transactions, making it difficult to determine which nonce is the correct once to set for ynatm.
+            // Future work should build nonce management logic into the runTransactions method. See more here:
+            // https://github.com/ChainSafe/web3.js/issues/1846
+          }
+        });
+        let receipt = transactionResult.receipt;
+
+        const logResult = {
+          tx: receipt.transactionHash,
+          requester: contractAddress,
+          fundingRateIdentifier,
+          currentRate: offchainFundingRate,
+          pendingRateToPublish: publishableFundingRate
+        };
+        this.logger.info({
+          at: "PerpetualProposer#applyFundingRate",
+          message: "Applied new funding rate!🆒",
+          applyResult: logResult
+        });
+      } catch (error) {
+        const message = error.type === "call" ? "Cannot apply funding rate✋" : "Failed to apply funding rate🚨";
+        this.logger.error({
+          at: "PerpetualProposer#applyFundingRate",
+          message,
+          fundingRateIdentifier,
+          error
+        });
+        return;
+      }
+    } else {
+      this.logger.debug({
+        at: "PerpetualProposer#applyFundingRate",
+        message: "Skipping apply because pending rate is within allowed margin of error",
+        fundingRateIdentifier,
+        currentRate: offchainFundingRate,
+        pendingRateToPublish: publishableFundingRate,
+        allowedError: this.fundingRateErrorPercent
+      });
+    }
+  }
+
   // Sets allowances for all collateral currencies used live perpetual contracts.
   async _setAllowances() {
     await Promise.map(Object.keys(this.contractCache), async contractAddress => {

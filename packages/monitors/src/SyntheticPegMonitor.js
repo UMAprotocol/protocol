@@ -133,6 +133,7 @@ class SyntheticPegMonitor {
     let cryptoWatchTokenPrice = this.medianizerPriceFeed.getCurrentPrice();
     // Multiply identifier price by funding rate multiplier to get its adjusted price:
     if (this.financialContractClient?.latestCumulativeFundingRateMultiplier) {
+      console.log("CFRM: ", this.financialContractClient.latestCumulativeFundingRateMultiplier.toString());
       cryptoWatchTokenPrice = this.toBN(cryptoWatchTokenPrice.toString())
         .mul(this.financialContractClient.latestCumulativeFundingRateMultiplier)
         .div(this.toBN(this.toWei("1"))); // We can assume that the CFRM is in 18 decimal precision.

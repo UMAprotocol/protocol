@@ -20,6 +20,7 @@ const Finder = getTruffleContract("Finder", web3);
 const Registry = getTruffleContract("Registry", web3);
 const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
 const Store = getTruffleContract("Store", web3);
+const MockOracle = getTruffleContract("MockOracleAncillary", web3);
 
 contract("index.js", function(accounts) {
   const deployer = accounts[0];
@@ -29,6 +30,7 @@ contract("index.js", function(accounts) {
   let identifierWhitelist;
   let collateralWhitelist;
   let collateral;
+  let mockOracle;
   let perpsCreated = [];
 
   // Offchain infra
@@ -90,6 +92,7 @@ contract("index.js", function(accounts) {
 
     // Funding rates are proposed to an OptimisticOracle.
     const optimisticOracle = await OptimisticOracle.new(optimisticOracleLiveness, finder.address, timer.address);
+    mockOracle = await MockOracle.new(finder.address, timer.address);
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, optimisticOracle.address);
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.address);
 
@@ -108,6 +111,8 @@ contract("index.js", function(accounts) {
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, perpFactory.address);
     // Set the address in the global name space to enable proposer's index.js to access it via `core/getAddressTest`.
     addGlobalHardhatTestingAddress("PerpetualCreator", perpFactory.address);
+    addGlobalHardhatTestingAddress("OptimisticOracle", optimisticOracle.address);
+    addGlobalHardhatTestingAddress("Voting", mockOracle.address);
 
     // Deploy new Perp
     const perpAddress = await perpFactory.createPerpetual.call(defaultCreationParams, configStoreParams, {

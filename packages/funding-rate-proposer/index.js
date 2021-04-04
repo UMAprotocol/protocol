@@ -8,6 +8,7 @@ const {
   waitForLogger,
   delay,
   FinancialContractFactoryClient,
+  OptimisticOracleClient,
   GasEstimator
 } = require("@uma/financial-templates-lib");
 const { FundingRateProposer } = require("./src/proposer");
@@ -67,12 +68,23 @@ async function run({
     );
     const gasEstimator = new GasEstimator(logger);
 
+    // Create the OptimisticOracleClient to query the state of proposed funding rates.
+    const optimisticOracleClient = new OptimisticOracleClient(
+      logger,
+      getAbi("OptimisticOracle"),
+      getAbi("Voting"),
+      web3,
+      getAddress("OptimisticOracle", networkId),
+      getAddress("Voting", networkId)
+    );
+
     // The proposer needs to query prices for any identifier approved to use the Optimistic Oracle,
     // so a new pricefeed is constructed for each identifier. This `commonPriceFeedConfig` contains
     // properties that are shared across all of these new pricefeeds.
     const fundingRateProposer = new FundingRateProposer({
       logger,
       perpetualFactoryClient,
+      optimisticOracleClient,
       gasEstimator,
       account: accounts[0],
       commonPriceFeedConfig,
@@ -84,6 +96,7 @@ async function run({
       await retry(
         async () => {
           await fundingRateProposer.update();
+          await fundingRateProposer.applyFundingRates();
           await fundingRateProposer.updateFundingRates(isTest);
           return;
         },
