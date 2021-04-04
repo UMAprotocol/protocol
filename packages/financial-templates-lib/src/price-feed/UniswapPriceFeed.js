@@ -220,7 +220,6 @@ class UniswapPriceFeed extends PriceFeedInterface {
 
     if (reserve1.isZero() || reserve0.isZero()) return null;
 
-    console.log(reserve0.toString(), reserve1.toString());
     // Price is returned using same precision as base currency, which is token1 unless inverted.
     if (this.invertPrice) {
       return reserve0.mul(fixedPointAdjustment).div(reserve1);
