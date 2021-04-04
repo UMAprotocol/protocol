@@ -447,8 +447,8 @@ contract("Perpetual: proposer.js", function(accounts) {
 
         assert.equal(lastSpyLogLevel(spy), "debug");
         assert.isTrue(spyLogIncludes(spy, -1, "Skipping apply because pending rate is within allowed margin of error"));
-        // Since pricefeed hasn't changed, the "currentRate" should be equal to the "pendingRateToPublish":
-        assert.equal(spy.getCall(-1).lastArg.currentRate, spy.getCall(-1).lastArg.pendingRateToPublish);
+        // Since pricefeed hasn't changed, the "pricefeedPrice" should be equal to the "pendingRateToPublish":
+        assert.equal(spy.getCall(-1).lastArg.pricefeedPrice, spy.getCall(-1).lastArg.pendingRateToPublish);
 
         // Now set pricefeed's current price outside margin of error:
         let pricesToPropose = ["0.000004", "0.000006", "0.000004", "0.000006"];
@@ -478,7 +478,7 @@ contract("Perpetual: proposer.js", function(accounts) {
           commonPriceFeedConfig.currentPrice
         );
         assert.equal(
-          fromWei(spy.getCall(-1).lastArg.applyResult.currentRate),
+          fromWei(spy.getCall(-1).lastArg.applyResult.pricefeedPrice),
           pricesToPropose[pricesToPropose.length - 1]
         );
         assert.ok(spy.getCall(-1).lastArg.applyResult.tx);

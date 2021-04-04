@@ -173,39 +173,16 @@ class FundingRateProposer {
 
     // Assume pricefeed has been cached and updated prior to this function via the `update()` call.
     const priceFeed = this.priceFeedCache[fundingRateIdentifier];
-    if (!priceFeed) {
-      this.logger.error({
-        at: "PerpetualProposer#updateFundingRate",
-        message: "Failed to create pricefeed for funding rate identifier",
-        fundingRateIdentifier
-      });
-      return;
-    }
-    let offchainFundingRate = priceFeed.getCurrentPrice();
-    if (!offchainFundingRate) {
-      this.logger.error({
-        at: "PerpetualProposer#updateFundingRate",
-        message: "Failed to query current price for funding rate identifier",
-        fundingRateIdentifier
-      });
-      return;
-    }
-    // Set `offchainFundingRate` to correct precision by converting back and forth between the pricefeed's output
-    // precision:
-    offchainFundingRate = parseFixed(
-      Number(formatFixed(offchainFundingRate.toString(), priceFeed.getPriceFeedDecimals()))
-        .toFixed(this.precision)
-        .toString(),
-      priceFeed.getPriceFeedDecimals()
-    ).toString();
+    const pricefeedPrice = await this._getPriceFeedAndPrice(fundingRateIdentifier);
+    if (!pricefeedPrice) return;
     let onchainFundingRate = currentFundingRateData.rate.toString();
 
-    // Check that offchainFundingRate is within [configStore.minFundingRate, configStore.maxFundingRate]
+    // Check that pricefeedPrice is within [configStore.minFundingRate, configStore.maxFundingRate]
     const minFundingRate = currentConfig.minFundingRate.toString();
     const maxFundingRate = currentConfig.maxFundingRate.toString();
     if (
-      this.toBN(offchainFundingRate).lt(this.toBN(minFundingRate)) ||
-      this.toBN(offchainFundingRate).gt(this.toBN(maxFundingRate))
+      this.toBN(pricefeedPrice).lt(this.toBN(minFundingRate)) ||
+      this.toBN(pricefeedPrice).gt(this.toBN(maxFundingRate))
     ) {
       this.logger.error({
         at: "PerpetualProposer#updateFundingRate",
@@ -213,17 +190,17 @@ class FundingRateProposer {
         fundingRateIdentifier,
         minFundingRate,
         maxFundingRate,
-        offchainFundingRate
+        pricefeedPrice
       });
       return;
     }
 
     // If the saved funding rate is not equal to the current funding rate within margin of error, then
-    // prepare request to update. We're assuming that the `offchainFundingRate` is the baseline or "expected"
+    // prepare request to update. We're assuming that the `pricefeedPrice` is the baseline or "expected"
     // price.
     let shouldUpdateFundingRate = isDeviationOutsideErrorMargin(
       this.toBN(onchainFundingRate), // ObservedValue
-      this.toBN(offchainFundingRate), // ExpectedValue
+      this.toBN(pricefeedPrice), // ExpectedValue
       this.toBN(this.toWei("1")),
       this.toBN(this.toWei(this.fundingRateErrorPercent.toString()))
     );
@@ -234,7 +211,7 @@ class FundingRateProposer {
         ? priceFeed.getLastUpdateTime()
         : (await this.web3.eth.getBlock("latest")).timestamp;
       const proposal = cachedContract.contract.methods.proposeFundingRate(
-        { rawValue: offchainFundingRate },
+        { rawValue: pricefeedPrice },
         requestTimestamp
       );
 
@@ -243,7 +220,7 @@ class FundingRateProposer {
         message: "Proposing new funding rate",
         fundingRateIdentifier,
         requestTimestamp,
-        proposedRate: offchainFundingRate,
+        proposedRate: pricefeedPrice,
         currentRate: onchainFundingRate,
         allowedError: this.fundingRateErrorPercent,
         proposer: this.account
@@ -270,7 +247,7 @@ class FundingRateProposer {
           proposer: this.account,
           fundingRateIdentifier,
           requestTimestamp,
-          proposedRate: offchainFundingRate,
+          proposedRate: pricefeedPrice,
           currentRate: onchainFundingRate,
           proposalBond: returnValue
         };
@@ -298,7 +275,7 @@ class FundingRateProposer {
         at: "PerpetualProposer#updateFundingRate",
         message: "Skipping proposal because current rate is within allowed margin of error",
         fundingRateIdentifier,
-        proposedRate: offchainFundingRate,
+        proposedRate: pricefeedPrice,
         currentRate: onchainFundingRate,
         allowedError: this.fundingRateErrorPercent
       });
@@ -328,41 +305,12 @@ class FundingRateProposer {
     assert(publishableProposals.length === 1, "Should be a maximum of 1 pending proposal for any identifier");
     const publishableFundingRate = publishableProposals[0].proposedPrice.toString();
 
-    // !!TODO: Refactor the following logic of fetching an off-chain price and comparing it to some other
-    // price, which is duplicated in _updateFundingRate():
-
-    // Compare the proposed rates to the offchain rate.
-    const priceFeed = this.priceFeedCache[fundingRateIdentifier];
-    if (!priceFeed) {
-      this.logger.error({
-        at: "PerpetualProposer#applyFundingRate",
-        message: "Failed to create pricefeed for funding rate identifier",
-        fundingRateIdentifier
-      });
-      return;
-    }
-    let offchainFundingRate = priceFeed.getCurrentPrice();
-    if (!offchainFundingRate) {
-      this.logger.error({
-        at: "PerpetualProposer#applyFundingRate",
-        message: "Failed to query current price for funding rate identifier",
-        fundingRateIdentifier
-      });
-      return;
-    }
-
-    // If they differ by more than `fundingRateErrorPercent`, then call `applyFundingRate`.
-    // - Set `offchainFundingRate` to correct precision by converting back and forth between the pricefeed's output
-    //   precision:
-    offchainFundingRate = parseFixed(
-      Number(formatFixed(offchainFundingRate.toString(), priceFeed.getPriceFeedDecimals()))
-        .toFixed(this.precision)
-        .toString(),
-      priceFeed.getPriceFeedDecimals()
-    ).toString();
+    // Compare the proposed rates to the pricefeed's current rate.
+    const pricefeedPrice = await this._getPriceFeedAndPrice(fundingRateIdentifier);
+    if (!pricefeedPrice) return;
     let shouldUpdateFundingRate = isDeviationOutsideErrorMargin(
       this.toBN(publishableFundingRate), // ObservedValue
-      this.toBN(offchainFundingRate), // ExpectedValue
+      this.toBN(pricefeedPrice), // ExpectedValue
       this.toBN(this.toWei("1")),
       this.toBN(this.toWei(this.fundingRateErrorPercent.toString()))
     );
@@ -372,7 +320,7 @@ class FundingRateProposer {
         at: "PerpetualProposer#applyFundingRate",
         message: "Applying new funding rate",
         fundingRateIdentifier,
-        currentRate: offchainFundingRate,
+        pricefeedPrice: pricefeedPrice,
         pendingRateToPublish: publishableFundingRate,
         allowedError: this.fundingRateErrorPercent
       });
@@ -395,7 +343,7 @@ class FundingRateProposer {
           tx: receipt.transactionHash,
           requester: contractAddress,
           fundingRateIdentifier,
-          currentRate: offchainFundingRate,
+          pricefeedPrice: pricefeedPrice,
           pendingRateToPublish: publishableFundingRate
         };
         this.logger.info({
@@ -418,7 +366,7 @@ class FundingRateProposer {
         at: "PerpetualProposer#applyFundingRate",
         message: "Skipping apply because pending rate is within allowed margin of error",
         fundingRateIdentifier,
-        currentRate: offchainFundingRate,
+        pricefeedPrice: pricefeedPrice,
         pendingRateToPublish: publishableFundingRate,
         allowedError: this.fundingRateErrorPercent
       });
@@ -533,6 +481,40 @@ class FundingRateProposer {
         currentConfig
       }
     };
+  }
+
+  // Load cached pricefeed and fetch current price. Returns null if failure to get either pricefeed or current price.
+  async _getPriceFeedAndPrice(fundingRateIdentifier) {
+    const priceFeed = this.priceFeedCache[fundingRateIdentifier];
+    if (!priceFeed) {
+      this.logger.error({
+        at: "PerpetualProposer",
+        message: "Failed to create pricefeed for funding rate identifier",
+        fundingRateIdentifier
+      });
+      return null;
+    }
+    let currentPrice = priceFeed.getCurrentPrice();
+    if (!currentPrice) {
+      this.logger.error({
+        at: "PerpetualProposer",
+        message: "Failed to query current price for funding rate identifier",
+        fundingRateIdentifier
+      });
+      return null;
+    }
+
+    // Round `offchainFundingRate` to desired number of decimals by converting back and forth between the pricefeed's
+    // configured precision:
+    return parseFixed(
+      // 1) `formatFixed` converts the price in wei to a floating point.
+      // 2) `toFixed` removes decimals beyond `this.precision` in the floating point.
+      // 3) `parseFixed` converts the floating point back into wei.
+      Number(formatFixed(currentPrice.toString(), priceFeed.getPriceFeedDecimals()))
+        .toFixed(this.precision)
+        .toString(),
+      priceFeed.getPriceFeedDecimals()
+    ).toString();
   }
 }
 
