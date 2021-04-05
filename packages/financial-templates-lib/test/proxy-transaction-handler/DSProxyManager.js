@@ -126,7 +126,7 @@ contract("DSProxyManager", function(accounts) {
     assert.isTrue(spyLogIncludes(spy, -1, "Executed function on deployed library"));
     assert.isTrue(spyLogIncludes(spy, -1, tokenEvents[0].transactionHash)); // The transaction hash should be included.
   });
-  it("Can send functions to DSProxy using an not deployed bytecode library", async function() {
+  it("Can send functions to DSProxy using a not yet deployed library", async function() {
     // In this test we do the same execution as before (send tokens from DSProxy) but this time we dont deploy the
     // contract library and rather do it in the same tx at the DSProxy call. This works by first deploying the library
     // then making the call on it. Note this is still from the context of the DSProxy so msg.sender is the DSProxy address.

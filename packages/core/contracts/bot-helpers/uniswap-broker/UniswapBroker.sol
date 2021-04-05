@@ -24,7 +24,7 @@ contract UniswapBroker {
      * @dev True price is expressed in the ratio of token A to token B.
      * @dev The caller must approve this contract to spend whichever token is intended to be swapped.
      * @param tradingAsEOA bool to indicate if the UniswapBroker is being called by a DSProxy or an EOA.
-     * @param uniswapRouter address of the uniswap router used to facilate trades.
+     * @param uniswapRouter address of the uniswap router used to facilitate trades.
      * @param uniswapFactory address of the uniswap factory used to fetch current pair reserves.
      * @param swappedTokens array of addresses which are to be swapped. The order does not matter as the function will figure
      * out which tokens need to be exchanged to move the market to the desired "true" price.
@@ -89,11 +89,11 @@ contract UniswapBroker {
     /**
      * @notice Given the "true" price a token (represented by truePriceTokenA/truePriceTokenB) and the reservers in the
      * uniswap pair, calculate: a) the direction of trade (aToB) and b) the amount needed to trade (amountIn) to move
-     * the pool price to be equalto the true price.
+     * the pool price to be equal to the true price.
      * @dev Note that this method uses the Babylonian square root method which has a small margin of error which will
      * result in a small over or under estimation on the size of the trade needed.
      * @param truePriceTokenA the nominator of the true price.
-     * @param truePriceTokenB the denominatornominator of the true price.
+     * @param truePriceTokenB the denominator of the true price.
      * @param reserveA number of token A in the pair reserves
      * @param reserveB number of token B in the pair reserves
      */
@@ -128,9 +128,9 @@ contract UniswapBroker {
 
     // The methods below are taken from https://github.com/Uniswap/uniswap-v2-periphery/blob/master/contracts/libraries/UniswapV2Library.sol
     // We could import this library into this contract but this library is dependent Uniswap's SafeMath, which is bound
-    // to solidity 6.6.6. Hardhat can easily deal with two diffrent sets of solidity versions within one project so
+    // to solidity 6.6.6. Hardhat can easily deal with two different sets of solidity versions within one project so
     // unit tests would continue to work fine. However, this would break truffle support in the repo as truffle cant
-    // handel having two diffrent solidity versions. As a work around, the spesific methods needed in the UniswapBroker
+    // handel having two different solidity versions. As a work around, the specific methods needed in the UniswapBroker
     // are simply moved here to maintain truffle support.
     function getReserves(
         address factory,

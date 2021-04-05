@@ -26,6 +26,7 @@ class Liquidator {
   constructor({
     logger,
     financialContractClient,
+    proxyTransactionWrapper,
     gasEstimator,
     syntheticToken,
     priceFeed,
@@ -35,6 +36,8 @@ class Liquidator {
   }) {
     this.logger = logger;
     this.account = account;
+
+    this.proxyTransactionWrapper = proxyTransactionWrapper;
 
     // Expiring multiparty contract to read contract state
     this.financialContractClient = financialContractClient;
@@ -186,10 +189,7 @@ class Liquidator {
 
     // this takes in config, and emits log events
     this.liquidationStrategy = LiquidationStrategy(
-      {
-        ...configWithDefaults,
-        ...financialContractProps
-      },
+      { ...configWithDefaults, ...financialContractProps },
       this.web3.utils,
       log
     );
@@ -205,7 +205,9 @@ class Liquidator {
   async liquidatePositions(maxTokensToLiquidateWei, liquidatorOverridePrice) {
     this.logger.debug({
       at: "Liquidator",
-      message: "Checking for liquidatable positions and preforming liquidations"
+      message: "Checking for liquidatable positions and preforming liquidations",
+      maxTokensToLiquidateWei,
+      liquidatorOverridePrice
     });
     // If an override is provided, use that price. Else, get the latest price from the price feed.
     const price = liquidatorOverridePrice
@@ -269,23 +271,22 @@ class Liquidator {
 
       // Note: query the time again during each iteration to ensure the deadline is set reasonably.
       const currentBlockTime = this.financialContractClient.getLastUpdateTime();
-      const syntheticTokenBalance = this.toBN(await this.syntheticToken.methods.balanceOf(this.account).call());
+
+      // TODO: right now the `processPosition` method takes in maxTokensToLiquidateWei and syntheticTokenBalance. These
+      // numbers are the same thing in production as the index file sets the maxTokensToLiquidateWei as the synthetic
+      // token balance. This should be refactored (and simplified) to not repeat the same variable over and over.
+      const syntheticTokenBalance = await this.proxyTransactionWrapper.getEffectiveSyntheticTokenBalance();
 
       // run strategy based on configs and current state
       // will return liquidation arguments or nothing
       // if it returns nothing it means this position cant be or shouldnt be liquidated
       const liquidationArgs = this.liquidationStrategy.processPosition({
-        // position is assumed to be undercollateralized
-        position,
-        // need to know our current balance to know how much to save for defense fund
-        syntheticTokenBalance,
-        currentBlockTime,
-        // this is required to create liquidation object
-        maxCollateralPerToken,
-        // maximum tokens we can liquidate in position
+        position, // position is assumed to be undercollateralized
+        syntheticTokenBalance, // need to know our current balance to know how much to save for defense fund
+        currentBlockTime, // this is required to create liquidation object
+        maxCollateralPerToken, // maximum tokens we can liquidate in position
         maxTokensToLiquidateWei,
-        // for logging
-        inputPrice: scaledPrice.toString()
+        inputPrice: scaledPrice.toString() // for logging
       });
 
       // we couldnt liquidate, this typically would only happen if our balance is 0 or the withdrawal liveness
@@ -310,79 +311,31 @@ class Liquidator {
           maxTokensToLiquidateWei: maxTokensToLiquidateWei ? maxTokensToLiquidateWei.toString() : null
         });
       }
+      this.logger.debug({
+        at: "Liquidator",
+        message: "Liquidating position",
+        position,
+        inputPrice: scaledPrice.toString(),
+        minLiquidationPrice: this.liquidationMinPrice,
+        maxLiquidationPrice: maxCollateralPerToken.toString(),
+        tokensToLiquidate: tokensToLiquidate.toString()
+      });
+      const logResult = await this.proxyTransactionWrapper.submitLiquidationTransaction(liquidationArgs);
 
-      // liquidation strategy will control how much to liquidate
-      const liquidation = this.financialContract.methods.createLiquidation(...liquidationArgs);
-
-      // Send the transaction or report failure.
-      let receipt;
-      let txnConfig;
-      try {
-        // Configure tx config object
-        const gasEstimation = await liquidation.estimateGas({ from: this.account });
-        txnConfig = {
-          from: this.account,
-          gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
-          gasPrice: this.gasEstimator.getCurrentFastPrice()
-        };
-
-        // Make sure to keep trying with this nonce
-        const nonce = await this.web3.eth.getTransactionCount(this.account);
-
-        // Min Gas Price, with a max gasPrice of x4
-        const minGasPrice = parseInt(this.gasEstimator.getCurrentFastPrice(), 10);
-        const maxGasPrice = 2 * 3 * minGasPrice;
-
-        // Doubles gasPrice every iteration
-        const gasPriceScalingFunction = ynatm.DOUBLES;
-
-        this.logger.debug({
-          at: "Liquidator",
-          message: "Liquidating position",
-          position: position,
-          inputPrice: scaledPrice.toString(),
-          minLiquidationPrice: this.liquidationMinPrice,
-          maxLiquidationPrice: maxCollateralPerToken.toString(),
-          tokensToLiquidate: tokensToLiquidate.toString(),
-          txnConfig
-        });
-
-        // Receipt without events
-        receipt = await ynatm.send({
-          sendTransactionFunction: gasPrice => liquidation.send({ ...txnConfig, nonce, gasPrice }),
-          minGasPrice,
-          maxGasPrice,
-          gasPriceScalingFunction,
-          delay: 60000 // Tries and doubles gasPrice every minute if tx hasn't gone through
-        });
-      } catch (error) {
+      if (logResult instanceof Error || !logResult)
         this.logger.error({
           at: "Liquidator",
           message: "Failed to liquidate position🚨",
-          error
+          logResult
         });
-        continue;
-      }
-
-      const logResult = {
-        tx: receipt && receipt.transactionHash,
-        sponsor: receipt.events.LiquidationCreated.returnValues.sponsor,
-        liquidator: receipt.events.LiquidationCreated.returnValues.liquidator,
-        liquidationId: receipt.events.LiquidationCreated.returnValues.liquidationId,
-        tokensOutstanding: receipt.events.LiquidationCreated.returnValues.tokensOutstanding,
-        lockedCollateral: receipt.events.LiquidationCreated.returnValues.lockedCollateral,
-        liquidatedCollateral: receipt.events.LiquidationCreated.returnValues.liquidatedCollateral
-      };
-
-      // This log level can be overridden by specifying `positionLiquidated` in the `logOverrides`. Otherwise, use info.
-      this.logger[this.logOverrides.positionLiquidated || "info"]({
-        at: "Liquidator",
-        message: "Position has been liquidated!🔫",
-        position: position,
-        inputPrice: scaledPrice.toString(),
-        txnConfig,
-        liquidationResult: logResult
-      });
+      else
+        this.logger[this.logOverrides.positionLiquidated || "info"]({
+          at: "Liquidator",
+          message: "Position has been liquidated!🔫",
+          position: position,
+          inputPrice: scaledPrice.toString(),
+          liquidationResult: logResult
+        });
     }
   }
 
@@ -393,13 +346,29 @@ class Liquidator {
       message: "Checking for expired and disputed liquidations to withdraw rewards from"
     });
 
+    // In legacy versions of the EMP, withdrawing needs to be done by a party involved in the liquidation (i.e liquidator,
+    // sponsor or disputer).As the liquidator is the DSProxy, we would require the ability to send the withdrawal tx
+    // directly from the DSProxy to facilitate this.This functionality is not implemented as almost all legacy EMPs expired.
+    if (this.proxyTransactionWrapper?.useDsProxyToLiquidate && this.isLegacyEmpVersion) {
+      this.logger.warn({
+        at: "Liquidator",
+        message: "Attempting to withdraw liquidation from a legacy EMP🙈",
+        details: "This is not supported on legacy with a DSProxy! Please manually withdraw the liquidation"
+      });
+      return;
+    }
     // All of the liquidations that we could withdraw rewards from are drawn from the pool of
     // expired and disputed liquidations.
     const expiredLiquidations = this.financialContractClient.getExpiredLiquidations();
     const disputedLiquidations = this.financialContractClient.getDisputedLiquidations();
+
+    // The liquidator address is either the DSProxy (if using a DSProxy to liquidate) or the unlocked account.
+    const liquidatorAddress = this.proxyTransactionWrapper.useDsProxyToLiquidate
+      ? this.proxyTransactionWrapper.dsProxyManager.getDSProxyAddress()
+      : this.account;
     const potentialWithdrawableLiquidations = expiredLiquidations
       .concat(disputedLiquidations)
-      .filter(liquidation => liquidation.liquidator === this.account);
+      .filter(liquidation => liquidation.liquidator === liquidatorAddress);
 
     if (potentialWithdrawableLiquidations.length === 0) {
       this.logger.debug({
