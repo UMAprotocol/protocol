@@ -289,9 +289,8 @@ class FundingRateProposer {
     const currentFundingRateData = cachedContract.state.currentFundingRateData;
     const fundingRateIdentifier = this.hexToUtf8(currentFundingRateData.identifier);
 
-    // Get `getSettleableProposals` in which the proposer was this bot account. Return early if there are no
-    // pending proposals.
-    const publishableProposals = this.optimisticOracleClient.getSettleableProposals(this.account).filter(proposal => {
+    // Return early if there are no pending proposals whose liveness has expired.
+    const publishableProposals = this.optimisticOracleClient.getSettleableProposals().filter(proposal => {
       return proposal.requester === contractAddress;
     });
     if (publishableProposals.length === 0) {
