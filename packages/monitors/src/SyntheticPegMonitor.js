@@ -25,6 +25,7 @@ class SyntheticPegMonitor {
    *      { syntheticSymbol:"ETHBTC",
             priceIdentifier: "ETH/BTC",
             priceFeedDecimals: 18, }
+   * @param {Object} financialContractClient Client used to query Financial Contract state.
    */
   constructor({
     logger,
@@ -33,7 +34,8 @@ class SyntheticPegMonitor {
     medianizerPriceFeed,
     denominatorPriceFeed,
     monitorConfig,
-    financialContractProps
+    financialContractProps,
+    financialContractClient
   }) {
     this.logger = logger;
 
@@ -43,6 +45,9 @@ class SyntheticPegMonitor {
     this.denominatorPriceFeed = denominatorPriceFeed;
 
     this.web3 = web3;
+
+    // We'll use this to fetch the contract's funding rate multiplier if possible.
+    this.financialContractClient = financialContractClient;
 
     this.normalizePriceFeedDecimals = ConvertDecimals(financialContractProps.priceFeedDecimals, 18, this.web3);
 
@@ -125,7 +130,13 @@ class SyntheticPegMonitor {
     if (this.deviationAlertThreshold === 0) return; // return early if the threshold is zero.
     // Get the latest prices from the two price feeds.
     let uniswapTokenPrice = this.uniswapPriceFeed.getCurrentPrice();
-    const cryptoWatchTokenPrice = this.medianizerPriceFeed.getCurrentPrice();
+    let cryptoWatchTokenPrice = this.medianizerPriceFeed.getCurrentPrice();
+    // Multiply identifier price by funding rate multiplier to get its adjusted price:
+    if (this.financialContractClient?.latestCumulativeFundingRateMultiplier) {
+      cryptoWatchTokenPrice = this.toBN(cryptoWatchTokenPrice.toString())
+        .mul(this.financialContractClient.latestCumulativeFundingRateMultiplier)
+        .div(this.toBN(this.toWei("1"))); // We can assume that the CFRM is in 18 decimal precision.
+    }
 
     if (!uniswapTokenPrice || !cryptoWatchTokenPrice) {
       this.logger.warn({

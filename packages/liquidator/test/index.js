@@ -509,17 +509,15 @@ contract("index.js", function(accounts) {
 
         // A log of a deployed DSProxy should be included.
         assert.isTrue(spyLogIncludes(spy, 6, "No DSProxy found for EOA. Deploying new DSProxy"));
-        assert.isTrue(spyLogIncludes(spy, 7, "DSProxy deployed for your EOA"));
-        console.log("dsProxyFactory", dsProxyFactory.address);
+        assert.isTrue(spyLogIncludes(spy, 8, "DSProxy deployed for your EOA"));
         const createdEvents = await dsProxyFactory.getPastEvents("Created", { fromBlock: 0 });
-        console.log("createdEvents", createdEvents);
+
         assert.equal(createdEvents.length, 1);
         assert.equal(createdEvents[0].returnValues.owner, liquidator);
-
         // To verify contract type detection is correct for a standard feed, check the fifth log to see it matches expected.
-        assert.isTrue(spyLogIncludes(spy, 8, '"collateralDecimals":18'));
-        assert.isTrue(spyLogIncludes(spy, 8, '"syntheticDecimals":18'));
-        assert.isTrue(spyLogIncludes(spy, 8, '"priceFeedDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 9, '"collateralDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 9, '"syntheticDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 9, '"priceFeedDecimals":18'));
       });
       it("Correctly detects contract type and rejects unknown contract types", async function() {
         spy = sinon.spy();
