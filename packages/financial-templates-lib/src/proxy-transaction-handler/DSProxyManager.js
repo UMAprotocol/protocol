@@ -97,7 +97,7 @@ class DSProxyManager {
         at: "DSProxyManager",
         message: "DSProxy deployed for your EOA 🚀",
         dsProxyAddress: this.dsProxyAddress,
-        tx: dsProxyCreateTx.transactionHash,
+        tx: dsProxyCreateTx.receipt.transactionHash,
         account: this.account
       });
     }
