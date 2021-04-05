@@ -39,7 +39,8 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       dsProxyFactoryAddress: config.dsProxyFactoryAddress,
       tokenPriceFeedConfig: config.tokenPriceFeedConfig,
       referencePriceFeedConfig: config.referencePriceFeedConfig,
-      exchangeAdapterConfig: config.exchangeAdapterConfig
+      exchangeAdapterConfig: config.exchangeAdapterConfig,
+      rangeTraderConfig: config.rangeTraderConfig
     });
 
     // Load unlocked web3 accounts, get the networkId and set up price feed.
@@ -79,7 +80,14 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       ),
       createExchangeAdapter(logger, web3, dsProxyManager, config.exchangeAdapterConfig, networkId)
     ]);
-    const rangeTrader = new RangeTrader(logger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter);
+    const rangeTrader = new RangeTrader(
+      logger,
+      web3,
+      tokenPriceFeed,
+      referencePriceFeed,
+      exchangeAdapter,
+      config.rangeTraderConfig
+    );
     for (;;) {
       await retry(
         async () => {

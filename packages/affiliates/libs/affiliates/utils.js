@@ -34,7 +34,7 @@ function dappMiningPrTemplate({ issueNumber, config }) {
 #${issueNumber}
 
 **Details**
-Dapp mining for yd-eth-march using .3 of dev mining rewards for this period: \`Math.floor(${empRewards} * ${rewardFactor}) = ${totalRewards}\`
+Dapp mining for ${name} using .3 of dev mining rewards for this period: \`Math.floor(${empRewards} * ${rewardFactor}) = ${totalRewards}\`
 
 Reproduce with config.json
 \`\`\`
@@ -62,7 +62,6 @@ function devMiningPrTemplate({
   weekNumber,
   fallbackPrices = []
 }) {
-  console.log({ issueNumber });
   assert(issueNumber, "requires issue number");
   assert(totalRewards, "requires totalRewards");
   assert(endTime, "requires endTime");
@@ -176,6 +175,33 @@ async function createGithubIssue({ auth, owner = "UMAprotocol", repo = "protocol
     auth
   });
   return octokit.issues.create({
+    owner,
+    repo,
+    ...rest
+  });
+}
+
+async function requestGithubReviewers({ auth, owner, repo, pull_number, reviewers, ...rest }) {
+  assert(auth, "requires github auth credentials");
+  const octokit = new Octokit({
+    auth
+  });
+  return octokit.pulls.requestReviewers({
+    owner,
+    repo,
+    pull_number,
+    reviewers,
+    ...rest
+  });
+}
+async function createGithubPr({ auth, owner, repo = "protocol", head, base, ...rest } = {}) {
+  assert(auth, "requires github auth credentials");
+  const octokit = new Octokit({
+    auth
+  });
+  return octokit.pulls.create({
+    head,
+    base,
     owner,
     repo,
     ...rest
@@ -373,5 +399,7 @@ module.exports = {
   saveToDisk,
   generateDappMiningConfig,
   devMiningPrTemplate,
-  dappMiningPrTemplate
+  dappMiningPrTemplate,
+  requestGithubReviewers,
+  createGithubPr
 };

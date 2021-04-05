@@ -82,6 +82,7 @@ class DSProxyManager {
         message: "No DSProxy found for EOA. Deploying new DSProxy",
         account: this.account
       });
+      await this.gasEstimator.update();
       const dsProxyCreateTx = await this.dsProxyFactory.methods.build().send({
         from: this.account,
         gasPrice: this.gasEstimator.getCurrentFastPrice()
@@ -110,6 +111,7 @@ class DSProxyManager {
       callData
     });
 
+    await this.gasEstimator.update();
     const executeTransaction = await this.dsProxy.methods["execute(address,bytes)"](libraryAddress, callData).send({
       from: this.account,
       gasPrice: this.gasEstimator.getCurrentFastPrice()
@@ -136,6 +138,7 @@ class DSProxyManager {
       callCode
     });
 
+    await this.gasEstimator.update();
     const executeTransaction = await this.dsProxy.methods["execute(bytes,bytes)"](callCode, callData).send({
       from: this.account,
       gasPrice: this.gasEstimator.getCurrentFastPrice()

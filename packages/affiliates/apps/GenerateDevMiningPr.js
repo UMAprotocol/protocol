@@ -34,8 +34,8 @@ const App = async params => {
   const input = { ...params, ...params.config };
   const prTemplate = devMiningPrTemplate(input);
   return {
-    prTemplate,
-    ...params
+    ...params,
+    prTemplate
   };
 };
 

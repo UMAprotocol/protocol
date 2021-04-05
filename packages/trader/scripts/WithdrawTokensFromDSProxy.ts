@@ -1,25 +1,26 @@
 // This script a withdrawal transaction that will pull funds out of a DSProxy contract. The wallet you run the script
 // from should be the owner (or have sufficient permissions).
-// To execute the script, run: truffle exec ./scripts/WithdrawTokensFromDSProxy.ts --network kovan_mnemonic --dsProxyAddress 0x... --tokenAddress 0x... --amount max -- recipientAddress 0x...
+// To execute the script, run: truffle exec ./scripts/WithdrawTokensFromDSProxy.ts --network kovan_mnemonic --dsProxyAddress 0x... --tokenAddress 0x... --amount max --recipientAddress 0x...
 // Note:
 // 1) if you do not provide the dsProxyAddress the script will try find one deployed at the unlocked wallet account.
 // 2) if you provide max for amount then the script will take all tokens. If you provide a specific number, it is assumed
 // to be a string. No internal scalling is done on the number. 1 eth should be therefore represented as 1000000000000000000
 // 3) if you don't provide recipientAddress then the script will send them to your currently unlocked account.
 // You can also optionally override the dsProxyFactoryAddress by providing it as a param
-const winston = require("winston");
-const assert = require("assert");
-const argv = require("minimist")(process.argv.slice(), {
-  string: ["tokenAddress", "amount", "dsProxyAddress", "dsProxyFactoryAddress", "recipientAddress"]
-});
 
-const { getWeb3 } = require("@uma/common");
-const web3 = getWeb3();
+async function WithdrawTokensFromDSProxy() {
+  const winston = require("winston");
+  const assert = require("assert");
+  const argv = require("minimist")(process.argv.slice(), {
+    string: ["tokenAddress", "amount", "dsProxyAddress", "dsProxyFactoryAddress", "recipientAddress"]
+  });
 
-const { getAbi, getAddress, getTruffleContract } = require("@uma/core");
-const { DSProxyManager, GasEstimator } = require("@uma/financial-templates-lib");
+  const { getWeb3 } = require("@uma/common");
+  const web3 = getWeb3();
 
-async function runExport() {
+  const { getAbi, getAddress, getTruffleContract } = require("@uma/core");
+  const { DSProxyManager, GasEstimator } = require("@uma/financial-templates-lib");
+
   assert(
     argv.tokenAddress && argv.amount,
     "Provide `tokenAddress` and `amount`. Amount can be `max` to pull all tokens."
@@ -35,6 +36,8 @@ async function runExport() {
     transports: [new winston.transports.Console()]
   });
   const gasEstimator = new GasEstimator(logger);
+  await gasEstimator.update();
+
   const dsProxyManager = new DSProxyManager({
     logger,
     web3,
@@ -54,7 +57,10 @@ async function runExport() {
   const token = new web3.eth.Contract(getAbi("ExpandedERC20"), argv.tokenAddress);
 
   // Figure out how many tokens to withdraw. If max, then query the full balance of the account. Else, use specified.
-  const amountToWithdraw = (argv.amount == "max" ? await token.balanceOf(dsProxyAddress) : argv.amount).toString();
+  const amountToWithdraw = (argv.amount == "max"
+    ? await token.methods.balanceOf(dsProxyAddress).call()
+    : argv.amount
+  ).toString();
 
   // Figure out where to withdraw tokens to. If specified, then send them there else use the unlocked account.
   const tokenRecipient = argv.recipientAddress ? argv.recipientAddress : accounts[0];
@@ -77,13 +83,14 @@ async function runExport() {
 
 const run = async function(callback) {
   try {
-    await runExport();
+    await WithdrawTokensFromDSProxy();
   } catch (err) {
+    console.error(err);
     callback(err);
     return;
   }
   callback();
 };
 
-run.runExport = runExport;
+run.WithdrawTokensFromDSProxy = WithdrawTokensFromDSProxy;
 module.exports = run;

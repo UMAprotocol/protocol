@@ -20,8 +20,8 @@ const App = env => async params => {
   const githubIssue = await createGithubIssue({ auth: env.github, ...issueTemplate });
   return {
     // data.number is the issue number
-    issueNumber: githubIssue.data.number,
-    ...params
+    ...params,
+    issueNumber: githubIssue.data.number
   };
 };
 
