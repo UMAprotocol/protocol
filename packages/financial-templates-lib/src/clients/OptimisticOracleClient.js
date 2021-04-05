@@ -61,13 +61,9 @@ class OptimisticOracleClient {
   // Returns an array of expired Price Proposals that can be settled and that involved
   // the caller as the proposer
   getSettleableProposals(caller = undefined) {
-    if (caller) {
-      return this.expiredProposals.filter(event => {
-        return event.proposer === caller;
-      });
-    } else {
-      return this.expiredProposals;
-    }
+    return this.expiredProposals.filter(event => {
+      return event.proposer === caller;
+    });
   }
 
   // Returns disputes that can be settled and that involved the caller as the disputer

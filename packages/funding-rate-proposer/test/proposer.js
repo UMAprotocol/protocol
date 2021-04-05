@@ -1,12 +1,11 @@
 const winston = require("winston");
 const sinon = require("sinon");
 
-const { toWei, utf8ToHex, hexToUtf8, padRight, fromWei } = web3.utils;
+const { toWei, utf8ToHex, hexToUtf8, padRight } = web3.utils;
 
 const { FundingRateProposer } = require("../src/proposer");
 const {
   FinancialContractFactoryClient,
-  OptimisticOracleClient,
   GasEstimator,
   SpyTransport,
   lastSpyLogLevel,
@@ -28,7 +27,7 @@ const AddressWhitelist = getTruffleContract("AddressWhitelist", web3);
 const Timer = getTruffleContract("Timer", web3);
 const TokenFactory = getTruffleContract("TokenFactory", web3);
 const Registry = getTruffleContract("Registry", web3);
-const MockOracle = getTruffleContract("MockOracleAncillary", web3);
+const MulticallMock = getTruffleContract("MulticallMock", web3);
 
 contract("Perpetual: proposer.js", function(accounts) {
   const deployer = accounts[0];
@@ -44,11 +43,10 @@ contract("Perpetual: proposer.js", function(accounts) {
   let collateralWhitelist;
   let collateral;
   let perpsCreated;
-  let mockOracle;
+  let multicall;
 
   // Offchain infra
   let factoryClient;
-  let optimisticOracleClient;
   let gasEstimator;
   let proposer;
   let spyLogger;
@@ -103,6 +101,7 @@ contract("Perpetual: proposer.js", function(accounts) {
   before(async function() {
     finder = await Finder.new();
     timer = await Timer.new();
+    multicall = await MulticallMock.new();
 
     // Whitelist an price identifier so we can deploy.
     identifierWhitelist = await IdentifierWhitelist.new();
@@ -117,9 +116,6 @@ contract("Perpetual: proposer.js", function(accounts) {
     // a proposal.
     store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
-
-    mockOracle = await MockOracle.new(finder.address, timer.address);
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
 
     // Link libraries once so we can deploy new factories.
     await PerpetualCreator.link(await PerpetualLib.new());
@@ -199,14 +195,6 @@ contract("Perpetual: proposer.js", function(accounts) {
       0, // startingBlockNumber
       null // endingBlockNumber
     );
-    optimisticOracleClient = new OptimisticOracleClient(
-      spyLogger,
-      OptimisticOracle.abi,
-      MockOracle.abi,
-      web3,
-      optimisticOracle.address,
-      mockOracle.address
-    );
     gasEstimator = new GasEstimator(spyLogger);
 
     // Construct FundingRateProposer using a valid default price feed config containing any additional properties
@@ -233,7 +221,7 @@ contract("Perpetual: proposer.js", function(accounts) {
     proposer = new FundingRateProposer({
       logger: spyLogger,
       perpetualFactoryClient: factoryClient,
-      optimisticOracleClient,
+      multicallContractAddress: multicall.address,
       gasEstimator: gasEstimator,
       account: botRunner,
       commonPriceFeedConfig,
@@ -254,6 +242,7 @@ contract("Perpetual: proposer.js", function(accounts) {
           hexToUtf8(cachedContract.state.currentFundingRateData.identifier),
           hexToUtf8(fundingRateIdentifiersToTest[i])
         );
+        assert.equal(cachedContract.state.currentFundingRateData.proposalTime, "0");
         assert.equal(
           cachedContract.state.currentConfig.maxFundingRate.toString(),
           configStoreParams.maxFundingRate.rawValue
@@ -314,7 +303,7 @@ contract("Perpetual: proposer.js", function(accounts) {
         // bot should see a different current funding rate from the PriceFeedMockScaled and propose.
         await proposer.updateFundingRates(true);
       });
-      it("Detects each contract's current funding rate and proposes to update it if it has changed beyond some margin", async function() {
+      it("Detects each contract's current (or publishable) funding rate and proposes to update it if it has changed beyond some margin", async function() {
         // Check that the identifiers all have been proposed to.
         for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
           await verifyOracleState(
@@ -334,10 +323,61 @@ contract("Perpetual: proposer.js", function(accounts) {
         assert.ok(spy.getCall(-1).lastArg.proposalResult.tx);
 
         // Running `updateFundingRates()` on updated contract state does nothing because all
-        // identifiers have pending (undisputed) proposals.
+        // identifiers have pending (undisputed), unexpired proposals.
         await proposer.update();
         await proposer.updateFundingRates(true);
         assert.isTrue(spyLogIncludes(spy, -1, "Proposal is already pending"));
+
+        // Once the proposal has expired, the proposer should be able to propose another funding rate if the price feed
+        // rate has meaningful diverged from the newly published rate:
+        const originalProposalTime = latestProposalTime;
+        latestProposalTime += optimisticOracleProposalLiveness;
+        await timer.setCurrentTime(latestProposalTime);
+        // All proposals should be expired, but not settled:
+        for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
+          await verifyOracleState(
+            OptimisticOracleRequestStatesEnum.EXPIRED,
+            perpsCreated[i].address,
+            fundingRateIdentifiersToTest[i],
+            originalProposalTime,
+            perpsCreated[i].ancillaryData
+          );
+        }
+        await proposer.update();
+        await proposer.updateFundingRates(true);
+        assert.equal(lastSpyLogLevel(spy), "debug");
+        assert.isTrue(
+          spyLogIncludes(spy, -1, "Skipping proposal because current rate is within allowed margin of error")
+        );
+        // Since pricefeed hasn't changed, the publishable "currentRate" should be equal to the "proposedRate":
+        assert.equal(spy.getCall(-1).lastArg.proposedRate, spy.getCall(-1).lastArg.currentRate);
+
+        // The pricefeed has now diverged enough from the publishable rate that we can propose again:
+        let pricesToPropose = "0.000006";
+        for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
+          const priceFeed = proposer.priceFeedCache[hexToUtf8(fundingRateIdentifiersToTest[i])];
+          priceFeed.setCurrentPrice(pricesToPropose);
+          priceFeed.setLastUpdateTime(latestProposalTime);
+        }
+        await proposer.updateFundingRates(true);
+        for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
+          // The first proposals should be settled now:
+          await verifyOracleState(
+            OptimisticOracleRequestStatesEnum.SETTLED,
+            perpsCreated[i].address,
+            fundingRateIdentifiersToTest[i],
+            originalProposalTime,
+            perpsCreated[i].ancillaryData
+          );
+          // There should be new proposals for the identifiers:
+          await verifyOracleState(
+            OptimisticOracleRequestStatesEnum.PROPOSED,
+            perpsCreated[i].address,
+            fundingRateIdentifiersToTest[i],
+            latestProposalTime,
+            perpsCreated[i].ancillaryData
+          );
+        }
       });
       describe("Proposed rate is published, can now propose again", function() {
         beforeEach(async function() {
@@ -409,93 +449,12 @@ contract("Perpetual: proposer.js", function(accounts) {
         });
       });
     });
-    describe("(applyFundingRate)", function() {
-      beforeEach(async function() {
-        // Initial perpetual funding rate for all identifiers is 0,
-        // bot should see a different current funding rate from the PriceFeedMockScaled and propose.
-        await proposer.updateFundingRates(true);
-      });
-      it("Does nothing if there are no publishable proposals", async function() {
-        await proposer.applyFundingRates();
-        // All proposals should still be pending
-        for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
-          await verifyOracleState(
-            OptimisticOracleRequestStatesEnum.PROPOSED,
-            perpsCreated[i].address,
-            fundingRateIdentifiersToTest[i],
-            latestProposalTime,
-            perpsCreated[i].ancillaryData
-          );
-        }
-      });
-      it("Once proposal has expired, does not publish if pending rate is close to pricefeed's current rate", async function() {
-        const originalProposalTime = latestProposalTime;
-        latestProposalTime += optimisticOracleProposalLiveness;
-        await timer.setCurrentTime(latestProposalTime);
-        await proposer.update();
-        await proposer.applyFundingRates();
-        // All proposals should be expired, but not settled:
-        for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
-          await verifyOracleState(
-            OptimisticOracleRequestStatesEnum.EXPIRED,
-            perpsCreated[i].address,
-            fundingRateIdentifiersToTest[i],
-            originalProposalTime,
-            perpsCreated[i].ancillaryData
-          );
-        }
-
-        assert.equal(lastSpyLogLevel(spy), "debug");
-        assert.isTrue(spyLogIncludes(spy, -1, "Skipping apply because pending rate is within allowed margin of error"));
-        // Since pricefeed hasn't changed, the "pricefeedPrice" should be equal to the "pendingRateToPublish":
-        assert.equal(spy.getCall(-1).lastArg.pricefeedPrice, spy.getCall(-1).lastArg.pendingRateToPublish);
-
-        // Now set pricefeed's current price outside margin of error:
-        let pricesToPropose = ["0.000004", "0.000006", "0.000004", "0.000006"];
-        assert.equal(pricesToPropose.length, fundingRateIdentifiersToTest.length);
-        for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
-          const priceFeed = proposer.priceFeedCache[hexToUtf8(fundingRateIdentifiersToTest[i])];
-          priceFeed.setCurrentPrice(pricesToPropose[i]);
-          priceFeed.setLastUpdateTime(latestProposalTime);
-        }
-        await proposer.applyFundingRates();
-
-        // Now all proposals should have been settled:
-        for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
-          await verifyOracleState(
-            OptimisticOracleRequestStatesEnum.SETTLED,
-            perpsCreated[i].address,
-            fundingRateIdentifiersToTest[i],
-            originalProposalTime,
-            perpsCreated[i].ancillaryData
-          );
-        }
-        // Check for the successful INFO log emitted by the proposer.
-        assert.equal(lastSpyLogLevel(spy), "info");
-        assert.isTrue(spyLogIncludes(spy, -1, "Applied new funding rate"));
-        assert.equal(
-          fromWei(spy.getCall(-1).lastArg.applyResult.pendingRateToPublish),
-          commonPriceFeedConfig.currentPrice
-        );
-        assert.equal(
-          fromWei(spy.getCall(-1).lastArg.applyResult.pricefeedPrice),
-          pricesToPropose[pricesToPropose.length - 1]
-        );
-        assert.ok(spy.getCall(-1).lastArg.applyResult.tx);
-
-        // Running applyFundingRates does nothing now that there are no pending proposals:
-        await proposer.update();
-        await proposer.applyFundingRates();
-        assert.isTrue(spyLogIncludes(spy, -1, "No pending proposals"));
-      });
-    });
   });
   it("Emits error log for funding rate identifiers it cannot construct pricefeed for", async function() {
     const invalidPriceFeedConfig = {};
     proposer = new FundingRateProposer({
       logger: spyLogger,
       perpetualFactoryClient: factoryClient,
-      optimisticOracleClient,
       gasEstimator: gasEstimator,
       account: botRunner,
       commonPriceFeedConfig: invalidPriceFeedConfig

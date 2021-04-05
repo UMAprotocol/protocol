@@ -8,14 +8,14 @@ const {
   waitForLogger,
   delay,
   FinancialContractFactoryClient,
-  OptimisticOracleClient,
-  GasEstimator
+  GasEstimator,
+  multicallAddressMap
 } = require("@uma/financial-templates-lib");
 const { FundingRateProposer } = require("./src/proposer");
 
 // Contract ABIs and network Addresses.
 const { getAbi, getAddress } = require("@uma/core");
-const { getWeb3 } = require("@uma/common");
+const { getWeb3, PublicNetworks } = require("@uma/common");
 
 /**
  * @notice Runs strategies that request and propose new funding rates for Perpetual contracts.
@@ -43,6 +43,8 @@ async function run({
 }) {
   try {
     const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
+    const networkName = PublicNetworks[Number(networkId)] ? PublicNetworks[Number(networkId)].name : null;
+
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
@@ -68,23 +70,13 @@ async function run({
     );
     const gasEstimator = new GasEstimator(logger);
 
-    // Create the OptimisticOracleClient to query the state of proposed funding rates.
-    const optimisticOracleClient = new OptimisticOracleClient(
-      logger,
-      getAbi("OptimisticOracle"),
-      getAbi("Voting"),
-      web3,
-      getAddress("OptimisticOracle", networkId),
-      getAddress("Voting", networkId)
-    );
-
     // The proposer needs to query prices for any identifier approved to use the Optimistic Oracle,
     // so a new pricefeed is constructed for each identifier. This `commonPriceFeedConfig` contains
     // properties that are shared across all of these new pricefeeds.
     const fundingRateProposer = new FundingRateProposer({
       logger,
       perpetualFactoryClient,
-      optimisticOracleClient,
+      multicallAddress: networkName ? multicallAddressMap[networkName].multicall : null,
       gasEstimator,
       account: accounts[0],
       commonPriceFeedConfig,
@@ -96,7 +88,6 @@ async function run({
       await retry(
         async () => {
           await fundingRateProposer.update();
-          await fundingRateProposer.applyFundingRates();
           await fundingRateProposer.updateFundingRates(isTest);
           return;
         },
