@@ -283,7 +283,7 @@ class FundingRateProposer {
   }
 
   // If there is a pending funding rate that can be published, AND the current offchain price differs from the pending
-  // rate more than some threshold, than publish the pending rate
+  // rate more than some threshold, than publish the pending rate.
   async _applyFundingRate(contractAddress) {
     const cachedContract = this.contractCache[contractAddress];
     const currentFundingRateData = cachedContract.state.currentFundingRateData;
