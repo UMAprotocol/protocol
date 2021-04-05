@@ -83,9 +83,13 @@ class DSProxyManager {
         account: this.account
       });
       await this.gasEstimator.update();
-      const dsProxyCreateTx = await this.dsProxyFactory.methods.build().send({
-        from: this.account,
-        gasPrice: this.gasEstimator.getCurrentFastPrice()
+      const dsProxyCreateTx = await runTransaction({
+        transaction: this.dsProxyFactory.methods.build(),
+        config: {
+          gasPrice: this.gasEstimator.getCurrentFastPrice(),
+          from: this.account,
+          nonce: await this.web3.eth.getTransactionCount(this.account)
+        }
       });
       this.dsProxyAddress = dsProxyCreateTx.events.Created.returnValues.proxy;
       this.dsProxy = new this.web3.eth.Contract(this.dsProxyAbi, this.dsProxyAddress);
@@ -125,7 +129,7 @@ class DSProxyManager {
       message: "Executed function on deployed library 📸",
       libraryAddress,
       callData,
-      tx: executeTransaction.transactionHash
+      tx: executeTransaction.receipt.transactionHash
     });
     return executeTransaction;
   }
