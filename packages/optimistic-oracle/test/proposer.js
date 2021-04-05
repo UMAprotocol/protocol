@@ -584,7 +584,7 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       optimisticOracleClient: client,
       gasEstimator,
       account: botRunner,
-      commonPriceFeedConfig: { currentPrice: "1.2" }
+      commonPriceFeedConfig: { currentPrice: "1", historicalPrice: "2" }
     });
 
     // Update the bot to read the new OO state.
