@@ -384,7 +384,10 @@ class Liquidator {
       });
 
       // Construct transaction.
-      const withdraw = this.financialContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
+      const withdrawTransaction = this.financialContract.methods.withdrawLiquidation(
+        liquidation.id,
+        liquidation.sponsor
+      );
       this.logger.debug({
         at: "Liquidator",
         message: "Withdrawing liquidation",
@@ -393,7 +396,7 @@ class Liquidator {
       try {
         // Get successful transaction receipt and return value or error.
         const transactionResult = await runTransaction({
-          transaction: withdraw,
+          transaction: withdrawTransaction,
           config: {
             gasPrice: this.gasEstimator.getCurrentFastPrice(),
             from: this.account,
