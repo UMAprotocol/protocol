@@ -50,7 +50,7 @@ const versionMap = {
     contractType: "ExpiringMultiParty",
     contractVersion: "1.2.2"
   },
-  "0xc4540c3f6df214521aa489afc1cd661b3c5a0b9205b188bd6867202a05036483": {
+  "0x4c2c5b5cd90ee8bdbe59f9f78163bdf67b209a1d66f3633deef1c54589b6a4b3": {
     // latest ExpiringMultiParty deployed from hardhat tests.
     contractType: "ExpiringMultiParty",
     contractVersion: "latest"
@@ -65,17 +65,7 @@ const versionMap = {
     contractType: "ExpiringMultiParty",
     contractVersion: "latest"
   },
-  "0x39dca3c82cfcba75d4355b45d546eedba21d3f9d6198324b8d951f33756a51c4": {
-    // latest Perpetual deployed from hardhat tests.
-    contractType: "Perpetual",
-    contractVersion: "latest"
-  },
-  "0x238569485842107d2e938ff59c78841860b4dcd00d37be9859699f2c4ddbb3a0": {
-    // latest Perpetual deployed from hardhat tests.
-    contractType: "Perpetual",
-    contractVersion: "latest"
-  },
-  "0x8540e80983690e561f3546c311935a494196854f0994a8aaaa5f771073699ea2": {
+  "0x7202352fa756f41d3b4646441b82271ab44909e6e24c12326fb73f34e6ca2aa9": {
     // latest Perpetual deployed from hardhat tests.
     contractType: "Perpetual",
     contractVersion: "latest"
