@@ -76,7 +76,7 @@ async function run({
     const fundingRateProposer = new FundingRateProposer({
       logger,
       perpetualFactoryClient,
-      multicallAddress: networkName ? multicallAddressMap[networkName].multicall : null,
+      multicallContractAddress: networkName ? multicallAddressMap[networkName].multicall : null,
       gasEstimator,
       account: accounts[0],
       commonPriceFeedConfig,
