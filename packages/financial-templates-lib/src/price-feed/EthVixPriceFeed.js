@@ -111,10 +111,13 @@ class ETHVIXPriceFeed extends PriceFeedInterface {
     //   ...
     // ]
 
-    // 3. Get last result in the stack.
+    // 3. Sort the results in case the data source didn't already.
+    response.sort((a, b) => moment(a.timestamp).valueOf() - moment(b.timestamp).valueOf());
+
+    // 4. Get last result in the stack.
     const mostRecent = response[response.length - 1];
 
-    // 4. Store results.
+    // 5. Store results.
     this.lastUpdateTime = currentTime;
     this.historicalPrices = [...this.historicalPrices, ...response];
     this.currentPrice = this.inverse ? mostRecent.iVix : mostRecent.vix;
