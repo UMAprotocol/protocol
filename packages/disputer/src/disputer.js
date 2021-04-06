@@ -190,8 +190,8 @@ class Disputer {
             nonce: await this.web3.eth.getTransactionCount(this.account)
           }
         });
-        let receipt = transactionResult.receipt;
-        let returnValue = transactionResult.returnValue.toString();
+        const receipt = transactionResult.receipt;
+        const returnValue = transactionResult.returnValue.toString();
         const logResult = {
           tx: receipt.transactionHash,
           sponsor: receipt.events.LiquidationDisputed.returnValues.sponsor,

@@ -1,6 +1,6 @@
 const assert = require("assert");
 
-const { getFromBlock } = require("@uma/common");
+const { getFromBlock, runTransaction } = require("@uma/common");
 class DSProxyManager {
   /**
    * @notice Constructs new Liquidator bot.
@@ -83,17 +83,21 @@ class DSProxyManager {
         account: this.account
       });
       await this.gasEstimator.update();
-      const dsProxyCreateTx = await this.dsProxyFactory.methods.build().send({
-        from: this.account,
-        gasPrice: this.gasEstimator.getCurrentFastPrice()
+      const { receipt } = await runTransaction({
+        transaction: this.dsProxyFactory.methods.build(),
+        config: {
+          gasPrice: this.gasEstimator.getCurrentFastPrice(),
+          from: this.account,
+          nonce: await this.web3.eth.getTransactionCount(this.account)
+        }
       });
-      this.dsProxyAddress = dsProxyCreateTx.events.Created.returnValues.proxy;
+      this.dsProxyAddress = receipt.events.Created.returnValues.proxy;
       this.dsProxy = new this.web3.eth.Contract(this.dsProxyAbi, this.dsProxyAddress);
       this.logger.info({
         at: "DSProxyManager",
         message: "DSProxy deployed for your EOA 🚀",
         dsProxyAddress: this.dsProxyAddress,
-        tx: dsProxyCreateTx.transactionHash,
+        tx: receipt.transactionHash,
         account: this.account
       });
     }
@@ -110,11 +114,14 @@ class DSProxyManager {
       libraryAddress,
       callData
     });
-
     await this.gasEstimator.update();
-    const executeTransaction = await this.dsProxy.methods["execute(address,bytes)"](libraryAddress, callData).send({
-      from: this.account,
-      gasPrice: this.gasEstimator.getCurrentFastPrice()
+    const { receipt } = await runTransaction({
+      transaction: this.dsProxy.methods["execute(address,bytes)"](libraryAddress, callData),
+      config: {
+        gasPrice: this.gasEstimator.getCurrentFastPrice(),
+        from: this.account,
+        nonce: await this.web3.eth.getTransactionCount(this.account)
+      }
     });
 
     this.logger.info({
@@ -122,9 +129,9 @@ class DSProxyManager {
       message: "Executed function on deployed library 📸",
       libraryAddress,
       callData,
-      tx: executeTransaction.transactionHash
+      tx: receipt.transactionHash
     });
-    return executeTransaction;
+    return receipt;
   }
   // Extract call code using the `.abi` syntax on a truffle object or the `getABI(contractType,contractVersion)` from common.
   async callFunctionOnNewlyDeployedLibrary(callCode, callData) {
@@ -139,18 +146,22 @@ class DSProxyManager {
     });
 
     await this.gasEstimator.update();
-    const executeTransaction = await this.dsProxy.methods["execute(bytes,bytes)"](callCode, callData).send({
-      from: this.account,
-      gasPrice: this.gasEstimator.getCurrentFastPrice()
+    const { receipt } = await runTransaction({
+      transaction: this.dsProxy.methods["execute(bytes,bytes)"](callCode, callData),
+      config: {
+        gasPrice: this.gasEstimator.getCurrentFastPrice(),
+        from: this.account,
+        nonce: await this.web3.eth.getTransactionCount(this.account)
+      }
     });
 
     this.logger.info({
       at: "DSProxyManager",
       message: "Executed function on a freshly deployed library, created in the same tx 🤗",
       callData,
-      tx: executeTransaction.transactionHash
+      tx: receipt.transactionHash
     });
-    return executeTransaction;
+    return receipt;
   }
 }
 

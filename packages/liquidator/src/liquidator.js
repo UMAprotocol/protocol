@@ -1,9 +1,8 @@
-const ynatm = require("@umaprotocol/ynatm");
-
 const {
   PostWithdrawLiquidationRewardsStatusTranslations,
   createObjectFromDefaultProps,
-  revertWrapper
+  revertWrapper,
+  runTransaction
 } = require("@uma/common");
 
 const LiquidationStrategy = require("./liquidationStrategy");
@@ -67,9 +66,6 @@ class Liquidator {
     this.toWei = this.web3.utils.toWei;
     this.fromWei = this.web3.utils.fromWei;
     this.utf8ToHex = this.web3.utils.utf8ToHex;
-
-    // Multiplier applied to Truffle's estimated gas limit for a transaction to send.
-    this.GAS_LIMIT_BUFFER = 1.25;
 
     // Default config settings. Liquidator deployer can override these settings by passing in new
     // values via the `liquidatorConfig` input object. The `isValid` property is a function that should be called
@@ -389,12 +385,10 @@ class Liquidator {
       const withdraw = this.financialContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 
       // Confirm that liquidation has eligible rewards to be withdrawn.
-      let withdrawalCallResponse, gasEstimation;
+      let withdrawalCallResponse;
       try {
-        [withdrawalCallResponse, gasEstimation] = await Promise.all([
-          withdraw.call({ from: this.account }),
-          withdraw.estimateGas({ from: this.account })
-        ]);
+        withdrawalCallResponse = await withdraw.call({ from: this.account });
+
         // Mainnet view/pure functions sometimes don't revert, even if a require is not met. The revertWrapper ensures this
         // caught correctly. see https://forum.openzeppelin.com/t/require-in-view-pure-functions-dont-revert-on-public-networks/1211
         if (revertWrapper(withdrawalCallResponse) === null) {
@@ -416,41 +410,27 @@ class Liquidator {
         ? withdrawalCallResponse.rawValue.toString()
         : withdrawalCallResponse.payToLiquidator.rawValue.toString();
 
-      const txnConfig = {
-        from: this.account,
-        gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
-        gasPrice: this.gasEstimator.getCurrentFastPrice()
-      };
       // In contract version 1.2.2 and below this function returns one value: the amount withdrawn by the function caller.
       // In later versions it returns an object containing all payouts.
       this.logger.debug({
         at: "Liquidator",
         message: "Withdrawing liquidation",
         liquidation: liquidation,
-        amountWithdrawn,
-        txnConfig
+        amountWithdrawn
       });
 
       // Send the transaction or report failure.
       let receipt;
       try {
-        const nonce = await this.web3.eth.getTransactionCount(this.account);
-
-        // Min Gas Price, with a max gasPrice of x6 (3 re-tries)
-        const minGasPrice = parseInt(this.gasEstimator.getCurrentFastPrice(), 10);
-        const maxGasPrice = 2 * 3 * minGasPrice;
-
-        // Doubles gasPrice every iteration
-        const gasPriceScalingFunction = ynatm.DOUBLES;
-
-        // Receipt without events
-        receipt = await ynatm.send({
-          sendTransactionFunction: gasPrice => withdraw.send({ ...txnConfig, nonce, gasPrice }),
-          minGasPrice,
-          maxGasPrice,
-          gasPriceScalingFunction,
-          delay: 60000 // Tries and doubles gasPrice every minute if tx hasn't gone through
+        const txResponse = await runTransaction({
+          transaction: withdraw,
+          config: {
+            gasPrice: this.gasEstimator.getCurrentFastPrice(),
+            from: this.account,
+            nonce: await this.web3.eth.getTransactionCount(this.account)
+          }
         });
+        receipt = txResponse.receipt;
       } catch (error) {
         this.logger.error({
           at: "Liquidator",
