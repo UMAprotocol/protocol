@@ -91,7 +91,7 @@ class DSProxyManager {
           nonce: await this.web3.eth.getTransactionCount(this.account)
         }
       });
-      this.dsProxyAddress = dsProxyCreateTx.events.Created.returnValues.proxy;
+      this.dsProxyAddress = dsProxyCreateTx.receipt.events.Created.returnValues.proxy;
       this.dsProxy = new this.web3.eth.Contract(this.dsProxyAbi, this.dsProxyAddress);
       this.logger.info({
         at: "DSProxyManager",
