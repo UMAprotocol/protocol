@@ -170,7 +170,7 @@ class OptimisticOracleProposer {
     await priceFeed.update();
     let proposalPrice;
     try {
-      proposalPrice = (await priceFeed.getHistoricalPrice(priceRequest.timestamp)).toString();
+      proposalPrice = (await priceFeed.getHistoricalPrice(Number(priceRequest.timestamp))).toString();
     } catch (error) {
       this.logger.error({
         at: "OptimisticOracleProposer#sendProposals",
@@ -262,7 +262,7 @@ class OptimisticOracleProposer {
     await priceFeed.update();
     let disputePrice;
     try {
-      disputePrice = (await priceFeed.getHistoricalPrice(priceRequest.timestamp)).toString();
+      disputePrice = (await priceFeed.getHistoricalPrice(Number(priceRequest.timestamp))).toString();
     } catch (error) {
       this.logger.error({
         at: "OptimisticOracleProposer#sendDisputes",
