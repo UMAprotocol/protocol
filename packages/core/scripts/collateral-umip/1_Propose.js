@@ -6,12 +6,14 @@
 // Note: the fees will be scaled with the decimals of the referenced token. The collateral-fee-(optional decimal)
 // triplets should be specified in order as above. The first collateral value will be paired with the first fee value and so on.
 
-const AddressWhitelist = artifacts.require("AddressWhitelist");
-const Store = artifacts.require("Store");
-const Finder = artifacts.require("Finder");
-const Governor = artifacts.require("Governor");
-const ERC20 = artifacts.require("ERC20");
-const Voting = artifacts.require("Voting");
+const { getTruffleContract } = require("../../index");
+
+const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, "latest");
+const Store = getTruffleContract("Store", web3, "latest");
+const Finder = getTruffleContract("Finder", web3, "latest");
+const Governor = getTruffleContract("Governor", web3, "latest");
+const ERC20 = getTruffleContract("ERC20", web3, "latest");
+const Voting = getTruffleContract("Voting", web3, "latest");
 
 const { interfaceName } = require("@uma/common");
 const { GasEstimator } = require("@uma/financial-templates-lib");
@@ -90,7 +92,7 @@ async function runExport() {
 
       Collateral currency: ${collateral}
       Final fee: ${fee}
-      
+
       `);
     }
 
@@ -118,21 +120,17 @@ async function runExport() {
   const oracleAddress = await finder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle));
   console.log(`Governor submitting admin request to Voting @ ${oracleAddress}`);
 
-  const oracle = await Voting.at(oracleAddress);
+  const oracle = await Voting.deployed();
   const priceRequests = await oracle.getPastEvents("PriceRequestAdded");
 
   const newAdminRequest = priceRequests[priceRequests.length - 1];
   console.log(
-    `New price request {identifier: ${
+    `New admin request {identifier: ${
       newAdminRequest.args.identifier
     }, timestamp: ${newAdminRequest.args.time.toString()}}`
   );
 
-  console.log(`
-
-Done!
-
-`);
+  console.log("Done!");
 }
 
 const run = async function(callback) {
