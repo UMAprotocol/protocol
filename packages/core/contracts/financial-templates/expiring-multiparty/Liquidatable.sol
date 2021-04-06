@@ -451,8 +451,8 @@ contract Liquidatable is PricelessPositionManager {
 
             // Pay LIQUIDATOR: TRV - dispute reward - sponsor reward
             // If TRV > Collateral, then subtract rewards from collateral
-            // NOTE: This should never be below zero since we prevent (sponsorDisputePct+disputerDisputePct) >= 0 in
-            // the constructor when these params are set.
+            // NOTE: `payToLiquidator` should never be below zero since we enforce that
+            // (sponsorDisputePct+disputerDisputePct) <= 1 in the constructor when these params are set.
             rewards.payToLiquidator = tokenRedemptionValue.sub(sponsorDisputeReward).sub(disputerDisputeReward);
 
             // Transfer rewards and debit collateral
