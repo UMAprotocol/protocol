@@ -7,6 +7,7 @@ const retry = require("async-retry");
 const { getWeb3, findContractVersion, SUPPORTED_CONTRACT_VERSIONS, PublicNetworks } = require("@uma/common");
 // JS libs
 const { Liquidator } = require("./src/liquidator");
+const { ProxyTransactionWrapper } = require("./src/proxyTransactionWrapper");
 const {
   GasEstimator,
   FinancialContractClient,
@@ -16,11 +17,12 @@ const {
   waitForLogger,
   delay,
   setAllowance,
+  DSProxyManager,
   multicallAddressMap
 } = require("@uma/financial-templates-lib");
 
 // Contract ABIs and network Addresses.
-const { getAbi } = require("@uma/core");
+const { getAbi, getAddress } = require("@uma/core");
 
 /**
  * @notice Continuously attempts to liquidate positions in the Financial Contract contract.
@@ -36,6 +38,8 @@ const { getAbi } = require("@uma/core");
  * @param {String} [liquidatorOverridePrice] Optional String representing a Wei number to override the liquidator price feed.
  * @param {Number} [startingBlock] Earliest block to query for contract events that the bot will log about.
  * @param {Number} [endingBlock] Latest block to query for contract events that the bot will log about.
+ * @param {Object} [proxyTransactionWrapperConfig] Configuration to construct the proxy transaction wrapper to enable DSProxy
+ *     liquidations. This facilitates atomic swap, mint and liquidate transactions against a reserve currency.
  * @return None or throws an Error.
  */
 async function run({
@@ -49,7 +53,8 @@ async function run({
   liquidatorConfig,
   liquidatorOverridePrice,
   startingBlock,
-  endingBlock
+  endingBlock,
+  proxyTransactionWrapperConfig
 }) {
   try {
     const getTime = () => Math.round(new Date().getTime() / 1000);
@@ -65,7 +70,10 @@ async function run({
       errorRetriesTimeout,
       priceFeedConfig,
       liquidatorConfig,
-      liquidatorOverridePrice
+      liquidatorOverridePrice,
+      startingBlock,
+      endingBlock,
+      proxyTransactionWrapperConfig
     });
 
     // Load unlocked web3 accounts and get the networkId.
@@ -196,9 +204,38 @@ async function run({
     const gasEstimator = new GasEstimator(logger);
     await gasEstimator.update();
 
+    let dsProxyManager;
+    if (proxyTransactionWrapperConfig?.useDsProxyToLiquidate) {
+      dsProxyManager = new DSProxyManager({
+        logger,
+        web3,
+        gasEstimator,
+        account: accounts[0],
+        dsProxyFactoryAddress:
+          proxyTransactionWrapperConfig?.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
+        dsProxyFactoryAbi: getAbi("DSProxyFactory"),
+        dsProxyAbi: getAbi("DSProxy")
+      });
+
+      // Load in an existing DSProxy for the account EOA if one already exists or create a new one for the user.
+      await dsProxyManager.initializeDSProxy();
+    }
+
+    const proxyTransactionWrapper = new ProxyTransactionWrapper({
+      web3,
+      financialContract,
+      gasEstimator,
+      syntheticToken,
+      collateralToken,
+      account: accounts[0],
+      dsProxyManager,
+      proxyTransactionWrapperConfig
+    });
+
     const liquidator = new Liquidator({
       logger,
       financialContractClient,
+      proxyTransactionWrapper,
       gasEstimator,
       syntheticToken,
       priceFeed,
@@ -217,25 +254,27 @@ async function run({
       liquidatorConfig
     });
 
-    // The Financial Contract requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
-    // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-    const [collateralApproval, syntheticApproval] = await Promise.all([
-      setAllowance(web3, gasEstimator, accounts[0], financialContractAddress, collateralTokenAddress),
-      setAllowance(web3, gasEstimator, accounts[0], financialContractAddress, syntheticTokenAddress)
-    ]);
-    if (collateralApproval) {
-      logger.info({
-        at: "Liquidator#index",
-        message: "Approved Financial Contract to transfer unlimited collateral tokens 💰",
-        collateralApprovalTx: collateralApproval.tx.transactionHash
-      });
-    }
-    if (syntheticApproval) {
-      logger.info({
-        at: "Liquidator#index",
-        message: "Approved Financial Contract to transfer unlimited synthetic tokens 💰",
-        syntheticApprovalTx: syntheticApproval.tx.transactionHash
-      });
+    if (proxyTransactionWrapperConfig == {} || !proxyTransactionWrapperConfig?.useDsProxyToLiquidate) {
+      // The Financial Contract requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
+      // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
+      const [collateralApproval, syntheticApproval] = await Promise.all([
+        setAllowance(web3, gasEstimator, accounts[0], financialContractAddress, collateralTokenAddress),
+        setAllowance(web3, gasEstimator, accounts[0], financialContractAddress, syntheticTokenAddress)
+      ]);
+      if (collateralApproval) {
+        logger.info({
+          at: "Liquidator#index",
+          message: "Approved Financial Contract to transfer unlimited collateral tokens 💰",
+          collateralApprovalTx: collateralApproval.tx.transactionHash
+        });
+      }
+      if (syntheticApproval) {
+        logger.info({
+          at: "Liquidator#index",
+          message: "Approved Financial Contract to transfer unlimited synthetic tokens 💰",
+          syntheticApprovalTx: syntheticApproval.tx.transactionHash
+        });
+      }
     }
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
@@ -250,7 +289,8 @@ async function run({
           if (!isExpiredOrShutdown) {
             // Check for liquidatable positions and submit liquidations. Bounded by current synthetic balance and
             // considers override price if the user has specified one.
-            const currentSyntheticBalance = await syntheticToken.methods.balanceOf(accounts[0]).call();
+            const currentSyntheticBalance = await proxyTransactionWrapper.getEffectiveSyntheticTokenBalance();
+
             await liquidator.liquidatePositions(currentSyntheticBalance, liquidatorOverridePrice);
           }
           // Check for any finished liquidations that can be withdrawn.
@@ -337,7 +377,19 @@ async function Poll(callback) {
       startingBlock: process.env.STARTING_BLOCK_NUMBER,
       // Block number to search for events to. If set, acts to limit from where the monitor bot will search for events up
       // until. If either startingBlock or endingBlock is not sent, then the bot will search for event.
-      endingBlock: process.env.ENDING_BLOCK_NUMBER
+      endingBlock: process.env.ENDING_BLOCK_NUMBER,
+      // If there is a dsproxy config, the bot can be configured to send transactions via a smart contract wallet (DSProxy).
+      // This enables the bot to preform swap, mint liquidate, enabling a single reserve currency.
+      // Note that the DSProxy will be deployed on the first run of the bot. Subsequent runs will re-use the proxy. example:
+      // { "useDsProxyToLiquidate": "true", If enabled, the bot will send liquidations via a DSProxy.
+      //  "dsProxyFactoryAddress": "0x123..." -> Will default to an UMA deployed version if non provided.
+      // "liquidatorReserveCurrencyAddress": "0x123..." -> currency DSProxy will trade from when liquidating.
+      // "uniswapRouterAddress": "0x123..." -> uniswap router address to enable reserve trading. Defaults to mainnet router.
+      // "uniswapFactoryAddress": "0x123..." -> uniswap factory address. Defaults to mainnet factory.
+      // "maxReserverTokenSpent": "10000000000"} -> max amount to spend in reserve currency. scaled by reserve currency
+      //      decimals. defaults to MAX_UINT (no limit). Note that this is separate to the WDF, which behaves as per usual
+      //      and considers the maximum amount of synthetics that could be minted, given the current reserve balance.
+      proxyTransactionWrapperConfig: process.env.DSPROXY_CONFIG ? JSON.parse(process.env.DSPROXY_CONFIG) : {}
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });

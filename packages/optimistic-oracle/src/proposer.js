@@ -4,7 +4,8 @@ const {
   setAllowance,
   isDeviationOutsideErrorMargin
 } = require("@uma/financial-templates-lib");
-const { createObjectFromDefaultProps, runTransaction } = require("@uma/common");
+const { createObjectFromDefaultProps, runTransaction, OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY } = require("@uma/common");
+const { getAbi } = require("@uma/core");
 
 class OptimisticOracleProposer {
   /**
@@ -32,6 +33,10 @@ class OptimisticOracleProposer {
 
     // Gas Estimator to calculate the current Fast gas rate.
     this.gasEstimator = gasEstimator;
+
+    this.createEmpContract = empAddress => {
+      return new this.web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
+    };
 
     this.optimisticOracleContract = this.optimisticOracleClient.oracle;
 
@@ -88,6 +93,29 @@ class OptimisticOracleProposer {
     // TODO: Should allow user to filter out price requests with rewards below a threshold,
     // allowing the bot to prevent itself from being induced to unprofitably propose.
     for (let priceRequest of this.optimisticOracleClient.getUnproposedPriceRequests()) {
+      // If the price request is an expiry price request for a specific type of EMP
+      // whose price resolution is self-referential pre-expiry and diferent post-expiry,
+      // then skip the price request:
+      if (OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY.includes(priceRequest.identifier)) {
+        // Check if (1) contract is an EMP and (2) EMP has expired:
+        try {
+          // The requester should be an EMP contract if this is an expiry price request.
+          const empContract = this.createEmpContract(priceRequest.requester);
+          const expirationTimestamp = await empContract.methods.expirationTimestamp().call();
+          if (Number(priceRequest.timestamp) >= Number(expirationTimestamp)) {
+            this.logger.debug({
+              at: "OptimisticOracleProposer#sendProposals",
+              message: "EMP contract has expired and identifier's price resolution logic transforms post-expiry",
+              identifier: priceRequest.identifier,
+              expirationTimestamp: expirationTimestamp.toString()
+            });
+            continue;
+          }
+        } catch (err) {
+          console.error(err);
+          // Do nothing, contract is probably not an EMP
+        }
+      }
       await this._sendProposal(priceRequest);
     }
   }

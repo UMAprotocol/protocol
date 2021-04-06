@@ -21,6 +21,9 @@ contract OptimisticRequesterTest is OptimisticRequester {
     // token can be fetched by off-chain clients.
     IERC20 public collateralCurrency;
 
+    // Manually set an expiration timestamp to simulate expiry price requests
+    uint256 public expirationTimestamp;
+
     constructor(OptimisticOracle _optimisticOracle) public {
         optimisticOracle = _optimisticOracle;
     }
@@ -75,6 +78,10 @@ contract OptimisticRequesterTest is OptimisticRequester {
 
     function setRevert(bool _shouldRevert) external {
         shouldRevert = _shouldRevert;
+    }
+
+    function setExpirationTimestamp(uint256 _expirationTimestamp) external {
+        expirationTimestamp = _expirationTimestamp;
     }
 
     function clearState() external {
