@@ -44,8 +44,8 @@ describe("EthVixPriceFeed.js", () => {
       transports: [new winston.transports.Console()]
     });
     networker = new NetworkerMock();
-    priceFeed = new ETHVIXPriceFeed(logger, false, networker, getTime, minTimeBetweenUpdates);
-    inversePriceFeed = new ETHVIXPriceFeed(logger, true, networker, getTime, minTimeBetweenUpdates);
+    priceFeed = new ETHVIXPriceFeed(logger, web3, false, networker, getTime, minTimeBetweenUpdates, 18);
+    inversePriceFeed = new ETHVIXPriceFeed(logger, web3, true, networker, getTime, minTimeBetweenUpdates, 18);
   });
 
   describe("After an initial update has been performed", () => {
@@ -56,12 +56,17 @@ describe("EthVixPriceFeed.js", () => {
     describe("Price discovery", () => {
       it("can return the latest ethVIX price", async () => {
         await priceFeed.update();
-        assert.equal(priceFeed.getCurrentPrice().toString(), "70200000");
+        assert.equal(priceFeed.getCurrentPrice().toString(), "70200000000000000000");
       });
 
       it("can return the latest iethVIX price", async () => {
         await inversePriceFeed.update();
-        assert.equal(inversePriceFeed.getCurrentPrice().toString(), "142440000");
+        assert.equal(inversePriceFeed.getCurrentPrice().toString(), "142440000000000000000");
+      });
+
+      it("can properly scale results per the DVM requirement (wei units)", async () => {
+        await priceFeed.update();
+        assert.equal(web3.utils.fromWei(priceFeed.getCurrentPrice()), "70.2");
       });
     });
 
@@ -70,7 +75,7 @@ describe("EthVixPriceFeed.js", () => {
         const { timestamp, vix } = historicalResponse[1];
         await priceFeed.update();
         const historicalPrice = await priceFeed.getHistoricalPrice(moment.utc(timestamp).valueOf());
-        assert.equal(historicalPrice.toString(), parseFixed(vix, 6).toString());
+        assert.equal(historicalPrice.toString(), parseFixed(vix, 18).toString());
       });
 
       it("can return the most recent historical ethVIX price within 15m of a given time", async () => {
@@ -81,7 +86,7 @@ describe("EthVixPriceFeed.js", () => {
             .add(1, "minute")
             .valueOf()
         );
-        assert.equal(historicalPrice.toString(), parseFixed(historicalResponse[1].vix, 6).toString());
+        assert.equal(historicalPrice.toString(), parseFixed(historicalResponse[1].vix, 18).toString());
 
         const justBeforeNextPrice = await priceFeed.getHistoricalPrice(
           moment
@@ -90,7 +95,7 @@ describe("EthVixPriceFeed.js", () => {
             .subtract(1, "ms")
             .valueOf()
         );
-        assert.equal(justBeforeNextPrice.toString(), parseFixed(historicalResponse[1].vix, 6).toString());
+        assert.equal(justBeforeNextPrice.toString(), parseFixed(historicalResponse[1].vix, 18).toString());
 
         const nextPrice = await priceFeed.getHistoricalPrice(
           moment
@@ -98,7 +103,7 @@ describe("EthVixPriceFeed.js", () => {
             .add(15, "minutes")
             .valueOf()
         );
-        assert.equal(nextPrice.toString(), parseFixed(historicalResponse[2].vix, 6).toString());
+        assert.equal(nextPrice.toString(), parseFixed(historicalResponse[2].vix, 18).toString());
       });
     });
 
