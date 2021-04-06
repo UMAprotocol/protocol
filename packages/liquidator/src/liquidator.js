@@ -1,6 +1,7 @@
 const {
   PostWithdrawLiquidationRewardsStatusTranslations,
   createObjectFromDefaultProps,
+  revertWrapper,
   runTransaction
 } = require("@uma/common");
 
@@ -65,9 +66,6 @@ class Liquidator {
     this.toWei = this.web3.utils.toWei;
     this.fromWei = this.web3.utils.fromWei;
     this.utf8ToHex = this.web3.utils.utf8ToHex;
-
-    // Multiplier applied to Truffle's estimated gas limit for a transaction to send.
-    this.GAS_LIMIT_BUFFER = 1.25;
 
     // Default config settings. Liquidator deployer can override these settings by passing in new
     // values via the `liquidatorConfig` input object. The `isValid` property is a function that should be called
@@ -384,71 +382,91 @@ class Liquidator {
       });
 
       // Construct transaction.
-      const withdrawTransaction = this.financialContract.methods.withdrawLiquidation(
-        liquidation.id,
-        liquidation.sponsor
-      );
+      const withdraw = this.financialContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
+
+      // Confirm that liquidation has eligible rewards to be withdrawn.
+      let withdrawalCallResponse;
+      try {
+        withdrawalCallResponse = await withdraw.call({ from: this.account });
+
+        // Mainnet view/pure functions sometimes don't revert, even if a require is not met. The revertWrapper ensures this
+        // caught correctly. see https://forum.openzeppelin.com/t/require-in-view-pure-functions-dont-revert-on-public-networks/1211
+        if (revertWrapper(withdrawalCallResponse) === null) {
+          throw new Error("Simulated reward withdrawal failed");
+        }
+      } catch (error) {
+        this.logger.debug({
+          at: "Liquidator",
+          message: "No rewards to withdraw",
+          liquidation: liquidation,
+          error
+        });
+        continue;
+      }
+
+      // In contract version 1.2.2 and below this function returns one value: the amount withdrawn by the function caller.
+      // In later versions it returns an object containing all payouts.
+      const amountWithdrawn = this.isLegacyEmpVersion
+        ? withdrawalCallResponse.rawValue.toString()
+        : withdrawalCallResponse.payToLiquidator.rawValue.toString();
+
+      // In contract version 1.2.2 and below this function returns one value: the amount withdrawn by the function caller.
+      // In later versions it returns an object containing all payouts.
       this.logger.debug({
         at: "Liquidator",
         message: "Withdrawing liquidation",
-        liquidation: liquidation
+        liquidation: liquidation,
+        amountWithdrawn
       });
+
+      // Send the transaction or report failure.
+      let receipt;
       try {
-        // Get successful transaction receipt and return value or error.
-        const transactionResult = await runTransaction({
-          transaction: withdrawTransaction,
+        const txResponse = await runTransaction({
+          transaction: withdraw,
           config: {
             gasPrice: this.gasEstimator.getCurrentFastPrice(),
             from: this.account,
             nonce: await this.web3.eth.getTransactionCount(this.account)
           }
         });
-        const receipt = transactionResult.receipt;
-        const logResult = {
-          tx: receipt.transactionHash,
-          caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
-          settlementPrice: receipt.events.LiquidationWithdrawn.returnValues.settlementPrice,
-          liquidationStatus:
-            PostWithdrawLiquidationRewardsStatusTranslations[
-              receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
-            ]
-        };
-        // In contract version 1.2.2 and below this function returns one value: the amount withdrawn by the function caller.
-        // In later versions it returns an object containing all payouts.
-        if (this.isLegacyEmpVersion) {
-          logResult.withdrawalAmount = receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount;
-        } else {
-          logResult.paidToLiquidator = receipt.events.LiquidationWithdrawn.returnValues.paidToLiquidator;
-          logResult.paidToDisputer = receipt.events.LiquidationWithdrawn.returnValues.paidToDisputer;
-          logResult.paidToSponsor = receipt.events.LiquidationWithdrawn.returnValues.paidToSponsor;
-        }
-        this.logger.info({
-          at: "Liquidator",
-          message: "Liquidation withdrawn🤑",
-          liquidation: liquidation,
-          liquidationResult: logResult
-        });
+        receipt = txResponse.receipt;
       } catch (error) {
-        // If the withdrawal simulation fails, then it is likely that the dispute has not resolved yet, and we don't
-        // want to emit a high level log about this:
-        if (error.type === "call") {
-          this.logger.debug({
-            at: "Liquidator",
-            message: "No rewards to withdraw",
-            liquidation: liquidation
-          });
-        } else {
-          const message = "Failed to withdraw liquidation rewards🚨";
-          this.logger.error({
-            at: "Liquidator",
-            message,
-            disputer: this.account,
-            liquidation: liquidation,
-            error
-          });
-        }
+        this.logger.error({
+          at: "Liquidator",
+          message: "Failed to withdraw liquidation rewards🚨",
+          error
+        });
         continue;
       }
+
+      let logResult = {
+        tx: receipt.transactionHash,
+        caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
+        // Settlement price is possible undefined if liquidation expired without a dispute
+        settlementPrice: receipt.events.LiquidationWithdrawn.returnValues.settlementPrice,
+        liquidationStatus:
+          PostWithdrawLiquidationRewardsStatusTranslations[
+            receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
+          ]
+      };
+
+      // In contract version 1.2.2 and below this event returns one value, `withdrawalAmount`: the amount withdrawn by the function caller.
+      // In later versions it returns an object containing all payouts.
+      if (this.isLegacyEmpVersion) {
+        logResult.withdrawalAmount = receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount;
+      } else {
+        logResult.paidToLiquidator = receipt.events.LiquidationWithdrawn.returnValues.paidToLiquidator;
+        logResult.paidToDisputer = receipt.events.LiquidationWithdrawn.returnValues.paidToDisputer;
+        logResult.paidToSponsor = receipt.events.LiquidationWithdrawn.returnValues.paidToSponsor;
+      }
+
+      this.logger.info({
+        at: "Liquidator",
+        message: "Liquidation withdrawn🤑",
+        liquidation: liquidation,
+        liquidationResult: logResult
+      });
     }
   }
 }
