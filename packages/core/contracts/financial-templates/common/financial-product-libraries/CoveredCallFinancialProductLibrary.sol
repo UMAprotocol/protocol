@@ -1,7 +1,6 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 import "./FinancialProductLibrary.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "../../../common/implementation/Lockable.sol";
 
 /**
@@ -15,7 +14,7 @@ import "../../../common/implementation/Lockable.sol";
  * If ETHUSD = $800 at expiry, the call is $400 in the money, and the contract pays out 0.5 WETH (worth $400).
  * If ETHUSD =< $400 at expiry, the call is out of the money, and the contract pays out 0 WETH.
  */
-contract CoveredCallFinancialProductLibrary is FinancialProductLibrary, Ownable, Lockable {
+contract CoveredCallFinancialProductLibrary is FinancialProductLibrary, Lockable {
     mapping(address => FixedPoint.Unsigned) private financialProductStrikes;
 
     /**
@@ -28,7 +27,6 @@ contract CoveredCallFinancialProductLibrary is FinancialProductLibrary, Ownable,
      */
     function setFinancialProductStrike(address financialProduct, FixedPoint.Unsigned memory strikePrice)
         public
-        onlyOwner
         nonReentrant()
     {
         require(strikePrice.isGreaterThan(0), "Cant set 0 strike");
