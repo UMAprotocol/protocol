@@ -455,6 +455,7 @@ contract("Perpetual: proposer.js", function(accounts) {
     proposer = new FundingRateProposer({
       logger: spyLogger,
       perpetualFactoryClient: factoryClient,
+      multicallContractAddress: multicall.address,
       gasEstimator: gasEstimator,
       account: botRunner,
       commonPriceFeedConfig: invalidPriceFeedConfig

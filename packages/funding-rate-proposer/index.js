@@ -27,6 +27,8 @@ const { getWeb3, PublicNetworks } = require("@uma/common");
  * @param {Number} errorRetriesTimeout The amount of milliseconds to wait between re-try iterations on failed loops.
  * @param {Object} [commonPriceFeedConfig] Common configuration to pass to all PriceFeeds constructed by proposer.
  * @param {Object} [perpetualProposerConfig] Configuration to construct the Perpetual funding rate proposer.
+ * @param {Address} [multicallAddress] Overrides default multicall contract fetched from detected provider's
+ *     network.
  * @param {Boolean} [isTest] If set to true, then proposer bot will use the pricefeed's `lastUpdateTime` as the
  *     request timestamp instead of `web3.eth.getBlock('latest').timestamp`.
  * @return None or throws an Error.
@@ -39,6 +41,7 @@ async function run({
   errorRetriesTimeout,
   commonPriceFeedConfig,
   perpetualProposerConfig,
+  multicallAddress,
   isTest = false
 }) {
   try {
@@ -73,10 +76,12 @@ async function run({
     // The proposer needs to query prices for any identifier approved to use the Optimistic Oracle,
     // so a new pricefeed is constructed for each identifier. This `commonPriceFeedConfig` contains
     // properties that are shared across all of these new pricefeeds.
+    const multicallContractAddress =
+      multicallAddress || (networkName ? multicallAddressMap[networkName].multicall : null);
     const fundingRateProposer = new FundingRateProposer({
       logger,
       perpetualFactoryClient,
-      multicallContractAddress: networkName ? multicallAddressMap[networkName].multicall : null,
+      multicallContractAddress: multicallContractAddress,
       gasEstimator,
       account: accounts[0],
       commonPriceFeedConfig,
@@ -152,7 +157,10 @@ async function Poll(callback) {
       //  }
       perpetualProposerConfig: process.env.PERPETUAL_PROPOSER_CONFIG
         ? JSON.parse(process.env.PERPETUAL_PROPOSER_CONFIG)
-        : {}
+        : {},
+      // Overrides the default multicall contract fetched for the detected provider's network. This param is useful
+      // primarily for test networks which do not have a default multicall contract already deployed.
+      multicallAddress: process.env.MULTICALL_ADDRESS ? process.env.MULTICALL_ADDRESS : null
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });

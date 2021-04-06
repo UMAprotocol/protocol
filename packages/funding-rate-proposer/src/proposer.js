@@ -8,6 +8,7 @@ const {
 const { createObjectFromDefaultProps, runTransaction, parseFixed, formatFixed } = require("@uma/common");
 const { getAbi } = require("@uma/core");
 const Promise = require("bluebird");
+const assert = require("assert");
 
 class FundingRateProposer {
   /**
@@ -32,6 +33,7 @@ class FundingRateProposer {
     this.logger = logger;
     this.account = account;
     this.perpetualFactoryClient = perpetualFactoryClient;
+    assert(multicallContractAddress, "missing multicallContractAddress");
     this.multicallContractAddress = multicallContractAddress;
     this.web3 = this.perpetualFactoryClient.web3;
     this.commonPriceFeedConfig = commonPriceFeedConfig;
@@ -357,34 +359,22 @@ class FundingRateProposer {
   async _getContractState(contractAddress) {
     let perpetualContract = this.contractCache[contractAddress].contract;
 
-    let fundingRateData, configStoreAddress;
-    if (!this.multicallContractAddress) {
-      // If no multicontract address set, then read the contract's on-chain funding rate data. Note that this will not
-      // take into account any pending funding rates that will be published on the next contract interaction.
-      [fundingRateData, configStoreAddress] = await Promise.all([
-        perpetualContract.methods.fundingRate().call(),
-        perpetualContract.methods.configStore().call()
-      ]);
-    } else {
-      // Simulate calling `applyFundingRate()` on the perpetual before reading `fundingRate()`, in order to
-      // account for any unpublished, pending funding rates.
-      const applyFundingRateCall = {
-        target: contractAddress,
-        callData: perpetualContract.methods.applyFundingRate().encodeABI()
-      };
-      const fundingRateCall = {
-        target: contractAddress,
-        callData: perpetualContract.methods.fundingRate().encodeABI()
-      };
-      const [outputs, _configStoreAddress] = await Promise.all([
-        aggregateTransactionsAndCall(this.multicallContractAddress, this.web3, [applyFundingRateCall, fundingRateCall]),
-        perpetualContract.methods.configStore().call()
-      ]);
-      configStoreAddress = _configStoreAddress;
-      // `returnData` is an array of decoded return data bytes corresponding to the transactions passed to
-      // the multicall aggregate method. Therefore, `fundingRate()`'s return output is the second element.
-      fundingRateData = outputs[1];
-    }
+    // Simulate calling `applyFundingRate()` on the perpetual before reading `fundingRate()`, in order to
+    // account for any unpublished, pending funding rates.
+    const applyFundingRateCall = {
+      target: contractAddress,
+      callData: perpetualContract.methods.applyFundingRate().encodeABI()
+    };
+    const fundingRateCall = {
+      target: contractAddress,
+      callData: perpetualContract.methods.fundingRate().encodeABI()
+    };
+    // `aggregateTransactionsAndCall` returns an array of decoded return data bytes corresponding to the transactions
+    // passed to the multicall aggregate method. Therefore, `fundingRate()`'s return output is the second element.
+    const [[, fundingRateData], configStoreAddress] = await Promise.all([
+      aggregateTransactionsAndCall(this.multicallContractAddress, this.web3, [applyFundingRateCall, fundingRateCall]),
+      perpetualContract.methods.configStore().call()
+    ]);
 
     const configStoreContract = this.createConfigStoreContract(configStoreAddress);
     // Grab config store settings.

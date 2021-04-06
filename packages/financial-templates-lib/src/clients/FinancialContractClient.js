@@ -184,13 +184,13 @@ class FinancialContractClient {
           target: this.financialContractAddress,
           callData: this.financialContract.methods.fundingRate().encodeABI()
         };
-        const outputs = await aggregateTransactionsAndCall(this.multicallContractAddress, this.web3, [
+        const [, fundingRateData] = await aggregateTransactionsAndCall(this.multicallContractAddress, this.web3, [
           applyFundingRateCall,
           fundingRateCall
         ]);
-        // `returnData` is an array of decoded return data bytes corresponding to the transactions passed to
-        // the multicall aggregate method. Therefore, `fundingRate()`'s return output is the second element.
-        const fundingRateData = outputs[1];
+        // `aggregateTransactionsAndCall` returns an array of decoded return data bytes corresponding to the
+        // transactions passed to the multicall aggregate method. Therefore, `fundingRate()`'s return output is the
+        // second element.
         this.latestCumulativeFundingRateMultiplier = this.toBN(fundingRateData.cumulativeMultiplier.rawValue);
       }
     } else {

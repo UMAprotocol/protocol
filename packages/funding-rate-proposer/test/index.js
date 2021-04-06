@@ -20,6 +20,7 @@ const Finder = getTruffleContract("Finder", web3);
 const Registry = getTruffleContract("Registry", web3);
 const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
 const Store = getTruffleContract("Store", web3);
+const MulticallMock = getTruffleContract("MulticallMock", web3);
 
 contract("index.js", function(accounts) {
   const deployer = accounts[0];
@@ -29,6 +30,7 @@ contract("index.js", function(accounts) {
   let identifierWhitelist;
   let collateralWhitelist;
   let collateral;
+  let multicall;
   let perpsCreated = [];
 
   // Offchain infra
@@ -72,6 +74,7 @@ contract("index.js", function(accounts) {
     const timer = await Timer.new();
     const tokenFactory = await TokenFactory.new();
     const finder = await Finder.new();
+    multicall = await MulticallMock.new();
 
     // Whitelist an initial identifier so we can deploy.
     identifierWhitelist = await IdentifierWhitelist.new();
@@ -145,6 +148,7 @@ contract("index.js", function(accounts) {
       errorRetries,
       errorRetriesTimeout,
       commonPriceFeedConfig,
+      multicallAddress: multicall.address,
       isTest: true // Need to set this to true so that proposal uses correct request timestamp for test environment
     });
 
