@@ -27,6 +27,7 @@ const AddressWhitelist = getTruffleContract("AddressWhitelist", web3);
 const Timer = getTruffleContract("Timer", web3);
 const TokenFactory = getTruffleContract("TokenFactory", web3);
 const Registry = getTruffleContract("Registry", web3);
+const MulticallMock = getTruffleContract("MulticallMock", web3);
 
 contract("Perpetual: proposer.js", function(accounts) {
   const deployer = accounts[0];
@@ -42,6 +43,7 @@ contract("Perpetual: proposer.js", function(accounts) {
   let collateralWhitelist;
   let collateral;
   let perpsCreated;
+  let multicall;
 
   // Offchain infra
   let factoryClient;
@@ -99,6 +101,7 @@ contract("Perpetual: proposer.js", function(accounts) {
   before(async function() {
     finder = await Finder.new();
     timer = await Timer.new();
+    multicall = await MulticallMock.new();
 
     // Whitelist an price identifier so we can deploy.
     identifierWhitelist = await IdentifierWhitelist.new();
@@ -218,6 +221,7 @@ contract("Perpetual: proposer.js", function(accounts) {
     proposer = new FundingRateProposer({
       logger: spyLogger,
       perpetualFactoryClient: factoryClient,
+      multicallContractAddress: multicall.address,
       gasEstimator: gasEstimator,
       account: botRunner,
       commonPriceFeedConfig,
@@ -238,6 +242,7 @@ contract("Perpetual: proposer.js", function(accounts) {
           hexToUtf8(cachedContract.state.currentFundingRateData.identifier),
           hexToUtf8(fundingRateIdentifiersToTest[i])
         );
+        assert.equal(cachedContract.state.currentFundingRateData.proposalTime, "0");
         assert.equal(
           cachedContract.state.currentConfig.maxFundingRate.toString(),
           configStoreParams.maxFundingRate.rawValue
@@ -298,7 +303,7 @@ contract("Perpetual: proposer.js", function(accounts) {
         // bot should see a different current funding rate from the PriceFeedMockScaled and propose.
         await proposer.updateFundingRates(true);
       });
-      it("Detects each contract's current funding rate and proposes to update it if it has changed beyond some margin", async function() {
+      it("Detects each contract's current (or publishable) funding rate and proposes to update it if it has changed beyond some margin", async function() {
         // Check that the identifiers all have been proposed to.
         for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
           await verifyOracleState(
@@ -318,10 +323,61 @@ contract("Perpetual: proposer.js", function(accounts) {
         assert.ok(spy.getCall(-1).lastArg.proposalResult.tx);
 
         // Running `updateFundingRates()` on updated contract state does nothing because all
-        // identifiers have pending (undisputed) proposals.
+        // identifiers have pending (undisputed), unexpired proposals.
         await proposer.update();
         await proposer.updateFundingRates(true);
         assert.isTrue(spyLogIncludes(spy, -1, "Proposal is already pending"));
+
+        // Once the proposal has expired, the proposer should be able to propose another funding rate if the price feed
+        // rate has meaningful diverged from the newly published rate:
+        const originalProposalTime = latestProposalTime;
+        latestProposalTime += optimisticOracleProposalLiveness;
+        await timer.setCurrentTime(latestProposalTime);
+        // All proposals should be expired, but not settled:
+        for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
+          await verifyOracleState(
+            OptimisticOracleRequestStatesEnum.EXPIRED,
+            perpsCreated[i].address,
+            fundingRateIdentifiersToTest[i],
+            originalProposalTime,
+            perpsCreated[i].ancillaryData
+          );
+        }
+        await proposer.update();
+        await proposer.updateFundingRates(true);
+        assert.equal(lastSpyLogLevel(spy), "debug");
+        assert.isTrue(
+          spyLogIncludes(spy, -1, "Skipping proposal because current rate is within allowed margin of error")
+        );
+        // Since pricefeed hasn't changed, the publishable "currentRate" should be equal to the "proposedRate":
+        assert.equal(spy.getCall(-1).lastArg.proposedRate, spy.getCall(-1).lastArg.currentRate);
+
+        // The pricefeed has now diverged enough from the publishable rate that we can propose again:
+        let pricesToPropose = "0.000006";
+        for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
+          const priceFeed = proposer.priceFeedCache[hexToUtf8(fundingRateIdentifiersToTest[i])];
+          priceFeed.setCurrentPrice(pricesToPropose);
+          priceFeed.setLastUpdateTime(latestProposalTime);
+        }
+        await proposer.updateFundingRates(true);
+        for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
+          // The first proposals should be settled now:
+          await verifyOracleState(
+            OptimisticOracleRequestStatesEnum.SETTLED,
+            perpsCreated[i].address,
+            fundingRateIdentifiersToTest[i],
+            originalProposalTime,
+            perpsCreated[i].ancillaryData
+          );
+          // There should be new proposals for the identifiers:
+          await verifyOracleState(
+            OptimisticOracleRequestStatesEnum.PROPOSED,
+            perpsCreated[i].address,
+            fundingRateIdentifiersToTest[i],
+            latestProposalTime,
+            perpsCreated[i].ancillaryData
+          );
+        }
       });
       describe("Proposed rate is published, can now propose again", function() {
         beforeEach(async function() {
@@ -399,6 +455,7 @@ contract("Perpetual: proposer.js", function(accounts) {
     proposer = new FundingRateProposer({
       logger: spyLogger,
       perpetualFactoryClient: factoryClient,
+      multicallContractAddress: multicall.address,
       gasEstimator: gasEstimator,
       account: botRunner,
       commonPriceFeedConfig: invalidPriceFeedConfig

@@ -1,7 +1,6 @@
 // Provides convenience methods for interacting with deployed Multicall contract on network.
 const { getAbi } = require("@uma/core");
 const { getAbiDecoder } = require("@uma/common");
-const multicallAddressMap = require("@makerdao/multicall/src/addresses.json");
 const assert = require("assert");
 
 let cachedAbiDecoder;
@@ -28,6 +27,24 @@ const aggregateTransactionsAndCall = async (multicallAddress, web3, transactions
   // Decode return data, which is an array of the same length as `transactions`:
   const returnData = (await multicallContract.methods.aggregate(transactions).call(undefined, blockNumber)).returnData;
   return returnData.map((data, i) => _decodeOutput(transactions[i].callData, data, web3));
+};
+
+const multicallAddressMap = {
+  mainnet: {
+    multicall: "0xeefba1e63905ef1d7acba5a8513c70307c1ce441"
+  },
+  kovan: {
+    multicall: "0x2cc8688c5f75e365aaeeb4ea8d6a480405a48d2a"
+  },
+  rinkeby: {
+    multicall: "0x42ad527de7d4e9d9d011ac45b31d8551f8fe9821"
+  },
+  goerli: {
+    multicall: "0x77dca2c955b15e9de4dbbcf1246b4b85b651e50e"
+  },
+  xdai: {
+    multicall: "0xb5b692a88bdfc81ca69dcb1d924f59f0413a602a"
+  }
 };
 
 module.exports = {

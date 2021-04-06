@@ -8,13 +8,14 @@ const {
   waitForLogger,
   delay,
   FinancialContractFactoryClient,
-  GasEstimator
+  GasEstimator,
+  multicallAddressMap
 } = require("@uma/financial-templates-lib");
 const { FundingRateProposer } = require("./src/proposer");
 
 // Contract ABIs and network Addresses.
 const { getAbi, getAddress } = require("@uma/core");
-const { getWeb3 } = require("@uma/common");
+const { getWeb3, PublicNetworks } = require("@uma/common");
 
 /**
  * @notice Runs strategies that request and propose new funding rates for Perpetual contracts.
@@ -26,6 +27,8 @@ const { getWeb3 } = require("@uma/common");
  * @param {Number} errorRetriesTimeout The amount of milliseconds to wait between re-try iterations on failed loops.
  * @param {Object} [commonPriceFeedConfig] Common configuration to pass to all PriceFeeds constructed by proposer.
  * @param {Object} [perpetualProposerConfig] Configuration to construct the Perpetual funding rate proposer.
+ * @param {Address} [multicallAddress] Overrides default multicall contract fetched from detected provider's
+ *     network.
  * @param {Boolean} [isTest] If set to true, then proposer bot will use the pricefeed's `lastUpdateTime` as the
  *     request timestamp instead of `web3.eth.getBlock('latest').timestamp`.
  * @return None or throws an Error.
@@ -38,10 +41,13 @@ async function run({
   errorRetriesTimeout,
   commonPriceFeedConfig,
   perpetualProposerConfig,
+  multicallAddress,
   isTest = false
 }) {
   try {
     const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
+    const networkName = PublicNetworks[Number(networkId)] ? PublicNetworks[Number(networkId)].name : null;
+
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
@@ -51,7 +57,8 @@ async function run({
       errorRetries,
       errorRetriesTimeout,
       commonPriceFeedConfig,
-      perpetualProposerConfig
+      perpetualProposerConfig,
+      multicallAddress
     });
 
     // Create the FinancialContractFactoryClient to query on-chain information,
@@ -70,9 +77,12 @@ async function run({
     // The proposer needs to query prices for any identifier approved to use the Optimistic Oracle,
     // so a new pricefeed is constructed for each identifier. This `commonPriceFeedConfig` contains
     // properties that are shared across all of these new pricefeeds.
+    const multicallContractAddress =
+      multicallAddress || (networkName ? multicallAddressMap[networkName].multicall : null);
     const fundingRateProposer = new FundingRateProposer({
       logger,
       perpetualFactoryClient,
+      multicallContractAddress: multicallContractAddress,
       gasEstimator,
       account: accounts[0],
       commonPriceFeedConfig,
@@ -148,7 +158,10 @@ async function Poll(callback) {
       //  }
       perpetualProposerConfig: process.env.PERPETUAL_PROPOSER_CONFIG
         ? JSON.parse(process.env.PERPETUAL_PROPOSER_CONFIG)
-        : {}
+        : {},
+      // Overrides the default multicall contract fetched for the detected provider's network. This param is useful
+      // primarily for test networks which do not have a default multicall contract already deployed.
+      multicallAddress: process.env.MULTICALL_ADDRESS ? process.env.MULTICALL_ADDRESS : null
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
