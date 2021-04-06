@@ -83,7 +83,7 @@ class DSProxyManager {
         account: this.account
       });
       await this.gasEstimator.update();
-      const dsProxyCreateTx = await runTransaction({
+      const { receipt } = await runTransaction({
         transaction: this.dsProxyFactory.methods.build(),
         config: {
           gasPrice: this.gasEstimator.getCurrentFastPrice(),
@@ -91,13 +91,13 @@ class DSProxyManager {
           nonce: await this.web3.eth.getTransactionCount(this.account)
         }
       });
-      this.dsProxyAddress = dsProxyCreateTx.receipt.events.Created.returnValues.proxy;
+      this.dsProxyAddress = receipt.events.Created.returnValues.proxy;
       this.dsProxy = new this.web3.eth.Contract(this.dsProxyAbi, this.dsProxyAddress);
       this.logger.info({
         at: "DSProxyManager",
         message: "DSProxy deployed for your EOA 🚀",
         dsProxyAddress: this.dsProxyAddress,
-        tx: dsProxyCreateTx.receipt.transactionHash,
+        tx: receipt.transactionHash,
         account: this.account
       });
     }
@@ -115,7 +115,7 @@ class DSProxyManager {
       callData
     });
     await this.gasEstimator.update();
-    const executeTransaction = await runTransaction({
+    const { receipt } = await runTransaction({
       transaction: this.dsProxy.methods["execute(address,bytes)"](libraryAddress, callData),
       config: {
         gasPrice: this.gasEstimator.getCurrentFastPrice(),
@@ -129,9 +129,9 @@ class DSProxyManager {
       message: "Executed function on deployed library 📸",
       libraryAddress,
       callData,
-      tx: executeTransaction.receipt.transactionHash
+      tx: receipt.transactionHash
     });
-    return executeTransaction;
+    return receipt;
   }
   // Extract call code using the `.abi` syntax on a truffle object or the `getABI(contractType,contractVersion)` from common.
   async callFunctionOnNewlyDeployedLibrary(callCode, callData) {
@@ -146,7 +146,7 @@ class DSProxyManager {
     });
 
     await this.gasEstimator.update();
-    const executeTransaction = await runTransaction({
+    const { receipt } = await runTransaction({
       transaction: this.dsProxy.methods["execute(bytes,bytes)"](callCode, callData),
       config: {
         gasPrice: this.gasEstimator.getCurrentFastPrice(),
@@ -159,9 +159,9 @@ class DSProxyManager {
       at: "DSProxyManager",
       message: "Executed function on a freshly deployed library, created in the same tx 🤗",
       callData,
-      tx: executeTransaction.receipt.transactionHash
+      tx: receipt.transactionHash
     });
-    return executeTransaction;
+    return receipt;
   }
 }
 
