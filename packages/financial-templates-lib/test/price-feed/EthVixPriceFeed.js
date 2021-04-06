@@ -68,6 +68,12 @@ describe("EthVixPriceFeed.js", () => {
         await priceFeed.update();
         assert.equal(web3.utils.fromWei(priceFeed.getCurrentPrice()), "70.2");
       });
+
+      it("can properly handle unordered response data", async () => {
+        networker.getJsonReturns = [[...historicalResponse].reverse()];
+        await priceFeed.update();
+        assert.equal(web3.utils.fromWei(priceFeed.getCurrentPrice()), "70.2");
+      });
     });
 
     describe("Historical price discovery", () => {
