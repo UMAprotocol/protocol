@@ -57,7 +57,8 @@ async function run({
       errorRetries,
       errorRetriesTimeout,
       commonPriceFeedConfig,
-      perpetualProposerConfig
+      perpetualProposerConfig,
+      multicallAddress
     });
 
     // Create the FinancialContractFactoryClient to query on-chain information,
