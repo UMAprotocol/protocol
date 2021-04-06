@@ -8,6 +8,7 @@ const { QuandlPriceFeed } = require("./QuandlPriceFeed");
 const { DefiPulsePriceFeed } = require("./DefiPulsePriceFeed");
 const { UniswapPriceFeed } = require("./UniswapPriceFeed");
 const { BalancerPriceFeed } = require("./BalancerPriceFeed");
+const { ETHVIXPriceFeed } = require("./EthVixPriceFeed");
 const { DominationFinancePriceFeed } = require("./DominationFinancePriceFeed");
 const { BasketSpreadPriceFeed } = require("./BasketSpreadPriceFeed");
 const { CoinMarketCapPriceFeed } = require("./CoinMarketCapPriceFeed");
@@ -375,6 +376,22 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.lastUpdateTime,
       config.priceFeedDecimals, // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
       config.lookback
+    );
+  } else if (config.type === "ethvix") {
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating EthVixPriceFeed",
+      config
+    });
+
+    return new ETHVIXPriceFeed(
+      logger,
+      web3,
+      config.inverse,
+      networker,
+      getTime,
+      config.minTimeBetweenUpdates,
+      config.priceFeedDecimals
     );
   } else if (config.type === "invalid") {
     logger.debug({
