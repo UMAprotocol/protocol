@@ -185,6 +185,48 @@ addLocalNetwork(networks, "metamask", {
   }
 });
 
+addLocalNetwork(networks, "edge-local", {
+  networkId: 2021,
+  provider: () =>
+    new HDWalletProvider({
+      privateKeys: [
+        process.env.LOCAL_PRIVATE_KEY || "1111111111111111111111111111111111111111111111111111111111111111"
+      ],
+      providerOrUrl: "http://localhost:9933/"
+    })
+});
+
+addLocalNetwork(networks, "edge-testnet", {
+  networkId: 2021,
+  networkCheckTimeout: 500000,
+  timeoutBlocks: 50000,
+  provider: () =>
+    new HDWalletProvider({
+      privateKeys: [process.env.TESNET_PRIVATE_KEY || ""],
+      providerOrUrl: "https://beresheet1.edgewa.re/evm"
+    })
+});
+
+addLocalNetwork(networks, "edge-mainnet", {
+  networkId: 2021,
+  networkCheckTimeout: 500000,
+  timeoutBlocks: 50000,
+  provider: () =>
+    new HDWalletProvider({
+      privateKeys: [process.env.MAINNET_PRIVATE_KEY || ""],
+      providerOrUrl: "https://mainnet2.edgewa.re/evm"
+    })
+});
+
+// addLocalNetwork(networks, "edge-mainnet", {
+//   networkId: 2021,
+//   networkCheckTimeout: 1000000,
+//   provider: () => new HDWalletProvider({
+//     privateKeys: [process.env.MAINNET_PRIVATE_KEY || ""],
+//     providerOrUrl: "http://localhost:9933/",
+//   })
+// })
+
 function getTruffleConfig(truffleContextDir = "./") {
   return {
     // See <http://truffleframework.com/docs/advanced/configuration>

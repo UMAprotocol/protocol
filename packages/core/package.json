@@ -66,7 +66,10 @@
     "load-addresses": "yarn run apply-registry",
     "clean": "rm -rf build",
     "build": "yarn truffle compile && yarn load-addresses && tsc",
-    "prepublish": "yarn build"
+    "prepublish": "yarn build",
+    "migrate:local": "truffle --network edge-local migrate",
+    "migrate:testnet": "truffle --network edge-testnet migrate --reset",
+    "migrate:mainnet": "truffle --network edge-mainnet migrate --reset"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
