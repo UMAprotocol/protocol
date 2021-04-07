@@ -18,12 +18,13 @@ contract CoveredCallFinancialProductLibrary is FinancialProductLibrary, Lockable
     mapping(address => FixedPoint.Unsigned) private financialProductStrikes;
 
     /**
-     * @notice Enables the deployer of the library to set the strike price for an associated financial product.
+     * @notice Enables any address to set the strike price for an associated financial product.
      * @param financialProduct address of the financial product.
      * @param strikePrice the strike price for the covered call to be applied to the financial product.
-     * @dev Note: a) Only the owner (deployer) of this library can set new strike prices b) A strike price cannot be 0.
+     * @dev Note: a) Any address can set the initial strike price b) A strike price cannot be 0.
      * c) A strike price can only be set once to prevent the deployer from changing the strike after the fact.
-     * d)  financialProduct must exposes an expirationTimestamp method.
+     * d) For safety, a strike price should be set before depositing any synthetic tokens in a liquidity pool.
+     * e) financialProduct must expose an expirationTimestamp method.
      */
     function setFinancialProductStrike(address financialProduct, FixedPoint.Unsigned memory strikePrice)
         public
