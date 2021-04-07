@@ -1,7 +1,6 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 import "./FinancialProductLibrary.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "../../../common/implementation/Lockable.sol";
 
 /**
@@ -15,20 +14,20 @@ import "../../../common/implementation/Lockable.sol";
  * If ETHUSD = $800 at expiry, the call is $400 in the money, and the contract pays out 0.5 WETH (worth $400).
  * If ETHUSD =< $400 at expiry, the call is out of the money, and the contract pays out 0 WETH.
  */
-contract CoveredCallFinancialProductLibrary is FinancialProductLibrary, Ownable, Lockable {
+contract CoveredCallFinancialProductLibrary is FinancialProductLibrary, Lockable {
     mapping(address => FixedPoint.Unsigned) private financialProductStrikes;
 
     /**
-     * @notice Enables the deployer of the library to set the strike price for an associated financial product.
+     * @notice Enables any address to set the strike price for an associated financial product.
      * @param financialProduct address of the financial product.
      * @param strikePrice the strike price for the covered call to be applied to the financial product.
-     * @dev Note: a) Only the owner (deployer) of this library can set new strike prices b) A strike price cannot be 0.
+     * @dev Note: a) Any address can set the initial strike price b) A strike price cannot be 0.
      * c) A strike price can only be set once to prevent the deployer from changing the strike after the fact.
-     * d)  financialProduct must exposes an expirationTimestamp method.
+     * d) For safety, a strike price should be set before depositing any synthetic tokens in a liquidity pool.
+     * e) financialProduct must expose an expirationTimestamp method.
      */
     function setFinancialProductStrike(address financialProduct, FixedPoint.Unsigned memory strikePrice)
         public
-        onlyOwner
         nonReentrant()
     {
         require(strikePrice.isGreaterThan(0), "Cant set 0 strike");
