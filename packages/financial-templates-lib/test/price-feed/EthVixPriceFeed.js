@@ -56,12 +56,12 @@ describe("EthVixPriceFeed.js", () => {
     describe("Price discovery", () => {
       it("can return the latest ethVIX price", async () => {
         await priceFeed.update();
-        assert.equal(priceFeed.getCurrentPrice().toString(), "70200000000000000000");
+        assert.equal(priceFeed.getCurrentPrice().toString(), web3.utils.toWei("70.2"));
       });
 
       it("can return the latest iethVIX price", async () => {
         await inversePriceFeed.update();
-        assert.equal(inversePriceFeed.getCurrentPrice().toString(), "142440000000000000000");
+        assert.equal(inversePriceFeed.getCurrentPrice().toString(), web3.utils.toWei("142.44"));
       });
 
       it("can properly scale results per the DVM requirement (wei units)", async () => {
