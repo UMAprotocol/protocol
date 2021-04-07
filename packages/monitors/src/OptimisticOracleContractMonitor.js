@@ -95,9 +95,9 @@ class OptimisticOracleContractMonitor {
         )} and the final fee is ${this.formatDecimalString(convertCollateralDecimals(event.finalFee))}. ` +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
-      // The default log level should be reduced to "info" for funding rate identifiers:
+      // The default log level should be reduced to "debug" for funding rate identifiers:
       this.logger[
-        this.logOverrides.requestedPrice || (this._isFundingRateIdentifier(event.identifier) ? "info" : "error")
+        this.logOverrides.requestedPrice || (this._isFundingRateIdentifier(event.identifier) ? "debug" : "error")
       ]({
         at: "OptimisticOracleContractMonitor",
         message: "Price Request Alert 👮🏻!",
@@ -198,7 +198,10 @@ class OptimisticOracleContractMonitor {
         `The ancillary data field is ${event.ancillaryData}. ` +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
-      this.logger[this.logOverrides.settledPrice || "info"]({
+      // The default log level should be reduced to "debug" for funding rate identifiers:
+      this.logger[
+        this.logOverrides.settledPrice || (this._isFundingRateIdentifier(event.identifier) ? "debug" : "info")
+      ]({
         at: "OptimisticOracleContractMonitor",
         message: "Price Settlement Alert 🏧!",
         mrkdwn: mrkdwn
