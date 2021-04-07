@@ -35,6 +35,9 @@ const argv = require("minimist")(process.argv.slice(), {
 const fs = require("fs");
 const path = require("path");
 
+// Locally stored list of DesignatedVoting wallets to substitute with their hot wallets:
+const addressesToReplace = require("./2KEY_ADDRESS_OVERRIDE") || {};
+
 const FindBlockAtTimestamp = require("../liquidity-mining/FindBlockAtTimeStamp");
 const { getAbi, getAddress } = require("@uma/core");
 const { getWeb3 } = require("@uma/common");
@@ -512,6 +515,27 @@ async function calculateRebate({
         (agg, curr) => agg + rebateOutput.shareHolderPayout[curr],
         0
       );
+
+      // Replace designated voting wallets output file with hot wallets:
+      for (let voterAddress of Object.keys(rebateOutput.shareHolderPayout)) {
+        if (addressesToReplace[voterAddress]) {
+          try {
+            // Get hot wallet
+            const designatedVoting = new web3.eth.Contract(getAbi("DesignatedVoting"), voterAddress);
+            const hotWallet = (await designatedVoting.methods.getMember(1).call()).toLowerCase();
+            // Add hot wallet to output
+            rebateOutput.shareHolderPayout[hotWallet] = rebateOutput.shareHolderPayout[voterAddress];
+            // Remove cold wallet from output
+            delete rebateOutput.shareHolderPayout[voterAddress];
+            console.log(`Replaced [COLD-WALLET] ${voterAddress} with [HOT-WALLET]: ${hotWallet}`);
+          } catch (err) {
+            // Address is not a DesignatedVoting wallet, skip it.
+            console.error(
+              `${voterAddress} found in "2KEY_ADDRESS_OVERRIDE.json" but is not a DesignatedVoting wallet.`
+            );
+          }
+        }
+      }
       // Format output and save to file.
       const savePath = `${path.resolve(__dirname)}/rebates/Rebate_${rebateNumber}.json`;
       fs.writeFileSync(savePath, JSON.stringify(rebateOutput, null, 4));
