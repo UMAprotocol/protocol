@@ -36,7 +36,14 @@ const fs = require("fs");
 const path = require("path");
 
 // Locally stored list of DesignatedVoting wallets to substitute with their hot wallets:
-const addressesToReplace = require("./2KEY_ADDRESS_OVERRIDE") || {};
+let addressesToReplace = {};
+try {
+  if (fs.existsSync("./2KEY_ADDRESS_OVERRIDE.json")) {
+    addressesToReplace = require("./2KEY_ADDRESS_OVERRIDE.json");
+  }
+} catch (err) {
+  // Do nothing if file is not provided.
+}
 
 const FindBlockAtTimestamp = require("../liquidity-mining/FindBlockAtTimeStamp");
 const { getAbi, getAddress } = require("@uma/core");
