@@ -37,12 +37,8 @@ const path = require("path");
 
 // Locally stored list of DesignatedVoting wallets to substitute with their hot wallets:
 let addressesToReplace = {};
-try {
-  if (fs.existsSync("./2KEY_ADDRESS_OVERRIDE.json")) {
-    addressesToReplace = require("./2KEY_ADDRESS_OVERRIDE.json");
-  }
-} catch (err) {
-  // Do nothing if file is not provided.
+if (fs.existsSync("./2KEY_ADDRESS_OVERRIDE.json")) {
+  addressesToReplace = require("./2KEY_ADDRESS_OVERRIDE.json");
 }
 
 const FindBlockAtTimestamp = require("../liquidity-mining/FindBlockAtTimeStamp");
