@@ -36,9 +36,11 @@ const fs = require("fs");
 const path = require("path");
 
 // Locally stored list of DesignatedVoting wallets to substitute with their hot wallets:
-let addressesToReplace = {};
-if (fs.existsSync("./2KEY_ADDRESS_OVERRIDE.json")) {
+let addressesToReplace = [];
+try {
   addressesToReplace = require("./2KEY_ADDRESS_OVERRIDE.json");
+} catch (err) {
+  // Do nothing, file doesn't exist.
 }
 
 const FindBlockAtTimestamp = require("../liquidity-mining/FindBlockAtTimeStamp");
@@ -521,7 +523,7 @@ async function calculateRebate({
 
       // Replace designated voting wallets output file with hot wallets:
       for (let voterAddress of Object.keys(rebateOutput.shareHolderPayout)) {
-        if (addressesToReplace[voterAddress]) {
+        if (addressesToReplace.includes(voterAddress)) {
           try {
             // Get hot wallet
             const designatedVoting = new web3.eth.Contract(getAbi("DesignatedVoting"), voterAddress);
