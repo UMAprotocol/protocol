@@ -126,9 +126,13 @@ class FundingRateProposer {
     // TODO: Should allow user to set an ROI-based metric to customize whether
     // bot strategically waits to submit funding rate proposals. Rewards
     // increase with time since last update.
-    await Promise.map(Object.keys(this.contractCache), contractAddress => {
-      return this._updateFundingRate(contractAddress, usePriceFeedTime);
-    });
+    // TODO: Note we update funding rates sequentially so that we can hardcode the nonce for each proposal passing
+    // transactions to the `ynatm` package. If these calls were submitted in parallel then we wouldn't be able to
+    // hardcode the nonce, which could cause unintended reverts due to duplicate transactions. Once the `ynatm` package
+    // can handle nonce management, then we should update this logic to run in parallel.
+    for (let contractAddress of Object.keys(this.contractCache)) {
+      await this._updateFundingRate(contractAddress, usePriceFeedTime);
+    }
   }
 
   /** **********************************
@@ -217,11 +221,8 @@ class FundingRateProposer {
           transaction: proposal,
           config: {
             gasPrice: this.gasEstimator.getCurrentFastPrice(),
-            from: this.account
-            // Since this method is called within a Promise.all, it is sending transactions in parallel with other
-            // transactions, making it difficult to determine which nonce is the correct once to set for ynatm.
-            // Future work should build nonce management logic into the runTransactions method. See more here:
-            // https://github.com/ChainSafe/web3.js/issues/1846
+            from: this.account,
+            nonce: await this.web3.eth.getTransactionCount(this.account)
           }
         });
         let receipt = transactionResult.receipt;
