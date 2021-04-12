@@ -6,6 +6,7 @@
   "license": "AGPL-3.0-or-later",
   "dependencies": {
     "@types/bluebird": "^3.5.33",
+    "@types/cli-progress": "^3.9.1",
     "@uma/disputer": "2.1.0",
     "@uma/liquidator": "2.1.0",
     "@uma/monitors": "2.1.0",

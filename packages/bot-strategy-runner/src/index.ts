@@ -50,7 +50,7 @@ async function runStrategies(strategyRunnerConfig: strategyRunnerConfig) {
 
     progressBar.start(allBotsConfigs.length, 0);
 
-    const executionResults = await bluebird.map(
+    const executionResults = await (bluebird as any).map(
       allBotsConfigs,
       (botConfig: any) =>
         Promise.all([
