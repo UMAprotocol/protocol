@@ -130,7 +130,7 @@ class FundingRateProposer {
     // transactions to the `ynatm` package. If these calls were submitted in parallel then we wouldn't be able to
     // hardcode the nonce, which could cause unintended reverts due to duplicate transactions. Once the `ynatm` package
     // can handle nonce management, then we should update this logic to run in parallel.
-    for (let contractAddress of Object.keys(this.contractCache)) {
+    for (const contractAddress of Object.keys(this.contractCache)) {
       await this._updateFundingRate(contractAddress, usePriceFeedTime);
     }
   }
