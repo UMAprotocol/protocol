@@ -1,29 +1,32 @@
 const assert = require("assert");
 const { ChainId, Token, Pair, TokenAmount } = require("@uniswap/sdk");
-const { MedianizerPriceFeed } = require("./MedianizerPriceFeed");
-const { FallBackPriceFeed } = require("./FallBackPriceFeed");
-const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
-const { ForexDailyPriceFeed } = require("./ForexDailyPriceFeed");
-const { QuandlPriceFeed } = require("./QuandlPriceFeed");
-const { DefiPulsePriceFeed } = require("./DefiPulsePriceFeed");
-const { UniswapPriceFeed } = require("./UniswapPriceFeed");
-const { BalancerPriceFeed } = require("./BalancerPriceFeed");
-const { DominationFinancePriceFeed } = require("./DominationFinancePriceFeed");
-const { BasketSpreadPriceFeed } = require("./BasketSpreadPriceFeed");
-const { CoinMarketCapPriceFeed } = require("./CoinMarketCapPriceFeed");
-const { CoinGeckoPriceFeed } = require("./CoinGeckoPriceFeed");
-const { TraderMadePriceFeed } = require("./TraderMadePriceFeed");
-const { PriceFeedMockScaled } = require("./PriceFeedMockScaled");
-const { InvalidPriceFeedMock } = require("./InvalidPriceFeedMock");
 const { defaultConfigs } = require("./DefaultPriceFeedConfigs");
 const { getTruffleContract } = require("@uma/core");
-const { ExpressionPriceFeed, math, escapeSpecialCharacters } = require("./ExpressionPriceFeed");
-const { VaultPriceFeed } = require("./VaultPriceFeed");
-const { LPPriceFeed } = require("./LPPriceFeed");
 const { BlockFinder } = require("./utils");
 const { getPrecisionForIdentifier, PublicNetworks } = require("@uma/common");
-const { FundingRateMultiplierPriceFeed } = require("./FundingRateMultiplierPriceFeed");
 const { multicallAddressMap } = require("../helpers/multicall");
+
+// Price feed interfaces (sorted alphabetically)
+const { BalancerPriceFeed } = require("./BalancerPriceFeed");
+const { BasketSpreadPriceFeed } = require("./BasketSpreadPriceFeed");
+const { CoinGeckoPriceFeed } = require("./CoinGeckoPriceFeed");
+const { CoinMarketCapPriceFeed } = require("./CoinMarketCapPriceFeed");
+const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
+const { DefiPulsePriceFeed } = require("./DefiPulsePriceFeed");
+const { DominationFinancePriceFeed } = require("./DominationFinancePriceFeed");
+const { ETHVIXPriceFeed } = require("./EthVixPriceFeed");
+const { ExpressionPriceFeed, math, escapeSpecialCharacters } = require("./ExpressionPriceFeed");
+const { FallBackPriceFeed } = require("./FallBackPriceFeed");
+const { ForexDailyPriceFeed } = require("./ForexDailyPriceFeed");
+const { FundingRateMultiplierPriceFeed } = require("./FundingRateMultiplierPriceFeed");
+const { InvalidPriceFeedMock } = require("./InvalidPriceFeedMock");
+const { LPPriceFeed } = require("./LPPriceFeed");
+const { MedianizerPriceFeed } = require("./MedianizerPriceFeed");
+const { PriceFeedMockScaled } = require("./PriceFeedMockScaled");
+const { QuandlPriceFeed } = require("./QuandlPriceFeed");
+const { TraderMadePriceFeed } = require("./TraderMadePriceFeed");
+const { UniswapPriceFeed } = require("./UniswapPriceFeed");
+const { VaultPriceFeed } = require("./VaultPriceFeed");
 
 // Global cache for block (promises) used by uniswap price feeds.
 const uniswapBlockCache = {};
@@ -375,6 +378,22 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.lastUpdateTime,
       config.priceFeedDecimals, // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
       config.lookback
+    );
+  } else if (config.type === "ethvix") {
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating EthVixPriceFeed",
+      config
+    });
+
+    return new ETHVIXPriceFeed(
+      logger,
+      web3,
+      config.inverse,
+      networker,
+      getTime,
+      config.minTimeBetweenUpdates,
+      config.priceFeedDecimals
     );
   } else if (config.type === "invalid") {
     logger.debug({
