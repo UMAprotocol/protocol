@@ -173,9 +173,7 @@ class SlackHook extends Transport {
     this.formatter = opts.formatter || undefined;
     this.mrkdwn = opts.mrkdwn || false;
 
-    this.axiosInstance = axios.create({
-      proxy: opts.proxy || undefined
-    });
+    this.axiosInstance = axios.create({ proxy: opts.proxy || undefined });
   }
 
   async log(info, callback) {

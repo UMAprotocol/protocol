@@ -1,0 +1,11 @@
+{
+  "extends": "@tsconfig/node14/tsconfig.json",
+  "include": ["./**/*.ts"],
+  "module": "commonjs",
+  "esModuleInterop": true,
+  "compilerOptions": {
+    "outDir": "../dist",
+    "rootDir": "../",
+    "composite": true
+  }
+}
