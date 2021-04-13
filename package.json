@@ -1,7 +1,7 @@
 {
   "name": "protocol",
   "version": "1.0.0",
-  "description": "UMA mono repo containing protocol packages",
+  "description": "UMA monorepo containing protocol packages",
   "private": true,
   "scripts": {
     "bootstrap": "npx lerna bootstrap",
