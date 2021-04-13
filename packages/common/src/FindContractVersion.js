@@ -50,7 +50,7 @@ const versionMap = {
     contractType: "ExpiringMultiParty",
     contractVersion: "1.2.2"
   },
-  "0x4c2c5b5cd90ee8bdbe59f9f78163bdf67b209a1d66f3633deef1c54589b6a4b3": {
+  "0x87b2de625ae5a42d5ac38269993143805cea5ec7297c17c71007d148a4627cae": {
     // latest ExpiringMultiParty deployed from hardhat tests.
     contractType: "ExpiringMultiParty",
     contractVersion: "latest"
