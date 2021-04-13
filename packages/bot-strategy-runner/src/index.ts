@@ -1,4 +1,4 @@
-import { option, program } from "commander";
+import program from "commander";
 import nodeFetch from "node-fetch";
 import assert = require("assert");
 import * as fs from "fs";
