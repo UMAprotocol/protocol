@@ -24,7 +24,7 @@ class logCaptureTransport extends Transport {
       this.logStorage.push(info);
       callback();
     } catch (error) {
-      this.emit("error", error);
+      console.error("Log capture transport error!", error);
     }
   }
 }

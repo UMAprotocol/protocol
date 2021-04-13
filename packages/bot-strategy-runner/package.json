@@ -6,14 +6,15 @@
   "license": "AGPL-3.0-or-later",
   "dependencies": {
     "@uma/disputer": "^2.1.0",
+    "@uma/financial-templates-lib": "^2.1.0",
     "@uma/liquidator": "^2.1.0",
     "@uma/monitors": "^2.1.0",
-    "@uma/financial-templates-lib": "^2.1.0",
     "bluebird": "^3.7.2",
     "cli-progress": "^3.9.0",
     "commander": "^7.2.0",
     "node-fetch": "^2.6.1",
-    "typescript": "^4.2.2"
+    "typescript": "^4.2.2",
+    "winston-transport": "^4.4.0"
   },
   "devDependencies": {
     "@types/bluebird": "^3.5.33",

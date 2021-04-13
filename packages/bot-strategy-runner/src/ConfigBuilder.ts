@@ -168,6 +168,7 @@ function buildConfigForBotType(
   return botConfigs;
 }
 
+// Takes in two objects of any depth and merges them. In the case of a collision in keys the second object will take priority.
 export function mergeConfig(...args: any) {
   const target: any = {}; // create a new object
 

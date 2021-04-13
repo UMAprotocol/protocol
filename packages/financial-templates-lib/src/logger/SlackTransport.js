@@ -221,8 +221,7 @@ class SlackHook extends Transport {
       }
     }
     callback();
-    if (!errorThrown) this.emit("logged", info);
-    else this.emit("error", errorThrown);
+    if (errorThrown) console.error("slack transport error!");
   }
 }
 
@@ -236,4 +235,4 @@ function createSlackTransport(webHookUrl) {
   });
 }
 
-module.exports = { createSlackTransport };
+module.exports = { createSlackTransport, SlackHook };
