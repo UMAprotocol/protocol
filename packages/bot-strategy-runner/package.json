@@ -36,8 +36,7 @@
   "types": "dist/src/index.d.ts",
   "main": "dist/src/index.js",
   "scripts": {
-    "build": "tsc -b",
-    "test": "hardhat test"
+    "build": "tsc -b"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
