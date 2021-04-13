@@ -12,6 +12,11 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "bitstamp" }
     ]
   },
+  "XIO/ETH": {
+    type: "uniswap",
+    uniswapAddress: "0xBea2E42e621CC13ED72EF4cE4CbFE05870012AFc",
+    twapLength: 3600
+  },
   "COMP/USD": {
     // Kovan uses the "/"
     type: "medianizer",
