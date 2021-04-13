@@ -21,27 +21,28 @@ function mdlink(text, link) {
 }
 
 function dappMiningPrTemplate({ issueNumber, config }) {
-  const { name, startTime, endTime, rewardFactor, totalRewards, empRewards } = config;
+  const { name, startTime, endTime, rewardFactor, totalRewards, empRewards, weekNumber } = config;
   const startDate = moment(startTime)
     .utc()
     .format("YYYY/MM/DD");
   const endDate = moment(endTime)
     .utc()
     .format("YYYY/MM/DD");
-  const title = `improve(affiliates): Dapp Mining rewards for ${name} ${startDate} through ${endDate}`;
+  const title = `improve(affiliates): Dapp Mining rewards for ${name} week ${weekNumber + 1}`;
   const body = `
 **Motivation**
 #${issueNumber}
 
 **Details**
-Dapp mining for ${name} using .3 of dev mining rewards for this period: \`Math.floor(${empRewards} * ${rewardFactor}) = ${totalRewards}\`
+Dapp mining for ${name} week ${weekNumber +
+    1} from ${startDate} to ${endDate} using ${rewardFactor} of dev mining rewards for this period: \`Math.floor(${empRewards} * ${rewardFactor}) = ${totalRewards}\`
 
 Reproduce with config.json
 \`\`\`
-${JSON.stringify(config, null, 2)}
+${JSON.stringify({ config }, null, 2)}
 \`\`\`
 
-And run with \`node apps/DappMiningRewards.js config.json\`
+And run with \`cat config.json | node apps/DappMiningRewards.js\`
 
 **Issue(s)**
 Fixes #${issueNumber}
@@ -75,14 +76,14 @@ function devMiningPrTemplate({
     .utc()
     .format("YYYY/MM/DD");
   return {
-    title: `improve(affiliates): Dev Mining rewards for week ${weekNumber}`,
+    title: `improve(affiliates): Dev Mining rewards for week ${weekNumber + 1}`,
     body: `
 **Motivation**
 #${issueNumber}
 
 **Summary**
 
-Dev Mining results for week ${weekNumber} between ${startDate} (${startTime}) and ${endDate} (${endTime})
+Dev Mining results for week ${weekNumber + 1} between ${startDate} (${startTime}) and ${endDate} (${endTime})
 
 **Details**
 In order to run create a config.json with this data:
@@ -144,7 +145,7 @@ function devMiningTemplate({ config, whitelist }) {
   const startDateTime = moment(startTime).format("YYYY/MM/DD HH:mm");
   const endDateTime = moment(endTime).format("YYYY/MM/DD HH:mm");
   return {
-    title: `Run Dev Mining rewards week ${weekNumber} between ${startDate} and ${endDate}`,
+    title: `Run Dev Mining rewards week ${weekNumber + 1} between ${startDate} and ${endDate}`,
     body: `
 Run Dev Mining rewards for week ${weekNumber +
       1} between ${startDateTime} (${startTime}) and ${endDateTime} (${endTime}).
