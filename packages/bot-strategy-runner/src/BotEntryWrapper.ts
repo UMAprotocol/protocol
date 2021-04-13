@@ -1,3 +1,6 @@
+// Bot wrapper providing methods for executing any kind of UMA bot. Currently supports Liquidator, monitor and disputer.
+
+// TODO: refactor these to use the correct ts `import` syntax once we have appropriate typed interfaces.
 const { createNewLogger } = require("@uma/financial-templates-lib");
 const { getWeb3 } = require("@uma/common");
 
@@ -10,6 +13,7 @@ import logCaptureTransport from "./LogCaptureTransport";
 interface commonBotSettings {
   botType: string;
   syntheticSymbol: string;
+  botIdentifier: string;
   botNetwork: string;
   slackWebHook?: string;
   financialContractAddress: string;
@@ -41,27 +45,36 @@ export interface monitorConfig extends commonBotSettings {
   endingBlock?: number;
 }
 
-async function executeBot(botEntryPoint: any, config: liquidatorConfig | disputerConfig | monitorConfig) {
+async function _executeBot(
+  botEntryPoint: typeof Liquidator | typeof Disputer | typeof Monitor,
+  config: liquidatorConfig | disputerConfig | monitorConfig
+) {
   const logs: any = [];
-  const botIdentifier = `${config.syntheticSymbol} ${config.botType}`;
+  const financialContractAddress = config.financialContractAddress;
+  const botIdentifier = config.botIdentifier;
   try {
+    // Build a custom logger using all default transports(except the console transport) and the logCaptureTransport.
+    // As this piggy backs off the default transports, existing log capture paths (such as Pagerduty and slack) will
+    // continue to work within each executed strategy.
     const logger = createNewLogger(
       [new logCaptureTransport({ level: "debug" }, logs)],
       { slackWebHook: config.slackWebHook, createConsoleTransport: false },
       botIdentifier
     );
 
+    // Execute the bot process with the provided log. Create a custom web3 instance for each bot on the `botNetwork`.
     await botEntryPoint.run({ logger, web3: getWeb3(config.botNetwork), ...config });
 
-    return { financialContractAddress: config.financialContractAddress, botIdentifier: botIdentifier, logs };
+    return { financialContractAddress, botIdentifier, logs };
   } catch (error) {
-    return { financialContractAddress: config.financialContractAddress, botIdentifier, logs, error: error.toString() };
+    return { financialContractAddress, botIdentifier, logs, error: error.toString() };
   }
 }
 
+// Execute a bot of type `liquidator`, `disputer` or `monitor.
 export async function runBot(config: liquidatorConfig | disputerConfig | monitorConfig) {
-  if (config.botType == "liquidator") return await executeBot(Liquidator, config);
-  if (config.botType == "disputer") return await executeBot(Disputer, config);
-  if (config.botType == "monitor") return await executeBot(Monitor, config);
+  if (config.botType == "liquidator") return await _executeBot(Liquidator, config);
+  if (config.botType == "disputer") return await _executeBot(Disputer, config);
+  if (config.botType == "monitor") return await _executeBot(Monitor, config);
   throw new Error("Bot type not supported");
 }

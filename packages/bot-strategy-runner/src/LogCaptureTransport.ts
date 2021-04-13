@@ -1,3 +1,5 @@
+// Custom winston transport to capture logs produced. Used by the strategy runner to get back execution outputs.
+
 import Transport = require("winston-transport");
 
 class logCaptureTransport extends Transport {

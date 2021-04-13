@@ -1,9 +1,13 @@
-const { getWeb3 } = require("@uma/common");
-const { getAbi } = require("@uma/core");
+// Config builder that constructs whitelists and bot configs. Used to parameterize the strategy runner.
+import Web3 from "web3";
+const { toChecksumAddress } = Web3.utils;
+
+import { getWeb3 } from "@uma/common";
+import { getAbi } from "@uma/core";
 
 import { liquidatorConfig, disputerConfig, monitorConfig } from "./BotEntryWrapper";
 import nodeFetch from "node-fetch";
-import assert = require("assert");
+import assert from "assert";
 
 const supportedBotTypes = ["liquidator", "disputer", "monitor"];
 
@@ -18,13 +22,12 @@ export interface botSettings {
 export interface strategyRunnerConfig {
   botNetwork?: string;
   pollingDelay?: number;
-  strategyRunnerPollingDelay?: number;
   botConcurrency?: number;
   strategyTimeout?: number;
   verboseLogs?: boolean;
   emitDebugLogs?: boolean;
-  globalWhitelistUrls?: Array<string>;
-  globalWhitelistAddresses?: Array<string>;
+  globalAddressWhitelistUrls?: Array<string>;
+  globalAddressWhitelist?: Array<string>;
   globalAddressBlacklist?: Array<string>;
   commonConfig?: { [key: string]: any };
   liquidatorSettings?: botSettings;
@@ -32,13 +35,13 @@ export interface strategyRunnerConfig {
   monitorSettings?: botSettings;
 }
 
-// The global whitelist is the concatenation of the any globalWhitelistAddresses plus any values stored on remote json
-// files define in globalWhitelistUrls.
+// The global whitelist is the concatenation of the any `globalAddressWhitelist` plus any values stored on remote json
+// files define in `globalAddressWhitelistUrls`.
 export async function buildGlobalWhitelist(config: strategyRunnerConfig) {
-  let whitelist = config.globalWhitelistAddresses ? config.globalWhitelistAddresses : [];
+  let whitelist = config.globalAddressWhitelist ? config.globalAddressWhitelist : [];
 
-  if (config.globalWhitelistUrls) {
-    const responses = await Promise.all(config.globalWhitelistUrls.map((url: string) => nodeFetch(url)));
+  if (config.globalAddressWhitelistUrls) {
+    const responses = await Promise.all(config.globalAddressWhitelistUrls.map((url: string) => nodeFetch(url)));
     const responseJson = await Promise.all(responses.map((response: any) => response.json()));
     responseJson.forEach((contractAddressesResponse: any) => {
       if (contractAddressesResponse.empWhitelist) whitelist = [...whitelist, ...contractAddressesResponse.empWhitelist];
@@ -46,9 +49,11 @@ export async function buildGlobalWhitelist(config: strategyRunnerConfig) {
     });
   }
   if (config.globalAddressBlacklist) whitelist = whitelist.filter(el => !config.globalAddressBlacklist?.includes(el));
-  return whitelist;
+  return replaceAddressCase(whitelist);
 }
 
+// For an array of contracts and possible bot types within the `config`, fetch the synthetic names. Return a mapping
+// of contract address to synthetic symbols to enrich logs produced by the bots.
 export async function fetchSynthNames(contractAddresses: Array<string>, config: any) {
   const web3 = getWeb3(config.botNetwork);
 
@@ -85,7 +90,7 @@ export async function buildBotConfigs(globalWhitelist: Array<string>, config: st
   supportedBotTypes.forEach((botType: string) => {
     botConfigs = [...botConfigs, ...buildConfigForBotType(globalWhitelist, config, botType, syntheticSymbols)];
   });
-  return botConfigs;
+  return replaceAddressCase(botConfigs);
 }
 
 // TODO: update this method to accommodate upper and lower case addresses.
@@ -120,20 +125,21 @@ function buildConfigForBotType(
     const commonConfig = {
       botType,
       syntheticSymbol: syntheticSymbols[contractAddress],
+      botIdentifier: `${syntheticSymbols[contractAddress]} ${botType}`,
       botNetwork: config.botNetwork,
       financialContractAddress: contractAddress,
       errorRetries: addressConfig.errorRetries,
       errorRetriesTimeout: addressConfig.errorRetriesTimeout,
-      pollingDelay: 0
+      pollingDelay: 0,
+      startingBlock: addressConfig.startingBlock ? addressConfig.startingBlock : process.env.STARTING_BLOCK_NUMBER,
+      endingBlock: addressConfig.endingBlock ? addressConfig.endingBlock : process.env.ENDING_BLOCK_NUMBER
     };
     if (botType == "liquidator") {
       const botConfig: liquidatorConfig = {
         ...commonConfig,
         priceFeedConfig: addressConfig.priceFeedConfig,
         liquidatorConfig: addressConfig.liquidatorConfig,
-        liquidatorOverridePrice: addressConfig.liquidatorOverridePrice,
-        startingBlock: addressConfig.startingBlock,
-        endingBlock: addressConfig.endingBlock
+        liquidatorOverridePrice: addressConfig.liquidatorOverridePrice
       };
       botConfigs.push(botConfig);
     }
@@ -154,9 +160,7 @@ function buildConfigForBotType(
         monitorConfigConfig: addressConfig.monitorConfigConfig,
         tokenPriceFeedConfig: addressConfig.tokenPriceFeedConfig,
         medianizerPriceFeedConfig: addressConfig.medianizerPriceFeedConfig,
-        denominatorPriceFeedConfig: addressConfig.denominatorPriceFeedConfig,
-        startingBlock: addressConfig.startingBlock,
-        endingBlock: addressConfig.endingBlock
+        denominatorPriceFeedConfig: addressConfig.denominatorPriceFeedConfig
       };
       botConfigs.push(botConfig);
     }
@@ -188,4 +192,11 @@ export function mergeConfig(...args: any) {
   }
 
   return target;
+}
+
+// Takes in an object of any structure and returns the exact same object with all strings converted to check sum format.
+function replaceAddressCase(object: any) {
+  const stringifiedObject = JSON.stringify(object);
+  const replacedStringifiedObject = stringifiedObject.replace(/0x[a-fA-F0-9]{40}/g, toChecksumAddress);
+  return JSON.parse(replacedStringifiedObject);
 }

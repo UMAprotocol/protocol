@@ -1,6 +1,6 @@
 import program from "commander";
 import nodeFetch from "node-fetch";
-import assert = require("assert");
+import assert from "assert";
 import * as fs from "fs";
 import * as cliProgress from "cli-progress";
 import * as bluebird from "bluebird";
@@ -10,28 +10,35 @@ import { Logger, delay } from "@uma/financial-templates-lib";
 import { strategyRunnerConfig, buildBotConfigs, buildGlobalWhitelist, mergeConfig } from "./ConfigBuilder";
 import { runBot } from "./BotEntryWrapper";
 
-const defaultPollingDelay = 120; // Strategy runner runs every 2 mins.
+// Defaults for bot execution. If the user does not define these then these settings will be used.
+const defaultPollingDelay = 120;
 const defaultStrategyTimeout = 60;
 const defaultBotConcurrency = 10;
 const defaultNetwork = "mainnet_mnemonic";
 
+// Global progress bar to show the status of the strategy runner during it's execution.
 let counter = 0;
 const progressBar = new cliProgress.SingleBar(
   { format: "[{bar}] {percentage}% | bots executed: {value}/{total} | recent execution: {botIdentifier}" },
   cliProgress.Presets.shades_classic
 );
 
+// Main entry point that takes in a strategyRunnerConfig and executes bots within an execution while loop.
 async function runStrategies(strategyRunnerConfig: strategyRunnerConfig) {
-  strategyRunnerConfig = _setConfigDefaults(strategyRunnerConfig);
+  strategyRunnerConfig = _setConfigDefaults(strategyRunnerConfig); // Default important configs. User configs take preference.
   Logger.debug({
     at: "BotStrategyRunner",
     message: "Starting bot strategy runner",
     strategyRunnerConfig: strategyRunnerConfig
   });
 
+  // Generate a global whitelist of addresses that all enabled bots will run on.
   const globalWhiteList = await buildGlobalWhitelist(strategyRunnerConfig);
 
+  // Construct bot configs for all enabled bots. This includes all bot specific overrides, whitelists, blacklists and any
+  // extra settings defined in the config. See the readme for full details on what is possible with this config.
   const allBotsConfigs = await buildBotConfigs(globalWhiteList, strategyRunnerConfig);
+  console.log("allBotsConfigs", allBotsConfigs);
 
   Logger.debug({
     at: "BotStrategyRunner",
@@ -50,25 +57,31 @@ async function runStrategies(strategyRunnerConfig: strategyRunnerConfig) {
 
     progressBar.start(allBotsConfigs.length, 0);
 
+    // Execute all bots in a bluebird map with limited concurrency. Note than none of the `runBot` calls ever throw errors.
+    // Rather, they indicate an error via an `error` key within the response. The promise.race between the `runBot` and
+    // _rejectAfterDelay bounds how long a given strategy can run for.
     const executionResults = await (bluebird as any).map(
       allBotsConfigs,
       (botConfig: any) =>
         Promise.all([
-          _updateProgressBar(botConfig),
+          _updateProgressBar(botConfig), // As the promise progresses through bots update the progress bar.
           Promise.race([_rejectAfterDelay(strategyRunnerConfig.strategyTimeout, botConfig), runBot(botConfig)])
         ]),
       {
         concurrency: strategyRunnerConfig.botConcurrency
       }
     );
-    counter = 0;
-    progressBar.stop();
 
+    progressBar.stop();
+    counter = 0;
+
+    // Filter out all logs produced by the `_updateProgressBar` and flatten the output structure.
     const logResults = executionResults.reduce((acc: any, val: any) => acc.concat(val), []).filter((log: any) => log);
 
+    // For each log produced, checked the output status. If there was an error then store the full log result.
+    // Else, process the log. This considers the logging level defined by the config.
     const rejectedOutputs: any = {};
     const validOutputs: any = {};
-
     logResults.forEach((result: any) => {
       if (result.error) rejectedOutputs[result.botIdentifier] = result;
       else validOutputs[result.botIdentifier] = _reduceLog(result, strategyRunnerConfig);
@@ -99,6 +112,7 @@ async function runStrategies(strategyRunnerConfig: strategyRunnerConfig) {
   }
 }
 
+// Take in the user config options including config files or config URLs.
 const processExecutionOptions = async () => {
   const options = program
     .option("-fc, --fileConfig <path>", "input path to JSON config file.")
@@ -112,10 +126,10 @@ const processExecutionOptions = async () => {
   let fileConfig: any = {},
     urlConfig: any = {};
 
-  if (options.fileConfig) {
-    fileConfig = JSON.parse(fs.readFileSync(options.fileConfig, { encoding: "utf8" }));
-  }
+  if (options.fileConfig) fileConfig = JSON.parse(fs.readFileSync(options.fileConfig, { encoding: "utf8" }));
+
   if (options.urlConfig) {
+    // Fetch the config from remote URL. use the access token for authorization.
     const response = await nodeFetch(`${options.urlConfig}`, {
       method: "GET",
       headers: options.accessToken
@@ -128,22 +142,24 @@ const processExecutionOptions = async () => {
         : {}
     });
     urlConfig = await response.json(); // extract JSON from the http response
-    console.log("urlConfig", urlConfig);
     assert(!urlConfig.message && !urlConfig.error, `Could not fetch config! :${JSON.stringify(urlConfig)}`);
   }
   return mergeConfig(fileConfig, urlConfig);
 };
 
-// Returns a promise that is rejected after seconds delay. Used to limit how long a spoke can run for.
+// Returns a promise that is resolved after `seconds` delay. Used to limit how long a spoke can run for.
 const _rejectAfterDelay = (seconds: number | undefined, executionConfig: any) =>
   new Promise((resolve, _) => {
     setTimeout(resolve, (seconds ? seconds : defaultStrategyTimeout) * 1000, {
       error: "timeout",
       message: `The strategy call took longer than ${seconds} seconds to exit`,
-      executionConfig
+      ...executionConfig
     });
   });
 
+// Take the output logs from a bot execution and filter them based on the logging level provided by the config.
+// if `verboseLogs` is enabled then all logs produced by the strategy is returned. If `emitDebugLogs` is enabled then
+// only the `message` from debug logs is returned, within an array. Else, only info level and above logs are returned.
 function _reduceLog(
   logOutput: { financialContractAddress: string; botIdentifier: string; logs: Array<any> },
   strategyRunnerConfig: strategyRunnerConfig
@@ -158,6 +174,7 @@ function _reduceLog(
     .filter(log => log);
 }
 
+// Apply defaults to the strategyRunnerConfig.
 function _setConfigDefaults(config: strategyRunnerConfig) {
   config.botNetwork = config.botNetwork ? config.botNetwork : defaultNetwork;
   config.strategyTimeout = config.strategyTimeout ? config.strategyTimeout : defaultStrategyTimeout;
