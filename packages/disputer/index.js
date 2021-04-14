@@ -69,6 +69,7 @@ async function run({
       web3.eth.getAccounts(),
       web3.eth.net.getId()
     ]);
+
     const networkName = PublicNetworks[Number(networkId)] ? PublicNetworks[Number(networkId)].name : null;
 
     // Append the contract version and type to the disputerConfig, if the disputerConfig does not already contain one.
