@@ -131,7 +131,7 @@ contract("ServerlessSpoke.js", function(accounts) {
         POLLING_DELAY: 0,
         EMP_ADDRESS: emp.address,
         TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-        MONITOR_CONFIG: { contractVersion: "latest", contractType: "ExpiringMultiParty" }
+        MONITOR_CONFIG: { contractVersion: "2.1.0", contractType: "ExpiringMultiParty" }
       }
     };
 
@@ -170,7 +170,7 @@ contract("ServerlessSpoke.js", function(accounts) {
         POLLING_DELAY: 0,
         // missing EMP_ADDRESS. Should error before entering main while loop.
         TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig, // invalid config that should generate an error
-        MONITOR_CONFIG: { contractVersion: "latest", contractType: "ExpiringMultiParty" }
+        MONITOR_CONFIG: { contractVersion: "2.1.0", contractType: "ExpiringMultiParty" }
       }
     };
 
@@ -199,7 +199,7 @@ contract("ServerlessSpoke.js", function(accounts) {
         POLLING_DELAY: 0,
         EMP_ADDRESS: emp.address,
         TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-        MONITOR_CONFIG: { contractVersion: "latest", contractType: "ExpiringMultiParty" }
+        MONITOR_CONFIG: { contractVersion: "2.1.0", contractType: "ExpiringMultiParty" }
       }
     };
 
@@ -219,7 +219,7 @@ contract("ServerlessSpoke.js", function(accounts) {
         POLLING_DELAY: 0,
         EMP_ADDRESS: "0x0000000000000000000000000000000000000000", // Invalid address that should generate an error
         TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-        MONITOR_CONFIG: { contractVersion: "latest", contractType: "ExpiringMultiParty" }
+        MONITOR_CONFIG: { contractVersion: "2.1.0", contractType: "ExpiringMultiParty" }
       }
     };
 

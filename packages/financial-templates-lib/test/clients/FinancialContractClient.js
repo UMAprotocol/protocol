@@ -71,7 +71,7 @@ const _setFundingRateAndAdvanceTime = async fundingRate => {
 
 // If the current version being executed is part of the `supportedVersions` array then return `it` to run the test.
 // Else, do nothing. Can be used exactly in place of a normal `it` to parameterize contract types and versions supported
-// for a given test.eg: versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])("test name", async function () { assert.isTrue(true) })
+// for a given test.eg: versionedIt([{ contractType: "Perpetual", contractVersion: "2.1.0" }])("test name", async function () { assert.isTrue(true) })
 // Note that a second param can be provided to make the test an `it.only` thereby ONLY running that single test, on
 // the provided version. This is very useful for debugging and writing single unit tests without having ro run all tests.
 const versionedIt = function(supportedVersions, shouldBeItOnly = false) {
@@ -103,7 +103,7 @@ contract("FinancialContractClient.js", function(accounts) {
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
     const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
-    const MulticallMock = getTruffleContract("MulticallMock", web3, "latest");
+    const MulticallMock = getTruffleContract("MulticallMock", web3);
 
     for (let testConfig of configs) {
       describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
@@ -761,7 +761,7 @@ contract("FinancialContractClient.js", function(accounts) {
           }
         );
 
-        versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "latest" }])(
+        versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "2.1.0" }])(
           "Client correctly defaults to ExpiringMultiParty to enable backward compatibility",
           async function() {
             // The constructor of the Financial Contract client does not contain any type.
@@ -779,7 +779,7 @@ contract("FinancialContractClient.js", function(accounts) {
             assert.equal(client.getContractType(), "ExpiringMultiParty");
           }
         );
-        versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "latest" }])(
+        versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "2.1.0" }])(
           "Correctly rejects invalid contract types",
           async function() {
             let didThrow = false;
@@ -818,7 +818,7 @@ contract("FinancialContractClient.js", function(accounts) {
             assert.isTrue(didThrow);
           }
         );
-        versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])(
+        versionedIt([{ contractType: "Perpetual", contractVersion: "2.1.0" }])(
           "Fetches funding rate from the perpetual contract and correctly applies it to token debt",
           async function() {
             // Create a position and check that it is detected correctly from the client.
@@ -880,7 +880,7 @@ contract("FinancialContractClient.js", function(accounts) {
             );
           }
         );
-        versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])(
+        versionedIt([{ contractType: "Perpetual", contractVersion: "2.1.0" }])(
           "Correctly applies funding rate to token debt. Liquidatable and disputable position are updated accordingly",
           async function() {
             await financialContract.create(

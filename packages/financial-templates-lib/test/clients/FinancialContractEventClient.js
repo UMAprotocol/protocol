@@ -927,7 +927,7 @@ contract("FinancialContractEventClient.js", function(accounts) {
               }
             );
 
-            versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])(
+            versionedIt([{ contractType: "Perpetual", contractVersion: "2.1.0" }])(
               "Return FundingRateUpdated Events",
               async function() {
                 await client.clearState();
@@ -1018,7 +1018,7 @@ contract("FinancialContractEventClient.js", function(accounts) {
                   contractVersion.contractType,
                   contractVersion.contractVersion
                 );
-                const currentTimestamp = (await web3.eth.getBlock("latest")).timestamp;
+                const currentTimestamp = (await web3.eth.getBlock("2.1.0")).timestamp;
                 await advanceBlockAndSetTime(web3, currentTimestamp + 1);
                 await advanceBlockAndSetTime(web3, currentTimestamp + 2);
                 await advanceBlockAndSetTime(web3, currentTimestamp + 3);

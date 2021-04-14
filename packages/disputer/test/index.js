@@ -54,8 +54,8 @@ contract("index.js", function(accounts) {
     const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
     const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
-    const ConfigStore = getTruffleContract("ConfigStore", web3, "latest");
-    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, "latest");
+    const ConfigStore = getTruffleContract("ConfigStore", web3, "2.1.0");
+    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, "2.1.0");
 
     describe(`Smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
       before(async function() {

@@ -14,7 +14,7 @@ const VotingToken = getTruffleContract("VotingToken", web3, "1.1.0");
 const Governor = getTruffleContract("Governor", web3, "1.1.0");
 
 // Use latest bytecode for any contract that we're deploying in-script.
-const VotingUpgrader = getTruffleContract("VotingUpgrader", web3, "latest");
+const VotingUpgrader = getTruffleContract("VotingUpgrader", web3, "2.1.0");
 
 const { takeSnapshot, revertToSnapshot } = require("@uma/common");
 

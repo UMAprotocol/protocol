@@ -5,12 +5,10 @@ const { advanceBlockAndSetTime, parseFixed } = require("@uma/common");
 const { BlockFinder } = require("../../src/price-feed/utils");
 const { getTruffleContract } = require("@uma/core");
 
-const CONTRACT_VERSION = "latest";
-
-const VaultMock = getTruffleContract("VaultMock", web3, CONTRACT_VERSION);
-const VaultInterface = getTruffleContract("VaultInterface", web3, CONTRACT_VERSION);
-const ERC20Interface = getTruffleContract("IERC20Standard", web3, CONTRACT_VERSION);
-const ERC20 = getTruffleContract("ExpandedERC20", web3, CONTRACT_VERSION);
+const VaultMock = getTruffleContract("VaultMock", web3);
+const VaultInterface = getTruffleContract("VaultInterface", web3);
+const ERC20Interface = getTruffleContract("IERC20Standard", web3);
+const ERC20 = getTruffleContract("ExpandedERC20", web3);
 
 contract("VaultPriceFeed.js", function(accounts) {
   const owner = accounts[0];
@@ -65,12 +63,12 @@ contract("VaultPriceFeed.js", function(accounts) {
     await vaultMock.setPricePerFullShare(parseFixed("50", tokenDecimals));
 
     // Ensure that the next block is mined at a later time.
-    const { timestamp: firstPriceTimestamp } = await web3.eth.getBlock("latest");
+    const { timestamp: firstPriceTimestamp } = await web3.eth.getBlock("2.1.0");
     await advanceBlockAndSetTime(web3, firstPriceTimestamp + 10);
 
     await vaultMock.setPricePerFullShare(parseFixed("10", tokenDecimals));
 
-    const { timestamp: secondPriceTimestamp } = await web3.eth.getBlock("latest");
+    const { timestamp: secondPriceTimestamp } = await web3.eth.getBlock("2.1.0");
 
     assert.equal(
       (await vaultPriceFeed.getHistoricalPrice(firstPriceTimestamp)).toString(),

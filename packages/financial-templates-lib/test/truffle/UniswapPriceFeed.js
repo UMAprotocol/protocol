@@ -6,11 +6,9 @@ const { mineTransactionsAtTime, MAX_SAFE_JS_INT, parseFixed } = require("@uma/co
 const { delay } = require("../../src/helpers/delay.js");
 const { getTruffleContract } = require("@uma/core");
 
-const CONTRACT_VERSION = "latest";
-
-const UniswapMock = getTruffleContract("UniswapMock", web3, CONTRACT_VERSION);
-const Uniswap = getTruffleContract("Uniswap", web3, CONTRACT_VERSION);
-const Token = getTruffleContract("ExpandedERC20", web3, CONTRACT_VERSION);
+const UniswapMock = getTruffleContract("UniswapMock", web3);
+const Uniswap = getTruffleContract("Uniswap", web3);
+const Token = getTruffleContract("ExpandedERC20", web3);
 
 const Convert = decimals => number => (number ? parseFixed(number.toString(), decimals).toString() : number);
 

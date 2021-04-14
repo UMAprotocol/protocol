@@ -1,8 +1,8 @@
 // Script to test
 const ContractUtils = require("../src/ContractUtils");
 const { getTruffleContract, getAbi } = require("@uma/core");
-const ERC20 = getTruffleContract("BasicERC20", web3, "latest");
-const ERC20ABI = getAbi("BasicERC20", "latest");
+const ERC20 = getTruffleContract("BasicERC20", web3, "2.1.0");
+const ERC20ABI = getAbi("BasicERC20", "2.1.0");
 
 contract("ContractUtils.js", function(accounts) {
   describe("runTransaction", function() {

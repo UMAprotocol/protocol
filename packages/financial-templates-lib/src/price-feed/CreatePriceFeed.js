@@ -32,11 +32,11 @@ const { VaultPriceFeed } = require("./VaultPriceFeed");
 const uniswapBlockCache = {};
 
 async function createPriceFeed(logger, web3, networker, getTime, config) {
-  const Uniswap = getTruffleContract("Uniswap", web3, "latest");
-  const ERC20 = getTruffleContract("ExpandedERC20", web3, "latest");
-  const Balancer = getTruffleContract("Balancer", web3, "latest");
-  const VaultInterface = getTruffleContract("VaultInterface", web3, "latest");
-  const Perpetual = getTruffleContract("Perpetual", web3, "latest");
+  const Uniswap = getTruffleContract("Uniswap", web3);
+  const ERC20 = getTruffleContract("ExpandedERC20", web3);
+  const Balancer = getTruffleContract("Balancer", web3);
+  const VaultInterface = getTruffleContract("VaultInterface", web3);
+  const Perpetual = getTruffleContract("Perpetual", web3);
 
   if (config.type === "cryptowatch") {
     const requiredFields = ["exchange", "pair", "lookback", "minTimeBetweenUpdates"];
@@ -722,7 +722,7 @@ async function createUniswapPriceFeedForFinancialContract(
   // Check if there is an override for the getTime method in the price feed config. Specifically, we can replace the
   // get time method with the current block time.
   if (userConfig.getTimeOverride?.useBlockTime) {
-    getTime = async () => (await web3.eth.getBlock("latest")).timestamp;
+    getTime = async () => (await web3.eth.getBlock("2.1.0")).timestamp;
   }
 
   logger.debug({
@@ -857,7 +857,7 @@ async function createReferencePriceFeedForFinancialContract(
     // Check if there is an override for the getTime method in the price feed config. Specifically, we can replace the
     // get time method with the current block time.
     if (combinedConfig.getTimeOverride?.useBlockTime) {
-      getTime = async () => (await web3.eth.getBlock("latest")).timestamp;
+      getTime = async () => (await web3.eth.getBlock("2.1.0")).timestamp;
     }
   }
   return await createPriceFeed(logger, web3, networker, getTime, combinedConfig);
