@@ -1,9 +1,7 @@
 const assert = require("assert");
 const truffleContract = require("@truffle/contract");
 
-const ynatm = require("@umaprotocol/ynatm");
-
-const { createObjectFromDefaultProps, MAX_UINT_VAL } = require("@uma/common");
+const { createObjectFromDefaultProps, runTransaction, blockUntilBlockMined, MAX_UINT_VAL } = require("@uma/common");
 const { getAbi, getTruffleContract } = require("@uma/core");
 
 const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json");
@@ -191,34 +189,15 @@ class ProxyTransactionWrapper {
     let receipt;
     let txnConfig;
     try {
-      // Configure tx config object
-      const gasEstimation = await liquidation.estimateGas({
-        from: this.account
+      const txResponse = await runTransaction({
+        transaction: liquidation,
+        config: {
+          gasPrice: this.gasEstimator.getCurrentFastPrice(),
+          from: this.account,
+          nonce: await this.web3.eth.getTransactionCount(this.account)
+        }
       });
-      txnConfig = {
-        from: this.account,
-        gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
-        gasPrice: this.gasEstimator.getCurrentFastPrice()
-      };
-
-      // Make sure to keep trying with this nonce
-      const nonce = await this.web3.eth.getTransactionCount(this.account);
-
-      // Min Gas Price, with a max gasPrice of x4
-      const minGasPrice = parseInt(this.gasEstimator.getCurrentFastPrice(), 10);
-      const maxGasPrice = 2 * 3 * minGasPrice;
-
-      // Doubles gasPrice every iteration
-      const gasPriceScalingFunction = ynatm.DOUBLES;
-
-      // Receipt without events
-      receipt = await ynatm.send({
-        sendTransactionFunction: gasPrice => liquidation.send({ ...txnConfig, nonce, gasPrice }),
-        minGasPrice,
-        maxGasPrice,
-        gasPriceScalingFunction,
-        delay: 60000 // Tries and doubles gasPrice every minute if tx hasn't gone through
-      });
+      receipt = txResponse.receipt;
     } catch (error) {
       return new Error("Failed to liquidate position🚨");
     }
@@ -237,8 +216,6 @@ class ProxyTransactionWrapper {
   }
 
   async _executeLiquidationWithDsProxy(liquidationArgs) {
-    const blockBeforeLiquidation = await this.web3.eth.getBlockNumber();
-
     const reserveCurrencyLiquidator = new this.web3.eth.Contract(this.ReserveCurrencyLiquidator.abi);
 
     // TODO: the liquidation args, as structured hare is hard to read and maintain. We should refactor the liquidation
@@ -259,11 +236,17 @@ class ProxyTransactionWrapper {
     const callCode = this.ReserveCurrencyLiquidator.bytecode;
 
     const dsProxyCallReturn = await this.dsProxyManager.callFunctionOnNewlyDeployedLibrary(callCode, callData);
+    const blockAfterLiquidation = await this.web3.eth.getBlockNumber();
+
+    // Wait exactly one block to fetch events. This ensures that the events have been indexed by your node.
+    await blockUntilBlockMined(this.web3, blockAfterLiquidation + 1);
 
     const liquidationEvent = (
       await this.financialContract.getPastEvents("LiquidationCreated", {
-        fromBlock: blockBeforeLiquidation - 1,
-        filter: { liquidator: this.dsProxyManager.getDSProxyAddress() }
+        fromBlock: blockAfterLiquidation - 1,
+        filter: {
+          liquidator: this.dsProxyManager.getDSProxyAddress()
+        }
       })
     )[0];
 
