@@ -106,7 +106,7 @@ const runTransaction = async ({ transaction, config }) => {
  * @param {number} blockerBlockNumber block execution until this block number is mined.
  */
 const blockUntilBlockMined = async (web3, blockerBlockNumber) => {
-  if (argv._.indexOf("test") != -1) return;
+  if (argv._.indexOf("test") !== -1) return;
   for (;;) {
     const currentBlockNumber = await web3.eth.getBlockNumber();
     if (currentBlockNumber >= blockerBlockNumber) break;
