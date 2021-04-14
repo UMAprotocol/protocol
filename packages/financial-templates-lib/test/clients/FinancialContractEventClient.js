@@ -1018,7 +1018,7 @@ contract("FinancialContractEventClient.js", function(accounts) {
                   contractVersion.contractType,
                   contractVersion.contractVersion
                 );
-                const currentTimestamp = (await web3.eth.getBlock("2.1.0")).timestamp;
+                const currentTimestamp = (await web3.eth.eth.getBlock("latest")).timestamp;
                 await advanceBlockAndSetTime(web3, currentTimestamp + 1);
                 await advanceBlockAndSetTime(web3, currentTimestamp + 2);
                 await advanceBlockAndSetTime(web3, currentTimestamp + 3);
