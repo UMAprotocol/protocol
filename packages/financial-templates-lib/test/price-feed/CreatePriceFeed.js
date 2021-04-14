@@ -31,6 +31,7 @@ const { CoinMarketCapPriceFeed } = require("../../src/price-feed/CoinMarketCapPr
 const { CoinGeckoPriceFeed } = require("../../src/price-feed/CoinGeckoPriceFeed");
 const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
 const { DefiPulsePriceFeed } = require("../../src/price-feed/DefiPulsePriceFeed");
+const { ETHVIXPriceFeed } = require("../../src/price-feed/EthVixPriceFeed");
 const { ForexDailyPriceFeed } = require("../../src/price-feed/ForexDailyPriceFeed");
 const { QuandlPriceFeed } = require("../../src/price-feed/QuandlPriceFeed");
 const { SpyTransport } = require("../../src/logger/SpyTransport");
@@ -1480,6 +1481,22 @@ contract("CreatePriceFeed.js", function(accounts) {
     assert.equal(
       await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, minTimeBetweenUpdates: undefined }),
       null
+    );
+  });
+
+  it("Default ethVIX Config", async function() {
+    assert.isTrue(
+      (await createPriceFeed(logger, web3, networker, getTime, { type: "ethvix" })) instanceof ETHVIXPriceFeed
+    );
+  });
+
+  it("Valid ethVIX Config", async function() {
+    assert.isTrue(
+      (await createPriceFeed(logger, web3, networker, getTime, {
+        inverse: true,
+        randomUnknownParam: Math.random(),
+        type: "ethvix"
+      })) instanceof ETHVIXPriceFeed
     );
   });
 });

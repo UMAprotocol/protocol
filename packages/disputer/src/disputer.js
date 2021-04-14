@@ -1,7 +1,7 @@
 const {
   PostWithdrawLiquidationRewardsStatusTranslations,
-  revertWrapper,
-  createObjectFromDefaultProps
+  createObjectFromDefaultProps,
+  runTransaction
 } = require("@uma/common");
 
 class Disputer {
@@ -175,65 +175,51 @@ class Disputer {
       // Create the transaction.
       const dispute = this.financialContract.methods.dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor);
 
-      // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
-      let totalPaid, gasEstimation;
-      try {
-        [totalPaid, gasEstimation] = await Promise.all([
-          dispute.call({ from: this.account }),
-          dispute.estimateGas({ from: this.account })
-        ]);
-      } catch (error) {
-        this.logger.error({
-          at: "Disputer",
-          message: "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute✋",
-          disputer: this.account,
-          sponsor: disputeableLiquidation.sponsor,
-          liquidation: disputeableLiquidation,
-          totalPaid,
-          error
-        });
-        continue;
-      }
-
-      const txnConfig = {
-        from: this.account,
-        gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
-        gasPrice: this.gasEstimator.getCurrentFastPrice()
-      };
-
       this.logger.debug({
         at: "Disputer",
         message: "Disputing liquidation",
-        liquidation: disputeableLiquidation,
-        txnConfig
+        liquidation: disputeableLiquidation
       });
-
-      // Send the transaction or report failure.
-      let receipt;
       try {
-        receipt = await dispute.send(txnConfig);
+        // Get successful transaction receipt and return value or error.
+        const transactionResult = await runTransaction({
+          transaction: dispute,
+          config: {
+            gasPrice: this.gasEstimator.getCurrentFastPrice(),
+            from: this.account,
+            nonce: await this.web3.eth.getTransactionCount(this.account)
+          }
+        });
+        const receipt = transactionResult.receipt;
+        const returnValue = transactionResult.returnValue.toString();
+        const logResult = {
+          tx: receipt.transactionHash,
+          sponsor: receipt.events.LiquidationDisputed.returnValues.sponsor,
+          liquidator: receipt.events.LiquidationDisputed.returnValues.liquidator,
+          id: receipt.events.LiquidationDisputed.returnValues.liquidationId,
+          disputeBondPaid: receipt.events.LiquidationDisputed.returnValues.disputeBondAmount
+        };
+        this.logger.info({
+          at: "Disputer",
+          message: "Position has been disputed!👮‍♂️",
+          liquidation: disputeableLiquidation,
+          disputeResult: logResult,
+          totalPaid: returnValue
+        });
       } catch (error) {
+        const message =
+          error.type === "call"
+            ? "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute✋"
+            : "Failed to dispute liquidation🚨";
         this.logger.error({
           at: "Disputer",
-          message: "Failed to dispute liquidation🚨",
+          message,
+          disputer: this.account,
+          liquidation: disputeableLiquidation,
           error
         });
         continue;
       }
-
-      const logResult = {
-        tx: receipt.transactionHash,
-        sponsor: receipt.events.LiquidationDisputed.returnValues.sponsor,
-        liquidator: receipt.events.LiquidationDisputed.returnValues.liquidator,
-        id: receipt.events.LiquidationDisputed.returnValues.liquidationId,
-        disputeBondPaid: receipt.events.LiquidationDisputed.returnValues.disputeBondAmount
-      };
-      this.logger.info({
-        at: "Disputer",
-        message: "Position has been disputed!👮‍♂️",
-        liquidation: disputeableLiquidation,
-        disputeResult: logResult
-      });
     }
   }
 
@@ -267,87 +253,67 @@ class Disputer {
       // Construct transaction.
       const withdraw = this.financialContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 
-      // Confirm that dispute has eligible rewards to be withdrawn.
-      let withdrawalCallResponse, paidToDisputer, gasEstimation;
+      this.logger.debug({
+        at: "Disputer",
+        message: "Withdrawing dispute",
+        liquidation: liquidation
+      });
       try {
-        [withdrawalCallResponse, gasEstimation] = await Promise.all([
-          withdraw.call({ from: this.account }),
-          withdraw.estimateGas({ from: this.account })
-        ]);
-        // Mainnet view/pure functions sometimes don't revert, even if a require is not met. The revertWrapper ensures this
-        // caught correctly. see https://forum.openzeppelin.com/t/require-in-view-pure-functions-dont-revert-on-public-networks/1211
-
+        // Get successful transaction receipt and return value or error.
+        const transactionResult = await runTransaction({
+          transaction: withdraw,
+          config: {
+            gasPrice: this.gasEstimator.getCurrentFastPrice(),
+            from: this.account,
+            nonce: await this.web3.eth.getTransactionCount(this.account)
+          }
+        });
+        let receipt = transactionResult.receipt;
+        let logResult = {
+          tx: receipt.transactionHash,
+          caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
+          settlementPrice: receipt.events.LiquidationWithdrawn.returnValues.settlementPrice,
+          liquidationStatus:
+            PostWithdrawLiquidationRewardsStatusTranslations[
+              receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
+            ]
+        };
         // In contract version 1.2.2 and below this function returns one value: the amount withdrawn by the function caller.
         // In later versions it returns an object containing all payouts.
-        paidToDisputer = this.isLegacyEmpVersion
-          ? withdrawalCallResponse.rawValue.toString()
-          : withdrawalCallResponse.paidToDisputer.rawValue.toString();
-
-        // If the call would revert OR the disputer would get nothing for withdrawing then throw and continue.
-        if (revertWrapper(withdrawalCallResponse) === null || paidToDisputer === "0") {
-          throw new Error("Simulated reward withdrawal failed");
+        if (this.isLegacyEmpVersion) {
+          logResult.withdrawalAmount = receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount;
+        } else {
+          logResult.paidToLiquidator = receipt.events.LiquidationWithdrawn.returnValues.paidToLiquidator;
+          logResult.paidToDisputer = receipt.events.LiquidationWithdrawn.returnValues.paidToDisputer;
+          logResult.paidToSponsor = receipt.events.LiquidationWithdrawn.returnValues.paidToSponsor;
         }
-      } catch (error) {
-        this.logger.debug({
+        this.logger.info({
           at: "Disputer",
-          message: "No rewards to withdraw",
-          liquidation: liquidation
+          message: "Dispute withdrawn🤑",
+          liquidation: liquidation,
+          liquidationResult: logResult
         });
+      } catch (error) {
+        // If the withdrawal simulation fails, then it is likely that the dispute has not resolved yet, and we don't
+        // want to emit a high level log about this:
+        if (error.type === "call") {
+          this.logger.debug({
+            at: "Disputer",
+            message: "No rewards to withdraw",
+            liquidation: liquidation
+          });
+        } else {
+          const message = "Failed to withdraw dispute rewards🚨";
+          this.logger.error({
+            at: "Disputer",
+            message,
+            disputer: this.account,
+            liquidation: liquidation,
+            error
+          });
+        }
         continue;
       }
-
-      const txnConfig = {
-        from: this.account,
-        gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
-        gasPrice: this.gasEstimator.getCurrentFastPrice()
-      };
-      this.logger.debug({
-        at: "Liquidator",
-        message: "Withdrawing dispute",
-        liquidation: liquidation,
-        paidToDisputer,
-        txnConfig
-      });
-
-      // Send the transaction or report failure.
-      let receipt;
-      try {
-        receipt = await withdraw.send(txnConfig);
-      } catch (error) {
-        this.logger.error({
-          at: "Disputer",
-          message: "Failed to withdraw dispute rewards🚨",
-          error
-        });
-        continue;
-      }
-
-      let logResult = {
-        tx: receipt.transactionHash,
-        caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
-        settlementPrice: receipt.events.LiquidationWithdrawn.returnValues.settlementPrice,
-        liquidationStatus:
-          PostWithdrawLiquidationRewardsStatusTranslations[
-            receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
-          ]
-      };
-
-      // In contract version 1.2.2 and below this event returns one value, `withdrawalAmount`: the amount withdrawn by the function caller.
-      // In later versions it returns an object containing all payouts.
-      if (this.isLegacyEmpVersion) {
-        logResult.withdrawalAmount = receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount;
-      } else {
-        logResult.paidToLiquidator = receipt.events.LiquidationWithdrawn.returnValues.paidToLiquidator;
-        logResult.paidToDisputer = receipt.events.LiquidationWithdrawn.returnValues.paidToDisputer;
-        logResult.paidToSponsor = receipt.events.LiquidationWithdrawn.returnValues.paidToSponsor;
-      }
-
-      this.logger.info({
-        at: "Disputer",
-        message: "Dispute withdrawn🤑",
-        liquidation: liquidation,
-        liquidationResult: logResult
-      });
     }
   }
 }

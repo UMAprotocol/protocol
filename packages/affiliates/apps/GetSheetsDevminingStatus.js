@@ -118,7 +118,7 @@ async function run() {
   const request = {
     spreadsheetId: process.env.SHEET_ID,
     // / Get 100 rows. Skips first row which is header info.
-    range: getRangeString(100)
+    range: getRangeString(100, process.env.SHEET_TAB)
   };
   const result = await sheets.spreadsheets.values.get(request);
   return JSON.stringify(filterActive(parseSheet(result.data)), null, 2);

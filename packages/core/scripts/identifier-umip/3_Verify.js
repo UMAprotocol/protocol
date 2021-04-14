@@ -2,7 +2,7 @@
 // It can be run on mainnet after the upgrade is completed or on the local Ganache mainnet fork to validate the
 // execution of the previous two scripts. This script does not need any wallets unlocked and does not make any on-chain
 // state changes. It can be run as:
-// truffle exec ./scripts/identifier-umip/3_Verify.js --network mainnet-fork --identifier USDETH --identifier ETHBTC
+// yarn truffle exec ./scripts/identifier-umip/3_Verify.js --network mainnet-fork --identifier USDETH --identifier ETHBTC
 
 const assert = require("assert").strict;
 

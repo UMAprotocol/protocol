@@ -6,7 +6,6 @@
     "@ethersproject/bignumber": "^5.0.5",
     "@google-cloud/logging-winston": "^3.0.6",
     "@google-cloud/trace-agent": "^4.2.5",
-    "@makerdao/multicall": "^0.12.0",
     "@uma/common": "^2.1.0",
     "@uma/core": "^2.1.0",
     "@uniswap/sdk": "^2.0.5",

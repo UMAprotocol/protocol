@@ -4,6 +4,7 @@ const winston = require("winston");
 const sinon = require("sinon");
 
 const { parseFixed } = require("@uma/common");
+const { getTruffleContract } = require("@uma/core");
 
 // Tested module
 const { SyntheticPegMonitor } = require("../src/SyntheticPegMonitor");
@@ -14,8 +15,11 @@ const {
   SpyTransport,
   lastSpyLogIncludes,
   lastSpyLogLevel,
-  InvalidPriceFeedMock
+  InvalidPriceFeedMock,
+  FinancialContractClient
 } = require("@uma/financial-templates-lib");
+
+const PerpetualMock = getTruffleContract("PerpetualMock", web3, "latest");
 
 // Run the tests against 2 diffrent price feed scaling combinations. Note these tests differ from the other monitor tests
 // as the Synthetic peg monitor is only dependent on price feeds. No need to test different decimal or collateral combinations.
@@ -211,6 +215,59 @@ contract("SyntheticPegMonitor", function() {
           assert.isTrue(lastSpyLogIncludes(spy, "off peg alert"));
           assert.isTrue(lastSpyLogIncludes(spy, "0.50")); // uniswap price
           assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // expected price
+          assert.isTrue(lastSpyLogIncludes(spy, "-50.00")); // percentage error
+          assert.equal(lastSpyLogLevel(spy), "warn");
+        });
+
+        it("Adjusts for CFRM if financial contract client is passed in and connected to a Perpetual contract", async function() {
+          const perpetualMock = await PerpetualMock.new();
+          const createFundingRateStructWithMultiplier = (multiplier, rate = "0") => {
+            return {
+              rate: { rawValue: rate },
+              identifier: web3.utils.padRight("0x1234", 64),
+              cumulativeMultiplier: { rawValue: multiplier },
+              updateTime: "0",
+              applicationTime: "0",
+              proposalTime: "0",
+              value: "0"
+            };
+          };
+
+          const financialContractClient = new FinancialContractClient(
+            spyLogger,
+            perpetualMock.abi,
+            web3,
+            perpetualMock.address,
+            null,
+            18,
+            18,
+            18,
+            "Perpetual"
+          );
+
+          // Create a new monitor with the FinancialContractClient set
+          syntheticPegMonitor = new SyntheticPegMonitor({
+            logger: spyLogger,
+            web3,
+            uniswapPriceFeed: uniswapPriceFeedMock,
+            medianizerPriceFeed: medianizerPriceFeedMock,
+            monitorConfig,
+            financialContractProps,
+            financialContractClient
+          });
+
+          // Set CFRM to 2, should produce 50% deviation with the two price feeds being otherwise equal:
+          await perpetualMock.setFundingRate(createFundingRateStructWithMultiplier(toWei("2")));
+          medianizerPriceFeedMock.setCurrentPrice(convertPrice("1"));
+          uniswapPriceFeedMock.setCurrentPrice(convertPrice("1"));
+          await financialContractClient.update();
+
+          await syntheticPegMonitor.checkPriceDeviation();
+
+          assert.equal(spy.callCount, 1); // There should be one message sent at this point.
+          assert.isTrue(lastSpyLogIncludes(spy, "off peg alert"));
+          assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // uniswap price
+          assert.isTrue(lastSpyLogIncludes(spy, "2.00")); // expected price
           assert.isTrue(lastSpyLogIncludes(spy, "-50.00")); // percentage error
           assert.equal(lastSpyLogLevel(spy), "warn");
         });

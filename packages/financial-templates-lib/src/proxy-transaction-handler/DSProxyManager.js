@@ -1,6 +1,6 @@
 const assert = require("assert");
 
-const { getFromBlock } = require("@uma/common");
+const { getFromBlock, runTransaction } = require("@uma/common");
 class DSProxyManager {
   /**
    * @notice Constructs new Liquidator bot.
@@ -24,11 +24,6 @@ class DSProxyManager {
     this.dsProxyAddress = null;
 
     // Helper functions from web3.
-    this.BN = this.web3.utils.BN;
-    this.toBN = this.web3.utils.toBN;
-    this.toWei = this.web3.utils.toWei;
-    this.fromWei = this.web3.utils.fromWei;
-    this.utf8ToHex = this.web3.utils.utf8ToHex;
     this.isAddress = this.web3.utils.isAddress;
 
     // Multiplier applied to Truffle's estimated gas limit for a transaction to send.
@@ -44,7 +39,7 @@ class DSProxyManager {
     return this.dsProxyAddress;
   }
 
-  // Load in an existing DSProxy for the account EOA if one already exists OR create a new one for the user. Note that
+  // Load in an existing DSProxy for the account EOA if one already exists or create a new one for the user. Note that
   // the user can provide a dsProxyAddress if they want to override the factory behaviour and load in a DSProxy directly.
   async initializeDSProxy(dsProxyAddress = null, shouldCreateProxy = true) {
     if (dsProxyAddress) {
@@ -65,14 +60,11 @@ class DSProxyManager {
 
     if (this.dsProxy && this.dsProxyAddress) return this.dsProxyAddress;
     const fromBlock = await getFromBlock(this.web3);
-    const events = await this.dsProxyFactory.getPastEvents("Created", {
-      fromBlock,
-      filter: { owner: this.account }
-    });
+    const events = await this.dsProxyFactory.getPastEvents("Created", { fromBlock, filter: { owner: this.account } });
 
     // The user already has a DSProxy deployed. Load it in from the events.
     if (events.length > 0) {
-      this.dsProxyAddress = events[events.length - 1].returnValues.proxy;
+      this.dsProxyAddress = events[events.length - 1].returnValues.proxy; // use the most recent DSProxy (end index).
       this.dsProxy = new this.web3.eth.Contract(this.dsProxyAbi, this.dsProxyAddress);
       this.logger.debug({
         at: "DSProxyManager",
@@ -90,17 +82,22 @@ class DSProxyManager {
         message: "No DSProxy found for EOA. Deploying new DSProxy",
         account: this.account
       });
-      const dsProxyCreateTx = await this.dsProxyFactory.methods.build().send({
-        from: this.account,
-        gasPrice: this.gasEstimator.getCurrentFastPrice()
+      await this.gasEstimator.update();
+      const { receipt } = await runTransaction({
+        transaction: this.dsProxyFactory.methods.build(),
+        config: {
+          gasPrice: this.gasEstimator.getCurrentFastPrice(),
+          from: this.account,
+          nonce: await this.web3.eth.getTransactionCount(this.account)
+        }
       });
-      this.dsProxyAddress = dsProxyCreateTx.events.Created.returnValues.proxy;
+      this.dsProxyAddress = receipt.events.Created.returnValues.proxy;
       this.dsProxy = new this.web3.eth.Contract(this.dsProxyAbi, this.dsProxyAddress);
       this.logger.info({
         at: "DSProxyManager",
-        message: "DSProxy has been deployed for the EOA 🚀",
+        message: "DSProxy deployed for your EOA 🚀",
         dsProxyAddress: this.dsProxyAddress,
-        tx: dsProxyCreateTx.transactionHash,
+        tx: receipt.transactionHash,
         account: this.account
       });
     }
@@ -117,10 +114,14 @@ class DSProxyManager {
       libraryAddress,
       callData
     });
-
-    const executeTransaction = await this.dsProxy.methods["execute(address,bytes)"](libraryAddress, callData).send({
-      from: this.account,
-      gasPrice: this.gasEstimator.getCurrentFastPrice()
+    await this.gasEstimator.update();
+    const { receipt } = await runTransaction({
+      transaction: this.dsProxy.methods["execute(address,bytes)"](libraryAddress, callData),
+      config: {
+        gasPrice: this.gasEstimator.getCurrentFastPrice(),
+        from: this.account,
+        nonce: await this.web3.eth.getTransactionCount(this.account)
+      }
     });
 
     this.logger.info({
@@ -128,9 +129,9 @@ class DSProxyManager {
       message: "Executed function on deployed library 📸",
       libraryAddress,
       callData,
-      tx: executeTransaction.transactionHash
+      tx: receipt.transactionHash
     });
-    return executeTransaction;
+    return receipt;
   }
   // Extract call code using the `.abi` syntax on a truffle object or the `getABI(contractType,contractVersion)` from common.
   async callFunctionOnNewlyDeployedLibrary(callCode, callData) {
@@ -144,18 +145,23 @@ class DSProxyManager {
       callCode
     });
 
-    const executeTransaction = await this.dsProxy.methods["execute(bytes,bytes)"](callCode, callData).send({
-      from: this.account,
-      gasPrice: this.gasEstimator.getCurrentFastPrice()
+    await this.gasEstimator.update();
+    const { receipt } = await runTransaction({
+      transaction: this.dsProxy.methods["execute(bytes,bytes)"](callCode, callData),
+      config: {
+        gasPrice: this.gasEstimator.getCurrentFastPrice(),
+        from: this.account,
+        nonce: await this.web3.eth.getTransactionCount(this.account)
+      }
     });
 
     this.logger.info({
       at: "DSProxyManager",
       message: "Executed function on a freshly deployed library, created in the same tx 🤗",
       callData,
-      tx: executeTransaction.transactionHash
+      tx: receipt.transactionHash
     });
-    return executeTransaction;
+    return receipt;
   }
 }
 

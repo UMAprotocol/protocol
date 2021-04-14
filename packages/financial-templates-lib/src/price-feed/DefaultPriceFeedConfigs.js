@@ -615,6 +615,49 @@ const defaultConfigs = {
     twapLength: 7200,
     invertPrice: true
   },
+  DIGGBTC: {
+    type: "expression",
+    // Note: lower-case variables are intermediate, upper-case are configured feeds.
+    expression: `
+      mean(DIGG_WBTC_SUSHI, DIGG_WBTC_UNI)
+    `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    twapLength: 1800,
+    priceFeedDecimals: 8,
+    customFeeds: {
+      DIGG_WBTC_SUSHI: { type: "uniswap", uniswapAddress: "0x9a13867048e01c663ce8ce2fe0cdae69ff9f35e3" },
+      DIGG_WBTC_UNI: { type: "uniswap", uniswapAddress: "0xe86204c4eddd2f70ee00ead6805f917671f56c52" }
+    }
+  },
+  DIGGETH: {
+    type: "expression",
+    // Note: lower-case variables are intermediate, upper-case are configured feeds.
+    expression: `
+      wbtc_eth = mean(WBTC_ETH_SUSHI, WBTC_ETH_UNI);
+      DIGGBTC * wbtc_eth
+    `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    twapLength: 1800,
+    priceFeedDecimals: 8,
+    customFeeds: {
+      WBTC_ETH_SUSHI: { type: "uniswap", uniswapAddress: "0xCEfF51756c56CeFFCA006cD410B03FFC46dd3a58" },
+      WBTC_ETH_UNI: { type: "uniswap", uniswapAddress: "0xBb2b8038a1640196FbE3e38816F3e67Cba72D940" }
+    }
+  },
+  DIGGUSD: {
+    type: "expression",
+    // Note: lower-case variables are intermediate, upper-case are configured feeds.
+    expression: `
+      eth_usd = 1 / USDETH;
+      DIGGETH * eth_usd
+    `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    twapLength: 1800,
+    priceFeedDecimals: 6
+  },
   USDAAVE: {
     type: "medianizer",
     invertPrice: true,
@@ -811,6 +854,20 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "binance", pair: "BCHBTC" },
       { type: "cryptowatch", exchange: "huobi", pair: "BCHBTC" }
     ]
+  },
+  ETHBTC_FR: {
+    type: "expression",
+    expression: `
+        ETHBTC_FV = ETH\\/BTC * PERP_FRM;
+        max(-0.00001, min(0.00001, (ETHBTC_FV - ETHBTC_PERP) / ETHBTC_FV / 86400))
+    `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    twapLength: 3600,
+    customFeeds: {
+      ETHBTC_PERP: { type: "uniswap", invertPrice: true, uniswapAddress: "0x899a45ee5a03d8cc57447157a17ce4ea4745b199" },
+      PERP_FRM: { type: "frm", perpetualAddress: "0x32f0405834c4b50be53199628c45603cea3a28aa" }
+    }
   }
 };
 

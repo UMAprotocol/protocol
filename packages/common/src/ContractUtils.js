@@ -1,3 +1,5 @@
+const ynatm = require("@umaprotocol/ynatm");
+
 /**
  * This is a hack to handle reverts for view/pure functions that don't actually revert on public networks.
  * See https://forum.openzeppelin.com/t/require-in-view-pure-functions-dont-revert-on-public-networks/1211 for more
@@ -30,6 +32,7 @@ const revertWrapper = result => {
 /**
  * Simulate transaction via .call() and then .send() and return receipt. If an error is thrown,
  * return the error and add a flag denoting whether it was sent on the .call() or the .send().
+ * @notice Uses the ynatm package to retry the transaction with increasing gas price.
  * @param {*Object} transaction Transaction to call `.call()` and subsequently `.send()` on from `senderAccount`.
  * @param {*Object} config transaction config, e.g. { gasPrice, from }, passed to web3 transaction.
  * @return Error and type of error (originating from `.call()` or `.send()`) or transaction receipt and return value.
@@ -55,7 +58,36 @@ const runTransaction = async ({ transaction, config }) => {
   // .call() succeeded, now broadcast transaction.
   let receipt;
   try {
-    receipt = await transaction.send({ ...config, gas: Math.floor(estimatedGas * GAS_LIMIT_BUFFER) });
+    let updatedConfig = {
+      ...config,
+      gas: Math.floor(estimatedGas * GAS_LIMIT_BUFFER)
+    };
+    // If config has a `nonce` field, then we will use the `ynatm` package to strategically re broadcast the
+    // transaction. If the `nonce` is missing, then we'll send the transaction once.
+    if (config.nonce) {
+      // ynatm config:
+      // - Doubles gasPrice every retry.
+      const gasPriceScalingFunction = ynatm.DOUBLES;
+      // - Tries every minute (and increases gas price according to `gasPriceScalingFunction`) if tx hasn't gone through.
+      const retryDelay = 60000;
+      // - Min Gas Price starts at caller's provided config.gasPrice, with a max gasPrice of x4
+      const minGasPrice = updatedConfig.gasPrice;
+      const maxGasPrice = 2 * 3 * minGasPrice;
+
+      receipt = await ynatm.send({
+        sendTransactionFunction: gasPrice =>
+          transaction.send({
+            ...updatedConfig,
+            gasPrice
+          }),
+        minGasPrice,
+        maxGasPrice,
+        gasPriceScalingFunction,
+        delay: retryDelay
+      });
+    } else {
+      receipt = await transaction.send(updatedConfig);
+    }
     return {
       receipt,
       returnValue

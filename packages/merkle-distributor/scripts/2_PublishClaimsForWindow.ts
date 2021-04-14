@@ -32,7 +32,7 @@
 import assert from "assert";
 import { program } from "commander";
 import fs from "fs";
-
+import path from "path";
 import { getAbi } from "@uma/core";
 import { getWeb3, MAX_UINT_VAL } from "@uma/common";
 const web3 = getWeb3();
@@ -84,7 +84,7 @@ async function main() {
 
   console.log("File passed the checks\n\n1. Adding claims file to IPFS 🛰");
 
-  const ipfsHash = await ipfsHelper.uploadFile(JSON.stringify(claimsObject));
+  const ipfsHash = await ipfsHelper.uploadFile(claimsObject);
 
   console.log("Claims file added to IPFS with hash:", ipfsHash, "\n\n2. Pinning claims file to IPFS 📌");
 
@@ -105,11 +105,12 @@ async function main() {
     claimsObject.totalRewardsDistributed
   );
 
-  console.log("\n5. Checking allowance in payment token 💸");
-  const rewardToken = new web3.eth.Contract(getAbi("ExpandedERC20"), claimsObject.rewardToken);
-  const currentRewardAllowance = await rewardToken.methods.allowance(account, options.merkleDistributorAddress).call();
-
   if (options.sendTransaction == "true") {
+    console.log("\n5. Checking allowance in payment token 💸");
+    const rewardToken = new web3.eth.Contract(getAbi("ExpandedERC20"), claimsObject.rewardToken);
+    const currentRewardAllowance = await rewardToken.methods
+      .allowance(account, options.merkleDistributorAddress)
+      .call();
     if (toBN(currentRewardAllowance).lt(toBN(MAX_UINT_VAL).div(toBN("2")))) {
       console.log("Reward token allowance is too little to make this payment. Sending a transaction to increase it...");
       const approveTx = await rewardToken.methods
@@ -126,7 +127,7 @@ async function main() {
     console.log("Your merkle root has been added on-chain! 🕺 tx:", setWindowTtx.transactionHash);
   } else {
     console.log(
-      `⚠️You have chosen to run the script in a mode that does not send the claims tx.\nThe table below shows the parameters you will need to call on the merkle distributor contract located at ${options.merkleDistributorAddress}.\nNote you might need to also add additional allowance to the payment token.`
+      `⚠️  You have chosen to run the script in a mode that does not send the claims tx.\nThe table below shows the parameters you will need to call on the merkle distributor contract located at ${options.merkleDistributorAddress}.\nNote you might need to also add additional allowance to the payment token.`
     );
     console.table({
       rewardsToDeposit: claimsObject.totalRewardsDistributed.toString(),
@@ -135,6 +136,24 @@ async function main() {
       ipfsHash
     });
   }
+  console.log("\n6. Saving payout info to disk 💿");
+  const savePath = `${path.resolve(__dirname)}/../payout-windows/chain-id-${claimsObject.chainId}-reward-window-${
+    claimsObject.windowIndex
+  }-payout-information.json`;
+  fs.writeFileSync(
+    savePath,
+    JSON.stringify({
+      chainId: claimsObject.chainId,
+      windowIndex: claimsObject.windowIndex,
+      transactionInfo: {
+        rewardsToDeposit: claimsObject.totalRewardsDistributed.toString(),
+        rewardToken: claimsObject.rewardToken,
+        merkleRoot: claimsObject.merkleRoot,
+        ipfsHash
+      }
+    })
+  );
+  console.log("🗄  File successfully written to", savePath);
 }
 
 main().catch(e => {
