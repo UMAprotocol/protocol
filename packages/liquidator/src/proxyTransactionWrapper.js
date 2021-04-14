@@ -1,7 +1,9 @@
 const assert = require("assert");
 const truffleContract = require("@truffle/contract");
 
-const { createObjectFromDefaultProps, runTransaction, blockUntilBlockMined, MAX_UINT_VAL } = require("@uma/common");
+const ynatm = require("@umaprotocol/ynatm");
+
+const { createObjectFromDefaultProps, blockUntilBlockMined, MAX_UINT_VAL } = require("@uma/common");
 const { getAbi, getTruffleContract } = require("@uma/core");
 
 const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json");
@@ -189,15 +191,34 @@ class ProxyTransactionWrapper {
     let receipt;
     let txnConfig;
     try {
-      const txResponse = await runTransaction({
-        transaction: liquidation,
-        config: {
-          gasPrice: this.gasEstimator.getCurrentFastPrice(),
-          from: this.account,
-          nonce: await this.web3.eth.getTransactionCount(this.account)
-        }
+      // Configure tx config object
+      const gasEstimation = await liquidation.estimateGas({
+        from: this.account
       });
-      receipt = txResponse.receipt;
+      txnConfig = {
+        from: this.account,
+        gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
+        gasPrice: this.gasEstimator.getCurrentFastPrice()
+      };
+
+      // Make sure to keep trying with this nonce
+      const nonce = await this.web3.eth.getTransactionCount(this.account);
+
+      // Min Gas Price, with a max gasPrice of x4
+      const minGasPrice = parseInt(this.gasEstimator.getCurrentFastPrice(), 10);
+      const maxGasPrice = 2 * 3 * minGasPrice;
+
+      // Doubles gasPrice every iteration
+      const gasPriceScalingFunction = ynatm.DOUBLES;
+
+      // Receipt without events
+      receipt = await ynatm.send({
+        sendTransactionFunction: gasPrice => liquidation.send({ ...txnConfig, nonce, gasPrice }),
+        minGasPrice,
+        maxGasPrice,
+        gasPriceScalingFunction,
+        delay: 60000 // Tries and doubles gasPrice every minute if tx hasn't gone through
+      });
     } catch (error) {
       return new Error("Failed to liquidate position🚨");
     }
