@@ -25,7 +25,7 @@ export class RangeTrader {
     /**
    * @notice Constructs new Range Trader.
    * @param {Object} logger Module used to send logs.
-   * @param {Object} web3 Provider from Truffle/node  to connect to Ethereum network.
+   * @param {Object} web3 Provider from Truffle/node to connect to Ethereum network.
    * @param {Object} tokenPriceFeed Price feed to fetch the current synthetic token trading price. EG a Dex price feed.
    * @param {Object} referencePriceFeed Price feed to fetch the "real" identifier price. EG a Cryptowatch price feed.
    * @param {Object} exchangeAdapter Interface to interact with on-chain exchange. EG: Uniswap.
