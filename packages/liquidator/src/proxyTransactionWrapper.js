@@ -1,7 +1,7 @@
 const assert = require("assert");
 const truffleContract = require("@truffle/contract");
 
-const { createObjectFromDefaultProps, runTransaction, blockUntilBlockMined, MAX_UINT_VAL } = require("@uma/common");
+const { createObjectFromDefaultProps, runTransaction, MAX_UINT_VAL } = require("@uma/common");
 const { getAbi, getTruffleContract } = require("@uma/core");
 
 const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json");
@@ -216,6 +216,8 @@ class ProxyTransactionWrapper {
   }
 
   async _executeLiquidationWithDsProxy(liquidationArgs) {
+    const blockBeforeLiquidation = await this.web3.eth.getBlockNumber();
+
     const reserveCurrencyLiquidator = new this.web3.eth.Contract(this.ReserveCurrencyLiquidator.abi);
 
     // TODO: the liquidation args, as structured hare is hard to read and maintain. We should refactor the liquidation
@@ -236,17 +238,11 @@ class ProxyTransactionWrapper {
     const callCode = this.ReserveCurrencyLiquidator.bytecode;
 
     const dsProxyCallReturn = await this.dsProxyManager.callFunctionOnNewlyDeployedLibrary(callCode, callData);
-    const blockAfterLiquidation = await this.web3.eth.getBlockNumber();
-
-    // Wait exactly one block to fetch events. This ensures that the events have been indexed by your node.
-    await blockUntilBlockMined(this.web3, blockAfterLiquidation + 1);
 
     const liquidationEvent = (
       await this.financialContract.getPastEvents("LiquidationCreated", {
-        fromBlock: blockAfterLiquidation - 1,
-        filter: {
-          liquidator: this.dsProxyManager.getDSProxyAddress()
-        }
+        fromBlock: blockBeforeLiquidation - 1,
+        filter: { liquidator: this.dsProxyManager.getDSProxyAddress() }
       })
     )[0];
 
