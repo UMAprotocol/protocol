@@ -1,5 +1,3 @@
-const argv = require("minimist")(process.argv.slice(), {});
-
 const ynatm = require("@umaprotocol/ynatm");
 
 /**
@@ -99,19 +97,8 @@ const runTransaction = async ({ transaction, config }) => {
     throw error;
   }
 };
-/**
- * Blocking code until a specific block number is mined. Will re-fetch the current block number every 500ms. Useful when
- * using methods called on contracts directly after state changes. Max blocking time should be ~ 15 seconds.
- * @param {Object} web3 Provider from Truffle/node to connect to Ethereum network.
- * @param {number} blockerBlockNumber block execution until this block number is mined.
- */
-const blockUntilBlockMined = async (web3, blockerBlockNumber) => {
-  if (argv._.indexOf("test") != -1) return;
-  for (;;) {
-    const currentBlockNumber = await web3.eth.getBlockNumber();
-    if (currentBlockNumber >= blockerBlockNumber) break;
-    await new Promise(r => setTimeout(r, 500));
-  }
-};
 
-module.exports = { revertWrapper, runTransaction, blockUntilBlockMined };
+module.exports = {
+  revertWrapper,
+  runTransaction
+};
