@@ -63,12 +63,12 @@ contract("VaultPriceFeed.js", function(accounts) {
     await vaultMock.setPricePerFullShare(parseFixed("50", tokenDecimals));
 
     // Ensure that the next block is mined at a later time.
-    const { timestamp: firstPriceTimestamp } = await web3.eth.getBlock("2.1.0");
+    const { timestamp: firstPriceTimestamp } = await web3.eth.getBlock("latest");
     await advanceBlockAndSetTime(web3, firstPriceTimestamp + 10);
 
     await vaultMock.setPricePerFullShare(parseFixed("10", tokenDecimals));
 
-    const { timestamp: secondPriceTimestamp } = await web3.eth.getBlock("2.1.0");
+    const { timestamp: secondPriceTimestamp } = await web3.eth.getBlock("latest");
 
     assert.equal(
       (await vaultPriceFeed.getHistoricalPrice(firstPriceTimestamp)).toString(),
