@@ -2,7 +2,12 @@ const assert = require("assert");
 const path = require("path");
 const fs = require("fs");
 
-const latestVersionMap = JSON.parse(fs.readFileSync(`${path.resolve(__dirname)}/../build/contract-type-hash-map.json`));
+let latestVersionMap = {};
+try {
+  latestVersionMap = JSON.parse(fs.readFileSync(`${path.resolve(__dirname)}/../build/contract-type-hash-map.json`));
+} catch (error) {
+  console.log("WARNING: latest version map was not found in the build directory! Run `yarn build` from core first!");
+}
 
 /**
  * Get the version and type of a financial contract deployed using the official UMA contract factories.
