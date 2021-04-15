@@ -30,7 +30,8 @@ This package requires a simple JSON config to parameterize the strategy runner. 
   "commonConfig": {
     "priceFeedConfig": {
       "cryptowatchApiKey": "YOUR-CRYPTO-WATCH-API-KEY",
-    },
+    }
+  },
   "liquidatorSettings": { "enableBotType": true },
   "disputerSettings": { "enableBotType": true },
   "monitorSettings": { "enableBotType": false }
