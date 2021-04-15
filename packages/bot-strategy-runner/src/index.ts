@@ -57,7 +57,7 @@ async function runStrategies(strategyRunnerConfig: strategyRunnerConfig) {
 
     progressBar.start(allBotsConfigs.length, 0);
 
-    // Execute all bots in a bluebird map with limited concurrency. Note than none of the `runBot` calls ever throw errors.
+    // Execute all bots in a bluebird map with limited concurrency. Note that none of the `runBot` calls ever throw errors.
     // Rather, they indicate an error via an `error` key within the response. The promise.race between the `runBot` and
     // _rejectAfterDelay bounds how long a given strategy can run for.
     const executionResults = await (bluebird as any).map(
