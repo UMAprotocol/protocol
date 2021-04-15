@@ -11,8 +11,8 @@ import { strategyRunnerConfig, buildBotConfigs, buildGlobalWhitelist, mergeConfi
 import { runBot } from "./BotEntryWrapper";
 
 // Defaults for bot execution. If the user does not define these then these settings will be used.
-const defaultPollingDelay = 120;
-const defaultStrategyTimeout = 60;
+const defaultPollingDelay = 300;
+const defaultStrategyTimeout = 120;
 const defaultBotConcurrency = 10;
 const defaultNetwork = "mainnet_mnemonic";
 

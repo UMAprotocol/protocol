@@ -29,7 +29,7 @@ This package requires a simple JSON config to parameterize the strategy runner. 
   ],
   "commonConfig": {
     "priceFeedConfig": {
-      "cryptowatchApiKey": "YOUR-CRYPTO-WATCH-API-KEY",
+      "cryptowatchApiKey": "YOUR-CRYPTO-WATCH-API-KEY"
     }
   },
   "liquidatorSettings": { "enableBotType": true },
@@ -42,7 +42,7 @@ Add this contents to a `BotRunnerConfig.json` file within this package.
 
 Then, to start the strategy runner run:
 
-```
+```bash
 node ./dist/src/index.js --fileConfig ./BotRunnerConfig.json
 ```
 
