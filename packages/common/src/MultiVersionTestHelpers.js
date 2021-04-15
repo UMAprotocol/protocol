@@ -1,5 +1,6 @@
 const web3 = require("web3");
 const lodash = require("lodash");
+const assert = require("assert");
 
 const { toWei, utf8ToHex, padRight } = web3.utils;
 const { ZERO_ADDRESS } = require("./Constants");

@@ -11,7 +11,4 @@ const browserUnsafe = {
   ...require("./src/HardhatConfig")
 };
 
-module.exports = {
-  ...browserSafe,
-  ...browserUnsafe
-};
+module.exports = { ...browserSafe, ...browserUnsafe };
