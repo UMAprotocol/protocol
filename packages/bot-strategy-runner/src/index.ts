@@ -16,7 +16,7 @@ const defaultStrategyTimeout = 120;
 const defaultBotConcurrency = 10;
 const defaultNetwork = "mainnet_mnemonic";
 
-// Global progress bar to show the status of the strategy runner during it's execution.
+// Global progress bar to show the status of the strategy runner during its execution.
 let counter = 0;
 const progressBar = new cliProgress.SingleBar(
   { format: "[{bar}] {percentage}% | bots executed: {value}/{total} | recent execution: {botIdentifier}" },
