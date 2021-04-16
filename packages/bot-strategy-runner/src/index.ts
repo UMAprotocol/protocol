@@ -9,7 +9,7 @@ import bluebird from "bluebird";
 import { Logger, delay } from "@uma/financial-templates-lib";
 
 import { strategyRunnerConfig, buildBotConfigs, buildGlobalWhitelist } from "./ConfigBuilder";
-import { runBot } from "./BotEntryWrapper";
+import { runBot, liquidatorConfig, disputerConfig, monitorConfig } from "./BotEntryWrapper";
 
 // Defaults for bot execution. If the user does not define these then these settings will be used.
 const defaultPollingDelay = 300;
@@ -62,7 +62,7 @@ async function runStrategies(strategyRunnerConfig: strategyRunnerConfig) {
     // _rejectAfterDelay bounds how long a given strategy can run for.
     const executionResults = await bluebird.map(
       allBotsConfigs,
-      (botConfig: any) =>
+      (botConfig: liquidatorConfig | disputerConfig | monitorConfig) =>
         Promise.all([
           _updateProgressBar(botConfig), // As the promise progresses through bots update the progress bar.
           Promise.race([_rejectAfterDelay(strategyRunnerConfig.strategyTimeout, botConfig), runBot(botConfig)])
