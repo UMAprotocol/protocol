@@ -60,12 +60,12 @@ const versionMap = {
     contractType: "ExpiringMultiParty",
     contractVersion: "2.0.1"
   },
-  "0xc0d00c5690d02e8efbb151d8d8f6a85f8c81bdc977fd1cc9cf3fc43d9d96281c": {
+  "0x8c66d140d0ee5f9604d1fbf551e7533af136a915a5a2b6c363ac66001388310b": {
     // latest ExpiringMultiParty deployed on Kovan from EMPCreator, which was deployed with Truffle using Hardhat bytecode.
     contractType: "ExpiringMultiParty",
     contractVersion: "2.0.1"
   },
-  "0x7202352fa756f41d3b4646441b82271ab44909e6e24c12326fb73f34e6ca2aa9": {
+  "0x73b31d1f4806b7ebdc7baf1dd24de302737857adb1cba8d71f0f748674088105": {
     // latest Perpetual deployed from hardhat tests.
     contractType: "Perpetual",
     contractVersion: "2.0.1"
