@@ -5,7 +5,12 @@ const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toStr
 import BigNumber from "bignumber.js";
 const ExchangeAdapterInterface = require("./exchange-adapters/ExchangeAdapterInterface");
 
-const { ConvertDecimals, createFormatFunction, createObjectFromDefaultProps } = require("@uma/common");
+const {
+  ConvertDecimals,
+  createFormatFunction,
+  createObjectFromDefaultProps,
+  blockUntilBlockMined
+} = require("@uma/common");
 import assert from "assert";
 
 export class RangeTrader {
@@ -20,7 +25,7 @@ export class RangeTrader {
     /**
    * @notice Constructs new Range Trader.
    * @param {Object} logger Module used to send logs.
-   * @param {Object} web3 Provider from Truffle/node  to connect to Ethereum network.
+   * @param {Object} web3 Provider from Truffle/node to connect to Ethereum network.
    * @param {Object} tokenPriceFeed Price feed to fetch the current synthetic token trading price. EG a Dex price feed.
    * @param {Object} referencePriceFeed Price feed to fetch the "real" identifier price. EG a Cryptowatch price feed.
    * @param {Object} exchangeAdapter Interface to interact with on-chain exchange. EG: Uniswap.
@@ -140,6 +145,9 @@ export class RangeTrader {
       });
       throw tradeExecutionTransaction;
     }
+
+    // Wait exactly one block to fetch events. This ensures that the events have been indexed by your node.
+    await blockUntilBlockMined(this.web3, (await this.web3.eth.getBlockNumber()) + 1);
 
     // Get the post trade spot price to double check deviation error.
     await this.tokenPriceFeed.update();
