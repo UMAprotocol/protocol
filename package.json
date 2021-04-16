@@ -1,7 +1,7 @@
 {
   "name": "protocol",
   "version": "1.0.0",
-  "description": "UMA Protocol Smart Contracts",
+  "description": "UMA monorepo containing protocol packages",
   "private": true,
   "scripts": {
     "bootstrap": "npx lerna bootstrap",

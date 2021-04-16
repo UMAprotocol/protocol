@@ -58,7 +58,19 @@ const App = async params => {
     "Invalid version in dappmining config, must be one of: " + Object.keys(DappMining).join(", ")
   );
 
-  const empAbi = getAbi("ExpiringMultiParty", "1.2.2");
+  let empAbi;
+  switch (version) {
+    case "v1": {
+      empAbi = getAbi("ExpiringMultiParty", "1.0.2");
+      break;
+    }
+    case "v2": {
+      empAbi = getAbi("ExpiringMultiParty", "2.0.1");
+      break;
+    }
+    default:
+      throw new Error("Invalid version number: " + version);
+  }
   const client = new BigQuery();
   const queries = Queries({ client });
 
