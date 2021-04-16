@@ -4,7 +4,7 @@ import assert from "assert";
 import lodash from "lodash";
 import * as fs from "fs";
 import * as cliProgress from "cli-progress";
-import * as bluebird from "bluebird";
+import bluebird from "bluebird";
 
 import { Logger, delay } from "@uma/financial-templates-lib";
 
@@ -60,7 +60,7 @@ async function runStrategies(strategyRunnerConfig: strategyRunnerConfig) {
     // Execute all bots in a bluebird map with limited concurrency. Note that none of the `runBot` calls ever throw errors.
     // Rather, they indicate an error via an `error` key within the response. The promise.race between the `runBot` and
     // _rejectAfterDelay bounds how long a given strategy can run for.
-    const executionResults = await (bluebird as any).map(
+    const executionResults = await bluebird.map(
       allBotsConfigs,
       (botConfig: any) =>
         Promise.all([
@@ -68,7 +68,7 @@ async function runStrategies(strategyRunnerConfig: strategyRunnerConfig) {
           Promise.race([_rejectAfterDelay(strategyRunnerConfig.strategyTimeout, botConfig), runBot(botConfig)])
         ]),
       {
-        concurrency: strategyRunnerConfig.botConcurrency
+        concurrency: strategyRunnerConfig.botConcurrency || defaultBotConcurrency
       }
     );
 
