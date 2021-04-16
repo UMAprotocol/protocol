@@ -41,7 +41,8 @@ async function WithdrawTokens() {
   await gasEstimator.update();
 
   const token = await ExpandedERC20.at(argv.tokenAddress);
-  console.log("Balance:", await token.balanceOf(accounts[0]));
+  const balance = await token.balanceOf(accounts[0]);
+  console.log("Balance:", balance.toString());
 
   // Figure out how many tokens to withdraw. If max, then query the full balance of the unlocked account. Else, use specified.
   const amountToWithdraw = (argv.amount == "max" ? await token.balanceOf(accounts[0]) : argv.amount).toString();
