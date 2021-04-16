@@ -1,6 +1,6 @@
 // This script a withdrawal transaction that will pull funds out of a specified wallet. The wallet you run the script
 // from should be the wallet you're withdrawing tokens from.
-// To execute the script, from core, run: truffle exec ./scripts/mainnet/WithdrawTokens.ts --network mainnet_mnemonic --tokenAddress 0x... --amount max --recipientAddress 0x...
+// To execute the script, from core, run: yarn truffle exec ./scripts/mainnet/WithdrawTokens.ts --network mainnet_mnemonic --tokenAddress 0x... --amount max --recipientAddress 0x...
 // Note:
 // 1) the script will use the address of the wallet used to run the script as the from address.
 // 2) if you provide max for amount then the script will take all tokens. If you provide a specific number, it is assumed
@@ -16,7 +16,7 @@ async function WithdrawTokens() {
   const { getWeb3 } = require("@uma/common");
   const web3 = getWeb3();
 
-  const { getAbi } = require("@uma/core");
+  const { getAbi, getTruffleContract } = require("@uma/core");
   const { GasEstimator } = require("@uma/financial-templates-lib");
 
   assert(
@@ -27,8 +27,11 @@ async function WithdrawTokens() {
   assert(web3.utils.isAddress(argv.recipientAddress), "`recipientAddress` needs to be a valid address");
   console.log("Running Token withdrawal script 💰");
 
+  const ExpandedERC20 = getTruffleContract("ExpandedERC20", web3, "latest");
+
   const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
-  console.log("Connected to network id", networkId);
+  console.log("Connected to network id:", networkId);
+  console.log("Unlocked account:", accounts[0]);
 
   const logger = winston.createLogger({
     level: "debug",
@@ -37,13 +40,11 @@ async function WithdrawTokens() {
   const gasEstimator = new GasEstimator(logger);
   await gasEstimator.update();
 
-  const token = new web3.eth.Contract(getAbi("ExpandedERC20"), argv.tokenAddress);
+  const token = await ExpandedERC20.at(argv.tokenAddress);
+  console.log("Balance:", await token.balanceOf(accounts[0]));
 
   // Figure out how many tokens to withdraw. If max, then query the full balance of the unlocked account. Else, use specified.
-  const amountToWithdraw = (argv.amount == "max"
-    ? await token.methods.balanceOf(accounts[0]).call()
-    : argv.amount
-  ).toString();
+  const amountToWithdraw = (argv.amount == "max" ? await token.balanceOf(accounts[0]) : argv.amount).toString();
 
   // Send the transaction against the DSProxy manager.
   const tx = await token.transfer(argv.recipientAddress, amountToWithdraw, {
