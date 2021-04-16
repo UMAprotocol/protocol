@@ -1,4 +1,6 @@
 // Config builder that constructs whitelists and bot configs. Used to parameterize the strategy runner.
+import lodash from "lodash";
+
 import Web3 from "web3";
 const { toChecksumAddress } = Web3.utils;
 
@@ -45,7 +47,7 @@ export async function buildGlobalWhitelist(config: strategyRunnerConfig) {
     const responseJson = await Promise.all(responses.map((response: any) => response.json()));
     responseJson.forEach((contractAddressesResponse: any) => {
       if (contractAddressesResponse.empWhitelist) whitelist = [...whitelist, ...contractAddressesResponse.empWhitelist];
-      else console.log("Global Whitelist file does not have the `empWhitelist` key or is malformed");
+      else throw new Error("Global Whitelist file does not have the `empWhitelist` key or is malformed");
     });
   }
   if (config.globalAddressBlacklist) whitelist = whitelist.filter(el => !config.globalAddressBlacklist?.includes(el));
@@ -93,7 +95,6 @@ export async function buildBotConfigs(globalWhitelist: Array<string>, config: st
   return replaceAddressCase(botConfigs);
 }
 
-// TODO: update this method to accommodate upper and lower case addresses.
 function buildConfigForBotType(
   globalWhitelist: Array<string>,
   config: any,
@@ -117,7 +118,7 @@ function buildConfigForBotType(
 
   const botConfigs: any = [];
   botTypeWhitelist.forEach((contractAddress: string) => {
-    const addressConfig = mergeConfig(
+    const addressConfig = lodash.merge(
       config.commonConfig,
       config[settingsKey].commonConfig,
       config[settingsKey].addressConfigOverride ? config[settingsKey].addressConfigOverride[contractAddress] : null
@@ -166,33 +167,6 @@ function buildConfigForBotType(
     }
   });
   return botConfigs;
-}
-
-// Takes in two objects of any depth and merges them. In the case of a collision in keys the second object will take priority.
-export function mergeConfig(...args: any) {
-  const target: any = {}; // create a new object
-
-  // deep merge the object into the target object
-  const merger = (obj: any) => {
-    for (const prop in obj) {
-      if ({}.hasOwnProperty.call(obj, prop)) {
-        if (Object.prototype.toString.call(obj[prop]) === "[object Object]") {
-          // if the property is a nested object
-          target[prop] = mergeConfig(target[prop], obj[prop]);
-        } else {
-          // for regular property
-          target[prop] = obj[prop];
-        }
-      }
-    }
-  };
-
-  // iterate through all objects and deep merge them with target
-  for (let i = 0; i < args.length; i++) {
-    merger(args[i]);
-  }
-
-  return target;
 }
 
 // Takes in an object of any structure and returns the exact same object with all strings converted to check sum format.

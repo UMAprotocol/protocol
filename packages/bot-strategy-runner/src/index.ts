@@ -1,13 +1,14 @@
 import program from "commander";
 import nodeFetch from "node-fetch";
 import assert from "assert";
+import lodash from "lodash";
 import * as fs from "fs";
 import * as cliProgress from "cli-progress";
 import * as bluebird from "bluebird";
 
 import { Logger, delay } from "@uma/financial-templates-lib";
 
-import { strategyRunnerConfig, buildBotConfigs, buildGlobalWhitelist, mergeConfig } from "./ConfigBuilder";
+import { strategyRunnerConfig, buildBotConfigs, buildGlobalWhitelist } from "./ConfigBuilder";
 import { runBot } from "./BotEntryWrapper";
 
 // Defaults for bot execution. If the user does not define these then these settings will be used.
@@ -38,7 +39,6 @@ async function runStrategies(strategyRunnerConfig: strategyRunnerConfig) {
   // Construct bot configs for all enabled bots. This includes all bot specific overrides, whitelists, blacklists and any
   // extra settings defined in the config. See the readme for full details on what is possible with this config.
   const allBotsConfigs = await buildBotConfigs(globalWhiteList, strategyRunnerConfig);
-  console.log("allBotsConfigs", allBotsConfigs);
 
   Logger.debug({
     at: "BotStrategyRunner",
@@ -144,7 +144,7 @@ const processExecutionOptions = async () => {
     urlConfig = await response.json(); // extract JSON from the http response
     assert(!urlConfig.message && !urlConfig.error, `Could not fetch config! :${JSON.stringify(urlConfig)}`);
   }
-  return mergeConfig(fileConfig, urlConfig);
+  return lodash.merge(fileConfig, urlConfig);
 };
 
 // Returns a promise that is resolved after `seconds` delay. Used to limit how long a spoke can run for.
