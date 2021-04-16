@@ -25,7 +25,7 @@ async function buildHashes(contractType) {
   const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
 
   const identifier = "TEST_IDENTIFIER";
-  const fundingRateIdentifier = "TEST_FUNDiNG_IDENTIFIER";
+  const fundingRateIdentifier = "TEST_FUNDING_IDENTIFIER";
 
   const finder = await Finder.new({ from: contractCreator });
 
