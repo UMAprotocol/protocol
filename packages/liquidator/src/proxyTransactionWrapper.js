@@ -187,7 +187,6 @@ class ProxyTransactionWrapper {
 
     // Send the transaction or report failure.
     let receipt;
-    let txnConfig;
     try {
       const txResponse = await runTransaction({
         transaction: liquidation,
@@ -211,7 +210,10 @@ class ProxyTransactionWrapper {
       tokensOutstanding: receipt.events.LiquidationCreated.returnValues.tokensOutstanding,
       lockedCollateral: receipt.events.LiquidationCreated.returnValues.lockedCollateral,
       liquidatedCollateral: receipt.events.LiquidationCreated.returnValues.liquidatedCollateral,
-      txnConfig
+      txnConfig: {
+        gasPrice: this.gasEstimator.getCurrentFastPrice(),
+        from: this.account
+      }
     };
   }
 
