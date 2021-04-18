@@ -68,7 +68,7 @@ class FallBackPriceFeed extends PriceFeedInterface {
     }
   }
 
-  // return the longest lookback within all the fallback feeds.
+  // Return the longest lookback within all the fallback feeds.
   getLookback() {
     return Math.max(this.priceFeeds.map(feed => feed.historicalLookback));
   }
