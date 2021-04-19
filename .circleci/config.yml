@@ -8,7 +8,7 @@ jobs:
       - checkout
       - run:
           name: Install Prereqs
-          command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev yarn
+          command: sudo apt-get install -y libudev-dev libusb-1.0-0-dev yarn
       - run:
           name: Install Dependencies
           command: yarn --frozen-lockfile
