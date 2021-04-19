@@ -163,8 +163,33 @@ class FundingRateProposer {
 
     // Assume pricefeed has been cached and updated prior to this function via the `update()` call.
     const priceFeed = this.priceFeedCache[fundingRateIdentifier];
-    const pricefeedPrice = await this._getPriceFeedAndPrice(fundingRateIdentifier);
-    if (!pricefeedPrice) return;
+    if (!priceFeed) {
+      this.logger.error({
+        at: "PerpetualProposer",
+        message: "Failed to create pricefeed for funding rate identifier",
+        fundingRateIdentifier
+      });
+      return null;
+    }
+    // Get hypothetical timestamp to use for a new price proposal:
+    // Unless `usePriceFeedTime=true`, use the latest block's timestamp as the request
+    // timestamp so that the contract does not interpret `requestTimestamp` as being in the future.
+    const requestTimestamp = usePriceFeedTime
+      ? priceFeed.getLastUpdateTime()
+      : (await this.web3.eth.getBlock("latest")).timestamp;
+    let _pricefeedPrice;
+    try {
+      _pricefeedPrice = (await priceFeed.getHistoricalPrice(Number(requestTimestamp))).toString();
+    } catch (error) {
+      this.logger.error({
+        at: "PerpetualProposer",
+        message: "Failed to query current price for funding rate identifier",
+        fundingRateIdentifier,
+        requestTimestamp
+      });
+      return;
+    }
+    const pricefeedPrice = this.formatPriceToPricefeedPrecision(_pricefeedPrice, priceFeed);
     let onchainFundingRate = currentFundingRateData.rate.toString();
 
     // Check that pricefeedPrice is within [configStore.minFundingRate, configStore.maxFundingRate]
@@ -195,11 +220,6 @@ class FundingRateProposer {
       this.toBN(this.toWei(this.fundingRateErrorPercent.toString()))
     );
     if (shouldUpdateFundingRate) {
-      // Unless `usePriceFeedTime=true`, use the latest block's timestamp as the request
-      // timestamp so that the contract does not interpret `requestTimestamp` as being in the future.
-      const requestTimestamp = usePriceFeedTime
-        ? priceFeed.getLastUpdateTime()
-        : (await this.web3.eth.getBlock("latest")).timestamp;
       const proposal = cachedContract.contract.methods.proposeFundingRate(
         { rawValue: pricefeedPrice },
         requestTimestamp
@@ -391,34 +411,14 @@ class FundingRateProposer {
     };
   }
 
-  // Load cached pricefeed and fetch current price. Returns null if failure to get either pricefeed or current price.
-  async _getPriceFeedAndPrice(fundingRateIdentifier) {
-    const priceFeed = this.priceFeedCache[fundingRateIdentifier];
-    if (!priceFeed) {
-      this.logger.error({
-        at: "PerpetualProposer",
-        message: "Failed to create pricefeed for funding rate identifier",
-        fundingRateIdentifier
-      });
-      return null;
-    }
-    let currentPrice = priceFeed.getCurrentPrice();
-    if (!currentPrice) {
-      this.logger.error({
-        at: "PerpetualProposer",
-        message: "Failed to query current price for funding rate identifier",
-        fundingRateIdentifier
-      });
-      return null;
-    }
-
-    // Round `offchainFundingRate` to desired number of decimals by converting back and forth between the pricefeed's
+  formatPriceToPricefeedPrecision(price, priceFeed) {
+    // Round `price` to desired number of decimals by converting back and forth between the pricefeed's
     // configured precision:
     return parseFixed(
       // 1) `formatFixed` converts the price in wei to a floating point.
       // 2) `toFixed` removes decimals beyond `this.precision` in the floating point.
       // 3) `parseFixed` converts the floating point back into wei.
-      Number(formatFixed(currentPrice.toString(), priceFeed.getPriceFeedDecimals()))
+      Number(formatFixed(price.toString(), priceFeed.getPriceFeedDecimals()))
         .toFixed(this.precision)
         .toString(),
       priceFeed.getPriceFeedDecimals()
