@@ -234,6 +234,7 @@ exports.BlockFinder = (requestBlock, blocks = []) => {
    * @param {number} timestamp timestamp to search.
    */
   async function getBlockForTimestamp(timestamp) {
+    timestamp = Number(timestamp);
     assert(timestamp !== undefined && timestamp !== null, "timestamp must be provided");
     // If the last block we have stored is too early, grab the latest block.
     if (blocks.length === 0 || blocks[blocks.length - 1].timestamp < timestamp) {
