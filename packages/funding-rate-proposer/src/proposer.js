@@ -185,7 +185,8 @@ class FundingRateProposer {
         at: "PerpetualProposer",
         message: "Failed to query current price for funding rate identifier",
         fundingRateIdentifier,
-        requestTimestamp
+        requestTimestamp,
+        error
       });
       return;
     }
