@@ -282,19 +282,19 @@ contract("Perpetual: proposer.js", function(accounts) {
       await proposer._setAllowances();
       assert.equal(spyCount, spy.callCount);
     });
-    it("(_cacheAndUpdatePriceFeeds)", async function() {
-      // `update` should create a new pricefeed for each funding rate identifier.
+    it("(_createOrGetCachedPriceFeed)", async function() {
+      // should create a new pricefeed for each funding rate identifier.
       assert.equal(Object.keys(proposer.priceFeedCache).length, fundingRateIdentifiersToTest.length);
       for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
         assert.isTrue(
           proposer.priceFeedCache[hexToUtf8(fundingRateIdentifiersToTest[i])] instanceof PriceFeedMockScaled
         );
       }
-      // Calling `_cacheAndUpdatePriceFeeds` usually emits DEBUG logs for
+      // Calling `_createOrGetCachedPriceFeed` usually emits DEBUG logs for
       // each newly cached object. Calling it again should do nothing since we've already
       // cached the price feeds.
       const spyCount = spy.callCount;
-      await proposer._cacheAndUpdatePriceFeeds();
+      await proposer._createOrGetCachedPriceFeed();
       assert.equal(spyCount, spy.callCount);
     });
     describe("(updateFundingRate)", function() {
