@@ -63,7 +63,7 @@ class ExpressionPriceFeed extends PriceFeedInterface {
     const errors = [];
     await Promise.all(
       Object.entries(this.priceFeedMap).map(async ([name, pf]) => {
-        const price = await pf.getHistoricalPrice(time, verbose).catch(err => errors.push(err));
+        const price = await pf.getHistoricalPrice(Number(time), verbose).catch(err => errors.push(err));
         historicalPrices[name] = this._convertToDecimal(price, pf.getPriceFeedDecimals());
       })
     );
