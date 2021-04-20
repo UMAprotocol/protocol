@@ -364,7 +364,7 @@ class Liquidator {
     }
 
     // In legacy versions of the EMP, withdrawing needs to be done by a party involved in the liquidation (i.e liquidator,
-    // sponsor or disputer).As the liquidator is the DSProxy, we would require the ability to send the withdrawal tx
+    // sponsor or disputer). As the liquidator is the DSProxy, we would require the ability to send the withdrawal tx
     // directly from the DSProxy to facilitate this.This functionality is not implemented as almost all legacy EMPs expired.
     if (
       this.proxyTransactionWrapper?.useDsProxyToLiquidate &&
