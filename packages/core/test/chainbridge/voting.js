@@ -43,6 +43,7 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
   let genericHandlerMainnet;
   let genericHandlerSidechain;
 
+  // DVM contracts:
   let voting;
   let votingSidechain;
   let optimisticOracle;
