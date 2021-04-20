@@ -86,7 +86,9 @@ jobs:
             mkdir truffle_workaround
             mv protocol truffle_workaround/
             cd truffle_workaround/protocol
-            yarn run test-concurrent
+            lerna changed > lerna_output
+            export PACKAGES_CHANGES=$(cat lerna_output | awk '{print}' ORS=' --scope ')
+            yarn run test-concurrent-test
   coverage:
     docker:
       - image: circleci/node:lts
