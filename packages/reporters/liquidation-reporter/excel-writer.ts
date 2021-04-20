@@ -76,7 +76,9 @@ export function createExcelSheetFromLiquidationDrawDownData(drawDownData: any) {
     collateralData.activeFinancialContracts.forEach((financialContractInfo: any, index: number) => {
       sheet.cell(4 + index, 7).string(financialContractInfo.contractAddress);
       sheet.cell(4 + index, 8).number(Number(Number(financialContractInfo.collateralValueInUsd).toFixed(2)));
-      sheet.cell(4 + index, 9).string(financialContractInfo.contractPriceIdentifier);
+      sheet
+        .cell(4 + index, 9)
+        .string(financialContractInfo.contractPriceIdentifier ? financialContractInfo.contractPriceIdentifier : "null");
       sheet.cell(4 + index, 10).date(new Date(financialContractInfo.contractExpirationTime * 1000));
       sheet.cell(4 + index, 11).number(financialContractInfo.collateralRequirement);
     });
