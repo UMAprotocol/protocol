@@ -2004,6 +2004,7 @@ contract("Liquidator.js", function(accounts) {
 
                 // Liquidator should have their collateral increased by Sponsor1 + sponsor2 collateral.
                 const collateralPostWithdraw = await collateralToken.balanceOf(dsProxy.address);
+                console.log("collateralPostWithdraw", collateralPostWithdraw.toString());
                 assert.equal(
                   toBN(collateralPreWithdraw)
                     .add(toBN(convertCollateral("125")))
@@ -2024,88 +2025,7 @@ contract("Liquidator.js", function(accounts) {
               }
             }
           );
-          versionedIt([{ contractType: "any", contractVersion: "any" }])(
-            "Correctly deals with reserve being the same as collateral currency using DSProxy",
-            async function() {
-              // create a new liquidator and set the reserve currency to the collateral currency.
-              const liquidator = new Liquidator({
-                logger: spyLogger,
-                financialContractClient: financialContractClient,
-                proxyTransactionWrapper,
-                gasEstimator,
-                syntheticToken: syntheticToken.contract,
-                priceFeed: priceFeedMock,
-                account: accounts[0],
-                financialContractProps,
-                liquidatorConfig: {
-                  ...liquidatorConfig,
-                  proxyTransactionWrapperConfig: {
-                    useDsProxyToLiquidate: true,
-                    uniswapRouterAddress: uniswapRouter.address,
-                    uniswapFactoryAddress: uniswapFactory.address,
-                    liquidatorReserveCurrencyAddress: collateralToken.address
-                  }
-                }
-              });
-              await financialContract.create(
-                { rawValue: convertCollateral("120") },
-                { rawValue: convertSynthetic("100") },
-                { from: sponsor1 }
-              );
-              await financialContract.create(
-                { rawValue: convertCollateral("175") },
-                { rawValue: convertSynthetic("100") },
-                { from: sponsor2 }
-              );
-              // Seed the DSProxy with some collateral tokens (this is the same as the reserve token).
-              await collateralToken.mint(dsProxy.address, convertCollateral("150"), { from: contractCreator });
 
-              // Liquidator should correctly liquidate both positions and have done no trades in the process as it
-              // used the reserve as collateral. Assume the price feed given to the liquidator has moved such one of the
-              // two positions are undercollateralized.
-              // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
-              // Sponsor2: 100 * 1.3 * 1.2 < 175 [sufficiently collateralized]
-
-              priceFeedMock.setCurrentPrice(convertPrice("1.3"));
-              await liquidator.update();
-              await liquidator.liquidatePositions();
-              assert.equal(spy.callCount, 3); // 3 info level events should be sent at the conclusion of the 1 liquidations.
-              // 1 for the deployment of the DSProxy, 1 for the execution of the DSPRoxy ta and 1 for the liquidation.
-
-              // Sponsor1 should be in a liquidation state with the bot as the liquidator.
-              let liquidationObject = (await financialContract.getLiquidations(sponsor1))[0];
-              assert.equal(liquidationObject.sponsor, sponsor1);
-              assert.equal(liquidationObject.liquidator, dsProxy.address);
-              assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
-              assert.equal(liquidationObject.liquidatedCollateral, convertCollateral("120"));
-
-              // Sponsor1 should have zero collateral left in their position from the liquidation.
-              assert.equal((await financialContract.getCollateral(sponsor1)).rawValue, 0);
-
-              // Sponsor2 should not have any liquidations and should have all their collateral.
-              assert.deepStrictEqual(await financialContract.getLiquidations(sponsor2), []);
-              assert.equal((await financialContract.getCollateral(sponsor2)).rawValue, convertCollateral("175"));
-
-              // Next, try another liquidation. This time around the bot does not have enough collateral to mint enough
-              // to liquidate the min sponsor size. The bot should correctly report this without generating any errors
-              // or throwing any txs.
-
-              priceFeedMock.setCurrentPrice(convertPrice("2"));
-              await liquidator.update();
-              await liquidator.liquidatePositions();
-
-              liquidationObject = (await financialContract.getLiquidations(sponsor2))[0];
-              assert.equal(liquidationObject.sponsor, sponsor2);
-              assert.equal(liquidationObject.liquidator, dsProxy.address);
-              assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
-
-              assert.equal(spy.callCount, 7);
-              assert.isTrue(spyLogIncludes(spy, 3, "Submitting a partial liquidation"));
-              assert.isTrue(spyLogIncludes(spy, 4, "Executed function on a freshly deployed library"));
-              assert.isTrue(spyLogIncludes(spy, 5, "Position has been liquidated"));
-              assert.isTrue(spyLogIncludes(spy, 6, "Insufficient balance to liquidate the minimum sponsor size"));
-            }
-          );
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Correctly respects existing collateral balances when using DSProxy",
             async function() {
@@ -2265,6 +2185,7 @@ contract("Liquidator.js", function(accounts) {
               assert.equal(sponsor2Liquidations.length, 3);
               // The liquidator at this point should have spent all its DSProxy funds. Note we check that this is less
               // than 10 wei as there could be a tiny bit of dust left due to rounding.
+              console.log("B", (await reserveToken.balanceOf(dsProxy.address)).toString());
               assert.isTrue((await reserveToken.balanceOf(dsProxy.address)).lt(toBN(toWei("0.000001"))));
             }
           );
