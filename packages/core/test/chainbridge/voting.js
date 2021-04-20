@@ -125,6 +125,9 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
       genericHandlerSidechain.address,
       votingResourceSidechainId,
       votingSidechain.address,
+      // Note: Its conceivable that we don't even need to call `requestPrice` on the Voting contract for the sidechain
+      // deposit. Instead, we can just treat the sidechain's `deposit` method as a way to trigger the off-chain
+      // relayer to begin the process of requesting a price from the Mainnet Voting contract.
       votingRequestPriceFuncSig,
       votingPushPriceFuncSig
     );
