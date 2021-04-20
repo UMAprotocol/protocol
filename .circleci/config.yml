@@ -89,7 +89,6 @@ jobs:
             yarn lerna ls --since ${CIRCLE_SHA1} --include-dependents > lerna_output
             export PACKAGES_CHANGES=$(cat lerna_output | awk '{print}' ORS=' --scope ')
             echo "output PACKAGES_CHANGES- ${PACKAGES_CHANGES}"
-            yarn run test-concurrent-test
   coverage:
     docker:
       - image: circleci/node:lts
