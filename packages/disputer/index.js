@@ -4,7 +4,7 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers
-const { findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
+const { SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
 
 // JS libs
 const { Disputer } = require("./src/disputer");
@@ -21,7 +21,7 @@ const {
 } = require("@uma/financial-templates-lib");
 
 // Truffle contracts.
-const { getAbi } = require("@uma/core");
+const { getAbi, findContractVersion } = require("@uma/core");
 const { getWeb3, PublicNetworks } = require("@uma/common");
 
 /**

@@ -65,7 +65,8 @@
     "mocha-test": "mocha ./mocha-test --recursive",
     "load-addresses": "yarn run apply-registry",
     "clean": "rm -rf build",
-    "build": "yarn truffle compile && yarn load-addresses && tsc",
+    "buildLatestHardhatVersionHashes": "yarn hardhat run ./src/BuildContractVersionHashes.js",
+    "build": "yarn truffle compile && yarn load-addresses && tsc && yarn buildLatestHardhatVersionHashes",
     "prepublish": "yarn build"
   },
   "bugs": {
