@@ -87,7 +87,7 @@ jobs:
             mv protocol truffle_workaround/
             cd truffle_workaround/protocol
             export PREV_SHA=$(git log HEAD~1 --pretty=format:%H -1)
-            yarn lerna ls --since ${PREV_SHA} --include-dependents > lerna_output
+            yarn lerna ls --since ${CIRCLE_SHA1} --include-dependents > lerna_output
             cat lerna_output | grep @ > lerna_packages
             sed -i -e 's/^/--scope /' lerna_packages
             export PACKAGES_CHANGES=$(cat lerna_packages)
