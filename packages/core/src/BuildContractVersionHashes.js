@@ -116,7 +116,7 @@ async function main() {
   let versionMap = {};
   for (const contractType of contractHashesToGenerate) {
     const contractHash = await buildHashes(contractType);
-    versionMap[contractHash] = { contractType, contractVersion: "latest" };
+    versionMap[contractHash] = { contractType, contractVersion: "2.0.1" };
   }
   console.log("versionMap", versionMap);
   saveContractHashArtifacts(versionMap);
