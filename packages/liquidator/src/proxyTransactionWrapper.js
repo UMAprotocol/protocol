@@ -36,7 +36,6 @@ class ProxyTransactionWrapper {
     useDsProxyToLiquidate = false,
     proxyTransactionWrapperConfig
   }) {
-    console.log("proxyTransactionWrapperConfig", proxyTransactionWrapperConfig);
     this.web3 = web3;
     this.financialContract = financialContract;
     this.gasEstimator = gasEstimator;
@@ -102,8 +101,7 @@ class ProxyTransactionWrapper {
         "Must provide a reserve currency address to use the proxy transaction wrapper!"
       );
     }
-    console.log("liquidatorReserveCurrencyAddress", this.liquidatorReserveCurrencyAddress);
-    console.log("collateralTOken", this.collateralToken._address);
+
     this.reserveToken = new this.web3.eth.Contract(getAbi("ExpandedERC20"), this.liquidatorReserveCurrencyAddress);
     this.ReserveCurrencyLiquidator = getTruffleContract("ReserveCurrencyLiquidator", this.web3, "latest");
   }

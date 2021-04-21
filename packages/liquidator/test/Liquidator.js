@@ -35,9 +35,9 @@ const { assert } = require("chai");
 // 2) non-matching 8 collateral & 18 synthetic for legacy UMA synthetics.
 // 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
 const configs = [
-  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 }
-  // { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
-  // { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 }
+  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
+  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
+  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 }
 ];
 
 let iterationTestVersion; // store the test version between tests that is currently being tested.
@@ -1892,7 +1892,7 @@ contract("Liquidator.js", function(accounts) {
               });
             }
           );
-          versionedIt([{ contractType: "any", contractVersion: "any" }], true)(
+          versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Correctly liquidates positions using DSProxy",
             async function() {
               // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
@@ -2024,25 +2024,10 @@ contract("Liquidator.js", function(accounts) {
               }
             }
           );
-          versionedIt([{ contractType: "any", contractVersion: "any" }], true)(
+          versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Correctly deals with reserve being the same as collateral currency using DSProxy",
             async function() {
               // create a new liquidator and set the reserve currency to the collateral currency.
-              console.log("CONF", {
-                ...liquidatorConfig,
-                proxyTransactionWrapperConfig: {
-                  useDsProxyToLiquidate: true,
-                  uniswapRouterAddress: uniswapRouter.address,
-                  uniswapFactoryAddress: uniswapFactory.address,
-                  liquidatorReserveCurrencyAddress: await financialContract.collateralCurrency()
-                }
-              });
-              console.log("EMP in client", financialContractClient.financialContractAddress);
-              console.log("EMP address used in tests", financialContract.address);
-              console.log("await financialContract.collateralCurrency()", await financialContract.collateralCurrency());
-              console.log("collateral address", collateralToken.address);
-
-              // set the reserve currency to the collateral currency
               const proxyTransactionWrapper = new ProxyTransactionWrapper({
                 web3,
                 financialContract: financialContract.contract,
@@ -2113,7 +2098,6 @@ contract("Liquidator.js", function(accounts) {
               // to liquidate the min sponsor size. The bot should correctly report this without generating any errors
               // or throwing any txs.
 
-              console.log("COLLATERAL BEFORE STEP 2", (await collateralToken.balanceOf(dsProxy.address)).toString());
               priceFeedMock.setCurrentPrice(convertPrice("2"));
               await liquidator.update();
               await liquidator.liquidatePositions();
@@ -2128,7 +2112,6 @@ contract("Liquidator.js", function(accounts) {
               assert.isTrue(spyLogIncludes(spy, 4, "Executed function on a freshly deployed library"));
               assert.isTrue(spyLogIncludes(spy, 5, "Position has been liquidated"));
               assert.isTrue(spyLogIncludes(spy, 6, "Insufficient balance to liquidate the minimum sponsor size"));
-              console.log("COLLATERAL After STEP 2", (await collateralToken.balanceOf(dsProxy.address)).toString());
             }
           );
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
