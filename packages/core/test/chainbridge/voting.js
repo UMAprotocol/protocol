@@ -120,7 +120,13 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
 
   // Scenario: Sidechain contract needs a price from the sidechain oracle.
   it("Sidechain deposit: emits Deposit event", async function() {
-    const depositData = Helpers.createGenericDepositData(null);
+    // Here, the caller to deposit() might include the price request details that the relayer should input to the
+    // executeProposal() call on the Mainnet.
+    const encodedMetaDataProposal = Helpers.abiEncode(
+      ["bytes32", "uint256", "bytes", "uint256"],
+      [padRight(identifier, 64), requestTime, ancillaryData, requestPrice]
+    );
+    const depositData = Helpers.createGenericDepositData(encodedMetaDataProposal);
     const depositTxn = await bridgeSidechain.deposit(sidechainId, votingResourceSidechainId, depositData, {
       from: depositerAddress
     });
@@ -187,7 +193,13 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
 
   // Scenario: Someone wants to make a price available from mainnet to sidechain.
   it("Mainnet deposit: emits Deposit event", async function() {
-    const depositData = Helpers.createGenericDepositData(null);
+    // Here, the caller to deposit() might include the price request details that the relayer should input to the
+    // executeProposal() call on the Sidechain.
+    const encodedMetaDataProposal = Helpers.abiEncode(
+      ["bytes32", "uint256", "bytes", "uint256"],
+      [padRight(identifier, 64), requestTime, ancillaryData, requestPrice]
+    );
+    const depositData = Helpers.createGenericDepositData(encodedMetaDataProposal);
     const depositTxn = await bridgeMainnet.deposit(chainId, votingResourceId, depositData, {
       from: depositerAddress
     });
