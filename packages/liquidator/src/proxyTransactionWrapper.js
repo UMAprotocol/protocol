@@ -36,6 +36,7 @@ class ProxyTransactionWrapper {
     useDsProxyToLiquidate = false,
     proxyTransactionWrapperConfig
   }) {
+    console.log("proxyTransactionWrapperConfig", proxyTransactionWrapperConfig);
     this.web3 = web3;
     this.financialContract = financialContract;
     this.gasEstimator = gasEstimator;
@@ -101,7 +102,8 @@ class ProxyTransactionWrapper {
         "Must provide a reserve currency address to use the proxy transaction wrapper!"
       );
     }
-
+    console.log("liquidatorReserveCurrencyAddress", this.liquidatorReserveCurrencyAddress);
+    console.log("collateralTOken", this.collateralToken._address);
     this.reserveToken = new this.web3.eth.Contract(getAbi("ExpandedERC20"), this.liquidatorReserveCurrencyAddress);
     this.ReserveCurrencyLiquidator = getTruffleContract("ReserveCurrencyLiquidator", this.web3, "latest");
   }
@@ -128,11 +130,11 @@ class ProxyTransactionWrapper {
         this.reserveToken.methods.balanceOf(this.dsProxyManager.getDSProxyAddress()).call(),
         this.collateralToken.methods.balanceOf(this.dsProxyManager.getDSProxyAddress()).call()
       ]);
-      let maxPurchasableCollateral; // set to the reserve token balance ( if reserve==collateral) or the max purchasable.
+      let maxPurchasableCollateral = this.toBN("0"); // set to the reserve token balance (if reserve==collateral) or the max purchasable.
 
       // If the reserve currency is the collateral currency then there is no trading needed.
       if (this.toChecksumAddress(this.reserveToken._address) === this.toChecksumAddress(this.collateralToken._address))
-        maxPurchasableCollateral = reserveTokenBalance;
+        maxPurchasableCollateral = this.toBN(reserveTokenBalance);
       // Else, work out how much collateral could be purchased using all the reserve currency.
       else {
         // Instantiate uniswap factory to fetch the pair address.

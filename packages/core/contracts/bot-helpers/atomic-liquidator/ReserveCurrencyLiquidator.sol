@@ -66,7 +66,7 @@ contract ReserveCurrencyLiquidator {
                 collateralToMintShortfall
             );
 
-        // 4. Calculate how much collateral needs to be purchased. If the DSProxy already has some collateral then this
+        // 4.a. Calculate how much collateral needs to be purchased. If the DSProxy already has some collateral then this
         // will factor this in. If the DSProxy has more collateral than the total amount required the purchased = 0.
         FixedPoint.Unsigned memory collateralToBePurchased =
             subOrZero(
@@ -74,10 +74,9 @@ contract ReserveCurrencyLiquidator {
                 FixedPoint.Unsigned(IERC20(fc.collateralCurrency()).balanceOf(address(this)))
             );
 
-        // 4.a. If there is some collateral to be purchased, execute a trade on uniswap to meet the shortfall.
+        // 4.b. If there is some collateral to be purchased, execute a trade on uniswap to meet the shortfall.
         // Note the path assumes a direct route from the reserve currency to the collateral currency.
-        // Note that if the reserve currency is equal to the collateral currency no trade will execute within the router.
-        if (collateralToBePurchased.isGreaterThan(0)) {
+        if (collateralToBePurchased.isGreaterThan(0) && reserveCurrency != fc.collateralCurrency()) {
             IUniswapV2Router01 router = IUniswapV2Router01(uniswapRouter);
             address[] memory path = new address[](2);
             path[0] = reserveCurrency;
@@ -92,21 +91,42 @@ contract ReserveCurrencyLiquidator {
                 deadline
             );
         }
+
+        // 4.c. If at this point we were not able to get the required amount of collateral (due to insufficient reserve
+        // or not enough collateral in the contract) the script should try to liquidate as much as it can regardless.
+        // Update the values of total collateral to the current collateral balance and re-compute the tokenShortfall
+        // as the maximum tokens that could be liquidated.
+        if (
+            totalCollateralRequired.isGreaterThan(
+                FixedPoint.Unsigned(IERC20(fc.collateralCurrency()).balanceOf(address(this)))
+            )
+        ) {
+            totalCollateralRequired = FixedPoint.Unsigned(IERC20(fc.collateralCurrency()).balanceOf(address(this)));
+            collateralToMintShortfall = totalCollateralRequired.sub(
+                IStore(IFinder(fc.finder()).getImplementationAddress("Store")).computeFinalFee(fc.collateralCurrency())
+            );
+            tokenShortfall = collateralToMintShortfall.divCeil(gcr);
+        }
         // 5. Mint the shortfall synthetics with collateral. Note we are minting at the GCR.
         // If the DSProxy already has enough tokens (tokenShortfall = 0) we still preform the approval on the collateral
         // currency as this is needed to pay the final fee in the liquidation tx.
         TransferHelper.safeApprove(fc.collateralCurrency(), address(fc), totalCollateralRequired.rawValue);
-        if (tokenShortfall.isGreaterThan(0)) {
-            fc.create(collateralToMintShortfall, tokenShortfall);
-        }
+        if (tokenShortfall.isGreaterThan(0)) fc.create(collateralToMintShortfall, tokenShortfall);
+
+        // The liquidatableTokens is either the maxTokensToLiquidate (if we were able to buy/mint enough) or the full
+        // token token balance at this point if there was a shortfall.
+        FixedPoint.Unsigned memory liquidatableTokens = maxTokensToLiquidate;
+        if (
+            maxTokensToLiquidate.isGreaterThan(FixedPoint.Unsigned(IERC20(fc.tokenCurrency()).balanceOf(address(this))))
+        ) liquidatableTokens = FixedPoint.Unsigned(IERC20(fc.tokenCurrency()).balanceOf(address(this)));
 
         // 6. Liquidate position with newly minted synthetics.
-        TransferHelper.safeApprove(fc.tokenCurrency(), address(fc), maxTokensToLiquidate.rawValue);
+        TransferHelper.safeApprove(fc.tokenCurrency(), address(fc), liquidatableTokens.rawValue);
         fc.createLiquidation(
             liquidatedSponsor,
             minCollateralPerTokenLiquidated,
             maxCollateralPerTokenLiquidated,
-            maxTokensToLiquidate,
+            liquidatableTokens,
             deadline
         );
     }
