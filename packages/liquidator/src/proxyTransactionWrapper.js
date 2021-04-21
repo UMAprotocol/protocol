@@ -128,11 +128,11 @@ class ProxyTransactionWrapper {
         this.reserveToken.methods.balanceOf(this.dsProxyManager.getDSProxyAddress()).call(),
         this.collateralToken.methods.balanceOf(this.dsProxyManager.getDSProxyAddress()).call()
       ]);
-      let maxPurchasableCollateral = this.toBN("0"); // set to the reserve token balance (if reserve==collateral) or the max purchasable.
+      let maxPurchasableCollateral; // set to the reserve token balance ( if reserve==collateral) or the max purchasable.
 
       // If the reserve currency is the collateral currency then there is no trading needed.
       if (this.toChecksumAddress(this.reserveToken._address) === this.toChecksumAddress(this.collateralToken._address))
-        maxPurchasableCollateral = this.toBN(reserveTokenBalance);
+        maxPurchasableCollateral = reserveTokenBalance;
       // Else, work out how much collateral could be purchased using all the reserve currency.
       else {
         // Instantiate uniswap factory to fetch the pair address.
