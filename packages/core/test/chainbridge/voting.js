@@ -6,7 +6,7 @@ const TruffleAssert = require("truffle-assertions");
 const Ethers = require("ethers");
 
 const Helpers = require("./helpers");
-const { interfaceName } = require("@uma/common");
+const { interfaceName, didContractThrow } = require("@uma/common");
 
 // Chainbridge Contracts:
 const BridgeContract = artifacts.require("Bridge");
@@ -21,15 +21,13 @@ const Timer = artifacts.require("Timer");
 const Token = artifacts.require("ExpandedERC20");
 const CollateralWhitelist = artifacts.require("AddressWhitelist");
 
-const { utf8ToHex, padRight, hexToUtf8 } = web3.utils;
+const { utf8ToHex, padRight, hexToUtf8, toWei } = web3.utils;
 
 contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
   const relayerThreshold = 2;
   const chainId = 1;
   const sidechainId = 2;
   const expectedDepositNonce = 1;
-
-  const identifier = utf8ToHex("Test Identifier");
 
   const depositerAddress = accounts[1];
   const relayer1Address = accounts[2];
@@ -56,6 +54,8 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
   // Test variables
   let requestTime; // Time that will be used as the price request timestamp
   let ancillaryData;
+  const identifier = utf8ToHex("Test Identifier");
+  const requestPrice = toWei("1");
 
   // These are the functions that the GenericHandler will be calling.
   let votingGetPriceFuncSig;
@@ -182,10 +182,10 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
       internalDepositTx,
       "PriceRequestAdded",
       event =>
-        event.roundId.toString() === requestTime.toString() &&
-        // MockOracle emits this event with roundId arbitrarily = time
+        event.requester.toLowerCase() === genericHandlerSidechain.address.toLowerCase() &&
         hexToUtf8(event.identifier) === hexToUtf8(identifier) &&
-        event.time.toString() === requestTime.toString()
+        event.time.toString() === requestTime.toString() &&
+        event.ancillaryData.toLowerCase() === ancillaryData.toLowerCase()
     );
   });
 
@@ -242,12 +242,106 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
 
   // Scenario: Someone wants to make a price available from mainnet to sidechain.
   it("Mainnet deposit: Should check if getPrice() reverts on Voting", async function() {
-    // TODO:
+    // Deposit succeeds on Mainnet, meaning that the price is available.
+    // Note: Deposit data is needed to call getPrice() on the Voting contract.
+    const encodedMetaDataDeposit = Helpers.abiEncode(
+      ["bytes32", "uint256", "bytes"],
+      [padRight(identifier, 64), requestTime, ancillaryData]
+    );
+    const depositData = Helpers.createGenericDepositData(encodedMetaDataDeposit);
+
+    // Will revert until a price is available on Voting.
+    assert(
+      await didContractThrow(
+        bridgeMainnet.deposit(chainId, votingResourceId, depositData, {
+          from: depositerAddress
+        })
+      )
+    );
+    await voting.requestPrice(identifier, requestTime, ancillaryData);
+    await voting.pushPrice(identifier, requestTime, ancillaryData, requestPrice);
+    const depositTxn = await bridgeMainnet.deposit(chainId, votingResourceId, depositData, {
+      from: depositerAddress
+    });
+
+    // Bridge emits a Deposit event.
+    TruffleAssert.eventEmitted(
+      depositTxn,
+      "Deposit",
+      event =>
+        event.destinationChainID.toString() === chainId.toString() &&
+        event.resourceID.toLowerCase() === votingResourceId.toLowerCase() &&
+        event.depositNonce.toString() === expectedDepositNonce.toString()
+    );
   });
 
   // Scenario: Off-chain relayer sees that mainnet Bridge emitted a Deposit event, relayer should now
   // vote to execute a proposal on the sidechain Bridge, which should ultimately push a price to the Voting contract.
   it("Sidechain execute proposal: Should push price to Voting", async function() {
-    // TODO:
+    // Note: Deposit proposal data is needed to call pushPrice() on the Voting sidechain contract.
+    const encodedMetaDataProposal = Helpers.abiEncode(
+      ["bytes32", "uint256", "bytes", "uint256"],
+      [padRight(identifier, 64), requestTime, ancillaryData, requestPrice]
+    );
+    const proposalData = Helpers.createGenericDepositData(encodedMetaDataProposal);
+    // Datahash must be the hash of (handlerAddress, proposalData)
+    let proposalDataHash = Ethers.utils.keccak256(genericHandlerSidechain.address + proposalData.substr(2));
+    TruffleAssert.passes(
+      await bridgeSidechain.voteProposal(
+        sidechainId,
+        expectedDepositNonce,
+        votingResourceSidechainId,
+        proposalDataHash,
+        {
+          from: relayer1Address
+        }
+      )
+    );
+
+    // relayer2 votes in favor of the deposit proposal because the relayerThreshold is 2, the deposit proposal will
+    // go into a finalized state
+    TruffleAssert.passes(
+      await bridgeSidechain.voteProposal(
+        sidechainId,
+        expectedDepositNonce,
+        votingResourceSidechainId,
+        proposalDataHash,
+        {
+          from: relayer2Address
+        }
+      )
+    );
+
+    // relayer1 will execute the deposit proposal. Note: the internal pushPrice() method will revert unless
+    // requestPrice() has been called first. We may want to remove this requirement from the bridged Voting
+    // contract in case we want to push unrequested prices.
+    assert(
+      await didContractThrow(
+        bridgeSidechain.executeProposal(sidechainId, expectedDepositNonce, proposalData, votingResourceSidechainId, {
+          from: relayer2Address
+        })
+      )
+    );
+    await votingSidechain.requestPrice(identifier, requestTime, ancillaryData);
+    const executeProposalTx = await bridgeSidechain.executeProposal(
+      sidechainId,
+      expectedDepositNonce,
+      proposalData,
+      votingResourceSidechainId,
+      {
+        from: relayer2Address
+      }
+    );
+    // Verifying price was pushed on Voting
+    const internalTx = await TruffleAssert.createTransactionResult(votingSidechain, executeProposalTx.tx);
+    TruffleAssert.eventEmitted(internalTx, "PushedPrice", event => {
+      return (
+        event.pusher.toLowerCase() === genericHandlerSidechain.address.toLowerCase() &&
+        hexToUtf8(event.identifier) === hexToUtf8(identifier) &&
+        event.time.toString() === requestTime.toString() &&
+        event.ancillaryData.toLowerCase() === ancillaryData.toLowerCase() &&
+        event.price.toString() === requestPrice
+      );
+    });
   });
 });
