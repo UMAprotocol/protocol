@@ -1,4 +1,13 @@
 const assert = require("assert");
+const path = require("path");
+const fs = require("fs");
+
+let latestVersionMap = {};
+try {
+  latestVersionMap = JSON.parse(fs.readFileSync(`${path.resolve(__dirname)}/../build/contract-type-hash-map.json`));
+} catch (error) {
+  console.log("WARNING: latest version map was not found in the build directory! Run `yarn build` from core first!");
+}
 
 /**
  * Get the version and type of a financial contract deployed using the official UMA contract factories.
@@ -50,11 +59,6 @@ const versionMap = {
     contractType: "ExpiringMultiParty",
     contractVersion: "1.2.2"
   },
-  "0x87b2de625ae5a42d5ac38269993143805cea5ec7297c17c71007d148a4627cae": {
-    // latest ExpiringMultiParty deployed from hardhat tests.
-    contractType: "ExpiringMultiParty",
-    contractVersion: "latest"
-  },
   "0x1f75b3ae77a4a3b91fefd81264ec94751dcceafb02d42d2250a209385cdee39a": {
     // Latest Mainnet ExpiringMultiParty.
     contractType: "ExpiringMultiParty",
@@ -66,17 +70,11 @@ const versionMap = {
     contractVersion: "latest"
   },
   "0x7202352fa756f41d3b4646441b82271ab44909e6e24c12326fb73f34e6ca2aa9": {
-    // latest Perpetual deployed from hardhat tests.
-    contractType: "Perpetual",
-    contractVersion: "latest"
-  },
-  "0x238569485842107d2e938ff59c78841860b4dcd00d37be9859699f2c4ddbb3a0": {
     // Latest Mainnet Perpetual contract.
     contractType: "Perpetual",
     contractVersion: "latest"
-  }
+  },
+  ...latestVersionMap // latest versions built from hard hat. This makes this utility work out of the box with "latest".
 };
 
-module.exports = {
-  findContractVersion
-};
+module.exports = { findContractVersion };

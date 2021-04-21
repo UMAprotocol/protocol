@@ -26,8 +26,8 @@ const { CRMonitor } = require("./src/CRMonitor");
 const { SyntheticPegMonitor } = require("./src/SyntheticPegMonitor");
 
 // Contract ABIs and network Addresses.
-const { getAbi, getAddress } = require("@uma/core");
-const { getWeb3, findContractVersion, SUPPORTED_CONTRACT_VERSIONS, PublicNetworks } = require("@uma/common");
+const { getAbi, getAddress, findContractVersion } = require("@uma/core");
+const { getWeb3, SUPPORTED_CONTRACT_VERSIONS, PublicNetworks } = require("@uma/common");
 
 /**
  * @notice Continuously attempts to monitor contract positions and reports based on monitor modules.
