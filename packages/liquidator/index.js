@@ -82,6 +82,7 @@ async function run({
       web3.eth.getAccounts(),
       web3.eth.net.getId()
     ]);
+
     const networkName = PublicNetworks[Number(networkId)] ? PublicNetworks[Number(networkId)].name : null;
     // Append the contract version and type to the liquidatorConfig, if the liquidatorConfig does not already contain one.
     if (!liquidatorConfig) liquidatorConfig = {};
