@@ -180,7 +180,7 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.1.0", contractType: "ExpiringMultiParty" }
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" }
         }
       }
     };
@@ -213,7 +213,7 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.1.0", contractType: "ExpiringMultiParty" }
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" }
         }
       }
     };
@@ -261,7 +261,7 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.1.0", contractType: "ExpiringMultiParty" }
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" }
         }
       }
     };
@@ -318,7 +318,7 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.1.0", contractType: "ExpiringMultiParty" }
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" }
         }
       },
       testServerlessLiquidator: {
@@ -328,7 +328,7 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          LIQUIDATOR_CONFIG: { contractVersion: "2.1.0", contractType: "ExpiringMultiParty" }
+          LIQUIDATOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" }
         }
       },
       testServerlessDisputer: {
@@ -338,7 +338,7 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          DISPUTER_CONFIG: { contractVersion: "2.1.0", contractType: "ExpiringMultiParty" }
+          DISPUTER_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" }
         }
       }
     };
@@ -388,7 +388,7 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.1.0", contractType: "ExpiringMultiParty" }
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" }
         }
       },
       testServerlessMonitorError: {
@@ -409,7 +409,7 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: "0x0000000000000000000000000000000000000000",
           PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.1.0", contractType: "ExpiringMultiParty" }
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" }
         }
       }
     };

@@ -130,7 +130,7 @@ describe("index.js", function() {
 
     // Deploy a new expiring multi party OR perpetual.
     constructorParams = await createConstructorParamsForContractVersion(
-      { contractType: "Perpetual", contractVersion: "2.1.0" },
+      { contractType: "Perpetual", contractVersion: "2.0.1" },
       {
         convertSynthetic: toWei, // These tests do not use convertSynthetic. Override this with toWei
         finder,

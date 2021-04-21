@@ -390,7 +390,7 @@ contract("CRMonitor.js", function(accounts) {
             assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(await financialContract.priceIdentifier()))); // Synthetic identifier
           }
         );
-        versionedIt([{ contractType: "Perpetual", contractVersion: "2.1.0" }])(
+        versionedIt([{ contractType: "Perpetual", contractVersion: "2.0.1" }])(
           "Winston correctly emits collateralization ratio message considering perpetual funding rates",
           async function() {
             // No messages created if safely above the CR threshold

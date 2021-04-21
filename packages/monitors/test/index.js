@@ -60,7 +60,7 @@ contract("index.js", function(accounts) {
     const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
     const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
-    // Note: OptimisticOracle always uses "2.1.0"
+    // Note: OptimisticOracle always uses "2.0.1"
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
 
     describe(`Tests running on smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
@@ -365,7 +365,7 @@ contract("index.js", function(accounts) {
             errorRetriesTimeout,
             startingBlock: fromBlock,
             endingBlock: toBlock,
-            monitorConfig: { ...defaultMonitorConfig, contractVersion: "2.1.0", contractType: "ExpiringMultiParty" },
+            monitorConfig: { ...defaultMonitorConfig, contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
             tokenPriceFeedConfig: defaultTokenPricefeedConfig,
             medianizerPriceFeedConfig: defaultTokenPricefeedConfig
           });

@@ -92,6 +92,7 @@ contract("FinancialContractClient.js", function(accounts) {
 
     // Import the tested versions of contracts. note that financialContract is either an ExpiringMultiParty or a
     // Perpetual depending on the current iteration version.
+    console.log(contractVersion);
     const FinancialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
     const Finder = getTruffleContract("Finder", web3, contractVersion.contractVersion);
     const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, contractVersion.contractVersion);
@@ -761,7 +762,7 @@ contract("FinancialContractClient.js", function(accounts) {
           }
         );
 
-        versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "2.1.0" }])(
+        versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "2.0.1" }])(
           "Client correctly defaults to ExpiringMultiParty to enable backward compatibility",
           async function() {
             // The constructor of the Financial Contract client does not contain any type.
@@ -779,7 +780,7 @@ contract("FinancialContractClient.js", function(accounts) {
             assert.equal(client.getContractType(), "ExpiringMultiParty");
           }
         );
-        versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "2.1.0" }])(
+        versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "2.0.1" }])(
           "Correctly rejects invalid contract types",
           async function() {
             let didThrow = false;
@@ -818,7 +819,7 @@ contract("FinancialContractClient.js", function(accounts) {
             assert.isTrue(didThrow);
           }
         );
-        versionedIt([{ contractType: "Perpetual", contractVersion: "2.1.0" }])(
+        versionedIt([{ contractType: "Perpetual", contractVersion: "2.0.1" }])(
           "Fetches funding rate from the perpetual contract and correctly applies it to token debt",
           async function() {
             // Create a position and check that it is detected correctly from the client.
@@ -880,7 +881,7 @@ contract("FinancialContractClient.js", function(accounts) {
             );
           }
         );
-        versionedIt([{ contractType: "Perpetual", contractVersion: "2.1.0" }])(
+        versionedIt([{ contractType: "Perpetual", contractVersion: "2.0.1" }])(
           "Correctly applies funding rate to token debt. Liquidatable and disputable position are updated accordingly",
           async function() {
             await financialContract.create(

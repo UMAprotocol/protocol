@@ -51,29 +51,29 @@ const versionMap = {
     contractVersion: "1.2.2"
   },
   "0x87b2de625ae5a42d5ac38269993143805cea5ec7297c17c71007d148a4627cae": {
-    // latest ExpiringMultiParty deployed from hardhat tests.
+    // 2.0.1 ExpiringMultiParty deployed from hardhat tests.
     contractType: "ExpiringMultiParty",
-    contractVersion: "2.1.0"
+    contractVersion: "2.0.1"
   },
   "0x1f75b3ae77a4a3b91fefd81264ec94751dcceafb02d42d2250a209385cdee39a": {
-    // Latest Mainnet ExpiringMultiParty.
+    // 2.0.1 Mainnet ExpiringMultiParty.
     contractType: "ExpiringMultiParty",
-    contractVersion: "2.1.0"
+    contractVersion: "2.0.1"
   },
-  "0xc0d00c5690d02e8efbb151d8d8f6a85f8c81bdc977fd1cc9cf3fc43d9d96281c": {
-    // latest ExpiringMultiParty deployed on Kovan from EMPCreator, which was deployed with Truffle using Hardhat bytecode.
+  "0x8c66d140d0ee5f9604d1fbf551e7533af136a915a5a2b6c363ac66001388310b": {
+    // 2.0.1 ExpiringMultiParty deployed on Kovan from EMPCreator, which was deployed with Truffle using Hardhat bytecode.
     contractType: "ExpiringMultiParty",
-    contractVersion: "2.1.0"
+    contractVersion: "2.0.1"
   },
-  "0x7202352fa756f41d3b4646441b82271ab44909e6e24c12326fb73f34e6ca2aa9": {
-    // latest Perpetual deployed from hardhat tests.
+  "0x73b31d1f4806b7ebdc7baf1dd24de302737857adb1cba8d71f0f748674088105": {
+    // 2.0.1 Perpetual deployed from hardhat tests.
     contractType: "Perpetual",
-    contractVersion: "2.1.0"
+    contractVersion: "2.0.1"
   },
   "0x238569485842107d2e938ff59c78841860b4dcd00d37be9859699f2c4ddbb3a0": {
-    // Latest Mainnet Perpetual contract.
+    // 2.0.1 Mainnet Perpetual contract.
     contractType: "Perpetual",
-    contractVersion: "2.1.0"
+    contractVersion: "2.0.1"
   }
 };
 

@@ -833,7 +833,7 @@ contract("Disputer.js", function(accounts) {
             }
           );
           describe("disputer correctly deals with funding rates from perpetual contract", () => {
-            versionedIt([{ contractType: "Perpetual", contractVersion: "2.1.0" }])(
+            versionedIt([{ contractType: "Perpetual", contractVersion: "2.0.1" }])(
               "Can correctly detect invalid liquidations and dispute them",
               async function() {
                 // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.

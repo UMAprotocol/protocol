@@ -559,7 +559,7 @@ contract("ContractMonitor.js", function(accounts) {
             assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${txObject2.tx}`));
           }
         );
-        versionedIt([{ contractType: "Perpetual", contractVersion: "2.1.0" }])(
+        versionedIt([{ contractType: "Perpetual", contractVersion: "2.0.1" }])(
           "Winston correctly emits funding rate updated message",
           async function() {
             // Propose new funding rate.

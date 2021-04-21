@@ -60,7 +60,7 @@ class FinancialContractEventClient {
       contractVersion !== "1.2.0" &&
       contractVersion !== "1.2.1" &&
       contractVersion !== "1.2.2" &&
-      contractVersion !== "2.1.0"
+      contractVersion !== "2.0.1"
     )
       throw new Error(
         `Invalid contract version provided: ${contractVersion}! The financial product client only supports 1.2.0, 1.2.1, 1.2.2 or latest`
