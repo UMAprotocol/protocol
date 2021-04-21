@@ -54,8 +54,7 @@ contract ReserveCurrencyLiquidator {
 
         // 1. Calculate the token shortfall. This is the synthetics to liquidate minus any synthetics the DSProxy already
         // has. If this number is negative(balance large than synthetics to liquidate) the return 0 (no shortfall).
-        FixedPoint.Unsigned memory tokenShortfall =
-            subOrZero(maxTokensToLiquidate, FixedPoint.Unsigned(IERC20(fc.tokenCurrency()).balanceOf(address(this))));
+        FixedPoint.Unsigned memory tokenShortfall = subOrZero(maxTokensToLiquidate, getSyntheticBalance(fc));
 
         // 2. Calculate how much collateral is needed to make up the token shortfall from minting new synthetics.
         FixedPoint.Unsigned memory gcr = fc.pfc().divCeil(fc.totalTokensOutstanding());
@@ -63,18 +62,13 @@ contract ReserveCurrencyLiquidator {
 
         // 3. Calculate the total collateral required. This considers the final fee for the given collateral type + any
         // collateral needed to mint the token short fall.
-        FixedPoint.Unsigned memory totalCollateralRequired =
-            IStore(IFinder(fc.finder()).getImplementationAddress("Store")).computeFinalFee(fc.collateralCurrency()).add(
-                collateralToMintShortfall
-            );
+
+        FixedPoint.Unsigned memory totalCollateralRequired = getFinalFee(fc).add(collateralToMintShortfall);
 
         // 4.a. Calculate how much collateral needs to be purchased. If the DSProxy already has some collateral then this
         // will factor this in. If the DSProxy has more collateral than the total amount required the purchased = 0.
         FixedPoint.Unsigned memory collateralToBePurchased =
-            subOrZero(
-                totalCollateralRequired,
-                FixedPoint.Unsigned(IERC20(fc.collateralCurrency()).balanceOf(address(this)))
-            );
+            subOrZero(totalCollateralRequired, getCollateralBalance(fc));
 
         // 4.b. If there is some collateral to be purchased, execute a trade on uniswap to meet the shortfall.
         // Note the path assumes a direct route from the reserve currency to the collateral currency.
@@ -97,16 +91,10 @@ contract ReserveCurrencyLiquidator {
         // 4.c. If at this point we were not able to get the required amount of collateral (due to insufficient reserve
         // or not enough collateral in the contract) the script should try to liquidate as much as it can regardless.
         // Update the values of total collateral to the current collateral balance and re-compute the tokenShortfall
-        // as the maximum tokens that could be liquidated.
-        if (
-            totalCollateralRequired.isGreaterThan(
-                FixedPoint.Unsigned(IERC20(fc.collateralCurrency()).balanceOf(address(this)))
-            )
-        ) {
-            totalCollateralRequired = FixedPoint.Unsigned(IERC20(fc.collateralCurrency()).balanceOf(address(this)));
-            collateralToMintShortfall = totalCollateralRequired.sub(
-                IStore(IFinder(fc.finder()).getImplementationAddress("Store")).computeFinalFee(fc.collateralCurrency())
-            );
+        // as the maximum tokens that could be liquidated at the current GCR.
+        if (totalCollateralRequired.isGreaterThan(getCollateralBalance(fc))) {
+            totalCollateralRequired = getCollateralBalance(fc);
+            collateralToMintShortfall = totalCollateralRequired.sub(getFinalFee(fc));
             tokenShortfall = collateralToMintShortfall.divCeil(gcr);
         }
         // 5. Mint the shortfall synthetics with collateral. Note we are minting at the GCR.
@@ -118,9 +106,7 @@ contract ReserveCurrencyLiquidator {
         // The liquidatableTokens is either the maxTokensToLiquidate (if we were able to buy/mint enough) or the full
         // token token balance at this point if there was a shortfall.
         FixedPoint.Unsigned memory liquidatableTokens = maxTokensToLiquidate;
-        if (
-            maxTokensToLiquidate.isGreaterThan(FixedPoint.Unsigned(IERC20(fc.tokenCurrency()).balanceOf(address(this))))
-        ) liquidatableTokens = FixedPoint.Unsigned(IERC20(fc.tokenCurrency()).balanceOf(address(this)));
+        if (maxTokensToLiquidate.isGreaterThan(getSyntheticBalance(fc))) liquidatableTokens = getSyntheticBalance(fc);
 
         // 6. Liquidate position with newly minted synthetics.
         TransferHelper.safeApprove(fc.tokenCurrency(), address(fc), liquidatableTokens.rawValue);
@@ -140,6 +126,21 @@ contract ReserveCurrencyLiquidator {
         returns (FixedPoint.Unsigned memory)
     {
         return b.isGreaterThanOrEqual(a) ? FixedPoint.fromUnscaledUint(0) : a.sub(b);
+    }
+
+    // Helper method to return the current final fee for a given financial contract instance.
+    function getFinalFee(IFinancialContract fc) internal returns (FixedPoint.Unsigned memory) {
+        return IStore(IFinder(fc.finder()).getImplementationAddress("Store")).computeFinalFee(fc.collateralCurrency());
+    }
+
+    // Helper method to return the collateral balance of this contract.
+    function getCollateralBalance(IFinancialContract fc) internal returns (FixedPoint.Unsigned memory) {
+        return FixedPoint.Unsigned(IERC20(fc.collateralCurrency()).balanceOf(address(this)));
+    }
+
+    // Helper method to return the synthetic balance of this contract.
+    function getSyntheticBalance(IFinancialContract fc) internal returns (FixedPoint.Unsigned memory) {
+        return FixedPoint.Unsigned(IERC20(fc.tokenCurrency()).balanceOf(address(this)));
     }
 }
 
