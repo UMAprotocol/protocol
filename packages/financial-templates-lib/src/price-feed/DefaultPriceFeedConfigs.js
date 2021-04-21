@@ -872,8 +872,7 @@ const defaultConfigs = {
   BALUSD: {
     type: "expression",
     expression: `
-      BALANCER_ETH_INVERTED = 1 / SPOT_BALANCER_ETH;
-      SPOT_BALANCER = BALANCER_ETH_INVERTED * ETHUSD;
+      SPOT_BALANCER = SPOT_BALANCER_ETH * ETHUSD;
       median(SPOT_BINANCE, SPOT_COINBASE_PRO, SPOT_BALANCER)
     `,
     lookback: 7200,
@@ -883,10 +882,9 @@ const defaultConfigs = {
         type: "balancer",
         twapLength: 2,
         lookback: 3600,
-        invertPrice: false,
         balancerAddress: "0x59a19d8c652fa0284f44113d0ff9aba70bd46fb4",
-        balancerTokenIn: "0xba100000625a3754423978a60c9317c58a424e3D",
-        balancerTokenOut: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+        balancerTokenIn: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+        balancerTokenOut: "0xba100000625a3754423978a60c9317c58a424e3D",
         poolDecimals: 18
       },
       SPOT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "balusdt" },
