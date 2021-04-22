@@ -244,16 +244,6 @@ async function run({
       liquidatorConfig
     });
 
-    logger.debug({
-      at: "Liquidator#index",
-      message: "Liquidator initialized",
-      collateralDecimals: Number(collateralDecimals),
-      syntheticDecimals: Number(syntheticDecimals),
-      priceFeedDecimals: Number(priceFeed.getPriceFeedDecimals()),
-      priceFeedConfig,
-      liquidatorConfig
-    });
-
     if (proxyTransactionWrapperConfig == {} || !proxyTransactionWrapperConfig?.useDsProxyToLiquidate) {
       // The Financial Contract requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
       // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
