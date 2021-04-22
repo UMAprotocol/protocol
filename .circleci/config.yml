@@ -86,16 +86,7 @@ jobs:
             mkdir truffle_workaround
             mv protocol truffle_workaround/
             cd truffle_workaround/protocol
-            HASH=$(git merge-base HEAD master)
-            yarn lerna ls --since ${HASH} --include-dependents > lerna_output
-            cat lerna_output | grep @ > lerna_packages
-            sed -i -e 's/^/--scope /' lerna_packages
-            echo "edited packages:" && cat lerna_packages
-            PACKAGES_CHANGES=$(cat lerna_packages)
-      - save_cache:
-          key: lerna-packages-{{ .Environment.CIRCLE_SHA1 }}
-          paths:
-            - ~/protocol/lerna_packages
+            ./scripts/lerna_packages.sh
 
   test_core:
     docker:
@@ -106,8 +97,6 @@ jobs:
     resource_class: large
     steps:
       - restore_cache:
-          key: lerna-packages-{{ .Environment.CIRCLE_SHA1 }}
-      - restore_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run tests
@@ -116,7 +105,13 @@ jobs:
             mkdir truffle_workaround
             mv protocol truffle_workaround/
             cd truffle_workaround/protocol
-            echo "edited packages:" && cat lerna_packages
+            ./scripts/lerna_packages.sh
+            PACKAGES_CHANGES=$(cat lerna_output | grep -p "core")
+            if [ "$PACKAGES_CHANGES" = "@uma/core" ]; then
+                yarn run test-concurrent-test;
+            else
+                circleci-agent step halt;
+            fi
   coverage:
     docker:
       - image: circleci/node:lts
