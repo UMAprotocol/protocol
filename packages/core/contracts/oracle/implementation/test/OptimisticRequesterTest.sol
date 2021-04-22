@@ -17,6 +17,13 @@ contract OptimisticRequesterTest is OptimisticRequester {
     uint256 public refund;
     int256 public price;
 
+    // Implement collateralCurrency so that this contract simulates a financial contract whose collateral
+    // token can be fetched by off-chain clients.
+    IERC20 public collateralCurrency;
+
+    // Manually set an expiration timestamp to simulate expiry price requests
+    uint256 public expirationTimestamp;
+
     constructor(OptimisticOracle _optimisticOracle) public {
         optimisticOracle = _optimisticOracle;
     }
@@ -28,6 +35,9 @@ contract OptimisticRequesterTest is OptimisticRequester {
         IERC20 currency,
         uint256 reward
     ) external {
+        // Set collateral currency to last requested currency:
+        collateralCurrency = currency;
+
         currency.approve(address(optimisticOracle), reward);
         optimisticOracle.requestPrice(_identifier, _timestamp, _ancillaryData, currency, reward);
     }
@@ -68,6 +78,10 @@ contract OptimisticRequesterTest is OptimisticRequester {
 
     function setRevert(bool _shouldRevert) external {
         shouldRevert = _shouldRevert;
+    }
+
+    function setExpirationTimestamp(uint256 _expirationTimestamp) external {
+        expirationTimestamp = _expirationTimestamp;
     }
 
     function clearState() external {

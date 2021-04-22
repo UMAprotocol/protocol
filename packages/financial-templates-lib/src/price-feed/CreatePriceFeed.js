@@ -1,24 +1,32 @@
 const assert = require("assert");
 const { ChainId, Token, Pair, TokenAmount } = require("@uniswap/sdk");
-const { MedianizerPriceFeed } = require("./MedianizerPriceFeed");
-const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
-const { DefiPulseTotalPriceFeed } = require("./DefiPulseTotalPriceFeed");
-const { UniswapPriceFeed } = require("./UniswapPriceFeed");
-const { BalancerPriceFeed } = require("./BalancerPriceFeed");
-const { DominationFinancePriceFeed } = require("./DominationFinancePriceFeed");
-const { BasketSpreadPriceFeed } = require("./BasketSpreadPriceFeed");
-const { CoinMarketCapPriceFeed } = require("./CoinMarketCapPriceFeed");
-const { CoinGeckoPriceFeed } = require("./CoinGeckoPriceFeed");
-const { TraderMadePriceFeed } = require("./TraderMadePriceFeed");
-const { PriceFeedMockScaled } = require("./PriceFeedMockScaled");
-const { InvalidPriceFeedMock } = require("./InvalidPriceFeedMock");
 const { defaultConfigs } = require("./DefaultPriceFeedConfigs");
 const { getTruffleContract } = require("@uma/core");
-const { ExpressionPriceFeed, math, escapeSpecialCharacters } = require("./ExpressionPriceFeed");
-const { VaultPriceFeed } = require("./VaultPriceFeed");
-const { LPPriceFeed } = require("./LPPriceFeed");
 const { BlockFinder } = require("./utils");
-const { getPrecisionForIdentifier } = require("@uma/common");
+const { getPrecisionForIdentifier, PublicNetworks } = require("@uma/common");
+const { multicallAddressMap } = require("../helpers/multicall");
+
+// Price feed interfaces (sorted alphabetically)
+const { BalancerPriceFeed } = require("./BalancerPriceFeed");
+const { BasketSpreadPriceFeed } = require("./BasketSpreadPriceFeed");
+const { CoinGeckoPriceFeed } = require("./CoinGeckoPriceFeed");
+const { CoinMarketCapPriceFeed } = require("./CoinMarketCapPriceFeed");
+const { CryptoWatchPriceFeed } = require("./CryptoWatchPriceFeed");
+const { DefiPulsePriceFeed } = require("./DefiPulsePriceFeed");
+const { DominationFinancePriceFeed } = require("./DominationFinancePriceFeed");
+const { ETHVIXPriceFeed } = require("./EthVixPriceFeed");
+const { ExpressionPriceFeed, math, escapeSpecialCharacters } = require("./ExpressionPriceFeed");
+const { FallBackPriceFeed } = require("./FallBackPriceFeed");
+const { ForexDailyPriceFeed } = require("./ForexDailyPriceFeed");
+const { FundingRateMultiplierPriceFeed } = require("./FundingRateMultiplierPriceFeed");
+const { InvalidPriceFeedMock } = require("./InvalidPriceFeedMock");
+const { LPPriceFeed } = require("./LPPriceFeed");
+const { MedianizerPriceFeed } = require("./MedianizerPriceFeed");
+const { PriceFeedMockScaled } = require("./PriceFeedMockScaled");
+const { QuandlPriceFeed } = require("./QuandlPriceFeed");
+const { TraderMadePriceFeed } = require("./TraderMadePriceFeed");
+const { UniswapPriceFeed } = require("./UniswapPriceFeed");
+const { VaultPriceFeed } = require("./VaultPriceFeed");
 
 // Global cache for block (promises) used by uniswap price feeds.
 const uniswapBlockCache = {};
@@ -28,6 +36,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
   const ERC20 = getTruffleContract("ExpandedERC20", web3, "latest");
   const Balancer = getTruffleContract("Balancer", web3, "latest");
   const VaultInterface = getTruffleContract("VaultInterface", web3, "latest");
+  const Perpetual = getTruffleContract("Perpetual", web3, "latest");
 
   if (config.type === "cryptowatch") {
     const requiredFields = ["exchange", "pair", "lookback", "minTimeBetweenUpdates"];
@@ -54,7 +63,33 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.minTimeBetweenUpdates,
       config.invertPrice, // Not checked in config because this parameter just defaults to false.
       config.priceFeedDecimals, // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
-      config.ohlcPeriod // Defaults to 60 unless supplied.
+      config.ohlcPeriod, // Defaults to 60 unless supplied.
+      config.twapLength
+    );
+  } else if (config.type === "quandl") {
+    const requiredFields = ["datasetCode", "databaseCode", "lookback", "quandlApiKey"];
+
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating QuandlPriceFeed",
+      config
+    });
+
+    return new QuandlPriceFeed(
+      logger,
+      web3,
+      config.quandlApiKey,
+      config.datasetCode,
+      config.databaseCode,
+      config.lookback,
+      networker,
+      getTime,
+      config.priceFeedDecimals, // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
+      config.minTimeBetweenUpdates // Defaults to 43200 (12 hours) unless supplied.
     );
   } else if (config.type === "domfi") {
     const requiredFields = ["pair", "lookback", "minTimeBetweenUpdates"];
@@ -107,8 +142,8 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.priceFeedDecimals, // This defaults to 18 unless supplied by user
       uniswapBlockCache
     );
-  } else if (config.type === "defipulsetvl") {
-    const requiredFields = ["lookback", "minTimeBetweenUpdates", "defipulseApiKey"];
+  } else if (config.type === "forexdaily") {
+    const requiredFields = ["base", "symbol", "lookback"];
 
     if (isMissingField(config, requiredFields, logger)) {
       return null;
@@ -116,11 +151,35 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
 
     logger.debug({
       at: "createPriceFeed",
-      message: "Creating DefiPulseTotalPriceFeed",
+      message: "Creating ForexDailyPriceFeed",
       config
     });
 
-    return new DefiPulseTotalPriceFeed(
+    return new ForexDailyPriceFeed(
+      logger,
+      web3,
+      config.base,
+      config.symbol,
+      config.lookback,
+      networker,
+      getTime,
+      config.priceFeedDecimals, // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
+      config.minTimeBetweenUpdates // Defaults to 43200 (12 hours) unless supplied.
+    );
+  } else if (config.type === "defipulse") {
+    const requiredFields = ["lookback", "minTimeBetweenUpdates", "defipulseApiKey", "project"];
+
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating DefiPulsePriceFeed",
+      config
+    });
+
+    return new DefiPulsePriceFeed(
       logger,
       web3,
       config.defipulseApiKey,
@@ -128,7 +187,8 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       networker,
       getTime,
       config.minTimeBetweenUpdates,
-      config.priceFeedDecimals
+      config.priceFeedDecimals,
+      config.project
     );
   } else if (config.type === "medianizer") {
     const requiredFields = ["medianizedFeeds"];
@@ -153,6 +213,28 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
 
     // Loop over all the price feeds to medianize.
     return await _createMedianizerPriceFeed(config);
+  } else if (config.type === "fallback") {
+    const requiredFields = ["orderedFeeds"];
+
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    if (config.orderedFeeds.length === 0) {
+      logger.error({
+        at: "createPriceFeed",
+        message: "FallBackPriceFeed configured with 0 feeds🚨"
+      });
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating FallBackPriceFeed",
+      config
+    });
+
+    return await _createFallBackPriceFeed(config);
   } else if (config.type === "balancer") {
     const requiredFields = ["balancerAddress", "balancerTokenIn", "balancerTokenOut", "lookback", "twapLength"];
 
@@ -297,6 +379,22 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.priceFeedDecimals, // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
       config.lookback
     );
+  } else if (config.type === "ethvix") {
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating EthVixPriceFeed",
+      config
+    });
+
+    return new ETHVIXPriceFeed(
+      logger,
+      web3,
+      config.inverse,
+      networker,
+      getTime,
+      config.minTimeBetweenUpdates,
+      config.priceFeedDecimals
+    );
   } else if (config.type === "invalid") {
     logger.debug({
       at: "createPriceFeed",
@@ -358,6 +456,42 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       web3,
       getTime,
       erc20Abi: ERC20.abi,
+      blockFinder: getSharedBlockFinder(web3)
+    });
+  } else if (config.type === "frm") {
+    const requiredFields = ["perpetualAddress"];
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating FundingRateMultiplierPriceFeed",
+      config
+    });
+
+    let multicallAddress = config.multicallAddress;
+    if (!multicallAddress) {
+      const networkId = await web3.eth.net.getId();
+      const networkName = PublicNetworks[Number(networkId)]?.name;
+      multicallAddress = multicallAddressMap[networkName]?.multicall;
+    }
+
+    if (!multicallAddress) {
+      logger.error({
+        at: "createPriceFeed",
+        message: "No multicall address provided by config or publicly provided for this network 🚨"
+      });
+      return null;
+    }
+
+    return new FundingRateMultiplierPriceFeed({
+      ...config,
+      logger,
+      web3,
+      getTime,
+      perpetualAbi: Perpetual.abi,
+      multicallAddress: multicallAddress,
       blockFinder: getSharedBlockFinder(web3)
     });
   }
@@ -435,11 +569,22 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     return new ExpressionPriceFeed(priceFeedMap, expressionConfig.expression, expressionConfig.priceFeedDecimals);
   }
 
-  // Returns a MedianizerPriceFeed
   async function _createMedianizerPriceFeed(medianizerConfig) {
-    const priceFeedsToMedianize = [];
-    for (const _priceFeedConfig of medianizerConfig.medianizedFeeds) {
-      // The medianized feeds should inherit config options from the parent config if it doesn't define those values
+    const priceFeedsToMedianize = await _createConstituentPriceFeeds(medianizerConfig.medianizedFeeds);
+    if (!priceFeedsToMedianize) return null;
+    return new MedianizerPriceFeed(priceFeedsToMedianize, medianizerConfig.computeMean);
+  }
+
+  async function _createFallBackPriceFeed(fallbackConfig) {
+    const orderedPriceFeeds = await _createConstituentPriceFeeds(fallbackConfig.orderedFeeds);
+    if (!orderedPriceFeeds) return null;
+    return new FallBackPriceFeed(orderedPriceFeeds);
+  }
+
+  async function _createConstituentPriceFeeds(priceFeedConfigs) {
+    const priceFeeds = [];
+    for (const _priceFeedConfig of priceFeedConfigs) {
+      // The constituent feeds should inherit config options from the parent config if it doesn't define those values
       // itself.
       // Note: ensure that type isn't inherited because this could create infinite recursion if the type isn't defined
       // on the nested config.
@@ -453,9 +598,9 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
         return null;
       }
 
-      priceFeedsToMedianize.push(priceFeed);
+      priceFeeds.push(priceFeed);
     }
-    return new MedianizerPriceFeed(priceFeedsToMedianize, medianizerConfig.computeMean);
+    return priceFeeds;
   }
 
   // Returns an array or "basket" of MedianizerPriceFeeds

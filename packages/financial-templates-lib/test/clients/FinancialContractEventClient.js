@@ -27,6 +27,7 @@ const configs = [
 
 const startTime = "15798990420";
 const unreachableDeadline = MAX_UINT_VAL;
+const optimisticOracleLiveness = 7200;
 
 // Common contract objects.
 let collateralToken;
@@ -64,7 +65,7 @@ const Convert = decimals => number => parseFixed(number.toString(), decimals).to
 
 // If the current version being executed is part of the `supportedVersions` array then return `it` to run the test.
 // Else, do nothing. Can be used exactly in place of a normal `it` to parameterize contract types and versions supported
-// for a given test.eg: versionedversionedIt([{ contractType: "any", contractVersion: "any" }])(["Perpetual-latest"])("test name", async function () { assert.isTrue(true) })
+// for a given test.eg: versionedIt([{ contractType: "any", contractVersion: "any" }])("test name", async function () { assert.isTrue(true) })
 // Note that a second param can be provided to make the test an `it.only` thereby ONLY running that single test, on
 // the provided version. This is very useful for debugging and writing single unit tests without having ro run all tests.
 const versionedIt = function(supportedVersions, shouldBeItOnly = false) {
@@ -173,7 +174,7 @@ contract("FinancialContractEventClient.js", function(accounts) {
                     timelockLiveness: 86400, // 1 day
                     rewardRatePerSecond: { rawValue: "0" },
                     proposerBondPercentage: { rawValue: "0" },
-                    maxFundingRate: { rawValue: convertSynthetic("0.00001") },
+                    maxFundingRate: { rawValue: toWei("0.00001") },
                     minFundingRate: { rawValue: toWei("-0.00001") },
                     proposalTimePastLimit: 0
                   },
@@ -181,7 +182,7 @@ contract("FinancialContractEventClient.js", function(accounts) {
                 );
 
                 await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier)));
-                optimisticOracle = await OptimisticOracle.new(7200, finder.address, timer.address);
+                optimisticOracle = await OptimisticOracle.new(optimisticOracleLiveness, finder.address, timer.address);
                 await finder.changeImplementationAddress(
                   utf8ToHex(interfaceName.OptimisticOracle),
                   optimisticOracle.address
@@ -922,6 +923,69 @@ contract("FinancialContractEventClient.js", function(accounts) {
                     }
                   ],
                   client.getAllSettleExpiredPositionEvents()
+                );
+              }
+            );
+
+            versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])(
+              "Return FundingRateUpdated Events",
+              async function() {
+                await client.clearState();
+
+                // State is empty before update()
+                assert.deepStrictEqual([], client.getAllFundingRateUpdatedEvents());
+
+                // Propose new funding rate.
+                const proposeAndPublishNewRate = async newRateWei => {
+                  // Advance time forward by 1 to guarantee that proposal time > last update time.
+                  let currentTime = await timer.getCurrentTime();
+                  await timer.setCurrentTime(currentTime.toNumber() + 1);
+                  let proposalTime = currentTime.toNumber() + 1;
+                  await financialContract.proposeFundingRate({ rawValue: newRateWei }, proposalTime);
+                  // Advance timer far enough such that funding rate proposal can be published,
+                  // and publish it.
+                  const proposalExpiry = proposalTime + optimisticOracleLiveness;
+                  await timer.setCurrentTime(proposalExpiry);
+                  return {
+                    txObject: await financialContract.applyFundingRate(),
+                    proposalTime
+                  };
+                };
+                const { txObject, proposalTime } = await proposeAndPublishNewRate(toWei("-0.00001"));
+
+                await client.update();
+
+                // Compare with expected processed event objects.
+                assert.deepStrictEqual(
+                  [
+                    {
+                      transactionHash: txObject.tx,
+                      blockNumber: txObject.receipt.blockNumber,
+                      newFundingRate: toWei("-0.00001"),
+                      updateTime: proposalTime.toString(),
+                      reward: "0"
+                    }
+                  ],
+                  client.getAllFundingRateUpdatedEvents()
+                );
+
+                // Correctly adds only new events after last query.
+                const { txObject: txObject2, proposalTime: proposalTime2 } = await proposeAndPublishNewRate(
+                  toWei("0.00001")
+                );
+                await client.clearState();
+                await client.update();
+                assert.deepStrictEqual(
+                  [
+                    {
+                      transactionHash: txObject2.tx,
+                      blockNumber: txObject2.receipt.blockNumber,
+                      newFundingRate: toWei("0.00001"),
+                      updateTime: proposalTime2.toString(),
+                      reward: "0"
+                    }
+                  ],
+                  client.getAllFundingRateUpdatedEvents()
                 );
               }
             );

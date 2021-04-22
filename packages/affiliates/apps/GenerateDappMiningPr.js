@@ -4,8 +4,8 @@ const { makeUnixPipe, dappMiningPrTemplate } = require("../libs/affiliates/utils
 const App = async params => {
   const prTemplate = await dappMiningPrTemplate(params);
   return {
-    prTemplate,
-    ...params
+    ...params,
+    prTemplate
   };
 };
 

@@ -75,11 +75,11 @@ module.exports = (
     assert(currentBlockTime >= 0, "requires currentBlockTime");
     assert(maxCollateralPerToken, "requires maxCollateralPerToken");
     return [
-      sponsor,
-      { rawValue: liquidationMinPrice.toString() },
-      { rawValue: maxCollateralPerToken.toString() },
-      { rawValue: tokensToLiquidate.toString() },
-      parseInt(currentBlockTime) + liquidationDeadline
+      sponsor, // sponsor
+      { rawValue: liquidationMinPrice.toString() }, // minCollateralPerToken
+      { rawValue: maxCollateralPerToken.toString() }, // maxCollateralPerToken
+      { rawValue: tokensToLiquidate.toString() }, // maxTokensToLiquidate
+      parseInt(currentBlockTime) + liquidationDeadline // deadline
     ];
   }
 
@@ -276,8 +276,7 @@ module.exports = (
   return {
     // Main function
     processPosition,
-    // Utility calls exposed for testing or other use
-    // Not really needed outside this module
+    // Utility calls exposed for testing or other use. Not really needed outside this module
     utils: {
       canLiquidateFully,
       canLiquidateMinimum,

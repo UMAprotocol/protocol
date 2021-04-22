@@ -3,6 +3,8 @@ const fs = require("fs");
 const path = require("path");
 const { getWeb3 } = require("@uma/common");
 
+const { findContractVersion } = require("./src/FindContractVersion");
+
 /**
  * @notice Gets the directory for version of core specified by an input version string.
  * @param {String} version Version string in the form of x.y.z.
@@ -133,12 +135,9 @@ if (global.artifacts) {
   module.exports = {
     getAbi: getAbiTest,
     getAddress: getAddressTest,
-    getTruffleContract: getTruffleContractTest
+    getTruffleContract: getTruffleContractTest,
+    findContractVersion
   };
 } else {
-  module.exports = {
-    getAbi,
-    getAddress,
-    getTruffleContract
-  };
+  module.exports = { getAbi, getAddress, getTruffleContract, findContractVersion };
 }

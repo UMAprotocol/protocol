@@ -3,7 +3,7 @@ const Main = require("../index.js");
 const winston = require("winston");
 const sinon = require("sinon");
 
-const { toWei, utf8ToHex } = web3.utils;
+const { toWei, utf8ToHex, padRight } = web3.utils;
 
 const { SpyTransport, spyLogIncludes, spyLogLevel } = require("@uma/financial-templates-lib");
 const { addGlobalHardhatTestingAddress, interfaceName, RegistryRolesEnum } = require("@uma/common");
@@ -20,6 +20,7 @@ const Finder = getTruffleContract("Finder", web3);
 const Registry = getTruffleContract("Registry", web3);
 const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
 const Store = getTruffleContract("Store", web3);
+const MulticallMock = getTruffleContract("MulticallMock", web3);
 
 contract("index.js", function(accounts) {
   const deployer = accounts[0];
@@ -29,6 +30,7 @@ contract("index.js", function(accounts) {
   let identifierWhitelist;
   let collateralWhitelist;
   let collateral;
+  let multicall;
   let perpsCreated = [];
 
   // Offchain infra
@@ -42,8 +44,8 @@ contract("index.js", function(accounts) {
   // Default testing values.
   let defaultCreationParams = {
     expirationTimestamp: "1950000000", // Fri Oct 17 2031 10:40:00 GMT+0000
-    priceFeedIdentifier: utf8ToHex("Test Identifier"),
-    fundingRateIdentifier: utf8ToHex("TEST18DECIMALS"),
+    priceFeedIdentifier: padRight(utf8ToHex("Test Identifier"), 64),
+    fundingRateIdentifier: padRight(utf8ToHex("TEST18DECIMALS"), 64),
     syntheticName: "Test Synth",
     syntheticSymbol: "TEST-SYNTH",
     collateralRequirement: { rawValue: toWei("1.2") },
@@ -72,6 +74,7 @@ contract("index.js", function(accounts) {
     const timer = await Timer.new();
     const tokenFactory = await TokenFactory.new();
     const finder = await Finder.new();
+    multicall = await MulticallMock.new();
 
     // Whitelist an initial identifier so we can deploy.
     identifierWhitelist = await IdentifierWhitelist.new();
@@ -141,21 +144,22 @@ contract("index.js", function(accounts) {
     await Main.run({
       logger: spyLogger,
       web3,
-      perpetualAddress: perpsCreated[0].address,
       pollingDelay,
       errorRetries,
       errorRetriesTimeout,
-      commonPriceFeedConfig
+      commonPriceFeedConfig,
+      multicallAddress: multicall.address,
+      isTest: true // Need to set this to true so that proposal uses correct request timestamp for test environment
     });
 
     for (let i = 0; i < spy.callCount; i++) {
       assert.notStrictEqual(spyLogLevel(spy, i), "error");
     }
 
-    // The first log should indicate that the Proposer runner started successfully
-    // and auto detected the perpetual's deployed address.
+    // The first log should indicate that the Proposer runner started successfully,
+    // and the second to last log should indicate that a new rate was proposed.
     assert.isTrue(spyLogIncludes(spy, 0, "Perpetual funding rate proposer started"));
-    assert.isTrue(spyLogIncludes(spy, 0, perpsCreated[0].address));
+    assert.isTrue(spyLogIncludes(spy, spy.callCount - 2, "Proposed new funding rate"));
     assert.isTrue(spyLogIncludes(spy, spy.callCount - 1, "End of serverless execution loop - terminating process"));
   });
 });

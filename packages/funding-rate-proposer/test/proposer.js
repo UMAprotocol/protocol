@@ -1,7 +1,7 @@
 const winston = require("winston");
 const sinon = require("sinon");
 
-const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
+const { toWei, utf8ToHex, hexToUtf8, padRight } = web3.utils;
 
 const { FundingRateProposer } = require("../src/proposer");
 const {
@@ -27,6 +27,7 @@ const AddressWhitelist = getTruffleContract("AddressWhitelist", web3);
 const Timer = getTruffleContract("Timer", web3);
 const TokenFactory = getTruffleContract("TokenFactory", web3);
 const Registry = getTruffleContract("Registry", web3);
+const MulticallMock = getTruffleContract("MulticallMock", web3);
 
 contract("Perpetual: proposer.js", function(accounts) {
   const deployer = accounts[0];
@@ -42,6 +43,7 @@ contract("Perpetual: proposer.js", function(accounts) {
   let collateralWhitelist;
   let collateral;
   let perpsCreated;
+  let multicall;
 
   // Offchain infra
   let factoryClient;
@@ -53,16 +55,16 @@ contract("Perpetual: proposer.js", function(accounts) {
   // Because these identifier utf8 strings begin with "TEST", they will map to PriceFeedMock's,
   // which we can conveniently use to test how the bot queries funding rates.
   const fundingRateIdentifiersToTest = [
-    utf8ToHex("TEST18DECIMALS"),
-    utf8ToHex("TEST18DECIMALS_2"),
-    utf8ToHex("TEST18DECIMALS_3"),
-    utf8ToHex("TEST18DECIMALS_4")
+    padRight(utf8ToHex("TEST18DECIMALS"), 64),
+    padRight(utf8ToHex("TEST18DECIMALS_2"), 64),
+    padRight(utf8ToHex("TEST18DECIMALS_3"), 64),
+    padRight(utf8ToHex("TEST18DECIMALS_4"), 64)
   ];
 
   // Default testing values.
   let defaultCreationParams = {
     expirationTimestamp: "1950000000", // Fri Oct 17 2031 10:40:00 GMT+0000
-    priceFeedIdentifier: utf8ToHex("Test Identifier"),
+    priceFeedIdentifier: padRight(utf8ToHex("Test Identifier"), 64),
     syntheticName: "Test Synth",
     syntheticSymbol: "TEST-SYNTH",
     collateralRequirement: { rawValue: toWei("1.2") },
@@ -99,6 +101,7 @@ contract("Perpetual: proposer.js", function(accounts) {
   before(async function() {
     finder = await Finder.new();
     timer = await Timer.new();
+    multicall = await MulticallMock.new();
 
     // Whitelist an price identifier so we can deploy.
     identifierWhitelist = await IdentifierWhitelist.new();
@@ -198,10 +201,10 @@ contract("Perpetual: proposer.js", function(accounts) {
     // not set in DefaultPriceFeedConfig
     latestProposalTime = startTime.toNumber() + 1;
     commonPriceFeedConfig = {
-      currentPrice: "0.000005",
-      // Mocked current price. This will be scaled to the identifier's precision. 1/2 of max funding rate
-      historicalPrice: "0.000001",
-      // Mocked historical price. This should be irrelevant for these tests.
+      historicalPrice: "0.000005",
+      // Mocked historical price. This will be scaled to the identifier's precision. 1/2 of max funding rate
+      currentPrice: "0.000001",
+      // Mocked current price. This should be irrelevant for these tests.
       lastUpdateTime: latestProposalTime
       // On funding rate updates, proposer requests a price for this time. This must be > than the Perpetual
       // contract's last update time, which is the `startTime` when it was deployed. So we start
@@ -218,6 +221,7 @@ contract("Perpetual: proposer.js", function(accounts) {
     proposer = new FundingRateProposer({
       logger: spyLogger,
       perpetualFactoryClient: factoryClient,
+      multicallContractAddress: multicall.address,
       gasEstimator: gasEstimator,
       account: botRunner,
       commonPriceFeedConfig,
@@ -238,6 +242,7 @@ contract("Perpetual: proposer.js", function(accounts) {
           hexToUtf8(cachedContract.state.currentFundingRateData.identifier),
           hexToUtf8(fundingRateIdentifiersToTest[i])
         );
+        assert.equal(cachedContract.state.currentFundingRateData.proposalTime, "0");
         assert.equal(
           cachedContract.state.currentConfig.maxFundingRate.toString(),
           configStoreParams.maxFundingRate.rawValue
@@ -277,28 +282,28 @@ contract("Perpetual: proposer.js", function(accounts) {
       await proposer._setAllowances();
       assert.equal(spyCount, spy.callCount);
     });
-    it("(_cacheAndUpdatePriceFeeds)", async function() {
-      // `update` should create a new pricefeed for each funding rate identifier.
+    it("(_createOrGetCachedPriceFeed)", async function() {
+      // should create a new pricefeed for each funding rate identifier.
       assert.equal(Object.keys(proposer.priceFeedCache).length, fundingRateIdentifiersToTest.length);
       for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
         assert.isTrue(
           proposer.priceFeedCache[hexToUtf8(fundingRateIdentifiersToTest[i])] instanceof PriceFeedMockScaled
         );
       }
-      // Calling `_cacheAndUpdatePriceFeeds` usually emits DEBUG logs for
+      // Calling `_createOrGetCachedPriceFeed` usually emits DEBUG logs for
       // each newly cached object. Calling it again should do nothing since we've already
       // cached the price feeds.
       const spyCount = spy.callCount;
-      await proposer._cacheAndUpdatePriceFeeds();
+      await proposer._createOrGetCachedPriceFeed();
       assert.equal(spyCount, spy.callCount);
     });
     describe("(updateFundingRate)", function() {
       beforeEach(async function() {
         // Initial perpetual funding rate for all identifiers is 0,
         // bot should see a different current funding rate from the PriceFeedMockScaled and propose.
-        await proposer.updateFundingRates();
+        await proposer.updateFundingRates(true);
       });
-      it("Detects each contract's current funding rate and proposes to update it if it has changed beyond some margin", async function() {
+      it("Detects each contract's current (or publishable) funding rate and proposes to update it if it has changed beyond some margin", async function() {
         // Check that the identifiers all have been proposed to.
         for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
           await verifyOracleState(
@@ -318,10 +323,61 @@ contract("Perpetual: proposer.js", function(accounts) {
         assert.ok(spy.getCall(-1).lastArg.proposalResult.tx);
 
         // Running `updateFundingRates()` on updated contract state does nothing because all
-        // identifiers have pending (undisputed) proposals.
+        // identifiers have pending (undisputed), unexpired proposals.
         await proposer.update();
-        await proposer.updateFundingRates();
+        await proposer.updateFundingRates(true);
         assert.isTrue(spyLogIncludes(spy, -1, "Proposal is already pending"));
+
+        // Once the proposal has expired, the proposer should be able to propose another funding rate if the price feed
+        // rate has meaningful diverged from the newly published rate:
+        const originalProposalTime = latestProposalTime;
+        latestProposalTime += optimisticOracleProposalLiveness;
+        await timer.setCurrentTime(latestProposalTime);
+        // All proposals should be expired, but not settled:
+        for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
+          await verifyOracleState(
+            OptimisticOracleRequestStatesEnum.EXPIRED,
+            perpsCreated[i].address,
+            fundingRateIdentifiersToTest[i],
+            originalProposalTime,
+            perpsCreated[i].ancillaryData
+          );
+        }
+        await proposer.update();
+        await proposer.updateFundingRates(true);
+        assert.equal(lastSpyLogLevel(spy), "debug");
+        assert.isTrue(
+          spyLogIncludes(spy, -1, "Skipping proposal because current rate is within allowed margin of error")
+        );
+        // Since pricefeed hasn't changed, the publishable "currentRate" should be equal to the "proposedRate":
+        assert.equal(spy.getCall(-1).lastArg.proposedRate, spy.getCall(-1).lastArg.currentRate);
+
+        // The pricefeed has now diverged enough from the publishable rate that we can propose again:
+        let pricesToPropose = "0.000006";
+        for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
+          const priceFeed = proposer.priceFeedCache[hexToUtf8(fundingRateIdentifiersToTest[i])];
+          priceFeed.setHistoricalPrice(pricesToPropose);
+          priceFeed.setLastUpdateTime(latestProposalTime);
+        }
+        await proposer.updateFundingRates(true);
+        for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
+          // The first proposals should be settled now:
+          await verifyOracleState(
+            OptimisticOracleRequestStatesEnum.SETTLED,
+            perpsCreated[i].address,
+            fundingRateIdentifiersToTest[i],
+            originalProposalTime,
+            perpsCreated[i].ancillaryData
+          );
+          // There should be new proposals for the identifiers:
+          await verifyOracleState(
+            OptimisticOracleRequestStatesEnum.PROPOSED,
+            perpsCreated[i].address,
+            fundingRateIdentifiersToTest[i],
+            latestProposalTime,
+            perpsCreated[i].ancillaryData
+          );
+        }
       });
       describe("Proposed rate is published, can now propose again", function() {
         beforeEach(async function() {
@@ -346,7 +402,7 @@ contract("Perpetual: proposer.js", function(accounts) {
           assert.equal(pricesToPropose.length, fundingRateIdentifiersToTest.length);
           for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
             const priceFeed = proposer.priceFeedCache[hexToUtf8(fundingRateIdentifiersToTest[i])];
-            priceFeed.setCurrentPrice(pricesToPropose[i]);
+            priceFeed.setHistoricalPrice(pricesToPropose[i]);
             priceFeed.setLastUpdateTime(latestProposalTime);
           }
 
@@ -354,7 +410,7 @@ contract("Perpetual: proposer.js", function(accounts) {
           // latestProposalTime += 1
           // await timer.setCurrentTime(latestProposalTime);
           await proposer.update();
-          await proposer.updateFundingRates();
+          await proposer.updateFundingRates(true);
 
           for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
             await verifyOracleState(
@@ -372,16 +428,16 @@ contract("Perpetual: proposer.js", function(accounts) {
           for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
             const priceFeed = proposer.priceFeedCache[hexToUtf8(fundingRateIdentifiersToTest[i])];
             if (i % 2 === 0) {
-              priceFeed.setCurrentPrice("1");
+              priceFeed.setHistoricalPrice("1");
             } else {
-              priceFeed.setCurrentPrice("-1");
+              priceFeed.setHistoricalPrice("-1");
             }
             priceFeed.setLastUpdateTime(latestProposalTime);
           }
 
           // Update and check that an error log was emitted
           await proposer.update();
-          await proposer.updateFundingRates();
+          await proposer.updateFundingRates(true);
 
           // Check for the ERROR log emitted by the proposer.
           assert.equal(lastSpyLogLevel(spy), "error");
@@ -399,6 +455,7 @@ contract("Perpetual: proposer.js", function(accounts) {
     proposer = new FundingRateProposer({
       logger: spyLogger,
       perpetualFactoryClient: factoryClient,
+      multicallContractAddress: multicall.address,
       gasEstimator: gasEstimator,
       account: botRunner,
       commonPriceFeedConfig: invalidPriceFeedConfig
@@ -411,7 +468,7 @@ contract("Perpetual: proposer.js", function(accounts) {
     }
 
     // Error log should be emitted on `updateFundingRates()`.
-    await proposer.updateFundingRates();
+    await proposer.updateFundingRates(true);
     assert.equal(lastSpyLogLevel(spy), "error");
     assert.isTrue(spyLogIncludes(spy, -1, "Failed to create pricefeed for funding rate identifier"));
   });
@@ -419,17 +476,17 @@ contract("Perpetual: proposer.js", function(accounts) {
     // Update once to load priceFeedCache.
     await proposer.update();
 
-    // Force `getCurrentPrice()` to return null so that bot fails to fetch prices.
+    // Force `getHistoricalPrice(x)` to return null so that bot fails to fetch prices.
     for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
       const priceFeed = proposer.priceFeedCache[hexToUtf8(fundingRateIdentifiersToTest[i])];
-      priceFeed.setCurrentPrice(null);
+      priceFeed.setHistoricalPrice(null);
     }
 
     // Update again
     await proposer.update();
 
     // Error log should be emitted on `updateFundingRates()`.
-    await proposer.updateFundingRates();
+    await proposer.updateFundingRates(true);
     assert.equal(lastSpyLogLevel(spy), "error");
     assert.isTrue(spyLogIncludes(spy, -1, "Failed to query current price for funding rate identifier"));
   });

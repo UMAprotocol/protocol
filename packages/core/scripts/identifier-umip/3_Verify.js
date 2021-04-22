@@ -2,7 +2,7 @@
 // It can be run on mainnet after the upgrade is completed or on the local Ganache mainnet fork to validate the
 // execution of the previous two scripts. This script does not need any wallets unlocked and does not make any on-chain
 // state changes. It can be run as:
-// truffle exec ./scripts/identifier-umip/3_Verify.js --network mainnet-fork --identifier USDETH --identifier ETHBTC
+// yarn truffle exec ./scripts/identifier-umip/3_Verify.js --network mainnet-fork --identifier USDETH --identifier ETHBTC
 
 const assert = require("assert").strict;
 
@@ -28,10 +28,12 @@ async function runExport() {
     identifiers = [argv.identifier];
   }
 
+  console.log("Testing identifiers:", identifiers);
   const identifierWhitelist = await IdentifierWhitelist.deployed();
 
   for (const identifier of identifiers) {
     assert.equal(await identifierWhitelist.isIdentifierSupported(web3.utils.utf8ToHex(identifier)), true);
+    console.log(identifier, "verified.");
   }
 
   console.log("Upgrade Verified!");

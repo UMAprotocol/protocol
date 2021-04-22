@@ -6,19 +6,23 @@
 // Note: the fees will be scaled with the decimals of the referenced token. The collateral-fee-(optional decimal)
 // triplets should be specified in order as above. The first collateral value will be paired with the first fee value and so on.
 
-const AddressWhitelist = artifacts.require("AddressWhitelist");
-const Store = artifacts.require("Store");
-const Finder = artifacts.require("Finder");
-const Governor = artifacts.require("Governor");
-const ERC20 = artifacts.require("ERC20");
-const Voting = artifacts.require("Voting");
+const { getTruffleContract } = require("../../index");
+
+const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, "latest");
+const Store = getTruffleContract("Store", web3, "latest");
+const Finder = getTruffleContract("Finder", web3, "latest");
+const Governor = getTruffleContract("Governor", web3, "latest");
+const ERC20 = getTruffleContract("ERC20", web3, "latest");
+const Voting = getTruffleContract("Voting", web3, "latest");
 
 const { interfaceName } = require("@uma/common");
+const { GasEstimator } = require("@uma/financial-templates-lib");
 
 const { parseUnits } = require("@ethersproject/units");
 const { getDecimals } = require("./utils");
 
 const _ = require("lodash");
+const winston = require("winston");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["collateral", "fee", "decimals"] });
 
@@ -27,6 +31,14 @@ const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 async function runExport() {
   console.log("Running Upgrade🔥");
   console.log("Connected to network id", await web3.eth.net.getId());
+
+  const gasEstimator = new GasEstimator(
+    winston.createLogger({
+      silent: true
+    }),
+    60, // Time between updates.
+    100 // Default gas price.
+  );
 
   if (!argv.collateral || !argv.fee) {
     throw new Error("Must provide --fee and --collateral");
@@ -80,7 +92,7 @@ async function runExport() {
 
       Collateral currency: ${collateral}
       Final fee: ${fee}
-      
+
       `);
     }
 
@@ -97,28 +109,28 @@ async function runExport() {
   console.log(`Sending to governor @ ${governor.address}`);
 
   // Send the proposal
-  const txn = await governor.propose(transactionList, { from: proposerWallet, gas: 2000000 });
+  await gasEstimator.update();
+  const txn = await governor.propose(transactionList, {
+    from: proposerWallet,
+    gasPrice: gasEstimator.getCurrentFastPrice()
+  });
   console.log("Transaction: ", txn?.tx);
 
   const finder = await Finder.deployed();
   const oracleAddress = await finder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle));
   console.log(`Governor submitting admin request to Voting @ ${oracleAddress}`);
 
-  const oracle = await Voting.at(oracleAddress);
+  const oracle = await Voting.deployed();
   const priceRequests = await oracle.getPastEvents("PriceRequestAdded");
 
   const newAdminRequest = priceRequests[priceRequests.length - 1];
   console.log(
-    `New price request {identifier: ${
+    `New admin request {identifier: ${
       newAdminRequest.args.identifier
     }, timestamp: ${newAdminRequest.args.time.toString()}}`
   );
 
-  console.log(`
-
-Done!
-
-`);
+  console.log("Done!");
 }
 
 const run = async function(callback) {

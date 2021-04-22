@@ -41,6 +41,7 @@ let timer;
 let collateralWhitelist;
 let constructorParams;
 let iterationTestVersion;
+let multicallContract;
 
 // Js Objects, clients and helpers
 let client;
@@ -70,7 +71,7 @@ const _setFundingRateAndAdvanceTime = async fundingRate => {
 
 // If the current version being executed is part of the `supportedVersions` array then return `it` to run the test.
 // Else, do nothing. Can be used exactly in place of a normal `it` to parameterize contract types and versions supported
-// for a given test.eg: versionedIt(["Perpetual-latest"])("test name", async function () { assert.isTrue(true) })
+// for a given test.eg: versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])("test name", async function () { assert.isTrue(true) })
 // Note that a second param can be provided to make the test an `it.only` thereby ONLY running that single test, on
 // the provided version. This is very useful for debugging and writing single unit tests without having ro run all tests.
 const versionedIt = function(supportedVersions, shouldBeItOnly = false) {
@@ -102,6 +103,7 @@ contract("FinancialContractClient.js", function(accounts) {
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
     const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
+    const MulticallMock = getTruffleContract("MulticallMock", web3, "latest");
 
     for (let testConfig of configs) {
       describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
@@ -148,6 +150,8 @@ contract("FinancialContractClient.js", function(accounts) {
 
           mockOracle = await MockOracle.new(finder.address, timer.address);
           await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
+
+          multicallContract = await MulticallMock.new();
         });
 
         beforeEach(async function() {
@@ -202,7 +206,6 @@ contract("FinancialContractClient.js", function(accounts) {
 
           // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.
           await financialContract.setCurrentTime(startTime);
-          if (contractVersion.contractType == "Perpetual") await financialContract.applyFundingRate();
 
           // The FinancialContractClient does not emit any info `level` events.  Therefore no need to test Winston outputs.
           // DummyLogger will not print anything to console as only capture `info` level events.
@@ -216,6 +219,7 @@ contract("FinancialContractClient.js", function(accounts) {
             financialContract.abi,
             web3,
             financialContract.address,
+            multicallContract.address,
             testConfig.collateralDecimals,
             testConfig.syntheticDecimals,
             testConfig.priceFeedDecimals,
@@ -235,6 +239,7 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("50"),
                 numTokens: convertSynthetic("50"),
                 amountCollateral: convertCollateral("10"),
                 hasPendingWithdrawal: false,
@@ -256,6 +261,7 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("100"),
                 numTokens: convertSynthetic("100"),
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
@@ -277,6 +283,7 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("100"),
                 numTokens: convertSynthetic("100"),
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
@@ -285,6 +292,7 @@ contract("FinancialContractClient.js", function(accounts) {
               },
               {
                 sponsor: sponsor2,
+                adjustedTokens: convertSynthetic("45"),
                 numTokens: convertSynthetic("45"),
                 amountCollateral: convertCollateral("100"),
                 hasPendingWithdrawal: false,
@@ -318,6 +326,7 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("100"),
                 numTokens: convertSynthetic("100"),
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
@@ -358,6 +367,7 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("100"),
                 numTokens: convertSynthetic("100"),
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: true,
@@ -380,6 +390,7 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("100"),
                 numTokens: convertSynthetic("100"),
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
@@ -404,6 +415,7 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("100"),
                 numTokens: convertSynthetic("100"),
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
@@ -437,6 +449,7 @@ contract("FinancialContractClient.js", function(accounts) {
             [
               {
                 sponsor: sponsor1,
+                adjustedTokens: convertSynthetic("100"),
                 numTokens: convertSynthetic("100"),
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
@@ -445,6 +458,7 @@ contract("FinancialContractClient.js", function(accounts) {
               },
               {
                 sponsor: sponsor2,
+                adjustedTokens: convertSynthetic("45"),
                 numTokens: convertSynthetic("45"),
                 amountCollateral: convertCollateral("100"),
                 hasPendingWithdrawal: false,
@@ -477,6 +491,7 @@ contract("FinancialContractClient.js", function(accounts) {
               [
                 {
                   sponsor: sponsor1,
+                  adjustedTokens: convertSynthetic("100"),
                   numTokens: convertSynthetic("100"),
                   amountCollateral: convertCollateral("150"),
                   hasPendingWithdrawal: false,
@@ -498,6 +513,7 @@ contract("FinancialContractClient.js", function(accounts) {
               [
                 {
                   sponsor: sponsor1,
+                  adjustedTokens: convertSynthetic("100"),
                   numTokens: convertSynthetic("100"),
                   amountCollateral: convertCollateral("150"),
                   hasPendingWithdrawal: true,
@@ -619,7 +635,8 @@ contract("FinancialContractClient.js", function(accounts) {
                   state: "1",
                   liquidationTime: liquidationTime,
                   numTokens: convertSynthetic("100"),
-                  liquidatedCollateral: convertCollateral("140"), // This should `lockedCollateral` reduced by requested withdrawal amount
+                  liquidatedCollateral: convertCollateral("140"),
+                  // This should `lockedCollateral` reduced by requested withdrawal amount
                   lockedCollateral: convertCollateral("150"),
                   liquidator: liquidator,
                   disputer: zeroAddress
@@ -747,13 +764,14 @@ contract("FinancialContractClient.js", function(accounts) {
         versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "latest" }])(
           "Client correctly defaults to ExpiringMultiParty to enable backward compatibility",
           async function() {
-            // The constructor of the Financial Contract client does not contain any type. It should therefore default to the Financial Contract which
-            // ensures that packages that are yet to update.
+            // The constructor of the Financial Contract client does not contain any type.
+            // It should therefore default to the Financial Contract which ensures that packages that are yet to update.
             client = new FinancialContractClient(
               dummyLogger,
               financialContract.abi,
               web3,
               financialContract.address,
+              multicallContract.address,
               testConfig.collateralDecimals,
               testConfig.syntheticDecimals,
               testConfig.priceFeedDecimals
@@ -771,6 +789,7 @@ contract("FinancialContractClient.js", function(accounts) {
                 financialContract.abi,
                 web3,
                 financialContract.address,
+                multicallContract.address,
                 testConfig.collateralDecimals,
                 testConfig.syntheticDecimals,
                 testConfig.priceFeedDecimals,
@@ -787,6 +806,7 @@ contract("FinancialContractClient.js", function(accounts) {
                 financialContract.abi,
                 web3,
                 financialContract.address,
+                multicallContract.address,
                 testConfig.collateralDecimals,
                 testConfig.syntheticDecimals,
                 testConfig.priceFeedDecimals,
@@ -813,6 +833,7 @@ contract("FinancialContractClient.js", function(accounts) {
               [
                 {
                   sponsor: sponsor1,
+                  adjustedTokens: convertSynthetic("50"),
                   numTokens: convertSynthetic("50"),
                   amountCollateral: convertCollateral("10"),
                   hasPendingWithdrawal: false,
@@ -824,22 +845,19 @@ contract("FinancialContractClient.js", function(accounts) {
 
             // Set a funding rate
             await _setFundingRateAndAdvanceTime(toWei("0.000005"));
-            await financialContract.applyFundingRate();
 
-            // funding rate should be set within contract.
-            assert.equal((await financialContract.fundingRate()).cumulativeMultiplier.toString(), toWei("1.05"));
-
-            // funding rate is not applied until the client is updated.
+            // funding rate change is not detected until the client is updated.
             assert.equal(client.getLatestCumulativeFundingRateMultiplier(), toWei("1"));
 
-            // After updating the client the funding rate is applied.
+            // After updating the client the pending funding rate should be detected.
             await client.update();
             assert.equal(client.getLatestCumulativeFundingRateMultiplier(), toWei("1.05"));
 
-            // after advancing time with the same funding rate the client value should not change
-            await _setFundingRateAndAdvanceTime(toWei("0"));
-            await financialContract.applyFundingRate();
-            assert.equal(client.getLatestCumulativeFundingRateMultiplier().toString(), toWei("1.05"));
+            // But, the on-chain state has not changed! This is possible because the client
+            // uses the Multicall contract to simulate how `applyFundingRate()` would
+            // affect `fundingRate()`.
+            const onchainFundingRate = await financialContract.fundingRate();
+            assert.equal(onchainFundingRate.cumulativeMultiplier.rawValue, toWei("1"));
 
             // Correctly scales sponsors token debt by the funding rate
             await updateAndVerify(
@@ -848,7 +866,8 @@ contract("FinancialContractClient.js", function(accounts) {
               [
                 {
                   sponsor: sponsor1,
-                  numTokens: toBN(convertSynthetic("50"))
+                  numTokens: convertSynthetic("50"),
+                  adjustedTokens: toBN(convertSynthetic("50"))
                     .mul(toBN(toWei("1.05")))
                     .div(toBN(toWei("1")))
                     .toString(), // the funding rate should be applied to the num of tokens
@@ -884,6 +903,7 @@ contract("FinancialContractClient.js", function(accounts) {
               [
                 {
                   sponsor: sponsor1,
+                  adjustedTokens: convertSynthetic("100"),
                   numTokens: convertSynthetic("100"),
                   amountCollateral: convertCollateral("150"),
                   hasPendingWithdrawal: false,
@@ -898,17 +918,19 @@ contract("FinancialContractClient.js", function(accounts) {
             // over 10k seconds resulting in 0.01 cumulative multiplier. At a price of 1 this works out to a CR of:
             // 150 / (100 * 1.01 * 1) = 1.485, which is less than the CR requirement of 1.5
             await _setFundingRateAndAdvanceTime(toWei("0.000001"));
-            await financialContract.applyFundingRate();
+            // Should not need to call `applyFundingRate()` in order for client to detect publishable
+            // funding rate proposals.
             await client.update();
 
             assert.deepStrictEqual(
               [
                 {
                   sponsor: sponsor1,
-                  numTokens: toBN(convertSynthetic("100"))
+                  adjustedTokens: toBN(convertSynthetic("100"))
                     .mul(toBN(toWei("1.01")))
                     .div(toBN(toWei("1")))
                     .toString(), // the funding rate should be applied to the num of tokens
+                  numTokens: convertSynthetic("100"),
                   amountCollateral: convertCollateral("150"),
                   hasPendingWithdrawal: false,
                   withdrawalRequestPassTimestamp: "0",
@@ -916,6 +938,45 @@ contract("FinancialContractClient.js", function(accounts) {
                 }
               ],
               client.getUnderCollateralizedPositions(convertPrice("1"))
+            );
+
+            // Now liquidate the position, advance some time so the current funding rate changes, and check that the
+            // client's stored liquidation state has the correct funding-rate adjusted amount of tokens outstanding for
+            // the liquidation time, not the current time.
+            await financialContract.createLiquidation(
+              sponsor1,
+              { rawValue: "0" },
+              { rawValue: toWei("9999999") },
+              // Note: Liquidates the full position of 100 tokens
+              { rawValue: toWei("100") },
+              unreachableDeadline,
+              { from: sponsor2 }
+            );
+            const currentTime = (await financialContract.getCurrentTime()).toNumber();
+            // Note: Advance < liquidationLiveness amount of time so that liquidation still appears under
+            // undisputedLiquidations struct:
+            await financialContract.setCurrentTime(currentTime + 999);
+            await financialContract.applyFundingRate();
+            const currentFundingRateData = await financialContract.fundingRate();
+            // Here we show that current funding rate multiplier has increased:
+            assert.isTrue(toBN(currentFundingRateData.cumulativeMultiplier.rawValue).gt(toWei("1.01")));
+            await client.update();
+            assert.deepStrictEqual(
+              [
+                {
+                  sponsor: sponsor1,
+                  id: "0",
+                  state: "1",
+                  liquidationTime: currentTime.toString(),
+                  // Here the `numTokens` should adjust for the CFRM at the time of liquidation, not the current one!
+                  numTokens: convertSynthetic("101"),
+                  liquidatedCollateral: convertCollateral("150"),
+                  lockedCollateral: convertCollateral("150"),
+                  liquidator: sponsor2,
+                  disputer: zeroAddress
+                }
+              ],
+              client.getUndisputedLiquidations()
             );
           }
         );

@@ -2,7 +2,14 @@
 
 // TODO: Use pricefeed mapping from proposer bot to fetch approximate prices for each price request to give more log information. This probably means
 // refactoring the pricefeed mapping out of the proposer bot so it can be shared amongst clients.
-const { createEtherscanLinkMarkdown, createObjectFromDefaultProps, ZERO_ADDRESS } = require("@uma/common");
+const {
+  createEtherscanLinkMarkdown,
+  createObjectFromDefaultProps,
+  ZERO_ADDRESS,
+  createFormatFunction,
+  ConvertDecimals
+} = require("@uma/common");
+const { getAbi } = require("@uma/core");
 
 class OptimisticOracleContractMonitor {
   /**
@@ -26,6 +33,9 @@ class OptimisticOracleContractMonitor {
     this.lastProposePriceBlockNumber = 0;
     this.lastDisputePriceBlockNumber = 0;
     this.lastSettlementBlockNumber = 0;
+
+    // Formats an 18 decimal point string with a define number of decimals and precision for use in message generation.
+    this.formatDecimalString = createFormatFunction(this.web3, 2, 4, false);
 
     // Bot and ecosystem accounts to monitor, overridden by monitorConfig parameter.
     const defaultConfig = {
@@ -75,14 +85,20 @@ class OptimisticOracleContractMonitor {
     latestEvents = latestEvents.filter(event => event.blockNumber > this.lastRequestPriceBlockNumber);
 
     for (let event of latestEvents) {
+      const convertCollateralDecimals = await this._getCollateralDecimalsConverted(event.requester);
       const mrkdwn =
         createEtherscanLinkMarkdown(event.requester, this.contractProps.networkId) +
         ` requested a price at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
         `The ancillary data field is ${event.ancillaryData}. ` +
-        `Collateral currency address is ${event.currency}. Reward amount is ${event.reward} and the final fee is ${event.finalFee}. ` +
+        `Collateral currency address is ${event.currency}. Reward amount is ${this.formatDecimalString(
+          convertCollateralDecimals(event.reward)
+        )} and the final fee is ${this.formatDecimalString(convertCollateralDecimals(event.finalFee))}. ` +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
-      this.logger[this.logOverrides.requestedPrice || "error"]({
+      // The default log level should be reduced to "debug" for funding rate identifiers:
+      this.logger[
+        this.logOverrides.requestedPrice || (this._isFundingRateIdentifier(event.identifier) ? "debug" : "error")
+      ]({
         at: "OptimisticOracleContractMonitor",
         message: "Price Request Alert 👮🏻!",
         mrkdwn: mrkdwn
@@ -108,12 +124,17 @@ class OptimisticOracleContractMonitor {
       const mrkdwn =
         createEtherscanLinkMarkdown(event.proposer, this.contractProps.networkId) +
         ` proposed a price for the request made by ${event.requester} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
-        `The proposal price of ${event.proposedPrice} will expire at ${event.expirationTimestamp}. ` +
+        `The proposal price of ${this.formatDecimalString(event.proposedPrice)} will expire at ${
+          event.expirationTimestamp
+        }. ` +
         `The ancillary data field is ${event.ancillaryData}. ` +
         `Collateral currency address is ${event.currency}. ` +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
-      this.logger[this.logOverrides.proposedPrice || "error"]({
+      // The default log level should be reduced to "info" for funding rate identifiers:
+      this.logger[
+        this.logOverrides.proposedPrice || (this._isFundingRateIdentifier(event.identifier) ? "info" : "error")
+      ]({
         at: "OptimisticOracleContractMonitor",
         message: "Price Proposal Alert 🧞‍♂️!",
         mrkdwn: mrkdwn
@@ -139,7 +160,7 @@ class OptimisticOracleContractMonitor {
       const mrkdwn =
         createEtherscanLinkMarkdown(event.disputer, this.contractProps.networkId) +
         ` disputed a price for the request made by ${event.requester} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
-        `The proposer ${event.proposer} proposed a price of ${event.proposedPrice}. ` +
+        `The proposer ${event.proposer} proposed a price of ${this.formatDecimalString(event.proposedPrice)}. ` +
         `The ancillary data field is ${event.ancillaryData}. ` +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
@@ -166,17 +187,21 @@ class OptimisticOracleContractMonitor {
     latestEvents = latestEvents.filter(event => event.blockNumber > this.lastSettlementBlockNumber);
 
     for (let event of latestEvents) {
+      const convertCollateralDecimals = await this._getCollateralDecimalsConverted(event.requester);
       const mrkdwn =
         `Detected a price request settlement for the request made by ${event.requester} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
         `The proposer was ${event.proposer} and the disputer was ${event.disputer}. ` +
-        `The settlement price is ${event.price}. ` +
-        `The payout was ${event.payout} made to the ${
+        `The settlement price is ${this.formatDecimalString(event.price)}. ` +
+        `The payout was ${this.formatDecimalString(convertCollateralDecimals(event.payout))} made to the ${
           event.disputer === ZERO_ADDRESS ? "proposer" : "winner of the dispute"
         }. ` +
         `The ancillary data field is ${event.ancillaryData}. ` +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
-      this.logger[this.logOverrides.settledPrice || "info"]({
+      // The default log level should be reduced to "debug" for funding rate identifiers:
+      this.logger[
+        this.logOverrides.settledPrice || (this._isFundingRateIdentifier(event.identifier) ? "debug" : "info")
+      ]({
         at: "OptimisticOracleContractMonitor",
         message: "Price Settlement Alert 🏧!",
         mrkdwn: mrkdwn
@@ -185,11 +210,26 @@ class OptimisticOracleContractMonitor {
     this.lastSettlementBlockNumber = this._getLastSeenBlockNumber(latestEvents);
   }
 
+  // Returns helper method for converting collateral token associated with financial contract to human readable form.
+  async _getCollateralDecimalsConverted(financialContractAddress) {
+    const financialContract = new this.web3.eth.Contract(getAbi("FeePayer"), financialContractAddress);
+    const collateralAddress = await financialContract.methods.collateralCurrency().call();
+    const collateralContract = new this.web3.eth.Contract(getAbi("ExpandedERC20"), collateralAddress);
+    const collateralDecimals = await collateralContract.methods.decimals().call();
+    return ConvertDecimals(collateralDecimals.toString(), 18, this.web3);
+  }
+
   _getLastSeenBlockNumber(eventArray) {
     if (eventArray.length == 0) {
       return 0;
     }
     return eventArray[eventArray.length - 1].blockNumber;
+  }
+
+  // We make the assumption that identifiers that end with "_fr" like "ethbtc_fr" are funding rate identifiers,
+  // and we should lower the alert levels for such price requests because we expect them to appear often.
+  _isFundingRateIdentifier(identifier) {
+    return identifier.toLowerCase().endsWith("_fr");
   }
 }
 

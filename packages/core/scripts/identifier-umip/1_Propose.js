@@ -1,21 +1,37 @@
 // This script generates and submits an identifier-add upgrade transaction to the DVM. It can be run on a local ganache
 // fork of the main net or can be run directly on the main net to execute the upgrade transactions.
 // To run this on the localhost first fork main net into Ganache with the proposerWallet unlocked as follows:
-// ganache-cli --fork https://mainnet.infura.io/v3/d70106f59aef456c9e5bfbb0c2cc7164 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25
-// Then execute the script as: truffle exec ./scripts/identifier-umip/1_Propose.js --network mainnet-fork --identifier USDETH --identifier ETHBTC from core
+// ganache-cli --fork https://mainnet.infura.io/v3/5f56f0a4c8844c96a430fbd3d7993e39 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25 --unlock 0x7a3a1c2de64f20eb5e916f40d11b01c441b2a8dc --port 9545
+// Then execute the script as: yarn truffle exec ./scripts/identifier-umip/1_Propose.js --network mainnet-fork --identifier USDETH --identifier ETHBTC from core
+
+const { getTruffleContract } = require("../../index");
 
 // Use the same ABI's as deployed contracts:
-const { getTruffleContract } = require("../../index");
-const Governor = getTruffleContract("Governor", web3, "1.1.0");
-const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, "1.1.0");
+const Governor = getTruffleContract("Governor", web3, "latest");
+const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, "latest");
+const Finder = getTruffleContract("Finder", web3, "latest");
+const Voting = getTruffleContract("Voting", web3, "latest");
+
+const { interfaceName } = require("@uma/common");
+const { GasEstimator } = require("@uma/financial-templates-lib");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["identifier"] });
+
+const winston = require("winston");
 
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 
 async function runExport() {
   console.log("Running Upgrade🔥");
   console.log("Connected to network id", await web3.eth.net.getId());
+
+  const gasEstimator = new GasEstimator(
+    winston.createLogger({
+      silent: true
+    }),
+    60, // Time between updates.
+    100 // Default gas price.
+  );
 
   if (!argv.identifier) {
     throw new Error("Must specify --identifier");
@@ -45,7 +61,11 @@ async function runExport() {
     };
   });
 
-  await governor.propose(transactions, { from: proposerWallet });
+  await gasEstimator.update();
+  const txn = await governor.propose(transactions, {
+    from: proposerWallet,
+    gasPrice: gasEstimator.getCurrentFastPrice()
+  });
 
   const identifierTable = identifiers.map(identifier => {
     return {
@@ -57,6 +77,24 @@ async function runExport() {
   console.log(`
   Identifiers Proposed`);
   console.table(identifierTable);
+
+  console.log("Transaction: ", txn?.tx);
+
+  const finder = await Finder.deployed();
+  const oracleAddress = await finder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle));
+  console.log(`Governor submitting admin request to Voting @ ${oracleAddress}`);
+
+  const oracle = await Voting.deployed();
+  const priceRequests = await oracle.getPastEvents("PriceRequestAdded");
+
+  const newAdminRequest = priceRequests[priceRequests.length - 1];
+  console.log(
+    `New admin request {identifier: ${
+      newAdminRequest.args.identifier
+    }, timestamp: ${newAdminRequest.args.time.toString()}}`
+  );
+
+  console.log("Done!");
 }
 
 const run = async function(callback) {

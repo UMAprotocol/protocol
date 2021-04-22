@@ -26,10 +26,16 @@ const { UniswapPriceFeed } = require("../../src/price-feed/UniswapPriceFeed");
 const { BalancerPriceFeed } = require("../../src/price-feed/BalancerPriceFeed");
 const { BasketSpreadPriceFeed } = require("../../src/price-feed/BasketSpreadPriceFeed");
 const { MedianizerPriceFeed } = require("../../src/price-feed/MedianizerPriceFeed");
+const { FallBackPriceFeed } = require("../../src/price-feed/FallBackPriceFeed");
 const { CoinMarketCapPriceFeed } = require("../../src/price-feed/CoinMarketCapPriceFeed");
 const { CoinGeckoPriceFeed } = require("../../src/price-feed/CoinGeckoPriceFeed");
 const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
+const { DefiPulsePriceFeed } = require("../../src/price-feed/DefiPulsePriceFeed");
+const { ETHVIXPriceFeed } = require("../../src/price-feed/EthVixPriceFeed");
+const { ForexDailyPriceFeed } = require("../../src/price-feed/ForexDailyPriceFeed");
+const { QuandlPriceFeed } = require("../../src/price-feed/QuandlPriceFeed");
 const { SpyTransport } = require("../../src/logger/SpyTransport");
+
 const winston = require("winston");
 const sinon = require("sinon");
 
@@ -59,6 +65,8 @@ contract("CreatePriceFeed.js", function(accounts) {
   const symbol = "test-symbol";
   const quoteCurrency = "test-quoteCurrency";
   const contractAddress = "test-address";
+  const forexBase = "EUR";
+  const forexSymbol = "USD";
 
   before(async function() {
     identifierWhitelist = await IdentifierWhitelist.new();
@@ -758,6 +766,98 @@ contract("CreatePriceFeed.js", function(accounts) {
     assert.equal(medianizerFeed, null);
   });
 
+  it("Valid Fallback inherited config", async function() {
+    const config = {
+      type: "fallback",
+      apiKey,
+      exchange,
+      pair,
+      lookback,
+      minTimeBetweenUpdates,
+      uniswapAddress,
+      twapLength,
+      orderedFeeds: [
+        {
+          type: "cryptowatch"
+        },
+        {
+          type: "uniswap"
+        }
+      ]
+    };
+
+    const validFallbackFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isTrue(validFallbackFeed instanceof FallBackPriceFeed);
+    assert.isTrue(validFallbackFeed.priceFeeds[0] instanceof CryptoWatchPriceFeed);
+    assert.isTrue(validFallbackFeed.priceFeeds[1] instanceof UniswapPriceFeed);
+
+    assert.equal(validFallbackFeed.priceFeeds[0].pair, pair);
+    assert.equal(validFallbackFeed.priceFeeds[1].uniswap.options.address, uniswapAddress);
+  });
+
+  it("Valid Fallback override config", async function() {
+    const lookbackOverride = 5;
+    const config = {
+      type: "fallback",
+      apiKey,
+      exchange,
+      pair,
+      lookback,
+      minTimeBetweenUpdates,
+      orderedFeeds: [
+        {
+          type: "cryptowatch",
+          lookback: lookbackOverride
+        }
+      ]
+    };
+
+    const validFallbackFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.equal(validFallbackFeed.priceFeeds[0].lookback, lookbackOverride);
+  });
+
+  it("Fallback feed cannot have 0 nested feeds", async function() {
+    const config = {
+      type: "fallback",
+      apiKey,
+      exchange,
+      pair,
+      lookback,
+      minTimeBetweenUpdates
+    };
+
+    await createPriceFeed(logger, web3, networker, getTime, config);
+
+    // medianizedFeeds is missing.
+    assert.equal(await createPriceFeed(logger, web3, networker, getTime, config), null);
+
+    // medianizedFeeds is 0 length.
+    assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...config, orderedFeeds: [] }), null);
+  });
+
+  it("Fallback feed cannot have a nested feed with an invalid config", async function() {
+    const config = {
+      type: "fallback",
+      apiKey,
+      exchange,
+      pair,
+      lookback,
+      minTimeBetweenUpdates,
+      orderedFeeds: [
+        {
+          type: "cryptowatch"
+        },
+        {} // Invalid because the second medianized feed has no type.
+      ]
+    };
+
+    const validFallbackFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.equal(validFallbackFeed, null);
+  });
+
   it("ExpressionPriceFeed: invalid config, no expression", async function() {
     const config = {
       type: "expression"
@@ -992,6 +1092,48 @@ contract("CreatePriceFeed.js", function(accounts) {
     assert.equal(lpPriceFeed.token.options.address, web3.utils.toChecksumAddress(tokenAddress));
   });
 
+  it("FundingRateMultiplierPriceFeed: creation succeeds", async function() {
+    const perpetualAddress = web3.utils.randomHex(20);
+    const multicallAddress = web3.utils.randomHex(20);
+    const config = {
+      type: "frm",
+      perpetualAddress,
+      multicallAddress
+    };
+
+    const frmPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.equal(frmPriceFeed.minTimeBetweenUpdates, 60);
+    assert.equal(frmPriceFeed.priceFeedDecimals, 18);
+    assert.equal(frmPriceFeed.perpetual.options.address, web3.utils.toChecksumAddress(perpetualAddress));
+    assert.equal(
+      web3.utils.toChecksumAddress(frmPriceFeed.multicallAddress),
+      web3.utils.toChecksumAddress(multicallAddress)
+    );
+  });
+
+  it("FundingRateMultiplierPriceFeed: creation fails due to missing perpetual address", async function() {
+    const config = {
+      type: "frm",
+      multicallAddress: web3.utils.randomHex(20)
+    };
+
+    const frmPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isNull(frmPriceFeed);
+  });
+
+  it("FundingRateMultiplierPriceFeed: creation fails due to missing multicall address", async function() {
+    const config = {
+      type: "frm",
+      perpetualAddress: web3.utils.randomHex(20)
+    };
+
+    const frmPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isNull(frmPriceFeed);
+  });
+
   it("Default reference price feed", async function() {
     const collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: accounts[0] });
     const syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: accounts[0] });
@@ -1219,6 +1361,142 @@ contract("CreatePriceFeed.js", function(accounts) {
     assert.equal(
       await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, minTimeBetweenUpdates: undefined }),
       null
+    );
+  });
+  it("Valid ForexDaily config", async function() {
+    const config = {
+      type: "forexdaily",
+      base: forexBase,
+      symbol: forexSymbol,
+      lookback
+    };
+
+    const validForexDailyFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isTrue(validForexDailyFeed instanceof ForexDailyPriceFeed);
+    assert.equal(validForexDailyFeed.base, forexBase);
+    assert.equal(validForexDailyFeed.symbol, forexSymbol);
+    assert.equal(validForexDailyFeed.lookback, lookback);
+    assert.equal(validForexDailyFeed.getTime(), getTime());
+  });
+
+  it("Invalid ForexDaily config", async function() {
+    const validConfig = {
+      type: "forexdaily",
+      base: forexBase,
+      symbol: forexSymbol,
+      lookback
+    };
+
+    // Missing base
+    assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, base: undefined }), null);
+    // Missing symbol
+    assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, symbol: undefined }), null);
+    // Mising lookback
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, lookback: undefined }),
+      null
+    );
+  });
+  it("Valid Quandl config", async function() {
+    const config = {
+      type: "quandl",
+      datasetCode: forexBase, // Doesn't matter what we set here as long as its not null
+      databaseCode: forexSymbol, // Doesn't matter what we set here as long as its not null
+      lookback,
+      quandlApiKey: apiKey
+    };
+
+    const validQuandlFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isTrue(validQuandlFeed instanceof QuandlPriceFeed);
+    assert.equal(validQuandlFeed.datasetCode, forexBase);
+    assert.equal(validQuandlFeed.databaseCode, forexSymbol);
+    assert.equal(validQuandlFeed.lookback, lookback);
+    assert.equal(validQuandlFeed.getTime(), getTime());
+  });
+
+  it("Invalid Quandl config", async function() {
+    const validConfig = {
+      type: "quandl",
+      datasetCode: forexBase, // Doesn't matter what we set here as long as its not null
+      databaseCode: forexSymbol, // Doesn't matter what we set here as long as its not null
+      lookback,
+      quandlApiKey: apiKey
+    };
+
+    // Missing datasetCode
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, datasetCode: undefined }),
+      null
+    );
+    // Missing databaseCode
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, databaseCode: undefined }),
+      null
+    );
+    // Mising lookback
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, lookback: undefined }),
+      null
+    );
+    // Mising quandlApiKey
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, quandlApiKey: undefined }),
+      null
+    );
+  });
+  it("Valid DefiPulse config", async function() {
+    const config = {
+      type: "defipulse",
+      lookback: 604800,
+      defipulseApiKey: apiKey,
+      minTimeBetweenUpdates: 600,
+      project: "SushiSwap"
+    };
+
+    const validDefiPulsePriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isTrue(validDefiPulsePriceFeed instanceof DefiPulsePriceFeed);
+  });
+
+  it("Invalid DefiPulse config", async function() {
+    const validConfig = {
+      type: "defipulse",
+      lookback: 604800,
+      defipulseApiKey: apiKey,
+      minTimeBetweenUpdates: 600,
+      project: "SushiSwap"
+    };
+
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, defipulseApiKey: undefined }),
+      null
+    );
+    assert.equal(await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, project: undefined }), null);
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, lookback: undefined }),
+      null
+    );
+    assert.equal(
+      await createPriceFeed(logger, web3, networker, getTime, { ...validConfig, minTimeBetweenUpdates: undefined }),
+      null
+    );
+  });
+
+  it("Default ethVIX Config", async function() {
+    assert.isTrue(
+      (await createPriceFeed(logger, web3, networker, getTime, { type: "ethvix" })) instanceof ETHVIXPriceFeed
+    );
+  });
+
+  it("Valid ethVIX Config", async function() {
+    assert.isTrue(
+      (await createPriceFeed(logger, web3, networker, getTime, {
+        inverse: true,
+        randomUnknownParam: Math.random(),
+        type: "ethvix"
+      })) instanceof ETHVIXPriceFeed
     );
   });
 });

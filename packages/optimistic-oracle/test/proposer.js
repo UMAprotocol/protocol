@@ -1,7 +1,7 @@
 const winston = require("winston");
 const sinon = require("sinon");
 
-const { toWei, hexToUtf8, utf8ToHex, toBN } = web3.utils;
+const { toWei, hexToUtf8, utf8ToHex, toBN, padRight } = web3.utils;
 
 const {
   OptimisticOracleClient,
@@ -12,7 +12,12 @@ const {
   PriceFeedMockScaled
 } = require("@uma/financial-templates-lib");
 const { OptimisticOracleProposer } = require("../src/proposer");
-const { interfaceName, getPrecisionForIdentifier, OptimisticOracleRequestStatesEnum } = require("@uma/common");
+const {
+  interfaceName,
+  getPrecisionForIdentifier,
+  OptimisticOracleRequestStatesEnum,
+  OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY
+} = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
 const CONTRACT_VERSION = "latest";
@@ -66,10 +71,10 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
   // a pricefeed that returns prices in 8 decimals. This is useful for testing that a bot is
   // constructing the right type of pricefeed by default. This mapping is stored in @uma/common/PriceIdentifierUtils.js
   const identifiersToTest = [
-    web3.utils.utf8ToHex("TEST8DECIMALS"),
-    web3.utils.utf8ToHex("TEST6DECIMALS"),
-    web3.utils.utf8ToHex("TEST18DECIMALS"),
-    web3.utils.utf8ToHex("TEST18DECIMALS")
+    padRight(utf8ToHex("TEST8DECIMALS"), 64),
+    padRight(utf8ToHex("TEST6DECIMALS"), 64),
+    padRight(utf8ToHex("TEST18DECIMALS"), 64),
+    padRight(utf8ToHex("TEST18DECIMALS"), 64)
   ];
   let collateralCurrenciesForIdentifier;
 
@@ -502,7 +507,7 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
   it("Skip price requests with historical prices that proposer fails to fetch", async function() {
     // Request a valid identifier that is getting bad data from the data source.
     // Note: "INVALID" maps specifically to the InvalidPriceFeedMock in the DefaultPriceFeedConfig.js file.
-    const invalidPriceFeedIdentifier = web3.utils.utf8ToHex("INVALID");
+    const invalidPriceFeedIdentifier = padRight(utf8ToHex("INVALID"), 64);
     await identifierWhitelist.addSupportedIdentifier(invalidPriceFeedIdentifier);
     await optimisticRequester.requestPrice(
       invalidPriceFeedIdentifier,
@@ -547,5 +552,72 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
     assert.equal(lastSpyLogLevel(spy), "error");
     assert.isTrue(spyLogIncludes(spy, -1, "Failed to query historical price for price request"));
     assert.isTrue(spyLogIncludes(spy, -1, "sendDisputes"));
+  });
+
+  it("Skips expiry price requests for blacklisted identifiers", async function() {
+    // Set requester's expiration timestamp to be equal to the price request timestamp to simulate expiry:
+    await optimisticRequester.setExpirationTimestamp(requestTime);
+
+    const collateralCurrency = collateralCurrenciesForIdentifier[0];
+    const ancillaryData = collateralCurrency.address.toLowerCase();
+    const ancillaryDataAddress = ancillaryData;
+
+    // Use the test blacklisted identifier, which we assume to be at index 0 in `OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY`:
+    const identifierToIgnore = padRight(utf8ToHex(OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY[0]), 64);
+    await identifierWhitelist.addSupportedIdentifier(identifierToIgnore);
+
+    await optimisticRequester.requestPrice(
+      identifierToIgnore,
+      requestTime,
+      ancillaryData,
+      collateralCurrency.address,
+      0
+    );
+
+    // Use debug spy to catch "skip" log.
+    spyLogger = winston.createLogger({
+      level: "debug",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+    });
+    proposer = new OptimisticOracleProposer({
+      logger: spyLogger,
+      optimisticOracleClient: client,
+      gasEstimator,
+      account: botRunner,
+      commonPriceFeedConfig: { currentPrice: "1", historicalPrice: "2" }
+    });
+
+    // Update the bot to read the new OO state.
+    await proposer.update();
+
+    // Client should still see the unproposed price request:
+    assert.deepStrictEqual(client.getUnproposedPriceRequests(), [
+      {
+        requester: optimisticRequester.address,
+        identifier: hexToUtf8(identifierToIgnore),
+        ancillaryData: ancillaryDataAddress,
+        timestamp: requestTime.toString(),
+        currency: collateralCurrency.address,
+        reward: "0",
+        finalFee
+      }
+    ]);
+
+    // Running the bot's sendProposal method should skip the price request which it sees as an expiry request:
+    await proposer.sendProposals();
+    assert.equal(lastSpyLogLevel(spy), "debug");
+    assert.isTrue(
+      spyLogIncludes(spy, -1, "EMP contract has expired and identifier's price resolution logic transforms post-expiry")
+    );
+    assert.equal(spy.getCall(-1).lastArg.expirationTimestamp, requestTime);
+
+    // Show that if the contract's expiration timestamp were 1 second later, then the bot would not interpret the price
+    // request as an expiry one and would propose
+    await optimisticRequester.setExpirationTimestamp(Number(requestTime) + 1);
+    await proposer.sendProposals();
+    await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED, identifierToIgnore, ancillaryDataAddress);
+    assert.equal(lastSpyLogLevel(spy), "info");
+    assert.isTrue(spyLogIncludes(spy, -1, "Proposed price"));
+    assert.ok(spy.getCall(-1).lastArg.proposalResult.tx);
   });
 });

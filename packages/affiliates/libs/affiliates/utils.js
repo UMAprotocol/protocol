@@ -21,27 +21,28 @@ function mdlink(text, link) {
 }
 
 function dappMiningPrTemplate({ issueNumber, config }) {
-  const { name, startTime, endTime, rewardFactor, totalRewards, empRewards } = config;
+  const { name, startTime, endTime, rewardFactor, totalRewards, empRewards, weekNumber } = config;
   const startDate = moment(startTime)
     .utc()
     .format("YYYY/MM/DD");
   const endDate = moment(endTime)
     .utc()
     .format("YYYY/MM/DD");
-  const title = `improve(affiliates): Dapp Mining rewards for ${name} ${startDate} through ${endDate}`;
+  const title = `improve(affiliates): Dapp Mining rewards for ${name} week ${weekNumber + 1}`;
   const body = `
 **Motivation**
 #${issueNumber}
 
 **Details**
-Dapp mining for yd-eth-march using .3 of dev mining rewards for this period: \`Math.floor(${empRewards} * ${rewardFactor}) = ${totalRewards}\`
+Dapp mining for ${name} week ${weekNumber +
+    1} from ${startDate} to ${endDate} using ${rewardFactor} of dev mining rewards for this period: \`Math.floor(${empRewards} * ${rewardFactor}) = ${totalRewards}\`
 
 Reproduce with config.json
 \`\`\`
-${JSON.stringify(config, null, 2)}
+${JSON.stringify({ config }, null, 2)}
 \`\`\`
 
-And run with \`node apps/DappMiningRewards.js config.json\`
+And run with \`cat config.json | node apps/DappMiningRewards.js\`
 
 **Issue(s)**
 Fixes #${issueNumber}
@@ -58,7 +59,7 @@ function devMiningPrTemplate({
   totalRewards,
   startTime,
   endTime,
-  empWhiteList,
+  empWhitelist,
   weekNumber,
   fallbackPrices = []
 }) {
@@ -66,7 +67,7 @@ function devMiningPrTemplate({
   assert(totalRewards, "requires totalRewards");
   assert(endTime, "requires endTime");
   assert(startTime, "requires starTime");
-  assert(empWhiteList, "requires empWhiteList");
+  assert(empWhitelist, "requires empWhiteList");
   assert(weekNumber, "requires weekNumber");
   const startDate = moment(startTime)
     .utc()
@@ -75,14 +76,14 @@ function devMiningPrTemplate({
     .utc()
     .format("YYYY/MM/DD");
   return {
-    title: `Run Dev Mining rewards for week ${weekNumber + 1} between ${startDate} and ${endDate}`,
+    title: `improve(affiliates): Dev Mining rewards for week ${weekNumber + 1}`,
     body: `
 **Motivation**
 #${issueNumber}
 
 **Summary**
 
-Dev Mining results for week ${weekNumber}
+Dev Mining results for week ${weekNumber + 1} between ${startDate} (${startTime}) and ${endDate} (${endTime})
 
 **Details**
 In order to run create a config.json with this data:
@@ -91,13 +92,13 @@ In order to run create a config.json with this data:
     "startTime": ${startTime},
     "endTime": ${endTime},
     "totalRewards": ${totalRewards},
-    "empWhitelist": ${empWhiteList},
-    "fallbackPrices": ${fallbackPrices},
+    "empWhitelist": ${JSON.stringify(empWhitelist)},
+    "fallbackPrices": ${JSON.stringify(fallbackPrices)},
 }
 \`\`\`
 
-then run 
-\`node app \`
+Then within the affiliates package run: 
+\`cat config.json | node apps/DevMiningRewards --network=mainnet_mnemonic\`
 
 
 closes #${issueNumber}
@@ -144,7 +145,7 @@ function devMiningTemplate({ config, whitelist }) {
   const startDateTime = moment(startTime).format("YYYY/MM/DD HH:mm");
   const endDateTime = moment(endTime).format("YYYY/MM/DD HH:mm");
   return {
-    title: `Run Dev Mining rewards between ${startDate} and ${endDate}`,
+    title: `Run Dev Mining rewards week ${weekNumber + 1} between ${startDate} and ${endDate}`,
     body: `
 Run Dev Mining rewards for week ${weekNumber +
       1} between ${startDateTime} (${startTime}) and ${endDateTime} (${endTime}).
@@ -181,6 +182,33 @@ async function createGithubIssue({ auth, owner = "UMAprotocol", repo = "protocol
   });
 }
 
+async function requestGithubReviewers({ auth, owner, repo, pull_number, reviewers, ...rest }) {
+  assert(auth, "requires github auth credentials");
+  const octokit = new Octokit({
+    auth
+  });
+  return octokit.pulls.requestReviewers({
+    owner,
+    repo,
+    pull_number,
+    reviewers,
+    ...rest
+  });
+}
+async function createGithubPr({ auth, owner, repo = "protocol", head, base, ...rest } = {}) {
+  assert(auth, "requires github auth credentials");
+  const octokit = new Octokit({
+    auth
+  });
+  return octokit.pulls.create({
+    head,
+    base,
+    owner,
+    repo,
+    ...rest
+  });
+}
+
 // Takes an array of "details" which is simply an array of objects in this format:
 // [{
 //   empAddress,
@@ -196,15 +224,26 @@ async function createGithubIssue({ auth, owner = "UMAprotocol", repo = "protocol
 // ]
 function whitelistFromDetails(details) {
   return details.map(detail => {
-    return [detail.empAddress, detail.payoutAddress];
+    return [detail.empAddress, detail.payoutAddress, detail.empVersion];
   });
+}
+// Fallback prices are the default prices we use for emp synthetics when we dont have a working price feed
+// with get historical price periods implemented. We allow this value to be specified from sheets.
+function fallbackFromDetails(details) {
+  return details
+    .filter(detail => {
+      return detail.fallbackValue;
+    })
+    .map(detail => {
+      return [detail.empAddress, detail.fallbackValue];
+    });
 }
 
 // Generates a dev mining config consumable by the dev mining app. It assumes you are passing in various
 // parameters here, and will auto generate the week and period if not provided, based on current date.
 function generateDevMiningConfig({ whitelist, week, period, totalRewards = 50000 }) {
   const empWhitelist = whitelistFromDetails(whitelist);
-  const fallbackPrices = [];
+  const fallbackPrices = fallbackFromDetails(whitelist);
   week = week || getLastDevMiningWeek();
   period = period || devMiningPeriodByWeek(week);
   return {
@@ -329,7 +368,14 @@ function makeUnixPipe(cb, stdin = process.stdin) {
       // we need to do this to extract the result of the promise in the stream.
       .flatMap(highland)
       // we want our result to be also a valid json string, so we can continue chaining the pipeline
-      .map(x => JSON.stringify(x, null, 2))
+      .map(x => {
+        try {
+          return JSON.stringify(x, null, 2);
+        } catch (err) {
+          console.error(x);
+          throw err;
+        }
+      })
       // returns string as a promise so we can log it however we need. but typically it would just be std out.
       .toPromise(Promise)
   );
@@ -354,5 +400,7 @@ module.exports = {
   saveToDisk,
   generateDappMiningConfig,
   devMiningPrTemplate,
-  dappMiningPrTemplate
+  dappMiningPrTemplate,
+  requestGithubReviewers,
+  createGithubPr
 };

@@ -1,4 +1,5 @@
 require("dotenv").config();
+const assert = require("assert");
 const { getWeb3 } = require("@uma/common");
 const { getAbi } = require("@uma/core");
 const { BigQuery } = require("@google-cloud/bigquery");
@@ -51,12 +52,29 @@ const { makeUnixPipe } = require("../libs/affiliates/utils");
 const App = async params => {
   const { config } = params;
   const web3 = getWeb3();
+  const { version = "v2" } = config;
+  assert(
+    DappMining[version],
+    "Invalid version in dappmining config, must be one of: " + Object.keys(DappMining).join(", ")
+  );
 
-  const empAbi = getAbi("ExpiringMultiParty");
+  let empAbi;
+  switch (version) {
+    case "v1": {
+      empAbi = getAbi("ExpiringMultiParty", "1.0.2");
+      break;
+    }
+    case "v2": {
+      empAbi = getAbi("ExpiringMultiParty", "2.0.1");
+      break;
+    }
+    default:
+      throw new Error("Invalid version number: " + version);
+  }
   const client = new BigQuery();
   const queries = Queries({ client });
 
-  const dappmining = DappMining({ empAbi, queries, web3 });
+  const dappmining = DappMining[version]({ empAbi, queries, web3 });
   const result = await dappmining.getRewards(config);
 
   return {

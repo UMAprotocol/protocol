@@ -377,24 +377,63 @@ const defaultConfigs = {
     ]
   },
   DEFI_PULSE_TOTAL_TVL: {
-    type: "defipulsetotal",
+    type: "defipulse",
     lookback: 604800,
-    minTimeBetweenUpdates: 600
+    minTimeBetweenUpdates: 600,
+    project: "all"
+  },
+  DEFI_PULSE_SUSHI_TVL: {
+    type: "defipulse",
+    lookback: 604800,
+    minTimeBetweenUpdates: 600,
+    project: "SushiSwap"
+  },
+  DEFI_PULSE_UNISWAP_TVL: {
+    type: "defipulse",
+    lookback: 604800,
+    minTimeBetweenUpdates: 600,
+    project: "Uniswap"
+  },
+  SUSHIUNI: {
+    type: "expression",
+    expression: "10 * DEFI_PULSE_SUSHI_TVL / DEFI_PULSE_UNISWAP_TVL"
   },
   CNYUSD: {
-    type: "tradermade",
-    pair: "CNYUSD",
-    minTimeBetweenUpdates: 600,
-    minuteLookback: 7200,
-    hourlyLookback: 604800,
-    ohlcPeriod: 10 // CNYUSD only available at 10 minute granularity
+    type: "fallback",
+    orderedFeeds: [
+      {
+        type: "tradermade",
+        pair: "CNYUSD",
+        minTimeBetweenUpdates: 600,
+        minuteLookback: 7200,
+        hourlyLookback: 259200,
+        ohlcPeriod: 10 // CNYUSD only available at 10 minute granularity
+      },
+      {
+        type: "forexdaily",
+        base: "CNY",
+        symbol: "USD",
+        lookback: 259200
+      }
+    ]
   },
   EURUSD: {
-    type: "tradermade",
-    pair: "EURUSD",
-    minTimeBetweenUpdates: 60,
-    minuteLookback: 7200,
-    hourlyLookback: 604800
+    type: "fallback",
+    orderedFeeds: [
+      {
+        type: "tradermade",
+        pair: "EURUSD",
+        minTimeBetweenUpdates: 60,
+        minuteLookback: 7200,
+        hourlyLookback: 259200
+      },
+      {
+        type: "forexdaily",
+        base: "EUR",
+        symbol: "USD",
+        lookback: 259200
+      }
+    ]
   },
   PHPDAI: {
     type: "medianizer",
@@ -419,8 +458,8 @@ const defaultConfigs = {
   "ETH-BASIS-6M/USDC": {
     type: "expression",
     expression: `
-      SPOT = mean(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
-      FUTURES = mean(FUT_BINANCE, FUT_OKEX, FUT_FTX);
+      SPOT = median(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
+      FUTURES = median(FUT_BINANCE, FUT_OKEX, FUT_FTX);
       min(1.25, max(0.75, 1.0 + ((FUTURES - SPOT) / SPOT))) * 100
       `,
     lookback: 7200,
@@ -437,8 +476,8 @@ const defaultConfigs = {
   "ETH-BASIS-3M/USDC": {
     type: "expression",
     expression: `
-      SPOT = mean(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
-      FUTURES = mean(FUT_BINANCE, FUT_OKEX, FUT_FTX);
+      SPOT = median(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
+      FUTURES = median(FUT_BINANCE, FUT_OKEX, FUT_FTX);
       min(1.25, max(0.75, 1.0 + ((FUTURES - SPOT) / SPOT))) * 100
       `,
     lookback: 7200,
@@ -455,8 +494,8 @@ const defaultConfigs = {
   "BTC-BASIS-6M/USDC": {
     type: "expression",
     expression: `
-      SPOT = mean(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
-      FUTURES = mean(FUT_BINANCE, FUT_OKEX, FUT_FTX);
+      SPOT = median(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
+      FUTURES = median(FUT_BINANCE, FUT_OKEX, FUT_FTX);
       min(1.25, max(0.75, 1.0 + ((FUTURES - SPOT) / SPOT))) * 100
       `,
     lookback: 7200,
@@ -473,8 +512,8 @@ const defaultConfigs = {
   "BTC-BASIS-3M/USDC": {
     type: "expression",
     expression: `
-      SPOT = mean(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
-      FUTURES = mean(FUT_BINANCE, FUT_OKEX, FUT_FTX);
+      SPOT = median(SPOT_BINANCE, SPOT_OKEX, SPOT_FTX);
+      FUTURES = median(FUT_BINANCE, FUT_OKEX, FUT_FTX);
       min(1.25, max(0.75, 1.0 + ((FUTURES - SPOT) / SPOT))) * 100
       `,
     lookback: 7200,
@@ -515,7 +554,7 @@ const defaultConfigs = {
         uniswapAddress: "0xcd7989894bc033581532d2cd88da5db0a4b12859",
         invertPrice: true
       },
-      BADGER_USD_HUOBI: { type: "cryptowatch", exchange: "huobi", pair: "badgerusdt" },
+      BADGER_USD_HUOBI: { type: "cryptowatch", exchange: "huobi", pair: "badgerusdt", twapLength: 0 },
       BBADGER_BADGER: { type: "vault", address: "0x19d97d8fa813ee2f51ad4b4e04ea08baf4dffc28" }
     }
   },
@@ -552,17 +591,283 @@ const defaultConfigs = {
     expression: "XAUUSD * USDPERL"
   },
   XAUUSD: {
-    type: "tradermade",
-    pair: "XAUUSD",
-    minuteLookback: 7200,
-    hourlyLookback: 604800,
-    minTimeBetweenUpdates: 60
+    type: "fallback",
+    orderedFeeds: [
+      {
+        type: "tradermade",
+        pair: "XAUUSD",
+        minuteLookback: 7200,
+        hourlyLookback: 259200,
+        minTimeBetweenUpdates: 60
+      },
+      {
+        type: "quandl",
+        // https://www.quandl.com/data/CHRIS/CME_MGC1-E-micro-Gold-Futures-Continuous-Contract-1-MGC1-Front-Month
+        datasetCode: "CHRIS",
+        databaseCode: "CME_MGC1",
+        lookback: 259200
+      }
+    ]
   },
   uSTONKS_APR21: {
     type: "uniswap",
     uniswapAddress: "0xedf187890af846bd59f560827ebd2091c49b75df",
     twapLength: 7200,
     invertPrice: true
+  },
+  DIGGBTC: {
+    type: "expression",
+    // Note: lower-case variables are intermediate, upper-case are configured feeds.
+    expression: `
+      mean(DIGG_WBTC_SUSHI, DIGG_WBTC_UNI)
+    `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    twapLength: 1800,
+    priceFeedDecimals: 8,
+    customFeeds: {
+      DIGG_WBTC_SUSHI: { type: "uniswap", uniswapAddress: "0x9a13867048e01c663ce8ce2fe0cdae69ff9f35e3" },
+      DIGG_WBTC_UNI: { type: "uniswap", uniswapAddress: "0xe86204c4eddd2f70ee00ead6805f917671f56c52" }
+    }
+  },
+  DIGGETH: {
+    type: "expression",
+    // Note: lower-case variables are intermediate, upper-case are configured feeds.
+    expression: `
+      wbtc_eth = mean(WBTC_ETH_SUSHI, WBTC_ETH_UNI);
+      DIGGBTC * wbtc_eth
+    `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    twapLength: 1800,
+    priceFeedDecimals: 8,
+    customFeeds: {
+      WBTC_ETH_SUSHI: { type: "uniswap", uniswapAddress: "0xCEfF51756c56CeFFCA006cD410B03FFC46dd3a58" },
+      WBTC_ETH_UNI: { type: "uniswap", uniswapAddress: "0xBb2b8038a1640196FbE3e38816F3e67Cba72D940" }
+    }
+  },
+  DIGGUSD: {
+    type: "expression",
+    // Note: lower-case variables are intermediate, upper-case are configured feeds.
+    expression: `
+      eth_usd = 1 / USDETH;
+      DIGGETH * eth_usd
+    `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    twapLength: 1800,
+    priceFeedDecimals: 6
+  },
+  USDAAVE: {
+    type: "medianizer",
+    invertPrice: true,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "aaveusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "aaveusdt" },
+      { type: "cryptowatch", exchange: "okex", pair: "aaveusdt" }
+    ]
+  },
+  AAVEUSD: {
+    type: "medianizer",
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "aaveusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "aaveusdt" },
+      { type: "cryptowatch", exchange: "okex", pair: "aaveusdt" }
+    ]
+  },
+  USDLINK: {
+    type: "medianizer",
+    invertPrice: true,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "linkusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "linkusdt" },
+      { type: "cryptowatch", exchange: "okex", pair: "linkusdt" }
+    ]
+  },
+  LINKUSD: {
+    type: "medianizer",
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "linkusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "linkusdt" },
+      { type: "cryptowatch", exchange: "okex", pair: "linkusdt" }
+    ]
+  },
+  USDSNX: {
+    type: "medianizer",
+    invertPrice: true,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "snxusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "snxusdt" },
+      { type: "cryptowatch", exchange: "okex", pair: "snxusdt" }
+    ]
+  },
+  SNXUSD: {
+    type: "medianizer",
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "snxusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "snxusdt" },
+      { type: "cryptowatch", exchange: "okex", pair: "snxusdt" }
+    ]
+  },
+  USDUMA: {
+    type: "medianizer",
+    invertPrice: true,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "umausd" },
+      { type: "cryptowatch", exchange: "binance", pair: "umausdt" },
+      { type: "cryptowatch", exchange: "okex", pair: "umausdt" }
+    ]
+  },
+  UMAUSD: {
+    type: "medianizer",
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "umausd" },
+      { type: "cryptowatch", exchange: "binance", pair: "umausdt" },
+      { type: "cryptowatch", exchange: "okex", pair: "umausdt" }
+    ]
+  },
+  USDUNI: {
+    type: "medianizer",
+    invertPrice: true,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "uniusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "uniusdt" },
+      { type: "cryptowatch", exchange: "okex", pair: "uniusdt" }
+    ]
+  },
+  UNIUSD: {
+    type: "medianizer",
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "uniusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "uniusdt" },
+      { type: "cryptowatch", exchange: "okex", pair: "uniusdt" }
+    ]
+  },
+  USDOCEAN: {
+    type: "medianizer",
+    invertPrice: true,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "binance", pair: "oceanusdt" },
+      { type: "cryptowatch", exchange: "bittrex", pair: "oceanusdt" },
+      { type: "cryptowatch", exchange: "bitz", pair: "oceanusdt" }
+    ]
+  },
+  OCEANUSD: {
+    type: "medianizer",
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "binance", pair: "oceanusdt" },
+      { type: "cryptowatch", exchange: "bittrex", pair: "oceanusdt" },
+      { type: "cryptowatch", exchange: "bitz", pair: "oceanusdt" }
+    ]
+  },
+  USDBTC_18DEC: {
+    type: "medianizer",
+    invertPrice: true,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "btcusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "btcusdt" },
+      { type: "cryptowatch", exchange: "bitstamp", pair: "btcusd" }
+    ]
+  },
+  "STABLESPREAD/USDC_18DEC": {
+    type: "basketspread",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    experimentalPriceFeeds: [
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "bittrex", pair: "ustusdt" },
+          {
+            type: "uniswap",
+            uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38",
+            twapLength: 2
+          }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "binance", pair: "busdusdt" },
+          {
+            type: "uniswap",
+            uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd",
+            twapLength: 2
+          }
+        ]
+      },
+      {
+        type: "medianizer",
+        computeMean: true,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "bittrex", pair: "cusdusdt" }
+          // NOTE: The OKCoin exchange is not available on Cryptowatch for this pair,
+          // presumably because it has such low volume.
+          // { type: "cryptowatch", exchange: "okcoin" }
+        ]
+      }
+    ],
+    baselinePriceFeeds: [
+      {
+        type: "medianizer",
+        medianizedFeeds: [
+          {
+            type: "medianizer",
+            computeMean: true,
+            medianizedFeeds: [
+              { type: "cryptowatch", exchange: "bitfinex", pair: "usdtusd" },
+              { type: "cryptowatch", exchange: "kraken", pair: "usdtusd" }
+            ]
+          },
+          {
+            type: "medianizer",
+            computeMean: true,
+            medianizedFeeds: [
+              { type: "cryptowatch", exchange: "kraken", pair: "usdcusd" },
+              { type: "cryptowatch", exchange: "bitstamp", pair: "usdcusd" }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  BCHNBTC_18DEC: {
+    type: "medianizer",
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "BCHBTC" },
+      { type: "cryptowatch", exchange: "binance", pair: "BCHBTC" },
+      { type: "cryptowatch", exchange: "huobi", pair: "BCHBTC" }
+    ]
+  },
+  ETHBTC_FR: {
+    type: "expression",
+    expression: `
+        ETHBTC_FV = ETH\\/BTC * PERP_FRM;
+        max(-0.00001, min(0.00001, (ETHBTC_FV - ETHBTC_PERP) / ETHBTC_FV / 86400))
+    `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    twapLength: 3600,
+    customFeeds: {
+      ETHBTC_PERP: { type: "uniswap", invertPrice: true, uniswapAddress: "0x899a45ee5a03d8cc57447157a17ce4ea4745b199" },
+      PERP_FRM: { type: "frm", perpetualAddress: "0x32f0405834c4b50be53199628c45603cea3a28aa" }
+    }
   }
 };
 

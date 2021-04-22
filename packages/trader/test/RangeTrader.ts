@@ -233,7 +233,7 @@ describe("index.js", function() {
     assert.isTrue(spyLogIncludes(spy, -4, "The deviationError is greater than the threshold to execute a trade"));
     assert.isTrue(spyLogIncludes(spy, -3, "Executing function on library"));
     assert.isTrue(spyLogIncludes(spy, -2, "Executed function on a freshly deployed library"));
-    assert.isTrue(spyLogIncludes(spy, -1, "The exchange adapter has executed a trade successfully"));
+    assert.isTrue(spyLogIncludes(spy, -1, "Exchange adapter has executed a trade successfully"));
 
     // Validate the last message contains the right spot price and deviation error.
     const latestWinstonLog = spy.getCall(-1).lastArg;
@@ -281,7 +281,7 @@ describe("index.js", function() {
     assert.isTrue(spyLogIncludes(spy, -4, "The deviationError is greater than the threshold to execute a trade"));
     assert.isTrue(spyLogIncludes(spy, -3, "Executing function on library"));
     assert.isTrue(spyLogIncludes(spy, -2, "Executed function on a freshly deployed library"));
-    assert.isTrue(spyLogIncludes(spy, -1, "The exchange adapter has executed a trade successfully"));
+    assert.isTrue(spyLogIncludes(spy, -1, "Exchange adapter has executed a trade successfully"));
 
     // The spot price should be set to 5% below the reference price feed as the bot was trading up from the previous number.
     // This yields 1250*0.95 ~= 1187 as the expected market price.

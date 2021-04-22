@@ -42,6 +42,7 @@ class FinancialContractEventClient {
     this.finalFeeEvents = [];
     this.liquidationWithdrawnEvents = [];
     this.settleExpiredPositionEvents = [];
+    this.fundingRateUpdatedEvents = [];
 
     // First block number to begin searching for events after.
     this.firstBlockToSearch = startingBlockNumber;
@@ -80,6 +81,7 @@ class FinancialContractEventClient {
     this.finalFeeEvents = [];
     this.liquidationWithdrawnEvents = [];
     this.settleExpiredPositionEvents = [];
+    this.fundingRateUpdatedEvents = [];
   }
 
   getAllNewSponsorEvents() {
@@ -128,6 +130,10 @@ class FinancialContractEventClient {
 
   getAllSettleExpiredPositionEvents() {
     return this.settleExpiredPositionEvents;
+  }
+
+  getAllFundingRateUpdatedEvents() {
+    return this.fundingRateUpdatedEvents;
   }
 
   // Returns the last update timestamp.
@@ -333,6 +339,24 @@ class FinancialContractEventClient {
         collateralReturned: event.returnValues.collateralReturned,
         tokensBurned: event.returnValues.tokensBurned
       });
+    }
+
+    // Look for perpetual specific events:
+    if (this.contractType == "Perpetual") {
+      const [fundingRateUpdatedEventsObj] = await Promise.all([
+        this.financialContract.getPastEvents("FundingRateUpdated", blockSearchConfig)
+      ]);
+
+      // Funding Rate Updated events
+      for (let event of fundingRateUpdatedEventsObj) {
+        this.fundingRateUpdatedEvents.push({
+          transactionHash: event.transactionHash,
+          blockNumber: event.blockNumber,
+          newFundingRate: event.returnValues.newFundingRate,
+          updateTime: event.returnValues.updateTime,
+          reward: event.returnValues.reward
+        });
+      }
     }
 
     // Add 1 to current block so that we do not double count the last block number seen.

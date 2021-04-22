@@ -54,6 +54,7 @@ class ContractMonitor {
     this.lastDisputeBlockNumber = 0;
     this.lastDisputeSettlementBlockNumber = 0;
     this.lastNewSponsorBlockNumber = 0;
+    this.lastFundingRateUpdatedBlockNumber = 0;
 
     // Define a set of normalization functions. These Convert a number delimited with given base number of decimals to a
     // number delimited with a given number of decimals (18). For example, consider normalizeCollateralDecimals. 100 BTC
@@ -125,6 +126,7 @@ class ContractMonitor {
 
     // Helper functions from web3.
     this.toWei = this.web3.utils.toWei;
+    this.fromWei = this.web3.utils.fromWei;
     this.toBN = this.web3.utils.toBN;
     this.utf8ToHex = this.web3.utils.utf8ToHex;
 
@@ -408,6 +410,40 @@ class ContractMonitor {
       });
     }
     this.lastDisputeSettlementBlockNumber = this._getLastSeenBlockNumber(latestDisputeSettlementEvents);
+  }
+
+  async checkForNewFundingRateUpdatedEvents() {
+    this.logger.debug({
+      at: "ContractMonitor",
+      message: "Checking for new funding rate updated events",
+      lastFundingRateUpdatedBlockNumber: this.lastFundingRateUpdatedBlockNumber
+    });
+
+    // Get the latest funding rate information.
+    let latestFundingRateUpdatedEvents = this.financialContractEventClient.getAllFundingRateUpdatedEvents();
+
+    let newFundingRateEvents = latestFundingRateUpdatedEvents.filter(
+      event => event.blockNumber > this.lastFundingRateUpdatedBlockNumber
+    );
+
+    for (let event of newFundingRateEvents) {
+      // Sample message:
+      // Funding Rate Update alert: New funding rate published: [rate]. Original proposal time was
+      // [proposalTime] and the proposer received a reward of [reward].
+      let mrkdwn =
+        `New funding rate published: ${this.fromWei(event.newFundingRate)}/second. ` +
+        `Original proposal time was ${
+          event.updateTime
+        } and the proposer received a reward of ${this.normalizeCollateralDecimals(event.reward)}. `;
+      // Add etherscan link.
+      mrkdwn += `Tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.financialContractProps.networkId)}`;
+      this.logger.info({
+        at: "ContractMonitor",
+        message: "Funding Rate Update Alert 🏵!",
+        mrkdwn: mrkdwn
+      });
+    }
+    this.lastFundingRateUpdatedBlockNumber = this._getLastSeenBlockNumber(latestFundingRateUpdatedEvents);
   }
 
   // Calculate the collateralization Ratio from the collateral, token amount and token price.
