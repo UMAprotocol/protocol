@@ -342,17 +342,6 @@ class Liquidator {
       message: "Checking for expired and disputed liquidations to withdraw rewards from"
     });
 
-    // In legacy versions of the EMP, withdrawing needs to be done by a party involved in the liquidation (i.e liquidator,
-    // sponsor or disputer).As the liquidator is the DSProxy, we would require the ability to send the withdrawal tx
-    // directly from the DSProxy to facilitate this.This functionality is not implemented as almost all legacy EMPs expired.
-    if (this.proxyTransactionWrapper?.useDsProxyToLiquidate && this.isLegacyEmpVersion) {
-      this.logger.warn({
-        at: "Liquidator",
-        message: "Attempting to withdraw liquidation from a legacy EMP🙈",
-        details: "This is not supported on legacy with a DSProxy! Please manually withdraw the liquidation"
-      });
-      return;
-    }
     // All of the liquidations that we could withdraw rewards from are drawn from the pool of
     // expired and disputed liquidations.
     const expiredLiquidations = this.financialContractClient.getExpiredLiquidations();
@@ -370,6 +359,22 @@ class Liquidator {
       this.logger.debug({
         at: "Liquidator",
         message: "No withdrawable liquidations"
+      });
+      return;
+    }
+
+    // In legacy versions of the EMP, withdrawing needs to be done by a party involved in the liquidation (i.e liquidator,
+    // sponsor or disputer). As the liquidator is the DSProxy, we would require the ability to send the withdrawal tx
+    // directly from the DSProxy to facilitate this.This functionality is not implemented as almost all legacy EMPs expired.
+    if (
+      this.proxyTransactionWrapper?.useDsProxyToLiquidate &&
+      this.isLegacyEmpVersion &&
+      potentialWithdrawableLiquidations.length > 0
+    ) {
+      this.logger.warn({
+        at: "Liquidator",
+        message: "Attempting to withdraw liquidation from a legacy EMP🙈",
+        details: "This is not supported on legacy with a DSProxy! Please manually withdraw the liquidation"
       });
       return;
     }
