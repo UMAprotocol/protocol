@@ -28,7 +28,7 @@ contract ReserveCurrencyLiquidator {
      * @dev Any synthetics & collateral that the DSProxy already has are considered in the amount swapped and minted.
      * These existing tokens will be used first before any swaps or mints are done.
      * @dev If there is a token shortfall (either from not enough reserve to buy sufficient collateral or not enough
-     * collateral to begins with or due to slippage) the script will liquidate as much as posable given the reserves.
+     * collateral to begins with or due to slippage) the script will liquidate as much as possible given the reserves.
      * @param uniswapRouter address of the uniswap router used to facilitate trades.
      * @param financialContract address of the financial contract on which the liquidation is occurring.
      * @param reserveCurrency address of the token to swap for collateral. THis is the common currency held by the DSProxy.
