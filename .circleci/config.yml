@@ -107,6 +107,8 @@ jobs:
     steps:
       - restore_cache:
           key: lerna-packages-{{ .Environment.CIRCLE_SHA1 }}
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Run tests
           command: |
