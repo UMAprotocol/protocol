@@ -200,6 +200,7 @@ workflows:
           context: api_keys
           requires:
             - build
+            - test
       - docs:
           requires:
             - checkout_and_install
