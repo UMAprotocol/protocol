@@ -207,7 +207,7 @@ jobs:
             else
                 circleci-agent step halt;
             fi
-  test_merkel_distributor:
+  test_merkle_distributor:
     docker:
       - image: circleci/node:lts
       - image: trufflesuite/ganache-cli
@@ -221,8 +221,8 @@ jobs:
           name: Run tests
           command: |
             ./scripts/lerna_packages.sh
-            export PACKAGES_CHANGES=$(cat lerna_output | grep "merkel-distributor")
-            if [ "$PACKAGES_CHANGES" = "@uma/merkel-distributor" ]; then
+            export PACKAGES_CHANGES=$(cat lerna_output | grep "merkle-distributor")
+            if [ "$PACKAGES_CHANGES" = "@uma/merkle-distributor" ]; then
                 yarn run test-concurrent-test;
             else
                 circleci-agent step halt;
@@ -267,26 +267,26 @@ jobs:
             else
                 circleci-agent step halt;
             fi
-    test_reporters:
-      docker:
-        - image: circleci/node:lts
-        - image: trufflesuite/ganache-cli
-          command: ganache-cli -i 1234 -l 9000000 -p 9545
-      working_directory: ~/protocol
-      resource_class: large
-      steps:
-        - restore_cache:
-            key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
-        - run:
-            name: Run tests
-            command: |
-              ./scripts/lerna_packages.sh
-              export PACKAGES_CHANGES=$(cat lerna_output | grep "reporters")
-              if [ "$PACKAGES_CHANGES" = "@uma/reporters" ]; then
-                  yarn run test-concurrent-test;
-              else
-                  circleci-agent step halt;
-              fi
+  test_reporters:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: large
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: |
+            ./scripts/lerna_packages.sh
+            export PACKAGES_CHANGES=$(cat lerna_output | grep "reporters")
+            if [ "$PACKAGES_CHANGES" = "@uma/reporters" ]; then
+                yarn run test-concurrent-test;
+            else
+                circleci-agent step halt;
+            fi
   test_random:
     docker:
       - image: circleci/node:lts
