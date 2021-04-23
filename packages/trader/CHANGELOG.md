@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/trader@1.2.0...@uma/trader@1.3.0) (2021-04-23)
+
+### Bug Fixes
+
+- **trader:** pass along range trader config from env variables ([#2818](https://github.com/UMAprotocol/protocol/issues/2818)) ([10c4fac](https://github.com/UMAprotocol/protocol/commit/10c4fac62e96fd6d46228d8683da28e9b21cc079))
+- **trader & atomic liquidator:** add wait for block to be mined util to address slow node updates ([#2871](https://github.com/UMAprotocol/protocol/issues/2871)) ([0106a8d](https://github.com/UMAprotocol/protocol/commit/0106a8dc22c26ee3d7aaf777ed12b6d894e88863))
+
+### Features
+
+- **action-wrappers:** Add a simple contract and script to enable DSProxy token redemtion ([#2808](https://github.com/UMAprotocol/protocol/issues/2808)) ([84d1989](https://github.com/UMAprotocol/protocol/commit/84d1989f6cb4f6360ce00e9a40fb57f163ce575e))
+
 # [1.2.0](https://github.com/UMAprotocol/protocol/compare/@uma/trader@1.1.1...@uma/trader@1.2.0) (2021-03-16)
 
 ### Features
