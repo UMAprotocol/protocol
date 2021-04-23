@@ -1,7 +1,7 @@
 {
   "extends": "@tsconfig/node14/tsconfig.json",
   "esModuleInterop": true,
-  "include": ["./index.ts", "./dist/truffle-types/*.ts", "./dist/web3-types/*.ts"],
+  "include": ["types/**/*.ts", "index.ts"],
   "compilerOptions": {
     "outDir": "./dist"
   }
