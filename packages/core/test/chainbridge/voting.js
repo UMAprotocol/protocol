@@ -22,8 +22,8 @@ const { utf8ToHex, padRight, hexToUtf8, toWei } = web3.utils;
 
 contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
   const relayerThreshold = 2;
-  const chainId = 1;
-  const sidechainId = 2;
+  const chainId = 0;
+  const sidechainId = 1;
   const expectedDepositNonce = 1;
 
   const depositerAddress = accounts[1];
@@ -85,49 +85,50 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
       bridgeMainnet.address,
       [votingResourceId],
       [voting.address],
-      [Helpers.blankFunctionSig],
+      [votingPushPriceFuncSig],
       [votingRequestPriceFuncSig]
     );
     genericHandlerSidechain = await GenericHandlerContract.new(
       bridgeSidechain.address,
       [votingResourceSidechainId],
       [votingSidechain.address],
-      [Helpers.blankFunctionSig],
+      [votingRequestPriceFuncSig],
       [votingPushPriceFuncSig]
     );
 
     // Sidechain resource ID 1: Voting Contract
-    // - Deposit: null
+    // - Deposit: Should request price.
     // - ExecuteProposal: Should push price.
     await bridgeSidechain.adminSetGenericResource(
       genericHandlerSidechain.address,
       votingResourceSidechainId,
       votingSidechain.address,
-      Helpers.blankFunctionSig,
+      votingRequestPriceFuncSig,
       votingPushPriceFuncSig
     );
     // Mainnet resource ID 1: Voting Contract
-    // - Deposit: null.
+    // - Deposit: Should push price.
     // - ExecuteProposal: Should request price.
     await bridgeMainnet.adminSetGenericResource(
       genericHandlerMainnet.address,
       votingResourceId,
       voting.address,
-      Helpers.blankFunctionSig,
+      votingPushPriceFuncSig,
       votingRequestPriceFuncSig
     );
   });
 
   // Scenario: Sidechain contract needs a price from the sidechain oracle.
-  it("Sidechain deposit: emits Deposit event", async function() {
+  it("Sidechain deposit: emits Deposit event and requests price", async function() {
     // Here, the caller to deposit() might include the price request details that the relayer should input to the
     // executeProposal() call on the Mainnet.
     const encodedMetaDataProposal = Helpers.abiEncode(
-      ["bytes32", "uint256", "bytes", "uint256"],
-      [padRight(identifier, 64), requestTime, ancillaryData, requestPrice]
+      ["bytes32", "uint256", "bytes"],
+      [padRight(identifier, 64), requestTime, ancillaryData]
     );
     const depositData = Helpers.createGenericDepositData(encodedMetaDataProposal);
-    const depositTxn = await bridgeSidechain.deposit(sidechainId, votingResourceSidechainId, depositData, {
+    console.log(depositData);
+    const depositTxn = await bridgeSidechain.deposit(chainId, votingResourceSidechainId, depositData, {
       from: depositerAddress
     });
 
@@ -136,9 +137,21 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
       depositTxn,
       "Deposit",
       event =>
-        event.destinationChainID.toString() === sidechainId.toString() &&
+        event.destinationChainID.toString() === chainId.toString() &&
         event.resourceID.toLowerCase() === votingResourceSidechainId.toLowerCase() &&
         event.depositNonce.toString() === expectedDepositNonce.toString()
+    );
+
+    // Verifying price was requested on Voting
+    const internalTx = await TruffleAssert.createTransactionResult(votingSidechain, depositTxn.tx);
+    TruffleAssert.eventEmitted(
+      internalTx,
+      "PriceRequestAdded",
+      event =>
+        event.requester.toLowerCase() === genericHandlerSidechain.address.toLowerCase() &&
+        hexToUtf8(event.identifier) === hexToUtf8(identifier) &&
+        event.time.toString() === requestTime.toString() &&
+        event.ancillaryData.toLowerCase() === ancillaryData.toLowerCase()
     );
   });
 
@@ -192,15 +205,18 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
   });
 
   // Scenario: Someone wants to make a price available from mainnet to sidechain.
-  it("Mainnet deposit: emits Deposit event", async function() {
+  it("Mainnet deposit: emits Deposit event and pushes price", async function() {
+    // Note: need to request a price to voting before pushing it, so we do it here manually.
+    await voting.requestPrice(identifier, requestTime, ancillaryData);
+
     // Here, the caller to deposit() might include the price request details that the relayer should input to the
     // executeProposal() call on the Sidechain.
     const encodedMetaDataProposal = Helpers.abiEncode(
-      ["bytes32", "uint256", "bytes", "uint256"],
+      ["bytes32", "uint256", "bytes", "int256"],
       [padRight(identifier, 64), requestTime, ancillaryData, requestPrice]
     );
     const depositData = Helpers.createGenericDepositData(encodedMetaDataProposal);
-    const depositTxn = await bridgeMainnet.deposit(chainId, votingResourceId, depositData, {
+    const depositTxn = await bridgeMainnet.deposit(sidechainId, votingResourceId, depositData, {
       from: depositerAddress
     });
 
@@ -209,10 +225,22 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
       depositTxn,
       "Deposit",
       event =>
-        event.destinationChainID.toString() === chainId.toString() &&
+        event.destinationChainID.toString() === sidechainId.toString() &&
         event.resourceID.toLowerCase() === votingResourceId.toLowerCase() &&
         event.depositNonce.toString() === expectedDepositNonce.toString()
     );
+
+    // Verifying price was pushed on Voting
+    const internalTx = await TruffleAssert.createTransactionResult(voting, depositTxn.tx);
+    TruffleAssert.eventEmitted(internalTx, "PushedPrice", event => {
+      return (
+        event.pusher.toLowerCase() === genericHandlerMainnet.address.toLowerCase() &&
+        hexToUtf8(event.identifier) === hexToUtf8(identifier) &&
+        event.time.toString() === requestTime.toString() &&
+        event.ancillaryData.toLowerCase() === ancillaryData.toLowerCase() &&
+        event.price.toString() === requestPrice
+      );
+    });
   });
 
   // Scenario: Off-chain relayer sees that mainnet Bridge emitted a Deposit event, relayer should now
@@ -220,7 +248,7 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
   it("Sidechain execute proposal: Should push price to Voting", async function() {
     // Note: Deposit proposal data is needed to call pushPrice() on the Voting sidechain contract.
     const encodedMetaDataProposal = Helpers.abiEncode(
-      ["bytes32", "uint256", "bytes", "uint256"],
+      ["bytes32", "uint256", "bytes", "int256"],
       [padRight(identifier, 64), requestTime, ancillaryData, requestPrice]
     );
     const proposalData = Helpers.createGenericDepositData(encodedMetaDataProposal);
