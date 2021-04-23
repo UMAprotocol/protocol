@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.2.0-alpha.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@3.0.0...@uma/core@2.2.0-alpha.0) (2021-04-23)
+
+### Features
+
+- **FindContractVersion:** update FindContractVersion to build contract hashes during core build process ([#2873](https://github.com/UMAprotocol/protocol/issues/2873)) ([4e5a3bd](https://github.com/UMAprotocol/protocol/commit/4e5a3bddfb90b2e868bbd04274947b5bcf0eebb9))
+- **scripts:** add WithdrawTokens for bot wallet consolidation ([#2874](https://github.com/UMAprotocol/protocol/issues/2874)) ([8be35c6](https://github.com/UMAprotocol/protocol/commit/8be35c6643220fcd365f9c90fe863b547ffa0ca0))
+
 # [2.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.0.1...@uma/core@2.1.0) (2021-03-16)
 
 ### Bug Fixes

@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.1.1-alpha.0](https://github.com/UMAprotocol/protocol/compare/@uma/voter-dapp@2.1.0...@uma/voter-dapp@2.1.1-alpha.0) (2021-04-23)
+
+### Bug Fixes
+
+- **voter-dapp:** Change subgraph URL and query ([#2823](https://github.com/UMAprotocol/protocol/issues/2823)) ([8e984ed](https://github.com/UMAprotocol/protocol/commit/8e984ed638a77363195a8c2631c68f637e899f13))
+
 # [2.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/voter-dapp@2.0.1...@uma/voter-dapp@2.1.0) (2021-03-16)
 
 ### Features

@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.2.0-alpha.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.1.0...@uma/monitors@2.2.0-alpha.0) (2021-04-23)
+
+### Bug Fixes
+
+- **liquidator:** should submit raw # of position tokens, not funding-rate adjusted # ([#2752](https://github.com/UMAprotocol/protocol/issues/2752)) ([53a1b28](https://github.com/UMAprotocol/protocol/commit/53a1b28d1118a01d713be0255485a8ef23e08999))
+- **optimistic-oracle-monitor:** Reduce default log level for funding rate price requests ([#2820](https://github.com/UMAprotocol/protocol/issues/2820)) ([d1aeaee](https://github.com/UMAprotocol/protocol/commit/d1aeaee82cfcc7bd81bcc1d87aa43880e3d21d9a))
+
+### Features
+
+- **FindContractVersion:** update FindContractVersion to build contract hashes during core build process ([#2873](https://github.com/UMAprotocol/protocol/issues/2873)) ([4e5a3bd](https://github.com/UMAprotocol/protocol/commit/4e5a3bddfb90b2e868bbd04274947b5bcf0eebb9))
+- **liquidation-reserve-currency:** add reserve currency liquidator to bots and refine smart contract ([#2775](https://github.com/UMAprotocol/protocol/issues/2775)) ([0eea3fb](https://github.com/UMAprotocol/protocol/commit/0eea3fbb610f74694c22ca36f6902faf3fa9092b))
+- **multicall:** Using Multicall contract to simulate contract state post-state modifying transactions ([#2762](https://github.com/UMAprotocol/protocol/issues/2762)) ([fa8ee91](https://github.com/UMAprotocol/protocol/commit/fa8ee9146c2497c4e370f58a9eca2c7306337f9e))
+- **price-feeds:** add default ETH/BTC funding rate price feed ([#2814](https://github.com/UMAprotocol/protocol/issues/2814)) ([98a0236](https://github.com/UMAprotocol/protocol/commit/98a0236688b6aa9a3b011c110a428d1907f72b89))
+- **scripts:** improve scripts for running Kovan EMP war games ([#2605](https://github.com/UMAprotocol/protocol/issues/2605)) ([0ddb8db](https://github.com/UMAprotocol/protocol/commit/0ddb8db66af688b4ade346a6738aba49d766db81))
+
 # [2.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.0.1...@uma/monitors@2.1.0) (2021-03-16)
 
 ### Features

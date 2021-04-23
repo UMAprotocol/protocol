@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.2.0-alpha.0](https://github.com/UMAprotocol/protocol/compare/@uma/disputer@2.1.0...@uma/disputer@2.2.0-alpha.0) (2021-04-23)
+
+### Features
+
+- **bot-strategy-runner:** add generalised bot runner ([#2851](https://github.com/UMAprotocol/protocol/issues/2851)) ([a748107](https://github.com/UMAprotocol/protocol/commit/a748107df25d153443caf82ec42c08c03ae23bfd))
+- **FindContractVersion:** update FindContractVersion to build contract hashes during core build process ([#2873](https://github.com/UMAprotocol/protocol/issues/2873)) ([4e5a3bd](https://github.com/UMAprotocol/protocol/commit/4e5a3bddfb90b2e868bbd04274947b5bcf0eebb9))
+- **liquidation-reserve-currency:** add reserve currency liquidator to bots and refine smart contract ([#2775](https://github.com/UMAprotocol/protocol/issues/2775)) ([0eea3fb](https://github.com/UMAprotocol/protocol/commit/0eea3fbb610f74694c22ca36f6902faf3fa9092b))
+- **multicall:** Using Multicall contract to simulate contract state post-state modifying transactions ([#2762](https://github.com/UMAprotocol/protocol/issues/2762)) ([fa8ee91](https://github.com/UMAprotocol/protocol/commit/fa8ee9146c2497c4e370f58a9eca2c7306337f9e))
+- **run-transaction-helper:** Move ynatm functionality into runTransaction helper ([#2804](https://github.com/UMAprotocol/protocol/issues/2804)) ([cd3f3ef](https://github.com/UMAprotocol/protocol/commit/cd3f3ef0c96be742a2a585a957db2f884a234744))
+
 # [2.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/disputer@2.0.1...@uma/disputer@2.1.0) (2021-03-16)
 
 ### Features
