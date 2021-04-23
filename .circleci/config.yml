@@ -155,7 +155,7 @@ jobs:
             mv protocol truffle_workaround/
             cd truffle_workaround/protocol
             ./scripts/lerna_packages.sh
-            export PACKAGES_CHANGES=$(cat lerna_output | grep common")
+            export PACKAGES_CHANGES=$(cat lerna_output | grep "common")
             echo "current package: $PACKAGES_CHANGES"
             if [ "$PACKAGES_CHANGES" = "@uma/common" ]; then
                 yarn run test-concurrent-test;
@@ -180,7 +180,7 @@ jobs:
             mv protocol truffle_workaround/
             cd truffle_workaround/protocol
             ./scripts/lerna_packages.sh
-            export PACKAGES_CHANGES=$(cat lerna_output | grep random")
+            export PACKAGES_CHANGES=$(cat lerna_output | grep "random")
             echo "current package: $PACKAGES_CHANGES"
             if [ "$PACKAGES_CHANGES" = "@uma/random" ]; then
                 yarn run test-concurrent-test;
