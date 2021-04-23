@@ -147,7 +147,7 @@ class FinancialContractEventClient {
     // Set the last block to search up until.
     const lastBlockToSearch = this.lastBlockToSearchUntil
       ? this.lastBlockToSearchUntil
-      : await this.web3.eth.Contract();
+      : await this.web3.eth.getBlockNumber();
 
     // Define a config to bound the queries by.
     const blockSearchConfig = {
