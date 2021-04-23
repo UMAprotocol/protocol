@@ -106,7 +106,7 @@ jobs:
             mv protocol truffle_workaround/
             cd truffle_workaround/protocol
             ./scripts/lerna_packages.sh
-            PACKAGES_CHANGES=$(cat lerna_output | grep "core")
+            export PACKAGES_CHANGES=$(cat lerna_output | grep "core")
             echo "current package: $PACKAGES_CHANGES"
             if [ "$PACKAGES_CHANGES" = "@uma/core" ]; then
                 yarn run test-concurrent-test;
