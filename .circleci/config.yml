@@ -100,13 +100,8 @@ jobs:
       - run:
           name: Run tests
           command: |
-            cd ..
-            mkdir truffle_workaround
-            mv protocol truffle_workaround/
-            cd truffle_workaround/protocol
             ./scripts/lerna_packages.sh
             export PACKAGES_CHANGES=$(cat lerna_output | grep "core")
-            echo "current package: $PACKAGES_CHANGES"
             if [ "$PACKAGES_CHANGES" = "@uma/core" ]; then
                 yarn run test-concurrent-test;
             else
@@ -125,13 +120,8 @@ jobs:
       - run:
           name: Run tests
           command: |
-            cd ..
-            mkdir truffle_workaround
-            mv protocol truffle_workaround/
-            cd truffle_workaround/protocol
             ./scripts/lerna_packages.sh
             export PACKAGES_CHANGES=$(cat lerna_output | grep "liquidator")
-            echo "current package: $PACKAGES_CHANGES"
             if [ "$PACKAGES_CHANGES" = "@uma/liquidator" ]; then
                 yarn run test-concurrent-test;
             else
@@ -150,18 +140,153 @@ jobs:
       - run:
           name: Run tests
           command: |
-            cd ..
-            mkdir truffle_workaround
-            mv protocol truffle_workaround/
-            cd truffle_workaround/protocol
             ./scripts/lerna_packages.sh
             export PACKAGES_CHANGES=$(cat lerna_output | grep "common")
-            echo "current package: $PACKAGES_CHANGES"
             if [ "$PACKAGES_CHANGES" = "@uma/common" ]; then
                 yarn run test-concurrent-test;
             else
                 circleci-agent step halt;
             fi
+  test_disputer:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: large
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: |
+            ./scripts/lerna_packages.sh
+            export PACKAGES_CHANGES=$(cat lerna_output | grep "disputer")
+            if [ "$PACKAGES_CHANGES" = "@uma/disputer" ]; then
+                yarn run test-concurrent-test;
+            else
+                circleci-agent step halt;
+            fi
+  test_financial_templates_lib:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: large
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: |
+            ./scripts/lerna_packages.sh
+            export PACKAGES_CHANGES=$(cat lerna_output | grep "financial-templates-lib")
+            if [ "$PACKAGES_CHANGES" = "@uma/financial-templates-lib" ]; then
+                yarn run test-concurrent-test;
+            else
+                circleci-agent step halt;
+            fi
+  test_funding_rate_proposer:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: large
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: |
+            ./scripts/lerna_packages.sh
+            export PACKAGES_CHANGES=$(cat lerna_output | grep "funding-rate-proposer")
+            if [ "$PACKAGES_CHANGES" = "@uma/funding-rate-proposer" ]; then
+                yarn run test-concurrent-test;
+            else
+                circleci-agent step halt;
+            fi
+  test_merkel_distributor:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: large
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: |
+            ./scripts/lerna_packages.sh
+            export PACKAGES_CHANGES=$(cat lerna_output | grep "merkel-distributor")
+            if [ "$PACKAGES_CHANGES" = "@uma/merkel-distributor" ]; then
+                yarn run test-concurrent-test;
+            else
+                circleci-agent step halt;
+            fi
+  test_monitors:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: large
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: |
+            ./scripts/lerna_packages.sh
+            export PACKAGES_CHANGES=$(cat lerna_output | grep "monitors")
+            if [ "$PACKAGES_CHANGES" = "@uma/monitors" ]; then
+                yarn run test-concurrent-test;
+            else
+                circleci-agent step halt;
+            fi
+  test_optimistic_oracle:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: large
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: |
+            ./scripts/lerna_packages.sh
+            export PACKAGES_CHANGES=$(cat lerna_output | grep "optimistic-oracle")
+            if [ "$PACKAGES_CHANGES" = "@uma/optimistic-oracle" ]; then
+                yarn run test-concurrent-test;
+            else
+                circleci-agent step halt;
+            fi
+    test_reporters:
+      docker:
+        - image: circleci/node:lts
+        - image: trufflesuite/ganache-cli
+          command: ganache-cli -i 1234 -l 9000000 -p 9545
+      working_directory: ~/protocol
+      resource_class: large
+      steps:
+        - restore_cache:
+            key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+        - run:
+            name: Run tests
+            command: |
+              ./scripts/lerna_packages.sh
+              export PACKAGES_CHANGES=$(cat lerna_output | grep "reporters")
+              if [ "$PACKAGES_CHANGES" = "@uma/reporters" ]; then
+                  yarn run test-concurrent-test;
+              else
+                  circleci-agent step halt;
+              fi
   test_random:
     docker:
       - image: circleci/node:lts
@@ -175,13 +300,8 @@ jobs:
       - run:
           name: Run tests
           command: |
-            cd ..
-            mkdir truffle_workaround
-            mv protocol truffle_workaround/
-            cd truffle_workaround/protocol
             ./scripts/lerna_packages.sh
             export PACKAGES_CHANGES=$(cat lerna_output | grep "random")
-            echo "current package: $PACKAGES_CHANGES"
             if [ "$PACKAGES_CHANGES" = "@uma/random" ]; then
                 yarn run test-concurrent-test;
             else
@@ -278,6 +398,34 @@ workflows:
           requires:
             - build
       - test_common:
+          context: api_keys
+          requires:
+            - build
+      - test_disputer:
+          context: api_keys
+          requires:
+            - build
+      - test_financial_templates_lib:
+          context: api_keys
+          requires:
+            - build
+      - test_funding_rate_proposer:
+          context: api_keys
+          requires:
+            - build
+      - test_merkle_distributor:
+          context: api_keys
+          requires:
+            - build
+      - test_monitors:
+          context: api_keys
+          requires:
+            - build
+      - test_optimistic_oracle:
+          context: api_keys
+          requires:
+            - build
+      - test_reporters:
           context: api_keys
           requires:
             - build
