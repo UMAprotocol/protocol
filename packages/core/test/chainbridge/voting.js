@@ -127,7 +127,6 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
       [padRight(identifier, 64), requestTime, ancillaryData]
     );
     const depositData = Helpers.createGenericDepositData(encodedMetaDataProposal);
-    console.log(depositData);
     const depositTxn = await bridgeSidechain.deposit(chainId, votingResourceSidechainId, depositData, {
       from: depositerAddress
     });
