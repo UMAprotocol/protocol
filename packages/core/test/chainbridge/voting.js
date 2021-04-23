@@ -1,5 +1,7 @@
-// Test integrations between GenericHandler and UMA voting contracts.
-// Inspired by tests from chainbridge-solidity repo's test folder:
+// Test integrations between GenericHandler and UMA voting contracts. The purpose of this test script and the contracts
+// found in the `chainbridge` directory is to make sure that the latest Voting interface is compatible with the
+// chainbridge GenericHandler contract.
+// Note: Inspired by tests from chainbridge-solidity repo's test folder:
 // https://github.com/ChainSafe/chainbridge-solidity/tree/master/test/handlers/generic
 
 const TruffleAssert = require("truffle-assertions");
