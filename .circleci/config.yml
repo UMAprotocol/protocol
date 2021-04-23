@@ -87,7 +87,6 @@ jobs:
             mv protocol truffle_workaround/
             cd truffle_workaround/protocol
             ./scripts/lerna_packages.sh
-
   test_core:
     docker:
       - image: circleci/node:lts
@@ -113,84 +112,81 @@ jobs:
             else
                 circleci-agent step halt;
             fi
-
-    test_liquidator:
-      docker:
-        - image: circleci/node:lts
-        - image: trufflesuite/ganache-cli
-          command: ganache-cli -i 1234 -l 9000000 -p 9545
-      working_directory: ~/protocol
-      resource_class: large
-      steps:
-        - restore_cache:
-            key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
-        - run:
-            name: Run tests
-            command: |
-              cd ..
-              mkdir truffle_workaround
-              mv protocol truffle_workaround/
-              cd truffle_workaround/protocol
-              ./scripts/lerna_packages.sh
-              export PACKAGES_CHANGES=$(cat lerna_output | grep "liquidator")
-              echo "current package: $PACKAGES_CHANGES"
-              if [ "$PACKAGES_CHANGES" = "@uma/liquidator" ]; then
-                  yarn run test-concurrent-test;
-              else
-                  circleci-agent step halt;
-              fi
-
-    test_common:
-      docker:
-        - image: circleci/node:lts
-        - image: trufflesuite/ganache-cli
-          command: ganache-cli -i 1234 -l 9000000 -p 9545
-      working_directory: ~/protocol
-      resource_class: large
-      steps:
-        - restore_cache:
-            key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
-        - run:
-            name: Run tests
-            command: |
-              cd ..
-              mkdir truffle_workaround
-              mv protocol truffle_workaround/
-              cd truffle_workaround/protocol
-              ./scripts/lerna_packages.sh
-              export PACKAGES_CHANGES=$(cat lerna_output | grep common")
-              echo "current package: $PACKAGES_CHANGES"
-              if [ "$PACKAGES_CHANGES" = "@uma/common" ]; then
-                  yarn run test-concurrent-test;
-              else
-                  circleci-agent step halt;
-              fi
-
-    test_random:
-      docker:
-        - image: circleci/node:lts
-        - image: trufflesuite/ganache-cli
-          command: ganache-cli -i 1234 -l 9000000 -p 9545
-      working_directory: ~/protocol
-      resource_class: large
-      steps:
-        - restore_cache:
-            key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
-        - run:
-            name: Run tests
-            command: |
-              cd ..
-              mkdir truffle_workaround
-              mv protocol truffle_workaround/
-              cd truffle_workaround/protocol
-              ./scripts/lerna_packages.sh
-              export PACKAGES_CHANGES=$(cat lerna_output | grep random")
-              echo "current package: $PACKAGES_CHANGES"
-              if [ "$PACKAGES_CHANGES" = "@uma/random" ]; then
-                  yarn run test-concurrent-test;
-              else
-                  circleci-agent step halt;
-              fi
+  test_liquidator:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: large
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: |
+            cd ..
+            mkdir truffle_workaround
+            mv protocol truffle_workaround/
+            cd truffle_workaround/protocol
+            ./scripts/lerna_packages.sh
+            export PACKAGES_CHANGES=$(cat lerna_output | grep "liquidator")
+            echo "current package: $PACKAGES_CHANGES"
+            if [ "$PACKAGES_CHANGES" = "@uma/liquidator" ]; then
+                yarn run test-concurrent-test;
+            else
+                circleci-agent step halt;
+            fi
+  test_common:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: large
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: |
+            cd ..
+            mkdir truffle_workaround
+            mv protocol truffle_workaround/
+            cd truffle_workaround/protocol
+            ./scripts/lerna_packages.sh
+            export PACKAGES_CHANGES=$(cat lerna_output | grep common")
+            echo "current package: $PACKAGES_CHANGES"
+            if [ "$PACKAGES_CHANGES" = "@uma/common" ]; then
+                yarn run test-concurrent-test;
+            else
+                circleci-agent step halt;
+            fi
+  test_random:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: large
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: |
+            cd ..
+            mkdir truffle_workaround
+            mv protocol truffle_workaround/
+            cd truffle_workaround/protocol
+            ./scripts/lerna_packages.sh
+            export PACKAGES_CHANGES=$(cat lerna_output | grep random")
+            echo "current package: $PACKAGES_CHANGES"
+            if [ "$PACKAGES_CHANGES" = "@uma/random" ]; then
+                yarn run test-concurrent-test;
+            else
+                circleci-agent step halt;
+            fi
 
   coverage:
     docker:
@@ -277,22 +273,18 @@ workflows:
           context: api_keys
           requires:
             - build
-            - test
       - test_liquidator:
           context: api_keys
           requires:
             - build
-            - test
       - test_common:
           context: api_keys
           requires:
             - build
-            - test
       - test_random:
           context: api_keys
           requires:
             - build
-            - test
       - docs:
           requires:
             - checkout_and_install
