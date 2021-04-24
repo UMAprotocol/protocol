@@ -4,17 +4,26 @@ import { getWeb3 } from "@uma/common";
 import type Web3 from "web3";
 const truffleContract = require("@truffle/contract");
 
-// Declare some globals so typescript will allow them to be referenced.
-// declare const web3: Web3 | undefined;
-// declare const hardhatTestingAddresses: any;
-// declare const artifacts: any;
+declare const hardhatTestingAddresses: any;
+
+type GenericArtifacts = (typeof artifacts) & {
+  require: (name: string) => Truffle.ContractInstance,
+  _provisioner: any
+}
+
+type TruffleContractI = Truffle.ContractInstance & {
+  networks: {
+    [key: number]: {
+      address: string
+    }
+  }
+}
 
 /**
  * @notice Gets the directory for version of core specified by an input version string.
  * @param {String} version Version string in the form of x.y.z.
  */
 function getDirectoryForVersion(version: string) {
-  const abc = artifacts.require("Voting");
   // Note: this establishes a convention where any previous core version that is pulled in here must be aliased in the
   // package.json file as follows:
   // "@uma/core-x-y-z": "npm:@uma/core@x.y.z"
@@ -81,7 +90,7 @@ function getTruffleContract(contractName: string, web3: Web3 | undefined, versio
   const artifact = getArtifact(contractName, version);
   const Contract = truffleContract(artifact);
   Contract.setProvider(resolvedWeb3.currentProvider);
-  return Contract as TruffleContract;
+  return Contract as TruffleContractI;
 }
 
 /**
@@ -93,7 +102,7 @@ function getTruffleContract(contractName: string, web3: Web3 | undefined, versio
  */
 function getTruffleContractTest(contractName: string, web3: Web3 | undefined, version = "latest") {
   return version === "latest"
-    ? artifacts.require(contractName)
+    ? (artifacts as GenericArtifacts).require(contractName) as TruffleContractI
     : getTruffleContract(contractName, web3, version);
 }
 
@@ -107,16 +116,16 @@ function getTruffleContractTest(contractName: string, web3: Web3 | undefined, ve
 function getAddressTest(contractName: string, networkId: number, version = "latest") {
   const truffleContract = getTruffleContractTest(contractName, undefined, version);
 
+  const { _provisioner } = (artifacts as GenericArtifacts);
   if (truffleContract.networks[networkId]) {
     return truffleContract.networks[networkId].address;
   } else if (
-    artifacts._provisioner &&
-    artifacts._provisioner._deploymentAddresses[contractName] &&
-    artifacts._provisioner._networkConfig.chainId === networkId
+    _provisioner?._deploymentAddresses[contractName] &&
+    _provisioner?._networkConfig.chainId === networkId
   ) {
     // In the production hardhat case, there is no networks object, so we fall back to hardhat's global list of deployed addresses as long as hardhat's network id matches the one passed in.
     // Note: this is a bit hacky because it depends on internal hardhat details.
-    return artifacts._provisioner._deploymentAddresses[contractName];
+    return _provisioner._deploymentAddresses[contractName];
   } else if (hardhatTestingAddresses[contractName]) {
     // If running tests in hardhat, check if there is a testing address set.
     return hardhatTestingAddresses[contractName];

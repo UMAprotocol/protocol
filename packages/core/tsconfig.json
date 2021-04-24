@@ -1,8 +1,10 @@
 {
   "extends": "@tsconfig/node14/tsconfig.json",
   "esModuleInterop": true,
-  "include": ["types/**/*.ts", "index.ts"],
+  "include": ["types/**/*.ts", "index.ts", "src/**/*.ts"],
   "compilerOptions": {
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "declaration": true,
+    "declarationDir": "./types"
   }
 }

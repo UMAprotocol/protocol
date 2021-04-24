@@ -62,7 +62,8 @@
     "/build/contracts/*.json",
     "/migrations/*.js",
     "/config/*.json",
-    "/dist/**/*"
+    "/dist/**/*",
+    "/types/**/*"
   ],
   "scripts": {
     "test": "yarn mocha-test && yarn hardhat-test && yarn truffle-test",
@@ -71,8 +72,9 @@
     "mocha-test": "mocha ./mocha-test --recursive",
     "load-addresses": "yarn run apply-registry",
     "clean": "rm -rf build",
-    "build": "yarn truffle compile && yarn load-addresses && typechain --target=web3-v1 './build/contracts/*.json' && typechain --target=truffle-v5 './build/contracts/*.json' && typechain --target=ethers-v5 './build/contracts/*.json' && tsc && yarn buildLatestHardhatVersionHashes",
+    "build": "yarn truffle compile && yarn load-addresses && yarn generate-types && tsc && yarn buildLatestHardhatVersionHashes",
     "buildLatestHardhatVersionHashes": "yarn hardhat run ./src/BuildContractVersionHashes.js",
+    "generate-types": "typechain --target=web3-v1 './build/contracts/*.json' && typechain --target=truffle-v5 './build/contracts/*.json' && typechain --target=ethers-v5 './build/contracts/*.json'",
     "prepublish": "yarn build"
   },
   "bugs": {

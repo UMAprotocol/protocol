@@ -1,10 +1,17 @@
-const assert = require("assert");
-const path = require("path");
-const fs = require("fs");
+import assert from "assert";
+import path from "path";
+import fs from "fs";
 
-let latestVersionMap = {};
+interface VersionMap {
+  [key: string]: {
+    contractType: string,
+    contractVersion: string
+  }
+}
+
+let latestVersionMap = {} as VersionMap;
 try {
-  latestVersionMap = JSON.parse(fs.readFileSync(`${path.resolve(__dirname)}/../build/contract-type-hash-map.json`));
+  latestVersionMap = JSON.parse(fs.readFileSync(`${path.resolve(__dirname)}/../build/contract-type-hash-map.json`).toString("utf8"));
 } catch (error) {
   console.log("WARNING: latest version map was not found in the build directory! Run `yarn build` from core first!");
 }
