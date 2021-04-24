@@ -859,7 +859,7 @@ const defaultConfigs = {
     type: "expression",
     expression: `
         ETHBTC_FV = ETH\\/BTC * PERP_FRM;
-        max(-0.00001, min(0.00001, (ETHBTC_FV - ETHBTC_PERP) / ETHBTC_FV / 86400))
+        round(max(-0.00001, min(0.00001, (ETHBTC_FV - ETHBTC_PERP) / ETHBTC_FV / 86400)), 9)
     `,
     lookback: 7200,
     minTimeBetweenUpdates: 60,
