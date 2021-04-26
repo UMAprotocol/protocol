@@ -2,8 +2,8 @@ pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "./utils/Pausable.sol";
-import "./utils/SafeMath.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/math/SafeMath.sol";
 import "./IDepositExecute.sol";
 import "./IBridge.sol";
 import "./IERCHandler.sol";
