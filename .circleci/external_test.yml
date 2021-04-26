@@ -242,7 +242,7 @@ workflows:
       - test_disputer:
           context: api_keys
       - test_financial_templates_lib:
-          context: api_key
+          context: api_keys
       - test_funding_rate_proposer:
           context: api_keys
       - test_merkle_distributor:
