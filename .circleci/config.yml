@@ -60,6 +60,33 @@ jobs:
           command: ./scripts/build_docs_site.sh
       - store_artifacts:
           path: build/site
+  test:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: large
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          # Note: this is a workaround for a strnage truffle issue.
+          # The core idea is that truffle sees the absolute paths in old artifacts that are used outside of the core
+          # directory and it tries to add those absolute paths to the list of sources to compile. Normally, this
+          # wouldn't be an issue since those absolute paths wouldn't exist on the machine you're compiling on. However,
+          # because the published core contracts are compiled in the ci env, many of these absolute paths do match in
+          # this environment. This creates a very nasty situation where multiple versions of the same contracts are
+          # compiled and it's non-deterministic which one will be used by truffle. To avoid this, we just change the dir
+          # structure to disrupt the absolute paths. This means that truffle will not know how up-to-date the bytecode
+          # is, however, so testing will require a recompile for every contract.
+          command: |
+            cd ..
+            mkdir truffle_workaround
+            mv protocol truffle_workaround/
+            cd truffle_workaround/protocol
+            ./scripts/lerna_packages.sh
 
   test_core:
     docker:
