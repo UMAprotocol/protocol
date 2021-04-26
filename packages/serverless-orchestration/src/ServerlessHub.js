@@ -156,7 +156,7 @@ hub.post("/", async (req, res) => {
       message: "All calls returned correctly",
       output: { errorOutputs, validOutputs, retriedOutputs }
     });
-    await delay(4); // Wait a few seconds to be sure the the winston logs are processed upstream.
+    await delay(2); // Wait a few seconds to be sure the the winston logs are processed upstream.
     res
       .status(200)
       .send({ message: "All calls returned correctly", output: { errorOutputs, validOutputs, retriedOutputs } });
