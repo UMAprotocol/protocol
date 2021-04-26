@@ -228,3 +228,28 @@ jobs:
             else
                 circleci-agent step halt;
             fi
+
+workflows:
+  version: 2.1
+  build_and_test:
+    jobs:
+      - test_core:
+          context: api_keys
+      - test_liquidator:
+          context: api_keys
+      - test_common:
+          context: api_keys
+      - test_disputer:
+          context: api_keys
+      - test_financial_templates_lib:
+          context: api_key
+      - test_funding_rate_proposer:
+          context: api_keys
+      - test_merkle_distributor:
+          context: api_keys
+      - test_monitors:
+          context: api_keys
+      - test_optimistic_oracle:
+          context: api_keys
+      - test_reporters:
+          context: api_keys
