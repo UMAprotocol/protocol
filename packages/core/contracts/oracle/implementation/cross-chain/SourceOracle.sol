@@ -2,8 +2,6 @@
 pragma solidity ^0.6.0;
 
 import "./BeaconOracle.sol";
-import "../../interfaces/FinderInterface.sol";
-import "../Constants.sol";
 
 /**
  * @title Simple implementation of the OracleInterface that is intended to be deployed on Mainnet and used
@@ -14,16 +12,7 @@ import "../Constants.sol";
  * price reqests should be an off-chain relayer capable of detecting signals from the non-Mainnet Sink Oracles.
  */
 contract SourceOracle is BeaconOracle {
-    // Finder to provide addresses for DVM contracts.
-    FinderInterface public finder;
-
-    /**
-     * @notice Constructor.
-     * @param _finderAddress finder to use to get addresses of DVM contracts.
-     */
-    constructor(address _finderAddress) public {
-        finder = FinderInterface(_finderAddress);
-    }
+    constructor(address _finderAddress) public BeaconOracle(_finderAddress) {}
 
     function requestPrice(
         bytes32 identifier,
@@ -34,7 +23,15 @@ contract SourceOracle is BeaconOracle {
         _getOracle().requestPrice(identifier, time, ancillaryData);
     }
 
-    function _getOracle() internal view returns (OracleAncillaryInterface) {
-        return OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
+    function pushPrice(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData,
+        int256 price
+    ) public {
+        _pushPrice(identifier, time, ancillaryData, price);
+
+        // TODO: Call Bridge.deposit() to intiate cross-chain publishing of price request.
+        // _getBridge().deposit(formattedMetadata);
     }
 }

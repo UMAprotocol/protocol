@@ -4,6 +4,9 @@ pragma experimental ABIEncoderV2;
 
 import "../../interfaces/OracleAncillaryInterface.sol";
 import "../../../common/implementation/MultiRole.sol";
+import "../../interfaces/FinderInterface.sol";
+import "./BridgeInterface.sol";
+import "../Constants.sol";
 
 /**
  * @title Simple implementation of the OracleInterface used to communicate price request data cross-chain between
@@ -47,6 +50,9 @@ abstract contract BeaconOracle is OracleAncillaryInterface, MultiRole {
 
     QueryPoint[] public requestedPrices;
 
+    // Finder to provide addresses for DVM contracts.
+    FinderInterface public finder;
+
     event PriceRequestAdded(address indexed requester, bytes32 indexed identifier, uint256 time, bytes ancillaryData);
     event PushedPrice(
         address indexed pusher,
@@ -55,6 +61,14 @@ abstract contract BeaconOracle is OracleAncillaryInterface, MultiRole {
         bytes ancillaryData,
         int256 price
     );
+
+    /**
+     * @notice Constructor.
+     * @param _finderAddress finder to use to get addresses of DVM contracts.
+     */
+    constructor(address _finderAddress) public {
+        finder = FinderInterface(_finderAddress);
+    }
 
     /**
      * @notice Enqueues a request (if a request isn't already present) for the given (identifier, time, ancillary data)
@@ -81,12 +95,12 @@ abstract contract BeaconOracle is OracleAncillaryInterface, MultiRole {
      * @dev Should be called by an off-chain relayer who saw a price resolved on a different network's Source or Sink
      * Oracle.
      */
-    function pushPrice(
+    function _pushPrice(
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData,
         int256 price
-    ) public onlyRoleHolder(uint256(Roles.Publisher)) {
+    ) internal onlyRoleHolder(uint256(Roles.Publisher)) {
         verifiedPrices[identifier][time][ancillaryData] = Price(true, price);
 
         QueryIndex storage queryIndex = queryIndices[identifier][time][ancillaryData];
@@ -124,5 +138,13 @@ abstract contract BeaconOracle is OracleAncillaryInterface, MultiRole {
         Price storage lookup = verifiedPrices[identifier][time][ancillaryData];
         require(lookup.isAvailable);
         return lookup.price;
+    }
+
+    function _getOracle() internal view returns (OracleAncillaryInterface) {
+        return OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
+    }
+
+    function _getBridge() internal view returns (BridgeInterface) {
+        return BridgeInterface(finder.getImplementationAddress(OracleInterfaces.Bridge));
     }
 }

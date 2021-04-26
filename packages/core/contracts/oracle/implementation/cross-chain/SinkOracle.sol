@@ -11,11 +11,25 @@ import "./BeaconOracle.sol";
  * optimistic price resolution on non-Mainnet networks while also providing ultimate security by the DVM on Mainnet.
  */
 contract SinkOracle is BeaconOracle {
+    constructor(address _finderAddress) public BeaconOracle(_finderAddress) {}
+
     function requestPrice(
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
     ) public override {
         _requestPrice(identifier, time, ancillaryData);
+
+        // TODO: Call Bridge.deposit() to intiate cross-chain price request.
+        // _getBridge().deposit(formattedMetadata);
+    }
+
+    function pushPrice(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData,
+        int256 price
+    ) public {
+        _pushPrice(identifier, time, ancillaryData, price);
     }
 }
