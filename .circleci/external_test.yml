@@ -1,0 +1,230 @@
+version: 2.1
+
+jobs:
+  test:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: large
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          # Note: this is a workaround for a strnage truffle issue.
+          # The core idea is that truffle sees the absolute paths in old artifacts that are used outside of the core
+          # directory and it tries to add those absolute paths to the list of sources to compile. Normally, this
+          # wouldn't be an issue since those absolute paths wouldn't exist on the machine you're compiling on. However,
+          # because the published core contracts are compiled in the ci env, many of these absolute paths do match in
+          # this environment. This creates a very nasty situation where multiple versions of the same contracts are
+          # compiled and it's non-deterministic which one will be used by truffle. To avoid this, we just change the dir
+          # structure to disrupt the absolute paths. This means that truffle will not know how up-to-date the bytecode
+          # is, however, so testing will require a recompile for every contract.
+          command: |
+            cd ..
+            mkdir truffle_workaround
+            mv protocol truffle_workaround/
+            cd truffle_workaround/protocol
+            ./scripts/lerna_packages.sh
+  test_core:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: large
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: |
+            ./scripts/lerna_packages.sh
+            export PACKAGES_CHANGES=$(cat lerna_output | grep "core")
+            if [ "$PACKAGES_CHANGES" = "@uma/core" ]; then
+                yarn run test-concurrent-test;
+            else
+                circleci-agent step halt;
+            fi
+  test_liquidator:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: large
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: |
+            ./scripts/lerna_packages.sh
+            export PACKAGES_CHANGES=$(cat lerna_output | grep "liquidator")
+            if [ "$PACKAGES_CHANGES" = "@uma/liquidator" ]; then
+                yarn run test-concurrent-test;
+            else
+                circleci-agent step halt;
+            fi
+  test_common:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: large
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: |
+            ./scripts/lerna_packages.sh
+            export PACKAGES_CHANGES=$(cat lerna_output | grep "common")
+            if [ "$PACKAGES_CHANGES" = "@uma/common" ]; then
+                yarn run test-concurrent-test;
+            else
+                circleci-agent step halt;
+            fi
+  test_disputer:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: large
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: |
+            ./scripts/lerna_packages.sh
+            export PACKAGES_CHANGES=$(cat lerna_output | grep "disputer")
+            if [ "$PACKAGES_CHANGES" = "@uma/disputer" ]; then
+                yarn run test-concurrent-test;
+            else
+                circleci-agent step halt;
+            fi
+  test_financial_templates_lib:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: large
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: |
+            ./scripts/lerna_packages.sh
+            export PACKAGES_CHANGES=$(cat lerna_output | grep "financial-templates-lib")
+            if [ "$PACKAGES_CHANGES" = "@uma/financial-templates-lib" ]; then
+                yarn run test-concurrent-test;
+            else
+                circleci-agent step halt;
+            fi
+  test_funding_rate_proposer:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: large
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: |
+            ./scripts/lerna_packages.sh
+            export PACKAGES_CHANGES=$(cat lerna_output | grep "funding-rate-proposer")
+            if [ "$PACKAGES_CHANGES" = "@uma/funding-rate-proposer" ]; then
+                yarn run test-concurrent-test;
+            else
+                circleci-agent step halt;
+            fi
+  test_merkle_distributor:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: large
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: |
+            ./scripts/lerna_packages.sh
+            export PACKAGES_CHANGES=$(cat lerna_output | grep "merkle-distributor")
+            if [ "$PACKAGES_CHANGES" = "@uma/merkle-distributor" ]; then
+                yarn run test-concurrent-test;
+            else
+                circleci-agent step halt;
+            fi
+  test_monitors:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: large
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: |
+            ./scripts/lerna_packages.sh
+            export PACKAGES_CHANGES=$(cat lerna_output | grep "monitors")
+            if [ "$PACKAGES_CHANGES" = "@uma/monitors" ]; then
+                yarn run test-concurrent-test;
+            else
+                circleci-agent step halt;
+            fi
+  test_optimistic_oracle:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: large
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: |
+            ./scripts/lerna_packages.sh
+            export PACKAGES_CHANGES=$(cat lerna_output | grep "optimistic-oracle")
+            if [ "$PACKAGES_CHANGES" = "@uma/optimistic-oracle" ]; then
+                yarn run test-concurrent-test;
+            else
+                circleci-agent step halt;
+            fi
+  test_reporters:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: large
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run tests
+          command: |
+            ./scripts/lerna_packages.sh
+            export PACKAGES_CHANGES=$(cat lerna_output | grep "reporters")
+            if [ "$PACKAGES_CHANGES" = "@uma/reporters" ]; then
+                yarn run test-concurrent-test;
+            else
+                circleci-agent step halt;
+            fi
