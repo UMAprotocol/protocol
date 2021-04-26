@@ -132,7 +132,7 @@ function _getChildProcessIdentifier(req) {
 }
 
 // Start the spoke's async listening process. Enables injection of a logging instance & port for testing.
-async function Poll(injectedLogger = Logger, port = 8888) {
+async function Poll(injectedLogger = Logger, port = 8080) {
   logger = injectedLogger;
   return spoke.listen(port, () => {
     logger.debug({
