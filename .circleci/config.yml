@@ -35,7 +35,7 @@ jobs:
           command: yarn qbuild
       - run:
           name: Modified packages
-          command: .ci/check_lerna_packages.sh
+          command: ./ci/check_lerna_packages.sh
       - save_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
           paths:
@@ -79,7 +79,7 @@ jobs:
           name: Generate Tests
           command: |
             cd /home/circleci/protocol
-            ./scripts/generate_lerna_config.sh
+            ./ci/generate_lerna_config.sh
       - continuation/continue:
           configuration_path: .circleci/lerna_config.yml
 

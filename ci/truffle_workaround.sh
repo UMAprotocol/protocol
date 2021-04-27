@@ -14,11 +14,3 @@ cd ..
 mkdir truffle_workaround
 mv protocol truffle_workaround/
 cd truffle_workaround/protocol
-
-# Note: To split the tests over CI jobs, we are using lerna to list all the changes on modules and dependencies,
-# and create a conditional on the job, if the module was changed, execute the test.
-
-# HASH=$(git merge-base HEAD master)
-# yarn lerna ls --since ${HASH} --include-dependents > lerna_output
-# cat lerna_output | grep @ > lerna_packages
-# echo "edited packages:" && cat lerna_packages

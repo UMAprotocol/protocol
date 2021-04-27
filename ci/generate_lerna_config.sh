@@ -24,7 +24,7 @@ for PACKAGE in "${PACKAGES_ARRAY[@]}"
       - run:
           name: Run tests
           command: |
-            ./scripts/lerna_packages.sh
+            ./scripts/truffle_workaround.sh
             export PACKAGES_CHANGES=$PACKAGE
             yarn run test-concurrent-test;
 EOF
