@@ -3,12 +3,7 @@
 set -o errexit
 set -o nounset
 
-HASH=$(git merge-base HEAD master)
-yarn lerna ls --since ${HASH} --include-dependents > lerna_output
-cat lerna_output | grep @ > lerna_packages
-echo "edited packages:" && cat lerna_packages
-
-PACKAGES_ARRAY=($(cat lerna_packages))
+PACKAGES_ARRAY=($(cat ci/lerna_packages))
 CI_CONFIG_FILE=".circleci/lerna_config.yml"
 
 printf "version: 2.1\n\njobs:\n" >> $CI_CONFIG_FILE
