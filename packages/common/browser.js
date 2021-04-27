@@ -12,6 +12,7 @@ module.exports = {
   ...require("./src/ObjectUtils"),
   ...require("./src/PublicNetworks"),
   ...require("./src/Random"),
+  ...require("./src/RetryProvider"),
   ...require("./src/SolcoverConfig"),
   ...require("./src/SolidityTestUtils"),
   ...require("./src/TimeUtils"),
