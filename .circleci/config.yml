@@ -74,7 +74,9 @@ jobs:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Generate Tests
-          command: ./scripts/generate_lerna_config.sh
+          command: |
+            cd protocol/
+            ./scripts/generate_lerna_config.sh
       - continuation/continue:
           configuration_path: .circleci/lerna_config.yml
 
