@@ -75,7 +75,7 @@ jobs:
       - run:
           name: Generate Tests
           command: |
-            cd protocol/
+            cd /home/circleci/protocol
             ./scripts/generate_lerna_config.sh
       - continuation/continue:
           configuration_path: .circleci/lerna_config.yml
