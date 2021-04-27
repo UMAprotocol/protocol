@@ -38,7 +38,12 @@ class RetryProvider {
       return new Promise((resolve, reject) => {
         provider.send(payload, (error, result) => {
           if (error) {
+            // Error thrown in the provider.
             reject(error);
+          } else if (result.error) {
+            // Error object returned from node.
+            // TODO: we may need to add additional logic to discern EVM execution errors from node connection errors.
+            reject(result);
           } else {
             resolve(result);
           }
@@ -66,7 +71,7 @@ class RetryProvider {
 
   _constructOrGetProvider(index) {
     const cache = this.providerCaches[index];
-    require(cache, "No provider for this index");
+    assert(cache, "No provider for this index");
     if (!cache.provider) {
       const { url, options } = cache;
       cache.provider = url.startsWith("ws")
