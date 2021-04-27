@@ -82,14 +82,15 @@ class RetryProvider {
     try {
       return await fn(provider);
     } catch (error) {
-      let nextRetryIndex = retryIndex + 1;
-      let nextProviderIndex = providerIndex;
-      if (this.providerCaches[providerIndex].retries === nextRetryIndex) {
-        nextRetryIndex = 0;
-        nextProviderIndex = providerIndex + 1;
-        if (nextProviderIndex >= this.providerCaches.length) throw error; // No more providers to try.
-      }
+      const { delay, retries } = this.providerCaches[providerIndex];
+      // If out of retries, move to next provider.
+      const shouldMoveToNextProvider = retries <= retryIndex + 1;
+      let nextRetryIndex = shouldMoveToNextProvider ? 0 : retryIndex + 1;
+      let nextProviderIndex = shouldMoveToNextProvider ? providerIndex + 1 : providerIndex;
+      if (nextProviderIndex >= this.providerCaches.length) throw error; // No more providers to try.
+      if (!shouldMoveToNextProvider) await new Promise(resolve => setTimeout(resolve, delay * 1000)); // Delay only if not moving to a new provider.
 
+      // Run function again with a different provider or retry index.
       return await this._runRetry(fn, nextProviderIndex, nextRetryIndex);
     }
   }
