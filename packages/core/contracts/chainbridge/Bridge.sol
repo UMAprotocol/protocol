@@ -13,7 +13,9 @@ import "./IGenericHandler.sol";
     @title Facilitates deposits, creation and votiing of deposit proposals, and deposit executions.
     @author ChainSafe Systems.
  */
-contract Bridge is Pausable, AccessControl, SafeMath {
+contract Bridge is Pausable, AccessControl {
+    using SafeMath for uint256;
+
     uint8 public _chainID;
     uint256 public _relayerThreshold;
     uint256 public _totalRelayers;
@@ -356,7 +358,7 @@ contract Bridge is Pausable, AccessControl, SafeMath {
             proposal._yesVotes[0] = msg.sender;
             emit ProposalEvent(chainID, depositNonce, ProposalStatus.Active, resourceID, dataHash);
         } else {
-            if (sub(block.number, proposal._proposedBlock) > _expiry) {
+            if (block.number.sub(proposal._proposedBlock) > _expiry) {
                 // if the number of blocks that has passed since this proposal was
                 // submitted exceeds the expiry threshold set, cancel the proposal
                 proposal._status = ProposalStatus.Cancelled;
@@ -398,7 +400,7 @@ contract Bridge is Pausable, AccessControl, SafeMath {
         Proposal storage proposal = _proposals[nonceAndID][dataHash];
 
         require(proposal._status != ProposalStatus.Cancelled, "Proposal already cancelled");
-        require(sub(block.number, proposal._proposedBlock) > _expiry, "Proposal not at expiry threshold");
+        require(block.number.sub(proposal._proposedBlock) > _expiry, "Proposal not at expiry threshold");
 
         proposal._status = ProposalStatus.Cancelled;
         emit ProposalEvent(chainID, depositNonce, ProposalStatus.Cancelled, proposal._resourceID, proposal._dataHash);
