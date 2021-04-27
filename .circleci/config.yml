@@ -70,7 +70,8 @@ jobs:
   testing:
     executor: continuation/default
     steps:
-      - checkout
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Generate Tests
           command: ./scripts/generate_lerna_config.sh
