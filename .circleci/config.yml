@@ -71,8 +71,11 @@ jobs:
     executor: continuation/default
     steps:
       - checkout
+      - run:
+          name: Generate Tests
+          command: ./scripts/generate_lerna_config.sh
       - continuation/continue:
-          configuration_path: .circleci/external_test.yml
+          configuration_path: .circleci/lerna_config.yml
 
   coverage:
     docker:
