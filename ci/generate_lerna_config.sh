@@ -3,7 +3,7 @@
 set -o errexit
 set -o nounset
 
-PACKAGES_ARRAY=($(cat ci/lerna_packages))
+PACKAGES_ARRAY=($(cat /home/circleci/protocol/ci/lerna_packages))
 CI_CONFIG_FILE=".circleci/lerna_config.yml"
 
 printf "version: 2.1\n\njobs:\n" >> $CI_CONFIG_FILE
