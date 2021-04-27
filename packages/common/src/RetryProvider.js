@@ -31,7 +31,7 @@ class RetryProvider {
     }));
   }
 
-  // Passes the call through. Requires that the wrapped provider has been created via, e.g., `constructWrappedProvider`.
+  // Passes the send through, catches errors, and retries on error.
   send(payload, callback) {
     // Turn callback into async-await internally.
     const sendWithProvider = provider => {
@@ -53,6 +53,7 @@ class RetryProvider {
     );
   }
 
+  // Pass through disconnect to any initialized providers.
   disconnect(...all) {
     for (const cache of this.providerCaches) {
       cache?.provider.disconnect(...all);
