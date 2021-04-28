@@ -13,7 +13,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
-const UniswapMock = artifacts.require("UniswapV2Mock");
+const UniswapMock = artifacts.require("UniswapMock");
 const SyntheticToken = artifacts.require("SyntheticToken");
 
 // Custom winston transport module to monitor winston log outputs
