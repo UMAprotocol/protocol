@@ -29,7 +29,7 @@ const {
   PriceFeedMock,
   DSProxyManager,
   GasEstimator,
-  UniswapPriceFeed
+  UniswapV2PriceFeed
 } = require("@uma/financial-templates-lib");
 
 let accounts: string[];
@@ -116,7 +116,7 @@ describe("index.js", function() {
 
     // Create the components needed for the RangeTrader. Create a "real" uniswap price feed, with the twapLength &
     // historicalLookback set to 1 such the the twap will update very quickly.
-    tokenPriceFeed = new UniswapPriceFeed(
+    tokenPriceFeed = new UniswapV2PriceFeed(
       spyLogger,
       IUniswapV2Pair.abi,
       Token.abi,
