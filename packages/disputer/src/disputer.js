@@ -143,27 +143,25 @@ class Disputer {
               });
             }
           }
-          const price = this.toBN(
-            formatPriceToPricefeedPrecision(
+          // Price is available, use it to determine if the liquidation is disputable
+          if (
+            _price &&
+            this.financialContractClient.isDisputable(liquidation, _price) &&
+            this.financialContractClient.getLastUpdateTime() >= Number(liquidationTime) + this.disputeDelay
+          ) {
+            const price = formatPriceToPricefeedPrecision(
               _price,
               this.priceFeed.getPriceFeedDecimals(),
               this.financialContractIdentifier
-            )
-          );
-          // Price is available, use it to determine if the liquidation is disputable
-          if (
-            price &&
-            this.financialContractClient.isDisputable(liquidation, price) &&
-            this.financialContractClient.getLastUpdateTime() >= Number(liquidationTime) + this.disputeDelay
-          ) {
+            );
             this.logger.debug({
               at: "Disputer",
               message: "Detected a disputable liquidation",
-              price: price.toString(),
+              price,
               liquidation: JSON.stringify(liquidation)
             });
 
-            return { ...liquidation, price: price.toString() };
+            return { ...liquidation, price };
           }
 
           return null;

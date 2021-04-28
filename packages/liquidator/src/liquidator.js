@@ -210,13 +210,12 @@ class Liquidator {
     const _price = liquidatorOverridePrice
       ? this.toBN(liquidatorOverridePrice.toString())
       : this.priceFeed.getCurrentPrice();
+    if (!_price) {
+      throw new Error("Cannot liquidate: price feed returned invalid value");
+    }
     const price = this.toBN(
       formatPriceToPricefeedPrecision(_price, this.priceFeed.getPriceFeedDecimals(), this.financialContractIdentifier)
     );
-
-    if (!price) {
-      throw new Error("Cannot liquidate: price feed returned invalid value");
-    }
 
     // The `price` is a BN that is used to determine if a position is liquidatable. The higher the
     // `price` value, the more collateral that the position is required to have to be correctly collateralized.
