@@ -3,10 +3,15 @@
 set -o errexit
 set -o nounset
 
-PACKAGES_ARRAY=($(cat /home/circleci/protocol/lerna_packages))
-CI_CONFIG_FILE="/home/circleci/protocol/.circleci/lerna_config.yml"
+PACKAGES_ARRAY=($(cat lerna_packages))
+CI_CONFIG_FILE=".circleci/lerna_config.yml"
 
 if [ ${#PACKAGES_ARRAY[@]} -eq 0 ]; then
+
+  echo "No packages for testing."
+  circleci-agent step halt;
+
+else
 
   printf "version: 2.1\n\njobs:\n" >> $CI_CONFIG_FILE
 
@@ -37,12 +42,9 @@ EOF
   for PACKAGE in "${PACKAGES_ARRAY[@]}"
     do
       cat <<EOF >> $CI_CONFIG_FILE
-        - test-${PACKAGE:5}:
-            context: api_keys
+      - test-${PACKAGE:5}:
+          context: api_keys
 EOF
   done
 
-else
-    echo "No packages for testing."
-    circleci-agent step halt;
 fi
