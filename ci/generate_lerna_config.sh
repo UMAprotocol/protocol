@@ -31,7 +31,7 @@ else
         - run:
             name: Run tests
             command: |
-              ./scripts/truffle_workaround.sh
+              ./ci/truffle_workaround.sh
               export PACKAGES_CHANGES=$PACKAGE
               yarn run test-concurrent-test;
 EOF
