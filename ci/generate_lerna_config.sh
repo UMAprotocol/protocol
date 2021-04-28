@@ -3,8 +3,17 @@
 set -o errexit
 set -o nounset
 
-PACKAGES_ARRAY=($(cat lerna_packages))
+PACKAGES_TOTAL=($(cat lerna_packages))
+PACKAGES_IGNORE=(@uma/serverless-orchestration @uma/affiliates)
 CI_CONFIG_FILE=".circleci/lerna_config.yml"
+
+echo "All packages modified:"
+echo ${PACKAGES_TOTAL[*]}
+
+for IGNORE in ${PACKAGES_IGNORE[@]}
+do
+   PACKAGES_ARRAY=(${PACKAGES_TOTAL[@]/$PACKAGES_IGNORE})
+done
 
 if [ ${#PACKAGES_ARRAY[@]} -eq 0 ]; then
 
@@ -12,6 +21,12 @@ if [ ${#PACKAGES_ARRAY[@]} -eq 0 ]; then
   circleci-agent step halt;
 
 else
+
+  echo "Packages to execute:"
+  echo ${PACKAGES_ARRAY[*]}
+
+  echo "Ignored packages:"
+  echo ${PACKAGES_IGNORE[*]}
 
   printf "version: 2.1\n\njobs:\n" >> $CI_CONFIG_FILE
 
