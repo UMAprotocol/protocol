@@ -92,7 +92,6 @@ contract("FinancialContractClient.js", function(accounts) {
 
     // Import the tested versions of contracts. note that financialContract is either an ExpiringMultiParty or a
     // Perpetual depending on the current iteration version.
-    console.log(contractVersion);
     const FinancialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
     const Finder = getTruffleContract("Finder", web3, contractVersion.contractVersion);
     const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, contractVersion.contractVersion);
