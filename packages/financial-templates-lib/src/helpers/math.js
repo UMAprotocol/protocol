@@ -1,5 +1,7 @@
 const assert = require("assert");
 
+const { parseFixed, formatFixed, getRoundingForIdentifier } = require("@uma/common");
+
 // Takes in two big numbers and returns the error between them. using: δ = (observed - expected) / expected
 // For example an observed price of 1.2 with an expected price of 1.0 will return (1.2 - 1.0) / 1.0 = 0.20
 // This is equivalent of a 20 percent deviation between the numbers.
@@ -31,7 +33,26 @@ const isDeviationOutsideErrorMargin = (observedValueBN, expectedValueBN, scaling
   return deviationBN.abs().gt(errorMarginBN);
 };
 
+const formatPriceToPricefeedPrecision = (price, priceFeedDecimals, identifier) => {
+  if (!getRoundingForIdentifier(identifier)) {
+    return price.toString();
+  } else {
+    // Round `price` to custom number of decimals by converting back and forth between the pricefeed's
+    // configured precision:
+    return parseFixed(
+      // 1) `formatFixed` converts the price in wei to a floating point.
+      // 2) `toFixed` removes decimals beyond `this.precision` in the floating point.
+      // 3) `parseFixed` converts the floating point back into wei.
+      Number(formatFixed(price.toString(), priceFeedDecimals))
+        .toFixed(getRoundingForIdentifier(identifier))
+        .toString(),
+      priceFeedDecimals
+    ).toString();
+  }
+};
+
 module.exports = {
   calculateDeviationError,
-  isDeviationOutsideErrorMargin
+  isDeviationOutsideErrorMargin,
+  formatPriceToPricefeedPrecision
 };

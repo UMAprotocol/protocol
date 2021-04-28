@@ -4,6 +4,7 @@ const {
   revertWrapper,
   runTransaction
 } = require("@uma/common");
+const { formatPriceToPricefeedPrecision } = require("@uma/financial-templates-lib");
 
 const LiquidationStrategy = require("./liquidationStrategy");
 
@@ -206,9 +207,12 @@ class Liquidator {
       liquidatorOverridePrice
     });
     // If an override is provided, use that price. Else, get the latest price from the price feed.
-    const price = liquidatorOverridePrice
+    const _price = liquidatorOverridePrice
       ? this.toBN(liquidatorOverridePrice.toString())
       : this.priceFeed.getCurrentPrice();
+    const price = this.toBN(
+      formatPriceToPricefeedPrecision(_price, this.priceFeed.getPriceFeedDecimals(), this.financialContractIdentifier)
+    );
 
     if (!price) {
       throw new Error("Cannot liquidate: price feed returned invalid value");

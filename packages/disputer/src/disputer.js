@@ -3,6 +3,7 @@ const {
   createObjectFromDefaultProps,
   runTransaction
 } = require("@uma/common");
+const { formatPriceToPricefeedPrecision } = require("@uma/financial-templates-lib");
 
 class Disputer {
   /**
@@ -128,12 +129,12 @@ class Disputer {
           }
 
           // If an override is provided, use that price. Else, get the historic price at the liquidation time.
-          let price;
+          let _price;
           if (disputerOverridePrice) {
-            price = this.toBN(disputerOverridePrice);
+            _price = this.toBN(disputerOverridePrice);
           } else {
             try {
-              price = await this.priceFeed.getHistoricalPrice(liquidationTime);
+              _price = await this.priceFeed.getHistoricalPrice(liquidationTime);
             } catch (error) {
               this.logger.error({
                 at: "Disputer",
@@ -142,6 +143,13 @@ class Disputer {
               });
             }
           }
+          const price = this.toBN(
+            formatPriceToPricefeedPrecision(
+              _price,
+              this.priceFeed.getPriceFeedDecimals(),
+              this.financialContractIdentifier
+            )
+          );
           // Price is available, use it to determine if the liquidation is disputable
           if (
             price &&

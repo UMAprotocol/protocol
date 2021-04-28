@@ -3,15 +3,10 @@ const {
   createReferencePriceFeedForFinancialContract,
   setAllowance,
   isDeviationOutsideErrorMargin,
-  aggregateTransactionsAndCall
+  aggregateTransactionsAndCall,
+  formatPriceToPricefeedPrecision
 } = require("@uma/financial-templates-lib");
-const {
-  createObjectFromDefaultProps,
-  runTransaction,
-  parseFixed,
-  formatFixed,
-  getRoundingForIdentifier
-} = require("@uma/common");
+const { createObjectFromDefaultProps, runTransaction } = require("@uma/common");
 const { getAbi } = require("@uma/core");
 const Promise = require("bluebird");
 const assert = require("assert");
@@ -191,7 +186,11 @@ class FundingRateProposer {
       });
       return;
     }
-    const pricefeedPrice = this._formatPriceToPricefeedPrecision(_pricefeedPrice, priceFeed, fundingRateIdentifier);
+    const pricefeedPrice = formatPriceToPricefeedPrecision(
+      _pricefeedPrice,
+      priceFeed.getPriceFeedDecimals(),
+      fundingRateIdentifier
+    );
     let onchainFundingRate = currentFundingRateData.rate.toString();
 
     // Check that pricefeedPrice is within [configStore.minFundingRate, configStore.maxFundingRate]
@@ -406,24 +405,6 @@ class FundingRateProposer {
         currentConfig
       }
     };
-  }
-
-  _formatPriceToPricefeedPrecision(price, priceFeed, identifier) {
-    if (!getRoundingForIdentifier(identifier)) {
-      return price.toString();
-    } else {
-      // Round `price` to custom number of decimals by converting back and forth between the pricefeed's
-      // configured precision:
-      return parseFixed(
-        // 1) `formatFixed` converts the price in wei to a floating point.
-        // 2) `toFixed` removes decimals beyond `this.precision` in the floating point.
-        // 3) `parseFixed` converts the floating point back into wei.
-        Number(formatFixed(price.toString(), priceFeed.getPriceFeedDecimals()))
-          .toFixed(getRoundingForIdentifier(identifier))
-          .toString(),
-        priceFeed.getPriceFeedDecimals()
-      ).toString();
-    }
   }
 }
 
