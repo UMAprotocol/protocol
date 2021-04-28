@@ -2028,6 +2028,22 @@ contract("Liquidator.js", function(accounts) {
             "Correctly deals with reserve being the same as collateral currency using DSProxy",
             async function() {
               // create a new liquidator and set the reserve currency to the collateral currency.
+              const proxyTransactionWrapper = new ProxyTransactionWrapper({
+                web3,
+                financialContract: financialContract.contract,
+                gasEstimator,
+                syntheticToken: syntheticToken.contract,
+                collateralToken: collateralToken.contract,
+                account: accounts[0],
+                dsProxyManager,
+                proxyTransactionWrapperConfig: {
+                  useDsProxyToLiquidate: true,
+                  uniswapRouterAddress: uniswapRouter.address,
+                  uniswapFactoryAddress: uniswapFactory.address,
+                  liquidatorReserveCurrencyAddress: await financialContract.collateralCurrency()
+                }
+              });
+
               const liquidator = new Liquidator({
                 logger: spyLogger,
                 financialContractClient: financialContractClient,
@@ -2037,15 +2053,7 @@ contract("Liquidator.js", function(accounts) {
                 priceFeed: priceFeedMock,
                 account: accounts[0],
                 financialContractProps,
-                liquidatorConfig: {
-                  ...liquidatorConfig,
-                  proxyTransactionWrapperConfig: {
-                    useDsProxyToLiquidate: true,
-                    uniswapRouterAddress: uniswapRouter.address,
-                    uniswapFactoryAddress: uniswapFactory.address,
-                    liquidatorReserveCurrencyAddress: collateralToken.address
-                  }
-                }
+                liquidatorConfig
               });
               await financialContract.create(
                 { rawValue: convertCollateral("120") },

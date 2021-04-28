@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.2.0](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.1.0...@uma/optimistic-oracle@2.2.0) (2021-04-23)
+
+### Bug Fixes
+
+- **proposer:** cast timestamps to number when requesting historical price ([#2836](https://github.com/UMAprotocol/protocol/issues/2836)) ([752a403](https://github.com/UMAprotocol/protocol/commit/752a403506bc168ee368b323f213caaa6e62d560))
+
+### Features
+
+- **optimistic-oracle-proposer:** Blacklist identifiers to skip post-expiry ([#2826](https://github.com/UMAprotocol/protocol/issues/2826)) ([0de392f](https://github.com/UMAprotocol/protocol/commit/0de392f18bf0f3e5019c118996ebca771ebb2aa7))
+- **run-transaction-helper:** Move ynatm functionality into runTransaction helper ([#2804](https://github.com/UMAprotocol/protocol/issues/2804)) ([cd3f3ef](https://github.com/UMAprotocol/protocol/commit/cd3f3ef0c96be742a2a585a957db2f884a234744))
+
 # [2.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.0.1...@uma/optimistic-oracle@2.1.0) (2021-03-16)
 
 ### Features

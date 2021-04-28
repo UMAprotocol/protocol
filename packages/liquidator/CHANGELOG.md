@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.2.0](https://github.com/UMAprotocol/protocol/compare/@uma/liquidator@2.1.0...@uma/liquidator@2.2.0) (2021-04-23)
+
+### Bug Fixes
+
+- **liquidator:** address small issue in withdrawing legacy EMPs ([#2889](https://github.com/UMAprotocol/protocol/issues/2889)) ([87c4858](https://github.com/UMAprotocol/protocol/commit/87c4858e6f0fcd6d9fac750e7b41a52b77cc47fd))
+- **liquidator:** should submit raw # of position tokens, not funding-rate adjusted # ([#2752](https://github.com/UMAprotocol/protocol/issues/2752)) ([53a1b28](https://github.com/UMAprotocol/protocol/commit/53a1b28d1118a01d713be0255485a8ef23e08999))
+- **liquidator:** update DSProxy to deal with reserve currency matching collateral currency ([#2892](https://github.com/UMAprotocol/protocol/issues/2892)) ([a9a2af3](https://github.com/UMAprotocol/protocol/commit/a9a2af369f1a261d9de8a883eaf1b72e2637f8f7))
+- **proxyTransactionWrapper:** Add runTransaction to Proxy Transaction wrapper ([#2870](https://github.com/UMAprotocol/protocol/issues/2870)) ([fc9a1a3](https://github.com/UMAprotocol/protocol/commit/fc9a1a36caf294bcd60841a14e00376cc5c715fc))
+- **ProxyTransactionWrapper:** typecasting on balance in ProxyTransactionWrapper ([#2897](https://github.com/UMAprotocol/protocol/issues/2897)) ([f05b0ea](https://github.com/UMAprotocol/protocol/commit/f05b0ea4d33777507b489c65a09239133b1aa13d))
+- **trader & atomic liquidator:** add wait for block to be mined util to address slow node updates ([#2871](https://github.com/UMAprotocol/protocol/issues/2871)) ([0106a8d](https://github.com/UMAprotocol/protocol/commit/0106a8dc22c26ee3d7aaf777ed12b6d894e88863))
+
+### Features
+
+- **bot-strategy-runner:** add generalised bot runner ([#2851](https://github.com/UMAprotocol/protocol/issues/2851)) ([a748107](https://github.com/UMAprotocol/protocol/commit/a748107df25d153443caf82ec42c08c03ae23bfd))
+- **FindContractVersion:** update FindContractVersion to build contract hashes during core build process ([#2873](https://github.com/UMAprotocol/protocol/issues/2873)) ([4e5a3bd](https://github.com/UMAprotocol/protocol/commit/4e5a3bddfb90b2e868bbd04274947b5bcf0eebb9))
+- **liquidation-reserve-currency:** add reserve currency liquidator to bots and refine smart contract ([#2775](https://github.com/UMAprotocol/protocol/issues/2775)) ([0eea3fb](https://github.com/UMAprotocol/protocol/commit/0eea3fbb610f74694c22ca36f6902faf3fa9092b))
+- **liquidator:** remove one inch intergration ([#2756](https://github.com/UMAprotocol/protocol/issues/2756)) ([03e20c0](https://github.com/UMAprotocol/protocol/commit/03e20c09a6a2e1ced754507b64ebfb67ee812c75))
+- **liquidator-contracts:** add atomic-liquidator contracts enabling Swap, mint, liquidate behaviour ([#2750](https://github.com/UMAprotocol/protocol/issues/2750)) ([602ced4](https://github.com/UMAprotocol/protocol/commit/602ced447486d1920667925e0eba80eb9bf79b74))
+- **multicall:** Using Multicall contract to simulate contract state post-state modifying transactions ([#2762](https://github.com/UMAprotocol/protocol/issues/2762)) ([fa8ee91](https://github.com/UMAprotocol/protocol/commit/fa8ee9146c2497c4e370f58a9eca2c7306337f9e))
+- **scripts:** improve scripts for running Kovan EMP war games ([#2605](https://github.com/UMAprotocol/protocol/issues/2605)) ([0ddb8db](https://github.com/UMAprotocol/protocol/commit/0ddb8db66af688b4ade346a6738aba49d766db81))
+
 # [2.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/liquidator@2.0.1...@uma/liquidator@2.1.0) (2021-03-16)
 
 ### Features
