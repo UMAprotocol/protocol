@@ -150,6 +150,7 @@ contract("UniswapV3PriceFeed", function(accounts) {
       weightedPrice1
         .add(weightedPrice2)
         .divn(totalTime)
+        .subn(1) // Rounding
         .toString()
     );
   });
@@ -429,6 +430,7 @@ contract("UniswapV3PriceFeed", function(accounts) {
           .add(weightedPrice2)
           .divn(totalTime)
           .divn(10 ** 2) // scale DOWN by 10e2
+          .subn(1) // Rounding
           .toString()
       );
     });
