@@ -5,7 +5,13 @@ const {
   isDeviationOutsideErrorMargin,
   aggregateTransactionsAndCall
 } = require("@uma/financial-templates-lib");
-const { createObjectFromDefaultProps, runTransaction, parseFixed, formatFixed } = require("@uma/common");
+const {
+  createObjectFromDefaultProps,
+  runTransaction,
+  parseFixed,
+  formatFixed,
+  getRoundingForIdentifier
+} = require("@uma/common");
 const { getAbi } = require("@uma/core");
 const Promise = require("bluebird");
 const assert = require("assert");
@@ -77,13 +83,6 @@ class FundingRateProposer {
           return !isNaN(x);
           // Negative allowed-margins might be useful based on the implementation
           // of `isDeviationOutsideErrorMargin()`
-        }
-      },
-      precision: {
-        //   "precision":9 ->  # of decimals to round fundingRate to.
-        value: 9,
-        isValid: x => {
-          return !isNaN(x) && x >= 0 && x <= 18;
         }
       }
     };
@@ -192,7 +191,7 @@ class FundingRateProposer {
       });
       return;
     }
-    const pricefeedPrice = this._formatPriceToPricefeedPrecision(_pricefeedPrice, priceFeed);
+    const pricefeedPrice = this._formatPriceToPricefeedPrecision(_pricefeedPrice, priceFeed, fundingRateIdentifier);
     let onchainFundingRate = currentFundingRateData.rate.toString();
 
     // Check that pricefeedPrice is within [configStore.minFundingRate, configStore.maxFundingRate]
@@ -409,18 +408,22 @@ class FundingRateProposer {
     };
   }
 
-  _formatPriceToPricefeedPrecision(price, priceFeed) {
-    // Round `price` to desired number of decimals by converting back and forth between the pricefeed's
-    // configured precision:
-    return parseFixed(
-      // 1) `formatFixed` converts the price in wei to a floating point.
-      // 2) `toFixed` removes decimals beyond `this.precision` in the floating point.
-      // 3) `parseFixed` converts the floating point back into wei.
-      Number(formatFixed(price.toString(), priceFeed.getPriceFeedDecimals()))
-        .toFixed(this.precision)
-        .toString(),
-      priceFeed.getPriceFeedDecimals()
-    ).toString();
+  _formatPriceToPricefeedPrecision(price, priceFeed, identifier) {
+    if (!getRoundingForIdentifier(identifier)) {
+      return price.toString();
+    } else {
+      // Round `price` to custom number of decimals by converting back and forth between the pricefeed's
+      // configured precision:
+      return parseFixed(
+        // 1) `formatFixed` converts the price in wei to a floating point.
+        // 2) `toFixed` removes decimals beyond `this.precision` in the floating point.
+        // 3) `parseFixed` converts the floating point back into wei.
+        Number(formatFixed(price.toString(), priceFeed.getPriceFeedDecimals()))
+          .toFixed(getRoundingForIdentifier(identifier))
+          .toString(),
+        priceFeed.getPriceFeedDecimals()
+      ).toString();
+    }
   }
 }
 
