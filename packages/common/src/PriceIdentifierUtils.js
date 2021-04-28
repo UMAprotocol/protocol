@@ -39,8 +39,8 @@ const UMIP_ROUNDING = {
   "STABLESPREAD/BTC": 8,
   "STABLESPREAD/USDC": 6,
   STABLESPREAD: 8,
-  "ELASTIC_STABLESPREAD/USDC": 6
-  // ETHBTC_FR: 9
+  "ELASTIC_STABLESPREAD/USDC": 6,
+  ETHBTC_FR: 9
 };
 
 const getRoundingForIdentifier = identifier => {
