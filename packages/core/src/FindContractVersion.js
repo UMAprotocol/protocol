@@ -69,7 +69,7 @@ const versionMap = {
     contractType: "ExpiringMultiParty",
     contractVersion: "latest"
   },
-  "0x7202352fa756f41d3b4646441b82271ab44909e6e24c12326fb73f34e6ca2aa9": {
+  "0x238569485842107d2e938ff59c78841860b4dcd00d37be9859699f2c4ddbb3a0": {
     // Latest Mainnet Perpetual contract.
     contractType: "Perpetual",
     contractVersion: "latest"
