@@ -3,17 +3,11 @@
 set -o errexit
 set -o nounset
 
-PACKAGES_TOTAL=($(cat lerna_packages))
-PACKAGES_IGNORE=(@uma/serverless-orchestration @uma/affiliates)
+PACKAGES_ARRAY=($(cat lerna_packages))
 CI_CONFIG_FILE=".circleci/lerna_config.yml"
 
 echo "All packages modified:"
-echo ${PACKAGES_TOTAL[*]}
-
-for IGNORE in ${PACKAGES_IGNORE[@]}
-do
-   PACKAGES_ARRAY=(${PACKAGES_TOTAL[@]/$PACKAGES_IGNORE})
-done
+echo ${PACKAGES_ARRAY[*]}
 
 if [ ${#PACKAGES_ARRAY[@]} -eq 0 ]; then
 
