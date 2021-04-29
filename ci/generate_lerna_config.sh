@@ -33,7 +33,6 @@ else
         - image: trufflesuite/ganache-cli
           command: ganache-cli -i 1234 -l 9000000 -p 9545
       working_directory: ~/protocol
-      resource_class: large
       steps:
         - restore_cache:
             key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
@@ -42,7 +41,7 @@ else
             command: |
               ./ci/truffle_workaround.sh
               export PACKAGES_CHANGES=$PACKAGE
-              yarn run test-concurrent-test;
+              yarn test --scope ${PACKAGE};
 EOF
   done
 
