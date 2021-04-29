@@ -23,6 +23,23 @@ contract("UniswapV3PriceFeed", function(accounts) {
   let mockTime = 0;
   let dummyLogger;
 
+  const assertWithinEpsilon = (a, b, invertedEpsilon = 10000) => {
+    assert.isTrue(
+      (b.isZero() ||
+        a
+          .sub(b)
+          .muln(invertedEpsilon)
+          .div(a)
+          .isZero()) &&
+        (a.isZero() ||
+          a
+            .sub(b)
+            .muln(invertedEpsilon)
+            .div(a)
+            .isZero())
+    );
+  };
+
   bn.config({ EXPONENTIAL_AT: 999999, DECIMAL_PLACES: 40 });
 
   const computeSqrtPriceForReserves = (reserve0, reserve1) => {
@@ -87,7 +104,7 @@ contract("UniswapV3PriceFeed", function(accounts) {
     await uniswapPriceFeed.update();
 
     // Note: there's a small amount of rounding error due to the sqrt conversions.
-    assert.equal(uniswapPriceFeed.getLastBlockPrice().toString(), toWei("0.499999999999999999"));
+    assertWithinEpsilon(uniswapPriceFeed.getLastBlockPrice(), toBN(toWei("0.5")));
     assert.equal(uniswapPriceFeed.getLastUpdateTime(), mockTime);
     assert.equal(uniswapPriceFeed.getLookback(), 3600);
   });
@@ -98,7 +115,7 @@ contract("UniswapV3PriceFeed", function(accounts) {
     await setPrice(toWei("4"), toWei("1"));
     await uniswapPriceFeed.update();
 
-    assert.equal(uniswapPriceFeed.getLastBlockPrice().toString(), toWei("0.25"));
+    assertWithinEpsilon(uniswapPriceFeed.getLastBlockPrice(), toBN(toWei("0.25")));
   });
 
   it("Selects most recent price in same block", async function() {
@@ -118,7 +135,7 @@ contract("UniswapV3PriceFeed", function(accounts) {
 
     // Update the PF and ensure the price it gives is the last price in the block.
     await uniswapPriceFeed.update();
-    assert.equal(uniswapPriceFeed.getLastBlockPrice().toString(), toWei("0.25"));
+    assertWithinEpsilon(uniswapPriceFeed.getLastBlockPrice(), toBN(toWei("0.25")));
   });
 
   // Basic test to verify TWAP (non simulated time).
@@ -145,14 +162,7 @@ contract("UniswapV3PriceFeed", function(accounts) {
     const weightedPrice2 = toBN(toWei("0.5")); // 0.5 * 1 second since the mockTime is one second past time2.
 
     // Compare the TWAPs.
-    assert.equal(
-      uniswapPriceFeed.getCurrentPrice().toString(),
-      weightedPrice1
-        .add(weightedPrice2)
-        .divn(totalTime)
-        .subn(1) // Rounding
-        .toString()
-    );
+    assertWithinEpsilon(uniswapPriceFeed.getCurrentPrice(), weightedPrice1.add(weightedPrice2).divn(totalTime));
   });
 
   it("All events before window", async function() {
@@ -166,7 +176,7 @@ contract("UniswapV3PriceFeed", function(accounts) {
     await uniswapPriceFeed.update();
 
     // Expect that the TWAP is just the most recent price, since that was the price throughout the current window.
-    assert.equal(uniswapPriceFeed.getCurrentPrice().toString(), toWei("0.25"));
+    assertWithinEpsilon(uniswapPriceFeed.getCurrentPrice(), toBN(toWei("0.25")));
   });
 
   it("All events after window", async function() {
@@ -226,7 +236,7 @@ contract("UniswapV3PriceFeed", function(accounts) {
     // - single price exactly 50% through the window: 1
     // - TWAP: 2 * 0.5 + 1 * 0.5 = 1.5
     // Rounding
-    assert.equal(uniswapPriceFeed.getCurrentPrice().toString(), toWei("1.499999999999999999"));
+    assertWithinEpsilon(uniswapPriceFeed.getCurrentPrice(), toBN(toWei("1.5")));
   });
 
   it("Basic historical TWAP", async function() {
@@ -271,28 +281,16 @@ contract("UniswapV3PriceFeed", function(accounts) {
 
     // The historical TWAP for 1 hour ago (the earliest allowed query) should be 100 for the first half and then 90 for the second half -> 95.
     // Note: small amount of rounding error.
-    assert.equal(
-      (await uniswapPriceFeed.getHistoricalPrice(currentTime - 3600)).toString(),
-      toWei("94.999999999999999999")
-    );
+    assertWithinEpsilon(await uniswapPriceFeed.getHistoricalPrice(currentTime - 3600), toBN(toWei("95")));
 
     // The historical TWAP for 45 mins ago should be 100 for the first quarter, 90 for the middle half, and 80 for the last quarter -> 90.
-    assert.equal(
-      (await uniswapPriceFeed.getHistoricalPrice(currentTime - 2700)).toString(),
-      toWei("89.999999999999999999")
-    );
+    assertWithinEpsilon(await uniswapPriceFeed.getHistoricalPrice(currentTime - 2700), toBN(toWei("90")));
 
     // The historical TWAP for 30 minutes ago should be 90 for the first half and then 80 for the second half -> 85.
-    assert.equal(
-      (await uniswapPriceFeed.getHistoricalPrice(currentTime - 1800)).toString(),
-      toWei("84.999999999999999999")
-    );
+    assertWithinEpsilon(await uniswapPriceFeed.getHistoricalPrice(currentTime - 1800), toBN(toWei("85")));
 
     // The historical TWAP for 15 minutes ago should be 90 for the first quarter, 80 for the middle half, and 70 for the last quarter -> 80.
-    assert.equal(
-      (await uniswapPriceFeed.getHistoricalPrice(currentTime - 900)).toString(),
-      toWei("79.999999999999999999")
-    );
+    assertWithinEpsilon(await uniswapPriceFeed.getHistoricalPrice(currentTime - 900), toBN(toWei("80")));
 
     // The historical TWAP for now should be 80 for the first half and then 70 for the second half -> 75.
     assert.equal((await uniswapPriceFeed.getHistoricalPrice(currentTime)).toString(), toWei("74.999999999999999999"));
@@ -313,7 +311,7 @@ contract("UniswapV3PriceFeed", function(accounts) {
     await uniswapPriceFeed.update();
 
     // The TWAP lookback is 1 hour (3600 seconds). The price feed should throw if we attempt to go any further back than that.
-    assert.equal(await uniswapPriceFeed.getHistoricalPrice(currentTime - 3599), toWei("1"));
+    assertWithinEpsilon(await uniswapPriceFeed.getHistoricalPrice(currentTime - 3599), toBN(toWei("1")));
     assert.isTrue(await uniswapPriceFeed.getHistoricalPrice(currentTime - 3601).catch(() => true));
   });
 
@@ -333,8 +331,7 @@ contract("UniswapV3PriceFeed", function(accounts) {
     await setPrice(toWei("2"), toWei("1"));
     await uniswapPriceFeed.update();
 
-    // Note: small amount of rounding error.
-    assert.equal(uniswapPriceFeed.getLastBlockPrice().toString(), toWei("2.000000000000000004"));
+    assertWithinEpsilon(uniswapPriceFeed.getLastBlockPrice(), toBN(toWei("2")));
   });
 
   describe("Can handle non-18 precision pool prices and return non-18 precision prices", function() {
@@ -415,23 +412,20 @@ contract("UniswapV3PriceFeed", function(accounts) {
       const weightedPrice2 = toBN(convertToken1("0.5").toString()); // 0.5 * 1 second since the mockTime is one second past time2.
 
       // Compare the scaled TWAPs.
-      assert.equal(
-        scaleUpPriceFeed.getCurrentPrice().toString(),
+      assertWithinEpsilon(
+        scaleUpPriceFeed.getCurrentPrice(),
         weightedPrice1
           .add(weightedPrice2)
           .divn(totalTime)
-          .subn(1) // Rounding
           .muln(10 ** 6) // scale UP by 10e6
-          .toString()
       );
-      assert.equal(
-        scaleDownPriceFeed.getCurrentPrice().toString(),
+      assertWithinEpsilon(
+        scaleDownPriceFeed.getCurrentPrice(),
         weightedPrice1
           .add(weightedPrice2)
           .divn(totalTime)
-          .divn(10 ** 2) // scale DOWN by 10e2
-          .subn(1) // Rounding
-          .toString()
+          .divn(10 ** 2), // scale DOWN by 10e2
+        1000 // Since this is a low precision number, we need a custom epsilon that allows for larger error.
       );
     });
     it("Basic historical TWAP", async function() {
@@ -476,18 +470,13 @@ contract("UniswapV3PriceFeed", function(accounts) {
       await scaleUpPriceFeed.update();
 
       // The historical TWAP for 1 hour ago (the earliest allowed query) should be 100 for the first half and then 90 for the second half -> 95.
-      assert.equal(
-        (await scaleUpPriceFeed.getHistoricalPrice(currentTime - 3600)).toString(),
-        toBN(convertToken1("94.999999").toString())
-          .muln(10 ** 6)
-          .toString()
+      assertWithinEpsilon(
+        await scaleUpPriceFeed.getHistoricalPrice(currentTime - 3600),
+        toBN(convertToken1("95").toString()).muln(10 ** 6)
       );
-      assert.equal(
-        (await scaleDownPriceFeed.getHistoricalPrice(currentTime - 3600)).toString(),
-        toBN(convertToken1("95").toString())
-          .divn(10 ** 2)
-          .subn(1) // Rounding
-          .toString()
+      assertWithinEpsilon(
+        await scaleDownPriceFeed.getHistoricalPrice(currentTime - 3600),
+        toBN(convertToken1("95").toString()).divn(10 ** 2)
       );
     });
   });
