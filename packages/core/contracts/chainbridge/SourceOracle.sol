@@ -14,24 +14,44 @@ import "./BeaconOracle.sol";
 contract SourceOracle is BeaconOracle {
     constructor(address _finderAddress) public BeaconOracle(_finderAddress) {}
 
+    // This function will be called by the GenericHandler upon a deposit to ensure that the deposit is arising from a
+    // real price request. This method will revert unless the price request has been resolved by a registered contract.
+    function validateDeposit(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) public view {
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
+        Price storage lookup = prices[priceRequestId];
+        require(lookup.state == RequestState.Resolved, "Price has not been published");
+    }
+
+    // Should be callable only by GenericHandler
     function requestPrice(
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public override {
+    ) public override onlyGenericHandlerContract() {
         _requestPrice(identifier, time, ancillaryData);
         _getOracle().requestPrice(identifier, time, ancillaryData);
     }
 
-    function pushPrice(
+    // Stores `price` assuming that it is the same price resolved on DVM for this unique request.
+    function publishPrice(
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData,
         int256 price
     ) public {
-        _pushPrice(identifier, time, ancillaryData, price);
+        require(_getOracle().hasPrice(identifier, time, ancillaryData), "DVM has not resolved price");
+        require(_getOracle().getPrice(identifier, time, ancillaryData) == price, "DVM resolved different price");
+        _publishPrice(identifier, time, ancillaryData, price);
 
         // TODO: Call Bridge.deposit() to intiate cross-chain publishing of price request.
         // _getBridge().deposit(formattedMetadata);
+    }
+
+    function _getOracle() internal view returns (OracleAncillaryInterface) {
+        return OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 }
