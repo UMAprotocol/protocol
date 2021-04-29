@@ -11,5 +11,5 @@ if [[ $(cat lerna_output | grep @) ]]; then
   cat lerna_packages
 else
   echo "No packages for testing."
-  circleci-agent step halt;
+  exit 0;
 fi
