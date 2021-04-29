@@ -44,7 +44,6 @@ contract SinkOracle is BeaconOracle {
     // on the Bridge contract for this network, which will call requestPriceFromSource on the destination chain's
     // Source Oracle.
     function requestPrice(
-        // uint8 destinationChainID,
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
@@ -52,16 +51,9 @@ contract SinkOracle is BeaconOracle {
         _requestPrice(identifier, time, ancillaryData);
 
         // Call Bridge.deposit() to intiate cross-chain price request.
-        // _getBridge().deposit(
-        //     destinationChainID,
-        //     getResourceId(),
-        //     abi.encodeWithSignature(
-        //         "requestPriceFromSource(bytes32,uint256,bytes)",
-        //         identifier,
-        //         time,
-        //         ancillaryData
-        //     )
-        // );
+        try
+            _getBridge().deposit(destinationChainID, getResourceId(), _formatMetadata(identifier, time, ancillaryData))
+        {} catch {}
     }
 
     // Should be callable only by the GenericHandler contract.
@@ -72,5 +64,18 @@ contract SinkOracle is BeaconOracle {
         int256 price
     ) public onlyGenericHandlerContract() {
         _publishPrice(identifier, time, ancillaryData, price);
+    }
+
+    // GenericHandler.deposit() expects data to be formatted as:
+    //     len(data)                              uint256     bytes  0  - 64
+    //     data                                   bytes       bytes  64 - END
+    // This helper method is useful for calling Bridge.deposit() from a BeaconOracle method.
+    function _formatMetadata(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) internal view returns (bytes memory) {
+        bytes memory metadata = abi.encode(identifier, time, ancillaryData);
+        return abi.encodePacked(metadata.length, metadata);
     }
 }

@@ -19,7 +19,8 @@ contract SourceOracle is BeaconOracle {
     function validateDeposit(
         bytes32 identifier,
         uint256 time,
-        bytes memory ancillaryData
+        bytes memory ancillaryData,
+        int256 price
     ) public view {
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
@@ -38,6 +39,7 @@ contract SourceOracle is BeaconOracle {
 
     // Stores `price` assuming that it is the same price resolved on DVM for this unique request.
     function publishPrice(
+        uint8 destinationChainID,
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData,
@@ -47,11 +49,31 @@ contract SourceOracle is BeaconOracle {
         require(_getOracle().getPrice(identifier, time, ancillaryData) == price, "DVM resolved different price");
         _publishPrice(identifier, time, ancillaryData, price);
 
-        // TODO: Call Bridge.deposit() to intiate cross-chain publishing of price request.
-        // _getBridge().deposit(formattedMetadata);
+        // Call Bridge.deposit() to initiate cross-chain publishing of price request.
+        try
+            _getBridge().deposit(
+                destinationChainID,
+                getResourceId(),
+                _formatMetadata(identifier, time, ancillaryData, price)
+            )
+        {} catch {}
     }
 
     function _getOracle() internal view returns (OracleAncillaryInterface) {
         return OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
+    }
+
+    // GenericHandler.deposit() expects data to be formatted as:
+    //     len(data)                              uint256     bytes  0  - 64
+    //     data                                   bytes       bytes  64 - END
+    // This helper method is useful for calling Bridge.deposit() from a BeaconOracle method.
+    function _formatMetadata(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData,
+        int256 price
+    ) internal view returns (bytes memory) {
+        bytes memory metadata = abi.encode(identifier, time, ancillaryData, price);
+        return abi.encodePacked(metadata.length, metadata);
     }
 }

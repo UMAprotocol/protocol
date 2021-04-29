@@ -13,7 +13,7 @@ const TruffleAssert = require("truffle-assertions");
 const Ethers = require("ethers");
 
 const Helpers = require("./helpers");
-const { didContractThrow, interfaceName, RegistryRolesEnum } = require("@uma/common");
+const { interfaceName, RegistryRolesEnum } = require("@uma/common");
 const { assert } = require("chai");
 
 // Chainbridge Contracts:
@@ -29,7 +29,7 @@ const Finder = artifacts.require("Finder");
 const Timer = artifacts.require("Timer");
 const Registry = artifacts.require("Registry");
 
-const { utf8ToHex, padRight, hexToUtf8, toWei, sha3 } = web3.utils;
+const { utf8ToHex, hexToUtf8, toWei, sha3 } = web3.utils;
 const { abi } = web3.eth;
 
 // Returns the equivalent of keccak256(abi.encode(address,uint8)) in Solidity:
@@ -147,32 +147,27 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
 
   // Scenario: Sidechain contract needs a price from DVM.
   it("Sidechain deposit: requests price on sidechain and enables bridged price request to mainnet", async function() {
-    // Here, the caller to deposit() might include the price request details that the relayer should input to the
-    // executeProposal() call on the Mainnet.
-    const encodedMetaDataProposal = Helpers.abiEncode(
-      ["bytes32", "uint256", "bytes"],
-      [padRight(identifier, 64), requestTime, ancillaryData]
-    );
-    const depositData = Helpers.createGenericDepositData(encodedMetaDataProposal);
-
-    // First make sure that the Bridge contract will call is set up in the Finder:
+    // First make sure that the Bridge contract we will call is set up in the Finder:
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridgeSidechain.address);
 
-    // Deposit will fail because price has not been requested on the SinkOracle yet:
-    assert(await didContractThrow(sinkOracle.validateDeposit(identifier, requestTime, ancillaryData)));
-    await sinkOracle.requestPrice(identifier, requestTime, ancillaryData, { from: depositerAddress });
-    // validateDeposit should now succeed on the SinkOracle, which is important because this function must pass
-    // for a price to get bridge-requested to the SourceOracle.
-    await sinkOracle.validateDeposit(identifier, requestTime, ancillaryData);
-
-    // Deposit should succeed.
-    const depositTxn = await bridgeSidechain.deposit(chainId, votingResourceSidechainId, depositData, {
+    // Request price triggers cross-chain deposit:
+    const depositTxn = await sinkOracle.requestPrice(identifier, requestTime, ancillaryData, {
       from: depositerAddress
     });
 
-    // Bridge emits a Deposit event.
+    // Bridge emits a Deposit event and the SinkOracle emitted a PriceRequest event.
     TruffleAssert.eventEmitted(
       depositTxn,
+      "PriceRequestAdded",
+      event =>
+        event.requester.toLowerCase() === depositerAddress.toLowerCase() &&
+        hexToUtf8(event.identifier) === hexToUtf8(identifier) &&
+        event.time.toString() === requestTime.toString() &&
+        event.ancillaryData.toLowerCase() === ancillaryData.toLowerCase()
+    );
+    const depositInternalTx = await TruffleAssert.createTransactionResult(bridgeSidechain, depositTxn.tx);
+    TruffleAssert.eventEmitted(
+      depositInternalTx,
       "Deposit",
       event =>
         event.destinationChainID.toString() === chainId.toString() &&
@@ -228,40 +223,51 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
         event.time.toString() === requestTime.toString() &&
         event.ancillaryData.toLowerCase() === ancillaryData.toLowerCase()
     );
+
+    // Should now be able to publish a price to the DVM and source oracle.
+    await voting.pushPrice(identifier, requestTime, ancillaryData, requestPrice);
+    await sourceOracle.publishPrice(sidechainId, identifier, requestTime, ancillaryData, requestPrice, {
+      from: depositerAddress
+    });
   });
 
   // Scenario: Someone wants to publish a price from mainnet to sidechain.
   it("Mainnet deposit: publishes price on mainnet and enables bridged price resolution to sidechain", async function() {
-    // Note: need to request a price to voting before pushing it, so we do it here manually.
+    // First make sure that the Bridge contract we will call is set up in the Finder:
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridgeMainnet.address);
+
+    // Note: We need to make a price available on the DVM before we can publish a price to the SourceOracle:
     await voting.requestPrice(identifier, requestTime, ancillaryData);
+    await voting.pushPrice(identifier, requestTime, ancillaryData, requestPrice);
 
-    const encodedMetaDataProposal = Helpers.abiEncode(
-      ["bytes32", "uint256", "bytes", "int256"],
-      [padRight(identifier, 64), requestTime, ancillaryData, requestPrice]
-    );
-    const depositData = Helpers.createGenericDepositData(encodedMetaDataProposal);
-
-    // Deposit will fail because price has not been requested on the SourceOracle yet,
-    // and price has not been published on DVM:
-    assert(await didContractThrow(sourceOracle.validateDeposit(identifier, requestTime, ancillaryData)));
+    // Deposit will fail because price has not been requested on the SourceOracle yet, so let's manually request one:
     // Note: Only GenericHandler can call requestPrice on sourceOracle, so we temporarily give this role to an EOA.
     // In production, the price would have been requested originally from a Deposit on the sidechain Bridge.
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), depositerAddress);
-    await voting.pushPrice(identifier, requestTime, ancillaryData, requestPrice);
     await sourceOracle.requestPrice(identifier, requestTime, ancillaryData, { from: depositerAddress });
-    await sourceOracle.publishPrice(identifier, requestTime, ancillaryData, requestPrice);
 
-    // validateDeposit should now work on the SourceOracle, which is important because this function must pass
-    // for a price to get published back to the SinkOracle.
-    await sourceOracle.validateDeposit(identifier, requestTime, ancillaryData);
+    const depositTxn = await sourceOracle.publishPrice(
+      sidechainId,
+      identifier,
+      requestTime,
+      ancillaryData,
+      requestPrice,
+      { from: depositerAddress }
+    );
 
-    const depositTxn = await bridgeMainnet.deposit(sidechainId, votingResourceId, depositData, {
-      from: depositerAddress
+    // Bridge emits a Deposit event and the SinkOracle emitted a PushedPrice event.
+    TruffleAssert.eventEmitted(depositTxn, "PushedPrice", event => {
+      return (
+        event.pusher.toLowerCase() === depositerAddress.toLowerCase() &&
+        hexToUtf8(event.identifier) === hexToUtf8(identifier) &&
+        event.time.toString() === requestTime.toString() &&
+        event.ancillaryData.toLowerCase() === ancillaryData.toLowerCase() &&
+        event.price.toString() === requestPrice
+      );
     });
-
-    // Bridge emits a Deposit event.
+    const depositInternalTx = await TruffleAssert.createTransactionResult(bridgeMainnet, depositTxn.tx);
     TruffleAssert.eventEmitted(
-      depositTxn,
+      depositInternalTx,
       "Deposit",
       event =>
         event.destinationChainID.toString() === sidechainId.toString() &&
