@@ -2,11 +2,11 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
-import "../../interfaces/OracleAncillaryInterface.sol";
-import "../../../common/implementation/MultiRole.sol";
-import "../../interfaces/FinderInterface.sol";
-import "./BridgeInterface.sol";
-import "../Constants.sol";
+import "../oracle/interfaces/OracleAncillaryInterface.sol";
+import "../common/implementation/MultiRole.sol";
+import "../oracle/interfaces/FinderInterface.sol";
+import "./IBridge.sol";
+import "../oracle/implementation/Constants.sol";
 
 /**
  * @title Simple implementation of the OracleInterface used to communicate price request data cross-chain between
@@ -144,7 +144,7 @@ abstract contract BeaconOracle is OracleAncillaryInterface, MultiRole {
         return OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 
-    function _getBridge() internal view returns (BridgeInterface) {
-        return BridgeInterface(finder.getImplementationAddress(OracleInterfaces.Bridge));
+    function _getBridge() internal view returns (IBridge) {
+        return IBridge(finder.getImplementationAddress(OracleInterfaces.Bridge));
     }
 }

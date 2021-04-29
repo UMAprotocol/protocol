@@ -10,4 +10,10 @@ interface IBridge {
         @return uint8 The {_chainID} that is currently set for the Bridge contract.
      */
     function _chainID() external returns (uint8);
+
+    function deposit(
+        uint8 destinationChainID,
+        bytes32 resourceID,
+        bytes calldata data
+    ) external;
 }
