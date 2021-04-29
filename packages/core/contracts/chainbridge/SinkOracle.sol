@@ -5,13 +5,16 @@ import "./BeaconOracle.sol";
 import "../oracle/interfaces/RegistryInterface.sol";
 
 /**
- * @title Simple implementation of the OracleInterface that is intended to be deployed on non-Mainnet networks and used
- * to communicate price request data cross-chain with a Source Oracle on Mainnet. An Admin can request prices from
- * this oracle, which might ultimately request a price from a Mainnet Source Oracle and eventually the DVM.
- * @dev Admins capable of making price requests to this contract should be OptimisticOracle contracts. This enables
- * optimistic price resolution on non-Mainnet networks while also providing ultimate security by the DVM on Mainnet.
+ * @title Extension of BeaconOracle that is intended to be deployed on non-Mainnet networks to give financial
+ * contracts on those networks the ability to trigger cross-chain price requests to the Mainnet DVM. Also has the
+ * ability to receive published prices from Mainnet.
+ * @dev The intended client of this contract is an OptimisticOracle on a non-Mainnet network that needs price
+ * resolution secured by the DVM on Mainnet. If a registered contract, such as the OptimisticOracle, calls
+ * `requestPrice()` on this contract, then it will call the network's Bridge contract to signal to an off-chain
+ * relayer to bridge a price request to Mainnet.
  */
 contract SinkOracle is BeaconOracle {
+    // Chain ID of the Source Oracle that will communicate this contract's price request to the DVM on Mainnet.
     uint8 public destinationChainID;
 
     constructor(
@@ -22,14 +25,42 @@ contract SinkOracle is BeaconOracle {
         destinationChainID = _destinationChainID;
     }
 
+    // This assumes that the local network has a Registry that resembles the Mainnet registry.
     modifier onlyRegisteredContract() {
         RegistryInterface registry = RegistryInterface(finder.getImplementationAddress(OracleInterfaces.Registry));
         require(registry.isContractRegistered(msg.sender), "Caller must be registered");
         _;
     }
 
-    // This function will be called by the GenericHandler upon a deposit to ensure that the deposit is arising from a
-    // real price request. This method will revert unless the price request has been requested by a registered contract.
+    /***************************************************************
+     * Bridging a Price Request to Mainnet:
+     ***************************************************************/
+
+    /**
+     * @notice This is the first method that should be called in order to bridge a price request to Mainnet.
+     * @dev Can be called only by a Registered contract that is allowed to make DVM price requests. Will mark this
+     * price request as Requested, and therefore able to receive the ultimate price resolution data, and also
+     * calls the local Bridge's deposit() method which will emit a Deposit event in order to signal to an off-chain
+     * relayer to begin the cross-chain process.
+     */
+    function requestPrice(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) public override onlyRegisteredContract() {
+        _requestPrice(identifier, time, ancillaryData);
+
+        // Call Bridge.deposit() to intiate cross-chain price request.
+        _getBridge().deposit(destinationChainID, getResourceId(), _formatMetadata(identifier, time, ancillaryData));
+    }
+
+    /**
+     * @notice This method will ultimately be called after `requestPrice` calls `Bridge.deposit()`, which will call
+     * `GenericHandler.deposit()` and ultimately this method.
+     * @dev This method should basically check that the `Bridge.deposit()` was triggered by a valid price request,
+     * specifically one that has not resolved yet and was called by a registered contract. Without this check,
+     * `Bridge.deposit()` could be called by anybody in order to emit excess Deposit events.
+     */
     function validateDeposit(
         bytes32 identifier,
         uint256 time,
@@ -40,23 +71,17 @@ contract SinkOracle is BeaconOracle {
         require(lookup.state == RequestState.Requested, "Price has not been requested");
     }
 
-    // Should be callable only by registered contract. Initiates a cross-bridge price request by calling deposit
-    // on the Bridge contract for this network, which will call requestPriceFromSource on the destination chain's
-    // Source Oracle.
-    function requestPrice(
-        bytes32 identifier,
-        uint256 time,
-        bytes memory ancillaryData
-    ) public override onlyRegisteredContract() {
-        _requestPrice(identifier, time, ancillaryData);
+    /***************************************************************
+     * Publishing Price Request Data from Mainnet:
+     ***************************************************************/
 
-        // Call Bridge.deposit() to intiate cross-chain price request.
-        try
-            _getBridge().deposit(destinationChainID, getResourceId(), _formatMetadata(identifier, time, ancillaryData))
-        {} catch {}
-    }
-
-    // Should be callable only by the GenericHandler contract.
+    /**
+     * @notice This method will ultimately be called after a `publishPrice` has been bridged cross-chain from Mainnet
+     * to this network via an off-chain relayer. The relayer will call `Bridge.executeProposal` on this local network,
+     * which call `GenericHandler.executeProposal()` and ultimately this method.
+     * @dev This method should publish the price data for a requested price request. If this method fails for some
+     * reason, then it means that the price was never requested. Can only be called by the `GenericHandler`.
+     */
     function publishPrice(
         bytes32 identifier,
         uint256 time,
@@ -66,10 +91,12 @@ contract SinkOracle is BeaconOracle {
         _publishPrice(identifier, time, ancillaryData, price);
     }
 
-    // GenericHandler.deposit() expects data to be formatted as:
-    //     len(data)                              uint256     bytes  0  - 64
-    //     data                                   bytes       bytes  64 - END
-    // This helper method is useful for calling Bridge.deposit() from a BeaconOracle method.
+    /**
+     * @notice This helper method is useful for calling Bridge.deposit().
+     * @dev GenericHandler.deposit() expects data to be formatted as:
+     *     len(data)                              uint256     bytes  0  - 64
+     *     data                                   bytes       bytes  64 - END
+     */
     function _formatMetadata(
         bytes32 identifier,
         uint256 time,

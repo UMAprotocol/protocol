@@ -11,6 +11,9 @@ import "./IGenericHandler.sol";
 
 /**
     @title Facilitates deposits, creation and votiing of deposit proposals, and deposit executions.
+    @dev Copied directly from here: https://github.com/ChainSafe/chainbridge-solidity/releases/tag/v1.0.0 except for 
+         one small change to the imported Pausable and SafeMath contracts. We replaced local implementations with 
+         openzeppelin/contracts versions.
     @author ChainSafe Systems.
  */
 contract Bridge is Pausable, AccessControl {

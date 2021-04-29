@@ -6,7 +6,8 @@ import "./IGenericHandler.sol";
 /**
     @title Handles generic deposits and deposit executions.
     @author ChainSafe Systems.
-    @notice This contract is intended to be used with the Bridge contract.
+    @notice This contract is intended to be used with the Bridge contract. Copied directly from here: 
+            https://github.com/ChainSafe/chainbridge-solidity/releases/tag/v1.0.0
  */
 contract GenericHandler is IGenericHandler {
     address public _bridgeAddress;

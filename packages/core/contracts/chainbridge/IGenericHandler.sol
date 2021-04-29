@@ -2,6 +2,7 @@ pragma solidity ^0.6.0;
 
 /**
     @title Interface for handler that handles generic deposits and deposit executions.
+    @dev Copied directly from here: https://github.com/ChainSafe/chainbridge-solidity/releases/tag/v1.0.0.
     @author ChainSafe Systems.
  */
 interface IGenericHandler {

@@ -1,11 +1,10 @@
 // TODO:
-// Need to write unit tests for Beacon, Source, and Sink oracles to test:
-// - permissioning
-// - state modifications
+// Need to write unit tests for Beacon, Source, and Sink oracles.
 
 // Test integrations between GenericHandler and UMA voting contracts. The purpose of this test script and the contracts
 // found in the `chainbridge` directory is to make sure that the latest Voting interface is compatible with the
-// chainbridge GenericHandler contract.
+// chainbridge GenericHandler contract. This file contains an End-to-End test. Unit tests for BeaconOracle
+// contracts will be placed in other files.
 // Note: Inspired by tests from chainbridge-solidity repo's test folder:
 // https://github.com/ChainSafe/chainbridge-solidity/tree/master/test/handlers/generic
 
@@ -40,9 +39,13 @@ const getResourceIdForBeaconOracle = (oracleAddress, chainID) => {
 };
 
 contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
+  // # of relayers who must vote on a proposal before it can be executed.
   const relayerThreshold = 2;
+  // Source chain ID.
   const chainId = 0;
+  // Side chain ID.
   const sidechainId = 1;
+  // We only expect to make 1 deposit per test.
   const expectedDepositNonce = 1;
 
   const depositerAddress = accounts[1];
@@ -62,7 +65,8 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
   let sourceOracle; // Beacon oracle on Mainnet
   let sinkOracle; // Beacon oracle on Sidechain
   let identifierWhitelist;
-  let finder;
+  let sourceFinder;
+  let sinkFinder;
   let registry;
   let timer;
 
@@ -83,24 +87,27 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
     await registry.registerContract([], depositerAddress, { from: depositerAddress });
   });
   beforeEach(async () => {
-    // Duplicate contracts on both chain (represented for convenience in this test as a singleton contract).
-    finder = await Finder.deployed();
+    sourceFinder = await Finder.deployed();
+    sinkFinder = await Finder.new();
+    await sinkFinder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.address);
     timer = await Timer.deployed();
     identifierWhitelist = await IdentifierWhitelist.deployed();
-    voting = await MockOracle.new(finder.address, timer.address);
 
-    // Make sure that the DVM is set up in the finder for SourceOracle to find:
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), voting.address);
+    // MockOracle is the test DVM for Mainnet.
+    voting = await MockOracle.new(sourceFinder.address, timer.address);
+    await sourceFinder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), voting.address);
 
     // Mainnet bridge variables:
     bridgeMainnet = await BridgeContract.new(chainId, initialRelayers, relayerThreshold, 0, 100);
-    sourceOracle = await SourceOracle.new(finder.address, chainId);
+    await sourceFinder.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridgeMainnet.address);
+    sourceOracle = await SourceOracle.new(sourceFinder.address, chainId);
     votingResourceId = getResourceIdForBeaconOracle(sourceOracle.address, chainId);
     assert.equal(votingResourceId, await sourceOracle.getResourceId());
 
     // Sidechain bridge variables:
     bridgeSidechain = await BridgeContract.new(sidechainId, initialRelayers, relayerThreshold, 0, 100);
-    sinkOracle = await SinkOracle.new(finder.address, sidechainId, chainId);
+    await sinkFinder.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridgeSidechain.address);
+    sinkOracle = await SinkOracle.new(sinkFinder.address, sidechainId, chainId);
     votingResourceSidechainId = getResourceIdForBeaconOracle(sinkOracle.address, sidechainId);
     assert.equal(votingResourceSidechainId, await sinkOracle.getResourceId());
 
@@ -115,12 +122,20 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
       [Helpers.getFunctionSignature(sourceOracle, "validateDeposit")],
       [Helpers.getFunctionSignature(sourceOracle, "requestPrice")]
     );
+    await sourceFinder.changeImplementationAddress(
+      utf8ToHex(interfaceName.GenericHandler),
+      genericHandlerMainnet.address
+    );
     genericHandlerSidechain = await GenericHandlerContract.new(
       bridgeSidechain.address,
       [votingResourceSidechainId],
       [sinkOracle.address],
       [Helpers.getFunctionSignature(sinkOracle, "validateDeposit")],
       [Helpers.getFunctionSignature(sinkOracle, "publishPrice")]
+    );
+    await sinkFinder.changeImplementationAddress(
+      utf8ToHex(interfaceName.GenericHandler),
+      genericHandlerSidechain.address
     );
 
     // Mainnet resource ID 1: Voting Contract
@@ -147,9 +162,6 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
 
   // Scenario: Sidechain contract needs a price from DVM.
   it("Sidechain deposit: requests price on sidechain and enables bridged price request to mainnet", async function() {
-    // First make sure that the Bridge contract we will call is set up in the Finder:
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridgeSidechain.address);
-
     // Request price triggers cross-chain deposit:
     const depositTxn = await sinkOracle.requestPrice(identifier, requestTime, ancillaryData, {
       from: depositerAddress
@@ -192,8 +204,6 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
     );
 
     // This will call requestPrice on the SourceOracle, which will make a price request to the DVM.
-    // Note: that we must set up the GenericHandler in the Finder so that it can call requestPrice on the SourceOracle.
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), genericHandlerMainnet.address);
     const executeProposalTx = await bridgeMainnet.executeProposal(
       sidechainId,
       expectedDepositNonce,
@@ -233,9 +243,6 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
 
   // Scenario: Someone wants to publish a price from mainnet to sidechain.
   it("Mainnet deposit: publishes price on mainnet and enables bridged price resolution to sidechain", async function() {
-    // First make sure that the Bridge contract we will call is set up in the Finder:
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridgeMainnet.address);
-
     // Note: We need to make a price available on the DVM before we can publish a price to the SourceOracle:
     await voting.requestPrice(identifier, requestTime, ancillaryData);
     await voting.pushPrice(identifier, requestTime, ancillaryData, requestPrice);
@@ -243,7 +250,7 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
     // Deposit will fail because price has not been requested on the SourceOracle yet, so let's manually request one:
     // Note: Only GenericHandler can call requestPrice on sourceOracle, so we temporarily give this role to an EOA.
     // In production, the price would have been requested originally from a Deposit on the sidechain Bridge.
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), depositerAddress);
+    await sourceFinder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), depositerAddress);
     await sourceOracle.requestPrice(identifier, requestTime, ancillaryData, { from: depositerAddress });
 
     const depositTxn = await sourceOracle.publishPrice(
@@ -294,9 +301,6 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
     // This will call requestPrice on the SinkOracle, which will publish the price that the DVM resolved.
     // Note: This will fail unless a price has been requested on the sink oracle.
     await sinkOracle.requestPrice(identifier, requestTime, ancillaryData, { from: depositerAddress });
-    // Note: This will also fail unless we register the GenericHandler on the Finder since only the GenericHandler
-    // can call publishPrice on the sinkOracle.
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), genericHandlerSidechain.address);
     const executeProposalTx = await bridgeSidechain.executeProposal(
       chainId,
       expectedDepositNonce,
