@@ -174,6 +174,7 @@ workflows:
           context: gcloud
           requires:
             - dapp_build
+            - test
           filters:
             branches:
               only: master
@@ -181,6 +182,7 @@ workflows:
           context: api_keys
           requires:
             - build
+            - test
           filters:
             branches:
               only: master
