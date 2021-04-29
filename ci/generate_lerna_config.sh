@@ -6,9 +6,6 @@ set -o nounset
 PACKAGES_ARRAY=($(cat lerna_packages))
 CI_CONFIG_FILE=".circleci/lerna_config.yml"
 
-echo "All packages modified:"
-echo ${PACKAGES_ARRAY[*]}
-
 if [ ${#PACKAGES_ARRAY[@]} -eq 0 ]; then
 
   echo "No packages for testing."
@@ -16,11 +13,8 @@ if [ ${#PACKAGES_ARRAY[@]} -eq 0 ]; then
 
 else
 
-  echo "Packages to execute:"
+  echo "Packages to test:"
   echo ${PACKAGES_ARRAY[*]}
-
-  echo "Ignored packages:"
-  echo ${PACKAGES_IGNORE[*]}
 
   printf "version: 2.1\n\njobs:\n" >> $CI_CONFIG_FILE
 
@@ -45,6 +39,19 @@ else
 EOF
   done
 
+  cat <<EOF >> $CI_CONFIG_FILE
+    tests-required:
+      docker:
+        - image: circleci/node:lts
+      steps:
+        - run:
+            name: Test dependencies
+            command: |
+              echo: "All tests running successfully"
+              circleci-agent step halt;
+EOF
+
+
   printf "\n\nworkflows:\n  version: 2.1\n  build_and_test:\n    jobs:\n" >> $CI_CONFIG_FILE
 
   for PACKAGE in "${PACKAGES_ARRAY[@]}"
@@ -52,6 +59,15 @@ EOF
       cat <<EOF >> $CI_CONFIG_FILE
       - test-${PACKAGE:5}:
           context: api_keys
+EOF
+  done
+
+  printf "      - tests-required:\n          requires:\n" >> $CI_CONFIG_FILE
+
+  for PACKAGE in "${PACKAGES_ARRAY[@]}"
+    do
+      cat <<EOF >> $CI_CONFIG_FILE
+            - test-${PACKAGE:5}
 EOF
   done
 
