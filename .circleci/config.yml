@@ -70,7 +70,7 @@ jobs:
       - store_artifacts:
           path: build/site
 
-  testing:
+  test:
     executor: continuation/default
     steps:
       - restore_cache:
@@ -160,7 +160,7 @@ workflows:
       - lint:
           requires:
             - checkout_and_install
-      - testing:
+      - test:
           context: api_keys
           requires:
             - build
