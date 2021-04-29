@@ -12,7 +12,15 @@ import "../oracle/interfaces/RegistryInterface.sol";
  * optimistic price resolution on non-Mainnet networks while also providing ultimate security by the DVM on Mainnet.
  */
 contract SinkOracle is BeaconOracle {
-    constructor(address _finderAddress, uint8 _chainID) public BeaconOracle(_finderAddress, _chainID) {}
+    uint8 public destinationChainID;
+
+    constructor(
+        address _finderAddress,
+        uint8 _chainID,
+        uint8 _destinationChainID
+    ) public BeaconOracle(_finderAddress, _chainID) {
+        destinationChainID = _destinationChainID;
+    }
 
     modifier onlyRegisteredContract() {
         RegistryInterface registry = RegistryInterface(finder.getImplementationAddress(OracleInterfaces.Registry));
@@ -40,7 +48,7 @@ contract SinkOracle is BeaconOracle {
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public onlyRegisteredContract() {
+    ) public override onlyRegisteredContract() {
         _requestPrice(identifier, time, ancillaryData);
 
         // Call Bridge.deposit() to intiate cross-chain price request.

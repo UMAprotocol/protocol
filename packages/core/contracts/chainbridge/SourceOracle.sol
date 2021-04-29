@@ -2,7 +2,6 @@
 pragma solidity ^0.6.0;
 
 import "./BeaconOracle.sol";
-import "../oracle/interfaces/OracleAncillaryInterface.sol";
 
 /**
  * @title Simple implementation of the OracleInterface that is intended to be deployed on Mainnet and used
@@ -32,7 +31,7 @@ contract SourceOracle is BeaconOracle {
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public onlyGenericHandlerContract() {
+    ) public override onlyGenericHandlerContract() {
         _requestPrice(identifier, time, ancillaryData);
         _getOracle().requestPrice(identifier, time, ancillaryData);
     }

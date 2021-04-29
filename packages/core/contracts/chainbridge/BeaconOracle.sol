@@ -5,6 +5,7 @@ pragma experimental ABIEncoderV2;
 import "../oracle/interfaces/FinderInterface.sol";
 import "./IBridge.sol";
 import "../oracle/implementation/Constants.sol";
+import "../oracle/interfaces/OracleAncillaryInterface.sol";
 
 /**
  * @title Simple implementation of the OracleInterface used to communicate price request data cross-chain between
@@ -13,7 +14,7 @@ import "../oracle/implementation/Constants.sol";
  * resolution data and request prices cross-chain to the "Source" Oracle. The "Sink" is designed to be deployed on
  * non-Mainnet networks and the "Source" should be deployed on Mainnet.
  */
-abstract contract BeaconOracle {
+abstract contract BeaconOracle is OracleAncillaryInterface {
     enum RequestState { NeverRequested, Requested, Resolved }
 
     struct Price {
@@ -98,7 +99,7 @@ abstract contract BeaconOracle {
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public view returns (bool) {
+    ) public view override returns (bool) {
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
         if (lookup.state == RequestState.Resolved) {
@@ -113,7 +114,7 @@ abstract contract BeaconOracle {
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public view returns (int256) {
+    ) public view override returns (int256) {
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Resolved, "Price has not been resolved");

@@ -100,17 +100,12 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
 
     // Sidechain bridge variables:
     bridgeSidechain = await BridgeContract.new(sidechainId, initialRelayers, relayerThreshold, 0, 100);
-    sinkOracle = await SinkOracle.new(finder.address, sidechainId);
+    sinkOracle = await SinkOracle.new(finder.address, sidechainId, chainId);
     votingResourceSidechainId = getResourceIdForBeaconOracle(sinkOracle.address, sidechainId);
     assert.equal(votingResourceSidechainId, await sinkOracle.getResourceId());
 
     // Configure contracts such that price requests will succeed:
     await identifierWhitelist.addSupportedIdentifier(identifier);
-
-    console.log(`validateDeposit: ${Helpers.getFunctionSignature(sourceOracle, "validateDeposit")}`);
-    console.log(`requestPrice: ${Helpers.getFunctionSignature(sourceOracle, "requestPrice")}`);
-    console.log(`publishPrice: ${Helpers.getFunctionSignature(sourceOracle, "publishPrice")}`);
-    console.log(`publishPrice: ${Helpers.getFunctionSignature(sinkOracle, "publishPrice")}`);
 
     // Set up Handlers: Should specify a contract address and function to call for each resource ID.
     genericHandlerMainnet = await GenericHandlerContract.new(
