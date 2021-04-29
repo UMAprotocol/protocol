@@ -932,6 +932,12 @@ const defaultConfigs = {
         tokenAddress: "0x6b3595068778dd592e39a122f4f5a5cf09c90fe2"
       }
     }
+  },
+  uSTONKS_JUN21: {
+    type: "uniswap",
+    uniswapAddress: "0x360acfeb5c1548bad3583c559a646d803077236d",
+    twapLength: 7200,
+    invertPrice: false
   }
 };
 
