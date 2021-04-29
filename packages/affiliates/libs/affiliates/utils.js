@@ -362,7 +362,14 @@ function makeUnixPipe(cb, stdin = process.stdin) {
         return result + str;
       })
       // once string is final, we try to parse it as json. We assume that our caller is passing us a valid json string.
-      .map(x => JSON.parse(x))
+      .map(x => {
+        try {
+          return JSON.parse(x);
+        } catch (err) {
+          console.error(x);
+          throw err;
+        }
+      })
       // once we have the json object we call the callback passing it as a param
       .map(async x => cb(x))
       // we need to do this to extract the result of the promise in the stream.
