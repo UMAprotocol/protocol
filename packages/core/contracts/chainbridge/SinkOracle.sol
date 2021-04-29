@@ -12,7 +12,7 @@ import "../oracle/interfaces/RegistryInterface.sol";
  * optimistic price resolution on non-Mainnet networks while also providing ultimate security by the DVM on Mainnet.
  */
 contract SinkOracle is BeaconOracle {
-    constructor(address _finderAddress) public BeaconOracle(_finderAddress) {}
+    constructor(address _finderAddress, uint8 _chainID) public BeaconOracle(_finderAddress, _chainID) {}
 
     modifier onlyRegisteredContract() {
         RegistryInterface registry = RegistryInterface(finder.getImplementationAddress(OracleInterfaces.Registry));
@@ -32,16 +32,28 @@ contract SinkOracle is BeaconOracle {
         require(lookup.state == RequestState.Requested, "Price has not been requested");
     }
 
-    // Should be callable only by registered contract.
+    // Should be callable only by registered contract. Initiates a cross-bridge price request by calling deposit
+    // on the Bridge contract for this network, which will call requestPriceFromSource on the destination chain's
+    // Source Oracle.
     function requestPrice(
+        // uint8 destinationChainID,
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public override onlyRegisteredContract() {
+    ) public onlyRegisteredContract() {
         _requestPrice(identifier, time, ancillaryData);
 
-        // TODO: Call Bridge.deposit() to intiate cross-chain price request.
-        // _getBridge().deposit(formattedMetadata);
+        // Call Bridge.deposit() to intiate cross-chain price request.
+        // _getBridge().deposit(
+        //     destinationChainID,
+        //     getResourceId(),
+        //     abi.encodeWithSignature(
+        //         "requestPriceFromSource(bytes32,uint256,bytes)",
+        //         identifier,
+        //         time,
+        //         ancillaryData
+        //     )
+        // );
     }
 
     // Should be callable only by the GenericHandler contract.

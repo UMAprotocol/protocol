@@ -2,7 +2,6 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 
-import "../oracle/interfaces/OracleAncillaryInterface.sol";
 import "../oracle/interfaces/FinderInterface.sol";
 import "./IBridge.sol";
 import "../oracle/implementation/Constants.sol";
@@ -14,7 +13,7 @@ import "../oracle/implementation/Constants.sol";
  * resolution data and request prices cross-chain to the "Source" Oracle. The "Sink" is designed to be deployed on
  * non-Mainnet networks and the "Source" should be deployed on Mainnet.
  */
-abstract contract BeaconOracle is OracleAncillaryInterface {
+abstract contract BeaconOracle {
     enum RequestState { NeverRequested, Requested, Resolved }
 
     struct Price {
@@ -27,6 +26,8 @@ abstract contract BeaconOracle is OracleAncillaryInterface {
 
     // Finder to provide addresses for DVM contracts.
     FinderInterface public finder;
+    // Chain ID for this Beacon Oracle. Used to construct ResourceID along with this contract address.
+    uint8 public chainID;
 
     event PriceRequestAdded(address indexed requester, bytes32 indexed identifier, uint256 time, bytes ancillaryData);
     event PushedPrice(
@@ -41,8 +42,9 @@ abstract contract BeaconOracle is OracleAncillaryInterface {
      * @notice Constructor.
      * @param _finderAddress finder to use to get addresses of DVM contracts.
      */
-    constructor(address _finderAddress) public {
+    constructor(address _finderAddress, uint8 _chainID) public {
         finder = FinderInterface(_finderAddress);
+        chainID = _chainID;
     }
 
     modifier onlyGenericHandlerContract() {
@@ -96,7 +98,7 @@ abstract contract BeaconOracle is OracleAncillaryInterface {
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public view override returns (bool) {
+    ) public view returns (bool) {
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
         if (lookup.state == RequestState.Resolved) {
@@ -111,7 +113,7 @@ abstract contract BeaconOracle is OracleAncillaryInterface {
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public view override returns (int256) {
+    ) public view returns (int256) {
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Resolved, "Price has not been resolved");
@@ -128,5 +130,9 @@ abstract contract BeaconOracle is OracleAncillaryInterface {
         bytes memory ancillaryData
     ) internal pure returns (bytes32) {
         return keccak256(abi.encode(identifier, time, ancillaryData));
+    }
+
+    function getResourceId() public view returns (bytes32) {
+        return keccak256(abi.encode(address(this), chainID));
     }
 }

@@ -29,7 +29,15 @@ const Finder = artifacts.require("Finder");
 const Timer = artifacts.require("Timer");
 const Registry = artifacts.require("Registry");
 
-const { utf8ToHex, padRight, hexToUtf8, toWei } = web3.utils;
+const { utf8ToHex, padRight, hexToUtf8, toWei, sha3 } = web3.utils;
+const { abi } = web3.eth;
+
+// Returns the equivalent of keccak256(abi.encode(address,uint8)) in Solidity:
+const getResourceIdForBeaconOracle = (oracleAddress, chainID) => {
+  const encoded = abi.encodeParameters(["address", "uint8"], [oracleAddress, chainID]);
+  const hash = sha3(encoded, { encoding: "hex " });
+  return hash;
+};
 
 contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
   const relayerThreshold = 2;
@@ -86,16 +94,23 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
 
     // Mainnet bridge variables:
     bridgeMainnet = await BridgeContract.new(chainId, initialRelayers, relayerThreshold, 0, 100);
-    sourceOracle = await SourceOracle.new(finder.address);
-    votingResourceId = Helpers.createResourceID(sourceOracle.address, chainId);
+    sourceOracle = await SourceOracle.new(finder.address, chainId);
+    votingResourceId = getResourceIdForBeaconOracle(sourceOracle.address, chainId);
+    assert.equal(votingResourceId, await sourceOracle.getResourceId());
 
     // Sidechain bridge variables:
     bridgeSidechain = await BridgeContract.new(sidechainId, initialRelayers, relayerThreshold, 0, 100);
-    sinkOracle = await SinkOracle.new(finder.address);
-    votingResourceSidechainId = Helpers.createResourceID(sinkOracle.address, sidechainId);
+    sinkOracle = await SinkOracle.new(finder.address, sidechainId);
+    votingResourceSidechainId = getResourceIdForBeaconOracle(sinkOracle.address, sidechainId);
+    assert.equal(votingResourceSidechainId, await sinkOracle.getResourceId());
 
     // Configure contracts such that price requests will succeed:
     await identifierWhitelist.addSupportedIdentifier(identifier);
+
+    console.log(`validateDeposit: ${Helpers.getFunctionSignature(sourceOracle, "validateDeposit")}`);
+    console.log(`requestPrice: ${Helpers.getFunctionSignature(sourceOracle, "requestPrice")}`);
+    console.log(`publishPrice: ${Helpers.getFunctionSignature(sourceOracle, "publishPrice")}`);
+    console.log(`publishPrice: ${Helpers.getFunctionSignature(sinkOracle, "publishPrice")}`);
 
     // Set up Handlers: Should specify a contract address and function to call for each resource ID.
     genericHandlerMainnet = await GenericHandlerContract.new(
@@ -145,10 +160,12 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
     );
     const depositData = Helpers.createGenericDepositData(encodedMetaDataProposal);
 
+    // First make sure that the Bridge contract will call is set up in the Finder:
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridgeSidechain.address);
+
     // Deposit will fail because price has not been requested on the SinkOracle yet:
     assert(await didContractThrow(sinkOracle.validateDeposit(identifier, requestTime, ancillaryData)));
     await sinkOracle.requestPrice(identifier, requestTime, ancillaryData, { from: depositerAddress });
-
     // validateDeposit should now succeed on the SinkOracle, which is important because this function must pass
     // for a price to get bridge-requested to the SourceOracle.
     await sinkOracle.validateDeposit(identifier, requestTime, ancillaryData);
@@ -235,8 +252,8 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
     // Note: Only GenericHandler can call requestPrice on sourceOracle, so we temporarily give this role to an EOA.
     // In production, the price would have been requested originally from a Deposit on the sidechain Bridge.
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), depositerAddress);
-    await sourceOracle.requestPrice(identifier, requestTime, ancillaryData, { from: depositerAddress });
     await voting.pushPrice(identifier, requestTime, ancillaryData, requestPrice);
+    await sourceOracle.requestPrice(identifier, requestTime, ancillaryData, { from: depositerAddress });
     await sourceOracle.publishPrice(identifier, requestTime, ancillaryData, requestPrice);
 
     // validateDeposit should now work on the SourceOracle, which is important because this function must pass

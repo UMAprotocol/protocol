@@ -2,6 +2,7 @@
 pragma solidity ^0.6.0;
 
 import "./BeaconOracle.sol";
+import "../oracle/interfaces/OracleAncillaryInterface.sol";
 
 /**
  * @title Simple implementation of the OracleInterface that is intended to be deployed on Mainnet and used
@@ -12,7 +13,7 @@ import "./BeaconOracle.sol";
  * price reqests should be an off-chain relayer capable of detecting signals from the non-Mainnet Sink Oracles.
  */
 contract SourceOracle is BeaconOracle {
-    constructor(address _finderAddress) public BeaconOracle(_finderAddress) {}
+    constructor(address _finderAddress, uint8 _chainID) public BeaconOracle(_finderAddress, _chainID) {}
 
     // This function will be called by the GenericHandler upon a deposit to ensure that the deposit is arising from a
     // real price request. This method will revert unless the price request has been resolved by a registered contract.
@@ -26,12 +27,12 @@ contract SourceOracle is BeaconOracle {
         require(lookup.state == RequestState.Resolved, "Price has not been published");
     }
 
-    // Should be callable only by GenericHandler
+    // Should be callable only by GenericHandler following a bridged price request from a Sink Oracle.
     function requestPrice(
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public override onlyGenericHandlerContract() {
+    ) public onlyGenericHandlerContract() {
         _requestPrice(identifier, time, ancillaryData);
         _getOracle().requestPrice(identifier, time, ancillaryData);
     }
