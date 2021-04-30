@@ -23,6 +23,7 @@
     "winston-transport": "^4.3.0"
   },
   "devDependencies": {
+    "bignumber.js": "^9.0.1",
     "@tsconfig/node14": "^1.0.0",
     "typescript": "^4.1.3"
   },
