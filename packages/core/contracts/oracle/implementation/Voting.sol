@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/FixedPoint.sol";
@@ -17,8 +17,8 @@ import "./VotingToken.sol";
 import "./Constants.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 /**
  * @title Voting system for Oracle.
@@ -277,13 +277,13 @@ contract Voting is
             // Price requests always go in the next round, so add 1 to the computed current round.
             uint256 nextRoundId = currentRoundId.add(1);
 
-            priceRequests[priceRequestId] = PriceRequest({
-                identifier: identifier,
-                time: time,
-                lastVotingRound: nextRoundId,
-                index: pendingPriceRequests.length,
-                ancillaryData: ancillaryData
-            });
+            PriceRequest storage newPriceRequest = priceRequests[priceRequestId];
+            newPriceRequest.identifier = identifier;
+            newPriceRequest.time = time;
+            newPriceRequest.lastVotingRound = nextRoundId;
+            newPriceRequest.index = pendingPriceRequests.length;
+            newPriceRequest.ancillaryData = ancillaryData;
+
             pendingPriceRequests.push(priceRequestId);
             emit PriceRequestAdded(nextRoundId, identifier, time);
         }

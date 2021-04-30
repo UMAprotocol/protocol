@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
 import "../../common/interfaces/ExpandedIERC20.sol";
@@ -109,7 +109,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
         // Enforce configuration constraints.
         require(params.withdrawalLiveness != 0, "Withdrawal liveness cannot be 0");
         require(params.liquidationLiveness != 0, "Liquidation liveness cannot be 0");
-        require(params.expirationTimestamp > now, "Invalid expiration time");
+        require(params.expirationTimestamp > block.timestamp, "Invalid expiration time");
         _requireWhitelistedCollateral(params.collateralAddress);
 
         // We don't want EMP deployers to be able to intentionally or unintentionally set

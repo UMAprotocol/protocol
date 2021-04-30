@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/FixedPoint.sol";
@@ -34,7 +34,7 @@ contract PerpetualMock {
     event LiquidationCreated();
 
     function getCurrentTime() public view returns (uint256) {
-        return now;
+        return block.timestamp;
     }
 
     // Public methods that are useful for tests:

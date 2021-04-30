@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
 import "./Timer.sol";
 
@@ -46,7 +46,7 @@ abstract contract Testable {
         if (timerAddress != address(0x0)) {
             return Timer(timerAddress).getCurrentTime();
         } else {
-            return now; // solhint-disable-line not-rely-on-time
+            return block.timestamp; // solhint-disable-line not-rely-on-time
         }
     }
 }

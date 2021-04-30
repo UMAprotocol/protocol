@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
-import "@openzeppelin/contracts/utils/SafeCast.sol";
+import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/FixedPoint.sol";
@@ -101,7 +101,7 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
         address _configStoreAddress,
         FixedPoint.Unsigned memory _tokenScaling,
         address _timerAddress
-    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) EmergencyShutdownable() {
+    ) FeePayer(_collateralAddress, _finderAddress, _timerAddress) EmergencyShutdownable() {
         uint256 currentTime = getCurrentTime();
         fundingRate.updateTime = currentTime;
         fundingRate.applicationTime = currentTime;

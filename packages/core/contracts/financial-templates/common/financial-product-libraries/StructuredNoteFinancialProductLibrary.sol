@@ -1,4 +1,4 @@
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 import "./FinancialProductLibrary.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -14,6 +14,8 @@ import "../../../common/implementation/Lockable.sol";
  * If ETHUSD >= $400 at expiry, token is redeemed for $400 worth of ETH, as determined by the DVM.
  */
 contract StructuredNoteFinancialProductLibrary is FinancialProductLibrary, Ownable, Lockable {
+    using FixedPoint for FixedPoint.Unsigned;
+
     mapping(address => FixedPoint.Unsigned) financialProductStrikes;
 
     /**

@@ -1,4 +1,4 @@
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
 /**
     @title Interface for handler contracts that support deposits and deposit executions.

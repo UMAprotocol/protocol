@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
 import "../../common/implementation/MultiRole.sol";
@@ -10,7 +10,7 @@ import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/OracleInterface.sol";
 import "./Constants.sol";
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 /**
@@ -76,9 +76,9 @@ contract Governor is MultiRole, Testable {
 
         // This just sets the initial length of the array to the startingId since modifying length directly has been
         // disallowed in solidity 0.6.
-        assembly {
-            sstore(proposals_slot, _startingId)
-        }
+        // assembly {
+        //     sstore(proposals_slot, _startingId)
+        // }
     }
 
     /****************************************
