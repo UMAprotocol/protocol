@@ -1,7 +1,6 @@
 pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 import "./FinancialProductLibrary.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "../../../common/implementation/Lockable.sol";
 
 /**
@@ -11,7 +10,7 @@ import "../../../common/implementation/Lockable.sol";
  * & if it is at or after expiration then the original identifier is returned. This library enables self referential
  * TWAP identifier to be used on synthetics pre-expiration, in conjunction with a separate identifier at expiration.
  */
-contract PreExpirationIdentifierTransformationFinancialProductLibrary is FinancialProductLibrary, Ownable, Lockable {
+contract PreExpirationIdentifierTransformationFinancialProductLibrary is FinancialProductLibrary, Lockable {
     mapping(address => bytes32) financialProductTransformedIdentifiers;
 
     /**
@@ -24,7 +23,6 @@ contract PreExpirationIdentifierTransformationFinancialProductLibrary is Financi
      */
     function setFinancialProductTransformedIdentifier(address financialProduct, bytes32 transformedIdentifier)
         public
-        onlyOwner
         nonReentrant()
     {
         require(transformedIdentifier != "", "Cant set to empty transformation");
