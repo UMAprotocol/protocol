@@ -32,8 +32,8 @@ const { utf8ToHex, hexToUtf8, toWei, sha3 } = web3.utils;
 const { abi } = web3.eth;
 
 // Returns the equivalent of keccak256(abi.encode(address,uint8)) in Solidity:
-const getResourceIdForBeaconOracle = (oracleAddress, chainID) => {
-  const encoded = abi.encodeParameters(["address", "uint8"], [oracleAddress, chainID]);
+const getResourceIdForBeaconOracle = chainID => {
+  const encoded = abi.encodeParameters(["string", "uint8"], ["Oracle", chainID]);
   const hash = sha3(encoded, { encoding: "hex " });
   return hash;
 };
@@ -76,9 +76,9 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
   const requestPrice = toWei("1");
   const requestTime = Date.now();
 
-  // Resource ID's are unique for each contract address.
+  // Resource ID's link Sink and Source oracles and should be the same for any oracles that will communicate with each
+  // other.
   let votingResourceId;
-  let votingResourceSidechainId;
 
   before(async () => {
     registry = await Registry.deployed();
@@ -101,15 +101,18 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
     bridgeMainnet = await BridgeContract.new(chainId, initialRelayers, relayerThreshold, 0, 100);
     await sourceFinder.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridgeMainnet.address);
     sourceOracle = await SourceOracle.new(sourceFinder.address, chainId);
-    votingResourceId = getResourceIdForBeaconOracle(sourceOracle.address, chainId);
+    votingResourceId = getResourceIdForBeaconOracle(chainId);
     assert.equal(votingResourceId, await sourceOracle.getResourceId());
 
     // Sidechain bridge variables:
     bridgeSidechain = await BridgeContract.new(sidechainId, initialRelayers, relayerThreshold, 0, 100);
     await sinkFinder.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridgeSidechain.address);
     sinkOracle = await SinkOracle.new(sinkFinder.address, sidechainId, chainId);
-    votingResourceSidechainId = getResourceIdForBeaconOracle(sinkOracle.address, sidechainId);
-    assert.equal(votingResourceSidechainId, await sinkOracle.getResourceId());
+    assert.equal(
+      votingResourceId,
+      await sinkOracle.getResourceId(),
+      "Sink and Source oracles should have same resource ID"
+    );
 
     // Configure contracts such that price requests will succeed:
     await identifierWhitelist.addSupportedIdentifier(identifier);
@@ -128,7 +131,7 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
     );
     genericHandlerSidechain = await GenericHandlerContract.new(
       bridgeSidechain.address,
-      [votingResourceSidechainId],
+      [votingResourceId],
       [sinkOracle.address],
       [Helpers.getFunctionSignature(sinkOracle, "validateDeposit")],
       [Helpers.getFunctionSignature(sinkOracle, "publishPrice")]
@@ -153,7 +156,7 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
     // - ExecuteProposal: Should publish price resolved by DVM.
     await bridgeSidechain.adminSetGenericResource(
       genericHandlerSidechain.address,
-      votingResourceSidechainId,
+      votingResourceId,
       sinkOracle.address,
       Helpers.getFunctionSignature(sinkOracle, "validateDeposit"),
       Helpers.getFunctionSignature(sinkOracle, "publishPrice")
@@ -183,7 +186,7 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
       "Deposit",
       event =>
         event.destinationChainID.toString() === chainId.toString() &&
-        event.resourceID.toLowerCase() === votingResourceSidechainId.toLowerCase() &&
+        event.resourceID.toLowerCase() === votingResourceId.toLowerCase() &&
         event.depositNonce.toString() === expectedDepositNonce.toString()
     );
 
@@ -288,12 +291,12 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
     const proposalData = Helpers.createGenericDepositData(depositRecord._metaData);
     const proposalDataHash = Ethers.utils.keccak256(genericHandlerSidechain.address + proposalData.substr(2));
     TruffleAssert.passes(
-      await bridgeSidechain.voteProposal(chainId, expectedDepositNonce, votingResourceSidechainId, proposalDataHash, {
+      await bridgeSidechain.voteProposal(chainId, expectedDepositNonce, votingResourceId, proposalDataHash, {
         from: relayer1Address
       })
     );
     TruffleAssert.passes(
-      await bridgeSidechain.voteProposal(chainId, expectedDepositNonce, votingResourceSidechainId, proposalDataHash, {
+      await bridgeSidechain.voteProposal(chainId, expectedDepositNonce, votingResourceId, proposalDataHash, {
         from: relayer2Address
       })
     );
@@ -305,7 +308,7 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
       chainId,
       expectedDepositNonce,
       proposalData,
-      votingResourceSidechainId,
+      votingResourceId,
       { from: relayer1Address }
     );
 

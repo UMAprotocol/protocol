@@ -92,6 +92,15 @@ contract SinkOracle is BeaconOracle {
     }
 
     /**
+     * @notice Convenience method to get cross-chain Bridge resource ID linking this contract with the SourceOracle.
+     * @dev More details about Resource ID's here: https://chainbridge.chainsafe.io/spec/#resource-id
+     * @return bytes32 Hash containing the chain ID of the SourceOracle.
+     */
+    function getResourceId() public view returns (bytes32) {
+        return keccak256(abi.encode("Oracle", destinationChainID));
+    }
+
+    /**
      * @notice This helper method is useful for calling Bridge.deposit().
      * @dev GenericHandler.deposit() expects data to be formatted as:
      *     len(data)                              uint256     bytes  0  - 64

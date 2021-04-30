@@ -91,6 +91,15 @@ contract SourceOracle is BeaconOracle {
     }
 
     /**
+     * @notice Convenience method to get cross-chain Bridge resource ID linking this contract with its SinkOracles.
+     * @dev More details about Resource ID's here: https://chainbridge.chainsafe.io/spec/#resource-id
+     * @return bytes32 Hash containing this stored chain ID.
+     */
+    function getResourceId() public view returns (bytes32) {
+        return keccak256(abi.encode("Oracle", chainID));
+    }
+
+    /**
      * @notice Return DVM for this network.
      */
     function _getOracle() internal view returns (OracleAncillaryInterface) {

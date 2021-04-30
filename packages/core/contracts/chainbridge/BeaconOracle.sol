@@ -95,16 +95,6 @@ abstract contract BeaconOracle is OracleAncillaryInterface {
     }
 
     /**
-     * @notice Convenience method to get cross-chain Bridge resource ID for this contract.
-     * @dev More details about Resource ID's here: https://chainbridge.chainsafe.io/spec/#resource-id
-     * @return bytes32 Hash of this contract address and the stored chain ID.
-     */
-
-    function getResourceId() public view returns (bytes32) {
-        return keccak256(abi.encode(address(this), chainID));
-    }
-
-    /**
      * @notice Enqueues a request (if a request isn't already present) for the given (identifier, time, ancillary data)
      * pair. Will revert if request has been requested already.
      */
