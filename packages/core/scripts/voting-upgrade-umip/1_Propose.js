@@ -6,7 +6,7 @@
 
 const argv = require("minimist")(process.argv.slice(), { boolean: ["revert"] });
 
-const { getTruffleContract } = require("../../index");
+const { getTruffleContract } = require("../../dist/index");
 const Finder = getTruffleContract("Finder", web3, "1.1.0");
 const Registry = getTruffleContract("Registry", web3, "1.1.0");
 const Voting = getTruffleContract("Voting", web3, "1.1.0");

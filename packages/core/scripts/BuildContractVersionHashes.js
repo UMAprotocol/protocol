@@ -5,7 +5,7 @@ const fs = require("fs");
 const { toWei, utf8ToHex, padRight, soliditySha3 } = web3.utils;
 
 const { createConstructorParamsForContractVersion, interfaceName } = require("@uma/common");
-const { getTruffleContract } = require("../index");
+const { getTruffleContract } = require("../dist/index.js");
 
 async function buildHashes(contractType) {
   assert(contractType == "Perpetual" || contractType == "ExpiringMultiParty", "Invalid contract type defined!");

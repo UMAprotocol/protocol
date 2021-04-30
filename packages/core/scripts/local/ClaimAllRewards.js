@@ -11,7 +11,7 @@
 //   Since a new Voting contract was deployed in version 2.0.0, that version will only claim for that contract, not
 //   older ones. Defaults to 1.2.2 and latest.
 
-const { getAbi, getAddress } = require("../../index");
+const { getAbi, getAddress } = require("../../dist/index");
 const TransactionBatcher = artifacts.require("TransactionBatcher");
 const lodash = require("lodash");
 const winston = require("winston");
