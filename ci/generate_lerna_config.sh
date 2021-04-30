@@ -19,7 +19,7 @@ jobs:
       - run:
           name: Test dependencies
           command: |
-            echo: "No packages for testing."
+            echo "No packages for testing."
             circleci-agent step halt;
 
 workflows:
