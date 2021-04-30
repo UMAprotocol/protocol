@@ -17,9 +17,9 @@ contract PostExpirationIdentifierTransformationFinancialProductLibrary is Financ
      * @notice Enables the deployer of the library to set the transformed identifier for an associated financial product.
      * @param financialProduct address of the financial product.
      * @param transformedIdentifier the identifier for the financial product to be used if the contract is post expiration.
-     * @dev Note: a) Only the owner (deployer) of this library can set identifier transformations b) The identifier can't
-     * be set to blank. c) A transformed price can only be set once to prevent the deployer from changing it after the fact.
-     * d)  financialProduct must expose an expirationTimestamp method.
+     * @dev Note: a) Any address can set identifier transformations b) The identifier can't be set to blank. c) A
+     * transformed price can only be set once to prevent the deployer from changing it after the fact. d) financialProduct
+     * must expose an expirationTimestamp method.
      */
     function setFinancialProductTransformedIdentifier(address financialProduct, bytes32 transformedIdentifier)
         public
@@ -46,7 +46,7 @@ contract PostExpirationIdentifierTransformationFinancialProductLibrary is Financ
     }
 
     /**
-     * @notice Returns a transformed price identifier if the contract is post-expiration and no transformation if post.
+     * @notice Returns a transformed price identifier if the contract is post-expiration and no transformation if pre.
      * @param identifier input price identifier to be transformed.
      * @param requestTime timestamp the identifier is to be used at.
      * @return transformedPriceIdentifier the input price identifier with the transformation logic applied to it.
