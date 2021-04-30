@@ -141,19 +141,6 @@ class FundingRateProposer {
     const currentConfig = cachedContract.state.currentConfig;
     const fundingRateIdentifier = this.hexToUtf8(currentFundingRateData.identifier);
 
-    // If proposal time is not 0, then proposal is already outstanding. Check if
-    // the proposal has been disputed and if not, then we can't propose and must exit.
-    const proposalTime = currentFundingRateData.proposalTime.toString();
-    if (proposalTime !== "0") {
-      this.logger.debug({
-        at: "PerpetualProposer#updateFundingRate",
-        message: "Proposal is already pending, cannot propose",
-        fundingRateIdentifier,
-        proposalTime
-      });
-      return;
-    }
-
     // Assume pricefeed has been cached and updated prior to this function via the `update()` call.
     const priceFeed = this.priceFeedCache[fundingRateIdentifier];
     if (!priceFeed) {
@@ -186,6 +173,19 @@ class FundingRateProposer {
       return;
     }
     let onchainFundingRate = currentFundingRateData.rate.toString();
+
+    // If proposal time is not 0, then proposal is already outstanding. Check if
+    // the proposal has been disputed and if not, then we can't propose and must exit.
+    const proposalTime = currentFundingRateData.proposalTime.toString();
+    if (proposalTime !== "0") {
+      this.logger.debug({
+        at: "PerpetualProposer#updateFundingRate",
+        message: "Proposal is already pending, cannot propose",
+        fundingRateIdentifier,
+        proposalTime
+      });
+      return;
+    }
 
     // Check that pricefeedPrice is within [configStore.minFundingRate, configStore.maxFundingRate]
     const minFundingRate = currentConfig.minFundingRate.toString();
