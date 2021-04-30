@@ -1,5 +1,5 @@
 import assert from "assert";
-import { exists } from "./utils";
+import { exists, getPositionKey } from "./utils";
 import { ethers } from "ethers";
 
 type CacheType = {
@@ -17,7 +17,7 @@ export const Cache = (table = new Map<string | number, CacheType>()) => {
     list
   };
 };
-type NftPosition = {
+export type NftPosition = {
   id?: string;
   tokenId: string;
   amount?: string;
@@ -74,12 +74,11 @@ export const NftPositions = (config: any, table: ReturnType<typeof Cache>) => {
     list: table.list
   };
 };
-type Position = {
+export type Position = {
   id?: string;
   operator: string;
   tickLower: string;
   tickUpper: string;
-  nonce?: string;
   token0?: string;
   token1?: string;
   liquidity?: string;
@@ -93,30 +92,7 @@ type Position = {
 // These positions are from core pool contracts and are indexed using hash of upper/lower/user address.
 export const Positions = (config: any, table: ReturnType<typeof Cache>) => {
   function makeId(data: Position) {
-    const encoded = ethers.utils.defaultAbiCoder.encode(
-      [
-        ethers.utils.ParamType.from({
-          indexed: true,
-          name: "owner",
-          type: "address"
-        }),
-        ethers.utils.ParamType.from({
-          indexed: true,
-          baseType: "int24",
-          name: "tickLower",
-          type: "int24"
-        }),
-        ethers.utils.ParamType.from({
-          indexed: true,
-          baseType: "int24",
-          name: "tickUpper",
-          type: "int24"
-        })
-      ],
-      [data.operator, data.tickLower, data.tickUpper]
-    );
-    // this is how positions are indexed in the v3 core contract
-    return ethers.utils.keccak256(encoded);
+    return getPositionKey(data.operator, data.tickLower, data.tickUpper);
   }
   async function create(data: Position) {
     const id = makeId(data);
@@ -155,7 +131,7 @@ export const Positions = (config: any, table: ReturnType<typeof Cache>) => {
   };
 };
 
-type GlobalState = {
+export type GlobalState = {
   id?: string;
   token0: string;
   token1: string;
@@ -213,25 +189,25 @@ export const Pools = (config: any, table: ReturnType<typeof Cache>) => {
   };
 };
 
-type TickInfo = {
-  //     // the total position liquidity that references this tick
+export type TickInfo = {
+  // the total position liquidity that references this tick
   liquidityGross?: string;
-  //     // amount of net liquidity added (subtracted) when tick is crossed from left to right (right to left),
+  // amount of net liquidity added (subtracted) when tick is crossed from left to right (right to left),
   liquidityNet?: string;
-  //     // fee growth per unit of liquidity on the _other_ side of this tick (relative to the current tick)
-  //     // only has relative meaning, not absolute — the value depends on when the tick is initialized
+  // fee growth per unit of liquidity on the _other_ side of this tick (relative to the current tick)
+  // only has relative meaning, not absolute — the value depends on when the tick is initialized
   feeGrowthOutside0X128?: string;
   feeGrowthOutside1X128?: string;
-  //     // the cumulative tick value on the other side of the tick
+  // the cumulative tick value on the other side of the tick
   tickCumulativeOutside?: string;
-  //     // the seconds per unit of liquidity on the _other_ side of this tick (relative to the current tick)
-  //     // only has relative meaning, not absolute — the value depends on when the tick is initialized
+  // the seconds per unit of liquidity on the _other_ side of this tick (relative to the current tick)
+  // only has relative meaning, not absolute — the value depends on when the tick is initialized
   secondsPerLiquidityOutsideX128?: string;
-  //     // the seconds spent on the other side of the tick (relative to the current tick)
-  //     // only has relative meaning, not absolute — the value depends on when the tick is initialized
+  // the seconds spent on the other side of the tick (relative to the current tick)
+  // only has relative meaning, not absolute — the value depends on when the tick is initialized
   secondsOutside?: string;
-  //     // true iff the tick is initialized, i.e. the value is exactly equivalent to the expression liquidityGross != 0
-  //     // these 8 bits are set to prevent fresh sstores when crossing newly initialized ticks
+  // true iff the tick is initialized, i.e. the value is exactly equivalent to the expression liquidityGross != 0
+  // these 8 bits are set to prevent fresh sstores when crossing newly initialized ticks
   initialized?: boolean;
   pool?: string;
   index?: string;

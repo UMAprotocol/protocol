@@ -1,7 +1,7 @@
 // this file is meant to handle events from various contracts.
 // its mainly documenting all events based on uniswap typechain build output.
-import { Positions, Pools } from "./models";
-import { exists } from "./utils";
+import { Positions, NftPositions, Pools, Position } from "./models";
+import { exists, convertValuesToString } from "./utils";
 import assert from "assert";
 import { BigNumberish } from "ethers";
 
@@ -12,7 +12,7 @@ type Event = {
 
 type PoolsType = ReturnType<typeof Pools>;
 
-export function NftEvents({ positions }: { positions: ReturnType<typeof Positions> }) {
+export function NftEvents({ positions }: { positions: ReturnType<typeof NftPositions> }) {
   const handlers: { [key: string]: (...args: any[]) => Promise<void> } = {
     async Approval(owner: string | null, approved: string | null, tokenId: BigNumberish | null) {
       // nothing
@@ -38,11 +38,20 @@ export function NftEvents({ positions }: { positions: ReturnType<typeof Position
       assert(exists(liquidity), "requires liquidity");
       assert(exists(amount0), "requires amount0");
       assert(exists(amount1), "requires amount1");
-      await positions.update(tokenId.toString(), {
-        liquidity: liquidity.toString(),
-        amount0: amount0.toString(),
-        amount1: amount1.toString()
-      });
+      if (!(await positions.has(tokenId.toString()))) {
+        await positions.create({
+          tokenId: tokenId.toString(),
+          liquidity: liquidity.toString(),
+          amount0: amount0.toString(),
+          amount1: amount1.toString()
+        });
+      } else {
+        await positions.update(tokenId.toString(), {
+          liquidity: liquidity.toString(),
+          amount0: amount0.toString(),
+          amount1: amount1.toString()
+        });
+      }
     },
     async IncreaseLiquidity(
       tokenId: BigNumberish | null,
@@ -55,11 +64,20 @@ export function NftEvents({ positions }: { positions: ReturnType<typeof Position
       assert(exists(amount0), "requires amount0");
       assert(exists(amount1), "requires amount1");
 
-      await positions.update(tokenId.toString(), {
-        liquidity: liquidity.toString(),
-        amount0: amount0.toString(),
-        amount1: amount1.toString()
-      });
+      if (!(await positions.has(tokenId.toString()))) {
+        await positions.create({
+          tokenId: tokenId.toString(),
+          liquidity: liquidity.toString(),
+          amount0: amount0.toString(),
+          amount1: amount1.toString()
+        });
+      } else {
+        await positions.update(tokenId.toString(), {
+          liquidity: liquidity.toString(),
+          amount0: amount0.toString(),
+          amount1: amount1.toString()
+        });
+      }
     },
     async Transfer(from: string | null, to: string | null, tokenId: BigNumberish | null) {
       // nothing
@@ -67,7 +85,12 @@ export function NftEvents({ positions }: { positions: ReturnType<typeof Position
   };
   async function handleEvent(event: Event) {
     assert(handlers[event.event], "No handler for event: " + event.event);
-    handlers[event.event](...event.args);
+    try {
+      await handlers[event.event](...event.args);
+    } catch (err) {
+      console.log(event);
+      throw err;
+    }
   }
   return {
     handleEvent,
@@ -129,7 +152,7 @@ export function PoolEvents({
     },
 
     async Mint(
-      sender: null,
+      sender: string | null,
       owner: string | null,
       tickLower: BigNumberish | null,
       tickUpper: BigNumberish | null,
@@ -140,11 +163,14 @@ export function PoolEvents({
       assert(exists(owner), "requires owner");
       assert(exists(tickLower), "requires tickLower");
       assert(exists(tickUpper), "requires tickUpper");
-      await positions.create({
-        operator: owner,
-        tickLower: tickLower.toString(),
-        tickUpper: tickUpper.toString()
-      });
+      await positions.create(
+        convertValuesToString<Position>({
+          operator: owner,
+          sender: sender,
+          tickLower: tickLower,
+          tickUpper: tickUpper
+        })
+      );
     },
 
     async SetFeeProtocol(feeProtocol0Old: null, feeProtocol1Old: null, feeProtocol0New: null, feeProtocol1New: null) {
@@ -161,7 +187,7 @@ export function PoolEvents({
     ) {
       assert(exists(sqrtPriceX96), "requires price");
       assert(exists(tick), "requires tick");
-      await pools.update(id, { tick, sqrtPriceX96: sqrtPriceX96.toString() });
+      await pools.update(id, convertValuesToString({ tick, sqrtPriceX96 }));
     }
   };
   async function handleEvent(event: Event) {

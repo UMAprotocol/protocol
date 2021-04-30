@@ -1,3 +1,5 @@
+import assert from "assert";
+import { ethers } from "ethers";
 // taken from uniswap subgraph, not sure if correct yet
 const Q192: BigInt = 2n ** 192n;
 export function sqrtPriceX96ToTokenPrices(sqrtPriceX96: BigInt): string[] {
@@ -12,4 +14,20 @@ export function sqrtPriceX96ToTokenPrices(sqrtPriceX96: BigInt): string[] {
 /* eslint-disable-next-line @typescript-eslint/ban-types */
 export function exists(value: any): value is {} {
   return value !== null && value !== undefined;
+}
+
+// taken from uniswap code:
+// https://github.com/Uniswap/uniswap-v3-core/blob/main/test/shared/utilities.ts
+export function getPositionKey(address: string, lowerTick: string, upperTick: string): string {
+  return ethers.utils.keccak256(
+    ethers.utils.solidityPack(["address", "int24", "int24"], [address, lowerTick, upperTick])
+  );
+}
+
+export function convertValuesToString<T>(obj: { [k: string]: any }): T {
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => {
+      return [key, value.toString()];
+    })
+  ) as T;
 }

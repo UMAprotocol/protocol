@@ -7,7 +7,7 @@ const V3CoreFactory = require("@uniswap/v3-core/artifacts/contracts/UniswapV3Fac
 const UniswapV3Pool = require("@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json");
 const NFTPositionManager = require("@uniswap/v3-periphery/artifacts/contracts/NonfungiblePositionManager.sol/NonfungiblePositionManager.json");
 
-const { Pools, Cache, Positions, Ticks } = require("../build/libs/uniswap/models");
+const { Pools, Cache, Positions, Ticks, NftPositions } = require("../build/libs/uniswap/models");
 const { PoolFactory, PoolEvents, NftEvents } = require("../build/libs/uniswap/processor");
 
 const networks = new Map([
@@ -30,19 +30,17 @@ const networks = new Map([
   [
     "rinkeby",
     {
-      // v3CoreFactoryAddress: "0xd3808aBF85aC69D2DBf53794DEa08e75222Ad9a1",
       v3CoreFactoryAddress: "0xFeabCc62240297F1e4b238937D68e7516f0918D7",
-
       weth9Address: "0xc778417E063141139Fce010982780140Aa0cD5Ab",
       multicall2Address: "0x5BA1e12693Dc8F9c48aAD8770482f4739bEeD696",
-      proxyAdminAddress: "0x9dF511178D1438065F7672379414F5C46D5B51b4",
-      tickLensAddress: "0x2051F6Fb61077b5A2A2c17535d31A1F2C858994f",
-      quoterAddress: "0x58f6b77148BE49BF7898472268ae8f26377d0AA6",
-      swapRouter: "0xeb86f5BE368c3C5e562f7eA1470ACC431d30fB0C",
-      nonfungibleTokenPositionDescriptorAddress: "0xB79bDE60fc227217f4EE2102dC93fa1264E33DaB",
-      descriptorProxyAddress: "0x865F20efC14A5186bF985aD42c64f5e71C055376",
-      nonfungibleTokenPositionManagerAddress: "0x1988F2e49A72C4D73961C7f4Bb896819d3d2F6a3",
-      v3MigratorAddress: "0x40b8b8657d756D163e1255B78419bD8bCC14dCB3"
+      proxyAdminAddress: "0x80AacDBEe92DC1c2Fbaa261Fb369696AF1AD9f98",
+      tickLensAddress: "0x3d137e860008BaF6d1c063158e5ec0baBbcFefF8",
+      quoterAddress: "0x91a64CCaead471caFF912314E466D9CF7C55E0E8",
+      swapRouter: "0x273Edaa13C845F605b5886Dd66C89AB497A6B17b",
+      nonfungibleTokenPositionDescriptorAddress: "0x0Fb45B7E5e306fdE29602dE0a0FA2bE088d04899",
+      descriptorProxyAddress: "0xd6852c52B9c97cBfb7e79B6ab4407AA20Ba31439",
+      nonfungibleTokenPositionManagerAddress: "0x2F9e608FD881861B8916257B76613Cb22EE0652c",
+      v3MigratorAddress: "0x03782388516e94FcD4c18666303601A12Aa729Ea"
     }
   ],
   [
@@ -65,6 +63,14 @@ const networks = new Map([
 const infura = process.env.infura;
 const network = "rinkeby";
 
+function convertValuesToString(obj) {
+  return Object.fromEntries(
+    Object.entries(obj).map(([key, value]) => {
+      return [key, value.toString()];
+    })
+  );
+}
+
 async function getPoolState(pool, provider) {
   const contract = new ethers.Contract(pool.address, UniswapV3Pool.abi, provider);
   const slot0 = await contract.slot0();
@@ -84,6 +90,14 @@ async function processNftEvents({ provider, positions }) {
   const events = await contract.queryFilter({});
   await Promise.map(events, nftHandler.handleEvent);
 }
+async function getNftPositionState({ provider, position }) {
+  const contract = new ethers.Contract(
+    networks.get(network)["nonfungibleTokenPositionManagerAddress"],
+    NFTPositionManager.abi,
+    provider
+  );
+  return convertValuesToString(await contract.positions(position.tokenId));
+}
 async function processPoolEvents({ pools, pool, provider, positions }) {
   const poolHandler = PoolEvents({ positions, id: pool.id, pools });
   const contract = new ethers.Contract(pool.address, UniswapV3Pool.abi, provider);
@@ -92,7 +106,10 @@ async function processPoolEvents({ pools, pool, provider, positions }) {
 }
 async function getPositionState({ position, provider, pool }) {
   const contract = new ethers.Contract(pool.address, UniswapV3Pool.abi, provider);
-  return contract.positions(position.id);
+  return {
+    pool: pool.address,
+    ...convertValuesToString(await contract.positions(position.id))
+  };
 }
 
 const IsPositionActive = tick => position => {
@@ -102,9 +119,9 @@ const IsPositionActive = tick => position => {
   return true;
 };
 
-function getTickInfo({ pool, provider }) {
+async function getTickInfo({ pool, provider }) {
   const contract = new ethers.Contract(pool.address, UniswapV3Pool.abi, provider);
-  return contract.ticks(pool.tick);
+  return convertValuesToString(await contract.ticks(pool.tick));
 }
 
 async function run() {
@@ -112,7 +129,7 @@ async function run() {
 
   const pools = Pools({}, Cache());
   const positions = Positions({}, Cache());
-  const nftPositions = Positions({}, Cache());
+  const nftPositions = NftPositions({}, Cache());
   const ticks = Ticks({}, Cache());
   let activePositions;
 
@@ -152,13 +169,16 @@ async function run() {
   // afaik nft contract holds all positions across all pools
   await processNftEvents({ provider, positions: nftPositions });
 
+  await Promise.mapSeries(await nftPositions.list(), async position => {
+    return nftPositions.update(position.id, await getNftPositionState({ provider, position }));
+  });
   // log everything to spot check all the stat is there
   console.log(await pools.list());
   console.log(await positions.list());
   console.log(await ticks.list());
   console.log(await activePositions.list());
   console.log((await activePositions.list()).length);
-  console.log((await nftPositions.list()).length);
+  console.log(await nftPositions.list());
 }
 
 run()
