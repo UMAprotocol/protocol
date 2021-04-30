@@ -819,7 +819,6 @@ contract("MerkleDistributor.js", function(accounts) {
 
         // Making batch claims that include ANY of the already executed claims will fail:
         for (let i = 0; i < batchedClaims.length; i++) {
-          console.log(batchedClaims.slice(0, batchedClaims.length - i).length);
           assert(
             await didContractThrow(merkleDistributor.claimMulti(batchedClaims.slice(0, batchedClaims.length - i)))
           );

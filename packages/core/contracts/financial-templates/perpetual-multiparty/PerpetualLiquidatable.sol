@@ -173,7 +173,6 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
      * are fed directly into the PositionManager's constructor within the inheritance tree.
      */
     constructor(ConstructorParams memory params)
-        public
         PerpetualPositionManager(
             params.withdrawalLiveness,
             params.collateralAddress,

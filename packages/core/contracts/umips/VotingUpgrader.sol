@@ -45,7 +45,7 @@ contract VotingUpgrader {
         address _newVoting,
         address _finder,
         address _setMigratedAddress
-    ) public {
+    ) {
         governor = _governor;
         existingVoting = Voting(_existingVoting);
         newVoting = _newVoting;

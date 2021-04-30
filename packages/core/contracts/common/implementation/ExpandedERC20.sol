@@ -31,7 +31,7 @@ contract ExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
         string memory _tokenName,
         string memory _tokenSymbol,
         uint8 _tokenDecimals
-    ) public ERC20(_tokenName, _tokenSymbol) {
+    ) ERC20(_tokenName, _tokenSymbol) {
         _decimals = _tokenDecimals;
         _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), msg.sender);
         _createSharedRole(uint256(Roles.Minter), uint256(Roles.Owner), new address[](0));

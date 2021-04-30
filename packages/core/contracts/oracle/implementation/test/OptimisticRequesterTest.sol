@@ -24,7 +24,7 @@ contract OptimisticRequesterTest is OptimisticRequester {
     // Manually set an expiration timestamp to simulate expiry price requests
     uint256 public expirationTimestamp;
 
-    constructor(OptimisticOracle _optimisticOracle) public {
+    constructor(OptimisticOracle _optimisticOracle) {
         optimisticOracle = _optimisticOracle;
     }
 

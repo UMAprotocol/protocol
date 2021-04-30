@@ -134,7 +134,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         uint256 _liveness,
         address _finderAddress,
         address _timerAddress
-    ) public Testable(_timerAddress) {
+    ) Testable(_timerAddress) {
         finder = FinderInterface(_finderAddress);
         _validateLiveness(_liveness);
         defaultLiveness = _liveness;

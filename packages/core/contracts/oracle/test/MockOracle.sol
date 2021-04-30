@@ -43,7 +43,7 @@ contract MockOracle is OracleInterface, Testable {
     mapping(bytes32 => mapping(uint256 => QueryIndex)) private queryIndices;
     QueryPoint[] private requestedPrices;
 
-    constructor(address _finderAddress, address _timerAddress) public Testable(_timerAddress) {
+    constructor(address _finderAddress, address _timerAddress) Testable(_timerAddress) {
         finder = FinderInterface(_finderAddress);
     }
 

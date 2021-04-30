@@ -64,7 +64,7 @@ contract Governor is MultiRole, Testable {
         address _finderAddress,
         uint256 _startingId,
         address _timerAddress
-    ) public Testable(_timerAddress) {
+    ) Testable(_timerAddress) {
         finder = FinderInterface(_finderAddress);
         _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), msg.sender);
         _createExclusiveRole(uint256(Roles.Proposer), uint256(Roles.Owner), msg.sender);

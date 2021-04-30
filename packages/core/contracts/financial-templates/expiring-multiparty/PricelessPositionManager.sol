@@ -174,7 +174,7 @@ contract PricelessPositionManager is FeePayer {
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress,
         address _financialProductLibraryAddress
-    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) nonReentrant() {
+    ) FeePayer(_collateralAddress, _finderAddress, _timerAddress) nonReentrant() {
         require(_expirationTimestamp > getCurrentTime());
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier));
 

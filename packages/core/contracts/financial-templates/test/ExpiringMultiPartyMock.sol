@@ -19,7 +19,7 @@ contract ExpiringMultiPartyMock is Testable {
         FixedPoint.Unsigned memory _collateralRequirement,
         bytes32 _priceIdentifier,
         address _timerAddress
-    ) public Testable(_timerAddress) {
+    ) Testable(_timerAddress) {
         expirationTimestamp = _expirationTimestamp;
         collateralRequirement = _collateralRequirement;
         financialProductLibrary = FinancialProductLibrary(_financialProductLibraryAddress);

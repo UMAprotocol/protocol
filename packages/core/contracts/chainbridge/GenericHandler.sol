@@ -68,7 +68,7 @@ contract GenericHandler is IGenericHandler {
         address[] memory initialContractAddresses,
         bytes4[] memory initialDepositFunctionSignatures,
         bytes4[] memory initialExecuteFunctionSignatures
-    ) public {
+    ) {
         require(
             initialResourceIDs.length == initialContractAddresses.length,
             "initialResourceIDs and initialContractAddresses len mismatch"

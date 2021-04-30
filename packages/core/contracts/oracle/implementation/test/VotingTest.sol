@@ -17,7 +17,6 @@ contract VotingTest is Voting {
         address _finder,
         address _timerAddress
     )
-        public
         Voting(
             _phaseLength,
             _gatPercentage,

@@ -11,7 +11,7 @@ contract VaultMock is VaultInterface {
     IERC20 public override token;
     uint256 private pricePerFullShare = 0;
 
-    constructor(IERC20 _token) public {
+    constructor(IERC20 _token) {
         token = _token;
     }
 

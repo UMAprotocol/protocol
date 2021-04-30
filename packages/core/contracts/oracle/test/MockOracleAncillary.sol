@@ -53,7 +53,7 @@ contract MockOracleAncillary is OracleAncillaryInterface, Testable {
         int256 price
     );
 
-    constructor(address _finderAddress, address _timerAddress) public Testable(_timerAddress) {
+    constructor(address _finderAddress, address _timerAddress) Testable(_timerAddress) {
         finder = FinderInterface(_finderAddress);
     }
 

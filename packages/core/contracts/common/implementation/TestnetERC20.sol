@@ -22,8 +22,8 @@ contract TestnetERC20 is ERC20 {
         string memory _name,
         string memory _symbol,
         uint8 _tokenDecimals
-    ) public ERC20(_name, _symbol) {
-        _decimals = _decimals;
+    ) ERC20(_name, _symbol) {
+        _decimals = _tokenDecimals;
     }
 
     function decimals() public view virtual override(ERC20) returns (uint8) {

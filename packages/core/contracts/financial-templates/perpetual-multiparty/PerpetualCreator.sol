@@ -62,7 +62,7 @@ contract PerpetualCreator is ContractCreator, Testable, Lockable {
         address _finderAddress,
         address _tokenFactoryAddress,
         address _timerAddress
-    ) public ContractCreator(_finderAddress) Testable(_timerAddress) nonReentrant() {
+    ) ContractCreator(_finderAddress) Testable(_timerAddress) nonReentrant() {
         tokenFactoryAddress = _tokenFactoryAddress;
     }
 

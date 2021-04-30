@@ -15,7 +15,6 @@ contract ExpiringMultiParty is Liquidatable {
      * are fed directly into the PricelessPositionManager's constructor within the inheritance tree.
      */
     constructor(ConstructorParams memory params)
-        public
         Liquidatable(params)
     // Note: since there is no logic here, there is no need to add a re-entrancy guard.
     {

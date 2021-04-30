@@ -15,7 +15,7 @@ contract FinancialProductLibraryTest is FinancialProductLibrary {
         FixedPoint.Unsigned memory _priceTransformationScalar,
         FixedPoint.Unsigned memory _collateralRequirementTransformationScalar,
         bytes32 _transformedPriceIdentifier
-    ) public {
+    ) {
         priceTransformationScalar = _priceTransformationScalar;
         collateralRequirementTransformationScalar = _collateralRequirementTransformationScalar;
         transformedPriceIdentifier = _transformedPriceIdentifier;

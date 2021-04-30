@@ -138,7 +138,6 @@ contract PerpetualPositionManager is FundingRateApplier {
         FixedPoint.Unsigned memory _tokenScaling,
         address _timerAddress
     )
-        public
         FundingRateApplier(
             _fundingRateIdentifier,
             _collateralAddress,

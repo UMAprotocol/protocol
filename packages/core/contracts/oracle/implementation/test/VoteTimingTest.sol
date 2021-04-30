@@ -10,7 +10,7 @@ contract VoteTimingTest {
 
     VoteTiming.Data public voteTiming;
 
-    constructor(uint256 phaseLength) public {
+    constructor(uint256 phaseLength) {
         wrapInit(phaseLength);
     }
 

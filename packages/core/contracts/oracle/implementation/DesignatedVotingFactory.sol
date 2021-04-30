@@ -25,7 +25,7 @@ contract DesignatedVotingFactory is Withdrawable {
      * @notice Construct the DesignatedVotingFactory contract.
      * @param finderAddress keeps track of all contracts within the system based on their interfaceName.
      */
-    constructor(address finderAddress) public {
+    constructor(address finderAddress) {
         finder = finderAddress;
 
         _createWithdrawRole(uint256(Roles.Withdrawer), uint256(Roles.Withdrawer), msg.sender);

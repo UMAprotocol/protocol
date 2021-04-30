@@ -47,7 +47,7 @@ contract Store is StoreInterface, Withdrawable, Testable {
         FixedPoint.Unsigned memory _fixedOracleFeePerSecondPerPfc,
         FixedPoint.Unsigned memory _weeklyDelayFeePerSecondPerPfc,
         address _timerAddress
-    ) public Testable(_timerAddress) {
+    ) Testable(_timerAddress) {
         _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), msg.sender);
         _createWithdrawRole(uint256(Roles.Withdrawer), uint256(Roles.Owner), msg.sender);
         setFixedOracleFeePerSecondPerPfc(_fixedOracleFeePerSecondPerPfc);

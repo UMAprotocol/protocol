@@ -83,18 +83,18 @@ contract Bridge is Pausable, AccessControl {
         _;
     }
 
-    function _onlyAdminOrRelayer() private {
+    function _onlyAdminOrRelayer() private view {
         require(
             hasRole(DEFAULT_ADMIN_ROLE, msg.sender) || hasRole(RELAYER_ROLE, msg.sender),
             "sender is not relayer or admin"
         );
     }
 
-    function _onlyAdmin() private {
+    function _onlyAdmin() private view {
         require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "sender doesn't have admin role");
     }
 
-    function _onlyRelayers() private {
+    function _onlyRelayers() private view {
         require(hasRole(RELAYER_ROLE, msg.sender), "sender doesn't have relayer role");
     }
 
@@ -111,7 +111,7 @@ contract Bridge is Pausable, AccessControl {
         uint256 initialRelayerThreshold,
         uint256 fee,
         uint256 expiry
-    ) public {
+    ) {
         _chainID = chainID;
         _relayerThreshold = initialRelayerThreshold;
         _fee = fee;

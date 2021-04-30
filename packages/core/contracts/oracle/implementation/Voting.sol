@@ -215,7 +215,7 @@ contract Voting is
         address _votingToken,
         address _finder,
         address _timerAddress
-    ) public Testable(_timerAddress) {
+    ) Testable(_timerAddress) {
         voteTiming.init(_phaseLength);
         require(_gatPercentage.isLessThanOrEqual(1), "GAT percentage must be <= 100%");
         gatPercentage = _gatPercentage;

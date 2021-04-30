@@ -37,7 +37,7 @@ contract DesignatedVoting is Withdrawable {
         address finderAddress,
         address ownerAddress,
         address voterAddress
-    ) public {
+    ) {
         _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), ownerAddress);
         _createExclusiveRole(uint256(Roles.Voter), uint256(Roles.Owner), voterAddress);
         _setWithdrawRole(uint256(Roles.Owner));

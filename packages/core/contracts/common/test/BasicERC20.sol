@@ -16,7 +16,7 @@ contract BasicERC20 is IERC20 {
 
     uint256 private _totalSupply;
 
-    constructor(uint256 _initialAmount) public {
+    constructor(uint256 _initialAmount) {
         balances[msg.sender] = _initialAmount;
         _totalSupply = _initialAmount;
     }

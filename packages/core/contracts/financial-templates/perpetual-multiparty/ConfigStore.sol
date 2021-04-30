@@ -69,7 +69,7 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
      * @param _initialConfig Configuration settings to initialize `currentConfig` with.
      * @param _timerAddress Address of testable Timer contract.
      */
-    constructor(ConfigSettings memory _initialConfig, address _timerAddress) public Testable(_timerAddress) {
+    constructor(ConfigSettings memory _initialConfig, address _timerAddress) Testable(_timerAddress) {
         _validateConfig(_initialConfig);
         currentConfig = _initialConfig;
     }

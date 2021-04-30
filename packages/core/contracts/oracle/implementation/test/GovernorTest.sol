@@ -7,7 +7,7 @@ import "../Governor.sol";
 
 // GovernorTest exposes internal methods in the Governor for testing.
 contract GovernorTest is Governor {
-    constructor(address _timerAddress) public Governor(address(0), 0, _timerAddress) {}
+    constructor(address _timerAddress) Governor(address(0), 0, _timerAddress) {}
 
     function addPrefix(
         bytes32 input,

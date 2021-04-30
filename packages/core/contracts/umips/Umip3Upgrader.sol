@@ -38,7 +38,7 @@ contract Umip3Upgrader {
         address _financialContractsAdmin,
         address _registry,
         address _newGovernor
-    ) public {
+    ) {
         existingGovernor = _existingGovernor;
         existingVoting = Voting(_existingVoting);
         finder = Finder(_finder);
