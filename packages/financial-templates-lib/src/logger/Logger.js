@@ -28,7 +28,7 @@
 // });
 
 const winston = require("winston");
-const { transports } = require("./Transports");
+const { createTransports } = require("./Transports");
 
 // This async function can be called by a bot if the log message is generated right before the process terminates.
 // By calling `await waitForLogger(Logger)`, with the local Logger instance, the process will wait for all upstream
@@ -58,24 +58,27 @@ function handleRecursiveErrorArray(error) {
 }
 
 // This formatter checks if the `BOT_IDENTIFIER` env variable is present. If it is, the name is appended to the message.
-function botIdentifyFormatter(logEntry) {
-  if (process.env.BOT_IDENTIFIER) logEntry["bot-identifier"] = process.env.BOT_IDENTIFIER;
-  return logEntry;
+function botIdentifyFormatter(botIdentifier) {
+  return function(logEntry) {
+    if (botIdentifier) logEntry["bot-identifier"] = botIdentifier;
+    return logEntry;
+  };
 }
 
-const Logger = winston.createLogger({
-  level: "debug",
-  format: winston.format.combine(
-    winston.format(botIdentifyFormatter)(),
-    winston.format(logEntry => logEntry)(),
-    winston.format(errorStackTracerFormatter)(),
-    winston.format.json()
-  ),
-  transports,
-  exitOnError: process.env.EXIT_ON_ERROR ? process.env.EXIT_ON_ERROR : false
-});
+function createNewLogger(injectedTransports = [], transportsConfig = {}, botIdentifier = process.env.BOT_IDENTIFIER) {
+  return winston.createLogger({
+    level: "debug",
+    format: winston.format.combine(
+      winston.format(botIdentifyFormatter(botIdentifier))(),
+      winston.format(logEntry => logEntry)(),
+      winston.format(errorStackTracerFormatter)(),
+      winston.format.json()
+    ),
+    transports: [...createTransports(transportsConfig), ...injectedTransports],
+    exitOnError: process.env.EXIT_ON_ERROR ? process.env.EXIT_ON_ERROR : false
+  });
+}
 
-module.exports = {
-  Logger,
-  waitForLogger
-};
+const Logger = createNewLogger();
+
+module.exports = { Logger, createNewLogger, waitForLogger };

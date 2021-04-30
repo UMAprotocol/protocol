@@ -6,7 +6,7 @@ let latestVersionMap = {};
 try {
   latestVersionMap = JSON.parse(fs.readFileSync(`${path.resolve(__dirname)}/../build/contract-type-hash-map.json`));
 } catch (error) {
-  console.log("WARNING: latest version map was not found in the build directory! Run `yarn build` from core first!");
+  console.error("WARNING: latest version map was not found in the build directory! Run `yarn build` from core first!");
 }
 
 /**
@@ -69,7 +69,7 @@ const versionMap = {
     contractType: "ExpiringMultiParty",
     contractVersion: "2.0.1"
   },
-  "0x7202352fa756f41d3b4646441b82271ab44909e6e24c12326fb73f34e6ca2aa9": {
+  "0x238569485842107d2e938ff59c78841860b4dcd00d37be9859699f2c4ddbb3a0": {
     // Latest Mainnet Perpetual contract.
     contractType: "Perpetual",
     contractVersion: "2.0.1"

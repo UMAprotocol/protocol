@@ -3,6 +3,33 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.2.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.1.0...@uma/financial-templates-lib@2.2.0) (2021-04-23)
+
+### Bug Fixes
+
+- **allowances:** Change default allowance value ([#2725](https://github.com/UMAprotocol/protocol/issues/2725)) ([94bcf9c](https://github.com/UMAprotocol/protocol/commit/94bcf9cba1cc258ac7f8536e12ddbbef37c9a4ce))
+- **blockfinder:** Explicitly cast timestamp to Number ([#2880](https://github.com/UMAprotocol/protocol/issues/2880)) ([1d4924d](https://github.com/UMAprotocol/protocol/commit/1d4924d5f7b542cd582dafbf796dd7fd9c52b4f6))
+- **FallBackPriceFeed:** implement missing method that broke in production ([#2878](https://github.com/UMAprotocol/protocol/issues/2878)) ([f5b87f6](https://github.com/UMAprotocol/protocol/commit/f5b87f6ef229ec5c2658dacd3bc5ab64c16976e0))
+- **forex-daily-pricefeed:** Fix endpoint ([#2822](https://github.com/UMAprotocol/protocol/issues/2822)) ([fdbe7c9](https://github.com/UMAprotocol/protocol/commit/fdbe7c9a69e931bb689c93b5017c566377797bd3)), closes [#2821](https://github.com/UMAprotocol/protocol/issues/2821)
+- **forexdaily-pricefeed:** Add apiKey config ([#2821](https://github.com/UMAprotocol/protocol/issues/2821)) ([f6436da](https://github.com/UMAprotocol/protocol/commit/f6436da84bbc034a27baca16fa1c18b935a1803e))
+- **trader & atomic liquidator:** add wait for block to be mined util to address slow node updates ([#2871](https://github.com/UMAprotocol/protocol/issues/2871)) ([0106a8d](https://github.com/UMAprotocol/protocol/commit/0106a8dc22c26ee3d7aaf777ed12b6d894e88863))
+- call update on gas estimator before sending transactions ([#2817](https://github.com/UMAprotocol/protocol/issues/2817)) ([8d0d14b](https://github.com/UMAprotocol/protocol/commit/8d0d14bbaf9724343a38ff1e1afc88ab5dfe6396))
+- **liquidator:** should submit raw # of position tokens, not funding-rate adjusted # ([#2752](https://github.com/UMAprotocol/protocol/issues/2752)) ([53a1b28](https://github.com/UMAprotocol/protocol/commit/53a1b28d1118a01d713be0255485a8ef23e08999))
+
+### Features
+
+- **bot-strategy-runner:** add generalised bot runner ([#2851](https://github.com/UMAprotocol/protocol/issues/2851)) ([a748107](https://github.com/UMAprotocol/protocol/commit/a748107df25d153443caf82ec42c08c03ae23bfd))
+- **fallback-pricefeed:** Create FallBackPriceFeed and ForexPriceFeed ([#2718](https://github.com/UMAprotocol/protocol/issues/2718)) ([be64c98](https://github.com/UMAprotocol/protocol/commit/be64c9872a1876d523f0f039dfc63d69b233533a))
+- **financial-templates-lib:** Add default pf configs ([#2778](https://github.com/UMAprotocol/protocol/issues/2778)) ([8120982](https://github.com/UMAprotocol/protocol/commit/81209824fd9ad485843183e4ce59b1de0f5175be))
+- **financial-templates-lib:** add DIGGBTC, DIGGETH, DIGGUSD default price feeds ([#2676](https://github.com/UMAprotocol/protocol/issues/2676)) ([b8ced4d](https://github.com/UMAprotocol/protocol/commit/b8ced4d366d28ac9a26cf4b1d832688f61ef2de1))
+- **liquidation-reserve-currency:** add reserve currency liquidator to bots and refine smart contract ([#2775](https://github.com/UMAprotocol/protocol/issues/2775)) ([0eea3fb](https://github.com/UMAprotocol/protocol/commit/0eea3fbb610f74694c22ca36f6902faf3fa9092b))
+- **multicall:** Using Multicall contract to simulate contract state post-state modifying transactions ([#2762](https://github.com/UMAprotocol/protocol/issues/2762)) ([fa8ee91](https://github.com/UMAprotocol/protocol/commit/fa8ee9146c2497c4e370f58a9eca2c7306337f9e))
+- **price-feed:** Proposed dVIX Price Feed Interface ([#2792](https://github.com/UMAprotocol/protocol/issues/2792)) ([4224e05](https://github.com/UMAprotocol/protocol/commit/4224e05ffdd06f3b44fef0fb6019fcf4c0ff1bb5))
+- **price-feeds:** add default ETH/BTC funding rate price feed ([#2814](https://github.com/UMAprotocol/protocol/issues/2814)) ([98a0236](https://github.com/UMAprotocol/protocol/commit/98a0236688b6aa9a3b011c110a428d1907f72b89))
+- **price-feeds:** add funding rate multiplier price feed ([#2770](https://github.com/UMAprotocol/protocol/issues/2770)) ([e4ef9ac](https://github.com/UMAprotocol/protocol/commit/e4ef9ac030537488248a722f787f77186cef4ac1))
+- **price-feeds:** add twap to cryptowatch ([#2772](https://github.com/UMAprotocol/protocol/issues/2772)) ([b2ce17e](https://github.com/UMAprotocol/protocol/commit/b2ce17ee2c5ec98485b1b3f66f197ad1dd7069fb))
+- **pricefeed:** Add QuandlPriceFeed and use as backup for commodity identifiers ([#2728](https://github.com/UMAprotocol/protocol/issues/2728)) ([1d5de23](https://github.com/UMAprotocol/protocol/commit/1d5de230e50f559d8892b117b8278d79b8448b60))
+
 # [2.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.0.1...@uma/financial-templates-lib@2.1.0) (2021-03-16)
 
 ### Bug Fixes

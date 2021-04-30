@@ -349,4 +349,63 @@ contract("ReserveTokenLiquidator", function(accounts) {
     assert.equal((await pair.getPastEvents("Swap")).length, 0);
     assert.equal((await financialContract.getPastEvents("LiquidationCreated")).length, 1);
   });
+  it("can correctly deal with collateral and reserving shortfall for liquidation size", async function() {
+    // In the even that the DSProxy does not have enough collateral or reserves it should liquidate as much as posable,
+    // using all ammunition it can. Send tokens from liquidator to DSProxy.Send less than the amount needed for the liquidation.
+    await collateralToken.mint(dsProxy.address, toWei("1"));
+
+    // The DSProxy should not have any synthetics or collateral before the liquidation.
+    assert.equal((await collateralToken.balanceOf(dsProxy.address)).toString(), toWei("1"));
+    assert.equal(await reserveToken.balanceOf(dsProxy.address), "0");
+    assert.equal(await syntheticToken.balanceOf(dsProxy.address), "0");
+
+    const startingUniswapPrice = await getPoolSpotPrice();
+
+    // There should be no liquidations before the transaction call.
+    assert.equal((await financialContract.getLiquidations(sponsor1)).length, 0);
+
+    // Build the transaction call data. This differs from the previous tests in that it uses the collateral as reserve token.
+    // Also, note that the maxTokensToLiquidate is more than the bot could do with just 1 wei of collateral.
+    const callData = reserveCurrencyLiquidator.contract.methods
+      .swapMintLiquidate(
+        router.address, // uniswapRouter
+        financialContract.address, // financialContract
+        collateralToken.address, // reserveCurrency
+        sponsor1, // liquidatedSponsor
+        { rawValue: MAX_UINT_VAL }, // maxReserverTokenSpent
+        { rawValue: 0 }, // minCollateralPerTokenLiquidated
+        { rawValue: MAX_SAFE_ALLOWANCE }, // maxCollateralPerTokenLiquidated. This number need to be >= the token price.
+        { rawValue: toWei("1000") }, // maxTokensToLiquidate. This is how many tokens the positions has (liquidated debt).
+        unreachableDeadline
+      )
+      .encodeABI();
+
+    await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.address, callData).send({
+      from: liquidator
+    });
+
+    // The DSProxy should not have any synthetics or collateral after the liquidation as everything was used.
+    assert.equal(await syntheticToken.balanceOf(dsProxy.address), "0");
+    assert.equal(await reserveToken.balanceOf(dsProxy.address), "0");
+    assert.equal(await syntheticToken.balanceOf(dsProxy.address), "0");
+
+    // There should be one liquidation after the call and the properties on the liquidation should match what is expected.
+    const liquidations = await financialContract.getLiquidations(sponsor1);
+
+    // Cant use validateLiquidationOutput as this is a different sized liquidation.
+    assert.equal(liquidations.length, 1);
+    assert.equal(liquidations[0].sponsor, sponsor1); // The selected sponsor should be liquidated.
+    assert.equal(liquidations[0].liquidator, dsProxy.address); // The dSProxy did the liquidation.
+    assert.equal(liquidations[0].disputer, ZERO_ADDRESS); // The liquidation should be undisputed.
+    assert.equal(liquidations[0].settlementPrice.toString(), toWei("0")); // The liquidation should not have a price (undisputed)
+    assert.equal(liquidations[0].finalFee.toString(), finalFeeAmount.toString()); // The final fee should not match the expected amount
+
+    // The price in the uniswap pool should not have moved at all as no trade.
+    assert.equal(await getPoolSpotPrice(), startingUniswapPrice);
+
+    // In this test the DSProxy should not swapped, but should have minted and liquidated. We should expect to see exactly these events.
+    assert.equal((await financialContract.getPastEvents("PositionCreated")).length, 1);
+    assert.equal((await pair.getPastEvents("Swap")).length, 0);
+    assert.equal((await financialContract.getPastEvents("LiquidationCreated")).length, 1);
+  });
 });
