@@ -186,6 +186,8 @@ workflows:
           filters:
             branches:
               only: master
+  # Note: The nightly workflow will be commented here, because the feature used
+  # from circle CI to split the jobs not allow more than one workflow at the moment.
   # nightly:
   #   triggers:
   #     - schedule:
