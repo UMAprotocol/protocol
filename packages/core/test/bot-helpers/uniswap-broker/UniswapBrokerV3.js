@@ -1,92 +1,80 @@
 const { MAX_UINT_VAL } = require("@uma/common");
-const { toWei, toBN, fromWei } = web3.utils;
+const { toWei } = web3.utils;
 const { getTruffleContract } = require("@uma/core");
-const truffleContract = require("@truffle/contract");
 
-const bn = require("bignumber.js"); // Big number that comes with web3 does not support square root.
+const {
+  encodePriceSqrt,
+  getTickFromPrice,
+  getCurrentPrice,
+  encodePath,
+  getTickBitmapIndex,
+  computePoolAddress,
+  FeeAmount,
+  TICK_SPACINGS,
+  createContractObjectFromJson
+} = require("./UniswapV3Helpers");
 
 // Tested Contract
-// const UniswapBrokerV3 = getTruffleContract("UniswapBroker", web3);
+const UniswapBrokerV3 = getTruffleContract("UniswapBrokerV3", web3);
+
+// Some helper contracts.
 const Token = getTruffleContract("ExpandedERC20", web3);
 const WETH9 = getTruffleContract("WETH9", web3);
 
+// Import all the uniswap related contracts.
 const SwapRouter = require("@uniswap/v3-periphery/artifacts/contracts/SwapRouter.sol/SwapRouter.json");
 const UniswapV3Factory = require("@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json");
 const NonfungibleTokenPositionDescriptor = require("@uniswap/v3-periphery/artifacts/contracts/NonfungibleTokenPositionDescriptor.sol/NonfungibleTokenPositionDescriptor.json");
 const NonfungiblePositionManager = require("@uniswap/v3-periphery/artifacts/contracts/NonfungiblePositionManager.sol/NonfungiblePositionManager.json");
+const TickLens = require("@uniswap/v3-periphery/artifacts/contracts/lens/TickLens.sol/TickLens.json");
 
 let weth;
 let factory;
 let router;
 let positionDescriptor;
 let positionManager;
-
-// Takes in a json object from a compiled contract and returns a truffle contract instance that can be deployed.
-const createContractObjectFromJson = contractJsonObject => {
-  let truffleContractCreator = truffleContract(contractJsonObject);
-  truffleContractCreator.setProvider(web3.currentProvider);
-  return truffleContractCreator;
-};
-
-// TODO: refactor to common util. Taken from https://github.com/Uniswap/uniswap-v3-periphery/blob/main/test/shared/encodePriceSqrt.ts
-function encodePriceSqrt(reserve1, reserve0) {
-  return new bn(reserve1.toString())
-    .div(reserve0.toString())
-    .sqrt()
-    .multipliedBy(new bn(2).pow(96))
-    .integerValue(3);
-}
-
-// TODO refactor to common util. taken from https://github.com/Uniswap/uniswap-v3-periphery/blob/main/test/shared/path.ts
-function encodePath(path, fees) {
-  const FEE_SIZE = 3;
-  if (path.length != fees.length + 1) {
-    throw new Error("path/fee lengths do not match");
-  }
-
-  // export const getMaxLiquidityPerTick = tickSpacing =>
-  //   BigNumber.from(2)
-  //     .pow(128)
-  //     .sub(1)
-  //     .div((getMaxTick(tickSpacing) - getMinTick(tickSpacing)) / tickSpacing + 1);
-
-  let encoded = "0x";
-  for (let i = 0; i < fees.length; i++) {
-    // 20 byte encoding of the address
-    encoded += path[i].slice(2);
-    // 3 byte encoding of the fee
-    encoded += fees[i].toString(16).padStart(2 * FEE_SIZE, "0");
-  }
-  // encode the final token
-  encoded += path[path.length - 1].slice(2);
-
-  return encoded.toLowerCase();
-}
-
-function getMinTick(tickSpacing) {
-  console.log("tickSpacing", tickSpacing);
-  return Math.ceil(-887272 / tickSpacing) * tickSpacing;
-}
-function getMaxTick(tickSpacing) {
-  return Math.floor(887272 / tickSpacing) * tickSpacing;
-}
-
-const FeeAmount = {
-  LOW: 500,
-  MEDIUM: 3000,
-  HIGH: 10000
-};
-
-const TICK_SPACINGS = {
-  [FeeAmount.LOW]: 10,
-  [FeeAmount.MEDIUM]: 60,
-  [FeeAmount.HIGH]: 200
-};
+let tickLens;
+let uniswapV3Broker;
+let fee = FeeAmount.MEDIUM;
+let poolAddress;
 
 contract("UniswapBrokerV3", function(accounts) {
   const deployer = accounts[0];
   const trader = accounts[1];
+
+  async function addLiquidityToPool(amount0Desired, amount1Desired, tickLower, tickUpper) {
+    if (tokenA.address.toLowerCase() > tokenB.address.toLowerCase()) [tokenA, tokenB] = [tokenB, tokenA];
+
+    await positionManager.createAndInitializePoolIfNecessary(
+      tokenA.address,
+      tokenB.address,
+      FeeAmount.MEDIUM,
+      encodePriceSqrt(amount0Desired, amount1Desired), // start the pool price at 10 tokenA/tokenB
+      { from: trader }
+    );
+
+    const liquidityParams = {
+      token0: tokenA.address,
+      token1: tokenB.address,
+      fee: FeeAmount.MEDIUM,
+      tickLower, // Lower tick bound price = 1.0001^tickLower
+      tickUpper, // Upper tick bound price = 1.0001^tickUpper
+      recipient: trader,
+      amount0Desired,
+      amount1Desired,
+      amount0Min: 0,
+      amount1Min: 0,
+      deadline: MAX_UINT_VAL // some number far in the future
+    };
+
+    await positionManager.mint(liquidityParams, { from: trader });
+    poolAddress = computePoolAddress(factory.address, tokenA.address, tokenB.address, FeeAmount.MEDIUM);
+  }
+
   before(async () => {
+    // deploy an instance of the broker
+    uniswapV3Broker = await UniswapBrokerV3.new();
+
     weth = await WETH9.new();
     // deploy Uniswap V2 Factory & router.
     factory = await createContractObjectFromJson(UniswapV3Factory).new({ from: deployer });
@@ -101,15 +89,12 @@ contract("UniswapBrokerV3", function(accounts) {
       { from: deployer }
     );
 
-    console.log("factory", factory.address);
-    console.log("router", router.address);
-    console.log("positionDescriptor", positionDescriptor.address);
-    console.log("positionManager", positionManager.address);
+    tickLens = await createContractObjectFromJson(TickLens).new({ from: deployer });
   });
   beforeEach(async () => {
     // deploy tokens
-    tokenA = await Token.new("TokenA", "TA", 18);
-    tokenB = await Token.new("TokenB", "TB", 18);
+    tokenA = await Token.new("Token0", "T0", 18);
+    tokenB = await Token.new("Token1", "T1", 18);
 
     await tokenA.addMember(1, deployer, { from: deployer });
     await tokenB.addMember(1, deployer, { from: deployer });
@@ -117,48 +102,150 @@ contract("UniswapBrokerV3", function(accounts) {
     await tokenA.mint(trader, toWei("100000000000000"));
     await tokenB.mint(trader, toWei("100000000000000"));
 
-    await tokenA.approve(positionManager.address, toWei("100000000000000"), { from: trader });
-    await tokenB.approve(positionManager.address, toWei("100000000000000"), { from: trader });
-    await tokenA.approve(router.address, toWei("100000000000000"), { from: trader });
-    await tokenB.approve(router.address, toWei("100000000000000"), { from: trader });
-
-    console.log("encodePriceSqrt(1, 1)", toBN(encodePriceSqrt(1, 1)).toString());
-    await positionManager.createAndInitializePoolIfNecessary(
-      tokenA.address,
-      tokenB.address,
-      FeeAmount.MEDIUM,
-      encodePriceSqrt(1, 1),
-      { from: trader }
-    );
-
-    console.log("MIN", getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]));
-    const liquidityParams = {
-      token0: tokenA.address,
-      token1: tokenB.address,
-      fee: FeeAmount.MEDIUM,
-      tickLower: getMinTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-      tickUpper: getMaxTick(TICK_SPACINGS[FeeAmount.MEDIUM]),
-      recipient: trader,
-      amount0Desired: 1000000,
-      amount1Desired: 1000000,
-      amount0Min: 0,
-      amount1Min: 0,
-      deadline: 15798990420
-    };
-    console.log("liquidityParams", liquidityParams);
-
-    await positionManager.mint(liquidityParams, { from: trader });
+    for (const address of [positionManager.address, router.address, uniswapV3Broker.address]) {
+      await tokenA.approve(address, toWei("100000000000000"), { from: trader });
+      await tokenB.approve(address, toWei("100000000000000"), { from: trader });
+    }
   });
 
-  it("simple", async function() {
-    const params = {
-      path: encodePath(tokens, new Array(tokens.length - 1).fill(FeeAmount.MEDIUM)),
-      recipient: trader.address,
-      deadline: 15798990420,
-      amountIn: 3,
-      amountOutMinimum: 1
-    };
+  describe("Simple Uniswap interactions", () => {
+    it("Validate Uniswap behaviour with a simple swap", async function() {
+      // First, add liquidity to the pool. Initialize the pool with a price of 10 TokenA/TokenB by adding 1000 tokenA
+      // and 100 token B. Set the liquidity range between a price of 8 and 15.
+      await addLiquidityToPool(toWei("1000"), toWei("100"), getTickFromPrice(8, fee), getTickFromPrice(15, fee));
 
-    await router.exactInput(params, { value }, { from: trader });
+      // The starting price should be 10.
+      assert.equal((await getCurrentPrice(poolAddress)).toNumber(), 10);
+
+      // Validate the liquidity is within the range. There is one LP within the pool and their range is between 8 and 15.
+      const liquidityInRange = await tickLens.getPopulatedTicksInWord(
+        poolAddress,
+        getTickBitmapIndex(getTickFromPrice(10, fee), TICK_SPACINGS[FeeAmount.MEDIUM])
+      );
+      assert.equal(liquidityInRange[0].tick, getTickFromPrice(15, fee)); // the ticks should match that of the price range.
+      assert.equal(liquidityInRange[1].tick, getTickFromPrice(8, fee));
+
+      // Next, execute a swap and ensure that token balances change as expected. we will trade tokenA for tokenB to increase
+      // the price of the tokens. define the trade params according to the uniswap spec.
+      const tokens = [tokenA.address, tokenB.address];
+      const params = {
+        path: encodePath(tokens, new Array(tokens.length - 1).fill(FeeAmount.MEDIUM)),
+        recipient: trader,
+        deadline: 15798990420,
+        amountIn: toWei("1"), // swap exactly 1 wei of token 1
+        amountOutMinimum: 0
+      };
+
+      // Store the token balances before the trade
+      const tokenABefore = await tokenA.balanceOf(trader);
+      const tokenBBefore = await tokenB.balanceOf(trader);
+
+      await router.exactInput(params, { from: trader });
+
+      const deltaTokenA = tokenABefore.sub(await tokenA.balanceOf(trader));
+      const deltaTokenB = tokenBBefore.sub(await tokenB.balanceOf(trader));
+
+      // Token A should have increased by exactly 1 wei. This is the exact amount traded in the exactInput
+      assert.equal(deltaTokenA, toWei("1"));
+
+      // Token B should have decreased by the amount spent. This should be negative (tokens left the wallet) and should
+      // be about 0.01 due to the starting price in the pool. bound between 0 and -0.01.
+      assert.isTrue(deltaTokenB.gt(web3.utils.toWei("-0.01")) && deltaTokenB.lt(web3.utils.toWei("0")));
+    });
+  });
+
+  describe("Single liquidity provider", () => {
+    beforeEach(async () => {
+      // With just one liquidity provider, uniswapV3 acts like a standard AMM.
+      await addLiquidityToPool(toWei("1000"), toWei("100"), getTickFromPrice(8, fee), getTickFromPrice(15, fee));
+      // The starting price should be 10.
+      assert.equal((await getCurrentPrice(poolAddress)).toNumber(), 10);
+    });
+    it("Broker can correctly move the price up with a single liquidity provider", async function() {
+      // The broker should be able to trade up to a desired price. The starting price is 10. Try trade the market to 13.
+
+      await uniswapV3Broker.swapToPrice(
+        true, // Set Trading as EOA to true. This will pull tokens from the EOA and sent the output back to the EOA.
+        poolAddress, // Pool address for compting trade size.
+        router.address, // Router for executing the trade.
+        encodePriceSqrt(13, 1), // encoded target price of 13 defined as an X96 square root.
+        trader, // recipient of the trade.
+        MAX_UINT_VAL, // max deadline.
+        { from: trader }
+      );
+
+      // check the price moved up to 13 correctly.
+      const postTradePrice = (await getCurrentPrice(poolAddress)).toNumber();
+      assert.equal(postTradePrice, 13);
+    });
+
+    it("Broker can correctly move the price down with a single liquidity provider", async function() {
+      // The broker should be able to trade down to a desired price. The starting price at 10. Try trade the market to 8.5.
+
+      await uniswapV3Broker.swapToPrice(
+        true, // Set Trading as EOA to true. This will pull tokens from the EOA and sent the output back to the EOA.
+        poolAddress, // Pool address for compting trade size.
+        router.address, // Router for executing the trade.
+        encodePriceSqrt(8.5, 1), // encoded target price defined as an X96 square root.
+        trader, // recipient of the trade.
+        MAX_UINT_VAL, // max deadline.
+        { from: trader }
+      );
+
+      // check the price moved up to 12 correctly.
+      const postTradePrice = (await getCurrentPrice(poolAddress)).toNumber();
+      assert.equal(postTradePrice, 8.5);
+    });
+  });
+  describe("Multi-complex liquidity provider", () => {
+    beforeEach(async () => {
+      // Add a number of liquidity providers, all at the same price, over a range of price ticks. When trying to move
+      // the market within unit tests that follows we will traverse a number of ticks. Some that start within the range
+      // and others that are only entered after the market has moved a bit. This represents a real world setup.
+      await addLiquidityToPool(toWei("1000"), toWei("100"), getTickFromPrice(8, fee), getTickFromPrice(15, fee));
+      await addLiquidityToPool(toWei("100"), toWei("10"), getTickFromPrice(9.9, fee), getTickFromPrice(10.1, fee));
+      await addLiquidityToPool(toWei("50"), toWei("5"), getTickFromPrice(5, fee), getTickFromPrice(20, fee));
+      await addLiquidityToPool(toWei("10"), toWei("1"), getTickFromPrice(12, fee), getTickFromPrice(15, fee));
+      await addLiquidityToPool(toWei("10"), toWei("1"), getTickFromPrice(6, fee), getTickFromPrice(8, fee));
+      await addLiquidityToPool(toWei("65"), toWei("6.5"), getTickFromPrice(10, fee), getTickFromPrice(11, fee));
+      await addLiquidityToPool(toWei("65"), toWei("6.5"), getTickFromPrice(8.5, fee), getTickFromPrice(9, fee));
+      // The starting price should be 10 as all LPs added at the same price.
+      assert.equal((await getCurrentPrice(poolAddress)).toNumber(), 10);
+    });
+    it("Broker can correctly move the price up with a set of liquidity provider", async function() {
+      // The broker should be able to trade up to a desired price. The starting price is 10. Try trade the market to 13.
+
+      await uniswapV3Broker.swapToPrice(
+        true, // Set Trading as EOA to true. This will pull tokens from the EOA and sent the output back to the EOA.
+        poolAddress, // Pool address for compting trade size.
+        router.address, // Router for executing the trade.
+        encodePriceSqrt(13, 1), // encoded target price of 13 defined as an X96 square root.
+        trader, // recipient of the trade.
+        MAX_UINT_VAL, // max deadline.
+        { from: trader }
+      );
+
+      // check the price moved up to 12 correctly.
+      const postTradePrice = (await getCurrentPrice(poolAddress)).toNumber();
+      assert.equal(postTradePrice, 13);
+    });
+
+    it("Broker can correctly move the price down with a set of liquidity provider", async function() {
+      // The broker should be able to trade down to a desired price. The starting price at 10. Try trade the market to 8.5.
+
+      await uniswapV3Broker.swapToPrice(
+        true, // Set Trading as EOA to true. This will pull tokens from the EOA and sent the output back to the EOA.
+        poolAddress, // Pool address for compting trade size.
+        router.address, // Router for executing the trade.
+        encodePriceSqrt(8.5, 1), // encoded target price defined as an X96 square root.
+        trader, // recipient of the trade.
+        MAX_UINT_VAL, // max deadline.
+        { from: trader }
+      );
+
+      // check the price moved up to 8.5 correctly.
+      const postTradePrice = (await getCurrentPrice(poolAddress)).toNumber();
+      assert.equal(postTradePrice, 8.5);
+    });
   });
 });
