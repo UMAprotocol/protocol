@@ -76,9 +76,9 @@ contract Governor is MultiRole, Testable {
 
         // This just sets the initial length of the array to the startingId since modifying length directly has been
         // disallowed in solidity 0.6.
-        // assembly {
-        //     sstore(proposals_slot, _startingId)
-        // }
+        assembly {
+            sstore(proposals.slot, _startingId)
+        }
     }
 
     /****************************************
