@@ -745,7 +745,7 @@ contract("MerkleDistributor.js", function(accounts) {
         const tx = await merkleDistributor.claimMulti(sortedClaims);
         assertApproximate(41392, Math.floor(tx.receipt.gasUsed / sortedClaims.length));
       });
-      it.only("many trees, many reward tokens, many accounts: gas amortized", async function() {
+      it("many trees, many reward tokens, many accounts: gas amortized", async function() {
         // This is a realistic scenario where the caller is making their claims for various
         // reward currencies across several windows.
 
