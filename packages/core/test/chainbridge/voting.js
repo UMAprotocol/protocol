@@ -239,7 +239,7 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
 
     // Should now be able to publish a price to the DVM and source oracle.
     await voting.pushPrice(identifier, requestTime, ancillaryData, requestPrice);
-    await sourceOracle.publishPrice(sidechainId, identifier, requestTime, ancillaryData, requestPrice, {
+    await sourceOracle.publishPrice(sidechainId, identifier, requestTime, ancillaryData, {
       from: depositerAddress
     });
   });
@@ -256,14 +256,9 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
     await sourceFinder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), depositerAddress);
     await sourceOracle.requestPrice(identifier, requestTime, ancillaryData, { from: depositerAddress });
 
-    const depositTxn = await sourceOracle.publishPrice(
-      sidechainId,
-      identifier,
-      requestTime,
-      ancillaryData,
-      requestPrice,
-      { from: depositerAddress }
-    );
+    const depositTxn = await sourceOracle.publishPrice(sidechainId, identifier, requestTime, ancillaryData, {
+      from: depositerAddress
+    });
 
     // Bridge emits a Deposit event and the SinkOracle emitted a PushedPrice event.
     TruffleAssert.eventEmitted(depositTxn, "PushedPrice", event => {

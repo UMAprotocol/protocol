@@ -33,7 +33,7 @@ contract SinkOracle is BeaconOracle {
     }
 
     /***************************************************************
-     * Bridging a Price Request to Mainnet:
+     * Bridging a Price Request to L1:
      ***************************************************************/
 
     /**
@@ -59,7 +59,7 @@ contract SinkOracle is BeaconOracle {
      * `GenericHandler.deposit()` and ultimately this method.
      * @dev This method should basically check that the `Bridge.deposit()` was triggered by a valid price request,
      * specifically one that has not resolved yet and was called by a registered contract. Without this check,
-     * `Bridge.deposit()` could be called by anybody in order to emit excess Deposit events.
+     * `Bridge.deposit()` could be called by non-registered contracts to make price requests to the DVM.
      */
     function validateDeposit(
         bytes32 identifier,
@@ -72,7 +72,7 @@ contract SinkOracle is BeaconOracle {
     }
 
     /***************************************************************
-     * Publishing Price Request Data from Mainnet:
+     * Responding to Price Request Resolution from L1:
      ***************************************************************/
 
     /**
