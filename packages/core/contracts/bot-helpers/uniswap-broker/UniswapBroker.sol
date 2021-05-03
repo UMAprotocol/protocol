@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
@@ -127,10 +128,7 @@ contract UniswapBroker {
 
     // The methods below are taken from https://github.com/Uniswap/uniswap-v2-periphery/blob/master/contracts/libraries/UniswapV2Library.sol
     // We could import this library into this contract but this library is dependent Uniswap's SafeMath, which is bound
-    // to solidity 6.6.6. Hardhat can easily deal with two different sets of solidity versions within one project so
-    // unit tests would continue to work fine. However, this would break truffle support in the repo as truffle cant
-    // handel having two different solidity versions. As a work around, the specific methods needed in the UniswapBroker
-    // are simply moved here to maintain truffle support.
+    // to solidity 6.6.6. UMA uses 0.8.0 and so a modified version is needed to accomidate this solidity version.
     function getReserves(
         address factory,
         address tokenA,
@@ -171,6 +169,7 @@ contract UniswapBroker {
     }
 }
 
+// The library below is taken from @uniswap/lib/contracts/libraries/FullMath.sol. It has been modified to work with solidity 0.8
 library FullMath {
     /// @notice Calculates floor(a×b÷denominator) with full precision. Throws if result overflows a uint256 or denominator == 0
     /// @param a The multiplicand
