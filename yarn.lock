@@ -3985,6 +3985,11 @@
     hex2dec "^1.0.1"
     uuid "^8.0.0"
 
+"@openzeppelin/contracts@3.0.0":
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-3.0.0.tgz#89bc0d32fc9eb257cf6499f2497a1b4a6715f186"
+  integrity sha512-u7oATjUK6jffDOoIjVQ7vJ2fnFKlfDS1CJzrMpp+YtGQ2fhdSk0kXjZTxk8Pj1SPVZRNES3yo0r144v8BsuRhQ==
+
 "@openzeppelin/contracts@4.1.0":
   version "4.1.0"
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.1.0.tgz#baec89a7f5f73e3d8ea582a78f1980134b605375"
@@ -5312,6 +5317,34 @@
   version "2.0.2"
   resolved "https://registry.yarnpkg.com/@uma/common/-/common-2.0.2.tgz#0884c446eb2bb9c5bfabe73bbc48c850063fa6a6"
   integrity sha512-n5GCZ7tLyTVDb1WI0AnYztyaVuKrSltqUjS6Q/2YuRpwHWQNYVGxI9emy1KpARnGk5zgCamnxry8a2THF6t8YQ==
+  dependencies:
+    "@ethersproject/bignumber" "^5.0.5"
+    "@google-cloud/kms" "^0.3.0"
+    "@google-cloud/storage" "^2.4.2"
+    "@nomiclabs/hardhat-etherscan" "^2.1.0"
+    "@nomiclabs/hardhat-truffle5" "^2.0.0"
+    "@nomiclabs/hardhat-web3" "^2.0.0"
+    "@truffle/hdwallet-provider" "^1.0.25"
+    "@umaprotocol/truffle-ledger-provider" "^1.0.3"
+    abi-decoder "github:UMAprotocol/abi-decoder"
+    bignumber.js "^8.0.1"
+    chalk-pipe "^3.0.0"
+    dotenv "^6.2.0"
+    eth-crypto "^1.7.0"
+    hardhat "^2.0.4"
+    hardhat-gas-reporter "^1.0.3"
+    minimist "^1.2.0"
+    moment "^2.24.0"
+    node-metamask "github:UMAprotocol/node-metamask"
+    require-context "^1.1.0"
+    solidity-coverage "^0.7.13"
+    truffle-deploy-registry "^0.5.1"
+    web3 "1.2.11"
+
+"@uma/common@npm:@uma/common@2.1.0":
+  version "2.1.0"
+  resolved "https://registry.yarnpkg.com/@uma/common/-/common-2.1.0.tgz#b8b8c1bca61f3c124dc05a24cacbb77a9bfda24c"
+  integrity sha512-Ilj9JQkWp10DKhxyjptTRUq2j6kOAuUzJF23iroGK3ER8icri066VPInfQssrbu5ykr0yUXMUcwCT0YCdd+d3w==
   dependencies:
     "@ethersproject/bignumber" "^5.0.5"
     "@google-cloud/kms" "^0.3.0"
@@ -23957,7 +23990,7 @@ socks@~2.3.2:
     ip "1.1.5"
     smart-buffer "^4.1.0"
 
-"solc-0.8@npm:solc@^0.8.4", solc@^0.8.4:
+"solc-0.8@npm:solc@^0.8.4":
   version "0.8.4"
   resolved "https://registry.yarnpkg.com/solc/-/solc-0.8.4.tgz#c7e606e5fc07f3fe37414bc3dd868404399ea8bb"
   integrity sha512-krEdbucX9yY362l79gXTK2UHhsZ02aQjQOYTzcgTd/waApueo3yWGzjX0CDJ1ByOuW46WuKAyzfbRWdFNr6OYQ==
