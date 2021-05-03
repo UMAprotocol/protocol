@@ -1,22 +1,22 @@
-pragma solidity ^0.8.0;
+pragma solidity ^0.6.0;
 pragma experimental ABIEncoderV2;
 import "./FinancialProductLibrary.sol";
 import "../../../common/implementation/Lockable.sol";
 
 /**
- * @title Pre-Expiration Identifier Transformation Financial Product Library
+ * @title Post-Expiration Identifier Transformation Financial Product Library
  * @notice Adds custom identifier transformation to enable a financial contract to use two different identifiers, depending
- * on when a price request is made. If the request is made before expiration then a transformation is made to the identifier
- * & if it is at or after expiration then the original identifier is returned. This library enables self referential
+ * on when a price request is made. If the request is made at or after expiration then a transformation is made to the identifier
+ * & if it is before expiration then the original identifier is returned. This library enables self referential
  * TWAP identifier to be used on synthetics pre-expiration, in conjunction with a separate identifier at expiration.
  */
-contract PreExpirationIdentifierTransformationFinancialProductLibrary is FinancialProductLibrary, Lockable {
+contract PostExpirationIdentifierTransformationFinancialProductLibrary is FinancialProductLibrary, Lockable {
     mapping(address => bytes32) financialProductTransformedIdentifiers;
 
     /**
      * @notice Enables the deployer of the library to set the transformed identifier for an associated financial product.
      * @param financialProduct address of the financial product.
-     * @param transformedIdentifier the identifier for the financial product to be used if the contract is pre expiration.
+     * @param transformedIdentifier the identifier for the financial product to be used if the contract is post expiration.
      * @dev Note: a) Any address can set identifier transformations b) The identifier can't be set to blank. c) A
      * transformed price can only be set once to prevent the deployer from changing it after the fact. d) financialProduct
      * must expose an expirationTimestamp method.
@@ -46,7 +46,7 @@ contract PreExpirationIdentifierTransformationFinancialProductLibrary is Financi
     }
 
     /**
-     * @notice Returns a transformed price identifier if the contract is pre-expiration and no transformation if post.
+     * @notice Returns a transformed price identifier if the contract is post-expiration and no transformation if pre.
      * @param identifier input price identifier to be transformed.
      * @param requestTime timestamp the identifier is to be used at.
      * @return transformedPriceIdentifier the input price identifier with the transformation logic applied to it.
@@ -59,12 +59,12 @@ contract PreExpirationIdentifierTransformationFinancialProductLibrary is Financi
         returns (bytes32)
     {
         require(financialProductTransformedIdentifiers[msg.sender] != "", "Caller has no transformation");
-        // If the request time is before contract expiration then return the transformed identifier. Else, return the
+        // If the request time is after contract expiration then return the transformed identifier. Else, return the
         // original price identifier.
         if (requestTime < ExpiringContractInterface(msg.sender).expirationTimestamp()) {
-            return financialProductTransformedIdentifiers[msg.sender];
-        } else {
             return identifier;
+        } else {
+            return financialProductTransformedIdentifiers[msg.sender];
         }
     }
 }

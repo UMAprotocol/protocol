@@ -159,7 +159,7 @@ contract PricelessPositionManager is FeePayer {
      * @param _tokenAddress ERC20 token used as synthetic token.
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _priceIdentifier registered in the DVM for the synthetic.
-     * @param _minSponsorTokens minimum amount of collateral that must exist at any time in a position.
+     * @param _minSponsorTokens minimum number of tokens that must exist at any time in a position.
      * @param _timerAddress Contract that stores the current time in a testing environment.
      * Must be set to 0x0 for production environments that use live time.
      * @param _financialProductLibraryAddress Contract providing contract state transformations.
