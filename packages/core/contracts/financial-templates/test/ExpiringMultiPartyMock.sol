@@ -1,5 +1,6 @@
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity ^0.8.0;
+pragma abicoder v2;
 
 import "../../common/implementation/Testable.sol";
 import "../../common/implementation/FixedPoint.sol";
@@ -19,7 +20,7 @@ contract ExpiringMultiPartyMock is Testable {
         FixedPoint.Unsigned memory _collateralRequirement,
         bytes32 _priceIdentifier,
         address _timerAddress
-    ) public Testable(_timerAddress) {
+    ) Testable(_timerAddress) {
         expirationTimestamp = _expirationTimestamp;
         collateralRequirement = _collateralRequirement;
         financialProductLibrary = FinancialProductLibrary(_financialProductLibraryAddress);

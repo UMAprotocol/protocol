@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
-pragma experimental ABIEncoderV2;
+pragma abicoder v2;
 
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
@@ -37,7 +37,7 @@ contract TokenMigrator {
         FixedPoint.Unsigned memory _rate,
         address _oldToken,
         address _newToken
-    ) public {
+    ) {
         // Prevents division by 0 in migrateTokens().
         // Also it doesn’t make sense to have “0 old tokens equate to 1 new token”.
         require(_rate.isGreaterThan(0), "Rate can't be 0");

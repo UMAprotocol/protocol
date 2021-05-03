@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
-pragma experimental ABIEncoderV2;
+pragma abicoder v2;
 
 import "../../common/implementation/Testable.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
@@ -53,7 +53,7 @@ contract MockOracleAncillary is OracleAncillaryInterface, Testable {
         int256 price
     );
 
-    constructor(address _finderAddress, address _timerAddress) public Testable(_timerAddress) {
+    constructor(address _finderAddress, address _timerAddress) Testable(_timerAddress) {
         finder = FinderInterface(_finderAddress);
     }
 

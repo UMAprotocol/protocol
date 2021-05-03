@@ -1,9 +1,10 @@
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity ^0.8.0;
+pragma abicoder v2;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/utils/Pausable.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "./IDepositExecute.sol";
 import "./IBridge.sol";
 import "./IERCHandler.sol";
@@ -83,18 +84,18 @@ contract Bridge is Pausable, AccessControl {
         _;
     }
 
-    function _onlyAdminOrRelayer() private {
+    function _onlyAdminOrRelayer() private view {
         require(
             hasRole(DEFAULT_ADMIN_ROLE, msg.sender) || hasRole(RELAYER_ROLE, msg.sender),
             "sender is not relayer or admin"
         );
     }
 
-    function _onlyAdmin() private {
+    function _onlyAdmin() private view {
         require(hasRole(DEFAULT_ADMIN_ROLE, msg.sender), "sender doesn't have admin role");
     }
 
-    function _onlyRelayers() private {
+    function _onlyRelayers() private view {
         require(hasRole(RELAYER_ROLE, msg.sender), "sender doesn't have relayer role");
     }
 
@@ -111,7 +112,7 @@ contract Bridge is Pausable, AccessControl {
         uint256 initialRelayerThreshold,
         uint256 fee,
         uint256 expiry
-    ) public {
+    ) {
         _chainID = chainID;
         _relayerThreshold = initialRelayerThreshold;
         _fee = fee;
