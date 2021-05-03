@@ -10,10 +10,10 @@ const sinon = require("sinon");
 // Script to test
 const { DSProxyManager } = require("../../src/proxy-transaction-handler/DSProxyManager.js");
 
-const TokenSender = getTruffleContract("TokenSender", web3, "latest");
-const DSProxyFactory = getTruffleContract("DSProxyFactory", web3, "latest");
-const DSProxy = getTruffleContract("DSProxy", web3, "latest");
-const Token = getTruffleContract("ExpandedERC20", web3, "latest");
+const TokenSender = getTruffleContract("TokenSender", web3);
+const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);
+const DSProxy = getTruffleContract("DSProxy", web3);
+const Token = getTruffleContract("ExpandedERC20", web3);
 
 contract("DSProxyManager", function(accounts) {
   let contractCreator = accounts[0];

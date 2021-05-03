@@ -6,10 +6,8 @@ const { mineTransactionsAtTime, MAX_SAFE_JS_INT } = require("@uma/common");
 const { delay } = require("../../src/helpers/delay.js");
 const { getTruffleContract } = require("@uma/core");
 
-const CONTRACT_VERSION = "latest";
-
-const BalancerMock = getTruffleContract("BalancerMock", web3, CONTRACT_VERSION);
-const Balancer = getTruffleContract("Balancer", web3, CONTRACT_VERSION);
+const BalancerMock = getTruffleContract("BalancerMock", web3);
+const Balancer = getTruffleContract("Balancer", web3);
 
 contract("BalancerPriceFeed.js", function(accounts) {
   const owner = accounts[0];

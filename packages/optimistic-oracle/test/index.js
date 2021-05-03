@@ -9,12 +9,10 @@ const { SpyTransport, spyLogLevel, spyLogIncludes } = require("@uma/financial-te
 const { getTruffleContract } = require("@uma/core");
 const { addGlobalHardhatTestingAddress } = require("@uma/common");
 
-const CONTRACT_VERSION = "latest";
-
-const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, CONTRACT_VERSION);
-const MockOracle = getTruffleContract("MockOracleAncillary", web3, CONTRACT_VERSION);
-const Finder = getTruffleContract("Finder", web3, CONTRACT_VERSION);
-const Timer = getTruffleContract("Timer", web3, CONTRACT_VERSION);
+const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
+const MockOracle = getTruffleContract("MockOracleAncillary", web3);
+const Finder = getTruffleContract("Finder", web3);
+const Timer = getTruffleContract("Timer", web3);
 
 contract("index.js", function() {
   let spy;
