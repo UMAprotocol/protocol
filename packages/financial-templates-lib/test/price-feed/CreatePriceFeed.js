@@ -22,7 +22,7 @@ const {
   createTokenPriceFeedForFinancialContract
 } = require("../../src/price-feed/CreatePriceFeed");
 const { CryptoWatchPriceFeed } = require("../../src/price-feed/CryptoWatchPriceFeed");
-const { UniswapPriceFeed } = require("../../src/price-feed/UniswapPriceFeed");
+const { UniswapV2PriceFeed, UniswapV3PriceFeed } = require("../../src/price-feed/UniswapPriceFeed");
 const { BalancerPriceFeed } = require("../../src/price-feed/BalancerPriceFeed");
 const { BasketSpreadPriceFeed } = require("../../src/price-feed/BasketSpreadPriceFeed");
 const { MedianizerPriceFeed } = require("../../src/price-feed/MedianizerPriceFeed");
@@ -172,7 +172,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     assert.isTrue(validBasketSpreadFeed.baselinePriceFeeds[0] instanceof MedianizerPriceFeed);
     assert.isTrue(validBasketSpreadFeed.baselinePriceFeeds[0].priceFeeds[0] instanceof CryptoWatchPriceFeed);
     assert.isTrue(validBasketSpreadFeed.baselinePriceFeeds[1] instanceof MedianizerPriceFeed);
-    assert.isTrue(validBasketSpreadFeed.baselinePriceFeeds[1].priceFeeds[0] instanceof UniswapPriceFeed);
+    assert.isTrue(validBasketSpreadFeed.baselinePriceFeeds[1].priceFeeds[0] instanceof UniswapV2PriceFeed);
     assert.isTrue(validBasketSpreadFeed.experimentalPriceFeeds[0] instanceof MedianizerPriceFeed);
     assert.isTrue(validBasketSpreadFeed.experimentalPriceFeeds[0].priceFeeds[0] instanceof CryptoWatchPriceFeed);
     assert.isTrue(validBasketSpreadFeed.experimentalPriceFeeds[1] instanceof MedianizerPriceFeed);
@@ -245,7 +245,7 @@ contract("CreatePriceFeed.js", function(accounts) {
     assert.isTrue(validBasketSpreadFeed.baselinePriceFeeds[0] instanceof MedianizerPriceFeed);
     assert.isTrue(validBasketSpreadFeed.baselinePriceFeeds[0].priceFeeds[0] instanceof CryptoWatchPriceFeed);
     assert.isTrue(validBasketSpreadFeed.baselinePriceFeeds[1] instanceof MedianizerPriceFeed);
-    assert.isTrue(validBasketSpreadFeed.baselinePriceFeeds[1].priceFeeds[0] instanceof UniswapPriceFeed);
+    assert.isTrue(validBasketSpreadFeed.baselinePriceFeeds[1].priceFeeds[0] instanceof UniswapV2PriceFeed);
     assert.isTrue(validBasketSpreadFeed.experimentalPriceFeeds[0] instanceof MedianizerPriceFeed);
     assert.isTrue(validBasketSpreadFeed.experimentalPriceFeeds[0].priceFeeds[0] instanceof CryptoWatchPriceFeed);
     assert.isTrue(validBasketSpreadFeed.experimentalPriceFeeds[1] instanceof MedianizerPriceFeed);
@@ -399,7 +399,7 @@ contract("CreatePriceFeed.js", function(accounts) {
 
     const validUniswapFeed = await createPriceFeed(logger, web3, networker, getTime, config);
 
-    assert.isTrue(validUniswapFeed instanceof UniswapPriceFeed);
+    assert.isTrue(validUniswapFeed instanceof UniswapV2PriceFeed);
     assert.equal(validUniswapFeed.uniswap.options.address, uniswapAddress);
     assert.equal(validUniswapFeed.twapLength, twapLength);
     assert.equal(validUniswapFeed.historicalLookback, lookback);
@@ -537,6 +537,34 @@ contract("CreatePriceFeed.js", function(accounts) {
     assert.isTrue(balancerFeed instanceof BalancerPriceFeed);
   });
 
+  it("Valid Uniswap v3 config", async function() {
+    const config = {
+      type: "uniswap",
+      uniswapAddress,
+      twapLength,
+      lookback,
+      version: "v3"
+    };
+
+    const validUniswapFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isTrue(validUniswapFeed instanceof UniswapV3PriceFeed);
+  });
+
+  it("Invalid Uniswap version string", async function() {
+    const config = {
+      type: "uniswap",
+      uniswapAddress,
+      twapLength,
+      lookback,
+      version: "v1"
+    };
+
+    const invalidUniswapFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isNull(invalidUniswapFeed);
+  });
+
   it("Invalid Balancer config", async function() {
     const config = {
       type: "balancer",
@@ -627,7 +655,7 @@ contract("CreatePriceFeed.js", function(accounts) {
       financialContract.address,
       config
     );
-    assert.isTrue(uniswapFeed instanceof UniswapPriceFeed);
+    assert.isTrue(uniswapFeed instanceof UniswapV2PriceFeed);
   });
 
   it("Create token price feed defaults to Medianizer", async function() {
@@ -698,7 +726,7 @@ contract("CreatePriceFeed.js", function(accounts) {
 
     assert.isTrue(validMedianizerFeed instanceof MedianizerPriceFeed);
     assert.isTrue(validMedianizerFeed.priceFeeds[0] instanceof CryptoWatchPriceFeed);
-    assert.isTrue(validMedianizerFeed.priceFeeds[1] instanceof UniswapPriceFeed);
+    assert.isTrue(validMedianizerFeed.priceFeeds[1] instanceof UniswapV2PriceFeed);
 
     assert.equal(validMedianizerFeed.priceFeeds[0].pair, pair);
     assert.equal(validMedianizerFeed.priceFeeds[1].uniswap.options.address, uniswapAddress);
@@ -790,7 +818,7 @@ contract("CreatePriceFeed.js", function(accounts) {
 
     assert.isTrue(validFallbackFeed instanceof FallBackPriceFeed);
     assert.isTrue(validFallbackFeed.priceFeeds[0] instanceof CryptoWatchPriceFeed);
-    assert.isTrue(validFallbackFeed.priceFeeds[1] instanceof UniswapPriceFeed);
+    assert.isTrue(validFallbackFeed.priceFeeds[1] instanceof UniswapV2PriceFeed);
 
     assert.equal(validFallbackFeed.priceFeeds[0].pair, pair);
     assert.equal(validFallbackFeed.priceFeeds[1].uniswap.options.address, uniswapAddress);

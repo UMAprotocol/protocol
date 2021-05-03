@@ -93,29 +93,7 @@ class OptimisticOracleProposer {
     // TODO: Should allow user to filter out price requests with rewards below a threshold,
     // allowing the bot to prevent itself from being induced to unprofitably propose.
     for (let priceRequest of this.optimisticOracleClient.getUnproposedPriceRequests()) {
-      // If the price request is an expiry price request for a specific type of EMP
-      // whose price resolution is self-referential pre-expiry and diferent post-expiry,
-      // then skip the price request:
-      if (OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY.includes(priceRequest.identifier)) {
-        // Check if (1) contract is an EMP and (2) EMP has expired:
-        try {
-          // The requester should be an EMP contract if this is an expiry price request.
-          const empContract = this.createEmpContract(priceRequest.requester);
-          const expirationTimestamp = await empContract.methods.expirationTimestamp().call();
-          if (Number(priceRequest.timestamp) >= Number(expirationTimestamp)) {
-            this.logger.debug({
-              at: "OptimisticOracleProposer#sendProposals",
-              message: "EMP contract has expired and identifier's price resolution logic transforms post-expiry",
-              identifier: priceRequest.identifier,
-              expirationTimestamp: expirationTimestamp.toString()
-            });
-            continue;
-          }
-        } catch (err) {
-          console.error(err);
-          // Do nothing, contract is probably not an EMP
-        }
-      }
+      if (await this._shouldIgnorePriceRequest(priceRequest)) continue;
       await this._sendProposal(priceRequest);
     }
   }
@@ -128,6 +106,7 @@ class OptimisticOracleProposer {
     });
 
     for (let priceRequest of this.optimisticOracleClient.getUndisputedProposals()) {
+      if (await this._shouldIgnorePriceRequest(priceRequest)) continue;
       await this._sendDispute(priceRequest);
     }
   }
@@ -151,6 +130,34 @@ class OptimisticOracleProposer {
    * INTERNAL METHODS
    *
    ************************************/
+  // Returns true if the price request should be ignored by the OO proposer + disputer for any reason, False otherwise.
+  async _shouldIgnorePriceRequest(priceRequest) {
+    // If the price request is an expiry price request for a specific type of EMP
+    // whose price resolution is self-referential pre-expiry and diferent post-expiry,
+    // then skip the price request:
+    if (OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY.includes(priceRequest.identifier)) {
+      // Check if (1) contract is an EMP and (2) EMP has expired:
+      try {
+        // The requester should be an EMP contract if this is an expiry price request.
+        const empContract = this.createEmpContract(priceRequest.requester);
+        const expirationTimestamp = await empContract.methods.expirationTimestamp().call();
+        if (Number(priceRequest.timestamp) >= Number(expirationTimestamp)) {
+          this.logger.debug({
+            at: "OptimisticOracleProposer#Proposer",
+            message: "EMP contract has expired and identifier's price resolution logic transforms post-expiry",
+            identifier: priceRequest.identifier,
+            expirationTimestamp: expirationTimestamp.toString()
+          });
+          return true;
+        }
+      } catch (err) {
+        // Do nothing, contract is probably not an EMP
+      }
+    }
+
+    // All checks passed, should NOT ignore this price request:
+    return false;
+  }
 
   // Construct proposal transaction and send or return early if an error is encountered.
   async _sendProposal(priceRequest) {

@@ -603,7 +603,7 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       }
     ]);
 
-    // Running the bot's sendProposal method should skip the price request which it sees as an expiry request:
+    // Running the bot's sendProposals method should skip the price request which it sees as an expiry request:
     await proposer.sendProposals();
     assert.equal(lastSpyLogLevel(spy), "debug");
     assert.isTrue(
@@ -614,10 +614,29 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
     // Show that if the contract's expiration timestamp were 1 second later, then the bot would not interpret the price
     // request as an expiry one and would propose
     await optimisticRequester.setExpirationTimestamp(Number(requestTime) + 1);
+    await proposer.update();
     await proposer.sendProposals();
+
     await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED, identifierToIgnore, ancillaryDataAddress);
     assert.equal(lastSpyLogLevel(spy), "info");
     assert.isTrue(spyLogIncludes(spy, -1, "Proposed price"));
     assert.ok(spy.getCall(-1).lastArg.proposalResult.tx);
+
+    // Resetting the expiration timestamp should make sendDispute to skip the price request:
+    await optimisticRequester.setExpirationTimestamp(requestTime);
+    await proposer.update();
+    await proposer.sendDisputes();
+    assert.equal(lastSpyLogLevel(spy), "debug");
+    assert.isTrue(
+      spyLogIncludes(spy, -1, "EMP contract has expired and identifier's price resolution logic transforms post-expiry")
+    );
+    assert.equal(spy.getCall(-1).lastArg.expirationTimestamp, requestTime);
+
+    // Finally, if the contract's expiration timestamp is set 1 second later, then the bot would not interpret the price
+    // request as an expiry one and could dispute (but won't dispute because the dispute price equals the proposed one).
+    await optimisticRequester.setExpirationTimestamp(Number(requestTime) + 1);
+    await proposer.update();
+    await proposer.sendDisputes();
+    assert.isTrue(spyLogIncludes(spy, -1, "Skipping dispute because proposal price is within allowed margin of error"));
   });
 });

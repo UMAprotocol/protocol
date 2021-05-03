@@ -201,10 +201,10 @@ contract("Perpetual: proposer.js", function(accounts) {
     // not set in DefaultPriceFeedConfig
     latestProposalTime = startTime.toNumber() + 1;
     commonPriceFeedConfig = {
-      currentPrice: "0.000005",
-      // Mocked current price. This will be scaled to the identifier's precision. 1/2 of max funding rate
-      historicalPrice: "0.000001",
-      // Mocked historical price. This should be irrelevant for these tests.
+      historicalPrice: "0.000005",
+      // Mocked historical price. This will be scaled to the identifier's precision. 1/2 of max funding rate
+      currentPrice: "0.000001",
+      // Mocked current price. This should be irrelevant for these tests.
       lastUpdateTime: latestProposalTime
       // On funding rate updates, proposer requests a price for this time. This must be > than the Perpetual
       // contract's last update time, which is the `startTime` when it was deployed. So we start
@@ -282,19 +282,19 @@ contract("Perpetual: proposer.js", function(accounts) {
       await proposer._setAllowances();
       assert.equal(spyCount, spy.callCount);
     });
-    it("(_cacheAndUpdatePriceFeeds)", async function() {
-      // `update` should create a new pricefeed for each funding rate identifier.
+    it("(_createOrGetCachedPriceFeed)", async function() {
+      // should create a new pricefeed for each funding rate identifier.
       assert.equal(Object.keys(proposer.priceFeedCache).length, fundingRateIdentifiersToTest.length);
       for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
         assert.isTrue(
           proposer.priceFeedCache[hexToUtf8(fundingRateIdentifiersToTest[i])] instanceof PriceFeedMockScaled
         );
       }
-      // Calling `_cacheAndUpdatePriceFeeds` usually emits DEBUG logs for
+      // Calling `_createOrGetCachedPriceFeed` usually emits DEBUG logs for
       // each newly cached object. Calling it again should do nothing since we've already
       // cached the price feeds.
       const spyCount = spy.callCount;
-      await proposer._cacheAndUpdatePriceFeeds();
+      await proposer._createOrGetCachedPriceFeed();
       assert.equal(spyCount, spy.callCount);
     });
     describe("(updateFundingRate)", function() {
@@ -356,7 +356,7 @@ contract("Perpetual: proposer.js", function(accounts) {
         let pricesToPropose = "0.000006";
         for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
           const priceFeed = proposer.priceFeedCache[hexToUtf8(fundingRateIdentifiersToTest[i])];
-          priceFeed.setCurrentPrice(pricesToPropose);
+          priceFeed.setHistoricalPrice(pricesToPropose);
           priceFeed.setLastUpdateTime(latestProposalTime);
         }
         await proposer.updateFundingRates(true);
@@ -402,7 +402,7 @@ contract("Perpetual: proposer.js", function(accounts) {
           assert.equal(pricesToPropose.length, fundingRateIdentifiersToTest.length);
           for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
             const priceFeed = proposer.priceFeedCache[hexToUtf8(fundingRateIdentifiersToTest[i])];
-            priceFeed.setCurrentPrice(pricesToPropose[i]);
+            priceFeed.setHistoricalPrice(pricesToPropose[i]);
             priceFeed.setLastUpdateTime(latestProposalTime);
           }
 
@@ -428,9 +428,9 @@ contract("Perpetual: proposer.js", function(accounts) {
           for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
             const priceFeed = proposer.priceFeedCache[hexToUtf8(fundingRateIdentifiersToTest[i])];
             if (i % 2 === 0) {
-              priceFeed.setCurrentPrice("1");
+              priceFeed.setHistoricalPrice("1");
             } else {
-              priceFeed.setCurrentPrice("-1");
+              priceFeed.setHistoricalPrice("-1");
             }
             priceFeed.setLastUpdateTime(latestProposalTime);
           }
@@ -476,10 +476,10 @@ contract("Perpetual: proposer.js", function(accounts) {
     // Update once to load priceFeedCache.
     await proposer.update();
 
-    // Force `getCurrentPrice()` to return null so that bot fails to fetch prices.
+    // Force `getHistoricalPrice(x)` to return null so that bot fails to fetch prices.
     for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
       const priceFeed = proposer.priceFeedCache[hexToUtf8(fundingRateIdentifiersToTest[i])];
-      priceFeed.setCurrentPrice(null);
+      priceFeed.setHistoricalPrice(null);
     }
 
     // Update again

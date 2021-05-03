@@ -68,6 +68,11 @@ class FallBackPriceFeed extends PriceFeedInterface {
     }
   }
 
+  // Return the longest lookback within all the fallback feeds.
+  getLookback() {
+    return Math.max(this.priceFeeds.map(feed => feed.historicalLookback));
+  }
+
   // Errors out if any price feed had a different number of decimals.
   getPriceFeedDecimals() {
     const priceFeedDecimals = this.priceFeeds.map(priceFeed => priceFeed.getPriceFeedDecimals());

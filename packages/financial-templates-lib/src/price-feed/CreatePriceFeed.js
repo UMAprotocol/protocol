@@ -25,14 +25,15 @@ const { MedianizerPriceFeed } = require("./MedianizerPriceFeed");
 const { PriceFeedMockScaled } = require("./PriceFeedMockScaled");
 const { QuandlPriceFeed } = require("./QuandlPriceFeed");
 const { TraderMadePriceFeed } = require("./TraderMadePriceFeed");
-const { UniswapPriceFeed } = require("./UniswapPriceFeed");
+const { UniswapV2PriceFeed, UniswapV3PriceFeed } = require("./UniswapPriceFeed");
 const { VaultPriceFeed } = require("./VaultPriceFeed");
 
 // Global cache for block (promises) used by uniswap price feeds.
 const uniswapBlockCache = {};
 
 async function createPriceFeed(logger, web3, networker, getTime, config) {
-  const Uniswap = getTruffleContract("Uniswap", web3, "latest");
+  const UniswapV2 = getTruffleContract("UniswapV2", web3, "latest");
+  const UniswapV3 = getTruffleContract("UniswapV3", web3, "latest");
   const ERC20 = getTruffleContract("ExpandedERC20", web3, "latest");
   const Balancer = getTruffleContract("Balancer", web3, "latest");
   const VaultInterface = getTruffleContract("VaultInterface", web3, "latest");
@@ -129,9 +130,14 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config
     });
 
+    if (config.version !== undefined && config.version !== "v2" && config.version !== "v3") return null;
+
+    const [uniswapAbi, UniswapPriceFeed] =
+      config.version === "v3" ? [UniswapV3.abi, UniswapV3PriceFeed] : [UniswapV2.abi, UniswapV2PriceFeed];
+
     return new UniswapPriceFeed(
       logger,
-      Uniswap.abi,
+      uniswapAbi,
       ERC20.abi,
       web3,
       config.uniswapAddress,

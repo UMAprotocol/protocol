@@ -859,7 +859,7 @@ const defaultConfigs = {
     type: "expression",
     expression: `
         ETHBTC_FV = ETH\\/BTC * PERP_FRM;
-        max(-0.00001, min(0.00001, (ETHBTC_FV - ETHBTC_PERP) / ETHBTC_FV / 86400))
+        round(max(-0.00001, min(0.00001, (ETHBTC_FV - ETHBTC_PERP) / ETHBTC_FV / 86400)), 9)
     `,
     lookback: 7200,
     minTimeBetweenUpdates: 60,
@@ -868,6 +868,76 @@ const defaultConfigs = {
       ETHBTC_PERP: { type: "uniswap", invertPrice: true, uniswapAddress: "0x899a45ee5a03d8cc57447157a17ce4ea4745b199" },
       PERP_FRM: { type: "frm", perpetualAddress: "0x32f0405834c4b50be53199628c45603cea3a28aa" }
     }
+  },
+  BALUSD: {
+    type: "expression",
+    expression: `
+      SPOT_BALANCER = SPOT_BALANCER_ETH * ETHUSD;
+      median(SPOT_BINANCE, SPOT_COINBASE_PRO, SPOT_BALANCER)
+    `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    customFeeds: {
+      SPOT_BALANCER_ETH: {
+        type: "balancer",
+        twapLength: 2,
+        lookback: 3600,
+        balancerAddress: "0x59a19d8c652fa0284f44113d0ff9aba70bd46fb4",
+        balancerTokenIn: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
+        balancerTokenOut: "0xba100000625a3754423978a60c9317c58a424e3D",
+        poolDecimals: 18
+      },
+      SPOT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "balusdt" },
+      SPOT_COINBASE_PRO: { type: "cryptowatch", exchange: "coinbase-pro", pair: "balusd" },
+      ETHUSD: {
+        type: "medianizer",
+        minTimeBetweenUpdates: 60,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "coinbase-pro", pair: "ethusd" },
+          { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
+          { type: "cryptowatch", exchange: "kraken", pair: "ethusd" }
+        ]
+      }
+    }
+  },
+  XSUSHIUSD: {
+    type: "expression",
+    expression: `
+        SPOT_SUSHISWAP = SPOT_SUSHISWAP_ETH * ETHUSD;
+        SUSHIUSD = median(SPOT_BINANCE, SPOT_HUOBI, SPOT_SUSHISWAP);
+        SUSHIUSD * SUSHI_PER_SHARE
+    `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    customFeeds: {
+      SPOT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "sushiusdt" },
+      SPOT_HUOBI: { type: "cryptowatch", exchange: "huobi", pair: "sushiusdt" },
+      SPOT_SUSHISWAP_ETH: {
+        type: "uniswap",
+        uniswapAddress: "0x795065dCc9f64b5614C407a6EFDC400DA6221FB0",
+        twapLength: 2
+      },
+      ETHUSD: {
+        type: "medianizer",
+        minTimeBetweenUpdates: 60,
+        medianizedFeeds: [
+          { type: "cryptowatch", exchange: "coinbase-pro", pair: "ethusd" },
+          { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
+          { type: "cryptowatch", exchange: "kraken", pair: "ethusd" }
+        ]
+      },
+      SUSHI_PER_SHARE: {
+        type: "lp",
+        poolAddress: "0x8798249c2E607446EfB7Ad49eC89dD1865Ff4272",
+        tokenAddress: "0x6b3595068778dd592e39a122f4f5a5cf09c90fe2"
+      }
+    }
+  },
+  uSTONKS_JUN21: {
+    type: "uniswap",
+    uniswapAddress: "0x360acfeb5c1548bad3583c559a646d803077236d",
+    twapLength: 7200,
+    invertPrice: false
   }
 };
 

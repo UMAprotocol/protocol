@@ -44,6 +44,15 @@ contract MockOracleAncillary is OracleAncillaryInterface, Testable {
     mapping(bytes32 => mapping(uint256 => mapping(bytes => QueryIndex))) private queryIndices;
     QueryPoint[] private requestedPrices;
 
+    event PriceRequestAdded(address indexed requester, bytes32 indexed identifier, uint256 time, bytes ancillaryData);
+    event PushedPrice(
+        address indexed pusher,
+        bytes32 indexed identifier,
+        uint256 time,
+        bytes ancillaryData,
+        int256 price
+    );
+
     constructor(address _finderAddress, address _timerAddress) public Testable(_timerAddress) {
         finder = FinderInterface(_finderAddress);
     }
@@ -61,6 +70,7 @@ contract MockOracleAncillary is OracleAncillaryInterface, Testable {
             // New query, enqueue it for review.
             queryIndices[identifier][time][ancillaryData] = QueryIndex(true, requestedPrices.length);
             requestedPrices.push(QueryPoint(identifier, time, ancillaryData));
+            emit PriceRequestAdded(msg.sender, identifier, time, ancillaryData);
         }
     }
 
@@ -85,6 +95,8 @@ contract MockOracleAncillary is OracleAncillaryInterface, Testable {
             queryIndices[queryToCopy.identifier][queryToCopy.time][queryToCopy.ancillaryData].index = indexToReplace;
             requestedPrices[indexToReplace] = queryToCopy;
         }
+
+        emit PushedPrice(msg.sender, identifier, time, ancillaryData, price);
     }
 
     // Checks whether a price has been resolved.

@@ -47,6 +47,7 @@ class ProxyTransactionWrapper {
     // Helper functions from web3.
     this.toBN = this.web3.utils.toBN;
     this.toWei = this.web3.utils.toWei;
+    this.toChecksumAddress = this.web3.utils.toChecksumAddress;
 
     this.useDsProxyToLiquidate = useDsProxyToLiquidate;
 
@@ -117,43 +118,45 @@ class ProxyTransactionWrapper {
   // then consider the synthetics could be minted, + any synthetics the DSProxy already has.
   async getEffectiveSyntheticTokenBalance() {
     const syntheticTokenBalance = await this.syntheticToken.methods.balanceOf(this.account).call();
+    // If using the DSProxy to liquidate then return the current synthetic token balance.
     if (!this.useDsProxyToLiquidate) return syntheticTokenBalance;
     else {
-      // Instantiate uniswap factory to fetch the pair address.
-      const uniswapFactory = await this.createContractObjectFromJson(UniswapV2Factory).at(this.uniswapFactoryAddress);
-
-      const pairAddress = await uniswapFactory.getPair(this.reserveToken._address, this.collateralToken._address);
-      const uniswapPair = await this.createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
-
-      // We can now fetch the reserves. At the same time, we can batch a few other required async calls.
-      const [
-        reserves,
-        token0,
-        contractPFC,
-        contractTokensOutstanding,
-        reserveTokenBalance,
-        collateralTokenBalance
-      ] = await Promise.all([
-        uniswapPair.getReserves(),
-        uniswapPair.token0(),
+      // Else, if using the DSProxy to liquidate we need to work out the effective balance.
+      const [contractPFC, contractTokensOutstanding, reserveTokenBalance, collateralTokenBalance] = await Promise.all([
         this.financialContract.methods.pfc().call(),
         this.financialContract.methods.totalTokensOutstanding().call(),
         this.reserveToken.methods.balanceOf(this.dsProxyManager.getDSProxyAddress()).call(),
         this.collateralToken.methods.balanceOf(this.dsProxyManager.getDSProxyAddress()).call()
       ]);
+      let maxPurchasableCollateral = this.toBN("0"); // set to the reserve token balance (if reserve==collateral) or the max purchasable.
 
-      // Detect if the reserve currency is token0 or 1. This informs the order in the following computation.
-      const reserveToken0 = token0 == this.reserveToken._address;
+      // If the reserve currency is the collateral currency then there is no trading needed.
+      if (this.toChecksumAddress(this.reserveToken._address) === this.toChecksumAddress(this.collateralToken._address))
+        maxPurchasableCollateral = this.toBN(reserveTokenBalance);
+      // Else, work out how much collateral could be purchased using all the reserve currency.
+      else {
+        // Instantiate uniswap factory to fetch the pair address.
+        const uniswapFactory = await this.createContractObjectFromJson(UniswapV2Factory).at(this.uniswapFactoryAddress);
 
-      const reserveIn = reserveToken0 ? reserves.reserve0 : reserves.reserve1;
-      const reserveOut = !reserveToken0 ? reserves.reserve0 : reserves.reserve1;
+        const pairAddress = await uniswapFactory.getPair(this.reserveToken._address, this.collateralToken._address);
+        const uniswapPair = await this.createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
 
-      // Compute the maximum amount of collateral that can be purchased with all reserve currency.
-      const amountInWithFee = this.toBN(reserveTokenBalance).muln(997);
-      const numerator = amountInWithFee.mul(reserveOut);
-      const denominator = reserveIn.muln(1000).add(amountInWithFee);
+        // We can now fetch the reserves. At the same time, we can batch a few other required async calls.
+        const [reserves, token0] = await Promise.all([uniswapPair.getReserves(), uniswapPair.token0()]);
 
-      const maxPurchasableCollateral = numerator.div(denominator);
+        // Detect if the reserve currency is token0 or 1. This informs the order in the following computation.
+        const reserveToken0 = token0 == this.reserveToken._address;
+
+        const reserveIn = reserveToken0 ? reserves.reserve0 : reserves.reserve1;
+        const reserveOut = !reserveToken0 ? reserves.reserve0 : reserves.reserve1;
+
+        // Compute the maximum amount of collateral that can be purchased with all reserve currency.
+        const amountInWithFee = this.toBN(reserveTokenBalance).muln(997);
+        const numerator = amountInWithFee.mul(reserveOut);
+        const denominator = reserveIn.muln(1000).add(amountInWithFee);
+
+        maxPurchasableCollateral = numerator.div(denominator);
+      }
 
       // Compute how many synthetics could be minted, given the collateral we can buy with the reserve currency.
       const gcr = this.toBN(contractPFC.rawValue)
