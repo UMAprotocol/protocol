@@ -7,22 +7,24 @@ const { toWei, utf8ToHex, padRight, soliditySha3 } = web3.utils;
 const { createConstructorParamsForContractVersion, interfaceName } = require("@uma/common");
 const { getTruffleContract } = require("../dist/index.js");
 
+const buildVersion = "2.0.1"; // this is the version that will be built and appended to the FindContractVersion util.
+
 async function buildHashes(contractType) {
   assert(contractType == "Perpetual" || contractType == "ExpiringMultiParty", "Invalid contract type defined!");
 
   const contractCreator = (await web3.eth.getAccounts())[0];
 
-  const FinancialContract = getTruffleContract(contractType, web3);
-  const Finder = getTruffleContract("Finder", web3);
-  const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3);
-  const AddressWhitelist = getTruffleContract("AddressWhitelist", web3);
-  const MockOracle = getTruffleContract("MockOracle", web3);
-  const Token = getTruffleContract("ExpandedERC20", web3);
-  const SyntheticToken = getTruffleContract("SyntheticToken", web3);
-  const Timer = getTruffleContract("Timer", web3);
-  const Store = getTruffleContract("Store", web3);
-  const ConfigStore = getTruffleContract("ConfigStore", web3);
-  const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
+  const FinancialContract = getTruffleContract(contractType, web3, buildVersion);
+  const Finder = getTruffleContract("Finder", web3, buildVersion);
+  const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, buildVersion);
+  const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, buildVersion);
+  const MockOracle = getTruffleContract("MockOracle", web3, buildVersion);
+  const Token = getTruffleContract("ExpandedERC20", web3, buildVersion);
+  const SyntheticToken = getTruffleContract("SyntheticToken", web3, buildVersion);
+  const Timer = getTruffleContract("Timer", web3, buildVersion);
+  const Store = getTruffleContract("Store", web3, buildVersion);
+  const ConfigStore = getTruffleContract("ConfigStore", web3, buildVersion);
+  const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, buildVersion);
 
   const identifier = "TEST_IDENTIFIER";
   const fundingRateIdentifier = "TEST_FUNDING_IDENTIFIER";
@@ -116,7 +118,7 @@ async function main() {
   let versionMap = {};
   for (const contractType of contractHashesToGenerate) {
     const contractHash = await buildHashes(contractType);
-    versionMap[contractHash] = { contractType, contractVersion: "latest" };
+    versionMap[contractHash] = { contractType, contractVersion: buildVersion };
   }
   console.log("versionMap", versionMap);
   saveContractHashArtifacts(versionMap);

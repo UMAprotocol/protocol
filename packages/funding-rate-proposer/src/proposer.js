@@ -5,7 +5,7 @@ const {
   isDeviationOutsideErrorMargin,
   aggregateTransactionsAndCall
 } = require("@uma/financial-templates-lib");
-const { createObjectFromDefaultProps, runTransaction, parseFixed, formatFixed } = require("@uma/common");
+const { createObjectFromDefaultProps, runTransaction } = require("@uma/common");
 const { getAbi } = require("@uma/core");
 const Promise = require("bluebird");
 const assert = require("assert");
@@ -78,13 +78,6 @@ class FundingRateProposer {
           // Negative allowed-margins might be useful based on the implementation
           // of `isDeviationOutsideErrorMargin()`
         }
-      },
-      precision: {
-        //   "precision":9 ->  # of decimals to round fundingRate to.
-        value: 9,
-        isValid: x => {
-          return !isNaN(x) && x >= 0 && x <= 18;
-        }
       }
     };
 
@@ -148,19 +141,6 @@ class FundingRateProposer {
     const currentConfig = cachedContract.state.currentConfig;
     const fundingRateIdentifier = this.hexToUtf8(currentFundingRateData.identifier);
 
-    // If proposal time is not 0, then proposal is already outstanding. Check if
-    // the proposal has been disputed and if not, then we can't propose and must exit.
-    const proposalTime = currentFundingRateData.proposalTime.toString();
-    if (proposalTime !== "0") {
-      this.logger.debug({
-        at: "PerpetualProposer#updateFundingRate",
-        message: "Proposal is already pending, cannot propose",
-        fundingRateIdentifier,
-        proposalTime
-      });
-      return;
-    }
-
     // Assume pricefeed has been cached and updated prior to this function via the `update()` call.
     const priceFeed = this.priceFeedCache[fundingRateIdentifier];
     if (!priceFeed) {
@@ -179,9 +159,9 @@ class FundingRateProposer {
     const requestTimestamp = usePriceFeedTime
       ? priceFeed.getLastUpdateTime()
       : (await this.web3.eth.getBlock("latest")).timestamp;
-    let _pricefeedPrice;
+    let pricefeedPrice;
     try {
-      _pricefeedPrice = (await priceFeed.getHistoricalPrice(Number(requestTimestamp))).toString();
+      pricefeedPrice = (await priceFeed.getHistoricalPrice(Number(requestTimestamp))).toString();
     } catch (error) {
       this.logger.error({
         at: "PerpetualProposer",
@@ -192,8 +172,20 @@ class FundingRateProposer {
       });
       return;
     }
-    const pricefeedPrice = this._formatPriceToPricefeedPrecision(_pricefeedPrice, priceFeed);
     let onchainFundingRate = currentFundingRateData.rate.toString();
+
+    // If proposal time is not 0, then proposal is already outstanding. Check if
+    // the proposal has been disputed and if not, then we can't propose and must exit.
+    const proposalTime = currentFundingRateData.proposalTime.toString();
+    if (proposalTime !== "0") {
+      this.logger.debug({
+        at: "PerpetualProposer#updateFundingRate",
+        message: "Proposal is already pending, cannot propose",
+        fundingRateIdentifier,
+        proposalTime
+      });
+      return;
+    }
 
     // Check that pricefeedPrice is within [configStore.minFundingRate, configStore.maxFundingRate]
     const minFundingRate = currentConfig.minFundingRate.toString();
@@ -407,20 +399,6 @@ class FundingRateProposer {
         currentConfig
       }
     };
-  }
-
-  _formatPriceToPricefeedPrecision(price, priceFeed) {
-    // Round `price` to desired number of decimals by converting back and forth between the pricefeed's
-    // configured precision:
-    return parseFixed(
-      // 1) `formatFixed` converts the price in wei to a floating point.
-      // 2) `toFixed` removes decimals beyond `this.precision` in the floating point.
-      // 3) `parseFixed` converts the floating point back into wei.
-      Number(formatFixed(price.toString(), priceFeed.getPriceFeedDecimals()))
-        .toFixed(this.precision)
-        .toString(),
-      priceFeed.getPriceFeedDecimals()
-    ).toString();
   }
 }
 

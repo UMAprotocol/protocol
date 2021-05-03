@@ -34,7 +34,8 @@ const getPrecisionForIdentifier = identifier => {
 const OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY = [
   "TESTBLACKLIST", // Used for testing this list, assumed by tests to be at index 0.
   "uSTONKS_APR21",
-  "GASETH-TWAP-1Mx1M"
+  "GASETH-TWAP-1Mx1M",
+  "uSTONKS_JUN21"
 ];
 
 module.exports = {

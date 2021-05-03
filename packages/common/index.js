@@ -8,7 +8,8 @@ const browserUnsafe = {
   ...require("./src/MigrationUtils"),
   ...require("./src/TruffleConfig"),
   ...require("./src/ProviderUtils"),
-  ...require("./src/HardhatConfig")
+  ...require("./src/HardhatConfig"),
+  ...require("./src/RetryProvider")
 };
 
 module.exports = {

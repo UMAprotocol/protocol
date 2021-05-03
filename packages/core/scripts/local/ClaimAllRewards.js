@@ -41,10 +41,7 @@ async function claimRewards() {
       // This uses the VotingAncillaryInterfaceTesting to create a voting contract that has _only_ the ancillary
       // functions and events. This interface also includes almost all the regular voting methods that are unrelated
       // to the ancillary data change. Using this interface effectively avoids the overload problem.
-      return new web3.eth.Contract(
-        getAbi("VotingAncillaryInterfaceTesting", "latest"),
-        getAddress("Voting", networkId, version)
-      );
+      return new web3.eth.Contract(getAbi("VotingAncillaryInterfaceTesting"), getAddress("Voting", networkId, version));
     }
   });
 
@@ -90,7 +87,7 @@ async function claimRewards() {
           contract => toChecksumAddress(contract.options.address) === toChecksumAddress(contractAddress)
         );
         if (!voting) throw `Couldn't find voting contract for ${contractAddress}`;
-        const fullVotingContract = new web3.eth.Contract(getAbi("Voting", "latest"), voting.options.address);
+        const fullVotingContract = new web3.eth.Contract(getAbi("Voting"), voting.options.address);
         const migratedAddress = await fullVotingContract.methods.migratedAddress().call();
         try {
           const output = await voting.methods
