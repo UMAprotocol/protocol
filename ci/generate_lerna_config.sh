@@ -52,7 +52,6 @@ else
             name: Run tests
             command: |
               ./ci/truffle_workaround.sh
-              export PACKAGES_CHANGES=$PACKAGE
               yarn test --scope ${PACKAGE};
 EOF
   done
