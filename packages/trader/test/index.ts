@@ -53,7 +53,7 @@ describe("index.js", function() {
   const Token = getTruffleContract("ExpandedERC20", web3);
   const SyntheticToken = getTruffleContract("SyntheticToken", web3);
   const Timer = getTruffleContract("Timer", web3);
-  const UniswapMock = getTruffleContract("UniswapMock", web3);
+  const UniswapMock = getTruffleContract("UniswapV2Mock", web3);
   const Store = getTruffleContract("Store", web3);
   const ConfigStore = getTruffleContract("ConfigStore", web3);
   const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
