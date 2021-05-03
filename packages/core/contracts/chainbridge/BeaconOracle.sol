@@ -70,12 +70,7 @@ abstract contract BeaconOracle is OracleAncillaryInterface {
         bytes memory ancillaryData
     ) public view override returns (bool) {
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
-        Price storage lookup = prices[priceRequestId];
-        if (lookup.state == RequestState.Resolved) {
-            return true;
-        } else {
-            return false;
-        }
+        return prices[priceRequestId].state == RequestState.Resolved;
     }
 
     /**
