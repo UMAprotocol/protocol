@@ -199,13 +199,26 @@ function getHardhatConfig(configOverrides) {
 
   const defaultConfig = {
     solidity: {
-      version: solcVersion,
-      settings: {
-        optimizer: {
-          enabled: true,
-          runs: 199
+      compilers: [
+        {
+          version: solcVersion,
+          settings: {
+            optimizer: {
+              enabled: true,
+              runs: 199
+            }
+          }
         }
-      }
+        // {
+        //   version: "0.7.6",
+        //   settings: {
+        //     optimizer: {
+        //       enabled: true,
+        //       runs: 199
+        //     }
+        //   }
+        // }
+      ]
     },
     networks: {
       hardhat: {
@@ -239,7 +252,4 @@ function addGlobalHardhatTestingAddress(contractName, address) {
   }
   global.hardhatTestingAddresses[contractName] = address;
 }
-module.exports = {
-  getHardhatConfig,
-  addGlobalHardhatTestingAddress
-};
+module.exports = { getHardhatConfig, addGlobalHardhatTestingAddress };

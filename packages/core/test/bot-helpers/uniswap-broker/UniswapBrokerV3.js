@@ -37,6 +37,8 @@ let tickLens;
 let uniswapV3Broker;
 let fee = FeeAmount.MEDIUM;
 let poolAddress;
+let tokenA;
+let tokenB;
 
 contract("UniswapBrokerV3", function(accounts) {
   const deployer = accounts[0];
@@ -64,9 +66,11 @@ contract("UniswapBrokerV3", function(accounts) {
       amount1Desired,
       amount0Min: 0,
       amount1Min: 0,
-      deadline: MAX_UINT_VAL // some number far in the future
+      deadline: 15798990420 // some number far in the future
     };
 
+    console.log("pos", positionManager.address);
+    console.log("liquidityParams", liquidityParams);
     await positionManager.mint(liquidityParams, { from: trader });
     poolAddress = computePoolAddress(factory.address, tokenA.address, tokenB.address, FeeAmount.MEDIUM);
   }
@@ -88,6 +92,7 @@ contract("UniswapBrokerV3", function(accounts) {
       positionDescriptor.address,
       { from: deployer }
     );
+    console.log("pos", positionManager.address);
 
     tickLens = await createContractObjectFromJson(TickLens).new({ from: deployer });
   });
@@ -103,6 +108,7 @@ contract("UniswapBrokerV3", function(accounts) {
     await tokenB.mint(trader, toWei("100000000000000"));
 
     for (const address of [positionManager.address, router.address, uniswapV3Broker.address]) {
+      console.log("address", address);
       await tokenA.approve(address, toWei("100000000000000"), { from: trader });
       await tokenB.approve(address, toWei("100000000000000"), { from: trader });
     }
