@@ -3,6 +3,7 @@ require("dotenv").config();
 import { ethers, BigNumberish } from "ethers";
 import Promise from "bluebird";
 import assert from "assert";
+import lodash from "lodash";
 
 import V3CoreFactory from "@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json";
 import UniswapV3Pool from "@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json";
@@ -62,6 +63,7 @@ const networks = new Map<NetworkName, any>([
     }
   ]
 ]);
+
 const infura = process.env.infura;
 const network = "rinkeby";
 
@@ -155,7 +157,7 @@ async function run() {
   const events = await factory.queryFilter({});
 
   // init event handler with pools
-  const factoryHandler = PoolFactory({ pools, positions });
+  const factoryHandler = PoolFactory({ pools });
 
   // handle events and update pools
   await Promise.mapSeries(events, factoryHandler);
@@ -194,12 +196,12 @@ async function run() {
     return nftPositions.update(position.id, await getNftPositionState({ provider, position }).catch(() => ({})));
   });
   // log everything to spot check all the stat is there
-  console.log(await pools.list());
-  console.log(await positions.list());
-  console.log(await ticks.list());
-  console.log(await activePositions.list());
-  console.log((await activePositions.list()).length);
-  console.log(await nftPositions.list());
+  // console.log(await pools.list());
+  // console.log(lodash.mapValues(lodash.groupBy(await positions.list(),'pool'));
+  // console.log(await ticks.list());
+  // console.log(await activePositions.list());
+  // console.log((await activePositions.list()).length);
+  // console.log(await nftPositions.list());
 }
 
 run()

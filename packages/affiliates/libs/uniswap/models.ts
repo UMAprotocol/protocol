@@ -177,3 +177,169 @@ export const Ticks = () => {
   return Table<Tick>({ makeId, type: "Ticks" }, store);
 };
 export type Ticks = ReturnType<typeof Ticks>;
+
+export const Balances = () => {
+  let total = 0n;
+  const store = new Map<Id, string>();
+  function getOrCreate(address: string) {
+    if (store.has(address)) return store.get(address);
+    return create(address);
+  }
+  function create(addr: string) {
+    assert(!store.has(addr), "Already has address");
+    store.set(addr, "0");
+    return "0";
+  }
+  function add(addr: string, amount: string) {
+    const amountn = BigInt(amount);
+    assert(amountn >= 0n, "amount must be >= 0: " + amount);
+    const balance = getOrCreate(addr);
+    const result = (BigInt(balance) + amountn).toString();
+    store.set(addr, result);
+    total = total + amountn;
+    return result;
+  }
+  function sub(addr: string, amount: string) {
+    const amountn = BigInt(amount);
+    assert(amountn >= 0n, "amount must be >= 0: " + amount);
+    const balance = getOrCreate(addr);
+    const result = (BigInt(balance) - amountn).toString();
+    store.set(addr, result);
+    total = total - amountn;
+    return result;
+  }
+  function snapshot() {
+    return Object.fromEntries(store.entries());
+  }
+  function getTotal() {
+    return total.toString();
+  }
+  function getPercent(address: string, scale = 10n ** 18n) {
+    const balance = getOrCreate(address);
+    return ((BigInt(balance) * scale) / total).toString();
+  }
+  return {
+    ...store,
+    sub,
+    add,
+    create,
+    getOrCreate,
+    snapshot,
+    getTotal,
+    getPercent
+  };
+};
+export type Balances = ReturnType<typeof Balances>;
+
+export function SortedMap<T>() {
+  const ids: Id[] = [];
+  const map = new Map<Id, T>();
+
+  function getStart(id: Id, inclusive = true) {
+    if (inclusive) {
+      return lodash.sortedIndex(ids, id);
+    } else {
+      return lodash.sortedLastIndex(ids, id);
+    }
+  }
+  function getEnd(id: Id, inclusive = false) {
+    return getStart(id, !inclusive);
+  }
+  function del(id: Id) {
+    const index = lodash.sortedIndex(ids, id);
+    ids.splice(index, 1);
+    const result = map.get(id);
+    map.delete(id);
+    return result;
+  }
+  return {
+    has(id: Id) {
+      return map.has(id);
+    },
+    set(id: Id, data: T) {
+      if (map.has(id)) {
+        map.set(id, data);
+        return data;
+      }
+      const index = lodash.sortedIndex(ids, id);
+      ids.splice(index, 0, id);
+      map.set(id, data);
+      return data;
+    },
+    get(id: Id) {
+      return map.get(id);
+    },
+    values() {
+      return ids.map(id => map.get(id));
+    },
+    entries() {
+      return ids.map(id => [id, map.get(id)]);
+    },
+    keys() {
+      return [...ids];
+    },
+    clear() {
+      map.clear();
+      ids.length = 0;
+    },
+    size() {
+      return ids.length;
+    },
+    delete: del,
+    between(a: Id, b: Id, includeA = true, includeB = false) {
+      const start = getStart(a, includeA);
+      const end = getEnd(b, includeB);
+      return ids.slice(start, end).map(id => map.get(id));
+    },
+    slice(id: Id, length: number, inclusive: boolean) {
+      const start = getStart(id, inclusive);
+      return ids.slice(start, start + length).map(id => map.get(id));
+    }
+  };
+}
+
+interface TimeSample {
+  id?: Id;
+  timestamp: number;
+}
+//   const history = T[];
+//   const indexName = 'index'
+//   // Used internally, but will insert a block into cache sorted by timestamp ascending
+//   function insert(data:T) {
+//     const index = lodash.sortedIndexBy(history, data, indexName);
+//     history.splice(index, 0, data);
+//     return data;
+//   }
+//   function lookup(index:Index) {
+//     const index = lodash.sortedIndexBy(history, { [indexName]:index }, indexName);
+//     assert(history.length, "history is empty");
+//     if (history[index] && history[index][indexName] === index) return history[index];
+//     const result = history[index - 1];
+//     assert(
+//       result,
+//       `history does not go back far enough: looked up ${blockNumber} vs earliest ${history[0].blockNumber}`
+//     );
+//     return result;
+//   }
+//   // // get exact block number
+//   function get(index) {
+//     const result = history.find(x => x.blockNumber == blockNumber);
+//     assert(result, "Not found in history: " + blockNumber);
+//     return result;
+//   }
+//   // function has(blockNumber) {
+//   //   return !!history.find(x => x.blockNumber == blockNumber);
+//   // }
+//   // function length() {
+//   //   return history.length;
+//   // }
+//   // return {
+//   //   get,
+//   //   has,
+//   //   insert,
+//   //   lookup,
+//   //   history,
+//   //   length
+//   // };
+// }
+// export type TimeSeries = ReturnType<typeof TimeSeries>;

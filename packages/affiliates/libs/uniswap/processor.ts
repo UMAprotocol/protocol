@@ -12,9 +12,9 @@ const HandleEvent = (handlers: { [key: string]: (...args: any[]) => Promise<void
   // ignore events without handlers
   if (handlers[event.event] == null) return;
   try {
-    await handlers[event.event](...event.args);
+    await handlers[event.event](...event.args, event.blockNumber);
   } catch (err) {
-    console.log(event);
+    console.error(event);
     throw err;
   }
 };
@@ -93,7 +93,8 @@ export function PoolEvents({
       tickUpper: BigNumberish | null,
       amount: null,
       amount0: null,
-      amount1: null
+      amount1: null,
+      blockNumber: number
     ) {
       assert(exists(owner), "requires owner");
       assert(exists(tickLower), "requires tickLower");
@@ -103,7 +104,8 @@ export function PoolEvents({
           operator: owner,
           sender: sender,
           tickLower: tickLower,
-          tickUpper: tickUpper
+          tickUpper: tickUpper,
+          blockCreated: blockNumber
         })
       );
     },
@@ -123,7 +125,7 @@ export function PoolEvents({
   return HandleEvent(handlers);
 }
 
-export function PoolFactory({ positions, pools }: { positions: ReturnType<typeof Positions>; pools: Pools }) {
+export function PoolFactory({ pools }: { pools: Pools }) {
   const handlers: { [key: string]: (...args: any[]) => Promise<void> } = {
     async PoolCreated(
       token0: string | null,
