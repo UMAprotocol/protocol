@@ -91,7 +91,7 @@ async function processNftEvents(params: { provider: any; positions: ReturnType<t
     provider
   );
   const events = await contract.queryFilter({});
-  await Promise.map(events, nftHandler.handleEvent);
+  await Promise.map(events, nftHandler);
 }
 async function getNftPositionState(params: { provider: any; position: NftPosition }) {
   const { provider, position } = params;
@@ -114,7 +114,7 @@ async function processPoolEvents(params: {
   const poolHandler = PoolEvents({ positions, id: pool.id, pools });
   const contract = new ethers.Contract(pool.address, UniswapV3Pool.abi, provider);
   const events = await contract.queryFilter({});
-  await Promise.map(events, poolHandler.handleEvent);
+  await Promise.map(events, poolHandler);
 }
 async function getPositionState(params: { position: Position; provider: any; pool: Pool }) {
   const { position, provider, pool } = params;
@@ -161,7 +161,7 @@ async function run() {
   const factoryHandler = PoolFactory({ pools, positions });
 
   // handle events and update pools
-  await Promise.mapSeries(events, factoryHandler.handleEvent);
+  await Promise.mapSeries(events, factoryHandler);
 
   // loop through all pools
   await Promise.mapSeries(await pools.list(), async pool => {

@@ -6,22 +6,21 @@ import assert from "assert";
 import { BigNumberish } from "ethers";
 import { Event } from "@ethersproject/contracts/lib/";
 
+const HandleEvent = (handlers: { [key: string]: (...args: any[]) => Promise<void> }) => async (event: Event) => {
+  assert(event.event, "requires event name");
+  assert(event.args, "requires event args");
+  // ignore events without handlers
+  if (handlers[event.event] == null) return;
+  try {
+    await handlers[event.event](...event.args);
+  } catch (err) {
+    console.log(event);
+    throw err;
+  }
+};
+
 export function NftEvents({ positions }: { positions: ReturnType<typeof NftPositions> }) {
   const handlers: { [key: string]: (...args: any[]) => Promise<void> } = {
-    async Approval(owner: string | null, approved: string | null, tokenId: BigNumberish | null) {
-      // nothing
-    },
-    async ApprovalForAll(owner: string | null, operator: string | null, approved: null) {
-      // nothing
-    },
-    async Collect(
-      tokenId: BigNumberish | null,
-      recipient: string | null,
-      amount0: BigNumberish | null,
-      amount1: BigNumberish | null
-    ) {
-      // nothing
-    },
     async DecreaseLiquidity(
       tokenId: BigNumberish | null,
       liquidity: BigNumberish | null,
@@ -72,26 +71,9 @@ export function NftEvents({ positions }: { positions: ReturnType<typeof NftPosit
           amount1: amount1.toString()
         });
       }
-    },
-    async Transfer(from: string | null, to: string | null, tokenId: BigNumberish | null) {
-      // nothing
     }
   };
-  async function handleEvent(event: Event) {
-    assert(event.event, "requires event name");
-    assert(event.args, "requires event args");
-    assert(handlers[event.event], "No handler for event: " + event.event);
-    try {
-      await handlers[event.event](...event.args);
-    } catch (err) {
-      console.log(event);
-      throw err;
-    }
-  }
-  return {
-    handleEvent,
-    positions
-  };
+  return HandleEvent(handlers);
 }
 
 export function PoolEvents({
@@ -104,49 +86,6 @@ export function PoolEvents({
   id: string;
 }) {
   const handlers: { [key: string]: (...args: any[]) => Promise<void> } = {
-    async Burn(
-      owner: string | null,
-      tickLower: BigNumberish | null,
-      tickUpper: BigNumberish | null,
-      amount: null,
-      amount0: null,
-      amount1: null
-    ) {
-      // nothing
-    },
-    async Collect(
-      owner: string | null,
-      recipient: null,
-      tickLower: BigNumberish | null,
-      tickUpper: BigNumberish | null,
-      amount0: null,
-      amount1: null
-    ) {
-      // nothing
-    },
-    async CollectProtocol(sender: string | null, recipient: string | null, amount0: null, amount1: null) {
-      // nothing
-    },
-
-    async Flash(
-      sender: string | null,
-      recipient: string | null,
-      amount0: null,
-      amount1: null,
-      paid0: null,
-      paid1: null
-    ) {
-      // nothing
-    },
-
-    async IncreaseObservationCardinalityNext(observationCardinalityNextOld: null, observationCardinalityNextNew: null) {
-      // nothing
-    },
-
-    async Initialize(sqrtPriceX96: null, tick: null) {
-      // nothing
-    },
-
     async Mint(
       sender: string | null,
       owner: string | null,
@@ -168,11 +107,6 @@ export function PoolEvents({
         })
       );
     },
-
-    async SetFeeProtocol(feeProtocol0Old: null, feeProtocol1Old: null, feeProtocol0New: null, feeProtocol1New: null) {
-      // nothing
-    },
-
     async Swap(
       sender: string | null,
       recipient: string | null,
@@ -186,32 +120,11 @@ export function PoolEvents({
       await pools.update(id, convertValuesToString({ tick, sqrtPriceX96 }));
     }
   };
-  async function handleEvent(event: Event) {
-    assert(event.event, "requires event name");
-    assert(event.args, "requires event args");
-    assert(handlers[event.event], "No handler for event: " + event.event);
-    try {
-      await handlers[event.event](...event.args);
-    } catch (err) {
-      console.error(event);
-      throw err;
-    }
-  }
-  return {
-    handleEvent,
-    pools,
-    positions
-  };
+  return HandleEvent(handlers);
 }
 
 export function PoolFactory({ positions, pools }: { positions: ReturnType<typeof Positions>; pools: Pools }) {
   const handlers: { [key: string]: (...args: any[]) => Promise<void> } = {
-    async FeeAmountEnabled(fee: BigNumberish | null, tickSpacing: BigNumberish | null) {
-      // nothing
-    },
-    async OwnerChanged(oldOwner: string | null, newOwner: string | null) {
-      // nothing
-    },
     async PoolCreated(
       token0: string | null,
       token1: string | null,
@@ -231,19 +144,5 @@ export function PoolFactory({ positions, pools }: { positions: ReturnType<typeof
       });
     }
   };
-  async function handleEvent(event: Event) {
-    assert(event.event, "requires event name");
-    assert(event.args, "requires event args");
-    assert(handlers[event.event], "No handler for event: " + event.event);
-    try {
-      await handlers[event.event](...event.args);
-    } catch (err) {
-      console.log(event);
-      throw err;
-    }
-  }
-  return {
-    handleEvent,
-    positions
-  };
+  return HandleEvent(handlers);
 }
