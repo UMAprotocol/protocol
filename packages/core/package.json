@@ -14,7 +14,7 @@
     "@uniswap/lib": "4.0.1-alpha",
     "@uniswap/v2-core": "1.0.0",
     "@uniswap/v2-periphery": "1.1.0-beta.0",
-    "@uniswap/v3-periphery": "^1.0.0-beta.19",
+    "@uniswap/v3-periphery": "^1.0.0-beta.23",
     "@uniswap/v3-core": "^1.0.0-rc.2",
     "decimal.js": "^10.2.1"
   },

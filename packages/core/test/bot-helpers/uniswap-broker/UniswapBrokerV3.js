@@ -11,7 +11,8 @@ const {
   computePoolAddress,
   FeeAmount,
   TICK_SPACINGS,
-  createContractObjectFromJson
+  createContractObjectFromJson,
+  replaceLibraryBindingReferenceInArtitifact
 } = require("./UniswapV3Helpers");
 
 // Tested Contract
@@ -24,9 +25,17 @@ const WETH9 = getTruffleContract("WETH9", web3);
 // Import all the uniswap related contracts.
 const SwapRouter = require("@uniswap/v3-periphery/artifacts/contracts/SwapRouter.sol/SwapRouter.json");
 const UniswapV3Factory = require("@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json");
-const NonfungibleTokenPositionDescriptor = require("@uniswap/v3-periphery/artifacts/contracts/NonfungibleTokenPositionDescriptor.sol/NonfungibleTokenPositionDescriptor.json");
 const NonfungiblePositionManager = require("@uniswap/v3-periphery/artifacts/contracts/NonfungiblePositionManager.sol/NonfungiblePositionManager.json");
 const TickLens = require("@uniswap/v3-periphery/artifacts/contracts/lens/TickLens.sol/TickLens.json");
+
+// NonfungibleTokenPositionDescriptor has a library that needs to be linked. To do this using an artifact imported from
+// an external project we need to do a small find and replace within the json artifact.
+const NonfungibleTokenPositionDescriptor = replaceLibraryBindingReferenceInArtitifact(
+  require("@uniswap/v3-periphery/artifacts/contracts/NonfungibleTokenPositionDescriptor.sol/NonfungibleTokenPositionDescriptor.json"),
+  "NFTDescriptor"
+);
+
+const NFTDescriptor = require("@uniswap/v3-periphery/artifacts/contracts/libraries/NFTDescriptor.sol/NFTDescriptor.json");
 
 let weth;
 let factory;
@@ -50,7 +59,7 @@ contract("UniswapBrokerV3", function(accounts) {
     await positionManager.createAndInitializePoolIfNecessary(
       tokenA.address,
       tokenB.address,
-      FeeAmount.MEDIUM,
+      fee,
       encodePriceSqrt(amount0Desired, amount1Desired), // start the pool price at 10 tokenA/tokenB
       { from: trader }
     );
@@ -58,7 +67,7 @@ contract("UniswapBrokerV3", function(accounts) {
     const liquidityParams = {
       token0: tokenA.address,
       token1: tokenB.address,
-      fee: FeeAmount.MEDIUM,
+      fee,
       tickLower, // Lower tick bound price = 1.0001^tickLower
       tickUpper, // Upper tick bound price = 1.0001^tickUpper
       recipient: trader,
@@ -69,8 +78,6 @@ contract("UniswapBrokerV3", function(accounts) {
       deadline: 15798990420 // some number far in the future
     };
 
-    console.log("pos", positionManager.address);
-    console.log("liquidityParams", liquidityParams);
     await positionManager.mint(liquidityParams, { from: trader });
     poolAddress = computePoolAddress(factory.address, tokenA.address, tokenB.address, FeeAmount.MEDIUM);
   }
@@ -80,19 +87,22 @@ contract("UniswapBrokerV3", function(accounts) {
     uniswapV3Broker = await UniswapBrokerV3.new();
 
     weth = await WETH9.new();
-    // deploy Uniswap V2 Factory & router.
+    // deploy Uniswap V3 Factory, router, position manager, position descriptor and tickLens.
     factory = await createContractObjectFromJson(UniswapV3Factory).new({ from: deployer });
     router = await createContractObjectFromJson(SwapRouter).new(factory.address, weth.address, { from: deployer });
-    positionDescriptor = await createContractObjectFromJson(NonfungibleTokenPositionDescriptor).new(weth.address, {
-      from: deployer
-    });
+
+    const PositionDescriptor = createContractObjectFromJson(NonfungibleTokenPositionDescriptor);
+    await PositionDescriptor.detectNetwork();
+
+    PositionDescriptor.link(await createContractObjectFromJson(NFTDescriptor).new({ from: deployer }));
+    positionDescriptor = await PositionDescriptor.new(weth.address, { from: deployer });
+
     positionManager = await createContractObjectFromJson(NonfungiblePositionManager).new(
       factory.address,
       weth.address,
       positionDescriptor.address,
       { from: deployer }
     );
-    console.log("pos", positionManager.address);
 
     tickLens = await createContractObjectFromJson(TickLens).new({ from: deployer });
   });
@@ -108,7 +118,6 @@ contract("UniswapBrokerV3", function(accounts) {
     await tokenB.mint(trader, toWei("100000000000000"));
 
     for (const address of [positionManager.address, router.address, uniswapV3Broker.address]) {
-      console.log("address", address);
       await tokenA.approve(address, toWei("100000000000000"), { from: trader });
       await tokenB.approve(address, toWei("100000000000000"), { from: trader });
     }

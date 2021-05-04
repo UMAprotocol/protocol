@@ -85,12 +85,13 @@ function getTickBitmapIndex(tick, tickSpacing) {
   const intermediate = toBN(tick.toString()).div(toBN(tickSpacing.toString()));
 
   // see https://docs.soliditylang.org/en/v0.7.6/types.html#shifts
-  return intermediate.lt(toBN("0"))
-    ? intermediate
-        .addn(1)
-        .div(toBN("2").pow(toBN("8")))
-        .subn(1)
-    : intermediate.shrn(8);
+
+  if (intermediate.lt(toBN("0")))
+    return intermediate
+      .addn(1)
+      .div(toBN("2").pow(toBN("8")))
+      .subn(1);
+  else intermediate.shrn(8);
 }
 
 function computePoolAddress(factoryAddress, tokenA, tokenB, fee) {
@@ -131,6 +132,13 @@ const createContractObjectFromJson = contractJsonObject => {
   return truffleContractCreator;
 };
 
+// Takes in an artifact (object) and all components with `$<any-string>$` with libraryName. This enables library linking
+// on artifacts that were not compiled within this repo, such as artifacts produced by an external project.
+const replaceLibraryBindingReferenceInArtitifact = (artifact, libraryName) => {
+  const artifactString = JSON.stringify(artifact);
+  return JSON.parse(artifactString.replace(/\$.*\$/g, libraryName));
+};
+
 module.exports = {
   getTickFromPrice,
   encodePriceSqrt,
@@ -143,5 +151,6 @@ module.exports = {
   computePoolAddress,
   FeeAmount,
   TICK_SPACINGS,
-  createContractObjectFromJson
+  createContractObjectFromJson,
+  replaceLibraryBindingReferenceInArtitifact
 };

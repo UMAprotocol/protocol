@@ -199,26 +199,13 @@ function getHardhatConfig(configOverrides) {
 
   const defaultConfig = {
     solidity: {
-      compilers: [
-        {
-          version: solcVersion,
-          settings: {
-            optimizer: {
-              enabled: true,
-              runs: 199
-            }
-          }
+      version: solcVersion,
+      settings: {
+        optimizer: {
+          enabled: true,
+          runs: 199
         }
-        // {
-        //   version: "0.7.6",
-        //   settings: {
-        //     optimizer: {
-        //       enabled: true,
-        //       runs: 199
-        //     }
-        //   }
-        // }
-      ]
+      }
     },
     networks: {
       hardhat: {

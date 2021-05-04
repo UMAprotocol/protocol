@@ -6158,25 +6158,21 @@
     "@uniswap/lib" "1.1.1"
     "@uniswap/v2-core" "1.0.0"
 
-"@uniswap/v3-core@1.0.0-rc.1":
-  version "1.0.0-rc.1"
-  resolved "https://registry.yarnpkg.com/@uniswap/v3-core/-/v3-core-1.0.0-rc.1.tgz#f2bbc483451364a951fba06eb2d978c6e8bdd58f"
-  integrity sha512-4ET2H0a8p7nVBGFWfio9SHc+RA6UIXEvlTRIJNsDwjQvfs8Jq9lfJ+eSOUTGmiB8Vp8V5dWarLDBU/rDE159pQ==
-
-"@uniswap/v3-core@^1.0.0-rc.2":
+"@uniswap/v3-core@1.0.0-rc.2", "@uniswap/v3-core@^1.0.0-rc.2":
   version "1.0.0-rc.2"
   resolved "https://registry.yarnpkg.com/@uniswap/v3-core/-/v3-core-1.0.0-rc.2.tgz#a1afb3253a7295bec6165ad1d960121e6851a576"
   integrity sha512-vsqkqAHPCKsVi0nWwWeX+mHnSTJ8ZUdu1zAVXB9Mj9A+aeBQGV9foRKs9ufDGJq7S1nqmz+7FdjSOcVoeiUqgQ==
 
-"@uniswap/v3-periphery@^1.0.0-beta.19":
-  version "1.0.0-beta.19"
-  resolved "https://registry.yarnpkg.com/@uniswap/v3-periphery/-/v3-periphery-1.0.0-beta.19.tgz#d9af90b12657049674cd2f26ae1c61b6cc393261"
-  integrity sha512-ZQX5KN/89OB7UjrmGOSB7QZIEbgW+R0uaVM5NdlK63Ji0rZjmddeoYS8oNk7i5BU3WR+xJY5DgfiDSmn1W6Sww==
+"@uniswap/v3-periphery@^1.0.0-beta.23":
+  version "1.0.0-beta.23"
+  resolved "https://registry.yarnpkg.com/@uniswap/v3-periphery/-/v3-periphery-1.0.0-beta.23.tgz#d8f55136b894a6101e050205f0d6a61bb8d28f67"
+  integrity sha512-5cvK8/ITIVql+iZdPd0TR5EiNNm55ejAspjIxcsnGKyflaeQb+ePw6X4HTruTPGvPoaFvk+UirYeezUspXhlcg==
   dependencies:
     "@openzeppelin/contracts" "3.4.1-solc-0.7-2"
     "@uniswap/lib" "^4.0.1-alpha"
     "@uniswap/v2-core" "1.0.1"
-    "@uniswap/v3-core" "1.0.0-rc.1"
+    "@uniswap/v3-core" "1.0.0-rc.2"
+    base64-sol "1.0.1"
 
 "@web3-js/scrypt-shim@^0.1.0":
   version "0.1.0"
@@ -8181,6 +8177,11 @@ base64-js@^1.0.2, base64-js@^1.3.0, base64-js@^1.3.1:
   version "1.5.1"
   resolved "https://registry.yarnpkg.com/base64-js/-/base64-js-1.5.1.tgz#1b1b440160a5bf7ad40b650f095963481903930a"
   integrity sha512-AKpaYlHn8t4SVbOHCy+b5+KKgvR4vrsD8vbvrbiQJps7fKDTkjkDry6ji0rUJjC0kzbNePLwzxq8iypo41qeWA==
+
+base64-sol@1.0.1:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/base64-sol/-/base64-sol-1.0.1.tgz#91317aa341f0bc763811783c5729f1c2574600f6"
+  integrity sha512-ld3cCNMeXt4uJXmLZBHFGMvVpK9KsLVEhPpFRXnvSVAqABKbuNZg/+dsq3NuM+wxFLb/UrVkz7m1ciWmkMfTbg==
 
 base@^0.11.1:
   version "0.11.2"
