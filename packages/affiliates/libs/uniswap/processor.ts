@@ -4,13 +4,7 @@ import { Positions, NftPositions, Pools, Position } from "./models";
 import { exists, convertValuesToString } from "./utils";
 import assert from "assert";
 import { BigNumberish } from "ethers";
-
-type Event = {
-  event: string;
-  args: any[];
-};
-
-type PoolsType = ReturnType<typeof Pools>;
+import { Event } from "@ethersproject/contracts/lib/";
 
 export function NftEvents({ positions }: { positions: ReturnType<typeof NftPositions> }) {
   const handlers: { [key: string]: (...args: any[]) => Promise<void> } = {
@@ -84,6 +78,8 @@ export function NftEvents({ positions }: { positions: ReturnType<typeof NftPosit
     }
   };
   async function handleEvent(event: Event) {
+    assert(event.event, "requires event name");
+    assert(event.args, "requires event args");
     assert(handlers[event.event], "No handler for event: " + event.event);
     try {
       await handlers[event.event](...event.args);
@@ -104,7 +100,7 @@ export function PoolEvents({
   pools
 }: {
   positions: ReturnType<typeof Positions>;
-  pools: PoolsType;
+  pools: Pools;
   id: string;
 }) {
   const handlers: { [key: string]: (...args: any[]) => Promise<void> } = {
@@ -191,6 +187,8 @@ export function PoolEvents({
     }
   };
   async function handleEvent(event: Event) {
+    assert(event.event, "requires event name");
+    assert(event.args, "requires event args");
     assert(handlers[event.event], "No handler for event: " + event.event);
     try {
       await handlers[event.event](...event.args);
@@ -206,7 +204,7 @@ export function PoolEvents({
   };
 }
 
-export function PoolFactory({ positions, pools }: { positions: ReturnType<typeof Positions>; pools: PoolsType }) {
+export function PoolFactory({ positions, pools }: { positions: ReturnType<typeof Positions>; pools: Pools }) {
   const handlers: { [key: string]: (...args: any[]) => Promise<void> } = {
     async FeeAmountEnabled(fee: BigNumberish | null, tickSpacing: BigNumberish | null) {
       // nothing
@@ -234,6 +232,8 @@ export function PoolFactory({ positions, pools }: { positions: ReturnType<typeof
     }
   };
   async function handleEvent(event: Event) {
+    assert(event.event, "requires event name");
+    assert(event.args, "requires event args");
     assert(handlers[event.event], "No handler for event: " + event.event);
     try {
       await handlers[event.event](...event.args);

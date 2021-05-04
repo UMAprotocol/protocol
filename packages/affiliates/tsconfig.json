@@ -3,6 +3,7 @@
   "include": ["**/*.ts"],
   "compilerOptions": {
     "outDir": "build",
-    "esModuleInterop": true
+    "esModuleInterop": true,
+    "resolveJsonModule": true
   }
 }

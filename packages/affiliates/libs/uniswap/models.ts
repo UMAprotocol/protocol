@@ -2,21 +2,58 @@ import assert from "assert";
 import { exists, getPositionKey } from "./utils";
 import { ethers } from "ethers";
 
-type CacheType = {
-  [key: string]: string | number | boolean;
+type Id = string | number;
+type HasId = {
+  id?: Id;
 };
-export const Cache = (table = new Map<string | number, CacheType>()) => {
-  function list() {
-    return [...table.values()];
+interface MakeId<T> {
+  (obj: T): string;
+}
+
+// Generic table with common functions, store is a map now, but we could replace this with any kind of
+// data store with some minor modifications, as long as it has, set, get, delete, has and values
+export function Table<T extends HasId>(config: { makeId: MakeId<T>; type: string }, store: Map<Id, T>) {
+  const { makeId, type } = config;
+  async function create(data: T) {
+    const id = makeId(data);
+    assert(!(await has(id)), `${type} exists`);
+    return set({ id, ...data });
+  }
+  async function set(data: T) {
+    assert(data.id, `${type} requires id`);
+    await store.set(data.id, { ...data });
+    return data;
+  }
+  async function get(id: string) {
+    assert(await store.has(id), `${type} does not exist`);
+    return store.get(id) as T;
+  }
+  async function has(id: string) {
+    return store.has(id);
+  }
+  async function list() {
+    return [...store.values()];
+  }
+  async function forEach(cb: (value: T, index: number, array: T[]) => void) {
+    const all = await list();
+    all.forEach(cb);
+  }
+  async function update(id: string, data: any = {}) {
+    const got = await get(id);
+    return set({ ...got, ...data });
   }
   return {
-    has: table.has.bind(table),
-    set: table.set.bind(table),
-    get: table.get.bind(table),
-    delete: table.delete.bind(table),
-    list
+    create,
+    set,
+    get,
+    has,
+    update,
+    forEach,
+    list,
+    store
   };
-};
+}
+
 export type NftPosition = {
   id?: string;
   tokenId: string;
@@ -34,46 +71,15 @@ export type NftPosition = {
 };
 
 // Nft positions are gathered from the nft contract, and require slightly different indexing than the positions in pool contract
-export const NftPositions = (config: any, table: ReturnType<typeof Cache>) => {
+export const NftPositions = () => {
   function makeId(data: NftPosition) {
     return data.tokenId;
   }
-  async function create(data: NftPosition) {
-    const id = makeId(data);
-    assert(!(await has(id)), "Position exists");
-    return set({ id, ...data });
-  }
-  async function set(data: NftPosition) {
-    assert(data.id, "Position requires id");
-    await table.set(data.id, { ...data });
-    return data;
-  }
-  async function get(id: string) {
-    assert(await table.has(id), "Position does not exist");
-    return table.get(id);
-  }
-  async function has(id: string) {
-    return table.has(id);
-  }
-  async function forEach(cb: (value: NftPosition, index: number, array: NftPosition[]) => void) {
-    const list: NftPosition[] = (await table.list()) as NftPosition[];
-    list.forEach(cb);
-  }
-  async function update(id: string, data: any = {}) {
-    const position = await get(id);
-    return set({ ...position, ...data });
-  }
-
-  return {
-    create,
-    set,
-    get,
-    has,
-    update,
-    forEach,
-    list: table.list
-  };
+  const store = new Map<Id, NftPosition>();
+  return Table<NftPosition>({ makeId, type: "NftPositions" }, store);
 };
+type NftPositions = ReturnType<typeof NftPositions>;
+
 export type Position = {
   id?: string;
   operator: string;
@@ -90,48 +96,16 @@ export type Position = {
 };
 
 // These positions are from core pool contracts and are indexed using hash of upper/lower/user address.
-export const Positions = (config: any, table: ReturnType<typeof Cache>) => {
+export const Positions = () => {
   function makeId(data: Position) {
     return getPositionKey(data.operator, data.tickLower, data.tickUpper);
   }
-  async function create(data: Position) {
-    const id = makeId(data);
-    assert(!(await has(id)), "Position exists");
-    return set({ id, ...data });
-  }
-  async function set(data: Position) {
-    assert(data.id, "Position requires id");
-    await table.set(data.id, { ...data });
-    return data;
-  }
-  async function get(id: string) {
-    assert(await table.has(id), "Position does not exist");
-    return table.get(id);
-  }
-  async function has(id: string) {
-    return table.has(id);
-  }
-  async function forEach(cb: (value: Position, index: number, array: Position[]) => void) {
-    const list: Position[] = (await table.list()) as Position[];
-    list.forEach(cb);
-  }
-  async function update(id: string, data: any = {}) {
-    const position = await get(id);
-    return set({ ...position, ...data });
-  }
-
-  return {
-    create,
-    set,
-    get,
-    has,
-    update,
-    forEach,
-    list: table.list
-  };
+  const store = new Map<Id, Position>();
+  return Table<Position>({ makeId, type: "Positions" }, store);
 };
+type Positions = ReturnType<typeof Positions>;
 
-export type GlobalState = {
+export type Pool = {
   id?: string;
   token0: string;
   token1: string;
@@ -147,49 +121,20 @@ export type GlobalState = {
   address?: string;
 };
 // pool id is tokenA, tokenB, fee
-export const Pools = (config: any, table: ReturnType<typeof Cache>) => {
-  function makeId(state: GlobalState) {
+export const Pools = () => {
+  function makeId(state: Pool) {
     const { token0, token1, fee } = state;
     if (token0 < token1) {
       return [token0, token1, fee].join("!");
     }
     return [token1, token0, fee].join("!");
   }
-  async function create(state: GlobalState) {
-    const id = makeId(state);
-    assert(!(await has(id)), "State already exists:" + id);
-    return set({ id, ...state });
-  }
-  async function set(state: GlobalState) {
-    assert(state.id, "requires id");
-    await table.set(state.id, state);
-    return state;
-  }
-  async function get(id: string) {
-    assert(await has(id), "No such pool state");
-    return table.get(id);
-  }
-  async function has(id: string) {
-    return table.has(id);
-  }
-  async function update(id: string, data: any = {}) {
-    const pool = await get(id);
-    return set({ ...pool, ...data });
-  }
-  async function list() {
-    return table.list();
-  }
-  return {
-    create,
-    set,
-    get,
-    has,
-    update,
-    list
-  };
+  const store = new Map<Id, Pool>();
+  return Table<Pool>({ makeId, type: "Pool" }, store);
 };
+export type Pools = ReturnType<typeof Pools>;
 
-export type TickInfo = {
+export type Tick = {
   // the total position liquidity that references this tick
   liquidityGross?: string;
   // amount of net liquidity added (subtracted) when tick is crossed from left to right (right to left),
@@ -213,41 +158,12 @@ export type TickInfo = {
   index?: string;
   id?: string;
 };
-export const Ticks = (config: any, table: ReturnType<typeof Cache>) => {
-  function makeId(state: TickInfo) {
+export const Ticks = () => {
+  function makeId(state: Tick) {
     const { pool, index } = state;
     return [pool, index].join("!");
   }
-  async function create(state: TickInfo) {
-    const id = makeId(state);
-    assert(!(await has(id)), "tick already exists:" + id);
-    return set({ id, ...state });
-  }
-  async function set(state: TickInfo) {
-    assert(state.id, "requires id");
-    await table.set(state.id, state);
-    return state;
-  }
-  async function get(id: string) {
-    assert(await has(id), "No such tick state");
-    return table.get(id);
-  }
-  async function has(id: string) {
-    return table.has(id);
-  }
-  async function update(id: string, data: any = {}) {
-    const got = await get(id);
-    return set({ ...got, ...data });
-  }
-  async function list() {
-    return table.list();
-  }
-  return {
-    create,
-    set,
-    get,
-    has,
-    update,
-    list
-  };
+  const store = new Map<Id, Tick>();
+  return Table<Tick>({ makeId, type: "Ticks" }, store);
 };
+export type Ticks = ReturnType<typeof Ticks>;

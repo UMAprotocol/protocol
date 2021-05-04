@@ -1,16 +1,18 @@
 // proof of concept script to interface and get state from univ3
 require("dotenv").config();
-const { ethers } = require("ethers");
-const Promise = require("bluebird");
+import { ethers, BigNumberish } from "ethers";
+import Promise from "bluebird";
+import assert from "assert";
 
-const V3CoreFactory = require("@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json");
-const UniswapV3Pool = require("@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json");
-const NFTPositionManager = require("@uniswap/v3-periphery/artifacts/contracts/NonfungiblePositionManager.sol/NonfungiblePositionManager.json");
+import V3CoreFactory from "@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json";
+import UniswapV3Pool from "@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json";
+import NFTPositionManager from "@uniswap/v3-periphery/artifacts/contracts/NonfungiblePositionManager.sol/NonfungiblePositionManager.json";
+import { Pools, Positions, Ticks, NftPositions, Position, Tick, NftPosition, Pool } from "../libs/uniswap/models";
+import { PoolFactory, PoolEvents, NftEvents } from "../libs/uniswap/processor";
+import { convertValuesToString, exists } from "../libs/uniswap/utils";
 
-const { Pools, Cache, Positions, Ticks, NftPositions } = require("../build/libs/uniswap/models");
-const { PoolFactory, PoolEvents, NftEvents } = require("../build/libs/uniswap/processor");
-
-const networks = new Map([
+type NetworkName = "kovan" | "rinkeby" | "ropsten";
+const networks = new Map<NetworkName, any>([
   [
     "kovan",
     {
@@ -63,15 +65,15 @@ const networks = new Map([
 const infura = process.env.infura;
 const network = "rinkeby";
 
-function convertValuesToString(obj) {
-  return Object.fromEntries(
-    Object.entries(obj).map(([key, value]) => {
-      return [key, value.toString()];
-    })
-  );
+function getAddress(network: NetworkName, contractName: string) {
+  const addresses = networks.get(network);
+  assert(addresses[contractName], "invalid contract name: " + contractName);
+  return addresses[contractName];
 }
 
-async function getPoolState(pool, provider) {
+async function getPoolState(params: { pool: Pool; provider: any }) {
+  const { pool, provider } = params;
+  assert(pool.address, "requires pool address");
   const contract = new ethers.Contract(pool.address, UniswapV3Pool.abi, provider);
   const slot0 = await contract.slot0();
   const liquidity = await contract.liquidity();
@@ -80,66 +82,83 @@ async function getPoolState(pool, provider) {
     liquidity: liquidity.toString()
   };
 }
-async function processNftEvents({ provider, positions }) {
+async function processNftEvents(params: { provider: any; positions: ReturnType<typeof NftPositions> }) {
+  const { provider, positions } = params;
   const nftHandler = NftEvents({ positions });
   const contract = new ethers.Contract(
-    networks.get(network)["nonfungibleTokenPositionManagerAddress"],
+    getAddress(network, "nonfungibleTokenPositionManagerAddress"),
     NFTPositionManager.abi,
     provider
   );
   const events = await contract.queryFilter({});
   await Promise.map(events, nftHandler.handleEvent);
 }
-async function getNftPositionState({ provider, position }) {
+async function getNftPositionState(params: { provider: any; position: NftPosition }) {
+  const { provider, position } = params;
   const contract = new ethers.Contract(
-    networks.get(network)["nonfungibleTokenPositionManagerAddress"],
+    getAddress(network, "nonfungibleTokenPositionManagerAddress"),
     NFTPositionManager.abi,
     provider
   );
   return convertValuesToString(await contract.positions(position.tokenId));
 }
-async function processPoolEvents({ pools, pool, provider, positions }) {
+async function processPoolEvents(params: {
+  provider: any;
+  pool: Pool;
+  positions: ReturnType<typeof Positions>;
+  pools: ReturnType<typeof Pools>;
+}) {
+  const { pools, pool, provider, positions } = params;
+  assert(pool.id, "requires pool id");
+  assert(pool.address, "requires pool address");
   const poolHandler = PoolEvents({ positions, id: pool.id, pools });
   const contract = new ethers.Contract(pool.address, UniswapV3Pool.abi, provider);
   const events = await contract.queryFilter({});
   await Promise.map(events, poolHandler.handleEvent);
 }
-async function getPositionState({ position, provider, pool }) {
+async function getPositionState(params: { position: Position; provider: any; pool: Pool }) {
+  const { position, provider, pool } = params;
+  assert(pool.address, "requires pool address");
   const contract = new ethers.Contract(pool.address, UniswapV3Pool.abi, provider);
   return {
     pool: pool.address,
-    ...convertValuesToString(await contract.positions(position.id))
+    ...convertValuesToString<Position>(await contract.positions(position.id))
   };
 }
 
-const IsPositionActive = tick => position => {
+const IsPositionActive = (tick: BigNumberish) => (position: Position) => {
+  assert(position.liquidity, "requires position liquidity");
+  assert(position.tickUpper, "requires position tickUpper");
+  assert(position.tickLower, "requires position tickLower");
   if (BigInt(position.liquidity.toString()) === 0n) return false;
   if (BigInt(tick.toString()) > BigInt(position.tickUpper.toString())) return false;
   if (BigInt(tick.toString()) < BigInt(position.tickLower.toString())) return false;
   return true;
 };
 
-async function getTickInfo({ pool, provider }) {
+async function getTickInfo(params: { pool: Pool; provider: any }) {
+  const { pool, provider } = params;
+  assert(pool.address, "requires pool address");
   const contract = new ethers.Contract(pool.address, UniswapV3Pool.abi, provider);
-  return convertValuesToString(await contract.ticks(pool.tick));
+  return contract.ticks(pool.tick);
 }
 
 async function run() {
   const provider = ethers.getDefaultProvider(infura);
 
-  const pools = Pools({}, Cache());
-  const positions = Positions({}, Cache());
-  const nftPositions = NftPositions({}, Cache());
-  const ticks = Ticks({}, Cache());
-  let activePositions;
+  const pools = Pools();
+  const positions = Positions();
+  const nftPositions = NftPositions();
+  const ticks = Ticks();
+  const activePositions = Positions();
 
   // see all pools created
-  const factory = new ethers.Contract(networks.get(network)["v3CoreFactoryAddress"], V3CoreFactory.abi, provider);
+  const factory = new ethers.Contract(getAddress(network, "v3CoreFactoryAddress"), V3CoreFactory.abi, provider);
   // get all factory events
   const events = await factory.queryFilter({});
 
   // init event handler with pools
-  const factoryHandler = PoolFactory({ pools });
+  const factoryHandler = PoolFactory({ pools, positions });
 
   // handle events and update pools
   await Promise.mapSeries(events, factoryHandler.handleEvent);
@@ -147,30 +166,35 @@ async function run() {
   // loop through all pools
   await Promise.mapSeries(await pools.list(), async pool => {
     // update pool with latest state
-    await pools.update(pool.id, await getPoolState(pool, provider));
+    assert(pool.id, "requires pool id");
+    await pools.update(pool.id, await getPoolState({ pool, provider }));
     // handle all pool events to get positions
     await processPoolEvents({ pools, pool, provider, positions });
 
     // get position state from pools
     await Promise.mapSeries(await positions.list(), async position => {
+      assert(position.id, "requires position id");
       return positions.update(position.id, await getPositionState({ position, provider, pool }));
     });
 
     const updatedPool = await pools.get(pool.id);
     const { address, tick } = updatedPool;
+    assert(exists(tick), "requires tick");
     // get tick states
     await ticks.create({ pool: address, index: tick, ...(await getTickInfo({ pool: updatedPool, provider })) });
     // filter active positions only
-    const activeMap = new Map((await positions.list()).filter(IsPositionActive(tick)).map(x => [x.id, x]));
-    // create active position table
-    activePositions = Positions({}, Cache(activeMap));
+    await Promise.map(await positions.list(), async position => {
+      if (!IsPositionActive(tick)(position)) return;
+      await activePositions.create(position);
+    });
   });
 
   // afaik nft contract holds all positions across all pools
   await processNftEvents({ provider, positions: nftPositions });
 
   await Promise.mapSeries(await nftPositions.list(), async position => {
-    return nftPositions.update(position.id, await getNftPositionState({ provider, position }));
+    assert(position.id, "requires position id");
+    return nftPositions.update(position.id, await getNftPositionState({ provider, position }).catch(() => ({})));
   });
   // log everything to spot check all the stat is there
   console.log(await pools.list());
