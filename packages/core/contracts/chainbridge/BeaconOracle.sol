@@ -6,6 +6,7 @@ import "../oracle/interfaces/FinderInterface.sol";
 import "./IBridge.sol";
 import "../oracle/implementation/Constants.sol";
 import "../oracle/interfaces/OracleAncillaryInterface.sol";
+import "../oracle/interfaces/RegistryInterface.sol";
 
 /**
  * @title Simple implementation of the OracleInterface used to communicate price request data cross-chain between
@@ -23,18 +24,25 @@ abstract contract BeaconOracle is OracleAncillaryInterface {
         int256 price;
     }
 
+    // Chain ID for this Oracle.
+    uint8 public currentChainID;
+
     // Mapping of encoded price requests {identifier, time, ancillaryData} to Price objects.
     mapping(bytes32 => Price) internal prices;
 
     // Finder to provide addresses for DVM system contracts.
     FinderInterface public finder;
 
-    // Chain ID for this Beacon Oracle. Used to construct ResourceID along with this contract address.
-    uint8 public chainID;
-
-    event PriceRequestAdded(address indexed requester, bytes32 indexed identifier, uint256 time, bytes ancillaryData);
+    event PriceRequestAdded(
+        address indexed requester,
+        uint8 indexed chainID,
+        bytes32 indexed identifier,
+        uint256 time,
+        bytes ancillaryData
+    );
     event PushedPrice(
         address indexed pusher,
+        uint8 indexed chainID,
         bytes32 indexed identifier,
         uint256 time,
         bytes ancillaryData,
@@ -47,7 +55,7 @@ abstract contract BeaconOracle is OracleAncillaryInterface {
      */
     constructor(address _finderAddress, uint8 _chainID) public {
         finder = FinderInterface(_finderAddress);
-        chainID = _chainID;
+        currentChainID = _chainID;
     }
 
     // We assume that there is only one GenericHandler for this network.
@@ -59,34 +67,11 @@ abstract contract BeaconOracle is OracleAncillaryInterface {
         _;
     }
 
-    /**
-     * @notice Returns whether a price has resolved for the request.
-     * @return True if a price is available, False otherwise. If true, then getPrice will succeed for the request.
-     */
-
-    function hasPrice(
-        bytes32 identifier,
-        uint256 time,
-        bytes memory ancillaryData
-    ) public view override returns (bool) {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
-        return prices[priceRequestId].state == RequestState.Resolved;
-    }
-
-    /**
-     * @notice Returns resolved price for the request.
-     * @return int256 Price, or reverts if no resolved price for any reason.
-     */
-
-    function getPrice(
-        bytes32 identifier,
-        uint256 time,
-        bytes memory ancillaryData
-    ) public view override returns (int256) {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
-        Price storage lookup = prices[priceRequestId];
-        require(lookup.state == RequestState.Resolved, "Price has not been resolved");
-        return lookup.price;
+    // This assumes that the local network has a Registry that resembles the Mainnet registry.
+    modifier onlyRegisteredContract() {
+        RegistryInterface registry = RegistryInterface(finder.getImplementationAddress(OracleInterfaces.Registry));
+        require(registry.isContractRegistered(msg.sender), "Caller must be registered");
+        _;
     }
 
     /**
@@ -94,16 +79,18 @@ abstract contract BeaconOracle is OracleAncillaryInterface {
      * pair. Will revert if request has been requested already.
      */
     function _requestPrice(
+        uint8 chainID,
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
     ) internal {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
+        bytes32 priceRequestId = _encodePriceRequest(chainID, identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
-        require(lookup.state == RequestState.NeverRequested, "Price has already been requested");
-        // New query, change state to Requested:
-        lookup.state = RequestState.Requested;
-        emit PriceRequestAdded(msg.sender, identifier, time, ancillaryData);
+        if (lookup.state == RequestState.NeverRequested) {
+            // New query, change state to Requested:
+            lookup.state = RequestState.Requested;
+            emit PriceRequestAdded(msg.sender, chainID, identifier, time, ancillaryData);
+        }
     }
 
     /**
@@ -111,17 +98,18 @@ abstract contract BeaconOracle is OracleAncillaryInterface {
      * resolved already.
      */
     function _publishPrice(
+        uint8 chainID,
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData,
         int256 price
     ) internal {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
+        bytes32 priceRequestId = _encodePriceRequest(chainID, identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Requested, "Price request is not currently pending");
         lookup.price = price;
         lookup.state = RequestState.Resolved;
-        emit PushedPrice(msg.sender, identifier, time, ancillaryData, lookup.price);
+        emit PushedPrice(msg.sender, chainID, identifier, time, ancillaryData, lookup.price);
     }
 
     /**
@@ -132,14 +120,15 @@ abstract contract BeaconOracle is OracleAncillaryInterface {
     }
 
     /**
-     * @notice Returns the convenient way to store price requests, uniquely identified by {identifier, time,
+     * @notice Returns the convenient way to store price requests, uniquely identified by {chainID, identifier, time,
      * ancillaryData }.
      */
     function _encodePriceRequest(
+        uint8 chainID,
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
     ) internal pure returns (bytes32) {
-        return keccak256(abi.encode(identifier, time, ancillaryData));
+        return keccak256(abi.encode(chainID, identifier, time, ancillaryData));
     }
 }

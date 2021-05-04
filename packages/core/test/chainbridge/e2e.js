@@ -123,7 +123,7 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
       [votingResourceId],
       [sourceOracle.address],
       [Helpers.getFunctionSignature(sourceOracle, "validateDeposit")],
-      [Helpers.getFunctionSignature(sourceOracle, "requestPrice")]
+      [Helpers.getFunctionSignature(sourceOracle, "executeRequestPrice")]
     );
     await sourceFinder.changeImplementationAddress(
       utf8ToHex(interfaceName.GenericHandler),
@@ -134,7 +134,7 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
       [votingResourceId],
       [sinkOracle.address],
       [Helpers.getFunctionSignature(sinkOracle, "validateDeposit")],
-      [Helpers.getFunctionSignature(sinkOracle, "publishPrice")]
+      [Helpers.getFunctionSignature(sinkOracle, "executePublishPrice")]
     );
     await sinkFinder.changeImplementationAddress(
       utf8ToHex(interfaceName.GenericHandler),
@@ -149,7 +149,7 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
       votingResourceId,
       sourceOracle.address,
       Helpers.getFunctionSignature(sourceOracle, "validateDeposit"),
-      Helpers.getFunctionSignature(sourceOracle, "requestPrice")
+      Helpers.getFunctionSignature(sourceOracle, "executeRequestPrice")
     );
     // Sidechain resource ID 1: Voting Contract
     // - Deposit: Should validate that price was requested.
@@ -159,7 +159,7 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
       votingResourceId,
       sinkOracle.address,
       Helpers.getFunctionSignature(sinkOracle, "validateDeposit"),
-      Helpers.getFunctionSignature(sinkOracle, "publishPrice")
+      Helpers.getFunctionSignature(sinkOracle, "executePublishPrice")
     );
   });
 
@@ -176,6 +176,7 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
       "PriceRequestAdded",
       event =>
         event.requester.toLowerCase() === depositerAddress.toLowerCase() &&
+        event.chainID.toString() === sidechainId.toString() &&
         hexToUtf8(event.identifier) === hexToUtf8(identifier) &&
         event.time.toString() === requestTime.toString() &&
         event.ancillaryData.toLowerCase() === ancillaryData.toLowerCase()
@@ -222,6 +223,7 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
       "PriceRequestAdded",
       event =>
         event.requester.toLowerCase() === genericHandlerMainnet.address.toLowerCase() &&
+        event.chainID.toString() === sidechainId.toString() &&
         hexToUtf8(event.identifier) === hexToUtf8(identifier) &&
         event.time.toString() === requestTime.toString() &&
         event.ancillaryData.toLowerCase() === ancillaryData.toLowerCase()
@@ -246,15 +248,15 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
 
   // Scenario: Someone wants to publish a price from mainnet to sidechain.
   it("Mainnet deposit: publishes price on mainnet and enables bridged price resolution to sidechain", async function() {
-    // Note: We need to make a price available on the DVM before we can publish a price to the SourceOracle:
-    await voting.requestPrice(identifier, requestTime, ancillaryData);
-    await voting.pushPrice(identifier, requestTime, ancillaryData, requestPrice);
-
     // Deposit will fail because price has not been requested on the SourceOracle yet, so let's manually request one:
     // Note: Only GenericHandler can call requestPrice on sourceOracle, so we temporarily give this role to an EOA.
     // In production, the price would have been requested originally from a Deposit on the sidechain Bridge.
     await sourceFinder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), depositerAddress);
-    await sourceOracle.requestPrice(identifier, requestTime, ancillaryData, { from: depositerAddress });
+    await sourceOracle.executeRequestPrice(sidechainId, identifier, requestTime, ancillaryData, {
+      from: depositerAddress
+    });
+    // Note: We need to make a price available on the DVM before we can publish a price to the SourceOracle:
+    await voting.pushPrice(identifier, requestTime, ancillaryData, requestPrice);
 
     const depositTxn = await sourceOracle.publishPrice(sidechainId, identifier, requestTime, ancillaryData, {
       from: depositerAddress
@@ -264,6 +266,7 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
     TruffleAssert.eventEmitted(depositTxn, "PushedPrice", event => {
       return (
         event.pusher.toLowerCase() === depositerAddress.toLowerCase() &&
+        event.chainID.toString() === sidechainId.toString() &&
         hexToUtf8(event.identifier) === hexToUtf8(identifier) &&
         event.time.toString() === requestTime.toString() &&
         event.ancillaryData.toLowerCase() === ancillaryData.toLowerCase() &&
@@ -312,6 +315,7 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
     TruffleAssert.eventEmitted(internalTx, "PushedPrice", event => {
       return (
         event.pusher.toLowerCase() === genericHandlerSidechain.address.toLowerCase() &&
+        event.chainID.toString() === sidechainId.toString() &&
         hexToUtf8(event.identifier) === hexToUtf8(identifier) &&
         event.time.toString() === requestTime.toString() &&
         event.ancillaryData.toLowerCase() === ancillaryData.toLowerCase() &&
