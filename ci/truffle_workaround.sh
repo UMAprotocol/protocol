@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Note: this is a workaround for a strnage truffle issue.
+# Note: this is a workaround for a strange truffle issue.
 # The core idea is that truffle sees the absolute paths in old artifacts that are used outside of the core
 # directory and it tries to add those absolute paths to the list of sources to compile. Normally, this
 # wouldn't be an issue since those absolute paths wouldn't exist on the machine you're compiling on. However,
