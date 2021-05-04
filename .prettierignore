@@ -9,3 +9,6 @@ dist
 artifacts
 cache
 .github
+types
+contract-types
+packages/core/index.ts

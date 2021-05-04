@@ -14,18 +14,18 @@ export type { TruffleContracts, EthersContracts };
 
 declare const hardhatTestingAddresses: any;
 
-type GenericArtifacts = (typeof artifacts) & {
-  require: (name: string) => Truffle.ContractInstance,
-  _provisioner: any
-}
+type GenericArtifacts = typeof artifacts & {
+  require: (name: string) => Truffle.ContractInstance;
+  _provisioner: any;
+};
 
 type TruffleContractI = Truffle.ContractInstance & {
   networks: {
     [key: number]: {
-      address: string
-    }
-  }
-}
+      address: string;
+    };
+  };
+};
 
 /**
  * @notice Gets the directory for version of core specified by an input version string.
@@ -40,7 +40,7 @@ const getDirectoryForVersion = (version: string): string => {
   // To reiterate: any version passed in here must be listed in the package.json.
   const packageName = `@uma/core-${version.split(".").join("-")}`;
   return path.dirname(require.resolve(`${packageName}/package.json`));
-}
+};
 
 /**
  * @notice Gets the truffle artifact for an UMA contract.
@@ -55,7 +55,7 @@ const getArtifact = (contractName: string, version = "latest"): any => {
   }
 
   return JSON.parse(fs.readFileSync(filePath).toString());
-}
+};
 
 /**
  * @notice Gets the abi for an UMA contract.
@@ -65,7 +65,7 @@ const getArtifact = (contractName: string, version = "latest"): any => {
 let getAbi = (contractName: string, version = "latest"): any => {
   const artifact = getArtifact(contractName, version);
   return artifact.abi;
-}
+};
 
 /**
  * @notice Gets the deployed address for an UMA contract.
@@ -82,7 +82,7 @@ let getAddress = (contractName: string, networkId: number, version = "latest"): 
     // throw new Error(`No deployment of ${contractName} found for network ${networkId}`);
   }
   return artifact.networks[networkId].address;
-}
+};
 
 /**
  * @notice Creates a new truffle contract instance based on an existing web3 instance (using its provider).
@@ -99,7 +99,7 @@ let getTruffleContract = (contractName: string, web3: Web3 | undefined, version 
   const Contract = truffleContract(artifact);
   Contract.setProvider(resolvedWeb3.currentProvider);
   return Contract as TruffleContractI;
-}
+};
 
 /**
  * @notice Creates a new truffle contract instance using artifacts. This method will automatically be exported instead
@@ -110,9 +110,9 @@ let getTruffleContract = (contractName: string, web3: Web3 | undefined, version 
  */
 const getTruffleContractTest = (contractName: string, web3: Web3 | undefined, version = "latest"): TruffleContractI => {
   return version === "latest"
-    ? (artifacts as GenericArtifacts).require(contractName) as TruffleContractI
+    ? ((artifacts as GenericArtifacts).require(contractName) as TruffleContractI)
     : getTruffleContract(contractName, web3, version);
-}
+};
 
 /**
  * @notice Gets the contract address. This method will automatically be exported instead of getAdress in the case that
@@ -124,13 +124,10 @@ const getTruffleContractTest = (contractName: string, web3: Web3 | undefined, ve
 const getAddressTest = (contractName: string, networkId: number, version = "latest"): string => {
   const truffleContract = getTruffleContractTest(contractName, undefined, version);
 
-  const { _provisioner } = (artifacts as GenericArtifacts);
+  const { _provisioner } = artifacts as GenericArtifacts;
   if (truffleContract.networks[networkId]) {
     return truffleContract.networks[networkId].address;
-  } else if (
-    _provisioner?._deploymentAddresses[contractName] &&
-    _provisioner?._networkConfig.chainId === networkId
-  ) {
+  } else if (_provisioner?._deploymentAddresses[contractName] && _provisioner?._networkConfig.chainId === networkId) {
     // In the production hardhat case, there is no networks object, so we fall back to hardhat's global list of deployed addresses as long as hardhat's network id matches the one passed in.
     // Note: this is a bit hacky because it depends on internal hardhat details.
     return _provisioner._deploymentAddresses[contractName];
@@ -140,7 +137,7 @@ const getAddressTest = (contractName: string, networkId: number, version = "late
   } else {
     throw new Error(`No address found for contract ${contractName} on network ${networkId}`);
   }
-}
+};
 
 /**
  * @notice Gets the contract abi. This method will automatically be exported instead of getAbi() in the case that
@@ -151,7 +148,7 @@ const getAddressTest = (contractName: string, networkId: number, version = "late
 const getAbiTest = (contractName: string, version = "latest"): any => {
   const truffleContract = getTruffleContractTest(contractName, undefined, version);
   return truffleContract.abi;
-}
+};
 
 if (artifacts) {
   getAbi = getAbiTest;
