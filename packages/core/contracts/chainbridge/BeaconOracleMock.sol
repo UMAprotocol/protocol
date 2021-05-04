@@ -14,7 +14,7 @@ contract BeaconOracleMock is BeaconOracle {
         uint256 time,
         bytes memory ancillaryData
     ) public override {
-        _requestPrice(identifier, time, ancillaryData);
+        _requestPrice(currentChainID, identifier, time, ancillaryData);
     }
 
     function encodePriceRequest(
@@ -22,7 +22,7 @@ contract BeaconOracleMock is BeaconOracle {
         uint256 time,
         bytes memory ancillaryData
     ) public view returns (bytes32) {
-        return _encodePriceRequest(identifier, time, ancillaryData);
+        return _encodePriceRequest(currentChainID, identifier, time, ancillaryData);
     }
 
     function publishPrice(
@@ -31,7 +31,7 @@ contract BeaconOracleMock is BeaconOracle {
         bytes memory ancillaryData,
         int256 price
     ) public {
-        _publishPrice(identifier, time, ancillaryData, price);
+        _publishPrice(currentChainID, identifier, time, ancillaryData, price);
     }
 
     function getBridge() public view returns (IBridge) {

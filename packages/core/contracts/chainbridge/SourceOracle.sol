@@ -41,7 +41,7 @@ contract SourceOracle is BeaconOracle {
         _getBridge().deposit(
             sinkChainID,
             getResourceId(),
-            _formatMetadata(sinkChainID, identifier, time, ancillaryData, price)
+            formatMetadata(sinkChainID, identifier, time, ancillaryData, price)
         );
     }
 
@@ -116,13 +116,13 @@ contract SourceOracle is BeaconOracle {
      *     len(data)                              uint256     bytes  0  - 64
      *     data                                   bytes       bytes  64 - END
      */
-    function _formatMetadata(
+    function formatMetadata(
         uint8 chainID,
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData,
         int256 price
-    ) internal pure returns (bytes memory) {
+    ) public pure returns (bytes memory) {
         bytes memory metadata = abi.encode(chainID, identifier, time, ancillaryData, price);
         return abi.encodePacked(metadata.length, metadata);
     }

@@ -9,7 +9,7 @@ const TruffleAssert = require("truffle-assertions");
 const Ethers = require("ethers");
 
 const Helpers = require("./helpers");
-const { interfaceName, RegistryRolesEnum } = require("@uma/common");
+const { interfaceName, RegistryRolesEnum, ZERO_ADDRESS } = require("@uma/common");
 const { assert } = require("chai");
 
 // Chainbridge Contracts:
@@ -22,7 +22,6 @@ const SinkOracle = artifacts.require("SinkOracle");
 const SourceOracle = artifacts.require("SourceOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Finder = artifacts.require("Finder");
-const Timer = artifacts.require("Timer");
 const Registry = artifacts.require("Registry");
 
 const { utf8ToHex, hexToUtf8, toWei, sha3 } = web3.utils;
@@ -65,7 +64,6 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
   let sourceFinder;
   let sinkFinder;
   let registry;
-  let timer;
 
   // Test variables
   const ancillaryData = utf8ToHex("Test Ancillary Data");
@@ -87,11 +85,10 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
     sourceFinder = await Finder.deployed();
     sinkFinder = await Finder.new();
     await sinkFinder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.address);
-    timer = await Timer.deployed();
     identifierWhitelist = await IdentifierWhitelist.deployed();
 
     // MockOracle is the test DVM for Mainnet.
-    voting = await MockOracle.new(sourceFinder.address, timer.address);
+    voting = await MockOracle.new(sourceFinder.address, ZERO_ADDRESS);
     await sourceFinder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), voting.address);
 
     // Mainnet bridge variables:

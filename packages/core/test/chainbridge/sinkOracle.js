@@ -12,6 +12,9 @@ const { utf8ToHex, hexToUtf8, padRight } = web3.utils;
 const { blankFunctionSig, createGenericDepositData } = require("./helpers");
 
 contract("SinkOracle", async accounts => {
+  const owner = accounts[0];
+  const rando = accounts[1];
+
   let sinkOracle;
   let registry;
   let finder;
@@ -30,13 +33,13 @@ contract("SinkOracle", async accounts => {
 
   before(async function() {
     registry = await Registry.deployed();
-    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, accounts[0]);
-    await registry.registerContract([], accounts[0], { from: accounts[0] });
+    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner);
+    await registry.registerContract([], owner, { from: owner });
   });
   beforeEach(async function() {
     finder = await Finder.deployed();
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.address);
-    bridge = await Bridge.new(chainID, [accounts[0]], 1, 0, 100);
+    bridge = await Bridge.new(chainID, [owner], 1, 0, 100);
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridge.address);
     sinkOracle = await SinkOracle.new(finder.address, chainID, destinationChainID);
     sinkOracleResourceId = await sinkOracle.getResourceId();
@@ -54,7 +57,7 @@ contract("SinkOracle", async accounts => {
       sinkOracle.address,
       blankFunctionSig,
       blankFunctionSig,
-      { from: accounts[0] }
+      { from: owner }
     );
   });
   it("construction", async function() {
@@ -62,17 +65,16 @@ contract("SinkOracle", async accounts => {
   });
   it("requestPrice: should call Bridge.deposit", async function() {
     assert(
-      await didContractThrow(
-        sinkOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: accounts[1] })
-      ),
+      await didContractThrow(sinkOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: rando })),
       "Only callable by registered contract"
     );
-    const txn = await sinkOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: accounts[0] });
+    const txn = await sinkOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: owner });
     TruffleAssert.eventEmitted(
       txn,
       "PriceRequestAdded",
       event =>
-        event.requester.toLowerCase() === accounts[0].toLowerCase() &&
+        event.requester.toLowerCase() === owner.toLowerCase() &&
+        event.chainID.toString() === chainID.toString() &&
         hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
         event.time.toString() === testRequestTime.toString() &&
         event.ancillaryData.toLowerCase() === testAncillary.toLowerCase()
@@ -92,29 +94,31 @@ contract("SinkOracle", async accounts => {
   });
   it("validateDeposit", async function() {
     assert(
-      await didContractThrow(sinkOracle.validateDeposit(testIdentifier, testRequestTime, testAncillary)),
+      await didContractThrow(sinkOracle.validateDeposit(chainID, testIdentifier, testRequestTime, testAncillary)),
       "Reverts if price not requested yet"
     );
-    await sinkOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: accounts[0] });
-    await sinkOracle.validateDeposit(testIdentifier, testRequestTime, testAncillary);
+    await sinkOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: owner });
+    await sinkOracle.validateDeposit(chainID, testIdentifier, testRequestTime, testAncillary);
   });
-  it("publishPrice", async function() {
-    await sinkOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: accounts[0] });
+  it("executePublishPrice", async function() {
+    await sinkOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: owner });
     assert(
       await didContractThrow(
-        sinkOracle.publishPrice(testIdentifier, testRequestTime, testAncillary, { from: accounts[1] })
+        sinkOracle.executePublishPrice(chainID, testIdentifier, testRequestTime, testAncillary, { from: rando })
       ),
       "Only callable by GenericHandler"
     );
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), accounts[1]);
-    await sinkOracle.publishPrice(testIdentifier, testRequestTime, testAncillary, testPrice, { from: accounts[1] });
-    assert.isTrue(await sinkOracle.hasPrice(testIdentifier, testRequestTime, testAncillary));
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), rando);
+    await sinkOracle.executePublishPrice(chainID, testIdentifier, testRequestTime, testAncillary, testPrice, {
+      from: rando
+    });
+    assert.isTrue(await sinkOracle.hasPrice(testIdentifier, testRequestTime, testAncillary, { from: owner }));
   });
   it("formatMetadata", async function() {
-    const metadata = await sinkOracle.formatMetadata(testIdentifier, testRequestTime, testAncillary);
+    const metadata = await sinkOracle.formatMetadata(chainID, testIdentifier, testRequestTime, testAncillary);
     const encoded = web3.eth.abi.encodeParameters(
-      ["bytes32", "uint256", "bytes"],
-      [padRight(testIdentifier, 64), testRequestTime, testAncillary]
+      ["uint8", "bytes32", "uint256", "bytes"],
+      [chainID, padRight(testIdentifier, 64), testRequestTime, testAncillary]
     );
     const formattedEncoded = createGenericDepositData(encoded);
     assert.equal(metadata, formattedEncoded);
