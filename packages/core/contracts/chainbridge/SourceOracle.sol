@@ -22,26 +22,26 @@ contract SourceOracle is BeaconOracle {
 
     /**
      * @notice This is the first method that should be called in order to publish a price request to another network
-     * marked by `destinationChainID`.
+     * marked by `sinkChainID`.
      * @dev Publishes the DVM resolved price for the price request, or reverts if not resolved yet. Will call the
      * local Bridge's deposit() method which will emit a Deposit event in order to signal to an off-chain
      * relayer to begin the cross-chain process.
      */
     function publishPrice(
-        uint8 destinationChainID,
+        uint8 sinkChainID,
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
     ) public {
         require(_getOracle().hasPrice(identifier, time, ancillaryData), "DVM has not resolved price");
         int256 price = _getOracle().getPrice(identifier, time, ancillaryData);
-        _publishPrice(identifier, time, ancillaryData, price);
+        _publishPrice(sinkChainID, identifier, time, ancillaryData, price);
 
         // Call Bridge.deposit() to initiate cross-chain publishing of price request.
         _getBridge().deposit(
-            destinationChainID,
+            sinkChainID,
             getResourceId(),
-            _formatMetadata(identifier, time, ancillaryData, price)
+            _formatMetadata(sinkChainID, identifier, time, ancillaryData, price)
         );
     }
 
@@ -51,19 +51,30 @@ contract SourceOracle is BeaconOracle {
      * @dev This method should basically check that the `Bridge.deposit()` was triggered by a valid publish event.
      */
     function validateDeposit(
+        uint8 sinkChainID,
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData,
         int256 price
     ) public view {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
+        bytes32 priceRequestId = _encodePriceRequest(sinkChainID, identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Resolved, "Price has not been published");
+        require(lookup.price == price, "Unexpected price published");
     }
 
     /***************************************************************
      * Responding to a Price Request from L2:
      ***************************************************************/
+
+    function requestPrice(
+        bytes32,
+        uint256,
+        bytes memory
+    ) public override {
+        // Doesn't do anything, since destination chainID is needed for this specific oracle.
+        return;
+    }
 
     /**
      * @notice This method will ultimately be called after a `requestPrice` has been bridged cross-chain from
@@ -73,12 +84,13 @@ contract SourceOracle is BeaconOracle {
      * to the DVM. Can only be called by the `GenericHandler`.
      */
 
-    function requestPrice(
+    function executeRequestPrice(
+        uint8 sinkChainID,
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public override onlyGenericHandlerContract() {
-        _requestPrice(identifier, time, ancillaryData);
+    ) public onlyGenericHandlerContract() {
+        _requestPrice(sinkChainID, identifier, time, ancillaryData);
         _getOracle().requestPrice(identifier, time, ancillaryData);
     }
 
@@ -88,7 +100,7 @@ contract SourceOracle is BeaconOracle {
      * @return bytes32 Hash containing this stored chain ID.
      */
     function getResourceId() public view returns (bytes32) {
-        return keccak256(abi.encode("Oracle", chainID));
+        return keccak256(abi.encode("Oracle", currentChainID));
     }
 
     /**
@@ -105,12 +117,13 @@ contract SourceOracle is BeaconOracle {
      *     data                                   bytes       bytes  64 - END
      */
     function _formatMetadata(
+        uint8 chainID,
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData,
         int256 price
-    ) internal view returns (bytes memory) {
-        bytes memory metadata = abi.encode(identifier, time, ancillaryData, price);
+    ) internal pure returns (bytes memory) {
+        bytes memory metadata = abi.encode(chainID, identifier, time, ancillaryData, price);
         return abi.encodePacked(metadata.length, metadata);
     }
 }

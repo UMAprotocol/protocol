@@ -2,7 +2,6 @@
 pragma solidity ^0.6.0;
 
 import "./BeaconOracle.sol";
-import "../oracle/interfaces/RegistryInterface.sol";
 
 /**
  * @title Extension of BeaconOracle that is intended to be deployed on non-Mainnet networks to give financial
@@ -25,13 +24,6 @@ contract SinkOracle is BeaconOracle {
         destinationChainID = _destinationChainID;
     }
 
-    // This assumes that the local network has a Registry that resembles the Mainnet registry.
-    modifier onlyRegisteredContract() {
-        RegistryInterface registry = RegistryInterface(finder.getImplementationAddress(OracleInterfaces.Registry));
-        require(registry.isContractRegistered(msg.sender), "Caller must be registered");
-        _;
-    }
-
     /***************************************************************
      * Bridging a Price Request to L1:
      ***************************************************************/
@@ -48,10 +40,14 @@ contract SinkOracle is BeaconOracle {
         uint256 time,
         bytes memory ancillaryData
     ) public override onlyRegisteredContract() {
-        _requestPrice(identifier, time, ancillaryData);
+        _requestPrice(currentChainID, identifier, time, ancillaryData);
 
         // Call Bridge.deposit() to intiate cross-chain price request.
-        _getBridge().deposit(destinationChainID, getResourceId(), formatMetadata(identifier, time, ancillaryData));
+        _getBridge().deposit(
+            destinationChainID,
+            getResourceId(),
+            formatMetadata(currentChainID, identifier, time, ancillaryData)
+        );
     }
 
     /**
@@ -62,11 +58,12 @@ contract SinkOracle is BeaconOracle {
      * `Bridge.deposit()` could be called by non-registered contracts to make price requests to the DVM.
      */
     function validateDeposit(
+        uint8 sinkChainID,
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
     ) public view {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
+        bytes32 priceRequestId = _encodePriceRequest(sinkChainID, identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Requested, "Price has not been requested");
     }
@@ -82,13 +79,14 @@ contract SinkOracle is BeaconOracle {
      * @dev This method should publish the price data for a requested price request. If this method fails for some
      * reason, then it means that the price was never requested. Can only be called by the `GenericHandler`.
      */
-    function publishPrice(
+    function executePublishPrice(
+        uint8 sinkChainID,
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData,
         int256 price
     ) public onlyGenericHandlerContract() {
-        _publishPrice(identifier, time, ancillaryData, price);
+        _publishPrice(sinkChainID, identifier, time, ancillaryData, price);
     }
 
     /**
@@ -107,11 +105,12 @@ contract SinkOracle is BeaconOracle {
      *     data                                   bytes       bytes  64 - END
      */
     function formatMetadata(
+        uint8 chainID,
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public view returns (bytes memory) {
-        bytes memory metadata = abi.encode(identifier, time, ancillaryData);
+    ) public pure returns (bytes memory) {
+        bytes memory metadata = abi.encode(chainID, identifier, time, ancillaryData);
         return abi.encodePacked(metadata.length, metadata);
     }
 }
