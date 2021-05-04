@@ -24064,10 +24064,10 @@ solidity-coverage@^0.7.13, solidity-coverage@^0.7.2:
     shelljs "^0.8.3"
     web3-utils "^1.3.0"
 
-solidity-docgen@^0.5.3:
-  version "0.5.11"
-  resolved "https://registry.yarnpkg.com/solidity-docgen/-/solidity-docgen-0.5.11.tgz#96e03d9bd6cbf16b856e07d90f596af19ab7e447"
-  integrity sha512-yi1FAKd7obY7WwXc1DI9OSA7K55tPfPbz/SYsfEM5vcxl3CEhgMgEvjw6PapwyIpvz9H+ymEFsYwo0F1pHUDCg==
+solidity-docgen@^0.5.13:
+  version "0.5.13"
+  resolved "https://registry.yarnpkg.com/solidity-docgen/-/solidity-docgen-0.5.13.tgz#626bd8e7ba8cc5e828de33a20447ea03cacd2de4"
+  integrity sha512-m8PVkJ9ZCVwjfUI7r6aTlzn7uVystsw9j8gv1Bn0afS3nMe3iqtxUxY5nL3OccGP2kxpxiQbt8xxtsOm5bQAcQ==
   dependencies:
     "@oclif/command" "^1.8.0"
     "@oclif/config" "^1.17.0"

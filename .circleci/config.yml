@@ -42,24 +42,6 @@ jobs:
       - run:
           name: Lint
           command: ./ci/lint.sh
-  docs:
-    docker:
-      - image: circleci/node:lts
-    working_directory: ~/protocol
-    steps:
-      - restore_cache:
-          key: protocol-{{ .Environment.CIRCLE_SHA1 }}
-      - run:
-          name: Install Pandoc
-          command: wget https://github.com/jgm/pandoc/releases/download/2.7.3/pandoc-2.7.3-linux.tar.gz
-      - run:
-          name: Untar Pandoc
-          command: sudo tar xvzf pandoc-2.7.3-linux.tar.gz --strip-components 1 -C /usr/local
-      - run:
-          name: Generate Docs
-          command: ./scripts/build_docs_site.sh
-      - store_artifacts:
-          path: build/site
   test:
     docker:
       - image: circleci/node:lts
@@ -168,9 +150,6 @@ workflows:
           context: api_keys
           requires:
             - build
-      - docs:
-          requires:
-            - checkout_and_install
       - dapp_build:
           requires:
             - build
