@@ -51,7 +51,7 @@ contract SinkOracle is BeaconOracle {
         _requestPrice(identifier, time, ancillaryData);
 
         // Call Bridge.deposit() to intiate cross-chain price request.
-        _getBridge().deposit(destinationChainID, getResourceId(), _formatMetadata(identifier, time, ancillaryData));
+        _getBridge().deposit(destinationChainID, getResourceId(), formatMetadata(identifier, time, ancillaryData));
     }
 
     /**
@@ -106,11 +106,11 @@ contract SinkOracle is BeaconOracle {
      *     len(data)                              uint256     bytes  0  - 64
      *     data                                   bytes       bytes  64 - END
      */
-    function _formatMetadata(
+    function formatMetadata(
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) internal view returns (bytes memory) {
+    ) public view returns (bytes memory) {
         bytes memory metadata = abi.encode(identifier, time, ancillaryData);
         return abi.encodePacked(metadata.length, metadata);
     }
