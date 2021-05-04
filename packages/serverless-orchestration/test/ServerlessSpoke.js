@@ -75,12 +75,11 @@ contract("ServerlessSpoke.js", function(accounts) {
       tokenAddress: syntheticToken.address,
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.2") },
-      disputeBondPct: { rawValue: toWei("0.1") },
-      sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
-      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      disputeBondPercentage: { rawValue: toWei("0.1") },
+      sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
+      disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: (await Timer.deployed()).address,
-      excessTokenBeneficiary: ZERO_ADDRESS,
       financialProductLibraryAddress: ZERO_ADDRESS
     };
 
