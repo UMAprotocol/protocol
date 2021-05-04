@@ -90,36 +90,6 @@ contract SinkOracle is BeaconOracle {
     }
 
     /**
-     * @notice Returns whether a price has resolved for the request.
-     * @return True if a price is available, False otherwise. If true, then getPrice will succeed for the request.
-     */
-
-    function hasPrice(
-        bytes32 identifier,
-        uint256 time,
-        bytes memory ancillaryData
-    ) public view override onlyRegisteredContract() returns (bool) {
-        bytes32 priceRequestId = _encodePriceRequest(currentChainID, identifier, time, ancillaryData);
-        return prices[priceRequestId].state == RequestState.Resolved;
-    }
-
-    /**
-     * @notice Returns resolved price for the request.
-     * @return int256 Price, or reverts if no resolved price for any reason.
-     */
-
-    function getPrice(
-        bytes32 identifier,
-        uint256 time,
-        bytes memory ancillaryData
-    ) public view override onlyRegisteredContract() returns (int256) {
-        bytes32 priceRequestId = _encodePriceRequest(currentChainID, identifier, time, ancillaryData);
-        Price storage lookup = prices[priceRequestId];
-        require(lookup.state == RequestState.Resolved, "Price has not been resolved");
-        return lookup.price;
-    }
-
-    /**
      * @notice Convenience method to get cross-chain Bridge resource ID linking this contract with the SourceOracle.
      * @dev More details about Resource ID's here: https://chainbridge.chainsafe.io/spec/#resource-id
      * @return bytes32 Hash containing the chain ID of the SourceOracle.

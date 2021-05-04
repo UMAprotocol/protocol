@@ -75,6 +75,36 @@ abstract contract BeaconOracle is OracleAncillaryInterface {
     }
 
     /**
+     * @notice Returns whether a price has resolved for the request.
+     * @return True if a price is available, False otherwise. If true, then getPrice will succeed for the request.
+     */
+
+    function hasPrice(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) public view override onlyRegisteredContract() returns (bool) {
+        bytes32 priceRequestId = _encodePriceRequest(currentChainID, identifier, time, ancillaryData);
+        return prices[priceRequestId].state == RequestState.Resolved;
+    }
+
+    /**
+     * @notice Returns resolved price for the request.
+     * @return int256 Price, or reverts if no resolved price for any reason.
+     */
+
+    function getPrice(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) public view override onlyRegisteredContract() returns (int256) {
+        bytes32 priceRequestId = _encodePriceRequest(currentChainID, identifier, time, ancillaryData);
+        Price storage lookup = prices[priceRequestId];
+        require(lookup.state == RequestState.Resolved, "Price has not been resolved");
+        return lookup.price;
+    }
+
+    /**
      * @notice Enqueues a request (if a request isn't already present) for the given (identifier, time, ancillary data)
      * pair. Will revert if request has been requested already.
      */
