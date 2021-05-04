@@ -938,6 +938,25 @@ const defaultConfigs = {
     uniswapAddress: "0x360acfeb5c1548bad3583c559a646d803077236d",
     twapLength: 7200,
     invertPrice: false
+  },
+  USDXIO: {
+    type: "expression",
+    expression: "XIOETH * ETHUSD",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    twapLength: 3600,
+    customFeeds: {
+      XIOETH: {
+        type: "uniswap",
+        uniswapAddress: "0xe0cc5afc0ff2c76183416fb8d1a29f6799fb2cdf",
+        invertPrice: true
+      },
+      ETHUSD: {
+        type: "uniswap",
+        uniswapAddress: "0x0d4a11d5eeaac28ec3f61d100daf4d40471f1852",
+        invertPrice: true
+      }
+    }
   }
 };
 
