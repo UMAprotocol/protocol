@@ -230,7 +230,6 @@ class RAIRedemptionRatePriceFeed extends PriceFeedInterface {
     //        ]
     //     }
     // }
-    // console.log(response);
     return response.data.redemptionRates
       .map(rate => ({
         price: this.convertPriceFeedDecimals(rate[rateType]),
