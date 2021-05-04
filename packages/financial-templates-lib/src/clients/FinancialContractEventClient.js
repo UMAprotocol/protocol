@@ -60,7 +60,7 @@ class FinancialContractEventClient {
       contractVersion !== "1.2.0" &&
       contractVersion !== "1.2.1" &&
       contractVersion !== "1.2.2" &&
-      contractVersion !== "2.0.1"
+      contractVersion !== "latest"
     )
       throw new Error(
         `Invalid contract version provided: ${contractVersion}! The financial product client only supports 1.2.0, 1.2.1, 1.2.2 or latest`
@@ -147,7 +147,7 @@ class FinancialContractEventClient {
     // Set the last block to search up until.
     const lastBlockToSearch = this.lastBlockToSearchUntil
       ? this.lastBlockToSearchUntil
-      : await this.web3.eth.getBlockNumber();
+      : await this.web3.eth.Contract();
 
     // Define a config to bound the queries by.
     const blockSearchConfig = {
