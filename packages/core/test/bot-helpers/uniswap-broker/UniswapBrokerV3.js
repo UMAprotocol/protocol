@@ -79,7 +79,7 @@ contract("UniswapBrokerV3", function(accounts) {
     };
 
     await positionManager.mint(liquidityParams, { from: trader });
-    poolAddress = computePoolAddress(factory.address, tokenA.address, tokenB.address, FeeAmount.MEDIUM);
+    poolAddress = computePoolAddress(factory.address, tokenA.address, tokenB.address, fee);
   }
 
   before(async () => {
@@ -135,7 +135,7 @@ contract("UniswapBrokerV3", function(accounts) {
       // Validate the liquidity is within the range. There is one LP within the pool and their range is between 8 and 15.
       const liquidityInRange = await tickLens.getPopulatedTicksInWord(
         poolAddress,
-        getTickBitmapIndex(getTickFromPrice(10, fee), TICK_SPACINGS[FeeAmount.MEDIUM])
+        getTickBitmapIndex(getTickFromPrice(10, fee), TICK_SPACINGS[fee])
       );
       assert.equal(liquidityInRange[0].tick, getTickFromPrice(15, fee)); // the ticks should match that of the price range.
       assert.equal(liquidityInRange[1].tick, getTickFromPrice(8, fee));
@@ -144,7 +144,7 @@ contract("UniswapBrokerV3", function(accounts) {
       // the price of the tokens. define the trade params according to the uniswap spec.
       const tokens = [tokenA.address, tokenB.address];
       const params = {
-        path: encodePath(tokens, new Array(tokens.length - 1).fill(FeeAmount.MEDIUM)),
+        path: encodePath(tokens, new Array(tokens.length - 1).fill(fee)),
         recipient: trader,
         deadline: 15798990420,
         amountIn: toWei("1"), // swap exactly 1 wei of token 1

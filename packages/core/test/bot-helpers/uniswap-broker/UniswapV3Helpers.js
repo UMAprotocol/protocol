@@ -91,7 +91,7 @@ function getTickBitmapIndex(tick, tickSpacing) {
       .addn(1)
       .div(toBN("2").pow(toBN("8")))
       .subn(1);
-  else intermediate.shrn(8);
+  else return intermediate.shrn(8);
 }
 
 function computePoolAddress(factoryAddress, tokenA, tokenB, fee) {
