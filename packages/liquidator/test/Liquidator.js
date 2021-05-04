@@ -120,9 +120,9 @@ contract("Liquidator.js", function(accounts) {
     const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
     const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
-    const ConfigStore = getTruffleContract("ConfigStore", web3, "latest");
-    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, "latest");
-    const MulticallMock = getTruffleContract("MulticallMock", web3, "latest");
+    const ConfigStore = getTruffleContract("ConfigStore", web3);
+    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
+    const MulticallMock = getTruffleContract("MulticallMock", web3);
 
     for (let testConfig of configs) {
       describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
@@ -1534,7 +1534,7 @@ contract("Liquidator.js", function(accounts) {
           );
         });
         describe("Liquidator correctly deals with funding rates from perpetual contract", () => {
-          versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])(
+          versionedIt([{ contractType: "Perpetual", contractVersion: "2.0.1" }])(
             "Can correctly detect invalid positions and liquidate them",
             async function() {
               // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
@@ -1688,8 +1688,8 @@ contract("Liquidator.js", function(accounts) {
         });
         describe("Liquidation via DSProxy", () => {
           // Imports specific to the DSProxy wallet implementation.
-          const DSProxyFactory = getTruffleContract("DSProxyFactory", web3, "latest");
-          const DSProxy = getTruffleContract("DSProxy", web3, "latest");
+          const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);
+          const DSProxy = getTruffleContract("DSProxy", web3);
           const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json");
           const IUniswapV2Pair = require("@uniswap/v2-core/build/IUniswapV2Pair.json");
           const UniswapV2Router02 = require("@uniswap/v2-periphery/build/UniswapV2Router02.json");

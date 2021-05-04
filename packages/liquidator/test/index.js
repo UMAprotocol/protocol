@@ -72,11 +72,11 @@ contract("index.js", function(accounts) {
     const Token = getTruffleContract("ExpandedERC20", web3, contractVersion.contractVersion);
     const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
     const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
-    const UniswapMock = getTruffleContract("UniswapV2Mock", web3, "latest");
+    const UniswapMock = getTruffleContract("UniswapV2Mock", web3);
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
     const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
-    const DSProxyFactory = getTruffleContract("DSProxyFactory", web3, "latest");
+    const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);
 
     describe(`Tests running on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
       before(async function() {

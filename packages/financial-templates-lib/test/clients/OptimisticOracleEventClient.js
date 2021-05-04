@@ -6,17 +6,15 @@ const { OptimisticOracleEventClient } = require("../../src/clients/OptimisticOra
 const { interfaceName, advanceBlockAndSetTime, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
-const CONTRACT_VERSION = "latest";
-
-const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, CONTRACT_VERSION);
-const OptimisticRequesterTest = getTruffleContract("OptimisticRequesterTest", web3, CONTRACT_VERSION);
-const Finder = getTruffleContract("Finder", web3, CONTRACT_VERSION);
-const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, CONTRACT_VERSION);
-const Token = getTruffleContract("ExpandedERC20", web3, CONTRACT_VERSION);
-const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, CONTRACT_VERSION);
-const Timer = getTruffleContract("Timer", web3, CONTRACT_VERSION);
-const Store = getTruffleContract("Store", web3, CONTRACT_VERSION);
-const MockOracle = getTruffleContract("MockOracleAncillary", web3, CONTRACT_VERSION);
+const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
+const OptimisticRequesterTest = getTruffleContract("OptimisticRequesterTest", web3);
+const Finder = getTruffleContract("Finder", web3);
+const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3);
+const Token = getTruffleContract("ExpandedERC20", web3);
+const AddressWhitelist = getTruffleContract("AddressWhitelist", web3);
+const Timer = getTruffleContract("Timer", web3);
+const Store = getTruffleContract("Store", web3);
+const MockOracle = getTruffleContract("MockOracleAncillary", web3);
 
 contract("OptimisticOracleEventClient.js", function(accounts) {
   const owner = accounts[0];

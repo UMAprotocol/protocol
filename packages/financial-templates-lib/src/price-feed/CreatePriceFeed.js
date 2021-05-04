@@ -32,12 +32,12 @@ const { VaultPriceFeed } = require("./VaultPriceFeed");
 const uniswapBlockCache = {};
 
 async function createPriceFeed(logger, web3, networker, getTime, config) {
-  const UniswapV2 = getTruffleContract("UniswapV2", web3, "latest");
-  const UniswapV3 = getTruffleContract("UniswapV3", web3, "latest");
-  const ERC20 = getTruffleContract("ExpandedERC20", web3, "latest");
-  const Balancer = getTruffleContract("Balancer", web3, "latest");
-  const VaultInterface = getTruffleContract("VaultInterface", web3, "latest");
-  const Perpetual = getTruffleContract("Perpetual", web3, "latest");
+  const UniswapV2 = getTruffleContract("UniswapV2", web3);
+  const UniswapV3 = getTruffleContract("UniswapV3", web3);
+  const ERC20 = getTruffleContract("ExpandedERC20", web3);
+  const Balancer = getTruffleContract("Balancer", web3);
+  const VaultInterface = getTruffleContract("VaultInterface", web3);
+  const Perpetual = getTruffleContract("Perpetual", web3);
 
   if (config.type === "cryptowatch") {
     const requiredFields = ["exchange", "pair", "lookback", "minTimeBetweenUpdates"];
