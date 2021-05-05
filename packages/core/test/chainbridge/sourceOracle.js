@@ -72,7 +72,7 @@ contract("SourceOracle", async accounts => {
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), voting.address);
     await voting.requestPrice(testIdentifier, testRequestTime, testAncillary);
   });
-  describe("Requestin a price on Source Oracle", function() {
+  describe("Requesting a price on Source Oracle", function() {
     beforeEach(async function() {
       // Need to request a price first on the source oracle before we can publish:
       await finder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), rando);
