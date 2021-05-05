@@ -239,4 +239,7 @@ function addGlobalHardhatTestingAddress(contractName, address) {
   }
   global.hardhatTestingAddresses[contractName] = address;
 }
-module.exports = { getHardhatConfig, addGlobalHardhatTestingAddress };
+module.exports = {
+  getHardhatConfig,
+  addGlobalHardhatTestingAddress
+};
