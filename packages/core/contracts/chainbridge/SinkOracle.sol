@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
 import "./BeaconOracle.sol";
 import "../oracle/interfaces/OracleAncillaryInterface.sol";
@@ -23,7 +23,7 @@ contract SinkOracle is BeaconOracle, OracleAncillaryInterface {
         address _finderAddress,
         uint8 _chainID,
         uint8 _destinationChainID
-    ) public BeaconOracle(_finderAddress, _chainID) {
+    ) BeaconOracle(_finderAddress, _chainID) {
         destinationChainID = _destinationChainID;
     }
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
 import "./BeaconOracle.sol";
 import "../oracle/interfaces/OracleAncillaryInterface.sol";
@@ -17,7 +17,7 @@ import "../oracle/interfaces/OracleAncillaryInterface.sol";
  * @dev This contract must be a registered financial contract in order to call DVM methods.
  */
 contract SourceOracle is BeaconOracle {
-    constructor(address _finderAddress, uint8 _chainID) public BeaconOracle(_finderAddress, _chainID) {}
+    constructor(address _finderAddress, uint8 _chainID) BeaconOracle(_finderAddress, _chainID) {}
 
     /***************************************************************
      * Publishing Price Request Data to L2:
