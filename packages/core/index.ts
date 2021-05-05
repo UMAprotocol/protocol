@@ -48,7 +48,7 @@ const getDirectoryForVersion = (version: string): string => {
  * @param {String} [version] version identifier x.y.z for the contract. Defaults to "latest".
  */
 const getArtifact = (contractName: string, version = "latest"): any => {
-  const contractDirectory = version === "latest" ? __dirname : getDirectoryForVersion(version);
+  const contractDirectory = version === "latest" ? __dirname + "/.." : getDirectoryForVersion(version);
   const filePath = path.join(contractDirectory, "build", "contracts", `${contractName}.json`);
   if (!fs.existsSync(filePath)) {
     throw new Error(`No contract artifact found at ${filePath}`);
