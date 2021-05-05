@@ -2,12 +2,15 @@
 pragma solidity ^0.6.0;
 
 import "./BeaconOracle.sol";
+import "../oracle/interfaces/OracleAncillaryInterface.sol";
 
 /**
  * @title Extension of BeaconOracle that is intended to be deployed on Mainnet to give financial
  * contracts on non-Mainnet networks the ability to trigger cross-chain price requests to the Mainnet DVM. This contract
  * is responsible for triggering price requests originating from non-Mainnet, and broadcasting resolved price data
- * back to those networks.
+ * back to those networks. Technically, this contract is more of a Proxy than an Oracle, because it does not implement
+ * the full Oracle interface including the getPrice and requestPrice methods. It's goal is to shuttle price request
+ * functionality between L2 and L1.
  * @dev The intended client of this contract is some off-chain bot watching for resolved price events on the DVM. Once
  * that bot sees a price has resolved, it can call `publishPrice()` on this contract which will call the local Bridge
  * contract to signal to an off-chain relayer to bridge a price request to another network.
@@ -66,15 +69,6 @@ contract SourceOracle is BeaconOracle {
     /***************************************************************
      * Responding to a Price Request from L2:
      ***************************************************************/
-
-    function requestPrice(
-        bytes32,
-        uint256,
-        bytes memory
-    ) public override {
-        // Doesn't do anything, since destination chainID is needed for this specific oracle.
-        return;
-    }
 
     /**
      * @notice This method will ultimately be called after a `requestPrice` has been bridged cross-chain from

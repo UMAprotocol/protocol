@@ -2,17 +2,20 @@
 pragma solidity ^0.6.0;
 
 import "./BeaconOracle.sol";
+import "../oracle/interfaces/OracleAncillaryInterface.sol";
+import "../oracle/interfaces/RegistryInterface.sol";
 
 /**
  * @title Extension of BeaconOracle that is intended to be deployed on non-Mainnet networks to give financial
  * contracts on those networks the ability to trigger cross-chain price requests to the Mainnet DVM. Also has the
- * ability to receive published prices from Mainnet.
+ * ability to receive published prices from Mainnet. This contract can be treated as the "DVM" for a non-Mainnet
+ * network, because a calling contract can request and access a resolved price request from this contract.
  * @dev The intended client of this contract is an OptimisticOracle on a non-Mainnet network that needs price
  * resolution secured by the DVM on Mainnet. If a registered contract, such as the OptimisticOracle, calls
  * `requestPrice()` on this contract, then it will call the network's Bridge contract to signal to an off-chain
  * relayer to bridge a price request to Mainnet.
  */
-contract SinkOracle is BeaconOracle {
+contract SinkOracle is BeaconOracle, OracleAncillaryInterface {
     // Chain ID of the Source Oracle that will communicate this contract's price request to the DVM on Mainnet.
     uint8 public destinationChainID;
 
@@ -22,6 +25,13 @@ contract SinkOracle is BeaconOracle {
         uint8 _destinationChainID
     ) public BeaconOracle(_finderAddress, _chainID) {
         destinationChainID = _destinationChainID;
+    }
+
+    // This assumes that the local network has a Registry that resembles the Mainnet registry.
+    modifier onlyRegisteredContract() {
+        RegistryInterface registry = RegistryInterface(finder.getImplementationAddress(OracleInterfaces.Registry));
+        require(registry.isContractRegistered(msg.sender), "Caller must be registered");
+        _;
     }
 
     /***************************************************************
@@ -87,6 +97,35 @@ contract SinkOracle is BeaconOracle {
         int256 price
     ) public onlyGenericHandlerContract() {
         _publishPrice(sinkChainID, identifier, time, ancillaryData, price);
+    }
+
+    /**
+     * @notice Returns whether a price has resolved for the request.
+     * @return True if a price is available, False otherwise. If true, then getPrice will succeed for the request.
+     */
+    function hasPrice(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) public view override onlyRegisteredContract() returns (bool) {
+        bytes32 priceRequestId = _encodePriceRequest(currentChainID, identifier, time, ancillaryData);
+        return prices[priceRequestId].state == RequestState.Resolved;
+    }
+
+    /**
+     * @notice Returns resolved price for the request.
+     * @return int256 Price, or reverts if no resolved price for any reason.
+     */
+
+    function getPrice(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) public view override onlyRegisteredContract() returns (int256) {
+        bytes32 priceRequestId = _encodePriceRequest(currentChainID, identifier, time, ancillaryData);
+        Price storage lookup = prices[priceRequestId];
+        require(lookup.state == RequestState.Resolved, "Price has not been resolved");
+        return lookup.price;
     }
 
     /**
