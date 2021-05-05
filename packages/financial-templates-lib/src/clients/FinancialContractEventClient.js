@@ -373,5 +373,3 @@ class FinancialContractEventClient {
 module.exports = {
   FinancialContractEventClient
 };
-
-// test comment for CI tests
