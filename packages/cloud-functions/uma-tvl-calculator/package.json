@@ -1,9 +1,9 @@
 {
   "name": "uma-tvl-calculator",
-  "version": "0.0.1",
+  "version": "0.0.2-alpha.0",
   "dependencies": {
-    "@uma/merkle-distributor": "npm:@uma/merkle-distributor@1.0.3",
-    "@google-cloud/datastore": "^6.3.1"
+    "@google-cloud/datastore": "^6.3.1",
+    "@uma/merkle-distributor": "npm:@uma/merkle-distributor@1.0.3"
   },
   "private": true
 }

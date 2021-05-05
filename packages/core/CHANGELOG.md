@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.3.0-alpha.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.2.0...@uma/core@2.3.0-alpha.0) (2021-05-05)
+
+### Bug Fixes
+
+- fixes \_minSponsorTokens description in contract docs ([#2710](https://github.com/UMAprotocol/protocol/issues/2710)) ([fa13bf5](https://github.com/UMAprotocol/protocol/commit/fa13bf57f90f3c66941eac4d43de5c02c7cb8a86))
+- **core,affiliates:** log warning to console.error, make json piping easier to find issues ([#2913](https://github.com/UMAprotocol/protocol/issues/2913)) ([3679242](https://github.com/UMAprotocol/protocol/commit/3679242181b4134595048ecf8134c7916f8559fc))
+- Add contract hash ([#2919](https://github.com/UMAprotocol/protocol/issues/2919)) ([17fdf6f](https://github.com/UMAprotocol/protocol/commit/17fdf6f9829c238868082627d1ea928eac7eb3f3))
+- **ReserveCurrencyLiquidator:** improve how the contract handles reserve OR collateral currency shortfall ([#2896](https://github.com/UMAprotocol/protocol/issues/2896)) ([bfaf8e5](https://github.com/UMAprotocol/protocol/commit/bfaf8e53cfddce4463adf3751a1c999cfe361fd9))
+
+### Features
+
+- **chainbridge:** Demo script showing how cross-chain price request would work ([#2894](https://github.com/UMAprotocol/protocol/issues/2894)) ([d1cc34b](https://github.com/UMAprotocol/protocol/commit/d1cc34baa09eb4434c29e84646d1271df9d74d0a))
+- **lib:** add post-expiration price transformation fpl ([#2926](https://github.com/UMAprotocol/protocol/issues/2926)) ([8e5cfd6](https://github.com/UMAprotocol/protocol/commit/8e5cfd6f1ce019131f53e0bf41f8fe26f5b46eb1))
+- **price-feeds:** add uniswap v3 price feed ([#2918](https://github.com/UMAprotocol/protocol/issues/2918)) ([d87066c](https://github.com/UMAprotocol/protocol/commit/d87066cac46b72b3d1a5e4734d8a7536c6a93da8))
+- **version-management:** Update hard coded latest package versions in the bots to use 2.0 packages ([#2872](https://github.com/UMAprotocol/protocol/issues/2872)) ([b8225c5](https://github.com/UMAprotocol/protocol/commit/b8225c580ea48f58ef44aa308f966fbed5a99cf3))
+
 # [2.2.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@3.0.0...@uma/core@2.2.0) (2021-04-23)
 
 ### Features

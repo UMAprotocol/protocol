@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.3.0-alpha.0](https://github.com/mrice32/protocol/compare/@uma/affiliates@1.2.0...@uma/affiliates@1.3.0-alpha.0) (2021-05-05)
+
+### Bug Fixes
+
+- **core,affiliates:** log warning to console.error, make json piping easier to find issues ([#2913](https://github.com/mrice32/protocol/issues/2913)) ([3679242](https://github.com/mrice32/protocol/commit/3679242181b4134595048ecf8134c7916f8559fc))
+
+### Features
+
+- **version-management:** Update hard coded latest package versions in the bots to use 2.0 packages ([#2872](https://github.com/mrice32/protocol/issues/2872)) ([b8225c5](https://github.com/mrice32/protocol/commit/b8225c580ea48f58ef44aa308f966fbed5a99cf3))
+
 # [1.2.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.1.0...@uma/affiliates@1.2.0) (2021-04-23)
 
 ### Bug Fixes

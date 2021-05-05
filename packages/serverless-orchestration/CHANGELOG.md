@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.2.0-alpha.0](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.1.0...@uma/serverless-orchestration@2.2.0-alpha.0) (2021-05-05)
+
+### Features
+
+- **liquidation-reporter:** Add excel spreadsheet generator that reports on collateral drawdown prices ([#2742](https://github.com/UMAprotocol/protocol/issues/2742)) ([0801022](https://github.com/UMAprotocol/protocol/commit/08010229505a643b048d472d2c409f4e03728487))
+- **serverless:** make spoke stream stdout and stderr so hanging processes can be debugged ([#2902](https://github.com/UMAprotocol/protocol/issues/2902)) ([399628e](https://github.com/UMAprotocol/protocol/commit/399628e984296079a8b13a3700a918bea694c639))
+- **version-management:** Update hard coded latest package versions in the bots to use 2.0 packages ([#2872](https://github.com/UMAprotocol/protocol/issues/2872)) ([b8225c5](https://github.com/UMAprotocol/protocol/commit/b8225c580ea48f58ef44aa308f966fbed5a99cf3))
+
 # [2.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.0.1...@uma/serverless-orchestration@2.1.0) (2021-03-16)
 
 ### Features
