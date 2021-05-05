@@ -50,6 +50,7 @@ export class RangeTrader {
     this.tokenPriceFeed = tokenPriceFeed;
     this.referencePriceFeed = referencePriceFeed;
     this.exchangeAdapter = exchangeAdapter;
+    assert(exchangeAdapter, "Exchange adapter must be initialized");
 
     this.normalizePriceFeedDecimals = ConvertDecimals(tokenPriceFeed.getPriceFeedDecimals(), 18, this.web3);
 
@@ -151,7 +152,7 @@ export class RangeTrader {
 
     // Get the post trade spot price to double check deviation error.
     await this.tokenPriceFeed.update();
-    const exchangeSpotPriceAfterTrade = this.tokenPriceFeed.getCurrentPrice();
+    const exchangeSpotPriceAfterTrade = this.tokenPriceFeed.getLastBlockPrice();
 
     const postTradePriceDeviationError = this._calculateDeviationError(
       exchangeSpotPriceAfterTrade,

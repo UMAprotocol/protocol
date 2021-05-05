@@ -2,7 +2,8 @@ import winston from "winston";
 import Web3 from "web3";
 
 const assert = require("assert");
-const { UniswapTrader } = require("./UniswapTrader");
+const { UniswapV2Trader } = require("./UniswapV2Trader");
+const { UniswapV3Trader } = require("./UniswapV3Trader");
 
 async function createExchangeAdapter(
   logger: winston.Logger,
@@ -13,7 +14,40 @@ async function createExchangeAdapter(
 ) {
   assert(config.type, "Exchange adapter must have a type. EG uniswap for a uniswap dex");
 
-  if (config.type === "uniswap") {
+  if (config.type === "uniswap-v2") {
+    const requiredFields = ["tokenAAddress", "tokenBAddress"];
+    if (isMissingField(config, requiredFields, logger)) return null;
+
+    // TODO: refactor these to be pulled from a constants file somewhere.
+    const uniswapAddresses: { [key: number]: { router: string; factory: string } } = {
+      1: {
+        router: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+        factory: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
+      },
+      42: {
+        router: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
+        factory: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
+      }
+    };
+
+    config = {
+      uniswapRouterAddress: uniswapAddresses[networkId]?.router,
+      uniswapFactoryAddress: uniswapAddresses[networkId]?.factory,
+      ...config
+    };
+
+    return new UniswapV2Trader(
+      logger,
+      web3,
+      config.uniswapRouterAddress,
+      config.uniswapFactoryAddress,
+      config.tokenAAddress,
+      config.tokenBAddress,
+      dsProxyManager
+    );
+  }
+
+  if (config.type === "uniswap-v3") {
     const requiredFields = ["tokenAAddress", "tokenBAddress"];
     if (isMissingField(config, requiredFields, logger)) return null;
 
@@ -34,7 +68,7 @@ async function createExchangeAdapter(
       ...config
     };
 
-    return new UniswapTrader(
+    return new UniswapV3Trader(
       logger,
       web3,
       config.uniswapRouterAddress,
@@ -44,6 +78,7 @@ async function createExchangeAdapter(
       dsProxyManager
     );
   }
+
   return null;
 }
 

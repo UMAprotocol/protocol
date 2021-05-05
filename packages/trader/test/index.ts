@@ -3,18 +3,16 @@ import { web3, assert } from "hardhat";
 
 const { toWei, utf8ToHex, padRight } = web3.utils;
 const {
-  MAX_UINT_VAL,
   interfaceName,
   addGlobalHardhatTestingAddress,
-  createConstructorParamsForContractVersion,
-  TESTED_CONTRACT_VERSIONS
+  createConstructorParamsForContractVersion
 } = require("@uma/common");
 
 const { getTruffleContract } = require("@uma/core");
 
 const winston = require("winston");
 const sinon = require("sinon");
-const { SpyTransport, spyLogLevel, spyLogIncludes, FinancialContractClient } = require("@uma/financial-templates-lib");
+const { SpyTransport } = require("@uma/financial-templates-lib");
 
 const contractVersion = "latest";
 
@@ -41,9 +39,6 @@ describe("index.js", function() {
 
   let originalEnv: any;
 
-  const pollingDelay = 0; // 0 polling delay creates a serverless bot that yields after one full execution.
-  const errorRetries = 1;
-  const errorRetriesTimeout = 0.1; // 100 milliseconds between preforming retries
   const identifier = "TEST_IDENTIFIER";
   const fundingRateIdentifier = "TEST_FUNDiNG_IDENTIFIER";
 

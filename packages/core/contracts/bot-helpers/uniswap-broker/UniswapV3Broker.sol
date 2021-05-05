@@ -14,13 +14,13 @@ import "@uniswap/v3-core/contracts/libraries/UnsafeMath.sol";
 import "@uniswap/v3-core/contracts/libraries/SafeCast.sol";
 
 /**
- * @title UniswapBrokerV3
+ * @title UniswapV3Broker
  * @notice Trading contract used to arb uniswapV3 pairs to a desired "true" price. Intended use is to arb UMA perpetual
  * synthetics that trade off peg. This implementation can ber used in conjunction with a DSProxy contract to atomically
  * swap and move a uniswap market.
  */
 
-contract UniswapBrokerV3 {
+contract UniswapV3Broker {
     using SafeCast for uint256;
     using LowGasSafeMath for uint256;
     using LowGasSafeMath for int256;
@@ -67,9 +67,6 @@ contract UniswapBrokerV3 {
         // trading token0 for token1. Else, we are trading token1 for token0.
         bool zeroForOne = sqrtPriceX96 >= sqrtRatioTargetX96;
 
-        // Fetch the current pool liquditiy. Build a state object to store this information which can be re-used during
-        // tick traversal later on.
-        uint128 startingLiquidity = pool.liquidity();
         SwapState memory state =
             SwapState({ sqrtPriceX96: sqrtPriceX96, tick: tick, liquidity: pool.liquidity(), requiredInputAmount: 0 });
 

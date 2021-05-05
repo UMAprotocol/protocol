@@ -2,50 +2,47 @@ import winston from "winston";
 import Web3 from "web3";
 import BigNumber from "bignumber.js";
 
+const bn = require("bignumber.js"); // Big number that comes with web3 does not support square root.
+bn.config({ EXPONENTIAL_AT: 999999, DECIMAL_PLACES: 40 });
+
 const { MAX_UINT_VAL } = require("@uma/common");
 const ExchangeAdapterInterface = require("./ExchangeAdapterInterface");
 const { getTruffleContract } = require("@uma/core");
 
-class UniswapTrader implements InstanceType<typeof ExchangeAdapterInterface> {
+class UniswapV3Trader implements InstanceType<typeof ExchangeAdapterInterface> {
   readonly tradeDeadline: number;
-  readonly UniswapBroker: any;
+  readonly UniswapV2Broker: any;
   uniswapPair: any;
 
   constructor(
     readonly logger: winston.Logger,
     readonly web3: Web3,
+    readonly uniswapPoolAddress: string,
     readonly uniswapRouterAddress: string,
-    readonly uniswapFactoryAddress: string,
-    readonly tokenAAddress: string,
-    readonly tokenBAddress: string,
     readonly dsProxyManager: any
   ) {
     this.logger = logger;
     this.web3 = web3;
+    this.uniswapPoolAddress = uniswapPoolAddress;
     this.uniswapRouterAddress = uniswapRouterAddress;
-    this.uniswapFactoryAddress = uniswapFactoryAddress;
-    this.tokenAAddress = tokenAAddress;
-    this.tokenBAddress = tokenBAddress;
+
     this.dsProxyManager = dsProxyManager;
 
-    // TODO: add this as a parameter when configuring the uniswap trader.
     this.tradeDeadline = 10 * 60 * 60;
 
-    this.UniswapBroker = getTruffleContract("UniswapBroker", this.web3);
+    this.UniswapV2Broker = getTruffleContract("UniswapV3Broker", this.web3);
   }
   async tradeMarketToDesiredPrice(desiredPrice: BigNumber) {
-    const callCode = this.UniswapBroker.bytecode;
+    const callCode = this.UniswapV2Broker.bytecode;
 
-    const contract = new this.web3.eth.Contract(this.UniswapBroker.abi);
+    const contract = new this.web3.eth.Contract(this.UniswapV2Broker.abi);
 
     const callData = contract.methods
       .swapToPrice(
         false, // tradingAsEOA. Set as false as this is executed as a DSProxy.
-        this.uniswapRouterAddress,
-        this.uniswapFactoryAddress,
-        [this.tokenAAddress, this.tokenBAddress], // swappedTokens: The two exchanged
-        [desiredPrice.toString(), this.web3.utils.toWei("1").toString()], // truePriceTokens: ratio between these is the "true" price
-        [MAX_UINT_VAL, MAX_UINT_VAL], // maxSpendTokens: We dont want to limit how many tokens can be pulled.
+        this.uniswapPoolAddress, // address of the pool to uniswap v3 trade against.
+        this.uniswapRouterAddress, // address of the uniswap v3 router to route the trade.
+        this.encodePriceSqrt(desiredPrice), // sqrtRatioTargetX96 target, encoded price.
         this.dsProxyManager.getDSProxyAddress(), // to: the output of the trade will send the tokens to the DSProxy.
         Number((await this.web3.eth.getBlock("latest")).timestamp) + this.tradeDeadline // Deadline in the future
       )
@@ -57,6 +54,14 @@ class UniswapTrader implements InstanceType<typeof ExchangeAdapterInterface> {
       return error;
     }
   }
+
+  encodePriceSqrt(reserve1: BigNumber) {
+    return new bn(reserve1.toString())
+      .div(this.web3.utils.toWei("1").toString())
+      .sqrt()
+      .multipliedBy(new bn(2).pow(96))
+      .integerValue(3);
+  }
 }
 
-module.exports = { UniswapTrader };
+module.exports = { UniswapV3Trader };
