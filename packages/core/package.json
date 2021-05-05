@@ -55,7 +55,7 @@
     "type": "git",
     "url": "git+https://github.com/UMAprotocol/protocol.git"
   },
-  "main": "index.js",
+  "main": "dist/index.js",
   "types": "types/index.d.ts",
   "files": [
     "/contracts/**/*.sol",
