@@ -67,8 +67,9 @@ jobs:
           command: |
             ./ci/truffle_workaround.sh
             pwd
-            echo $(circleci tests glob "packages/financial-templates-lib/test/**/*.js")
-            circleci tests glob "packages/financial-templates-lib/test/**/*.js" | circleci tests split > /tmp/test-files
+            cd packages/financial-templates-lib
+            echo $(circleci tests glob "test/**/*.js")
+            circleci tests glob "test/**/*.js" | circleci tests split > /tmp/test-files
             yarn hardhat test ./$(cat /tmp/test-files)
   # test:
   #   executor: continuation/default
