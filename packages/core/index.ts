@@ -62,7 +62,7 @@ const getArtifact = (contractName: string, version = "latest"): any => {
  * @param {String} contractName Name of the UMA contract whose abi will be returned.
  * @param {String} [version] version identifier x.y.z for the contract. Defaults to "latest".
  */
-let getAbi = (contractName: string, version = "latest"): any => {
+const getAbiProd = (contractName: string, version = "latest"): any => {
   const artifact = getArtifact(contractName, version);
   return artifact.abi;
 };
@@ -73,7 +73,7 @@ let getAbi = (contractName: string, version = "latest"): any => {
  * @param {Integer} networkId Network ID of the network where that contract is deployed.
  * @param {String} [version] version identifier x.y.z for the contract. Defaults to "latest".
  */
-let getAddress = (contractName: string, networkId: number, version = "latest"): string | null => {
+const getAddressProd = (contractName: string, networkId: number, version = "latest"): string | null => {
   const artifact = getArtifact(contractName, version);
 
   if (!artifact.networks[networkId]) {
@@ -91,7 +91,7 @@ let getAddress = (contractName: string, networkId: number, version = "latest"): 
  * @param {Object} [web3] Custom web3 instance whose provider should be injected into the truffle contract.
  * @param {String} [version] version identifier x.y.z for the contract. Defaults to "latest".
  */
-let getTruffleContract = (contractName: string, web3: Web3 | undefined, version = "latest"): TruffleContractI => {
+const getTruffleContractProd = (contractName: string, web3: Web3 | undefined, version = "latest"): TruffleContractI => {
   // If there is no web3, use getWeb3() to retrieve one.
   const resolvedWeb3 = web3 || getWeb3();
 
@@ -111,7 +111,7 @@ let getTruffleContract = (contractName: string, web3: Web3 | undefined, version 
 const getTruffleContractTest = (contractName: string, web3: Web3 | undefined, version = "latest"): TruffleContractI => {
   return version === "latest"
     ? ((artifacts as GenericArtifacts).require(contractName) as TruffleContractI)
-    : getTruffleContract(contractName, web3, version);
+    : getTruffleContractProd(contractName, web3, version);
 };
 
 /**
@@ -150,10 +150,8 @@ const getAbiTest = (contractName: string, version = "latest"): any => {
   return truffleContract.abi;
 };
 
-if (artifacts) {
-  getAbi = getAbiTest;
-  getAddress = getAddressTest;
-  getTruffleContract = getTruffleContractTest;
-}
+  const getAbi = artifacts ? getAbiTest : getAbiProd;
+  const getAddress = artifacts ? getAddressTest : getAddressProd;
+  const getTruffleContract = artifacts ? getTruffleContractTest : getTruffleContractProd;
 
 export { getAbi, getAddress, getTruffleContract, findContractVersion };
