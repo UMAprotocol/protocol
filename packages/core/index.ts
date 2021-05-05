@@ -150,8 +150,9 @@ const getAbiTest = (contractName: string, version = "latest"): any => {
   return truffleContract.abi;
 };
 
-  const getAbi = global.artifacts ? getAbiTest : getAbiProd;
-  const getAddress = global.artifacts ? getAddressTest : getAddressProd;
-  const getTruffleContract = global.artifacts ? getTruffleContractTest : getTruffleContractProd;
+  const globalArtifactsExists = Boolean((global as unknown as { artifacts: any }).artifacts);
+  const getAbi = globalArtifactsExists ? getAbiTest : getAbiProd;
+  const getAddress = globalArtifactsExists ? getAddressTest : getAddressProd;
+  const getTruffleContract = globalArtifactsExists ? getTruffleContractTest : getTruffleContractProd;
 
 export { getAbi, getAddress, getTruffleContract, findContractVersion };
