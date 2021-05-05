@@ -58,7 +58,7 @@ jobs:
         command: ganache-cli -i 1234 -l 9000000 -p 9545
     working_directory: ~/protocol
     resource_class: medium+
-    parallelism: 83
+    parallelism: 10
     steps:
       - restore_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
@@ -68,7 +68,7 @@ jobs:
             ./ci/truffle_workaround.sh
             echo $(circleci tests glob "packages/financial-templates-lib/test/**/*.js")
             circleci tests glob "packages/financial-templates-lib/test/**/*.js" | circleci tests split > /tmp/test-files
-            yarn hardhat test $(cat /tmp/test-files)
+            yarn hardhat test .$(cat /tmp/test-files)
   # test:
   #   executor: continuation/default
   #   steps:
