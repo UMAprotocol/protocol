@@ -16,10 +16,10 @@ contract KpiOptionsFinancialProductLibrary is FinancialProductLibrary, Lockable 
     mapping(address => FixedPoint.Unsigned) financialProductTransformedPrices;
 
     /**
-     * @notice Enables any address to set the transformed pricxe for an associated financial product.
+     * @notice Enables any address to set the transformed price for an associated financial product.
      * @param financialProduct address of the financial product.
      * @param transformedPrice the price for the financial product to be used if the contract is pre-expiration.
-     * @dev Note: a) Any address can set identifier transformations b) The price can't be set to blank.
+     * @dev Note: a) Any address can set price transformations b) The price can't be set to blank.
      * c) A transformed price can only be set once to prevent the deployer from changing it after the fact.
      * d)  financialProduct must expose an expirationTimestamp method.
      */
