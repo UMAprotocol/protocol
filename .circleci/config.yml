@@ -52,17 +52,34 @@ jobs:
           name: Lint
           command: ./ci/lint.sh
   test:
-    executor: continuation/default
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: medium+
+    parallelism: 8
     steps:
       - restore_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
-          name: Generate Tests
+          name: Run tests
           command: |
-            cd /home/circleci/protocol
-            ./ci/generate_lerna_config.sh
-      - continuation/continue:
-          configuration_path: /home/circleci/protocol/.circleci/lerna_config.yml
+          ./ci/truffle_workaround.sh
+          circleci tests glob "packages/financial-templates-lib/test/**/*.js" | circleci tests split > /tmp/test-files
+          yarn hardhat test $(cat /tmp/test-files)
+  # test:
+  #   executor: continuation/default
+  #   steps:
+  #     - restore_cache:
+  #         key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+  #     - run:
+  #         name: Generate Tests
+  #         command: |
+  #           cd /home/circleci/protocol
+  #           ./ci/generate_lerna_config.sh
+  #     - continuation/continue:
+  #         configuration_path: /home/circleci/protocol/.circleci/lerna_config.yml
   coverage:
     docker:
       - image: circleci/node:lts
