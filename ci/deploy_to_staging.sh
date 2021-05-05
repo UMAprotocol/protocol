@@ -35,9 +35,6 @@ gsutil cp gs://dapp-configs/prod-voter-app.yaml packages/voter-dapp/
 # Clean up dapp configs
 rm -rf packages/voter-dapp/staging-voter-app.yaml packages/voter-dapp/prod-voter-app.yaml
 
-# Deploy docs
-./scripts/deploy_docs.sh documentation/gae_app.yaml -q
-
 # Delete old versions.
 
 # This (rather complicated command) aims to select the oldest versions to delete:
