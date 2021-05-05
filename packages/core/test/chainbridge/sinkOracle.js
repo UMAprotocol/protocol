@@ -79,7 +79,14 @@ contract("SinkOracle", async accounts => {
         event.time.toString() === testRequestTime.toString() &&
         event.ancillaryData.toLowerCase() === testAncillary.toLowerCase()
     );
-
+    assert.isFalse(
+      await sinkOracle.hasPrice(testIdentifier, testRequestTime, testAncillary, { from: owner }),
+      "should not have price after request"
+    );
+    assert(
+      await didContractThrow(sinkOracle.getPrice(testIdentifier, testRequestTime, testAncillary, { from: owner })),
+      "should revert after request price"
+    );
     // Deposit event will be emitted after successful Bridge.deposit() internal call if the resource ID is set up
     // properly.
     const internalTxn = await TruffleAssert.createTransactionResult(bridge, txn.tx);
@@ -112,7 +119,23 @@ contract("SinkOracle", async accounts => {
     await sinkOracle.executePublishPrice(chainID, testIdentifier, testRequestTime, testAncillary, testPrice, {
       from: rando
     });
-    assert.isTrue(await sinkOracle.hasPrice(testIdentifier, testRequestTime, testAncillary, { from: owner }));
+    assert(
+      await didContractThrow(sinkOracle.hasPrice(testIdentifier, testRequestTime, testAncillary, { from: rando })),
+      "should revert if not called by registered contract"
+    );
+    assert(
+      await didContractThrow(sinkOracle.getPrice(testIdentifier, testRequestTime, testAncillary, { from: rando })),
+      "should revert if not called by registered contract"
+    );
+    assert.isTrue(
+      await sinkOracle.hasPrice(testIdentifier, testRequestTime, testAncillary, { from: owner }),
+      "should have price after publish"
+    );
+    assert.equal(
+      (await sinkOracle.getPrice(testIdentifier, testRequestTime, testAncillary, { from: owner })).toString(),
+      testPrice,
+      "should not revert after publish"
+    );
   });
   it("formatMetadata", async function() {
     const metadata = await sinkOracle.formatMetadata(chainID, testIdentifier, testRequestTime, testAncillary);

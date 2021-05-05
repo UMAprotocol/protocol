@@ -9,7 +9,6 @@ const { utf8ToHex, hexToUtf8, sha3, padRight } = web3.utils;
 
 contract("BeaconOracle", async accounts => {
   const owner = accounts[0];
-  const rando = accounts[1];
 
   let beaconOracle;
   let finder;
@@ -47,15 +46,6 @@ contract("BeaconOracle", async accounts => {
         event.time.toString() === testRequestTime.toString() &&
         event.ancillaryData.toLowerCase() === testAncillary.toLowerCase()
     );
-    assert.isFalse(
-      await beaconOracle.hasPrice(testIdentifier, testRequestTime, testAncillary, { from: owner }),
-      "should not have price after request"
-    );
-    assert(
-      await didContractThrow(beaconOracle.getPrice(testIdentifier, testRequestTime, testAncillary, { from: owner })),
-      "should revert after request price"
-    );
-
     // Requesting another price does not throw an error or emit a PriceRequested event:
     const txn2 = await beaconOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: owner });
     TruffleAssert.eventNotEmitted(txn2, "PriceRequestAdded");
@@ -75,23 +65,6 @@ contract("BeaconOracle", async accounts => {
         event.time.toString() === testRequestTime.toString() &&
         event.ancillaryData.toLowerCase() === testAncillary.toLowerCase() &&
         event.price.toString() === testPrice
-    );
-    assert(
-      await didContractThrow(beaconOracle.hasPrice(testIdentifier, testRequestTime, testAncillary, { from: rando })),
-      "should revert if not called by registered contract"
-    );
-    assert(
-      await didContractThrow(beaconOracle.getPrice(testIdentifier, testRequestTime, testAncillary, { from: rando })),
-      "should revert if not called by registered contract"
-    );
-    assert.isTrue(
-      await beaconOracle.hasPrice(testIdentifier, testRequestTime, testAncillary, { from: owner }),
-      "should have price after publish"
-    );
-    assert.equal(
-      (await beaconOracle.getPrice(testIdentifier, testRequestTime, testAncillary, { from: owner })).toString(),
-      testPrice,
-      "should not revert after publish"
     );
     assert(
       await didContractThrow(beaconOracle.publishPrice(testIdentifier, testRequestTime, testAncillary, testPrice)),

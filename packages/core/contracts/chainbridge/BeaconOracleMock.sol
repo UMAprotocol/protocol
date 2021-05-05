@@ -13,7 +13,7 @@ contract BeaconOracleMock is BeaconOracle {
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public override {
+    ) public {
         _requestPrice(currentChainID, identifier, time, ancillaryData);
     }
 
