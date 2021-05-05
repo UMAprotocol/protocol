@@ -38,7 +38,7 @@ const path = require("path");
 // Locally stored list of DesignatedVoting wallets to substitute with their hot wallets:
 let addressesToReplace = [];
 try {
-  addressesToReplace = require("./2KEY_ADDRESS_OVERRIDE.json");
+  addressesToReplace = require("./2KEY_ADDRESS_OVERRIDE.json").map(a => a.toLowerCase());
 } catch (err) {
   // Do nothing, file doesn't exist.
 }
