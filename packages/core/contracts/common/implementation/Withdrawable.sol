@@ -23,7 +23,7 @@ abstract contract Withdrawable is MultiRole {
      * @notice Withdraws ETH from the contract.
      */
     function withdraw(uint256 amount) external onlyRoleHolder(roleId) {
-        Address.sendValue(payable(address(msg.sender)), amount);
+        Address.sendValue(payable(msg.sender), amount);
     }
 
     /**
