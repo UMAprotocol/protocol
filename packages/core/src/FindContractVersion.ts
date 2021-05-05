@@ -13,7 +13,7 @@ interface VersionMap {
 let latestVersionMap = {} as VersionMap;
 try {
   latestVersionMap = JSON.parse(
-    fs.readFileSync(`${path.resolve(__dirname)}/../build/contract-type-hash-map.json`).toString("utf8")
+    fs.readFileSync(`${path.resolve(__dirname)}/../../build/contract-type-hash-map.json`).toString("utf8")
   );
 } catch (error) {
   console.error("WARNING: latest version map was not found in the build directory! Run `yarn build` from core first!");
