@@ -1,21 +1,20 @@
 import assert from "assert";
 import { exists, getPositionKey } from "./utils";
-import { ethers } from "ethers";
 
-type Id = string | number;
-type HasId = {
+type Id = string;
+type MaybeId = {
   id?: Id;
 };
 interface MakeId<T> {
-  (obj: T): string;
+  (obj: T): Id;
 }
 
 // Generic table with common functions, store is a map now, but we could replace this with any kind of
 // data store with some minor modifications, as long as it has, set, get, delete, has and values
-export function Table<T extends HasId>(config: { makeId: MakeId<T>; type: string }, store: Map<Id, T>) {
+export function Table<T extends MaybeId>(config: { makeId: MakeId<T>; type: string }, store: Map<Id, T>) {
   const { makeId, type } = config;
   async function create(data: T) {
-    const id = makeId(data);
+    const id = exists(data.id) ? data.id : makeId(data);
     assert(!(await has(id)), `${type} exists`);
     return set({ id, ...data });
   }
@@ -26,7 +25,7 @@ export function Table<T extends HasId>(config: { makeId: MakeId<T>; type: string
   }
   async function get(id: string) {
     assert(await store.has(id), `${type} does not exist`);
-    return store.get(id) as T;
+    return (await store.get(id)) as T;
   }
   async function has(id: string) {
     return store.has(id);
@@ -38,7 +37,7 @@ export function Table<T extends HasId>(config: { makeId: MakeId<T>; type: string
     const all = await list();
     all.forEach(cb);
   }
-  async function update(id: string, data: any = {}) {
+  async function update(id: string, data: Partial<T>) {
     const got = await get(id);
     return set({ ...got, ...data });
   }
@@ -78,7 +77,7 @@ export const NftPositions = () => {
   const store = new Map<Id, NftPosition>();
   return Table<NftPosition>({ makeId, type: "NftPositions" }, store);
 };
-type NftPositions = ReturnType<typeof NftPositions>;
+export type NftPositions = ReturnType<typeof NftPositions>;
 
 export type Position = {
   id?: string;
@@ -103,7 +102,7 @@ export const Positions = () => {
   const store = new Map<Id, Position>();
   return Table<Position>({ makeId, type: "Positions" }, store);
 };
-type Positions = ReturnType<typeof Positions>;
+export type Positions = ReturnType<typeof Positions>;
 
 export type Pool = {
   id?: string;
@@ -118,7 +117,7 @@ export type Pool = {
   feeGrowthGlobal1X128?: string;
   protocolFeesToken0?: string;
   protocolFeesToken1?: string;
-  address?: string;
+  address: string;
 };
 // pool id is tokenA, tokenB, fee
 export const Pools = () => {

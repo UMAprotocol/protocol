@@ -71,9 +71,8 @@ function getAddress(network: NetworkName, contractName: string) {
   return addresses[contractName];
 }
 
-async function getPoolState(params: { pool: Pool; provider: any }) {
+async function getPoolState(params: { pool: Pool; provider: ethers.providers.Provider }) {
   const { pool, provider } = params;
-  assert(pool.address, "requires pool address");
   const contract = new ethers.Contract(pool.address, UniswapV3Pool.abi, provider);
   const slot0 = await contract.slot0();
   const liquidity = await contract.liquidity();
@@ -82,7 +81,7 @@ async function getPoolState(params: { pool: Pool; provider: any }) {
     liquidity: liquidity.toString()
   };
 }
-async function processNftEvents(params: { provider: any; positions: ReturnType<typeof NftPositions> }) {
+async function processNftEvents(params: { provider: ethers.providers.Provider; positions: NftPositions }) {
   const { provider, positions } = params;
   const nftHandler = NftEvents({ positions });
   const contract = new ethers.Contract(
@@ -93,32 +92,31 @@ async function processNftEvents(params: { provider: any; positions: ReturnType<t
   const events = await contract.queryFilter({});
   await Promise.map(events, nftHandler);
 }
-async function getNftPositionState(params: { provider: any; position: NftPosition }) {
+async function getNftPositionState(params: { provider: ethers.providers.Provider; position: NftPosition }) {
   const { provider, position } = params;
   const contract = new ethers.Contract(
     getAddress(network, "nonfungibleTokenPositionManagerAddress"),
     NFTPositionManager.abi,
     provider
   );
-  return convertValuesToString(await contract.positions(position.tokenId));
+  return convertValuesToString<NftPosition>(await contract.positions(position.tokenId));
 }
 async function processPoolEvents(params: {
-  provider: any;
+  provider: ethers.providers.Provider;
   pool: Pool;
-  positions: ReturnType<typeof Positions>;
-  pools: ReturnType<typeof Pools>;
+  positions: Positions;
+  pools: Pools;
 }) {
   const { pools, pool, provider, positions } = params;
   assert(pool.id, "requires pool id");
-  assert(pool.address, "requires pool address");
   const poolHandler = PoolEvents({ positions, id: pool.id, pools });
   const contract = new ethers.Contract(pool.address, UniswapV3Pool.abi, provider);
+  // passing empty object into queryFilter allows you to retrieve all events regardless of type
   const events = await contract.queryFilter({});
   await Promise.map(events, poolHandler);
 }
-async function getPositionState(params: { position: Position; provider: any; pool: Pool }) {
+async function getPositionState(params: { position: Position; provider: ethers.providers.Provider; pool: Pool }) {
   const { position, provider, pool } = params;
-  assert(pool.address, "requires pool address");
   const contract = new ethers.Contract(pool.address, UniswapV3Pool.abi, provider);
   return {
     pool: pool.address,
@@ -136,9 +134,8 @@ const IsPositionActive = (tick: BigNumberish) => (position: Position) => {
   return true;
 };
 
-async function getTickInfo(params: { pool: Pool; provider: any }) {
+async function getTickInfo(params: { pool: Pool; provider: ethers.providers.Provider }) {
   const { pool, provider } = params;
-  assert(pool.address, "requires pool address");
   const contract = new ethers.Contract(pool.address, UniswapV3Pool.abi, provider);
   return contract.ticks(pool.tick);
 }
@@ -207,4 +204,4 @@ async function run() {
 
 run()
   .then(console.log)
-  .catch(console.log);
+  .catch(console.error);
