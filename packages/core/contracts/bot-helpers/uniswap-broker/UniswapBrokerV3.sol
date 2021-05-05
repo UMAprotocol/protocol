@@ -67,7 +67,7 @@ contract UniswapBrokerV3 {
         // trading token0 for token1. Else, we are trading token1 for token0.
         bool zeroForOne = sqrtPriceX96 >= sqrtRatioTargetX96;
 
-        // Fetch the current pool liquditiy. Build a state object to store this information which can be re-used during
+        // Fetch the current pool liquidity. Build a state object to store this information which can be re-used during
         // tick traversal later on.
         uint128 startingLiquidity = pool.liquidity();
         SwapState memory state =
@@ -75,7 +75,7 @@ contract UniswapBrokerV3 {
 
         // Iterate in a while loop that breaks when we hit the target price.
         while (true) {
-            // Compute the next initialized tick. We only need to traverse initalized ticks as uninitalized ticks
+            // Compute the next initialized tick. We only need to traverse initialized ticks as uninitialized ticks
             // have the same liquidity as the previous tick.
             StepComputations memory step;
             step.sqrtPriceStartX96 = state.sqrtPriceX96;
@@ -86,7 +86,7 @@ contract UniswapBrokerV3 {
                 zeroForOne
             );
 
-            //Double check we are not over or underflowing the ticks.
+            // Double check we are not over or underflow the ticks.
             if (step.tickNext < TickMath.MIN_TICK) step.tickNext = TickMath.MIN_TICK;
             else if (step.tickNext > TickMath.MAX_TICK) step.tickNext = TickMath.MAX_TICK;
 
@@ -108,7 +108,7 @@ contract UniswapBrokerV3 {
                     false
                 );
                 // Else, if zeroForOne is false, then we are moving the price UP. In this case we need to ensure that we
-                // dont overshoot the price on the next step.
+                // don't overshoot the price on the next step.
             } else if (!zeroForOne) {
                 step.sqrtPriceNextX96 = nextTickPriceX96 > sqrtRatioTargetX96 ? nextTickPriceX96 : sqrtRatioTargetX96;
                 inputAmountForStep = SqrtPriceMath.getAmount1Delta( // As we are trading token1 for token0, calculate the token1 input.
