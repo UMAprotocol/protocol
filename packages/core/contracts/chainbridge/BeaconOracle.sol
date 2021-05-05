@@ -5,8 +5,6 @@ pragma experimental ABIEncoderV2;
 import "../oracle/interfaces/FinderInterface.sol";
 import "./IBridge.sol";
 import "../oracle/implementation/Constants.sol";
-import "../oracle/interfaces/OracleAncillaryInterface.sol";
-import "../oracle/interfaces/RegistryInterface.sol";
 
 /**
  * @title Simple implementation of the OracleInterface used to communicate price request data cross-chain between
@@ -16,7 +14,7 @@ import "../oracle/interfaces/RegistryInterface.sol";
  * from the Source Oracle and makes it available on non-Mainnet chains. The "Sink" Oracle can also be used to trigger
  * price requests from the DVM on Mainnet.
  */
-abstract contract BeaconOracle is OracleAncillaryInterface {
+abstract contract BeaconOracle {
     enum RequestState { NeverRequested, Requested, Resolved }
 
     struct Price {
@@ -65,43 +63,6 @@ abstract contract BeaconOracle is OracleAncillaryInterface {
             "Caller must be GenericHandler"
         );
         _;
-    }
-
-    // This assumes that the local network has a Registry that resembles the Mainnet registry.
-    modifier onlyRegisteredContract() {
-        RegistryInterface registry = RegistryInterface(finder.getImplementationAddress(OracleInterfaces.Registry));
-        require(registry.isContractRegistered(msg.sender), "Caller must be registered");
-        _;
-    }
-
-    /**
-     * @notice Returns whether a price has resolved for the request.
-     * @return True if a price is available, False otherwise. If true, then getPrice will succeed for the request.
-     */
-
-    function hasPrice(
-        bytes32 identifier,
-        uint256 time,
-        bytes memory ancillaryData
-    ) public view override onlyRegisteredContract() returns (bool) {
-        bytes32 priceRequestId = _encodePriceRequest(currentChainID, identifier, time, ancillaryData);
-        return prices[priceRequestId].state == RequestState.Resolved;
-    }
-
-    /**
-     * @notice Returns resolved price for the request.
-     * @return int256 Price, or reverts if no resolved price for any reason.
-     */
-
-    function getPrice(
-        bytes32 identifier,
-        uint256 time,
-        bytes memory ancillaryData
-    ) public view override onlyRegisteredContract() returns (int256) {
-        bytes32 priceRequestId = _encodePriceRequest(currentChainID, identifier, time, ancillaryData);
-        Price storage lookup = prices[priceRequestId];
-        require(lookup.state == RequestState.Resolved, "Price has not been resolved");
-        return lookup.price;
     }
 
     /**
