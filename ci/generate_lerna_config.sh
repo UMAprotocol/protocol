@@ -65,7 +65,7 @@ EOF
         - run:
             name: Test dependencies
             command: |
-              echo: "All tests running successfully"
+              echo "All tests running successfully"
               circleci-agent step halt;
 EOF
 
