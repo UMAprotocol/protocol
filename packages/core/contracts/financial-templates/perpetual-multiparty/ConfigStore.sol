@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
+pragma abicoder v2;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./ConfigStoreInterface.sol";
@@ -69,7 +69,7 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
      * @param _initialConfig Configuration settings to initialize `currentConfig` with.
      * @param _timerAddress Address of testable Timer contract.
      */
-    constructor(ConfigSettings memory _initialConfig, address _timerAddress) public Testable(_timerAddress) {
+    constructor(ConfigSettings memory _initialConfig, address _timerAddress) Testable(_timerAddress) {
         _validateConfig(_initialConfig);
         currentConfig = _initialConfig;
     }
@@ -90,7 +90,7 @@ contract ConfigStore is ConfigStoreInterface, Testable, Lockable, Ownable {
 
     /**
      * @notice Propose new configuration settings. New settings go into effect after a liveness period passes.
-     * @param newConfig Configuration settings to publish after `currentConfig.timelockLiveness` passes from now.
+     * @param newConfig Configuration settings to publish after `currentConfig.timelockLiveness` passes from block.timestamp.
      * @dev Callable only by owner. Calling this while there is already a pending proposal will overwrite the pending proposal.
      */
     function proposeNewConfig(ConfigSettings memory newConfig) external onlyOwner() nonReentrant() updateConfig() {

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
-pragma experimental ABIEncoderV2;
+pragma abicoder v2;
 
 import "../common/FundingRateApplier.sol";
 import "../../common/implementation/FixedPoint.sol";
@@ -16,7 +16,6 @@ contract FundingRateApplierTest is FundingRateApplier {
         FixedPoint.Unsigned memory _tokenScaling,
         address _timerAddress
     )
-        public
         FundingRateApplier(
             _fundingRateIdentifier,
             _collateralAddress,

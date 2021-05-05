@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -24,7 +24,7 @@ contract OptimisticRequesterTest is OptimisticRequester {
     // Manually set an expiration timestamp to simulate expiry price requests
     uint256 public expirationTimestamp;
 
-    constructor(OptimisticOracle _optimisticOracle) public {
+    constructor(OptimisticOracle _optimisticOracle) {
         optimisticOracle = _optimisticOracle;
     }
 
