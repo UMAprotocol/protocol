@@ -20,6 +20,7 @@
     "@awaitjs/express": "^0.3.0",
     "@ethersproject/units": "^5.0.3",
     "@google-cloud/bigquery": "^5.3.0",
+    "@nomiclabs/hardhat-ethers": "npm:hardhat-deploy-ethers@^0.3.0-beta.7",
     "@openzeppelin/contracts": "4.1.0",
     "@uma/financial-templates-lib": "^2.2.0",
     "@uma/merkle-distributor": "^1.1.0",
@@ -28,7 +29,10 @@
     "chai": "^4.2.0",
     "coveralls": "^3.1.0",
     "ethereumjs-wallet": "^1.0.0",
+    "ethers": "^5.1.4",
     "express": "^4.17.1",
+    "hardhat": "^2.2.1",
+    "hardhat-deploy": "^0.7.5",
     "lodash": "^4.17.20",
     "minimist": "^1.2.0",
     "mocha": "^8.1.2",
@@ -68,7 +72,9 @@
     "clean": "rm -rf build",
     "buildLatestHardhatVersionHashes": "yarn hardhat run ./src/BuildContractVersionHashes.js",
     "build": "yarn truffle compile && yarn load-addresses && tsc && yarn buildLatestHardhatVersionHashes",
-    "prepublish": "yarn build"
+    "prepublish": "yarn build",
+    "ts-compile": "tsc -b",
+    "void:deploy": "hardhat deploy"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"

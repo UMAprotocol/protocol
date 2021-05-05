@@ -1,6 +1,6 @@
 {
   "extends": "@tsconfig/node14/tsconfig.json",
-  "include": ["index.js"],
+  "include": ["index.js", "./deploy", "./test"],
   "compilerOptions": {
     "outDir": "dist",
     "declaration": true,

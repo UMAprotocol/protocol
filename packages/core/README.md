@@ -69,3 +69,15 @@ const governor = await governor.deployed();
 
 Note: this use case is not particularly common, but it is sometimes useful to have access to multiple abi versions
 side-by-side.
+
+## Deployment with Hardhat
+
+Here is a list of scripts you can execute:
+
+`yarn ts-compile`
+
+Compiles typescript files to javascript. We can't just run the typescript deployment scripts directly because this package has a mix of javascript and typescript files and the `hardhat.config` script has a `.js` extension. We'll be running the compiled `.js` scripts out of `dist`.
+
+`yarn void:deploy`
+
+This will deploy your contracts on the in-memory hardhat network and exit, leaving no trace. Quickest way to ensure that deployments work as intended without consequences.
