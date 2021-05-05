@@ -12,4 +12,6 @@ library OracleInterfaces {
     bytes32 public constant Registry = "Registry";
     bytes32 public constant CollateralWhitelist = "CollateralWhitelist";
     bytes32 public constant OptimisticOracle = "OptimisticOracle";
+    bytes32 public constant Bridge = "Bridge";
+    bytes32 public constant GenericHandler = "GenericHandler";
 }
