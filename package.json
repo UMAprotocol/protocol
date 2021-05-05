@@ -15,8 +15,8 @@
     "load-addresses": "yarn workspace @uma/core load-addresses",
     "create-release": "lerna version --no-git-tag-version --conventional-commits --no-push",
     "publish-release": "./scripts/run_release.sh",
-    "qbuild": "yarn workspace @uma/core build && yarn lerna run build --stream --ignore '*/*dapp*'",
-    "build": "yarn workspace @uma/core build && yarn lerna run build --stream",
+    "qbuild": "yarn workspace @uma/common build && yarn workspace @uma/core build && yarn lerna run build --stream --ignore '*/*dapp*' --ignore '@uma/common' --ignore '@uma/core'",
+    "build": "yarn workspace @uma/common build && yarn workspace @uma/core build && yarn lerna run build --stream --ignore '@uma/common' --ignore '@uma/core'",
     "clean": "yarn lerna run clean --stream",
     "clean-packages": "yarn lerna clean --yes && rm -rf node_modules"
   },
