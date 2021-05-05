@@ -19,8 +19,8 @@ const Store = artifacts.require("Store");
 const Finder = artifacts.require("Finder");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Timer = artifacts.require("Timer");
-const DSProxyFactory = getTruffleContract("DSProxyFactory", web3, "latest");
-const DSProxy = getTruffleContract("DSProxy", web3, "latest");
+const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);
+const DSProxy = getTruffleContract("DSProxy", web3);
 
 // Tested contract
 let reserveCurrencyLiquidator;

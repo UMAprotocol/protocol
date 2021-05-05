@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
+pragma abicoder v2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/FixedPoint.sol";
@@ -80,7 +80,7 @@ abstract contract FeePayer is AdministrateeInterface, Testable, Lockable {
         address _collateralAddress,
         address _finderAddress,
         address _timerAddress
-    ) public Testable(_timerAddress) {
+    ) Testable(_timerAddress) {
         collateralCurrency = IERC20(_collateralAddress);
         finder = FinderInterface(_finderAddress);
         lastPaymentTime = getCurrentTime();

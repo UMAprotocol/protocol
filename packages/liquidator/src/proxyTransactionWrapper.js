@@ -103,7 +103,7 @@ class ProxyTransactionWrapper {
     }
 
     this.reserveToken = new this.web3.eth.Contract(getAbi("ExpandedERC20"), this.liquidatorReserveCurrencyAddress);
-    this.ReserveCurrencyLiquidator = getTruffleContract("ReserveCurrencyLiquidator", this.web3, "latest");
+    this.ReserveCurrencyLiquidator = getTruffleContract("ReserveCurrencyLiquidator", this.web3);
   }
 
   // TODO: wrap this into a common util.

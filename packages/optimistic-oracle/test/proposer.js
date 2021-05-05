@@ -20,17 +20,15 @@ const {
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
-const CONTRACT_VERSION = "latest";
-
-const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, CONTRACT_VERSION);
-const OptimisticRequesterTest = getTruffleContract("OptimisticRequesterTest", web3, CONTRACT_VERSION);
-const Finder = getTruffleContract("Finder", web3, CONTRACT_VERSION);
-const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, CONTRACT_VERSION);
-const Token = getTruffleContract("ExpandedERC20", web3, CONTRACT_VERSION);
-const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, CONTRACT_VERSION);
-const Timer = getTruffleContract("Timer", web3, CONTRACT_VERSION);
-const Store = getTruffleContract("Store", web3, CONTRACT_VERSION);
-const MockOracle = getTruffleContract("MockOracleAncillary", web3, CONTRACT_VERSION);
+const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
+const OptimisticRequesterTest = getTruffleContract("OptimisticRequesterTest", web3);
+const Finder = getTruffleContract("Finder", web3);
+const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3);
+const Token = getTruffleContract("ExpandedERC20", web3);
+const AddressWhitelist = getTruffleContract("AddressWhitelist", web3);
+const Timer = getTruffleContract("Timer", web3);
+const Store = getTruffleContract("Store", web3);
+const MockOracle = getTruffleContract("MockOracleAncillary", web3);
 
 contract("OptimisticOracle: proposer.js", function(accounts) {
   const owner = accounts[0];
@@ -603,7 +601,7 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       }
     ]);
 
-    // Running the bot's sendProposal method should skip the price request which it sees as an expiry request:
+    // Running the bot's sendProposals method should skip the price request which it sees as an expiry request:
     await proposer.sendProposals();
     assert.equal(lastSpyLogLevel(spy), "debug");
     assert.isTrue(
@@ -614,10 +612,29 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
     // Show that if the contract's expiration timestamp were 1 second later, then the bot would not interpret the price
     // request as an expiry one and would propose
     await optimisticRequester.setExpirationTimestamp(Number(requestTime) + 1);
+    await proposer.update();
     await proposer.sendProposals();
+
     await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED, identifierToIgnore, ancillaryDataAddress);
     assert.equal(lastSpyLogLevel(spy), "info");
     assert.isTrue(spyLogIncludes(spy, -1, "Proposed price"));
     assert.ok(spy.getCall(-1).lastArg.proposalResult.tx);
+
+    // Resetting the expiration timestamp should make sendDispute to skip the price request:
+    await optimisticRequester.setExpirationTimestamp(requestTime);
+    await proposer.update();
+    await proposer.sendDisputes();
+    assert.equal(lastSpyLogLevel(spy), "debug");
+    assert.isTrue(
+      spyLogIncludes(spy, -1, "EMP contract has expired and identifier's price resolution logic transforms post-expiry")
+    );
+    assert.equal(spy.getCall(-1).lastArg.expirationTimestamp, requestTime);
+
+    // Finally, if the contract's expiration timestamp is set 1 second later, then the bot would not interpret the price
+    // request as an expiry one and could dispute (but won't dispute because the dispute price equals the proposed one).
+    await optimisticRequester.setExpirationTimestamp(Number(requestTime) + 1);
+    await proposer.update();
+    await proposer.sendDisputes();
+    assert.isTrue(spyLogIncludes(spy, -1, "Skipping dispute because proposal price is within allowed margin of error"));
   });
 });

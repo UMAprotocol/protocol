@@ -23,7 +23,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
 abstract contract DSAuthority {
     function canCall(
@@ -42,7 +42,7 @@ contract DSAuth is DSAuthEvents {
     DSAuthority public authority;
     address public owner;
 
-    constructor() public {
+    constructor() {
         owner = msg.sender;
         emit LogSetOwner(msg.sender);
     }
@@ -67,7 +67,7 @@ contract DSAuth is DSAuthEvents {
             return true;
         } else if (src == owner) {
             return true;
-        } else if (authority == DSAuthority(0)) {
+        } else if (authority == DSAuthority(address(0))) {
             return false;
         } else {
             return authority.canCall(src, address(this), sig);

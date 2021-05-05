@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
 import "../oracle/implementation/Finder.sol";
 import "../oracle/implementation/Constants.sol";
@@ -45,7 +45,7 @@ contract VotingUpgrader {
         address _newVoting,
         address _finder,
         address _setMigratedAddress
-    ) public {
+    ) {
         governor = _governor;
         existingVoting = Voting(_existingVoting);
         newVoting = _newVoting;

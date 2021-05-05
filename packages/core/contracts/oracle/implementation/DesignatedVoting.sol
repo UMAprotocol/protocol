@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
+pragma abicoder v2;
 
 import "../../common/implementation/MultiRole.sol";
 import "../../common/implementation/Withdrawable.sol";
@@ -37,7 +37,7 @@ contract DesignatedVoting is Withdrawable {
         address finderAddress,
         address ownerAddress,
         address voterAddress
-    ) public {
+    ) {
         _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), ownerAddress);
         _createExclusiveRole(uint256(Roles.Voter), uint256(Roles.Owner), voterAddress);
         _setWithdrawRole(uint256(Roles.Owner));
