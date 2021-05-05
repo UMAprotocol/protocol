@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -16,7 +16,7 @@ contract BasicERC20 is IERC20 {
 
     uint256 private _totalSupply;
 
-    constructor(uint256 _initialAmount) public {
+    constructor(uint256 _initialAmount) {
         balances[msg.sender] = _initialAmount;
         _totalSupply = _initialAmount;
     }

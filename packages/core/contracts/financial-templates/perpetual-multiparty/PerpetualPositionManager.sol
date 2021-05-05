@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
+pragma abicoder v2;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
@@ -122,7 +122,7 @@ contract PerpetualPositionManager is FundingRateApplier {
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _priceIdentifier registered in the DVM for the synthetic.
      * @param _fundingRateIdentifier Unique identifier for DVM price feed ticker for child financial contract.
-     * @param _minSponsorTokens minimum amount of collateral that must exist at any time in a position.
+     * @param _minSponsorTokens minimum number of tokens that must exist at any time in a position.
      * @param _tokenScaling initial scaling to apply to the token value (i.e. scales the tracking index).
      * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 for production.
      */
@@ -138,7 +138,6 @@ contract PerpetualPositionManager is FundingRateApplier {
         FixedPoint.Unsigned memory _tokenScaling,
         address _timerAddress
     )
-        public
         FundingRateApplier(
             _fundingRateIdentifier,
             _collateralAddress,

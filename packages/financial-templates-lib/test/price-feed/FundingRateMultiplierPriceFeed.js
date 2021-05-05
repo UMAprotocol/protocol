@@ -5,11 +5,9 @@ const { advanceBlockAndSetTime, parseFixed } = require("@uma/common");
 const { BlockFinder } = require("../../src/price-feed/utils");
 const { getTruffleContract } = require("@uma/core");
 
-const CONTRACT_VERSION = "latest";
-
-const PerpetualMock = getTruffleContract("PerpetualMock", web3, CONTRACT_VERSION);
-const Perpetual = getTruffleContract("Perpetual", web3, CONTRACT_VERSION);
-const MulticallMock = getTruffleContract("MulticallMock", web3, CONTRACT_VERSION);
+const PerpetualMock = getTruffleContract("PerpetualMock", web3);
+const Perpetual = getTruffleContract("Perpetual", web3);
+const MulticallMock = getTruffleContract("MulticallMock", web3);
 
 contract("FundingRateMultiplierPriceFeed.js", function() {
   let perpetualMock;

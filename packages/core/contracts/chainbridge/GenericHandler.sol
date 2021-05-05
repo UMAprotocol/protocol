@@ -1,5 +1,6 @@
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity ^0.8.0;
+pragma abicoder v2;
 
 import "./IGenericHandler.sol";
 
@@ -69,7 +70,7 @@ contract GenericHandler is IGenericHandler {
         address[] memory initialContractAddresses,
         bytes4[] memory initialDepositFunctionSignatures,
         bytes4[] memory initialExecuteFunctionSignatures
-    ) public {
+    ) {
         require(
             initialResourceIDs.length == initialContractAddresses.length,
             "initialResourceIDs and initialContractAddresses len mismatch"

@@ -109,8 +109,8 @@ contract("ContractMonitor.js", function(accounts) {
     const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
     const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
-    const ConfigStore = getTruffleContract("ConfigStore", web3, "latest");
-    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, "latest");
+    const ConfigStore = getTruffleContract("ConfigStore", web3);
+    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
 
     for (let testConfig of configs) {
       describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
@@ -559,7 +559,7 @@ contract("ContractMonitor.js", function(accounts) {
             assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${txObject2.tx}`));
           }
         );
-        versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])(
+        versionedIt([{ contractType: "Perpetual", contractVersion: "2.0.1" }])(
           "Winston correctly emits funding rate updated message",
           async function() {
             // Propose new funding rate.

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
 import "../oracle/implementation/Finder.sol";
 import "../oracle/implementation/Constants.sol";
@@ -38,7 +38,7 @@ contract Umip3Upgrader {
         address _financialContractsAdmin,
         address _registry,
         address _newGovernor
-    ) public {
+    ) {
         existingGovernor = _existingGovernor;
         existingVoting = Voting(_existingVoting);
         finder = Finder(_finder);

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
 // The Reentrancy Checker causes failures if it is successfully able to re-enter a contract.
 // How to use:

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
+pragma abicoder v2;
 
 import "../oracle/interfaces/FinderInterface.sol";
 import "./IBridge.sol";
@@ -51,7 +51,7 @@ abstract contract BeaconOracle {
      * @notice Constructor.
      * @param _finderAddress finder to use to get addresses of DVM contracts.
      */
-    constructor(address _finderAddress, uint8 _chainID) public {
+    constructor(address _finderAddress, uint8 _chainID) {
         finder = FinderInterface(_finderAddress);
         currentChainID = _chainID;
     }

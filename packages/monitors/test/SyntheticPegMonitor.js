@@ -19,7 +19,7 @@ const {
   FinancialContractClient
 } = require("@uma/financial-templates-lib");
 
-const PerpetualMock = getTruffleContract("PerpetualMock", web3, "latest");
+const PerpetualMock = getTruffleContract("PerpetualMock", web3);
 
 // Run the tests against 2 diffrent price feed scaling combinations. Note these tests differ from the other monitor tests
 // as the Synthetic peg monitor is only dependent on price feeds. No need to test different decimal or collateral combinations.

@@ -146,7 +146,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
       // By taking larger powers of 2, this doubles the lookback each time.
       fromBlock = Math.max(0, latestBlockNumber - lookbackBlocks * 2 ** i);
 
-      const newEvents = await this._getSortedSyncEvents(fromBlock, toBlock).then(newEvents => {
+      const newEvents = await this._getSortedEvents(fromBlock, toBlock).then(newEvents => {
         // Grabs the timestamps for all blocks, but avoids re-querying by .then-ing any cached blocks.
         return Promise.all(
           newEvents.map(event => {
@@ -160,7 +160,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
             // Add a .then to the promise that sets the timestamp (and price) for this event after the promise resolves.
             return this.blocks[event.blockNumber].then(block => {
               event.timestamp = block.timestamp;
-              event.price = this._getPriceFromSyncEvent(event);
+              event.price = this._getPriceFromEvent(event);
               return event;
             });
           })
@@ -191,7 +191,24 @@ class UniswapPriceFeed extends PriceFeedInterface {
     this.lastUpdateTime = currentTime;
   }
 
-  async _getSortedSyncEvents(fromBlock, toBlock) {
+  _computeTwap(eventsIn, startTime, endTime) {
+    const events = eventsIn.map(e => {
+      return [e.timestamp, e.price];
+    });
+    return computeTWAP(events, startTime, endTime, this.toBN("0"));
+  }
+
+  async _getSortedEvents(/* fromBlock, toBlock */) {
+    throw new Error("_getSortedEvents must be implemented by a derived class!");
+  }
+
+  _getPriceFromEvent(/* event */) {
+    throw new Error("_getPriceFromEvent must be implemented by a derived class!");
+  }
+}
+
+class UniswapV2PriceFeed extends UniswapPriceFeed {
+  async _getSortedEvents(fromBlock, toBlock) {
     const events = await this.uniswap.getPastEvents("Sync", { fromBlock: fromBlock, toBlock: toBlock });
     // Primary sort on block number. Secondary sort on transactionIndex. Tertiary sort on logIndex.
     events.sort((a, b) => {
@@ -209,7 +226,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
     return events;
   }
 
-  _getPriceFromSyncEvent(event) {
+  _getPriceFromEvent(event) {
     // Fixed point adjustment should use same precision as token0, unless price is inverted.
     const fixedPointAdjustment = this.toBN(
       parseFixed("1", this.invertPrice ? this.token1Precision : this.token0Precision).toString()
@@ -227,15 +244,47 @@ class UniswapPriceFeed extends PriceFeedInterface {
       return reserve1.mul(fixedPointAdjustment).div(reserve0);
     }
   }
+}
 
-  _computeTwap(eventsIn, startTime, endTime) {
-    const events = eventsIn.map(e => {
-      return [e.timestamp, e.price];
+class UniswapV3PriceFeed extends UniswapPriceFeed {
+  async _getSortedEvents(fromBlock, toBlock) {
+    const events = await this.uniswap.getPastEvents("Swap", { fromBlock: fromBlock, toBlock: toBlock });
+    // Primary sort on block number. Secondary sort on transactionIndex. Tertiary sort on logIndex.
+    events.sort((a, b) => {
+      if (a.blockNumber !== b.blockNumber) {
+        return a.blockNumber - b.blockNumber;
+      }
+
+      if (a.transactionIndex !== b.transactionIndex) {
+        return a.transactionIndex - b.transactionIndex;
+      }
+
+      return a.logIndex - b.logIndex;
     });
-    return computeTWAP(events, startTime, endTime, this.toBN("0"));
+
+    return events;
+  }
+
+  _getPriceFromEvent(event) {
+    // Fixed point adjustment should use same precision as token0, unless price is inverted.
+    const fixedPointAdjustment = this.toBN(
+      parseFixed("1", this.invertPrice ? this.token1Precision : this.token0Precision).toString()
+    );
+
+    const X96Adjustment = this.toBN(2).pow(this.toBN(96));
+    const rawSqrtPrice = this.toBN(event.returnValues.sqrtPriceX96);
+    // This effectively computes the price by squaring the value, multiplying it up by our intended precision, then dividing out both X96 fixed point multipliers.
+    const nonInvertedPrice = rawSqrtPrice
+      .mul(rawSqrtPrice)
+      .mul(fixedPointAdjustment)
+      .div(X96Adjustment)
+      .div(X96Adjustment);
+
+    return this.invertPrice ? fixedPointAdjustment.mul(fixedPointAdjustment).div(nonInvertedPrice) : nonInvertedPrice;
   }
 }
 
 module.exports = {
-  UniswapPriceFeed
+  UniswapV2PriceFeed,
+  UniswapV3PriceFeed
 };
