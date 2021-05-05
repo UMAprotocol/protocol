@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
 import "../implementation/Withdrawable.sol";
 
@@ -8,7 +8,7 @@ contract WithdrawableTest is Withdrawable {
     enum Roles { Governance, Withdraw }
 
     // solhint-disable-next-line no-empty-blocks
-    constructor() public {
+    constructor() {
         _createExclusiveRole(uint256(Roles.Governance), uint256(Roles.Governance), msg.sender);
         _createWithdrawRole(uint256(Roles.Withdraw), uint256(Roles.Governance), msg.sender);
     }

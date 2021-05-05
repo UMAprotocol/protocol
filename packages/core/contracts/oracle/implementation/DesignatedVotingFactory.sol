@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
+pragma abicoder v2;
 
 import "../../common/implementation/Withdrawable.sol";
 import "./DesignatedVoting.sol";
@@ -25,7 +25,7 @@ contract DesignatedVotingFactory is Withdrawable {
      * @notice Construct the DesignatedVotingFactory contract.
      * @param finderAddress keeps track of all contracts within the system based on their interfaceName.
      */
-    constructor(address finderAddress) public {
+    constructor(address finderAddress) {
         finder = finderAddress;
 
         _createWithdrawRole(uint256(Roles.Withdrawer), uint256(Roles.Withdrawer), msg.sender);

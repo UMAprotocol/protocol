@@ -22,7 +22,7 @@ function getHardhatConfig(configOverrides) {
   require("@nomiclabs/hardhat-web3");
 
   // Solc version defined here so etherscan-verification has access to it
-  const solcVersion = "0.6.12";
+  const solcVersion = "0.8.4";
 
   task("test")
     .addFlag("debug", "Compile without optimizer")

@@ -17,7 +17,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
-const UniswapMock = artifacts.require("UniswapMock");
+const UniswapV2Mock = artifacts.require("UniswapV2Mock");
 const SyntheticToken = artifacts.require("SyntheticToken");
 
 // Custom winston transport module to monitor winston log outputs
@@ -110,19 +110,18 @@ contract("ServerlessHub.js", function(accounts) {
       priceFeedIdentifier: padRight(utf8ToHex("ETH/BTC"), 64),
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.2") },
-      disputeBondPct: { rawValue: toWei("0.1") },
-      sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
-      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      disputeBondPercentage: { rawValue: toWei("0.1") },
+      sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
+      disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: (await Timer.deployed()).address,
-      excessTokenBeneficiary: ZERO_ADDRESS,
       financialProductLibraryAddress: ZERO_ADDRESS
     };
 
     // Deploy a new expiring multi party
     emp = await ExpiringMultiParty.new(constructorParams);
 
-    uniswap = await UniswapMock.new();
+    uniswap = await UniswapV2Mock.new();
 
     defaultPricefeedConfig = {
       type: "test",
