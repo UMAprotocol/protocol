@@ -1,33 +1,33 @@
 import assert from "assert";
+import lodash from "lodash";
 import { exists, getPositionKey } from "./utils";
 
-type Id = string;
-type MaybeId = {
+type Id = string | number;
+interface MaybeId {
   id?: Id;
-};
+}
 interface MakeId<T> {
   (obj: T): Id;
 }
-
 // Generic table with common functions, store is a map now, but we could replace this with any kind of
 // data store with some minor modifications, as long as it has, set, get, delete, has and values
-export function Table<T extends MaybeId>(config: { makeId: MakeId<T>; type: string }, store: Map<Id, T>) {
+export function Table<T extends MaybeId>(config: { makeId: MakeId<T>; type: Id }, store: Map<Id, T>) {
   const { makeId, type } = config;
   async function create(data: T) {
     const id = exists(data.id) ? data.id : makeId(data);
     assert(!(await has(id)), `${type} exists`);
     return set({ id, ...data });
   }
-  async function set(data: T) {
-    assert(data.id, `${type} requires id`);
+  async function set(data: T & { id: Id }) {
+    assert(exists(data.id), `${type} requires id`);
     await store.set(data.id, { ...data });
     return data;
   }
-  async function get(id: string) {
+  async function get(id: Id) {
     assert(await store.has(id), `${type} does not exist`);
-    return (await store.get(id)) as T;
+    return (await store.get(id)) as T & { id: Id };
   }
-  async function has(id: string) {
+  async function has(id: Id) {
     return store.has(id);
   }
   async function list() {
@@ -37,9 +37,12 @@ export function Table<T extends MaybeId>(config: { makeId: MakeId<T>; type: stri
     const all = await list();
     all.forEach(cb);
   }
-  async function update(id: string, data: Partial<T>) {
+  async function update(id: Id, data: Partial<T>) {
     const got = await get(id);
     return set({ ...got, ...data });
+  }
+  function entries() {
+    return [...store.entries()];
   }
   return {
     create,
@@ -92,6 +95,7 @@ export type Position = {
   tokensOwed0?: string;
   tokensOwed1?: string;
   pool?: string;
+  blockCreated?: number;
 };
 
 // These positions are from core pool contracts and are indexed using hash of upper/lower/user address.
@@ -100,15 +104,27 @@ export const Positions = () => {
     return getPositionKey(data.operator, data.tickLower, data.tickUpper);
   }
   const store = new Map<Id, Position>();
-  return Table<Position>({ makeId, type: "Positions" }, store);
+  const table = Table<Position>({ makeId, type: "Positions" }, store);
+
+  async function lteBlockNumber(blockNumber: number | string | undefined) {
+    if (blockNumber === undefined) return table.list();
+    if (blockNumber === "latest") return table.list();
+    return [...store.values()].filter(position => {
+      return Number(position.blockCreated) <= blockNumber;
+    });
+  }
+  return {
+    ...table,
+    lteBlockNumber
+  };
 };
 export type Positions = ReturnType<typeof Positions>;
 
 export type Pool = {
   id?: string;
-  token0: string;
-  token1: string;
-  fee: string;
+  token0?: string;
+  token1?: string;
+  fee?: string;
   sqrtPriceX96?: string;
   tick?: number;
   liquidity?: string;
@@ -122,11 +138,8 @@ export type Pool = {
 // pool id is tokenA, tokenB, fee
 export const Pools = () => {
   function makeId(state: Pool) {
-    const { token0, token1, fee } = state;
-    if (token0 < token1) {
-      return [token0, token1, fee].join("!");
-    }
-    return [token1, token0, fee].join("!");
+    assert(state.address, "requires address");
+    return state.address;
   }
   const store = new Map<Id, Pool>();
   return Table<Pool>({ makeId, type: "Pool" }, store);
