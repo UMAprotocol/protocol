@@ -2,7 +2,7 @@ import assert from "assert";
 import lodash from "lodash";
 import { exists, getPositionKey } from "./utils";
 
-type Id = string | number;
+type Id = string;
 interface MaybeId {
   id?: Id;
 }
@@ -19,7 +19,6 @@ export function Table<T extends MaybeId>(config: { makeId: MakeId<T>; type: Id }
     return set({ id, ...data });
   }
   async function set(data: T & { id: Id }) {
-    assert(exists(data.id), `${type} requires id`);
     await store.set(data.id, { ...data });
     return data;
   }
@@ -138,7 +137,6 @@ export type Pool = {
 // pool id is tokenA, tokenB, fee
 export const Pools = () => {
   function makeId(state: Pool) {
-    assert(state.address, "requires address");
     return state.address;
   }
   const store = new Map<Id, Pool>();
