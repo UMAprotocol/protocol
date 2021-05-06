@@ -81,7 +81,6 @@
     "compile-ts": "rm -rf types dist && mkdir -p types/contract-types &&  rsync -R contract-types/**/*.d.ts ./types && tsc",
     "generate-contract-types": "rm -rf contract-types && typechain --target=web3-v1 './build/contracts/*.json' --outDir contract-types/web3 && typechain --target=truffle-v5 './build/contracts/*.json' --outDir contract-types/truffle && typechain --target=ethers-v5 './build/contracts/*.json' --outDir contract-types/ethers",
     "prepublish": "yarn build",
-    "ts-compile": "tsc -b",
     "void:deploy": "hardhat deploy"
   },
   "bugs": {
