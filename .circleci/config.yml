@@ -51,7 +51,7 @@ jobs:
       - run:
           name: Lint
           command: ./ci/lint.sh
-  test:
+  test-financial-templates-lib:
     docker:
       - image: circleci/node:lts
       - image: trufflesuite/ganache-cli
@@ -68,6 +68,31 @@ jobs:
             ./ci/truffle_workaround.sh
             pwd
             cd packages/financial-templates-lib
+            echo $(circleci tests glob "test/**/*.js")
+            circleci tests glob "test/**/*.js" | circleci tests split > /tmp/test-files
+            yarn hardhat test ./$(cat /tmp/test-files)
+  test-liquidator:
+    docker:
+      - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
+    working_directory: ~/protocol
+    resource_class: medium+
+    parallelism: 10
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Run mocha tests
+          command: |
+            cd packages/liquidator
+            yarn mocha mocha-test
+      - run:
+          name: Run tests
+          command: |
+            ./ci/truffle_workaround.sh
+            pwd
+            cd packages/liquidator
             echo $(circleci tests glob "test/**/*.js")
             circleci tests glob "test/**/*.js" | circleci tests split > /tmp/test-files
             yarn hardhat test ./$(cat /tmp/test-files)
@@ -159,7 +184,12 @@ workflows:
       - lint:
           requires:
             - checkout_and_install
-      - test:
+      - test-financial-templates-lib:
+          context: api_keys
+          requires:
+            - build
+      - test-liquidator:
+          context: api_keys
           requires:
             - build
       - dapp_build:
@@ -169,7 +199,7 @@ workflows:
           context: gcloud
           requires:
             - dapp_build
-            - test
+            #- test
           filters:
             branches:
               only: master
@@ -177,7 +207,7 @@ workflows:
           context: api_keys
           requires:
             - build
-            - test
+            #- test
           filters:
             branches:
               only: master
