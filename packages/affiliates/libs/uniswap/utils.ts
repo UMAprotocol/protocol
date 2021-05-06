@@ -1,15 +1,6 @@
 import assert from "assert";
 import { ethers, BigNumberish } from "ethers";
 import { Position } from "./models";
-// taken from uniswap subgraph, not sure if correct yet. this is currently not used and for reference only.
-// const Q192 = 2n ** 192n;
-// export function sqrtPriceX96ToTokenPrices(sqrtPriceX96: BigInt): string[] {
-//   const num = BigInt(sqrtPriceX96) ** 2n
-//   const denom = Q192;
-//   const price1 = BigInt(num) / BigInt(denom);
-//   const price0 = 1n / price1;
-//   return [price0.toString(), price1.toString()];
-// }
 
 // check if a value is not null or undefined, useful for numbers which could be 0.
 // "is" syntax: https://stackoverflow.com/questions/40081332/what-does-the-is-keyword-do-in-typescript
@@ -34,8 +25,10 @@ export function convertValuesToString<T>(obj: { [k: string]: any }): T {
   ) as T;
 }
 
+// This looks at a positions liquidity, and calculates the amount across a single tick based on full tick span
 export function liquidityPerTick(params: { liquidity: string; tickLower: string; tickUpper: string }) {
   const { liquidity, tickLower, tickUpper } = params;
+  assert(BigInt(tickUpper) > BigInt(tickLower), "Upper tick must be > lower tick");
   return (BigInt(liquidity) / (BigInt(tickUpper) - BigInt(tickLower))).toString();
 }
 
@@ -45,18 +38,25 @@ type ActivePosition = Position & {
   tickUpper: BigNumberish;
   tickLower: BigNumberish;
 };
-export const IsPositionActive = (tick: BigNumberish) => (position: Position): position is ActivePosition => {
+
+// figure out if a position is active by looking a liquidity and combination of current tick and position bounds
+// this assume the upper tick is not inclusive, meaning if the upper tick matches the current tick, its not active
+export const IsPositionActive = (tick: BigNumberish) => (
+  position: Pick<Position, "liquidity" | "tickUpper" | "tickLower">
+): position is ActivePosition => {
   assert(position.liquidity, "requires position liquidity");
   assert(position.tickUpper, "requires position tickUpper");
   assert(position.tickLower, "requires position tickLower");
   if (BigInt(position.liquidity.toString()) === 0n) return false;
-  if (BigInt(tick.toString()) > BigInt(position.tickUpper.toString())) return false;
+  if (BigInt(tick.toString()) >= BigInt(position.tickUpper.toString())) return false;
   if (BigInt(tick.toString()) < BigInt(position.tickLower.toString())) return false;
+  if (BigInt(position.tickUpper) <= BigInt(position.tickLower)) return false;
   return true;
 };
 
-export function percent(val: string | BigInt, sum: string | BigInt, scale = 10n ** 18n) {
-  return (BigInt(val) * scale) / BigInt(sum);
+// percent: numerator, denominator and scale factor
+export function percent(val: string | BigInt, sum: string | BigInt, scale: string | BigInt = 10n ** 18n) {
+  return (BigInt(val) * BigInt(scale)) / BigInt(sum);
 }
 
 export function percentShares(
@@ -64,11 +64,12 @@ export function percentShares(
   sum?: string | BigInt,
   scale: string | BigInt = 10n ** 18n
 ) {
-  const defaultSum =
-    BigInt(sum) ||
-    Object.values(contributions).reduce((sum, val) => {
-      return sum + BigInt(val);
-    }, 0n);
+  const defaultSum = BigInt(
+    sum ||
+      Object.values(contributions).reduce((sum, val) => {
+        return sum + BigInt(val);
+      }, 0n)
+  );
 
   if (defaultSum == 0n) return {};
 

@@ -2,11 +2,10 @@ import assert from "assert";
 import { ethers } from "ethers";
 import Promise from "bluebird";
 
-import V3CoreFactory from "@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json";
 import UniswapV3Pool from "@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json";
 
-import { Pools, Positions, Ticks, NftPositions, Position, Tick, NftPosition, Pool, Balances } from "./models";
-import { PoolFactory, PoolEvents, NftEvents } from "./processor";
+import { Positions, Position, Pool } from "./models";
+import { PoolEvents } from "./processor";
 import { convertValuesToString } from "./utils";
 
 type NetworkName = "kovan" | "rinkeby" | "ropsten";
@@ -27,6 +26,7 @@ type NetworkContracts = {
   [key in ContractType]: string;
 };
 
+// Maybe this is available somewhere in uniswaps module, but not sure
 const networks = new Map<NetworkName, NetworkContracts>([
   [
     "kovan",
@@ -117,11 +117,10 @@ export function PoolClient(provider: ethers.providers.Provider) {
     };
   }
 
-  // fills the pools, and positions table based on events from the pool. mostly just care about positions.
-  async function processEvents(params: { pool: Pool; positions: Positions; pools: Pools }) {
-    const { pools, pool, positions } = params;
-    assert(pool.id, "requires pool id");
-    const poolHandler = PoolEvents({ positions, id: pool.id, pools });
+  // update pool state and positions table based on events from the pool. mostly just care about positions.
+  async function processEvents(params: { pool: Pool; positions: Positions }) {
+    const { pool, positions } = params;
+    const poolHandler = PoolEvents({ positions });
     const contract = new ethers.Contract(pool.address, UniswapV3Pool.abi, provider);
     const events = await contract.queryFilter({});
     await Promise.map(events, poolHandler);

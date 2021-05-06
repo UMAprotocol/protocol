@@ -4,10 +4,9 @@ import assert from "assert";
 import Promise from "bluebird";
 import { ethers } from "ethers";
 
-import { Pools, Positions, Ticks, NftPositions, Position, Tick, NftPosition, Pool, Balances } from "./models";
-import { PoolFactory, PoolEvents, NftEvents } from "./processor";
-import { getAddress as getUniswapAddress, PoolClient } from "./contracts";
-import { convertValuesToString, exists, IsPositionActive, liquidityPerTick, percentShares } from "./utils";
+import { Positions, Position, Pool, Balances } from "./models";
+import { PoolClient } from "./contracts";
+import { exists, IsPositionActive, liquidityPerTick, percentShares } from "./utils";
 
 type Config = {
   poolClient: PoolClient;
@@ -58,19 +57,16 @@ export default (config: Config) => {
   }
 
   async function initTables(poolAddress: string) {
-    const pools = Pools();
-    const pool = await pools.create({ address: poolAddress });
+    const pool: Pool = { address: poolAddress, id: poolAddress };
     const allLiquidity = Balances();
     const allPositions = Positions();
 
     // seed positions
     await poolClient.processEvents({
       pool,
-      positions: allPositions,
-      pools
+      positions: allPositions
     });
     return {
-      pools,
       pool,
       allLiquidity,
       allPositions
@@ -78,7 +74,7 @@ export default (config: Config) => {
   }
 
   async function processLatestBlock({ rewards, poolAddress }: { rewards: number; poolAddress: string }) {
-    const { pools, pool, allLiquidity, allPositions } = await initTables(poolAddress);
+    const { allLiquidity, allPositions } = await initTables(poolAddress);
     const state = await stateAtBlock({ blockNumber: "latest", allPositions, poolClient, poolAddress });
     await addLiquidity(state, allLiquidity);
     const distribution = await calculateDistribution(allLiquidity, rewards);
@@ -94,7 +90,7 @@ export default (config: Config) => {
   }) {
     const { startBlock, endBlock, sampleRate, rewards, poolAddress } = params;
 
-    const { pools, pool, allLiquidity, allPositions } = await initTables(poolAddress);
+    const { allLiquidity, allPositions } = await initTables(poolAddress);
 
     for (let i = startBlock; i <= endBlock; i += sampleRate) {
       const state = await stateAtBlock({ blockNumber: i, allPositions, poolClient, poolAddress });
