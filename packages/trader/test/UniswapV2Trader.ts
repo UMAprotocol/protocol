@@ -72,7 +72,7 @@ const getPoolSpotPrice = async () => {
   return Number(fromWei(poolTokenABallance.mul(toBN(toWei("1"))).div(poolTokenBBallance))).toFixed(4);
 };
 
-describe("index.js", function() {
+describe("UniswapV2Trader.js", function() {
   before(async function() {
     accounts = await web3.eth.getAccounts();
     deployer = accounts[0];

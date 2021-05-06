@@ -48,35 +48,14 @@ async function createExchangeAdapter(
   }
 
   if (config.type === "uniswap-v3") {
-    const requiredFields = ["tokenAAddress", "tokenBAddress"];
+    const requiredFields = ["uniswapPoolAddress", "uniswapRouterAddress"];
     if (isMissingField(config, requiredFields, logger)) return null;
 
-    // TODO: refactor these to be pulled from a constants file somewhere.
-    const uniswapAddresses: { [key: number]: { router: string; factory: string } } = {
-      1: {
-        router: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
-        factory: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
-      },
-      42: {
-        router: "0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D",
-        factory: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f"
-      }
-    };
-    config = {
-      uniswapRouterAddress: uniswapAddresses[networkId].router,
-      uniswapFactoryAddress: uniswapAddresses[networkId].factory,
-      ...config
-    };
+    // TODO: add the canonical uniswap router address when it has been deployed onto mainnet
+    const uniswapAddresses: { [key: number]: { router: string } } = {};
+    config = { uniswapRouterAddress: uniswapAddresses[networkId]?.router, ...config };
 
-    return new UniswapV3Trader(
-      logger,
-      web3,
-      config.uniswapRouterAddress,
-      config.uniswapFactoryAddress,
-      config.tokenAAddress,
-      config.tokenBAddress,
-      dsProxyManager
-    );
+    return new UniswapV3Trader(logger, web3, config.uniswapPoolAddress, config.uniswapRouterAddress, dsProxyManager);
   }
 
   return null;

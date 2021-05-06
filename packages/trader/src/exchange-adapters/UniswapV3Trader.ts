@@ -5,7 +5,7 @@ import BigNumber from "bignumber.js";
 const bn = require("bignumber.js"); // Big number that comes with web3 does not support square root.
 bn.config({ EXPONENTIAL_AT: 999999, DECIMAL_PLACES: 40 });
 
-const { MAX_UINT_VAL } = require("@uma/common");
+const { encodePriceSqrt } = require("@uma/common");
 const ExchangeAdapterInterface = require("./ExchangeAdapterInterface");
 const { getTruffleContract } = require("@uma/core");
 
@@ -42,7 +42,7 @@ class UniswapV3Trader implements InstanceType<typeof ExchangeAdapterInterface> {
         false, // tradingAsEOA. Set as false as this is executed as a DSProxy.
         this.uniswapPoolAddress, // address of the pool to uniswap v3 trade against.
         this.uniswapRouterAddress, // address of the uniswap v3 router to route the trade.
-        this.encodePriceSqrt(desiredPrice), // sqrtRatioTargetX96 target, encoded price.
+        encodePriceSqrt(desiredPrice, this.web3.utils.toWei("1")), // sqrtRatioTargetX96 target, encoded price.
         this.dsProxyManager.getDSProxyAddress(), // to: the output of the trade will send the tokens to the DSProxy.
         Number((await this.web3.eth.getBlock("latest")).timestamp) + this.tradeDeadline // Deadline in the future
       )
@@ -53,14 +53,6 @@ class UniswapV3Trader implements InstanceType<typeof ExchangeAdapterInterface> {
     } catch (error) {
       return error;
     }
-  }
-
-  encodePriceSqrt(reserve1: BigNumber) {
-    return new bn(reserve1.toString())
-      .div(this.web3.utils.toWei("1").toString())
-      .sqrt()
-      .multipliedBy(new bn(2).pow(96))
-      .integerValue(3);
   }
 }
 

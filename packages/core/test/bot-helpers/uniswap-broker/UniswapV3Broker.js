@@ -1,8 +1,8 @@
-const { MAX_UINT_VAL } = require("@uma/common");
 const { toWei } = web3.utils;
 const { getTruffleContract } = require("@uma/core");
 
 const {
+  MAX_UINT_VAL,
   encodePriceSqrt,
   getTickFromPrice,
   getCurrentPrice,
@@ -13,7 +13,7 @@ const {
   TICK_SPACINGS,
   createContractObjectFromJson,
   replaceLibraryBindingReferenceInArtitifact
-} = require("./UniswapV3Helpers");
+} = require("@uma/common");
 
 // Tested Contract
 const UniswapV3Broker = getTruffleContract("UniswapV3Broker", web3);
