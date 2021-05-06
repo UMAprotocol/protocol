@@ -15,7 +15,9 @@
     "lodash": "^4.17.20",
     "mkdirp": "^1.0.4",
     "moment": "^2.29.1",
-    "prompt": "^1.1.0"
+    "prompt": "^1.1.0",
+    "@uniswap/v3-core": "1.0.0-rc.2",
+    "@uniswap/v3-periphery": "1.0.0-beta.23"
   },
   "devDependencies": {
     "mocha": "^8.2.0",
@@ -30,6 +32,8 @@
     "test": "yarn test-mocha && yarn test-truffle",
     "test-mocha": "mocha test test/mocha/*.js --network mainnet_mnemonic --exit",
     "test-truffle": "truffle test ./test/truffle/*.js test/truffle/liquidity-mining/*.js --network test && truffle test ./test/truffle/gas-rebate/*.js --network mainnet_mnemonic --migrations_directory migrations_null",
-    "test-e2e": "mocha test/e2e/*.js --network=mainnet_mnemonic --exit"
+    "test-e2e": "mocha test/e2e/*.js --network=mainnet_mnemonic --exit",
+    "build": "tsc -b",
+    "watch": "tsc -w"
   }
 }
