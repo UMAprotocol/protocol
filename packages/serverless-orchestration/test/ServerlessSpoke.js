@@ -225,8 +225,8 @@ contract("ServerlessSpoke.js", function(accounts) {
     const invalidEMPAddressResponse = await sendRequest(invalidEMPAddressBody);
     assert.equal(invalidEMPAddressResponse.res.statusCode, 500); // error code
     // Expected error text from loading in an EMP from an invalid address
-    assert.isTrue(invalidEMPAddressResponse.res.text.includes("Returned values aren't valid, did it run Out of Gas?")); // error text
-    assert.isTrue(lastSpyLogIncludes(spy, "Returned values aren't valid, did it run Out of Gas?")); // Check the process logger contained the error.
+    assert.isTrue(invalidEMPAddressResponse.res.text.includes("Contract code hash is null")); // error text
+    assert.isTrue(lastSpyLogIncludes(spy, "Contract code hash is null")); // Check the process logger contained the error.
     assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error")); // Check the process logger contains exit error.
   });
 });

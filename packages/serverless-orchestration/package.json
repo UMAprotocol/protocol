@@ -41,7 +41,7 @@
     "/src/**/*.js"
   ],
   "scripts": {
-    "test": "yarn truffle test test test/*.js"
+    "test": "yarn truffle test test/*.js"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
