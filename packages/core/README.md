@@ -74,13 +74,21 @@ side-by-side.
 
 Here is a list of scripts you can execute:
 
-`yarn ts-compile`
-
-Compiles typescript files to javascript. We can't just run the typescript deployment scripts directly because this package has a mix of javascript and typescript files and the `hardhat.config` script has a `.js` extension. We'll be running the compiled `.js` scripts out of `dist`.
-
 `yarn void:deploy`
 
 This will deploy your contracts on the in-memory hardhat network and exit, leaving no trace. Quickest way to ensure that deployments work as intended without consequences.
+
+`yarn hardhat deploy --network <NETWORK-NAME> --tags <OPTIONAL-TAGS>`
+
+Deploy contracts with specific tags, delimitted by commas. Details [here](https://hardhat.org/plugins/hardhat-deploy.html#deploy-scripts-tags-and-dependencies). Requires a `CUSTOM_NODE_URL` HTTP(s) endpoint and a `MNEMONIC` to be set in environment. Available tags can be found in `/deploy` scripts, and available networks are found in the `networks` object within `hardhat.config.js`.
+
+`./scripts/hardhat/verifyDeployedContracts.sh <NETWORK-NAME, e.g. "rinkeby">`
+
+Verify contracts for selected network on Etherscan. Requires an `ETHERSCAN_API_KEY` to be set in environment.
+
+`./scripts/hardhat/setupDeployedContracts.sh <NETWORK-NAME, e.g. "rinkeby">`
+
+Run this after deploying and verifying the contracts on a public network in order to set up important contract state such as the Finder, Registry, and more.
 ## Typescript!
 
 In addition to the above import styles, you can import typescript types for truffle, ethers, and web3. Because of existing

@@ -26,6 +26,10 @@ const PublicNetworks = {
     etherscan: "https://kovan.etherscan.io/",
     daiAddress: "0xbF7A7169562078c96f0eC1A8aFD6aE50f12e5A99",
     wethAddress: "0xd0A1E359811322d97991E03f863a0C30C2cF029C"
+  },
+  42: {
+    name: "goerli",
+    etherscan: "https://goerli.etherscan.io/"
   }
 };
 

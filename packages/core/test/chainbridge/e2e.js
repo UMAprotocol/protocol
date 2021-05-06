@@ -111,13 +111,13 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
     // Configure contracts such that price requests will succeed:
     await identifierWhitelist.addSupportedIdentifier(identifier);
 
-    // Set up Handlers: Should specify a contract address and function to call for each resource ID.
+    // Set up Handlers.
     genericHandlerMainnet = await GenericHandlerContract.new(
       bridgeMainnet.address,
-      [votingResourceId],
-      [sourceOracle.address],
-      [Helpers.getFunctionSignature(sourceOracle, "validateDeposit")],
-      [Helpers.getFunctionSignature(sourceOracle, "executeRequestPrice")]
+      [],
+      [],
+      [],
+      []
     );
     await sourceFinder.changeImplementationAddress(
       utf8ToHex(interfaceName.GenericHandler),
@@ -125,10 +125,10 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
     );
     genericHandlerSidechain = await GenericHandlerContract.new(
       bridgeSidechain.address,
-      [votingResourceId],
-      [sinkOracle.address],
-      [Helpers.getFunctionSignature(sinkOracle, "validateDeposit")],
-      [Helpers.getFunctionSignature(sinkOracle, "executePublishPrice")]
+      [],
+      [],
+      [],
+      []
     );
     await sinkFinder.changeImplementationAddress(
       utf8ToHex(interfaceName.GenericHandler),
