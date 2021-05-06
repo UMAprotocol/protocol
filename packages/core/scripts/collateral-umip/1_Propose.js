@@ -6,7 +6,7 @@
 // Note: the fees will be scaled with the decimals of the referenced token. The collateral-fee-(optional decimal)
 // triplets should be specified in order as above. The first collateral value will be paired with the first fee value and so on.
 
-const { getTruffleContract } = require("../../index");
+const { getTruffleContract } = require("../../dist/index");
 
 const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, "latest");
 const Store = getTruffleContract("Store", web3, "latest");

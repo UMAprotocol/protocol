@@ -10,3 +10,5 @@ build
 dist
 .github
 cache
+types
+contract-types
