@@ -5,10 +5,8 @@ const { advanceBlockAndSetTime, parseFixed } = require("@uma/common");
 const { BlockFinder } = require("../../src/price-feed/utils");
 const { getTruffleContract } = require("@uma/core");
 
-const CONTRACT_VERSION = "latest";
-
-const ERC20Interface = getTruffleContract("IERC20Standard", web3, CONTRACT_VERSION);
-const ERC20 = getTruffleContract("ExpandedERC20", web3, CONTRACT_VERSION);
+const ERC20Interface = getTruffleContract("IERC20Standard", web3);
+const ERC20 = getTruffleContract("ExpandedERC20", web3);
 
 contract("LPPriceFeed.js", function(accounts) {
   const owner = accounts[0];

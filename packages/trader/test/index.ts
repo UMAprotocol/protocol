@@ -14,8 +14,6 @@ const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport } = require("@uma/financial-templates-lib");
 
-const contractVersion = "latest";
-
 describe("index.js", function() {
   let accounts: string[];
   let contractCreator: string;
@@ -42,19 +40,19 @@ describe("index.js", function() {
   const identifier = "TEST_IDENTIFIER";
   const fundingRateIdentifier = "TEST_FUNDiNG_IDENTIFIER";
 
-  const FinancialContract = getTruffleContract("Perpetual", web3, contractVersion);
-  const Finder = getTruffleContract("Finder", web3, contractVersion);
-  const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, contractVersion);
-  const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, contractVersion);
-  const MockOracle = getTruffleContract("MockOracle", web3, contractVersion);
-  const Token = getTruffleContract("ExpandedERC20", web3, contractVersion);
-  const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion);
-  const Timer = getTruffleContract("Timer", web3, contractVersion);
-  const UniswapMock = getTruffleContract("UniswapV2Mock", web3, contractVersion);
-  const Store = getTruffleContract("Store", web3, contractVersion);
-  const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion);
-  const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion);
-  const DSProxyFactory = getTruffleContract("DSProxyFactory", web3, "latest");
+  const FinancialContract = getTruffleContract("Perpetual", web3);
+  const Finder = getTruffleContract("Finder", web3);
+  const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3);
+  const AddressWhitelist = getTruffleContract("AddressWhitelist", web3);
+  const MockOracle = getTruffleContract("MockOracle", web3);
+  const Token = getTruffleContract("ExpandedERC20", web3);
+  const SyntheticToken = getTruffleContract("SyntheticToken", web3);
+  const Timer = getTruffleContract("Timer", web3);
+  const UniswapMock = getTruffleContract("UniswapV2Mock", web3);
+  const Store = getTruffleContract("Store", web3);
+  const ConfigStore = getTruffleContract("ConfigStore", web3);
+  const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
+  const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);
 
   after(async function() {
     process.env = originalEnv;
@@ -127,7 +125,7 @@ describe("index.js", function() {
 
     // Deploy a new expiring multi party OR perpetual.
     constructorParams = await createConstructorParamsForContractVersion(
-      { contractType: "Perpetual", contractVersion: "latest" },
+      { contractType: "Perpetual", contractVersion: "2.0.1" },
       {
         convertSynthetic: toWei, // These tests do not use convertSynthetic. Override this with toWei
         finder,

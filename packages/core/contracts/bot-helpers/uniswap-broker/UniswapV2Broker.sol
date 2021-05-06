@@ -228,8 +228,7 @@ library FullMath {
         // Factor powers of two out of denominator
         // Compute largest power of two divisor of denominator.
         // Always >= 1.
-        // NOTE: this is modified from the original Full math implementation to work with solidity 8
-        uint256 twos = (type(uint256).max - denominator + 1) & denominator;
+        uint256 twos = denominator & (~denominator + 1);
         // Divide denominator by power of two
         assembly {
             denominator := div(denominator, twos)
@@ -256,22 +255,37 @@ library FullMath {
         // Now use Newton-Raphson iteration to improve the precision.
         // Thanks to Hensel's lifting lemma, this also works in modular
         // arithmetic, doubling the correct bits in each step.
-        // NOTE: this is modified from the original Full math implementation to work with solidity 8 with the unchecked syntax.
-        unchecked {
-            inv *= 2 - denominator * inv; // inverse mod 2**8
-            inv *= 2 - denominator * inv; // inverse mod 2**16
-            inv *= 2 - denominator * inv; // inverse mod 2**32
-            inv *= 2 - denominator * inv; // inverse mod 2**64
-            inv *= 2 - denominator * inv; // inverse mod 2**128
-            inv *= 2 - denominator * inv; // inverse mod 2**256
-            // Because the division is now exact we can divide by multiplying
-            // with the modular inverse of denominator. This will give us the
-            // correct result modulo 2**256. Since the precoditions guarantee
-            // that the outcome is less than 2**256, this is the final result.
-            // We don't need to compute the high bits of the result and prod1
-            // is no longer required.
-            result = prod0 * inv;
-        }
+        inv *= 2 - denominator * inv; // inverse mod 2**8
+        inv *= 2 - denominator * inv; // inverse mod 2**16
+        inv *= 2 - denominator * inv; // inverse mod 2**32
+        inv *= 2 - denominator * inv; // inverse mod 2**64
+        inv *= 2 - denominator * inv; // inverse mod 2**128
+        inv *= 2 - denominator * inv; // inverse mod 2**256
+
+        // Because the division is now exact we can divide by multiplying
+        // with the modular inverse of denominator. This will give us the
+        // correct result modulo 2**256. Since the precoditions guarantee
+        // that the outcome is less than 2**256, this is the final result.
+        // We don't need to compute the high bits of the result and prod1
+        // is no longer required.
+        result = prod0 * inv;
         return result;
+    }
+
+    /// @notice Calculates ceil(a×b÷denominator) with full precision. Throws if result overflows a uint256 or denominator == 0
+    /// @param a The multiplicand
+    /// @param b The multiplier
+    /// @param denominator The divisor
+    /// @return result The 256-bit result
+    function mulDivRoundingUp(
+        uint256 a,
+        uint256 b,
+        uint256 denominator
+    ) internal pure returns (uint256 result) {
+        result = mulDiv(a, b, denominator);
+        if (mulmod(a, b, denominator) > 0) {
+            require(result < type(uint256).max);
+            result++;
+        }
     }
 }

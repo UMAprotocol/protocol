@@ -12,8 +12,8 @@ const { createExchangeAdapter } = require("../src/exchange-adapters/CreateExchan
 
 const Token = getTruffleContract("ExpandedERC20", web3);
 const WETH9 = getTruffleContract("WETH9", web3);
-const DSProxyFactory = getTruffleContract("DSProxyFactory", web3, "latest");
-const DSProxy = getTruffleContract("DSProxy", web3, "latest");
+const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);
+const DSProxy = getTruffleContract("DSProxy", web3);
 
 // Helper Contracts
 const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json");

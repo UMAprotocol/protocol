@@ -49,8 +49,8 @@ const encodeParams = async callback => {
       timerAddress: await expiringMultiPartyCreator.timerAddress()
     };
 
-    // Inject constructor params neccessary for "latest" version of the EMPCreator:
-    if (abiVersion === "latest") {
+    // Inject constructor params neccessary for "2.0.1" version of the EMPCreator:
+    if (abiVersion === "2.0.1") {
       constructorParams = {
         ...constructorParams,
         financialProductLibraryAddress: ZERO_ADDRESS,

@@ -79,7 +79,7 @@ class Disputer {
       contractVersion: {
         value: undefined,
         isValid: x => {
-          return x === "1.2.0" || x === "1.2.1" || x === "1.2.2" || x === "latest";
+          return x === "1.2.0" || x === "1.2.1" || x === "1.2.2" || x === "2.0.1";
         }
       }
     };

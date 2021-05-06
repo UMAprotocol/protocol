@@ -927,7 +927,7 @@ contract("FinancialContractEventClient.js", function(accounts) {
               }
             );
 
-            versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])(
+            versionedIt([{ contractType: "Perpetual", contractVersion: "2.0.1" }])(
               "Return FundingRateUpdated Events",
               async function() {
                 await client.clearState();
