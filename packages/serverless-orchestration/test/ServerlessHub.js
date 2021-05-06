@@ -455,9 +455,9 @@ contract("ServerlessHub.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(hubSpy, "error Command INVALID not found"));
     assert.isTrue(
       responseObject.output.errorOutputs["testServerlessMonitorError2"].execResponse.stderr.includes(
-        "Returned values aren't valid, did it run Out of Gas?"
+        "Contract code hash is null"
       )
     ); // invalid emp error
-    assert.isTrue(lastSpyLogIncludes(hubSpy, "Returned values aren't valid, did it run Out of Gas?"));
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "Contract code hash is null"));
   });
 });
