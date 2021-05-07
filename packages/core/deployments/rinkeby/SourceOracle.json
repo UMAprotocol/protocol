@@ -1,0 +1,424 @@
+{
+  "address": "0x787799e7ad350F0B90b5bc90dccB92C4a8749383",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_finderAddress",
+          "type": "address"
+        },
+        {
+          "internalType": "uint8",
+          "name": "_chainID",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "requester",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint8",
+          "name": "chainID",
+          "type": "uint8"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "identifier",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "time",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes",
+          "name": "ancillaryData",
+          "type": "bytes"
+        }
+      ],
+      "name": "PriceRequestAdded",
+      "type": "event"
+    },
+    {
+      "anonymous": false,
+      "inputs": [
+        {
+          "indexed": true,
+          "internalType": "address",
+          "name": "pusher",
+          "type": "address"
+        },
+        {
+          "indexed": true,
+          "internalType": "uint8",
+          "name": "chainID",
+          "type": "uint8"
+        },
+        {
+          "indexed": true,
+          "internalType": "bytes32",
+          "name": "identifier",
+          "type": "bytes32"
+        },
+        {
+          "indexed": false,
+          "internalType": "uint256",
+          "name": "time",
+          "type": "uint256"
+        },
+        {
+          "indexed": false,
+          "internalType": "bytes",
+          "name": "ancillaryData",
+          "type": "bytes"
+        },
+        {
+          "indexed": false,
+          "internalType": "int256",
+          "name": "price",
+          "type": "int256"
+        }
+      ],
+      "name": "PushedPrice",
+      "type": "event"
+    },
+    {
+      "inputs": [],
+      "name": "currentChainID",
+      "outputs": [
+        {
+          "internalType": "uint8",
+          "name": "",
+          "type": "uint8"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "sinkChainID",
+          "type": "uint8"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "identifier",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "time",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes",
+          "name": "ancillaryData",
+          "type": "bytes"
+        }
+      ],
+      "name": "executeRequestPrice",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "finder",
+      "outputs": [
+        {
+          "internalType": "contract FinderInterface",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "chainID",
+          "type": "uint8"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "identifier",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "time",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes",
+          "name": "ancillaryData",
+          "type": "bytes"
+        },
+        {
+          "internalType": "int256",
+          "name": "price",
+          "type": "int256"
+        }
+      ],
+      "name": "formatMetadata",
+      "outputs": [
+        {
+          "internalType": "bytes",
+          "name": "",
+          "type": "bytes"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "getResourceId",
+      "outputs": [
+        {
+          "internalType": "bytes32",
+          "name": "",
+          "type": "bytes32"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "sinkChainID",
+          "type": "uint8"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "identifier",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "time",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes",
+          "name": "ancillaryData",
+          "type": "bytes"
+        }
+      ],
+      "name": "publishPrice",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint8",
+          "name": "sinkChainID",
+          "type": "uint8"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "identifier",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "uint256",
+          "name": "time",
+          "type": "uint256"
+        },
+        {
+          "internalType": "bytes",
+          "name": "ancillaryData",
+          "type": "bytes"
+        },
+        {
+          "internalType": "int256",
+          "name": "price",
+          "type": "int256"
+        }
+      ],
+      "name": "validateDeposit",
+      "outputs": [],
+      "stateMutability": "view",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0xfbb878ab0cacaa8e6d89dc4bcf2ef1e0a6f6b12944b586c8622d0e1c7afe3a4a",
+  "receipt": {
+    "to": null,
+    "from": "0x9A8f92a830A5cB89a3816e3D267CB7791c16b04D",
+    "contractAddress": "0x787799e7ad350F0B90b5bc90dccB92C4a8749383",
+    "transactionIndex": 7,
+    "gasUsed": "790874",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0x884530e54c1003fcfeb7bb01dc2d233f34cb9b0085fc2a0f5c59c7f2f0a02d85",
+    "transactionHash": "0xfbb878ab0cacaa8e6d89dc4bcf2ef1e0a6f6b12944b586c8622d0e1c7afe3a4a",
+    "logs": [],
+    "blockNumber": 8544390,
+    "cumulativeGasUsed": "6279857",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    "0x2b1512553243FbfEaAa9BF613bACEd2231C9ae00",
+    "4"
+  ],
+  "solcInputHash": "87af3bddb96fa5cfcfc99d0e6fd39498",
+  "metadata": "{\"compiler\":{\"version\":\"0.8.4+commit.c7e474f2\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_finderAddress\",\"type\":\"address\"},{\"internalType\":\"uint8\",\"name\":\"_chainID\",\"type\":\"uint8\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"requester\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint8\",\"name\":\"chainID\",\"type\":\"uint8\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"identifier\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"time\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"ancillaryData\",\"type\":\"bytes\"}],\"name\":\"PriceRequestAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"pusher\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"uint8\",\"name\":\"chainID\",\"type\":\"uint8\"},{\"indexed\":true,\"internalType\":\"bytes32\",\"name\":\"identifier\",\"type\":\"bytes32\"},{\"indexed\":false,\"internalType\":\"uint256\",\"name\":\"time\",\"type\":\"uint256\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"ancillaryData\",\"type\":\"bytes\"},{\"indexed\":false,\"internalType\":\"int256\",\"name\":\"price\",\"type\":\"int256\"}],\"name\":\"PushedPrice\",\"type\":\"event\"},{\"inputs\":[],\"name\":\"currentChainID\",\"outputs\":[{\"internalType\":\"uint8\",\"name\":\"\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint8\",\"name\":\"sinkChainID\",\"type\":\"uint8\"},{\"internalType\":\"bytes32\",\"name\":\"identifier\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"time\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"ancillaryData\",\"type\":\"bytes\"}],\"name\":\"executeRequestPrice\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"finder\",\"outputs\":[{\"internalType\":\"contract FinderInterface\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint8\",\"name\":\"chainID\",\"type\":\"uint8\"},{\"internalType\":\"bytes32\",\"name\":\"identifier\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"time\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"ancillaryData\",\"type\":\"bytes\"},{\"internalType\":\"int256\",\"name\":\"price\",\"type\":\"int256\"}],\"name\":\"formatMetadata\",\"outputs\":[{\"internalType\":\"bytes\",\"name\":\"\",\"type\":\"bytes\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"getResourceId\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint8\",\"name\":\"sinkChainID\",\"type\":\"uint8\"},{\"internalType\":\"bytes32\",\"name\":\"identifier\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"time\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"ancillaryData\",\"type\":\"bytes\"}],\"name\":\"publishPrice\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint8\",\"name\":\"sinkChainID\",\"type\":\"uint8\"},{\"internalType\":\"bytes32\",\"name\":\"identifier\",\"type\":\"bytes32\"},{\"internalType\":\"uint256\",\"name\":\"time\",\"type\":\"uint256\"},{\"internalType\":\"bytes\",\"name\":\"ancillaryData\",\"type\":\"bytes\"},{\"internalType\":\"int256\",\"name\":\"price\",\"type\":\"int256\"}],\"name\":\"validateDeposit\",\"outputs\":[],\"stateMutability\":\"view\",\"type\":\"function\"}],\"devdoc\":{\"details\":\"The intended client of this contract is some off-chain bot watching for resolved price events on the DVM. Once that bot sees a price has resolved, it can call `publishPrice()` on this contract which will call the local Bridge contract to signal to an off-chain relayer to bridge a price request to another network.This contract must be a registered financial contract in order to call DVM methods.\",\"kind\":\"dev\",\"methods\":{\"executeRequestPrice(uint8,bytes32,uint256,bytes)\":{\"details\":\"This method should prepare this oracle to receive a published price and then forward the price request to the DVM. Can only be called by the `GenericHandler`.\"},\"formatMetadata(uint8,bytes32,uint256,bytes,int256)\":{\"details\":\"GenericHandler.deposit() expects data to be formatted as:     len(data)                              uint256     bytes  0  - 64     data                                   bytes       bytes  64 - END\"},\"getResourceId()\":{\"details\":\"More details about Resource ID's here: https://chainbridge.chainsafe.io/spec/#resource-id\",\"returns\":{\"_0\":\"bytes32 Hash containing this stored chain ID.\"}},\"publishPrice(uint8,bytes32,uint256,bytes)\":{\"details\":\"Publishes the DVM resolved price for the price request, or reverts if not resolved yet. Will call the local Bridge's deposit() method which will emit a Deposit event in order to signal to an off-chain relayer to begin the cross-chain process.\"},\"validateDeposit(uint8,bytes32,uint256,bytes,int256)\":{\"details\":\"This method should basically check that the `Bridge.deposit()` was triggered by a valid publish event.\"}},\"title\":\"Extension of BeaconOracle that is intended to be deployed on Mainnet to give financial contracts on non-Mainnet networks the ability to trigger cross-chain price requests to the Mainnet DVM. This contract is responsible for triggering price requests originating from non-Mainnet, and broadcasting resolved price data back to those networks. Technically, this contract is more of a Proxy than an Oracle, because it does not implement the full Oracle interface including the getPrice and requestPrice methods. It's goal is to shuttle price request functionality between L2 and L1.\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"executeRequestPrice(uint8,bytes32,uint256,bytes)\":{\"notice\":\"This method will ultimately be called after a `requestPrice` has been bridged cross-chain from non-Mainnet to this network via an off-chain relayer. The relayer will call `Bridge.executeProposal` on this local network, which call `GenericHandler.executeProposal()` and ultimately this method.\"},\"formatMetadata(uint8,bytes32,uint256,bytes,int256)\":{\"notice\":\"This helper method is useful for calling Bridge.deposit().\"},\"getResourceId()\":{\"notice\":\"Convenience method to get cross-chain Bridge resource ID linking this contract with its SinkOracles.\"},\"publishPrice(uint8,bytes32,uint256,bytes)\":{\"notice\":\"This is the first method that should be called in order to publish a price request to another network marked by `sinkChainID`.\"},\"validateDeposit(uint8,bytes32,uint256,bytes,int256)\":{\"notice\":\"This method will ultimately be called after `publishPrice` calls `Bridge.deposit()`, which will call `GenericHandler.deposit()` and ultimately this method.\"}},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/chainbridge/SourceOracle.sol\":\"SourceOracle\"},\"evmVersion\":\"istanbul\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"ipfs\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":199},\"remappings\":[]},\"sources\":{\"contracts/chainbridge/BeaconOracle.sol\":{\"content\":\"// SPDX-License-Identifier: AGPL-3.0-only\\npragma solidity ^0.8.0;\\npragma abicoder v2;\\n\\nimport \\\"../oracle/interfaces/FinderInterface.sol\\\";\\nimport \\\"./IBridge.sol\\\";\\nimport \\\"../oracle/implementation/Constants.sol\\\";\\n\\n/**\\n * @title Simple implementation of the OracleInterface used to communicate price request data cross-chain between\\n * EVM networks. Can be extended either into a \\\"Source\\\" or \\\"Sink\\\" oracle that specializes in making and resolving\\n * cross-chain price requests, respectivly. The \\\"Source\\\" Oracle is the originator or source of price resolution data\\n * and can only resolve prices already published by the DVM. The \\\"Sink\\\" Oracle receives the price resolution data\\n * from the Source Oracle and makes it available on non-Mainnet chains. The \\\"Sink\\\" Oracle can also be used to trigger\\n * price requests from the DVM on Mainnet.\\n */\\nabstract contract BeaconOracle {\\n    enum RequestState { NeverRequested, Requested, Resolved }\\n\\n    struct Price {\\n        RequestState state;\\n        int256 price;\\n    }\\n\\n    // Chain ID for this Oracle.\\n    uint8 public currentChainID;\\n\\n    // Mapping of encoded price requests {identifier, time, ancillaryData} to Price objects.\\n    mapping(bytes32 => Price) internal prices;\\n\\n    // Finder to provide addresses for DVM system contracts.\\n    FinderInterface public finder;\\n\\n    event PriceRequestAdded(\\n        address indexed requester,\\n        uint8 indexed chainID,\\n        bytes32 indexed identifier,\\n        uint256 time,\\n        bytes ancillaryData\\n    );\\n    event PushedPrice(\\n        address indexed pusher,\\n        uint8 indexed chainID,\\n        bytes32 indexed identifier,\\n        uint256 time,\\n        bytes ancillaryData,\\n        int256 price\\n    );\\n\\n    /**\\n     * @notice Constructor.\\n     * @param _finderAddress finder to use to get addresses of DVM contracts.\\n     */\\n    constructor(address _finderAddress, uint8 _chainID) {\\n        finder = FinderInterface(_finderAddress);\\n        currentChainID = _chainID;\\n    }\\n\\n    // We assume that there is only one GenericHandler for this network.\\n    modifier onlyGenericHandlerContract() {\\n        require(\\n            msg.sender == finder.getImplementationAddress(OracleInterfaces.GenericHandler),\\n            \\\"Caller must be GenericHandler\\\"\\n        );\\n        _;\\n    }\\n\\n    /**\\n     * @notice Enqueues a request (if a request isn't already present) for the given (identifier, time, ancillary data)\\n     * pair. Will revert if request has been requested already.\\n     */\\n    function _requestPrice(\\n        uint8 chainID,\\n        bytes32 identifier,\\n        uint256 time,\\n        bytes memory ancillaryData\\n    ) internal {\\n        bytes32 priceRequestId = _encodePriceRequest(chainID, identifier, time, ancillaryData);\\n        Price storage lookup = prices[priceRequestId];\\n        if (lookup.state == RequestState.NeverRequested) {\\n            // New query, change state to Requested:\\n            lookup.state = RequestState.Requested;\\n            emit PriceRequestAdded(msg.sender, chainID, identifier, time, ancillaryData);\\n        }\\n    }\\n\\n    /**\\n     * @notice Publishes price for a requested query. Will revert if request hasn't been requested yet or has been\\n     * resolved already.\\n     */\\n    function _publishPrice(\\n        uint8 chainID,\\n        bytes32 identifier,\\n        uint256 time,\\n        bytes memory ancillaryData,\\n        int256 price\\n    ) internal {\\n        bytes32 priceRequestId = _encodePriceRequest(chainID, identifier, time, ancillaryData);\\n        Price storage lookup = prices[priceRequestId];\\n        require(lookup.state == RequestState.Requested, \\\"Price request is not currently pending\\\");\\n        lookup.price = price;\\n        lookup.state = RequestState.Resolved;\\n        emit PushedPrice(msg.sender, chainID, identifier, time, ancillaryData, lookup.price);\\n    }\\n\\n    /**\\n     * @notice Returns Bridge contract on network.\\n     */\\n    function _getBridge() internal view returns (IBridge) {\\n        return IBridge(finder.getImplementationAddress(OracleInterfaces.Bridge));\\n    }\\n\\n    /**\\n     * @notice Returns the convenient way to store price requests, uniquely identified by {chainID, identifier, time,\\n     * ancillaryData }.\\n     */\\n    function _encodePriceRequest(\\n        uint8 chainID,\\n        bytes32 identifier,\\n        uint256 time,\\n        bytes memory ancillaryData\\n    ) internal pure returns (bytes32) {\\n        return keccak256(abi.encode(chainID, identifier, time, ancillaryData));\\n    }\\n}\\n\",\"keccak256\":\"0xa9ae3d96561673c09b4c96c2b5114e616fa147dbd8baf2978f8290ed1c05faf9\",\"license\":\"AGPL-3.0-only\"},\"contracts/chainbridge/IBridge.sol\":{\"content\":\"// SPDX-License-Identifier: AGPL-3.0-only\\npragma solidity ^0.8.0;\\n\\n/**\\n    @title Interface for Bridge contract.\\n    @dev Copied directly from here: https://github.com/ChainSafe/chainbridge-solidity/releases/tag/v1.0.0 except for \\n         the addition of `deposit()` so that this contract can be called from Sink and Source Oracle contracts.\\n    @author ChainSafe Systems.\\n */\\ninterface IBridge {\\n    /**\\n        @notice Exposing getter for {_chainID} instead of forcing the use of call.\\n        @return uint8 The {_chainID} that is currently set for the Bridge contract.\\n     */\\n    function _chainID() external returns (uint8);\\n\\n    function deposit(\\n        uint8 destinationChainID,\\n        bytes32 resourceID,\\n        bytes calldata data\\n    ) external;\\n}\\n\",\"keccak256\":\"0x0c901fa47d81ce80f1f79cfd02ff3a6bec69a71f931915bfce579f936cfe78c4\",\"license\":\"AGPL-3.0-only\"},\"contracts/chainbridge/SourceOracle.sol\":{\"content\":\"// SPDX-License-Identifier: AGPL-3.0-only\\npragma solidity ^0.8.0;\\n\\nimport \\\"./BeaconOracle.sol\\\";\\nimport \\\"../oracle/interfaces/OracleAncillaryInterface.sol\\\";\\n\\n/**\\n * @title Extension of BeaconOracle that is intended to be deployed on Mainnet to give financial\\n * contracts on non-Mainnet networks the ability to trigger cross-chain price requests to the Mainnet DVM. This contract\\n * is responsible for triggering price requests originating from non-Mainnet, and broadcasting resolved price data\\n * back to those networks. Technically, this contract is more of a Proxy than an Oracle, because it does not implement\\n * the full Oracle interface including the getPrice and requestPrice methods. It's goal is to shuttle price request\\n * functionality between L2 and L1.\\n * @dev The intended client of this contract is some off-chain bot watching for resolved price events on the DVM. Once\\n * that bot sees a price has resolved, it can call `publishPrice()` on this contract which will call the local Bridge\\n * contract to signal to an off-chain relayer to bridge a price request to another network.\\n * @dev This contract must be a registered financial contract in order to call DVM methods.\\n */\\ncontract SourceOracle is BeaconOracle {\\n    constructor(address _finderAddress, uint8 _chainID) BeaconOracle(_finderAddress, _chainID) {}\\n\\n    /***************************************************************\\n     * Publishing Price Request Data to L2:\\n     ***************************************************************/\\n\\n    /**\\n     * @notice This is the first method that should be called in order to publish a price request to another network\\n     * marked by `sinkChainID`.\\n     * @dev Publishes the DVM resolved price for the price request, or reverts if not resolved yet. Will call the\\n     * local Bridge's deposit() method which will emit a Deposit event in order to signal to an off-chain\\n     * relayer to begin the cross-chain process.\\n     */\\n    function publishPrice(\\n        uint8 sinkChainID,\\n        bytes32 identifier,\\n        uint256 time,\\n        bytes memory ancillaryData\\n    ) public {\\n        require(_getOracle().hasPrice(identifier, time, ancillaryData), \\\"DVM has not resolved price\\\");\\n        int256 price = _getOracle().getPrice(identifier, time, ancillaryData);\\n        _publishPrice(sinkChainID, identifier, time, ancillaryData, price);\\n\\n        // Call Bridge.deposit() to initiate cross-chain publishing of price request.\\n        _getBridge().deposit(\\n            sinkChainID,\\n            getResourceId(),\\n            formatMetadata(sinkChainID, identifier, time, ancillaryData, price)\\n        );\\n    }\\n\\n    /**\\n     * @notice This method will ultimately be called after `publishPrice` calls `Bridge.deposit()`, which will call\\n     * `GenericHandler.deposit()` and ultimately this method.\\n     * @dev This method should basically check that the `Bridge.deposit()` was triggered by a valid publish event.\\n     */\\n    function validateDeposit(\\n        uint8 sinkChainID,\\n        bytes32 identifier,\\n        uint256 time,\\n        bytes memory ancillaryData,\\n        int256 price\\n    ) public view {\\n        bytes32 priceRequestId = _encodePriceRequest(sinkChainID, identifier, time, ancillaryData);\\n        Price storage lookup = prices[priceRequestId];\\n        require(lookup.state == RequestState.Resolved, \\\"Price has not been published\\\");\\n        require(lookup.price == price, \\\"Unexpected price published\\\");\\n    }\\n\\n    /***************************************************************\\n     * Responding to a Price Request from L2:\\n     ***************************************************************/\\n\\n    /**\\n     * @notice This method will ultimately be called after a `requestPrice` has been bridged cross-chain from\\n     * non-Mainnet to this network via an off-chain relayer. The relayer will call `Bridge.executeProposal` on this\\n     * local network, which call `GenericHandler.executeProposal()` and ultimately this method.\\n     * @dev This method should prepare this oracle to receive a published price and then forward the price request\\n     * to the DVM. Can only be called by the `GenericHandler`.\\n     */\\n\\n    function executeRequestPrice(\\n        uint8 sinkChainID,\\n        bytes32 identifier,\\n        uint256 time,\\n        bytes memory ancillaryData\\n    ) public onlyGenericHandlerContract() {\\n        _requestPrice(sinkChainID, identifier, time, ancillaryData);\\n        _getOracle().requestPrice(identifier, time, ancillaryData);\\n    }\\n\\n    /**\\n     * @notice Convenience method to get cross-chain Bridge resource ID linking this contract with its SinkOracles.\\n     * @dev More details about Resource ID's here: https://chainbridge.chainsafe.io/spec/#resource-id\\n     * @return bytes32 Hash containing this stored chain ID.\\n     */\\n    function getResourceId() public view returns (bytes32) {\\n        return keccak256(abi.encode(\\\"Oracle\\\", currentChainID));\\n    }\\n\\n    /**\\n     * @notice Return DVM for this network.\\n     */\\n    function _getOracle() internal view returns (OracleAncillaryInterface) {\\n        return OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));\\n    }\\n\\n    /**\\n     * @notice This helper method is useful for calling Bridge.deposit().\\n     * @dev GenericHandler.deposit() expects data to be formatted as:\\n     *     len(data)                              uint256     bytes  0  - 64\\n     *     data                                   bytes       bytes  64 - END\\n     */\\n    function formatMetadata(\\n        uint8 chainID,\\n        bytes32 identifier,\\n        uint256 time,\\n        bytes memory ancillaryData,\\n        int256 price\\n    ) public pure returns (bytes memory) {\\n        bytes memory metadata = abi.encode(chainID, identifier, time, ancillaryData, price);\\n        return abi.encodePacked(metadata.length, metadata);\\n    }\\n}\\n\",\"keccak256\":\"0x46608bf1da72e285f3120cc63ee43705bd5f152c3ee807610ea839409cca7a10\",\"license\":\"AGPL-3.0-only\"},\"contracts/oracle/implementation/Constants.sol\":{\"content\":\"// SPDX-License-Identifier: AGPL-3.0-only\\npragma solidity ^0.8.0;\\n\\n/**\\n * @title Stores common interface names used throughout the DVM by registration in the Finder.\\n */\\nlibrary OracleInterfaces {\\n    bytes32 public constant Oracle = \\\"Oracle\\\";\\n    bytes32 public constant IdentifierWhitelist = \\\"IdentifierWhitelist\\\";\\n    bytes32 public constant Store = \\\"Store\\\";\\n    bytes32 public constant FinancialContractsAdmin = \\\"FinancialContractsAdmin\\\";\\n    bytes32 public constant Registry = \\\"Registry\\\";\\n    bytes32 public constant CollateralWhitelist = \\\"CollateralWhitelist\\\";\\n    bytes32 public constant OptimisticOracle = \\\"OptimisticOracle\\\";\\n    bytes32 public constant Bridge = \\\"Bridge\\\";\\n    bytes32 public constant GenericHandler = \\\"GenericHandler\\\";\\n}\\n\",\"keccak256\":\"0x5d1abdfd3904f6b26addd5b5dbaf8d68591cbb8ec461d566c081d2a6d931c8d3\",\"license\":\"AGPL-3.0-only\"},\"contracts/oracle/interfaces/FinderInterface.sol\":{\"content\":\"// SPDX-License-Identifier: AGPL-3.0-only\\npragma solidity ^0.8.0;\\n\\n/**\\n * @title Provides addresses of the live contracts implementing certain interfaces.\\n * @dev Examples are the Oracle or Store interfaces.\\n */\\ninterface FinderInterface {\\n    /**\\n     * @notice Updates the address of the contract that implements `interfaceName`.\\n     * @param interfaceName bytes32 encoding of the interface name that is either changed or registered.\\n     * @param implementationAddress address of the deployed contract that implements the interface.\\n     */\\n    function changeImplementationAddress(bytes32 interfaceName, address implementationAddress) external;\\n\\n    /**\\n     * @notice Gets the address of the contract that implements the given `interfaceName`.\\n     * @param interfaceName queried interface.\\n     * @return implementationAddress address of the deployed contract that implements the interface.\\n     */\\n    function getImplementationAddress(bytes32 interfaceName) external view returns (address);\\n}\\n\",\"keccak256\":\"0x9166fbfe08e954eb86d33c114fcde7ce4fd0dda5d9d28b31210582bfc769fa86\",\"license\":\"AGPL-3.0-only\"},\"contracts/oracle/interfaces/OracleAncillaryInterface.sol\":{\"content\":\"// SPDX-License-Identifier: AGPL-3.0-only\\npragma solidity ^0.8.0;\\n\\n/**\\n * @title Financial contract facing Oracle interface.\\n * @dev Interface used by financial contracts to interact with the Oracle. Voters will use a different interface.\\n */\\nabstract contract OracleAncillaryInterface {\\n    /**\\n     * @notice Enqueues a request (if a request isn't already present) for the given `identifier`, `time` pair.\\n     * @dev Time must be in the past and the identifier must be supported.\\n     * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.\\n     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.\\n     * @param time unix timestamp for the price request.\\n     */\\n\\n    function requestPrice(\\n        bytes32 identifier,\\n        uint256 time,\\n        bytes memory ancillaryData\\n    ) public virtual;\\n\\n    /**\\n     * @notice Whether the price for `identifier` and `time` is available.\\n     * @dev Time must be in the past and the identifier must be supported.\\n     * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.\\n     * @param time unix timestamp for the price request.\\n     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.\\n     * @return bool if the DVM has resolved to a price for the given identifier and timestamp.\\n     */\\n    function hasPrice(\\n        bytes32 identifier,\\n        uint256 time,\\n        bytes memory ancillaryData\\n    ) public view virtual returns (bool);\\n\\n    /**\\n     * @notice Gets the price for `identifier` and `time` if it has already been requested and resolved.\\n     * @dev If the price is not available, the method reverts.\\n     * @param identifier uniquely identifies the price requested. eg BTC/USD (encoded as bytes32) could be requested.\\n     * @param time unix timestamp for the price request.\\n     * @param ancillaryData arbitrary data appended to a price request to give the voters more info from the caller.\\n     * @return int256 representing the resolved price for the given identifier and timestamp.\\n     */\\n\\n    function getPrice(\\n        bytes32 identifier,\\n        uint256 time,\\n        bytes memory ancillaryData\\n    ) public view virtual returns (int256);\\n}\\n\",\"keccak256\":\"0xd58b41fe1e389f7871db7c04f2c05c1aac1d0455bbc521534da81fd657016a1f\",\"license\":\"AGPL-3.0-only\"}},\"version\":1}",
+  "bytecode": "0x608060405234801561001057600080fd5b50604051610d3d380380610d3d83398101604081905261002f91610068565b600280546001600160a01b0319166001600160a01b0393909316929092179091556000805460ff191660ff9092169190911790556100b1565b6000806040838503121561007a578182fd5b82516001600160a01b0381168114610090578283fd5b602084015190925060ff811681146100a6578182fd5b809150509250929050565b610c7d806100c06000396000f3fe608060405234801561001057600080fd5b506004361061007d5760003560e01c80637c1b84811161005b5780637c1b8481146100d2578063b179e1e7146100e5578063b9a3c84c14610104578063f7b7ee7e1461012f57600080fd5b80633bf5e3b4146100825780634df7f73d1461009d5780636cbaef3e146100bd575b600080fd5b61008a610142565b6040519081526020015b60405180910390f35b6100b06100ab366004610a35565b61018e565b6040516100949190610b16565b6100d06100cb3660046109d6565b6101eb565b005b6100d06100e0366004610a35565b610357565b6000546100f29060ff1681565b60405160ff9091168152602001610094565b600254610117906001600160a01b031681565b6040516001600160a01b039091168152602001610094565b6100d061013d3660046109d6565b610445565b60008054604080516020810182905260066060820152654f7261636c6560d01b608082015260ff9092169082015260a00160405160208183030381529060405280519060200120905090565b6060600086868686866040516020016101ab959493929190610bc7565b60405160208183030381529060405290508051816040516020016101d0929190610ac8565b60405160208183030381529060405291505095945050505050565b6002546040516302abf57960e61b81526d23b2b732b934b1a430b7323632b960911b60048201526001600160a01b039091169063aafd5e409060240160206040518083038186803b15801561023f57600080fd5b505afa158015610253573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906102779190610970565b6001600160a01b0316336001600160a01b0316146102dc5760405162461bcd60e51b815260206004820152601d60248201527f43616c6c6572206d7573742062652047656e6572696348616e646c657200000060448201526064015b60405180910390fd5b6102e884848484610633565b6102f06106d3565b6001600160a01b031663216666a48484846040518463ffffffff1660e01b815260040161031f93929190610aee565b600060405180830381600087803b15801561033957600080fd5b505af115801561034d573d6000803e3d6000fd5b5050505050505050565b60006103658686868661075e565b60008181526001602052604090209091506002815460ff16600281111561039c57634e487b7160e01b600052602160045260246000fd5b146103e95760405162461bcd60e51b815260206004820152601c60248201527f507269636520686173206e6f74206265656e207075626c69736865640000000060448201526064016102d3565b8281600101541461043c5760405162461bcd60e51b815260206004820152601a60248201527f556e6578706563746564207072696365207075626c697368656400000000000060448201526064016102d3565b50505050505050565b61044d6106d3565b6001600160a01b031663b551cd508484846040518463ffffffff1660e01b815260040161047c93929190610aee565b60206040518083038186803b15801561049457600080fd5b505afa1580156104a8573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906104cc919061099e565b6105185760405162461bcd60e51b815260206004820152601a60248201527f44564d20686173206e6f74207265736f6c76656420707269636500000000000060448201526064016102d3565b60006105226106d3565b6001600160a01b031663719c6d568585856040518463ffffffff1660e01b815260040161055193929190610aee565b60206040518083038186803b15801561056957600080fd5b505afa15801561057d573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906105a191906109be565b90506105b08585858585610797565b6105b8610899565b6001600160a01b03166305e2ca17866105cf610142565b6105dc898989898961018e565b6040518463ffffffff1660e01b81526004016105fa93929190610b73565b600060405180830381600087803b15801561061457600080fd5b505af1158015610628573d6000803e3d6000fd5b505050505050505050565b60006106418585858561075e565b6000818152600160205260408120919250815460ff16600281111561067657634e487b7160e01b600052602160045260246000fd5b14156106cb57805460ff19166001178155604051859060ff88169033907fa03847f95776367eadb647c2616b06a8c30da972a64abe9fbe0ad1e54e1b1ead906106c29089908990610b29565b60405180910390a45b505050505050565b6002546040516302abf57960e61b8152654f7261636c6560d01b60048201526000916001600160a01b03169063aafd5e40906024015b60206040518083038186803b15801561072157600080fd5b505afa158015610735573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906107599190610970565b905090565b6000848484846040516020016107779493929190610b95565b604051602081830303815290604052805190602001209050949350505050565b60006107a58686868661075e565b6000818152600160208190526040909120919250815460ff1660028111156107dd57634e487b7160e01b600052602160045260246000fd5b146108395760405162461bcd60e51b815260206004820152602660248201527f50726963652072657175657374206973206e6f742063757272656e746c792070604482015265656e64696e6760d01b60648201526084016102d3565b60018101839055805460ff19166002178155604051869060ff89169033907fa044919dd7388dc90883c27251dd419685261eb5c0810da1084addc60fc20d2790610888908a908a908a90610b4a565b60405180910390a450505050505050565b6002546040516302abf57960e61b81526542726964676560d01b60048201526000916001600160a01b03169063aafd5e4090602401610709565b600082601f8301126108e3578081fd5b813567ffffffffffffffff808211156108fe576108fe610c31565b604051601f8301601f19908116603f0116810190828211818310171561092657610926610c31565b8160405283815286602085880101111561093e578485fd5b8360208701602083013792830160200193909352509392505050565b803560ff8116811461096b57600080fd5b919050565b600060208284031215610981578081fd5b81516001600160a01b0381168114610997578182fd5b9392505050565b6000602082840312156109af578081fd5b81518015158114610997578182fd5b6000602082840312156109cf578081fd5b5051919050565b600080600080608085870312156109eb578283fd5b6109f48561095a565b93506020850135925060408501359150606085013567ffffffffffffffff811115610a1d578182fd5b610a29878288016108d3565b91505092959194509250565b600080600080600060a08688031215610a4c578081fd5b610a558661095a565b94506020860135935060408601359250606086013567ffffffffffffffff811115610a7e578182fd5b610a8a888289016108d3565b95989497509295608001359392505050565b60008151808452610ab4816020860160208601610c01565b601f01601f19169290920160200192915050565b82815260008251610ae0816020850160208701610c01565b919091016020019392505050565b838152826020820152606060408201526000610b0d6060830184610a9c565b95945050505050565b6020815260006109976020830184610a9c565b828152604060208201526000610b426040830184610a9c565b949350505050565b838152606060208201526000610b636060830185610a9c565b9050826040830152949350505050565b60ff84168152826020820152606060408201526000610b0d6060830184610a9c565b60ff85168152836020820152826040820152608060608201526000610bbd6080830184610a9c565b9695505050505050565b60ff8616815284602082015283604082015260a060608201526000610bef60a0830185610a9c565b90508260808301529695505050505050565b60005b83811015610c1c578181015183820152602001610c04565b83811115610c2b576000848401525b50505050565b634e487b7160e01b600052604160045260246000fdfea26469706673582212209b6691e2875984aeb6a832d3052087cfcbadc18223c3c9b48e753d47172fc4e764736f6c63430008040033",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b506004361061007d5760003560e01c80637c1b84811161005b5780637c1b8481146100d2578063b179e1e7146100e5578063b9a3c84c14610104578063f7b7ee7e1461012f57600080fd5b80633bf5e3b4146100825780634df7f73d1461009d5780636cbaef3e146100bd575b600080fd5b61008a610142565b6040519081526020015b60405180910390f35b6100b06100ab366004610a35565b61018e565b6040516100949190610b16565b6100d06100cb3660046109d6565b6101eb565b005b6100d06100e0366004610a35565b610357565b6000546100f29060ff1681565b60405160ff9091168152602001610094565b600254610117906001600160a01b031681565b6040516001600160a01b039091168152602001610094565b6100d061013d3660046109d6565b610445565b60008054604080516020810182905260066060820152654f7261636c6560d01b608082015260ff9092169082015260a00160405160208183030381529060405280519060200120905090565b6060600086868686866040516020016101ab959493929190610bc7565b60405160208183030381529060405290508051816040516020016101d0929190610ac8565b60405160208183030381529060405291505095945050505050565b6002546040516302abf57960e61b81526d23b2b732b934b1a430b7323632b960911b60048201526001600160a01b039091169063aafd5e409060240160206040518083038186803b15801561023f57600080fd5b505afa158015610253573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906102779190610970565b6001600160a01b0316336001600160a01b0316146102dc5760405162461bcd60e51b815260206004820152601d60248201527f43616c6c6572206d7573742062652047656e6572696348616e646c657200000060448201526064015b60405180910390fd5b6102e884848484610633565b6102f06106d3565b6001600160a01b031663216666a48484846040518463ffffffff1660e01b815260040161031f93929190610aee565b600060405180830381600087803b15801561033957600080fd5b505af115801561034d573d6000803e3d6000fd5b5050505050505050565b60006103658686868661075e565b60008181526001602052604090209091506002815460ff16600281111561039c57634e487b7160e01b600052602160045260246000fd5b146103e95760405162461bcd60e51b815260206004820152601c60248201527f507269636520686173206e6f74206265656e207075626c69736865640000000060448201526064016102d3565b8281600101541461043c5760405162461bcd60e51b815260206004820152601a60248201527f556e6578706563746564207072696365207075626c697368656400000000000060448201526064016102d3565b50505050505050565b61044d6106d3565b6001600160a01b031663b551cd508484846040518463ffffffff1660e01b815260040161047c93929190610aee565b60206040518083038186803b15801561049457600080fd5b505afa1580156104a8573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906104cc919061099e565b6105185760405162461bcd60e51b815260206004820152601a60248201527f44564d20686173206e6f74207265736f6c76656420707269636500000000000060448201526064016102d3565b60006105226106d3565b6001600160a01b031663719c6d568585856040518463ffffffff1660e01b815260040161055193929190610aee565b60206040518083038186803b15801561056957600080fd5b505afa15801561057d573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906105a191906109be565b90506105b08585858585610797565b6105b8610899565b6001600160a01b03166305e2ca17866105cf610142565b6105dc898989898961018e565b6040518463ffffffff1660e01b81526004016105fa93929190610b73565b600060405180830381600087803b15801561061457600080fd5b505af1158015610628573d6000803e3d6000fd5b505050505050505050565b60006106418585858561075e565b6000818152600160205260408120919250815460ff16600281111561067657634e487b7160e01b600052602160045260246000fd5b14156106cb57805460ff19166001178155604051859060ff88169033907fa03847f95776367eadb647c2616b06a8c30da972a64abe9fbe0ad1e54e1b1ead906106c29089908990610b29565b60405180910390a45b505050505050565b6002546040516302abf57960e61b8152654f7261636c6560d01b60048201526000916001600160a01b03169063aafd5e40906024015b60206040518083038186803b15801561072157600080fd5b505afa158015610735573d6000803e3d6000fd5b505050506040513d601f19601f820116820180604052508101906107599190610970565b905090565b6000848484846040516020016107779493929190610b95565b604051602081830303815290604052805190602001209050949350505050565b60006107a58686868661075e565b6000818152600160208190526040909120919250815460ff1660028111156107dd57634e487b7160e01b600052602160045260246000fd5b146108395760405162461bcd60e51b815260206004820152602660248201527f50726963652072657175657374206973206e6f742063757272656e746c792070604482015265656e64696e6760d01b60648201526084016102d3565b60018101839055805460ff19166002178155604051869060ff89169033907fa044919dd7388dc90883c27251dd419685261eb5c0810da1084addc60fc20d2790610888908a908a908a90610b4a565b60405180910390a450505050505050565b6002546040516302abf57960e61b81526542726964676560d01b60048201526000916001600160a01b03169063aafd5e4090602401610709565b600082601f8301126108e3578081fd5b813567ffffffffffffffff808211156108fe576108fe610c31565b604051601f8301601f19908116603f0116810190828211818310171561092657610926610c31565b8160405283815286602085880101111561093e578485fd5b8360208701602083013792830160200193909352509392505050565b803560ff8116811461096b57600080fd5b919050565b600060208284031215610981578081fd5b81516001600160a01b0381168114610997578182fd5b9392505050565b6000602082840312156109af578081fd5b81518015158114610997578182fd5b6000602082840312156109cf578081fd5b5051919050565b600080600080608085870312156109eb578283fd5b6109f48561095a565b93506020850135925060408501359150606085013567ffffffffffffffff811115610a1d578182fd5b610a29878288016108d3565b91505092959194509250565b600080600080600060a08688031215610a4c578081fd5b610a558661095a565b94506020860135935060408601359250606086013567ffffffffffffffff811115610a7e578182fd5b610a8a888289016108d3565b95989497509295608001359392505050565b60008151808452610ab4816020860160208601610c01565b601f01601f19169290920160200192915050565b82815260008251610ae0816020850160208701610c01565b919091016020019392505050565b838152826020820152606060408201526000610b0d6060830184610a9c565b95945050505050565b6020815260006109976020830184610a9c565b828152604060208201526000610b426040830184610a9c565b949350505050565b838152606060208201526000610b636060830185610a9c565b9050826040830152949350505050565b60ff84168152826020820152606060408201526000610b0d6060830184610a9c565b60ff85168152836020820152826040820152608060608201526000610bbd6080830184610a9c565b9695505050505050565b60ff8616815284602082015283604082015260a060608201526000610bef60a0830185610a9c565b90508260808301529695505050505050565b60005b83811015610c1c578181015183820152602001610c04565b83811115610c2b576000848401525b50505050565b634e487b7160e01b600052604160045260246000fdfea26469706673582212209b6691e2875984aeb6a832d3052087cfcbadc18223c3c9b48e753d47172fc4e764736f6c63430008040033",
+  "devdoc": {
+    "details": "The intended client of this contract is some off-chain bot watching for resolved price events on the DVM. Once that bot sees a price has resolved, it can call `publishPrice()` on this contract which will call the local Bridge contract to signal to an off-chain relayer to bridge a price request to another network.This contract must be a registered financial contract in order to call DVM methods.",
+    "kind": "dev",
+    "methods": {
+      "executeRequestPrice(uint8,bytes32,uint256,bytes)": {
+        "details": "This method should prepare this oracle to receive a published price and then forward the price request to the DVM. Can only be called by the `GenericHandler`."
+      },
+      "formatMetadata(uint8,bytes32,uint256,bytes,int256)": {
+        "details": "GenericHandler.deposit() expects data to be formatted as:     len(data)                              uint256     bytes  0  - 64     data                                   bytes       bytes  64 - END"
+      },
+      "getResourceId()": {
+        "details": "More details about Resource ID's here: https://chainbridge.chainsafe.io/spec/#resource-id",
+        "returns": {
+          "_0": "bytes32 Hash containing this stored chain ID."
+        }
+      },
+      "publishPrice(uint8,bytes32,uint256,bytes)": {
+        "details": "Publishes the DVM resolved price for the price request, or reverts if not resolved yet. Will call the local Bridge's deposit() method which will emit a Deposit event in order to signal to an off-chain relayer to begin the cross-chain process."
+      },
+      "validateDeposit(uint8,bytes32,uint256,bytes,int256)": {
+        "details": "This method should basically check that the `Bridge.deposit()` was triggered by a valid publish event."
+      }
+    },
+    "title": "Extension of BeaconOracle that is intended to be deployed on Mainnet to give financial contracts on non-Mainnet networks the ability to trigger cross-chain price requests to the Mainnet DVM. This contract is responsible for triggering price requests originating from non-Mainnet, and broadcasting resolved price data back to those networks. Technically, this contract is more of a Proxy than an Oracle, because it does not implement the full Oracle interface including the getPrice and requestPrice methods. It's goal is to shuttle price request functionality between L2 and L1.",
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {
+      "executeRequestPrice(uint8,bytes32,uint256,bytes)": {
+        "notice": "This method will ultimately be called after a `requestPrice` has been bridged cross-chain from non-Mainnet to this network via an off-chain relayer. The relayer will call `Bridge.executeProposal` on this local network, which call `GenericHandler.executeProposal()` and ultimately this method."
+      },
+      "formatMetadata(uint8,bytes32,uint256,bytes,int256)": {
+        "notice": "This helper method is useful for calling Bridge.deposit()."
+      },
+      "getResourceId()": {
+        "notice": "Convenience method to get cross-chain Bridge resource ID linking this contract with its SinkOracles."
+      },
+      "publishPrice(uint8,bytes32,uint256,bytes)": {
+        "notice": "This is the first method that should be called in order to publish a price request to another network marked by `sinkChainID`."
+      },
+      "validateDeposit(uint8,bytes32,uint256,bytes,int256)": {
+        "notice": "This method will ultimately be called after `publishPrice` calls `Bridge.deposit()`, which will call `GenericHandler.deposit()` and ultimately this method."
+      }
+    },
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 5558,
+        "contract": "contracts/chainbridge/SourceOracle.sol:SourceOracle",
+        "label": "currentChainID",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_uint8"
+      },
+      {
+        "astId": 5563,
+        "contract": "contracts/chainbridge/SourceOracle.sol:SourceOracle",
+        "label": "prices",
+        "offset": 0,
+        "slot": "1",
+        "type": "t_mapping(t_bytes32,t_struct(Price)5556_storage)"
+      },
+      {
+        "astId": 5566,
+        "contract": "contracts/chainbridge/SourceOracle.sol:SourceOracle",
+        "label": "finder",
+        "offset": 0,
+        "slot": "2",
+        "type": "t_contract(FinderInterface)32285"
+      }
+    ],
+    "types": {
+      "t_bytes32": {
+        "encoding": "inplace",
+        "label": "bytes32",
+        "numberOfBytes": "32"
+      },
+      "t_contract(FinderInterface)32285": {
+        "encoding": "inplace",
+        "label": "contract FinderInterface",
+        "numberOfBytes": "20"
+      },
+      "t_enum(RequestState)5550": {
+        "encoding": "inplace",
+        "label": "enum BeaconOracle.RequestState",
+        "numberOfBytes": "1"
+      },
+      "t_int256": {
+        "encoding": "inplace",
+        "label": "int256",
+        "numberOfBytes": "32"
+      },
+      "t_mapping(t_bytes32,t_struct(Price)5556_storage)": {
+        "encoding": "mapping",
+        "key": "t_bytes32",
+        "label": "mapping(bytes32 => struct BeaconOracle.Price)",
+        "numberOfBytes": "32",
+        "value": "t_struct(Price)5556_storage"
+      },
+      "t_struct(Price)5556_storage": {
+        "encoding": "inplace",
+        "label": "struct BeaconOracle.Price",
+        "members": [
+          {
+            "astId": 5553,
+            "contract": "contracts/chainbridge/SourceOracle.sol:SourceOracle",
+            "label": "state",
+            "offset": 0,
+            "slot": "0",
+            "type": "t_enum(RequestState)5550"
+          },
+          {
+            "astId": 5555,
+            "contract": "contracts/chainbridge/SourceOracle.sol:SourceOracle",
+            "label": "price",
+            "offset": 0,
+            "slot": "1",
+            "type": "t_int256"
+          }
+        ],
+        "numberOfBytes": "64"
+      },
+      "t_uint8": {
+        "encoding": "inplace",
+        "label": "uint8",
+        "numberOfBytes": "1"
+      }
+    }
+  }
+}

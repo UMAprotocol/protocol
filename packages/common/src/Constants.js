@@ -9,7 +9,8 @@ const interfaceName = {
   FundingRateStore: "FundingRateStore",
   OptimisticOracle: "OptimisticOracle",
   Bridge: "Bridge",
-  GenericHandler: "GenericHandler"
+  GenericHandler: "GenericHandler",
+  MockOracleAncillary: "Oracle"
 };
 
 module.exports = {

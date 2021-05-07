@@ -1,24 +1,23 @@
+const { ZERO_ADDRESS } = require("@uma/common")
+
 const func = async function(hre) {
     const { deployments, getNamedAccounts } = hre;
     const { deploy } = deployments;
   
     const { deployer } = await getNamedAccounts();
 
-    const Bridge = await deployments.get('Bridge')
+    const Finder = await deployments.get('Finder')
 
     const args = [
-        Bridge.address,
-        [],
-        [],
-        [],
-        []
+        Finder.address,
+        ZERO_ADDRESS
     ]
-    await deploy("GenericHandler", {
+    await deploy("MockOracleAncillary", {
       from: deployer,
       args,
       log: true
     });
   };
   module.exports = func;
-  func.tags = ["GenericHandler"];
-  func.dependencies = ['Bridge']; 
+  func.tags = ["MockOracle"];
+  func.dependencies = ['Finder']; 
