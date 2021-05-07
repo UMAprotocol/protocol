@@ -96,7 +96,7 @@ Verify contracts for selected network on Etherscan. Requires an `ETHERSCAN_API_K
 
 `yarn hardhat export --export-all ./networks/hardhat/deployed.json`
 
-Export deployed contract data such as ABI and addresses to `deployed.json` in order to make data available for external applications. For example, a newly deployed `Finder` address on Rinkeby can be imported via `deployed.4.rinkeby.contracts.Finder.address`.
+Export deployed contract data such as ABI and addresses to `deployed.json` in order to make data available for a front-end client, for example. For example, a newly deployed `Finder` address on Rinkeby can be imported via `deployed.4.rinkeby.contracts.Finder.address`.
 
 The following commands are implemented as [hardhat tasks](https://hardhat.org/guides/create-task.html) that make it easy to interact with deployed contracts via the CLI:
 
