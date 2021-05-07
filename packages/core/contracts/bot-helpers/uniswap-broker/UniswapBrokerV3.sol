@@ -130,9 +130,7 @@ contract UniswapBrokerV3 {
             if (step.initialized) {
                 // Fetch the net liquidity. this could be positive or negative depending on if a LP is turning on or off at this price.
                 (, int128 liquidityNet, , , , , , ) = pool.ticks(step.tickNext);
-                if (!zeroForOne) liquidityNet = -liquidityNet;
-
-                state.liquidity = LiquidityMath.addDelta(state.liquidity, liquidityNet);
+                state.liquidity = LiquidityMath.addDelta(state.liquidity, zeroForOne ? liquidityNet : -liquidityNet);
             }
 
             // Finally, set the state price to the next price for the next iteration.
