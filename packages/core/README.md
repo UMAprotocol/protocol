@@ -86,9 +86,13 @@ Deploy all contracts to specified network. Requires a `CUSTOM_NODE_URL` HTTP(s) 
 
 Deploys all production contracts, which doesn't include the `MockOracle` for example.
 
-`./scripts/hardhat/deployContracts.sh sink-oracle <NETWORK-NAME>`
+`yarn hardhat deploy --tags sink-oracle <NETWORK-NAME>`
 
-Deploys contracts necessary to set up Sink Oracle on L2 on the network, which would be used to deploy to Polygon for example.
+Deploys minimum contracts necessary to set up Sink Oracle on L2 on the network, which would be used to deploy to Polygon for example.
+
+`yarn hardhat deploy --tags source-oracle,test <NETWORK-NAME>`
+
+Deploys minimum contracts necessary to set up Source Oracle on L1 on the network, along with test-specific versions of contracts, like the MockOracle intead of Voting.
 
 `./scripts/hardhat/verifyDeployedContracts.sh <NETWORK-NAME>`
 
