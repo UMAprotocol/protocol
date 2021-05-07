@@ -94,7 +94,7 @@ Deploys contracts necessary to set up Beacon Oracle on L1 on the network, which 
 
 Verify contracts for selected network on Etherscan. Requires an `ETHERSCAN_API_KEY` to be set in environment. This script requires that the local `./core/deployments` has solc standard-input json files, which will be generated after running the `deploy` command.
 
-`yarn hardhat export --export-all ./networks/hardhat/deployed.json `
+`yarn hardhat export --export-all ./networks/hardhat/deployed.json`
 
 Export deployed contract data such as ABI and addresses to `deployed.json` in order to make data available for external applications. For example, a newly deployed `Finder` address on Rinkeby can be imported via `deployed.4.rinkeby.contracts.Finder.address`.
 

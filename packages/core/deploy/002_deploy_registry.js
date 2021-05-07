@@ -1,4 +1,4 @@
-const { stringToBytes32, interfaceName } = require("@uma/common")
+const { stringToBytes32, interfaceName } = require("@uma/common");
 const func = async function(hre) {
   const { deployments, getNamedAccounts } = hre;
   const { deploy, log, execute } = deployments;
@@ -18,7 +18,7 @@ const func = async function(hre) {
       "changeImplementationAddress",
       stringToBytes32(interfaceName.Registry),
       deployResult.address
-    )
+    );
     log(
       `Set ${interfaceName.Bridge} in Finder to deployed instance @ ${deployResult.address}, tx: ${txn.transactionHash}`
     );

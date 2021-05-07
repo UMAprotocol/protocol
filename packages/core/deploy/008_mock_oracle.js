@@ -1,4 +1,4 @@
-const { stringToBytes32, interfaceName, ZERO_ADDRESS } = require("@uma/common")
+const { stringToBytes32, interfaceName, ZERO_ADDRESS } = require("@uma/common");
 
 const func = async function(hre) {
   const { deployments, getNamedAccounts } = hre;
@@ -22,7 +22,7 @@ const func = async function(hre) {
       "changeImplementationAddress",
       stringToBytes32(interfaceName.MockOracleAncillary),
       deployResult.address
-    )
+    );
     log(
       `Set ${interfaceName.MockOracleAncillary} in Finder to deployed instance @ ${deployResult.address}, tx: ${txn.transactionHash}`
     );
