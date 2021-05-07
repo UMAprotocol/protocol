@@ -941,12 +941,12 @@ const defaultConfigs = {
   },
   USDXIO: {
     type: "expression",
-    expression: "XIOETH * USDETH",
+    expression: "ETHXIO * USDETH",
     lookback: 7200,
     minTimeBetweenUpdates: 60,
     twapLength: 3600,
     customFeeds: {
-      XIOETH: {
+      ETHXIO: {
         type: "uniswap",
         uniswapAddress: "0xe0cc5afc0ff2c76183416fb8d1a29f6799fb2cdf",
         invertPrice: true
