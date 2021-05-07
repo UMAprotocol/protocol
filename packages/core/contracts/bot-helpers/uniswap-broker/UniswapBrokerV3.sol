@@ -91,7 +91,7 @@ contract UniswapBrokerV3 {
             else if (step.tickNext > TickMath.MAX_TICK) step.tickNext = TickMath.MAX_TICK;
 
             // Find the price at the next tick. Between the current state.sqrtPriceX96 and the nextTickPriceX96 we
-            // can find how much of the sold token is needed ot sufficiently move the market over the interval.
+            // can find how much of the sold token is needed to sufficiently move the market over the interval.
 
             uint160 nextTickPriceX96 = TickMath.getSqrtRatioAtTick(step.tickNext);
             uint256 inputAmountForStep;
