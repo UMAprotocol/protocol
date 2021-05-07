@@ -109,7 +109,7 @@ contract UniswapBrokerV3 {
                 );
                 // Else, if zeroForOne is false, then we are moving the price UP. In this case we need to ensure that we
                 // don't overshoot the price on the next step.
-            } else if (!zeroForOne) {
+            } else {
                 step.sqrtPriceNextX96 = nextTickPriceX96 > sqrtRatioTargetX96 ? nextTickPriceX96 : sqrtRatioTargetX96;
                 inputAmountForStep = SqrtPriceMath.getAmount1Delta( // As we are trading token1 for token0, calculate the token1 input.
                     step.sqrtPriceStartX96,
