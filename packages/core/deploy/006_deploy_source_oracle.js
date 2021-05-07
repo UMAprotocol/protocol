@@ -18,5 +18,5 @@ const func = async function(hre) {
   });
 };
 module.exports = func;
-func.tags = ["SourceOracle"];
+func.tags = ["SourceOracle","production","source-oracle"];
 func.dependencies = ["Finder"];

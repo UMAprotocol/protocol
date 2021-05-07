@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# The type of oracle system to set up, for example "beacon-l1" or "beacon-l2". Default is "dvm".
+# The type of oracle system to set up. Default is "dvm".
 ORACLE_TYPE=$1
 if [ ! "$ORACLE_TYPE" ]; 
 then 
@@ -14,12 +14,15 @@ then
     exit 1
 fi
 
-if [ "$ORACLE_TYPE" == "beacon-l2" ]
+if [ "$ORACLE_TYPE" == "sink-oracle" ]
 then 
-    yarn hardhat deploy --network $NETWORK_NAME --tags Finder,Registry,Bridge,GenericHandler,SinkOracle
-elif [ "$ORACLE_TYPE" == "beacon-l1" ]
+    yarn hardhat deploy --network $NETWORK_NAME --tags sink-oracle
+elif [ "$ORACLE_TYPE" == "source-oracle-test" ]
 then
-    yarn hardhat deploy --network $NETWORK_NAME --tags Finder,Registry,Bridge,GenericHandler,SourceOracle,IdentifierWhitelist,MockOracle
+    yarn hardhat deploy --network $NETWORK_NAME --tags sink-oracle,IdentifierWhitelist,MockOracle
+elif [ "$ORACLE_TYPE" == "source-oracle" ]
+then
+    yarn hardhat deploy --network $NETWORK_NAME --tags sink-oracle,IdentifierWhitelist
 else
     echo "unimplemented"
 fi

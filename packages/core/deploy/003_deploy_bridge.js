@@ -6,7 +6,6 @@ const func = async function(hre) {
   const { deployer } = await getNamedAccounts();
 
   const chainId = await getChainId();
-  console.log(chainId);
 
   const args = [
     chainId, // Current chain ID.
@@ -35,5 +34,5 @@ const func = async function(hre) {
   }
 };
 module.exports = func;
-func.tags = ["Bridge"];
+func.tags = ["Bridge","production","sink-oracle","source-oracle"];
 func.dependencies = ["Finder"];

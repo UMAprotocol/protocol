@@ -82,13 +82,13 @@ This will deploy your contracts on the in-memory hardhat network and exit, leavi
 
 Deploy all contracts to specified network. Requires a `CUSTOM_NODE_URL` HTTP(s) endpoint and a `MNEMONIC` to be set in environment. Available contract tags can be found in `/deploy` scripts, and available networks are found in the `networks` object within `hardhat.config.js`. Tags can be powerful, for example running `yarn hardhat deploy --tags Bridge` will only deploy the Bridge contract its dependencies (such as the Finder).
 
-`./scripts/hardhat/deployContracts.sh beacon-l2 <NETWORK-NAME>`
+`yarn hardhat deploy --production`
 
-Deploys contracts necessary to set up Beacon Oracle on L2 on the network, which would be used to deploy to Polygon for example.
+Deploys all production contracts, which doesn't include the `MockOracle` for example.
 
-`./scripts/hardhat/deployContracts.sh beacon-l1 <NETWORK-NAME>`
+`./scripts/hardhat/deployContracts.sh sink-oracle <NETWORK-NAME>`
 
-Deploys contracts necessary to set up Beacon Oracle on L1 on the network, which would be deployed on Mainnet for example.
+Deploys contracts necessary to set up Sink Oracle on L2 on the network, which would be used to deploy to Polygon for example.
 
 `./scripts/hardhat/verifyDeployedContracts.sh <NETWORK-NAME>`
 
