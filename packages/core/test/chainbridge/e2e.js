@@ -112,24 +112,12 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
     await identifierWhitelist.addSupportedIdentifier(identifier);
 
     // Set up Handlers.
-    genericHandlerMainnet = await GenericHandlerContract.new(
-      bridgeMainnet.address,
-      [],
-      [],
-      [],
-      []
-    );
+    genericHandlerMainnet = await GenericHandlerContract.new(bridgeMainnet.address, [], [], [], []);
     await sourceFinder.changeImplementationAddress(
       utf8ToHex(interfaceName.GenericHandler),
       genericHandlerMainnet.address
     );
-    genericHandlerSidechain = await GenericHandlerContract.new(
-      bridgeSidechain.address,
-      [],
-      [],
-      [],
-      []
-    );
+    genericHandlerSidechain = await GenericHandlerContract.new(bridgeSidechain.address, [], [], [], []);
     await sinkFinder.changeImplementationAddress(
       utf8ToHex(interfaceName.GenericHandler),
       genericHandlerSidechain.address

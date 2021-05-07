@@ -2,7 +2,7 @@
 
 const { getHardhatConfig, getNodeUrl, mnemonic } = require("@uma/common");
 
-require('dotenv').config();
+require("dotenv").config();
 const path = require("path");
 const coreWkdir = path.dirname(require.resolve("@uma/core/package.json"));
 const packageWkdir = path.dirname(require.resolve("@uma/core/package.json"));
@@ -31,11 +31,11 @@ const configOverride = {
       // I set this to 255 because there is no other EVM network currently using this number: https://chainid.network/.
     },
     rinkeby: {
-      url: getNodeUrl("rinkeby", true), 
+      url: getNodeUrl("rinkeby", true),
       accounts: { mnemonic }
     },
     goerli: {
-      url: getNodeUrl("goerli", true), 
+      url: getNodeUrl("goerli", true),
       accounts: { mnemonic }
     }
   },
@@ -48,6 +48,6 @@ const configOverride = {
 
 // Tasks: These tasks are conveniently available via the hardhat CLI: `yarn hardhat <TASK>`
 // Documentation on creating tasks here: https://hardhat.org/guides/create-task.html
-require('./scripts/hardhat/tasks/finder')
+require("./scripts/hardhat/tasks/finder");
 
 module.exports = getHardhatConfig(configOverride);
