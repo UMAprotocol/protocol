@@ -139,8 +139,7 @@ contract UniswapBrokerV3 {
         }
 
         // Based on the direction we are moving, set the input and output tokens.
-        address tokenIn = zeroForOne ? pool.token0() : pool.token1();
-        address tokenOut = zeroForOne ? pool.token1() : pool.token0();
+        (address tokenIn, address tokenOut) = zeroForOne ? (pool.token0(), pool.token1()) : (pool.token1(), pool.token0());
 
         // If trading from an EOA pull tokens into this contract. If trading from a DSProxy this is redundant.
         if (tradingAsEOA)
