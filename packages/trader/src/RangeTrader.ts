@@ -126,7 +126,7 @@ export class RangeTrader {
     // the scalar = 1 - 0.05 = 0.95. Therefore the bot will trade the price up to 950.
     const priceScalar = deviationError.gte(toBN("0")) ? 1 + this.targetPriceSpread : 1 - this.targetPriceSpread;
 
-    const desiredPrice = currentReferencePrice.mul(toBNWei(priceScalar)).div(this.fixedPointAdjustment);
+    let desiredPrice = currentReferencePrice.mul(toBNWei(priceScalar)).div(this.fixedPointAdjustment);
 
     this.logger.debug({
       at: "RangeTrader",
@@ -135,6 +135,10 @@ export class RangeTrader {
       priceScalar,
       desiredPrice: this.formatDecimalString(this.normalizePriceFeedDecimals(desiredPrice))
     });
+
+    if (this.tokenPriceFeed.invertPrice === "true") {
+      desiredPrice = this._invertPriceSafely(desiredPrice);
+    }
 
     const tradeExecutionTransaction = await this.exchangeAdapter.tradeMarketToDesiredPrice(desiredPrice.toString());
     if (tradeExecutionTransaction instanceof Error) {
@@ -175,6 +179,13 @@ export class RangeTrader {
       .sub(this.normalizePriceFeedDecimals(expectedValue))
       .mul(this.fixedPointAdjustment) // Scale the numerator before division
       .div(this.normalizePriceFeedDecimals(expectedValue));
+  }
+
+  // TODO: there are a number of places through the repo that re-use this method. it should be refactored to a common util.
+  _invertPriceSafely(price: BigNumber) {
+    return toBN(toWei(this.normalizePriceFeedDecimals("1")).toString())
+      .mul(toBN(toWei(this.normalizePriceFeedDecimals("1")).toString()))
+      .div(toBN(price.toString()));
   }
 }
 

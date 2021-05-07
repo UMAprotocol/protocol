@@ -2,9 +2,6 @@ import winston from "winston";
 import Web3 from "web3";
 import BigNumber from "bignumber.js";
 
-const bn = require("bignumber.js"); // Big number that comes with web3 does not support square root.
-bn.config({ EXPONENTIAL_AT: 999999, DECIMAL_PLACES: 40 });
-
 const { encodePriceSqrt } = require("@uma/common");
 const ExchangeAdapterInterface = require("./ExchangeAdapterInterface");
 const { getTruffleContract } = require("@uma/core");
@@ -33,6 +30,7 @@ class UniswapV3Trader implements InstanceType<typeof ExchangeAdapterInterface> {
     this.UniswapV2Broker = getTruffleContract("UniswapV3Broker", this.web3);
   }
   async tradeMarketToDesiredPrice(desiredPrice: BigNumber) {
+    console.log("desiredPrice", desiredPrice.toString());
     const callCode = this.UniswapV2Broker.bytecode;
 
     const contract = new this.web3.eth.Contract(this.UniswapV2Broker.abi);

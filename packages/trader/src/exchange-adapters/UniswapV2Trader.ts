@@ -28,7 +28,6 @@ class UniswapV2Trader implements InstanceType<typeof ExchangeAdapterInterface> {
     this.tokenBAddress = tokenBAddress;
     this.dsProxyManager = dsProxyManager;
 
-    // TODO: add this as a parameter when configuring the uniswap trader.
     this.tradeDeadline = 10 * 60 * 60;
 
     this.UniswapV2Broker = getTruffleContract("UniswapV2Broker", this.web3);
@@ -38,17 +37,6 @@ class UniswapV2Trader implements InstanceType<typeof ExchangeAdapterInterface> {
 
     const contract = new this.web3.eth.Contract(this.UniswapV2Broker.abi);
 
-    console.log(
-      "val",
-      false, // tradingAsEOA. Set as false as this is executed as a DSProxy.
-      this.uniswapRouterAddress,
-      this.uniswapFactoryAddress,
-      [this.tokenAAddress, this.tokenBAddress], // swappedTokens: The two exchanged
-      [desiredPrice.toString(), this.web3.utils.toWei("1").toString()], // truePriceTokens: ratio between these is the "true" price
-      [MAX_UINT_VAL, MAX_UINT_VAL], // maxSpendTokens: We dont want to limit how many tokens can be pulled.
-      this.dsProxyManager.getDSProxyAddress(), // to: the output of the trade will send the tokens to the DSProxy.
-      Number((await this.web3.eth.getBlock("latest")).timestamp) + this.tradeDeadline // Deadline in the future)
-    );
     const callData = contract.methods
       .swapToPrice(
         false, // tradingAsEOA. Set as false as this is executed as a DSProxy.
