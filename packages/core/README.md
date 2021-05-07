@@ -101,6 +101,7 @@ Verify contracts for selected network on Etherscan. Requires an `ETHERSCAN_API_K
 Run this after deploying and verifying the contracts on a public network in order to set up important contract state such as the Finder, Registry, and more. The first argument is the same type of argument passed into the `deployContracts.sh`
 script which informs it which contracts to set up. For example, `beacon-l1` will set up the `SourceOracle` while
 `beacon-l2` will set up the `SinkOracle`.
+
 ## Typescript!
 
 In addition to the above import styles, you can import typescript types for truffle, ethers, and web3. Because of existing
