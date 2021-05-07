@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# The type of oracle system to set up contracts for, for example "beacon-l1" or "beacon-l2". Default is "dvm".
+# The type of oracle system to set up, for example "beacon-l1" or "beacon-l2". Default is "dvm".
 ORACLE_TYPE=$1
 if [ ! "$ORACLE_TYPE" ]; 
 then 
@@ -16,10 +16,10 @@ fi
 
 if [ "$ORACLE_TYPE" == "beacon-l2" ]
 then 
-    yarn hardhat setup-finder --registry --bridge --generichandler --network $NETWORK_NAME
+    yarn hardhat deploy --network $NETWORK_NAME --tags Finder,Registry,Bridge,GenericHandler,SinkOracle
 elif [ "$ORACLE_TYPE" == "beacon-l1" ]
 then
-    yarn hardhat setup-finder --registry --bridge --generichandler --identifierwhitelist --mockoracle --network $NETWORK_NAME
+    yarn hardhat deploy --network $NETWORK_NAME --tags Finder,Registry,Bridge,GenericHandler,SourceOracle,IdentifierWhitelist,MockOracle
 else
     echo "unimplemented"
 fi

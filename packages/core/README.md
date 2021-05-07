@@ -78,17 +78,29 @@ Here is a list of scripts you can execute:
 
 This will deploy your contracts on the in-memory hardhat network and exit, leaving no trace. Quickest way to ensure that deployments work as intended without consequences.
 
-`yarn hardhat deploy --network <NETWORK-NAME> --tags <OPTIONAL-TAGS>`
+`yarn hardhat deploy --network <NETWORK-NAME>`
 
-Deploy contracts with specific tags, delimitted by commas. Details [here](https://hardhat.org/plugins/hardhat-deploy.html#deploy-scripts-tags-and-dependencies). Requires a `CUSTOM_NODE_URL` HTTP(s) endpoint and a `MNEMONIC` to be set in environment. Available tags can be found in `/deploy` scripts, and available networks are found in the `networks` object within `hardhat.config.js`.
+Deploy all contracts. Requires a `CUSTOM_NODE_URL` HTTP(s) endpoint and a `MNEMONIC` to be set in environment. Available tags can be found in `/deploy` scripts, and available networks are found in the `networks` object within `hardhat.config.js`.
 
-`./scripts/hardhat/verifyDeployedContracts.sh <NETWORK-NAME, e.g. "rinkeby">`
+`./scripts/hardhat/deployContracts.sh beacon-l2 <NETWORK-NAME>`
+
+Deploys contracts necessary to set up Beacon Oracle on L2 on the network, which would be used to deploy to Polygon for
+example.
+
+`./scripts/hardhat/deployContracts.sh beacon-l1 <NETWORK-NAME>`
+
+Deploys contracts necessary to set up Beacon Oracle on L1 on the network, which would be deployed on Mainnet for
+example.
+
+`./scripts/hardhat/verifyDeployedContracts.sh <NETWORK-NAME>`
 
 Verify contracts for selected network on Etherscan. Requires an `ETHERSCAN_API_KEY` to be set in environment.
 
-`./scripts/hardhat/setupDeployedContracts.sh <NETWORK-NAME, e.g. "rinkeby">`
+`./scripts/hardhat/setupDeployedContracts.sh beacon-l2 <NETWORK-NAME>`
 
-Run this after deploying and verifying the contracts on a public network in order to set up important contract state such as the Finder, Registry, and more.
+Run this after deploying and verifying the contracts on a public network in order to set up important contract state such as the Finder, Registry, and more. The first argument is the same type of argument passed into the `deployContracts.sh`
+script which informs it which contracts to set up. For example, `beacon-l1` will set up the `SourceOracle` while
+`beacon-l2` will set up the `SinkOracle`.
 ## Typescript!
 
 In addition to the above import styles, you can import typescript types for truffle, ethers, and web3. Because of existing
