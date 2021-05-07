@@ -27,9 +27,13 @@ import { ethers } from "ethers";
 import assert from "assert";
 const { makeUnixPipe } = require("../libs/affiliates/utils");
 
-export interface ProcessEnv {
+interface ProcessEnv {
   [key: string]: string | undefined;
 }
+type RewardResult = {
+  // user address: reward amount as a float string
+  [key: string]: string;
+};
 type Config = {
   poolAddress: string;
   rewards?: number;
@@ -38,15 +42,24 @@ type Config = {
   sampleRate?: number;
 };
 
+// default config values
+const CONFIG_DEFAULTS = {
+  // if rewards are set to 1, all positions will show a % value between 0 and 1
+  rewards: 1,
+  // if sample rate is 1 and you have start and end blocks, every block is sampled for state (requires archive)
+  // this may be really slow, so you probably want to provide a larger number to skip blocks.
+  sampleRate: 1
+};
+
 const App = (env: ProcessEnv) => async (config: Config) => {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL for eth provider");
-  const { poolAddress, rewards = 1, startBlock, endBlock, sampleRate = 1 } = config;
+  const { poolAddress, rewards, startBlock, endBlock, sampleRate } = { ...CONFIG_DEFAULTS, ...config };
 
   const provider = ethers.getDefaultProvider(env.CUSTOM_NODE_URL);
   const poolClient = PoolClient(provider);
   const mining = LiquidityMining({ poolClient });
 
-  let result;
+  let result: RewardResult;
   // we can omit start and end block and just see the rewards based on current time
   if (exists(startBlock) && exists(endBlock)) {
     result = await mining.processBlocks({ startBlock, endBlock, sampleRate, rewards, poolAddress });

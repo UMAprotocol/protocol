@@ -55,26 +55,27 @@ export const IsPositionActive = (tick: BigNumberish) => (
 };
 
 // percent: numerator, denominator and scale factor
-export function percent(val: string | BigInt, sum: string | BigInt, scale: string | BigInt = 10n ** 18n) {
-  return (BigInt(val) * BigInt(scale)) / BigInt(sum);
+export function percent(val: string, sum: string, scale: string = (10n ** 18n).toString()) {
+  return ((BigInt(val) * BigInt(scale)) / BigInt(sum)).toString();
 }
 
 export function percentShares(
   contributions: { [key: string]: string } = {},
-  sum?: string | BigInt,
-  scale: string | BigInt = 10n ** 18n
+  sum?: string,
+  scale: string = (10n ** 18n).toString()
 ) {
-  const defaultSum = BigInt(
+  const defaultSum =
     sum ||
-      Object.values(contributions).reduce((sum, val) => {
+    Object.values(contributions)
+      .reduce((sum, val) => {
         return sum + BigInt(val);
       }, 0n)
-  );
+      .toString();
 
-  if (defaultSum == 0n) return {};
+  if (defaultSum == "0") return {};
 
   return Object.entries(contributions).reduce((result: { [key: string]: string }, [key, value]) => {
-    result[key] = percent(value, defaultSum, BigInt(scale)).toString();
+    result[key] = percent(value, defaultSum, scale);
     return result;
   }, {});
 }

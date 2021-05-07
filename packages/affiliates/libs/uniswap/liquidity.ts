@@ -5,7 +5,7 @@ import Promise from "bluebird";
 import { ethers } from "ethers";
 
 import { Positions, Position, Pool, Balances } from "./models";
-import { PoolClient } from "./contracts";
+import { PoolClient, BlockNumber } from "./contracts";
 import { exists, IsPositionActive, liquidityPerTick, percentShares } from "./utils";
 
 type Config = {
@@ -19,7 +19,7 @@ export default (config: Config) => {
 
   // fetch all needed contract state given a block number
   async function stateAtBlock(params: {
-    blockNumber: number | string | undefined;
+    blockNumber: BlockNumber;
     allPositions: Positions;
     poolClient: PoolClient;
     poolAddress: string;

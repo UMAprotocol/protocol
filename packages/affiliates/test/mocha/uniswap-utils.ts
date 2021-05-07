@@ -78,9 +78,9 @@ describe("utils", function() {
   it("percent", function() {
     let result;
     result = Utils.percent("1", "2");
-    assert.equal(result, 500000000000000000n);
+    assert.equal(result, "500000000000000000");
     result = Utils.percent("1", "2", "10");
-    assert.equal(result, 5n);
+    assert.equal(result, "5");
   });
   it("percentShares", function() {
     const input = {
