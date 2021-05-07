@@ -9,7 +9,7 @@ task("setup-finder", "Points Finder to DVM system contracts")
   .addFlag("identifierwhitelist", "Use if you want to set IdentifierWhitelist")
   .addFlag("mockoracle", "Use if you want to set MockOracle as the Oracle")
   .setAction(async function(taskArguments, hre) {
-    const { deployments, getNamedAccounts } = hre;
+    const { deployments, getNamedAccounts, ethers } = hre;
     const { deployer } = await getNamedAccounts();
     const { registry, generichandler, bridge, identifierwhitelist, mockoracle } = taskArguments;
 
