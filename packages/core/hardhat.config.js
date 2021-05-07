@@ -32,10 +32,13 @@ const configOverride = {
     },
     rinkeby: {
       url: getNodeUrl("rinkeby", true),
+      chainId: 4, // We set these explicitly so that hardhat fails loudly if the caller is unintentionally connecting
+      // to a node for the wrong network.
       accounts: { mnemonic }
     },
     goerli: {
       url: getNodeUrl("goerli", true),
+      chainId: 5,
       accounts: { mnemonic }
     }
   },
@@ -49,5 +52,6 @@ const configOverride = {
 // Tasks: These tasks are conveniently available via the hardhat CLI: `yarn hardhat <TASK>`
 // Documentation on creating tasks here: https://hardhat.org/guides/create-task.html
 require("./scripts/hardhat/tasks/finder");
+require("./scripts/hardhat/tasks/registry");
 
 module.exports = getHardhatConfig(configOverride);
