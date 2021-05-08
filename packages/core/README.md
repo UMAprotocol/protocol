@@ -82,9 +82,9 @@ This will deploy your contracts on the in-memory hardhat network and exit, leavi
 
 Deploy all contracts to specified network. Requires a `CUSTOM_NODE_URL` HTTP(s) endpoint and a `MNEMONIC` to be set in environment. Available contract tags can be found in `/deploy` scripts, and available networks are found in the `networks` object within `hardhat.config.js`. Tags can be powerful, for example running `yarn hardhat deploy --tags Bridge` will only deploy the Bridge contract its dependencies (such as the Finder).
 
-`yarn hardhat deploy --production`
+`yarn hardhat deploy --tags dvm`
 
-Deploys all production contracts, which doesn't include the `MockOracle` for example.
+Deploys all production DVM contracts, which doesn't include the `MockOracle` or BeaconOracles for example.
 
 `yarn hardhat deploy --tags sink-oracle <NETWORK-NAME>`
 

@@ -23,5 +23,5 @@ const func = async function(hre) {
   });
 };
 module.exports = func;
-func.tags = ["SinkOracle", "production", "sink-oracle"];
+func.tags = ["SinkOracle", "sink-oracle"];
 func.dependencies = ["Finder"];

@@ -25,5 +25,5 @@ const func = async function(hre) {
   }
 };
 module.exports = func;
-func.tags = ["IdentifierWhitelist", "production"];
+func.tags = ["IdentifierWhitelist", "dvm"];
 func.dependencies = ["Finder"];
