@@ -29,5 +29,5 @@ const func = async function(hre) {
   }
 };
 module.exports = func;
-func.tags = ["MockOracle","test"];
+func.tags = ["MockOracle", "test"];
 func.dependencies = ["Finder", "IdentifierWhitelist"];
