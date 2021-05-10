@@ -337,3 +337,5 @@ class FinancialContractClient {
 }
 
 module.exports = { FinancialContractClient };
+
+// Test comment for CI test proposes
