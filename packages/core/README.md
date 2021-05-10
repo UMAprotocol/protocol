@@ -111,6 +111,7 @@ Registers the `deployer` account (as defined in the `namedAccounts` param in `ha
 Whitelist hardcoded identifiers from the `config/identifiers.json` file. Optionally whitelists a custom identifier.
 
 `yarn hardhat whitelist-identifiers --network <NETWORK-NAME> --id <CUSTOM-IDENTIFIER>`
+
 ## Typescript!
 
 In addition to the above import styles, you can import typescript types for truffle, ethers, and web3. Because of existing

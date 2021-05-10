@@ -1,4 +1,4 @@
-const { task } = require("hardhat/config");
+const { task, types } = require("hardhat/config");
 const { RegistryRolesEnum } = require("@uma/common");
 const { waitForTxn } = require("./utils");
 
@@ -11,14 +11,11 @@ const _registerAccount = async (account, registry, deployer) => {
   } else {
     console.log(`${account} is already registered!`);
   }
-}
+};
 
 task("register-accounts", "Register deployer plus custom account with Registry capable of making price requests")
   .addOptionalParam("account", "Custom account to register", "", types.string)
-  .setAction(async function(
-    taskArguments,
-    hre
-  ) {
+  .setAction(async function(taskArguments, hre) {
     const { deployments, getNamedAccounts, ethers } = hre;
     const { deployer } = await getNamedAccounts();
     const { account } = taskArguments;
@@ -43,5 +40,4 @@ task("register-accounts", "Register deployer plus custom account with Registry c
 
     // Register deployer by default.
     await _registerAccount(deployer, registry, deployer);
-  }
-);
+  });

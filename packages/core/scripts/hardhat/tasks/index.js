@@ -1,5 +1,4 @@
 module.exports = {
-    ...require("./identifiers.js"),
-    ...require("./registry.js")
+  ...require("./identifiers.js"),
+  ...require("./registry.js")
 };
-  
