@@ -25,20 +25,17 @@ const configOverride = {
     tests: `${packageWkdir}/test`
   },
   networks: {
-    hardhat: {
-      chainId: 255 // We override the default "hardhat" chainId of 31337 so that we can use it directly as the
-      // chainbridge "chainId". The chainbridge Bridge contract stores chainId as a uint8, whose max value is 2^8-1=255.
-      // I set this to 255 because there is no other EVM network currently using this number: https://chainid.network/.
-    },
+    hardhat: {},
     rinkeby: {
       url: getNodeUrl("rinkeby", true),
-      chainId: 4, // We set these explicitly so that hardhat fails loudly if the caller is unintentionally connecting
-      // to a node for the wrong network.
       accounts: { mnemonic }
     },
     goerli: {
       url: getNodeUrl("goerli", true),
-      chainId: 5,
+      accounts: { mnemonic }
+    },
+    mumbai: {
+      url: 'https://rpc-mumbai.maticvigil.com/',
       accounts: { mnemonic }
     }
   },

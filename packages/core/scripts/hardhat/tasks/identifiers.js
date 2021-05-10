@@ -24,13 +24,12 @@ task("whitelist-identifiers", "Whitelist identifiers from JSON file")
     const identifierWhitelist = await ethers.getContractAt("IdentifierWhitelist", IdentifierWhitelist.address);
     console.log(`Using IdentifierWhitelist @ ${identifierWhitelist.address}`);
 
-    // Whitelist custom identifiers.
+    // Whitelist custom identifier OR default list of identifiers:
     if (id !== "") {
       await _whitelistIdentifier(id, identifierWhitelist, deployer);
-    }
-
-    // Whitelist default list of identifiers from file.
-    for (const identifier of Object.keys(defaultIdentifiersToWhitelist)) {
-      await _whitelistIdentifier(identifier, identifierWhitelist, deployer);
+    } else {
+      for (const identifier of Object.keys(defaultIdentifiersToWhitelist)) {
+        await _whitelistIdentifier(identifier, identifierWhitelist, deployer);
+      }    
     }
   });

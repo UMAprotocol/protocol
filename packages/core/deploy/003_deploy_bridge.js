@@ -1,4 +1,4 @@
-const { stringToBytes32, interfaceName } = require("@uma/common");
+const { stringToBytes32, interfaceName, getBridgeChainId } = require("@uma/common");
 const func = async function(hre) {
   const { deployments, getNamedAccounts, getChainId } = hre;
   const { deploy, log, execute } = deployments;
@@ -6,9 +6,10 @@ const func = async function(hre) {
   const { deployer } = await getNamedAccounts();
 
   const chainId = await getChainId();
+  const bridgeId = getBridgeChainId(chainId);
 
   const args = [
-    chainId, // Current chain ID.
+    bridgeId, // Current chain ID.
     [deployer], // Initial relayers defaults to deployer as 1 of 1
     1, // Relayer threshold set to 1
     0, // Deposit fee

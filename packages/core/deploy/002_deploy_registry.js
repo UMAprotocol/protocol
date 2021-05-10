@@ -20,7 +20,7 @@ const func = async function(hre) {
       deployResult.address
     );
     log(
-      `Set ${interfaceName.Bridge} in Finder to deployed instance @ ${deployResult.address}, tx: ${txn.transactionHash}`
+      `Set ${interfaceName.Registry} in Finder to deployed instance @ ${deployResult.address}, tx: ${txn.transactionHash}`
     );
   }
 };
