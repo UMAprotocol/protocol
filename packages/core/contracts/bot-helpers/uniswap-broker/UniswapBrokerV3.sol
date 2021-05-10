@@ -67,9 +67,7 @@ contract UniswapBrokerV3 {
         // trading token0 for token1. Else, we are trading token1 for token0.
         bool zeroForOne = sqrtPriceX96 >= sqrtRatioTargetX96;
 
-        // Fetch the current pool liquidity. Build a state object to store this information which can be re-used during
-        // tick traversal later on.
-        uint128 startingLiquidity = pool.liquidity();
+        // Build a state object to store this information which can be re-used during.
         SwapState memory state =
             SwapState({ sqrtPriceX96: sqrtPriceX96, tick: tick, liquidity: pool.liquidity(), requiredInputAmount: 0 });
 
@@ -107,7 +105,7 @@ contract UniswapBrokerV3 {
                     state.liquidity,
                     false
                 );
-                // Else, if zeroForOne is false, then we are moving the price UP. In this case we need to ensure that we
+                // Else, if zeroForOne is false, then we are moving the price DOWN. In this case we need to ensure that we
                 // don't overshoot the price on the next step.
             } else {
                 step.sqrtPriceNextX96 = nextTickPriceX96 > sqrtRatioTargetX96 ? nextTickPriceX96 : sqrtRatioTargetX96;
