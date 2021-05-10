@@ -74,43 +74,43 @@ side-by-side.
 
 Here is a list of scripts you can execute:
 
-`yarn void:deploy`
-
 This will deploy your contracts on the in-memory hardhat network and exit, leaving no trace. Quickest way to ensure that deployments work as intended without consequences.
 
-`yarn hardhat deploy --network <NETWORK-NAME> --tags <TAGS>`
+`yarn void:deploy`
 
 Deploy all contracts to specified network. Requires a `CUSTOM_NODE_URL` HTTP(s) endpoint and a `MNEMONIC` to be set in environment. Available contract tags can be found in `/deploy` scripts, and available networks are found in the `networks` object within `hardhat.config.js`. Tags can be powerful, for example running `yarn hardhat deploy --tags Bridge` will only deploy the Bridge contract its dependencies (such as the Finder).
 
-`yarn hardhat deploy --tags dvm`
+`yarn hardhat deploy --network <NETWORK-NAME> --tags <TAGS>`
 
 Deploys all production DVM contracts, which doesn't include the `MockOracle` or BeaconOracles for example.
 
-`yarn hardhat deploy --tags sink-oracle <NETWORK-NAME>`
+`yarn hardhat deploy --tags dvm`
 
 Deploys minimum contracts necessary to set up Sink Oracle on L2 on the network, which would be used to deploy to Polygon for example.
 
-`yarn hardhat deploy --tags source-oracle,test <NETWORK-NAME>`
+`yarn hardhat deploy --tags sink-oracle <NETWORK-NAME>`
 
 Deploys minimum contracts necessary to set up Source Oracle on L1 on the network, along with test-specific versions of contracts, like the MockOracle intead of Voting.
 
-`./scripts/hardhat/verifyDeployedContracts.sh <NETWORK-NAME>`
+`yarn hardhat deploy --tags source-oracle,test <NETWORK-NAME>`
 
 Verify contracts for selected network on Etherscan. Requires an `ETHERSCAN_API_KEY` to be set in environment. This script requires that the local `./core/deployments` has solc standard-input json files, which will be generated after running the `deploy` command.
 
-`yarn hardhat export --export-all ./networks/hardhat/deployed.json`
+`./scripts/hardhat/verifyDeployedContracts.sh <NETWORK-NAME>`
 
 Export deployed contract data such as ABI and addresses to `deployed.json` in order to make data available for a front-end client, for example. For example, a newly deployed `Finder` address on Rinkeby can be imported via `deployed.4.rinkeby.contracts.Finder.address`.
 
-The following commands are implemented as [hardhat tasks](https://hardhat.org/guides/create-task.html) that make it easy to interact with deployed contracts via the CLI:
+`yarn hardhat export --export-all ./networks/hardhat/deployed.json`
 
-`yarn hardhat register-deployer --network <NETWORK-NAME>`
+The following commands are implemented as [hardhat tasks](https://hardhat.org/guides/create-task.html) that make it easy to interact with deployed contracts via the CLI:
 
 Registers the `deployer` account (as defined in the `namedAccounts` param in `hardhat.config.js`) with the deployed Registry for the network.
 
-`yarn hardhat setup-finder --registry --bridge --generichandler --network <NETWORK-NAME>`
+`yarn hardhat register-deployer --network <NETWORK-NAME>`
 
 Sets specified contracts in the deployed Finder. More contracts available to be set can be found in the `core/scripts/hardhat/tasks/finder.js` script.
+
+`yarn hardhat setup-finder --registry --bridge --generichandler --network <NETWORK-NAME>`
 
 ## Typescript!
 
