@@ -1,15 +1,30 @@
 // Example usage:
 // $(npm bin)/truffle exec <some_script> --network test --keys priceFeed --keys registry
+import minimist from "minimist";
+import fs from "fs";
+import dotenv from "dotenv";
 
-const argv = require("minimist")(process.argv.slice());
-const fs = require("fs");
-require("dotenv").config();
+const argv = minimist(process.argv.slice());
+dotenv.config();
 
 // Grab the name property from each to get a list of the names of the public networks.
 const publicNetworkNames = Object.values(require("../PublicNetworks.js").PublicNetworks).map(elt => elt.name);
 const { isPublicNetwork } = require("../MigrationUtils.js");
 
-let configOverride = {};
+interface GckmsConfig {
+  [key: string]: {
+    [key: string]: {
+      projectId: string;
+      locationId: string;
+      keyRingId: string;
+      cryptoKeyId: string;
+      ciphertextBucket: string;
+      ciphertextFilename: string;
+    };
+  };
+}
+
+let configOverride = {} as GckmsConfig;
 
 // If there is no env variable providing the config, attempt to pull it from a file.
 // TODO: this is kinda hacky. We should refactor this to only take in the config using one method.
@@ -19,7 +34,7 @@ if (process.env.GCKMS_CONFIG) {
 } else {
   // Import the .GckmsOverride.js file if it exists.
   // Note: this file is expected to be present in the same directory as this script.
-  let overrideFname = ".GckmsOverride.js";
+  const overrideFname = ".GckmsOverride.js";
   try {
     if (fs.existsSync(`${__dirname}/${overrideFname}`)) {
       configOverride = require(`./${overrideFname}`);
@@ -72,7 +87,7 @@ function getDefaultStaticConfig() {
     marginCurrencyWhitelist: {}
   };
 
-  for (let name of publicNetworkNames) {
+  for (const name of publicNetworkNames) {
     defaultConfig[name] = blankNetworkConfig;
   }
 
@@ -94,7 +109,7 @@ const staticConfig = { ...getDefaultStaticConfig(), ...configOverride };
 const networkConfig = staticConfig[getNetworkName()];
 
 // Provide the configs for the keys requested.
-let keys = argv.keys;
+let keys = argv.keys as undefined | string[] | string;
 if (!keys) {
   // If no keys were provided, send an empty array.
   keys = [];

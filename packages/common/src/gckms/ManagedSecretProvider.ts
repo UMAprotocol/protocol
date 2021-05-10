@@ -1,6 +1,17 @@
-const HDWalletProvider = require("@truffle/hdwallet-provider");
-const kms = require("@google-cloud/kms");
-const { Storage } = require("@google-cloud/storage");
+import HDWalletProvider from "@truffle/hdwallet-provider";
+import kms from "@google-cloud/kms";
+import { Storage } from "@google-cloud/storage";
+
+interface CloudKmsConfig {
+  projectId: string;
+  locationId: string;
+  keyRingId: string;
+  cryptoKeyId: string;
+  ciphertextBucket: string;
+  ciphertextFilename: string;
+}
+
+type Tail<T extends any[]> = T extends [infer A, ...(infer R)] ? R : never;
 
 // Wraps HDWalletProvider, deferring construction and allowing a Cloud KMS managed secret to be fetched asynchronously
 // and used to initialize an HDWalletProvider.
@@ -16,11 +27,16 @@ class ManagedSecretProvider {
   //     locationId: Google Cloud location, e.g., 'global'.
   //     ciphertextBucket: ID of a Google Cloud storage bucket.
   //     ciphertextFilename: Name of a file within `ciphertextBucket`.
-  constructor(cloudKmsSecretConfigs, ...remainingArgs) {
+  private readonly remainingArgs: Tail<ConstructorParameters<typeof HDWalletProvider>>;
+  private wrappedProvider: null | HDWalletProvider;
+  private wrappedProviderPromise: Promise<HDWalletProvider>;
+  constructor(
+    private readonly cloudKmsSecretConfigs: CloudKmsConfig[],
+    ...remainingArgs: Tail<ConstructorParameters<typeof HDWalletProvider>>
+  ) {
     if (!Array.isArray(cloudKmsSecretConfigs)) {
       cloudKmsSecretConfigs = [cloudKmsSecretConfigs];
     }
-    this.cloudKmsSecretConfigs = cloudKmsSecretConfigs;
     this.remainingArgs = remainingArgs;
     this.wrappedProvider = null;
     this.wrappedProviderPromise = this.getOrConstructWrappedProvider();
@@ -33,21 +49,21 @@ class ManagedSecretProvider {
   }
 
   // Passes the call through, by attaching a callback to the wrapper provider promise.
-  sendAsync(...all) {
+  sendAsync(...all: Parameters<HDWalletProvider["sendAsync"]>) {
     this.wrappedProviderPromise.then(wrappedProvider => {
       wrappedProvider.sendAsync(...all);
     });
   }
 
   // Passes the call through. Requires that the wrapped provider has been created via, e.g., `constructWrappedProvider`.
-  send(...all) {
+  send(...all: Parameters<HDWalletProvider["send"]>) {
     this.wrappedProviderPromise.then(wrappedProvider => {
       wrappedProvider.send(...all);
     });
   }
 
   // Passes the call through. Requires that the wrapped provider has been created via, e.g., `constructWrappedProvider`.
-  getAddress(...all) {
+  getAddress(...all: Parameters<HDWalletProvider["getAddress"]>) {
     return this.getWrappedProviderOrThrow().getAddress(...all);
   }
 
@@ -84,7 +100,10 @@ class ManagedSecretProvider {
 
     return Promise.all(fetchKeys).then(
       results => {
-        let keys = results.map(([result]) => {
+        let keys: string[] = results.map(([result]) => {
+          if (result.plaintext !== typeof Uint8Array) {
+            throw new Error("Result formatted incorrectly");
+          }
           return Buffer.from(result.plaintext, "base64")
             .toString()
             .trim();
