@@ -104,14 +104,13 @@ Export deployed contract data such as ABI and addresses to `deployed.json` in or
 
 The following commands are implemented as [hardhat tasks](https://hardhat.org/guides/create-task.html) that make it easy to interact with deployed contracts via the CLI:
 
-Registers the `deployer` account (as defined in the `namedAccounts` param in `hardhat.config.js`) with the deployed Registry for the network.
+Registers the `deployer` account (as defined in the `namedAccounts` param in `hardhat.config.js`) with the deployed Registry for the network. Optionally registers a custom account.
 
-`yarn hardhat register-deployer --network <NETWORK-NAME>`
+`yarn hardhat register-accounts --network <NETWORK-NAME> --account <CUSTOM-ACCOUNT>`
 
-Sets specified contracts in the deployed Finder. More contracts available to be set can be found in the `core/scripts/hardhat/tasks/finder.js` script.
+Whitelist hardcoded identifiers from the `config/identifiers.json` file. Optionally whitelists a custom identifier.
 
-`yarn hardhat setup-finder --registry --bridge --generichandler --network <NETWORK-NAME>`
-
+`yarn hardhat whitelist-identifiers --network <NETWORK-NAME> --id <CUSTOM-IDENTIFIER>`
 ## Typescript!
 
 In addition to the above import styles, you can import typescript types for truffle, ethers, and web3. Because of existing

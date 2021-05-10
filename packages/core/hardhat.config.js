@@ -51,7 +51,6 @@ const configOverride = {
 
 // Tasks: These tasks are conveniently available via the hardhat CLI: `yarn hardhat <TASK>`
 // Documentation on creating tasks here: https://hardhat.org/guides/create-task.html
-require("./scripts/hardhat/tasks/finder");
-require("./scripts/hardhat/tasks/registry");
+require("./scripts/hardhat/tasks");
 
 module.exports = getHardhatConfig(configOverride);
