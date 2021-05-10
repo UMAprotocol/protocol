@@ -1,18 +1,18 @@
-// Note: `BRIDGE_CHAIN_ID` is the `chainID` used in Bridge contract enabling cross-EVM communication. The Bridge contract 
+// Note: `BRIDGE_CHAIN_ID` is the `chainID` used in Bridge contract enabling cross-EVM communication. The Bridge contract
 // stores chainId as a uint8, whose max value is 2^8-1=255. By default, the chainId will simply return the same
-// ID as the network (i.e. Rinkeby will return 4 as the chainId), but some networks with chainID's > 255 need to 
+// ID as the network (i.e. Rinkeby will return 4 as the chainId), but some networks with chainID's > 255 need to
 // override the default behavior because their network ID is too high.
 const BRIDGE_CHAIN_ID = {
   80001: 254,
   31337: 255
-}
-const getBridgeChainId = (netId) => {
+};
+const getBridgeChainId = netId => {
   if (BRIDGE_CHAIN_ID[netId]?.bridgeChainId) {
-    return BRIDGE_CHAIN_ID[netId]?.bridgeChainId
+    return BRIDGE_CHAIN_ID[netId]?.bridgeChainId;
   } else {
     return netId;
   }
-}
+};
 
 const PublicNetworks = {
   1: {

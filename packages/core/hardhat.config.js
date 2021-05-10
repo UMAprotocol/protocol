@@ -35,7 +35,7 @@ const configOverride = {
       accounts: { mnemonic }
     },
     mumbai: {
-      url: 'https://rpc-mumbai.maticvigil.com/',
+      url: "https://rpc-mumbai.maticvigil.com/",
       accounts: { mnemonic }
     }
   },

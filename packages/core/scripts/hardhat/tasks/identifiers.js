@@ -30,6 +30,6 @@ task("whitelist-identifiers", "Whitelist identifiers from JSON file")
     } else {
       for (const identifier of Object.keys(defaultIdentifiersToWhitelist)) {
         await _whitelistIdentifier(identifier, identifierWhitelist, deployer);
-      }    
+      }
     }
   });

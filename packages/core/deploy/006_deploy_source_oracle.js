@@ -7,7 +7,7 @@ const func = async function(hre) {
   const { deployer } = await getNamedAccounts();
 
   const chainId = await getChainId();
-  const bridgeId = getBridgeChainId(chainId)
+  const bridgeId = getBridgeChainId(chainId);
   const Finder = await deployments.get("Finder");
 
   const args = [
