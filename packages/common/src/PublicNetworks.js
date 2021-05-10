@@ -1,3 +1,19 @@
+// Note: `BRIDGE_CHAIN_ID` is the `chainID` used in Bridge contract enabling cross-EVM communication. The Bridge contract
+// stores chainId as a uint8, whose max value is 2^8-1=255. By default, the chainId will simply return the same
+// ID as the network (i.e. Rinkeby will return 4 as the chainId), but some networks with chainID's > 255 need to
+// override the default behavior because their network ID is too high.
+const BRIDGE_CHAIN_ID = {
+  80001: 254,
+  31337: 255
+};
+const getBridgeChainId = netId => {
+  if (BRIDGE_CHAIN_ID[netId]?.bridgeChainId) {
+    return BRIDGE_CHAIN_ID[netId]?.bridgeChainId;
+  } else {
+    return netId;
+  }
+};
+
 const PublicNetworks = {
   1: {
     name: "mainnet",
@@ -20,13 +36,21 @@ const PublicNetworks = {
     daiAddress: "0x5592EC0cfb4dbc12D3aB100b257153436a1f0FEa",
     wethAddress: "0xc778417E063141139Fce010982780140Aa0cD5Ab"
   },
+  5: {
+    name: "goerli",
+    etherscan: "https://goerli.etherscan.io/"
+  },
   42: {
     name: "kovan",
     ethFaucet: "https://faucet.kovan.network/",
     etherscan: "https://kovan.etherscan.io/",
     daiAddress: "0xbF7A7169562078c96f0eC1A8aFD6aE50f12e5A99",
     wethAddress: "0xd0A1E359811322d97991E03f863a0C30C2cF029C"
+  },
+  80001: {
+    name: "mumbai",
+    etherscan: "https://explorer-mumbai.maticvigil.com/"
   }
 };
 
-module.exports = { PublicNetworks };
+module.exports = { PublicNetworks, getBridgeChainId };
