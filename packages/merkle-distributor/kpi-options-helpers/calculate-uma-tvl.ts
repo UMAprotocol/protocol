@@ -17,6 +17,8 @@ export async function calculateCurrentTvl() {
     }, toBN("0"))
     .div(fixedPointAdjustment)
     .toString();
+  if (toBN(currentTvl).gt(toBN("100000000000")) || toBN(currentTvl).lt(toBN("10000000")))
+    throw new Error("The TVL calculation likely contained an error and is out of reasonable bounds!");
   return { currentTvl, currentTime: Math.round(new Date().getTime() / 1000) };
 }
 
