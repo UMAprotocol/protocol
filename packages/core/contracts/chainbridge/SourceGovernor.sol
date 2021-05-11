@@ -37,7 +37,7 @@ contract SourceGovernor is Ownable {
         uint256 value,
         bytes memory data
     ) external onlyOwner {
-        require(currentRequestHash == bytes32(0));
+        require(currentRequestHash == bytes32(0), "Request hash already set");
         currentRequestHash = computeRequestHash(to, value, data);
         getBridge().deposit(destinationChainId, getResourceId(), formatMetadata(to, value, data));
         currentRequestHash = bytes32(0);
@@ -54,7 +54,7 @@ contract SourceGovernor is Ownable {
         uint256 value,
         bytes memory data
     ) external view {
-        require(currentRequestHash == computeRequestHash(to, value, data));
+        require(currentRequestHash == computeRequestHash(to, value, data), "Invalid Request");
     }
 
     function getBridge() public view returns (IBridge) {

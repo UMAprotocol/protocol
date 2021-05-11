@@ -27,7 +27,10 @@ contract SinkGovernor {
         uint256 value,
         bytes memory data
     ) external {
-        require(msg.sender == finder.getImplementationAddress(OracleInterfaces.GenericHandler));
+        require(
+            msg.sender == finder.getImplementationAddress(OracleInterfaces.GenericHandler),
+            "Generic handler must call"
+        );
 
         // Mostly copied from:
         // solhint-disable-next-line max-line-length
@@ -39,7 +42,7 @@ contract SinkGovernor {
             let inputDataSize := mload(data)
             success := call(gas(), to, value, inputData, inputDataSize, 0, 0)
         }
-        require(success);
+        require(success, "Governance call failed");
 
         emit ExecutedGovernanceTransaction(to, value, data);
     }
