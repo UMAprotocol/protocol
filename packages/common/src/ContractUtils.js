@@ -57,8 +57,8 @@ const runTransaction = async ({ web3, transaction, transactionConfig, availableA
     }
   }
 
-  // Compute the selected account nonce. If the account has a pending transaction then use the subsequent nonce after
-  // the pending transaction to ensure this new transaction does not collide with the existing transaction in the mempool.
+  // Compute the selected account nonce. If the account has a pending transaction then use the subsequent index after the
+  // pending transactions to ensure this new transaction does not collide with any existing transactions in the mempool.
   if (await accountHasPendingTransactions(web3, transactionConfig.from))
     transactionConfig.nonce = await getPendingTransactionCount(web3, transactionConfig.from);
   // Else, there is no pending transaction and we use the current account transaction count as the nonce.
