@@ -75,7 +75,7 @@ contract("SourceGovernor", async accounts => {
   it("resource id", async function() {
     assert.equal(await sourceGovernor.getResourceId(), getResourceId(chainID), "resource id not computed correctly");
   });
-  it("relayGovernor", async function() {
+  it("relayGovernance", async function() {
     const innerTransactionCalldata = erc20.contract.methods.transfer(rando, web3.utils.toWei("1")).encodeABI();
     const depositData = web3.eth.abi.encodeParameters(
       ["address", "uint256", "bytes"],
