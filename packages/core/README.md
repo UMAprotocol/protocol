@@ -72,11 +72,12 @@ side-by-side.
 
 ## Deployment with Hardhat
 
-Here is a list of scripts you can execute:
+Here is a list of scripts you can execute to take full advantage of `hardhat`'s succinct deployment and verification 
+process:
 
 This will deploy your contracts on the in-memory hardhat network and exit, leaving no trace. Quickest way to ensure that deployments work as intended without consequences.
 
-`yarn void:deploy`
+`yarn hardhat eploy`
 
 Deploy all contracts to specified network. Requires a `CUSTOM_NODE_URL` HTTP(s) endpoint and a `MNEMONIC` to be set in environment. Available contract tags can be found in `/deploy` scripts, and available networks are found in the `networks` object within `hardhat.config.js`. Tags can be powerful, for example running `yarn hardhat deploy --tags Bridge` will only deploy the Bridge contract its dependencies (such as the Finder).
 
@@ -96,7 +97,7 @@ Deploys minimum contracts necessary to set up Source Oracle on L1 on the network
 
 Verify contracts for selected network on Etherscan. Requires an `ETHERSCAN_API_KEY` to be set in environment. This script requires that the local `./core/deployments` has solc standard-input json files, which will be generated after running the `deploy` command.
 
-`./scripts/hardhat/verifyDeployedContracts.sh <NETWORK-NAME>`
+`yarn hardhat etherscan-verify --license AGPL-3.0 --force-license --network <NETWORK-NAME>`
 
 Export deployed contract data such as ABI and addresses to `deployed.json` in order to make data available for a front-end client, for example. For example, a newly deployed `Finder` address on Rinkeby can be imported via `deployed.4.rinkeby.contracts.Finder.address`.
 

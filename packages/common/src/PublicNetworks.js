@@ -7,11 +7,7 @@ const BRIDGE_CHAIN_ID = {
   31337: 255
 };
 const getBridgeChainId = netId => {
-  if (BRIDGE_CHAIN_ID[netId]?.bridgeChainId) {
-    return BRIDGE_CHAIN_ID[netId]?.bridgeChainId;
-  } else {
-    return netId;
-  }
+  return BRIDGE_CHAIN_ID[netId] || netId;
 };
 
 const PublicNetworks = {

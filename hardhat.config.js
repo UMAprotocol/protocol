@@ -1,3 +1,4 @@
+// Note: this config is only here as a matter of convenience to allow all truffle commands that can be run from core work at root as well.
 const { getHardhatConfig} = require("@uma/common");
 
 const path = require("path");
