@@ -425,17 +425,42 @@ class Liquidator {
       });
 
       // Send the transaction or report failure.
-      let receipt;
+
       try {
-        const txResponse = await runTransaction({
+        const { receipt, transactionConfig } = await runTransaction({
+          web3: this.web3,
           transaction: withdraw,
-          config: {
-            gasPrice: this.gasEstimator.getCurrentFastPrice(),
-            from: this.account,
-            nonce: await this.web3.eth.getTransactionCount(this.account)
-          }
+          transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account }
         });
-        receipt = txResponse.receipt;
+
+        let logResult = {
+          tx: receipt.transactionHash,
+          caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
+          // Settlement price is possible undefined if liquidation expired without a dispute
+          settlementPrice: receipt.events.LiquidationWithdrawn.returnValues.settlementPrice,
+          liquidationStatus:
+            PostWithdrawLiquidationRewardsStatusTranslations[
+              receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
+            ]
+        };
+
+        // In contract version 1.2.2 and below this event returns one value, `withdrawalAmount`: the amount withdrawn by the function caller.
+        // In later versions it returns an object containing all payouts.
+        if (this.isLegacyEmpVersion) {
+          logResult.withdrawalAmount = receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount;
+        } else {
+          logResult.paidToLiquidator = receipt.events.LiquidationWithdrawn.returnValues.paidToLiquidator;
+          logResult.paidToDisputer = receipt.events.LiquidationWithdrawn.returnValues.paidToDisputer;
+          logResult.paidToSponsor = receipt.events.LiquidationWithdrawn.returnValues.paidToSponsor;
+        }
+
+        this.logger.info({
+          at: "Liquidator",
+          message: "Liquidation withdrawn🤑",
+          liquidation: liquidation,
+          liquidationResult: logResult,
+          transactionConfig
+        });
       } catch (error) {
         this.logger.error({
           at: "Liquidator",
@@ -444,34 +469,6 @@ class Liquidator {
         });
         continue;
       }
-
-      let logResult = {
-        tx: receipt.transactionHash,
-        caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
-        // Settlement price is possible undefined if liquidation expired without a dispute
-        settlementPrice: receipt.events.LiquidationWithdrawn.returnValues.settlementPrice,
-        liquidationStatus:
-          PostWithdrawLiquidationRewardsStatusTranslations[
-            receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
-          ]
-      };
-
-      // In contract version 1.2.2 and below this event returns one value, `withdrawalAmount`: the amount withdrawn by the function caller.
-      // In later versions it returns an object containing all payouts.
-      if (this.isLegacyEmpVersion) {
-        logResult.withdrawalAmount = receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount;
-      } else {
-        logResult.paidToLiquidator = receipt.events.LiquidationWithdrawn.returnValues.paidToLiquidator;
-        logResult.paidToDisputer = receipt.events.LiquidationWithdrawn.returnValues.paidToDisputer;
-        logResult.paidToSponsor = receipt.events.LiquidationWithdrawn.returnValues.paidToSponsor;
-      }
-
-      this.logger.info({
-        at: "Liquidator",
-        message: "Liquidation withdrawn🤑",
-        liquidation: liquidation,
-        liquidationResult: logResult
-      });
     }
   }
 }

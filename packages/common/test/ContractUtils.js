@@ -13,10 +13,10 @@ contract("ContractUtils.js", function(accounts) {
         const erc20Contract = new web3.eth.Contract(ERC20ABI, erc20.address);
         // Allowance is not set for accounts[0] so this should fail on .call()
         const transaction = erc20Contract.methods.transferFrom(accounts[0], accounts[1], "1");
-        const config = {
+        const transactionConfig = {
           from: accounts[0]
         };
-        await ContractUtils.runTransaction({ transaction, config });
+        await ContractUtils.runTransaction({ web3, transaction, transactionConfig });
 
         // Test should not get here because error should be thrown.
         assert.ok(false);

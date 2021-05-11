@@ -215,7 +215,8 @@ async function run({
         dsProxyFactoryAddress:
           proxyTransactionWrapperConfig?.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
         dsProxyFactoryAbi: getAbi("DSProxyFactory"),
-        dsProxyAbi: getAbi("DSProxy")
+        dsProxyAbi: getAbi("DSProxy"),
+        availableAccounts: proxyTransactionWrapperConfig.availableAccounts
       });
 
       // Load in an existing DSProxy for the account EOA if one already exists or create a new one for the user.

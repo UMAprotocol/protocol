@@ -1,6 +1,6 @@
-const argv = require("minimist")(process.argv.slice(), {});
-
 const ynatm = require("@umaprotocol/ynatm");
+const util = require("util");
+const argv = require("minimist")(process.argv.slice(), {});
 
 /**
  * This is a hack to handle reverts for view/pure functions that don't actually revert on public networks.
@@ -39,9 +39,21 @@ const revertWrapper = result => {
  * @param {*Object} config transaction config, e.g. { gasPrice, from }, passed to web3 transaction.
  * @return Error and type of error (originating from `.call()` or `.send()`) or transaction receipt and return value.
  */
-const runTransaction = async ({ transaction, config }) => {
+const runTransaction = async ({ web3, transaction, transactionConfig, availableAccounts = 1 }) => {
   // Multiplier applied to Truffle's estimated gas limit for a transaction to send.
   const GAS_LIMIT_BUFFER = 1.25;
+
+  if (availableAccounts > 1) {
+    const availableAccounts = (await web3.getAccounts()).slice(0, availableAccounts);
+    for (const account of availableAccounts) {
+      if (!(await accountHasPendingTransactions(web3, account))) {
+        transactionConfig.account = account; // set the account to execute the transaction to the available account.
+        transactionConfig.usingOffSetDSProxyAccount = true; // add a bit more details to the logs produced.
+        break;
+      }
+    }
+  }
+  transactionConfig.nonce = await this.web3.eth.getTransactionCount(transactionConfig.from);
 
   // First try to simulate transaction and also extract return value if its
   // a state-modifying transaction. If the function is state modifying, then successfully
@@ -49,8 +61,8 @@ const runTransaction = async ({ transaction, config }) => {
   let returnValue, estimatedGas;
   try {
     [returnValue, estimatedGas] = await Promise.all([
-      transaction.call({ from: config.from }),
-      transaction.estimateGas({ from: config.from })
+      transaction.call({ from: transactionConfig.from }),
+      transaction.estimateGas({ from: transactionConfig.from })
     ]);
   } catch (error) {
     error.type = "call";
@@ -60,26 +72,23 @@ const runTransaction = async ({ transaction, config }) => {
   // .call() succeeded, now broadcast transaction.
   let receipt;
   try {
-    let updatedConfig = {
-      ...config,
-      gas: Math.floor(estimatedGas * GAS_LIMIT_BUFFER)
-    };
-    // If config has a `nonce` field, then we will use the `ynatm` package to strategically re broadcast the
+    transactionConfig = { ...transactionConfig, gas: Math.floor(estimatedGas * GAS_LIMIT_BUFFER) };
+    // If transactionConfig has a `nonce` field, then we will use the `ynatm` package to strategically re broadcast the
     // transaction. If the `nonce` is missing, then we'll send the transaction once.
-    if (config.nonce) {
-      // ynatm config:
+    if (transactionConfig.nonce) {
+      // ynatm transactionConfig:
       // - Doubles gasPrice every retry.
       const gasPriceScalingFunction = ynatm.DOUBLES;
       // - Tries every minute (and increases gas price according to `gasPriceScalingFunction`) if tx hasn't gone through.
       const retryDelay = 60000;
-      // - Min Gas Price starts at caller's provided config.gasPrice, with a max gasPrice of x4
-      const minGasPrice = updatedConfig.gasPrice;
+      // - Min Gas Price starts at caller's provided transactionConfig.gasPrice, with a max gasPrice of x6
+      const minGasPrice = transactionConfig.gasPrice;
       const maxGasPrice = 2 * 3 * minGasPrice;
 
       receipt = await ynatm.send({
         sendTransactionFunction: gasPrice =>
           transaction.send({
-            ...updatedConfig,
+            ...transactionConfig,
             gasPrice
           }),
         minGasPrice,
@@ -88,16 +97,39 @@ const runTransaction = async ({ transaction, config }) => {
         delay: retryDelay
       });
     } else {
-      receipt = await transaction.send(updatedConfig);
+      receipt = await transaction.send(transactionConfig);
     }
-    return {
-      receipt,
-      returnValue
-    };
+    return { receipt, returnValue, transactionConfig };
   } catch (error) {
     error.type = "send";
     throw error;
   }
+};
+
+const accountHasPendingTransactions = async (web3, account) => {
+  const [currentMindedTransactions, currentTransactionsIncludingPending] = await Promise.all([
+    web3.eth.getTransactionCount(account, "latest"),
+    getPendingTransactionCount(web3, account)
+  ]);
+  console.log(
+    "currentTransactionsIncludingPending",
+    currentTransactionsIncludingPending,
+    "currentMindedTransactions",
+    currentMindedTransactions
+  );
+  return currentTransactionsIncludingPending > currentMindedTransactions;
+};
+
+const getPendingTransactionCount = async (web3, account) => {
+  const sendRpc = util.promisify(web3.currentProvider.send).bind(web3.currentProvider);
+
+  const rpcResponse = await sendRpc({
+    jsonrpc: "2.0",
+    method: "eth_getTransactionCount",
+    params: [account, "pending"],
+    id: Math.round(Math.random() * 100000)
+  });
+  return web3.utils.toDecimal(rpcResponse.result);
 };
 /**
  * Blocking code until a specific block number is mined. Will re-fetch the current block number every 500ms. Useful when
@@ -114,4 +146,4 @@ const blockUntilBlockMined = async (web3, blockerBlockNumber) => {
   }
 };
 
-module.exports = { revertWrapper, runTransaction, blockUntilBlockMined };
+module.exports = { revertWrapper, runTransaction, blockUntilBlockMined, accountHasPendingTransactions };

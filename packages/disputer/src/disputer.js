@@ -182,16 +182,12 @@ class Disputer {
       });
       try {
         // Get successful transaction receipt and return value or error.
-        const transactionResult = await runTransaction({
+        const { receipt, returnValue, config } = await runTransaction({
+          web3: this.web3,
           transaction: dispute,
-          config: {
-            gasPrice: this.gasEstimator.getCurrentFastPrice(),
-            from: this.account,
-            nonce: await this.web3.eth.getTransactionCount(this.account)
-          }
+          config: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account }
         });
-        const receipt = transactionResult.receipt;
-        const returnValue = transactionResult.returnValue.toString();
+
         const logResult = {
           tx: receipt.transactionHash,
           sponsor: receipt.events.LiquidationDisputed.returnValues.sponsor,
@@ -204,7 +200,8 @@ class Disputer {
           message: "Position has been disputed!👮‍♂️",
           liquidation: disputeableLiquidation,
           disputeResult: logResult,
-          totalPaid: returnValue
+          totalPaid: returnValue.toString(),
+          transactionConfig: config
         });
       } catch (error) {
         const message =
@@ -260,15 +257,11 @@ class Disputer {
       });
       try {
         // Get successful transaction receipt and return value or error.
-        const transactionResult = await runTransaction({
+        const { receipt, transactionConfig } = await runTransaction({
+          web3: this.web3,
           transaction: withdraw,
-          config: {
-            gasPrice: this.gasEstimator.getCurrentFastPrice(),
-            from: this.account,
-            nonce: await this.web3.eth.getTransactionCount(this.account)
-          }
+          transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account }
         });
-        let receipt = transactionResult.receipt;
         let logResult = {
           tx: receipt.transactionHash,
           caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
@@ -291,7 +284,8 @@ class Disputer {
           at: "Disputer",
           message: "Dispute withdrawn🤑",
           liquidation: liquidation,
-          liquidationResult: logResult
+          liquidationResult: logResult,
+          transactionConfig
         });
       } catch (error) {
         // If the withdrawal simulation fails, then it is likely that the dispute has not resolved yet, and we don't

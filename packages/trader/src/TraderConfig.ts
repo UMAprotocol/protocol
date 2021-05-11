@@ -7,7 +7,6 @@ export interface ProcessEnv {
 
 export class TraderConfig {
   readonly financialContractAddress: string;
-  readonly dsProxyFactoryAddress: string | null;
 
   readonly pollingDelay: number;
   readonly errorRetries: number;
@@ -17,6 +16,7 @@ export class TraderConfig {
   readonly referencePriceFeedConfig: any;
   readonly exchangeAdapterConfig: any;
   readonly rangeTraderConfig: any;
+  readonly dsProxyConfig: any;
 
   constructor(env: ProcessEnv) {
     const {
@@ -25,16 +25,14 @@ export class TraderConfig {
       POLLING_DELAY,
       ERROR_RETRIES,
       ERROR_RETRIES_TIMEOUT,
-      DS_PROXY_FACTORY_ADDRESS,
       REFERENCE_PRICE_FEED_CONFIG,
       EXCHANGE_ADAPTER_CONFIG,
-      RANGE_TRADER_CONFIG
+      RANGE_TRADER_CONFIG,
+      DSPROXY_CONFIG
     } = env;
     assert(EMP_ADDRESS, "EMP_ADDRESS required");
     this.financialContractAddress = Web3.utils.toChecksumAddress(EMP_ADDRESS);
-    this.dsProxyFactoryAddress = DS_PROXY_FACTORY_ADDRESS
-      ? Web3.utils.toChecksumAddress(DS_PROXY_FACTORY_ADDRESS)
-      : null;
+
     this.pollingDelay = POLLING_DELAY ? Number(POLLING_DELAY) : 60;
     this.errorRetries = ERROR_RETRIES ? Number(ERROR_RETRIES) : 3;
     this.errorRetriesTimeout = ERROR_RETRIES_TIMEOUT ? Number(ERROR_RETRIES_TIMEOUT) : 1;
@@ -42,5 +40,6 @@ export class TraderConfig {
     this.referencePriceFeedConfig = REFERENCE_PRICE_FEED_CONFIG ? JSON.parse(REFERENCE_PRICE_FEED_CONFIG) : null;
     this.exchangeAdapterConfig = EXCHANGE_ADAPTER_CONFIG ? JSON.parse(EXCHANGE_ADAPTER_CONFIG) : null;
     this.rangeTraderConfig = RANGE_TRADER_CONFIG ? JSON.parse(RANGE_TRADER_CONFIG) : {};
+    this.dsProxyConfig = DSPROXY_CONFIG ? JSON.parse(DSPROXY_CONFIG) : null;
   }
 }

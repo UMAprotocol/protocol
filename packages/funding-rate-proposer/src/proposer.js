@@ -232,16 +232,14 @@ class FundingRateProposer {
       });
       try {
         // Get successful transaction receipt and return value or error.
-        const transactionResult = await runTransaction({
+        const { receipt, returnValue, transactionConfig } = await runTransaction({
           transaction: proposal,
-          config: {
+          transactionConfig: {
             gasPrice: this.gasEstimator.getCurrentFastPrice(),
             from: this.account,
             nonce: await this.web3.eth.getTransactionCount(this.account)
           }
         });
-        let receipt = transactionResult.receipt;
-        let returnValue = transactionResult.returnValue.toString();
 
         const logResult = {
           tx: receipt.transactionHash,
@@ -251,13 +249,13 @@ class FundingRateProposer {
           requestTimestamp,
           proposedRate: pricefeedPrice,
           currentRate: onchainFundingRate,
-          proposalBond: returnValue
+          proposalBond: returnValue.toString()
         };
         this.logger.info({
           at: "PerpetualProposer#updateFundingRate",
           message: "Proposed new funding rate!🌻",
-          proposalBond: returnValue,
-          proposalResult: logResult
+          proposalResult: logResult,
+          transactionConfig
         });
       } catch (error) {
         const message =
