@@ -234,11 +234,7 @@ class FundingRateProposer {
         // Get successful transaction receipt and return value or error.
         const { receipt, returnValue, transactionConfig } = await runTransaction({
           transaction: proposal,
-          transactionConfig: {
-            gasPrice: this.gasEstimator.getCurrentFastPrice(),
-            from: this.account,
-            nonce: await this.web3.eth.getTransactionCount(this.account)
-          }
+          transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account }
         });
 
         const logResult = {

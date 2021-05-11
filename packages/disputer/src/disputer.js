@@ -182,10 +182,10 @@ class Disputer {
       });
       try {
         // Get successful transaction receipt and return value or error.
-        const { receipt, returnValue, config } = await runTransaction({
+        const { receipt, returnValue, transactionConfig } = await runTransaction({
           web3: this.web3,
           transaction: dispute,
-          config: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account }
+          transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account }
         });
 
         const logResult = {
@@ -201,7 +201,7 @@ class Disputer {
           liquidation: disputeableLiquidation,
           disputeResult: logResult,
           totalPaid: returnValue.toString(),
-          transactionConfig: config
+          transactionConfig
         });
       } catch (error) {
         const message =
