@@ -3,7 +3,7 @@
   "version": "2.2.0",
   "description": "UMA smart contracts and unit tests",
   "dependencies": {
-    "@truffle/contract": "^4.2.20",
+    "@truffle/contract": "^4.3.15",
     "@uma/common": "^2.1.0",
     "@uma/core-1-1-0": "npm:@uma/core@1.1.0",
     "@uma/core-1-2-0": "npm:@uma/core@1.2.0",
@@ -14,7 +14,9 @@
     "@uniswap/lib": "4.0.1-alpha",
     "@uniswap/v2-core": "1.0.0",
     "@uniswap/v2-periphery": "1.1.0-beta.0",
-    "@uniswap/v3-core": "^1.0.0-rc.2"
+    "@uniswap/v3-periphery": "^1.0.0-beta.23",
+    "@uniswap/v3-core": "^1.0.0-rc.2",
+    "decimal.js": "^10.2.1"
   },
   "devDependencies": {
     "@awaitjs/express": "^0.3.0",
