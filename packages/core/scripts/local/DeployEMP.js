@@ -23,7 +23,7 @@
  */
 const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
 const { interfaceName, ZERO_ADDRESS, parseFixed } = require("@uma/common");
-const { getAbi, getTruffleContract } = require("../../index");
+const { getAbi, getTruffleContract } = require("../../dist/index");
 const argv = require("minimist")(process.argv.slice(), {
   boolean: ["test"],
   string: ["identifier", "collateral", "cversion", "name", "symbol", "duration"]

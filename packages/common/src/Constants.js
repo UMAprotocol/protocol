@@ -7,7 +7,10 @@ const interfaceName = {
   IdentifierWhitelist: "IdentifierWhitelist",
   CollateralWhitelist: "CollateralWhitelist",
   FundingRateStore: "FundingRateStore",
-  OptimisticOracle: "OptimisticOracle"
+  OptimisticOracle: "OptimisticOracle",
+  Bridge: "Bridge",
+  GenericHandler: "GenericHandler",
+  MockOracleAncillary: "Oracle"
 };
 
 module.exports = {

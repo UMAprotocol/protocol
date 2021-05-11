@@ -61,10 +61,6 @@ const createGenericDepositData = hexMetaData => {
   return "0x" + toHex(hexMetaDataLength, 32).substr(2) + hexMetaData.substr(2);
 };
 
-const createResourceID = (contractAddress, chainID) => {
-  return toHex(contractAddress + toHex(chainID, 0).substr(2), 32);
-};
-
 const assertObjectsMatch = (expectedObj, actualObj) => {
   for (const expectedProperty of Object.keys(expectedObj)) {
     assert.property(actualObj, expectedProperty, `actualObj does not have property: ${expectedProperty}`);
@@ -120,7 +116,6 @@ module.exports = {
   createERCDepositData,
   createGenericDepositData,
   createERC721DepositProposalData,
-  createResourceID,
   assertObjectsMatch,
   nonceAndId
 };

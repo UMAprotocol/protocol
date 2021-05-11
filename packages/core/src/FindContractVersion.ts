@@ -1,10 +1,20 @@
-const assert = require("assert");
-const path = require("path");
-const fs = require("fs");
+import assert from "assert";
+import path from "path";
+import fs from "fs";
+import Web3 from "web3";
 
-let latestVersionMap = {};
+interface VersionMap {
+  [key: string]: {
+    contractType: string;
+    contractVersion: string;
+  };
+}
+
+let latestVersionMap = {} as VersionMap;
 try {
-  latestVersionMap = JSON.parse(fs.readFileSync(`${path.resolve(__dirname)}/../build/contract-type-hash-map.json`));
+  latestVersionMap = JSON.parse(
+    fs.readFileSync(`${path.resolve(__dirname)}/../../build/contract-type-hash-map.json`).toString("utf8")
+  );
 } catch (error) {
   console.error("WARNING: latest version map was not found in the build directory! Run `yarn build` from core first!");
 }
@@ -16,16 +26,13 @@ try {
  * @param {string} contractAddress address of the contract in question
  * @return {Object} contract name & version
  */
-async function findContractVersion(contractAddress, web3) {
-  assert(web3, "Web3 object must be provided");
-  assert(contractAddress, "Contract address must be provided");
-
+export async function findContractVersion(contractAddress: string, web3: Web3) {
   // Note: there is an unknown issue in web3.js that means that the `getCode` syntax does not function correctly in
   // production. However, ethers has proven to work correctly in production. The code below is a patch to still enable
   // this module to work while we find a better long term solution for the web3.js issue. If running within unit tests
   // then the web3.js version is required as it is scope according to the unit test.
   let contractCode;
-  if (global.web3) {
+  if (((global as unknown) as { web3: Web3 | undefined }).web3) {
     // This is run inside of truffle or hardhat test.
     contractCode = await web3.eth.getCode(contractAddress);
   } else {
@@ -36,6 +43,7 @@ async function findContractVersion(contractAddress, web3) {
   }
 
   const contractCodeHash = web3.utils.soliditySha3(contractCode);
+  assert(contractCodeHash !== null, "Contract code hash is null");
 
   // Return the version from the versionMap OR details on the address,hash & code to help debug a mismatch.
   return (
@@ -43,7 +51,7 @@ async function findContractVersion(contractAddress, web3) {
   );
 }
 
-const versionMap = {
+const versionMap: VersionMap = {
   "0xa13e06c4439902742ac1a823744c7f8c201068ab6786d33f218433e55d69b1f2": {
     // Mainnet 1.2.2 ExpiringMultiParty. Used by Yield Dollar and other contracts.
     contractType: "ExpiringMultiParty",
@@ -76,5 +84,3 @@ const versionMap = {
   },
   ...latestVersionMap // latest versions built from hard hat. This makes this utility work out of the box with "latest".
 };
-
-module.exports = { findContractVersion };
