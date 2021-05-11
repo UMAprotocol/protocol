@@ -72,7 +72,7 @@ export function percentShares(
       }, 0n)
       .toString();
 
-  if (defaultSum == "0") return {};
+  if (defaultSum === "0") return {};
 
   return Object.entries(contributions).reduce((result: { [key: string]: string }, [key, value]) => {
     result[key] = percent(value, defaultSum, scale);
