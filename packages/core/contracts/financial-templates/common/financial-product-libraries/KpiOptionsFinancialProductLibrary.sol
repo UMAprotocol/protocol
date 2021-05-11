@@ -24,17 +24,17 @@ contract KpiOptionsFinancialProductLibrary is FinancialProductLibrary, Lockable 
         nonReentrantView()
         returns (FixedPoint.Unsigned memory)
     {
-        // If price request is made before expiry, return 2. Thus we can keep the contract 100% collateralized with
-        // each token backed 1:2 by collateral currency. Post-expiry, leave unchanged.
+        // If price request is made before expiry, return 0.001. Thus we can keep the contract 100% collateralized with
+        // each token backed 1:0.001 by collateral currency. Post-expiry, leave unchanged.
         if (requestTime < ExpiringContractInterface(msg.sender).expirationTimestamp()) {
-            return FixedPoint.fromUnscaledUint(2);
+            return FixedPoint.fromUnscaledUint(0.001);
         } else {
             return oraclePrice;
         }
     }
 
     /**
-     * @notice Returns a transformed collateral requirement that is set to be equivalent to 2 tokens pre-expiry.
+     * @notice Returns a transformed collateral requirement that is set to be equivalent to 0.001 tokens pre-expiry.
      * @param oraclePrice price from the oracle to transform the collateral requirement.
      * @param collateralRequirement financial products collateral requirement to be scaled to a flat rate.
      * @return transformedCollateralRequirement the input collateral requirement with the transformation logic applied to it.
