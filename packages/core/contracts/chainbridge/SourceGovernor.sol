@@ -38,8 +38,8 @@ contract SourceGovernor is Ownable {
         bytes memory data
     ) external onlyOwner {
         require(currentRequestHash == bytes32(0), "Request hash already set");
-        currentRequestHash = computeRequestHash(to, value, data);
-        getBridge().deposit(destinationChainId, getResourceId(), formatMetadata(to, value, data));
+        currentRequestHash = _computeRequestHash(to, value, data);
+        _getBridge().deposit(destinationChainId, getResourceId(), _formatMetadata(to, value, data));
         currentRequestHash = bytes32(0);
         emit RelayedGovernanceRequest(destinationChainId, to, value, data);
     }
@@ -54,31 +54,34 @@ contract SourceGovernor is Ownable {
         uint256 value,
         bytes memory data
     ) external view {
-        require(currentRequestHash == computeRequestHash(to, value, data), "Invalid Request");
+        require(currentRequestHash == _computeRequestHash(to, value, data), "Invalid Request");
     }
 
-    function getBridge() public view returns (IBridge) {
-        return IBridge(finder.getImplementationAddress(OracleInterfaces.Bridge));
-    }
-
+    /**
+     * @notice Gets the resource id to send to the bridge.
+     */
     function getResourceId() public view returns (bytes32) {
         return keccak256(abi.encode(bytes32("Governor"), currentChainId));
     }
 
-    function formatMetadata(
+    function _getBridge() internal view returns (IBridge) {
+        return IBridge(finder.getImplementationAddress(OracleInterfaces.Bridge));
+    }
+
+    function _formatMetadata(
         address to,
         uint256 value,
         bytes memory data
-    ) public pure returns (bytes memory) {
+    ) internal pure returns (bytes memory) {
         bytes memory metadata = abi.encode(to, value, data);
         return abi.encodePacked(metadata.length, metadata);
     }
 
-    function computeRequestHash(
+    function _computeRequestHash(
         address to,
         uint256 value,
         bytes memory data
-    ) public pure returns (bytes32) {
+    ) internal pure returns (bytes32) {
         return keccak256(abi.encode(to, value, data));
     }
 }

@@ -32,6 +32,7 @@ contract SinkGovernor {
             "Generic handler must call"
         );
 
+        // Note: this snippet of code is copied from Governor.sol.
         // Mostly copied from:
         // solhint-disable-next-line max-line-length
         // https://github.com/gnosis/safe-contracts/blob/59cfdaebcd8b87a0a32f87b50fead092c10d3a05/contracts/base/Executor.sol#L23-L31
