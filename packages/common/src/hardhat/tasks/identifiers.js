@@ -20,7 +20,11 @@ task("whitelist-identifiers", "Whitelist identifiers from JSON file")
     const { id } = taskArguments;
 
     const IdentifierWhitelist = await deployments.get("IdentifierWhitelist");
-    const identifierWhitelist = await ethers.getContractAt("IdentifierWhitelist", IdentifierWhitelist.address, deployer);
+    const identifierWhitelist = await ethers.getContractAt(
+      "IdentifierWhitelist",
+      IdentifierWhitelist.address,
+      deployer
+    );
     console.log(`Using IdentifierWhitelist @ ${identifierWhitelist.address}`);
 
     await _whitelistIdentifier(id, identifierWhitelist, deployer);

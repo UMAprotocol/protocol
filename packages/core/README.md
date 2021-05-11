@@ -72,7 +72,7 @@ side-by-side.
 
 ## Deployment with Hardhat
 
-Here is a list of scripts you can execute to take full advantage of `hardhat`'s succinct deployment and verification 
+Here is a list of scripts you can execute to take full advantage of `hardhat`'s succinct deployment and verification
 process:
 
 This will deploy your contracts on the in-memory hardhat network and exit, leaving no trace. Quickest way to ensure that deployments work as intended without consequences.

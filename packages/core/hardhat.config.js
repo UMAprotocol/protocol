@@ -1,4 +1,4 @@
-const { getHardhatConfig} = require("@uma/common");
+const { getHardhatConfig } = require("@uma/common");
 
 const path = require("path");
 const coreWkdir = path.dirname(require.resolve("@uma/core/package.json"));

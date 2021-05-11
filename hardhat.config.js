@@ -1,6 +1,6 @@
-// Note: this config is only here as a matter of convenience to allow all hardhat commands that can be run from core 
+// Note: this config is only here as a matter of convenience to allow all hardhat commands that can be run from core
 // work at root as well.
-const { getHardhatConfig} = require("@uma/common");
+const { getHardhatConfig } = require("@uma/common");
 
 const path = require("path");
 const coreWkdir = path.dirname(require.resolve("@uma/core/package.json"));

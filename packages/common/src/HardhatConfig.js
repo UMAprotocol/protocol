@@ -1,4 +1,4 @@
-const { getNodeUrl, mnemonic } = require('./TruffleConfig');
+const { getNodeUrl, mnemonic } = require("./TruffleConfig");
 
 function getHardhatConfig(configOverrides) {
   // Hard hat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function
