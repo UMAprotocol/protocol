@@ -7,7 +7,7 @@ import "../../../common/implementation/Lockable.sol";
 /**
  * @title KPI Options Financial Product Library
  * @notice Adds custom tranformation logic to modify the price and collateral requirement behavior of the expiring multi party contract.
- * If a price request is made pre-expiry, the price should always be set to 2 and the collateral requirement should be set to 1.
+ * If a price request is made pre-expiry, the price should always be set to 0.001 and the collateral requirement should be set to 1.
  * Post-expiry, the collateral requirement is left as 1 and the price is left unchanged.
  */
 contract KpiOptionsFinancialProductLibrary is FinancialProductLibrary, Lockable {
@@ -27,7 +27,7 @@ contract KpiOptionsFinancialProductLibrary is FinancialProductLibrary, Lockable 
         // If price request is made before expiry, return 0.001. Thus we can keep the contract 100% collateralized with
         // each token backed 1:0.001 by collateral currency. Post-expiry, leave unchanged.
         if (requestTime < ExpiringContractInterface(msg.sender).expirationTimestamp()) {
-            return FixedPoint.fromUnscaledUint(0.001);
+            return 1000000000000000;
         } else {
             return oraclePrice;
         }
