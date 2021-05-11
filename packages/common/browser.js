@@ -4,6 +4,7 @@ module.exports = {
   ...require("./src/AdminUtils"),
   ...require("./src/Constants"),
   ...require("./src/ContractUtils"),
+  ...require("./src/TransactionUtils"),
   ...require("./src/Crypto"),
   ...require("./src/EmpUtils"),
   ...require("./src/EncryptionHelper"),
