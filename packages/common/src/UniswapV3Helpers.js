@@ -1,6 +1,4 @@
-// This file contains a number of useful helper functions. They were either written specifically for these unit tests,
-// or they were adapted from the uniswap v3 core and periphery repos.
-//
+// This file contains a number of useful uniswap v3 helpers helper functions.
 
 const Web3 = require("web3");
 const { toBN, toWei } = Web3.utils;
@@ -124,8 +122,6 @@ const TICK_SPACINGS = {
   [FeeAmount.MEDIUM]: 60,
   [FeeAmount.HIGH]: 200
 };
-
-// TODO: this should not be here and should be put in a general common directory. Refactor this accordingly, like in other unit tests. This is tracked in issue: https://github.com/UMAprotocol/protocol/issues/2921
 
 module.exports = {
   getTickFromPrice,
