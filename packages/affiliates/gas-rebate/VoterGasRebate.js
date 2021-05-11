@@ -38,7 +38,7 @@ const path = require("path");
 // Locally stored list of DesignatedVoting wallets to substitute with their hot wallets:
 let addressesToReplace = [];
 try {
-  addressesToReplace = require("./2KEY_ADDRESS_OVERRIDE.json");
+  addressesToReplace = require("./2KEY_ADDRESS_OVERRIDE.json").map(a => a.toLowerCase());
 } catch (err) {
   // Do nothing, file doesn't exist.
 }
@@ -656,7 +656,7 @@ async function Main(callback) {
     // Make sure user is on Mainnet.
     const networkId = await web3.eth.net.getId();
     if (networkId !== 1)
-      throw new Error("You are not using a Mainnet web3 provider, script will product devastating results 🧟‍♂️");
+      throw new Error("You are not using a Mainnet web3 provider, script will produce devastating results 🧟‍♂️");
 
     const rebateNumber = argv.rebateNumber ? argv.rebateNumber : "1";
     // First check if block numbers are passed in, then default to timetamps.
