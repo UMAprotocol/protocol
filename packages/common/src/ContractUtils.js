@@ -32,8 +32,8 @@ const revertWrapper = result => {
 };
 
 /**
- * Simulate transaction via .call() and then .send() and return receipt. If an error is thrown,
- * return the error and add a flag denoting whether it was sent on the .call() or the .send().
+ * Simulate transaction via .call() and then .send() and return receipt. If an error is thrown, return the error and add
+ * a flag denoting whether it was sent on the .call() or the .send().
  * @notice Uses the ynatm package to retry the transaction with increasing gas price.
  * @param {*Object} transaction Transaction to call `.call()` and subsequently `.send()` on from `senderAccount`.
  * @param {*Object} config transaction config, e.g. { gasPrice, from }, passed to web3 transaction.
@@ -43,21 +43,29 @@ const runTransaction = async ({ web3, transaction, transactionConfig, availableA
   // Multiplier applied to Truffle's estimated gas limit for a transaction to send.
   const GAS_LIMIT_BUFFER = 1.25;
 
+  // If set to access multiple accounts, then check which is the first in the array of accounts that does not have a
+  // pending transaction. Note if all accounts have pending transactions then the account provided in the original
+  // config.from (accounts[0]) will be used.
   if (availableAccounts > 1) {
-    const availableAccounts = (await web3.getAccounts()).slice(0, availableAccounts);
-    for (const account of availableAccounts) {
+    const availableAccountsArray = (await web3.eth.getAccounts()).slice(0, availableAccounts);
+    for (const account of availableAccountsArray) {
       if (!(await accountHasPendingTransactions(web3, account))) {
-        transactionConfig.account = account; // set the account to execute the transaction to the available account.
+        transactionConfig.from = account; // set the account to execute the transaction to the available account.
         transactionConfig.usingOffSetDSProxyAccount = true; // add a bit more details to the logs produced.
         break;
       }
     }
   }
-  transactionConfig.nonce = await this.web3.eth.getTransactionCount(transactionConfig.from);
 
-  // First try to simulate transaction and also extract return value if its
-  // a state-modifying transaction. If the function is state modifying, then successfully
-  // sending it will return the transaction receipt, not the return value, so we grab it here.
+  // Compute the selected account nonce. If the account has a pending transaction then use the subsequent nonce after
+  // the pending transaction to ensure this new transaction does not collide with the existing transaction in the mempool.
+  if (await accountHasPendingTransactions(web3, transactionConfig.from))
+    transactionConfig.nonce = await getPendingTransactionCount(web3, transactionConfig.from);
+  // Else, there is no pending transaction and we use the current account transaction count as the nonce.
+  else transactionConfig.nonce = await web3.eth.getTransactionCount(transactionConfig.from);
+
+  // Next, simulate transaction and also extract return value if its a state-modifying transaction. If the function is state
+  // modifying, then successfully sending it will return the transaction receipt, not the return value, so we grab it here.
   let returnValue, estimatedGas;
   try {
     [returnValue, estimatedGas] = await Promise.all([
@@ -70,35 +78,24 @@ const runTransaction = async ({ web3, transaction, transactionConfig, availableA
   }
 
   // .call() succeeded, now broadcast transaction.
-  let receipt;
   try {
     transactionConfig = { ...transactionConfig, gas: Math.floor(estimatedGas * GAS_LIMIT_BUFFER) };
-    // If transactionConfig has a `nonce` field, then we will use the `ynatm` package to strategically re broadcast the
-    // transaction. If the `nonce` is missing, then we'll send the transaction once.
-    if (transactionConfig.nonce) {
-      // ynatm transactionConfig:
-      // - Doubles gasPrice every retry.
-      const gasPriceScalingFunction = ynatm.DOUBLES;
-      // - Tries every minute (and increases gas price according to `gasPriceScalingFunction`) if tx hasn't gone through.
-      const retryDelay = 60000;
-      // - Min Gas Price starts at caller's provided transactionConfig.gasPrice, with a max gasPrice of x6
-      const minGasPrice = transactionConfig.gasPrice;
-      const maxGasPrice = 2 * 3 * minGasPrice;
 
-      receipt = await ynatm.send({
-        sendTransactionFunction: gasPrice =>
-          transaction.send({
-            ...transactionConfig,
-            gasPrice
-          }),
-        minGasPrice,
-        maxGasPrice,
-        gasPriceScalingFunction,
-        delay: retryDelay
-      });
-    } else {
-      receipt = await transaction.send(transactionConfig);
-    }
+    // ynatm doubles gasPrice every retry. Tries every minute (and increases gas price according to DOUBLE method) if tx
+    // hasn't mined. Min Gas price starts at caller's transactionConfig.gasPrice, with a max gasPrice of x6.
+    const gasPriceScalingFunction = ynatm.DOUBLES;
+    const retryDelay = 60000;
+    const minGasPrice = transactionConfig.gasPrice;
+    const maxGasPrice = 2 * 3 * minGasPrice;
+
+    const receipt = await ynatm.send({
+      sendTransactionFunction: gasPrice => transaction.send({ ...transactionConfig, gasPrice }),
+      minGasPrice,
+      maxGasPrice,
+      gasPriceScalingFunction,
+      delay: retryDelay
+    });
+
     return { receipt, returnValue, transactionConfig };
   } catch (error) {
     error.type = "send";
