@@ -21,7 +21,7 @@ const argv = require("minimist")(process.argv.slice(), { boolean: ["revert"] });
 const foundationWallet = "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc";
 
 // Use the same ABI's as deployed contracts:
-const { getTruffleContract } = require("../../index");
+const { getTruffleContract } = require("../../dist/index");
 const Governor = getTruffleContract("Governor", web3, "1.1.0");
 const Finder = getTruffleContract("Finder", web3, "1.1.0");
 // Use VotingInterface when committing or revealing to match the correct commit and reveal function signatures

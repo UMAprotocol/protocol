@@ -6,7 +6,7 @@
  */
 const { toWei } = web3.utils;
 const { ZERO_ADDRESS } = require("@uma/common");
-const { getAbi, getTruffleContract } = require("../../index");
+const { getAbi, getTruffleContract } = require("../../dist/index");
 const argv = require("minimist")(process.argv.slice(), {
   string: ["cversion", "address"]
 });

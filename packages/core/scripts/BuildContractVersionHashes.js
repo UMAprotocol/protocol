@@ -5,7 +5,7 @@ const fs = require("fs");
 const { toWei, utf8ToHex, padRight, soliditySha3 } = web3.utils;
 
 const { createConstructorParamsForContractVersion, interfaceName } = require("@uma/common");
-const { getTruffleContract } = require("../index");
+const { getTruffleContract } = require("../dist/index.js");
 
 const buildVersion = "2.0.1"; // this is the version that will be built and appended to the FindContractVersion util.
 

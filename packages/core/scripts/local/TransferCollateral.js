@@ -4,7 +4,7 @@
  * Example: `yarn truffle exec ./scripts/local/transferCollateral.js --network test --collateral 25 --emp 0x6E2F1B57AF5C6237B7512b4DdC1FFDE2Fb7F90B9 --to 0x0 --cversion latest`
  */
 const { toWei, toBN } = web3.utils;
-const { getTruffleContract } = require("../../index");
+const { getTruffleContract } = require("../../dist/index");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["emp", "collateral", "to", "cversion"] });
 const abiVersion = argv.cversion || "1.2.2"; // Default to most recent mainnet deployment, 1.2.2.

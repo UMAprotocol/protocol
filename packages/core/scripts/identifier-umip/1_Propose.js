@@ -4,7 +4,7 @@
 // ganache-cli --fork https://mainnet.infura.io/v3/5f56f0a4c8844c96a430fbd3d7993e39 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25 --unlock 0x7a3a1c2de64f20eb5e916f40d11b01c441b2a8dc --port 9545
 // Then execute the script as: yarn truffle exec ./scripts/identifier-umip/1_Propose.js --network mainnet-fork --identifier USDETH --identifier ETHBTC from core
 
-const { getTruffleContract } = require("../../index");
+const { getTruffleContract } = require("../../dist/index");
 
 // Use the same ABI's as deployed contracts:
 const Governor = getTruffleContract("Governor", web3, "latest");
