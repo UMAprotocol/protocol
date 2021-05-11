@@ -67,12 +67,13 @@ contract UniswapV3Broker {
         // trading token0 for token1. Else, we are trading token1 for token0.
         bool zeroForOne = sqrtPriceX96 >= sqrtRatioTargetX96;
 
+        // Build a state object to store this information which can be re-used during.
         SwapState memory state =
             SwapState({ sqrtPriceX96: sqrtPriceX96, tick: tick, liquidity: pool.liquidity(), requiredInputAmount: 0 });
 
         // Iterate in a while loop that breaks when we hit the target price.
         while (true) {
-            // Compute the next initialized tick. We only need to traverse initalized ticks as uninitalized ticks
+            // Compute the next initialized tick. We only need to traverse initialized ticks as uninitialized ticks
             // have the same liquidity as the previous tick.
             StepComputations memory step;
             step.sqrtPriceStartX96 = state.sqrtPriceX96;
@@ -83,12 +84,12 @@ contract UniswapV3Broker {
                 zeroForOne
             );
 
-            //Double check we are not over or underflowing the ticks.
+            // Double check we are not over or underflow the ticks.
             if (step.tickNext < TickMath.MIN_TICK) step.tickNext = TickMath.MIN_TICK;
             else if (step.tickNext > TickMath.MAX_TICK) step.tickNext = TickMath.MAX_TICK;
 
             // Find the price at the next tick. Between the current state.sqrtPriceX96 and the nextTickPriceX96 we
-            // can find how much of the sold token is needed ot sufficiently move the market over the interval.
+            // can find how much of the sold token is needed to sufficiently move the market over the interval.
 
             uint160 nextTickPriceX96 = TickMath.getSqrtRatioAtTick(step.tickNext);
             uint256 inputAmountForStep;
@@ -104,9 +105,9 @@ contract UniswapV3Broker {
                     state.liquidity,
                     false
                 );
-                // Else, if zeroForOne is false, then we are moving the price UP. In this case we need to ensure that we
-                // dont overshoot the price on the next step.
-            } else if (!zeroForOne) {
+                // Else, if zeroForOne is false, then we are moving the price DOWN. In this case we need to ensure that we
+                // don't overshoot the price on the next step.
+            } else {
                 step.sqrtPriceNextX96 = nextTickPriceX96 > sqrtRatioTargetX96 ? nextTickPriceX96 : sqrtRatioTargetX96;
                 inputAmountForStep = SqrtPriceMath.getAmount1Delta( // As we are trading token1 for token0, calculate the token1 input.
                     step.sqrtPriceStartX96,
@@ -127,9 +128,7 @@ contract UniswapV3Broker {
             if (step.initialized) {
                 // Fetch the net liquidity. this could be positive or negative depending on if a LP is turning on or off at this price.
                 (, int128 liquidityNet, , , , , , ) = pool.ticks(step.tickNext);
-                if (!zeroForOne) liquidityNet = -liquidityNet;
-
-                state.liquidity = LiquidityMath.addDelta(state.liquidity, liquidityNet);
+                state.liquidity = LiquidityMath.addDelta(state.liquidity, zeroForOne ? liquidityNet : -liquidityNet);
             }
 
             // Finally, set the state price to the next price for the next iteration.
@@ -138,8 +137,8 @@ contract UniswapV3Broker {
         }
 
         // Based on the direction we are moving, set the input and output tokens.
-        address tokenIn = zeroForOne ? pool.token0() : pool.token1();
-        address tokenOut = zeroForOne ? pool.token1() : pool.token0();
+        (address tokenIn, address tokenOut) =
+            zeroForOne ? (pool.token0(), pool.token1()) : (pool.token1(), pool.token0());
 
         // If trading from an EOA pull tokens into this contract. If trading from a DSProxy this is redundant.
         if (tradingAsEOA)
@@ -574,19 +573,19 @@ library FullMath {
         assembly {
             twos := add(div(sub(0, twos), twos), 1)
         }
-        unchecked {
-            prod0 |= prod1 * twos;
+        prod0 |= prod1 * twos;
 
-            // Invert denominator mod 2**256
-            // Now that denominator is an odd number, it has an inverse
-            // modulo 2**256 such that denominator * inv = 1 mod 2**256.
-            // Compute the inverse by starting with a seed that is correct
-            // correct for four bits. That is, denominator * inv = 1 mod 2**4
-            uint256 inv = (3 * denominator) ^ 2;
-            // Now use Newton-Raphson iteration to improve the precision.
-            // Thanks to Hensel's lifting lemma, this also works in modular
-            // arithmetic, doubling the correct bits in each step.
-            // NOTE: this is modified from the original Full math implementation to work with solidity 8 with the unchecked syntax.
+        // Invert denominator mod 2**256
+        // Now that denominator is an odd number, it has an inverse
+        // modulo 2**256 such that denominator * inv = 1 mod 2**256.
+        // Compute the inverse by starting with a seed that is correct
+        // correct for four bits. That is, denominator * inv = 1 mod 2**4
+        uint256 inv = (3 * denominator) ^ 2;
+        // Now use Newton-Raphson iteration to improve the precision.
+        // Thanks to Hensel's lifting lemma, this also works in modular
+        // arithmetic, doubling the correct bits in each step.
+        // NOTE: this is modified from the original Full math implementation to work with solidity 8 with the unchecked syntax.
+        unchecked {
             inv *= 2 - denominator * inv; // inverse mod 2**8
             inv *= 2 - denominator * inv; // inverse mod 2**16
             inv *= 2 - denominator * inv; // inverse mod 2**32
