@@ -1,3 +1,4 @@
+import { DSProxyManager } from "./../../financial-templates-lib/dist/src/proxy-transaction-handler/DSProxyManager.d";
 import winston from "winston";
 import Web3 from "web3";
 
@@ -36,7 +37,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       pollingDelay: config.pollingDelay,
       errorRetries: config.errorRetries,
       errorRetriesTimeout: config.errorRetriesTimeout,
-      dsProxyFactoryAddress: config.dsProxyFactoryAddress,
+      dsProxyFactoryAddress: config.dsProxyConfig,
       tokenPriceFeedConfig: config.tokenPriceFeedConfig,
       referencePriceFeedConfig: config.referencePriceFeedConfig,
       exchangeAdapterConfig: config.exchangeAdapterConfig,
@@ -54,9 +55,10 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       web3,
       gasEstimator,
       account: accounts[0],
-      dsProxyFactoryAddress: config.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
+      dsProxyFactoryAddress: config.dsProxyConfig?.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
       dsProxyFactoryAbi: getAbi("DSProxyFactory"),
-      dsProxyAbi: getAbi("DSProxy")
+      dsProxyAbi: getAbi("DSProxy"),
+      availableAccounts: config.dsProxyConfig?.availableAccounts || 1
     });
     await dsProxyManager.initializeDSProxy();
 
