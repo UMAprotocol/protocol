@@ -14,6 +14,13 @@ contract SourceGovernor is Ownable {
     uint8 public currentChainId;
     bytes32 internal currentRequestHash;
 
+    event RelayedGovernanceRequest(
+        uint8 indexed destinationChainId,
+        address indexed to,
+        uint256 value,
+        bytes indexed data
+    );
+
     constructor(FinderInterface _finder, uint8 _currentChainId) {
         finder = _finder;
         currentChainId = _currentChainId;
@@ -34,6 +41,7 @@ contract SourceGovernor is Ownable {
         currentRequestHash = _computeRequestHash(to, value, data);
         _getBridge().deposit(destinationChainId, _getResourceId(), _formatMetadata(to, value, data));
         currentRequestHash = bytes32(0);
+        emit RelayedGovernanceRequest(destinationChainId, to, value, data);
     }
 
     /**
