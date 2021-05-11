@@ -38,8 +38,8 @@ contract SourceGovernor is Ownable {
         bytes memory data
     ) external onlyOwner {
         require(currentRequestHash == bytes32(0));
-        currentRequestHash = _computeRequestHash(to, value, data);
-        _getBridge().deposit(destinationChainId, _getResourceId(), _formatMetadata(to, value, data));
+        currentRequestHash = computeRequestHash(to, value, data);
+        getBridge().deposit(destinationChainId, getResourceId(), formatMetadata(to, value, data));
         currentRequestHash = bytes32(0);
         emit RelayedGovernanceRequest(destinationChainId, to, value, data);
     }
@@ -54,31 +54,31 @@ contract SourceGovernor is Ownable {
         uint256 value,
         bytes memory data
     ) external view {
-        require(currentRequestHash == _computeRequestHash(to, value, data));
+        require(currentRequestHash == computeRequestHash(to, value, data));
     }
 
-    function _getBridge() internal view returns (IBridge) {
+    function getBridge() public view returns (IBridge) {
         return IBridge(finder.getImplementationAddress(OracleInterfaces.Bridge));
     }
 
-    function _getResourceId() internal view returns (bytes32) {
-        return keccak256(abi.encode("Governor", currentChainId));
+    function getResourceId() public view returns (bytes32) {
+        return keccak256(abi.encode(bytes32("Governor"), currentChainId));
     }
 
-    function _formatMetadata(
+    function formatMetadata(
         address to,
         uint256 value,
         bytes memory data
-    ) internal pure returns (bytes memory) {
+    ) public pure returns (bytes memory) {
         bytes memory metadata = abi.encode(to, value, data);
         return abi.encodePacked(metadata.length, metadata);
     }
 
-    function _computeRequestHash(
+    function computeRequestHash(
         address to,
         uint256 value,
         bytes memory data
-    ) internal pure returns (bytes32) {
+    ) public pure returns (bytes32) {
         return keccak256(abi.encode(to, value, data));
     }
 }
