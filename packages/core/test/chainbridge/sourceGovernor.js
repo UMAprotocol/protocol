@@ -29,10 +29,7 @@ contract("SourceGovernor", async accounts => {
   let sourceGovernorResourceId;
 
   const getResourceId = chainId => {
-    const encodedParams = web3.eth.abi.encodeParameters(
-      ["string", "uint8"],
-      [web3.utils.utf8ToHex("Governor"), chainId]
-    );
+    const encodedParams = web3.eth.abi.encodeParameters(["string", "uint8"], ["Governor", chainId]);
     return web3.utils.soliditySha3(encodedParams);
   };
 
