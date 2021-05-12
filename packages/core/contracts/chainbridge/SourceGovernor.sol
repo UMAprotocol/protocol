@@ -61,7 +61,7 @@ contract SourceGovernor is Ownable {
      * @notice Gets the resource id to send to the bridge.
      */
     function getResourceId() public view returns (bytes32) {
-        return keccak256(abi.encode(bytes32("Governor"), currentChainId));
+        return keccak256(abi.encode("Governor", currentChainId));
     }
 
     function _getBridge() internal view returns (IBridge) {

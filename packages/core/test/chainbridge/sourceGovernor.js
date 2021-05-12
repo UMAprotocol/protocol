@@ -9,7 +9,7 @@ const ERC20 = artifacts.require("ExpandedERC20");
 
 const { utf8ToHex } = web3.utils;
 
-const { blankFunctionSig, getFunctionSignature } = require("./helpers");
+const { blankFunctionSig, getFunctionSignature, createGenericDepositData } = require("./helpers");
 
 contract("SourceGovernor", async accounts => {
   const owner = accounts[0];
@@ -30,7 +30,7 @@ contract("SourceGovernor", async accounts => {
 
   const getResourceId = chainId => {
     const encodedParams = web3.eth.abi.encodeParameters(
-      ["bytes32", "uint8"],
+      ["string", "uint8"],
       [web3.utils.utf8ToHex("Governor"), chainId]
     );
     return web3.utils.soliditySha3(encodedParams);
@@ -74,6 +74,19 @@ contract("SourceGovernor", async accounts => {
   });
   it("resource id", async function() {
     assert.equal(await sourceGovernor.getResourceId(), getResourceId(chainID), "resource id not computed correctly");
+  });
+  it("unauthorized request", async function() {
+    const innerTransactionCalldata = erc20.contract.methods.transfer(rando, web3.utils.toWei("1")).encodeABI();
+    const depositData = web3.eth.abi.encodeParameters(
+      ["address", "uint256", "bytes"],
+      [erc20.address, "0", innerTransactionCalldata]
+    );
+
+    assert(
+      await didContractThrow(
+        bridge.deposit(destinationChainID, sourceGovernorResourceId, createGenericDepositData(depositData))
+      )
+    );
   });
   it("relayGovernance", async function() {
     const innerTransactionCalldata = erc20.contract.methods.transfer(rando, web3.utils.toWei("1")).encodeABI();
