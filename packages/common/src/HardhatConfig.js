@@ -43,7 +43,11 @@ function getHardhatConfig(configOverrides) {
         accounts: { mnemonic }
       },
       mumbai: {
-        url: "https://rpc-mumbai.maticvigil.com/",
+        url: getNodeUrl("polygon-mumbai", true),
+        accounts: { mnemonic }
+      },
+      matic: {
+        url: getNodeUrl("polygon-matic", true),
         accounts: { mnemonic }
       }
     },

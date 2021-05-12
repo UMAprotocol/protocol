@@ -56,12 +56,12 @@ function getNodeUrl(networkName, useHttps = false) {
 // Adds a public network.
 // Note: All public networks can be accessed using keys from GCS using the ManagedSecretProvider or using a mnemonic in the
 // shell environment.
-function addPublicNetwork(networks, name, networkId) {
+function addPublicNetwork(networks, name, networkId, customTruffleConfig) {
   const options = {
     networkCheckTimeout: 10000,
     network_id: networkId,
-    gas: gas,
-    gasPrice: gasPx
+    gas: customTruffleConfig?.gas || gas,
+    gasPrice: customTruffleConfig?.gasPrice || gasPx
   };
 
   const nodeUrl = getNodeUrl(name);
@@ -166,8 +166,8 @@ function addLocalNetwork(networks, name, customOptions) {
 let networks = {};
 
 // Public networks that need both a mnemonic and GCS ManagedSecretProvider network.
-for (const [id, { name }] of Object.entries(PublicNetworks)) {
-  addPublicNetwork(networks, name, id);
+for (const [id, { name, customTruffleConfig }] of Object.entries(PublicNetworks)) {
+  addPublicNetwork(networks, name, id, customTruffleConfig);
 }
 
 // Add test network.
@@ -176,6 +176,7 @@ addLocalNetwork(networks, "test");
 // Mainnet fork is just a local network with id 1 and a hardcoded gas limit because ganache has difficulty estimating gas on forks.
 // Note: this gas limit is the default ganache block gas limit.
 addLocalNetwork(networks, "mainnet-fork", { network_id: 1, gas: 6721975 });
+addLocalNetwork(networks, "polygon-matic-fork", { network_id: 137, gas: 6721975, gasPrice: 1000000000 });
 
 // MetaMask truffle provider requires a longer timeout so that user has time to point web browser with metamask to localhost:3333
 addLocalNetwork(networks, "metamask", {
