@@ -76,7 +76,7 @@ contract ReserveCurrencyDisputer {
             );
         }
 
-        // 6. Finally, submit the dispute against the liquidation in the financial contract.
+        // 6. Finally, submit the dispute.
         TransferHelper.safeApprove(fc.collateralCurrency(), address(fc), totalCollateralRequired.rawValue);
         fc.dispute(liquidationId, sponsor);
     }
@@ -89,8 +89,6 @@ contract ReserveCurrencyDisputer {
     {
         return b.isGreaterThanOrEqual(a) ? FixedPoint.fromUnscaledUint(0) : a.sub(b);
     }
-
-    // Helper method to return the current final fee for a given financial contract instance.
 
     // Helper method to return the collateral balance of this contract.
     function getCollateralBalance(IFinancialContract fc) internal view returns (FixedPoint.Unsigned memory) {
