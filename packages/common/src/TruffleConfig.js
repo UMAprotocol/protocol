@@ -61,7 +61,8 @@ function addPublicNetwork(networks, name, networkId, customTruffleConfig) {
     networkCheckTimeout: 10000,
     network_id: networkId,
     gas: customTruffleConfig?.gas || gas,
-    gasPrice: customTruffleConfig?.gasPrice || gasPx
+    gasPrice: customTruffleConfig?.gasPrice || gasPx,
+    ...customTruffleConfig
   };
 
   const nodeUrl = getNodeUrl(name);
