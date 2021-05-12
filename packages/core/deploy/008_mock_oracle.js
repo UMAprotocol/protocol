@@ -1,7 +1,8 @@
-const { stringToBytes32, interfaceName, ZERO_ADDRESS } = require("@uma/common");
+const { interfaceName, ZERO_ADDRESS } = require("@uma/common");
 
 const func = async function(hre) {
-  const { deployments, getNamedAccounts } = hre;
+  const { deployments, getNamedAccounts, web3 } = hre;
+  const { utf8ToHex, padRight } = web3.utils;
   const { deploy, log, execute } = deployments;
 
   const { deployer } = await getNamedAccounts();
@@ -20,7 +21,7 @@ const func = async function(hre) {
       "Finder",
       { from: deployer },
       "changeImplementationAddress",
-      stringToBytes32(interfaceName.MockOracleAncillary),
+      padRight(utf8ToHex(interfaceName.MockOracleAncillary), 64),
       deployResult.address
     );
     log(
