@@ -17,6 +17,10 @@ export async function calculateCurrentTvl() {
     }, toBN("0"))
     .div(fixedPointAdjustment)
     .toString();
+  // It is possible an error was introduced by a flaky API or some other reason that broke the sizing of the TVL. If it
+  // is larger than 100 billion or less than 10 million it is likely wrong. In this case, error out.
+  if (toBN(currentTvl).gt(toBN("100000000000")) || toBN(currentTvl).lt(toBN("10000000")))
+    throw new Error("The TVL calculation likely contained an error and is out of reasonable bounds!");
   return { currentTvl, currentTime: Math.round(new Date().getTime() / 1000) };
 }
 
