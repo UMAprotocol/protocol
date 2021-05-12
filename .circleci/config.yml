@@ -71,43 +71,43 @@ jobs:
             echo $(circleci tests glob "test/**/*.js")
             circleci tests glob "test/**/*.js" | circleci tests split > /tmp/test-files
             yarn hardhat test ./$(cat /tmp/test-files)
-  test-liquidator:
-    docker:
-      - image: circleci/node:lts
-      - image: trufflesuite/ganache-cli
-        command: ganache-cli -i 1234 -l 9000000 -p 9545
-    working_directory: ~/protocol
-    resource_class: medium+
-    parallelism: 10
-    steps:
-      - restore_cache:
-          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
-      - run:
-          name: Run mocha tests
-          command: |
-            cd packages/liquidator
-            yarn mocha mocha-test
-      - run:
-          name: Run tests
-          command: |
-            ./ci/truffle_workaround.sh
-            pwd
-            cd packages/liquidator
-            echo $(circleci tests glob "test/**/*.js")
-            circleci tests glob "test/**/*.js" | circleci tests split > /tmp/test-files
-            yarn hardhat test ./$(cat /tmp/test-files)
-  # test:
-  #   executor: continuation/default
+  # test-liquidator:
+  #   docker:
+  #     - image: circleci/node:lts
+  #     - image: trufflesuite/ganache-cli
+  #       command: ganache-cli -i 1234 -l 9000000 -p 9545
+  #   working_directory: ~/protocol
+  #   resource_class: medium+
+  #   parallelism: 10
   #   steps:
   #     - restore_cache:
   #         key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
   #     - run:
-  #         name: Generate Tests
+  #         name: Run mocha tests
   #         command: |
-  #           cd /home/circleci/protocol
-  #           ./ci/generate_lerna_config.sh
-  #     - continuation/continue:
-  #         configuration_path: /home/circleci/protocol/.circleci/lerna_config.yml
+  #           cd packages/liquidator
+  #           yarn mocha mocha-test
+  #     - run:
+  #         name: Run tests
+  #         command: |
+  #           ./ci/truffle_workaround.sh
+  #           pwd
+  #           cd packages/liquidator
+  #           echo $(circleci tests glob "test/**/*.js")
+  #           circleci tests glob "test/**/*.js" | circleci tests split > /tmp/test-files
+  #           yarn hardhat test ./$(cat /tmp/test-files)
+  test:
+    executor: continuation/default
+    steps:
+      - restore_cache:
+          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
+      - run:
+          name: Generate Tests
+          command: |
+            cd /home/circleci/protocol
+            ./ci/generate_lerna_config.sh
+      - continuation/continue:
+          configuration_path: /home/circleci/protocol/.circleci/lerna_config.yml
   coverage:
     docker:
       - image: circleci/node:lts
@@ -184,12 +184,15 @@ workflows:
       - lint:
           requires:
             - checkout_and_install
-      - test-financial-templates-lib:
-          context: api_keys
-          requires:
-            - build
-      - test-liquidator:
-          context: api_keys
+      # - test-financial-templates-lib:
+      #     context: api_keys
+      #     requires:
+      #       - build
+      # - test-liquidator:
+      #     context: api_keys
+      #     requires:
+      #       - build
+      - test:
           requires:
             - build
       - dapp_build:
