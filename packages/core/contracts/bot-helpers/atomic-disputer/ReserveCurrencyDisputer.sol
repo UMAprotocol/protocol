@@ -45,21 +45,31 @@ contract ReserveCurrencyDisputer {
         // 1. Fetch information about the liquidation from the financial contract.
         IFinancialContract.LiquidationData memory liquidationData = fc.liquidations(sponsor, liquidationId);
 
-        // 2. Compute the disputeBondAmount. Multiply by the unit collateral so the dispute bond is a percentage of the
+        // 2. Fetch the disputeBondPercentage from the financial contract. Between UMA contracts 1.2.2 and 2.x we re-named
+        // disputerDisputeRewardPct to disputeBondPercentage. To ensure this ReserveCurrencyDisputer is compatible with
+        // both types, first try the new interface name and if this fails tre the old one.
+        FixedPoint.Unsigned memory disputeBondPercentage;
+        try fc.disputeBondPercentage() returns (FixedPoint.Unsigned memory disputeBond) {
+            disputeBondPercentage = disputeBond;
+        } catch {
+            disputeBondPercentage = fc.disputerDisputeRewardPct();
+        }
+
+        // 3. Compute the disputeBondAmount. Multiply by the unit collateral so the dispute bond is a percentage of the
         // locked collateral after fees. To add fees we simply multiply the rawUnitCollateral by the cumulativeFeeMultiplier.
         FixedPoint.Unsigned memory disputeBondAmount =
-            liquidationData.lockedCollateral.mul(fc.disputeBondPercentage()).mul(
+            liquidationData.lockedCollateral.mul(disputeBondPercentage).mul(
                 (liquidationData.rawUnitCollateral).mul(fc.cumulativeFeeMultiplier())
             );
 
-        // 3. Calculate required collateral. Cost of a dispute is the dispute bond + the final fee.
+        // 4. Calculate required collateral. Cost of a dispute is the dispute bond + the final fee.
         FixedPoint.Unsigned memory totalCollateralRequired = disputeBondAmount.add(liquidationData.finalFee);
 
-        // 4. Compute the collateral shortfall. This considers and collateral that is current in the contract.
+        // 5. Compute the collateral shortfall. This considers and collateral that is current in the contract.
         FixedPoint.Unsigned memory collateralToBePurchased =
             subOrZero(totalCollateralRequired, getCollateralBalance(fc));
 
-        // 5. If there is collateral to be purchased, buy it on uniswap with the reserve currency.
+        // 6. If there is collateral to be purchased, buy it on uniswap with the reserve currency.
         if (collateralToBePurchased.isGreaterThan(0) && reserveCurrency != fc.collateralCurrency()) {
             IUniswapV2Router01 router = IUniswapV2Router01(uniswapRouter);
             address[] memory path = new address[](2);
@@ -76,7 +86,7 @@ contract ReserveCurrencyDisputer {
             );
         }
 
-        // 6. Finally, submit the dispute.
+        // 7. Finally, submit the dispute.
         TransferHelper.safeApprove(fc.collateralCurrency(), address(fc), totalCollateralRequired.rawValue);
         fc.dispute(liquidationId, sponsor);
     }
@@ -117,6 +127,8 @@ interface IFinancialContract {
     function liquidations(address sponsor, uint256 liquidationId) external view returns (LiquidationData memory);
 
     function disputeBondPercentage() external view returns (FixedPoint.Unsigned memory);
+
+    function disputerDisputeRewardPct() external view returns (FixedPoint.Unsigned memory);
 
     function cumulativeFeeMultiplier() external view returns (FixedPoint.Unsigned memory);
 
