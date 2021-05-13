@@ -8,7 +8,6 @@ const { SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
 
 // JS libs
 const { Disputer } = require("./src/disputer");
-const { ProxyTransactionWrapper } = require("./src/proxyTransactionWrapper");
 const {
   multicallAddressMap,
   FinancialContractClient,
@@ -18,12 +17,11 @@ const {
   delay,
   waitForLogger,
   createReferencePriceFeedForFinancialContract,
-  setAllowance,
-  DSProxyManager
+  setAllowance
 } = require("@uma/financial-templates-lib");
 
 // Truffle contracts.
-const { getAbi, findContractVersion, getAddress } = require("@uma/core");
+const { getAbi, findContractVersion } = require("@uma/core");
 const { getWeb3, PublicNetworks } = require("@uma/common");
 
 /**
@@ -46,8 +44,7 @@ async function run({
   errorRetriesTimeout,
   priceFeedConfig,
   disputerConfig,
-  disputerOverridePrice,
-  proxyTransactionWrapperConfig
+  disputerOverridePrice
 }) {
   try {
     const getTime = () => Math.round(new Date().getTime() / 1000);
@@ -148,36 +145,9 @@ async function run({
     const gasEstimator = new GasEstimator(logger);
     await gasEstimator.update();
 
-    let dsProxyManager;
-    if (proxyTransactionWrapperConfig?.useDsProxyToDispute) {
-      dsProxyManager = new DSProxyManager({
-        logger,
-        web3,
-        gasEstimator,
-        account: accounts[0],
-        dsProxyFactoryAddress:
-          proxyTransactionWrapperConfig?.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
-        dsProxyFactoryAbi: getAbi("DSProxyFactory"),
-        dsProxyAbi: getAbi("DSProxy")
-      });
-
-      // Load in an existing DSProxy for the account EOA if one already exists or create a new one for the user.
-      await dsProxyManager.initializeDSProxy();
-    }
-
-    const proxyTransactionWrapper = new ProxyTransactionWrapper({
-      web3,
-      financialContract,
-      gasEstimator,
-      account: accounts[0],
-      dsProxyManager,
-      proxyTransactionWrapperConfig
-    });
-
     const disputer = new Disputer({
       logger,
       financialContractClient,
-      proxyTransactionWrapper,
       gasEstimator,
       priceFeed,
       account: accounts[0],
@@ -289,17 +259,7 @@ async function Poll(callback) {
       disputerConfig: process.env.DISPUTER_CONFIG ? JSON.parse(process.env.DISPUTER_CONFIG) : null,
       // If there is a DISPUTER_OVERRIDE_PRICE environment variable then the disputer will disregard the price from the
       // price feed and preform disputes at this override price. Use with caution as wrong input could cause invalid disputes.
-      disputerOverridePrice: process.env.DISPUTER_OVERRIDE_PRICE,
-      // If there is a dsproxy config, the bot can be configured to send transactions via a smart contract wallet (DSProxy).
-      // This enables the bot to preform swap, dispute, enabling a single reserve currency.
-      // Note that the DSProxy will be deployed on the first run of the bot. Subsequent runs will re-use the proxy. example:
-      // { "useDsProxyToLiquidate": "true", If enabled, the bot will send liquidations via a DSProxy.
-      //  "dsProxyFactoryAddress": "0x123..." -> Will default to an UMA deployed version if non provided.
-      // "disputerReserveCurrencyAddress": "0x123..." -> currency DSProxy will trade from when liquidating.
-      // "uniswapRouterAddress": "0x123..." -> uniswap router address to enable reserve trading. Defaults to mainnet router.
-      // "maxReserverTokenSpent": "10000000000"} -> max amount to spend in reserve currency. scaled by reserve currency
-      //      decimals. defaults to MAX_UINT (no limit).
-      proxyTransactionWrapperConfig: process.env.DSPROXY_CONFIG ? JSON.parse(process.env.DSPROXY_CONFIG) : {}
+      disputerOverridePrice: process.env.DISPUTER_OVERRIDE_PRICE
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
