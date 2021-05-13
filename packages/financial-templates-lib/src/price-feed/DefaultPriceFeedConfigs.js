@@ -599,13 +599,6 @@ const defaultConfigs = {
         minuteLookback: 7200,
         hourlyLookback: 259200,
         minTimeBetweenUpdates: 60
-      },
-      {
-        type: "quandl",
-        // https://www.quandl.com/data/CHRIS/CME_MGC1-E-micro-Gold-Futures-Continuous-Contract-1-MGC1-Front-Month
-        datasetCode: "CHRIS",
-        databaseCode: "CME_MGC1",
-        lookback: 259200
       }
     ]
   },
