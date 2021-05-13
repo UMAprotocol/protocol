@@ -71,6 +71,14 @@ jobs:
             echo $(circleci tests glob "test/**/*.js")
             circleci tests glob "test/**/*.js" | circleci tests split > /tmp/test-files
             yarn hardhat test ./$(cat /tmp/test-files)
+          name: Run tests truffle
+          command: |
+            ./ci/truffle_workaround.sh
+            pwd
+            cd packages/financial-templates-lib
+            echo $(circleci tests glob "test-truffle/**/*.js")
+            circleci tests glob "test-truffle/**/*.js" | circleci tests split > /tmp/test-truffle-files
+            yarn truffle test ./$(cat /tmp/test-truffle-files)
   # test-liquidator:
   #   docker:
   #     - image: circleci/node:lts
@@ -184,14 +192,14 @@ workflows:
       - lint:
           requires:
             - checkout_and_install
-      # - test-financial-templates-lib:
-      #     context: api_keys
-      #     requires:
-      #       - build
-      # - test-liquidator:
-      #     context: api_keys
-      #     requires:
-      #       - build
+      - test-financial-templates-lib:
+          context: api_keys
+          requires:
+            - build
+      - test-liquidator:
+          context: api_keys
+          requires:
+            - build
       - test:
           requires:
             - build
