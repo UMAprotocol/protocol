@@ -33,6 +33,7 @@ class ProxyTransactionWrapper {
     collateralToken,
     account,
     dsProxyManager = undefined,
+    useDsProxyToLiquidate = false,
     proxyTransactionWrapperConfig
   }) {
     this.web3 = web3;
@@ -47,6 +48,8 @@ class ProxyTransactionWrapper {
     this.toBN = this.web3.utils.toBN;
     this.toWei = this.web3.utils.toWei;
     this.toChecksumAddress = this.web3.utils.toChecksumAddress;
+
+    this.useDsProxyToLiquidate = useDsProxyToLiquidate;
 
     // TODO: refactor the router to pull from a constant file.
     const defaultConfig = {
