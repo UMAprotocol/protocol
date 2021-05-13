@@ -1,4 +1,3 @@
-import { DSProxyManager } from "./../../financial-templates-lib/dist/src/proxy-transaction-handler/DSProxyManager.d";
 import winston from "winston";
 import Web3 from "web3";
 
