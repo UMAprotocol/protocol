@@ -25,7 +25,7 @@ contract ReserveCurrencyDisputer {
      * @dev Any collateral the contract has will be used before anything is purchased on Uniswap.
      * @param uniswapRouter address of the uniswap router used to facilitate trades.
      * @param financialContract address of the financial contract on which the liquidation is occurring.
-     * @param reserveCurrency address of the token to swap for collateral. THis is the common currency held by the DSProxy.
+     * @param reserveCurrency address of the token to swap for collateral. This is the common currency held by the DSProxy.
      * @param sponsor address of the sponsor who's liquidation is disputed.
      * @param liquidationId index of the liquidation for the given sponsor.
      * @param maxReserveTokenSpent maximum number of reserve tokens to spend in the trade. Bounds slippage.
@@ -37,7 +37,7 @@ contract ReserveCurrencyDisputer {
         address reserveCurrency,
         uint256 liquidationId,
         address sponsor,
-        FixedPoint.Unsigned calldata maxReserveTokenSpent,
+        uint256 maxReserveTokenSpent,
         uint256 deadline
     ) public {
         IFinancialContract fc = IFinancialContract(financialContract);
@@ -66,10 +66,10 @@ contract ReserveCurrencyDisputer {
             path[0] = reserveCurrency;
             path[1] = fc.collateralCurrency();
 
-            TransferHelper.safeApprove(reserveCurrency, address(router), maxReserveTokenSpent.rawValue);
+            TransferHelper.safeApprove(reserveCurrency, address(router), maxReserveTokenSpent);
             router.swapTokensForExactTokens(
                 collateralToBePurchased.rawValue,
-                maxReserveTokenSpent.rawValue,
+                maxReserveTokenSpent,
                 path,
                 address(this),
                 deadline

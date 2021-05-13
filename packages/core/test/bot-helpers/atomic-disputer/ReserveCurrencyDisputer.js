@@ -75,7 +75,7 @@ contract("ReserveTokenDisputer", function(accounts) {
         reserveToken.address, // reserveCurrency
         liquidationId,
         sponsor,
-        { rawValue: MAX_SAFE_ALLOWANCE }, // maxReserveTokenSpent.
+        MAX_SAFE_ALLOWANCE, // maxReserveTokenSpent.
         unreachableDeadline
       )
       .encodeABI();
