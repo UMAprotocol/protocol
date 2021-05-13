@@ -48,8 +48,7 @@ const PublicNetworks = {
     etherscan: "https://explorer-mainnet.maticvigil.com/",
     customTruffleConfig: {
       confirmations: 2,
-      timeoutBlocks: 200,
-      gasPrice: 1000000000 // 1 gWei
+      timeoutBlocks: 200
     }
   },
   80001: {
@@ -57,8 +56,7 @@ const PublicNetworks = {
     etherscan: "https://explorer-mumbai.maticvigil.com/",
     customTruffleConfig: {
       confirmations: 2,
-      timeoutBlocks: 200,
-      gasPrice: 1000000000 // 1 gWei
+      timeoutBlocks: 200
     }
   }
 };
