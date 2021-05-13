@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-pragma abicoder v2;
-
 /**
  * @title Interface for whitelists of supported identifiers that the oracle can provide prices for.
  */
