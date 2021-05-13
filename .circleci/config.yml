@@ -71,6 +71,7 @@ jobs:
             echo $(circleci tests glob "test/**/*.js")
             circleci tests glob "test/**/*.js" | circleci tests split > /tmp/test-files
             yarn hardhat test ./$(cat /tmp/test-files)
+      - run:
           name: Run tests truffle
           command: |
             ./ci/truffle_workaround.sh
