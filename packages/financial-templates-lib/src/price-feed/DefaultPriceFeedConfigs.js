@@ -931,6 +931,26 @@ const defaultConfigs = {
     uniswapAddress: "0x360acfeb5c1548bad3583c559a646d803077236d",
     twapLength: 7200,
     invertPrice: false
+  },
+  PUNKETH_TWAP: {
+    type: "uniswap",
+    uniswapAddress: "0x6E01DB46b183593374A49c0025e42c4bB7Ee3ffA",
+    twapLength: 7200,
+    invertPrice: false
+  },
+  USDXIO: {
+    type: "expression",
+    expression: "ETHXIO * USDETH",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    twapLength: 3600,
+    customFeeds: {
+      ETHXIO: {
+        type: "uniswap",
+        uniswapAddress: "0xe0cc5afc0ff2c76183416fb8d1a29f6799fb2cdf",
+        invertPrice: true
+      }
+    }
   }
 };
 
