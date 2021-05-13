@@ -2,17 +2,13 @@ import winston from "winston";
 import Web3 from "web3";
 import BigNumber from "bignumber.js";
 
-const bn = require("bignumber.js"); // Big number that comes with web3 does not support square root.
-bn.config({ EXPONENTIAL_AT: 999999, DECIMAL_PLACES: 40 });
+import { encodePriceSqrt } from "@uma/common";
+import ExchangeAdapterInterface from "./ExchangeAdapterInterface";
+import { getTruffleContract } from "@uma/core";
 
-const { encodePriceSqrt } = require("@uma/common");
-const ExchangeAdapterInterface = require("./ExchangeAdapterInterface");
-const { getTruffleContract } = require("@uma/core");
-
-class UniswapV3Trader implements InstanceType<typeof ExchangeAdapterInterface> {
+export class UniswapV3Trader implements ExchangeAdapterInterface {
   readonly tradeDeadline: number;
-  readonly UniswapV2Broker: any;
-  uniswapPair: any;
+  readonly UniswapV3Broker: any;
 
   constructor(
     readonly logger: winston.Logger,
@@ -21,21 +17,13 @@ class UniswapV3Trader implements InstanceType<typeof ExchangeAdapterInterface> {
     readonly uniswapRouterAddress: string,
     readonly dsProxyManager: any
   ) {
-    this.logger = logger;
-    this.web3 = web3;
-    this.uniswapPoolAddress = uniswapPoolAddress;
-    this.uniswapRouterAddress = uniswapRouterAddress;
-
-    this.dsProxyManager = dsProxyManager;
-
     this.tradeDeadline = 10 * 60 * 60;
-
-    this.UniswapV2Broker = getTruffleContract("UniswapV3Broker", this.web3);
+    this.UniswapV3Broker = getTruffleContract("UniswapV3Broker", this.web3 as any);
   }
   async tradeMarketToDesiredPrice(desiredPrice: BigNumber) {
-    const callCode = this.UniswapV2Broker.bytecode;
+    const callCode = this.UniswapV3Broker.bytecode;
 
-    const contract = new this.web3.eth.Contract(this.UniswapV2Broker.abi);
+    const contract = new this.web3.eth.Contract(this.UniswapV3Broker.abi);
 
     const callData = contract.methods
       .swapToPrice(
@@ -55,5 +43,3 @@ class UniswapV3Trader implements InstanceType<typeof ExchangeAdapterInterface> {
     }
   }
 }
-
-module.exports = { UniswapV3Trader };

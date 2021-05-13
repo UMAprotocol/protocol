@@ -4,6 +4,7 @@
   "description": "UMA Simple Trading Bot",
   "private": true,
   "dependencies": {
+    "@types/sinon": "^10.0.0",
     "@uma/common": "^2.1.0",
     "@uma/core": "^2.2.0",
     "@uma/financial-templates-lib": "^2.2.0",
@@ -41,7 +42,7 @@
   "main": "dist/src/index.js",
   "scripts": {
     "build": "tsc -b",
-    "test": "hardhat test"
+    "test": "hardhat test  --network hardhat"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"

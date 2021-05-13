@@ -1,12 +1,11 @@
 import winston from "winston";
 import Web3 from "web3";
-
+import retry from "async-retry";
 import { config } from "dotenv";
 
-import retry from "async-retry";
-const { getWeb3 } = require("@uma/common");
-const { getAbi, getAddress } = require("@uma/core");
-const {
+import { getWeb3 } from "@uma/common";
+import { getAbi, getAddress } from "@uma/core";
+import {
   GasEstimator,
   Networker,
   Logger,
@@ -15,10 +14,10 @@ const {
   waitForLogger,
   delay,
   DSProxyManager
-} = require("@uma/financial-templates-lib");
+} from "@uma/financial-templates-lib";
 
-const { RangeTrader } = require("./RangeTrader");
-const { createExchangeAdapter } = require("./exchange-adapters/CreateExchangeAdapter");
+import { RangeTrader } from "./RangeTrader";
+import { createExchangeAdapter } from "./exchange-adapters/CreateExchangeAdapter";
 import { TraderConfig } from "./TraderConfig";
 config();
 
@@ -92,7 +91,11 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       await retry(
         async () => {
           // Update the price feeds & gasEstimator.
-          await Promise.all([tokenPriceFeed.update(), referencePriceFeed.update(), gasEstimator.update()]);
+          await Promise.all([
+            (tokenPriceFeed as any).update(),
+            (referencePriceFeed as any).update(),
+            gasEstimator.update()
+          ]);
 
           // Check if a trade should be done. If so, trade.
           await rangeTrader.checkRangeMovementsAndTrade();

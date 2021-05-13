@@ -1,18 +1,14 @@
+import winston from "winston";
+import sinon from "sinon";
 import { run } from "../src/index";
-import { web3, assert } from "hardhat";
-
+import { web3 } from "hardhat";
 const { toWei, utf8ToHex, padRight } = web3.utils;
-const {
-  interfaceName,
-  addGlobalHardhatTestingAddress,
-  createConstructorParamsForContractVersion
-} = require("@uma/common");
 
-const { getTruffleContract } = require("@uma/core");
+import { interfaceName, addGlobalHardhatTestingAddress, createConstructorParamsForContractVersion } from "@uma/common";
 
-const winston = require("winston");
-const sinon = require("sinon");
-const { SpyTransport } = require("@uma/financial-templates-lib");
+import { getTruffleContract } from "@uma/core";
+
+import { SpyTransport } from "@uma/financial-templates-lib";
 
 describe("index.js", function() {
   let accounts: string[];
@@ -40,19 +36,19 @@ describe("index.js", function() {
   const identifier = "TEST_IDENTIFIER";
   const fundingRateIdentifier = "TEST_FUNDiNG_IDENTIFIER";
 
-  const FinancialContract = getTruffleContract("Perpetual", web3);
-  const Finder = getTruffleContract("Finder", web3);
-  const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3);
-  const AddressWhitelist = getTruffleContract("AddressWhitelist", web3);
-  const MockOracle = getTruffleContract("MockOracle", web3);
-  const Token = getTruffleContract("ExpandedERC20", web3);
-  const SyntheticToken = getTruffleContract("SyntheticToken", web3);
-  const Timer = getTruffleContract("Timer", web3);
-  const UniswapMock = getTruffleContract("UniswapV2Mock", web3);
-  const Store = getTruffleContract("Store", web3);
-  const ConfigStore = getTruffleContract("ConfigStore", web3);
-  const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
-  const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);
+  const FinancialContract = getTruffleContract("Perpetual", web3 as any);
+  const Finder = getTruffleContract("Finder", web3 as any);
+  const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3 as any);
+  const AddressWhitelist = getTruffleContract("AddressWhitelist", web3 as any);
+  const MockOracle = getTruffleContract("MockOracle", web3 as any);
+  const Token = getTruffleContract("ExpandedERC20", web3 as any);
+  const SyntheticToken = getTruffleContract("SyntheticToken", web3 as any);
+  const Timer = getTruffleContract("Timer", web3 as any);
+  const UniswapMock = getTruffleContract("UniswapV2Mock", web3 as any);
+  const Store = getTruffleContract("Store", web3 as any);
+  const ConfigStore = getTruffleContract("ConfigStore", web3 as any);
+  const OptimisticOracle = getTruffleContract("OptimisticOracle", web3 as any);
+  const DSProxyFactory = getTruffleContract("DSProxyFactory", web3 as any);
 
   after(async function() {
     process.env = originalEnv;
@@ -169,7 +165,7 @@ describe("index.js", function() {
     process.env.TOKEN_PRICE_FEED_CONFIG = JSON.stringify(defaultPriceFeedConfig);
     process.env.DS_PROXY_FACTORY_ADDRESS = dsProxyFactory.address;
     process.env.EXCHANGE_ADAPTER_CONFIG = JSON.stringify({
-      type: "uniswap",
+      type: "uniswap-v2",
       tokenAAddress: syntheticToken.address,
       tokenBAddress: collateralToken.address
     });

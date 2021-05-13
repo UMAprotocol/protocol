@@ -1,22 +1,24 @@
 import winston from "winston";
 import Web3 from "web3";
+import assert from "assert";
 
-const assert = require("assert");
-const { UniswapV2Trader } = require("./UniswapV2Trader");
-const { UniswapV3Trader } = require("./UniswapV3Trader");
+import ExchangeAdapterInterface from "./ExchangeAdapterInterface";
+import { UniswapV2Trader } from "./UniswapV2Trader";
+import { UniswapV3Trader } from "./UniswapV3Trader";
 
-async function createExchangeAdapter(
+export async function createExchangeAdapter(
   logger: winston.Logger,
   web3: Web3,
   dsProxyManager: any,
   config: any,
   networkId: number
-) {
+): Promise<ExchangeAdapterInterface> {
   assert(config.type, "Exchange adapter must have a type. EG uniswap for a uniswap dex");
 
   if (config.type === "uniswap-v2") {
     const requiredFields = ["tokenAAddress", "tokenBAddress"];
-    if (isMissingField(config, requiredFields, logger)) return null;
+    if (isMissingField(config, requiredFields, logger))
+      throw new Error(`Invalid config! required filed ${requiredFields}`);
 
     // TODO: refactor these to be pulled from a constants file somewhere.
     const uniswapAddresses: { [key: number]: { router: string; factory: string } } = {
@@ -49,7 +51,8 @@ async function createExchangeAdapter(
 
   if (config.type === "uniswap-v3") {
     const requiredFields = ["uniswapPoolAddress", "uniswapRouterAddress"];
-    if (isMissingField(config, requiredFields, logger)) return null;
+    if (isMissingField(config, requiredFields, logger))
+      throw new Error(`Invalid config! required filed ${requiredFields}`);
 
     // TODO: add the canonical uniswap router address when it has been deployed onto mainnet
     const uniswapAddresses: { [key: number]: { router: string } } = {};
@@ -58,7 +61,7 @@ async function createExchangeAdapter(
     return new UniswapV3Trader(logger, web3, config.uniswapPoolAddress, config.uniswapRouterAddress, dsProxyManager);
   }
 
-  return null;
+  throw new Error(`Invalid config! did not match any exchange adapter type`);
 }
 
 // TODO: this method was taken verbatim from the create price feed class. it should be refactored to a common util.
@@ -78,5 +81,3 @@ function isMissingField(config: { [key: string]: string }, requiredFields: Array
 
   return false;
 }
-
-module.exports = { createExchangeAdapter };
