@@ -35,7 +35,7 @@ const numKeys = process.env.NUM_KEYS ? parseInt(process.env.NUM_KEYS) : 2; // Ge
 let singletonProvider;
 
 // Default options
-const gasPx = argv.gasPrice ? Web3.utils.toWei(argv.gasPrice, "gwei") : 20000000000; // 20 gwei
+const gasPx = argv.gasPrice ? Web3.utils.toWei(argv.gasPrice, "gwei") : 1000000000; // 1 gwei
 const gas = undefined; // Defining this as undefined (rather than leaving undefined) forces truffle estimate gas usage.
 
 // If a custom node URL is provided, use that. Otherwise use an infura websocket connection.
