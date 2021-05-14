@@ -1,6 +1,7 @@
-const { stringToBytes32, interfaceName } = require("@uma/common");
+const { interfaceName } = require("@uma/common");
 const func = async function(hre) {
-  const { deployments, getNamedAccounts } = hre;
+  const { deployments, getNamedAccounts, web3 } = hre;
+  const { utf8ToHex, padRight } = web3.utils;
   const { deploy, log, execute } = deployments;
 
   const { deployer } = await getNamedAccounts();
@@ -16,7 +17,7 @@ const func = async function(hre) {
       "Finder",
       { from: deployer },
       "changeImplementationAddress",
-      stringToBytes32(interfaceName.Registry),
+      padRight(utf8ToHex(interfaceName.Registry), 64),
       deployResult.address
     );
     log(

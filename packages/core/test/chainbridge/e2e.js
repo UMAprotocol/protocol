@@ -23,18 +23,21 @@ const SourceOracle = artifacts.require("SourceOracle");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");
+const SourceGovernor = artifacts.require("SourceGovernor");
+const SinkGovernor = artifacts.require("SinkGovernor");
+const ERC20 = artifacts.require("ExpandedERC20");
 
 const { utf8ToHex, hexToUtf8, toWei, sha3 } = web3.utils;
 const { abi } = web3.eth;
 
 // Returns the equivalent of keccak256(abi.encode(address,uint8)) in Solidity:
-const getResourceIdForBeaconOracle = chainID => {
-  const encoded = abi.encodeParameters(["string", "uint8"], ["Oracle", chainID]);
+const getResourceId = (chainID, name) => {
+  const encoded = abi.encodeParameters(["string", "uint8"], [name, chainID]);
   const hash = sha3(encoded, { encoding: "hex " });
   return hash;
 };
 
-contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
+contract("GenericHandler - [UMA Cross-chain Communication]", async accounts => {
   // # of relayers who must vote on a proposal before it can be executed.
   const relayerThreshold = 2;
   // Source chain ID.
@@ -44,9 +47,11 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
   // We only expect to make 1 deposit per test.
   const expectedDepositNonce = 1;
 
+  const owner = accounts[0];
   const depositerAddress = accounts[1];
   const relayer1Address = accounts[2];
   const relayer2Address = accounts[3];
+  const rando = accounts[4];
 
   const initialRelayers = [relayer1Address, relayer2Address];
 
@@ -60,10 +65,15 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
   let voting;
   let sourceOracle; // Beacon oracle on Mainnet
   let sinkOracle; // Beacon oracle on Sidechain
+  let sourceGovernor; // Mainnet governance relayer
+  let sinkGovernor; // Sidechain governance receiver
   let identifierWhitelist;
   let sourceFinder;
   let sinkFinder;
   let registry;
+
+  // Test contract
+  let erc20;
 
   // Test variables
   const ancillaryData = utf8ToHex("Test Ancillary Data");
@@ -71,9 +81,10 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
   const requestPrice = toWei("1");
   const requestTime = Date.now();
 
-  // Resource ID's link Sink and Source oracles and should be the same for any oracles that will communicate with each
+  // Resource IDs link Sink and Source contracts and should be the same for any contracts that will communicate with each
   // other.
   let votingResourceId;
+  let governanceResourceId;
 
   before(async () => {
     registry = await Registry.deployed();
@@ -95,8 +106,10 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
     bridgeMainnet = await BridgeContract.new(chainId, initialRelayers, relayerThreshold, 0, 100);
     await sourceFinder.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridgeMainnet.address);
     sourceOracle = await SourceOracle.new(sourceFinder.address, chainId);
-    votingResourceId = getResourceIdForBeaconOracle(chainId);
+    votingResourceId = getResourceId(chainId, "Oracle");
     assert.equal(votingResourceId, await sourceOracle.getResourceId());
+    sourceGovernor = await SourceGovernor.new(sourceFinder.address, chainId);
+    governanceResourceId = getResourceId(chainId, "Governor");
 
     // Sidechain bridge variables:
     bridgeSidechain = await BridgeContract.new(sidechainId, initialRelayers, relayerThreshold, 0, 100);
@@ -107,6 +120,7 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
       await sinkOracle.getResourceId(),
       "Sink and Source oracles should have same resource ID"
     );
+    sinkGovernor = await SinkGovernor.new(sinkFinder.address);
 
     // Configure contracts such that price requests will succeed:
     await identifierWhitelist.addSupportedIdentifier(identifier);
@@ -143,6 +157,33 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
       Helpers.getFunctionSignature(sinkOracle, "validateDeposit"),
       Helpers.getFunctionSignature(sinkOracle, "executePublishPrice")
     );
+
+    // Mainnet resource ID 1: SourceGovernor Contract
+    // - Deposit: Should validate that the request was actually sent by the source governor.
+    // - ExecuteProposal: No need for an execution proposal because it does not receive messages from L2.
+    await bridgeMainnet.adminSetGenericResource(
+      genericHandlerMainnet.address,
+      governanceResourceId,
+      sourceGovernor.address,
+      Helpers.getFunctionSignature(sourceGovernor, "verifyRequest"),
+      Helpers.blankFunctionSig
+    );
+
+    // Sidechain resource ID 1: SinkGovernor Contract
+    // - Deposit: No need for a deposit function -- does not send cross-chain messages.
+    // - ExecuteProposal: executes an incoming governance proposal.
+    await bridgeSidechain.adminSetGenericResource(
+      genericHandlerSidechain.address,
+      governanceResourceId,
+      sinkGovernor.address,
+      Helpers.blankFunctionSig,
+      Helpers.getFunctionSignature(sinkGovernor, "executeGovernance")
+    );
+
+    // Deploy an ERC20 so the SinkGovernor contract has something to act on.
+    erc20 = await ERC20.new("Test Token", "TEST", 18);
+    await erc20.addMember(1, owner);
+    await erc20.mint(sinkGovernor.address, web3.utils.toWei("1"));
   });
 
   // Scenario: Sidechain contract needs a price from DVM.
@@ -304,5 +345,41 @@ contract("GenericHandler - [UMA Cross-chain Voting]", async accounts => {
         event.price.toString() === requestPrice
       );
     });
+  });
+
+  // Scenario: someone wants to send a governance proposal from mainnet to the sidechain.
+  it("Mainnet deposit: Governance transaction sent to sidechain", async function() {
+    await sinkFinder.changeImplementationAddress(
+      utf8ToHex(interfaceName.GenericHandler),
+      genericHandlerSidechain.address
+    );
+    await sourceFinder.changeImplementationAddress(
+      utf8ToHex(interfaceName.GenericHandler),
+      genericHandlerMainnet.address
+    );
+
+    const innerTransactionCalldata = erc20.contract.methods.transfer(rando, web3.utils.toWei("1")).encodeABI();
+
+    await sourceGovernor.relayGovernance(sidechainId, erc20.address, "0", innerTransactionCalldata, {
+      from: owner
+    });
+
+    const { _resourceID, _metaData } = await genericHandlerMainnet._depositRecords(sidechainId, expectedDepositNonce);
+
+    const data = Helpers.createGenericDepositData(_metaData);
+
+    const dataHash = web3.utils.soliditySha3(
+      { t: "address", v: genericHandlerSidechain.address },
+      { t: "bytes", v: data }
+    );
+
+    await bridgeSidechain.voteProposal(chainId, expectedDepositNonce, _resourceID, dataHash, { from: relayer1Address });
+    await bridgeSidechain.voteProposal(chainId, expectedDepositNonce, _resourceID, dataHash, { from: relayer2Address });
+    await bridgeSidechain.executeProposal(chainId, expectedDepositNonce, data, _resourceID, {
+      from: relayer1Address
+    });
+
+    assert.equal((await erc20.balanceOf(rando)).toString(), web3.utils.toWei("1"));
+    assert.equal((await erc20.balanceOf(sinkGovernor.address)).toString(), "0");
   });
 });
