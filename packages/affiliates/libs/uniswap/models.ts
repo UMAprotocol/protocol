@@ -1,5 +1,4 @@
 import assert from "assert";
-import lodash from "lodash";
 import { exists, getPositionKey } from "./utils";
 
 type Id = string;
@@ -40,7 +39,7 @@ export function Table<T extends MaybeId>(config: { makeId: MakeId<T>; type: Id }
     const got = await get(id);
     return set({ ...got, ...data });
   }
-  function entries() {
+  async function entries() {
     return [...store.entries()];
   }
   return {
@@ -51,35 +50,10 @@ export function Table<T extends MaybeId>(config: { makeId: MakeId<T>; type: Id }
     update,
     forEach,
     list,
-    store
+    store,
+    entries
   };
 }
-
-export type NftPosition = {
-  id?: string;
-  tokenId: string;
-  amount?: string;
-  amount0?: string;
-  amount1?: string;
-  token0?: string;
-  token1?: string;
-  liquidity?: string;
-  feeGrowthInside0LastX128?: string;
-  feeGrowthInside1LastX128?: string;
-  tokensOwed0?: string;
-  tokensOwed1?: string;
-  pool?: string;
-};
-
-// Nft positions are gathered from the nft contract, and require slightly different indexing than the positions in pool contract
-export const NftPositions = () => {
-  function makeId(data: NftPosition) {
-    return data.tokenId;
-  }
-  const store = new Map<Id, NftPosition>();
-  return Table<NftPosition>({ makeId, type: "NftPositions" }, store);
-};
-export type NftPositions = ReturnType<typeof NftPositions>;
 
 export type Position = {
   id?: string;
@@ -144,36 +118,50 @@ export const Pools = () => {
 };
 export type Pools = ReturnType<typeof Pools>;
 
-export type Tick = {
-  // the total position liquidity that references this tick
-  liquidityGross?: string;
-  // amount of net liquidity added (subtracted) when tick is crossed from left to right (right to left),
-  liquidityNet?: string;
-  // fee growth per unit of liquidity on the _other_ side of this tick (relative to the current tick)
-  // only has relative meaning, not absolute — the value depends on when the tick is initialized
-  feeGrowthOutside0X128?: string;
-  feeGrowthOutside1X128?: string;
-  // the cumulative tick value on the other side of the tick
-  tickCumulativeOutside?: string;
-  // the seconds per unit of liquidity on the _other_ side of this tick (relative to the current tick)
-  // only has relative meaning, not absolute — the value depends on when the tick is initialized
-  secondsPerLiquidityOutsideX128?: string;
-  // the seconds spent on the other side of the tick (relative to the current tick)
-  // only has relative meaning, not absolute — the value depends on when the tick is initialized
-  secondsOutside?: string;
-  // true iff the tick is initialized, i.e. the value is exactly equivalent to the expression liquidityGross != 0
-  // these 8 bits are set to prevent fresh sstores when crossing newly initialized ticks
-  initialized?: boolean;
-  pool?: string;
-  index?: string;
-  id?: string;
-};
-export const Ticks = () => {
-  function makeId(state: Tick) {
-    const { pool, index } = state;
-    return [pool, index].join("!");
+export const Balances = () => {
+  let total = 0n;
+  const store = new Map<Id, string>();
+  function getOrCreate(address: string) {
+    if (store.has(address)) return store.get(address);
+    return create(address);
   }
-  const store = new Map<Id, Tick>();
-  return Table<Tick>({ makeId, type: "Ticks" }, store);
+  function create(addr: string) {
+    assert(!store.has(addr), "Already has address");
+    store.set(addr, "0");
+    return "0";
+  }
+  function add(addr: string, amount: string) {
+    const amountn = BigInt(amount);
+    assert(amountn >= 0n, "amount must be >= 0: " + amount);
+    const balance = getOrCreate(addr);
+    const result = (BigInt(balance) + amountn).toString();
+    store.set(addr, result);
+    total = total + amountn;
+    return result;
+  }
+  function sub(addr: string, amount: string) {
+    const amountn = BigInt(amount);
+    assert(amountn >= 0n, "amount must be >= 0: " + amount);
+    const balance = getOrCreate(addr);
+    const result = (BigInt(balance) - amountn).toString();
+    store.set(addr, result);
+    total = total - amountn;
+    return result;
+  }
+  function snapshot() {
+    return Object.fromEntries(store.entries());
+  }
+  function getTotal() {
+    return total.toString();
+  }
+  return {
+    ...store,
+    sub,
+    add,
+    create,
+    getOrCreate,
+    snapshot,
+    getTotal
+  };
 };
-export type Ticks = ReturnType<typeof Ticks>;
+export type Balances = ReturnType<typeof Balances>;

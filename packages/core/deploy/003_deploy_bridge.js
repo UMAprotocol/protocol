@@ -1,6 +1,7 @@
-const { stringToBytes32, interfaceName, getBridgeChainId } = require("@uma/common");
+const { interfaceName, getBridgeChainId } = require("@uma/common");
 const func = async function(hre) {
-  const { deployments, getNamedAccounts, getChainId } = hre;
+  const { deployments, getNamedAccounts, getChainId, web3 } = hre;
+  const { utf8ToHex, padRight } = web3.utils;
   const { deploy, log, execute } = deployments;
 
   const { deployer } = await getNamedAccounts();
@@ -26,7 +27,7 @@ const func = async function(hre) {
       "Finder",
       { from: deployer },
       "changeImplementationAddress",
-      stringToBytes32(interfaceName.Bridge),
+      padRight(utf8ToHex(interfaceName.Bridge), 64),
       deployResult.address
     );
     log(
