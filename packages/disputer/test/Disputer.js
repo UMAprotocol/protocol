@@ -1410,7 +1410,7 @@ contract("Disputer.js", function(accounts) {
             async function() {
               // Seed the dsProxy with a few collateral but not enough to finish the dispute. All collateral available
               // should be spent and the shortfall should be purchased.
-              await collateralToken.mint(dsProxy.address, toWei("0.5"), { from: contractCreator });
+              await collateralToken.mint(dsProxy.address, convertCollateral("0.5"), { from: contractCreator });
               await reserveToken.mint(dsProxy.address, toWei("10000"), { from: contractCreator });
 
               // Set the final fee to 1 unit collateral. The total collateral needed for the dispute will be final fee + dispute bond.
