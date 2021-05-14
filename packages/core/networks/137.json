@@ -26,5 +26,17 @@
   {
     "contractName": "OptimisticOracle",
     "address": "0x8A481F28C23c72CB01452ca570ba165DB5F55D24"
+  },
+  {
+    "contractName": "TokenFactory",
+    "address": "0x82B564983aE7274c86695917BBf8C99ECb6F0F8F"
+  },
+  {
+    "contractName": "ExpiringMultiPartyLib",
+    "address": "0x00526C1ede46255b752D280620318ab50B24c20e"
+  },
+  {
+    "contractName": "ExpiringMultiPartyCreator",
+    "address": "0xcdf08CB3d3436c3c21F277b6AD45E3D7aB1Ce12F"
   }
 ]
