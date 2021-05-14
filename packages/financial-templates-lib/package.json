@@ -44,7 +44,7 @@
     "/dist/**/*"
   ],
   "scripts": {
-    "test": "hardhat test ./test/clients/* ./test/helpers/* ./test/price-feed/* && truffle test ./test/truffle/*",
+    "test": "hardhat test ./test/clients/* ./test/helpers/* ./test/price-feed/* ./test/proxy-transaction-handler/* && truffle test ./test/truffle/*",
     "build": "tsc"
   },
   "bugs": {
