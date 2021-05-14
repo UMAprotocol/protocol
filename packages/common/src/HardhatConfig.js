@@ -1,4 +1,6 @@
 const { getNodeUrl, mnemonic } = require("./TruffleConfig");
+const path = require("path");
+const coreWkdir = path.dirname(require.resolve("@uma/core/package.json"));
 
 function getHardhatConfig(configOverrides) {
   // Hard hat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function
@@ -49,6 +51,10 @@ function getHardhatConfig(configOverrides) {
       matic: {
         url: getNodeUrl("polygon-matic", true),
         accounts: { mnemonic }
+      },
+      mainnet: {
+        url: getNodeUrl("polygon-matic", true),
+        accounts: { mnemonic }
       }
     },
     mocha: {
@@ -61,6 +67,14 @@ function getHardhatConfig(configOverrides) {
     },
     namedAccounts: {
       deployer: 0
+    },
+    external: {
+      // This allows us to access the same deployed contract addresses that truffle can after running apply-registry,
+      deployments: {
+        mumbai: [`${coreWkdir}/build/contracts`],
+        matic: [`${coreWkdir}/build/contracts`],
+        mainnet: [`${coreWkdir}/build/contracts`]
+      }
     }
   };
   return { ...defaultConfig, ...configOverrides };

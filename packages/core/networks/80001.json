@@ -1,0 +1,14 @@
+[
+  {
+    "contractName": "Finder",
+    "address": "0xb22033fF04AD01fbE8d78ef4622a20626834271B"
+  },
+  {
+    "contractName": "Registry",
+    "address": "0x119e9008882C4f6beCB42Eaf2C2502fBDb9D405A"
+  },
+  {
+    "contractName": "IdentifierWhitelist",
+    "address": "0xA011B82880D0235f845c9d1EA5610b965e0CD759"
+  }
+]
