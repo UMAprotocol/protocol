@@ -70,10 +70,12 @@ jobs:
             cd packages/financial-templates-lib
             echo $(circleci tests glob "test/**/*.js")
             circleci tests glob "test/**/*.js" | circleci tests split > /tmp/test-files
-            yarn hardhat test ./$(cat /tmp/test-files
+            yarn hardhat test ./$(cat /tmp/test-files)
   test-financial-templates-lib-truffle:
     docker:
       - image: circleci/node:lts
+      - image: trufflesuite/ganache-cli
+        command: ganache-cli -i 1234 -l 9000000 -p 9545
     working_directory: ~/protocol
     resource_class: medium+
     parallelism: 10
