@@ -12,7 +12,8 @@ task("setup-finder", "Points Finder to DVM system contracts")
   .addFlag("store", "Use if you want to set Store")
   .addFlag("mockoracle", "Use if you want to set MockOracle as the Oracle")
   .addFlag("sinkoracle", "Use if you want to set SinkOracle as the Oracle")
-  .addFlag("prod", "Set all production contracts in Finder (i.e. SinkOracle instead of MockOracle)")
+  .addFlag("prod", "Configure production setup in Finder")
+  .addFlag("test", "Configure test setup in Finder")
   .setAction(async function(taskArguments, hre) {
     const { deployments, getNamedAccounts, web3 } = hre;
     const { padRight, utf8ToHex } = web3.utils;
@@ -28,23 +29,34 @@ task("setup-finder", "Points Finder to DVM system contracts")
       store,
       optimisticoracle,
       sinkoracle,
-      prod
+      prod,
+      test
     } = taskArguments;
 
     assert(!(sinkoracle && mockoracle), "Cannot set both SinkOracle and MockOracle to Oracle in Finder");
 
     // Determine based on task inputs which contracts to set in finder
     const contractsToSet = [];
-    if (registry || prod) contractsToSet.push("Registry");
-    if (generichandler || prod) contractsToSet.push("GenericHandler");
-    if (bridge || prod) contractsToSet.push("Bridge");
-    if (identifierwhitelist || prod) contractsToSet.push("IdentifierWhitelist");
-    if (addresswhitelist || prod) contractsToSet.push("AddressWhitelist");
-    if (financialcontractsadmin || prod) contractsToSet.push("FinancialContractsAdmin");
-    if (optimisticoracle || prod) contractsToSet.push("OptimisticOracle");
-    if (store || prod) contractsToSet.push("Store");
-    if (mockoracle) contractsToSet.push("MockOracleAncillary");
-    if (sinkoracle || prod) contractsToSet.push("SinkOracle");
+    if (registry || prod || test) contractsToSet.push("Registry");
+    if (generichandler || prod || test) contractsToSet.push("GenericHandler");
+    if (bridge || prod || test) contractsToSet.push("Bridge");
+    if (identifierwhitelist || prod || test) contractsToSet.push("IdentifierWhitelist");
+    if (addresswhitelist || prod || test) contractsToSet.push("AddressWhitelist");
+    if (financialcontractsadmin || prod || test) contractsToSet.push("FinancialContractsAdmin");
+    if (optimisticoracle || prod || test) contractsToSet.push("OptimisticOracle");
+    if (store || prod || test) contractsToSet.push("Store");
+
+    // TEST ONLY:
+    if (mockoracle || test) contractsToSet.push("MockOracleAncillary");
+
+    // MUST BE SPECIFICALLY SET:
+    // e.g. `yarn hardhat setup-finder --prod --sinkoracle`
+    if (sinkoracle) contractsToSet.push("SinkOracle");
+
+    assert(
+      !(contractsToSet.includes("SinkOracle") && contractsToSet.includes("MockOracleAncillary")),
+      "Cannot set both SinkOracle and MockOracle to Oracle in Finder"
+    );
 
     // Synchronously send a transaction to add each contract to the Finder:
     const Finder = await deployments.get("Finder");

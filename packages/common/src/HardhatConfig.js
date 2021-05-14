@@ -73,7 +73,8 @@ function getHardhatConfig(configOverrides) {
       deployments: {
         mumbai: [`${coreWkdir}/build/contracts`],
         matic: [`${coreWkdir}/build/contracts`],
-        mainnet: [`${coreWkdir}/build/contracts`]
+        mainnet: [`${coreWkdir}/build/contracts`],
+        goerli: [`${coreWkdir}/build/contracts`]
       }
     }
   };
