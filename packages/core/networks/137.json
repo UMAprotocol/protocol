@@ -38,5 +38,13 @@
   {
     "contractName": "ExpiringMultiPartyCreator",
     "address": "0xcdf08CB3d3436c3c21F277b6AD45E3D7aB1Ce12F"
+  },
+  {
+    "contractName": "Bridge",
+    "address": "0x76f3fe966F91602129cb278043239afBB7B7646A"
+  },
+  {
+    "contractName": "GenericHandler",
+    "address": "0x79176279493f58c805648A883056954ACaA147f3"
   }
 ]
