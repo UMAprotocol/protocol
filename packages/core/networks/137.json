@@ -10,5 +10,17 @@
   {
     "contractName": "IdentifierWhitelist",
     "address": "0x2271a5E74eA8A29764ab10523575b41AA52455f0"
+  },
+  {
+    "contractName": "AddressWhitelist",
+    "address": "0x1020Ae36548ab28Bc0c41Fd2a08D24132C82cc55"
+  },
+  {
+    "contractName": "FinancialContractsAdmin",
+    "address": "0xad5503B3C7e35EAF0E88df80b4B626eD0C0404A0"
+  },
+  {
+    "contractName": "Store",
+    "address": "0x2d4710F04Da90184255782d3715224A6C776955D"
   }
 ]

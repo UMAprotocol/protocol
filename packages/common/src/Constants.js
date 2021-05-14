@@ -6,6 +6,7 @@ const interfaceName = {
   Store: "Store",
   IdentifierWhitelist: "IdentifierWhitelist",
   CollateralWhitelist: "CollateralWhitelist",
+  AddressWhitelist: "CollateralWhitelist",
   FundingRateStore: "FundingRateStore",
   OptimisticOracle: "OptimisticOracle",
   Bridge: "Bridge",

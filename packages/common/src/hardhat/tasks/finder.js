@@ -7,12 +7,23 @@ task("setup-finder", "Points Finder to DVM system contracts")
   .addFlag("bridge", "Use if you want to set Bridge")
   .addFlag("identifierwhitelist", "Use if you want to set IdentifierWhitelist")
   .addFlag("addresswhitelist", "Use if you want to set AddressWhitelist")
+  .addFlag("financialcontractsadmin", "Use if you want to set FinancialContractsAdmin")
+  .addFlag("store", "Use if you want to set Store")
   .addFlag("mockoracle", "Use if you want to set MockOracle as the Oracle")
   .setAction(async function(taskArguments, hre) {
     const { deployments, getNamedAccounts, web3 } = hre;
     const { padRight, utf8ToHex } = web3.utils;
     const { deployer } = await getNamedAccounts();
-    const { registry, generichandler, bridge, identifierwhitelist, mockoracle, addresswhitelist } = taskArguments;
+    const {
+      registry,
+      generichandler,
+      bridge,
+      identifierwhitelist,
+      mockoracle,
+      addresswhitelist,
+      financialcontractsadmin,
+      store
+    } = taskArguments;
 
     // Determine based on task inputs which contracts to set in finder
     const contractsToSet = [];
@@ -21,6 +32,8 @@ task("setup-finder", "Points Finder to DVM system contracts")
     if (bridge) contractsToSet.push("Bridge");
     if (identifierwhitelist) contractsToSet.push("IdentifierWhitelist");
     if (addresswhitelist) contractsToSet.push("AddressWhitelist");
+    if (financialcontractsadmin) contractsToSet.push("FinancialContractsAdmin");
+    if (store) contractsToSet.push("Store");
     if (mockoracle) contractsToSet.push("MockOracleAncillary");
 
     // Synchronously send a transaction to add each contract to the Finder:
