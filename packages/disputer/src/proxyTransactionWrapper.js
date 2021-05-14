@@ -116,7 +116,6 @@ class ProxyTransactionWrapper {
       receipt = transactionResult.receipt;
       returnValue = transactionResult.returnValue.toString();
     } catch (error) {
-      console.error(error);
       return error;
     }
 

@@ -193,6 +193,7 @@ class Disputer {
             logResult.type === "call"
               ? "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute✋"
               : "Failed to dispute liquidation🚨",
+          liquidation: disputeableLiquidation,
           logResult
         });
       else
