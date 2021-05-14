@@ -1,10 +1,10 @@
 // Script to test
-const ContractUtils = require("../src/ContractUtils");
+const TransactionUtils = require("../src/TransactionUtils");
 const { getTruffleContract, getAbi } = require("@uma/core");
 const ERC20 = getTruffleContract("BasicERC20", web3);
 const ERC20ABI = getAbi("BasicERC20");
 
-contract("ContractUtils.js", function(accounts) {
+contract("TransactionUtils.js", function(accounts) {
   describe("runTransaction", function() {
     it("sets error.type correctly", async function() {
       // `.call()` fails, error.type = "call"
@@ -16,7 +16,7 @@ contract("ContractUtils.js", function(accounts) {
         const transactionConfig = {
           from: accounts[0]
         };
-        await ContractUtils.runTransaction({ web3, transaction, transactionConfig });
+        await TransactionUtils.runTransaction({ web3, transaction, transactionConfig });
 
         // Test should not get here because error should be thrown.
         assert.ok(false);
