@@ -151,8 +151,15 @@ class Disputer {
             price &&
             this.financialContractClient.isDisputable(liquidation, price) &&
             this.financialContractClient.getLastUpdateTime() >= Number(liquidationTime) + this.disputeDelay
-          )
+          ) {
+            this.logger.debug({
+              at: "Disputer",
+              message: "Detected a disputable liquidation",
+              price: price.toString(),
+              liquidation: JSON.stringify(liquidation)
+            });
             return { ...liquidation, price: price.toString() };
+          }
 
           return null;
         })
