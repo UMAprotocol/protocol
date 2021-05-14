@@ -2,7 +2,6 @@
   "name": "@uma/trader",
   "version": "1.3.0",
   "description": "UMA Simple Trading Bot",
-  "private": true,
   "dependencies": {
     "@types/sinon": "^10.0.0",
     "@uma/common": "^2.1.0",
