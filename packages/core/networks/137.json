@@ -22,5 +22,9 @@
   {
     "contractName": "Store",
     "address": "0x2d4710F04Da90184255782d3715224A6C776955D"
+  },
+  {
+    "contractName": "OptimisticOracle",
+    "address": "0x8A481F28C23c72CB01452ca570ba165DB5F55D24"
   }
 ]

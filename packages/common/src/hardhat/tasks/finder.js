@@ -8,6 +8,7 @@ task("setup-finder", "Points Finder to DVM system contracts")
   .addFlag("identifierwhitelist", "Use if you want to set IdentifierWhitelist")
   .addFlag("addresswhitelist", "Use if you want to set AddressWhitelist")
   .addFlag("financialcontractsadmin", "Use if you want to set FinancialContractsAdmin")
+  .addFlag("optimisticoracle", "Use if you want to set OptimisticOracle")
   .addFlag("store", "Use if you want to set Store")
   .addFlag("mockoracle", "Use if you want to set MockOracle as the Oracle")
   .setAction(async function(taskArguments, hre) {
@@ -22,7 +23,8 @@ task("setup-finder", "Points Finder to DVM system contracts")
       mockoracle,
       addresswhitelist,
       financialcontractsadmin,
-      store
+      store,
+      optimisticoracle
     } = taskArguments;
 
     // Determine based on task inputs which contracts to set in finder
@@ -33,6 +35,7 @@ task("setup-finder", "Points Finder to DVM system contracts")
     if (identifierwhitelist) contractsToSet.push("IdentifierWhitelist");
     if (addresswhitelist) contractsToSet.push("AddressWhitelist");
     if (financialcontractsadmin) contractsToSet.push("FinancialContractsAdmin");
+    if (optimisticoracle) contractsToSet.push("OptimisticOracle");
     if (store) contractsToSet.push("Store");
     if (mockoracle) contractsToSet.push("MockOracleAncillary");
 
