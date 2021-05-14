@@ -1,9 +1,9 @@
 const { toWei, toBN } = web3.utils;
 const winston = require("winston");
 
-const { UniswapV2PriceFeed } = require("../../src/price-feed/UniswapPriceFeed");
+const { UniswapV2PriceFeed } = require("../src/price-feed/UniswapPriceFeed");
 const { mineTransactionsAtTime, MAX_SAFE_JS_INT, parseFixed } = require("@uma/common");
-const { delay } = require("../../src/helpers/delay.js");
+const { delay } = require("../src/helpers/delay.js");
 const { getTruffleContract } = require("@uma/core");
 
 const UniswapMock = getTruffleContract("UniswapV2Mock", web3);
