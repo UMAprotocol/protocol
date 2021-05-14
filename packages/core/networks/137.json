@@ -46,5 +46,13 @@
   {
     "contractName": "GenericHandler",
     "address": "0x79176279493f58c805648A883056954ACaA147f3"
+  },
+  {
+    "contractName": "SinkOracle",
+    "address": "0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04"
+  },
+  {
+    "contractName": "SinkGovernor",
+    "address": "0xbEAbC2300271986c672b24732f295baFb21d5316"
   }
 ]

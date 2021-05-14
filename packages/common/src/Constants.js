@@ -11,7 +11,8 @@ const interfaceName = {
   OptimisticOracle: "OptimisticOracle",
   Bridge: "Bridge",
   GenericHandler: "GenericHandler",
-  MockOracleAncillary: "Oracle"
+  MockOracleAncillary: "Oracle",
+  SinkOracle: "Oracle"
 };
 
 module.exports = {
