@@ -42,7 +42,7 @@
   "main": "dist/src/index.js",
   "scripts": {
     "build": "tsc -b",
-    "test": "hardhat test  --network hardhat"
+    "test": "hardhat test"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
