@@ -106,7 +106,7 @@ jobs:
             cd packages/liquidator
             yarn mocha mocha-test
       - run:
-          name: Run tests
+          name: Run tests 2
           command: |
             ./ci/truffle_workaround.sh
             pwd
