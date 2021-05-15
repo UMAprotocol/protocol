@@ -125,14 +125,14 @@ Note: this is a work in progress and the typescript API will likely change and i
 The best support is for Ethers contract types. To construct an Ethers contract in node, simply import from the ethers factories:
 
 ```ts
-import { EthersFactories } from "@uma/core";
+import { EthersContracts } from "@uma/core";
 const provider = new ethers.providers.JsonRpcProvider(RPC_HOST)
-const votingInstance = Voting__factory.connect(VOTING_ADDRESS, provider)
+const votingInstance = EthersContracts.Voting__factory.connect(VOTING_ADDRESS, provider)
 
 
 // Raw type rather than the factory.
-import type { EthersTypes } from "@uma/core";
-const { Voting } = EthersTypes;
+import type { EthersContracts } from "@uma/core";
+const { Voting } = EthersContracts;
 ```
 
 ### Truffle
@@ -140,8 +140,8 @@ const { Voting } = EthersTypes;
 Truffle has well-defined contract types as well, but there are no built-in truffle factories.
 
 ```ts
-import type { TruffleTypes } from "@uma/core/contract-types/truffle";
-const { VotingInstance, VotingContract } = TruffleTypes;
+import type { TruffleContracts } from "@uma/core/contract-types/truffle";
+const { VotingInstance, VotingContract } = TruffleContracts;
 
 import { getTruffleContract } from "@uma/core";
 

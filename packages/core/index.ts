@@ -8,10 +8,9 @@ const truffleContract = require("@truffle/contract");
 
 // Re-export the types from index.ts for truffle and ethers for convenience.
 // Note: because typechain doesn't construct a web3 index.d.ts, we'd have to import each type manually.
-import type * as TruffleTypes from "./contract-types/truffle";
-import type * as EthersTypes from "./contract-types/ethers";
-export type { TruffleTypes, EthersTypes };
-export * as EthersFactories from "./contract-types/ethers";
+import type * as TruffleContracts from "./contract-types/truffle";
+export type { TruffleContracts };
+export * as EthersContracts from "./contract-types/ethers";
 
 declare const hardhatTestingAddresses: any;
 
