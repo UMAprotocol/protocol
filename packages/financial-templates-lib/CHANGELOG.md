@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.3.0-beta.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.2.0...@uma/financial-templates-lib@2.3.0-beta.0) (2021-05-15)
+
+### Bug Fixes
+
+- **financial-templates-lib:** fix issues in test that was not being run by ci ([#2979](https://github.com/UMAprotocol/protocol/issues/2979)) ([749c793](https://github.com/UMAprotocol/protocol/commit/749c7930b8440f30390f0a577f39a47aa940f1cf))
+- **price-feeds:** allow for cryptowatch price inversion when twapLength is defined ([#2945](https://github.com/UMAprotocol/protocol/issues/2945)) ([5543a0f](https://github.com/UMAprotocol/protocol/commit/5543a0ffa01e66f43362cfede17763a59810a91d))
+
+### Features
+
+- **financial-templates-lib:** Add default price feed configs for XSUSHIUSD, BALUSD and uSTONKS_JUN21 ([#2876](https://github.com/UMAprotocol/protocol/issues/2876)) ([709f23a](https://github.com/UMAprotocol/protocol/commit/709f23a2b8827bcab8c849507ac799de0ffb01d1))
+- **GasEstimator:** update the default to use fast gas price ([#2951](https://github.com/UMAprotocol/protocol/issues/2951)) ([4dc62cd](https://github.com/UMAprotocol/protocol/commit/4dc62cd1714cc1cee0781436cb4861660cb6dc55))
+- **price-feed:** Add default pf configs for PUNKETH_TWAP and USDXIO ([#2975](https://github.com/UMAprotocol/protocol/issues/2975)) ([e09a013](https://github.com/UMAprotocol/protocol/commit/e09a013c721534c907d6d7dea562a05147635a1e))
+- **price-feeds:** add uniswap v3 price feed ([#2918](https://github.com/UMAprotocol/protocol/issues/2918)) ([d87066c](https://github.com/UMAprotocol/protocol/commit/d87066cac46b72b3d1a5e4734d8a7536c6a93da8))
+- **version-management:** Update hard coded latest package versions in the bots to use 2.0 packages ([#2872](https://github.com/UMAprotocol/protocol/issues/2872)) ([b8225c5](https://github.com/UMAprotocol/protocol/commit/b8225c580ea48f58ef44aa308f966fbed5a99cf3))
+
 # [2.2.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.1.0...@uma/financial-templates-lib@2.2.0) (2021-04-23)
 
 ### Bug Fixes

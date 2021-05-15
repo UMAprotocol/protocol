@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.1.1-beta.0](https://github.com/UMAprotocol/protocol/compare/@uma/merkle-distributor@1.1.0...@uma/merkle-distributor@1.1.1-beta.0) (2021-05-15)
+
+### Bug Fixes
+
+- **tvl-calculator:** filter out unrealistic numbers ([#2956](https://github.com/UMAprotocol/protocol/issues/2956)) ([34eb7f7](https://github.com/UMAprotocol/protocol/commit/34eb7f783c296418cca244123214d53fece041e9))
+
 # [1.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/merkle-distributor@1.0.4...@uma/merkle-distributor@1.1.0) (2021-04-23)
 
 ### Bug Fixes

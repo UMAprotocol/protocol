@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.4.0-beta.0](https://github.com/UMAprotocol/protocol/compare/@uma/trader@1.3.0...@uma/trader@1.4.0-beta.0) (2021-05-15)
+
+### Features
+
+- **price-feeds:** add uniswap v3 price feed ([#2918](https://github.com/UMAprotocol/protocol/issues/2918)) ([d87066c](https://github.com/UMAprotocol/protocol/commit/d87066cac46b72b3d1a5e4734d8a7536c6a93da8))
+- **version-management:** Update hard coded latest package versions in the bots to use 2.0 packages ([#2872](https://github.com/UMAprotocol/protocol/issues/2872)) ([b8225c5](https://github.com/UMAprotocol/protocol/commit/b8225c580ea48f58ef44aa308f966fbed5a99cf3))
+
 # [1.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/trader@1.2.0...@uma/trader@1.3.0) (2021-04-23)
 
 ### Bug Fixes
