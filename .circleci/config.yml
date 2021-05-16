@@ -62,7 +62,7 @@ jobs:
             cd /home/circleci/protocol
             ./ci/generate_lerna_config.sh
       - continuation/continue:
-          configuration_path: /home/circleci/protocol/.circleci/lerna_test_config.yml
+          configuration_path: /home/circleci/protocol/.circleci/lerna_config.yml
   coverage:
     docker:
       - image: circleci/node:lts

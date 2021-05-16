@@ -4,7 +4,7 @@ set -o errexit
 set -o nounset
 
 PACKAGES_ARRAY=($(cat lerna_packages))
-CI_CONFIG_FILE=".circleci/lerna_test_config.yml"
+CI_CONFIG_FILE=".circleci/lerna_config.yml"
 TESTS_PATH="ci/tests"
 
 if [ ${#PACKAGES_ARRAY[@]} -eq 0 ]; then
