@@ -5,8 +5,6 @@ set -o nounset
 
 PACKAGES_ARRAY=($(cat lerna_packages))
 CI_CONFIG_FILE=".circleci/lerna_test_config.yml"
-TESTS_GLOB='$(circleci tests glob "test/**/*.js")'
-TESTS_FILE='$(cat /tmp/test-files)'
 TESTS_PATH="ci/tests"
 
 if [ ${#PACKAGES_ARRAY[@]} -eq 0 ]; then
@@ -19,11 +17,11 @@ else
   printf "version: 2.1\n\njobs:\n" >> $CI_CONFIG_FILE
 
   if [[ " ${PACKAGES_ARRAY[@]} " =~ " @uma/financial-templates-lib " ]]; then
-      /bin/bash $TESTS_PATH/test-financial-templates-lib.sh $TESTS_GLOB $TESTS_FILE >> $CI_CONFIG_FILE
+      /bin/bash $TESTS_PATH/test-financial-templates-lib.sh >> $CI_CONFIG_FILE
   fi
 
   if [[ " ${PACKAGES_ARRAY[@]} " =~ " @uma/liquidator " ]]; then
-      /bin/bash $TESTS_PATH/test-liquidator.sh $TESTS_GLOB $TESTS_FILE >> $CI_CONFIG_FILE
+      /bin/bash $TESTS_PATH/test-liquidator.sh >> $CI_CONFIG_FILE
   fi
 
   for PACKAGE in "${PACKAGES_ARRAY[@]}"

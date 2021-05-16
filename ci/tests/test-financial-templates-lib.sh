@@ -1,7 +1,7 @@
 #!/bin/bash
 
-TESTS_GLOB=$1
-TESTS_FILE=$2
+TESTS_GLOB="$(echo 'circleci tests glob "test/**/*.js"')"
+TESTS_FILE="$(echo 'cat /tmp/test-files')"
 
 cat << EOF
   test-financial-templates-lib-hardhat:
