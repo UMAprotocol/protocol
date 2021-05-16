@@ -7,30 +7,10 @@ PACKAGES_ARRAY=($(cat lerna_packages))
 CI_CONFIG_FILE=".circleci/lerna_test_config.yml"
 TESTS_GLOB='$(circleci tests glob "test/**/*.js")'
 TESTS_FILE='$(cat /tmp/test-files)'
+TESTS_PATH="ci/tests"
 
 if [ ${#PACKAGES_ARRAY[@]} -eq 0 ]; then
-
-  cat <<EOF >> $CI_CONFIG_FILE
-version: 2.1
-
-jobs:
-  tests-required:
-    docker:
-      - image: circleci/node:lts
-    steps:
-      - run:
-          name: Test dependencies
-          command: |
-            echo "No packages for testing."
-            circleci-agent step halt;
-
-workflows:
-  version: 2.1
-  build_and_test:
-    jobs:
-      - tests-required
-EOF
-
+  /bin/bash $TESTS_PATH/test-not-required.sh >> $CI_CONFIG_FILE
 else
 
   echo "Packages to test:"
@@ -39,110 +19,19 @@ else
   printf "version: 2.1\n\njobs:\n" >> $CI_CONFIG_FILE
 
   if [[ " ${PACKAGES_ARRAY[@]} " =~ " @uma/financial-templates-lib " ]]; then
-
-    cat <<EOF >> $CI_CONFIG_FILE
-    test-financial-templates-lib-hardhat:
-      docker:
-        - image: circleci/node:lts
-        - image: trufflesuite/ganache-cli
-          command: ganache-cli -i 1234 -l 9000000 -p 9545
-      working_directory: ~/protocol
-      resource_class: medium+
-      parallelism: 35
-      steps:
-        - restore_cache:
-            key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
-        - run:
-            name: Run tests
-            command: |
-              ./ci/truffle_workaround.sh
-              pwd
-              cd packages/financial-templates-lib
-              echo $TESTS_GLOB
-              circleci tests glob "test/**/*.js" | circleci tests split > /tmp/test-files
-              yarn hardhat test ./$TESTS_FILE
-    test-financial-templates-lib-truffle:
-      docker:
-        - image: circleci/node:lts
-        - image: trufflesuite/ganache-cli
-          command: ganache-cli -i 1234 -l 9000000 -p 9545
-      working_directory: ~/protocol
-      resource_class: medium+
-      steps:
-        - restore_cache:
-            key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
-        - run:
-            name: Run tests
-            command: |
-              ./ci/truffle_workaround.sh
-              pwd
-              cd packages/financial-templates-lib
-              yarn truffle test test-truffle/*
-EOF
+      /bin/bash $TESTS_PATH/test-financial-templates-lib.sh $TESTS_GLOB $TESTS_FILE >> $CI_CONFIG_FILE
   fi
 
   if [[ " ${PACKAGES_ARRAY[@]} " =~ " @uma/liquidator " ]]; then
-    cat <<EOF >> $CI_CONFIG_FILE
-    test-liquidator-package:
-      docker:
-        - image: circleci/node:lts
-        - image: trufflesuite/ganache-cli
-          command: ganache-cli -i 1234 -l 9000000 -p 9545
-      working_directory: ~/protocol
-      resource_class: medium+
-      parallelism: 10
-      steps:
-        - restore_cache:
-            key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
-        - run:
-            name: Run mocha tests
-            command: |
-              cd packages/liquidator
-              yarn mocha mocha-test
-        - run:
-            name: Run tests
-            command: |
-              ./ci/truffle_workaround.sh
-              pwd
-              cd packages/liquidator
-              echo $TESTS_GLOB
-              circleci tests glob "test/**/*.js" | circleci tests split > /tmp/test-files
-              yarn hardhat test ./$TESTS_FILE
-EOF
+      /bin/bash $TESTS_PATH/test-liquidator.sh $TESTS_GLOB $TESTS_FILE >> $CI_CONFIG_FILE
   fi
 
   for PACKAGE in "${PACKAGES_ARRAY[@]}"
     do
-      cat <<EOF >> $CI_CONFIG_FILE
-    test-${PACKAGE:5}:
-      docker:
-        - image: circleci/node:lts
-        - image: trufflesuite/ganache-cli
-          command: ganache-cli -i 1234 -l 9000000 -p 9545
-      working_directory: ~/protocol
-      resource_class: medium+
-      steps:
-        - restore_cache:
-            key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
-        - run:
-            name: Run tests
-            command: |
-              ./ci/truffle_workaround.sh
-              yarn test --scope ${PACKAGE};
-EOF
+      /bin/bash $TESTS_PATH/test-packages.sh $PACKAGE >> $CI_CONFIG_FILE
   done
 
-  cat <<EOF >> $CI_CONFIG_FILE
-    tests-required:
-      docker:
-        - image: circleci/node:lts
-      steps:
-        - run:
-            name: Test dependencies
-            command: |
-              echo "All tests running successfully"
-              circleci-agent step halt;
-EOF
+  /bin/bash $TESTS_PATH/test-required.sh >> $CI_CONFIG_FILE
 
 
   printf "\n\nworkflows:\n  version: 2.1\n  build_and_test:\n    jobs:\n" >> $CI_CONFIG_FILE
@@ -160,7 +49,6 @@ EOF
   fi
 
     WORKFLOW_JOBS=()
-
     for i in "${PACKAGES_ARRAY[@]}"; do
     if [ -z "$i" ]; then
     continue
