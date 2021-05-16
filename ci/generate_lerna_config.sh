@@ -4,7 +4,9 @@ set -o errexit
 set -o nounset
 
 PACKAGES_ARRAY=($(cat lerna_packages))
-CI_CONFIG_FILE=".circleci/lerna_config.yml"
+CI_CONFIG_FILE=".circleci/lerna_test_config.yml"
+TESTS_GLOB='$(circleci tests glob "test/**/*.js")'
+TESTS_FILE='$(cat /tmp/test-files)'
 
 if [ ${#PACKAGES_ARRAY[@]} -eq 0 ]; then
 
@@ -56,9 +58,9 @@ else
               ./ci/truffle_workaround.sh
               pwd
               cd packages/financial-templates-lib
-              echo $(circleci tests glob "test/**/*.js")
+              echo $TESTS_GLOB
               circleci tests glob "test/**/*.js" | circleci tests split > /tmp/test-files
-              yarn hardhat test ./$(cat /tmp/test-files)
+              yarn hardhat test ./$TESTS_FILE
     test-financial-templates-lib-truffle:
       docker:
         - image: circleci/node:lts
@@ -103,9 +105,9 @@ EOF
               ./ci/truffle_workaround.sh
               pwd
               cd packages/liquidator
-              echo $(circleci tests glob "test/**/*.js")
+              echo $TESTS_GLOB
               circleci tests glob "test/**/*.js" | circleci tests split > /tmp/test-files
-              yarn hardhat test ./$(cat /tmp/test-files)
+              yarn hardhat test ./$TESTS_FILE
 EOF
   fi
 
