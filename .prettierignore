@@ -12,3 +12,4 @@ cache
 types
 contract-types
 packages/core/index.ts
+packages/core/browser.ts

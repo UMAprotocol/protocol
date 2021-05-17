@@ -1,7 +1,7 @@
 {
   "extends": "@tsconfig/node14/tsconfig.json",
   "esModuleInterop": true,
-  "include": ["contract-types/**/*.ts", "index.ts", "src/**/*.ts"],
+  "include": ["contract-types/**/*.ts", "index.ts", "browser.ts", "src/**/*.ts"],
   "compilerOptions": {
     "outDir": "./dist",
     "declaration": true,
