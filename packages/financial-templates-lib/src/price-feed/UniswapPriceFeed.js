@@ -76,7 +76,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
 
   // This function does not return the same type of price data as getHistoricalPrice. It returns the raw
   // price history from uniswap without a twap. This is by choice, since a twap calculation across the entire
-  // history is 1. complicated and 2. unecessary as this function is only needed for affliate calculations.
+  // history is 1. complicated and 2. unnecessary as this function is only needed for affiliate calculations.
   getHistoricalPricePeriods() {
     return this.events.map(event => {
       return [event.timestamp, this.convertToPriceFeedDecimals(event.price)];
@@ -116,9 +116,8 @@ class UniswapPriceFeed extends PriceFeedInterface {
       this.token0Precision = token0Precision;
       this.token1Precision = token1Precision;
       // `_getPriceFromSyncEvent()` returns prices in the same precision as `token1` unless price is inverted.
-      // Therefore, `convertToPriceFeedDecimals` will convert from `token1Precision`
-      // to the user's desired `priceFeedDecimals`, unless inverted then it will convert from
-      // `token0Precision` to `priceFeedDecimals`.
+      // Therefore, `convertToPriceFeedDecimals` will convert from `token1Precision` to the user's desired
+      // `priceFeedDecimals`, unless inverted then it will convert from `token0Precision` to `priceFeedDecimals`.
       this.convertToPriceFeedDecimals = ConvertDecimals(
         Number(this.invertPrice ? this.token0Precision : this.token1Precision),
         this.priceFeedDecimals,
@@ -126,8 +125,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
       );
     }
 
-    // Approximate the first block from which we'll need price data from based on the
-    // lookback and twap length:
+    // Approximate the first block from which we'll need price data from based on the lookback and twap length:
     const lookbackWindow = this.twapLength + this.historicalLookback;
     const currentTime = await this.getTime();
     const earliestLookbackTime = currentTime - lookbackWindow;
@@ -138,7 +136,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
     let events = []; // Caches sorted events (to keep subsequent event queries as small as possible).
     let fromBlock = Infinity; // Arbitrary initial value > 0.
 
-    // For loop continues until the start block hits 0 or the first event is before the earlest lookback time.
+    // For loop continues until the start block hits 0 or the first event is before the earliest lookback time.
     for (let i = 0; !(fromBlock === 0 || events[0]?.timestamp <= earliestLookbackTime); i++) {
       // Uses latest unless the events array already has data. If so, it only queries _before_ existing events.
       const toBlock = events[0] ? events[0].blockNumber - 1 : "latest";
