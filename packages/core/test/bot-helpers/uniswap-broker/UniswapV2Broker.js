@@ -4,7 +4,7 @@ const { getTruffleContract } = require("@uma/core");
 const truffleContract = require("@truffle/contract");
 
 // Tested Contract
-const UniswapBroker = getTruffleContract("UniswapBroker", web3);
+const UniswapV2Broker = getTruffleContract("UniswapV2Broker", web3);
 const Token = getTruffleContract("ExpandedERC20", web3);
 const WETH9 = getTruffleContract("WETH9", web3);
 
@@ -17,7 +17,7 @@ let tokenA;
 let tokenB;
 let factory;
 let router;
-let uniswapBroker;
+let uniswapV2Broker;
 let pair;
 let pairAddress;
 
@@ -47,7 +47,7 @@ const getAmountOut = async (amountIn, aToB) => {
   return numerator.div(denominator);
 };
 
-contract("UniswapBroker", function(accounts) {
+contract("UniswapV2Broker", function(accounts) {
   const deployer = accounts[0];
   const trader = accounts[1];
   before(async () => {
@@ -58,8 +58,8 @@ contract("UniswapBroker", function(accounts) {
       from: deployer
     });
 
-    // create a uniswapBroker
-    uniswapBroker = await UniswapBroker.new();
+    // create a uniswapV2Broker
+    uniswapV2Broker = await UniswapV2Broker.new();
   });
   beforeEach(async () => {
     // deploy tokens
@@ -74,8 +74,8 @@ contract("UniswapBroker", function(accounts) {
 
     await tokenA.approve(router.address, toWei("100000000000000"), { from: trader });
     await tokenB.approve(router.address, toWei("100000000000000"), { from: trader });
-    await tokenA.approve(uniswapBroker.address, MAX_UINT_VAL, { from: trader });
-    await tokenB.approve(uniswapBroker.address, MAX_UINT_VAL, { from: trader });
+    await tokenA.approve(uniswapV2Broker.address, MAX_UINT_VAL, { from: trader });
+    await tokenB.approve(uniswapV2Broker.address, MAX_UINT_VAL, { from: trader });
 
     // initialize the pair
     await factory.createPair(tokenA.address, tokenB.address, { from: deployer });
@@ -122,7 +122,7 @@ contract("UniswapBroker", function(accounts) {
 
     // Now that the token is trading out off peg we can test that the broker can correctly trade it back to parity.
     // First, lets double check the bot calculates the correct trade size with the computeTradeToMoveMarket method.
-    const tradeToMoveMarket = await uniswapBroker.computeTradeToMoveMarket(
+    const tradeToMoveMarket = await uniswapV2Broker.computeTradeToMoveMarket(
       "1000", // the true price is represented as truePriceTokenA/truePriceTokenB.
       "1",
       await tokenA.balanceOf(pairAddress),
@@ -146,7 +146,7 @@ contract("UniswapBroker", function(accounts) {
     assert.equal(postArbSpotPrice, "1000");
 
     // Now we can actually execute the swapToPrice method to ensure that the contract correctly modifies the spot price.
-    await uniswapBroker.swapToPrice(
+    await uniswapV2Broker.swapToPrice(
       true, // The swap is being executed as an EOA. This ensures that the correct token transfers are done.
       router.address,
       factory.address,
@@ -194,7 +194,7 @@ contract("UniswapBroker", function(accounts) {
 
     // Now that the token is trading out off peg we can test that the broker can correctly trade it back to parity.
     // First, lets double check the bot calculates the correct trade size with the computeTradeToMoveMarket method.
-    const tradeToMoveMarket = await uniswapBroker.computeTradeToMoveMarket(
+    const tradeToMoveMarket = await uniswapV2Broker.computeTradeToMoveMarket(
       "1000", // the true price is represented as truePriceTokenA/truePriceTokenB.
       "1",
       await tokenA.balanceOf(pairAddress),
@@ -218,7 +218,7 @@ contract("UniswapBroker", function(accounts) {
     assert.equal(postArbSpotPrice, "1000");
 
     // Now we can actually execute the swapToPrice method to ensure that the contract correctly modifies the spot price.
-    await uniswapBroker.swapToPrice(
+    await uniswapV2Broker.swapToPrice(
       true, // The swap is being executed as an EOA. This ensures that the correct token transfers are done.
       router.address,
       factory.address,

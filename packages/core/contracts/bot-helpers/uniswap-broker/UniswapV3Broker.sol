@@ -1,5 +1,4 @@
 pragma solidity ^0.8.0;
-pragma abicoder v2;
 
 import "@uniswap/lib/contracts/libraries/TransferHelper.sol";
 
@@ -14,13 +13,13 @@ import "@uniswap/v3-core/contracts/libraries/UnsafeMath.sol";
 import "@uniswap/v3-core/contracts/libraries/SafeCast.sol";
 
 /**
- * @title UniswapBrokerV3
+ * @title UniswapV3Broker
  * @notice Trading contract used to arb uniswapV3 pairs to a desired "true" price. Intended use is to arb UMA perpetual
  * synthetics that trade off peg. This implementation can ber used in conjunction with a DSProxy contract to atomically
  * swap and move a uniswap market.
  */
 
-contract UniswapBrokerV3 {
+contract UniswapV3Broker {
     using SafeCast for uint256;
     using LowGasSafeMath for uint256;
     using LowGasSafeMath for int256;
@@ -163,7 +162,7 @@ contract UniswapBrokerV3 {
     }
 }
 
-// The two methods below are taken almost verbatim from https://github.com/Uniswap/uniswap-v3-core/blob/main/contracts/libraries/TickBitmap.sol.
+// The code below are taken almost verbatim from https://github.com/Uniswap/uniswap-v3-core/blob/main/contracts/libraries/TickBitmap.sol.
 // They was modified slightly to enable the them to be called on an external pool by passing in a pool address and
 // to accommodate solidity 0.8.
 
@@ -573,19 +572,19 @@ library FullMath {
         assembly {
             twos := add(div(sub(0, twos), twos), 1)
         }
-        prod0 |= prod1 * twos;
-
-        // Invert denominator mod 2**256
-        // Now that denominator is an odd number, it has an inverse
-        // modulo 2**256 such that denominator * inv = 1 mod 2**256.
-        // Compute the inverse by starting with a seed that is correct
-        // correct for four bits. That is, denominator * inv = 1 mod 2**4
-        uint256 inv = (3 * denominator) ^ 2;
-        // Now use Newton-Raphson iteration to improve the precision.
-        // Thanks to Hensel's lifting lemma, this also works in modular
-        // arithmetic, doubling the correct bits in each step.
-        // NOTE: this is modified from the original Full math implementation to work with solidity 8 with the unchecked syntax.
         unchecked {
+            prod0 |= prod1 * twos;
+
+            // Invert denominator mod 2**256
+            // Now that denominator is an odd number, it has an inverse
+            // modulo 2**256 such that denominator * inv = 1 mod 2**256.
+            // Compute the inverse by starting with a seed that is correct
+            // correct for four bits. That is, denominator * inv = 1 mod 2**4
+            uint256 inv = (3 * denominator) ^ 2;
+            // Now use Newton-Raphson iteration to improve the precision.
+            // Thanks to Hensel's lifting lemma, this also works in modular
+            // arithmetic, doubling the correct bits in each step.
+            // NOTE: this is modified from the original Full math implementation to work with solidity 8 with the unchecked syntax.
             inv *= 2 - denominator * inv; // inverse mod 2**8
             inv *= 2 - denominator * inv; // inverse mod 2**16
             inv *= 2 - denominator * inv; // inverse mod 2**32

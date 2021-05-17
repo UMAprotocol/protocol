@@ -1,8 +1,8 @@
-const { MAX_UINT_VAL } = require("@uma/common");
 const { toWei } = web3.utils;
 const { getTruffleContract } = require("@uma/core");
 
 const {
+  MAX_UINT_VAL,
   encodePriceSqrt,
   getTickFromPrice,
   getCurrentPrice,
@@ -13,10 +13,10 @@ const {
   TICK_SPACINGS,
   createContractObjectFromJson,
   replaceLibraryBindingReferenceInArtitifact
-} = require("./UniswapV3Helpers");
+} = require("@uma/common");
 
 // Tested Contract
-const UniswapBrokerV3 = getTruffleContract("UniswapBrokerV3", web3);
+const UniswapV3Broker = getTruffleContract("UniswapV3Broker", web3);
 
 // Some helper contracts.
 const Token = getTruffleContract("ExpandedERC20", web3);
@@ -49,7 +49,7 @@ let poolAddress;
 let tokenA;
 let tokenB;
 
-contract("UniswapBrokerV3", function(accounts) {
+contract("UniswapV3Broker", function(accounts) {
   const deployer = accounts[0];
   const trader = accounts[1];
 
@@ -84,7 +84,7 @@ contract("UniswapBrokerV3", function(accounts) {
 
   before(async () => {
     // deploy an instance of the broker
-    uniswapV3Broker = await UniswapBrokerV3.new();
+    uniswapV3Broker = await UniswapV3Broker.new();
 
     weth = await WETH9.new();
     // deploy Uniswap V3 Factory, router, position manager, position descriptor and tickLens.

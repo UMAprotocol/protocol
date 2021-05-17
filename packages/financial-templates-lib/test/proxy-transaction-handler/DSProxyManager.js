@@ -81,7 +81,7 @@ contract("DSProxyManager", function(accounts) {
     assert.equal(logs[0].returnValues.owner, contractCreator);
     assert.equal(await (await DSProxy.at(logs[0].returnValues.proxy)).owner(), contractCreator);
 
-    assert.isTrue(spyLogIncludes(spy, -1, "DSProxy has been deployed for the EOA"));
+    assert.isTrue(spyLogIncludes(spy, -1, "DSProxy deployed for your EOA"));
     assert.isTrue(spyLogIncludes(spy, -1, contractCreator));
     assert.isTrue(spyLogIncludes(spy, -1, logs[0].returnValues.proxy));
   });
@@ -153,7 +153,7 @@ contract("DSProxyManager", function(accounts) {
     // The tokens should have been transferred out of the DSProxy wallet ant to the contractCreator.
     assert.equal((await testToken.balanceOf(contractCreator)).toString(), toWei("10"));
     assert.equal((await testToken.balanceOf(dsProxyAddress)).toString(), toWei("990"));
-    assert.isTrue(spyLogIncludes(spy, -1, "Executed function on a freshly minted library"));
+    assert.isTrue(spyLogIncludes(spy, -1, "Executed function on a freshly deployed library"));
     assert.isTrue(spyLogIncludes(spy, -1, tokenEvents[0].transactionHash)); // The transaction hash should be included.
   });
 });
