@@ -9,7 +9,8 @@ const browserUnsafe = {
   ...require("./src/TruffleConfig"),
   ...require("./src/ProviderUtils"),
   ...require("./src/HardhatConfig"),
-  ...require("./src/RetryProvider")
+  ...require("./src/RetryProvider"),
+  ...require("./src/UniswapV3Helpers")
 };
 
 module.exports = {
