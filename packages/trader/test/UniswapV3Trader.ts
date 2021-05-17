@@ -20,7 +20,6 @@ import {
   encodePath,
   computePoolAddress,
   FeeAmount,
-  createContractObjectFromJson,
   replaceLibraryBindingReferenceInArtitifact
 } from "@uma/common";
 
@@ -48,6 +47,13 @@ const NonfungibleTokenPositionDescriptor = replaceLibraryBindingReferenceInArtit
   require("@uniswap/v3-periphery/artifacts/contracts/NonfungibleTokenPositionDescriptor.sol/NonfungibleTokenPositionDescriptor.json"),
   "NFTDescriptor"
 );
+
+const createContractObjectFromJson = (contractJsonObject: any) => {
+  const contract = require("@truffle/contract");
+  const truffleContractCreator = contract(contractJsonObject);
+  truffleContractCreator.setProvider(web3.currentProvider);
+  return truffleContractCreator;
+};
 
 let accounts: string[];
 let deployer: string;
