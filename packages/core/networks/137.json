@@ -41,11 +41,11 @@
   },
   {
     "contractName": "Bridge",
-    "address": "0x76f3fe966F91602129cb278043239afBB7B7646A"
+    "address": "0xEF8b46765ae805537053C59f826C3aD61924Db45"
   },
   {
     "contractName": "GenericHandler",
-    "address": "0x79176279493f58c805648A883056954ACaA147f3"
+    "address": "0x09AFD24Acc170c16f4fF64BDf2A4818C515440e8"
   },
   {
     "contractName": "SinkOracle",
