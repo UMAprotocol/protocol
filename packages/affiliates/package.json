@@ -27,7 +27,6 @@
     "registry": "https://registry.npmjs.com/",
     "access": "public"
   },
-  "private": true,
   "scripts": {
     "test": "yarn test-mocha && yarn test-truffle",
     "test-mocha": "mocha test test/mocha/*.js --network mainnet_mnemonic --exit",
