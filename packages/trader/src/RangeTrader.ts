@@ -1,55 +1,45 @@
+import assert from "assert";
 import winston from "winston";
+import BigNumber from "bignumber.js";
 import Web3 from "web3";
 const { toWei, toBN } = Web3.utils;
 const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
-import BigNumber from "bignumber.js";
-const ExchangeAdapterInterface = require("./exchange-adapters/ExchangeAdapterInterface");
 
-const {
-  ConvertDecimals,
-  createFormatFunction,
-  createObjectFromDefaultProps,
-  blockUntilBlockMined
-} = require("@uma/common");
-import assert from "assert";
+import ExchangeAdapterInterface from "./exchange-adapters/ExchangeAdapterInterface";
+
+import { ConvertDecimals, createFormatFunction, createObjectFromDefaultProps, blockUntilBlockMined } from "@uma/common";
 
 export class RangeTrader {
   readonly normalizePriceFeedDecimals: any;
   readonly formatDecimalString: any;
-
   readonly tradeExecutionThreshold: any;
   readonly targetPriceSpread: any;
   readonly fixedPointAdjustment: any;
 
+  /**
+ * @notice Constructs new Range Trader.
+ * @param {Object} logger Module used to send logs.
+ * @param {Object} web3 Provider from Truffle/node to connect to Ethereum network.
+ * @param {Object} tokenPriceFeed Price feed to fetch the current synthetic token trading price. EG a Dex price feed.
+ * @param {Object} referencePriceFeed Price feed to fetch the "real" identifier price. EG a Cryptowatch price feed.
+ * @param {Object} exchangeAdapter Interface to interact with on-chain exchange. EG: Uniswap.
+ * @param {Object} rangeTraderConfig: Config to parameterize the range trader. Expected:
+ *      { tradeExecutionThreshold: 0.2,  -> error amount which must be exceeded for a correcting trade to be executed.
+          targetPriceSpread: 0.05 }      -> target price that should be present after a correcting trade has concluded.
+ */
   constructor(
-    /**
-   * @notice Constructs new Range Trader.
-   * @param {Object} logger Module used to send logs.
-   * @param {Object} web3 Provider from Truffle/node to connect to Ethereum network.
-   * @param {Object} tokenPriceFeed Price feed to fetch the current synthetic token trading price. EG a Dex price feed.
-   * @param {Object} referencePriceFeed Price feed to fetch the "real" identifier price. EG a Cryptowatch price feed.
-   * @param {Object} exchangeAdapter Interface to interact with on-chain exchange. EG: Uniswap.
-   * @param {Object} rangeTraderConfig: Config to parameterize the range trader. Expected:
-   *      { tradeExecutionThreshold: 0.2,  -> error amount which must be exceeded for a correcting trade to be executed.
-            targetPriceSpread: 0.05 }      -> target price that should be present after a correcting trade has concluded.
-   */
     readonly logger: winston.Logger,
     readonly web3: Web3,
     readonly tokenPriceFeed: any,
     readonly referencePriceFeed: any,
-    readonly exchangeAdapter: typeof ExchangeAdapterInterface,
+    readonly exchangeAdapter: ExchangeAdapterInterface,
     readonly rangeTraderConfig: {
       tradeExecutionThreshold?: number;
       targetPriceSpread?: number;
     }
   ) {
     assert(tokenPriceFeed.getPriceFeedDecimals() === referencePriceFeed.getPriceFeedDecimals(), "decimals must match");
-
-    this.logger = logger;
-    this.web3 = web3;
-    this.tokenPriceFeed = tokenPriceFeed;
-    this.referencePriceFeed = referencePriceFeed;
-    this.exchangeAdapter = exchangeAdapter;
+    assert(exchangeAdapter, "Exchange adapter must be initialized");
 
     this.normalizePriceFeedDecimals = ConvertDecimals(tokenPriceFeed.getPriceFeedDecimals(), 18, this.web3);
 
@@ -151,7 +141,7 @@ export class RangeTrader {
 
     // Get the post trade spot price to double check deviation error.
     await this.tokenPriceFeed.update();
-    const exchangeSpotPriceAfterTrade = this.tokenPriceFeed.getCurrentPrice();
+    const exchangeSpotPriceAfterTrade = this.tokenPriceFeed.getLastBlockPrice();
 
     const postTradePriceDeviationError = this._calculateDeviationError(
       exchangeSpotPriceAfterTrade,

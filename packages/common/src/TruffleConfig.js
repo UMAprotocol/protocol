@@ -35,15 +35,18 @@ const numKeys = process.env.NUM_KEYS ? parseInt(process.env.NUM_KEYS) : 2; // Ge
 let singletonProvider;
 
 // Default options
-const gasPx = argv.gasPrice ? Web3.utils.toWei(argv.gasPrice, "gwei") : 20000000000; // 20 gwei
+const gasPx = argv.gasPrice ? Web3.utils.toWei(argv.gasPrice, "gwei") : 1000000000; // 1 gwei
 const gas = undefined; // Defining this as undefined (rather than leaving undefined) forces truffle estimate gas usage.
 
 // If a custom node URL is provided, use that. Otherwise use an infura websocket connection.
-function getNodeUrl(networkName) {
+function getNodeUrl(networkName, useHttps = false) {
   if (isPublicNetwork(networkName) && !networkName.includes("fork")) {
     const infuraApiKey = process.env.INFURA_API_KEY || "e34138b2db5b496ab5cc52319d2f0299";
     const name = networkName.split("_")[0];
-    return process.env.CUSTOM_NODE_URL || `wss://${name}.infura.io/ws/v3/${infuraApiKey}`;
+    return (
+      process.env.CUSTOM_NODE_URL ||
+      (useHttps ? `https://${name}.infura.io/v3/${infuraApiKey}` : `wss://${name}.infura.io/ws/v3/${infuraApiKey}`)
+    );
   }
 
   const port = process.env.CUSTOM_LOCAL_NODE_PORT || "9545";
@@ -53,12 +56,13 @@ function getNodeUrl(networkName) {
 // Adds a public network.
 // Note: All public networks can be accessed using keys from GCS using the ManagedSecretProvider or using a mnemonic in the
 // shell environment.
-function addPublicNetwork(networks, name, networkId) {
+function addPublicNetwork(networks, name, networkId, customTruffleConfig) {
   const options = {
     networkCheckTimeout: 10000,
     network_id: networkId,
-    gas: gas,
-    gasPrice: gasPx
+    gas: customTruffleConfig?.gas || gas,
+    gasPrice: customTruffleConfig?.gasPrice || gasPx,
+    ...customTruffleConfig
   };
 
   const nodeUrl = getNodeUrl(name);
@@ -163,8 +167,8 @@ function addLocalNetwork(networks, name, customOptions) {
 let networks = {};
 
 // Public networks that need both a mnemonic and GCS ManagedSecretProvider network.
-for (const [id, { name }] of Object.entries(PublicNetworks)) {
-  addPublicNetwork(networks, name, id);
+for (const [id, { name, customTruffleConfig }] of Object.entries(PublicNetworks)) {
+  addPublicNetwork(networks, name, id, customTruffleConfig);
 }
 
 // Add test network.
@@ -173,6 +177,7 @@ addLocalNetwork(networks, "test");
 // Mainnet fork is just a local network with id 1 and a hardcoded gas limit because ganache has difficulty estimating gas on forks.
 // Note: this gas limit is the default ganache block gas limit.
 addLocalNetwork(networks, "mainnet-fork", { network_id: 1, gas: 6721975 });
+addLocalNetwork(networks, "polygon-matic-fork", { network_id: 137, gas: 6721975 });
 
 // MetaMask truffle provider requires a longer timeout so that user has time to point web browser with metamask to localhost:3333
 addLocalNetwork(networks, "metamask", {
@@ -212,4 +217,4 @@ function getTruffleConfig(truffleContextDir = "./") {
   };
 }
 
-module.exports = { getTruffleConfig, getNodeUrl };
+module.exports = { getTruffleConfig, getNodeUrl, mnemonic };

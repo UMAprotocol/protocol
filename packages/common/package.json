@@ -45,6 +45,7 @@
     "dotenv": "^6.2.0",
     "eth-crypto": "^1.7.0",
     "hardhat": "^2.0.4",
+    "hardhat-deploy": "^0.7.5",
     "hardhat-gas-reporter": "^1.0.3",
     "minimist": "^1.2.0",
     "moment": "^2.24.0",

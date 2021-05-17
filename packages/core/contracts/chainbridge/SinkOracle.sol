@@ -56,7 +56,7 @@ contract SinkOracle is BeaconOracle, OracleAncillaryInterface {
         _getBridge().deposit(
             destinationChainID,
             getResourceId(),
-            _formatMetadata(currentChainID, identifier, time, ancillaryData)
+            formatMetadata(currentChainID, identifier, time, ancillaryData)
         );
     }
 
@@ -143,12 +143,12 @@ contract SinkOracle is BeaconOracle, OracleAncillaryInterface {
      *     len(data)                              uint256     bytes  0  - 64
      *     data                                   bytes       bytes  64 - END
      */
-    function _formatMetadata(
+    function formatMetadata(
         uint8 chainID,
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) internal pure returns (bytes memory) {
+    ) public pure returns (bytes memory) {
         bytes memory metadata = abi.encode(chainID, identifier, time, ancillaryData);
         return abi.encodePacked(metadata.length, metadata);
     }

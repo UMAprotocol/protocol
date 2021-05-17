@@ -29,8 +29,8 @@ COPY . ./
 
 # Install dependencies and compile contracts.
 RUN apt-get update
-RUN apt-get install -y libudev-dev libusb-1.0-0-dev jq yarn
-RUN npx lerna bootstrap
+RUN apt-get install -y libudev-dev libusb-1.0-0-dev jq yarn rsync
+RUN yarn
 
 # Clean and run all package build steps, but exclude dapps (to save time).
 RUN yarn clean
