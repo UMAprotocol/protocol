@@ -68,12 +68,13 @@ contract("UniswapV3PriceFeed", function(accounts) {
   const generateTransactionsForReserves = reserves => {
     return reserves.map(([reserve0, reserve1]) => {
       return uniswapMock.contract.methods.setPrice(
-        owner,
-        owner,
-        "0",
-        "0",
-        computeSqrtPriceForReserves(reserve0, reserve1),
-        "0"
+        owner, // sender
+        owner, // recipient
+        "0", // amount0
+        "0", // amount1
+        computeSqrtPriceForReserves(reserve0, reserve1), // sqrtPriceX96
+        "0", // liquidity
+        "0" // tick
       );
     });
   };
