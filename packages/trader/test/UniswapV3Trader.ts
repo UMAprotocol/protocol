@@ -1,10 +1,19 @@
+import winston from "winston";
+import sinon from "sinon";
 import { web3, assert } from "hardhat";
-
 const { toWei, fromWei } = web3.utils;
 
-const { getTruffleContract } = require("@uma/core");
+import { getTruffleContract } from "@uma/core";
+import {
+  SpyTransport,
+  spyLogIncludes,
+  PriceFeedMock,
+  DSProxyManager,
+  GasEstimator,
+  UniswapV3PriceFeed
+} from "@uma/financial-templates-lib";
 
-const {
+import {
   encodePriceSqrt,
   getTickFromPrice,
   getCurrentPrice,
@@ -13,24 +22,25 @@ const {
   FeeAmount,
   createContractObjectFromJson,
   replaceLibraryBindingReferenceInArtitifact
-} = require("@uma/common");
+} from "@uma/common";
 
 // Script to test
-const { RangeTrader } = require("../src/RangeTrader");
+import { RangeTrader } from "../src/RangeTrader";
 
 // Helper scripts
-const { createExchangeAdapter } = require("../src/exchange-adapters/CreateExchangeAdapter");
+import { createExchangeAdapter } from "../src/exchange-adapters/CreateExchangeAdapter";
 
-const Token = getTruffleContract("ExpandedERC20", web3);
-const WETH9 = getTruffleContract("WETH9", web3);
-const DSProxyFactory = getTruffleContract("DSProxyFactory", web3, "latest");
-const DSProxy = getTruffleContract("DSProxy", web3, "latest");
+const Token = getTruffleContract("ExpandedERC20", web3 as any);
+const WETH9 = getTruffleContract("WETH9", web3 as any);
+const DSProxyFactory = getTruffleContract("DSProxyFactory", web3 as any, "latest");
+const DSProxy = getTruffleContract("DSProxy", web3 as any, "latest");
 
 // Import all the uniswap related contracts.
-const SwapRouter = require("@uniswap/v3-periphery/artifacts/contracts/SwapRouter.sol/SwapRouter.json");
-const UniswapV3Factory = require("@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json");
-const NonfungiblePositionManager = require("@uniswap/v3-periphery/artifacts/contracts/NonfungiblePositionManager.sol/NonfungiblePositionManager.json");
-const UniswapV3Pool = require("@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json");
+import SwapRouter from "@uniswap/v3-periphery/artifacts/contracts/SwapRouter.sol/SwapRouter.json";
+import NFTDescriptor from "@uniswap/v3-periphery/artifacts/contracts/libraries/NFTDescriptor.sol/NFTDescriptor.json";
+import NonfungiblePositionManager from "@uniswap/v3-periphery/artifacts/contracts/NonfungiblePositionManager.sol/NonfungiblePositionManager.json";
+import UniswapV3Factory from "@uniswap/v3-core/artifacts/contracts/UniswapV3Factory.sol/UniswapV3Factory.json";
+import UniswapV3Pool from "@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json";
 
 // NonfungibleTokenPositionDescriptor has a library that needs to be linked. To do this using an artifact imported from
 // an external project we need to do a small find and replace within the json artifact.
@@ -38,19 +48,6 @@ const NonfungibleTokenPositionDescriptor = replaceLibraryBindingReferenceInArtit
   require("@uniswap/v3-periphery/artifacts/contracts/NonfungibleTokenPositionDescriptor.sol/NonfungibleTokenPositionDescriptor.json"),
   "NFTDescriptor"
 );
-
-const NFTDescriptor = require("@uniswap/v3-periphery/artifacts/contracts/libraries/NFTDescriptor.sol/NFTDescriptor.json");
-
-const winston = require("winston");
-const sinon = require("sinon");
-const {
-  SpyTransport,
-  spyLogIncludes,
-  PriceFeedMock,
-  DSProxyManager,
-  GasEstimator,
-  UniswapV3PriceFeed
-} = require("@uma/financial-templates-lib");
 
 let accounts: string[];
 let deployer: string;
@@ -226,10 +223,10 @@ describe("uniswapV3Trader.js", function() {
       uniswapRouterAddress: uniswapRouter.address
     };
 
-    exchangeAdapter = await createExchangeAdapter(spyLogger, web3, dsProxyManager, exchangeAdapterConfig);
+    exchangeAdapter = await createExchangeAdapter(spyLogger, web3, dsProxyManager, exchangeAdapterConfig, 0);
 
     // run the tests with no configs provided. Defaults to tradeExecutionThreshold = 5% and targetPriceSpread =5%
-    rangeTrader = new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, null);
+    rangeTrader = new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, {});
 
     // Seed the dsProxy.
     await tokenA.mint(traderDSProxyAddress, toWei("100000000000000"));
@@ -394,25 +391,19 @@ describe("uniswapV3Trader.js", function() {
 
     // targetPriceSpread should only be larger than 0 and smaller than or equal to 1.
     assert.throws(() => {
-      new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, {
-        targetPriceSpread: -1
-      });
+      new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, { targetPriceSpread: -1 });
     });
     assert.throws(() => {
-      new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, {
-        targetPriceSpread: 0
-      });
+      new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, { targetPriceSpread: 0 });
     });
     assert.throws(() => {
-      new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, {
-        targetPriceSpread: 1.1
-      });
+      new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, { targetPriceSpread: 1.1 });
     });
 
     // rejects inconsistent price feed decimals
     const nonStandardDecimalPriceFeed = new PriceFeedMock(undefined, undefined, undefined, 17);
     assert.throws(() => {
-      new RangeTrader(spyLogger, web3, nonStandardDecimalPriceFeed, referencePriceFeed, exchangeAdapter);
+      new RangeTrader(spyLogger, web3, nonStandardDecimalPriceFeed, referencePriceFeed, exchangeAdapter, {});
     });
   });
   it("Correctly respects custom trade threshold configs", async function() {

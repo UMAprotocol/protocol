@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-pragma abicoder v2;
-
 import "../Governor.sol";
 
 // GovernorTest exposes internal methods in the Governor for testing.

@@ -3,7 +3,6 @@ const { getHardhatConfig } = require("@uma/common");
 const path = require("path");
 const coreWkdir = path.dirname(require.resolve("@uma/core/package.json"));
 const packageWkdir = path.dirname(require.resolve("@uma/core/package.json"));
-
 const configOverride = {
   paths: {
     root: coreWkdir,

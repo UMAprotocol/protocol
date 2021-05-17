@@ -27,6 +27,7 @@ export async function fetchUmaEcosystemData() {
 
   // Fetch all info about all UMA financial contracts that have collateral in them.
   const allFinancialContractsData = await getAllFinancialContractsData();
+  console.log("allFinancialContractsData", JSON.stringify(allFinancialContractsData));
   const collateralInfoWithValue = evaluateFinancialContractCollateral(allFinancialContractsData);
 
   // Filter out any contracts that dont have any collateral in them.
@@ -80,6 +81,7 @@ export async function fetchUmaEcosystemData() {
       };
     }
   });
+  console.log("uniqueCollateralTypes", JSON.stringify(uniqueCollateralTypes));
 
   const logger = winston.createLogger({
     level: "info",
@@ -94,17 +96,20 @@ export async function fetchUmaEcosystemData() {
       collateralAddress
     ].activeFinancialContracts.entries()) {
       const financialContractAddress = financialContractInfo.contractAddress;
+      console.log("financialContractAddress", financialContractAddress);
       // Find the position information for the particular financial contract.
       const contractPositionsInfo = allEmpPositions.filter(
         (info: any) => toChecksumAddress(info.id) === toChecksumAddress(financialContractAddress)
       )[0];
       // If there is no position info, then continue. This would happen if there is data that is not on the graph.
       if (contractPositionsInfo == undefined) {
+        console.log("UNDEFINED");
         continue;
       }
 
       // If the contract has no positions, we should also continue. Remove the contract from the list of active contracts
       if (contractPositionsInfo.positions.length == 0) {
+        console.log("CINTUNE, NO SPONSORS", financialContractAddress);
         uniqueCollateralTypes[collateralAddress].activeFinancialContracts = removeItemFromArrayOfObjects(
           uniqueCollateralTypes[collateralAddress].activeFinancialContracts,
           "contractAddress",
@@ -120,10 +125,12 @@ export async function fetchUmaEcosystemData() {
         financialContract.methods.expirationTimestamp().call(),
         financialContract.methods.priceIdentifier().call()
       ]);
+      console.log("TIME", getTime(), "expire", Number(contractExpirationTime));
       const collateralRequirement = toBN(collateralRequirementString);
 
       // If expired, remove it from the list as it is not active.
       if (getTime() > Number(contractExpirationTime)) {
+        console.log("EXPIRED", financialContractAddress);
         uniqueCollateralTypes[collateralAddress].activeFinancialContracts = removeItemFromArrayOfObjects(
           uniqueCollateralTypes[collateralAddress].activeFinancialContracts,
           "contractAddress",
@@ -131,6 +138,7 @@ export async function fetchUmaEcosystemData() {
         );
         continue;
       }
+      console.log("INDEX", uniqueCollateralTypes[collateralAddress].activeFinancialContracts[financialContractIndex]);
       uniqueCollateralTypes[collateralAddress].activeFinancialContracts[financialContractIndex] = {
         ...uniqueCollateralTypes[collateralAddress].activeFinancialContracts[financialContractIndex],
         contractPriceIdentifier: hexToUtf8(contractPriceIdentifier),
@@ -138,100 +146,100 @@ export async function fetchUmaEcosystemData() {
         contractExpirationTime
       };
 
-      // Else, we can start building up draw down information.
-      try {
-        // Create a price feed for the product. We need to know the identifier price feed to compute drawdown as this
-        // considers either the collateral value dropping OR the synthetic value increasing. We can set all three
-        // common API keys. If the feed does not need one of these it just ignores it.
-        const samplePriceFeed = await createReferencePriceFeedForFinancialContract(
-          logger,
-          web3,
-          networker,
-          getTime,
-          financialContractAddress,
-          {
-            cryptowatchApiKey: process.env.CRYPTO_WATCH_API_KEY,
-            tradermadeApiKey: process.env.TRADER_MADE_API_KEY,
-            defipulseApiKey: process.env.DEFI_PULSE_API_KEY
-          }
-        );
-        await samplePriceFeed.update();
+      // // Else, we can start building up draw down information.
+      // try {
+      //   // Create a price feed for the product. We need to know the identifier price feed to compute drawdown as this
+      //   // considers either the collateral value dropping OR the synthetic value increasing. We can set all three
+      //   // common API keys. If the feed does not need one of these it just ignores it.
+      //   const samplePriceFeed = await createReferencePriceFeedForFinancialContract(
+      //     logger,
+      //     web3,
+      //     networker,
+      //     getTime,
+      //     financialContractAddress,
+      //     {
+      //       cryptowatchApiKey: process.env.CRYPTO_WATCH_API_KEY,
+      //       tradermadeApiKey: process.env.TRADER_MADE_API_KEY,
+      //       defipulseApiKey: process.env.DEFI_PULSE_API_KEY
+      //     }
+      //   );
+      //   await samplePriceFeed.update();
 
-        const startingPrice = samplePriceFeed.getCurrentPrice();
-        const priceFeedDecimals = samplePriceFeed.getPriceFeedDecimals();
+      //   const startingPrice = samplePriceFeed.getCurrentPrice();
+      //   const priceFeedDecimals = samplePriceFeed.getPriceFeedDecimals();
 
-        // Some feeds are inverted. This can either be at the top level within the object or within the array of priceFeeds
-        // if the feed consists of multiple feeds within it.
-        let invertedPrice = false;
-        if (samplePriceFeed.invertPrice) invertedPrice = true;
-        if (samplePriceFeed.priceFeeds && samplePriceFeed.priceFeeds[0].invertPrice) invertedPrice = true;
+      //   // Some feeds are inverted. This can either be at the top level within the object or within the array of priceFeeds
+      //   // if the feed consists of multiple feeds within it.
+      //   let invertedPrice = false;
+      //   if (samplePriceFeed.invertPrice) invertedPrice = true;
+      //   if (samplePriceFeed.priceFeeds && samplePriceFeed.priceFeeds[0].invertPrice) invertedPrice = true;
 
-        // Next, using the value from the sample price feed, we can compute the drawdown intervals. These are steps
-        // of 10% decrease from the current price. At each price point we can compute the CR of each position within
-        // the financial contract. if it is below the contracts collateral Requirement add to the total liquidated amount.
-        const drawDownPrices: Array<string> = [];
-        for (let i = 0; i < 10; i++) {
-          const priceStep = (10 - i) / 10;
-          const drawDownInterval = invertedPrice ? 1 / priceStep : priceStep;
+      //   // Next, using the value from the sample price feed, we can compute the drawdown intervals. These are steps
+      //   // of 10% decrease from the current price. At each price point we can compute the CR of each position within
+      //   // the financial contract. if it is below the contracts collateral Requirement add to the total liquidated amount.
+      //   const drawDownPrices: Array<string> = [];
+      //   for (let i = 0; i < 10; i++) {
+      //     const priceStep = (10 - i) / 10;
+      //     const drawDownInterval = invertedPrice ? 1 / priceStep : priceStep;
 
-          const drawDownPrice = startingPrice.mul(toBN(toWei(drawDownInterval.toString()))).div(fixedPointAdjustment);
-          drawDownPrices.push(ConvertDecimals(priceFeedDecimals, 18, web3)(drawDownPrice).toString());
-        }
+      //     const drawDownPrice = startingPrice.mul(toBN(toWei(drawDownInterval.toString()))).div(fixedPointAdjustment);
+      //     drawDownPrices.push(ConvertDecimals(priceFeedDecimals, 18, web3)(drawDownPrice).toString());
+      //   }
 
-        // Iterate over all positions within the financial contract. Note that the effectiveCollateralPrice is calculated
-        // using the collateralPriceInUsd and not the samplePriceFeed. This is because modifying the sample price feed by
-        // x percent is equivalent to modifying the collateralPriceInUsd by an equal amount. For the analytics generated
-        // by this reporter we care about the price action in collateral, not synthetics.
-        contractPositionsInfo.positions.forEach((sponsor: any) => {
-          drawDownPrices.forEach((drawDownPrice: string, drawDownIndex: number) => {
-            const positionCR = computeCollateralizationRatio(
-              toBN(toWei(sponsor.collateral.toString()).toString()),
-              toBN(toWei(sponsor.tokensOutstanding.toString()).toString()),
-              ConvertDecimals(samplePriceFeed.getPriceFeedDecimals(), 18, web3)(drawDownPrice)
-            );
-            const positionCRScaled = ConvertDecimals(samplePriceFeed.getPriceFeedDecimals(), 18, web3)(positionCR);
-            if (positionCRScaled.lt(collateralRequirement)) {
-              uniqueCollateralTypes[collateralAddress].drawDownAmounts[drawDownIndex] = {
-                collateralLiquidated: fromWei(
-                  toBN(
-                    toWei(uniqueCollateralTypes[collateralAddress].drawDownAmounts[drawDownIndex].collateralLiquidated)
-                  ).add(toBN(toWei(sponsor.collateral)))
-                ),
-                usdNeededToLiquidate: "0",
-                priceDrop: (drawDownIndex * 10).toString(),
-                effectiveCollateralPrice: fromWei(
-                  toBN(toWei(uniqueCollateralTypes[collateralAddress].collateralPriceInUsd))
-                    .muln(10 - drawDownIndex)
-                    .divn(10)
-                )
-              };
-            } else {
-              uniqueCollateralTypes[collateralAddress].drawDownAmounts[drawDownIndex] = {
-                ...uniqueCollateralTypes[collateralAddress].drawDownAmounts[drawDownIndex],
-                priceDrop: (drawDownIndex * 10).toString(),
-                effectiveCollateralPrice: fromWei(
-                  toBN(toWei(uniqueCollateralTypes[collateralAddress].collateralPriceInUsd))
-                    .muln(10 - drawDownIndex)
-                    .divn(10)
-                )
-              };
-            }
-          });
-        });
-        // Iterate over all draw down intervals for a given collateral and compute the USD required to liquidate at the
-        // current collateral price.
-        uniqueCollateralTypes[collateralAddress].drawDownAmounts.forEach(
-          (drawDownInterval: any, drawDownIndex: number) => {
-            uniqueCollateralTypes[collateralAddress].drawDownAmounts[drawDownIndex].usdNeededToLiquidate = fromWei(
-              toBN(toWei(uniqueCollateralTypes[collateralAddress].drawDownAmounts[drawDownIndex].collateralLiquidated))
-                .mul(toBN(toWei(uniqueCollateralTypes[collateralAddress].collateralPriceInUsd)))
-                .div(fixedPointAdjustment)
-            );
-          }
-        );
-      } catch (error) {
-        console.error(error);
-      }
+      //   // Iterate over all positions within the financial contract. Note that the effectiveCollateralPrice is calculated
+      //   // using the collateralPriceInUsd and not the samplePriceFeed. This is because modifying the sample price feed by
+      //   // x percent is equivalent to modifying the collateralPriceInUsd by an equal amount. For the analytics generated
+      //   // by this reporter we care about the price action in collateral, not synthetics.
+      //   contractPositionsInfo.positions.forEach((sponsor: any) => {
+      //     drawDownPrices.forEach((drawDownPrice: string, drawDownIndex: number) => {
+      //       const positionCR = computeCollateralizationRatio(
+      //         toBN(toWei(sponsor.collateral.toString()).toString()),
+      //         toBN(toWei(sponsor.tokensOutstanding.toString()).toString()),
+      //         ConvertDecimals(samplePriceFeed.getPriceFeedDecimals(), 18, web3)(drawDownPrice)
+      //       );
+      //       const positionCRScaled = ConvertDecimals(samplePriceFeed.getPriceFeedDecimals(), 18, web3)(positionCR);
+      //       if (positionCRScaled.lt(collateralRequirement)) {
+      //         uniqueCollateralTypes[collateralAddress].drawDownAmounts[drawDownIndex] = {
+      //           collateralLiquidated: fromWei(
+      //             toBN(
+      //               toWei(uniqueCollateralTypes[collateralAddress].drawDownAmounts[drawDownIndex].collateralLiquidated)
+      //             ).add(toBN(toWei(sponsor.collateral)))
+      //           ),
+      //           usdNeededToLiquidate: "0",
+      //           priceDrop: (drawDownIndex * 10).toString(),
+      //           effectiveCollateralPrice: fromWei(
+      //             toBN(toWei(uniqueCollateralTypes[collateralAddress].collateralPriceInUsd))
+      //               .muln(10 - drawDownIndex)
+      //               .divn(10)
+      //           )
+      //         };
+      //       } else {
+      //         uniqueCollateralTypes[collateralAddress].drawDownAmounts[drawDownIndex] = {
+      //           ...uniqueCollateralTypes[collateralAddress].drawDownAmounts[drawDownIndex],
+      //           priceDrop: (drawDownIndex * 10).toString(),
+      //           effectiveCollateralPrice: fromWei(
+      //             toBN(toWei(uniqueCollateralTypes[collateralAddress].collateralPriceInUsd))
+      //               .muln(10 - drawDownIndex)
+      //               .divn(10)
+      //           )
+      //         };
+      //       }
+      //     });
+      //   });
+      //   // Iterate over all draw down intervals for a given collateral and compute the USD required to liquidate at the
+      //   // current collateral price.
+      //   uniqueCollateralTypes[collateralAddress].drawDownAmounts.forEach(
+      //     (drawDownInterval: any, drawDownIndex: number) => {
+      //       uniqueCollateralTypes[collateralAddress].drawDownAmounts[drawDownIndex].usdNeededToLiquidate = fromWei(
+      //         toBN(toWei(uniqueCollateralTypes[collateralAddress].drawDownAmounts[drawDownIndex].collateralLiquidated))
+      //           .mul(toBN(toWei(uniqueCollateralTypes[collateralAddress].collateralPriceInUsd)))
+      //           .div(fixedPointAdjustment)
+      //       );
+      //     }
+      //   );
+      // } catch (error) {
+      //   console.error(error);
+      // }
     }
     // Finally, remove any elements that have undefined params.
     uniqueCollateralTypes[collateralAddress].activeFinancialContracts.forEach(() => {
@@ -243,6 +251,9 @@ export async function fetchUmaEcosystemData() {
         );
     });
   }
+  console.log("uniqueCollateralTypes");
+  console.log(JSON.stringify(uniqueCollateralTypes));
+  process.exit(1);
 
   return uniqueCollateralTypes;
 }
@@ -253,11 +264,14 @@ function removeItemFromArrayOfObjects(
   objectValue: string | number | undefined
 ) {
   let index = -1;
+  console.log("looking for", objectKey);
   array.forEach((object, i) => {
-    if (object[objectKey] == objectValue) index = i;
+    if (object[objectKey] == objectValue) {
+      index = i;
+      console.log("i", i);
+    }
   });
-
-  if (index > -1) array.splice(index, 1);
+  if (index > -1) array.splice(index - 1, 1);
   return array;
 }
 

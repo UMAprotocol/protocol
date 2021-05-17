@@ -131,7 +131,6 @@ const createContractObjectFromJson = contractJsonObject => {
  * @param {string} libraryName to be found and replaced within the artifact.
  * @returns
  */
-
 const replaceLibraryBindingReferenceInArtitifact = (artifact, libraryName) => {
   const artifactString = JSON.stringify(artifact);
   return JSON.parse(artifactString.replace(/\$.*\$/g, libraryName));

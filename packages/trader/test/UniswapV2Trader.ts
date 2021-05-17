@@ -1,35 +1,33 @@
+import winston from "winston";
+import sinon from "sinon";
 import { web3, assert } from "hardhat";
-
 const { toWei, toBN, fromWei } = web3.utils;
 
-const { getTruffleContract } = require("@uma/core");
-
-// Script to test
-const { RangeTrader } = require("../src/RangeTrader");
-
-// Helper scripts
-const { createExchangeAdapter } = require("../src/exchange-adapters/CreateExchangeAdapter");
-
-const Token = getTruffleContract("ExpandedERC20", web3);
-const WETH9 = getTruffleContract("WETH9", web3);
-const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);
-const DSProxy = getTruffleContract("DSProxy", web3);
-
-// Helper Contracts
-const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json");
-const IUniswapV2Pair = require("@uniswap/v2-core/build/IUniswapV2Pair.json");
-const UniswapV2Router02 = require("@uniswap/v2-periphery/build/UniswapV2Router02.json");
-
-const winston = require("winston");
-const sinon = require("sinon");
-const {
+import {
   SpyTransport,
   spyLogIncludes,
   PriceFeedMock,
   DSProxyManager,
   GasEstimator,
   UniswapV2PriceFeed
-} = require("@uma/financial-templates-lib");
+} from "@uma/financial-templates-lib";
+import { getTruffleContract } from "@uma/core";
+
+// Script to test
+import { RangeTrader } from "../src/RangeTrader";
+
+// Helper scripts
+import { createExchangeAdapter } from "../src/exchange-adapters/CreateExchangeAdapter";
+
+const Token = getTruffleContract("ExpandedERC20", web3 as any);
+const WETH9 = getTruffleContract("WETH9", web3 as any);
+const DSProxyFactory = getTruffleContract("DSProxyFactory", web3 as any);
+const DSProxy = getTruffleContract("DSProxy", web3 as any);
+
+// Helper Contracts
+import UniswapV2Factory from "@uniswap/v2-core/build/UniswapV2Factory.json";
+import IUniswapV2Pair from "@uniswap/v2-core/build/IUniswapV2Pair.json";
+import UniswapV2Router02 from "@uniswap/v2-periphery/build/UniswapV2Router02.json";
 
 let accounts: string[];
 let deployer: string;
@@ -150,10 +148,10 @@ describe("UniswapV2Trader.js", function() {
       uniswapFactoryAddress: uniswapFactory.address
     };
 
-    exchangeAdapter = await createExchangeAdapter(spyLogger, web3, dsProxyManager, exchangeAdapterConfig);
+    exchangeAdapter = await createExchangeAdapter(spyLogger, web3, dsProxyManager, exchangeAdapterConfig, 0);
 
     // run the tests with no configs provided. Defaults to tradeExecutionThreshold = 5% and targetPriceSpread =5%
-    rangeTrader = new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, null);
+    rangeTrader = new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, {});
 
     // Seed the dsProxy wallet.
     await tokenA.mint(traderDSProxyAddress, toWei("100000000000000"));
@@ -313,25 +311,19 @@ describe("UniswapV2Trader.js", function() {
 
     // targetPriceSpread should only be larger than 0 and smaller than or equal to 1.
     assert.throws(() => {
-      new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, {
-        targetPriceSpread: -1
-      });
+      new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, { targetPriceSpread: -1 });
     });
     assert.throws(() => {
-      new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, {
-        targetPriceSpread: 0
-      });
+      new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, { targetPriceSpread: 0 });
     });
     assert.throws(() => {
-      new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, {
-        targetPriceSpread: 1.1
-      });
+      new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, { targetPriceSpread: 1.1 });
     });
 
     // rejects inconsistent price feed decimals
     const nonStandardDecimalPriceFeed = new PriceFeedMock(undefined, undefined, undefined, 17);
     assert.throws(() => {
-      new RangeTrader(spyLogger, web3, nonStandardDecimalPriceFeed, referencePriceFeed, exchangeAdapter);
+      new RangeTrader(spyLogger, web3, nonStandardDecimalPriceFeed, referencePriceFeed, exchangeAdapter, {});
     });
   });
   it("Correctly respects custom trade threshold configs", async function() {

@@ -82,8 +82,8 @@ class GasEstimator {
     try {
       const response = await fetch(url);
       const json = await response.json();
-      if (json.fast) {
-        let price = json.fast;
+      if (json.fastest) {
+        let price = json.fastest;
         return price;
       } else {
         throw new Error("Etherchain API: bad json response");
@@ -99,8 +99,8 @@ class GasEstimator {
       try {
         const responseBackup = await fetch(backupUrl);
         const jsonBackup = await responseBackup.json();
-        if (jsonBackup.result && jsonBackup.result.SafeGasPrice) {
-          return jsonBackup.result.SafeGasPrice;
+        if (jsonBackup.result && jsonBackup.result.ProposeGasPrice) {
+          return jsonBackup.result.ProposeGasPrice;
         } else {
           throw new Error("Etherscan API: bad json response");
         }

@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity >=0.5.0;
-pragma abicoder v2;
 
 /**
  * @title interface for MakerDao's Multicall contract.

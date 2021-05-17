@@ -2,11 +2,11 @@ import winston from "winston";
 import Web3 from "web3";
 import BigNumber from "bignumber.js";
 
-const { MAX_UINT_VAL } = require("@uma/common");
-const ExchangeAdapterInterface = require("./ExchangeAdapterInterface");
-const { getTruffleContract } = require("@uma/core");
+import { MAX_UINT_VAL } from "@uma/common";
+import ExchangeAdapterInterface from "./ExchangeAdapterInterface";
+import { getTruffleContract } from "@uma/core";
 
-class UniswapV2Trader implements InstanceType<typeof ExchangeAdapterInterface> {
+export class UniswapV2Trader implements ExchangeAdapterInterface {
   readonly tradeDeadline: number;
   readonly UniswapV2Broker: any;
   uniswapPair: any;
@@ -20,17 +20,9 @@ class UniswapV2Trader implements InstanceType<typeof ExchangeAdapterInterface> {
     readonly tokenBAddress: string,
     readonly dsProxyManager: any
   ) {
-    this.logger = logger;
-    this.web3 = web3;
-    this.uniswapRouterAddress = uniswapRouterAddress;
-    this.uniswapFactoryAddress = uniswapFactoryAddress;
-    this.tokenAAddress = tokenAAddress;
-    this.tokenBAddress = tokenBAddress;
-    this.dsProxyManager = dsProxyManager;
-
     this.tradeDeadline = 10 * 60 * 60;
 
-    this.UniswapV2Broker = getTruffleContract("UniswapV2Broker", this.web3);
+    this.UniswapV2Broker = getTruffleContract("UniswapV2Broker", this.web3 as any);
   }
   async tradeMarketToDesiredPrice(desiredPrice: BigNumber) {
     const callCode = this.UniswapV2Broker.bytecode;
@@ -57,5 +49,3 @@ class UniswapV2Trader implements InstanceType<typeof ExchangeAdapterInterface> {
     }
   }
 }
-
-module.exports = { UniswapV2Trader };
