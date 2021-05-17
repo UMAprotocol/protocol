@@ -6,7 +6,7 @@
     "@truffle/contract": "^4.2.20",
     "@uma/common": "^2.1.0",
     "@uma/financial-templates-lib": "^2.1.0",
-    "web3": "^1.3.4"
+    "web3": "^1.3.5"
   },
   "devDependencies": {
     "@awaitjs/express": "^0.3.0",
