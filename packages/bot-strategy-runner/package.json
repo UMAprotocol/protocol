@@ -1,6 +1,7 @@
 {
   "name": "@uma/bot-strategy-runner",
   "version": "1.0.1",
+  "type": "module",
   "description": "Scripts for running a set of UMA bots against an address whitelist",
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
