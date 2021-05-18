@@ -54,7 +54,7 @@
     "secp256k1": "^3.7.1",
     "solc-0.8": "npm:solc@^0.8.4",
     "truffle": "^5.2.3",
-    "web3": "^1.3.4"
+    "web3": "^1.3.5"
   },
   "resolutions": {
     "sse4_crc32": "npm:@node-rs/crc32@1.0.0"
