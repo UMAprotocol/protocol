@@ -142,7 +142,7 @@ class DSProxyManager {
       callData,
       tx: receipt.transactionHash,
       transactionConfig,
-      returnValue
+      returnValue: returnValue.toString()
     });
     return receipt;
   }
@@ -172,7 +172,7 @@ class DSProxyManager {
       callData,
       tx: receipt.transactionHash,
       transactionConfig,
-      returnValue
+      returnValue: returnValue.toString()
     });
     return receipt;
   }

@@ -389,7 +389,7 @@ class OptimisticOracleProposer {
         at: "OptimisticOracleProposer#settleRequests",
         message: "Settled proposal or dispute!⛑",
         priceRequest,
-        payout: returnValue,
+        payout: returnValue.toString(),
         settleResult: logResult,
         transactionConfig
       });
