@@ -20,7 +20,7 @@ const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json")
 const IUniswapV2Pair = require("@uniswap/v2-core/build/IUniswapV2Pair.json");
 const UniswapV2Router02 = require("@uniswap/v2-periphery/build/UniswapV2Router02.json");
 
-const createContractObjectFromJson = contractJsonObject => {
+const createContractObjectFromJson = (contractJsonObject) => {
   let truffleContractCreator = truffleContract(contractJsonObject);
   truffleContractCreator.setProvider(web3.currentProvider);
   return truffleContractCreator;
@@ -52,7 +52,7 @@ let errorRetriesTimeout = 0.1; // 100 milliseconds between preforming retries
 let identifier = "TEST_IDENTIFIER";
 let fundingRateIdentifier = "TEST_FUNDING_IDENTIFIER";
 
-contract("index.js", function(accounts) {
+contract("index.js", function (accounts) {
   const contractCreator = accounts[0];
   const disputer = contractCreator;
 
@@ -203,13 +203,13 @@ contract("index.js", function(accounts) {
         assert.isTrue(spyLogIncludes(spy, 7, '"syntheticDecimals":18'));
         assert.isTrue(spyLogIncludes(spy, 7, '"priceFeedDecimals":8'));
       });
-      it("Can correctly initialize using a DSProxy", async function() {
+      it("Can correctly initialize using a DSProxy", async function () {
         // Deploy a reserve currency token.
         const reserveToken = await Token.new("Reserve Token", "RTKN", 18, { from: contractCreator });
         await reserveToken.addMember(1, contractCreator, { from: contractCreator });
         // deploy Uniswap V2 Factory & router.
         const factory = await createContractObjectFromJson(UniswapV2Factory).new(contractCreator, {
-          from: contractCreator
+          from: contractCreator,
         });
         const router = await createContractObjectFromJson(UniswapV2Router02).new(
           factory.address,
@@ -229,7 +229,7 @@ contract("index.js", function(accounts) {
         spy = sinon.spy();
         spyLogger = winston.createLogger({
           level: "debug",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
 
         await Poll.run({
@@ -243,8 +243,8 @@ contract("index.js", function(accounts) {
           proxyTransactionWrapperConfig: {
             useDsProxyToDispute: true,
             disputerReserveCurrencyAddress: reserveToken.address,
-            uniswapRouterAddress: router.address
-          }
+            uniswapRouterAddress: router.address,
+          },
         });
 
         for (let i = 0; i < spy.callCount; i++) {
@@ -266,7 +266,7 @@ contract("index.js", function(accounts) {
         spy = sinon.spy(); // Create a new spy for each test.
         spyLogger = winston.createLogger({
           level: "debug",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
 
         collateralToken = await Token.new("BTC", "BTC", 8, { from: contractCreator });
@@ -278,7 +278,7 @@ contract("index.js", function(accounts) {
             ...constructorParams,
             collateralAddress: collateralToken.address,
             tokenAddress: syntheticToken.address,
-            priceFeedIdentifier: padRight(utf8ToHex("USDBTC"), 64)
+            priceFeedIdentifier: padRight(utf8ToHex("USDBTC"), 64),
           })
         );
         financialContract = await FinancialContract.new(decimalTestConstructorParams);
@@ -292,7 +292,7 @@ contract("index.js", function(accounts) {
           financialContractAddress: financialContract.address,
           pollingDelay,
           errorRetries,
-          errorRetriesTimeout
+          errorRetriesTimeout,
         });
 
         // Seventh log, which prints the decimal info, should include # of decimals for the price feed, collateral and synthetic.

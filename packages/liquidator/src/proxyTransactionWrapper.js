@@ -33,7 +33,7 @@ class ProxyTransactionWrapper {
     collateralToken,
     account,
     dsProxyManager = undefined,
-    proxyTransactionWrapperConfig
+    proxyTransactionWrapperConfig,
   }) {
     this.web3 = web3;
     this.financialContract = financialContract;

@@ -19,7 +19,7 @@ const {
   waitForLogger,
   createReferencePriceFeedForFinancialContract,
   setAllowance,
-  DSProxyManager
+  DSProxyManager,
 } = require("@uma/financial-templates-lib");
 
 // Truffle contracts.
@@ -47,7 +47,7 @@ async function run({
   priceFeedConfig,
   disputerConfig,
   disputerOverridePrice,
-  proxyTransactionWrapperConfig
+  proxyTransactionWrapperConfig,
 }) {
   try {
     const getTime = () => Math.round(new Date().getTime() / 1000);
@@ -158,7 +158,7 @@ async function run({
         dsProxyFactoryAddress:
           proxyTransactionWrapperConfig?.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
         dsProxyFactoryAbi: getAbi("DSProxyFactory"),
-        dsProxyAbi: getAbi("DSProxy")
+        dsProxyAbi: getAbi("DSProxy"),
       });
 
       // Load in an existing DSProxy for the account EOA if one already exists or create a new one for the user.
@@ -171,7 +171,7 @@ async function run({
       gasEstimator,
       account: accounts[0],
       dsProxyManager,
-      proxyTransactionWrapperConfig
+      proxyTransactionWrapperConfig,
     });
 
     const disputer = new Disputer({
@@ -299,7 +299,7 @@ async function Poll(callback) {
       // "uniswapRouterAddress": "0x123..." -> uniswap router address to enable reserve trading. Defaults to mainnet router.
       // "maxReserverTokenSpent": "10000000000"} -> max amount to spend in reserve currency. scaled by reserve currency
       //      decimals. defaults to MAX_UINT (no limit).
-      proxyTransactionWrapperConfig: process.env.DSPROXY_CONFIG ? JSON.parse(process.env.DSPROXY_CONFIG) : {}
+      proxyTransactionWrapperConfig: process.env.DSPROXY_CONFIG ? JSON.parse(process.env.DSPROXY_CONFIG) : {},
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });

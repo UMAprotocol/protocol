@@ -25,7 +25,7 @@ const {
   GasEstimator,
   PriceFeedMock,
   SpyTransport,
-  DSProxyManager
+  DSProxyManager,
 } = require("@uma/financial-templates-lib");
 
 // Run the tests against 3 different kinds of token/synth decimal combinations:
@@ -292,7 +292,7 @@ contract("Disputer.js", function (accounts) {
             account: accounts[0],
             dsProxyManager: null,
             useDsProxyToLiquidate: false,
-            proxyTransactionWrapperConfig: {}
+            proxyTransactionWrapperConfig: {},
           });
 
           disputer = new Disputer({
@@ -1054,7 +1054,7 @@ contract("Disputer.js", function (accounts) {
 
           // Takes in a json object from a compiled contract and returns a truffle contract instance that can be deployed.
           // TODO: refactor this to be from a common file
-          const createContractObjectFromJson = contractJsonObject => {
+          const createContractObjectFromJson = (contractJsonObject) => {
             let truffleContractCreator = truffleContract(contractJsonObject);
             truffleContractCreator.setProvider(web3.currentProvider);
             return truffleContractCreator;
@@ -1067,7 +1067,7 @@ contract("Disputer.js", function (accounts) {
 
             // deploy Uniswap V2 Factory & router.
             uniswapFactory = await createContractObjectFromJson(UniswapV2Factory).new(contractCreator, {
-              from: contractCreator
+              from: contractCreator,
             });
             uniswapRouter = await createContractObjectFromJson(UniswapV2Router02).new(
               uniswapFactory.address,
@@ -1077,7 +1077,7 @@ contract("Disputer.js", function (accounts) {
 
             // initialize the pair between the reserve and collateral token.
             await uniswapFactory.createPair(reserveToken.address, collateralToken.address, {
-              from: contractCreator
+              from: contractCreator,
             });
             pairAddress = await uniswapFactory.getPair(reserveToken.address, collateralToken.address);
             pair = await createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
@@ -1086,10 +1086,10 @@ contract("Disputer.js", function (accounts) {
             // token is Dai this starts off the uniswap market at 1 reserve/collateral. Note the amount of collateral
             // is scaled according to the collateral decimals.
             await reserveToken.mint(pairAddress, toBN(toWei("1000")).muln(10000000), {
-              from: contractCreator
+              from: contractCreator,
             });
             await collateralToken.mint(pairAddress, toBN(convertCollateral("1000")).muln(10000000), {
-              from: contractCreator
+              from: contractCreator,
             });
             await pair.sync({ from: contractCreator });
 
@@ -1103,7 +1103,7 @@ contract("Disputer.js", function (accounts) {
               account: disputeBot,
               dsProxyFactoryAddress: dsProxyFactory.address,
               dsProxyFactoryAbi: DSProxyFactory.abi,
-              dsProxyAbi: DSProxy.abi
+              dsProxyAbi: DSProxy.abi,
             });
             // Initialize the DSProxy manager. This will deploy a new DSProxy contract as the liquidator bot EOA does not
             // yet have one deployed.
@@ -1118,8 +1118,8 @@ contract("Disputer.js", function (accounts) {
               proxyTransactionWrapperConfig: {
                 useDsProxyToDispute: true,
                 uniswapRouterAddress: uniswapRouter.address,
-                disputerReserveCurrencyAddress: reserveToken.address
-              }
+                disputerReserveCurrencyAddress: reserveToken.address,
+              },
             });
 
             disputer = new Disputer({
@@ -1130,12 +1130,12 @@ contract("Disputer.js", function (accounts) {
               priceFeed: priceFeedMock,
               account: accounts[0],
               financialContractProps,
-              disputerConfig
+              disputerConfig,
             });
           });
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Can correctly detect initialized DSProxy and ProxyTransactionWrapper",
-            async function() {
+            async function () {
               // The initialization in the before-each should be correct.
               assert.isTrue(isAddress(dsProxy.address));
               assert.equal(await dsProxy.owner(), disputeBot);
@@ -1148,7 +1148,7 @@ contract("Disputer.js", function (accounts) {
           );
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Rejects invalid invocation of proxy transaction wrapper",
-            async function() {
+            async function () {
               // Invalid invocation should reject. Missing reserve currency.
               assert.throws(() => {
                 new ProxyTransactionWrapper({
@@ -1160,8 +1160,8 @@ contract("Disputer.js", function (accounts) {
                   proxyTransactionWrapperConfig: {
                     useDsProxyToDispute: true,
                     uniswapRouterAddress: uniswapRouter.address,
-                    disputerReserveCurrencyAddress: null
-                  }
+                    disputerReserveCurrencyAddress: null,
+                  },
                 });
               });
 
@@ -1176,8 +1176,8 @@ contract("Disputer.js", function (accounts) {
                   proxyTransactionWrapperConfig: {
                     useDsProxyToDispute: true,
                     uniswapRouterAddress: "not-an-address",
-                    disputerReserveCurrencyAddress: reserveToken.address
-                  }
+                    disputerReserveCurrencyAddress: reserveToken.address,
+                  },
                 });
               });
               // Invalid invocation should reject. Requests to use DSProxy to Dispute but does not provide DSProxy manager.
@@ -1191,8 +1191,8 @@ contract("Disputer.js", function (accounts) {
                   proxyTransactionWrapperConfig: {
                     useDsProxyToDispute: true,
                     uniswapRouterAddress: uniswapRouter.address,
-                    disputerReserveCurrencyAddress: reserveToken.address
-                  }
+                    disputerReserveCurrencyAddress: reserveToken.address,
+                  },
                 });
               });
               // Invalid invocation should reject. DSProxy Manager not yet initalized.
@@ -1205,7 +1205,7 @@ contract("Disputer.js", function (accounts) {
                 account: disputeBot,
                 dsProxyFactoryAddress: dsProxyFactory.address,
                 dsProxyFactoryAbi: DSProxyFactory.abi,
-                dsProxyAbi: DSProxy.abi
+                dsProxyAbi: DSProxy.abi,
               });
               assert.throws(() => {
                 new ProxyTransactionWrapper({
@@ -1217,15 +1217,15 @@ contract("Disputer.js", function (accounts) {
                   proxyTransactionWrapperConfig: {
                     useDsProxyToDispute: true,
                     uniswapRouterAddress: uniswapRouter.address,
-                    disputerReserveCurrencyAddress: reserveToken.address
-                  }
+                    disputerReserveCurrencyAddress: reserveToken.address,
+                  },
                 });
               });
             }
           );
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Correctly disputes positions using DSProxy",
-            async function() {
+            async function () {
               // Seed the dsProxy with some reserve tokens so it can buy collateral to execute the dispute.
               await reserveToken.mint(dsProxy.address, toWei("10000"), { from: contractCreator });
 
@@ -1330,7 +1330,7 @@ contract("Disputer.js", function (accounts) {
           );
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Correctly deals with reserve being the same as collateral currency using DSProxy",
-            async function() {
+            async function () {
               // Create a new disputer set to use the same collateral as the reserve currency.
               proxyTransactionWrapper = new ProxyTransactionWrapper({
                 web3,
@@ -1341,8 +1341,8 @@ contract("Disputer.js", function (accounts) {
                 proxyTransactionWrapperConfig: {
                   useDsProxyToDispute: true,
                   uniswapRouterAddress: uniswapRouter.address,
-                  disputerReserveCurrencyAddress: collateralToken.address
-                }
+                  disputerReserveCurrencyAddress: collateralToken.address,
+                },
               });
 
               disputer = new Disputer({
@@ -1353,7 +1353,7 @@ contract("Disputer.js", function (accounts) {
                 priceFeed: priceFeedMock,
                 account: accounts[0],
                 financialContractProps,
-                disputerConfig
+                disputerConfig,
               });
 
               // Seed the dsProxy with some reserve tokens so it can buy collateral to execute the dispute.
@@ -1407,7 +1407,7 @@ contract("Disputer.js", function (accounts) {
           );
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Correctly respects existing collateral balances when using DSProxy",
-            async function() {
+            async function () {
               // Seed the dsProxy with a few collateral but not enough to finish the dispute. All collateral available
               // should be spent and the shortfall should be purchased.
               await collateralToken.mint(dsProxy.address, convertCollateral("0.5"), { from: contractCreator });
