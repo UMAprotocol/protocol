@@ -154,6 +154,11 @@ export async function fetchUmaEcosystemData() {
         let invertedPrice = false;
         if (samplePriceFeed.invertPrice) invertedPrice = true;
         if (samplePriceFeed.priceFeeds && samplePriceFeed.priceFeeds[0].invertPrice) invertedPrice = true;
+
+        // If the collateral type is stable, then we must invert the price feed by default. These kinds of feeds (such
+        // as the BasketSpreadPriceFeed) do not contain the `invertPrice` flag, but they are all "inverted". As additional
+        // stable collaterals are added this will need to be updated or the page will show up no liquidatable positions
+        // for that collateral type.
         if (
           uniqueCollateralTypes[collateralAddress].collateralSymbol == "USDC" ||
           uniqueCollateralTypes[collateralAddress].collateralSymbol == "DAI" ||
