@@ -116,12 +116,12 @@ const getPendingTransactionCount = async (web3, account) => {
  * @param {Object} web3 Provider from Truffle/node to connect to Ethereum network.
  * @param {number} blockerBlockNumber block execution until this block number is mined.
  */
-const blockUntilBlockMined = async (web3, blockerBlockNumber) => {
+const blockUntilBlockMined = async (web3, blockerBlockNumber, delay = 500) => {
   if (argv._.indexOf("test") !== -1) return;
   for (;;) {
     const currentBlockNumber = await web3.eth.getBlockNumber();
     if (currentBlockNumber >= blockerBlockNumber) break;
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise(r => setTimeout(r, delay));
   }
 };
 
