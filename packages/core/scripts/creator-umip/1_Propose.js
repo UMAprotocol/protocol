@@ -21,7 +21,7 @@ async function runExport() {
 
   const gasEstimator = new GasEstimator(
     winston.createLogger({
-      silent: true
+      silent: true,
     }),
     60, // Time between updates.
     100 // Default gas price.
@@ -43,8 +43,8 @@ async function runExport() {
       {
         to: registry.address,
         value: 0,
-        data: addCreatorToRegistryTx
-      }
+        data: addCreatorToRegistryTx,
+      },
     ],
     { from: proposerWallet, gasPrice: gasEstimator.getCurrentFastPrice() }
   );
@@ -56,7 +56,7 @@ Newly Added Contract Creator: ${argv.creator}
 `);
 }
 
-const run = async function(callback) {
+const run = async function (callback) {
   try {
     await runExport();
   } catch (err) {

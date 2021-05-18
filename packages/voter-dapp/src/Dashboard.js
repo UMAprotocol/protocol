@@ -13,21 +13,21 @@ import MigrationBanner from "./MigrationBanner";
 
 function Dashboard() {
   const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
-  const { account } = drizzleReactHooks.useDrizzleState(drizzleState => ({
-    account: drizzleState.accounts[0]
+  const { account } = drizzleReactHooks.useDrizzleState((drizzleState) => ({
+    account: drizzleState.accounts[0],
   }));
   const { web3 } = drizzle;
 
   const addressZero = "0x0000000000000000000000000000000000000000";
 
   const deployedDesignatedVotingAddress = useCacheCall("DesignatedVotingFactory", "designatedVotingContracts", account);
-  const { designatedVoting } = drizzleReactHooks.useDrizzleState(drizzleState => ({
-    designatedVoting: drizzleState.contracts[deployedDesignatedVotingAddress]
+  const { designatedVoting } = drizzleReactHooks.useDrizzleState((drizzleState) => ({
+    designatedVoting: drizzleState.contracts[deployedDesignatedVotingAddress],
   }));
 
   const { shouldShowBanner, oldDesignatedVotingAddress, oldDesignatedVotingBalance } = useCacheCall(
     ["OldDesignatedVotingFactory", "VotingToken"],
-    call => {
+    (call) => {
       if (!account) return {};
       const oldDesignatedVotingAddress = call("OldDesignatedVotingFactory", "designatedVotingContracts", account);
       if (!oldDesignatedVotingAddress || oldDesignatedVotingAddress === addressZero) return {};
@@ -64,7 +64,7 @@ function Dashboard() {
     if (deployedDesignatedVotingAddress !== addressZero) {
       drizzle.addContract({
         contractName: deployedDesignatedVotingAddress,
-        web3Contract: new drizzle.web3.eth.Contract(DesignatedVoting.abi, deployedDesignatedVotingAddress)
+        web3Contract: new drizzle.web3.eth.Contract(DesignatedVoting.abi, deployedDesignatedVotingAddress),
       });
       setHasAdded(true);
     }

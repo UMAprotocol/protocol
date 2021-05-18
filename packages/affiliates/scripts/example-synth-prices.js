@@ -11,11 +11,9 @@ const endingTimestamp = moment("2020-10-01 2:00:00", "YYYY-MM-DD  HH:mm Z").valu
 const historicSynthPrices = HistoricSynthPrices({ web3 });
 
 async function runTest() {
-  await Promise.each([...params.empContracts], async empAddress => {
+  await Promise.each([...params.empContracts], async (empAddress) => {
     const prices = await historicSynthPrices.getHistoricSynthPrices(empAddress, startingTimestamp, endingTimestamp);
     console.log("empContract", empAddress, prices);
   });
 }
-runTest()
-  .then(console.log)
-  .catch(console.log);
+runTest().then(console.log).catch(console.log);

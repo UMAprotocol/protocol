@@ -5,20 +5,20 @@ const WithdrawableTest = artifacts.require("WithdrawableTest");
 // Pull in contracts from dependencies.
 const Token = artifacts.require("ExpandedERC20");
 
-contract("Withdrawable", function(accounts) {
+contract("Withdrawable", function (accounts) {
   let token;
 
   const owner = accounts[0];
   const rando = accounts[1];
 
-  before(async function() {
+  before(async function () {
     // Create token contract and mint tokens for use by rando.
     token = await Token.new("Test Synthetic Token", "SYNTH", 18, { from: owner });
     await token.addMember(1, owner, { from: owner });
     await token.mint(rando, web3.utils.toWei("100", "ether"), { from: owner });
   });
 
-  it("Withdraw ERC20", async function() {
+  it("Withdraw ERC20", async function () {
     const withdrawable = await WithdrawableTest.new();
 
     // Transfer tokens to the withdrawable address without notifying the contract.
@@ -53,7 +53,7 @@ contract("Withdrawable", function(accounts) {
     );
   });
 
-  it("Withdraw ETH", async function() {
+  it("Withdraw ETH", async function () {
     // Note: we must use a contract that can accept payments to test ETH withdrawal.
     const withdrawable = await WithdrawableTest.new();
 
@@ -81,7 +81,7 @@ contract("Withdrawable", function(accounts) {
     assert.equal(endingBalance.toString(), "0");
   });
 
-  it("Can only set WithdrawRole to a valid role", async function() {
+  it("Can only set WithdrawRole to a valid role", async function () {
     const withdrawable = await WithdrawableTest.new();
 
     // can set to 0 (Owner)

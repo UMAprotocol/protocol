@@ -1,8 +1,8 @@
-const { MAX_UINT_VAL } = require("@uma/common");
 const { toWei } = web3.utils;
 const { getTruffleContract } = require("@uma/core");
 
 const {
+  MAX_UINT_VAL,
   encodePriceSqrt,
   getTickFromPrice,
   getCurrentPrice,
@@ -12,11 +12,11 @@ const {
   FeeAmount,
   TICK_SPACINGS,
   createContractObjectFromJson,
-  replaceLibraryBindingReferenceInArtitifact
-} = require("./UniswapV3Helpers");
+  replaceLibraryBindingReferenceInArtitifact,
+} = require("@uma/common");
 
 // Tested Contract
-const UniswapBrokerV3 = getTruffleContract("UniswapBrokerV3", web3);
+const UniswapV3Broker = getTruffleContract("UniswapV3Broker", web3);
 
 // Some helper contracts.
 const Token = getTruffleContract("ExpandedERC20", web3);
@@ -49,7 +49,7 @@ let poolAddress;
 let tokenA;
 let tokenB;
 
-contract("UniswapBrokerV3", function(accounts) {
+contract("UniswapV3Broker", function (accounts) {
   const deployer = accounts[0];
   const trader = accounts[1];
 
@@ -75,7 +75,7 @@ contract("UniswapBrokerV3", function(accounts) {
       amount1Desired,
       amount0Min: 0,
       amount1Min: 0,
-      deadline: 15798990420 // some number far in the future
+      deadline: 15798990420, // some number far in the future
     };
 
     await positionManager.mint(liquidityParams, { from: trader });
@@ -84,7 +84,7 @@ contract("UniswapBrokerV3", function(accounts) {
 
   before(async () => {
     // deploy an instance of the broker
-    uniswapV3Broker = await UniswapBrokerV3.new();
+    uniswapV3Broker = await UniswapV3Broker.new();
 
     weth = await WETH9.new();
     // deploy Uniswap V3 Factory, router, position manager, position descriptor and tickLens.
@@ -124,7 +124,7 @@ contract("UniswapBrokerV3", function(accounts) {
   });
 
   describe("Simple Uniswap interactions", () => {
-    it("Validate Uniswap behaviour with a simple swap", async function() {
+    it("Validate Uniswap behaviour with a simple swap", async function () {
       // First, add liquidity to the pool. Initialize the pool with a price of 10 TokenA/TokenB by adding 1000 tokenA
       // and 100 token B. Set the liquidity range between a price of 8 and 15.
       await addLiquidityToPool(toWei("1000"), toWei("100"), getTickFromPrice(8, fee), getTickFromPrice(15, fee));
@@ -148,7 +148,7 @@ contract("UniswapBrokerV3", function(accounts) {
         recipient: trader,
         deadline: 15798990420,
         amountIn: toWei("1"), // swap exactly 1 wei of token 1
-        amountOutMinimum: 0
+        amountOutMinimum: 0,
       };
 
       // Store the token balances before the trade
@@ -176,7 +176,7 @@ contract("UniswapBrokerV3", function(accounts) {
       // The starting price should be 10.
       assert.equal((await getCurrentPrice(poolAddress)).toNumber(), 10);
     });
-    it("Broker can correctly move the price up with a single liquidity provider", async function() {
+    it("Broker can correctly move the price up with a single liquidity provider", async function () {
       // The broker should be able to trade up to a desired price. The starting price is 10. Try trade the market to 13.
 
       await uniswapV3Broker.swapToPrice(
@@ -194,7 +194,7 @@ contract("UniswapBrokerV3", function(accounts) {
       assert.equal(postTradePrice, 13);
     });
 
-    it("Broker can correctly move the price down with a single liquidity provider", async function() {
+    it("Broker can correctly move the price down with a single liquidity provider", async function () {
       // The broker should be able to trade down to a desired price. The starting price at 10. Try trade the market to 8.5.
 
       await uniswapV3Broker.swapToPrice(
@@ -227,7 +227,7 @@ contract("UniswapBrokerV3", function(accounts) {
       // The starting price should be 10 as all LPs added at the same price.
       assert.equal((await getCurrentPrice(poolAddress)).toNumber(), 10);
     });
-    it("Broker can correctly move the price up with a set of liquidity provider", async function() {
+    it("Broker can correctly move the price up with a set of liquidity provider", async function () {
       // The broker should be able to trade up to a desired price. The starting price is 10. Try trade the market to 13.
 
       await uniswapV3Broker.swapToPrice(
@@ -245,7 +245,7 @@ contract("UniswapBrokerV3", function(accounts) {
       assert.equal(postTradePrice, 13);
     });
 
-    it("Broker can correctly move the price down with a set of liquidity provider", async function() {
+    it("Broker can correctly move the price down with a set of liquidity provider", async function () {
       // The broker should be able to trade down to a desired price. The starting price at 10. Try trade the market to 8.5.
 
       await uniswapV3Broker.swapToPrice(

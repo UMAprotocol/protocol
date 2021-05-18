@@ -2,7 +2,7 @@ const bip39 = require("bip39");
 const { hdkey } = require("ethereumjs-wallet");
 const argv = require("minimist")(process.argv.slice(), { string: ["mnemonic"] });
 
-const getPrivateKeyFromMnemonic = async function(callback) {
+const getPrivateKeyFromMnemonic = async function (callback) {
   try {
     if (!argv.mnemonic) {
       throw new Error("Must pass in --mnemonic CLI arg");

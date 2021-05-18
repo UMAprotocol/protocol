@@ -16,10 +16,10 @@ function TokenTracker() {
           address: drizzle.contracts.VotingToken.address,
           symbol: "UMA",
           decimals: 18,
-          image: "https://umaproject.org/assets/images/UMA_square_red_logo.png"
-        }
+          image: "https://umaproject.org/assets/images/UMA_square_red_logo.png",
+        },
       },
-      id: Math.round(Math.random() * 100000)
+      id: Math.round(Math.random() * 100000),
     });
   };
 

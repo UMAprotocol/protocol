@@ -1,5 +1,5 @@
 const { ZERO_ADDRESS } = require("@uma/common");
-const func = async function(hre) {
+const func = async function (hre) {
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
 
@@ -12,7 +12,7 @@ const func = async function(hre) {
   await deploy("OptimisticOracle", {
     from: deployer,
     args: [defaultLiveness, Finder.address, ZERO_ADDRESS],
-    log: true
+    log: true,
   });
 };
 module.exports = func;

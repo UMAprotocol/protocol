@@ -3,7 +3,7 @@ const {
   interfaceName,
   addGlobalHardhatTestingAddress,
   createConstructorParamsForContractVersion,
-  TESTED_CONTRACT_VERSIONS
+  TESTED_CONTRACT_VERSIONS,
 } = require("@uma/common");
 
 const { getTruffleContract } = require("@uma/core");
@@ -44,10 +44,10 @@ let errorRetriesTimeout = 0.1; // 100 milliseconds between preforming retries
 let identifier = "TEST_IDENTIFIER";
 let fundingRateIdentifier = "TEST_FUNDiNG_IDENTIFIER";
 
-contract("index.js", function(accounts) {
+contract("index.js", function (accounts) {
   const contractCreator = accounts[0];
 
-  TESTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
+  TESTED_CONTRACT_VERSIONS.forEach(function (contractVersion) {
     // Import the tested versions of contracts. note that FinancialContract is either an ExpiringMultiParty or the perp
     // depending on the current iteration version.
     const FinancialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
@@ -63,8 +63,8 @@ contract("index.js", function(accounts) {
     // Note: OptimisticOracle always uses "2.0.1"
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
 
-    describe(`Tests running on smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
-      before(async function() {
+    describe(`Tests running on smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
+      before(async function () {
         collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
 
         identifierWhitelist = await IdentifierWhitelist.new();
@@ -84,19 +84,19 @@ contract("index.js", function(accounts) {
         await identifierWhitelist.addSupportedIdentifier(utf8ToHex("TEST_IDENTIFIER"));
 
         mockOracle = await MockOracle.new(finder.address, timer.address, {
-          from: contractCreator
+          from: contractCreator,
         });
         await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
         // Set the address in the global name space to enable disputer's index.js to access it.
         addGlobalHardhatTestingAddress("Voting", mockOracle.address);
       });
 
-      beforeEach(async function() {
+      beforeEach(async function () {
         // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
         spy = sinon.spy(); // Create a new spy for each test.
         spyLogger = winston.createLogger({
           level: "debug",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
 
         // Create a new synthetic token
@@ -120,7 +120,7 @@ contract("index.js", function(accounts) {
               proposerBondPercentage: { rawValue: "0" },
               maxFundingRate: { rawValue: toWei("0.00001") },
               minFundingRate: { rawValue: toWei("-0.00001") },
-              proposalTimePastLimit: 0
+              proposalTimePastLimit: 0,
             },
             timer.address
           );
@@ -138,7 +138,7 @@ contract("index.js", function(accounts) {
             fundingRateIdentifier,
             timer,
             store,
-            configStore: configStore || {} // if the contract type is not a perp this will be null.
+            configStore: configStore || {}, // if the contract type is not a perp this will be null.
           },
           // Note: an identifier which is part of the default config is required for this test.
           { priceFeedIdentifier: padRight(utf8ToHex("ETH/BTC"), 64) }
@@ -151,12 +151,12 @@ contract("index.js", function(accounts) {
         defaultTokenPricefeedConfig = {
           type: "test",
           currentPrice: "1",
-          historicalPrice: "1"
+          historicalPrice: "1",
         };
         defaultMedianizerPricefeedConfig = {};
       });
 
-      it("FinancialContract monitor: Completes one iteration without logging any errors", async function() {
+      it("FinancialContract monitor: Completes one iteration without logging any errors", async function () {
         // Once specifying just the `financialContractAddress`, once specifying
         // the `optimisticOracleAddress`, and once specifying both:
         await Poll.run({
@@ -170,13 +170,13 @@ contract("index.js", function(accounts) {
           endingBlock: toBlock,
           monitorConfig: defaultMonitorConfig,
           tokenPriceFeedConfig: defaultTokenPricefeedConfig,
-          medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig
+          medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig,
         });
         for (let i = 0; i < spy.callCount; i++) {
           assert.notEqual(spyLogLevel(spy, i), "error");
         }
       });
-      it("OptimisticOracle monitor: Completes one iteration without logging any errors", async function() {
+      it("OptimisticOracle monitor: Completes one iteration without logging any errors", async function () {
         await Poll.run({
           logger: spyLogger,
           web3,
@@ -188,13 +188,13 @@ contract("index.js", function(accounts) {
           endingBlock: toBlock,
           monitorConfig: defaultMonitorConfig,
           tokenPriceFeedConfig: defaultTokenPricefeedConfig,
-          medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig
+          medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig,
         });
         for (let i = 0; i < spy.callCount; i++) {
           assert.notEqual(spyLogLevel(spy, i), "error");
         }
       });
-      it("Activating all monitors: Completes one iteration without logging any errors", async function() {
+      it("Activating all monitors: Completes one iteration without logging any errors", async function () {
         await Poll.run({
           logger: spyLogger,
           web3,
@@ -207,17 +207,17 @@ contract("index.js", function(accounts) {
           endingBlock: toBlock,
           monitorConfig: defaultMonitorConfig,
           tokenPriceFeedConfig: defaultTokenPricefeedConfig,
-          medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig
+          medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig,
         });
         for (let i = 0; i < spy.callCount; i++) {
           assert.notEqual(spyLogLevel(spy, i), "error");
         }
       });
-      it("Detects price feed, collateral and synthetic decimals", async function() {
+      it("Detects price feed, collateral and synthetic decimals", async function () {
         spy = sinon.spy(); // Create a new spy for each test.
         spyLogger = winston.createLogger({
           level: "debug",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
 
         collateralToken = await Token.new("USDC", "USDC", 6, { from: contractCreator });
@@ -225,7 +225,7 @@ contract("index.js", function(accounts) {
         constructorParams = {
           ...constructorParams,
           collateralAddress: collateralToken.address,
-          tokenAddress: syntheticToken.address
+          tokenAddress: syntheticToken.address,
         };
         financialContract = await FinancialContract.new(constructorParams);
         await syntheticToken.addMinter(financialContract.address);
@@ -242,7 +242,7 @@ contract("index.js", function(accounts) {
           endingBlock: toBlock,
           monitorConfig: defaultMonitorConfig,
           tokenPriceFeedConfig: defaultTokenPricefeedConfig,
-          medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig
+          medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig,
         });
 
         for (let i = 0; i < spy.callCount; i++) {
@@ -254,11 +254,11 @@ contract("index.js", function(accounts) {
         assert.isTrue(spyLogIncludes(spy, 9, '"syntheticDecimals":6'));
         assert.isTrue(spyLogIncludes(spy, 9, '"priceFeedDecimals":18'));
       });
-      it("Correctly detects contract type and rejects unknown contract types", async function() {
+      it("Correctly detects contract type and rejects unknown contract types", async function () {
         spy = sinon.spy();
         spyLogger = winston.createLogger({
           level: "debug",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
 
         await Poll.run({
@@ -272,7 +272,7 @@ contract("index.js", function(accounts) {
           endingBlock: toBlock,
           monitorConfig: defaultMonitorConfig,
           tokenPriceFeedConfig: defaultTokenPricefeedConfig,
-          medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig
+          medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig,
         });
 
         for (let i = 0; i < spy.callCount; i++) {
@@ -283,12 +283,12 @@ contract("index.js", function(accounts) {
         assert.isTrue(spyLogIncludes(spy, 9, `"contractVersion":"${contractVersion.contractVersion}"`));
         assert.isTrue(spyLogIncludes(spy, 9, `"contractType":"${contractVersion.contractType}"`));
       });
-      it("Correctly rejects unknown contract types", async function() {
+      it("Correctly rejects unknown contract types", async function () {
         // Should produce an error on a contract type that is unknown. set the financialContract as the finder, for example
         spy = sinon.spy();
         spyLogger = winston.createLogger({
           level: "debug",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
 
         let didThrowError = false;
@@ -305,7 +305,7 @@ contract("index.js", function(accounts) {
             endingBlock: toBlock,
             monitorConfig: defaultMonitorConfig,
             tokenPriceFeedConfig: defaultTokenPricefeedConfig,
-            medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig
+            medianizerPriceFeedConfig: defaultMedianizerPricefeedConfig,
           });
         } catch (error) {
           errorString = error.toString();
@@ -316,7 +316,7 @@ contract("index.js", function(accounts) {
         assert.isTrue(errorString.includes("Contract version specified or inferred is not supported by this bot"));
       });
 
-      it("Correctly re-tries after failed execution loop", async function() {
+      it("Correctly re-tries after failed execution loop", async function () {
         // To validate re-try logic this test needs to get the monitor bot to throw within the main while loop. This is
         // not straightforward as the bot is designed to reject invalid configs before getting to the while loop. Once in the
         // while loop it should never throw errors as it gracefully falls over with situations like timed out API calls.
@@ -344,7 +344,7 @@ contract("index.js", function(accounts) {
         // Create a spy logger to catch all log messages to validate re-try attempts.
         spyLogger = winston.createLogger({
           level: "debug",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
 
         errorRetries = 3; // set execution retries to 3 to validate.
@@ -367,7 +367,7 @@ contract("index.js", function(accounts) {
             endingBlock: toBlock,
             monitorConfig: { ...defaultMonitorConfig, contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
             tokenPriceFeedConfig: defaultTokenPricefeedConfig,
-            medianizerPriceFeedConfig: defaultTokenPricefeedConfig
+            medianizerPriceFeedConfig: defaultTokenPricefeedConfig,
           });
         } catch (error) {
           errorThrown = true;
@@ -375,7 +375,7 @@ contract("index.js", function(accounts) {
         // Iterate over all log events and count the number of
         // execution loop errors.
         let reTryCounts = {
-          executionLoopErrors: 0
+          executionLoopErrors: 0,
         };
         for (let i = 0; i < spy.callCount; i++) {
           if (spyLogIncludes(spy, i, "An error was thrown in the execution loop")) reTryCounts.executionLoopErrors += 1;

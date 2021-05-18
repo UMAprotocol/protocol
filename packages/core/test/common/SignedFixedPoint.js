@@ -5,11 +5,11 @@ const SignedFixedPointTest = artifacts.require("SignedFixedPointTest");
 
 const { toWei, fromWei, toBN } = web3.utils;
 
-contract("SignedFixedPoint", function() {
+contract("SignedFixedPoint", function () {
   const int_max = toBN("57896044618658097711785492504343953926634992332820282019728792003956564819967");
   const int_min = toBN("-57896044618658097711785492504343953926634992332820282019728792003956564819968");
 
-  it("Construction", async function() {
+  it("Construction", async function () {
     const fixedPoint = await SignedFixedPointTest.new();
 
     assert.equal(await fixedPoint.wrapFromUnscaledInt("-53"), toWei("-53"));
@@ -58,16 +58,16 @@ contract("SignedFixedPoint", function() {
   const eq = (a, b) => a === b;
 
   // toWei wrapper that takes js numbers rather than strings.
-  const numToWei = a => toWei(a.toString());
+  const numToWei = (a) => toWei(a.toString());
 
-  it("Comparison", async function() {
+  it("Comparison", async function () {
     const fixedPoint = await SignedFixedPointTest.new();
 
     // Pairs of inputs that will be provided to each comparison functions.
     const inputPairs = [
       [1, 3],
       [2, 2],
-      [0, 0]
+      [0, 0],
     ];
 
     // A list of equivalent contract and js functions that we'd like to compare the output to.
@@ -76,7 +76,7 @@ contract("SignedFixedPoint", function() {
       [fixedPoint.wrapIsGreaterThanOrEqual, gte, "isGreaterThanOrEqual"],
       [fixedPoint.wrapIsEqual, eq, "isEqual"],
       [fixedPoint.wrapIsLessThanOrEqual, lte, "isLessThanOrEqual"],
-      [fixedPoint.wrapIsLessThan, lt, "isLessThan"]
+      [fixedPoint.wrapIsLessThan, lt, "isLessThan"],
     ];
 
     for (const [a, b] of inputPairs) {
@@ -90,21 +90,21 @@ contract("SignedFixedPoint", function() {
           contractFn,
           jsFn,
           (...args) => args.map(numToWei),
-          out => out,
+          (out) => out,
           fname
         );
       }
     }
   });
 
-  it("Mixed Comparison", async function() {
+  it("Mixed Comparison", async function () {
     const fixedPoint = await SignedFixedPointTest.new();
 
     // Pairs of inputs that will be provided to each comparison functions.
     const inputPairs = [
       [1, 3],
       [2, 2],
-      [0, 0]
+      [0, 0],
     ];
 
     const functionPairs = [
@@ -118,39 +118,39 @@ contract("SignedFixedPoint", function() {
         fixedPoint.wrapMixedIsGreaterThanOrEqualOpposite,
         gte,
         (a, b) => [a, numToWei(b)],
-        "mixedIsGreaterThanOrEqualOpposite"
+        "mixedIsGreaterThanOrEqualOpposite",
       ],
       [
         fixedPoint.wrapMixedIsLessThanOrEqualOpposite,
         lte,
         (a, b) => [a, numToWei(b)],
-        "mixedIsLessThanOrEqualOpposite"
+        "mixedIsLessThanOrEqualOpposite",
       ],
-      [fixedPoint.wrapMixedIsLessThanOpposite, lt, (a, b) => [a, numToWei(b)], "mixedIsLessThanOpposite"]
+      [fixedPoint.wrapMixedIsLessThanOpposite, lt, (a, b) => [a, numToWei(b)], "mixedIsLessThanOpposite"],
     ];
 
     for (const [a, b] of inputPairs) {
       for (const [contractFn, jsFn, inConv, fname] of functionPairs) {
         // Combine each pair of inputs with each pair of js and contract function to test each combination.
         // Note: this uses a custom input converter to handle the mixed versions.
-        await checkMatchingComputation(a, b, contractFn, jsFn, inConv, out => out, fname);
+        await checkMatchingComputation(a, b, contractFn, jsFn, inConv, (out) => out, fname);
       }
     }
   });
 
-  it("Minimum and Maximum", async function() {
+  it("Minimum and Maximum", async function () {
     const fixedPoint = await SignedFixedPointTest.new();
 
     const inputPairs = [
       [5, 6],
       [100, 0],
       [2390123, 9320492],
-      [0.001, 234]
+      [0.001, 234],
     ];
 
     const functionPairs = [
       [fixedPoint.wrapMin, Math.min, "min"],
-      [fixedPoint.wrapMax, Math.max, "max"]
+      [fixedPoint.wrapMax, Math.max, "max"],
     ];
 
     for (const [a, b] of inputPairs) {
@@ -164,14 +164,14 @@ contract("SignedFixedPoint", function() {
           contractFn,
           jsFn,
           (...args) => args.map(numToWei),
-          out => Number(fromWei(out)),
+          (out) => Number(fromWei(out)),
           fname
         );
       }
     }
   });
 
-  it("Basic addition and subtraction", async function() {
+  it("Basic addition and subtraction", async function () {
     const fixedPoint = await SignedFixedPointTest.new();
     const add = (a, b) => a + b;
     const sub = (a, b) => a - b;
@@ -180,7 +180,7 @@ contract("SignedFixedPoint", function() {
       [5, 6],
       [100, 0],
       [2390123, 9320492],
-      [1, 234]
+      [1, 234],
     ];
 
     const functionPairs = [
@@ -188,19 +188,19 @@ contract("SignedFixedPoint", function() {
       [fixedPoint.wrapSub, sub, (...args) => args.map(numToWei), "sub"],
       [fixedPoint.wrapMixedAdd, add, (a, b) => [numToWei(a), b], "mixedAdd"],
       [fixedPoint.wrapMixedSub, sub, (a, b) => [numToWei(a), b], "mixedSub"],
-      [fixedPoint.wrapMixedSubOpposite, sub, (a, b) => [a, numToWei(b)], "mixedSubOpposite"]
+      [fixedPoint.wrapMixedSubOpposite, sub, (a, b) => [a, numToWei(b)], "mixedSubOpposite"],
     ];
 
     for (const [a, b] of inputPairs) {
       for (const [contractFn, jsFn, convIn, fname] of functionPairs) {
         // Combine each pair of inputs with each pair of js and contract function to test each combination.
         // fromWei and convert all outputs to numbers.
-        await checkMatchingComputation(a, b, contractFn, jsFn, convIn, out => Number(fromWei(out)), fname);
+        await checkMatchingComputation(a, b, contractFn, jsFn, convIn, (out) => Number(fromWei(out)), fname);
       }
     }
   });
 
-  it("Basic multipication and division", async function() {
+  it("Basic multipication and division", async function () {
     const fixedPoint = await SignedFixedPointTest.new();
     const mul = (a, b) => a * b;
     const div = (a, b) => a / b;
@@ -208,7 +208,7 @@ contract("SignedFixedPoint", function() {
     const inputPairs = [
       [5, 6],
       [100, 32],
-      [2390123, 9320492]
+      [2390123, 9320492],
     ];
 
     const functionPairs = [
@@ -220,19 +220,19 @@ contract("SignedFixedPoint", function() {
       [fixedPoint.wrapMixedMulAwayFromZero, mul, (a, b) => [numToWei(a), b], "mixedMul"],
       [fixedPoint.wrapMixedDiv, div, (a, b) => [numToWei(a), b], "mixedDiv"],
       [fixedPoint.wrapMixedDivAwayFromZero, div, (a, b) => [numToWei(a), b], "mixedDiv"],
-      [fixedPoint.wrapMixedDivOpposite, div, (a, b) => [a, numToWei(b)], "mixedDivOpposite"]
+      [fixedPoint.wrapMixedDivOpposite, div, (a, b) => [a, numToWei(b)], "mixedDivOpposite"],
     ];
 
     for (const [a, b] of inputPairs) {
       for (const [contractFn, jsFn, convIn, fname] of functionPairs) {
         // Combine each pair of inputs with each pair of js and contract function to test each combination.
         // fromWei and convert all outputs to numbers.
-        await checkMatchingComputation(a, b, contractFn, jsFn, convIn, out => Number(fromWei(out)), fname);
+        await checkMatchingComputation(a, b, contractFn, jsFn, convIn, (out) => Number(fromWei(out)), fname);
       }
     }
   });
 
-  it("Addition/Subtraction Overflow/Underflow", async function() {
+  it("Addition/Subtraction Overflow/Underflow", async function () {
     const fixedPoint = await SignedFixedPointTest.new();
 
     // Reverts on overflow.
@@ -259,7 +259,7 @@ contract("SignedFixedPoint", function() {
     assert(await didContractThrow(fixedPoint.wrapMixedSubOpposite("2", int_min.add(toBN(toWei("1"))))));
   });
 
-  it("Multipication/Division Overflow/Underflow", async function() {
+  it("Multipication/Division Overflow/Underflow", async function () {
     const fixedPoint = await SignedFixedPointTest.new();
 
     // Reverts on overflow.
@@ -293,7 +293,7 @@ contract("SignedFixedPoint", function() {
     assert(await didContractThrow(fixedPoint.wrapMixedDivAwayFromZero(toWei("1"), bigDenominator)));
   });
 
-  it("Multiplication towards zero", async function() {
+  it("Multiplication towards zero", async function () {
     const fixedPoint = await SignedFixedPointTest.new();
 
     // Positives
@@ -328,7 +328,7 @@ contract("SignedFixedPoint", function() {
     assert.equal(product.toString(), "0");
   });
 
-  it("Multiplication, away from zero", async function() {
+  it("Multiplication, away from zero", async function () {
     const fixedPoint = await SignedFixedPointTest.new();
 
     // Positives
@@ -370,7 +370,7 @@ contract("SignedFixedPoint", function() {
     assert.equal(product.toString(), "-1");
   });
 
-  it("Division", async function() {
+  it("Division", async function () {
     const fixedPoint = await SignedFixedPointTest.new();
 
     // Positives
@@ -397,7 +397,7 @@ contract("SignedFixedPoint", function() {
     assert.equal(quotient.toString(), "0");
   });
 
-  it("Division, with ceil", async function() {
+  it("Division, with ceil", async function () {
     const fixedPoint = await SignedFixedPointTest.new();
 
     // Positives
@@ -424,7 +424,7 @@ contract("SignedFixedPoint", function() {
     assert.equal(quotient.toString(), "-1");
   });
 
-  it("Power", async function() {
+  it("Power", async function () {
     const fixedPoint = await SignedFixedPointTest.new();
 
     // Positives

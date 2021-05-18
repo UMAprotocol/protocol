@@ -1,5 +1,5 @@
 const { ZERO_ADDRESS } = require("@uma/common");
-const func = async function(hre) {
+const func = async function (hre) {
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
 
@@ -13,9 +13,9 @@ const func = async function(hre) {
     from: deployer,
     args: [Finder.address, TokenFactory.address, ZERO_ADDRESS],
     libraries: {
-      ExpiringMultiPartyLib: EMPLib.address
+      ExpiringMultiPartyLib: EMPLib.address,
     },
-    log: true
+    log: true,
   });
 };
 module.exports = func;

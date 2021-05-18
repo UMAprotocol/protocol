@@ -1,7 +1,7 @@
 const Voting = artifacts.require("Voting");
 const { moveToNextPhase } = require("../../utils/Voting.js");
 
-const run = async function(callback) {
+const run = async function (callback) {
   const voting = await Voting.deployed();
 
   const startingPhase = await voting.getVotePhase();

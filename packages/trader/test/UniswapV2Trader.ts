@@ -1,36 +1,33 @@
+import winston from "winston";
+import sinon from "sinon";
 import { web3, assert } from "hardhat";
-
 const { toWei, toBN, fromWei } = web3.utils;
 
-const { getTruffleContract } = require("@uma/core");
-
-// Script to test
-const { RangeTrader } = require("../src/RangeTrader");
-
-// Helper scripts
-const { createExchangeAdapter } = require("../src/exchange-adapters/CreateExchangeAdapter");
-
-const UniswapBroker = getTruffleContract("UniswapBroker");
-const Token = getTruffleContract("ExpandedERC20", web3);
-const WETH9 = getTruffleContract("WETH9", web3);
-const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);
-const DSProxy = getTruffleContract("DSProxy", web3);
-
-// Helper Contracts
-const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json");
-const IUniswapV2Pair = require("@uniswap/v2-core/build/IUniswapV2Pair.json");
-const UniswapV2Router02 = require("@uniswap/v2-periphery/build/UniswapV2Router02.json");
-
-const winston = require("winston");
-const sinon = require("sinon");
-const {
+import {
   SpyTransport,
   spyLogIncludes,
   PriceFeedMock,
   DSProxyManager,
   GasEstimator,
-  UniswapV2PriceFeed
-} = require("@uma/financial-templates-lib");
+  UniswapV2PriceFeed,
+} from "@uma/financial-templates-lib";
+import { getTruffleContract } from "@uma/core";
+
+// Script to test
+import { RangeTrader } from "../src/RangeTrader";
+
+// Helper scripts
+import { createExchangeAdapter } from "../src/exchange-adapters/CreateExchangeAdapter";
+
+const Token = getTruffleContract("ExpandedERC20", web3 as any);
+const WETH9 = getTruffleContract("WETH9", web3 as any);
+const DSProxyFactory = getTruffleContract("DSProxyFactory", web3 as any);
+const DSProxy = getTruffleContract("DSProxy", web3 as any);
+
+// Helper Contracts
+import UniswapV2Factory from "@uniswap/v2-core/build/UniswapV2Factory.json";
+import IUniswapV2Pair from "@uniswap/v2-core/build/IUniswapV2Pair.json";
+import UniswapV2Router02 from "@uniswap/v2-periphery/build/UniswapV2Router02.json";
 
 let accounts: string[];
 let deployer: string;
@@ -51,14 +48,13 @@ let tokenA: any;
 let tokenB: any;
 let uniswapFactory: any;
 let uniswapRouter: any;
-let uniswapBroker: any;
 let pair: any;
 let pairAddress: any;
 let WETH: any;
 let dsProxyFactory: any;
 
 // Takes in a json object from a compiled contract and returns a truffle contract instance that can be deployed.
-// TODO: these methods are taken from the UniswapBroker tests verbatim. they should be refactored to a common util that
+// TODO: these methods are taken from the UniswapV2Broker tests verbatim. they should be refactored to a common util that
 // can be re-used between different uniswap tests.
 const createContractObjectFromJson = (contractJsonObject: any) => {
   const contract = require("@truffle/contract");
@@ -74,8 +70,8 @@ const getPoolSpotPrice = async () => {
   return Number(fromWei(poolTokenABallance.mul(toBN(toWei("1"))).div(poolTokenBBallance))).toFixed(4);
 };
 
-describe("index.js", function() {
-  before(async function() {
+describe("UniswapV2Trader.js", function () {
+  before(async function () {
     accounts = await web3.eth.getAccounts();
     deployer = accounts[0];
     trader = accounts[1];
@@ -87,17 +83,15 @@ describe("index.js", function() {
     // deploy Uniswap V2 Factory & router.
     uniswapFactory = await createContractObjectFromJson(UniswapV2Factory).new(deployer, { from: deployer });
     uniswapRouter = await createContractObjectFromJson(UniswapV2Router02).new(uniswapFactory.address, WETH.address, {
-      from: deployer
+      from: deployer,
     });
-
-    // create a uniswapBroker
-    uniswapBroker = await UniswapBroker.new();
   });
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     // deploy traded tokens
     tokenA = await Token.new("TokenA", "TA", 18);
     tokenB = await Token.new("TokenB", "TB", 18);
+    if (tokenA.address.toLowerCase() < tokenB.address.toLowerCase()) [tokenA, tokenB] = [tokenB, tokenA];
 
     await tokenA.addMember(1, deployer, { from: deployer });
     await tokenB.addMember(1, deployer, { from: deployer });
@@ -111,21 +105,21 @@ describe("index.js", function() {
     spy = sinon.spy(); // Create a new spy for each test.
     spyLogger = winston.createLogger({
       level: "debug",
-      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
     });
 
     // Create the components needed for the RangeTrader. Create a "real" uniswap price feed, with the twapLength &
     // historicalLookback set to 1 such the the twap will update very quickly.
     tokenPriceFeed = new UniswapV2PriceFeed(
-      spyLogger,
-      IUniswapV2Pair.abi,
-      Token.abi,
+      spyLogger, // logger
+      IUniswapV2Pair.abi, // uniswapABI
+      Token.abi, // erc20Abi
       web3,
       pairAddress,
-      1,
-      1,
-      () => mockTime,
-      false
+      1, // twapLength
+      1, // historicalLookback
+      () => mockTime, // getTime
+      false // invertprice
     );
     referencePriceFeed = new PriceFeedMock(undefined, undefined, undefined, 18);
 
@@ -138,7 +132,7 @@ describe("index.js", function() {
       account: trader,
       dsProxyFactoryAddress: dsProxyFactory.address,
       dsProxyFactoryAbi: DSProxyFactory.abi,
-      dsProxyAbi: DSProxy.abi
+      dsProxyAbi: DSProxy.abi,
     });
 
     // Deploy a new DSProxy
@@ -147,17 +141,17 @@ describe("index.js", function() {
     traderDSProxyAddress = dsProxyManager.getDSProxyAddress();
 
     const exchangeAdapterConfig = {
-      type: "uniswap",
+      type: "uniswap-v2",
       tokenAAddress: tokenA.address,
       tokenBAddress: tokenB.address,
       uniswapRouterAddress: uniswapRouter.address,
-      uniswapFactoryAddress: uniswapFactory.address
+      uniswapFactoryAddress: uniswapFactory.address,
     };
 
-    exchangeAdapter = await createExchangeAdapter(spyLogger, web3, dsProxyManager, exchangeAdapterConfig);
+    exchangeAdapter = await createExchangeAdapter(spyLogger, web3, dsProxyManager, exchangeAdapterConfig, 0);
 
     // run the tests with no configs provided. Defaults to tradeExecutionThreshold = 5% and targetPriceSpread =5%
-    rangeTrader = new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, null);
+    rangeTrader = new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, {});
 
     // Seed the dsProxy wallet.
     await tokenA.mint(traderDSProxyAddress, toWei("100000000000000"));
@@ -167,10 +161,10 @@ describe("index.js", function() {
     await tokenA.mint(externalTrader, toWei("100000000000000"));
     await tokenB.mint(externalTrader, toWei("100000000000000"));
     await tokenA.approve(uniswapRouter.address, toWei("100000000000000"), {
-      from: externalTrader
+      from: externalTrader,
     });
     await tokenB.approve(uniswapRouter.address, toWei("100000000000000"), {
-      from: externalTrader
+      from: externalTrader,
     });
 
     // For these test, say the synthetic starts trading at uniswap at 1000 TokenA/TokenB. To set this up we will seed the
@@ -183,7 +177,7 @@ describe("index.js", function() {
     await tokenPriceFeed.update();
   });
 
-  it("Correctly detects overpriced tokens and executes trades", async function() {
+  it("Correctly detects overpriced tokens and executes trades", async function () {
     // The default behavior of the bot is to preform a trade if and only if the absolute error is greater than 20%. If
     //  it is then trade the error down to 5%. To start with, the tokenPriceFeed and referencePriceFeed should both
     // equal 1000, due to the seeing, where no trading should be done as no error between the feeds.
@@ -220,20 +214,21 @@ describe("index.js", function() {
     mockTime = Number((await web3.eth.getBlock("latest")).timestamp) + 1;
     await tokenPriceFeed.update();
     assert.equal(Number(fromWei(tokenPriceFeed.getCurrentPrice())).toFixed(4), currentSpotPrice.toString());
-
     // Next, execute the bot's trading method and ensure the trade is executed as expected. Note that the default
     // config for the bot is to try and trade the price back to within 5% of the reference price. After this trade the
     // spot price should be 1050.
     blockNumberBefore = await web3.eth.getBlockNumber();
     await rangeTrader.checkRangeMovementsAndTrade();
+    await tokenPriceFeed.update();
     assert.equal(await web3.eth.getBlockNumber(), blockNumberBefore + 1); // The block number should have been incremented by 1 as a trade was done
 
     // Validate that the correct log messages were produced.
-    assert.isTrue(spyLogIncludes(spy, -5, "Checking if the priceFeed error exceeds the threshold"));
-    assert.isTrue(spyLogIncludes(spy, -4, "The deviationError is greater than the threshold to execute a trade"));
-    assert.isTrue(spyLogIncludes(spy, -3, "Executing function on library"));
+    assert.isTrue(spyLogIncludes(spy, -6, "Checking if the priceFeed error exceeds the threshold"));
+    assert.isTrue(spyLogIncludes(spy, -5, "The deviationError is greater than the threshold to execute a trade"));
+    assert.isTrue(spyLogIncludes(spy, -4, "Executing function on library"));
+    assert.isTrue(spyLogIncludes(spy, -3, "Gas estimator"));
     assert.isTrue(spyLogIncludes(spy, -2, "Executed function on a freshly deployed library"));
-    assert.isTrue(spyLogIncludes(spy, -1, "Exchange adapter has executed a trade successfully"));
+    assert.isTrue(spyLogIncludes(spy, -1, "exchange adapter has executed a trade successfully"));
 
     // Validate the last message contains the right spot price and deviation error.
     const latestWinstonLog = spy.getCall(-1).lastArg;
@@ -257,12 +252,21 @@ describe("index.js", function() {
     assert.isTrue(spyLogIncludes(spy, -2, "Checking if the priceFeed error exceeds the threshold"));
     assert.isTrue(spyLogIncludes(spy, -1, "less than the threshold to execute a trade"));
   });
-  it("Correctly detects underpriced tokens and executes trades", async function() {
+  it("Correctly detects underpriced tokens and executes trades", async function () {
     // This test is very similar to the previous one but instead of setting the synth to be overpriced we set to to
     // underpriced. To get directly to the test case we can simply set the reference price feed to be greater than the
     // synthetic dex price + the threshold. Any price for the reference feed over 1250 should trigger a trade as the %
     // error is calculated using δ = (observed - expected) / expected where δ = (1000 - 1250) / 1250 = 0.2. If we set it
     // to 1249 we should not execute a trade as the price is right below the execution threshold of 20%.
+
+    // First, double check everything is set correctly to start with.
+    assert.equal(await getPoolSpotPrice(), "1000.0000"); // price should be exactly 1000 TokenA/TokenB before any trades.
+    await tokenPriceFeed.update();
+    assert.equal(tokenPriceFeed.getLastBlockPrice().toString(), toWei("1000"));
+    assert.equal(tokenPriceFeed.getCurrentPrice(), toWei("1000"));
+    assert.equal(referencePriceFeed.getCurrentPrice(), toWei("1000"));
+
+    // Move the price to just below the threshold and ensure no trade.
     referencePriceFeed.setCurrentPrice(toWei("1249"));
     let blockNumberBefore = await web3.eth.getBlockNumber();
     await rangeTrader.checkRangeMovementsAndTrade();
@@ -277,11 +281,12 @@ describe("index.js", function() {
     assert.equal(await web3.eth.getBlockNumber(), blockNumberBefore + 1); // The block number should have incremented due to the trade.
 
     // Validate that the correct log messages were produced.
-    assert.isTrue(spyLogIncludes(spy, -5, "Checking if the priceFeed error exceeds the threshold"));
-    assert.isTrue(spyLogIncludes(spy, -4, "The deviationError is greater than the threshold to execute a trade"));
-    assert.isTrue(spyLogIncludes(spy, -3, "Executing function on library"));
+    assert.isTrue(spyLogIncludes(spy, -6, "Checking if the priceFeed error exceeds the threshold"));
+    assert.isTrue(spyLogIncludes(spy, -5, "The deviationError is greater than the threshold to execute a trade"));
+    assert.isTrue(spyLogIncludes(spy, -4, "Executing function on library"));
+    assert.isTrue(spyLogIncludes(spy, -3, "Gas estimator"));
     assert.isTrue(spyLogIncludes(spy, -2, "Executed function on a freshly deployed library"));
-    assert.isTrue(spyLogIncludes(spy, -1, "Exchange adapter has executed a trade successfully"));
+    assert.isTrue(spyLogIncludes(spy, -1, "exchange adapter has executed a trade successfully"));
 
     // The spot price should be set to 5% below the reference price feed as the bot was trading up from the previous number.
     // This yields 1250*0.95 ~= 1187 as the expected market price.
@@ -290,47 +295,41 @@ describe("index.js", function() {
     assert.equal(parseFloat(spy.getCall(-1).lastArg.postTradePriceDeviationError.replace("%", "")).toFixed(0), "-5");
   });
 
-  it("Correctly rejects invalid config and params", async function() {
+  it("Correctly rejects invalid config and params", async function () {
     // tradeExecutionThreshold should only be strictly larger than 0.
 
     assert.throws(() => {
       new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, {
-        tradeExecutionThreshold: -1
+        tradeExecutionThreshold: -1,
       });
     });
     assert.throws(() => {
       new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, {
-        tradeExecutionThreshold: 0
+        tradeExecutionThreshold: 0,
       });
     });
 
     // targetPriceSpread should only be larger than 0 and smaller than or equal to 1.
     assert.throws(() => {
-      new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, {
-        targetPriceSpread: -1
-      });
+      new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, { targetPriceSpread: -1 });
     });
     assert.throws(() => {
-      new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, {
-        targetPriceSpread: 0
-      });
+      new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, { targetPriceSpread: 0 });
     });
     assert.throws(() => {
-      new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, {
-        targetPriceSpread: 1.1
-      });
+      new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, { targetPriceSpread: 1.1 });
     });
 
     // rejects inconsistent price feed decimals
     const nonStandardDecimalPriceFeed = new PriceFeedMock(undefined, undefined, undefined, 17);
     assert.throws(() => {
-      new RangeTrader(spyLogger, web3, nonStandardDecimalPriceFeed, referencePriceFeed, exchangeAdapter);
+      new RangeTrader(spyLogger, web3, nonStandardDecimalPriceFeed, referencePriceFeed, exchangeAdapter, {});
     });
   });
-  it("Correctly respects custom trade threshold configs", async function() {
+  it("Correctly respects custom trade threshold configs", async function () {
     const customRangeTrader = new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, {
       tradeExecutionThreshold: 0.5, // Only trade if price greater than 50%.
-      targetPriceSpread: 0.2 // Trade price back to within 20% of the "true" price.
+      targetPriceSpread: 0.2, // Trade price back to within 20% of the "true" price.
     });
 
     assert.equal(customRangeTrader.tradeExecutionThreshold, 0.5);

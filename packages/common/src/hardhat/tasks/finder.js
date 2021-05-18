@@ -14,7 +14,7 @@ task("setup-finder", "Points Finder to DVM system contracts")
   .addFlag("sinkoracle", "Use if you want to set SinkOracle as the Oracle")
   .addFlag("prod", "Configure production setup in Finder")
   .addFlag("test", "Configure test setup in Finder")
-  .setAction(async function(taskArguments, hre) {
+  .setAction(async function (taskArguments, hre) {
     const { deployments, getNamedAccounts, web3 } = hre;
     const { padRight, utf8ToHex } = web3.utils;
     const { deployer } = await getNamedAccounts();
@@ -30,7 +30,7 @@ task("setup-finder", "Points Finder to DVM system contracts")
       optimisticoracle,
       sinkoracle,
       prod,
-      test
+      test,
     } = taskArguments;
 
     assert(!(sinkoracle && mockoracle), "Cannot set both SinkOracle and MockOracle to Oracle in Finder");
@@ -69,7 +69,7 @@ task("setup-finder", "Points Finder to DVM system contracts")
       const currentlySetAddress = await finder.methods.interfacesImplemented(identifierHex).call();
       if (currentlySetAddress !== contract.options.address) {
         const txn = await finder.methods.changeImplementationAddress(identifierHex, contract.options.address).send({
-          from: deployer
+          from: deployer,
         });
         console.log(
           `Set ${contractName} in Finder to "${interfaceName[contractName]}" @ ${contract.options.address}, tx: ${txn.transactionHash}`

@@ -6,13 +6,11 @@ const moment = require("moment");
 const { parseFixed } = require("@uma/common");
 const sinon = require("sinon");
 
-contract("QuandlPriceFeed.js", function() {
+contract("QuandlPriceFeed.js", function () {
   let quandlPriceFeed;
   // Keep test timezone consistent with price feed's. Set mock time equal to
   // close of the most recent day.
-  let mockTime = moment("2021-03-12", "YYYY-MM-DD")
-    .endOf("day")
-    .unix();
+  let mockTime = moment("2021-03-12", "YYYY-MM-DD").endOf("day").unix();
   let networker;
   let spy;
 
@@ -27,7 +25,7 @@ contract("QuandlPriceFeed.js", function() {
   const { toBN } = web3.utils;
   const pricePrecision = 6;
 
-  const convertPriceFeedDecimals = number => {
+  const convertPriceFeedDecimals = (number) => {
     return toBN(parseFixed(number.toString().substring(0, pricePrecision), pricePrecision).toString());
   };
   // Fake data to inject. Stress test with prices with lots of decimals
@@ -44,7 +42,7 @@ contract("QuandlPriceFeed.js", function() {
           "Change",
           "Settle",
           "Volume",
-          "Previous Day Open Interest"
+          "Previous Day Open Interest",
         ],
         start_date: "2021-03-09",
         end_date: "2021-03-12",
@@ -53,20 +51,20 @@ contract("QuandlPriceFeed.js", function() {
           ["2021-03-12", 1720.12222222222, 1727.9, 1696.6, 1725.2222222222, -2.8, 1719.8, 64823.0, 21102.0],
           ["2021-03-11", 1725.02222222222, 1738.0, 1716.7, 1720.9222222222, 0.8, 1722.6, 51362.0, 20996.0],
           ["2021-03-10", 1714.62222222222, 1725.4, 1705.8, 1725.2222222222, 4.9, 1721.8, 45206.0, 20960.0],
-          ["2021-03-09", 1679.52222222222, 1718.8, 1676.8, 1714.1222222222, 38.9, 1716.9, 56794.0, 22221.0]
+          ["2021-03-09", 1679.52222222222, 1718.8, 1676.8, 1714.1222222222, 38.9, 1716.9, 56794.0, 22221.0],
         ],
-        collapse: "daily"
-      }
-    }
+        collapse: "daily",
+      },
+    },
   ];
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     spy = sinon.spy();
     networker = new NetworkerMock();
     quandlPriceFeed = new QuandlPriceFeed(
       winston.createLogger({
         level: "info",
-        transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+        transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
       }),
       web3,
       apiKey,
@@ -79,14 +77,14 @@ contract("QuandlPriceFeed.js", function() {
     );
   });
 
-  it("No update", async function() {
+  it("No update", async function () {
     assert.equal(quandlPriceFeed.getCurrentPrice(), undefined);
     assert.isTrue(await quandlPriceFeed.getHistoricalPrice(1000).catch(() => true));
     assert.equal(quandlPriceFeed.getLastUpdateTime(), undefined);
     assert.equal(quandlPriceFeed.getLookback(), lookback);
   });
 
-  it("Basic historical price", async function() {
+  it("Basic historical price", async function () {
     // Inject data.
     networker.getJsonReturns = [...validResponses];
 
@@ -129,7 +127,7 @@ contract("QuandlPriceFeed.js", function() {
     );
   });
 
-  it("Basic current price", async function() {
+  it("Basic current price", async function () {
     // Inject data.
     networker.getJsonReturns = [...validResponses];
 
@@ -139,7 +137,7 @@ contract("QuandlPriceFeed.js", function() {
     assert.equal(quandlPriceFeed.getCurrentPrice().toString(), convertPriceFeedDecimals("1725.222222"));
   });
 
-  it("Last update time", async function() {
+  it("Last update time", async function () {
     // Inject data.
     networker.getJsonReturns = [...validResponses];
 
@@ -149,7 +147,7 @@ contract("QuandlPriceFeed.js", function() {
     assert.equal(quandlPriceFeed.getLastUpdateTime(), mockTime);
   });
 
-  it("No or bad response", async function() {
+  it("No or bad response", async function () {
     // Bad price response.
     networker.getJsonReturns = [
       {
@@ -157,24 +155,24 @@ contract("QuandlPriceFeed.js", function() {
           data: [
             // Some missing daily data
             [],
-            ["2021-03-12", 1720.12222222222, 1727.9, 1696.6, 1725.2222222222, -2.8, 1719.8, 64823.0, 21102.0]
-          ]
-        }
+            ["2021-03-12", 1720.12222222222, 1727.9, 1696.6, 1725.2222222222, -2.8, 1719.8, 64823.0, 21102.0],
+          ],
+        },
       },
       {
         dataset_data: {
           // Empty data array
-          data: []
-        }
+          data: [],
+        },
       },
       {
         dataset_data: {
           // Missing data array
-        }
+        },
       },
       {
-        error: "test"
-      }
+        error: "test",
+      },
     ];
 
     // Update should throw errors in all cases.
@@ -187,7 +185,7 @@ contract("QuandlPriceFeed.js", function() {
     assert.isTrue(await quandlPriceFeed.getHistoricalPrice(mockTime).catch(() => true));
   });
 
-  it("Update frequency", async function() {
+  it("Update frequency", async function () {
     networker.getJsonReturns = [...validResponses];
 
     await quandlPriceFeed.update();

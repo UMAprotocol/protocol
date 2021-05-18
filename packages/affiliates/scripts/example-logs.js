@@ -45,6 +45,4 @@ async function runTest() {
   // console.log(balances.getTokens().snapshot())
 }
 
-runTest()
-  .then(console.log)
-  .catch(console.log);
+runTest().then(console.log).catch(console.log);

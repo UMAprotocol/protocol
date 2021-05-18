@@ -11,16 +11,16 @@ const {
   interfaceName,
   getKeysForNetwork,
   deploy,
-  enableControllableTiming
+  enableControllableTiming,
 } = require("@uma/common");
 
-module.exports = async function(deployer, network, accounts) {
+module.exports = async function (deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
   const controllableTiming = enableControllableTiming(network);
 
   // Deploy CollateralWhitelist.
   const { contract: collateralWhitelist } = await deploy(deployer, network, AddressWhitelist, {
-    from: keys.deployer
+    from: keys.deployer,
   });
 
   // Add CollateralWhitelist to finder.
@@ -29,7 +29,7 @@ module.exports = async function(deployer, network, accounts) {
     web3.utils.utf8ToHex(interfaceName.CollateralWhitelist),
     collateralWhitelist.address,
     {
-      from: keys.deployer
+      from: keys.deployer,
     }
   );
 

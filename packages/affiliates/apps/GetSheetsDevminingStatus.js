@@ -24,7 +24,7 @@ const SHEET_COLUMNS = [
   ["empAddress", 4, parseAddressFromEtherscan],
   ["enabled", 5, isEnabled],
   ["empVersion", 6],
-  ["fallbackValue", 7]
+  ["fallbackValue", 7],
 ];
 
 function getRangeString(rows = 100, tab = "Developer Mining", skipRow = 2) {
@@ -51,7 +51,7 @@ async function getNewToken(oAuth2Client) {
   assert(oAuth2Client, "requires oath2client");
   const authUrl = oAuth2Client.generateAuthUrl({
     access_type: "offline",
-    scope: SCOPES
+    scope: SCOPES,
   });
   console.log("Authorize this app by visiting this url:", authUrl);
   prompt.start();
@@ -96,7 +96,7 @@ function parseSheet(sheet, columns = SHEET_COLUMNS) {
 
 // Filters out inactive emp addresses
 function filterActive(list) {
-  return list.filter(data => {
+  return list.filter((data) => {
     return data.empAddress && data.empAddress.length && data.payoutAddress && data.payoutAddress.length && data.enabled;
   });
 }
@@ -118,12 +118,10 @@ async function run() {
   const request = {
     spreadsheetId: process.env.SHEET_ID,
     // / Get 100 rows. Skips first row which is header info.
-    range: getRangeString(100, process.env.SHEET_TAB)
+    range: getRangeString(100, process.env.SHEET_TAB),
   };
   const result = await sheets.spreadsheets.values.get(request);
   return JSON.stringify(filterActive(parseSheet(result.data)), null, 2);
 }
 
-run()
-  .then(console.log)
-  .catch(console.log);
+run().then(console.log).catch(console.log);

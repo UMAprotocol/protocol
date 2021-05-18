@@ -31,7 +31,7 @@ const UMIP_PRECISION = {
   "STABLESPREAD/USDC": 6,
   STABLESPREAD: 8,
   "ELASTIC_STABLESPREAD/USDC": 6,
-  ETHBTC_FR: 9
+  ETHBTC_FR: 9,
 };
 const DEFAULT_PRECISION = 5;
 
@@ -64,7 +64,7 @@ async function getHistoricalPrice(callback) {
 
     // Create and update a new default price feed.
     let dummyLogger = winston.createLogger({
-      silent: true
+      silent: true,
     });
     let priceFeedConfig = {
       // Empirically, Cryptowatch API only returns data up to ~4 days back so that's why we default the lookback
@@ -72,7 +72,7 @@ async function getHistoricalPrice(callback) {
       lookback,
       priceFeedDecimals: 18, // Ensure all prices come out as 18-decimal denominated so the fromWei conversion works at the end.
       // Append price feed config params from environment such as "apiKey" for CryptoWatch price feeds.
-      ...(process.env.PRICE_FEED_CONFIG ? JSON.parse(process.env.PRICE_FEED_CONFIG) : {})
+      ...(process.env.PRICE_FEED_CONFIG ? JSON.parse(process.env.PRICE_FEED_CONFIG) : {}),
     };
     const defaultPriceFeed = await createReferencePriceFeedForFinancialContract(
       dummyLogger,

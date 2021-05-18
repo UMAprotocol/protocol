@@ -1,6 +1,6 @@
 const { ZERO_ADDRESS } = require("@uma/common");
 
-const func = async function(hre) {
+const func = async function (hre) {
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
 
@@ -12,7 +12,7 @@ const func = async function(hre) {
   await deploy("MockOracleAncillary", {
     from: deployer,
     args,
-    log: true
+    log: true,
   });
 };
 module.exports = func;

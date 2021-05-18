@@ -6,16 +6,12 @@ const moment = require("moment-timezone");
 const { parseFixed } = require("@uma/common");
 const sinon = require("sinon");
 
-contract("ForexDailyPriceFeed.js", function() {
+contract("ForexDailyPriceFeed.js", function () {
   let forexPriceFeed;
   // Keep test timezone consistent with price feed's. The API uses data published daily by the
   // ECB at 16:00 CET. Therefore, to convert from datestring to unix,
   // first convert to CET, and then add 16 hours, since the API "begins" days at 16:00.
-  let mockTime = moment
-    .tz("2021-03-12", "YYYY-MM-DD", "Europe/Berlin")
-    .endOf("day")
-    .add(16, "hours")
-    .unix();
+  let mockTime = moment.tz("2021-03-12", "YYYY-MM-DD", "Europe/Berlin").endOf("day").add(16, "hours").unix();
   let networker;
   let spy;
 
@@ -29,7 +25,7 @@ contract("ForexDailyPriceFeed.js", function() {
   const { toBN } = web3.utils;
   const pricePrecision = 6;
 
-  const convertPriceFeedDecimals = number => {
+  const convertPriceFeedDecimals = (number) => {
     return toBN(parseFixed(number.toString().substring(0, pricePrecision), pricePrecision).toString());
   };
   // Fake data to inject. Stress test with prices with lots of decimals
@@ -38,31 +34,31 @@ contract("ForexDailyPriceFeed.js", function() {
     {
       rates: {
         "2021-03-09": {
-          USD: 1.1933333333333333
+          USD: 1.1933333333333333,
         },
         "2021-03-10": {
-          USD: 1.1923333333333333
+          USD: 1.1923333333333333,
         },
         "2021-03-11": {
-          USD: 1.19263333333333333
+          USD: 1.19263333333333333,
         },
         "2021-03-12": {
-          USD: 1.19163333333333333
-        }
+          USD: 1.19163333333333333,
+        },
       },
       start_at: "2021-03-10",
       base: "EUR",
-      end_at: "2021-03-12"
-    }
+      end_at: "2021-03-12",
+    },
   ];
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     spy = sinon.spy();
     networker = new NetworkerMock();
     forexPriceFeed = new ForexDailyPriceFeed(
       winston.createLogger({
         level: "info",
-        transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+        transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
       }),
       web3,
       base,
@@ -74,20 +70,20 @@ contract("ForexDailyPriceFeed.js", function() {
     );
   });
 
-  it("No update", async function() {
+  it("No update", async function () {
     assert.equal(forexPriceFeed.getCurrentPrice(), undefined);
     assert.isTrue(await forexPriceFeed.getHistoricalPrice(1000).catch(() => true));
     assert.equal(forexPriceFeed.getLastUpdateTime(), undefined);
     assert.equal(forexPriceFeed.getLookback(), lookback);
   });
 
-  it("Invalid base or symbol", async function() {
+  it("Invalid base or symbol", async function () {
     let errorThrown = false;
     try {
       forexPriceFeed = new ForexDailyPriceFeed(
         winston.createLogger({
           level: "info",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         }),
         web3,
         "invalid",
@@ -107,7 +103,7 @@ contract("ForexDailyPriceFeed.js", function() {
       forexPriceFeed = new ForexDailyPriceFeed(
         winston.createLogger({
           level: "info",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         }),
         web3,
         base,
@@ -123,7 +119,7 @@ contract("ForexDailyPriceFeed.js", function() {
     assert.isTrue(errorThrown);
   });
 
-  it("Basic historical price", async function() {
+  it("Basic historical price", async function () {
     // Inject data.
     networker.getJsonReturns = [...validResponses];
 
@@ -163,7 +159,7 @@ contract("ForexDailyPriceFeed.js", function() {
     );
   });
 
-  it("Basic current price", async function() {
+  it("Basic current price", async function () {
     // Inject data.
     networker.getJsonReturns = [...validResponses];
 
@@ -173,7 +169,7 @@ contract("ForexDailyPriceFeed.js", function() {
     assert.equal(forexPriceFeed.getCurrentPrice().toString(), convertPriceFeedDecimals("1.191633"));
   });
 
-  it("Last update time", async function() {
+  it("Last update time", async function () {
     // Inject data.
     networker.getJsonReturns = [...validResponses];
 
@@ -183,21 +179,21 @@ contract("ForexDailyPriceFeed.js", function() {
     assert.equal(forexPriceFeed.getLastUpdateTime(), mockTime);
   });
 
-  it("No or bad response", async function() {
+  it("No or bad response", async function () {
     // Bad price response.
     networker.getJsonReturns = [
       {
         rates: {
           // Valid response, just missing some data points.
-          "2021-03-09": {}
-        }
+          "2021-03-09": {},
+        },
       },
       {
-        rates: {}
+        rates: {},
       },
       {
-        error: "test"
-      }
+        error: "test",
+      },
     ];
 
     // Update should throw errors in all cases.
@@ -209,7 +205,7 @@ contract("ForexDailyPriceFeed.js", function() {
     assert.isTrue(await forexPriceFeed.getHistoricalPrice(mockTime).catch(() => true));
   });
 
-  it("Update frequency", async function() {
+  it("Update frequency", async function () {
     networker.getJsonReturns = [...validResponses];
 
     await forexPriceFeed.update();

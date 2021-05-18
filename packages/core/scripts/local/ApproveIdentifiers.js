@@ -1,7 +1,7 @@
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const identifiers = require("../../config/identifiers");
 
-const approveIdentifiers = async function(callback) {
+const approveIdentifiers = async function (callback) {
   try {
     const deployer = (await web3.eth.getAccounts())[0];
 

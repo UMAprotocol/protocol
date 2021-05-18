@@ -11,7 +11,7 @@ const minterRoleEnumValue = 1;
 
 const { toWei } = web3.utils;
 
-module.exports = async function(deployer, network, accounts) {
+module.exports = async function (deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
 
   // Get the old address if this isn't the first deployment.

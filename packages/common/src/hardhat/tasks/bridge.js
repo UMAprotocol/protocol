@@ -11,14 +11,14 @@ task("register-generic-resource", "Admin can set generic resource ID on Bridge")
   .addParam("target", "Contract to delegate call to for this resource ID", ZERO_ADDRESS, types.string)
   .addOptionalParam("deposit", "Deposit function prototype string (e.g. func(uint256,bool))", null, types.string)
   .addOptionalParam("execute", "Contract to delegate call to for this resource ID", null, types.string)
-  .setAction(async function(taskArguments, hre) {
+  .setAction(async function (taskArguments, hre) {
     const { deployments, getNamedAccounts, web3 } = hre;
     const { deployer } = await getNamedAccounts();
     const { id, target, deposit, execute } = taskArguments;
     const { utf8ToHex, sha3 } = web3.utils;
 
     // Returns first 4 bytes of the sha3 hash of the function name including types/
-    const _getFunctionSignature = functionPrototypeString => {
+    const _getFunctionSignature = (functionPrototypeString) => {
       return sha3(utf8ToHex(functionPrototypeString)).substr(0, 10);
     };
 

@@ -9,8 +9,8 @@ function DesignatedVotingTransfer({ votingAccount }) {
   const { web3 } = drizzle;
   const classes = useTableStyles();
 
-  const { account } = drizzleReactHooks.useDrizzleState(drizzleState => ({
-    account: drizzleState.accounts[0]
+  const { account } = drizzleReactHooks.useDrizzleState((drizzleState) => ({
+    account: drizzleState.accounts[0],
   }));
 
   const currentAccountBalance = useCacheCall("VotingToken", "balanceOf", account);

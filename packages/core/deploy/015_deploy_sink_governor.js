@@ -1,4 +1,4 @@
-const func = async function(hre) {
+const func = async function (hre) {
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
 
@@ -9,7 +9,7 @@ const func = async function(hre) {
   await deploy("SinkGovernor", {
     from: deployer,
     args: [Finder.address],
-    log: true
+    log: true,
   });
 };
 module.exports = func;
