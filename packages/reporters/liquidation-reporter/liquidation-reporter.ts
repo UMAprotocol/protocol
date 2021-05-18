@@ -23,6 +23,8 @@ import {
 } from "@uma/merkle-distributor/kpi-options-helpers/calculate-uma-tvl";
 
 export async function fetchUmaEcosystemData() {
+  console.log("Fetching UMA Ecosystem Data 🧙");
+
   // Fetch all info about all UMA financial contracts that have collateral in them.
   const allFinancialContractsData = await getAllFinancialContractsData();
   const collateralInfoWithValue = evaluateFinancialContractCollateral(allFinancialContractsData);
