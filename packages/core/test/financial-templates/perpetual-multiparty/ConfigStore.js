@@ -18,7 +18,7 @@ async function incrementTime(contract, amount) {
   await contract.setCurrentTime(Number(currentTime) + amount);
 }
 
-contract("ConfigStore", function(accounts) {
+contract("ConfigStore", function (accounts) {
   let timer;
   let configStore;
 
@@ -31,7 +31,7 @@ contract("ConfigStore", function(accounts) {
     proposerBondPercentage: { rawValue: toWei("0.0001") },
     maxFundingRate: { rawValue: toWei("0.00001") },
     minFundingRate: { rawValue: toWei("-0.00001") },
-    proposalTimePastLimit: 1800 // 30 mins
+    proposalTimePastLimit: 1800, // 30 mins
   };
   let defaultConfig = {
     timelockLiveness: 86400, // 1 day
@@ -39,7 +39,7 @@ contract("ConfigStore", function(accounts) {
     proposerBondPercentage: { rawValue: "0" },
     maxFundingRate: { rawValue: toWei("0") },
     minFundingRate: { rawValue: toWei("0") },
-    proposalTimePastLimit: 0
+    proposalTimePastLimit: 0,
   };
 
   async function currentConfigMatchesInput(_store, _inputConfig) {
@@ -82,8 +82,8 @@ contract("ConfigStore", function(accounts) {
     timer = await Timer.deployed();
   });
 
-  describe("Construction", function() {
-    it("Default values get set", async function() {
+  describe("Construction", function () {
+    it("Default values get set", async function () {
       configStore = await ConfigStore.new(testConfig, timer.address);
       let config = await configStore.updateAndGetCurrentConfig.call();
       assert.equal(config.timelockLiveness.toString(), testConfig.timelockLiveness.toString());
@@ -94,24 +94,24 @@ contract("ConfigStore", function(accounts) {
       assert.equal(config.proposalTimePastLimit.toString(), testConfig.proposalTimePastLimit.toString());
       await storeHasNoPendingConfig(configStore);
     });
-    it("Invalid default values revert on construction", async function() {
+    it("Invalid default values revert on construction", async function () {
       // Invalid timelock
       let invalidConfig = {
         ...testConfig,
-        timelockLiveness: 0
+        timelockLiveness: 0,
       };
       assert(await didContractThrow(ConfigStore.new(invalidConfig, timer.address)));
 
       // Invalid reward rate
       invalidConfig = {
         ...testConfig,
-        rewardRatePerSecond: { rawValue: toWei("0.00000331") }
+        rewardRatePerSecond: { rawValue: toWei("0.00000331") },
       };
       assert(await didContractThrow(ConfigStore.new(invalidConfig, timer.address)));
     });
   });
-  describe("Proposing a new configuration", function() {
-    it("Basic propose and publish test", async function() {
+  describe("Proposing a new configuration", function () {
+    it("Basic propose and publish test", async function () {
       // Propose a config and advance to timelock expiry.
       configStore = await ConfigStore.new(defaultConfig, timer.address);
 
@@ -121,7 +121,7 @@ contract("ConfigStore", function(accounts) {
       // Propose a config and check events
       let proposeTime = await configStore.getCurrentTime();
       let proposeTxn = await configStore.proposeNewConfig(testConfig);
-      truffleAssert.eventEmitted(proposeTxn, "ProposedNewConfigSettings", ev => {
+      truffleAssert.eventEmitted(proposeTxn, "ProposedNewConfigSettings", (ev) => {
         return (
           ev.proposer === owner &&
           ev.rewardRatePerSecond.toString() === testConfig.rewardRatePerSecond.rawValue &&
@@ -138,7 +138,7 @@ contract("ConfigStore", function(accounts) {
       // Pending config can be published with propose(). In the next test we'll test that publishPendingConfig
       // also updates pending configs.
       proposeTxn = await configStore.proposeNewConfig(testConfig);
-      truffleAssert.eventEmitted(proposeTxn, "ChangedConfigSettings", ev => {
+      truffleAssert.eventEmitted(proposeTxn, "ChangedConfigSettings", (ev) => {
         return (
           ev.rewardRatePerSecond.toString() === testConfig.rewardRatePerSecond.rawValue &&
           ev.proposerBondPercentage.toString() === testConfig.proposerBondPercentage.rawValue &&
@@ -152,13 +152,13 @@ contract("ConfigStore", function(accounts) {
       // Current config is updated
       await currentConfigMatchesInput(configStore, testConfig);
     });
-    it("Proposals overwriting pending proposals", async function() {
+    it("Proposals overwriting pending proposals", async function () {
       configStore = await ConfigStore.new(defaultConfig, timer.address);
 
       // Propose new config.
       const proposeTime = await configStore.getCurrentTime();
       let proposeTxn = await configStore.proposeNewConfig(testConfig);
-      truffleAssert.eventEmitted(proposeTxn, "ProposedNewConfigSettings", ev => {
+      truffleAssert.eventEmitted(proposeTxn, "ProposedNewConfigSettings", (ev) => {
         return (
           ev.proposer === owner &&
           ev.rewardRatePerSecond.toString() === testConfig.rewardRatePerSecond.rawValue &&
@@ -194,11 +194,11 @@ contract("ConfigStore", function(accounts) {
       // Proposing a new config overwrites the pending proposal.
       let test2Config = {
         ...testConfig,
-        timelockLiveness: 86402
+        timelockLiveness: 86402,
       };
       const overwriteProposalTime = await configStore.getCurrentTime();
       proposeTxn = await configStore.proposeNewConfig(test2Config);
-      truffleAssert.eventEmitted(proposeTxn, "ProposedNewConfigSettings", ev => {
+      truffleAssert.eventEmitted(proposeTxn, "ProposedNewConfigSettings", (ev) => {
         return (
           ev.proposer === owner &&
           ev.rewardRatePerSecond.toString() === test2Config.rewardRatePerSecond.rawValue &&
@@ -235,7 +235,7 @@ contract("ConfigStore", function(accounts) {
       await incrementTime(configStore, 1);
       await currentConfigMatchesInput(configStore, test2Config);
       proposeTxn = await configStore.publishPendingConfig();
-      truffleAssert.eventEmitted(proposeTxn, "ChangedConfigSettings", ev => {
+      truffleAssert.eventEmitted(proposeTxn, "ChangedConfigSettings", (ev) => {
         return (
           ev.rewardRatePerSecond.toString() === test2Config.rewardRatePerSecond.rawValue &&
           ev.proposerBondPercentage.toString() === test2Config.proposerBondPercentage.rawValue &&

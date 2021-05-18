@@ -91,7 +91,7 @@ class DefiPulsePriceFeed extends PriceFeedInterface {
         message: "Update skipped because the last one was too recent",
         currentTime: currentTime,
         lastUpdateTimestamp: this.lastUpdateTime,
-        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime
+        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime,
       });
       return;
     }
@@ -100,7 +100,7 @@ class DefiPulsePriceFeed extends PriceFeedInterface {
       at: "DefiPulsePriceFeed",
       message: "Updating",
       currentTime: currentTime,
-      lastUpdateTimestamp: this.lastUpdateTime
+      lastUpdateTimestamp: this.lastUpdateTime,
     });
 
     // 1. Construct URLs.
@@ -168,5 +168,5 @@ class DefiPulsePriceFeed extends PriceFeedInterface {
 }
 
 module.exports = {
-  DefiPulsePriceFeed
+  DefiPulsePriceFeed,
 };

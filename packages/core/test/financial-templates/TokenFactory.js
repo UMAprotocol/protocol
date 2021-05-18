@@ -8,7 +8,7 @@ const Token = artifacts.require("SyntheticToken");
 
 const { toWei, toBN } = web3.utils;
 
-contract("TokenFactory", function(accounts) {
+contract("TokenFactory", function (accounts) {
   const contractDeployer = accounts[0];
   const tokenCreator = accounts[1];
   const rando = accounts[2];
@@ -18,7 +18,7 @@ contract("TokenFactory", function(accounts) {
   const tokenDetails = {
     name: "UMA Token",
     symbol: "UMA",
-    decimals: "18"
+    decimals: "18",
   };
 
   before(async () => {
@@ -30,11 +30,11 @@ contract("TokenFactory", function(accounts) {
       tokenDetails.symbol,
       tokenDetails.decimals,
       {
-        from: tokenCreator
+        from: tokenCreator,
       }
     );
     await tokenFactory.createToken(tokenDetails.name, tokenDetails.symbol, tokenDetails.decimals, {
-      from: tokenCreator
+      from: tokenCreator,
     });
     const token = await Token.at(tokenAddress);
 
@@ -68,11 +68,11 @@ contract("TokenFactory", function(accounts) {
       tokenDetails.symbol,
       tokenDetails.decimals,
       {
-        from: tokenCreator
+        from: tokenCreator,
       }
     );
     await tokenFactory.createToken(tokenDetails.name, tokenDetails.symbol, tokenDetails.decimals, {
-      from: tokenCreator
+      from: tokenCreator,
     });
     const token = await Token.at(tokenAddress);
 
@@ -90,12 +90,7 @@ contract("TokenFactory", function(accounts) {
     // Transfer some tokens to another account
     const amountToTransfer = toWei("1").toString();
     await token.transfer(contractDeployer, amountToTransfer, { from: rando });
-    assert.equal(
-      (await token.balanceOf(rando)).toString(),
-      toBN(amountToMint)
-        .sub(toBN(amountToTransfer))
-        .toString()
-    );
+    assert.equal((await token.balanceOf(rando)).toString(), toBN(amountToMint).sub(toBN(amountToTransfer)).toString());
     assert.equal((await token.balanceOf(contractDeployer)).toString(), amountToTransfer);
 
     // Other account cannot burn any tokens because they are not a burner

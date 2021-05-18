@@ -3,14 +3,14 @@ const truffleAssert = require("truffle-assertions");
 
 const MultiRoleTest = artifacts.require("MultiRoleTest");
 
-contract("MultiRole", function(accounts) {
+contract("MultiRole", function (accounts) {
   const account1 = accounts[0];
   const account2 = accounts[1];
   const account3 = accounts[2];
   const account4 = accounts[3];
   const zeroAddress = "0x0000000000000000000000000000000000000000";
 
-  it("Exclusive Self-managed role", async function() {
+  it("Exclusive Self-managed role", async function () {
     const multiRole = await MultiRoleTest.new();
     await multiRole.createExclusiveRole("1", "1", account1);
 
@@ -54,7 +54,7 @@ contract("MultiRole", function(accounts) {
     assert(await didContractThrow(multiRole.renounceMembership("1", { from: account2 })));
   });
 
-  it("Exclusive externally managed role", async function() {
+  it("Exclusive externally managed role", async function () {
     const multiRole = await MultiRoleTest.new();
     await multiRole.createExclusiveRole("1", "1", account1);
 
@@ -84,7 +84,7 @@ contract("MultiRole", function(accounts) {
     assert(await didContractThrow(multiRole.revertIfNotHoldingRole("2", { from: account2 })));
   });
 
-  it("Shared self-managed role", async function() {
+  it("Shared self-managed role", async function () {
     const multiRole = await MultiRoleTest.new();
     await multiRole.createSharedRole("1", "1", [account1, account2]);
 
@@ -122,7 +122,7 @@ contract("MultiRole", function(accounts) {
     assert(await didContractThrow(multiRole.revertIfNotHoldingRole("1", { from: account3 })));
   });
 
-  it("Shared externally-managed (shared) role", async function() {
+  it("Shared externally-managed (shared) role", async function () {
     const multiRole = await MultiRoleTest.new();
     await multiRole.createSharedRole("1", "1", [account1, account4]);
 
@@ -159,7 +159,7 @@ contract("MultiRole", function(accounts) {
     assert(await didContractThrow(multiRole.revertIfNotHoldingRole("2", { from: account3 })));
   });
 
-  it("Shared externally-managed (exclusive) role", async function() {
+  it("Shared externally-managed (exclusive) role", async function () {
     const multiRole = await MultiRoleTest.new();
     await multiRole.createExclusiveRole("1", "1", account1);
     await multiRole.createSharedRole("2", "1", [account2, account3]);
@@ -193,32 +193,32 @@ contract("MultiRole", function(accounts) {
     assert(await didContractThrow(multiRole.revertIfNotHoldingRole("2", { from: account3 })));
   });
 
-  it("Events are emitted", async function() {
+  it("Events are emitted", async function () {
     const multiRole = await MultiRoleTest.new();
     await multiRole.createExclusiveRole("1", "1", account1);
     await multiRole.createSharedRole("2", "1", [account2, account3]);
 
     // Add shared member.
     const addSharedResult = await multiRole.addMember("2", account4, { from: account1 });
-    truffleAssert.eventEmitted(addSharedResult, "AddedSharedMember", ev => {
+    truffleAssert.eventEmitted(addSharedResult, "AddedSharedMember", (ev) => {
       return ev.roleId.toString() == "2" && ev.newMember == account4 && ev.manager == account1;
     });
 
     // Remove shared member.
     const removeSharedResult = await multiRole.removeMember("2", account4, { from: account1 });
-    truffleAssert.eventEmitted(removeSharedResult, "RemovedSharedMember", ev => {
+    truffleAssert.eventEmitted(removeSharedResult, "RemovedSharedMember", (ev) => {
       return ev.roleId.toString() == "2" && ev.oldMember == account4 && ev.manager == account1;
     });
 
     // Renounce shared member.
     const renounceSharedResult = await multiRole.renounceMembership("2", { from: account2 });
-    truffleAssert.eventEmitted(renounceSharedResult, "RemovedSharedMember", ev => {
+    truffleAssert.eventEmitted(renounceSharedResult, "RemovedSharedMember", (ev) => {
       return ev.roleId.toString() == "2" && ev.oldMember == account2 && ev.manager == account2;
     });
 
     // Reset exclusive member.
     const resetMemberResult = await multiRole.resetMember("1", account2, { from: account1 });
-    truffleAssert.eventEmitted(resetMemberResult, "ResetExclusiveMember", ev => {
+    truffleAssert.eventEmitted(resetMemberResult, "ResetExclusiveMember", (ev) => {
       return ev.roleId.toString() == "1" && ev.newMember == account2 && ev.manager == account1;
     });
   });

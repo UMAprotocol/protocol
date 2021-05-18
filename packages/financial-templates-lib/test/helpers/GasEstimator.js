@@ -5,14 +5,14 @@ const { delay } = require("../../src/helpers/delay");
 // Script to test
 const { GasEstimator } = require("../../src/helpers/GasEstimator");
 
-contract("GasEstimator.js", function() {
+contract("GasEstimator.js", function () {
   let gasEstimator;
 
   describe("Construction with default config", () => {
     beforeEach(() => {
       const dummyLogger = winston.createLogger({
         level: "info",
-        transports: [new winston.transports.Console()]
+        transports: [new winston.transports.Console()],
       });
       gasEstimator = new GasEstimator(dummyLogger);
     });
@@ -45,7 +45,7 @@ contract("GasEstimator.js", function() {
     beforeEach(() => {
       const dummyLogger = winston.createLogger({
         level: "info",
-        transports: [new winston.transports.Console()]
+        transports: [new winston.transports.Console()],
       });
       gasEstimator = new GasEstimator(dummyLogger, /* updateThreshold */ 2, /* defaultFastPriceGwei */ 10);
     });

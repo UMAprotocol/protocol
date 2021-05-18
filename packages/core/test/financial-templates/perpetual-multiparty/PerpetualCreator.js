@@ -16,7 +16,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const ConfigStore = artifacts.require("ConfigStore");
 
-contract("PerpetualCreator", function(accounts) {
+contract("PerpetualCreator", function (accounts) {
   let contractCreator = accounts[0];
 
   // Contract variables
@@ -33,7 +33,7 @@ contract("PerpetualCreator", function(accounts) {
     proposerBondPercentage: { rawValue: toWei("0.0001") },
     maxFundingRate: { rawValue: toWei("0.00001") },
     minFundingRate: { rawValue: toWei("-0.00001") },
-    proposalTimePastLimit: 1800
+    proposalTimePastLimit: 1800,
   };
 
   beforeEach(async () => {
@@ -58,156 +58,150 @@ contract("PerpetualCreator", function(accounts) {
       minSponsorTokens: { rawValue: toWei("1") },
       liquidationLiveness: 7200,
       withdrawalLiveness: 7200,
-      tokenScaling: { rawValue: toWei("1") }
+      tokenScaling: { rawValue: toWei("1") },
     };
 
     const identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
-      from: contractCreator
+      from: contractCreator,
     });
   });
 
-  it("TokenFactory address should be set on construction", async function() {
+  it("TokenFactory address should be set on construction", async function () {
     const tokenFactory = await TokenFactory.deployed();
     assert.equal(await perpetualCreator.tokenFactoryAddress(), tokenFactory.address);
   });
 
-  it("Cannot have empty synthetic token symbol", async function() {
+  it("Cannot have empty synthetic token symbol", async function () {
     // Change only synthetic token symbol.
     constructorParams.syntheticSymbol = "";
     assert(
       await didContractThrow(
         perpetualCreator.createPerpetual(constructorParams, testConfig, {
-          from: contractCreator
+          from: contractCreator,
         })
       )
     );
   });
 
-  it("Cannot have empty synthetic token name", async function() {
+  it("Cannot have empty synthetic token name", async function () {
     // Change only synthetic token name.
     constructorParams.syntheticName = "";
     assert(
       await didContractThrow(
         perpetualCreator.createPerpetual(constructorParams, testConfig, {
-          from: contractCreator
+          from: contractCreator,
         })
       )
     );
   });
 
-  it("Collateral token must be whitelisted", async function() {
+  it("Collateral token must be whitelisted", async function () {
     // Change only the collateral token address
     constructorParams.collateralAddress = await Token.new("Test Synthetic Token", "SYNTH", 18, {
-      from: contractCreator
+      from: contractCreator,
     }).address;
     assert(
       await didContractThrow(
         perpetualCreator.createPerpetual(constructorParams, testConfig, {
-          from: contractCreator
+          from: contractCreator,
         })
       )
     );
   });
 
-  it("Withdrawal liveness must not be 0", async function() {
+  it("Withdrawal liveness must not be 0", async function () {
     // Change only the withdrawal liveness
     constructorParams.withdrawalLiveness = 0;
     assert(
       await didContractThrow(
         perpetualCreator.createPerpetual(constructorParams, testConfig, {
-          from: contractCreator
+          from: contractCreator,
         })
       )
     );
   });
 
-  it("Withdrawal liveness cannot be too large", async function() {
+  it("Withdrawal liveness cannot be too large", async function () {
     // Change only the withdrawal liveness
     constructorParams.withdrawalLiveness = MAX_UINT_VAL;
     assert(
       await didContractThrow(
         perpetualCreator.createPerpetual(constructorParams, testConfig, {
-          from: contractCreator
+          from: contractCreator,
         })
       )
     );
   });
 
-  it("Liquidation liveness must not be 0", async function() {
+  it("Liquidation liveness must not be 0", async function () {
     // Change only the liquidation liveness
     constructorParams.liquidationLiveness = 0;
     assert(
       await didContractThrow(
         perpetualCreator.createPerpetual(constructorParams, testConfig, {
-          from: contractCreator
+          from: contractCreator,
         })
       )
     );
   });
 
-  it("Liquidation liveness cannot be too large", async function() {
+  it("Liquidation liveness cannot be too large", async function () {
     // Change only the liquidation liveness
     constructorParams.liquidationLiveness = MAX_UINT_VAL;
     assert(
       await didContractThrow(
         perpetualCreator.createPerpetual(constructorParams, testConfig, {
-          from: contractCreator
+          from: contractCreator,
         })
       )
     );
   });
 
-  it("Token scaling cannot be too large", async function() {
+  it("Token scaling cannot be too large", async function () {
     // Change only the token scaling.
     // 1e28 + 1
     constructorParams.tokenScaling = {
-      rawValue: toBN(10)
-        .pow(toBN(28))
-        .addn(1)
-        .toString()
+      rawValue: toBN(10).pow(toBN(28)).addn(1).toString(),
     };
     assert(
       await didContractThrow(
         perpetualCreator.createPerpetual(constructorParams, testConfig, {
-          from: contractCreator
+          from: contractCreator,
         })
       )
     );
   });
 
-  it("Token scaling cannot be too small", async function() {
+  it("Token scaling cannot be too small", async function () {
     // Change only the token scaling.
     // 1e8 - 1
     constructorParams.tokenScaling = {
-      rawValue: toBN(10)
-        .pow(toBN(8))
-        .subn(1)
-        .toString()
+      rawValue: toBN(10).pow(toBN(8)).subn(1).toString(),
     };
     assert(
       await didContractThrow(
         perpetualCreator.createPerpetual(constructorParams, testConfig, {
-          from: contractCreator
+          from: contractCreator,
         })
       )
     );
   });
 
-  it("Can create new instances of Perpetual", async function() {
+  it("Can create new instances of Perpetual", async function () {
     // Use `.call` to get the returned value from the function.
     let functionReturnedAddress = await perpetualCreator.createPerpetual.call(constructorParams, testConfig, {
-      from: contractCreator
+      from: contractCreator,
     });
 
     // Execute without the `.call` to perform state change. catch the result to query the event.
     let createdAddressResult = await perpetualCreator.createPerpetual(constructorParams, testConfig, {
-      from: contractCreator
+      from: contractCreator,
     });
 
     // Catch the address of the new contract from the event. Ensure that the assigned party member is correct.
     let perpetualAddress;
-    truffleAssert.eventEmitted(createdAddressResult, "CreatedPerpetual", ev => {
+    truffleAssert.eventEmitted(createdAddressResult, "CreatedPerpetual", (ev) => {
       perpetualAddress = ev.perpetualAddress;
       return ev.perpetualAddress != 0 && ev.deployerAddress == contractCreator;
     });
@@ -236,7 +230,7 @@ contract("PerpetualCreator", function(accounts) {
     assert.equal(await perpetual.timerAddress(), await perpetualCreator.timerAddress());
   });
 
-  it("Constructs new synthetic currency properly", async function() {
+  it("Constructs new synthetic currency properly", async function () {
     // Use non-18 decimal precision for collateral currency to test that synthetic matches precision.
     collateralToken = await Token.new("Wrapped Ether", "WETH", 8, { from: contractCreator });
     constructorParams.collateralAddress = collateralToken.address;
@@ -246,10 +240,10 @@ contract("PerpetualCreator", function(accounts) {
 
     // Create new derivative contract.
     let createdAddressResult = await perpetualCreator.createPerpetual(constructorParams, testConfig, {
-      from: contractCreator
+      from: contractCreator,
     });
     let perpetualAddress;
-    truffleAssert.eventEmitted(createdAddressResult, "CreatedPerpetual", ev => {
+    truffleAssert.eventEmitted(createdAddressResult, "CreatedPerpetual", (ev) => {
       perpetualAddress = ev.perpetualAddress;
       return ev.perpetualAddress != 0 && ev.deployerAddress == contractCreator;
     });
@@ -267,7 +261,7 @@ contract("PerpetualCreator", function(accounts) {
     assert.isTrue(await tokenContract.holdsRole(0, perpetualAddress));
   });
 
-  it("If collateral currency does not implement the decimals() method then synthetic currency defaults to 18 decimals", async function() {
+  it("If collateral currency does not implement the decimals() method then synthetic currency defaults to 18 decimals", async function () {
     // Collateral token does not implement decimals() so synthetic token should default to 18.
     collateralToken = await BasicERC20.new(0, { from: contractCreator });
     try {
@@ -282,10 +276,10 @@ contract("PerpetualCreator", function(accounts) {
 
     // Create new derivative contract.
     let createdAddressResult = await perpetualCreator.createPerpetual(constructorParams, testConfig, {
-      from: contractCreator
+      from: contractCreator,
     });
     let perpetualAddress;
-    truffleAssert.eventEmitted(createdAddressResult, "CreatedPerpetual", ev => {
+    truffleAssert.eventEmitted(createdAddressResult, "CreatedPerpetual", (ev) => {
       perpetualAddress = ev.perpetualAddress;
       return ev.perpetualAddress != 0 && ev.deployerAddress == contractCreator;
     });
@@ -296,26 +290,26 @@ contract("PerpetualCreator", function(accounts) {
     assert.equal((await tokenCurrency.decimals()).toString(), "18");
   });
 
-  it("Creation correctly registers Perpetual within the registry", async function() {
+  it("Creation correctly registers Perpetual within the registry", async function () {
     let createdAddressResult = await perpetualCreator.createPerpetual(constructorParams, testConfig, {
-      from: contractCreator
+      from: contractCreator,
     });
 
     let perpetualAddress;
-    truffleAssert.eventEmitted(createdAddressResult, "CreatedPerpetual", ev => {
+    truffleAssert.eventEmitted(createdAddressResult, "CreatedPerpetual", (ev) => {
       perpetualAddress = ev.perpetualAddress;
       return ev.perpetualAddress != 0 && ev.deployerAddress == contractCreator;
     });
     assert.isTrue(await registry.isContractRegistered(perpetualAddress));
   });
 
-  it("Creation deploys a new ConfigStore and transfers ownership to the deployer", async function() {
+  it("Creation deploys a new ConfigStore and transfers ownership to the deployer", async function () {
     let createdAddressResult = await perpetualCreator.createPerpetual(constructorParams, testConfig, {
-      from: contractCreator
+      from: contractCreator,
     });
 
     let configStoreAddress;
-    truffleAssert.eventEmitted(createdAddressResult, "CreatedConfigStore", ev => {
+    truffleAssert.eventEmitted(createdAddressResult, "CreatedConfigStore", (ev) => {
       configStoreAddress = ev.configStoreAddress;
       return ev.configStoreAddress != 0 && ev.ownerAddress == contractCreator;
     });
@@ -323,13 +317,13 @@ contract("PerpetualCreator", function(accounts) {
     let configStore = await ConfigStore.at(configStoreAddress);
     assert.equal(await configStore.owner(), contractCreator);
   });
-  it("Funding rate bounds are set correctly", async function() {
+  it("Funding rate bounds are set correctly", async function () {
     let createdAddressResult = await perpetualCreator.createPerpetual(constructorParams, testConfig, {
-      from: contractCreator
+      from: contractCreator,
     });
 
     let perpetualAddress;
-    truffleAssert.eventEmitted(createdAddressResult, "CreatedPerpetual", ev => {
+    truffleAssert.eventEmitted(createdAddressResult, "CreatedPerpetual", (ev) => {
       perpetualAddress = ev.perpetualAddress;
       return ev.perpetualAddress != 0 && ev.deployerAddress == contractCreator;
     });

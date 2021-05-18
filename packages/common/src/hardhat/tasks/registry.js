@@ -14,7 +14,7 @@ const _registerAccount = async (account, registry, deployer) => {
 
 task("register-accounts", "Register deployer plus custom account with Registry capable of making price requests")
   .addOptionalParam("account", "Custom account to register", "", types.string)
-  .setAction(async function(taskArguments, hre) {
+  .setAction(async function (taskArguments, hre) {
     const { deployments, getNamedAccounts, web3 } = hre;
     const { deployer } = await getNamedAccounts();
     const { account } = taskArguments;

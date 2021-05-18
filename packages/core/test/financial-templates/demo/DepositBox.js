@@ -15,7 +15,7 @@ const Finder = artifacts.require("Finder");
 const MockOracle = artifacts.require("MockOracle");
 const Store = artifacts.require("Store");
 
-contract("DepositBox", function(accounts) {
+contract("DepositBox", function (accounts) {
   let contractCreator = accounts[0];
   let user = accounts[1];
   let otherUser = accounts[2];
@@ -32,14 +32,14 @@ contract("DepositBox", function(accounts) {
   // Constants
   const priceFeedIdentifier = utf8ToHex("ETH/USD");
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     // Collateral token to be deposited in DepositBox.
     collateralToken = await Token.new("ETH", "ETH", 18, { from: contractCreator });
 
     // Whitelist price feed identifier.
     const identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, {
-      from: contractCreator
+      from: contractCreator,
     });
 
     timer = await Timer.deployed();
@@ -49,7 +49,7 @@ contract("DepositBox", function(accounts) {
     // modify timestamps and push prices for demonstration purposes.
     finder = await Finder.deployed();
     mockOracle = await MockOracle.new(finder.address, timer.address, {
-      from: contractCreator
+      from: contractCreator,
     });
     const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, { from: contractCreator });
@@ -61,7 +61,7 @@ contract("DepositBox", function(accounts) {
     // Note: Upon calling `initialize()`, the DepositBox will attempt to register itself with the Registry in order to make price requests in production environments,
     // but the MockOracle in test environments does not require contracts to be registered in order to make price requests.
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, depositBox.address, {
-      from: contractCreator
+      from: contractCreator,
     });
     await depositBox.initialize();
 
@@ -71,17 +71,17 @@ contract("DepositBox", function(accounts) {
     await collateralToken.approve(depositBox.address, toWei("1000"), { from: user });
   });
 
-  it("Creation correctly registers DepositBox within the registry", async function() {
+  it("Creation correctly registers DepositBox within the registry", async function () {
     assert.isTrue(await registry.isContractRegistered(depositBox.address));
   });
 
-  describe("Typical deposit and withdraw user flow", function() {
+  describe("Typical deposit and withdraw user flow", function () {
     const amountToDeposit = toWei("5"); // i.e. deposit 5 ETH
     const amountToWithdraw = toWei("150"); // i.e. withdraw $150 in ETH.
     const amountToOverdraw = toWei("2000"); // i.e. withdraw $2000 in ETH, which is 10 ETH at $225 exchange rate
     const exchangeRate = toWei("200"); // i.e. 1 ETH/USD = $225
 
-    beforeEach(async function() {
+    beforeEach(async function () {
       // Set regular and final fee.
 
       // Regular fee is charged on % of collateral locked in deposit box per second.
@@ -93,27 +93,22 @@ contract("DepositBox", function(accounts) {
       await store.setFinalFee(collateralToken.address, { rawValue: toWei("1") });
     });
 
-    it("Deposit ERC20", async function() {
+    it("Deposit ERC20", async function () {
       const userStartingBalance = await collateralToken.balanceOf(user);
 
       // Submit the deposit.
       let txn = await depositBox.deposit({ rawValue: amountToDeposit }, { from: user });
-      truffleAssert.eventEmitted(txn, "Deposit", ev => {
+      truffleAssert.eventEmitted(txn, "Deposit", (ev) => {
         return ev.user == user && ev.collateralAmount == amountToDeposit.toString();
       });
-      truffleAssert.eventEmitted(txn, "NewDepositBox", ev => {
+      truffleAssert.eventEmitted(txn, "NewDepositBox", (ev) => {
         return ev.user == user;
       });
 
       // Check balances after the deposit. 0 fees should have been charged
       // since the contract has not advanced any time.
       const userEndingBalance = await collateralToken.balanceOf(user);
-      assert.equal(
-        userEndingBalance.toString(),
-        toBN(userStartingBalance)
-          .sub(toBN(amountToDeposit))
-          .toString()
-      );
+      assert.equal(userEndingBalance.toString(), toBN(userStartingBalance).sub(toBN(amountToDeposit)).toString());
       assert.equal((await depositBox.getCollateral(user)).toString(), amountToDeposit.toString());
       assert.equal((await depositBox.totalDepositBoxCollateral()).toString(), amountToDeposit.toString());
       assert.equal((await depositBox.pfc()).toString(), amountToDeposit.toString());
@@ -124,28 +119,21 @@ contract("DepositBox", function(accounts) {
       // Can submit a subsequent deposit.
       txn = await depositBox.deposit({ rawValue: amountToDeposit }, { from: user });
       truffleAssert.eventNotEmitted(txn, "NewDepositBox");
-      assert.equal(
-        (await depositBox.getCollateral(user)).toString(),
-        toBN(amountToDeposit)
-          .mul(toBN(2))
-          .toString()
-      );
+      assert.equal((await depositBox.getCollateral(user)).toString(), toBN(amountToDeposit).mul(toBN(2)).toString());
       assert.equal(
         (await depositBox.totalDepositBoxCollateral()).toString(),
-        toBN(amountToDeposit)
-          .mul(toBN(2))
-          .toString()
+        toBN(amountToDeposit).mul(toBN(2)).toString()
       );
     });
 
-    it("Request withdrawal for ERC20 denominated in USD", async function() {
+    it("Request withdrawal for ERC20 denominated in USD", async function () {
       // Deposit funds.
       await depositBox.deposit({ rawValue: amountToDeposit }, { from: user });
 
       // Submit the withdrawal request.
       const requestTimestamp = await depositBox.getCurrentTime();
       let txn = await depositBox.requestWithdrawal({ rawValue: amountToWithdraw }, { from: user });
-      truffleAssert.eventEmitted(txn, "RequestWithdrawal", ev => {
+      truffleAssert.eventEmitted(txn, "RequestWithdrawal", (ev) => {
         return (
           ev.user == user &&
           ev.collateralAmount == amountToWithdraw.toString() &&
@@ -185,7 +173,7 @@ contract("DepositBox", function(accounts) {
       // A user with a pending withdrawal can cancel the withdrawal request.
       assert(await didContractThrow(depositBox.cancelWithdrawal({ from: otherUser })));
       txn = await depositBox.cancelWithdrawal({ from: user });
-      truffleAssert.eventEmitted(txn, "RequestWithdrawalCanceled", ev => {
+      truffleAssert.eventEmitted(txn, "RequestWithdrawalCanceled", (ev) => {
         return (
           ev.user == user &&
           ev.collateralAmount == amountToWithdraw.toString() &&
@@ -201,7 +189,7 @@ contract("DepositBox", function(accounts) {
       await depositBox.requestWithdrawal({ rawValue: amountToWithdraw }, { from: user });
     });
 
-    it("Execute withdrawal after price resolves for less than full balance", async function() {
+    it("Execute withdrawal after price resolves for less than full balance", async function () {
       // Deposit funds and submit withdrawal request.
       await depositBox.deposit({ rawValue: amountToDeposit }, { from: user });
       const requestTimestamp = await depositBox.getCurrentTime();
@@ -222,7 +210,7 @@ contract("DepositBox", function(accounts) {
 
       // Execute the withdrawal request, which should withdraw (150/200 = 0.75) tokens.
       let txn = await depositBox.executeWithdrawal({ from: user });
-      truffleAssert.eventEmitted(txn, "RequestWithdrawalExecuted", ev => {
+      truffleAssert.eventEmitted(txn, "RequestWithdrawalExecuted", (ev) => {
         return (
           ev.user == user &&
           ev.collateralAmount == toWei("0.75").toString() &&
@@ -241,18 +229,13 @@ contract("DepositBox", function(accounts) {
       assert.equal((await depositBox.pfc()).toString(), toWei("3.21").toString());
       assert.equal((await collateralToken.balanceOf(store.address)).toString(), toWei("1.04").toString());
       const userEndingBalance = await collateralToken.balanceOf(user);
-      assert.equal(
-        toBN(userEndingBalance)
-          .sub(toBN(userStartingBalance))
-          .toString(),
-        toWei("0.75").toString()
-      );
+      assert.equal(toBN(userEndingBalance).sub(toBN(userStartingBalance)).toString(), toWei("0.75").toString());
 
       // User can submit another withdrawal request.
       await depositBox.requestWithdrawal({ rawValue: amountToWithdraw }, { from: user });
     });
 
-    it("Execute withdrawal after price resolves for more than full balance", async function() {
+    it("Execute withdrawal after price resolves for more than full balance", async function () {
       // Deposit funds and submit withdrawal request.
       await depositBox.deposit({ rawValue: amountToDeposit }, { from: user });
       const requestTimestamp = await depositBox.getCurrentTime();
@@ -265,7 +248,7 @@ contract("DepositBox", function(accounts) {
       // Execute the withdrawal request, which should withdraw the user's full balance and delete the deposit box.
       // The user has 4 collateral remaining after the final fee.
       let txn = await depositBox.executeWithdrawal({ from: user });
-      truffleAssert.eventEmitted(txn, "RequestWithdrawalExecuted", ev => {
+      truffleAssert.eventEmitted(txn, "RequestWithdrawalExecuted", (ev) => {
         return (
           ev.user == user &&
           ev.collateralAmount == toWei("4").toString() &&
@@ -273,7 +256,7 @@ contract("DepositBox", function(accounts) {
           ev.exchangeRate == exchangeRate.toString()
         );
       });
-      truffleAssert.eventEmitted(txn, "EndedDepositBox", ev => {
+      truffleAssert.eventEmitted(txn, "EndedDepositBox", (ev) => {
         return ev.user == user;
       });
 
@@ -282,19 +265,14 @@ contract("DepositBox", function(accounts) {
       assert.equal((await depositBox.totalDepositBoxCollateral()).toString(), "0");
       assert.equal((await depositBox.pfc()).toString(), "0");
       const userEndingBalance = await collateralToken.balanceOf(user);
-      assert.equal(
-        toBN(userEndingBalance)
-          .sub(toBN(userStartingBalance))
-          .toString(),
-        toWei("4").toString()
-      );
+      assert.equal(toBN(userEndingBalance).sub(toBN(userStartingBalance)).toString(), toWei("4").toString());
 
       // User cannot submit a withdrawal request because they don't have enough deposited to pay for a price request.
       assert(await didContractThrow(depositBox.requestWithdrawal({ rawValue: amountToWithdraw }, { from: user })));
 
       // When user deposits again, they will begin a new deposit box.
       txn = await depositBox.deposit({ rawValue: amountToDeposit }, { from: user });
-      truffleAssert.eventEmitted(txn, "NewDepositBox", ev => {
+      truffleAssert.eventEmitted(txn, "NewDepositBox", (ev) => {
         return ev.user == user;
       });
     });

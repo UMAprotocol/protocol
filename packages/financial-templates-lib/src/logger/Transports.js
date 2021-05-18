@@ -49,7 +49,7 @@ function createTransports(transportsConfig = {}) {
           {
             pdApiToken: transportsConfig.pdApiToken ? transportsConfig.pdApiToken : process.env.PAGERDUTY_API_KEY,
             pdServiceId: transportsConfig.pdServiceId ? transportsConfig.pdServiceId : process.env.PAGERDUTY_SERVICE_ID,
-            fromEmail: transportsConfig.fromEmail ? transportsConfig.fromEmail : process.env.PAGERDUTY_FROM_EMAIL
+            fromEmail: transportsConfig.fromEmail ? transportsConfig.fromEmail : process.env.PAGERDUTY_FROM_EMAIL,
           }
         )
       );

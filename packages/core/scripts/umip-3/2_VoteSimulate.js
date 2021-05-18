@@ -13,7 +13,7 @@ const {
   revertToSnapshot,
   computeVoteHash,
   signMessage,
-  isAdminRequest
+  isAdminRequest,
 } = require("@uma/common");
 const argv = require("minimist")(process.argv.slice(), { boolean: ["revert"] });
 
@@ -33,7 +33,7 @@ const Voting = getTruffleContract("Voting", web3, "1.1.0");
 let snapshotId;
 
 function getAdminPendingRequests(requests) {
-  return requests.filter(request => {
+  return requests.filter((request) => {
     return isAdminRequest(web3.utils.hexToUtf8(request.identifier));
   });
 }
@@ -124,14 +124,14 @@ async function runExport() {
       account: foundationWallet,
       time: request.time,
       roundId: currentRoundId,
-      identifier: request.identifier
+      identifier: request.identifier,
     });
     requestsToVoteOn.push({
       identifier,
       salt,
       time,
       price,
-      voteHash
+      voteHash,
     });
   }
 
@@ -146,7 +146,7 @@ async function runExport() {
     from: accounts[0],
     to: foundationWallet,
     value: web3.utils.toWei("1"),
-    gas: 2000000
+    gas: 2000000,
   });
 
   for (let i = 0; i < pendingRequests.length; i++) {
@@ -158,11 +158,11 @@ async function runExport() {
       time: request.time,
       roundId: currentRoundId,
       identifier: request.identifier,
-      voteHash: request.voteHash
+      voteHash: request.voteHash,
     });
     const VoteTx = await votingInterface.commitVote(request.identifier, request.time, request.voteHash, {
       from: foundationWallet,
-      gas: 2000000
+      gas: 2000000,
     });
     console.log("Voting Tx done!", VoteTx.tx);
   }
@@ -194,7 +194,7 @@ async function runExport() {
 
     const revealTx = await votingInterface.revealVote(request.identifier, request.time, request.price, request.salt, {
       from: foundationWallet,
-      gas: 2000000
+      gas: 2000000,
     });
     console.log("Reveal Tx done!", revealTx.tx);
   }
@@ -216,7 +216,7 @@ async function runExport() {
   // Sanity check that prices are available now for Admin requests
   for (let i = 0; i < requestsToVoteOn.length; i++) {
     const hasPrice = await voting.hasPrice(requestsToVoteOn[i].identifier, requestsToVoteOn[i].time, {
-      from: governor.address
+      from: governor.address,
     });
     assert(
       hasPrice,
@@ -236,7 +236,7 @@ async function runExport() {
       console.log("Submitting tx", i, "from proposal", proposalIndex - 1, "...");
       let tx = await governor.executeProposal(proposalId.toString(), i.toString(), {
         from: foundationWallet,
-        gas: 2000000
+        gas: 2000000,
       });
       console.log("Transaction", i, "from proposal", proposalIndex - 1, "submitted! tx", tx.tx);
     }
@@ -250,7 +250,7 @@ async function runExport() {
   }
 }
 
-const run = async function(callback) {
+const run = async function (callback) {
   try {
     await runExport();
   } catch (err) {

@@ -29,12 +29,12 @@ export default (config: Config) => {
     // this pulls all positions that existed at this block number
     const existingPositions = await allPositions.lteBlockNumber(blockNumber);
     // get state from positions that existed on or before this block
-    const positions = await Promise.mapSeries(existingPositions, async position => {
+    const positions = await Promise.mapSeries(existingPositions, async (position) => {
       return { ...position, ...(await poolClient.getPositionState({ address: poolAddress, position, blockNumber })) };
     });
     return {
       poolState,
-      positions
+      positions,
     };
   }
 
@@ -59,7 +59,7 @@ export default (config: Config) => {
 
   // just turns wei into decimals across an object
   function formatDisplay(distribution: ReturnType<Balances["snapshot"]>) {
-    return lodash.mapValues(distribution, balance => ethers.utils.formatUnits(balance));
+    return lodash.mapValues(distribution, (balance) => ethers.utils.formatUnits(balance));
   }
 
   // helper function to inintialize necessary empty table state for storage
@@ -71,12 +71,12 @@ export default (config: Config) => {
     // seed positions
     await poolClient.processEvents({
       pool,
-      positions: allPositions
+      positions: allPositions,
     });
     return {
       pool,
       allLiquidity,
-      allPositions
+      allPositions,
     };
   }
 
@@ -117,7 +117,7 @@ export default (config: Config) => {
       initTables,
       calculateDistribution,
       addLiquidity,
-      stateAtBlock
-    }
+      stateAtBlock,
+    },
   };
 };

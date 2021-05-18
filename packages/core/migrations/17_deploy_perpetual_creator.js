@@ -6,7 +6,7 @@ const Timer = artifacts.require("Timer");
 const Registry = artifacts.require("Registry");
 const { RegistryRolesEnum, getKeysForNetwork, deploy, enableControllableTiming } = require("@uma/common");
 
-module.exports = async function(deployer, network, accounts) {
+module.exports = async function (deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
   const controllableTiming = enableControllableTiming(network);
 

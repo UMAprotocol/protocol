@@ -10,7 +10,7 @@ import { getTruffleContract } from "@uma/core";
 
 import { SpyTransport } from "@uma/financial-templates-lib";
 
-describe("index.js", function() {
+describe("index.js", function () {
   let accounts: string[];
   let contractCreator: string;
   let spyLogger: any;
@@ -50,10 +50,10 @@ describe("index.js", function() {
   const OptimisticOracle = getTruffleContract("OptimisticOracle", web3 as any);
   const DSProxyFactory = getTruffleContract("DSProxyFactory", web3 as any);
 
-  after(async function() {
+  after(async function () {
     process.env = originalEnv;
   });
-  before(async function() {
+  before(async function () {
     originalEnv = process.env;
     accounts = await web3.eth.getAccounts();
     const contractCreator = accounts[0];
@@ -69,7 +69,7 @@ describe("index.js", function() {
     timer = await Timer.new();
 
     mockOracle = await MockOracle.new(finder.address, timer.address, {
-      from: contractCreator
+      from: contractCreator,
     });
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
     // Set the address in the global name space to enable disputer's index.js to access it.
@@ -84,12 +84,12 @@ describe("index.js", function() {
     dsProxyFactory = await DSProxyFactory.new();
   });
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
     spy = sinon.spy(); // Create a new spy for each test.
     spyLogger = winston.createLogger({
       level: "debug",
-      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
     });
 
     // Create a new synthetic token & collateral token.
@@ -110,7 +110,7 @@ describe("index.js", function() {
         proposerBondPercentage: { rawValue: "0" },
         maxFundingRate: { rawValue: toWei("0.00001") },
         minFundingRate: { rawValue: toWei("-0.00001") },
-        proposalTimePastLimit: 0
+        proposalTimePastLimit: 0,
       },
       timer.address
     );
@@ -131,7 +131,7 @@ describe("index.js", function() {
         fundingRateIdentifier,
         timer,
         store,
-        configStore: configStore || {} // if the contract type is not a perp this will be null.
+        configStore: configStore || {}, // if the contract type is not a perp this will be null.
       },
       { expirationTimestamp: (await timer.getCurrentTime()).toNumber() + 100 } // config override expiration time.
     );
@@ -149,7 +149,7 @@ describe("index.js", function() {
       uniswapAddress: uniswap.address,
       twapLength: 1,
       lookback: 1,
-      getTimeOverride: { useBlockTime: true } // enable tests to run in hardhat
+      getTimeOverride: { useBlockTime: true }, // enable tests to run in hardhat
     };
 
     // Set two uniswap prices to give it a little history.
@@ -159,7 +159,7 @@ describe("index.js", function() {
     await uniswap.setPrice(toWei("1"), toWei("1"));
   });
 
-  it("Runs with no errors", async function() {
+  it("Runs with no errors", async function () {
     process.env.EMP_ADDRESS = financialContract.address;
     process.env.REFERENCE_PRICE_FEED_CONFIG = JSON.stringify(defaultPriceFeedConfig);
     process.env.TOKEN_PRICE_FEED_CONFIG = JSON.stringify(defaultPriceFeedConfig);
@@ -167,7 +167,7 @@ describe("index.js", function() {
     process.env.EXCHANGE_ADAPTER_CONFIG = JSON.stringify({
       type: "uniswap-v2",
       tokenAAddress: syntheticToken.address,
-      tokenBAddress: collateralToken.address
+      tokenBAddress: collateralToken.address,
     });
     process.env.POLLING_DELAY = "0";
 

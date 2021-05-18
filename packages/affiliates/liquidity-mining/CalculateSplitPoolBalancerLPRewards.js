@@ -18,8 +18,8 @@ const argv = require("minimist")(process.argv.slice(), {
     "week",
     "umaPerPeriod1",
     "umaPerPeriod2",
-    "blocksPerSnapshot"
-  ]
+    "blocksPerSnapshot",
+  ],
 });
 
 async function calculateSplitPoolBalancerLPProviders(
@@ -84,10 +84,10 @@ async function calculateSplitPoolBalancerLPProviders(
   const poolInfo2 = await _fetchBalancerPoolInfo(pool2Address);
 
   // Extract the addresses of all historic shareholders.
-  const shareHolders1 = poolInfo1.shares.flatMap(a => a.userAddress.id);
+  const shareHolders1 = poolInfo1.shares.flatMap((a) => a.userAddress.id);
   console.log("🏖  Number of historic liquidity providers pool1:", shareHolders1.length);
 
-  const shareHolders2 = poolInfo2.shares.flatMap(a => a.userAddress.id);
+  const shareHolders2 = poolInfo2.shares.flatMap((a) => a.userAddress.id);
   console.log("🏖  Number of historic liquidity providers pool2:", shareHolders2.length);
 
   let bPool1 = new web3.eth.Contract(getAbi("ERC20"), pool1Address);
@@ -202,7 +202,7 @@ function _saveShareHolderPayout(
     splitUmaPerPeriod2: umaPerPeriod2,
     shareHolderPayout: joinedShareHolderPayout,
     splitPeriodShareHolderPayout1: shareHolderPayout1,
-    splitPeriodShareHolderPayout2: shareHolderPayout2
+    splitPeriodShareHolderPayout2: shareHolderPayout2,
   };
   const savePath = `${path.resolve(__dirname)}/${tokenName}-weekly-payouts/Week_${week}_Mining_Rewards.json`;
   fs.writeFileSync(savePath, JSON.stringify(outputObject));

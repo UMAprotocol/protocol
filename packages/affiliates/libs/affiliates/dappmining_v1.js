@@ -17,11 +17,11 @@ module.exports = ({ queries, empAbi, web3 }) => {
   function getEventStream(empAddress, start, end) {
     const stream = queries.streamLogsByContract(empAddress, start, end);
     const decode = DecodeLog(empAbi);
-    return highland(stream).map(log => {
+    return highland(stream).map((log) => {
       return decode(log, {
         blockNumber: log.block_number,
         blockTimestamp: moment(log.block_timestamp.value).valueOf(),
-        ...log
+        ...log,
       });
     });
   }
@@ -36,17 +36,17 @@ module.exports = ({ queries, empAbi, web3 }) => {
       highland(stream)
         // trace transactions may contain the contract creation event, we cant decode this so filter out
         // fyi non contract creation "trace_type" are called "call"
-        .filter(tx => tx.trace_type !== "create" && tx.error == null)
-        .map(tx => {
+        .filter((tx) => tx.trace_type !== "create" && tx.error == null)
+        .map((tx) => {
           return decodeTx(tx, {
             blockNumber: tx.block_number,
             blockTimestamp: moment(tx.block_timestamp.value).valueOf(),
-            ...tx
+            ...tx,
           });
         })
         // this filters only emp contract "create" calls. We could technically look at more, but these
         // would be the only "attributed" calls as per the spec
-        .filter(tx => tx.name == "create")
+        .filter((tx) => tx.name == "create")
     );
   }
 
@@ -57,11 +57,11 @@ module.exports = ({ queries, empAbi, web3 }) => {
     rewards = {}
   ) {
     // for every user with a token balance
-    balances.keys().forEach(userid => {
+    balances.keys().forEach((userid) => {
       // get users balance
       const balance = balances.get(userid);
       // go through all whitelisted tags
-      whitelist.forEach(tag => {
+      whitelist.forEach((tag) => {
         if (rewards[tag] == null) rewards[tag] = toBN("0");
         // get that tags attribution percent for that user relative to all other affiliates
         const attributionPercent = attributions.calculateShare(userid, tag);
@@ -108,10 +108,10 @@ module.exports = ({ queries, empAbi, web3 }) => {
   // Returns the closest block to equal to or above the start time
   async function getStartBlock(start) {
     const blocks = await queries.getBlocksAscending(start, 1, ["timestamp", "number"]);
-    const [result] = blocks.map(block => {
+    const [result] = blocks.map((block) => {
       return {
         ...block,
-        timestamp: moment(block.timestamp.value).valueOf()
+        timestamp: moment(block.timestamp.value).valueOf(),
       };
     });
     return result;
@@ -119,10 +119,10 @@ module.exports = ({ queries, empAbi, web3 }) => {
   // Returns closest block equal to or before end time
   async function getEndBlock(end) {
     const blocks = await queries.getBlocksDescending(end, 1, ["timestamp", "number"]);
-    const [result] = blocks.map(block => {
+    const [result] = blocks.map((block) => {
       return {
         ...block,
-        timestamp: moment(block.timestamp.value).valueOf()
+        timestamp: moment(block.timestamp.value).valueOf(),
       };
     });
     return result;
@@ -137,7 +137,7 @@ module.exports = ({ queries, empAbi, web3 }) => {
     assert(attributions, "requires attributions");
     assert(startBlock >= 0, "requires startBlock >= 0");
     assert(endBlock >= 0 && endBlock > startBlock, "requires endBlock >=0 and > startBlock");
-    return stream => {
+    return (stream) => {
       return (
         stream
           // sums attributions every time there is a new attribution event.
@@ -164,7 +164,7 @@ module.exports = ({ queries, empAbi, web3 }) => {
   function ProcessEventStream({ startBlock, endBlock, balancesSum = Balances(), balances = EmpBalances() }) {
     assert(startBlock >= 0, "requires startBlock >= 0");
     assert(endBlock >= 0 && endBlock > startBlock, "requires endBlock >=0 and > startBlock");
-    return stream => {
+    return (stream) => {
       return (
         stream
           .reduce({ lastBlock: startBlock, balancesSum }, ({ lastBlock, balancesSum }, event) => {
@@ -191,7 +191,7 @@ module.exports = ({ queries, empAbi, web3 }) => {
     const percentages = calculateBlockReward({
       attributions,
       balances,
-      whitelist
+      whitelist,
     });
 
     return Object.entries(percentages).reduce((result, [key, value]) => {
@@ -225,7 +225,7 @@ module.exports = ({ queries, empAbi, web3 }) => {
         ProcessAttributionStream({
           startBlock: startBlock.number,
           endBlock: endBlock.number,
-          attributions: EmpAttributions(empAbi, defaultAddress)
+          attributions: EmpAttributions(empAbi, defaultAddress),
         })
       )
       .toPromise(Promise);
@@ -242,13 +242,13 @@ module.exports = ({ queries, empAbi, web3 }) => {
       balances,
       // add default address to whitelist if not already added
       whitelist: [...new Set([...whitelist, defaultAddress]).values()],
-      totalRewards
+      totalRewards,
     });
 
     return {
       startBlock,
       endBlock,
-      rewards
+      rewards,
     };
   }
 
@@ -263,7 +263,7 @@ module.exports = ({ queries, empAbi, web3 }) => {
       ProcessEventStream,
       sumAttributions,
       sumBalances,
-      processRewardData
-    }
+      processRewardData,
+    },
   };
 };

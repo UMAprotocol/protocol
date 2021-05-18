@@ -19,7 +19,7 @@ import { getAllEmpsPositions } from "./emp-position-helper";
 
 import {
   getAllFinancialContractsData,
-  evaluateFinancialContractCollateral
+  evaluateFinancialContractCollateral,
 } from "@uma/merkle-distributor/kpi-options-helpers/calculate-uma-tvl";
 
 export async function fetchUmaEcosystemData() {
@@ -30,7 +30,7 @@ export async function fetchUmaEcosystemData() {
   const collateralInfoWithValue = evaluateFinancialContractCollateral(allFinancialContractsData);
 
   // Filter out any contracts that dont have any collateral in them.
-  const contractsWithCollateralValue = collateralInfoWithValue.filter(info => info.collateralValueInUsd != "0");
+  const contractsWithCollateralValue = collateralInfoWithValue.filter((info) => info.collateralValueInUsd != "0");
 
   // Fetch all sponsors over all financial contracts in the UMA ecosystem.
   const allEmpPositions = await getAllEmpsPositions();
@@ -56,18 +56,18 @@ export async function fetchUmaEcosystemData() {
     if (!uniqueCollateralTypes[info.collateralAddress]) {
       uniqueCollateralTypes[info.collateralAddress] = {
         activeFinancialContracts: [
-          { contractAddress: info.contractAddress, collateralValueInUsd: info.collateralValueInUsd }
+          { contractAddress: info.contractAddress, collateralValueInUsd: info.collateralValueInUsd },
         ],
         drawDownAmounts: Array(10).fill({ priceDrop: "0", collateralLiquidated: "0", usdNeededToLiquidate: "0" }),
         collateralValueInUsd: info.collateralValueInUsd,
         collateralPriceInUsd: info.collateralPriceInUsd,
-        collateralSymbol: info.collateralSymbol
+        collateralSymbol: info.collateralSymbol,
       };
     } else {
       uniqueCollateralTypes[info.collateralAddress] = {
         activeFinancialContracts: [
           ...uniqueCollateralTypes[info.collateralAddress].activeFinancialContracts,
-          { contractAddress: info.contractAddress, collateralValueInUsd: info.collateralValueInUsd }
+          { contractAddress: info.contractAddress, collateralValueInUsd: info.collateralValueInUsd },
         ],
         drawDownAmounts: Array(10).fill({ priceDrop: "0", collateralLiquidated: "0", usdNeededToLiquidate: "0" }),
         collateralValueInUsd: fromWei(
@@ -76,14 +76,14 @@ export async function fetchUmaEcosystemData() {
           )
         ),
         collateralPriceInUsd: info.collateralPriceInUsd,
-        collateralSymbol: info.collateralSymbol
+        collateralSymbol: info.collateralSymbol,
       };
     }
   });
 
   const logger = winston.createLogger({
     level: "info",
-    transports: [new winston.transports.Console()]
+    transports: [new winston.transports.Console()],
   });
   const getTime = () => Math.round(new Date().getTime() / 1000);
   const networker = new Networker(logger);
@@ -118,7 +118,7 @@ export async function fetchUmaEcosystemData() {
       const [collateralRequirementString, contractExpirationTime, contractPriceIdentifier] = await Promise.all([
         financialContract.methods.collateralRequirement().call(),
         financialContract.methods.expirationTimestamp().call(),
-        financialContract.methods.priceIdentifier().call()
+        financialContract.methods.priceIdentifier().call(),
       ]);
       const collateralRequirement = toBN(collateralRequirementString);
 
@@ -135,7 +135,7 @@ export async function fetchUmaEcosystemData() {
         ...uniqueCollateralTypes[collateralAddress].activeFinancialContracts[financialContractIndex],
         contractPriceIdentifier: hexToUtf8(contractPriceIdentifier),
         collateralRequirement: Number(fromWei(collateralRequirement)),
-        contractExpirationTime
+        contractExpirationTime,
       };
 
       // Else, we can start building up draw down information.
@@ -152,7 +152,7 @@ export async function fetchUmaEcosystemData() {
           {
             cryptowatchApiKey: process.env.CRYPTO_WATCH_API_KEY,
             tradermadeApiKey: process.env.TRADER_MADE_API_KEY,
-            defipulseApiKey: process.env.DEFI_PULSE_API_KEY
+            defipulseApiKey: process.env.DEFI_PULSE_API_KEY,
           }
         );
         await samplePriceFeed.update();
@@ -203,7 +203,7 @@ export async function fetchUmaEcosystemData() {
                   toBN(toWei(uniqueCollateralTypes[collateralAddress].collateralPriceInUsd))
                     .muln(10 - drawDownIndex)
                     .divn(10)
-                )
+                ),
               };
             } else {
               uniqueCollateralTypes[collateralAddress].drawDownAmounts[drawDownIndex] = {
@@ -213,7 +213,7 @@ export async function fetchUmaEcosystemData() {
                   toBN(toWei(uniqueCollateralTypes[collateralAddress].collateralPriceInUsd))
                     .muln(10 - drawDownIndex)
                     .divn(10)
-                )
+                ),
               };
             }
           });
@@ -262,8 +262,5 @@ function removeItemFromArrayOfObjects(
 }
 
 function computeCollateralizationRatio(collateral: any, debt: any, tokenPrice: any) {
-  return fixedPointAdjustment
-    .mul(fixedPointAdjustment)
-    .mul(collateral)
-    .div(debt.mul(tokenPrice));
+  return fixedPointAdjustment.mul(fixedPointAdjustment).mul(collateral).div(debt.mul(tokenPrice));
 }

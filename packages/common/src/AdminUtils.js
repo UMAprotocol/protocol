@@ -43,7 +43,7 @@ function getAdminRequestId(identifierUtf8) {
 }
 
 // Vote 1 for Yes, 0 for No. Any vote > 0 is technically a Yes, but the 1 is treated as the canonical yes.
-const translateAdminVote = voteValue => {
+const translateAdminVote = (voteValue) => {
   if (!voteValue) {
     return "No Vote";
   } else {
@@ -66,5 +66,5 @@ module.exports = {
   decodeTransaction,
   isAdminRequest,
   getAdminRequestId,
-  translateAdminVote
+  translateAdminVote,
 };

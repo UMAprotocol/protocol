@@ -30,14 +30,14 @@ module.exports = ({ queries, coingecko, synthPrices, firstEmpDate }) => {
     const decode = DecodeLog(empAbi);
     const balancesHistory = EmpBalancesHistory();
     await highland(stream)
-      .map(log => {
+      .map((log) => {
         return decode(log, {
           blockNumber: log.block_number,
           blockTimestamp: moment(log.block_timestamp.value).valueOf(),
-          ...log
+          ...log,
         });
       })
-      .doto(log => balancesHistory.handleEvent(log.blockNumber, log))
+      .doto((log) => balancesHistory.handleEvent(log.blockNumber, log))
       .last()
       .toPromise(Promise);
 
@@ -106,10 +106,10 @@ module.exports = ({ queries, coingecko, synthPrices, firstEmpDate }) => {
 
   async function getBlocks(start, end) {
     const blocks = await queries.getBlocks(start, end, ["timestamp", "number"]);
-    return blocks.map(block => {
+    return blocks.map((block) => {
       return {
         ...block,
-        timestamp: moment(block.timestamp.value).valueOf()
+        timestamp: moment(block.timestamp.value).valueOf(),
       };
     });
   }
@@ -167,7 +167,7 @@ module.exports = ({ queries, coingecko, synthPrices, firstEmpDate }) => {
     syntheticTokenPricesWithValueCalculation,
     syntheticTokenDecimals,
     blocks,
-    balanceHistories
+    balanceHistories,
   }) {
     assert(empWhitelist, "requires empWhitelist");
     assert(collateralTokenPrices, "requires collateral token prices prices");
@@ -273,7 +273,7 @@ module.exports = ({ queries, coingecko, synthPrices, firstEmpDate }) => {
       startBlock,
       endBlock,
       empToDeployer,
-      ...finalPayouts
+      ...finalPayouts,
     };
   }
 
@@ -287,7 +287,7 @@ module.exports = ({ queries, coingecko, synthPrices, firstEmpDate }) => {
     syntheticTokens = [],
     syntheticTokenDecimals = [],
     snapshotSteps = 1,
-    fallbackPrices = []
+    fallbackPrices = [],
   }) {
     // API has changed, we need to validate input. Emps will be required to include payout address.
     // Want to give additional direction to user if this function is called directly.
@@ -300,11 +300,11 @@ module.exports = ({ queries, coingecko, synthPrices, firstEmpDate }) => {
       collateralTokenPrices,
       syntheticTokenPricesWithValueCalculation,
       blocks,
-      balanceHistories
+      balanceHistories,
     ] = await Promise.all([
       Promise.map(
         collateralTokens,
-        async address => await getCoingeckoPriceHistory(address, "usd", startTime, endTime)
+        async (address) => await getCoingeckoPriceHistory(address, "usd", startTime, endTime)
       ),
       Promise.mapSeries(
         empWhitelist,
@@ -324,7 +324,7 @@ module.exports = ({ queries, coingecko, synthPrices, firstEmpDate }) => {
         empWhitelist.map(([empaddress, , empAbi]) => [empaddress, empAbi]),
         firstEmpDate,
         endTime
-      )
+      ),
     ]);
 
     return calculateRewards({
@@ -338,7 +338,7 @@ module.exports = ({ queries, coingecko, synthPrices, firstEmpDate }) => {
       syntheticTokenPricesWithValueCalculation,
       syntheticTokenDecimals,
       blocks,
-      balanceHistories
+      balanceHistories,
     });
   }
 
@@ -354,7 +354,7 @@ module.exports = ({ queries, coingecko, synthPrices, firstEmpDate }) => {
       calculateValue,
       calculateValueFromUsd,
       validateEmpInput,
-      toChecksumAddress
-    }
+      toChecksumAddress,
+    },
   };
 };

@@ -1,7 +1,7 @@
 const ResultComputationTest = artifacts.require("ResultComputationTest");
 
-contract("ResultComputation", function() {
-  it("Basic", async function() {
+contract("ResultComputation", function () {
+  it("Basic", async function () {
     const resultComputation = await ResultComputationTest.new();
 
     // Three arbitrary but distinct prices for this test case.
@@ -52,7 +52,7 @@ contract("ResultComputation", function() {
     assert.equal((await resultComputation.wrapGetTotalCorrectlyVotedTokens()).toString(), web3.utils.toWei("9.1"));
   });
 
-  it("Zero price", async function() {
+  it("Zero price", async function () {
     const resultComputation = await ResultComputationTest.new();
 
     // No minimum vote threshold.
@@ -73,7 +73,7 @@ contract("ResultComputation", function() {
     assert.equal((await resultComputation.wrapGetTotalCorrectlyVotedTokens()).toString(), web3.utils.toWei("5"));
   });
 
-  it("Min vote threshold", async function() {
+  it("Min vote threshold", async function () {
     const resultComputation = await ResultComputationTest.new();
 
     // Arbitrary but distinct prices.

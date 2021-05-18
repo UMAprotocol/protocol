@@ -35,21 +35,21 @@ async function buildHashes(contractType) {
   await identifierWhitelist.addSupportedIdentifier(utf8ToHex(identifier), { from: contractCreator });
 
   await finder.changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address, {
-    from: contractCreator
+    from: contractCreator,
   });
 
   const timer = await Timer.new({ from: contractCreator });
 
   const mockOracle = await MockOracle.new(finder.address, timer.address, { from: contractCreator });
   await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address, {
-    from: contractCreator
+    from: contractCreator,
   });
 
   const store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address, { from: contractCreator });
   await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address, { from: contractCreator });
 
   await finder.changeImplementationAddress(utf8ToHex(interfaceName.FinancialContractsAdmin), contractCreator, {
-    from: contractCreator
+    from: contractCreator,
   });
 
   const syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractCreator });
@@ -57,7 +57,7 @@ async function buildHashes(contractType) {
 
   const collateralWhitelist = await AddressWhitelist.new({ from: contractCreator });
   await finder.changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.address, {
-    from: contractCreator
+    from: contractCreator,
   });
   await collateralWhitelist.addToWhitelist(collateralToken.address, { from: contractCreator });
 
@@ -70,18 +70,18 @@ async function buildHashes(contractType) {
         proposerBondPercentage: { rawValue: "0" },
         maxFundingRate: { rawValue: toWei("0.00001") },
         minFundingRate: { rawValue: toWei("-0.00001") },
-        proposalTimePastLimit: 0
+        proposalTimePastLimit: 0,
       },
       timer.address,
       { from: contractCreator }
     );
 
     await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier)), {
-      from: contractCreator
+      from: contractCreator,
     });
     optimisticOracle = await OptimisticOracle.new(7200, finder.address, timer.address, { from: contractCreator });
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.address, {
-      from: contractCreator
+      from: contractCreator,
     });
   }
 
@@ -96,7 +96,7 @@ async function buildHashes(contractType) {
       fundingRateIdentifier,
       timer,
       store,
-      configStore: configStore || {}
+      configStore: configStore || {},
     },
     { expirationTimestamp: (await timer.getCurrentTime()).toNumber() + 100 }, // config override expiration time.
     { from: contractCreator }

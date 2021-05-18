@@ -51,7 +51,7 @@ export function Table<T extends MaybeId>(config: { makeId: MakeId<T>; type: Id }
     forEach,
     list,
     store,
-    entries
+    entries,
   };
 }
 
@@ -82,13 +82,13 @@ export const Positions = () => {
   async function lteBlockNumber(blockNumber: number | string | undefined) {
     if (blockNumber === undefined) return table.list();
     if (blockNumber === "latest") return table.list();
-    return [...store.values()].filter(position => {
+    return [...store.values()].filter((position) => {
       return Number(position.blockCreated) <= blockNumber;
     });
   }
   return {
     ...table,
-    lteBlockNumber
+    lteBlockNumber,
   };
 };
 export type Positions = ReturnType<typeof Positions>;
@@ -161,7 +161,7 @@ export const Balances = () => {
     create,
     getOrCreate,
     snapshot,
-    getTotal
+    getTotal,
   };
 };
 export type Balances = ReturnType<typeof Balances>;

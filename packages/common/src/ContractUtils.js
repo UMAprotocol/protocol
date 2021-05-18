@@ -9,7 +9,7 @@ const ynatm = require("@umaprotocol/ynatm");
  * @param {Object} result Return value from calling a contract's view-only method.
  * @return null if the call reverted or the view method's result.
  */
-const revertWrapper = result => {
+const revertWrapper = (result) => {
   if (!result) {
     return null;
   }
@@ -17,7 +17,7 @@ const revertWrapper = result => {
   if (result.toString() === revertValue) {
     return null;
   }
-  const isObject = obj => {
+  const isObject = (obj) => {
     return obj === Object(obj);
   };
   if (isObject(result)) {
@@ -50,7 +50,7 @@ const runTransaction = async ({ transaction, config }) => {
   try {
     [returnValue, estimatedGas] = await Promise.all([
       transaction.call({ from: config.from }),
-      transaction.estimateGas({ from: config.from })
+      transaction.estimateGas({ from: config.from }),
     ]);
   } catch (error) {
     error.type = "call";
@@ -62,7 +62,7 @@ const runTransaction = async ({ transaction, config }) => {
   try {
     let updatedConfig = {
       ...config,
-      gas: Math.floor(estimatedGas * GAS_LIMIT_BUFFER)
+      gas: Math.floor(estimatedGas * GAS_LIMIT_BUFFER),
     };
     // If config has a `nonce` field, then we will use the `ynatm` package to strategically re broadcast the
     // transaction. If the `nonce` is missing, then we'll send the transaction once.
@@ -77,22 +77,22 @@ const runTransaction = async ({ transaction, config }) => {
       const maxGasPrice = 2 * 3 * minGasPrice;
 
       receipt = await ynatm.send({
-        sendTransactionFunction: gasPrice =>
+        sendTransactionFunction: (gasPrice) =>
           transaction.send({
             ...updatedConfig,
-            gasPrice
+            gasPrice,
           }),
         minGasPrice,
         maxGasPrice,
         gasPriceScalingFunction,
-        delay: retryDelay
+        delay: retryDelay,
       });
     } else {
       receipt = await transaction.send(updatedConfig);
     }
     return {
       receipt,
-      returnValue
+      returnValue,
     };
   } catch (error) {
     error.type = "send";
@@ -110,7 +110,7 @@ const blockUntilBlockMined = async (web3, blockerBlockNumber) => {
   for (;;) {
     const currentBlockNumber = await web3.eth.getBlockNumber();
     if (currentBlockNumber >= blockerBlockNumber) break;
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, 500));
   }
 };
 
@@ -119,7 +119,7 @@ const blockUntilBlockMined = async (web3, blockerBlockNumber) => {
  * @param {*} contractJsonObject json object representing a contract.
  * @returns truffle contract instance
  */
-const createContractObjectFromJson = contractJsonObject => {
+const createContractObjectFromJson = (contractJsonObject) => {
   let truffleContractCreator = truffleContract(contractJsonObject);
   truffleContractCreator.setProvider(web3.currentProvider);
   return truffleContractCreator;
@@ -141,5 +141,5 @@ module.exports = {
   runTransaction,
   blockUntilBlockMined,
   createContractObjectFromJson,
-  replaceLibraryBindingReferenceInArtitifact
+  replaceLibraryBindingReferenceInArtitifact,
 };

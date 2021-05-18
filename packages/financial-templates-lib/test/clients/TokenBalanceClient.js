@@ -12,14 +12,14 @@ const Token = getTruffleContract("ExpandedERC20", web3);
 
 const configs = [
   { tokenName: "Wrapped Ether", tokenSymbol: "WETH", collateralDecimals: 18 },
-  { tokenName: "Wrapped Bitcoin", tokenSymbol: "WBTC", collateralDecimals: 8 }
+  { tokenName: "Wrapped Bitcoin", tokenSymbol: "WBTC", collateralDecimals: 8 },
 ];
 
-const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
+const Convert = (decimals) => (number) => parseFixed(number.toString(), decimals).toString();
 
-contract("TokenBalanceClient.js", function(accounts) {
+contract("TokenBalanceClient.js", function (accounts) {
   for (let tokenConfig of configs) {
-    describe(`${tokenConfig.collateralDecimals} decimals`, function() {
+    describe(`${tokenConfig.collateralDecimals} decimals`, function () {
       const tokenCreator = accounts[0];
       const sponsor1 = accounts[1];
       const sponsor2 = accounts[2];
@@ -35,7 +35,7 @@ contract("TokenBalanceClient.js", function(accounts) {
       // Shared convert function.
       let convert;
 
-      before(async function() {
+      before(async function () {
         convert = Convert(tokenConfig.collateralDecimals);
         // The TokenBalance Client is independent of the Financial Contract and simply needs two tokens to monitor.
         collateralToken = await Token.new(
@@ -49,17 +49,17 @@ contract("TokenBalanceClient.js", function(accounts) {
         await syntheticToken.addMember(1, tokenCreator, { from: tokenCreator });
       });
 
-      beforeEach(async function() {
+      beforeEach(async function () {
         // The BalanceMonitor does not emit any info `level` events.  Therefore no need to test Winston outputs.
         // DummyLogger will not print anything to console as only capture `info` level events.
         const dummyLogger = winston.createLogger({
           level: "info",
-          transports: [new winston.transports.Console()]
+          transports: [new winston.transports.Console()],
         });
         client = new TokenBalanceClient(dummyLogger, Token.abi, web3, collateralToken.address, syntheticToken.address);
       });
 
-      it("Returning token balances", async function() {
+      it("Returning token balances", async function () {
         // Register wallets with TokenBalanceClient to enable them to be retrievable on the first query.
         client.batchRegisterAddresses([sponsor1, sponsor2]);
 
@@ -101,7 +101,7 @@ contract("TokenBalanceClient.js", function(accounts) {
         assert.isFalse(client.resolvedAddressBalance(rando));
       });
 
-      it("Returning ETH balances", async function() {
+      it("Returning ETH balances", async function () {
         // Register wallets with TokenBalanceClient to enable them to be retrievable on the first query.
         client.batchRegisterAddresses([sponsor1, sponsor2]);
 

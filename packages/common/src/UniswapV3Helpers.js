@@ -13,11 +13,7 @@ const { createContractObjectFromJson } = require("./ContractUtils");
 
 // Given a price defined in a ratio of reserve1 and reserve0 in x96, compute a price as sqrt(r1/r0) * 2^96
 function encodePriceSqrt(reserve1, reserve0) {
-  return new bn(reserve1.toString())
-    .div(reserve0.toString())
-    .sqrt()
-    .multipliedBy(new bn(2).pow(96))
-    .integerValue(3);
+  return new bn(reserve1.toString()).div(reserve0.toString()).sqrt().multipliedBy(new bn(2).pow(96)).integerValue(3);
 }
 
 // reverse x96 operation by compting (price/(2^96))^2
@@ -105,22 +101,22 @@ function computePoolAddress(factoryAddress, tokenA, tokenB, fee) {
     // salt
     ethers.utils.keccak256(constructorArgumentsEncoded),
     // init code hash
-    POOL_BYTECODE_HASH
+    POOL_BYTECODE_HASH,
   ];
-  const sanitizedInputs = `0x${create2Inputs.map(i => i.slice(2)).join("")}`;
+  const sanitizedInputs = `0x${create2Inputs.map((i) => i.slice(2)).join("")}`;
   return ethers.utils.getAddress(`0x${ethers.utils.keccak256(sanitizedInputs).slice(-40)}`);
 }
 
 const FeeAmount = {
   LOW: 500,
   MEDIUM: 3000,
-  HIGH: 10000
+  HIGH: 10000,
 };
 
 const TICK_SPACINGS = {
   [FeeAmount.LOW]: 10,
   [FeeAmount.MEDIUM]: 60,
-  [FeeAmount.HIGH]: 200
+  [FeeAmount.HIGH]: 200,
 };
 
 module.exports = {
@@ -134,5 +130,5 @@ module.exports = {
   getTickBitmapIndex,
   computePoolAddress,
   FeeAmount,
-  TICK_SPACINGS
+  TICK_SPACINGS,
 };

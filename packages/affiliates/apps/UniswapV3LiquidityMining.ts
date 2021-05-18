@@ -48,7 +48,7 @@ const CONFIG_DEFAULTS = {
   rewards: 1,
   // if sample rate is 1 and you have start and end blocks, every block is sampled for state (requires archive)
   // this may be really slow, so you probably want to provide a larger number to skip blocks.
-  sampleRate: 1
+  sampleRate: 1,
 };
 
 const App = (env: ProcessEnv) => async (config: Config) => {
@@ -68,7 +68,7 @@ const App = (env: ProcessEnv) => async (config: Config) => {
   }
   return {
     config,
-    result
+    result,
   };
 };
 
