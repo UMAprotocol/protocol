@@ -965,6 +965,20 @@ const defaultConfigs = {
         invertPrice: true
       }
     }
+  },
+  USDDEXTF: {
+    type: "expression",
+    expression: "ETHDEXTF * USDETH",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    twapLength: 3600,
+    customFeeds: {
+      ETHDEXTF: {
+        type: "uniswap",
+        uniswapAddress: "0xa1444ac5b8ac4f20f748558fe4e848087f528e00",
+        invertPrice: true
+      }
+    }
   }
 };
 
