@@ -37,18 +37,16 @@ const { generateDappMiningConfig, makeUnixPipe } = require("../libs/affiliates/u
 //   ]
 // }
 // Run the app like this: cat rewards.json | node app/GenerateDappMiningConfig config.json
-const App = params => devMiningOutput => {
+const App = (params) => (devMiningOutput) => {
   const empRewards = devMiningOutput.empPayouts[params.empAddress];
   assert(empRewards, "emp rewards not found in dev mining output for: " + params.empAddress);
   const config = generateDappMiningConfig({ ...params, empRewards });
   return {
     params,
-    config
+    config,
   };
 };
 
 const config = Config();
 
-makeUnixPipe(App(config))
-  .then(console.log)
-  .catch(console.error);
+makeUnixPipe(App(config)).then(console.log).catch(console.error);

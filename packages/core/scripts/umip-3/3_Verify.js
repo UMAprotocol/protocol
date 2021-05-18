@@ -28,7 +28,7 @@ const upgradeAddresses = {
   FinancialContractsAdmin: FinancialContractsAdmin.address,
   IdentifierWhitelist: IdentifierWhitelist.address,
   Governor: Governor.address,
-  Finder: Finder.address // Finder was not upgraded in UMIP3
+  Finder: Finder.address, // Finder was not upgraded in UMIP3
 };
 
 async function runExport() {
@@ -131,7 +131,7 @@ async function contractOwnerRoleByFoundation(contract) {
   assert.equal(web3.utils.toChecksumAddress(exclusiveRoleHolder), web3.utils.toChecksumAddress(foundationWallet));
 }
 
-const run = async function(callback) {
+const run = async function (callback) {
   try {
     await runExport();
   } catch (err) {

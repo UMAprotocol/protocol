@@ -4,7 +4,7 @@ const { moveToNextPhase } = require("../../utils/Voting.js");
 // to advance to next commit phase
 // call dvm (voting) getVotePhase
 // commit phase is 0, revealphase is 1
-const run = async function(callback) {
+const run = async function (callback) {
   const voting = await Voting.deployed();
 
   const startingPhase = await voting.getVotePhase();

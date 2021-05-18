@@ -10,7 +10,7 @@ const VaultInterface = getTruffleContract("VaultInterface", web3);
 const ERC20Interface = getTruffleContract("IERC20Standard", web3);
 const ERC20 = getTruffleContract("ExpandedERC20", web3);
 
-contract("VaultPriceFeed.js", function(accounts) {
+contract("VaultPriceFeed.js", function (accounts) {
   const owner = accounts[0];
 
   let vaultMock;
@@ -21,13 +21,13 @@ contract("VaultPriceFeed.js", function(accounts) {
   let priceFeedDecimals = 8;
   let tokenDecimals = 6;
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     erc20 = await ERC20.new("Test Token", "TT", tokenDecimals, { from: owner });
     vaultMock = await VaultMock.new(erc20.address, { from: owner });
 
     dummyLogger = winston.createLogger({
       level: "info",
-      transports: [new winston.transports.Console()]
+      transports: [new winston.transports.Console()],
     });
 
     vaultPriceFeed = new VaultPriceFeed({
@@ -37,18 +37,18 @@ contract("VaultPriceFeed.js", function(accounts) {
       vaultAbi: VaultInterface.abi,
       erc20Abi: ERC20Interface.abi,
       vaultAddress: vaultMock.address,
-      priceFeedDecimals
+      priceFeedDecimals,
     });
   });
 
-  it("Basic current price", async function() {
+  it("Basic current price", async function () {
     await vaultMock.setPricePerFullShare(parseFixed("50", tokenDecimals));
     await vaultPriceFeed.update();
 
     assert.equal(vaultPriceFeed.getCurrentPrice().toString(), parseFixed("50", priceFeedDecimals).toString());
   });
 
-  it("Correctly selects most recent price", async function() {
+  it("Correctly selects most recent price", async function () {
     await vaultMock.setPricePerFullShare(parseFixed("50", tokenDecimals));
     await vaultMock.setPricePerFullShare(parseFixed("100", tokenDecimals));
     await vaultMock.setPricePerFullShare(parseFixed("0.1", tokenDecimals));
@@ -57,7 +57,7 @@ contract("VaultPriceFeed.js", function(accounts) {
     assert.equal(vaultPriceFeed.getCurrentPrice().toString(), parseFixed("0.1", priceFeedDecimals).toString());
   });
 
-  it("Historical Price", async function() {
+  it("Historical Price", async function () {
     await vaultPriceFeed.update();
 
     await vaultMock.setPricePerFullShare(parseFixed("50", tokenDecimals));
@@ -88,7 +88,7 @@ contract("VaultPriceFeed.js", function(accounts) {
     );
   });
 
-  it("Update Frequency", async function() {
+  it("Update Frequency", async function () {
     await vaultMock.setPricePerFullShare(parseFixed("50", tokenDecimals));
     await vaultPriceFeed.update();
     assert.equal(vaultPriceFeed.getCurrentPrice().toString(), parseFixed("50", priceFeedDecimals).toString());
@@ -111,11 +111,11 @@ contract("VaultPriceFeed.js", function(accounts) {
     assert.equal(vaultPriceFeed.getLastUpdateTime(), mockTime); // Update time should have no incremented.
   });
 
-  it("PriceFeedDecimals", async function() {
+  it("PriceFeedDecimals", async function () {
     assert.equal(vaultPriceFeed.getPriceFeedDecimals(), priceFeedDecimals);
   });
 
-  it("BlockFinder correctly passed in", async function() {
+  it("BlockFinder correctly passed in", async function () {
     const blockFinder = BlockFinder(() => {
       throw "err";
     }); // BlockFinder should throw immediately.
@@ -127,7 +127,7 @@ contract("VaultPriceFeed.js", function(accounts) {
       erc20Abi: ERC20Interface.abi,
       vaultAddress: vaultMock.address,
       priceFeedDecimals,
-      blockFinder
+      blockFinder,
     });
 
     await vaultPriceFeed.update();

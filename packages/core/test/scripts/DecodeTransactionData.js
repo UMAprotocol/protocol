@@ -5,8 +5,8 @@ const Registry = artifacts.require("Registry");
 const Voting = artifacts.require("Voting");
 const VotingInterfaceTesting = artifacts.require("VotingInterfaceTesting");
 
-contract("scripts/DecodeTransactionData.js", function() {
-  it("Decode registerContract", async function() {
+contract("scripts/DecodeTransactionData.js", function () {
+  it("Decode registerContract", async function () {
     const contractAddress = web3.utils.randomHex(20);
 
     const registry = await Registry.deployed();
@@ -16,8 +16,8 @@ contract("scripts/DecodeTransactionData.js", function() {
       name: "registerContract",
       params: {
         parties: [],
-        contractAddress: contractAddress
-      }
+        contractAddress: contractAddress,
+      },
     };
 
     assert.equal(
@@ -26,7 +26,7 @@ contract("scripts/DecodeTransactionData.js", function() {
     );
   });
 
-  it("Decode batchReveal", async function() {
+  it("Decode batchReveal", async function () {
     const voting = await VotingInterfaceTesting.at((await Voting.deployed()).address);
 
     // Generate 5 random reveals to test.
@@ -36,7 +36,7 @@ contract("scripts/DecodeTransactionData.js", function() {
         identifier: web3.utils.randomHex(32),
         time: getRandomUnsignedInt().toString(),
         price: getRandomSignedInt().toString(),
-        salt: getRandomSignedInt().toString()
+        salt: getRandomSignedInt().toString(),
       });
     }
 
@@ -44,8 +44,8 @@ contract("scripts/DecodeTransactionData.js", function() {
     const expectedObject = {
       name: "batchReveal",
       params: {
-        reveals: revealArray
-      }
+        reveals: revealArray,
+      },
     };
 
     assert.equal(

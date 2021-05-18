@@ -75,7 +75,7 @@ const deploy = async () => {
 };
 
 // Register contract with DVM.
-const register = async depositBoxAddress => {
+const register = async (depositBoxAddress) => {
   console.group("2. Registering DepositBox with DVM");
 
   // To use the DVM, every financial contract needs to be registered. Since the DepositBox
@@ -201,7 +201,7 @@ const withdraw = async (depositBoxAddress, mockPrice, amountOfUsdToWithdraw) => 
 };
 
 // Main script.
-const main = async callback => {
+const main = async (callback) => {
   try {
     // Deploy
     const deployedContract = await deploy();

@@ -26,14 +26,14 @@ module.exports = class PagerDutyTransport extends Transport {
           title: `${info.level}: ${info.at} ⭢ ${info.message}`,
           service: {
             id: this.serviceId,
-            type: "service_reference"
+            type: "service_reference",
           },
           urgency: info.level == "warn" ? "low" : "high", // If level is warn then urgency is low. If level is error then urgency is high.
           body: {
             type: "incident_body",
-            details: logMessage
-          }
-        }
+            details: logMessage,
+          },
+        },
       });
     } catch (error) {
       console.error("PagerDuty error", error);

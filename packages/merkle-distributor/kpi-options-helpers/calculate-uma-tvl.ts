@@ -43,7 +43,7 @@ export async function getAllFinancialContractsData() {
         collateralBalance: collateralBalances[index],
         collateralDecimal: collateralDecimals[index],
         collateralSymbol: collateralSymbols[index],
-        collateralPriceInUsd: collateralPricesInUsd[index]
+        collateralPriceInUsd: collateralPricesInUsd[index],
       };
     })
     .filter((financialContractObject: any) => financialContractObject.collateralBalance);
@@ -74,7 +74,7 @@ export async function getCollateralInfo(collateralAddresses: Array<string>, regi
     getTokenBalances(collateralAddresses, registeredContracts),
     getTokenDecimals(collateralAddresses),
     getTokenSymbol(collateralAddresses),
-    getTokenPrices(collateralAddresses)
+    getTokenPrices(collateralAddresses),
   ]);
 
   return { collateralBalances, collateralDecimals, collateralSymbols, collateralPricesInUsd };
@@ -99,7 +99,7 @@ export async function getCollateralForFinancialContracts(financialContractAddres
   // We use allSettled as some of the async calls might fail. In particular, if the method does not implement the public
   // method collateralCurrency they will fail.
   const collateralAddresses = await Promise.allSettled(
-    contractInstances.map(contractInstance => contractInstance.methods.collateralCurrency().call())
+    contractInstances.map((contractInstance) => contractInstance.methods.collateralCurrency().call())
   );
 
   // If the contract does not have the method called then return null.
@@ -116,7 +116,7 @@ export async function getTokenDecimals(ContractAddresses: Array<string>) {
   );
 
   const collateralDecimals = await Promise.allSettled(
-    contractInstances.map(contractInstance => (contractInstance ? contractInstance.methods.decimals().call() : null))
+    contractInstances.map((contractInstance) => (contractInstance ? contractInstance.methods.decimals().call() : null))
   );
   return collateralDecimals.map((response: any) => (response.status === "fulfilled" ? response.value : null));
 }
@@ -129,7 +129,7 @@ export async function getTokenSymbol(ContractAddresses: Array<string>) {
   );
 
   const collateralDecimals = await Promise.allSettled(
-    contractInstances.map(contractInstance => (contractInstance ? contractInstance.methods.symbol().call() : null))
+    contractInstances.map((contractInstance) => (contractInstance ? contractInstance.methods.symbol().call() : null))
   );
   return collateralDecimals.map((response: any) => (response.status === "fulfilled" ? response.value : null));
 }
@@ -156,7 +156,7 @@ export async function getTokenPrices(ContractAddresses: Array<string>, currency 
   const hostApi = "https://api.coingecko.com/api/v3/simple/token_price/ethereum";
 
   // Generate a unique set with no repeated. join the set with the required coingecko delimiter.
-  const tokenAddressArray = [...new Set(ContractAddresses.filter(n => n))].join("%2C");
+  const tokenAddressArray = [...new Set(ContractAddresses.filter((n) => n))].join("%2C");
 
   const response = await nodeFetch(`${hostApi}?contract_addresses=${tokenAddressArray}&vs_currencies=${currency}`);
   const prices = await response.json();

@@ -13,13 +13,11 @@ const subDir = Path.join(basePath, params.name, "coingecko");
 const coingecko = Coingecko();
 async function runTest() {
   await mkdirp(subDir);
-  await Promise.each([...params.collateralTokens], async address => {
+  await Promise.each([...params.collateralTokens], async (address) => {
     const path = Path.join(subDir, `${address}.json`);
     const prices = await coingecko.getHistoricContractPrices(address, symbol, startingTimestamp, endingTimestamp);
     console.log("coingeckoPrices", address, prices);
     fs.writeFileSync(path, JSON.stringify(prices));
   });
 }
-runTest()
-  .then(console.log)
-  .catch(console.log);
+runTest().then(console.log).catch(console.log);

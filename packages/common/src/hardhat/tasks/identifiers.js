@@ -13,7 +13,7 @@ const _whitelistIdentifier = async (web3, identifierUtf8, identifierWhitelist, d
 
 task("whitelist-identifiers", "Whitelist identifiers from JSON file")
   .addParam("id", "Custom identifier to whitelist", "Test Identifier", types.string)
-  .setAction(async function(taskArguments, hre) {
+  .setAction(async function (taskArguments, hre) {
     const { deployments, getNamedAccounts, web3 } = hre;
     const { deployer } = await getNamedAccounts();
     const { id } = taskArguments;

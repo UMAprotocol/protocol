@@ -97,7 +97,7 @@ class FinancialContractClient {
   // minus any `withdrawalRequestAmount`. As a result this function will return positions that are undercollateralized
   // due to too little collateral or a withdrawal that, if passed, would make the position undercollateralized.
   getUnderCollateralizedPositions(tokenRedemptionValue) {
-    return this.positions.filter(position => {
+    return this.positions.filter((position) => {
       const collateralNetWithdrawal = this.toBN(position.amountCollateral)
         .sub(this.toBN(position.withdrawalRequestAmount))
         .toString();
@@ -145,7 +145,7 @@ class FinancialContractClient {
     const [collateralRequirement, liquidationLiveness, cumulativeFeeMultiplier] = await Promise.all([
       this.financialContract.methods.collateralRequirement().call(),
       this.financialContract.methods.liquidationLiveness().call(),
-      this.financialContract.methods.cumulativeFeeMultiplier().call()
+      this.financialContract.methods.cumulativeFeeMultiplier().call(),
     ]);
     this.collateralRequirement = this.toBN(collateralRequirement.toString());
     this.liquidationLiveness = Number(liquidationLiveness);
@@ -163,7 +163,7 @@ class FinancialContractClient {
       this.financialContract.getPastEvents("NewSponsor", { fromBlock }),
       this.financialContract.getPastEvents("EndedSponsorPosition", { fromBlock }),
       this.financialContract.getPastEvents("LiquidationCreated", { fromBlock }),
-      this.financialContract.methods.getCurrentTime().call()
+      this.financialContract.methods.getCurrentTime().call(),
     ]);
 
     if (this.contractType === "Perpetual") {
@@ -178,15 +178,15 @@ class FinancialContractClient {
         // account for any unpublished, pending funding rates.
         const applyFundingRateCall = {
           target: this.financialContractAddress,
-          callData: this.financialContract.methods.applyFundingRate().encodeABI()
+          callData: this.financialContract.methods.applyFundingRate().encodeABI(),
         };
         const fundingRateCall = {
           target: this.financialContractAddress,
-          callData: this.financialContract.methods.fundingRate().encodeABI()
+          callData: this.financialContract.methods.fundingRate().encodeABI(),
         };
         const [, fundingRateData] = await aggregateTransactionsAndCall(this.multicallContractAddress, this.web3, [
           applyFundingRateCall,
-          fundingRateCall
+          fundingRateCall,
         ]);
         // `aggregateTransactionsAndCall` returns an array of decoded return data bytes corresponding to the
         // transactions passed to the multicall aggregate method. Therefore, `fundingRate()`'s return output is the
@@ -198,16 +198,16 @@ class FinancialContractClient {
     }
 
     // Array of all sponsors, over all time. Can contain repeats for every `NewSponsor` event.
-    const newSponsorAddresses = newSponsorEvents.map(e => e.returnValues.sponsor);
+    const newSponsorAddresses = newSponsorEvents.map((e) => e.returnValues.sponsor);
 
     // Array of ended sponsors. Can contain repeats for every `EndedSponsorPosition` event.
-    const endedSponsorAddresses = endedSponsorEvents.map(e => e.returnValues.sponsor);
+    const endedSponsorAddresses = endedSponsorEvents.map((e) => e.returnValues.sponsor);
 
     // Filter out the active sponsors by removing ended sponsors from all historic sponsors. Note that a sponsor could
     // create a position, end their position and then create another one. They could potentially do this multiple times.
     // As a result, create a temp array `sponsorsToRemove` which is updated as sponsors are removed from the array.
     let sponsorsToRemove = endedSponsorAddresses; // temp array to contain address to remove.
-    this.activeSponsors = newSponsorAddresses.filter(address => {
+    this.activeSponsors = newSponsorAddresses.filter((address) => {
       // If the sponsorsToRemove contains the current address, then that address should be removed from
       // newSponsorAddresses.
       const index = sponsorsToRemove.indexOf(address);
@@ -220,18 +220,18 @@ class FinancialContractClient {
     });
 
     // Array of all liquidated sponsors, over all time. Use a Set to ensure only contains unique elements.
-    const liquidatedSponsors = [...new Set(liquidationCreatedEvents.map(e => e.returnValues.sponsor))];
+    const liquidatedSponsors = [...new Set(liquidationCreatedEvents.map((e) => e.returnValues.sponsor))];
 
     // Fetch sponsor position & liquidation in parallel batches, 150 at a time, to be safe and not overload the web3
     // node.
     const WEB3_CALLS_BATCH_SIZE = 150;
     const [activePositions, allLiquidations] = await Promise.all([
-      Promise.map(this.activeSponsors, address => this.financialContract.methods.positions(address).call(), {
-        concurrency: WEB3_CALLS_BATCH_SIZE
+      Promise.map(this.activeSponsors, (address) => this.financialContract.methods.positions(address).call(), {
+        concurrency: WEB3_CALLS_BATCH_SIZE,
       }),
-      Promise.map(liquidatedSponsors, address => this.financialContract.methods.getLiquidations(address).call(), {
-        concurrency: WEB3_CALLS_BATCH_SIZE
-      })
+      Promise.map(liquidatedSponsors, (address) => this.financialContract.methods.getLiquidations(address).call(), {
+        concurrency: WEB3_CALLS_BATCH_SIZE,
+      }),
     ]);
 
     const undisputedLiquidations = [];
@@ -257,7 +257,7 @@ class FinancialContractClient {
           lockedCollateral: liquidation.lockedCollateral.toString(),
           liquidationTime: liquidation.liquidationTime,
           liquidator: liquidation.liquidator,
-          disputer: liquidation.disputer
+          disputer: liquidation.disputer,
         };
 
         // Get all undisputed liquidations.
@@ -298,14 +298,14 @@ class FinancialContractClient {
           .div(this.fixedPointAdjustment)
           .toString(),
         // Applies the current outstanding fees to collateral.
-        hasPendingWithdrawal: position.withdrawalRequestPassTimestamp > 0
+        hasPendingWithdrawal: position.withdrawalRequestPassTimestamp > 0,
       };
     });
     this.lastUpdateTimestamp = currentTime;
     this.logger.debug({
       at: "FinancialContractClient",
       message: "Financial Contract state updated",
-      lastUpdateTimestamp: this.lastUpdateTimestamp
+      lastUpdateTimestamp: this.lastUpdateTimestamp,
     });
   }
   // The formula for an undercollateralized position is: (numTokens * trv) * collateralRequirement > amountCollateral.

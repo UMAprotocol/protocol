@@ -27,7 +27,7 @@ async function runExport() {
 
   const gasEstimator = new GasEstimator(
     winston.createLogger({
-      silent: true
+      silent: true,
     }),
     60, // Time between updates.
     100 // Default gas price.
@@ -50,27 +50,27 @@ async function runExport() {
   const governor = await Governor.deployed();
 
   // Generate the list of transactions from the list of identifiers.
-  const transactions = identifiers.map(identifier => {
+  const transactions = identifiers.map((identifier) => {
     const identifierBytes = web3.utils.utf8ToHex(identifier);
     const addIdentifierTx = identifierWhitelist.contract.methods.addSupportedIdentifier(identifierBytes).encodeABI();
     console.log("addIdentifierTx", addIdentifierTx);
     return {
       to: identifierWhitelist.address,
       value: 0,
-      data: addIdentifierTx
+      data: addIdentifierTx,
     };
   });
 
   await gasEstimator.update();
   const txn = await governor.propose(transactions, {
     from: proposerWallet,
-    gasPrice: gasEstimator.getCurrentFastPrice()
+    gasPrice: gasEstimator.getCurrentFastPrice(),
   });
 
-  const identifierTable = identifiers.map(identifier => {
+  const identifierTable = identifiers.map((identifier) => {
     return {
       identifier,
-      hex: web3.utils.utf8ToHex(identifier)
+      hex: web3.utils.utf8ToHex(identifier),
     };
   });
 
@@ -97,7 +97,7 @@ async function runExport() {
   console.log("Done!");
 }
 
-const run = async function(callback) {
+const run = async function (callback) {
   try {
     await runExport();
   } catch (err) {

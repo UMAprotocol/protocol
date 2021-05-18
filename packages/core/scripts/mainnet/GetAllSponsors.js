@@ -12,10 +12,10 @@ const EMP_FACTORY_ADDRESSES = [
   "0xad8fd1f418fb860a383c9d4647880af7f043ef39",
   "0xb3de1e212b49e68f4a68b5993f31f63946fca2a6",
   "0xddfc7e3b4531158acf4c7a5d2c3cb0ee81d018a5",
-  "0xdebb91ab3e473025bb8ce278c02361a3c4f13124"
+  "0xdebb91ab3e473025bb8ce278c02361a3c4f13124",
 ];
 
-const getAllSponsors = async callback => {
+const getAllSponsors = async (callback) => {
   try {
     // All unique sponsors across all EMP's
     const UNIQUE_SPONSOR_LIST = {};

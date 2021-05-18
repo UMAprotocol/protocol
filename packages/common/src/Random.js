@@ -15,5 +15,5 @@ function getRandomUnsignedInt() {
 
 module.exports = {
   getRandomSignedInt,
-  getRandomUnsignedInt
+  getRandomUnsignedInt,
 };

@@ -19,7 +19,7 @@ if (moduleName === "contracts") {
   const files = proc
     .execFileSync("find", [baseDir, "-type", "f"], { encoding: "utf8" })
     .split("\n")
-    .filter(s => s !== "");
+    .filter((s) => s !== "");
 
   for (const file of files) {
     const doc = file.replace(baseDir, "");
@@ -31,12 +31,9 @@ if (moduleName === "contracts") {
 }
 
 // Read the map file in
-const lines = require("fs")
-  .readFileSync(mapFile, "utf-8")
-  .split("\n")
-  .filter(Boolean);
+const lines = require("fs").readFileSync(mapFile, "utf-8").split("\n").filter(Boolean);
 
-const moduleIndex = lines.findIndex(line => line.startsWith(`* ${moduleName}`));
+const moduleIndex = lines.findIndex((line) => line.startsWith(`* ${moduleName}`));
 
 if (moduleIndex === -1) {
   throw `Could not find ${moduleName} module in mapFile`;

@@ -14,13 +14,11 @@ const subDir = Path.join(basePath, params.name, "synth-prices");
 const historicSynthPrices = HistoricSynthPrices({ web3 });
 async function runTest() {
   await mkdirp(subDir);
-  await Promise.each([...params.empContracts], async empAddress => {
+  await Promise.each([...params.empContracts], async (empAddress) => {
     const path = Path.join(subDir, `${empAddress}.json`);
     const prices = await historicSynthPrices.getHistoricSynthPrice(empAddress, startingTimestamp, endingTimestamp);
     console.log("empContract", empAddress, prices);
     fs.writeFileSync(path, JSON.stringify(prices));
   });
 }
-runTest()
-  .then(console.log)
-  .catch(console.log);
+runTest().then(console.log).catch(console.log);

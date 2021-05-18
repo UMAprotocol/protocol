@@ -1,11 +1,7 @@
-// This file contains a number of useful helper functions. They were either written specifically for these unit tests,
-// or they were adapted from the uniswap v3 core and periphery repos.
-//
+// This file contains a number of useful uniswap v3 helpers helper functions.
 
-const { toBN, toWei } = web3.utils;
-
-const truffleContract = require("@truffle/contract");
-
+const Web3 = require("web3");
+const { toBN, toWei } = Web3.utils;
 const { ethers } = require("ethers");
 
 const UniswapV3Pool = require("@uniswap/v3-core/artifacts/contracts/UniswapV3Pool.sol/UniswapV3Pool.json");
@@ -13,13 +9,11 @@ const Decimal = require("decimal.js");
 const bn = require("bignumber.js"); // Big number that comes with web3 does not support square root.
 bn.config({ EXPONENTIAL_AT: 999999, DECIMAL_PLACES: 40 });
 
+const { createContractObjectFromJson } = require("./ContractUtils");
+
 // Given a price defined in a ratio of reserve1 and reserve0 in x96, compute a price as sqrt(r1/r0) * 2^96
 function encodePriceSqrt(reserve1, reserve0) {
-  return new bn(reserve1.toString())
-    .div(reserve0.toString())
-    .sqrt()
-    .multipliedBy(new bn(2).pow(96))
-    .integerValue(3);
+  return new bn(reserve1.toString()).div(reserve0.toString()).sqrt().multipliedBy(new bn(2).pow(96)).integerValue(3);
 }
 
 // reverse x96 operation by compting (price/(2^96))^2
@@ -107,36 +101,22 @@ function computePoolAddress(factoryAddress, tokenA, tokenB, fee) {
     // salt
     ethers.utils.keccak256(constructorArgumentsEncoded),
     // init code hash
-    POOL_BYTECODE_HASH
+    POOL_BYTECODE_HASH,
   ];
-  const sanitizedInputs = `0x${create2Inputs.map(i => i.slice(2)).join("")}`;
+  const sanitizedInputs = `0x${create2Inputs.map((i) => i.slice(2)).join("")}`;
   return ethers.utils.getAddress(`0x${ethers.utils.keccak256(sanitizedInputs).slice(-40)}`);
 }
 
 const FeeAmount = {
   LOW: 500,
   MEDIUM: 3000,
-  HIGH: 10000
+  HIGH: 10000,
 };
 
 const TICK_SPACINGS = {
   [FeeAmount.LOW]: 10,
   [FeeAmount.MEDIUM]: 60,
-  [FeeAmount.HIGH]: 200
-};
-
-// TODO: this should not be here and should be put in a general common directory. Refactor this accordingly, like in other unit tests. This is tracked in issue: https://github.com/UMAprotocol/protocol/issues/2921
-const createContractObjectFromJson = contractJsonObject => {
-  let truffleContractCreator = truffleContract(contractJsonObject);
-  truffleContractCreator.setProvider(web3.currentProvider);
-  return truffleContractCreator;
-};
-
-// Takes in an artifact (object) and all components with `$<any-string>$` with libraryName. This enables library linking
-// on artifacts that were not compiled within this repo, such as artifacts produced by an external project.
-const replaceLibraryBindingReferenceInArtitifact = (artifact, libraryName) => {
-  const artifactString = JSON.stringify(artifact);
-  return JSON.parse(artifactString.replace(/\$.*\$/g, libraryName));
+  [FeeAmount.HIGH]: 200,
 };
 
 module.exports = {
@@ -151,6 +131,4 @@ module.exports = {
   computePoolAddress,
   FeeAmount,
   TICK_SPACINGS,
-  createContractObjectFromJson,
-  replaceLibraryBindingReferenceInArtitifact
 };

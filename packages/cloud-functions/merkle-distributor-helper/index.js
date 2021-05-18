@@ -9,7 +9,7 @@ exports.getClaimsForAddress = async (req, res) => {
       res.status(204).send("");
     } else {
       const body = req.body;
-      ["merkleDistributorAddress", "claimerAddress", "chainId"].forEach(requiredKey => {
+      ["merkleDistributorAddress", "claimerAddress", "chainId"].forEach((requiredKey) => {
         if (!Object.keys(body).includes(requiredKey))
           throw "Missing key in req body! required: merkleDistributorAddress, claimerAddress, chainId";
       });

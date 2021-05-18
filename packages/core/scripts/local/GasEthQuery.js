@@ -58,5 +58,5 @@ function createQuery(earlierTimeBound, laterTimeBound) {
 }
 
 module.exports = {
-  createQuery
+  createQuery,
 };

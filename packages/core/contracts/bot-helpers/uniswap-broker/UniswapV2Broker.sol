@@ -4,18 +4,19 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
+
 import "@uniswap/lib/contracts/libraries/Babylonian.sol";
 import "@uniswap/lib/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router01.sol";
 
 /**
- * @title UniswapBroker
+ * @title UniswapV2Broker
  * @notice Trading contract used to arb uniswap pairs to a desired "true" price. Intended use is to arb UMA perpetual
  * synthetics that trade off peg. This implementation can ber used in conjunction with a DSProxy contract to atomically
  * swap and move a uniswap market.
  */
 
-contract UniswapBroker {
+contract UniswapV2Broker {
     using SafeMath for uint256;
 
     /**
@@ -23,7 +24,7 @@ contract UniswapBroker {
      * possible to the truePrice.
      * @dev True price is expressed in the ratio of token A to token B.
      * @dev The caller must approve this contract to spend whichever token is intended to be swapped.
-     * @param tradingAsEOA bool to indicate if the UniswapBroker is being called by a DSProxy or an EOA.
+     * @param tradingAsEOA bool to indicate if the UniswapV2Broker is being called by a DSProxy or an EOA.
      * @param uniswapRouter address of the uniswap router used to facilitate trades.
      * @param uniswapFactory address of the uniswap factory used to fetch current pair reserves.
      * @param swappedTokens array of addresses which are to be swapped. The order does not matter as the function will figure

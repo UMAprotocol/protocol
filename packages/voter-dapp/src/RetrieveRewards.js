@@ -9,7 +9,7 @@ import {
   MAX_UINT_VAL,
   MAX_SAFE_JS_INT,
   BATCH_MAX_RETRIEVALS,
-  formatWithMaxDecimals
+  formatWithMaxDecimals,
 } from "@uma/common";
 
 const DEFAULT_ANCILLARY_DATA = "0x";
@@ -159,18 +159,18 @@ function RetrieveRewards({ votingAccount }) {
   );
 
   // Get auxillary information about all price requests that were revealed.
-  const reveals = useCacheCall(["Voting"], call => {
+  const reveals = useCacheCall(["Voting"], (call) => {
     if (!revealedVoteEvents) {
       return undefined;
     }
 
-    const reveals = revealedVoteEvents.map(event => {
+    const reveals = revealedVoteEvents.map((event) => {
       return {
         revealRound: event.returnValues.roundId,
         revealPrice: event.returnValues.price,
         identifier: event.returnValues.identifier,
         time: event.returnValues.time,
-        ancillaryData: event.returnValues.ancillaryData || DEFAULT_ANCILLARY_DATA
+        ancillaryData: event.returnValues.ancillaryData || DEFAULT_ANCILLARY_DATA,
       };
     });
 
@@ -179,11 +179,11 @@ function RetrieveRewards({ votingAccount }) {
     const statuses = call(
       "Voting",
       "getPriceRequestStatuses",
-      reveals.map(reveal => {
+      reveals.map((reveal) => {
         return {
           identifier: reveal.identifier,
           time: reveal.time,
-          ancillaryData: reveal.ancillaryData
+          ancillaryData: reveal.ancillaryData,
         };
       })
     );
@@ -203,7 +203,7 @@ function RetrieveRewards({ votingAccount }) {
         // Note: this method needs to be called "from" the Governor contract since it's approved to "use" the DVM.
         // Otherwise, it will revert.
         reveal.resolvedPrice = call("Voting", "getPrice", reveal.identifier, reveal.time, reveal.ancillaryData, {
-          from: governorAddress
+          from: governorAddress,
         });
 
         // Note: a resolved price should always be returned if the status is RESOLVED. No reverts are expected.
@@ -227,10 +227,10 @@ function RetrieveRewards({ votingAccount }) {
       VotingContract.methods
         .retrieveRewards(votingAccount, rewardsTxn.oldestUnclaimedRound.toString(), rewardsTxn.toRetrieve)
         .call()
-        .then(_pendingRewards => {
+        .then((_pendingRewards) => {
           setPendingRewards(web3.utils.fromWei(_pendingRewards.toString()));
         })
-        .catch(err => console.error(`retrieveRewards.call failed:`, err));
+        .catch((err) => console.error(`retrieveRewards.call failed:`, err));
     }
   }, [web3.utils, drizzle.contracts.Voting, votingAccount, rewardsTxn.oldestUnclaimedRound, rewardsTxn.toRetrieve]);
 

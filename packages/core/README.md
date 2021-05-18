@@ -122,25 +122,16 @@ Note: this is a work in progress and the typescript API will likely change and i
 
 ### Ethers
 
-The best support is for Ethers contract types. To construct an Ethers contract, simply import from the ethers factories:
+The best support is for Ethers contract types. To construct an Ethers contract in node, simply import from the ethers factories:
 
 ```ts
-import { Voting__factory } from "@uma/core/contract-types/ethers"
-
-// Alternative import style to avoid loading anything unnecessary
-// import { Voting__factory } from "@uma/core/contract-types/ethers/factories/Voting__factory"
-
+import { EthersContracts } from "@uma/core"
 const provider = new ethers.providers.JsonRpcProvider(RPC_HOST)
-const votingInstance = Voting__factory.connect(VOTING_ADDRESS, provider)
-```
+const votingInstance = EthersContracts.Voting__factory.connect(VOTING_ADDRESS, provider)
 
-If you just want the raw type, you can import as follows:
-
-```ts
-import type { Voting } from "@uma/core/contract-types/ethers";
-
-// Alternative import styles
-// import type { Voting } from "@uma/core/contract-types/ethers/Voting";
+// Raw type rather than the factory.
+import type { EthersContracts } from "@uma/core"
+const { Voting } = EthersContracts
 ```
 
 ### Truffle
@@ -148,24 +139,22 @@ import type { Voting } from "@uma/core/contract-types/ethers";
 Truffle has well-defined contract types as well, but there are no built-in truffle factories.
 
 ```ts
-import type { VotingInstance, VotingContract } from "@uma/core/contract-types/truffle";
+import type { TruffleContracts } from "@uma/core/contract-types/truffle"
+const { VotingInstance, VotingContract } = TruffleContracts
 
-// Alternative import style
-// import type { VotingInstance, VotingContract } from "@uma/core/contract-types/truffle/Voting";
+import { getTruffleContract } from "@uma/core"
 
-import { getTruffleContract } from "@uma/core";
-
-const Voting = getTruffleContract("Voting", web3) as VotingContract;
-const voting = Voting.deployed(); // Should be a VotingInstance.
+const Voting = getTruffleContract("Voting", web3) as VotingContract
+const voting = Voting.deployed() // Should be a VotingInstance.
 ```
 
 ### Web3
 
-Web3 types can be imported similarly to truffle. However, the import syntax is quite limited. There is no way to import
-all UMA web3 types from the same import. Each contract is specified in a separate file.
+Web3 types can't be imported directly from the index file. However, if you are able to import via path, you can import
+this way:
 
 ```ts
-import type { Voting } from "@uma/core/contract-types/web3/Voting";
+import type { Voting } from "@uma/core/contract-types/web3/Voting"
 
-const voting = new web3.eth.Contract(VOTING_ABI, VOTING_ADDRESS) as Voting;
+const voting = new web3.eth.Contract(VOTING_ABI, VOTING_ADDRESS) as Voting
 ```
