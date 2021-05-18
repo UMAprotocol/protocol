@@ -15,29 +15,29 @@ function App() {
   const theme = createMuiTheme({
     palette: {
       primary: {
-        main: "#FF4A4A"
+        main: "#FF4A4A",
       },
       secondary: {
-        main: "#272528"
-      }
+        main: "#272528",
+      },
     },
     typography: {
       useNextVariants: true,
-      fontFamily: "Verdana"
+      fontFamily: "Verdana",
     },
     overrides: {
       MuiTableHead: {
         root: {
           background: "#b2b7bf",
-          fontWeight: "750"
-        }
+          fontWeight: "750",
+        },
       },
       MuiTable: {
         root: {
-          background: "#e4e7ed"
-        }
-      }
-    }
+          background: "#e4e7ed",
+        },
+      },
+    },
   });
 
   const [drizzle, setDrizzle] = useState(null);

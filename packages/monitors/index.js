@@ -15,7 +15,7 @@ const {
   createTokenPriceFeedForFinancialContract,
   waitForLogger,
   delay,
-  multicallAddressMap
+  multicallAddressMap,
 } = require("@uma/financial-templates-lib");
 
 // Monitor modules to report on client state changes.
@@ -26,8 +26,8 @@ const { CRMonitor } = require("./src/CRMonitor");
 const { SyntheticPegMonitor } = require("./src/SyntheticPegMonitor");
 
 // Contract ABIs and network Addresses.
-const { getAbi, getAddress } = require("@uma/core");
-const { getWeb3, findContractVersion, SUPPORTED_CONTRACT_VERSIONS, PublicNetworks } = require("@uma/common");
+const { getAbi, getAddress, findContractVersion } = require("@uma/core");
+const { getWeb3, SUPPORTED_CONTRACT_VERSIONS, PublicNetworks } = require("@uma/common");
 
 /**
  * @notice Continuously attempts to monitor contract positions and reports based on monitor modules.
@@ -61,7 +61,7 @@ async function run({
   monitorConfig,
   tokenPriceFeedConfig,
   medianizerPriceFeedConfig,
-  denominatorPriceFeedConfig
+  denominatorPriceFeedConfig,
 }) {
   try {
     const { hexToUtf8 } = web3.utils;
@@ -81,7 +81,7 @@ async function run({
       monitorConfig,
       tokenPriceFeedConfig,
       medianizerPriceFeedConfig,
-      denominatorPriceFeedConfig
+      denominatorPriceFeedConfig,
     });
 
     const getTime = () => Math.round(new Date().getTime() / 1000);
@@ -118,7 +118,7 @@ async function run({
       // Check that the version and type is supported. Note if either is null this check will also catch it.
       if (
         SUPPORTED_CONTRACT_VERSIONS.filter(
-          vo => vo.contractType == monitorConfig.contractType && vo.contractVersion == monitorConfig.contractVersion
+          (vo) => vo.contractType == monitorConfig.contractType && vo.contractVersion == monitorConfig.contractVersion
         ).length == 0
       )
         throw new Error(
@@ -153,13 +153,13 @@ async function run({
       const [tokenPriceFeed, denominatorPriceFeed] = await Promise.all([
         createTokenPriceFeedForFinancialContract(logger, web3, networker, getTime, financialContractAddress, {
           ...tokenPriceFeedConfig,
-          priceFeedDecimals
+          priceFeedDecimals,
         }),
         denominatorPriceFeedConfig &&
           createReferencePriceFeedForFinancialContract(logger, web3, networker, getTime, financialContractAddress, {
             ...denominatorPriceFeedConfig,
-            priceFeedDecimals
-          })
+            priceFeedDecimals,
+          }),
       ]);
 
       // All of the pricefeeds should return prices in the same precision, including the denominator
@@ -179,7 +179,7 @@ async function run({
       const [priceIdentifier, collateralTokenAddress, syntheticTokenAddress] = await Promise.all([
         financialContract.methods.priceIdentifier().call(),
         financialContract.methods.collateralCurrency().call(),
-        financialContract.methods.tokenCurrency().call()
+        financialContract.methods.tokenCurrency().call(),
       ]);
       const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
       const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
@@ -188,7 +188,7 @@ async function run({
         collateralToken.methods.symbol().call(),
         syntheticToken.methods.symbol().call(),
         collateralToken.methods.decimals().call(),
-        syntheticToken.methods.decimals().call()
+        syntheticToken.methods.decimals().call(),
       ]);
       // Generate Financial Contract properties to inform monitor modules of important info like token symbols and price identifier.
       const financialContractProps = {
@@ -198,7 +198,7 @@ async function run({
         syntheticDecimals: Number(syntheticDecimals),
         priceFeedDecimals,
         priceIdentifier: hexToUtf8(priceIdentifier),
-        networkId
+        networkId,
       };
 
       // 1. Contract state monitor.
@@ -218,7 +218,7 @@ async function run({
         priceFeed: medianizerPriceFeed,
         monitorConfig,
         financialContractProps,
-        voting
+        voting,
       });
 
       // 2. Balance monitor to inform if monitored addresses drop below critical thresholds.
@@ -234,7 +234,7 @@ async function run({
         logger,
         tokenBalanceClient,
         monitorConfig,
-        financialContractProps
+        financialContractProps,
       });
 
       // 3. Collateralization Ratio monitor.
@@ -255,7 +255,7 @@ async function run({
         financialContractClient,
         priceFeed: medianizerPriceFeed,
         monitorConfig,
-        financialContractProps
+        financialContractProps,
       });
 
       // 4. Synthetic Peg Monitor.
@@ -267,7 +267,7 @@ async function run({
         denominatorPriceFeed,
         monitorConfig,
         financialContractProps,
-        financialContractClient
+        financialContractClient,
       });
 
       logger.debug({
@@ -278,7 +278,7 @@ async function run({
         priceFeedDecimals: Number(medianizerPriceFeed.getPriceFeedDecimals()),
         tokenPriceFeedConfig,
         medianizerPriceFeedConfig,
-        monitorConfig
+        monitorConfig,
       });
 
       // Clients must be updated before monitors can run:
@@ -290,7 +290,7 @@ async function run({
             tokenBalanceClient.update(),
             medianizerPriceFeed.update(),
             tokenPriceFeed.update(),
-            denominatorPriceFeed && denominatorPriceFeed.update()
+            denominatorPriceFeed && denominatorPriceFeed.update(),
           ]).then(async () => {
             await Promise.all([
               // 1. Contract monitor. Check for liquidations, disputes, dispute settlement and sponsor events.
@@ -306,7 +306,7 @@ async function run({
               // 4. Synthetic peg monitor. Check for peg deviation, peg volatility and synthetic volatility.
               syntheticPegMonitor.checkPriceDeviation(),
               syntheticPegMonitor.checkPegVolatility(),
-              syntheticPegMonitor.checkSyntheticVolatility()
+              syntheticPegMonitor.checkSyntheticVolatility(),
             ]);
           })
         );
@@ -329,13 +329,13 @@ async function run({
       );
 
       const contractProps = {
-        networkId
+        networkId,
       };
       const contractMonitor = new OptimisticOracleContractMonitor({
         logger,
         optimisticOracleContractEventClient,
         monitorConfig,
-        contractProps
+        contractProps,
       });
 
       // Clients must be updated before monitors can run:
@@ -346,7 +346,7 @@ async function run({
               contractMonitor.checkForRequests(),
               contractMonitor.checkForProposals(),
               contractMonitor.checkForDisputes(),
-              contractMonitor.checkForSettlements()
+              contractMonitor.checkForSettlements(),
             ]);
           })
         );
@@ -356,9 +356,9 @@ async function run({
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
       await retry(
-        async function() {
+        async function () {
           // First populate monitorRunners array with promises to fulfill in parallel:
-          populateMonitorRunnerHelpers.forEach(helperFunc => {
+          populateMonitorRunnerHelpers.forEach((helperFunc) => {
             helperFunc();
           });
           // Now that monitor runners is populated, run them in parallel.
@@ -367,20 +367,20 @@ async function run({
         {
           retries: errorRetries,
           minTimeout: errorRetriesTimeout * 1000, // delay between retries in ms
-          onRetry: error => {
+          onRetry: (error) => {
             logger.debug({
               at: "Monitor#index",
               message: "An error was thrown in the execution loop - retrying",
-              error: typeof error === "string" ? new Error(error) : error
+              error: typeof error === "string" ? new Error(error) : error,
             });
-          }
+          },
         }
       );
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (pollingDelay === 0) {
         logger.debug({
           at: "Monitor#index",
-          message: "End of serverless execution loop - terminating process"
+          message: "End of serverless execution loop - terminating process",
         });
         await waitForLogger(logger);
         await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
@@ -388,7 +388,7 @@ async function run({
       }
       logger.debug({
         at: "Monitor#index",
-        message: "End of execution loop - waiting polling delay"
+        message: "End of execution loop - waiting polling delay",
       });
       await delay(Number(pollingDelay));
     }
@@ -470,7 +470,7 @@ async function Poll(callback) {
       denominatorPriceFeedConfig: denominatorPriceFeedConfigEnv ? JSON.parse(denominatorPriceFeedConfigEnv) : null,
       medianizerPriceFeedConfig: process.env.MEDIANIZER_PRICE_FEED_CONFIG
         ? JSON.parse(process.env.MEDIANIZER_PRICE_FEED_CONFIG)
-        : null
+        : null,
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
@@ -478,7 +478,7 @@ async function Poll(callback) {
     Logger.error({
       at: "Monitor#index",
       message: "Monitor execution error🚨",
-      error: typeof error === "string" ? new Error(error) : error
+      error: typeof error === "string" ? new Error(error) : error,
     });
     await waitForLogger(Logger);
     callback(error);

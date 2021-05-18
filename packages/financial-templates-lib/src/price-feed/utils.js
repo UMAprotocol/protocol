@@ -11,7 +11,7 @@ exports.BlockHistory = (getBlock, blocks = []) => {
 
   // Check if we have downloaded a block by number
   function has(number) {
-    return blocks.find(block => block.number === number);
+    return blocks.find((block) => block.number === number);
   }
 
   function latest() {
@@ -67,7 +67,7 @@ exports.BlockHistory = (getBlock, blocks = []) => {
     const result = await Promise.all(getBlockPromises);
 
     // Insert all blocks into cache whose timestamp is equal to or greater than (now-lookback).
-    result.map(_block => {
+    result.map((_block) => {
       if (_block.timestamp >= now - lookback) {
         insert(_block);
       }
@@ -89,7 +89,7 @@ exports.BlockHistory = (getBlock, blocks = []) => {
     has,
     insert,
     listBlocks,
-    latest
+    latest,
   };
 };
 
@@ -129,8 +129,8 @@ exports.PriceHistory = (getPrice, prices = {}) => {
   function getBetween(start, end = Date.now()) {
     assert(start <= end, "Start time must be less than end time");
     return Object.keys(prices)
-      .filter(timestamp => timestamp <= end && timestamp >= start)
-      .map(key => prices[key]);
+      .filter((timestamp) => timestamp <= end && timestamp >= start)
+      .map((key) => prices[key]);
   }
 
   // Check if price exists at a timestamp
@@ -164,7 +164,7 @@ exports.PriceHistory = (getPrice, prices = {}) => {
     has,
     set,
     update,
-    list
+    list,
   };
 };
 
@@ -233,6 +233,7 @@ exports.BlockFinder = (requestBlock, blocks = []) => {
    * @param {number} timestamp timestamp to search.
    */
   async function getBlockForTimestamp(timestamp) {
+    timestamp = Number(timestamp);
     assert(timestamp !== undefined && timestamp !== null, "timestamp must be provided");
     // If the last block we have stored is too early, grab the latest block.
     if (blocks.length === 0 || blocks[blocks.length - 1].timestamp < timestamp) {

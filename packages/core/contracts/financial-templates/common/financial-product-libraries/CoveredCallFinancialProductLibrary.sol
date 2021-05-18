@@ -1,5 +1,5 @@
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity ^0.8.0;
 import "./FinancialProductLibrary.sol";
 import "../../../common/implementation/Lockable.sol";
 
@@ -15,6 +15,8 @@ import "../../../common/implementation/Lockable.sol";
  * If ETHUSD =< $400 at expiry, the call is out of the money, and the contract pays out 0 WETH.
  */
 contract CoveredCallFinancialProductLibrary is FinancialProductLibrary, Lockable {
+    using FixedPoint for FixedPoint.Unsigned;
+
     mapping(address => FixedPoint.Unsigned) private financialProductStrikes;
 
     /**

@@ -5,7 +5,7 @@ const argv = require("minimist")(process.argv.slice(), { string: ["to", "token",
 const TestnetERC20 = artifacts.require("TestnetERC20");
 const { MAX_UINT_VAL } = require("@uma/common");
 
-const approveTokens = async function(callback) {
+const approveTokens = async function (callback) {
   try {
     const deployer = (await web3.eth.getAccounts())[0];
 

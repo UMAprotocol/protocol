@@ -6,7 +6,7 @@
 // Note: the fees will be scaled with the decimals of the referenced token. The collateral-fee-(optional decimal)
 // triplets should be specified in order as above. The first collateral value will be paired with the first fee value and so on.
 
-const { getTruffleContract } = require("../../index");
+const { getTruffleContract } = require("../../dist/index");
 
 const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, "latest");
 const Store = getTruffleContract("Store", web3, "latest");
@@ -34,7 +34,7 @@ async function runExport() {
 
   const gasEstimator = new GasEstimator(
     winston.createLogger({
-      silent: true
+      silent: true,
     }),
     60, // Time between updates.
     100 // Default gas price.
@@ -73,7 +73,7 @@ async function runExport() {
     txns.push({
       to: store.address,
       value: 0,
-      data: addFinalFeeToStoreTx
+      data: addFinalFeeToStoreTx,
     });
 
     // The proposal will then add the currency to the whitelist if it isn't already there.
@@ -85,7 +85,7 @@ async function runExport() {
       txns.push({
         to: whitelist.address,
         value: 0,
-        data: addCollateralToWhitelistTx
+        data: addCollateralToWhitelistTx,
       });
 
       console.log(`
@@ -112,7 +112,7 @@ async function runExport() {
   await gasEstimator.update();
   const txn = await governor.propose(transactionList, {
     from: proposerWallet,
-    gasPrice: gasEstimator.getCurrentFastPrice()
+    gasPrice: gasEstimator.getCurrentFastPrice(),
   });
   console.log("Transaction: ", txn?.tx);
 
@@ -133,7 +133,7 @@ async function runExport() {
   console.log("Done!");
 }
 
-const run = async function(callback) {
+const run = async function (callback) {
   try {
     await runExport();
   } catch (err) {

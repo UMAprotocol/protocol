@@ -57,7 +57,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
     this.ohlcPeriod = ohlcPeriod;
 
-    this.convertPriceFeedDecimals = number => {
+    this.convertPriceFeedDecimals = (number) => {
       // Converts price result to wei
       // returns price conversion to correct decimals as a big number.
       // Note: Must ensure that `number` has no more decimal places than `priceFeedDecimals`.
@@ -105,7 +105,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
     // historicalPricePeriods are ordered from oldest to newest.
     // This finds the first pricePeriod whose closeTime is after the provided time.
-    const match = this.historicalPricePeriods.find(pricePeriod => {
+    const match = this.historicalPricePeriods.find((pricePeriod) => {
       return time < pricePeriod.closeTime;
     });
 
@@ -149,11 +149,11 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
   getHistoricalPricePeriods() {
     if (!this.invertPrice)
-      return this.historicalPricePeriods.map(historicalPrice => {
+      return this.historicalPricePeriods.map((historicalPrice) => {
         return [historicalPrice.closeTime, historicalPrice.closePrice];
       });
     else
-      return this.historicalPricePeriods.map(historicalPrice => {
+      return this.historicalPricePeriods.map((historicalPrice) => {
         return [historicalPrice.closeTime, this._invertPriceSafely(historicalPrice.closePrice)];
       });
   }
@@ -179,7 +179,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
         message: "Update skipped because the last one was too recent",
         currentTime: currentTime,
         lastUpdateTimestamp: this.lastUpdateTime,
-        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime
+        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime,
       });
       return;
     }
@@ -188,7 +188,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       at: "CryptoWatchPriceFeed",
       message: "Updating CryptoWatchPriceFeed",
       currentTime: currentTime,
-      lastUpdateTimestamp: this.lastUpdateTime
+      lastUpdateTimestamp: this.lastUpdateTime,
     });
 
     // Round down to the nearest ohlc period so the queries captures the OHLC of the period *before* this earliest
@@ -235,7 +235,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       `?before=${toTimestamp}`,
       `&after=${fromTimestamp}`,
       `&periods=${this.ohlcPeriod}`,
-      this.apiKey ? `&apikey=${this.apiKey}` : ""
+      this.apiKey ? `&apikey=${this.apiKey}` : "",
     ].join("");
 
     const ohlcResponse = await this.networker.getJson(ohlcUrl);
@@ -263,12 +263,12 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     // }
     // For more info, see: https://docs.cryptowat.ch/rest-api/markets/ohlc
     return ohlcResponse.result[this.ohlcPeriod.toString()]
-      .map(ohlc => ({
+      .map((ohlc) => ({
         // Output data should be a list of objects with only the open and close times and prices.
         openTime: ohlc[0] - this.ohlcPeriod,
         closeTime: ohlc[0],
         openPrice: this.convertPriceFeedDecimals(ohlc[1]),
-        closePrice: this.convertPriceFeedDecimals(ohlc[4])
+        closePrice: this.convertPriceFeedDecimals(ohlc[4]),
       }))
       .sort((a, b) => {
         // Sorts the data such that the oldest elements come first.
@@ -279,23 +279,22 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
   _computeTwap(endTime, ohlcs) {
     // Combine open and close to get more data fidelity at the edges of the range.
     const priceTimes = ohlcs
-      .map(pricePeriod => {
+      .map((pricePeriod) => {
         return [
           [pricePeriod.openTime, pricePeriod.openPrice],
-          [pricePeriod.closeTime, pricePeriod.closePrice]
+          [pricePeriod.closeTime, pricePeriod.closePrice],
         ];
       })
       .flat();
     const startTime = endTime - this.twapLength;
+    const twapPrice = computeTWAP(priceTimes, startTime, endTime, this.web3.utils.toBN("0"));
 
-    return computeTWAP(priceTimes, startTime, endTime, this.web3.utils.toBN("0"));
+    return this.invertPrice ? this._invertPriceSafely(twapPrice) : twapPrice;
   }
 
   _invertPriceSafely(priceBN) {
     if (priceBN && !priceBN.isZero()) {
-      return this.convertPriceFeedDecimals("1")
-        .mul(this.convertPriceFeedDecimals("1"))
-        .div(priceBN);
+      return this.convertPriceFeedDecimals("1").mul(this.convertPriceFeedDecimals("1")).div(priceBN);
     } else {
       return undefined;
     }
@@ -303,5 +302,5 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 }
 
 module.exports = {
-  CryptoWatchPriceFeed
+  CryptoWatchPriceFeed,
 };

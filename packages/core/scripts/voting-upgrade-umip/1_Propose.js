@@ -6,7 +6,7 @@
 
 const argv = require("minimist")(process.argv.slice(), { boolean: ["revert"] });
 
-const { getTruffleContract } = require("../../index");
+const { getTruffleContract } = require("../../dist/index");
 const Finder = getTruffleContract("Finder", web3, "1.1.0");
 const Registry = getTruffleContract("Registry", web3, "1.1.0");
 const Voting = getTruffleContract("Voting", web3, "1.1.0");
@@ -14,7 +14,7 @@ const VotingToken = getTruffleContract("VotingToken", web3, "1.1.0");
 const Governor = getTruffleContract("Governor", web3, "1.1.0");
 
 // Use latest bytecode for any contract that we're deploying in-script.
-const VotingUpgrader = getTruffleContract("VotingUpgrader", web3, "latest");
+const VotingUpgrader = getTruffleContract("VotingUpgrader", web3);
 
 const { takeSnapshot, revertToSnapshot } = require("@uma/common");
 
@@ -81,7 +81,7 @@ async function runExport() {
     finder.address,
     proposerWallet, // Pass proposer wallet as the "migrated" address.
     {
-      from: proposerWallet
+      from: proposerWallet,
     }
   );
 
@@ -121,23 +121,23 @@ async function runExport() {
       {
         to: votingToken.address,
         value: 0,
-        data: addVotingAsTokenMinterTx
+        data: addVotingAsTokenMinterTx,
       },
       {
         to: finder.address,
         value: 0,
-        data: transferFinderOwnershipTx
+        data: transferFinderOwnershipTx,
       },
       {
         to: existingVoting.address,
         value: 0,
-        data: transferExistingVotingOwnershipTx
+        data: transferExistingVotingOwnershipTx,
       },
       {
         to: votingUpgrader.address,
         value: 0,
-        data: upgraderExecuteUpgradeTx
-      }
+        data: upgraderExecuteUpgradeTx,
+      },
     ],
     { from: proposerWallet, gas: 2000000 }
   );
@@ -150,7 +150,7 @@ async function runExport() {
   }
 }
 
-const run = async function(callback) {
+const run = async function (callback) {
   try {
     await runExport();
   } catch (err) {

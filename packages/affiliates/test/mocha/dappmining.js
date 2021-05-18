@@ -24,25 +24,25 @@ async function makeTx(blockNumber, collateral, tokens, user, tag) {
     name: "create",
     from_address: user,
     args: [collateral, tokens],
-    input: encodeAttribution(encodeCallData("create", [collateral.toString()], [tokens.toString()]), tag)
+    input: encodeAttribution(encodeCallData("create", [collateral.toString()], [tokens.toString()]), tag),
   };
 }
 
-describe("DappMining V1", function() {
+describe("DappMining V1", function () {
   let dappmining, utils;
-  before(function() {
+  before(function () {
     const queries = Queries(datasetPath);
     dappmining = DappMining["v1"]({ queries, empAbi, web3 });
     utils = dappmining.utils;
   });
-  describe("Dappmining V1 Unit Tests", function() {
-    it("calculates percent", function() {
+  describe("Dappmining V1 Unit Tests", function () {
+    it("calculates percent", function () {
       let result = utils.calculatePercent(100, toWei(".01"));
       assert.equal(result, "1");
       result = utils.calculatePercent(100, toWei("1"));
       assert.equal(result, "100");
     });
-    it("sums attributions", function() {
+    it("sums attributions", function () {
       const attributions = SharedAttributions();
       let sum = utils.sumAttributions(attributions);
       assert(sum);
@@ -54,7 +54,7 @@ describe("DappMining V1", function() {
       assert.equal(sum.getAttribution("a", "b"), "20");
       assert.equal(sum.getAttribution("b", "b"), "30");
     });
-    it("sums balances", function() {
+    it("sums balances", function () {
       const balances = Balances();
       let sum = utils.sumBalances(balances);
       assert(sum);
@@ -67,7 +67,7 @@ describe("DappMining V1", function() {
       assert.equal(sum.get("c"), "30");
     });
     // This tests 2 scenarios with the calculateBlockRewardFunction
-    it("calculates block reward", function() {
+    it("calculates block reward", function () {
       const balances = Balances();
       let attributions = SharedAttributions();
       // Creating a whitelist with 2 tagged addresses
@@ -112,7 +112,7 @@ describe("DappMining V1", function() {
       assert.equal(fromWei(result["Dev1"]), "0.039999999999999999"); // 4%
       assert.equal(fromWei(result["Dev2"]), "0.959999999999999999"); // 96%
     });
-    it("procesess simple attribution stream", async function() {
+    it("procesess simple attribution stream", async function () {
       const user = "usera";
       const dev = "0xaBBee9fC7a882499162323EEB7BF6614193312e3";
       const transactions = [await makeTx(0, 100, 100, user, dev)];
@@ -125,7 +125,7 @@ describe("DappMining V1", function() {
           utils.ProcessAttributionStream({
             startBlock: 0,
             endBlock: 2,
-            attributions: EmpAttributions(empAbi, defaultAddress)
+            attributions: EmpAttributions(empAbi, defaultAddress),
           })
         )
         .toPromise(Promise);
@@ -134,7 +134,7 @@ describe("DappMining V1", function() {
       // is not included in calculation.
       assert.equal(result.getAttribution(user, dev), "200");
     });
-    it("procesess complex attribution stream", async function() {
+    it("procesess complex attribution stream", async function () {
       // same test as above with more complex array of transactions
       const transactions = [
         // UserA has 2 attributions at time 0 by developer A1 and A3 for 100 tokens each
@@ -147,7 +147,7 @@ describe("DappMining V1", function() {
 
         // userc has 2 attributions at time 2 from dev a3 and a2 for only 75 tokens
         await makeTx(2, 0, 75, "userc", "0x00000000000000000000000000000000000000A3"),
-        await makeTx(2, 0, 75, "userc", "0x00000000000000000000000000000000000000A2")
+        await makeTx(2, 0, 75, "userc", "0x00000000000000000000000000000000000000A2"),
       ];
       const defaultAddress = "default";
       const stream = highland(transactions);
@@ -156,7 +156,7 @@ describe("DappMining V1", function() {
           utils.ProcessAttributionStream({
             startBlock: 0,
             endBlock: 3,
-            attributions: EmpAttributions(empAbi, defaultAddress)
+            attributions: EmpAttributions(empAbi, defaultAddress),
           })
         )
         .toPromise(Promise);
@@ -172,53 +172,53 @@ describe("DappMining V1", function() {
       assert.equal(result.getAttribution("userc", "0x00000000000000000000000000000000000000A3"), "75");
     });
     // This tests that token balances get update through the event stream
-    it("procesess simple event stream", async function() {
+    it("procesess simple event stream", async function () {
       // These events represent a stream of contract events. In this case
       // we only carre about position created as that will add to users token balance.
       const events = [
         {
           name: "PositionCreated",
           args: ["usera", 100, 100],
-          blockNumber: 0
-        }
+          blockNumber: 0,
+        },
       ];
       const result = await highland(events)
         .through(
           // Similar to the attribution processor, this will weigh balances over N blocks.
           utils.ProcessEventStream({
             startBlock: 0,
-            endBlock: 1
+            endBlock: 1,
           })
         )
         .toPromise(Promise);
       assert.equal(result.get("usera"), "100");
     });
-    it("procesess complex event stream", async function() {
+    it("procesess complex event stream", async function () {
       const events = [
         {
           // User a deposited at time 0 100 tokens
           name: "PositionCreated",
           args: ["usera", 100, 100],
-          blockNumber: 0
+          blockNumber: 0,
         },
         {
           // User b deposited at time 1 100 tokens
           name: "PositionCreated",
           args: ["userb", 100, 100],
-          blockNumber: 1
+          blockNumber: 1,
         },
         {
           // User c deposits at time 2 100 tokens
           name: "PositionCreated",
           args: ["userc", 100, 100],
-          blockNumber: 2
-        }
+          blockNumber: 2,
+        },
       ];
       const result = await highland(events)
         .through(
           utils.ProcessEventStream({
             startBlock: 0,
-            endBlock: 3
+            endBlock: 3,
           })
         )
         .toPromise(Promise);
@@ -227,7 +227,7 @@ describe("DappMining V1", function() {
       assert.equal(result.get("userb"), "200");
       assert.equal(result.get("userc"), "100");
     });
-    it("gets rewards with simple examples", async function() {
+    it("gets rewards with simple examples", async function () {
       // This sets up as close to a real calculation without using a real dataset.
       // All the state is setup before hand and then reward output is checked.
       const balances = Balances();
@@ -252,8 +252,8 @@ describe("DappMining V1", function() {
       assert.equal(result["Dev2"], "50");
     });
   });
-  describe("dataset1", function() {
-    it("should run with dataset", async function() {
+  describe("dataset1", function () {
+    it("should run with dataset", async function () {
       this.timeout(600000);
       const result = await dappmining.getRewards(config);
       assert(result.startBlock);
@@ -262,15 +262,15 @@ describe("DappMining V1", function() {
     });
   });
 });
-describe("DappMining V2", function() {
+describe("DappMining V2", function () {
   let dappmining, utils;
-  before(function() {
+  before(function () {
     const queries = Queries(datasetPath);
     dappmining = DappMining["v2"]({ queries, empAbi, web3 });
     utils = dappmining.utils;
   });
-  describe("Dappmining V2 Unit Tests", function() {
-    it("sums attributions", function() {
+  describe("Dappmining V2 Unit Tests", function () {
+    it("sums attributions", function () {
       const attributions = AttributionLookback();
       let sum = utils.sumAttributions(attributions);
       assert(sum);
@@ -296,7 +296,7 @@ describe("DappMining V2", function() {
       assert.equal(result["b"], "10");
     });
     // This tests 2 scenarios with the calculateBlockRewardFunction
-    it("calculates block reward", function() {
+    it("calculates block reward", function () {
       const balances = Balances();
       let attributions = AttributionLookback();
       // Creating a whitelist with 2 tagged addresses
@@ -356,7 +356,7 @@ describe("DappMining V2", function() {
       assert.equal(fromWei(result["Dev1"]), "0");
       assert.equal(fromWei(result["Dev2"]), "1");
     });
-    it("procesess simple attribution stream", async function() {
+    it("procesess simple attribution stream", async function () {
       const user = "usera";
       const dev = "0xaBBee9fC7a882499162323EEB7BF6614193312e3";
       const transactions = [await makeTx(0, 100, 100, user, dev)];
@@ -369,7 +369,7 @@ describe("DappMining V2", function() {
           utils.ProcessAttributionStream({
             startBlock: 0,
             endBlock: 2,
-            attributions: EmpAttributions(empAbi, defaultAddress, AttributionLookback())
+            attributions: EmpAttributions(empAbi, defaultAddress, AttributionLookback()),
           })
         )
         .toPromise(Promise);
@@ -378,7 +378,7 @@ describe("DappMining V2", function() {
       const percent = result.getAttributionPercents(user, "200");
       assert.equal(percent[dev], toWei("1"));
     });
-    it("procesess complex attribution stream", async function() {
+    it("procesess complex attribution stream", async function () {
       // same test as above with more complex array of transactions
       const transactions = [
         // UserA has 2 attributions at time 0 by developer A1 and A3 for 100 tokens each
@@ -391,7 +391,7 @@ describe("DappMining V2", function() {
 
         // userc has 2 attributions at time 2 from dev a3 and a2 for only 75 tokens
         await makeTx(2, 0, 75, "userc", "0x00000000000000000000000000000000000000A3"),
-        await makeTx(2, 0, 75, "userc", "0x00000000000000000000000000000000000000A2")
+        await makeTx(2, 0, 75, "userc", "0x00000000000000000000000000000000000000A2"),
       ];
       const defaultAddress = "default";
       const stream = highland(transactions);
@@ -401,7 +401,7 @@ describe("DappMining V2", function() {
             // this essentially will multiply balances by 3 blocks
             startBlock: 0,
             endBlock: 3,
-            attributions: EmpAttributions(empAbi, defaultAddress, AttributionLookback())
+            attributions: EmpAttributions(empAbi, defaultAddress, AttributionLookback()),
           })
         )
         .toPromise(Promise);
@@ -429,53 +429,53 @@ describe("DappMining V2", function() {
       assert.equal(attributions["0x00000000000000000000000000000000000000A3"], "75");
     });
     // This tests that token balances get update through the event stream
-    it("procesess simple event stream", async function() {
+    it("procesess simple event stream", async function () {
       // These events represent a stream of contract events. In this case
       // we only carre about position created as that will add to users token balance.
       const events = [
         {
           name: "PositionCreated",
           args: ["usera", 100, 100],
-          blockNumber: 0
-        }
+          blockNumber: 0,
+        },
       ];
       const result = await highland(events)
         .through(
           // Similar to the attribution processor, this will weigh balances over N blocks.
           utils.ProcessEventStream({
             startBlock: 0,
-            endBlock: 1
+            endBlock: 1,
           })
         )
         .toPromise(Promise);
       assert.equal(result.get("usera"), "100");
     });
-    it("procesess complex event stream", async function() {
+    it("procesess complex event stream", async function () {
       const events = [
         {
           // User a deposited at time 0 100 tokens
           name: "PositionCreated",
           args: ["usera", 100, 100],
-          blockNumber: 0
+          blockNumber: 0,
         },
         {
           // User b deposited at time 1 100 tokens
           name: "PositionCreated",
           args: ["userb", 100, 100],
-          blockNumber: 1
+          blockNumber: 1,
         },
         {
           // User c deposits at time 2 100 tokens
           name: "PositionCreated",
           args: ["userc", 100, 100],
-          blockNumber: 2
-        }
+          blockNumber: 2,
+        },
       ];
       const result = await highland(events)
         .through(
           utils.ProcessEventStream({
             startBlock: 0,
-            endBlock: 3
+            endBlock: 3,
           })
         )
         .toPromise(Promise);
@@ -484,7 +484,7 @@ describe("DappMining V2", function() {
       assert.equal(result.get("userb"), "200");
       assert.equal(result.get("userc"), "100");
     });
-    it("gets rewards with simple examples", async function() {
+    it("gets rewards with simple examples", async function () {
       // This sets up as close to a real calculation without using a real dataset.
       // All the state is setup before hand and then reward output is checked.
       const balances = Balances();
@@ -509,8 +509,8 @@ describe("DappMining V2", function() {
       assert.equal(result["Dev2"], "50");
     });
   });
-  describe("dataset1", function() {
-    it("should run with dataset", async function() {
+  describe("dataset1", function () {
+    it("should run with dataset", async function () {
       this.timeout(600000);
       const result = await dappmining.getRewards(config);
       assert(result.startBlock);

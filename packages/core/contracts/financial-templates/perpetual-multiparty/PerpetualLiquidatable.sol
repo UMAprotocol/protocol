@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./PerpetualPositionManager.sol";
 
@@ -25,6 +24,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
+    using SafeERC20 for ExpandedIERC20;
 
     /****************************************
      *     LIQUIDATION DATA STRUCTURES      *
@@ -172,7 +172,6 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
      * are fed directly into the PositionManager's constructor within the inheritance tree.
      */
     constructor(ConstructorParams memory params)
-        public
         PerpetualPositionManager(
             params.withdrawalLiveness,
             params.collateralAddress,

@@ -4,7 +4,7 @@
 // ganache-cli --fork https://mainnet.infura.io/v3/5f56f0a4c8844c96a430fbd3d7993e39 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25 --unlock 0x7a3a1c2de64f20eb5e916f40d11b01c441b2a8dc --port 9545
 // Then execute the script as: yarn truffle exec ./scripts/identifier-umip/1_Propose.js --network mainnet-fork --identifier USDETH --identifier ETHBTC from core
 
-const { getTruffleContract } = require("../../index");
+const { getTruffleContract } = require("../../dist/index");
 
 // Use the same ABI's as deployed contracts:
 const Governor = getTruffleContract("Governor", web3, "latest");
@@ -27,7 +27,7 @@ async function runExport() {
 
   const gasEstimator = new GasEstimator(
     winston.createLogger({
-      silent: true
+      silent: true,
     }),
     60, // Time between updates.
     100 // Default gas price.
@@ -50,27 +50,27 @@ async function runExport() {
   const governor = await Governor.deployed();
 
   // Generate the list of transactions from the list of identifiers.
-  const transactions = identifiers.map(identifier => {
+  const transactions = identifiers.map((identifier) => {
     const identifierBytes = web3.utils.utf8ToHex(identifier);
     const addIdentifierTx = identifierWhitelist.contract.methods.addSupportedIdentifier(identifierBytes).encodeABI();
     console.log("addIdentifierTx", addIdentifierTx);
     return {
       to: identifierWhitelist.address,
       value: 0,
-      data: addIdentifierTx
+      data: addIdentifierTx,
     };
   });
 
   await gasEstimator.update();
   const txn = await governor.propose(transactions, {
     from: proposerWallet,
-    gasPrice: gasEstimator.getCurrentFastPrice()
+    gasPrice: gasEstimator.getCurrentFastPrice(),
   });
 
-  const identifierTable = identifiers.map(identifier => {
+  const identifierTable = identifiers.map((identifier) => {
     return {
       identifier,
-      hex: web3.utils.utf8ToHex(identifier)
+      hex: web3.utils.utf8ToHex(identifier),
     };
   });
 
@@ -97,7 +97,7 @@ async function runExport() {
   console.log("Done!");
 }
 
-const run = async function(callback) {
+const run = async function (callback) {
   try {
     await runExport();
   } catch (err) {

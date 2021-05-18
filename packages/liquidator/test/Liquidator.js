@@ -9,7 +9,7 @@ const {
   PostWithdrawLiquidationRewardsStatusTranslations,
   runTestForVersion,
   createConstructorParamsForContractVersion,
-  TESTED_CONTRACT_VERSIONS
+  TESTED_CONTRACT_VERSIONS,
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
@@ -22,7 +22,7 @@ const {
   lastSpyLogLevel,
   spyLogIncludes,
   spyLogLevel,
-  DSProxyManager
+  DSProxyManager,
 } = require("@uma/financial-templates-lib");
 
 // Script to test
@@ -37,7 +37,7 @@ const { assert } = require("chai");
 const configs = [
   { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
   { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 }
+  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 },
 ];
 
 let iterationTestVersion; // store the test version between tests that is currently being tested.
@@ -76,7 +76,7 @@ let convertSynthetic;
 let convertPrice;
 
 // Set the funding rate and advances time by 10k seconds.
-const _setFundingRateAndAdvanceTime = async fundingRate => {
+const _setFundingRateAndAdvanceTime = async (fundingRate) => {
   const currentTime = (await financialContract.getCurrentTime()).toNumber();
   await financialContract.proposeFundingRate({ rawValue: fundingRate }, currentTime);
   await financialContract.setCurrentTime(currentTime + 10000);
@@ -87,16 +87,16 @@ const _setFundingRateAndAdvanceTime = async fundingRate => {
 // for a given test.eg: versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])("test name", async function () { assert.isTrue(true) })
 // Note that a second param can be provided to make the test an `it.only` thereby ONLY running that single test, on
 // the provided version. This is very useful for debugging and writing single unit tests without having ro run all tests.
-const versionedIt = function(supportedVersions, shouldBeItOnly = false) {
+const versionedIt = function (supportedVersions, shouldBeItOnly = false) {
   if (shouldBeItOnly)
     return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it.only : () => {};
   return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it : () => {};
 };
 
 // allows this to be set to null without throwing.
-const Convert = decimals => number => (number ? parseFixed(number.toString(), decimals).toString() : number);
+const Convert = (decimals) => (number) => (number ? parseFixed(number.toString(), decimals).toString() : number);
 
-contract("Liquidator.js", function(accounts) {
+contract("Liquidator.js", function (accounts) {
   // Implementation uses the 0th address by default as the bot runs using the default truffle wallet accounts[0]
   const liquidatorBot = accounts[0];
   const sponsor1 = accounts[1];
@@ -105,7 +105,7 @@ contract("Liquidator.js", function(accounts) {
   const contractCreator = accounts[4];
   const liquidityProvider = accounts[5];
 
-  TESTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
+  TESTED_CONTRACT_VERSIONS.forEach(function (contractVersion) {
     // Store the contractVersion.contractVersion, type and version being tested
     iterationTestVersion = contractVersion;
 
@@ -120,13 +120,13 @@ contract("Liquidator.js", function(accounts) {
     const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
     const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
-    const ConfigStore = getTruffleContract("ConfigStore", web3, "latest");
-    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, "latest");
-    const MulticallMock = getTruffleContract("MulticallMock", web3, "latest");
+    const ConfigStore = getTruffleContract("ConfigStore", web3);
+    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
+    const MulticallMock = getTruffleContract("MulticallMock", web3);
 
     for (let testConfig of configs) {
-      describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
-        before(async function() {
+      describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
+        before(async function () {
           identifier = `${testConfig.tokenName}TEST`;
           fundingRateIdentifier = `${testConfig.tokenName}_FUNDING_IDENTIFIER`;
           convertCollateral = Convert(testConfig.collateralDecimals);
@@ -137,11 +137,11 @@ contract("Liquidator.js", function(accounts) {
             testConfig.tokenSymbol,
             testConfig.collateralDecimals,
             {
-              from: contractCreator
+              from: contractCreator,
             }
           );
           await collateralToken.addMember(1, contractCreator, {
-            from: contractCreator
+            from: contractCreator,
           });
 
           // Seed the sponsors accounts.
@@ -177,10 +177,10 @@ contract("Liquidator.js", function(accounts) {
           multicall = await MulticallMock.new();
         });
 
-        beforeEach(async function() {
+        beforeEach(async function () {
           await timer.setCurrentTime(startTime - 1);
           mockOracle = await MockOracle.new(finder.address, timer.address, {
-            from: contractCreator
+            from: contractCreator,
           });
           await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
 
@@ -196,7 +196,7 @@ contract("Liquidator.js", function(accounts) {
                 proposerBondPercentage: { rawValue: "0" },
                 maxFundingRate: { rawValue: toWei("0.00001") },
                 minFundingRate: { rawValue: toWei("-0.00001") },
-                proposalTimePastLimit: 0
+                proposalTimePastLimit: 0,
               },
               timer.address
             );
@@ -218,7 +218,7 @@ contract("Liquidator.js", function(accounts) {
             fundingRateIdentifier,
             timer,
             store,
-            configStore: configStore || {} // if the contract type is not a perp this will be null.
+            configStore: configStore || {}, // if the contract type is not a perp this will be null.
           });
 
           // Deploy a new expiring multi party OR perpetual, depending on the test version.
@@ -230,10 +230,10 @@ contract("Liquidator.js", function(accounts) {
           await collateralToken.approve(financialContract.address, convertCollateral("10000000"), { from: sponsor2 });
           await collateralToken.approve(financialContract.address, convertCollateral("10000000"), { from: sponsor3 });
           await collateralToken.approve(financialContract.address, convertCollateral("100000000"), {
-            from: liquidatorBot
+            from: liquidatorBot,
           });
           await collateralToken.approve(financialContract.address, convertCollateral("100000000"), {
-            from: liquidityProvider
+            from: liquidityProvider,
           });
 
           syntheticToken = await Token.at(await financialContract.tokenCurrency());
@@ -241,10 +241,10 @@ contract("Liquidator.js", function(accounts) {
           await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), { from: sponsor2 });
           await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), { from: sponsor3 });
           await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), {
-            from: liquidatorBot
+            from: liquidatorBot,
           });
           await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), {
-            from: liquidityProvider
+            from: liquidityProvider,
           });
 
           // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.
@@ -254,7 +254,7 @@ contract("Liquidator.js", function(accounts) {
 
           spyLogger = winston.createLogger({
             level: "info",
-            transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+            transports: [new SpyTransport({ level: "info" }, { spy: spy })],
           });
 
           // Create a new instance of the FinancialContractClient & gasEstimator to construct the liquidator
@@ -278,7 +278,7 @@ contract("Liquidator.js", function(accounts) {
           liquidatorConfig = {
             crThreshold: 0,
             contractType: contractVersion.contractType,
-            contractVersion: contractVersion.contractVersion
+            contractVersion: contractVersion.contractVersion,
           };
 
           // Generate Financial Contract properties to inform bot of important on-chain state values that we only want to query once.
@@ -286,7 +286,7 @@ contract("Liquidator.js", function(accounts) {
             crRatio: await financialContract.collateralRequirement(),
             priceIdentifier: await financialContract.priceIdentifier(),
             minSponsorSize: await financialContract.minSponsorTokens(),
-            withdrawLiveness: await financialContract.withdrawalLiveness()
+            withdrawLiveness: await financialContract.withdrawalLiveness(),
           };
 
           // Set the proxyTransaction wrapper to act without the DSProxy by setting useDsProxyToLiquidate to false.
@@ -300,7 +300,7 @@ contract("Liquidator.js", function(accounts) {
             account: accounts[0],
             dsProxyManager: null,
             useDsProxyToLiquidate: false,
-            proxyTransactionWrapperConfig: {}
+            proxyTransactionWrapperConfig: {},
           });
 
           liquidator = new Liquidator({
@@ -312,12 +312,12 @@ contract("Liquidator.js", function(accounts) {
             priceFeed: priceFeedMock,
             account: accounts[0],
             financialContractProps,
-            liquidatorConfig
+            liquidatorConfig,
           });
         });
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Can correctly detect undercollateralized positions and liquidate them",
-          async function() {
+          async function () {
             // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
             await financialContract.create(
               { rawValue: convertCollateral("125") },
@@ -420,7 +420,7 @@ contract("Liquidator.js", function(accounts) {
         );
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Can correctly detect invalid withdrawals and liquidate them",
-          async function() {
+          async function () {
             // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
             await financialContract.create(
               { rawValue: convertCollateral("125") },
@@ -509,7 +509,7 @@ contract("Liquidator.js", function(accounts) {
 
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Can withdraw rewards from expired liquidations",
-          async function() {
+          async function () {
             // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
             await financialContract.create(
               { rawValue: convertCollateral("125") },
@@ -562,7 +562,7 @@ contract("Liquidator.js", function(accounts) {
 
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Can withdraw rewards from liquidations that were disputed unsuccessfully",
-          async function() {
+          async function () {
             // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
             await financialContract.create(
               { rawValue: convertCollateral("125") },
@@ -652,7 +652,7 @@ contract("Liquidator.js", function(accounts) {
 
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Can withdraw rewards from liquidations that were disputed successfully",
-          async function() {
+          async function () {
             // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
             await financialContract.create(
               { rawValue: convertCollateral("125") },
@@ -731,7 +731,7 @@ contract("Liquidator.js", function(accounts) {
 
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Detect if the liquidator cannot liquidate due to capital constraints",
-          async function() {
+          async function () {
             // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
             await financialContract.create(
               { rawValue: convertCollateral("125") },
@@ -774,10 +774,10 @@ contract("Liquidator.js", function(accounts) {
           }
         );
 
-        describe("Overrides the default liquidator configuration settings", function() {
+        describe("Overrides the default liquidator configuration settings", function () {
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Cannot set `crThreshold` >= 1",
-            async function() {
+            async function () {
               let errorThrown;
               try {
                 liquidatorConfig = { ...liquidatorConfig, crThreshold: 1 };
@@ -789,7 +789,7 @@ contract("Liquidator.js", function(accounts) {
                   priceFeed: priceFeedMock,
                   account: accounts[0],
                   financialContractProps,
-                  liquidatorConfig
+                  liquidatorConfig,
                 });
                 errorThrown = false;
               } catch (err) {
@@ -801,7 +801,7 @@ contract("Liquidator.js", function(accounts) {
 
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Cannot set `crThreshold` < 0",
-            async function() {
+            async function () {
               let errorThrown;
               try {
                 liquidatorConfig = { ...liquidatorConfig, crThreshold: -0.02 };
@@ -812,7 +812,7 @@ contract("Liquidator.js", function(accounts) {
                   syntheticToken: syntheticToken.contract,
                   priceFeed: priceFeedMock,
                   financialContractProps,
-                  liquidatorConfig
+                  liquidatorConfig,
                 });
                 errorThrown = false;
               } catch (err) {
@@ -822,7 +822,7 @@ contract("Liquidator.js", function(accounts) {
             }
           );
 
-          versionedIt([{ contractType: "any", contractVersion: "any" }])("Sets `crThreshold` to 2%", async function() {
+          versionedIt([{ contractType: "any", contractVersion: "any" }])("Sets `crThreshold` to 2%", async function () {
             liquidatorConfig = { ...liquidatorConfig, crThreshold: 0.02 };
             liquidator = new Liquidator({
               logger: spyLogger,
@@ -833,7 +833,7 @@ contract("Liquidator.js", function(accounts) {
               priceFeed: priceFeedMock,
               account: accounts[0],
               financialContractProps,
-              liquidatorConfig
+              liquidatorConfig,
             });
 
             // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
@@ -890,13 +890,13 @@ contract("Liquidator.js", function(accounts) {
           });
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Cannot set invalid alerting overrides",
-            async function() {
+            async function () {
               let errorThrown;
               try {
                 // Create an invalid log level override. This should be rejected.
                 liquidatorConfig = {
                   ...liquidatorConfig,
-                  logOverrides: { positionLiquidated: "not a valid log level" }
+                  logOverrides: { positionLiquidated: "not a valid log level" },
                 };
                 liquidator = new Liquidator({
                   logger: spyLogger,
@@ -907,7 +907,7 @@ contract("Liquidator.js", function(accounts) {
                   priceFeed: priceFeedMock,
                   account: accounts[0],
                   financialContractProps,
-                  liquidatorConfig
+                  liquidatorConfig,
                 });
                 errorThrown = false;
               } catch (err) {
@@ -918,7 +918,7 @@ contract("Liquidator.js", function(accounts) {
           );
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "amount-to-liquidate > min-sponsor-tokens, but bot balance is too low to send liquidation",
-            async function() {
+            async function () {
               // We'll attempt to liquidate 10 tokens, but we will only have enough balance to complete the first liquidation.
               const amountToLiquidate = toWei("10");
 
@@ -998,10 +998,10 @@ contract("Liquidator.js", function(accounts) {
               assert.equal(positionObject.tokensOutstanding.rawValue, convertSynthetic("5"));
             }
           );
-          describe("Partial liquidations", function() {
+          describe("Partial liquidations", function () {
             versionedIt([{ contractType: "any", contractVersion: "any" }])(
               "amount-to-liquidate > min-sponsor-tokens",
-              async function() {
+              async function () {
                 // We'll attempt to liquidate 6 tokens. The minimum sponsor position is 5. There are 3 different scenarios
                 // we should test for, each of which we'll attempt to liquidate in one call of `liquidatePositions`.
                 const amountToLiquidate = convertSynthetic("6");
@@ -1105,7 +1105,7 @@ contract("Liquidator.js", function(accounts) {
 
             versionedIt([{ contractType: "any", contractVersion: "any" }])(
               "amount-to-liquidate < min-sponsor-tokens",
-              async function() {
+              async function () {
                 // We'll attempt to liquidate 4 tokens. The minimum sponsor position is 5. There are 3 different scenarios
                 // we should test for, each of which we'll attempt to liquidate in one call of `liquidatePositions`.
                 const amountToLiquidate = convertSynthetic("4");
@@ -1224,7 +1224,7 @@ contract("Liquidator.js", function(accounts) {
 
             versionedIt([{ contractType: "any", contractVersion: "any" }])(
               "Overriding threshold correctly effects generated logs",
-              async function() {
+              async function () {
                 // Liquidation events normally are `info` level. This override should change the value to `warn` which can be
                 // validated after the log is generated.
                 liquidatorConfig = { ...liquidatorConfig, logOverrides: { positionLiquidated: "warn" } };
@@ -1237,7 +1237,7 @@ contract("Liquidator.js", function(accounts) {
                   priceFeed: priceFeedMock,
                   account: accounts[0],
                   financialContractProps,
-                  liquidatorConfig
+                  liquidatorConfig,
                 });
 
                 // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
@@ -1272,7 +1272,7 @@ contract("Liquidator.js", function(accounts) {
 
             versionedIt([{ contractType: "any", contractVersion: "any" }])(
               "Can correctly override price feed input",
-              async function() {
+              async function () {
                 // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
                 await financialContract.create(
                   { rawValue: convertCollateral("115") },
@@ -1340,7 +1340,7 @@ contract("Liquidator.js", function(accounts) {
               priceFeed: priceFeedMock,
               account: accounts[0],
               financialContractProps,
-              liquidatorConfig
+              liquidatorConfig,
             });
             assert.ok(liquidator);
           });
@@ -1350,7 +1350,7 @@ contract("Liquidator.js", function(accounts) {
               liquidatorConfig = {
                 ...liquidatorConfig,
                 // will extend even if withdraw progress is 80% complete
-                defenseActivationPercent: 80
+                defenseActivationPercent: 80,
               };
               const withdrawLiveness = financialContractProps.withdrawLiveness.toNumber();
               const liquidator = new Liquidator({
@@ -1362,7 +1362,7 @@ contract("Liquidator.js", function(accounts) {
                 priceFeed: priceFeedMock,
                 account: accounts[0],
                 financialContractProps,
-                liquidatorConfig
+                liquidatorConfig,
               });
               await financialContract.create(
                 { rawValue: convertCollateral("120") },
@@ -1401,7 +1401,7 @@ contract("Liquidator.js", function(accounts) {
 
               let [sponsor1Liquidation, sponsor2Liquidation] = [
                 (await financialContract.getLiquidations(sponsor1))[0],
-                (await financialContract.getLiquidations(sponsor2))[0]
+                (await financialContract.getLiquidations(sponsor2))[0],
               ];
               assert.equal(sponsor1Liquidation.tokensOutstanding, convertSynthetic("100"));
               assert.equal(sponsor2Liquidation.tokensOutstanding, convertSynthetic("5"));
@@ -1466,7 +1466,7 @@ contract("Liquidator.js", function(accounts) {
               // already, then liquidate using as many funds as the bot owns.
               liquidatorConfig = {
                 ...liquidatorConfig,
-                defenseActivationPercent: 50
+                defenseActivationPercent: 50,
               };
               const liquidator = new Liquidator({
                 logger: spyLogger,
@@ -1477,7 +1477,7 @@ contract("Liquidator.js", function(accounts) {
                 priceFeed: priceFeedMock,
                 account: accounts[0],
                 financialContractProps,
-                liquidatorConfig
+                liquidatorConfig,
               });
               // sponsor1 creates a position with 120 units of collateral, creating 100 synthetic tokens.
               await financialContract.create(
@@ -1534,9 +1534,9 @@ contract("Liquidator.js", function(accounts) {
           );
         });
         describe("Liquidator correctly deals with funding rates from perpetual contract", () => {
-          versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])(
+          versionedIt([{ contractType: "Perpetual", contractVersion: "2.0.1" }])(
             "Can correctly detect invalid positions and liquidate them",
-            async function() {
+            async function () {
               // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
               await financialContract.create(
                 { rawValue: convertCollateral("125") },
@@ -1688,8 +1688,8 @@ contract("Liquidator.js", function(accounts) {
         });
         describe("Liquidation via DSProxy", () => {
           // Imports specific to the DSProxy wallet implementation.
-          const DSProxyFactory = getTruffleContract("DSProxyFactory", web3, "latest");
-          const DSProxy = getTruffleContract("DSProxy", web3, "latest");
+          const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);
+          const DSProxy = getTruffleContract("DSProxy", web3);
           const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json");
           const IUniswapV2Pair = require("@uniswap/v2-core/build/IUniswapV2Pair.json");
           const UniswapV2Router02 = require("@uniswap/v2-periphery/build/UniswapV2Router02.json");
@@ -1704,7 +1704,7 @@ contract("Liquidator.js", function(accounts) {
 
           // Takes in a json object from a compiled contract and returns a truffle contract instance that can be deployed.
           // TODO: refactor this to be from a common file
-          const createContractObjectFromJson = contractJsonObject => {
+          const createContractObjectFromJson = (contractJsonObject) => {
             let truffleContractCreator = truffleContract(contractJsonObject);
             truffleContractCreator.setProvider(web3.currentProvider);
             return truffleContractCreator;
@@ -1717,19 +1717,19 @@ contract("Liquidator.js", function(accounts) {
 
             // deploy Uniswap V2 Factory & router.
             uniswapFactory = await createContractObjectFromJson(UniswapV2Factory).new(contractCreator, {
-              from: contractCreator
+              from: contractCreator,
             });
             uniswapRouter = await createContractObjectFromJson(UniswapV2Router02).new(
               uniswapFactory.address,
               collateralToken.address,
               {
-                from: contractCreator
+                from: contractCreator,
               }
             );
 
             // initialize the pair between the reserve and collateral token.
             await uniswapFactory.createPair(reserveToken.address, collateralToken.address, {
-              from: contractCreator
+              from: contractCreator,
             });
             pairAddress = await uniswapFactory.getPair(reserveToken.address, collateralToken.address);
             pair = await createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
@@ -1739,7 +1739,7 @@ contract("Liquidator.js", function(accounts) {
             // is scaled according to the collateral decimals.
             await reserveToken.mint(pairAddress, toBN(toWei("1000")).muln(10000000), { from: contractCreator });
             await collateralToken.mint(pairAddress, toBN(convertCollateral("1000")).muln(10000000), {
-              from: contractCreator
+              from: contractCreator,
             });
             await pair.sync({ from: contractCreator });
 
@@ -1753,7 +1753,7 @@ contract("Liquidator.js", function(accounts) {
               account: liquidatorBot,
               dsProxyFactoryAddress: dsProxyFactory.address,
               dsProxyFactoryAbi: DSProxyFactory.abi,
-              dsProxyAbi: DSProxy.abi
+              dsProxyAbi: DSProxy.abi,
             });
             // Initialize the DSProxy manager. This will deploy a new DSProxy contract as the liquidator bot EOA does not
             // yet have one deployed.
@@ -1771,8 +1771,8 @@ contract("Liquidator.js", function(accounts) {
                 useDsProxyToLiquidate: true,
                 uniswapRouterAddress: uniswapRouter.address,
                 uniswapFactoryAddress: uniswapFactory.address,
-                liquidatorReserveCurrencyAddress: reserveToken.address
-              }
+                liquidatorReserveCurrencyAddress: reserveToken.address,
+              },
             });
 
             liquidator = new Liquidator({
@@ -1787,13 +1787,13 @@ contract("Liquidator.js", function(accounts) {
               liquidatorConfig: {
                 crThreshold: 0,
                 contractType: contractVersion.contractType,
-                contractVersion: contractVersion.contractVersion
-              }
+                contractVersion: contractVersion.contractVersion,
+              },
             });
           });
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Can correctly detect initialized DSProxy and ProxyTransactionWrapper",
-            async function() {
+            async function () {
               // The initialization in the before-each should be correct.
               assert.isTrue(isAddress(dsProxy.address));
               assert.equal(await dsProxy.owner(), liquidatorBot);
@@ -1806,7 +1806,7 @@ contract("Liquidator.js", function(accounts) {
           );
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Rejects invalid invocation of proxy transaction wrapper",
-            async function() {
+            async function () {
               // Invalid invocation should reject. Missing reserve currency.
               assert.throws(() => {
                 new ProxyTransactionWrapper({
@@ -1821,8 +1821,8 @@ contract("Liquidator.js", function(accounts) {
                     useDsProxyToLiquidate: true,
                     uniswapRouterAddress: uniswapRouter.address,
                     uniswapFactoryAddress: uniswapFactory.address,
-                    liquidatorReserveCurrencyAddress: null
-                  }
+                    liquidatorReserveCurrencyAddress: null,
+                  },
                 });
               });
 
@@ -1839,8 +1839,8 @@ contract("Liquidator.js", function(accounts) {
                   proxyTransactionWrapperConfig: {
                     useDsProxyToLiquidate: true,
                     uniswapRouterAddress: "not-an-address",
-                    liquidatorReserveCurrencyAddress: reserveToken.address
-                  }
+                    liquidatorReserveCurrencyAddress: reserveToken.address,
+                  },
                 });
               });
               // Invalid invocation should reject. Requests to use DSProxy to liquidate but does not provide DSProxy manager.
@@ -1857,8 +1857,8 @@ contract("Liquidator.js", function(accounts) {
                     useDsProxyToLiquidate: true,
                     uniswapRouterAddress: uniswapRouter.address,
                     uniswapFactoryAddress: uniswapFactory.address,
-                    liquidatorReserveCurrencyAddress: reserveToken.address
-                  }
+                    liquidatorReserveCurrencyAddress: reserveToken.address,
+                  },
                 });
               });
               // Invalid invocation should reject. DSProxy Manager not yet initalized.
@@ -1871,7 +1871,7 @@ contract("Liquidator.js", function(accounts) {
                 account: liquidatorBot,
                 dsProxyFactoryAddress: dsProxyFactory.address,
                 dsProxyFactoryAbi: DSProxyFactory.abi,
-                dsProxyAbi: DSProxy.abi
+                dsProxyAbi: DSProxy.abi,
               });
               assert.throws(() => {
                 new ProxyTransactionWrapper({
@@ -1886,15 +1886,15 @@ contract("Liquidator.js", function(accounts) {
                     useDsProxyToLiquidate: true,
                     uniswapRouterAddress: uniswapRouter.address,
                     uniswapFactoryAddress: uniswapFactory.address,
-                    liquidatorReserveCurrencyAddress: reserveToken.address
-                  }
+                    liquidatorReserveCurrencyAddress: reserveToken.address,
+                  },
                 });
               });
             }
           );
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Correctly liquidates positions using DSProxy",
-            async function() {
+            async function () {
               // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
               await financialContract.create(
                 { rawValue: convertCollateral("125") },
@@ -2004,7 +2004,6 @@ contract("Liquidator.js", function(accounts) {
 
                 // Liquidator should have their collateral increased by Sponsor1 + sponsor2 collateral.
                 const collateralPostWithdraw = await collateralToken.balanceOf(dsProxy.address);
-                console.log("collateralPostWithdraw", collateralPostWithdraw.toString());
                 assert.equal(
                   toBN(collateralPreWithdraw)
                     .add(toBN(convertCollateral("125")))
@@ -2025,10 +2024,99 @@ contract("Liquidator.js", function(accounts) {
               }
             }
           );
+          versionedIt([{ contractType: "any", contractVersion: "any" }])(
+            "Correctly deals with reserve being the same as collateral currency using DSProxy",
+            async function () {
+              // create a new liquidator and set the reserve currency to the collateral currency.
+              const proxyTransactionWrapper = new ProxyTransactionWrapper({
+                web3,
+                financialContract: financialContract.contract,
+                gasEstimator,
+                syntheticToken: syntheticToken.contract,
+                collateralToken: collateralToken.contract,
+                account: accounts[0],
+                dsProxyManager,
+                proxyTransactionWrapperConfig: {
+                  useDsProxyToLiquidate: true,
+                  uniswapRouterAddress: uniswapRouter.address,
+                  uniswapFactoryAddress: uniswapFactory.address,
+                  liquidatorReserveCurrencyAddress: await financialContract.collateralCurrency(),
+                },
+              });
 
+              const liquidator = new Liquidator({
+                logger: spyLogger,
+                financialContractClient: financialContractClient,
+                proxyTransactionWrapper,
+                gasEstimator,
+                syntheticToken: syntheticToken.contract,
+                priceFeed: priceFeedMock,
+                account: accounts[0],
+                financialContractProps,
+                liquidatorConfig,
+              });
+              await financialContract.create(
+                { rawValue: convertCollateral("120") },
+                { rawValue: convertSynthetic("100") },
+                { from: sponsor1 }
+              );
+              await financialContract.create(
+                { rawValue: convertCollateral("175") },
+                { rawValue: convertSynthetic("100") },
+                { from: sponsor2 }
+              );
+              // Seed the DSProxy with some collateral tokens (this is the same as the reserve token).
+              await collateralToken.mint(dsProxy.address, convertCollateral("150"), { from: contractCreator });
+
+              // Liquidator should correctly liquidate both positions and have done no trades in the process as it
+              // used the reserve as collateral. Assume the price feed given to the liquidator has moved such one of the
+              // two positions are undercollateralized.
+              // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
+              // Sponsor2: 100 * 1.3 * 1.2 < 175 [sufficiently collateralized]
+
+              priceFeedMock.setCurrentPrice(convertPrice("1.3"));
+              await liquidator.update();
+              await liquidator.liquidatePositions();
+              assert.equal(spy.callCount, 3); // 3 info level events should be sent at the conclusion of the 1 liquidations.
+              // 1 for the deployment of the DSProxy, 1 for the execution of the DSPRoxy ta and 1 for the liquidation.
+
+              // Sponsor1 should be in a liquidation state with the bot as the liquidator.
+              let liquidationObject = (await financialContract.getLiquidations(sponsor1))[0];
+              assert.equal(liquidationObject.sponsor, sponsor1);
+              assert.equal(liquidationObject.liquidator, dsProxy.address);
+              assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+              assert.equal(liquidationObject.liquidatedCollateral, convertCollateral("120"));
+
+              // Sponsor1 should have zero collateral left in their position from the liquidation.
+              assert.equal((await financialContract.getCollateral(sponsor1)).rawValue, 0);
+
+              // Sponsor2 should not have any liquidations and should have all their collateral.
+              assert.deepStrictEqual(await financialContract.getLiquidations(sponsor2), []);
+              assert.equal((await financialContract.getCollateral(sponsor2)).rawValue, convertCollateral("175"));
+
+              // Next, try another liquidation. This time around the bot does not have enough collateral to mint enough
+              // to liquidate the min sponsor size. The bot should correctly report this without generating any errors
+              // or throwing any txs.
+
+              priceFeedMock.setCurrentPrice(convertPrice("2"));
+              await liquidator.update();
+              await liquidator.liquidatePositions();
+
+              liquidationObject = (await financialContract.getLiquidations(sponsor2))[0];
+              assert.equal(liquidationObject.sponsor, sponsor2);
+              assert.equal(liquidationObject.liquidator, dsProxy.address);
+              assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+
+              assert.equal(spy.callCount, 7);
+              assert.isTrue(spyLogIncludes(spy, 3, "Submitting a partial liquidation"));
+              assert.isTrue(spyLogIncludes(spy, 4, "Executed function on a freshly deployed library"));
+              assert.isTrue(spyLogIncludes(spy, 5, "Position has been liquidated"));
+              assert.isTrue(spyLogIncludes(spy, 6, "Insufficient balance to liquidate the minimum sponsor size"));
+            }
+          );
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Correctly respects existing collateral balances when using DSProxy",
-            async function() {
+            async function () {
               // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
               await financialContract.create(
                 { rawValue: convertCollateral("125") },
@@ -2069,9 +2157,7 @@ contract("Liquidator.js", function(accounts) {
               // The DSProxy collateral should have decreased by the exact amount of collateral spend in the position mint.
               assert.equal(
                 (await collateralToken.balanceOf(dsProxy.address)).toString(),
-                toBN(toWei("1000"))
-                  .sub(toBN(dsProxyPosition.rawCollateral.rawValue))
-                  .toString()
+                toBN(toWei("1000")).sub(toBN(dsProxyPosition.rawCollateral.rawValue)).toString()
               );
             }
           );
@@ -2081,7 +2167,7 @@ contract("Liquidator.js", function(accounts) {
               liquidatorConfig = {
                 ...liquidatorConfig,
                 // will extend even if withdraw progress is 80% complete
-                defenseActivationPercent: 80
+                defenseActivationPercent: 80,
               };
               const withdrawLiveness = financialContractProps.withdrawLiveness.toNumber();
               const liquidator = new Liquidator({
@@ -2093,7 +2179,7 @@ contract("Liquidator.js", function(accounts) {
                 priceFeed: priceFeedMock,
                 account: accounts[0],
                 financialContractProps,
-                liquidatorConfig
+                liquidatorConfig,
               });
               await financialContract.create(
                 { rawValue: convertCollateral("120") },
@@ -2130,7 +2216,7 @@ contract("Liquidator.js", function(accounts) {
 
               let [sponsor1Liquidation, sponsor2Liquidation] = [
                 (await financialContract.getLiquidations(sponsor1))[0],
-                (await financialContract.getLiquidations(sponsor2))[0]
+                (await financialContract.getLiquidations(sponsor2))[0],
               ];
               assert.equal(sponsor1Liquidation.tokensOutstanding.rawValue, convertSynthetic("100").toString());
               assert.equal(sponsor2Liquidation.tokensOutstanding.rawValue, convertSynthetic("5").toString());
@@ -2185,7 +2271,6 @@ contract("Liquidator.js", function(accounts) {
               assert.equal(sponsor2Liquidations.length, 3);
               // The liquidator at this point should have spent all its DSProxy funds. Note we check that this is less
               // than 10 wei as there could be a tiny bit of dust left due to rounding.
-              console.log("B", (await reserveToken.balanceOf(dsProxy.address)).toString());
               assert.isTrue((await reserveToken.balanceOf(dsProxy.address)).lt(toBN(toWei("0.000001"))));
             }
           );

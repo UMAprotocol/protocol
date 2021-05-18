@@ -11,22 +11,20 @@ const {
   OptimisticOracleEventClient,
   SpyTransport,
   lastSpyLogIncludes,
-  lastSpyLogLevel
+  lastSpyLogLevel,
 } = require("@uma/financial-templates-lib");
 
-const CONTRACT_VERSION = "latest";
+const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
+const OptimisticRequesterTest = getTruffleContract("OptimisticRequesterTest", web3);
+const Finder = getTruffleContract("Finder", web3);
+const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3);
+const Token = getTruffleContract("ExpandedERC20", web3);
+const AddressWhitelist = getTruffleContract("AddressWhitelist", web3);
+const Timer = getTruffleContract("Timer", web3);
+const Store = getTruffleContract("Store", web3);
+const MockOracle = getTruffleContract("MockOracleAncillary", web3);
 
-const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, CONTRACT_VERSION);
-const OptimisticRequesterTest = getTruffleContract("OptimisticRequesterTest", web3, CONTRACT_VERSION);
-const Finder = getTruffleContract("Finder", web3, CONTRACT_VERSION);
-const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, CONTRACT_VERSION);
-const Token = getTruffleContract("ExpandedERC20", web3, CONTRACT_VERSION);
-const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, CONTRACT_VERSION);
-const Timer = getTruffleContract("Timer", web3, CONTRACT_VERSION);
-const Store = getTruffleContract("Store", web3, CONTRACT_VERSION);
-const MockOracle = getTruffleContract("MockOracleAncillary", web3, CONTRACT_VERSION);
-
-contract("OptimisticOracleContractMonitor.js", function(accounts) {
+contract("OptimisticOracleContractMonitor.js", function (accounts) {
   const owner = accounts[0];
   const requester = accounts[1];
   const proposer = accounts[2];
@@ -64,12 +62,12 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
   const defaultAncillaryData = "0x";
   const alternativeAncillaryData = "0x1234";
 
-  const pushPrice = async price => {
+  const pushPrice = async (price) => {
     const [lastQuery] = (await mockOracle.getPendingQueries()).slice(-1);
     await mockOracle.pushPrice(lastQuery.identifier, lastQuery.time, lastQuery.ancillaryData, price);
   };
 
-  before(async function() {
+  before(async function () {
     finder = await Finder.new();
     timer = await Timer.new();
 
@@ -89,7 +87,7 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
   });
 
   let requestTxn, proposalTxn, disputeTxn, settlementTxn;
-  beforeEach(async function() {
+  beforeEach(async function () {
     // Deploy and whitelist a new collateral currency that we will use to pay oracle fees.
     collateral = await Token.new("Wrapped Ether", "WETH", 18);
     await collateral.addMember(1, owner);
@@ -116,7 +114,7 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
     spy = sinon.spy();
     spyLogger = winston.createLogger({
       level: "info",
-      transports: [new SpyTransport({ level: "info" }, { spy })]
+      transports: [new SpyTransport({ level: "info" }, { spy })],
     });
 
     eventClient = new OptimisticOracleEventClient(
@@ -130,14 +128,14 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
 
     monitorConfig = {};
     contractProps = {
-      networkId: await web3.eth.net.getId()
+      networkId: await web3.eth.net.getId(),
     };
 
     contractMonitor = new OptimisticOracleContractMonitor({
       logger: spyLogger,
       optimisticOracleContractEventClient: eventClient,
       monitorConfig,
-      contractProps
+      contractProps,
     });
 
     // Make price requests
@@ -159,7 +157,7 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
       defaultAncillaryData,
       correctPrice,
       {
-        from: proposer
+        from: proposer,
       }
     );
 
@@ -171,7 +169,7 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
       requestTime,
       defaultAncillaryData,
       {
-        from: disputer
+        from: disputer,
       }
     );
     await pushPrice(correctPrice);
@@ -185,7 +183,7 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
     );
   });
 
-  it("Winston correctly emits price request message", async function() {
+  it("Winston correctly emits price request message", async function () {
     await eventClient.update();
     await contractMonitor.checkForRequests();
 
@@ -220,7 +218,7 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
     // Check that only one extra event was emitted since we already "checked" the original events.
     assert.equal(spy.callCount, spyCount + 1);
   });
-  it("Winston correctly emits price proposal message", async function() {
+  it("Winston correctly emits price proposal message", async function () {
     await eventClient.update();
     await contractMonitor.checkForProposals();
 
@@ -255,7 +253,7 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
       alternativeAncillaryData,
       correctPrice,
       {
-        from: proposer
+        from: proposer,
       }
     );
     await eventClient.update();
@@ -266,7 +264,7 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
     // Check that only one extra event was emitted since we already "checked" the original events.
     assert.equal(spy.callCount, spyCount + 1);
   });
-  it("Winston correctly emits price dispute message", async function() {
+  it("Winston correctly emits price dispute message", async function () {
     await eventClient.update();
     await contractMonitor.checkForDisputes();
 
@@ -300,7 +298,7 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
       alternativeAncillaryData,
       correctPrice,
       {
-        from: proposer
+        from: proposer,
       }
     );
     const newTxn = await optimisticOracle.disputePrice(
@@ -309,7 +307,7 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
       requestTime,
       alternativeAncillaryData,
       {
-        from: disputer
+        from: disputer,
       }
     );
     await eventClient.update();
@@ -320,7 +318,7 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
     // Check that only one extra event was emitted since we already "checked" the original events.
     assert.equal(spy.callCount, spyCount + 1);
   });
-  it("Winston correctly emits price settlement message", async function() {
+  it("Winston correctly emits price settlement message", async function () {
     await eventClient.update();
     await contractMonitor.checkForSettlements();
 
@@ -359,7 +357,7 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
       alternativeAncillaryData,
       correctPrice,
       {
-        from: proposer
+        from: proposer,
       }
     );
     await optimisticOracle.setCurrentTime((Number(newProposalTime) + liveness).toString());
@@ -379,7 +377,7 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
     // Check that only one extra event was emitted since we already "checked" the original events.
     assert.equal(spy.callCount, spyCount + 1);
   });
-  it("Can correctly create contract monitor with no config provided", async function() {
+  it("Can correctly create contract monitor with no config provided", async function () {
     let errorThrown;
     try {
       // Create an invalid config. A valid config expects two arrays of addresses.
@@ -387,7 +385,7 @@ contract("OptimisticOracleContractMonitor.js", function(accounts) {
         logger: spyLogger,
         optimisticOracleContractEventClient: eventClient,
         monitorConfig: {},
-        contractProps
+        contractProps,
       });
       await contractMonitor.checkForRequests();
       await contractMonitor.checkForProposals();

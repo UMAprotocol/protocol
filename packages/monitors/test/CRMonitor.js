@@ -6,7 +6,7 @@ const {
   parseFixed,
   runTestForVersion,
   createConstructorParamsForContractVersion,
-  TESTED_CONTRACT_VERSIONS
+  TESTED_CONTRACT_VERSIONS,
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
@@ -19,7 +19,7 @@ const {
   PriceFeedMock,
   SpyTransport,
   lastSpyLogIncludes,
-  lastSpyLogLevel
+  lastSpyLogLevel,
 } = require("@uma/financial-templates-lib");
 
 // Run the tests against 3 different kinds of token/synth decimal combinations:
@@ -29,7 +29,7 @@ const {
 const configs = [
   { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
   { tokenSymbol: "Legacy BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 }
+  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 },
 ];
 
 let iterationTestVersion; // store the test version between tests that is currently being tested.
@@ -68,7 +68,7 @@ let convertSynthetic;
 let convertPrice;
 
 // Set the funding rate and advances time by 10k seconds.
-const _setFundingRateAndAdvanceTime = async fundingRate => {
+const _setFundingRateAndAdvanceTime = async (fundingRate) => {
   currentTime = (await financialContract.getCurrentTime()).toNumber();
   await financialContract.proposeFundingRate({ rawValue: fundingRate }, currentTime);
   await financialContract.setCurrentTime(currentTime + 10000);
@@ -79,20 +79,20 @@ const _setFundingRateAndAdvanceTime = async fundingRate => {
 // for a given test.eg: versionedIt([{ contractType: "any", contractVersion: "any" }])(["Perpetual-latest"])("test name", async function () { assert.isTrue(true) })
 // Note that a second param can be provided to make the test an `it.only` thereby ONLY running that single test, on
 // the provided version. This is very useful for debugging and writing single unit tests without having ro run all tests.
-const versionedIt = function(supportedVersions, shouldBeItOnly = false) {
+const versionedIt = function (supportedVersions, shouldBeItOnly = false) {
   if (shouldBeItOnly)
     return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it.only : () => {};
   return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it : () => {};
 };
 
-const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
+const Convert = (decimals) => (number) => parseFixed(number.toString(), decimals).toString();
 
-contract("CRMonitor.js", function(accounts) {
+contract("CRMonitor.js", function (accounts) {
   const tokenSponsor = accounts[0];
   const monitoredTrader = accounts[1];
   const monitoredSponsor = accounts[2];
 
-  TESTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
+  TESTED_CONTRACT_VERSIONS.forEach(function (contractVersion) {
     // Store the contractVersion.contractVersion, type and version being tested
     iterationTestVersion = contractVersion;
 
@@ -107,13 +107,13 @@ contract("CRMonitor.js", function(accounts) {
     const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
     const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
-    const ConfigStore = getTruffleContract("ConfigStore", web3, "latest");
-    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, "latest");
-    const MulticallMock = getTruffleContract("MulticallMock", web3, "latest");
+    const ConfigStore = getTruffleContract("ConfigStore", web3);
+    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
+    const MulticallMock = getTruffleContract("MulticallMock", web3);
 
     for (let testConfig of configs) {
-      describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
-        before(async function() {
+      describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
+        before(async function () {
           identifier = `${testConfig.tokenSymbol}TEST`;
           fundingRateIdentifier = `${testConfig.tokenName}_FUNDING_IDENTIFIER`;
           convertCollateral = Convert(testConfig.collateralDecimals);
@@ -155,13 +155,13 @@ contract("CRMonitor.js", function(accounts) {
           multicall = await MulticallMock.new();
         });
 
-        beforeEach(async function() {
+        beforeEach(async function () {
           await timer.setCurrentTime(startTime - 1);
           currentTime = await mockOracle.getCurrentTime.call();
 
           // Create a new synthetic token
           syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", testConfig.syntheticDecimals, {
-            from: tokenSponsor
+            from: tokenSponsor,
           });
 
           // If we are testing a perpetual then we need to also deploy a config store, an optimistic oracle and set the funding rate identifier.
@@ -173,7 +173,7 @@ contract("CRMonitor.js", function(accounts) {
                 proposerBondPercentage: { rawValue: "0" },
                 maxFundingRate: { rawValue: toWei("0.00001") },
                 minFundingRate: { rawValue: toWei("-0.00001") },
-                proposalTimePastLimit: 0
+                proposalTimePastLimit: 0,
               },
               timer.address
             );
@@ -197,13 +197,13 @@ contract("CRMonitor.js", function(accounts) {
               fundingRateIdentifier,
               timer,
               store,
-              configStore: configStore || {} // if the contract type is not a perp this will be null.
+              configStore: configStore || {}, // if the contract type is not a perp this will be null.
             },
             {
               minSponsorTokens: { rawValue: convertSynthetic("1") },
               collateralRequirement: { rawValue: toWei("1.5") },
               withdrawalLiveness: "10",
-              liquidationLiveness: "10"
+              liquidationLiveness: "10",
             }
           );
           // Deploy a new expiring multi party OR perpetual, depending on the test version.
@@ -217,7 +217,7 @@ contract("CRMonitor.js", function(accounts) {
           spy = sinon.spy();
           spyLogger = winston.createLogger({
             level: "info",
-            transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+            transports: [new SpyTransport({ level: "info" }, { spy: spy })],
           });
 
           await syntheticToken.addMinter(financialContract.address);
@@ -240,14 +240,14 @@ contract("CRMonitor.js", function(accounts) {
               {
                 name: "Monitored trader wallet",
                 address: monitoredTrader,
-                crAlert: 2.0 // if the collateralization ratio of this wallet drops below 200% send an alert
+                crAlert: 2.0, // if the collateralization ratio of this wallet drops below 200% send an alert
               },
               {
                 name: "Monitored sponsor wallet",
                 address: monitoredSponsor,
-                crAlert: 1.5 // if the collateralization ratio of this wallet drops below 150% send an alert
-              }
-            ]
+                crAlert: 1.5, // if the collateralization ratio of this wallet drops below 150% send an alert
+              },
+            ],
           };
           syntheticToken = await Token.at(await financialContract.tokenCurrency());
 
@@ -258,7 +258,7 @@ contract("CRMonitor.js", function(accounts) {
             priceFeedDecimals: testConfig.priceFeedDecimals,
             syntheticSymbol: await syntheticToken.symbol(),
             priceIdentifier: hexToUtf8(await financialContract.priceIdentifier()),
-            networkId: await web3.eth.net.getId()
+            networkId: await web3.eth.net.getId(),
           };
 
           crMonitor = new CRMonitor({
@@ -266,21 +266,21 @@ contract("CRMonitor.js", function(accounts) {
             financialContractClient: financialContractClient,
             priceFeed: priceFeedMock,
             monitorConfig,
-            financialContractProps
+            financialContractProps,
           });
 
           await collateralToken.addMember(1, tokenSponsor, {
-            from: tokenSponsor
+            from: tokenSponsor,
           });
 
           //   Bulk mint and approve for all wallets
           for (let i = 1; i < 3; i++) {
             await collateralToken.mint(accounts[i], convertCollateral("100000000"), { from: tokenSponsor });
             await collateralToken.approve(financialContract.address, convertCollateral("100000000"), {
-              from: accounts[i]
+              from: accounts[i],
             });
             await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), {
-              from: accounts[i]
+              from: accounts[i],
             });
           }
 
@@ -299,7 +299,7 @@ contract("CRMonitor.js", function(accounts) {
 
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Winston correctly emits collateralization ratio message",
-          async function() {
+          async function () {
             // No messages created if safely above the CR threshold
             await financialContractClient.update();
             priceFeedMock.setCurrentPrice(convertPrice("1"));
@@ -390,9 +390,9 @@ contract("CRMonitor.js", function(accounts) {
             assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(await financialContract.priceIdentifier()))); // Synthetic identifier
           }
         );
-        versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])(
+        versionedIt([{ contractType: "Perpetual", contractVersion: "2.0.1" }])(
           "Winston correctly emits collateralization ratio message considering perpetual funding rates",
-          async function() {
+          async function () {
             // No messages created if safely above the CR threshold
             await financialContractClient.update();
             priceFeedMock.setCurrentPrice(convertPrice("1"));
@@ -437,7 +437,7 @@ contract("CRMonitor.js", function(accounts) {
             assert.equal(lastSpyLogLevel(spy), "warn");
           }
         );
-        versionedIt([{ contractType: "any", contractVersion: "any" }])("Cannot set invalid config", async function() {
+        versionedIt([{ contractType: "any", contractVersion: "any" }])("Cannot set invalid config", async function () {
           let errorThrown1;
           try {
             // Create an invalid config. A valid config expects an array of objects with keys in the object of `name` `address`
@@ -447,9 +447,9 @@ contract("CRMonitor.js", function(accounts) {
               walletsToMonitor: [
                 {
                   name: "Sponsor wallet",
-                  address: tokenSponsor
-                }
-              ]
+                  address: tokenSponsor,
+                },
+              ],
             };
 
             crMonitor = new CRMonitor({
@@ -457,7 +457,7 @@ contract("CRMonitor.js", function(accounts) {
               financialContractClient: financialContractClient,
               priceFeed: priceFeedMock,
               monitorConfig: invalidMonitorConfig1,
-              financialContractProps
+              financialContractProps,
             });
             errorThrown1 = false;
           } catch (err) {
@@ -475,9 +475,9 @@ contract("CRMonitor.js", function(accounts) {
                 {
                   name: "Sponsor wallet",
                   address: "INVALID_ADDRESS",
-                  crAlert: 1.5
-                }
-              ]
+                  crAlert: 1.5,
+                },
+              ],
             };
 
             crMonitor = new CRMonitor({
@@ -485,7 +485,7 @@ contract("CRMonitor.js", function(accounts) {
               financialContractClient: financialContractClient,
               priceFeed: priceFeedMock,
               monitorConfig: invalidMonitorConfig2,
-              financialContractProps
+              financialContractProps,
             });
             errorThrown2 = false;
           } catch (err) {
@@ -495,7 +495,7 @@ contract("CRMonitor.js", function(accounts) {
         });
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Can correctly CR Monitor and check wallet CR Ratios with no config provided",
-          async function() {
+          async function () {
             const emptyConfig = {};
             let errorThrown;
             try {
@@ -504,7 +504,7 @@ contract("CRMonitor.js", function(accounts) {
                 financialContractClient: financialContractClient,
                 priceFeed: priceFeedMock,
                 monitorConfig: emptyConfig,
-                financialContractProps
+                financialContractProps,
               });
               await crMonitor.checkWalletCrRatio();
               errorThrown = false;
@@ -516,14 +516,14 @@ contract("CRMonitor.js", function(accounts) {
         );
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Can override the synthetic-threshold log level",
-          async function() {
+          async function () {
             const alertOverrideConfig = { ...monitorConfig, logOverrides: { crThreshold: "error" } };
             crMonitor = new CRMonitor({
               logger: spyLogger,
               financialContractClient: financialContractClient,
               priceFeed: priceFeedMock,
               monitorConfig: alertOverrideConfig,
-              financialContractProps
+              financialContractProps,
             });
 
             // Increase price to lower wallet CR below threshold

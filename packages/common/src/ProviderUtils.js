@@ -6,42 +6,53 @@ const Web3 = require("web3");
 const { getTruffleConfig, getNodeUrl } = require("./TruffleConfig");
 const argv = require("minimist")(process.argv.slice(), { string: ["network"] });
 const Url = require("url");
+const { RetryProvider } = require("./RetryProvider");
+
+// NODE_RETRY_CONFIG should be a JSON of the form (retries and delay are optional, they default to 1 and 0 respectively):
+// [
+//    {
+//      retries: 3,
+//      delay: 1
+//      url: https://mainnet.infura.io/v3/ACCOUNT_ID,
+//    },
+//    {
+//      retries: 5,
+//      delay: 1,
+//      url: ws://99.999.99.99
+//    }
+// ]
+const { NODE_RETRY_CONFIG } = process.env;
 
 // Set web3 to null
 let web3 = null;
 
-function createBasicProvider(url) {
-  const protocol = Url.parse(url).protocol;
+function createBasicProvider(nodeRetryConfig) {
+  return new RetryProvider(
+    nodeRetryConfig.map((configElement) => {
+      const protocol = Url.parse(configElement.url).protocol;
+      let options = {
+        timeout: 10000, // 10 second timeout
+      };
 
-  // 10 second timeout
-  const timeout = 10000;
-
-  if (protocol.startsWith("ws")) {
-    // Websocket
-    const websocketOptions = {
-      timeout, // ms
-      clientConfig: {
-        maxReceivedFrameSize: 100000000, // Useful if requests result are large bytes - default: 1MiB
-        maxReceivedMessageSize: 100000000 // bytes - default: 8MiB
-      },
-      reconnect: {
-        auto: true, // Enable auto reconnection
-        delay: 5000, // ms
-        maxAttempts: 10,
-        onTimeout: false
+      if (protocol.startsWith("ws")) {
+        // Websocket
+        options = {
+          ...options,
+          clientConfig: {
+            maxReceivedFrameSize: 100000000, // Useful if requests result are large bytes - default: 1MiB
+            maxReceivedMessageSize: 100000000, // bytes - default: 8MiB
+          },
+          reconnect: {
+            auto: true, // Enable auto reconnection
+            delay: 5000, // ms
+            maxAttempts: 10,
+            onTimeout: false,
+          },
+        };
       }
-    };
-
-    // Create websocket web3 provider. This contains the re-try logic on failed/timeout connections.
-    return new Web3.providers.WebsocketProvider(url, websocketOptions);
-  } else {
-    // If it isn't websocket, assume http.
-    const httpOptions = {
-      timeout
-    };
-
-    return new Web3.providers.HttpProvider(url, httpOptions);
-  }
+      return { options, ...configElement };
+    })
+  );
 }
 
 /**
@@ -66,7 +77,10 @@ function getWeb3(parameterizedNetwork = "test") {
 
   // Create basic web3 provider with no wallet connection based on the url alone.
   const network = argv.network || parameterizedNetwork; // Default to the test network (local network).
-  const basicProvider = createBasicProvider(getNodeUrl(network));
+  const nodeRetryConfig = NODE_RETRY_CONFIG
+    ? JSON.parse(NODE_RETRY_CONFIG)
+    : [{ url: getNodeUrl(network), retries: 0 }];
+  const basicProvider = createBasicProvider(nodeRetryConfig);
 
   // Use the basic provider to create a provider with an unlocked wallet. This piggybacks off the UMA common TruffleConfig
   // implementing all networks & wallet types. EG: mainnet_mnemonic, kovan_gckms. Errors if no argv.network.

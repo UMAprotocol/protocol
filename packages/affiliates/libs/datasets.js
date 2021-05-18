@@ -8,31 +8,31 @@ const Path = require("path");
 const mkdirp = require("mkdirp");
 
 // put this into csv form
-const SerializeObject = (props = []) => obj => {
-  return props.map(prop => lodash.get(obj, prop, "")).join(",");
+const SerializeObject = (props = []) => (obj) => {
+  return props.map((prop) => lodash.get(obj, prop, "")).join(",");
 };
 // read from csv into object
-const DeserializeRow = (props = []) => row => {
+const DeserializeRow = (props = []) => (row) => {
   return row.split(",").reduce((result, val, i) => {
     lodash.set(result, props[i], val.trim());
     return result;
   }, {});
 };
 
-const SerializeCsvStream = (props = []) => stream => {
+const SerializeCsvStream = (props = []) => (stream) => {
   const dataStream = highland(stream).map(SerializeObject(props));
   return highland([props.join(","), dataStream])
     .flatten()
-    .map(x => x + "\n");
+    .map((x) => x + "\n");
 };
-const DeserializeCsvStream = props => stream => {
+const DeserializeCsvStream = (props) => (stream) => {
   // include header line if props are included, ie drop first line
   const drop = props ? 1 : 0;
   const result = highland(stream)
     // splits newlines by defaults
     .split()
     .drop(drop)
-    .map(line => {
+    .map((line) => {
       if (props == null) {
         props = line.split(",");
       } else {
@@ -40,7 +40,7 @@ const DeserializeCsvStream = props => stream => {
       }
     })
     .compact()
-    .map(line => {
+    .map((line) => {
       return DeserializeRow(props)(line);
     });
   return result;
@@ -51,7 +51,7 @@ const DeserializeCsvStream = props => stream => {
 function Blocks() {
   return {
     serialize: SerializeCsvStream(["timestamp.value", "number"]),
-    deserialize: DeserializeCsvStream()
+    deserialize: DeserializeCsvStream(),
   };
 }
 // These cant be serialized to csvs unfortunatley due to datastructure incompatibility
@@ -59,28 +59,22 @@ function Logs() {
   return {
     // this cant be put into csv with nested arrays
     serialize(stream) {
-      return highland(stream).map(x => JSON.stringify(x) + "\n");
+      return highland(stream).map((x) => JSON.stringify(x) + "\n");
     },
     deserialize(stream) {
-      return highland(stream)
-        .split()
-        .compact()
-        .map(JSON.parse);
-    }
+      return highland(stream).split().compact().map(JSON.parse);
+    },
   };
 }
 function Transactions() {
   return {
     // this cant be put into csv with nested arrays
     serialize(stream) {
-      return highland(stream).map(x => JSON.stringify(x) + "\n");
+      return highland(stream).map((x) => JSON.stringify(x) + "\n");
     },
     deserialize(stream) {
-      return highland(stream)
-        .split()
-        .compact()
-        .map(JSON.parse);
-    }
+      return highland(stream).split().compact().map(JSON.parse);
+    },
   };
 }
 function Coingecko() {
@@ -96,7 +90,7 @@ function Coingecko() {
   }
   return {
     serialize,
-    deserialize
+    deserialize,
   };
 }
 function SynthPrices() {
@@ -112,7 +106,7 @@ function SynthPrices() {
   }
   return {
     serialize,
-    deserialize
+    deserialize,
   };
 }
 
@@ -124,55 +118,40 @@ function Dataset(basePath, { queries, coingecko, synthPrices }) {
     const fileName = Path.join(path, "blocks.csv");
     const writeStream = fs.createWriteStream(fileName);
     const dataStream = queries.streamBlocks(start, end, select);
-    return new Promise(res => {
-      Blocks()
-        .serialize(dataStream)
-        .pipe(writeStream)
-        .on("close", res);
+    return new Promise((res) => {
+      Blocks().serialize(dataStream).pipe(writeStream).on("close", res);
     });
   }
   function allLogs({ contract, select }, path) {
     const fileName = Path.join(path, `logs_${contract}.txt`);
     const writeStream = fs.createWriteStream(fileName);
     const dataStream = queries.streamAllLogsByContract(contract, select);
-    return new Promise(res => {
-      Logs()
-        .serialize(dataStream)
-        .pipe(writeStream)
-        .on("close", res);
+    return new Promise((res) => {
+      Logs().serialize(dataStream).pipe(writeStream).on("close", res);
     });
   }
   function logs({ start, end, contract, select }, path) {
     const fileName = Path.join(path, `logs_${contract}.txt`);
     const writeStream = fs.createWriteStream(fileName);
     const dataStream = queries.streamLogsByContract(contract, start, end, select);
-    return new Promise(res => {
-      Logs()
-        .serialize(dataStream)
-        .pipe(writeStream)
-        .on("close", res);
+    return new Promise((res) => {
+      Logs().serialize(dataStream).pipe(writeStream).on("close", res);
     });
   }
   function transactions({ start, end, contract, select }, path) {
     const fileName = Path.join(path, `transactions_${contract}.txt`);
     const writeStream = fs.createWriteStream(fileName);
     const dataStream = queries.streamTransactionsByContract(contract, start, end, select);
-    return new Promise(res => {
-      Transactions()
-        .serialize(dataStream)
-        .pipe(writeStream)
-        .on("close", res);
+    return new Promise((res) => {
+      Transactions().serialize(dataStream).pipe(writeStream).on("close", res);
     });
   }
   function traces({ start, end, contract, select }, path) {
     const fileName = Path.join(path, `traces_${contract}.txt`);
     const writeStream = fs.createWriteStream(fileName);
     const dataStream = queries.streamTracesByContract(contract, start, end, select);
-    return new Promise(res => {
-      Transactions()
-        .serialize(dataStream)
-        .pipe(writeStream)
-        .on("close", res);
+    return new Promise((res) => {
+      Transactions().serialize(dataStream).pipe(writeStream).on("close", res);
     });
   }
   async function saveCoingeckoPrices({ start, end, contract, currency = "usd" }, path) {
@@ -203,14 +182,14 @@ function Dataset(basePath, { queries, coingecko, synthPrices }) {
     const path = Path.join(basePath, name);
     await mkdirp(path);
     await Promise.all([
-      ...collateralTokens.map(contract => saveCoingeckoPrices({ start, end, contract }, path)),
-      ...empContracts.map(contract => saveSynthPrices({ start, end, contract }, path)),
+      ...collateralTokens.map((contract) => saveCoingeckoPrices({ start, end, contract }, path)),
+      ...empContracts.map((contract) => saveSynthPrices({ start, end, contract }, path)),
       // we need all events to recreate balances
-      ...empContracts.map(contract => allLogs({ contract }, path)),
+      ...empContracts.map((contract) => allLogs({ contract }, path)),
       // we need all events to get all emps deployed
       allLogs({ contract: empCreator }, path),
       blocks({ start, end }, path),
-      saveObject(config, "config", path)
+      saveObject(config, "config", path),
     ]);
     return path;
   }
@@ -227,7 +206,7 @@ function Dataset(basePath, { queries, coingecko, synthPrices }) {
       blocks({ start: startTime, end: endTime }, path),
       logs({ contract: empAddress, start: firstEmpDate, end: endTime }, path),
       traces({ contract: empAddress, start: firstEmpDate, end: endTime }, path),
-      saveObject(config, "config", path)
+      saveObject(config, "config", path),
     ]);
     return path;
   }
@@ -241,8 +220,8 @@ function Dataset(basePath, { queries, coingecko, synthPrices }) {
       allLogs,
       transactions,
       saveCoingeckoPrices,
-      saveSynthPrices
-    }
+      saveSynthPrices,
+    },
   };
 }
 
@@ -258,14 +237,14 @@ function MockSynthPrices(basePath) {
     return SynthPrices()
       .deserialize(readStream)
       .toPromise(Promise)
-      .then(result => {
+      .then((result) => {
         return result.filter(([time]) => {
           return time >= start && time <= end;
         });
       });
   }
   return {
-    getHistoricSynthPrices
+    getHistoricSynthPrices,
   };
 }
 // Mock coingecko
@@ -278,14 +257,14 @@ function MockCoingecko(basePath) {
     return Coingecko()
       .deserialize(readStream)
       .toPromise(Promise)
-      .then(result => {
+      .then((result) => {
         return result.filter(([time]) => {
           return time >= start && time <= end;
         });
       });
   }
   return {
-    getHistoricContractPrices
+    getHistoricContractPrices,
   };
 }
 // Mock big query queries
@@ -296,14 +275,10 @@ function MockQueries(basePath) {
     return Logs().deserialize(readStream);
   }
   function getLogsByContract(address) {
-    return streamLogsByContract(address)
-      .collect()
-      .toPromise(Promise);
+    return streamLogsByContract(address).collect().toPromise(Promise);
   }
   function getAllLogsByContract(address) {
-    return streamLogsByContract(address)
-      .collect()
-      .toPromise(Promise);
+    return streamLogsByContract(address).collect().toPromise(Promise);
   }
   function streamAllLogsByContract(address) {
     return streamLogsByContract(address);
@@ -313,26 +288,21 @@ function MockQueries(basePath) {
     const readStream = fs.createReadStream(path);
     return Blocks()
       .deserialize(readStream)
-      .filter(block => {
+      .filter((block) => {
         const blockTime = moment(block.timestamp.value).valueOf();
         return blockTime >= start && blockTime < end;
       });
   }
   function getBlocks(start = 0, end = Date.now()) {
-    return streamBlocks(start, end)
-      .collect()
-      .toPromise(Promise);
+    return streamBlocks(start, end).collect().toPromise(Promise);
   }
   function getBlocksAscending(start, count) {
-    return streamBlocks(start)
-      .take(count)
-      .collect()
-      .toPromise(Promise);
+    return streamBlocks(start).take(count).collect().toPromise(Promise);
   }
   function getBlocksDescending(start, count) {
     return streamBlocks(0, start)
       .collect()
-      .map(x => x.reverse().slice(0, count))
+      .map((x) => x.reverse().slice(0, count))
       .toPromise(Promise);
   }
   function streamTracesByContract(address) {
@@ -349,7 +319,7 @@ function MockQueries(basePath) {
     getBlocks,
     getBlocksAscending,
     getBlocksDescending,
-    streamTracesByContract
+    streamTracesByContract,
   };
 }
 
@@ -358,19 +328,19 @@ module.exports = {
   mocks: {
     Queries: MockQueries,
     Coingecko: MockCoingecko,
-    SynthPrices: MockSynthPrices
+    SynthPrices: MockSynthPrices,
   },
   serializers: {
     Blocks,
     Transactions,
     Logs,
     Coingecko,
-    SynthPrices
+    SynthPrices,
   },
   utils: {
     SerializeCsvStream,
     DeserializeCsvStream,
     SerializeObject,
-    DeserializeRow
-  }
+    DeserializeRow,
+  },
 };

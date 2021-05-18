@@ -1,5 +1,4 @@
 pragma solidity >=0.5.0;
-pragma experimental ABIEncoderV2;
 
 /// @title Multicall - Aggregate results from multiple read-only function calls
 /// @author Michael Elliot <mike@makerdao.com>

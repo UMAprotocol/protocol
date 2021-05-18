@@ -9,14 +9,12 @@ const { SpyTransport, spyLogLevel, spyLogIncludes } = require("@uma/financial-te
 const { getTruffleContract } = require("@uma/core");
 const { addGlobalHardhatTestingAddress } = require("@uma/common");
 
-const CONTRACT_VERSION = "latest";
+const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
+const MockOracle = getTruffleContract("MockOracleAncillary", web3);
+const Finder = getTruffleContract("Finder", web3);
+const Timer = getTruffleContract("Timer", web3);
 
-const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, CONTRACT_VERSION);
-const MockOracle = getTruffleContract("MockOracleAncillary", web3, CONTRACT_VERSION);
-const Finder = getTruffleContract("Finder", web3, CONTRACT_VERSION);
-const Timer = getTruffleContract("Timer", web3, CONTRACT_VERSION);
-
-contract("index.js", function() {
+contract("index.js", function () {
   let spy;
   let spyLogger;
 
@@ -29,7 +27,7 @@ contract("index.js", function() {
   let optimisticOracle;
   let mockOracle;
 
-  before(async function() {
+  before(async function () {
     finder = await Finder.new();
     timer = await Timer.new();
     mockOracle = await MockOracle.new(finder.address, timer.address);
@@ -42,13 +40,13 @@ contract("index.js", function() {
     addGlobalHardhatTestingAddress("Voting", mockOracle.address);
   });
 
-  it("Completes one iteration without logging any errors", async function() {
+  it("Completes one iteration without logging any errors", async function () {
     // We will create a new spy logger, listening for debug events because success logs are tagged with the
     // debug level.
     spy = sinon.spy();
     spyLogger = winston.createLogger({
       level: "debug",
-      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
     });
 
     await Main.run({
@@ -56,7 +54,7 @@ contract("index.js", function() {
       web3,
       pollingDelay,
       errorRetries,
-      errorRetriesTimeout
+      errorRetriesTimeout,
     });
 
     for (let i = 0; i < spy.callCount; i++) {

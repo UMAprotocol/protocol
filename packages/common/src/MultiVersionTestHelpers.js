@@ -9,16 +9,16 @@ const SUPPORTED_CONTRACT_VERSIONS = [
   { contractType: "ExpiringMultiParty", contractVersion: "1.2.0" },
   { contractType: "ExpiringMultiParty", contractVersion: "1.2.1" },
   { contractType: "ExpiringMultiParty", contractVersion: "1.2.2" },
-  { contractType: "ExpiringMultiParty", contractVersion: "latest" },
-  { contractType: "Perpetual", contractVersion: "latest" }
+  { contractType: "ExpiringMultiParty", contractVersion: "2.0.1" },
+  { contractType: "Perpetual", contractVersion: "2.0.1" },
 ];
 
 // Versions that unit tests will test against. Note that there is no need to re-test anything less than 1.2.2 as
 // functionally these versions are identical to 1.2.2.
 const TESTED_CONTRACT_VERSIONS = [
   { contractType: "ExpiringMultiParty", contractVersion: "1.2.2" },
-  { contractType: "ExpiringMultiParty", contractVersion: "latest" },
-  { contractType: "Perpetual", contractVersion: "latest" }
+  { contractType: "ExpiringMultiParty", contractVersion: "2.0.1" },
+  { contractType: "Perpetual", contractVersion: "2.0.1" },
 ];
 
 /**
@@ -35,7 +35,7 @@ function runTestForVersion(supportedVersions, SUPPORTED_CONTRACT_VERSIONS, curre
   const supportedVersionOverlap = lodash.intersectionBy(
     supportedVersions,
     [...SUPPORTED_CONTRACT_VERSIONS, { contractType: "any", contractVersion: "any" }],
-    version => [version.contractType, version.contractVersion].join(",")
+    (version) => [version.contractType, version.contractVersion].join(",")
   );
   assert(
     supportedVersionOverlap.length > 0,
@@ -48,7 +48,7 @@ function runTestForVersion(supportedVersions, SUPPORTED_CONTRACT_VERSIONS, curre
   const testSupportedVersionOverlap = lodash.intersectionBy(
     supportedVersions,
     [currentTestIterationVersion, { contractType: "any", contractVersion: "any" }],
-    version => [version.contractType, version.contractVersion].join(",")
+    (version) => [version.contractType, version.contractVersion].join(",")
   );
   return testSupportedVersionOverlap.length > 0;
 }
@@ -80,11 +80,11 @@ async function createConstructorParamsForContractVersion(
     "fundingRateIdentifier",
     "timer",
     "store",
-    "configStore"
+    "configStore",
   ];
 
   // Check that each of the expected keys is present and not null.
-  requiredContextObjects.forEach(expectedKey => {
+  requiredContextObjects.forEach((expectedKey) => {
     assert(
       contextObjects[expectedKey] && Object.keys(contextObjects).includes(expectedKey),
       `Provided context object is missing type ${expectedKey} or is undefined`
@@ -106,7 +106,7 @@ async function createConstructorParamsForContractVersion(
     minSponsorTokens: { rawValue: contextObjects.convertSynthetic("5") },
     timerAddress: contextObjects.timer.address,
     excessTokenBeneficiary: contextObjects.store.address,
-    financialProductLibraryAddress: ZERO_ADDRESS
+    financialProductLibraryAddress: ZERO_ADDRESS,
   };
 
   if (contractVersion.contractVersion == "1.2.2") {
@@ -128,5 +128,5 @@ module.exports = {
   runTestForVersion,
   createConstructorParamsForContractVersion,
   SUPPORTED_CONTRACT_VERSIONS,
-  TESTED_CONTRACT_VERSIONS
+  TESTED_CONTRACT_VERSIONS,
 };

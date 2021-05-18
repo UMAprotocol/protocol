@@ -7,7 +7,7 @@ async function RedeemTokensWithDSProxy() {
   const winston = require("winston");
   const assert = require("assert");
   const argv = require("minimist")(process.argv.slice(), {
-    string: ["financialContractAddress", "numTokens", "dsProxyAddress", "dsProxyFactoryAddress"]
+    string: ["financialContractAddress", "numTokens", "dsProxyAddress", "dsProxyFactoryAddress"],
   });
 
   const { getWeb3 } = require("@uma/common");
@@ -26,7 +26,7 @@ async function RedeemTokensWithDSProxy() {
 
   const logger = winston.createLogger({
     level: "debug",
-    transports: [new winston.transports.Console()]
+    transports: [new winston.transports.Console()],
   });
   const gasEstimator = new GasEstimator(logger);
   await gasEstimator.update();
@@ -38,7 +38,7 @@ async function RedeemTokensWithDSProxy() {
     account: accounts[0],
     dsProxyFactoryAddress: argv.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
     dsProxyFactoryAbi: getAbi("DSProxyFactory"),
-    dsProxyAbi: getAbi("DSProxy")
+    dsProxyAbi: getAbi("DSProxy"),
   });
 
   // Load in a DSProxy address. If you did not provide one in the args then the script will check against the factory.
@@ -64,7 +64,7 @@ async function RedeemTokensWithDSProxy() {
   console.log("TX executed!", dsProxyCallReturn.transactionHash);
 }
 
-const run = async function(callback) {
+const run = async function (callback) {
   try {
     await RedeemTokensWithDSProxy();
   } catch (err) {

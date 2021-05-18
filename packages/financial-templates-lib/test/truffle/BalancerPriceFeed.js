@@ -6,12 +6,10 @@ const { mineTransactionsAtTime, MAX_SAFE_JS_INT } = require("@uma/common");
 const { delay } = require("../../src/helpers/delay.js");
 const { getTruffleContract } = require("@uma/core");
 
-const CONTRACT_VERSION = "latest";
+const BalancerMock = getTruffleContract("BalancerMock", web3);
+const Balancer = getTruffleContract("Balancer", web3);
 
-const BalancerMock = getTruffleContract("BalancerMock", web3, CONTRACT_VERSION);
-const Balancer = getTruffleContract("Balancer", web3, CONTRACT_VERSION);
-
-contract("BalancerPriceFeed.js", function(accounts) {
+contract("BalancerPriceFeed.js", function (accounts) {
   const owner = accounts[0];
 
   let dexMock;
@@ -19,14 +17,14 @@ contract("BalancerPriceFeed.js", function(accounts) {
   let mockTime = 0;
   let dummyLogger;
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     dexMock = await BalancerMock.new({ from: owner });
 
     // The BalancerPriceFeed does not emit any info `level` events.  Therefore no need to test Winston outputs.
     // DummyLogger will not print anything to console as only capture `info` level events.
     dummyLogger = winston.createLogger({
       level: "info",
-      transports: [new winston.transports.Console()]
+      transports: [new winston.transports.Console()],
     });
 
     dexPriceFeed = new BalancerPriceFeed(
@@ -43,7 +41,7 @@ contract("BalancerPriceFeed.js", function(accounts) {
     );
   });
 
-  it("Basic current price", async function() {
+  it("Basic current price", async function () {
     await dexMock.setPrice(toWei("0.5"));
     await dexPriceFeed.update();
 
@@ -52,7 +50,7 @@ contract("BalancerPriceFeed.js", function(accounts) {
     assert.equal(dexPriceFeed.getLookback(), 3600);
   });
 
-  it("Correctly selects most recent price", async function() {
+  it("Correctly selects most recent price", async function () {
     await dexMock.setPrice(toWei("1"));
     await dexMock.setPrice(toWei("0.5"));
     await dexMock.setPrice(toWei("0.25"));
@@ -63,14 +61,14 @@ contract("BalancerPriceFeed.js", function(accounts) {
     assert.equal(dexPriceFeed.getSpotPrice().toString(), toWei("0.25"));
   });
 
-  it("Selects most recent price in same block", async function() {
+  it("Selects most recent price in same block", async function () {
     // Just use current system time because the time doesn't matter.
     const time = Math.round(new Date().getTime() / 1000);
 
     const transactions = [
       dexMock.contract.methods.setPrice(toWei("1")),
       dexMock.contract.methods.setPrice(toWei("0.5")),
-      dexMock.contract.methods.setPrice(toWei("0.25"))
+      dexMock.contract.methods.setPrice(toWei("0.25")),
     ];
 
     // Ensure all are included in the same block
@@ -83,7 +81,7 @@ contract("BalancerPriceFeed.js", function(accounts) {
     assert.equal(dexPriceFeed.getSpotPrice().toString(), toWei("0.25"));
   });
 
-  it("No price or only invalid prices", async function() {
+  it("No price or only invalid prices", async function () {
     await dexPriceFeed.update();
 
     assert.equal(dexPriceFeed.getSpotPrice(), null);
@@ -95,7 +93,7 @@ contract("BalancerPriceFeed.js", function(accounts) {
   });
 
   // Basic test to verify TWAP (non simulated time).
-  it("Basic 2-price TWAP", async function() {
+  it("Basic 2-price TWAP", async function () {
     // Update the prices with a small amount of time between.
     const result1 = await dexMock.setPrice(toWei("1"));
     await delay(1);
@@ -103,7 +101,7 @@ contract("BalancerPriceFeed.js", function(accounts) {
     await dexMock.setPrice(toWei("0"));
     const result2 = await dexMock.setPrice(toWei("0.5"));
 
-    const getBlockTime = async result => {
+    const getBlockTime = async (result) => {
       return (await web3.eth.getBlock(result.receipt.blockNumber)).timestamp;
     };
 
@@ -122,14 +120,11 @@ contract("BalancerPriceFeed.js", function(accounts) {
     // Compare the TWAPs.
     assert.equal(
       dexPriceFeed.getCurrentPrice().toString(),
-      weightedPrice1
-        .add(weightedPrice2)
-        .divn(totalTime)
-        .toString()
+      weightedPrice1.add(weightedPrice2).divn(totalTime).toString()
     );
   });
 
-  it("All events before window", async function() {
+  it("All events before window", async function () {
     await dexMock.setPrice(toWei("1"));
     await dexMock.setPrice(toWei("0.5"));
     await dexMock.setPrice(toWei("0.25"));
@@ -143,7 +138,7 @@ contract("BalancerPriceFeed.js", function(accounts) {
     assert.equal(dexPriceFeed.getCurrentPrice().toString(), toWei("0.25"));
   });
 
-  it("All events after window", async function() {
+  it("All events after window", async function () {
     await dexMock.setPrice(toWei("1"));
     await dexMock.setPrice(toWei("0.5"));
     await dexMock.setPrice(toWei("0.25"));
@@ -157,7 +152,7 @@ contract("BalancerPriceFeed.js", function(accounts) {
     assert.equal(dexPriceFeed.getCurrentPrice(), null);
   });
 
-  it("One event within window, several before", async function() {
+  it("One event within window, several before", async function () {
     // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
     const currentTime = Math.round(new Date().getTime() / 1000);
 
@@ -182,7 +177,7 @@ contract("BalancerPriceFeed.js", function(accounts) {
     assert.equal(dexPriceFeed.getCurrentPrice(), toWei("1.5"));
   });
 
-  it("Basic historical TWAP", async function() {
+  it("Basic historical TWAP", async function () {
     // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
     const currentTime = Math.round(new Date().getTime() / 1000);
 
@@ -221,7 +216,7 @@ contract("BalancerPriceFeed.js", function(accounts) {
     assert.equal((await dexPriceFeed.getHistoricalPrice(currentTime)).toString(), toWei("75"));
   });
 
-  it("Historical time earlier than TWAP window", async function() {
+  it("Historical time earlier than TWAP window", async function () {
     const currentTime = Math.round(new Date().getTime() / 1000);
     mockTime = currentTime;
 
@@ -234,7 +229,7 @@ contract("BalancerPriceFeed.js", function(accounts) {
     assert.equal(await dexPriceFeed.getHistoricalPrice(currentTime - 3599), toWei("1"));
     assert.isTrue(await dexPriceFeed.getHistoricalPrice(currentTime - 3601).catch(() => true));
   });
-  it("TWAP length of 0 returns non-TWAP'd current and historical prices", async function() {
+  it("TWAP length of 0 returns non-TWAP'd current and historical prices", async function () {
     dexPriceFeed = new BalancerPriceFeed(
       dummyLogger,
       web3,
@@ -267,7 +262,7 @@ contract("BalancerPriceFeed.js", function(accounts) {
     assert.equal(dexPriceFeed.getCurrentPrice().toString(), toWei("70"));
     assert.equal(dexPriceFeed.getSpotPrice().toString(), toWei("70"));
   });
-  it("Lookback of 0 returns only current price", async function() {
+  it("Lookback of 0 returns only current price", async function () {
     dexPriceFeed = new BalancerPriceFeed(
       dummyLogger,
       web3,
@@ -302,7 +297,7 @@ contract("BalancerPriceFeed.js", function(accounts) {
     assert.equal(dexPriceFeed.getCurrentPrice().toString(), toWei("70"));
     assert.equal(dexPriceFeed.getSpotPrice().toString(), toWei("70"));
   });
-  it("Setting both lookback and twap to 0 should update without crashing and only return current price", async function() {
+  it("Setting both lookback and twap to 0 should update without crashing and only return current price", async function () {
     dexPriceFeed = new BalancerPriceFeed(
       dummyLogger,
       web3,
@@ -338,9 +333,9 @@ contract("BalancerPriceFeed.js", function(accounts) {
     assert.equal(dexPriceFeed.getSpotPrice().toString(), toWei("70"));
   });
 
-  describe("Can return non-18 precision prices", function() {
+  describe("Can return non-18 precision prices", function () {
     let scaleDownPriceFeed, scaleUpPriceFeed;
-    beforeEach(async function() {
+    beforeEach(async function () {
       // Here we specify that the balancer pool is reporting a 6 decimal precision price, and we want prices in
       // 12 decimals. This should scale up prices by 10e6.
       scaleUpPriceFeed = new BalancerPriceFeed(
@@ -374,13 +369,13 @@ contract("BalancerPriceFeed.js", function(accounts) {
         4
       );
     });
-    it("Basic 2 price TWAP", async function() {
+    it("Basic 2 price TWAP", async function () {
       // Update the prices with a small amount of time between.
       const result1 = await dexMock.setPrice(toWei("1"));
       await delay(1);
       const result2 = await dexMock.setPrice(toWei("0.5"));
 
-      const getBlockTime = async result => {
+      const getBlockTime = async (result) => {
         return (await web3.eth.getBlock(result.receipt.blockNumber)).timestamp;
       };
 
@@ -415,7 +410,7 @@ contract("BalancerPriceFeed.js", function(accounts) {
           .toString()
       );
     });
-    it("Basic historical TWAP", async function() {
+    it("Basic historical TWAP", async function () {
       // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
       const currentTime = Math.round(new Date().getTime() / 1000);
 

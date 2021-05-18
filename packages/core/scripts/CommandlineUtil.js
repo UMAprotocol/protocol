@@ -3,5 +3,5 @@ function validateAddress(address) {
 }
 
 module.exports = {
-  validateAddress
+  validateAddress,
 };

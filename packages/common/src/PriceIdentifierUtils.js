@@ -1,6 +1,6 @@
 // Blacklisted price identifiers that will not automatically display on voter clients.
 const IDENTIFIER_BLACKLIST = {
-  SOME_IDENTIFIER: ["1596666977"]
+  SOME_IDENTIFIER: ["1596666977"],
 };
 
 // Price identifiers that should resolve prices to non 18 decimal precision. Any identifiers
@@ -18,10 +18,10 @@ const IDENTIFIER_NON_18_PRECISION = {
   TEST8DECIMALS: 8,
   TEST8DECIMALSANCIL: 8,
   TEST6DECIMALS: 6,
-  TEST6DECIMALSANCIL: 6
+  TEST6DECIMALSANCIL: 6,
 };
 
-const getPrecisionForIdentifier = identifier => {
+const getPrecisionForIdentifier = (identifier) => {
   return IDENTIFIER_NON_18_PRECISION[identifier] ? IDENTIFIER_NON_18_PRECISION[identifier] : 18;
 };
 
@@ -34,12 +34,13 @@ const getPrecisionForIdentifier = identifier => {
 const OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY = [
   "TESTBLACKLIST", // Used for testing this list, assumed by tests to be at index 0.
   "uSTONKS_APR21",
-  "GASETH-TWAP-1Mx1M"
+  "GASETH-TWAP-1Mx1M",
+  "uSTONKS_JUN21",
 ];
 
 module.exports = {
   IDENTIFIER_BLACKLIST,
   IDENTIFIER_NON_18_PRECISION,
   getPrecisionForIdentifier,
-  OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY
+  OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY,
 };

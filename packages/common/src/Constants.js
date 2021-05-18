@@ -7,7 +7,10 @@ const interfaceName = {
   IdentifierWhitelist: "IdentifierWhitelist",
   CollateralWhitelist: "CollateralWhitelist",
   FundingRateStore: "FundingRateStore",
-  OptimisticOracle: "OptimisticOracle"
+  OptimisticOracle: "OptimisticOracle",
+  Bridge: "Bridge",
+  GenericHandler: "GenericHandler",
+  MockOracleAncillary: "Oracle",
 };
 
 module.exports = {
@@ -39,5 +42,5 @@ module.exports = {
 
   // Block number of first EMP created.
   // https://etherscan.io/tx/0x741ccbf0f9655b0b71e3842d788d58770bd3eb80c8f5bdf4fdec7cd74a776ea3
-  UMA_FIRST_EMP_BLOCK: 10103723
+  UMA_FIRST_EMP_BLOCK: 10103723,
 };

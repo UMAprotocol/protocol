@@ -6,19 +6,17 @@ const { OptimisticOracleEventClient } = require("../../src/clients/OptimisticOra
 const { interfaceName, advanceBlockAndSetTime, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
-const CONTRACT_VERSION = "latest";
+const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
+const OptimisticRequesterTest = getTruffleContract("OptimisticRequesterTest", web3);
+const Finder = getTruffleContract("Finder", web3);
+const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3);
+const Token = getTruffleContract("ExpandedERC20", web3);
+const AddressWhitelist = getTruffleContract("AddressWhitelist", web3);
+const Timer = getTruffleContract("Timer", web3);
+const Store = getTruffleContract("Store", web3);
+const MockOracle = getTruffleContract("MockOracleAncillary", web3);
 
-const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, CONTRACT_VERSION);
-const OptimisticRequesterTest = getTruffleContract("OptimisticRequesterTest", web3, CONTRACT_VERSION);
-const Finder = getTruffleContract("Finder", web3, CONTRACT_VERSION);
-const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, CONTRACT_VERSION);
-const Token = getTruffleContract("ExpandedERC20", web3, CONTRACT_VERSION);
-const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, CONTRACT_VERSION);
-const Timer = getTruffleContract("Timer", web3, CONTRACT_VERSION);
-const Store = getTruffleContract("Store", web3, CONTRACT_VERSION);
-const MockOracle = getTruffleContract("MockOracleAncillary", web3, CONTRACT_VERSION);
-
-contract("OptimisticOracleEventClient.js", function(accounts) {
+contract("OptimisticOracleEventClient.js", function (accounts) {
   const owner = accounts[0];
   const requester = accounts[1];
   const proposer = accounts[2];
@@ -48,9 +46,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
   const liveness = 7200; // 2 hours
   const initialUserBalance = toWei("100");
   const finalFee = toWei("1");
-  const totalDefaultBond = toBN(finalFee)
-    .mul(toBN(2))
-    .toString(); // 2x final fee
+  const totalDefaultBond = toBN(finalFee).mul(toBN(2)).toString(); // 2x final fee
   const disputePayout = toBN(totalDefaultBond)
     .add(toBN(finalFee).div(toBN(2)))
     .toString(); // dispute bond + 50% of loser's bond
@@ -58,12 +54,12 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
   const identifier = web3.utils.utf8ToHex("Test Identifier");
   const defaultAncillaryData = "0x";
 
-  const pushPrice = async price => {
+  const pushPrice = async (price) => {
     const [lastQuery] = (await mockOracle.getPendingQueries()).slice(-1);
     await mockOracle.pushPrice(lastQuery.identifier, lastQuery.time, lastQuery.ancillaryData, price);
   };
 
-  before(async function() {
+  before(async function () {
     finder = await Finder.new();
     timer = await Timer.new();
 
@@ -83,7 +79,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
   });
 
   let requestTxn1, requestTxn2, proposalTxn1, proposalTxn2, disputeTxn1, disputeTxn2, settlementTxn1, settlementTxn2;
-  beforeEach(async function() {
+  beforeEach(async function () {
     // Deploy and whitelist a new collateral currency that we will use to pay oracle fees.
     collateral = await Token.new("Wrapped Ether", "WETH", 18);
     await collateral.addMember(1, owner);
@@ -108,7 +104,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
     // DummyLogger will not print anything to console as only capture `info` level events.
     dummyLogger = winston.createLogger({
       level: "info",
-      transports: [new winston.transports.Console()]
+      transports: [new winston.transports.Console()],
     });
 
     client = new OptimisticOracleEventClient(
@@ -146,7 +142,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
       defaultAncillaryData,
       correctPrice,
       {
-        from: proposer
+        from: proposer,
       }
     );
     proposalTxn2 = await optimisticOracle.proposePrice(
@@ -156,7 +152,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
       defaultAncillaryData,
       correctPrice,
       {
-        from: proposer
+        from: proposer,
       }
     );
 
@@ -168,7 +164,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
       requestTime,
       defaultAncillaryData,
       {
-        from: disputer
+        from: disputer,
       }
     );
     await pushPrice(correctPrice);
@@ -178,7 +174,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
       requestTime + 1,
       defaultAncillaryData,
       {
-        from: disputer
+        from: disputer,
       }
     );
     await pushPrice(correctPrice);
@@ -198,7 +194,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
     );
   });
 
-  it("Return RequestPrice events", async function() {
+  it("Return RequestPrice events", async function () {
     await client.clearState();
     // State is empty before update().
     assert.deepStrictEqual([], client.getAllRequestPriceEvents());
@@ -213,7 +209,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
         timestamp: requestTime.toString(),
         currency: collateral.address,
         reward: "0",
-        finalFee
+        finalFee,
       },
       {
         transactionHash: requestTxn2.tx,
@@ -224,8 +220,8 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
         timestamp: (requestTime + 1).toString(),
         currency: collateral.address,
         reward: "0",
-        finalFee
-      }
+        finalFee,
+      },
     ]);
 
     // Correctly adds only new events after last query
@@ -251,11 +247,11 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
         timestamp: requestTime.toString(),
         currency: collateral.address,
         reward: "0",
-        finalFee
-      }
+        finalFee,
+      },
     ]);
   });
-  it("Return ProposePrice events", async function() {
+  it("Return ProposePrice events", async function () {
     await client.clearState();
     // State is empty before update().
     assert.deepStrictEqual([], client.getAllProposePriceEvents());
@@ -271,7 +267,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
         timestamp: requestTime.toString(),
         currency: collateral.address,
         proposedPrice: correctPrice,
-        expirationTimestamp: (Number(proposalTime) + liveness).toString()
+        expirationTimestamp: (Number(proposalTime) + liveness).toString(),
       },
       {
         transactionHash: proposalTxn2.tx,
@@ -283,8 +279,8 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
         timestamp: (requestTime + 1).toString(),
         currency: collateral.address,
         proposedPrice: correctPrice,
-        expirationTimestamp: (Number(proposalTime) + liveness).toString()
-      }
+        expirationTimestamp: (Number(proposalTime) + liveness).toString(),
+      },
     ]);
 
     // Correctly adds only new events after last query
@@ -299,7 +295,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
       collateral.address.toLowerCase(),
       correctPrice,
       {
-        from: proposer
+        from: proposer,
       }
     );
     await client.clearState();
@@ -315,11 +311,11 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
         timestamp: requestTime.toString(),
         currency: collateral.address,
         proposedPrice: correctPrice,
-        expirationTimestamp: (Number(newProposalTime) + liveness).toString()
-      }
+        expirationTimestamp: (Number(newProposalTime) + liveness).toString(),
+      },
     ]);
   });
-  it("Return DisputePrice events", async function() {
+  it("Return DisputePrice events", async function () {
     await client.clearState();
     // State is empty before update().
     assert.deepStrictEqual([], client.getAllDisputePriceEvents());
@@ -334,7 +330,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
         identifier: hexToUtf8(identifier),
         ancillaryData: defaultAncillaryData,
         timestamp: requestTime.toString(),
-        proposedPrice: correctPrice
+        proposedPrice: correctPrice,
       },
       {
         transactionHash: disputeTxn2.tx,
@@ -345,8 +341,8 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
         identifier: hexToUtf8(identifier),
         ancillaryData: defaultAncillaryData,
         timestamp: (requestTime + 1).toString(),
-        proposedPrice: correctPrice
-      }
+        proposedPrice: correctPrice,
+      },
     ]);
 
     // Correctly adds only new events after last query
@@ -358,7 +354,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
       collateral.address.toLowerCase(),
       correctPrice,
       {
-        from: proposer
+        from: proposer,
       }
     );
     const newTxn = await optimisticOracle.disputePrice(
@@ -382,11 +378,11 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
         // This is important because `requestPrice` expects `ancillaryData` to be of type bytes,
         ancillaryData: collateral.address.toLowerCase(),
         timestamp: requestTime.toString(),
-        proposedPrice: correctPrice
-      }
+        proposedPrice: correctPrice,
+      },
     ]);
   });
-  it("Return Settlement events", async function() {
+  it("Return Settlement events", async function () {
     await client.clearState();
     // State is empty before update().
     assert.deepStrictEqual([], client.getAllSettlementEvents());
@@ -402,7 +398,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
         ancillaryData: defaultAncillaryData,
         timestamp: requestTime.toString(),
         price: correctPrice,
-        payout: disputePayout
+        payout: disputePayout,
       },
       {
         transactionHash: settlementTxn2.tx,
@@ -414,8 +410,8 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
         ancillaryData: defaultAncillaryData,
         timestamp: (requestTime + 1).toString(),
         price: correctPrice,
-        payout: disputePayout
-      }
+        payout: disputePayout,
+      },
     ]);
 
     // Correctly adds only new events after last query
@@ -428,7 +424,7 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
       collateral.address.toLowerCase(),
       correctPrice,
       {
-        from: proposer
+        from: proposer,
       }
     );
     await optimisticOracle.setCurrentTime((Number(newProposalTime) + liveness).toString());
@@ -453,11 +449,11 @@ contract("OptimisticOracleEventClient.js", function(accounts) {
         ancillaryData: collateral.address.toLowerCase(),
         timestamp: requestTime.toString(),
         price: correctPrice,
-        payout: totalDefaultBond
-      }
+        payout: totalDefaultBond,
+      },
     ]);
   });
-  it("Starting client at an offset block number", async function() {
+  it("Starting client at an offset block number", async function () {
     // Init the event client with an offset block number. If the current block number is used then all log events
     // generated before the creation of the client should not be included. Rather, only subsequent logs should be reported.
 

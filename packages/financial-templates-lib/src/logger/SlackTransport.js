@@ -39,10 +39,10 @@ function slackFormatter(info) {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: `[${info.level}] *${info["bot-identifier"]}* (${info.at})⭢${info.message}\n`
-          }
-        }
-      ]
+            text: `[${info.level}] *${info["bot-identifier"]}* (${info.at})⭢${info.message}\n`,
+          },
+        },
+      ],
     };
     // All messages from winston come in as a Json object. The loop below expands this object and adds mrkdwn sections
     // for each key value pair with a bullet point. If the section is an object then it was passed containing multiple
@@ -59,8 +59,8 @@ function slackFormatter(info) {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: ` ${info[key]}`
-          }
+            text: ` ${info[key]}`,
+          },
         });
       }
       // If the value in the message is an object then spread each key value pair within the object.
@@ -69,8 +69,8 @@ function slackFormatter(info) {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: ` • _${key}_:\n`
-          }
+            text: ` • _${key}_:\n`,
+          },
         });
         // For each key value pair within the object, spread the object out for formatting.
         for (const subKey in info[key]) {
@@ -93,8 +93,8 @@ function slackFormatter(info) {
               type: "section",
               text: {
                 type: "mrkdwn",
-                text: `    - _${subKey}_: ${JSON.stringify(info[key][subKey])}\n`
-              }
+                text: `    - _${subKey}_: ${JSON.stringify(info[key][subKey])}\n`,
+              },
             });
             // Else if not a address, transaction or object then print as ` - key: value`
           } else {
@@ -102,8 +102,8 @@ function slackFormatter(info) {
               type: "section",
               text: {
                 type: "mrkdwn",
-                text: `    - _${subKey}_: ${info[key][subKey]}\n`
-              }
+                text: `    - _${subKey}_: ${info[key][subKey]}\n`,
+              },
             });
           }
         }
@@ -125,8 +125,8 @@ function slackFormatter(info) {
             type: "section",
             text: {
               type: "mrkdwn",
-              text: ` • _${key}_: ${info[key]}\n`
-            }
+              text: ` • _${key}_: ${info[key]}\n`,
+            },
           });
         }
         // Else, if the value from the key value pair is null still show the key in the log. For example if a param is
@@ -136,14 +136,14 @@ function slackFormatter(info) {
           type: "section",
           text: {
             type: "mrkdwn",
-            text: ` • _${key}_: null`
-          }
+            text: ` • _${key}_: null`,
+          },
         });
       }
     }
     // Add a divider to the end of the message to help distinguish messages in long lists.
     formattedResponse.blocks.push({
-      type: "divider"
+      type: "divider",
     });
     return formattedResponse;
   } catch (error) {
@@ -155,10 +155,10 @@ function slackFormatter(info) {
             type: "mrkdwn",
             text: `*Something went wrong in the winston formatter!*\n\nError:${error}\n\nlogInfo:${JSON.stringify(
               info
-            )}`
-          }
-        }
-      ]
+            )}`,
+          },
+        },
+      ],
     };
   }
 }
@@ -173,14 +173,12 @@ class SlackHook extends Transport {
     this.formatter = opts.formatter || undefined;
     this.mrkdwn = opts.mrkdwn || false;
 
-    this.axiosInstance = axios.create({
-      proxy: opts.proxy || undefined
-    });
+    this.axiosInstance = axios.create({ proxy: opts.proxy || undefined });
   }
 
   async log(info, callback) {
     let payload = {
-      mrkdwn: this.mrkdwn
+      mrkdwn: this.mrkdwn,
     };
 
     let layout = this.formatter(info);
@@ -223,8 +221,7 @@ class SlackHook extends Transport {
       }
     }
     callback();
-    if (!errorThrown) this.emit("logged", info);
-    else this.emit("error", errorThrown);
+    if (errorThrown) console.error("slack transport error!");
   }
 }
 
@@ -232,10 +229,10 @@ function createSlackTransport(webHookUrl) {
   return new SlackHook({
     level: "info",
     webhookUrl: webHookUrl,
-    formatter: info => {
+    formatter: (info) => {
       return slackFormatter(info);
-    }
+    },
   });
 }
 
-module.exports = { createSlackTransport };
+module.exports = { createSlackTransport, SlackHook };

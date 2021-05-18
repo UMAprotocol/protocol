@@ -9,7 +9,7 @@ const {
   computeVoteHash,
   computeVoteHashAncillary,
   getKeyGenMessage,
-  signMessage
+  signMessage,
 } = require("@uma/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 const truffleAssert = require("truffle-assertions");
@@ -26,7 +26,7 @@ const Timer = artifacts.require("Timer");
 const snapshotMessage = "Sign For Snapshot";
 const { utf8ToHex, padRight } = web3.utils;
 
-contract("Voting", function(accounts) {
+contract("Voting", function (accounts) {
   let voting;
   let votingToken;
   let registry;
@@ -41,15 +41,15 @@ contract("Voting", function(accounts) {
   const migratedVoting = accounts[6];
   let signature;
 
-  const setNewInflationRate = async inflationRate => {
+  const setNewInflationRate = async (inflationRate) => {
     await voting.setInflationRate({ rawValue: inflationRate.toString() });
   };
 
-  const setNewGatPercentage = async gatPercentage => {
+  const setNewGatPercentage = async (gatPercentage) => {
     await voting.setGatPercentage({ rawValue: gatPercentage.toString() });
   };
 
-  before(async function() {
+  before(async function () {
     voting = await VotingInterfaceTesting.at((await Voting.deployed()).address);
 
     supportedIdentifiers = await IdentifierWhitelist.deployed();
@@ -81,7 +81,7 @@ contract("Voting", function(accounts) {
     await moveToNextRound(voting);
   });
 
-  it("Constructor", async function() {
+  it("Constructor", async function () {
     // GAT must be <= 1.0 (100%)
     const invalidGat = { rawValue: web3.utils.toWei("1.000001") };
     assert(
@@ -99,7 +99,7 @@ contract("Voting", function(accounts) {
     );
   });
 
-  it("Vote phasing", async function() {
+  it("Vote phasing", async function () {
     // Reset the rounds.
     await moveToNextRound(voting);
 
@@ -124,7 +124,7 @@ contract("Voting", function(accounts) {
     assert.equal((await voting.getVotePhase()).toString(), VotePhasesEnum.COMMIT);
   });
 
-  it("Should snapshot only with valid EOA", async function() {
+  it("Should snapshot only with valid EOA", async function () {
     // Reset the rounds.
     await moveToNextRound(voting);
     await moveToNextPhase(voting);
@@ -147,7 +147,7 @@ contract("Voting", function(accounts) {
     await voting.snapshotCurrentRound(signature);
   });
 
-  it("One voter, one request", async function() {
+  it("One voter, one request", async function () {
     const identifier = padRight(utf8ToHex("one-voter"), 64);
     const time = "1000";
     // Make the Oracle support this identifier.
@@ -168,7 +168,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time: time,
       roundId: currentRoundId,
-      identifier
+      identifier,
     });
 
     // Can't commit hash of 0.
@@ -186,7 +186,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time: time,
       roundId: currentRoundId,
-      identifier
+      identifier,
     });
 
     // Can alter a committed hash.
@@ -234,7 +234,7 @@ contract("Voting", function(accounts) {
     assert(await didContractThrow(voting.revealVote(identifier, time, newPrice, newSalt)));
   });
 
-  it("Overlapping request keys", async function() {
+  it("Overlapping request keys", async function () {
     // Verify that concurrent votes with the same identifier but different times, or the same time but different
     // identifiers don't cause any problems.
     const identifier1 = padRight(utf8ToHex("overlapping-keys1"), 64);
@@ -262,7 +262,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time: time2,
       roundId,
-      identifier: identifier1
+      identifier: identifier1,
     });
 
     const price2 = getRandomSignedInt();
@@ -273,7 +273,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time: time1,
       roundId,
-      identifier: identifier2
+      identifier: identifier2,
     });
 
     await voting.commitVote(identifier1, time2, hash1);
@@ -295,7 +295,7 @@ contract("Voting", function(accounts) {
     await voting.revealVote(identifier2, time1, price2, salt2);
   });
 
-  it("Request and retrieval", async function() {
+  it("Request and retrieval", async function () {
     const identifier1 = padRight(utf8ToHex("request-retrieval1"), 64);
     const time1 = "1000";
     const identifier2 = padRight(utf8ToHex("request-retrieval2"), 64);
@@ -328,7 +328,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time: time1,
       roundId,
-      identifier: identifier1
+      identifier: identifier1,
     });
 
     await voting.commitVote(identifier1, time1, hash1);
@@ -342,7 +342,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time: time2,
       roundId,
-      identifier: identifier2
+      identifier: identifier2,
     });
     await voting.commitVote(identifier2, time2, hash2);
 
@@ -383,7 +383,7 @@ contract("Voting", function(accounts) {
     );
   });
 
-  it("Future price requests disallowed", async function() {
+  it("Future price requests disallowed", async function () {
     await moveToNextRound(voting);
 
     const startingTime = await voting.getCurrentTime();
@@ -412,7 +412,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time: timeSucceed,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, timeSucceed, hash);
 
@@ -424,7 +424,7 @@ contract("Voting", function(accounts) {
     await voting.revealVote(identifier, timeSucceed, price, salt);
   });
 
-  it("Retrieval timing", async function() {
+  it("Retrieval timing", async function () {
     await moveToNextRound(voting);
 
     const identifier = padRight(utf8ToHex("retrieval-timing"), 64);
@@ -455,7 +455,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time, hash);
 
@@ -475,7 +475,7 @@ contract("Voting", function(accounts) {
     assert.equal((await voting.getPrice(identifier, time, { from: registeredContract })).toString(), price.toString());
   });
 
-  it("Pending Requests", async function() {
+  it("Pending Requests", async function () {
     await moveToNextRound(voting);
 
     const identifier1 = padRight(utf8ToHex("pending-requests1"), 64);
@@ -524,7 +524,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time: time1,
       roundId,
-      identifier: identifier1
+      identifier: identifier1,
     });
     await voting.commitVote(identifier1, time1, hash1);
 
@@ -536,7 +536,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time: time2,
       roundId,
-      identifier: identifier2
+      identifier: identifier2,
     });
     await voting.commitVote(identifier2, time2, hash2);
 
@@ -554,7 +554,7 @@ contract("Voting", function(accounts) {
     assert.equal((await voting.getPendingRequests()).length, 0);
   });
 
-  it("Supported identifiers", async function() {
+  it("Supported identifiers", async function () {
     const supported = padRight(utf8ToHex("supported"), 64);
 
     // No identifiers are originally suppported.
@@ -572,7 +572,7 @@ contract("Voting", function(accounts) {
     assert(await didContractThrow(voting.requestPrice(supported, "0", { from: registeredContract })));
   });
 
-  it("Simple vote resolution", async function() {
+  it("Simple vote resolution", async function () {
     const identifier = padRight(utf8ToHex("simple-vote"), 64);
     const time = "1000";
 
@@ -590,7 +590,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time,
       roundId: (await voting.getCurrentRoundId()).toString(),
-      identifier
+      identifier,
     });
     // Can't commit without advancing the round forward.
     assert(await didContractThrow(voting.commitVote(identifier, time, invalidHash)));
@@ -605,7 +605,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time, hash);
 
@@ -622,7 +622,7 @@ contract("Voting", function(accounts) {
     assert.equal((await voting.getPrice(identifier, time, { from: registeredContract })).toString(), price.toString());
   });
 
-  it("Equally split vote", async function() {
+  it("Equally split vote", async function () {
     const identifier = padRight(utf8ToHex("equal-split"), 64);
     const time = "1000";
 
@@ -643,7 +643,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time, hash1, { from: account1 });
 
@@ -655,7 +655,7 @@ contract("Voting", function(accounts) {
       account: account2,
       time,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time, hash2, { from: account2 });
 
@@ -679,7 +679,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time, hash1, { from: account1 });
     await moveToNextPhase(voting);
@@ -689,7 +689,7 @@ contract("Voting", function(accounts) {
     await voting.revealVote(identifier, time, price1, salt1, { from: account1 });
   });
 
-  it("Two thirds majority", async function() {
+  it("Two thirds majority", async function () {
     const identifier = padRight(utf8ToHex("two-thirds"), 64);
     const time = "1000";
 
@@ -710,7 +710,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time, hash1, { from: account1 });
 
@@ -724,7 +724,7 @@ contract("Voting", function(accounts) {
       account: account2,
       time,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time, hash2, { from: account2 });
 
@@ -735,7 +735,7 @@ contract("Voting", function(accounts) {
       account: account3,
       time,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time, hash3, { from: account3 });
 
@@ -756,7 +756,7 @@ contract("Voting", function(accounts) {
     );
   });
 
-  it("GAT", async function() {
+  it("GAT", async function () {
     const identifier = padRight(utf8ToHex("gat"), 64);
     let time = "1000";
 
@@ -777,7 +777,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time, hash1, { from: account1 });
     let hash4 = computeVoteHash({
@@ -786,7 +786,7 @@ contract("Voting", function(accounts) {
       account: account4,
       time,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time, hash4, { from: account4 });
 
@@ -821,7 +821,7 @@ contract("Voting", function(accounts) {
       account: account4,
       time,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time, hash4, { from: account4 });
 
@@ -857,7 +857,7 @@ contract("Voting", function(accounts) {
       account: account4,
       time,
       roundId,
-      identifier
+      identifier,
     });
     hash1 = computeVoteHash({
       price,
@@ -865,7 +865,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time, hash4, { from: account4 });
     await voting.commitVote(identifier, time, hash1, { from: account1 });
@@ -886,7 +886,7 @@ contract("Voting", function(accounts) {
     await voting.retrieveRewards(account4, newRoundId, req);
   });
 
-  it("Basic Snapshotting", async function() {
+  it("Basic Snapshotting", async function () {
     const identifier = padRight(utf8ToHex("basic-snapshotting"), 64);
     const time = "1000";
 
@@ -909,7 +909,7 @@ contract("Voting", function(accounts) {
       account: account3,
       time,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time, hash3, { from: account3 });
 
@@ -923,7 +923,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time, hash1, { from: account1 });
 
@@ -934,7 +934,7 @@ contract("Voting", function(accounts) {
       account: account2,
       time,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time, hash2, { from: account2 });
 
@@ -978,7 +978,7 @@ contract("Voting", function(accounts) {
     await setNewGatPercentage(web3.utils.toWei("0.05", "ether"));
   });
 
-  it("Only registered contracts", async function() {
+  it("Only registered contracts", async function () {
     const identifier = padRight(utf8ToHex("only-registered"), 64);
     const time = "1000";
 
@@ -1000,7 +1000,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time, hash, { from: account1 });
     await moveToNextPhase(voting);
@@ -1019,7 +1019,7 @@ contract("Voting", function(accounts) {
     assert(await didContractThrow(voting.getPrice(identifier, time, { from: unregisteredContract })));
   });
 
-  it("View methods", async function() {
+  it("View methods", async function () {
     const identifier = padRight(utf8ToHex("view-methods"), 64);
     const time = "1000";
 
@@ -1061,7 +1061,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time, hash1, { from: account1 });
 
@@ -1072,7 +1072,7 @@ contract("Voting", function(accounts) {
       account: account2,
       time,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time, hash2, { from: account2 });
 
@@ -1093,7 +1093,7 @@ contract("Voting", function(accounts) {
     assert.equal(statuses[0].lastVotingRound.toString(), (await voting.getCurrentRoundId()).subn(1).toString());
   });
 
-  it("Rewards expiration", async function() {
+  it("Rewards expiration", async function () {
     // Set the inflation rate to 100% (for ease of computation).
     await setNewInflationRate(web3.utils.toWei("1", "ether"));
 
@@ -1119,7 +1119,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time, hash, { from: account1 });
 
@@ -1154,7 +1154,7 @@ contract("Voting", function(accounts) {
 
     // The price is still resolved and the expected events are emitted.
     const result = await voting.retrieveRewards(account1, roundId, req);
-    truffleAssert.eventEmitted(result, "PriceResolved", ev => {
+    truffleAssert.eventEmitted(result, "PriceResolved", (ev) => {
       return (
         ev.roundId.toString() == roundId.toString() &&
         web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier) &&
@@ -1162,7 +1162,7 @@ contract("Voting", function(accounts) {
         ev.price.toString() == winningPrice.toString()
       );
     });
-    truffleAssert.eventEmitted(result, "RewardsRetrieved", ev => {
+    truffleAssert.eventEmitted(result, "RewardsRetrieved", (ev) => {
       return (
         ev.voter.toString() == account1.toString() &&
         ev.roundId.toString() == roundId.toString() &&
@@ -1172,13 +1172,7 @@ contract("Voting", function(accounts) {
     });
 
     // Check overflow edge case by setting really long expiration timeout that'll overflow.
-    await voting.setRewardsExpirationTimeout(
-      web3.utils
-        .toBN(2)
-        .pow(web3.utils.toBN(256))
-        .subn(10)
-        .toString()
-    );
+    await voting.setRewardsExpirationTimeout(web3.utils.toBN(2).pow(web3.utils.toBN(256)).subn(10).toString());
     await moveToNextPhase(voting);
     const time2 = "1001";
     await voting.requestPrice(identifier, time2, { from: registeredContract });
@@ -1197,7 +1191,7 @@ contract("Voting", function(accounts) {
     await voting.setRewardsExpirationTimeout(60 * 60 * 24 * 14);
   });
 
-  it("Basic Inflation", async function() {
+  it("Basic Inflation", async function () {
     // Set the inflation rate to 100% (for ease of computation).
     await setNewInflationRate(web3.utils.toWei("1", "ether"));
 
@@ -1228,7 +1222,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time: time1,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time1, hash1, { from: account1 });
 
@@ -1242,7 +1236,7 @@ contract("Voting", function(accounts) {
       account: account2,
       time: time1,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time1, hash2, { from: account2 });
 
@@ -1253,7 +1247,7 @@ contract("Voting", function(accounts) {
       account: account3,
       time: time1,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time1, hash3, { from: account3 });
 
@@ -1312,7 +1306,7 @@ contract("Voting", function(accounts) {
     await setNewInflationRate("0");
   });
 
-  it("Events", async function() {
+  it("Events", async function () {
     // Set the inflation rate to 100% (for ease of computation).
     await setNewInflationRate(web3.utils.toWei("1", "ether"));
 
@@ -1326,7 +1320,7 @@ contract("Voting", function(accounts) {
 
     // New price requests trigger events.
     result = await voting.requestPrice(identifier, time, { from: registeredContract });
-    truffleAssert.eventEmitted(result, "PriceRequestAdded", ev => {
+    truffleAssert.eventEmitted(result, "PriceRequestAdded", (ev) => {
       return (
         // The vote is added to the next round, so we have to add 1 to the current round id.
         ev.roundId.toString() == currentRoundId.addn(1).toString() &&
@@ -1351,10 +1345,10 @@ contract("Voting", function(accounts) {
       account: account4,
       time,
       roundId: currentRoundId,
-      identifier
+      identifier,
     });
     result = await voting.commitVote(identifier, time, hash4, { from: account4 });
-    truffleAssert.eventEmitted(result, "VoteCommitted", ev => {
+    truffleAssert.eventEmitted(result, "VoteCommitted", (ev) => {
       return (
         ev.voter.toString() == account4 &&
         ev.roundId.toString() == currentRoundId.toString() &&
@@ -1370,7 +1364,7 @@ contract("Voting", function(accounts) {
     await voting.snapshotCurrentRound(signature);
 
     result = await voting.revealVote(identifier, time, price, salt, { from: account4 });
-    truffleAssert.eventEmitted(result, "VoteRevealed", ev => {
+    truffleAssert.eventEmitted(result, "VoteRevealed", (ev) => {
       return (
         ev.voter.toString() == account4 &&
         ev.roundId.toString() == currentRoundId.toString() &&
@@ -1392,7 +1386,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time,
       roundId: currentRoundId,
-      identifier
+      identifier,
     });
     const wrongPrice = 124;
     hash4 = computeVoteHash({
@@ -1401,7 +1395,7 @@ contract("Voting", function(accounts) {
       account: account4,
       time,
       roundId: currentRoundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time, hash1, { from: account1 });
     result = await voting.commitVote(identifier, time, hash4, { from: account4 });
@@ -1416,7 +1410,7 @@ contract("Voting", function(accounts) {
 
     // When the round updates, the price request should be resolved.
     result = await voting.retrieveRewards(account1, roundId, [{ identifier, time }]);
-    truffleAssert.eventEmitted(result, "PriceResolved", ev => {
+    truffleAssert.eventEmitted(result, "PriceResolved", (ev) => {
       return (
         ev.roundId.toString() == currentRoundId.toString() &&
         web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier) &&
@@ -1424,7 +1418,7 @@ contract("Voting", function(accounts) {
         ev.price.toString() == price.toString()
       );
     });
-    truffleAssert.eventEmitted(result, "RewardsRetrieved", ev => {
+    truffleAssert.eventEmitted(result, "RewardsRetrieved", (ev) => {
       return (
         ev.voter.toString() == account1.toString() &&
         ev.roundId.toString() == currentRoundId.toString() &&
@@ -1449,7 +1443,7 @@ contract("Voting", function(accounts) {
     truffleAssert.eventNotEmitted(result, "RewardsRetrieved");
   });
 
-  it("Commit and persist the encrypted price", async function() {
+  it("Commit and persist the encrypted price", async function () {
     const identifier = padRight(utf8ToHex("commit-and-persist"), 64);
     const time = "1000";
     await supportedIdentifiers.addSupportedIdentifier(identifier);
@@ -1466,7 +1460,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time,
       roundId,
-      identifier
+      identifier,
     });
     roundId = await voting.getCurrentRoundId();
 
@@ -1479,7 +1473,7 @@ contract("Voting", function(accounts) {
     const encryptedMessage = await encryptMessage(publicKey, JSON.stringify(vote));
 
     let result = await voting.commitAndEmitEncryptedVote(identifier, time, hash, encryptedMessage);
-    truffleAssert.eventEmitted(result, "EncryptedVote", ev => {
+    truffleAssert.eventEmitted(result, "EncryptedVote", (ev) => {
       return (
         ev.voter.toString() === account1 &&
         ev.roundId.toString() === roundId.toString() &&
@@ -1511,7 +1505,7 @@ contract("Voting", function(accounts) {
     );
   });
 
-  it("Commit and persist the encrypted price against the same identifier/time pair multiple times", async function() {
+  it("Commit and persist the encrypted price against the same identifier/time pair multiple times", async function () {
     const identifier = padRight(utf8ToHex("commit-and-persist2"), 64);
     const time = "1000";
     await supportedIdentifiers.addSupportedIdentifier(identifier);
@@ -1528,7 +1522,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time,
       roundId,
-      identifier
+      identifier,
     });
 
     const { publicKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), account1);
@@ -1545,7 +1539,7 @@ contract("Voting", function(accounts) {
     assert.equal(secondEncryptedMessage, secondRetrievedEncryptedMessage);
   });
 
-  it("Batches multiple commits into one", async function() {
+  it("Batches multiple commits into one", async function () {
     const numRequests = 5;
     const requestTime = "1000";
     const priceRequests = [];
@@ -1556,7 +1550,7 @@ contract("Voting", function(accounts) {
         identifier,
         time: requestTime,
         hash: web3.utils.soliditySha3(getRandomSignedInt()),
-        encryptedVote: utf8ToHex(`some encrypted message ${i}`)
+        encryptedVote: utf8ToHex(`some encrypted message ${i}`),
       });
 
       await supportedIdentifiers.addSupportedIdentifier(identifier);
@@ -1567,11 +1561,11 @@ contract("Voting", function(accounts) {
 
     // Commit without emitting any encrypted messages
     const result = await voting.batchCommit(
-      priceRequests.map(request => ({
+      priceRequests.map((request) => ({
         identifier: request.identifier,
         time: request.time,
         hash: request.hash,
-        encryptedVote: []
+        encryptedVote: [],
       }))
     );
     truffleAssert.eventNotEmitted(result, "EncryptedVote");
@@ -1583,7 +1577,7 @@ contract("Voting", function(accounts) {
       let priceRequest = priceRequests[i];
       let events = await voting.getPastEvents("EncryptedVote", {
         fromBlock: 0,
-        filter: { identifier: priceRequest.identifier, time: priceRequest.time }
+        filter: { identifier: priceRequest.identifier, time: priceRequest.time },
       });
       let retrievedEncryptedMessage = events[events.length - 1].returnValues.encryptedVote;
       assert.equal(retrievedEncryptedMessage, priceRequest.encryptedVote);
@@ -1605,14 +1599,14 @@ contract("Voting", function(accounts) {
       let priceRequest = priceRequests[i];
       let events = await voting.getPastEvents("EncryptedVote", {
         fromBlock: 0,
-        filter: { identifier: priceRequest.identifier, time: priceRequest.time }
+        filter: { identifier: priceRequest.identifier, time: priceRequest.time },
       });
       let retrievedEncryptedMessage = events[events.length - 1].returnValues.encryptedVote;
       assert.equal(retrievedEncryptedMessage, priceRequest.encryptedVote);
     }
   });
 
-  it("Batch reveal multiple commits", async function() {
+  it("Batch reveal multiple commits", async function () {
     const identifier = padRight(utf8ToHex("batch-reveal"), 64);
     const time1 = "1000";
     const time2 = "1001";
@@ -1633,7 +1627,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time: time1,
       roundId,
-      identifier
+      identifier,
     });
     const hash2 = computeVoteHash({
       price: price2,
@@ -1641,7 +1635,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time: time2,
       roundId,
-      identifier
+      identifier,
     });
 
     const { publicKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), account1);
@@ -1661,17 +1655,17 @@ contract("Voting", function(accounts) {
         identifier,
         time: time1,
         price: price1.toString(),
-        salt: salt1.toString()
+        salt: salt1.toString(),
       },
       {
         identifier,
         time: time2,
         price: price2.toString(),
-        salt: salt2.toString()
-      }
+        salt: salt2.toString(),
+      },
     ]);
 
-    truffleAssert.eventEmitted(result, "VoteRevealed", ev => {
+    truffleAssert.eventEmitted(result, "VoteRevealed", (ev) => {
       return (
         ev.voter.toString() == account1 &&
         ev.roundId.toString() == roundId.toString() &&
@@ -1680,7 +1674,7 @@ contract("Voting", function(accounts) {
         ev.price.toString() == price1.toString()
       );
     });
-    truffleAssert.eventEmitted(result, "VoteRevealed", ev => {
+    truffleAssert.eventEmitted(result, "VoteRevealed", (ev) => {
       return (
         ev.voter.toString() == account1 &&
         ev.roundId.toString() == roundId.toString() &&
@@ -1691,7 +1685,7 @@ contract("Voting", function(accounts) {
     });
   });
 
-  it("Migration", async function() {
+  it("Migration", async function () {
     const identifier = padRight(utf8ToHex("migration"), 64);
     const time1 = "1000";
     const time2 = "2000";
@@ -1723,7 +1717,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time: time1,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time1, hash, { from: account1 });
     await moveToNextPhase(voting);
@@ -1747,7 +1741,7 @@ contract("Voting", function(accounts) {
     assert(await didContractThrow(voting.commitVote(identifier, time2, hash, { from: account1 })));
   });
 
-  it("pendingPriceRequests array length", async function() {
+  it("pendingPriceRequests array length", async function () {
     // Use a test derived contract to expose the internal array (and its length).
     const votingTest = await VotingInterfaceTesting.at(
       (
@@ -1794,7 +1788,7 @@ contract("Voting", function(accounts) {
       account: account1,
       time,
       roundId: votingRound.toString(),
-      identifier
+      identifier,
     });
     await votingTest.commitVote(identifier, time, hash);
 
@@ -1813,7 +1807,7 @@ contract("Voting", function(accounts) {
     // After retrieval, the length should be decreased back to 0 since the element added in this test is now deleted.
     assert.equal((await votingTest.getPendingPriceRequestsArray()).length, 0);
   });
-  it("Votes can correctly handle arbitrary ancillary data", async function() {
+  it("Votes can correctly handle arbitrary ancillary data", async function () {
     const identifier1 = padRight(utf8ToHex("request-retrieval"), 64);
     const time1 = "1000";
     const ancillaryData1 = utf8ToHex("some-random-extra-data"); // ancillary data should be able to store any extra dat
@@ -1882,7 +1876,7 @@ contract("Voting", function(accounts) {
       time: time1,
       ancillaryData: ancillaryData1,
       roundId,
-      identifier: identifier1
+      identifier: identifier1,
     });
 
     await voting.commitVote(identifier1, time1, ancillaryData1, hash1);
@@ -1897,7 +1891,7 @@ contract("Voting", function(accounts) {
       time: time2,
       ancillaryData: ancillaryData2,
       roundId,
-      identifier: identifier2
+      identifier: identifier2,
     });
     await voting.commitVote(identifier2, time2, ancillaryData2, hash2);
 
@@ -1937,7 +1931,7 @@ contract("Voting", function(accounts) {
       price2.toString()
     );
   });
-  it("Stress testing the size of ancillary data", async function() {
+  it("Stress testing the size of ancillary data", async function () {
     let identifier = padRight(utf8ToHex("stress-test"), 64);
     let time = "1000";
     const DATA_LIMIT_BYTES = 8192;
@@ -1985,7 +1979,7 @@ contract("Voting", function(accounts) {
       time,
       ancillaryData,
       roundId,
-      identifier
+      identifier,
     });
 
     await voting.commitVote(identifier, time, ancillaryData, hash);
@@ -2016,7 +2010,7 @@ contract("Voting", function(accounts) {
       price.toString()
     );
   });
-  it("Mixing ancillary and no ancillary price requests is compatible", async function() {
+  it("Mixing ancillary and no ancillary price requests is compatible", async function () {
     // This test shows that the current DVM implementation is still compatable, when mixed with diffrent kinds of requests.
     // Also, this test shows that the overloading syntax operates as expected.
 
@@ -2040,23 +2034,23 @@ contract("Voting", function(accounts) {
 
     // Requests should not be added to the current voting round.
     await voting.methods["requestPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1, {
-      from: registeredContract
+      from: registeredContract,
     });
     await voting.methods["requestPrice(bytes32,uint256)"](identifier2, time2, {
-      from: registeredContract
+      from: registeredContract,
     });
 
     // Since the round for these requests has not started, the price retrieval should fail.
     assert.isFalse(
       await voting.methods["hasPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1, {
-        from: registeredContract
+        from: registeredContract,
       })
     );
     assert.isFalse(await voting.methods["hasPrice(bytes32,uint256)"](identifier2, time2, { from: registeredContract }));
     assert(
       await didContractThrow(
         voting.methods["getPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1, {
-          from: registeredContract
+          from: registeredContract,
         })
       )
     );
@@ -2101,7 +2095,7 @@ contract("Voting", function(accounts) {
       time: time1,
       ancillaryData: ancillaryData1,
       roundId,
-      identifier: identifier1
+      identifier: identifier1,
     });
 
     await voting.methods["commitVote(bytes32,uint256,bytes,bytes32)"](identifier1, time1, ancillaryData1, hash1);
@@ -2116,21 +2110,21 @@ contract("Voting", function(accounts) {
       time: time2,
 
       roundId,
-      identifier: identifier2
+      identifier: identifier2,
     });
     await voting.methods["commitVote(bytes32,uint256,bytes32)"](identifier2, time2, hash2);
 
     // If the voting period is ongoing, prices cannot be returned since they are not finalized.
     assert.isFalse(
       await voting.methods["hasPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1, {
-        from: registeredContract
+        from: registeredContract,
       })
     );
     assert.isFalse(await voting.methods["hasPrice(bytes32,uint256)"](identifier2, time2, { from: registeredContract }));
     assert(
       await didContractThrow(
         voting.methods["getPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1, {
-          from: registeredContract
+          from: registeredContract,
         })
       )
     );
@@ -2152,14 +2146,14 @@ contract("Voting", function(accounts) {
     // Prices cannot be provided until both commit and reveal for the current round have finished.
     assert.isFalse(
       await voting.methods["hasPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1, {
-        from: registeredContract
+        from: registeredContract,
       })
     );
     assert.isFalse(await voting.methods["hasPrice(bytes32,uint256)"](identifier2, time2, { from: registeredContract }));
     assert(
       await didContractThrow(
         voting.methods["getPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1, {
-          from: registeredContract
+          from: registeredContract,
         })
       )
     );
@@ -2175,14 +2169,14 @@ contract("Voting", function(accounts) {
     // Note: all voting results are currently hardcoded to 1.
     assert.isTrue(
       await voting.methods["hasPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1, {
-        from: registeredContract
+        from: registeredContract,
       })
     );
     assert.isTrue(await voting.methods["hasPrice(bytes32,uint256)"](identifier2, time2, { from: registeredContract }));
     assert.equal(
       (
         await voting.methods["getPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1, {
-          from: registeredContract
+          from: registeredContract,
         })
       ).toString(),
       price1.toString()

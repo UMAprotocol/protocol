@@ -1,9 +1,11 @@
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity ^0.8.0;
 import "../common/financial-product-libraries/FinancialProductLibrary.sol";
 
 // Implements a simple FinancialProductLibrary to test price and collateral requirement transoformations.
 contract FinancialProductLibraryTest is FinancialProductLibrary {
+    using FixedPoint for FixedPoint.Unsigned;
+
     FixedPoint.Unsigned public priceTransformationScalar;
     FixedPoint.Unsigned public collateralRequirementTransformationScalar;
     bytes32 public transformedPriceIdentifier;
@@ -13,7 +15,7 @@ contract FinancialProductLibraryTest is FinancialProductLibrary {
         FixedPoint.Unsigned memory _priceTransformationScalar,
         FixedPoint.Unsigned memory _collateralRequirementTransformationScalar,
         bytes32 _transformedPriceIdentifier
-    ) public {
+    ) {
         priceTransformationScalar = _priceTransformationScalar;
         collateralRequirementTransformationScalar = _collateralRequirementTransformationScalar;
         transformedPriceIdentifier = _transformedPriceIdentifier;

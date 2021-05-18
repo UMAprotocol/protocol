@@ -13,9 +13,9 @@ module.exports = ({ web3, cryptowatchApiKey, tradermadeApiKey, decimals = 18 } =
         transports: [
           new winston.transports.Console({
             level: "error",
-            stderrLevels: ["error"]
-          })
-        ]
+            stderrLevels: ["error"],
+          }),
+        ],
       }),
       web3,
       new Networker(),

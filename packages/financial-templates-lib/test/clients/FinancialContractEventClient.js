@@ -8,7 +8,7 @@ const {
   advanceBlockAndSetTime,
   runTestForVersion,
   createConstructorParamsForContractVersion,
-  TESTED_CONTRACT_VERSIONS
+  TESTED_CONTRACT_VERSIONS,
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
@@ -22,7 +22,7 @@ const { FinancialContractEventClient } = require("../../src/clients/FinancialCon
 const configs = [
   { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
   { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 }
+  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 },
 ];
 
 const startTime = "15798990420";
@@ -61,29 +61,29 @@ let newSponsorTxObj1;
 let newSponsorTxObj2;
 let newSponsorTxObj3;
 
-const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
+const Convert = (decimals) => (number) => parseFixed(number.toString(), decimals).toString();
 
 // If the current version being executed is part of the `supportedVersions` array then return `it` to run the test.
 // Else, do nothing. Can be used exactly in place of a normal `it` to parameterize contract types and versions supported
 // for a given test.eg: versionedIt([{ contractType: "any", contractVersion: "any" }])("test name", async function () { assert.isTrue(true) })
 // Note that a second param can be provided to make the test an `it.only` thereby ONLY running that single test, on
 // the provided version. This is very useful for debugging and writing single unit tests without having ro run all tests.
-const versionedIt = function(supportedVersions, shouldBeItOnly = false) {
+const versionedIt = function (supportedVersions, shouldBeItOnly = false) {
   if (shouldBeItOnly)
     return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it.only : () => {};
   return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it : () => {};
 };
 
-contract("FinancialContractEventClient.js", function(accounts) {
+contract("FinancialContractEventClient.js", function (accounts) {
   for (let tokenConfig of configs) {
-    describe(`${tokenConfig.collateralDecimals} decimals`, function() {
+    describe(`${tokenConfig.collateralDecimals} decimals`, function () {
       const tokenSponsor = accounts[0];
       const liquidator = accounts[1];
       const sponsor1 = accounts[2];
       const sponsor2 = accounts[3];
       const sponsor3 = accounts[4];
 
-      TESTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
+      TESTED_CONTRACT_VERSIONS.forEach(function (contractVersion) {
         // Store the contractVersion.contractVersion, type and version being tested
         iterationTestVersion = contractVersion;
 
@@ -106,8 +106,8 @@ contract("FinancialContractEventClient.js", function(accounts) {
         const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
 
         for (let testConfig of configs) {
-          describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
-            before(async function() {
+          describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
+            before(async function () {
               identifier = `${testConfig.tokenName}TEST`;
               fundingRateIdentifier = `${testConfig.tokenName}_FUNDING_IDENTIFIER`;
               convertCollateral = Convert(testConfig.collateralDecimals);
@@ -118,7 +118,7 @@ contract("FinancialContractEventClient.js", function(accounts) {
                 testConfig.tokenSymbol,
                 tokenConfig.collateralDecimals,
                 {
-                  from: tokenSponsor
+                  from: tokenSponsor,
                 }
               );
               await collateralToken.addMember(1, tokenSponsor, { from: tokenSponsor });
@@ -149,7 +149,7 @@ contract("FinancialContractEventClient.js", function(accounts) {
               );
             });
 
-            beforeEach(async function() {
+            beforeEach(async function () {
               mockOracle = await MockOracle.new(finder.address, timer.address);
               await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
 
@@ -163,7 +163,7 @@ contract("FinancialContractEventClient.js", function(accounts) {
                 "SYNTH",
                 tokenConfig.syntheticDecimals,
                 {
-                  from: tokenSponsor
+                  from: tokenSponsor,
                 }
               );
 
@@ -176,7 +176,7 @@ contract("FinancialContractEventClient.js", function(accounts) {
                     proposerBondPercentage: { rawValue: "0" },
                     maxFundingRate: { rawValue: toWei("0.00001") },
                     minFundingRate: { rawValue: toWei("-0.00001") },
-                    proposalTimePastLimit: 0
+                    proposalTimePastLimit: 0,
                   },
                   timer.address
                 );
@@ -200,12 +200,12 @@ contract("FinancialContractEventClient.js", function(accounts) {
                   fundingRateIdentifier,
                   timer,
                   store,
-                  configStore: configStore || {} // if the contract type is not a perp this will be null.
+                  configStore: configStore || {}, // if the contract type is not a perp this will be null.
                 },
                 {
                   minSponsorTokens: { rawValue: convertSynthetic("1") },
                   collateralRequirement: { rawValue: toWei("1.5") }, // these tests assume a CR of 1.5, not the 1.2 default.
-                  expirationTimestamp: expirationTime.toString()
+                  expirationTimestamp: expirationTime.toString(),
                 }
               );
 
@@ -217,7 +217,7 @@ contract("FinancialContractEventClient.js", function(accounts) {
               // The FinancialContractEventClient does not emit any info level events. Therefore no need to test Winston outputs.
               dummyLogger = winston.createLogger({
                 level: "info",
-                transports: [new winston.transports.Console()]
+                transports: [new winston.transports.Console()],
               });
 
               // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.
@@ -235,21 +235,21 @@ contract("FinancialContractEventClient.js", function(accounts) {
                 contractVersion.contractVersion
               );
               await collateralToken.approve(financialContract.address, convertCollateral("1000000"), {
-                from: sponsor1
+                from: sponsor1,
               });
               await collateralToken.approve(financialContract.address, convertCollateral("1000000"), {
-                from: sponsor2
+                from: sponsor2,
               });
               await collateralToken.approve(financialContract.address, convertCollateral("1000000"), {
-                from: sponsor3
+                from: sponsor3,
               });
 
               syntheticToken = await Token.at(await financialContract.tokenCurrency());
               await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), {
-                from: sponsor1
+                from: sponsor1,
               });
               await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), {
-                from: sponsor2
+                from: sponsor2,
               });
 
               // Create two positions
@@ -266,10 +266,10 @@ contract("FinancialContractEventClient.js", function(accounts) {
 
               // Seed the liquidator position
               await collateralToken.approve(financialContract.address, convertCollateral("1000000"), {
-                from: liquidator
+                from: liquidator,
               });
               await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), {
-                from: liquidator
+                from: liquidator,
               });
               newSponsorTxObj3 = await financialContract.create(
                 { rawValue: convertCollateral("500") },
@@ -280,7 +280,7 @@ contract("FinancialContractEventClient.js", function(accounts) {
 
             versionedIt([{ contractType: "any", contractVersion: "any" }])(
               "Return NewSponsor Events",
-              async function() {
+              async function () {
                 // Update the client and check it has the new sponsor event stored correctly
                 await client.clearState();
 
@@ -297,22 +297,22 @@ contract("FinancialContractEventClient.js", function(accounts) {
                       blockNumber: newSponsorTxObj1.receipt.blockNumber,
                       sponsor: sponsor1,
                       collateralAmount: convertCollateral("10"),
-                      tokenAmount: convertSynthetic("50")
+                      tokenAmount: convertSynthetic("50"),
                     },
                     {
                       transactionHash: newSponsorTxObj2.tx,
                       blockNumber: newSponsorTxObj2.receipt.blockNumber,
                       sponsor: sponsor2,
                       collateralAmount: convertCollateral("100"),
-                      tokenAmount: convertSynthetic("45")
+                      tokenAmount: convertSynthetic("45"),
                     },
                     {
                       transactionHash: newSponsorTxObj3.tx,
                       blockNumber: newSponsorTxObj3.receipt.blockNumber,
                       sponsor: liquidator,
                       collateralAmount: convertCollateral("500"),
-                      tokenAmount: convertSynthetic("200")
-                    }
+                      tokenAmount: convertSynthetic("200"),
+                    },
                   ],
                   client.getAllNewSponsorEvents()
                 );
@@ -333,15 +333,15 @@ contract("FinancialContractEventClient.js", function(accounts) {
                       blockNumber: newSponsorTxObj4.receipt.blockNumber,
                       sponsor: sponsor3,
                       collateralAmount: convertCollateral("10"),
-                      tokenAmount: convertSynthetic("1")
-                    }
+                      tokenAmount: convertSynthetic("1"),
+                    },
                   ],
                   client.getAllNewSponsorEvents()
                 );
               }
             );
 
-            versionedIt([{ contractType: "any", contractVersion: "any" }])("Return Create Events", async function() {
+            versionedIt([{ contractType: "any", contractVersion: "any" }])("Return Create Events", async function () {
               // Update the client and check it has the new sponsor event stored correctly
               await client.clearState();
 
@@ -358,22 +358,22 @@ contract("FinancialContractEventClient.js", function(accounts) {
                     blockNumber: newSponsorTxObj1.receipt.blockNumber,
                     sponsor: sponsor1,
                     collateralAmount: convertCollateral("10"),
-                    tokenAmount: convertSynthetic("50")
+                    tokenAmount: convertSynthetic("50"),
                   },
                   {
                     transactionHash: newSponsorTxObj2.tx,
                     blockNumber: newSponsorTxObj2.receipt.blockNumber,
                     sponsor: sponsor2,
                     collateralAmount: convertCollateral("100"),
-                    tokenAmount: convertSynthetic("45")
+                    tokenAmount: convertSynthetic("45"),
                   },
                   {
                     transactionHash: newSponsorTxObj3.tx,
                     blockNumber: newSponsorTxObj3.receipt.blockNumber,
                     sponsor: liquidator,
                     collateralAmount: convertCollateral("500"),
-                    tokenAmount: convertSynthetic("200")
-                  }
+                    tokenAmount: convertSynthetic("200"),
+                  },
                 ],
                 client.getAllCreateEvents()
               );
@@ -394,14 +394,14 @@ contract("FinancialContractEventClient.js", function(accounts) {
                     blockNumber: newSponsorTxObj4.receipt.blockNumber,
                     sponsor: sponsor3,
                     collateralAmount: convertCollateral("10"),
-                    tokenAmount: convertSynthetic("1")
-                  }
+                    tokenAmount: convertSynthetic("1"),
+                  },
                 ],
                 client.getAllCreateEvents()
               );
             });
 
-            versionedIt([{ contractType: "any", contractVersion: "any" }])("Return Deposit Events", async function() {
+            versionedIt([{ contractType: "any", contractVersion: "any" }])("Return Deposit Events", async function () {
               // Update the client and check it has the new sponsor event stored correctly
               await client.clearState();
 
@@ -422,8 +422,8 @@ contract("FinancialContractEventClient.js", function(accounts) {
                     transactionHash: depositTxObj1.tx,
                     blockNumber: depositTxObj1.receipt.blockNumber,
                     sponsor: sponsor1,
-                    collateralAmount: convertCollateral("5")
-                  }
+                    collateralAmount: convertCollateral("5"),
+                  },
                 ],
                 client.getAllDepositEvents()
               );
@@ -442,14 +442,14 @@ contract("FinancialContractEventClient.js", function(accounts) {
                     transactionHash: depositTxObj2.tx,
                     blockNumber: depositTxObj2.receipt.blockNumber,
                     sponsor: sponsor2,
-                    collateralAmount: convertCollateral("3")
-                  }
+                    collateralAmount: convertCollateral("3"),
+                  },
                 ],
                 client.getAllDepositEvents()
               );
             });
 
-            versionedIt([{ contractType: "any", contractVersion: "any" }])("Return Withdraw Events", async function() {
+            versionedIt([{ contractType: "any", contractVersion: "any" }])("Return Withdraw Events", async function () {
               // Update the client and check it has the new sponsor event stored correctly
               await client.clearState();
 
@@ -471,8 +471,8 @@ contract("FinancialContractEventClient.js", function(accounts) {
                     transactionHash: withdrawTxObj1.tx,
                     blockNumber: withdrawTxObj1.receipt.blockNumber,
                     sponsor: liquidator,
-                    collateralAmount: convertCollateral("1")
-                  }
+                    collateralAmount: convertCollateral("1"),
+                  },
                 ],
                 client.getAllWithdrawEvents()
               );
@@ -491,14 +491,14 @@ contract("FinancialContractEventClient.js", function(accounts) {
                     transactionHash: withdrawTxObj2.tx,
                     blockNumber: withdrawTxObj2.receipt.blockNumber,
                     sponsor: sponsor2,
-                    collateralAmount: convertCollateral("2")
-                  }
+                    collateralAmount: convertCollateral("2"),
+                  },
                 ],
                 client.getAllWithdrawEvents()
               );
             });
 
-            versionedIt([{ contractType: "any", contractVersion: "any" }])("Return Redeem Events", async function() {
+            versionedIt([{ contractType: "any", contractVersion: "any" }])("Return Redeem Events", async function () {
               // Update the client and check it has the new sponsor event stored correctly
               await client.clearState();
 
@@ -521,8 +521,8 @@ contract("FinancialContractEventClient.js", function(accounts) {
                     blockNumber: redeemTxObj1.receipt.blockNumber,
                     sponsor: liquidator,
                     collateralAmount: convertCollateral("2.5"),
-                    tokenAmount: convertSynthetic("1")
-                  }
+                    tokenAmount: convertSynthetic("1"),
+                  },
                 ],
                 client.getAllRedeemEvents()
               );
@@ -542,8 +542,8 @@ contract("FinancialContractEventClient.js", function(accounts) {
                     blockNumber: redeemTxObj2.receipt.blockNumber,
                     sponsor: sponsor1,
                     collateralAmount: convertCollateral("0.2"),
-                    tokenAmount: convertSynthetic("1")
-                  }
+                    tokenAmount: convertSynthetic("1"),
+                  },
                 ],
                 client.getAllRedeemEvents()
               );
@@ -551,7 +551,7 @@ contract("FinancialContractEventClient.js", function(accounts) {
 
             versionedIt([{ contractType: "any", contractVersion: "any" }])(
               "Return RegularFee Events",
-              async function() {
+              async function () {
                 await client.clearState();
 
                 // State is empty before update()
@@ -572,8 +572,8 @@ contract("FinancialContractEventClient.js", function(accounts) {
                       transactionHash: regularFeeTxObj1.tx,
                       blockNumber: regularFeeTxObj1.receipt.blockNumber,
                       regularFee: convertCollateral("6.1"),
-                      lateFee: convertSynthetic("0")
-                    }
+                      lateFee: convertSynthetic("0"),
+                    },
                   ],
                   client.getAllRegularFeeEvents()
                 );
@@ -591,8 +591,8 @@ contract("FinancialContractEventClient.js", function(accounts) {
                       transactionHash: regularFeeTxObj2.tx,
                       blockNumber: regularFeeTxObj2.receipt.blockNumber,
                       regularFee: convertCollateral("6.039"),
-                      lateFee: convertSynthetic("0")
-                    }
+                      lateFee: convertSynthetic("0"),
+                    },
                   ],
                   client.getAllRegularFeeEvents()
                 );
@@ -604,7 +604,7 @@ contract("FinancialContractEventClient.js", function(accounts) {
 
             versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "1.2.2" }])(
               "Return FinalFee Events",
-              async function() {
+              async function () {
                 // Update the client and check it has the new sponsor event stored correctly
                 await client.clearState();
 
@@ -629,8 +629,8 @@ contract("FinancialContractEventClient.js", function(accounts) {
                     {
                       transactionHash: finalFeeTxObj1.tx,
                       blockNumber: finalFeeTxObj1.receipt.blockNumber,
-                      amount: convertCollateral("1")
-                    }
+                      amount: convertCollateral("1"),
+                    },
                   ],
                   client.getAllFinalFeeEvents()
                 );
@@ -645,8 +645,8 @@ contract("FinancialContractEventClient.js", function(accounts) {
                     {
                       transactionHash: finalFeeTxObj2.tx,
                       blockNumber: finalFeeTxObj2.receipt.blockNumber,
-                      amount: convertCollateral("1")
-                    }
+                      amount: convertCollateral("1"),
+                    },
                   ],
                   client.getAllFinalFeeEvents()
                 );
@@ -658,7 +658,7 @@ contract("FinancialContractEventClient.js", function(accounts) {
 
             versionedIt([{ contractType: "any", contractVersion: "any" }])(
               "Return Liquidation Events",
-              async function() {
+              async function () {
                 // Create liquidation to liquidate sponsor2 from sponsor1
                 const txObject1 = await financialContract.createLiquidation(
                   sponsor1,
@@ -688,8 +688,8 @@ contract("FinancialContractEventClient.js", function(accounts) {
                       liquidationId: "0",
                       tokensOutstanding: convertSynthetic("50"),
                       lockedCollateral: convertCollateral("10"),
-                      liquidatedCollateral: convertCollateral("10")
-                    }
+                      liquidatedCollateral: convertCollateral("10"),
+                    },
                   ],
                   client.getAllLiquidationEvents()
                 );
@@ -715,15 +715,15 @@ contract("FinancialContractEventClient.js", function(accounts) {
                       liquidationId: "0",
                       tokensOutstanding: convertSynthetic("45"),
                       lockedCollateral: convertCollateral("100"),
-                      liquidatedCollateral: convertCollateral("100")
-                    }
+                      liquidatedCollateral: convertCollateral("100"),
+                    },
                   ],
                   client.getAllLiquidationEvents()
                 );
               }
             );
 
-            versionedIt([{ contractType: "any", contractVersion: "any" }])("Return Dispute Events", async function() {
+            versionedIt([{ contractType: "any", contractVersion: "any" }])("Return Dispute Events", async function () {
               // Create liquidation to liquidate sponsor2 from sponsor1
               await financialContract.createLiquidation(
                 sponsor1,
@@ -754,8 +754,8 @@ contract("FinancialContractEventClient.js", function(accounts) {
                     liquidator: liquidator,
                     disputer: sponsor2,
                     liquidationId: "0",
-                    disputeBondAmount: convertCollateral("1") // 10% of the liquidated position's collateral.
-                  }
+                    disputeBondAmount: convertCollateral("1"), // 10% of the liquidated position's collateral.
+                  },
                 ],
                 client.getAllDisputeEvents()
               );
@@ -763,7 +763,7 @@ contract("FinancialContractEventClient.js", function(accounts) {
 
             versionedIt([{ contractType: "any", contractVersion: "any" }])(
               "Return Dispute Settlement Events",
-              async function() {
+              async function () {
                 // Create liquidation to liquidate sponsor2 from sponsor1
                 const liquidationTime = (await financialContract.getCurrentTime()).toNumber();
                 await financialContract.createLiquidation(
@@ -777,7 +777,7 @@ contract("FinancialContractEventClient.js", function(accounts) {
 
                 // Dispute the position from the second sponsor
                 await financialContract.dispute("0", sponsor1, {
-                  from: sponsor2
+                  from: sponsor2,
                 });
 
                 // Advance time and settle
@@ -810,8 +810,8 @@ contract("FinancialContractEventClient.js", function(accounts) {
                       liquidator: liquidator,
                       disputer: sponsor2,
                       liquidationId: "0",
-                      disputeSucceeded: false // Settlement price makes liquidation valid
-                    }
+                      disputeSucceeded: false, // Settlement price makes liquidation valid
+                    },
                   ],
                   client.getAllDisputeSettlementEvents()
                 );
@@ -820,7 +820,7 @@ contract("FinancialContractEventClient.js", function(accounts) {
 
             versionedIt([{ contractType: "any", contractVersion: "any" }])(
               "Return Liquidation Withdrawn Events",
-              async function() {
+              async function () {
                 // Create liquidation to liquidate sponsor1
                 const liquidationTime = (await financialContract.getCurrentTime()).toNumber();
                 await financialContract.createLiquidation(
@@ -834,7 +834,7 @@ contract("FinancialContractEventClient.js", function(accounts) {
 
                 // Dispute the position from the second sponsor
                 await financialContract.dispute("0", sponsor1, {
-                  from: sponsor2
+                  from: sponsor2,
                 });
 
                 // Advance time and settle
@@ -864,8 +864,8 @@ contract("FinancialContractEventClient.js", function(accounts) {
                       blockNumber: txObject.receipt.blockNumber,
                       caller: liquidator,
                       withdrawalAmount: convertCollateral("4"), // On successful disputes, liquidator gets TRV - dispute rewards. TRV = (50 * 0.1 = 5), and rewards = (TRV * 0.1 = 5 * 0.1 = 0.5).
-                      liquidationStatus: "3" // Settlement price makes dispute successful
-                    }
+                      liquidationStatus: "3", // Settlement price makes dispute successful
+                    },
                   ],
                   client.getAllLiquidationWithdrawnEvents()
                 );
@@ -874,7 +874,7 @@ contract("FinancialContractEventClient.js", function(accounts) {
 
             versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "1.2.2" }])(
               "Return SettleExpiredPosition Events",
-              async function() {
+              async function () {
                 await client.clearState();
 
                 // State is empty before update()
@@ -902,8 +902,8 @@ contract("FinancialContractEventClient.js", function(accounts) {
                       blockNumber: txObject.receipt.blockNumber,
                       caller: sponsor1,
                       collateralReturned: convertCollateral("10"), // Sponsor should get back all collateral in position because they still hold all tokens
-                      tokensBurned: convertSynthetic("50")
-                    }
+                      tokensBurned: convertSynthetic("50"),
+                    },
                   ],
                   client.getAllSettleExpiredPositionEvents()
                 );
@@ -919,24 +919,24 @@ contract("FinancialContractEventClient.js", function(accounts) {
                       blockNumber: txObject2.receipt.blockNumber,
                       caller: sponsor2,
                       collateralReturned: convertCollateral("100"), // Sponsor should get back all collateral in position because they still hold all tokens
-                      tokensBurned: convertSynthetic("45")
-                    }
+                      tokensBurned: convertSynthetic("45"),
+                    },
                   ],
                   client.getAllSettleExpiredPositionEvents()
                 );
               }
             );
 
-            versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])(
+            versionedIt([{ contractType: "Perpetual", contractVersion: "2.0.1" }])(
               "Return FundingRateUpdated Events",
-              async function() {
+              async function () {
                 await client.clearState();
 
                 // State is empty before update()
                 assert.deepStrictEqual([], client.getAllFundingRateUpdatedEvents());
 
                 // Propose new funding rate.
-                const proposeAndPublishNewRate = async newRateWei => {
+                const proposeAndPublishNewRate = async (newRateWei) => {
                   // Advance time forward by 1 to guarantee that proposal time > last update time.
                   let currentTime = await timer.getCurrentTime();
                   await timer.setCurrentTime(currentTime.toNumber() + 1);
@@ -948,7 +948,7 @@ contract("FinancialContractEventClient.js", function(accounts) {
                   await timer.setCurrentTime(proposalExpiry);
                   return {
                     txObject: await financialContract.applyFundingRate(),
-                    proposalTime
+                    proposalTime,
                   };
                 };
                 const { txObject, proposalTime } = await proposeAndPublishNewRate(toWei("-0.00001"));
@@ -963,8 +963,8 @@ contract("FinancialContractEventClient.js", function(accounts) {
                       blockNumber: txObject.receipt.blockNumber,
                       newFundingRate: toWei("-0.00001"),
                       updateTime: proposalTime.toString(),
-                      reward: "0"
-                    }
+                      reward: "0",
+                    },
                   ],
                   client.getAllFundingRateUpdatedEvents()
                 );
@@ -982,8 +982,8 @@ contract("FinancialContractEventClient.js", function(accounts) {
                       blockNumber: txObject2.receipt.blockNumber,
                       newFundingRate: toWei("0.00001"),
                       updateTime: proposalTime2.toString(),
-                      reward: "0"
-                    }
+                      reward: "0",
+                    },
                   ],
                   client.getAllFundingRateUpdatedEvents()
                 );
@@ -992,7 +992,7 @@ contract("FinancialContractEventClient.js", function(accounts) {
 
             versionedIt([{ contractType: "any", contractVersion: "any" }])(
               "Starting client at an offset block number",
-              async function() {
+              async function () {
                 // Init the Financial Contract event client with an offset block number. If the current block number is used then all log events
                 // generated before the creation of the client should not be included. Rather, only subsequent logs should be reported.
 

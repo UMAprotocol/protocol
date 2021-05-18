@@ -3,9 +3,9 @@ const {
   createReferencePriceFeedForFinancialContract,
   setAllowance,
   isDeviationOutsideErrorMargin,
-  aggregateTransactionsAndCall
+  aggregateTransactionsAndCall,
 } = require("@uma/financial-templates-lib");
-const { createObjectFromDefaultProps, runTransaction, parseFixed, formatFixed } = require("@uma/common");
+const { createObjectFromDefaultProps, runTransaction } = require("@uma/common");
 const { getAbi } = require("@uma/core");
 const Promise = require("bluebird");
 const assert = require("assert");
@@ -28,7 +28,7 @@ class FundingRateProposer {
     gasEstimator,
     account,
     commonPriceFeedConfig,
-    perpetualProposerConfig
+    perpetualProposerConfig,
   }) {
     this.logger = logger;
     this.account = account;
@@ -38,10 +38,10 @@ class FundingRateProposer {
     this.web3 = this.perpetualFactoryClient.web3;
     this.commonPriceFeedConfig = commonPriceFeedConfig;
 
-    this.createPerpetualContract = perpAddress => {
+    this.createPerpetualContract = (perpAddress) => {
       return new this.web3.eth.Contract(getAbi("Perpetual"), perpAddress);
     };
-    this.createConfigStoreContract = storeAddress => {
+    this.createConfigStoreContract = (storeAddress) => {
       return new this.web3.eth.Contract(getAbi("ConfigStore"), storeAddress);
     };
 
@@ -73,19 +73,12 @@ class FundingRateProposer {
         //                                      and proposed to.
         //                                      e.g. 0.05 implies 5% margin of error.
         value: 0.05,
-        isValid: x => {
+        isValid: (x) => {
           return !isNaN(x);
           // Negative allowed-margins might be useful based on the implementation
           // of `isDeviationOutsideErrorMargin()`
-        }
+        },
       },
-      precision: {
-        //   "precision":9 ->  # of decimals to round fundingRate to.
-        value: 9,
-        isValid: x => {
-          return !isNaN(x) && x >= 0 && x <= 18;
-        }
-      }
     };
 
     // Validate and set config settings to class state.
@@ -105,9 +98,9 @@ class FundingRateProposer {
     await Promise.all([
       // Increase allowances for all contracts to spend the bot owner's respective collateral currency.
       this._setAllowances(),
-      // For each contract, create, save, and update a pricefeed instance for its identifier,
-      // or just update the pricefeed if the identifier already has cached an instance.
-      this._cacheAndUpdatePriceFeeds()
+      // For each contract, create and save a pricefeed instance for its identifier,
+      // or just fetch the pricefeed if the identifier already has cached an instance.
+      this._createOrGetCachedPriceFeed(),
     ]);
   }
 
@@ -120,7 +113,7 @@ class FundingRateProposer {
     this.logger.debug({
       at: "PerpetualProposer#updateFundingRates",
       message: "Checking for contract funding rates to update",
-      perpetualsChecked: Object.keys(this.contractCache)
+      perpetualsChecked: Object.keys(this.contractCache),
     });
 
     // TODO: Should allow user to set an ROI-based metric to customize whether
@@ -148,6 +141,39 @@ class FundingRateProposer {
     const currentConfig = cachedContract.state.currentConfig;
     const fundingRateIdentifier = this.hexToUtf8(currentFundingRateData.identifier);
 
+    // Assume pricefeed has been cached and updated prior to this function via the `update()` call.
+    const priceFeed = this.priceFeedCache[fundingRateIdentifier];
+    if (!priceFeed) {
+      this.logger.error({
+        at: "PerpetualProposer",
+        message: "Failed to create pricefeed for funding rate identifier",
+        fundingRateIdentifier,
+      });
+      return null;
+    }
+    // Get hypothetical timestamp to use for a new price proposal:
+    // Unless `usePriceFeedTime=true`, use the latest block's timestamp as the request
+    // timestamp so that the contract does not interpret `requestTimestamp` as being in the future.
+    // Note: Update pricefeed so that its latest update time < latest web3 block:
+    await priceFeed.update();
+    const requestTimestamp = usePriceFeedTime
+      ? priceFeed.getLastUpdateTime()
+      : (await this.web3.eth.getBlock("latest")).timestamp;
+    let pricefeedPrice;
+    try {
+      pricefeedPrice = (await priceFeed.getHistoricalPrice(Number(requestTimestamp))).toString();
+    } catch (error) {
+      this.logger.error({
+        at: "PerpetualProposer",
+        message: "Failed to query current price for funding rate identifier",
+        fundingRateIdentifier,
+        requestTimestamp,
+        error,
+      });
+      return;
+    }
+    let onchainFundingRate = currentFundingRateData.rate.toString();
+
     // If proposal time is not 0, then proposal is already outstanding. Check if
     // the proposal has been disputed and if not, then we can't propose and must exit.
     const proposalTime = currentFundingRateData.proposalTime.toString();
@@ -156,16 +182,10 @@ class FundingRateProposer {
         at: "PerpetualProposer#updateFundingRate",
         message: "Proposal is already pending, cannot propose",
         fundingRateIdentifier,
-        proposalTime
+        proposalTime,
       });
       return;
     }
-
-    // Assume pricefeed has been cached and updated prior to this function via the `update()` call.
-    const priceFeed = this.priceFeedCache[fundingRateIdentifier];
-    const pricefeedPrice = await this._getPriceFeedAndPrice(fundingRateIdentifier);
-    if (!pricefeedPrice) return;
-    let onchainFundingRate = currentFundingRateData.rate.toString();
 
     // Check that pricefeedPrice is within [configStore.minFundingRate, configStore.maxFundingRate]
     const minFundingRate = currentConfig.minFundingRate.toString();
@@ -180,7 +200,7 @@ class FundingRateProposer {
         fundingRateIdentifier,
         minFundingRate,
         maxFundingRate,
-        pricefeedPrice
+        pricefeedPrice,
       });
       return;
     }
@@ -195,11 +215,6 @@ class FundingRateProposer {
       this.toBN(this.toWei(this.fundingRateErrorPercent.toString()))
     );
     if (shouldUpdateFundingRate) {
-      // Unless `usePriceFeedTime=true`, use the latest block's timestamp as the request
-      // timestamp so that the contract does not interpret `requestTimestamp` as being in the future.
-      const requestTimestamp = usePriceFeedTime
-        ? priceFeed.getLastUpdateTime()
-        : (await this.web3.eth.getBlock("latest")).timestamp;
       const proposal = cachedContract.contract.methods.proposeFundingRate(
         { rawValue: pricefeedPrice },
         requestTimestamp
@@ -213,7 +228,7 @@ class FundingRateProposer {
         proposedRate: pricefeedPrice,
         currentRate: onchainFundingRate,
         allowedError: this.fundingRateErrorPercent,
-        proposer: this.account
+        proposer: this.account,
       });
       try {
         // Get successful transaction receipt and return value or error.
@@ -222,8 +237,8 @@ class FundingRateProposer {
           config: {
             gasPrice: this.gasEstimator.getCurrentFastPrice(),
             from: this.account,
-            nonce: await this.web3.eth.getTransactionCount(this.account)
-          }
+            nonce: await this.web3.eth.getTransactionCount(this.account),
+          },
         });
         let receipt = transactionResult.receipt;
         let returnValue = transactionResult.returnValue.toString();
@@ -236,13 +251,13 @@ class FundingRateProposer {
           requestTimestamp,
           proposedRate: pricefeedPrice,
           currentRate: onchainFundingRate,
-          proposalBond: returnValue
+          proposalBond: returnValue,
         };
         this.logger.info({
           at: "PerpetualProposer#updateFundingRate",
           message: "Proposed new funding rate!🌻",
           proposalBond: returnValue,
-          proposalResult: logResult
+          proposalResult: logResult,
         });
       } catch (error) {
         const message =
@@ -253,7 +268,7 @@ class FundingRateProposer {
           at: "PerpetualProposer#updateFundingRate",
           message,
           fundingRateIdentifier,
-          error
+          error,
         });
         return;
       }
@@ -264,14 +279,14 @@ class FundingRateProposer {
         fundingRateIdentifier,
         proposedRate: pricefeedPrice,
         currentRate: onchainFundingRate,
-        allowedError: this.fundingRateErrorPercent
+        allowedError: this.fundingRateErrorPercent,
       });
     }
   }
 
   // Sets allowances for all collateral currencies used live perpetual contracts.
   async _setAllowances() {
-    await Promise.map(Object.keys(this.contractCache), async contractAddress => {
+    await Promise.map(Object.keys(this.contractCache), async (contractAddress) => {
       // The Perpetual requires approval to transfer the contract's collateral currency in order to post a bond.
       // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
       const receipt = await setAllowance(
@@ -288,14 +303,14 @@ class FundingRateProposer {
           message: "Approved Perpetual contract to transfer unlimited collateral tokens 💰",
           perpetual: receipt.spenderAddress,
           currency: receipt.currencyAddress,
-          collateralApprovalTx: receipt.tx.transactionHash
+          collateralApprovalTx: receipt.tx.transactionHash,
         });
       }
     });
   }
 
-  async _cacheAndUpdatePriceFeeds() {
-    await Promise.map(Object.keys(this.contractCache), async contractAddress => {
+  async _createOrGetCachedPriceFeed() {
+    await Promise.map(Object.keys(this.contractCache), async (contractAddress) => {
       const fundingRateIdentifier = this.hexToUtf8(
         this.contractCache[contractAddress].state.currentFundingRateData.identifier
       );
@@ -305,7 +320,7 @@ class FundingRateProposer {
           at: "PerpetualProposer",
           message: "Caching new pricefeed for identifier",
           commonPriceFeedConfig: this.commonPriceFeedConfig,
-          fundingRateIdentifier
+          fundingRateIdentifier,
         });
 
         // Create a new pricefeed for this identifier. We might consider caching these price requests
@@ -321,23 +336,18 @@ class FundingRateProposer {
         );
         this.priceFeedCache[fundingRateIdentifier] = priceFeed;
       }
-
-      // If pricefeed was created or fetched from cache, update it
-      if (priceFeed) {
-        await priceFeed.update();
-      }
     });
   }
 
   // Create contract object for each perpetual address created. Addresses fetched from PerpFactoryEventClient.
   // Fetch and cache latest contract state.
   async _cachePerpetualContracts() {
-    await Promise.map(this.perpetualFactoryClient.getAllCreatedContractAddresses(), async contractAddress => {
+    await Promise.map(this.perpetualFactoryClient.getAllCreatedContractAddresses(), async (contractAddress) => {
       if (!this.contractCache[contractAddress]) {
         this.logger.debug({
           at: "PerpetualProposer",
           message: "Caching new perpetual contract",
-          perpetualAddress: contractAddress
+          perpetualAddress: contractAddress,
         });
         // Failure to construct a Perpetual instance using the contract address should be fatal,
         // so we don't catch that error.
@@ -348,7 +358,7 @@ class FundingRateProposer {
 
         this.contractCache[contractAddress] = {
           contract: perpetualContract,
-          collateralAddress
+          collateralAddress,
         };
       }
       // For this contract, load state.
@@ -364,17 +374,17 @@ class FundingRateProposer {
     // account for any unpublished, pending funding rates.
     const applyFundingRateCall = {
       target: contractAddress,
-      callData: perpetualContract.methods.applyFundingRate().encodeABI()
+      callData: perpetualContract.methods.applyFundingRate().encodeABI(),
     };
     const fundingRateCall = {
       target: contractAddress,
-      callData: perpetualContract.methods.fundingRate().encodeABI()
+      callData: perpetualContract.methods.fundingRate().encodeABI(),
     };
     // `aggregateTransactionsAndCall` returns an array of decoded return data bytes corresponding to the transactions
     // passed to the multicall aggregate method. Therefore, `fundingRate()`'s return output is the second element.
     const [[, fundingRateData], configStoreAddress] = await Promise.all([
       aggregateTransactionsAndCall(this.multicallContractAddress, this.web3, [applyFundingRateCall, fundingRateCall]),
-      perpetualContract.methods.configStore().call()
+      perpetualContract.methods.configStore().call(),
     ]);
 
     const configStoreContract = this.createConfigStoreContract(configStoreAddress);
@@ -386,46 +396,12 @@ class FundingRateProposer {
       ...this.contractCache[contractAddress],
       state: {
         currentFundingRateData: fundingRateData,
-        currentConfig
-      }
+        currentConfig,
+      },
     };
-  }
-
-  // Load cached pricefeed and fetch current price. Returns null if failure to get either pricefeed or current price.
-  async _getPriceFeedAndPrice(fundingRateIdentifier) {
-    const priceFeed = this.priceFeedCache[fundingRateIdentifier];
-    if (!priceFeed) {
-      this.logger.error({
-        at: "PerpetualProposer",
-        message: "Failed to create pricefeed for funding rate identifier",
-        fundingRateIdentifier
-      });
-      return null;
-    }
-    let currentPrice = priceFeed.getCurrentPrice();
-    if (!currentPrice) {
-      this.logger.error({
-        at: "PerpetualProposer",
-        message: "Failed to query current price for funding rate identifier",
-        fundingRateIdentifier
-      });
-      return null;
-    }
-
-    // Round `offchainFundingRate` to desired number of decimals by converting back and forth between the pricefeed's
-    // configured precision:
-    return parseFixed(
-      // 1) `formatFixed` converts the price in wei to a floating point.
-      // 2) `toFixed` removes decimals beyond `this.precision` in the floating point.
-      // 3) `parseFixed` converts the floating point back into wei.
-      Number(formatFixed(currentPrice.toString(), priceFeed.getPriceFeedDecimals()))
-        .toFixed(this.precision)
-        .toString(),
-      priceFeed.getPriceFeedDecimals()
-    ).toString();
   }
 }
 
 module.exports = {
-  FundingRateProposer
+  FundingRateProposer,
 };

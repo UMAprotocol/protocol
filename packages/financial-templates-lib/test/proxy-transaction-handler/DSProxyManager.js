@@ -10,12 +10,12 @@ const sinon = require("sinon");
 // Script to test
 const { DSProxyManager } = require("../../src/proxy-transaction-handler/DSProxyManager.js");
 
-const TokenSender = getTruffleContract("TokenSender", web3, "latest");
-const DSProxyFactory = getTruffleContract("DSProxyFactory", web3, "latest");
-const DSProxy = getTruffleContract("DSProxy", web3, "latest");
-const Token = getTruffleContract("ExpandedERC20", web3, "latest");
+const TokenSender = getTruffleContract("TokenSender", web3);
+const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);
+const DSProxy = getTruffleContract("DSProxy", web3);
+const Token = getTruffleContract("ExpandedERC20", web3);
 
-contract("DSProxyManager", function(accounts) {
+contract("DSProxyManager", function (accounts) {
   let contractCreator = accounts[0];
 
   // Common contract objects.
@@ -36,7 +36,7 @@ contract("DSProxyManager", function(accounts) {
 
     spyLogger = winston.createLogger({
       level: "debug",
-      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
     });
     gasEstimator = new GasEstimator(spyLogger);
 
@@ -48,13 +48,13 @@ contract("DSProxyManager", function(accounts) {
       account: contractCreator,
       dsProxyFactoryAddress: dsProxyFactory.address,
       dsProxyFactoryAbi: DSProxyFactory.abi,
-      dsProxyAbi: DSProxy.abi
+      dsProxyAbi: DSProxy.abi,
     });
 
     testToken = await Token.new("Wrapped Ether", "WETH", 18);
     await testToken.addMember(1, contractCreator, { from: contractCreator });
   });
-  it("Can reject invalid constructor params correctly construct DSProxyManager", async function() {
+  it("Can reject invalid constructor params correctly construct DSProxyManager", async function () {
     // should throw with invalid addresses
     assert.throws(() => {
       new DSProxyManager({
@@ -64,12 +64,12 @@ contract("DSProxyManager", function(accounts) {
         account: "not an address",
         dsProxyFactoryAddress: dsProxyFactory.address,
         dsProxyFactoryAbi: DSProxyFactory.abi,
-        dsProxyAbi: DSProxy.abi
+        dsProxyAbi: DSProxy.abi,
       });
     });
   });
 
-  it("Initialization correctly deploys a DSProxy if the user has not deployed one", async function() {
+  it("Initialization correctly deploys a DSProxy if the user has not deployed one", async function () {
     await dsProxyManager.initializeDSProxy();
 
     dsProxyFactory = await DSProxyFactory.at(dsProxyManager.getDSProxyFactoryAddress());
@@ -81,12 +81,12 @@ contract("DSProxyManager", function(accounts) {
     assert.equal(logs[0].returnValues.owner, contractCreator);
     assert.equal(await (await DSProxy.at(logs[0].returnValues.proxy)).owner(), contractCreator);
 
-    assert.isTrue(spyLogIncludes(spy, -1, "DSProxy has been deployed for the EOA"));
+    assert.isTrue(spyLogIncludes(spy, -1, "DSProxy deployed for your EOA"));
     assert.isTrue(spyLogIncludes(spy, -1, contractCreator));
     assert.isTrue(spyLogIncludes(spy, -1, logs[0].returnValues.proxy));
   });
 
-  it("Initialization correctly detects an existing DSProxy if the user has one already", async function() {
+  it("Initialization correctly detects an existing DSProxy if the user has one already", async function () {
     const createDSProxyTx = await dsProxyFactory.build();
     await dsProxyManager.initializeDSProxy();
     assert.isTrue(spyLogIncludes(spy, -1, "DSProxy has been loaded in for the EOA"));
@@ -94,7 +94,7 @@ contract("DSProxyManager", function(accounts) {
     assert.isTrue(spyLogIncludes(spy, -1, createDSProxyTx.logs[0].args.proxy)); // The log should contain our previous DSProxy.
   });
 
-  it("Can send functions to DSProxy using an existing deployed library", async function() {
+  it("Can send functions to DSProxy using an existing deployed library", async function () {
     await dsProxyManager.initializeDSProxy();
     const dsProxyAddress = dsProxyManager.getDSProxyAddress();
 
@@ -126,7 +126,7 @@ contract("DSProxyManager", function(accounts) {
     assert.isTrue(spyLogIncludes(spy, -1, "Executed function on deployed library"));
     assert.isTrue(spyLogIncludes(spy, -1, tokenEvents[0].transactionHash)); // The transaction hash should be included.
   });
-  it("Can send functions to DSProxy using a not yet deployed library", async function() {
+  it("Can send functions to DSProxy using a not yet deployed library", async function () {
     // In this test we do the same execution as before (send tokens from DSProxy) but this time we dont deploy the
     // contract library and rather do it in the same tx at the DSProxy call. This works by first deploying the library
     // then making the call on it. Note this is still from the context of the DSProxy so msg.sender is the DSProxy address.
@@ -153,7 +153,7 @@ contract("DSProxyManager", function(accounts) {
     // The tokens should have been transferred out of the DSProxy wallet ant to the contractCreator.
     assert.equal((await testToken.balanceOf(contractCreator)).toString(), toWei("10"));
     assert.equal((await testToken.balanceOf(dsProxyAddress)).toString(), toWei("990"));
-    assert.isTrue(spyLogIncludes(spy, -1, "Executed function on a freshly minted library"));
+    assert.isTrue(spyLogIncludes(spy, -1, "Executed function on a freshly deployed library"));
     assert.isTrue(spyLogIncludes(spy, -1, tokenEvents[0].transactionHash)); // The transaction hash should be included.
   });
 });

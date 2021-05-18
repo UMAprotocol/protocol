@@ -3,7 +3,7 @@ const { DefiPulsePriceFeed } = require("../../src/price-feed/DefiPulsePriceFeed"
 const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
 const winston = require("winston");
 
-contract("DefiPulsePriceFeed.js", function() {
+contract("DefiPulsePriceFeed.js", function () {
   let defiPulsePriceFeed;
   let mockTime = 1611583300;
   let networker;
@@ -22,15 +22,15 @@ contract("DefiPulsePriceFeed.js", function() {
       { timestamp: "1611572400", tvlUSD: 24780000000 },
       { timestamp: "1611576000", tvlUSD: 23500000000 },
       { timestamp: "1611579600", tvlUSD: 22250000000 },
-      { timestamp: "1611583200", tvlUSD: 25100000001 }
-    ]
+      { timestamp: "1611583200", tvlUSD: 25100000001 },
+    ],
   ];
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     networker = new NetworkerMock();
     const dummyLogger = winston.createLogger({
       level: "info",
-      transports: [new winston.transports.Console()]
+      transports: [new winston.transports.Console()],
     });
 
     defiPulsePriceFeed = new DefiPulsePriceFeed(
@@ -46,17 +46,17 @@ contract("DefiPulsePriceFeed.js", function() {
     );
   });
 
-  it("No update", async function() {
+  it("No update", async function () {
     assert.equal(defiPulsePriceFeed.getCurrentPrice(), undefined);
     assert.isTrue(await defiPulsePriceFeed.getHistoricalPrice(1000).catch(() => true));
     assert.equal(defiPulsePriceFeed.getLastUpdateTime(), undefined);
   });
 
-  it("Check decimals", async function() {
+  it("Check decimals", async function () {
     assert.equal(defiPulsePriceFeed.getPriceFeedDecimals(), decimals);
   });
 
-  it("Basic historical price", async function() {
+  it("Basic historical price", async function () {
     // Inject data.
     networker.getJsonReturns = [...validResponses];
 
@@ -82,7 +82,7 @@ contract("DefiPulsePriceFeed.js", function() {
     );
   });
 
-  it("Basic current price", async function() {
+  it("Basic current price", async function () {
     // Inject data.
     networker.getJsonReturns = [...validResponses];
 
@@ -92,7 +92,7 @@ contract("DefiPulsePriceFeed.js", function() {
     assert.equal(defiPulsePriceFeed.getCurrentPrice().toString(), parseFixed("25.1", decimals).toString());
   });
 
-  it("Last update time", async function() {
+  it("Last update time", async function () {
     // Inject data.
     networker.getJsonReturns = [...validResponses];
 
@@ -102,10 +102,10 @@ contract("DefiPulsePriceFeed.js", function() {
     assert.equal(defiPulsePriceFeed.getLastUpdateTime(), mockTime);
   });
 
-  it("Bad project name", async function() {
+  it("Bad project name", async function () {
     const dummyLogger = winston.createLogger({
       level: "info",
-      transports: [new winston.transports.Console()]
+      transports: [new winston.transports.Console()],
     });
 
     let errorThrown = false;

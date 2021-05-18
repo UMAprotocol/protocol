@@ -4,7 +4,7 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers
-const { getWeb3, findContractVersion, SUPPORTED_CONTRACT_VERSIONS, PublicNetworks } = require("@uma/common");
+const { getWeb3, SUPPORTED_CONTRACT_VERSIONS, PublicNetworks } = require("@uma/common");
 // JS libs
 const { Liquidator } = require("./src/liquidator");
 const { ProxyTransactionWrapper } = require("./src/proxyTransactionWrapper");
@@ -18,11 +18,11 @@ const {
   delay,
   setAllowance,
   DSProxyManager,
-  multicallAddressMap
+  multicallAddressMap,
 } = require("@uma/financial-templates-lib");
 
 // Contract ABIs and network Addresses.
-const { getAbi, getAddress } = require("@uma/core");
+const { getAbi, getAddress, findContractVersion } = require("@uma/core");
 
 /**
  * @notice Continuously attempts to liquidate positions in the Financial Contract contract.
@@ -54,7 +54,7 @@ async function run({
   liquidatorOverridePrice,
   startingBlock,
   endingBlock,
-  proxyTransactionWrapperConfig
+  proxyTransactionWrapperConfig,
 }) {
   try {
     const getTime = () => Math.round(new Date().getTime() / 1000);
@@ -73,15 +73,16 @@ async function run({
       liquidatorOverridePrice,
       startingBlock,
       endingBlock,
-      proxyTransactionWrapperConfig
+      proxyTransactionWrapperConfig,
     });
 
     // Load unlocked web3 accounts and get the networkId.
     const [detectedContract, accounts, networkId] = await Promise.all([
       findContractVersion(financialContractAddress, web3),
       web3.eth.getAccounts(),
-      web3.eth.net.getId()
+      web3.eth.net.getId(),
     ]);
+
     const networkName = PublicNetworks[Number(networkId)] ? PublicNetworks[Number(networkId)].name : null;
     // Append the contract version and type to the liquidatorConfig, if the liquidatorConfig does not already contain one.
     if (!liquidatorConfig) liquidatorConfig = {};
@@ -91,7 +92,8 @@ async function run({
     // Check that the version and type is supported. Note if either is null this check will also catch it.
     if (
       SUPPORTED_CONTRACT_VERSIONS.filter(
-        vo => vo.contractType == liquidatorConfig.contractType && vo.contractVersion == liquidatorConfig.contractVersion
+        (vo) =>
+          vo.contractType == liquidatorConfig.contractType && vo.contractVersion == liquidatorConfig.contractVersion
       ).length == 0
     )
       throw new Error(
@@ -114,7 +116,7 @@ async function run({
         liquidatorConfig.contractType === "ExpiringMultiParty"
           ? financialContract.methods.expirationTimestamp().call()
           : financialContract.methods.emergencyShutdownTimestamp().call(),
-        financialContract.methods.getCurrentTime().call()
+        financialContract.methods.getCurrentTime().call(),
       ]);
       // Check if Financial Contract is expired.
       if (
@@ -127,7 +129,7 @@ async function run({
             liquidatorConfig.contractType === "ExpiringMultiParty" ? "expired" : "shutdown"
           }, can only withdraw liquidator dispute rewards 🕰`,
           expirationOrShutdownTimestamp,
-          contractTimestamp
+          contractTimestamp,
         });
         return true;
       } else {
@@ -142,35 +144,35 @@ async function run({
       minSponsorTokens,
       collateralTokenAddress,
       syntheticTokenAddress,
-      withdrawLiveness
+      withdrawLiveness,
     ] = await Promise.all([
       financialContract.methods.collateralRequirement().call(),
       financialContract.methods.priceIdentifier().call(),
       financialContract.methods.minSponsorTokens().call(),
       financialContract.methods.collateralCurrency().call(),
       financialContract.methods.tokenCurrency().call(),
-      financialContract.methods.withdrawalLiveness().call()
+      financialContract.methods.withdrawalLiveness().call(),
     ]);
 
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
     const syntheticToken = new web3.eth.Contract(getAbi("ExpandedERC20"), syntheticTokenAddress);
     const [collateralDecimals, syntheticDecimals] = await Promise.all([
       collateralToken.methods.decimals().call(),
-      syntheticToken.methods.decimals().call()
+      syntheticToken.methods.decimals().call(),
     ]);
 
     const financialContractProps = {
       crRatio: collateralRequirement,
       priceIdentifier: priceIdentifier,
       minSponsorSize: minSponsorTokens,
-      withdrawLiveness
+      withdrawLiveness,
     };
 
     // Add block window into `liquidatorConfig`
     liquidatorConfig = {
       ...liquidatorConfig,
       startingBlock,
-      endingBlock
+      endingBlock,
     };
 
     // Load unlocked web3 accounts, get the networkId and set up price feed.
@@ -214,7 +216,7 @@ async function run({
         dsProxyFactoryAddress:
           proxyTransactionWrapperConfig?.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
         dsProxyFactoryAbi: getAbi("DSProxyFactory"),
-        dsProxyAbi: getAbi("DSProxy")
+        dsProxyAbi: getAbi("DSProxy"),
       });
 
       // Load in an existing DSProxy for the account EOA if one already exists or create a new one for the user.
@@ -229,7 +231,7 @@ async function run({
       collateralToken,
       account: accounts[0],
       dsProxyManager,
-      proxyTransactionWrapperConfig
+      proxyTransactionWrapperConfig,
     });
 
     const liquidator = new Liquidator({
@@ -241,7 +243,7 @@ async function run({
       priceFeed,
       account: accounts[0],
       financialContractProps,
-      liquidatorConfig
+      liquidatorConfig,
     });
 
     logger.debug({
@@ -251,7 +253,7 @@ async function run({
       syntheticDecimals: Number(syntheticDecimals),
       priceFeedDecimals: Number(priceFeed.getPriceFeedDecimals()),
       priceFeedConfig,
-      liquidatorConfig
+      liquidatorConfig,
     });
 
     if (proxyTransactionWrapperConfig == {} || !proxyTransactionWrapperConfig?.useDsProxyToLiquidate) {
@@ -259,20 +261,20 @@ async function run({
       // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
       const [collateralApproval, syntheticApproval] = await Promise.all([
         setAllowance(web3, gasEstimator, accounts[0], financialContractAddress, collateralTokenAddress),
-        setAllowance(web3, gasEstimator, accounts[0], financialContractAddress, syntheticTokenAddress)
+        setAllowance(web3, gasEstimator, accounts[0], financialContractAddress, syntheticTokenAddress),
       ]);
       if (collateralApproval) {
         logger.info({
           at: "Liquidator#index",
           message: "Approved Financial Contract to transfer unlimited collateral tokens 💰",
-          collateralApprovalTx: collateralApproval.tx.transactionHash
+          collateralApprovalTx: collateralApproval.tx.transactionHash,
         });
       }
       if (syntheticApproval) {
         logger.info({
           at: "Liquidator#index",
           message: "Approved Financial Contract to transfer unlimited synthetic tokens 💰",
-          syntheticApprovalTx: syntheticApproval.tx.transactionHash
+          syntheticApprovalTx: syntheticApproval.tx.transactionHash,
         });
       }
     }
@@ -300,20 +302,20 @@ async function run({
           retries: errorRetries,
           minTimeout: errorRetriesTimeout * 1000, // delay between retries in ms
           randomize: false,
-          onRetry: error => {
+          onRetry: (error) => {
             logger.debug({
               at: "Liquidator#index",
               message: "An error was thrown in the execution loop - retrying",
-              error: typeof error === "string" ? new Error(error) : error
+              error: typeof error === "string" ? new Error(error) : error,
             });
-          }
+          },
         }
       );
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (pollingDelay === 0) {
         logger.debug({
           at: "Liquidator#index",
-          message: "End of serverless execution loop - terminating process"
+          message: "End of serverless execution loop - terminating process",
         });
         await waitForLogger(logger);
         await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
@@ -322,7 +324,7 @@ async function run({
       logger.debug({
         at: "Liquidator#index",
         message: "End of execution loop - waiting polling delay",
-        pollingDelay: `${pollingDelay} (s)`
+        pollingDelay: `${pollingDelay} (s)`,
       });
       await delay(Number(pollingDelay));
     }
@@ -389,7 +391,7 @@ async function Poll(callback) {
       // "maxReserverTokenSpent": "10000000000"} -> max amount to spend in reserve currency. scaled by reserve currency
       //      decimals. defaults to MAX_UINT (no limit). Note that this is separate to the WDF, which behaves as per usual
       //      and considers the maximum amount of synthetics that could be minted, given the current reserve balance.
-      proxyTransactionWrapperConfig: process.env.DSPROXY_CONFIG ? JSON.parse(process.env.DSPROXY_CONFIG) : {}
+      proxyTransactionWrapperConfig: process.env.DSPROXY_CONFIG ? JSON.parse(process.env.DSPROXY_CONFIG) : {},
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
@@ -397,7 +399,7 @@ async function Poll(callback) {
     Logger.error({
       at: "Liquidator#index",
       message: "Liquidator execution error🚨",
-      error: typeof error === "string" ? new Error(error) : error
+      error: typeof error === "string" ? new Error(error) : error,
     });
     await waitForLogger(Logger);
     callback(error);

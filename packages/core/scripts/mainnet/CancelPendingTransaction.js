@@ -6,7 +6,7 @@
 // - yarn truffle exec ./packages/core/scripts/mainnet/ProposeAdmin.js --network mainnet_gckms --keys deployer --gasPrice 200 --nonce 303
 
 const argv = require("minimist")(process.argv.slice(), {
-  string: ["gasPrice", "nonce"]
+  string: ["gasPrice", "nonce"],
 });
 
 async function cancelPendingTransaction(callback) {
@@ -32,7 +32,7 @@ async function cancelPendingTransaction(callback) {
       to: signingAccount,
       value: 0,
       gasPrice: gasPrice,
-      nonce: nonce
+      nonce: nonce,
     };
     console.log("- Transaction Config: ", txnConfig);
 
@@ -43,10 +43,10 @@ async function cancelPendingTransaction(callback) {
      *********************************/
     await web3.eth
       .sendTransaction(txnConfig)
-      .on("transactionHash", function(hash) {
+      .on("transactionHash", function (hash) {
         console.log(`- Pending transaction hash: ${hash}`);
       })
-      .on("receipt", function(receipt) {
+      .on("receipt", function (receipt) {
         console.log("- Successfully sent:", receipt);
       })
       .on("error", console.error);

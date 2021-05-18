@@ -24,9 +24,9 @@ export async function getAllEmpsPositions() {
     method: "POST",
     headers: {
       Accept: "application/json",
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify({ query })
+    body: JSON.stringify({ query }),
   });
   return (await response.json()).data.financialContracts;
 }

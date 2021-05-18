@@ -13,7 +13,7 @@ class PriceFeedMockScaled extends PriceFeedInterface {
     this.lookback = lookback;
     this.uuid = "PriceFeedMockScaled";
 
-    this.convertDecimals = number => {
+    this.convertDecimals = (number) => {
       // Converts price result to wei
       // returns price conversion to correct decimals as a big number
       return toBN(parseFixed(number.toString(), priceFeedDecimals).toString());
@@ -32,7 +32,7 @@ class PriceFeedMockScaled extends PriceFeedInterface {
   // Store an array of historical prices [{timestamp, price}] so that await  getHistoricalPrice can return
   // a price for a specific timestamp if found in this array.
   setHistoricalPrices(historicalPrices) {
-    historicalPrices.forEach(_price => {
+    historicalPrices.forEach((_price) => {
       if (isNaN(_price.timestamp)) {
         throw "Invalid historical price => [{timestamp, price}]";
       }
@@ -91,5 +91,5 @@ class PriceFeedMockScaled extends PriceFeedInterface {
 }
 
 module.exports = {
-  PriceFeedMockScaled
+  PriceFeedMockScaled,
 };

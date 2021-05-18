@@ -17,7 +17,7 @@ const { getWeb3 } = require("@uma/common");
 const { makeUnixPipe } = require("../libs/affiliates/utils");
 
 // This is the main function which configures all data sources for the calculation.
-const App = env => async params => {
+const App = (env) => async (params) => {
   const web3 = getWeb3();
   const { config } = params;
   assert(config, "requires config object on params");
@@ -34,13 +34,13 @@ const App = env => async params => {
   const synthPrices = SynthPrices({
     web3,
     cryptowatchApiKey: env.CRYPTOWATCH_KEY,
-    tradermadeApiKey: env.TRADERMADE_KEY
+    tradermadeApiKey: env.TRADERMADE_KEY,
   });
 
   const rewards = DevMining({
     queries,
     coingecko,
-    synthPrices
+    synthPrices,
   });
 
   // This just sets a default abi version in case no abi is passed along with the emp address.
@@ -48,7 +48,7 @@ const App = env => async params => {
   const defaultEmpAbi = getAbi("ExpiringMultiParty");
 
   // API has changed, we need to validate input. Emps will be required to include payout address.
-  empWhitelist = empWhitelist.map(empInput => {
+  empWhitelist = empWhitelist.map((empInput) => {
     rewards.utils.validateEmpInput(empInput);
     // convert to standard eth checksum address otherwise lookups through BQ or web3 will fail
     // Allow for non standard payout address at empInput[1] since this has no impact on processing.
@@ -95,13 +95,13 @@ const App = env => async params => {
     collateralTokenDecimals,
     syntheticTokens,
     syntheticTokenDecimals,
-    fallbackPrices
+    fallbackPrices,
   });
 
   return {
     ...params,
     // result will contain deployer rewards as well as per emp rewards
-    result
+    result,
   };
 };
 

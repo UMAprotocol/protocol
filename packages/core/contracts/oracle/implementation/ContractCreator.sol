@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
 import "../interfaces/FinderInterface.sol";
 import "../../common/implementation/AddressWhitelist.sol";
@@ -12,7 +12,7 @@ import "./Constants.sol";
 abstract contract ContractCreator {
     address internal finderAddress;
 
-    constructor(address _finderAddress) public {
+    constructor(address _finderAddress) {
         finderAddress = _finderAddress;
     }
 

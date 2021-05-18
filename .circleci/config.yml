@@ -1,4 +1,7 @@
-version: 2
+version: 2.1
+setup: true
+orbs:
+  continuation: circleci/continuation@0.1.2
 jobs:
   checkout_and_install:
     docker:
@@ -25,8 +28,14 @@ jobs:
       - restore_cache:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
+          name: Install Prereqs
+          command: sudo apt-get install -y rsync
+      - run:
           name: Run build
           command: yarn qbuild
+      - run:
+          name: Modified packages
+          command: ./ci/check_lerna_packages.sh
       - save_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
           paths:
@@ -42,51 +51,18 @@ jobs:
       - run:
           name: Lint
           command: ./ci/lint.sh
-  docs:
-    docker:
-      - image: circleci/node:lts
-    working_directory: ~/protocol
-    steps:
-      - restore_cache:
-          key: protocol-{{ .Environment.CIRCLE_SHA1 }}
-      - run:
-          name: Install Pandoc
-          command: wget https://github.com/jgm/pandoc/releases/download/2.7.3/pandoc-2.7.3-linux.tar.gz
-      - run:
-          name: Untar Pandoc
-          command: sudo tar xvzf pandoc-2.7.3-linux.tar.gz --strip-components 1 -C /usr/local
-      - run:
-          name: Generate Docs
-          command: ./scripts/build_docs_site.sh
-      - store_artifacts:
-          path: build/site
   test:
-    docker:
-      - image: circleci/node:lts
-      - image: trufflesuite/ganache-cli
-        command: ganache-cli -i 1234 -l 9000000 -p 9545
-    working_directory: ~/protocol
-    resource_class: large
+    executor: continuation/default
     steps:
       - restore_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
-          name: Run tests
-          # Note: this is a workaround for a strnage truffle issue.
-          # The core idea is that truffle sees the absolute paths in old artifacts that are used outside of the core
-          # directory and it tries to add those absolute paths to the list of sources to compile. Normally, this
-          # wouldn't be an issue since those absolute paths wouldn't exist on the machine you're compiling on. However,
-          # because the published core contracts are compiled in the ci env, many of these absolute paths do match in
-          # this environment. This creates a very nasty situation where multiple versions of the same contracts are
-          # compiled and it's non-deterministic which one will be used by truffle. To avoid this, we just change the dir
-          # structure to disrupt the absolute paths. This means that truffle will not know how up-to-date the bytecode
-          # is, however, so testing will require a recompile for every contract.
+          name: Generate Tests
           command: |
-            cd ..
-            mkdir truffle_workaround
-            mv protocol truffle_workaround/
-            cd truffle_workaround/protocol
-            yarn run test-concurrent
+            cd /home/circleci/protocol
+            ./ci/generate_lerna_config.sh
+      - continuation/continue:
+          configuration_path: /home/circleci/protocol/.circleci/lerna_config.yml
   coverage:
     docker:
       - image: circleci/node:lts
@@ -152,9 +128,8 @@ jobs:
       - run:
           name: Publish
           command: yarn run publish-release
-
 workflows:
-  version: 2
+  version: 2.1
   build_and_test:
     jobs:
       - checkout_and_install
@@ -165,12 +140,8 @@ workflows:
           requires:
             - checkout_and_install
       - test:
-          context: api_keys
           requires:
             - build
-      - docs:
-          requires:
-            - checkout_and_install
       - dapp_build:
           requires:
             - build
@@ -190,16 +161,18 @@ workflows:
           filters:
             branches:
               only: master
-  nightly:
-    triggers:
-      - schedule:
-          cron: "0 0 * * *"
-          filters:
-            branches:
-              only:
-                - master
-    jobs:
-      - checkout_and_install
-      - coverage:
-          requires:
-            - checkout_and_install
+  # Note: The nightly workflow will be commented here, because the feature used
+  # from circle CI to split the jobs not allow more than one workflow at the moment.
+  # nightly:
+  #   triggers:
+  #     - schedule:
+  #         cron: "0 0 * * *"
+  #         filters:
+  #           branches:
+  #             only:
+  #               - master
+  #   jobs:
+  #     - checkout_and_install
+  #     - coverage:
+  #         requires:
+  #           - checkout_and_install

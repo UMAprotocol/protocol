@@ -1,24 +1,16 @@
+import winston from "winston";
+import sinon from "sinon";
 import { run } from "../src/index";
-import { web3, assert } from "hardhat";
-
+import { web3 } from "hardhat";
 const { toWei, utf8ToHex, padRight } = web3.utils;
-const {
-  MAX_UINT_VAL,
-  interfaceName,
-  addGlobalHardhatTestingAddress,
-  createConstructorParamsForContractVersion,
-  TESTED_CONTRACT_VERSIONS
-} = require("@uma/common");
 
-const { getTruffleContract } = require("@uma/core");
+import { interfaceName, addGlobalHardhatTestingAddress, createConstructorParamsForContractVersion } from "@uma/common";
 
-const winston = require("winston");
-const sinon = require("sinon");
-const { SpyTransport, spyLogLevel, spyLogIncludes, FinancialContractClient } = require("@uma/financial-templates-lib");
+import { getTruffleContract } from "@uma/core";
 
-const contractVersion = "latest";
+import { SpyTransport } from "@uma/financial-templates-lib";
 
-describe("index.js", function() {
+describe("index.js", function () {
   let accounts: string[];
   let contractCreator: string;
   let spyLogger: any;
@@ -41,30 +33,27 @@ describe("index.js", function() {
 
   let originalEnv: any;
 
-  const pollingDelay = 0; // 0 polling delay creates a serverless bot that yields after one full execution.
-  const errorRetries = 1;
-  const errorRetriesTimeout = 0.1; // 100 milliseconds between preforming retries
   const identifier = "TEST_IDENTIFIER";
   const fundingRateIdentifier = "TEST_FUNDiNG_IDENTIFIER";
 
-  const FinancialContract = getTruffleContract("Perpetual", web3, contractVersion);
-  const Finder = getTruffleContract("Finder", web3, contractVersion);
-  const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, contractVersion);
-  const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, contractVersion);
-  const MockOracle = getTruffleContract("MockOracle", web3, contractVersion);
-  const Token = getTruffleContract("ExpandedERC20", web3, contractVersion);
-  const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion);
-  const Timer = getTruffleContract("Timer", web3, contractVersion);
-  const UniswapMock = getTruffleContract("UniswapMock", web3, contractVersion);
-  const Store = getTruffleContract("Store", web3, contractVersion);
-  const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion);
-  const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion);
-  const DSProxyFactory = getTruffleContract("DSProxyFactory", web3, "latest");
+  const FinancialContract = getTruffleContract("Perpetual", web3 as any);
+  const Finder = getTruffleContract("Finder", web3 as any);
+  const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3 as any);
+  const AddressWhitelist = getTruffleContract("AddressWhitelist", web3 as any);
+  const MockOracle = getTruffleContract("MockOracle", web3 as any);
+  const Token = getTruffleContract("ExpandedERC20", web3 as any);
+  const SyntheticToken = getTruffleContract("SyntheticToken", web3 as any);
+  const Timer = getTruffleContract("Timer", web3 as any);
+  const UniswapMock = getTruffleContract("UniswapV2Mock", web3 as any);
+  const Store = getTruffleContract("Store", web3 as any);
+  const ConfigStore = getTruffleContract("ConfigStore", web3 as any);
+  const OptimisticOracle = getTruffleContract("OptimisticOracle", web3 as any);
+  const DSProxyFactory = getTruffleContract("DSProxyFactory", web3 as any);
 
-  after(async function() {
+  after(async function () {
     process.env = originalEnv;
   });
-  before(async function() {
+  before(async function () {
     originalEnv = process.env;
     accounts = await web3.eth.getAccounts();
     const contractCreator = accounts[0];
@@ -80,7 +69,7 @@ describe("index.js", function() {
     timer = await Timer.new();
 
     mockOracle = await MockOracle.new(finder.address, timer.address, {
-      from: contractCreator
+      from: contractCreator,
     });
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
     // Set the address in the global name space to enable disputer's index.js to access it.
@@ -95,12 +84,12 @@ describe("index.js", function() {
     dsProxyFactory = await DSProxyFactory.new();
   });
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
     spy = sinon.spy(); // Create a new spy for each test.
     spyLogger = winston.createLogger({
       level: "debug",
-      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
     });
 
     // Create a new synthetic token & collateral token.
@@ -121,7 +110,7 @@ describe("index.js", function() {
         proposerBondPercentage: { rawValue: "0" },
         maxFundingRate: { rawValue: toWei("0.00001") },
         minFundingRate: { rawValue: toWei("-0.00001") },
-        proposalTimePastLimit: 0
+        proposalTimePastLimit: 0,
       },
       timer.address
     );
@@ -132,7 +121,7 @@ describe("index.js", function() {
 
     // Deploy a new expiring multi party OR perpetual.
     constructorParams = await createConstructorParamsForContractVersion(
-      { contractType: "Perpetual", contractVersion: "latest" },
+      { contractType: "Perpetual", contractVersion: "2.0.1" },
       {
         convertSynthetic: toWei, // These tests do not use convertSynthetic. Override this with toWei
         finder,
@@ -142,7 +131,7 @@ describe("index.js", function() {
         fundingRateIdentifier,
         timer,
         store,
-        configStore: configStore || {} // if the contract type is not a perp this will be null.
+        configStore: configStore || {}, // if the contract type is not a perp this will be null.
       },
       { expirationTimestamp: (await timer.getCurrentTime()).toNumber() + 100 } // config override expiration time.
     );
@@ -160,7 +149,7 @@ describe("index.js", function() {
       uniswapAddress: uniswap.address,
       twapLength: 1,
       lookback: 1,
-      getTimeOverride: { useBlockTime: true } // enable tests to run in hardhat
+      getTimeOverride: { useBlockTime: true }, // enable tests to run in hardhat
     };
 
     // Set two uniswap prices to give it a little history.
@@ -170,15 +159,15 @@ describe("index.js", function() {
     await uniswap.setPrice(toWei("1"), toWei("1"));
   });
 
-  it("Runs with no errors", async function() {
+  it("Runs with no errors", async function () {
     process.env.EMP_ADDRESS = financialContract.address;
     process.env.REFERENCE_PRICE_FEED_CONFIG = JSON.stringify(defaultPriceFeedConfig);
     process.env.TOKEN_PRICE_FEED_CONFIG = JSON.stringify(defaultPriceFeedConfig);
     process.env.DS_PROXY_FACTORY_ADDRESS = dsProxyFactory.address;
     process.env.EXCHANGE_ADAPTER_CONFIG = JSON.stringify({
-      type: "uniswap",
+      type: "uniswap-v2",
       tokenAAddress: syntheticToken.address,
-      tokenBAddress: collateralToken.address
+      tokenBAddress: collateralToken.address,
     });
     process.env.POLLING_DELAY = "0";
 

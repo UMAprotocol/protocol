@@ -7,7 +7,7 @@ const {
   MAX_UINT_VAL,
   runTestForVersion,
   createConstructorParamsForContractVersion,
-  TESTED_CONTRACT_VERSIONS
+  TESTED_CONTRACT_VERSIONS,
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
@@ -21,7 +21,7 @@ const { FinancialContractClient } = require("../../src/clients/FinancialContract
 const configs = [
   { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
   { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 }
+  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 },
 ];
 
 const startTime = "15798990420";
@@ -63,7 +63,7 @@ const updateAndVerify = async (client, expectedSponsors, expectedPositions) => {
 };
 
 // Set the funding rate and advances time by 10k seconds.
-const _setFundingRateAndAdvanceTime = async fundingRate => {
+const _setFundingRateAndAdvanceTime = async (fundingRate) => {
   const currentTime = (await financialContract.getCurrentTime()).toNumber();
   await financialContract.proposeFundingRate({ rawValue: fundingRate }, currentTime);
   await financialContract.setCurrentTime(currentTime + 10000);
@@ -74,19 +74,19 @@ const _setFundingRateAndAdvanceTime = async fundingRate => {
 // for a given test.eg: versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])("test name", async function () { assert.isTrue(true) })
 // Note that a second param can be provided to make the test an `it.only` thereby ONLY running that single test, on
 // the provided version. This is very useful for debugging and writing single unit tests without having ro run all tests.
-const versionedIt = function(supportedVersions, shouldBeItOnly = false) {
+const versionedIt = function (supportedVersions, shouldBeItOnly = false) {
   if (shouldBeItOnly)
     return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it.only : () => {};
   return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it : () => {};
 };
 
-const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
+const Convert = (decimals) => (number) => parseFixed(number.toString(), decimals).toString();
 
-contract("FinancialContractClient.js", function(accounts) {
+contract("FinancialContractClient.js", function (accounts) {
   const sponsor1 = accounts[0];
   const sponsor2 = accounts[1];
 
-  TESTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
+  TESTED_CONTRACT_VERSIONS.forEach(function (contractVersion) {
     // Store the contractVersion.contractVersion, type and version being tested
     iterationTestVersion = contractVersion;
 
@@ -103,11 +103,11 @@ contract("FinancialContractClient.js", function(accounts) {
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
     const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
-    const MulticallMock = getTruffleContract("MulticallMock", web3, "latest");
+    const MulticallMock = getTruffleContract("MulticallMock", web3);
 
     for (let testConfig of configs) {
-      describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
-        before(async function() {
+      describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
+        before(async function () {
           identifier = `${testConfig.tokenName}TEST`;
           fundingRateIdentifier = `${testConfig.tokenName}_FUNDING_IDENTIFIER`;
           convertCollateral = Convert(testConfig.collateralDecimals);
@@ -118,11 +118,11 @@ contract("FinancialContractClient.js", function(accounts) {
             testConfig.tokenSymbol,
             testConfig.collateralDecimals,
             {
-              from: sponsor1
+              from: sponsor1,
             }
           );
           syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", testConfig.syntheticDecimals, {
-            from: sponsor1
+            from: sponsor1,
           });
           await collateralToken.addMember(1, sponsor1, { from: sponsor1 });
           await collateralToken.mint(sponsor1, convertSynthetic("1000000000"), { from: sponsor1 });
@@ -154,7 +154,7 @@ contract("FinancialContractClient.js", function(accounts) {
           multicallContract = await MulticallMock.new();
         });
 
-        beforeEach(async function() {
+        beforeEach(async function () {
           await timer.setCurrentTime(startTime - 1);
 
           // If we are testing a perpetual then we need to also deploy a config store, an optimistic oracle and set the funding rate identifier.
@@ -166,7 +166,7 @@ contract("FinancialContractClient.js", function(accounts) {
                 proposerBondPercentage: { rawValue: "0" },
                 maxFundingRate: { rawValue: toWei("0.00001") },
                 minFundingRate: { rawValue: toWei("-0.00001") },
-                proposalTimePastLimit: 0
+                proposalTimePastLimit: 0,
               },
               timer.address
             );
@@ -190,7 +190,7 @@ contract("FinancialContractClient.js", function(accounts) {
               fundingRateIdentifier,
               timer,
               store,
-              configStore: configStore || {} // if the contract type is not a perp this will be null.
+              configStore: configStore || {}, // if the contract type is not a perp this will be null.
             },
             { collateralRequirement: { rawValue: toWei("1.5") } } // these tests assume a CR of 1.5, not the 1.2 default.
           );
@@ -211,7 +211,7 @@ contract("FinancialContractClient.js", function(accounts) {
           // DummyLogger will not print anything to console as only capture `info` level events.
           dummyLogger = winston.createLogger({
             level: "info",
-            transports: [new winston.transports.Console()]
+            transports: [new winston.transports.Console()],
           });
 
           client = new FinancialContractClient(
@@ -226,7 +226,7 @@ contract("FinancialContractClient.js", function(accounts) {
             contractVersion.contractType // either ExpiringMultiParty OR Perpetual depending on the test
           );
         });
-        versionedIt([{ contractType: "any", contractVersion: "any" }])("Returns all positions", async function() {
+        versionedIt([{ contractType: "any", contractVersion: "any" }])("Returns all positions", async function () {
           // Create a position and check that it is detected correctly from the client.
           await financialContract.create(
             { rawValue: convertCollateral("10") },
@@ -244,8 +244,8 @@ contract("FinancialContractClient.js", function(accounts) {
                 amountCollateral: convertCollateral("10"),
                 hasPendingWithdrawal: false,
                 withdrawalRequestPassTimestamp: "0",
-                withdrawalRequestAmount: "0"
-              }
+                withdrawalRequestAmount: "0",
+              },
             ] // expected position
           );
 
@@ -266,8 +266,8 @@ contract("FinancialContractClient.js", function(accounts) {
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
                 withdrawalRequestPassTimestamp: "0",
-                withdrawalRequestAmount: "0"
-              }
+                withdrawalRequestAmount: "0",
+              },
             ]
           );
 
@@ -288,7 +288,7 @@ contract("FinancialContractClient.js", function(accounts) {
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
                 withdrawalRequestPassTimestamp: "0",
-                withdrawalRequestAmount: "0"
+                withdrawalRequestAmount: "0",
               },
               {
                 sponsor: sponsor2,
@@ -297,8 +297,8 @@ contract("FinancialContractClient.js", function(accounts) {
                 amountCollateral: convertCollateral("100"),
                 hasPendingWithdrawal: false,
                 withdrawalRequestPassTimestamp: "0",
-                withdrawalRequestAmount: "0"
-              }
+                withdrawalRequestAmount: "0",
+              },
             ]
           );
 
@@ -331,8 +331,8 @@ contract("FinancialContractClient.js", function(accounts) {
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
                 withdrawalRequestPassTimestamp: "0",
-                withdrawalRequestAmount: "0"
-              }
+                withdrawalRequestAmount: "0",
+              },
             ]
           );
           const expectedLiquidations = [
@@ -345,18 +345,18 @@ contract("FinancialContractClient.js", function(accounts) {
               liquidationTime: (await financialContract.getCurrentTime()).toString(),
               state: "1",
               liquidator: sponsor1,
-              disputer: zeroAddress
-            }
+              disputer: zeroAddress,
+            },
           ];
           assert.deepStrictEqual(expectedLiquidations.sort(), client.getUndisputedLiquidations().sort());
 
           // Pending withdrawals state should be correctly identified.
           await financialContract.requestWithdrawal(
             {
-              rawValue: convertCollateral("10")
+              rawValue: convertCollateral("10"),
             },
             {
-              from: sponsor1
+              from: sponsor1,
             }
           );
           await client.update();
@@ -374,14 +374,14 @@ contract("FinancialContractClient.js", function(accounts) {
                 withdrawalRequestPassTimestamp: (await financialContract.getCurrentTime())
                   .add(await financialContract.withdrawalLiveness())
                   .toString(),
-                withdrawalRequestAmount: convertCollateral("10")
-              }
+                withdrawalRequestAmount: convertCollateral("10"),
+              },
             ]
           );
 
           // Remove the pending withdrawal and ensure it is removed from the client.
           await financialContract.cancelWithdrawal({
-            from: sponsor1
+            from: sponsor1,
           });
           await client.update();
           await updateAndVerify(
@@ -395,8 +395,8 @@ contract("FinancialContractClient.js", function(accounts) {
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
                 withdrawalRequestPassTimestamp: "0",
-                withdrawalRequestAmount: "0"
-              }
+                withdrawalRequestAmount: "0",
+              },
             ]
           );
 
@@ -420,8 +420,8 @@ contract("FinancialContractClient.js", function(accounts) {
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
                 withdrawalRequestPassTimestamp: "0",
-                withdrawalRequestAmount: "0"
-              }
+                withdrawalRequestAmount: "0",
+              },
             ]
           );
           // If sponsor, creates, redeemes and then creates again they should now appear in the table.
@@ -454,7 +454,7 @@ contract("FinancialContractClient.js", function(accounts) {
                 amountCollateral: convertCollateral("20"),
                 hasPendingWithdrawal: false,
                 withdrawalRequestPassTimestamp: "0",
-                withdrawalRequestAmount: "0"
+                withdrawalRequestAmount: "0",
               },
               {
                 sponsor: sponsor2,
@@ -463,15 +463,15 @@ contract("FinancialContractClient.js", function(accounts) {
                 amountCollateral: convertCollateral("100"),
                 hasPendingWithdrawal: false,
                 withdrawalRequestPassTimestamp: "0",
-                withdrawalRequestAmount: "0"
-              }
+                withdrawalRequestAmount: "0",
+              },
             ]
           );
         });
 
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Returns undercollateralized positions",
-          async function() {
+          async function () {
             await financialContract.create(
               { rawValue: convertCollateral("150") },
               { rawValue: convertSynthetic("100") },
@@ -496,8 +496,8 @@ contract("FinancialContractClient.js", function(accounts) {
                   amountCollateral: convertCollateral("150"),
                   hasPendingWithdrawal: false,
                   withdrawalRequestPassTimestamp: "0",
-                  withdrawalRequestAmount: "0"
-                }
+                  withdrawalRequestAmount: "0",
+                },
               ],
               client.getUnderCollateralizedPositions(convertPrice("1.00000001"))
             );
@@ -518,8 +518,8 @@ contract("FinancialContractClient.js", function(accounts) {
                   amountCollateral: convertCollateral("150"),
                   hasPendingWithdrawal: true,
                   withdrawalRequestPassTimestamp: (currentTime + 1000).toString(),
-                  withdrawalRequestAmount: convertCollateral("1")
-                }
+                  withdrawalRequestAmount: convertCollateral("1"),
+                },
               ],
               client.getUnderCollateralizedPositions(convertPrice("1"))
             );
@@ -528,7 +528,7 @@ contract("FinancialContractClient.js", function(accounts) {
 
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Returns undisputed liquidations",
-          async function() {
+          async function () {
             const liquidator = sponsor2;
 
             await financialContract.create(
@@ -537,7 +537,7 @@ contract("FinancialContractClient.js", function(accounts) {
               { from: sponsor1 }
             );
             await syntheticToken.transfer(liquidator, convertSynthetic("100"), {
-              from: sponsor1
+              from: sponsor1,
             });
 
             // Create a new liquidation for account[0]'s position.
@@ -548,7 +548,7 @@ contract("FinancialContractClient.js", function(accounts) {
               { rawValue: toWei("100") },
               unreachableDeadline,
               {
-                from: liquidator
+                from: liquidator,
               }
             );
             await financialContract.createLiquidation(
@@ -571,7 +571,7 @@ contract("FinancialContractClient.js", function(accounts) {
             // We need to advance the Oracle time forward to make `requestPrice` work.
             await mockOracle.setCurrentTime(Number(await financialContract.getCurrentTime()) + 1);
             await financialContract.dispute(liquidationId.toString(), sponsor1, {
-              from: sponsor1
+              from: sponsor1,
             });
             await client.update();
 
@@ -582,7 +582,7 @@ contract("FinancialContractClient.js", function(accounts) {
 
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Returns expired liquidations",
-          async function() {
+          async function () {
             const liquidator = sponsor2;
 
             await financialContract.create(
@@ -591,14 +591,14 @@ contract("FinancialContractClient.js", function(accounts) {
               { from: sponsor1 }
             );
             await syntheticToken.transfer(liquidator, convertSynthetic("100"), {
-              from: sponsor1
+              from: sponsor1,
             });
             await financialContract.requestWithdrawal(
               {
-                rawValue: convertCollateral("10")
+                rawValue: convertCollateral("10"),
               },
               {
-                from: sponsor1
+                from: sponsor1,
               }
             );
 
@@ -610,7 +610,7 @@ contract("FinancialContractClient.js", function(accounts) {
               { rawValue: toWei("100") },
               unreachableDeadline,
               {
-                from: liquidator
+                from: liquidator,
               }
             );
             await financialContract.createLiquidation(
@@ -620,7 +620,7 @@ contract("FinancialContractClient.js", function(accounts) {
               { rawValue: toWei("100") },
               unreachableDeadline,
               {
-                from: liquidator
+                from: liquidator,
               }
             );
             await client.update();
@@ -639,8 +639,8 @@ contract("FinancialContractClient.js", function(accounts) {
                   // This should `lockedCollateral` reduced by requested withdrawal amount
                   lockedCollateral: convertCollateral("150"),
                   liquidator: liquidator,
-                  disputer: zeroAddress
-                }
+                  disputer: zeroAddress,
+                },
               ],
               liquidations
             );
@@ -665,15 +665,15 @@ contract("FinancialContractClient.js", function(accounts) {
                   liquidatedCollateral: convertCollateral("140"),
                   lockedCollateral: convertCollateral("150"),
                   liquidator: liquidator,
-                  disputer: zeroAddress
-                }
+                  disputer: zeroAddress,
+                },
               ],
               expiredLiquidations
             );
 
             // Withdraw from the expired liquidation and check that the liquidation is deleted.
             await financialContract.withdrawLiquidation("0", sponsor1, {
-              from: liquidator
+              from: liquidator,
             });
             await client.update();
             assert.deepStrictEqual([], client.getExpiredLiquidations().sort());
@@ -682,18 +682,18 @@ contract("FinancialContractClient.js", function(accounts) {
 
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Returns disputed liquidations",
-          async function() {
+          async function () {
             const liquidator = sponsor2;
 
             await financialContract.create(
               { rawValue: convertCollateral("150") },
               { rawValue: convertSynthetic("100") },
               {
-                from: sponsor1
+                from: sponsor1,
               }
             );
             await syntheticToken.transfer(liquidator, convertSynthetic("100"), {
-              from: sponsor1
+              from: sponsor1,
             });
 
             // Create a new liquidation for account[0]'s position.
@@ -701,7 +701,7 @@ contract("FinancialContractClient.js", function(accounts) {
               sponsor1,
               { rawValue: "0" },
               {
-                rawValue: toWei("9999999")
+                rawValue: toWei("9999999"),
               },
               { rawValue: toWei("100") },
               unreachableDeadline,
@@ -726,7 +726,7 @@ contract("FinancialContractClient.js", function(accounts) {
             // We need to advance the Oracle time forward to make `requestPrice` work.
             await mockOracle.setCurrentTime(Number(await financialContract.getCurrentTime()) + 1);
             await financialContract.dispute(liquidationId.toString(), sponsor1, {
-              from: sponsor1
+              from: sponsor1,
             });
             await client.update();
 
@@ -742,8 +742,8 @@ contract("FinancialContractClient.js", function(accounts) {
                   liquidatedCollateral: convertCollateral("150"),
                   lockedCollateral: convertCollateral("150"),
                   liquidator: liquidator,
-                  disputer: sponsor1
-                }
+                  disputer: sponsor1,
+                },
               ],
               client.getDisputedLiquidations().sort()
             );
@@ -754,16 +754,16 @@ contract("FinancialContractClient.js", function(accounts) {
             const disputePrice = convertPrice("1.6");
             await mockOracle.pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice);
             await financialContract.withdrawLiquidation("0", sponsor1, {
-              from: liquidator
+              from: liquidator,
             });
             await client.update();
             assert.deepStrictEqual([], client.getDisputedLiquidations().sort());
           }
         );
 
-        versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "latest" }])(
+        versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "2.0.1" }])(
           "Client correctly defaults to ExpiringMultiParty to enable backward compatibility",
-          async function() {
+          async function () {
             // The constructor of the Financial Contract client does not contain any type.
             // It should therefore default to the Financial Contract which ensures that packages that are yet to update.
             client = new FinancialContractClient(
@@ -779,9 +779,9 @@ contract("FinancialContractClient.js", function(accounts) {
             assert.equal(client.getContractType(), "ExpiringMultiParty");
           }
         );
-        versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "latest" }])(
+        versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "2.0.1" }])(
           "Correctly rejects invalid contract types",
-          async function() {
+          async function () {
             let didThrow = false;
             try {
               client = new FinancialContractClient(
@@ -818,9 +818,9 @@ contract("FinancialContractClient.js", function(accounts) {
             assert.isTrue(didThrow);
           }
         );
-        versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])(
+        versionedIt([{ contractType: "Perpetual", contractVersion: "2.0.1" }])(
           "Fetches funding rate from the perpetual contract and correctly applies it to token debt",
-          async function() {
+          async function () {
             // Create a position and check that it is detected correctly from the client.
             await financialContract.create(
               { rawValue: convertCollateral("10") },
@@ -838,8 +838,8 @@ contract("FinancialContractClient.js", function(accounts) {
                   amountCollateral: convertCollateral("10"),
                   hasPendingWithdrawal: false,
                   withdrawalRequestPassTimestamp: "0",
-                  withdrawalRequestAmount: "0"
-                }
+                  withdrawalRequestAmount: "0",
+                },
               ] // expected position
             );
 
@@ -874,15 +874,15 @@ contract("FinancialContractClient.js", function(accounts) {
                   amountCollateral: convertCollateral("10"),
                   hasPendingWithdrawal: false,
                   withdrawalRequestPassTimestamp: "0",
-                  withdrawalRequestAmount: "0"
-                }
+                  withdrawalRequestAmount: "0",
+                },
               ]
             );
           }
         );
-        versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])(
+        versionedIt([{ contractType: "Perpetual", contractVersion: "2.0.1" }])(
           "Correctly applies funding rate to token debt. Liquidatable and disputable position are updated accordingly",
-          async function() {
+          async function () {
             await financialContract.create(
               { rawValue: convertCollateral("150") },
               { rawValue: convertSynthetic("100") },
@@ -908,8 +908,8 @@ contract("FinancialContractClient.js", function(accounts) {
                   amountCollateral: convertCollateral("150"),
                   hasPendingWithdrawal: false,
                   withdrawalRequestPassTimestamp: "0",
-                  withdrawalRequestAmount: "0"
-                }
+                  withdrawalRequestAmount: "0",
+                },
               ],
               client.getUnderCollateralizedPositions(convertPrice("1.00000001"))
             );
@@ -934,8 +934,8 @@ contract("FinancialContractClient.js", function(accounts) {
                   amountCollateral: convertCollateral("150"),
                   hasPendingWithdrawal: false,
                   withdrawalRequestPassTimestamp: "0",
-                  withdrawalRequestAmount: "0"
-                }
+                  withdrawalRequestAmount: "0",
+                },
               ],
               client.getUnderCollateralizedPositions(convertPrice("1"))
             );
@@ -973,8 +973,8 @@ contract("FinancialContractClient.js", function(accounts) {
                   liquidatedCollateral: convertCollateral("150"),
                   lockedCollateral: convertCollateral("150"),
                   liquidator: sponsor2,
-                  disputer: zeroAddress
-                }
+                  disputer: zeroAddress,
+                },
               ],
               client.getUndisputedLiquidations()
             );

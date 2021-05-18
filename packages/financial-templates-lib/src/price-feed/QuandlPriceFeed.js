@@ -48,7 +48,7 @@ class QuandlPriceFeed extends PriceFeedInterface {
 
     this.toBN = this.web3.utils.toBN;
 
-    this.convertPriceFeedDecimals = number => {
+    this.convertPriceFeedDecimals = (number) => {
       // Converts price result to wei
       // returns price conversion to correct decimals as a big number.
       // Note: Must ensure that `number` has no more decimal places than `priceFeedDecimals`.
@@ -87,7 +87,7 @@ class QuandlPriceFeed extends PriceFeedInterface {
 
     // historicalPricePeriods are ordered from oldest to newest.
     // This finds the first pricePeriod whose closeTime is after the provided time.
-    const match = this.historicalPricePeriods.find(pricePeriod => {
+    const match = this.historicalPricePeriods.find((pricePeriod) => {
       return time < pricePeriod.closeTime;
     });
 
@@ -128,7 +128,7 @@ class QuandlPriceFeed extends PriceFeedInterface {
   }
 
   getHistoricalPricePeriods() {
-    return this.historicalPricePeriods.map(historicalPrice => {
+    return this.historicalPricePeriods.map((historicalPrice) => {
       return [historicalPrice.closeTime, historicalPrice.closePrice];
     });
   }
@@ -154,7 +154,7 @@ class QuandlPriceFeed extends PriceFeedInterface {
         message: "Update skipped because the last one was too recent",
         currentTime: currentTime,
         lastUpdateTimestamp: this.lastUpdateTime,
-        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime
+        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime,
       });
       return;
     }
@@ -163,7 +163,7 @@ class QuandlPriceFeed extends PriceFeedInterface {
       at: "QuandlPriceFeed",
       message: "Updating QuandlPriceFeed",
       currentTime: currentTime,
-      lastUpdateTimestamp: this.lastUpdateTime
+      lastUpdateTimestamp: this.lastUpdateTime,
     });
 
     // Find the closest day that completed before the beginning of the lookback window, and use
@@ -177,7 +177,7 @@ class QuandlPriceFeed extends PriceFeedInterface {
     const url = [
       `https://www.quandl.com/api/v3/datasets/${this.datasetCode}/${this.databaseCode}/data.json?`,
       `start_date=${startDateString}&end_date=${endDateString}`,
-      `&collapse=daily&api_key=${this.apiKey}`
+      `&collapse=daily&api_key=${this.apiKey}`,
       // Theoretically you could change granularity to be greater than daily but this doesn't seem
       // useful to implement flexibility for right now.
     ].join("");
@@ -189,7 +189,7 @@ class QuandlPriceFeed extends PriceFeedInterface {
     if (
       !historyResponse?.dataset_data?.data ||
       historyResponse.dataset_data.data.length === 0 ||
-      historyResponse.dataset_data.data.some(dailyData => dailyData.length === 0)
+      historyResponse.dataset_data.data.some((dailyData) => dailyData.length === 0)
     ) {
       throw new Error(`🚨Could not parse price result from url ${url}: ${JSON.stringify(historyResponse)}`);
     }
@@ -216,7 +216,7 @@ class QuandlPriceFeed extends PriceFeedInterface {
     //   }
     // }
     const newHistoricalPricePeriods = historyResponse.dataset_data.data
-      .map(dailyData => ({
+      .map((dailyData) => ({
         // Output data should be a list of objects with only the open and close times and prices.
         // Note: Data is formatted as [Date, Open, High, Low, Last, Change, Settle, Volume, Previous Day Open Interest]
         openTime: this._dateTimeToSecond(dailyData[0]),
@@ -224,7 +224,7 @@ class QuandlPriceFeed extends PriceFeedInterface {
         // Note: We make the assumption that prices apply for a full 24 hours starting
         // from the beginning of the day denoted by the datetime string.
         openPrice: this.convertPriceFeedDecimals(dailyData[1]),
-        closePrice: this.convertPriceFeedDecimals(dailyData[4])
+        closePrice: this.convertPriceFeedDecimals(dailyData[4]),
       }))
       .sort((a, b) => {
         // Sorts the data such that the oldest elements come first.
@@ -242,9 +242,7 @@ class QuandlPriceFeed extends PriceFeedInterface {
   }
   _dateTimeToSecond(inputDateTime, endOfDay = false) {
     if (endOfDay) {
-      return moment(inputDateTime, "YYYY-MM-DD")
-        .endOf("day")
-        .unix();
+      return moment(inputDateTime, "YYYY-MM-DD").endOf("day").unix();
     } else {
       return moment(inputDateTime, "YYYY-MM-DD").unix();
     }
@@ -252,5 +250,5 @@ class QuandlPriceFeed extends PriceFeedInterface {
 }
 
 module.exports = {
-  QuandlPriceFeed
+  QuandlPriceFeed,
 };

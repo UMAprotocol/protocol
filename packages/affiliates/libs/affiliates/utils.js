@@ -22,20 +22,17 @@ function mdlink(text, link) {
 
 function dappMiningPrTemplate({ issueNumber, config }) {
   const { name, startTime, endTime, rewardFactor, totalRewards, empRewards, weekNumber } = config;
-  const startDate = moment(startTime)
-    .utc()
-    .format("YYYY/MM/DD");
-  const endDate = moment(endTime)
-    .utc()
-    .format("YYYY/MM/DD");
+  const startDate = moment(startTime).utc().format("YYYY/MM/DD");
+  const endDate = moment(endTime).utc().format("YYYY/MM/DD");
   const title = `improve(affiliates): Dapp Mining rewards for ${name} week ${weekNumber + 1}`;
   const body = `
 **Motivation**
 #${issueNumber}
 
 **Details**
-Dapp mining for ${name} week ${weekNumber +
-    1} from ${startDate} to ${endDate} using ${rewardFactor} of dev mining rewards for this period: \`Math.floor(${empRewards} * ${rewardFactor}) = ${totalRewards}\`
+Dapp mining for ${name} week ${
+    weekNumber + 1
+  } from ${startDate} to ${endDate} using ${rewardFactor} of dev mining rewards for this period: \`Math.floor(${empRewards} * ${rewardFactor}) = ${totalRewards}\`
 
 Reproduce with config.json
 \`\`\`
@@ -49,7 +46,7 @@ Fixes #${issueNumber}
 `;
   return {
     title,
-    body
+    body,
   };
 }
 
@@ -61,7 +58,7 @@ function devMiningPrTemplate({
   endTime,
   empWhitelist,
   weekNumber,
-  fallbackPrices = []
+  fallbackPrices = [],
 }) {
   assert(issueNumber, "requires issue number");
   assert(totalRewards, "requires totalRewards");
@@ -69,12 +66,8 @@ function devMiningPrTemplate({
   assert(startTime, "requires starTime");
   assert(empWhitelist, "requires empWhiteList");
   assert(weekNumber, "requires weekNumber");
-  const startDate = moment(startTime)
-    .utc()
-    .format("YYYY/MM/DD");
-  const endDate = moment(endTime)
-    .utc()
-    .format("YYYY/MM/DD");
+  const startDate = moment(startTime).utc().format("YYYY/MM/DD");
+  const endDate = moment(endTime).utc().format("YYYY/MM/DD");
   return {
     title: `improve(affiliates): Dev Mining rewards for week ${weekNumber + 1}`,
     body: `
@@ -102,69 +95,63 @@ Then within the affiliates package run:
 
 
 closes #${issueNumber}
-`
+`,
   };
 }
 
 // Generate dapp mining issue body and title
 function dappMiningTemplate({ name, empAddress, startTime, endTime, whitelistTable, weekNumber }) {
-  const startDate = moment(startTime)
-    .utc()
-    .format("YYYY/MM/DD");
-  const endDate = moment(endTime)
-    .utc()
-    .format("YYYY/MM/DD");
+  const startDate = moment(startTime).utc().format("YYYY/MM/DD");
+  const endDate = moment(endTime).utc().format("YYYY/MM/DD");
   const startDateTime = moment(startTime).format("YYYY/MM/DD HH:mm");
   const endDateTime = moment(endTime).format("YYYY/MM/DD HH:mm");
   return {
     title: `Run Dapp Mining rewards for ${name} week ${weekNumber + 1} between ${startDate} and ${endDate}`,
     body: `
-Run dapp mining rewards for ${mdlink(name, eslink(empAddress))} week ${weekNumber +
-      1} from ${startDateTime} (${startTime}) to ${endDateTime} (${endTime}). 
+Run dapp mining rewards for ${mdlink(name, eslink(empAddress))} week ${
+      weekNumber + 1
+    } from ${startDateTime} (${startTime}) to ${endDateTime} (${endTime}). 
 
 Name | Tagged Address
 -- | -- 
   ${whitelistTable
-    .map(data => {
+    .map((data) => {
       return data.join(" | ");
     })
     .join("\n")}
-`
+`,
   };
 }
 
 // Generate dev mining issue body and title
 function devMiningTemplate({ config, whitelist }) {
   const { startTime, endTime, fallbackPrices, weekNumber } = config;
-  const startDate = moment(startTime)
-    .utc()
-    .format("YYYY/MM/DD");
-  const endDate = moment(endTime)
-    .utc()
-    .format("YYYY/MM/DD");
+  const startDate = moment(startTime).utc().format("YYYY/MM/DD");
+  const endDate = moment(endTime).utc().format("YYYY/MM/DD");
   const startDateTime = moment(startTime).format("YYYY/MM/DD HH:mm");
   const endDateTime = moment(endTime).format("YYYY/MM/DD HH:mm");
   return {
     title: `Run Dev Mining rewards week ${weekNumber + 1} between ${startDate} and ${endDate}`,
     body: `
-Run Dev Mining rewards for week ${weekNumber +
-      1} between ${startDateTime} (${startTime}) and ${endDateTime} (${endTime}).
+Run Dev Mining rewards for week ${
+      weekNumber + 1
+    } between ${startDateTime} (${startTime}) and ${endDateTime} (${endTime}).
 
 Contract Name | EMP Address | Payout Address
 -- | -- | --
   ${whitelist
-    .map(data => {
+    .map((data) => {
       return [data.name, mdlink(data.empAddress, eslink(data.empAddress)), data.payoutAddress].join(" | ");
     })
     .join("\n")}
 
 If fallback prices are needed it will be shown below:
   ${fallbackPrices
-    .map(pair => {
+    .map((pair) => {
       return "  - " + mdlink(pair[0], eslink(pair[0])) + " = " + "$" + pair[1];
     })
     .join("\n")}
-`
+`,
   };
 }
 
@@ -173,39 +160,39 @@ If fallback prices are needed it will be shown below:
 async function createGithubIssue({ auth, owner = "UMAprotocol", repo = "protocol", ...rest } = {}) {
   assert(auth, "requires github auth credentials");
   const octokit = new Octokit({
-    auth
+    auth,
   });
   return octokit.issues.create({
     owner,
     repo,
-    ...rest
+    ...rest,
   });
 }
 
 async function requestGithubReviewers({ auth, owner, repo, pull_number, reviewers, ...rest }) {
   assert(auth, "requires github auth credentials");
   const octokit = new Octokit({
-    auth
+    auth,
   });
   return octokit.pulls.requestReviewers({
     owner,
     repo,
     pull_number,
     reviewers,
-    ...rest
+    ...rest,
   });
 }
 async function createGithubPr({ auth, owner, repo = "protocol", head, base, ...rest } = {}) {
   assert(auth, "requires github auth credentials");
   const octokit = new Octokit({
-    auth
+    auth,
   });
   return octokit.pulls.create({
     head,
     base,
     owner,
     repo,
-    ...rest
+    ...rest,
   });
 }
 
@@ -223,7 +210,7 @@ async function createGithubPr({ auth, owner, repo = "protocol", head, base, ...r
 //   [ address, payoutAddress],
 // ]
 function whitelistFromDetails(details) {
-  return details.map(detail => {
+  return details.map((detail) => {
     return [detail.empAddress, detail.payoutAddress, detail.empVersion];
   });
 }
@@ -231,10 +218,10 @@ function whitelistFromDetails(details) {
 // with get historical price periods implemented. We allow this value to be specified from sheets.
 function fallbackFromDetails(details) {
   return details
-    .filter(detail => {
+    .filter((detail) => {
       return detail.fallbackValue;
     })
-    .map(detail => {
+    .map((detail) => {
       return [detail.empAddress, detail.fallbackValue];
     });
 }
@@ -250,7 +237,7 @@ function generateDevMiningConfig({ whitelist, week, period, totalRewards = 50000
     ...period,
     empWhitelist,
     fallbackPrices,
-    totalRewards
+    totalRewards,
   };
 }
 
@@ -267,7 +254,7 @@ function generateDappMiningConfig(params = {}) {
     ...period,
     defaultAddress,
     totalRewards: Math.floor(parseFloat(empRewards) * rewardFactor),
-    whitelist: whitelistTable.map(x => x[1])
+    whitelist: whitelistTable.map((x) => x[1]),
   };
 }
 
@@ -282,7 +269,7 @@ function miningPeriodByWeek(weekNumber = 0, first) {
     endDate: end.format("L LT"),
     startDate: start.format("L LT"),
     startTime: start.valueOf(),
-    endTime: end.valueOf()
+    endTime: end.valueOf(),
   };
 }
 // This gives you the week the date is in, starting at 0
@@ -324,7 +311,7 @@ function makeDevMiningFilename(config) {
   const fn = [
     moment(startTime).format(format),
     moment(endTime).format(format),
-    weekNumber.toString().padStart(4, "0")
+    weekNumber.toString().padStart(4, "0"),
   ].join("_");
   return [fn, "json"].join(".");
 }
@@ -337,7 +324,7 @@ function makeDappMiningFilename(config) {
     moment(startTime).format(format),
     moment(endTime).format(format),
     name,
-    weekNumber.toString().padStart(4, "0")
+    weekNumber.toString().padStart(4, "0"),
   ].join("_");
   return [fn, "json"].join(".");
 }
@@ -362,13 +349,20 @@ function makeUnixPipe(cb, stdin = process.stdin) {
         return result + str;
       })
       // once string is final, we try to parse it as json. We assume that our caller is passing us a valid json string.
-      .map(x => JSON.parse(x))
+      .map((x) => {
+        try {
+          return JSON.parse(x);
+        } catch (err) {
+          console.error(x);
+          throw err;
+        }
+      })
       // once we have the json object we call the callback passing it as a param
-      .map(async x => cb(x))
+      .map(async (x) => cb(x))
       // we need to do this to extract the result of the promise in the stream.
       .flatMap(highland)
       // we want our result to be also a valid json string, so we can continue chaining the pipeline
-      .map(x => {
+      .map((x) => {
         try {
           return JSON.stringify(x, null, 2);
         } catch (err) {
@@ -402,5 +396,5 @@ module.exports = {
   devMiningPrTemplate,
   dappMiningPrTemplate,
   requestGithubReviewers,
-  createGithubPr
+  createGithubPr,
 };

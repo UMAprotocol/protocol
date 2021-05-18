@@ -7,7 +7,7 @@ const {
   parseFixed,
   runTestForVersion,
   createConstructorParamsForContractVersion,
-  TESTED_CONTRACT_VERSIONS
+  TESTED_CONTRACT_VERSIONS,
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
@@ -16,7 +16,7 @@ const {
   FinancialContractEventClient,
   PriceFeedMock,
   SpyTransport,
-  lastSpyLogIncludes
+  lastSpyLogIncludes,
 } = require("@uma/financial-templates-lib");
 
 // Script to test
@@ -29,7 +29,7 @@ const { ContractMonitor } = require("../src/ContractMonitor");
 const configs = [
   { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
   { tokenSymbol: "Legacy BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 }
+  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 },
 ];
 const optimisticOracleLiveness = 7200;
 
@@ -78,15 +78,15 @@ const unreachableDeadline = MAX_UINT_VAL;
 // for a given test.eg: versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])("test name", async function () { assert.isTrue(true) })
 // Note that a second param can be provided to make the test an `it.only` thereby ONLY running that single test, on
 // the provided version. This is very useful for debugging and writing single unit tests without having ro run all tests.
-const versionedIt = function(supportedVersions, shouldBeItOnly = false) {
+const versionedIt = function (supportedVersions, shouldBeItOnly = false) {
   if (shouldBeItOnly)
     return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it.only : () => {};
   return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it : () => {};
 };
 
-const Convert = decimals => number => parseFixed(number.toString(), decimals).toString();
+const Convert = (decimals) => (number) => parseFixed(number.toString(), decimals).toString();
 
-contract("ContractMonitor.js", function(accounts) {
+contract("ContractMonitor.js", function (accounts) {
   const tokenSponsor = accounts[0];
   const liquidator = accounts[1];
   const disputer = accounts[2];
@@ -94,7 +94,7 @@ contract("ContractMonitor.js", function(accounts) {
   const sponsor2 = accounts[4];
   const sponsor3 = accounts[5];
 
-  TESTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
+  TESTED_CONTRACT_VERSIONS.forEach(function (contractVersion) {
     // Store the contractVersion.contractVersion, type and version being tested
     iterationTestVersion = contractVersion;
 
@@ -109,12 +109,12 @@ contract("ContractMonitor.js", function(accounts) {
     const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
     const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
-    const ConfigStore = getTruffleContract("ConfigStore", web3, "latest");
-    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, "latest");
+    const ConfigStore = getTruffleContract("ConfigStore", web3);
+    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
 
     for (let testConfig of configs) {
-      describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
-        before(async function() {
+      describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
+        before(async function () {
           identifier = `${testConfig.tokenSymbol}TEST`;
           fundingRateIdentifier = `${testConfig.tokenName}_FUNDING_IDENTIFIER`;
           convertCollateral = Convert(testConfig.collateralDecimals);
@@ -155,7 +155,7 @@ contract("ContractMonitor.js", function(accounts) {
           await collateralWhitelist.addToWhitelist(collateralToken.address);
         });
 
-        beforeEach(async function() {
+        beforeEach(async function () {
           await timer.setCurrentTime(startTime - 1);
           const currentTime = await mockOracle.getCurrentTime.call();
 
@@ -163,7 +163,7 @@ contract("ContractMonitor.js", function(accounts) {
 
           // Create a new synthetic token
           syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", testConfig.syntheticDecimals, {
-            from: tokenSponsor
+            from: tokenSponsor,
           });
 
           // If we are testing a perpetual then we need to also deploy a config store, an optimistic oracle and set the funding rate identifier.
@@ -175,7 +175,7 @@ contract("ContractMonitor.js", function(accounts) {
                 proposerBondPercentage: { rawValue: "0" },
                 maxFundingRate: { rawValue: toWei("0.00001") },
                 minFundingRate: { rawValue: toWei("-0.00001") },
-                proposalTimePastLimit: 0
+                proposalTimePastLimit: 0,
               },
               timer.address
             );
@@ -199,7 +199,7 @@ contract("ContractMonitor.js", function(accounts) {
               fundingRateIdentifier,
               timer,
               store,
-              configStore: configStore || {} // if the contract type is not a perp this will be null.
+              configStore: configStore || {}, // if the contract type is not a perp this will be null.
             },
             { minSponsorTokens: { rawValue: convertSynthetic("1") }, collateralRequirement: { rawValue: toWei("1.5") } }
           );
@@ -216,7 +216,7 @@ contract("ContractMonitor.js", function(accounts) {
           spy = sinon.spy();
           spyLogger = winston.createLogger({
             level: "info",
-            transports: [new SpyTransport({ level: "info" }, { spy })]
+            transports: [new SpyTransport({ level: "info" }, { spy })],
           });
 
           await syntheticToken.addMinter(financialContract.address);
@@ -244,7 +244,7 @@ contract("ContractMonitor.js", function(accounts) {
             priceFeedDecimals: testConfig.priceFeedDecimals,
             syntheticSymbol: await syntheticToken.symbol(),
             priceIdentifier: hexToUtf8(await financialContract.priceIdentifier()),
-            networkId: await web3.eth.net.getId()
+            networkId: await web3.eth.net.getId(),
           };
 
           contractMonitor = new ContractMonitor({
@@ -253,23 +253,23 @@ contract("ContractMonitor.js", function(accounts) {
             priceFeed: priceFeedMock,
             monitorConfig,
             financialContractProps,
-            votingContract: mockOracle
+            votingContract: mockOracle,
           });
 
           await collateralToken.addMember(1, tokenSponsor, {
-            from: tokenSponsor
+            from: tokenSponsor,
           });
 
           //   Bulk mint and approve for all wallets
           for (let i = 1; i < 6; i++) {
             await collateralToken.mint(accounts[i], convertCollateral("100000000"), {
-              from: tokenSponsor
+              from: tokenSponsor,
             });
             await collateralToken.approve(financialContract.address, convertSynthetic("100000000"), {
-              from: accounts[i]
+              from: accounts[i],
             });
             await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), {
-              from: accounts[i]
+              from: accounts[i],
             });
           }
 
@@ -293,7 +293,7 @@ contract("ContractMonitor.js", function(accounts) {
 
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Winston correctly emits new sponsor message",
-          async function() {
+          async function () {
             // Update the eventClient and check it has the new sponsor event stored correctly
             await eventClient.update();
 
@@ -330,7 +330,7 @@ contract("ContractMonitor.js", function(accounts) {
         );
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Winston correctly emits liquidation message",
-          async function() {
+          async function () {
             // Request a withdrawal from sponsor1 to check if monitor correctly differentiates between liquidated and locked collateral
             await financialContract.requestWithdrawal({ rawValue: convertCollateral("10") }, { from: sponsor1 });
 
@@ -412,7 +412,7 @@ contract("ContractMonitor.js", function(accounts) {
         );
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Winston correctly emits dispute message",
-          async function() {
+          async function () {
             // Create liquidation to dispute.
             await financialContract.createLiquidation(
               sponsor1,
@@ -424,7 +424,7 @@ contract("ContractMonitor.js", function(accounts) {
             );
 
             const txObject1 = await financialContract.dispute("0", sponsor1, {
-              from: disputer
+              from: disputer,
             });
 
             // Update the eventClient and check it has the dispute event stored correctly
@@ -453,7 +453,7 @@ contract("ContractMonitor.js", function(accounts) {
 
             // the disputer is also not monitored
             const txObject2 = await financialContract.dispute("0", sponsor2, {
-              from: sponsor2
+              from: sponsor2,
             });
 
             // Update the eventClient and check it has the dispute event stored correctly
@@ -472,7 +472,7 @@ contract("ContractMonitor.js", function(accounts) {
         );
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Winston correctly emits dispute settlement message",
-          async function() {
+          async function () {
             // Create liquidation to liquidate sponsor1 from liquidator
             let liquidationTime = (await financialContract.getCurrentTime()).toNumber();
             await financialContract.createLiquidation(
@@ -486,7 +486,7 @@ contract("ContractMonitor.js", function(accounts) {
 
             // Dispute the position from the disputer
             await financialContract.dispute("0", sponsor1, {
-              from: disputer
+              from: disputer,
             });
 
             // Push a price such that the dispute fails and ensure the resolution reports correctly. Sponsor1 has 50 units of
@@ -534,7 +534,7 @@ contract("ContractMonitor.js", function(accounts) {
 
             // Dispute the liquidator from a non-monitor address (sponsor2)
             await financialContract.dispute("0", sponsor2, {
-              from: sponsor2
+              from: sponsor2,
             });
 
             // Push a price such that the dispute succeeds and ensure the resolution reports correctly. Sponsor2 has 45 units of
@@ -559,11 +559,11 @@ contract("ContractMonitor.js", function(accounts) {
             assert.isTrue(lastSpyLogIncludes(spy, `https://etherscan.io/tx/${txObject2.tx}`));
           }
         );
-        versionedIt([{ contractType: "Perpetual", contractVersion: "latest" }])(
+        versionedIt([{ contractType: "Perpetual", contractVersion: "2.0.1" }])(
           "Winston correctly emits funding rate updated message",
-          async function() {
+          async function () {
             // Propose new funding rate.
-            const proposeAndPublishNewRate = async newRateWei => {
+            const proposeAndPublishNewRate = async (newRateWei) => {
               // Advance time forward by 1 to guarantee that proposal time > last update time.
               let currentTime = await timer.getCurrentTime();
               await timer.setCurrentTime(currentTime.toNumber() + 1);
@@ -575,7 +575,7 @@ contract("ContractMonitor.js", function(accounts) {
               await timer.setCurrentTime(proposalExpiry);
               return {
                 txObject: await financialContract.applyFundingRate(),
-                proposalTime
+                proposalTime,
               };
             };
 
@@ -600,7 +600,7 @@ contract("ContractMonitor.js", function(accounts) {
         );
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Cannot set invalid config or financialContractProps",
-          async function() {
+          async function () {
             let errorThrown1;
             try {
               // Create an invalid config. A valid config expects two arrays of addresses.
@@ -610,7 +610,7 @@ contract("ContractMonitor.js", function(accounts) {
                 financialContractEventClient: eventClient,
                 priceFeed: priceFeedMock,
                 monitorConfig: invalidConfig1,
-                financialContractProps
+                financialContractProps,
               });
               errorThrown1 = false;
             } catch (err) {
@@ -627,7 +627,7 @@ contract("ContractMonitor.js", function(accounts) {
                 financialContractEventClient: eventClient,
                 priceFeed: priceFeedMock,
                 monitorConfig: invalidConfig2,
-                financialContractProps
+                financialContractProps,
               });
               errorThrown2 = false;
             } catch (err) {
@@ -645,7 +645,7 @@ contract("ContractMonitor.js", function(accounts) {
                 financialContractEventClient: eventClient,
                 priceFeed: priceFeedMock,
                 monitorConfig, // valid config
-                financialContractProps
+                financialContractProps,
               });
               errorThrown3 = false;
             } catch (err) {
@@ -656,7 +656,7 @@ contract("ContractMonitor.js", function(accounts) {
         );
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Can correctly create contract monitor with no config provided",
-          async function() {
+          async function () {
             let errorThrown;
             try {
               // Create an invalid config. A valid config expects two arrays of addresses.
@@ -666,7 +666,7 @@ contract("ContractMonitor.js", function(accounts) {
                 financialContractEventClient: eventClient,
                 priceFeed: priceFeedMock,
                 monitorConfig: emptyConfig,
-                financialContractProps
+                financialContractProps,
               });
               await contractMonitor.checkForNewSponsors();
               await contractMonitor.checkForNewLiquidations();

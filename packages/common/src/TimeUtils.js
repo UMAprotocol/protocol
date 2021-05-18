@@ -43,5 +43,5 @@ async function estimateBlocksElapsed(seconds, cushionPercentage = 0.0) {
 module.exports = {
   averageBlockTimeSeconds,
   getFromBlock,
-  estimateBlocksElapsed
+  estimateBlocksElapsed,
 };

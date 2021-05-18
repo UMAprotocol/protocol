@@ -11,7 +11,7 @@
 //   Since a new Voting contract was deployed in version 2.0.0, that version will only claim for that contract, not
 //   older ones. Defaults to 1.2.2 and latest.
 
-const { getAbi, getAddress } = require("../../index");
+const { getAbi, getAddress } = require("../../dist/index");
 const TransactionBatcher = artifacts.require("TransactionBatcher");
 const lodash = require("lodash");
 const winston = require("winston");
@@ -19,7 +19,7 @@ const { GasEstimator } = require("@uma/financial-templates-lib");
 
 const argv = require("minimist")(process.argv.slice(), {
   string: ["round", "batcherAddress", "claimAddress", "excludeAddress", "version"],
-  boolean: "onlyPrint"
+  boolean: "onlyPrint",
 });
 
 const { toBN, toWei, toChecksumAddress } = web3.utils;
@@ -34,27 +34,24 @@ async function claimRewards() {
   const account = (await web3.eth.getAccounts())[0];
   const networkId = await web3.eth.net.getId();
 
-  const votingContracts = versions.map(version => {
+  const votingContracts = versions.map((version) => {
     if (version.startsWith("1")) {
       return new web3.eth.Contract(getAbi("Voting", version), getAddress("Voting", networkId, version));
     } else {
       // This uses the VotingAncillaryInterfaceTesting to create a voting contract that has _only_ the ancillary
       // functions and events. This interface also includes almost all the regular voting methods that are unrelated
       // to the ancillary data change. Using this interface effectively avoids the overload problem.
-      return new web3.eth.Contract(
-        getAbi("VotingAncillaryInterfaceTesting", "latest"),
-        getAddress("Voting", networkId, version)
-      );
+      return new web3.eth.Contract(getAbi("VotingAncillaryInterfaceTesting"), getAddress("Voting", networkId, version));
     }
   });
 
   const events = lodash.flatten(
     await Promise.all(
-      votingContracts.map(voting =>
+      votingContracts.map((voting) =>
         voting.getPastEvents("VoteRevealed", {
           filter: { roundId: rounds, voter: claimAddresses },
           fromBlock: 0,
-          toBlock: "latest"
+          toBlock: "latest",
         })
       )
     )
@@ -73,7 +70,7 @@ async function claimRewards() {
     const newPriceRequest = {
       identifier: event.returnValues.identifier,
       time: event.returnValues.time,
-      ancillaryData: event.returnValues.ancillaryData === null ? "0x" : event.returnValues.ancillaryData
+      ancillaryData: event.returnValues.ancillaryData === null ? "0x" : event.returnValues.ancillaryData,
     };
     if (priceRequestMap[key]) {
       priceRequestMap[key].push(newPriceRequest);
@@ -87,10 +84,10 @@ async function claimRewards() {
       Object.entries(priceRequestMap).map(async ([key, priceRequests]) => {
         const [voter, round, contractAddress] = key.split("|");
         const voting = votingContracts.find(
-          contract => toChecksumAddress(contract.options.address) === toChecksumAddress(contractAddress)
+          (contract) => toChecksumAddress(contract.options.address) === toChecksumAddress(contractAddress)
         );
         if (!voting) throw `Couldn't find voting contract for ${contractAddress}`;
-        const fullVotingContract = new web3.eth.Contract(getAbi("Voting", "latest"), voting.options.address);
+        const fullVotingContract = new web3.eth.Contract(getAbi("Voting"), voting.options.address);
         const migratedAddress = await fullVotingContract.methods.migratedAddress().call();
         try {
           const output = await voting.methods
@@ -111,10 +108,10 @@ async function claimRewards() {
         }
       })
     )
-  ).filter(element => element !== null);
+  ).filter((element) => element !== null);
 
   if (argv.onlyCompute) {
-    const groupedByVoter = lodash.groupBy(retrievableRewards, el => el.voter);
+    const groupedByVoter = lodash.groupBy(retrievableRewards, (el) => el.voter);
     Object.entries(groupedByVoter).forEach(([voter, rewardArray]) => {
       console.group(`Reward details for voter ${voter}:`);
       rewardArray.forEach(({ priceRequests, round, voting, rewards }) => {
@@ -155,7 +152,7 @@ async function claimRewards() {
 
   const gasEstimator = new GasEstimator(
     winston.createLogger({
-      silent: true
+      silent: true,
     }),
     60, // Time between updates.
     100 // Default gas price.
@@ -165,7 +162,7 @@ async function claimRewards() {
   // sending on-chain.
   await Promise.all(
     lodash
-      .zip(...[targetArray, valuesArray, dataArray].map(arr => lodash.chunk(arr, 30)))
+      .zip(...[targetArray, valuesArray, dataArray].map((arr) => lodash.chunk(arr, 30)))
       .map(async ([chunkedTargetArray, chunkedValueArray, chunkedDataArray]) => {
         const txn = transactionBatcher.contract.methods.batchSend(
           chunkedTargetArray,
@@ -182,7 +179,7 @@ async function claimRewards() {
         const receipt = await txn.send({
           gasPrice: gasEstimator.getCurrentFastPrice(),
           gas: gasEstimate * 2,
-          from: account
+          from: account,
         });
 
         console.log("Transaction hash", receipt.transactionHash);

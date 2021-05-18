@@ -34,8 +34,8 @@ function getAllContracts() {
     const packageDir = path.dirname(require.resolve("@uma/core/package.json"));
     const contractsPath = path.join(packageDir, "build/contracts/");
 
-    const fileList = fs.readdirSync(contractsPath).filter(name => name.match(/\.json$/));
-    importedObjects = fileList.map(filename => {
+    const fileList = fs.readdirSync(contractsPath).filter((name) => name.match(/\.json$/));
+    importedObjects = fileList.map((filename) => {
       const fileContents = fs.readFileSync(path.join(contractsPath, filename));
       return JSON.parse(fileContents);
     });
@@ -55,5 +55,5 @@ function getAbiDecoder() {
 
 module.exports = {
   getAllContracts,
-  getAbiDecoder
+  getAbiDecoder,
 };

@@ -1,7 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
-
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 import "../Voting.sol";
 import "../../../common/implementation/FixedPoint.sol";
@@ -17,7 +15,6 @@ contract VotingTest is Voting {
         address _finder,
         address _timerAddress
     )
-        public
         Voting(
             _phaseLength,
             _gatPercentage,

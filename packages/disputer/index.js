@@ -4,7 +4,7 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers
-const { findContractVersion, SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
+const { SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
 
 // JS libs
 const { Disputer } = require("./src/disputer");
@@ -17,11 +17,11 @@ const {
   delay,
   waitForLogger,
   createReferencePriceFeedForFinancialContract,
-  setAllowance
+  setAllowance,
 } = require("@uma/financial-templates-lib");
 
 // Truffle contracts.
-const { getAbi } = require("@uma/core");
+const { getAbi, findContractVersion } = require("@uma/core");
 const { getWeb3, PublicNetworks } = require("@uma/common");
 
 /**
@@ -44,7 +44,7 @@ async function run({
   errorRetriesTimeout,
   priceFeedConfig,
   disputerConfig,
-  disputerOverridePrice
+  disputerOverridePrice,
 }) {
   try {
     const getTime = () => Math.round(new Date().getTime() / 1000);
@@ -60,15 +60,16 @@ async function run({
       errorRetriesTimeout,
       priceFeedConfig,
       disputerConfig,
-      disputerOverridePrice
+      disputerOverridePrice,
     });
 
     // Load unlocked web3 accounts and get the networkId.
     const [detectedContract, accounts, networkId] = await Promise.all([
       findContractVersion(financialContractAddress, web3),
       web3.eth.getAccounts(),
-      web3.eth.net.getId()
+      web3.eth.net.getId(),
     ]);
+
     const networkName = PublicNetworks[Number(networkId)] ? PublicNetworks[Number(networkId)].name : null;
 
     // Append the contract version and type to the disputerConfig, if the disputerConfig does not already contain one.
@@ -79,7 +80,7 @@ async function run({
     // Check that the version and type is supported. Note if either is null this check will also catch it.
     if (
       SUPPORTED_CONTRACT_VERSIONS.filter(
-        vo => vo.contractType == disputerConfig.contractType && vo.contractVersion == disputerConfig.contractVersion
+        (vo) => vo.contractType == disputerConfig.contractType && vo.contractVersion == disputerConfig.contractVersion
       ).length == 0
     )
       throw new Error(
@@ -99,7 +100,7 @@ async function run({
     // Generate Financial Contract properties to inform bot of important on-chain state values that we only want to query once.
     const [collateralTokenAddress, syntheticTokenAddress] = await Promise.all([
       financialContract.methods.collateralCurrency().call(),
-      financialContract.methods.tokenCurrency().call()
+      financialContract.methods.tokenCurrency().call(),
     ]);
 
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
@@ -107,7 +108,7 @@ async function run({
     const [priceIdentifier, collateralDecimals, syntheticDecimals] = await Promise.all([
       financialContract.methods.priceIdentifier().call(),
       collateralToken.methods.decimals().call(),
-      syntheticToken.methods.decimals().call()
+      syntheticToken.methods.decimals().call(),
     ]);
 
     const priceFeed = await createReferencePriceFeedForFinancialContract(
@@ -125,7 +126,7 @@ async function run({
 
     // Generate Financial Contract properties to inform bot of important on-chain state values that we only want to query once.
     const financialContractProps = {
-      priceIdentifier: priceIdentifier
+      priceIdentifier: priceIdentifier,
     };
 
     // Client and dispute bot.
@@ -151,7 +152,7 @@ async function run({
       priceFeed,
       account: accounts[0],
       financialContractProps,
-      disputerConfig
+      disputerConfig,
     });
 
     logger.debug({
@@ -161,7 +162,7 @@ async function run({
       syntheticDecimals: Number(syntheticDecimals),
       priceFeedDecimals: Number(priceFeed.getPriceFeedDecimals()),
       priceFeedConfig,
-      disputerConfig
+      disputerConfig,
     });
 
     // The Financial Contract requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.
@@ -177,7 +178,7 @@ async function run({
       logger.info({
         at: "Disputer#index",
         message: "Approved Financial Contract to transfer unlimited collateral tokens 💰",
-        collateralApprovalTx: collateralApproval.tx.transactionHash
+        collateralApprovalTx: collateralApproval.tx.transactionHash,
       });
     }
 
@@ -193,20 +194,20 @@ async function run({
           retries: errorRetries,
           minTimeout: errorRetriesTimeout * 1000,
           randomize: false,
-          onRetry: error => {
+          onRetry: (error) => {
             logger.debug({
               at: "Disputer#index",
               message: "An error was thrown in the execution loop - retrying",
-              error: typeof error === "string" ? new Error(error) : error
+              error: typeof error === "string" ? new Error(error) : error,
             });
-          }
+          },
         }
       );
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (pollingDelay === 0) {
         logger.debug({
           at: "Disputer#index",
-          message: "End of serverless execution loop - terminating process"
+          message: "End of serverless execution loop - terminating process",
         });
         await waitForLogger(logger);
         await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
@@ -215,7 +216,7 @@ async function run({
       logger.debug({
         at: "Disputer#index",
         message: "End of execution loop - waiting polling delay",
-        pollingDelay: `${pollingDelay} (s)`
+        pollingDelay: `${pollingDelay} (s)`,
       });
       await delay(Number(pollingDelay));
     }
@@ -258,7 +259,7 @@ async function Poll(callback) {
       disputerConfig: process.env.DISPUTER_CONFIG ? JSON.parse(process.env.DISPUTER_CONFIG) : null,
       // If there is a DISPUTER_OVERRIDE_PRICE environment variable then the disputer will disregard the price from the
       // price feed and preform disputes at this override price. Use with caution as wrong input could cause invalid disputes.
-      disputerOverridePrice: process.env.DISPUTER_OVERRIDE_PRICE
+      disputerOverridePrice: process.env.DISPUTER_OVERRIDE_PRICE,
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
@@ -266,7 +267,7 @@ async function Poll(callback) {
     Logger.error({
       at: "Disputer#index",
       message: "Disputer execution error🚨",
-      error: typeof error === "string" ? new Error(error) : error
+      error: typeof error === "string" ? new Error(error) : error,
     });
     await waitForLogger(Logger);
     callback(error);

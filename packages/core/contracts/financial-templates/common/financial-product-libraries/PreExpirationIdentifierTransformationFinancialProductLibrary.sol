@@ -1,7 +1,6 @@
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+// SPDX-License-Identifier: AGPL-3.0-only
+pragma solidity ^0.8.0;
 import "./FinancialProductLibrary.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
 import "../../../common/implementation/Lockable.sol";
 
 /**
@@ -11,20 +10,19 @@ import "../../../common/implementation/Lockable.sol";
  * & if it is at or after expiration then the original identifier is returned. This library enables self referential
  * TWAP identifier to be used on synthetics pre-expiration, in conjunction with a separate identifier at expiration.
  */
-contract PreExpirationIdentifierTransformationFinancialProductLibrary is FinancialProductLibrary, Ownable, Lockable {
+contract PreExpirationIdentifierTransformationFinancialProductLibrary is FinancialProductLibrary, Lockable {
     mapping(address => bytes32) financialProductTransformedIdentifiers;
 
     /**
      * @notice Enables the deployer of the library to set the transformed identifier for an associated financial product.
      * @param financialProduct address of the financial product.
-     * @param transformedIdentifier the identifier for the financial product to be used if the contract is post expiration.
-     * @dev Note: a) Only the owner (deployer) of this library can set identifier transformations b) The identifier can't
-     * be set to blank. c) A transformed price can only be set once to prevent the deployer from changing it after the fact.
-     * d)  financialProduct must expose an expirationTimestamp method.
+     * @param transformedIdentifier the identifier for the financial product to be used if the contract is pre expiration.
+     * @dev Note: a) Any address can set identifier transformations b) The identifier can't be set to blank. c) A
+     * transformed price can only be set once to prevent the deployer from changing it after the fact. d) financialProduct
+     * must expose an expirationTimestamp method.
      */
     function setFinancialProductTransformedIdentifier(address financialProduct, bytes32 transformedIdentifier)
         public
-        onlyOwner
         nonReentrant()
     {
         require(transformedIdentifier != "", "Cant set to empty transformation");

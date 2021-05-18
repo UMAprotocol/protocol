@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.2.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.1.0...@uma/affiliates@1.2.0) (2021-04-23)
+
+### Bug Fixes
+
+- **affilates:** properly use SHEET_TAB from env ([#2853](https://github.com/UMAprotocol/protocol/issues/2853)) ([e7cfd74](https://github.com/UMAprotocol/protocol/commit/e7cfd741fc3dbbf3e06b0f12e273b165219b5f80))
+- **affiliates:** dapp minng issue/pr template and dapp mining emp version ([#2868](https://github.com/UMAprotocol/protocol/issues/2868)) ([6bd4e00](https://github.com/UMAprotocol/protocol/commit/6bd4e00bdfe648623f7ef7365e139f6e8074bc3b))
+- **affiliates:** error process if no price found ([#2717](https://github.com/UMAprotocol/protocol/issues/2717)) ([5829952](https://github.com/UMAprotocol/protocol/commit/58299522f0119200b9e7e92389154d615136f1cd))
+- **affiliates:** fix various issues found during last automation run ([#2805](https://github.com/UMAprotocol/protocol/issues/2805)) ([636c95e](https://github.com/UMAprotocol/protocol/commit/636c95efcb04f24e3249707795b6b2aa5252a550))
+- **affiliates:** remove expired contracts from empWhitelist ([#2869](https://github.com/UMAprotocol/protocol/issues/2869)) ([48c290f](https://github.com/UMAprotocol/protocol/commit/48c290fd0600cbc35aad8c9193a31a1a692311de))
+- **lm-payouts:** address wrong week number in YD-BTC ([#2855](https://github.com/UMAprotocol/protocol/issues/2855)) ([d1f5051](https://github.com/UMAprotocol/protocol/commit/d1f5051a53d1f28c28599ab224abf88165786b19))
+
+### Features
+
+- **gas-rebate:** Enable 2Key wallet overrides ([#2843](https://github.com/UMAprotocol/protocol/issues/2843)) ([175a4dc](https://github.com/UMAprotocol/protocol/commit/175a4dcc5bc98a8fd2ea5a596219e0baece89100))
+
 # [1.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.0.1...@uma/affiliates@1.1.0) (2021-03-16)
 
 ### Bug Fixes
