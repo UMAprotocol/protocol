@@ -9,7 +9,7 @@ import {
   PriceFeedMock,
   DSProxyManager,
   GasEstimator,
-  UniswapV2PriceFeed
+  UniswapV2PriceFeed,
 } from "@uma/financial-templates-lib";
 import { getTruffleContract } from "@uma/core";
 
@@ -70,8 +70,8 @@ const getPoolSpotPrice = async () => {
   return Number(fromWei(poolTokenABallance.mul(toBN(toWei("1"))).div(poolTokenBBallance))).toFixed(4);
 };
 
-describe("UniswapV2Trader.js", function() {
-  before(async function() {
+describe("UniswapV2Trader.js", function () {
+  before(async function () {
     accounts = await web3.eth.getAccounts();
     deployer = accounts[0];
     trader = accounts[1];
@@ -83,11 +83,11 @@ describe("UniswapV2Trader.js", function() {
     // deploy Uniswap V2 Factory & router.
     uniswapFactory = await createContractObjectFromJson(UniswapV2Factory).new(deployer, { from: deployer });
     uniswapRouter = await createContractObjectFromJson(UniswapV2Router02).new(uniswapFactory.address, WETH.address, {
-      from: deployer
+      from: deployer,
     });
   });
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     // deploy traded tokens
     tokenA = await Token.new("TokenA", "TA", 18);
     tokenB = await Token.new("TokenB", "TB", 18);
@@ -105,7 +105,7 @@ describe("UniswapV2Trader.js", function() {
     spy = sinon.spy(); // Create a new spy for each test.
     spyLogger = winston.createLogger({
       level: "debug",
-      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
     });
 
     // Create the components needed for the RangeTrader. Create a "real" uniswap price feed, with the twapLength &
@@ -132,7 +132,7 @@ describe("UniswapV2Trader.js", function() {
       account: trader,
       dsProxyFactoryAddress: dsProxyFactory.address,
       dsProxyFactoryAbi: DSProxyFactory.abi,
-      dsProxyAbi: DSProxy.abi
+      dsProxyAbi: DSProxy.abi,
     });
 
     // Deploy a new DSProxy
@@ -145,7 +145,7 @@ describe("UniswapV2Trader.js", function() {
       tokenAAddress: tokenA.address,
       tokenBAddress: tokenB.address,
       uniswapRouterAddress: uniswapRouter.address,
-      uniswapFactoryAddress: uniswapFactory.address
+      uniswapFactoryAddress: uniswapFactory.address,
     };
 
     exchangeAdapter = await createExchangeAdapter(spyLogger, web3, dsProxyManager, exchangeAdapterConfig, 0);
@@ -161,10 +161,10 @@ describe("UniswapV2Trader.js", function() {
     await tokenA.mint(externalTrader, toWei("100000000000000"));
     await tokenB.mint(externalTrader, toWei("100000000000000"));
     await tokenA.approve(uniswapRouter.address, toWei("100000000000000"), {
-      from: externalTrader
+      from: externalTrader,
     });
     await tokenB.approve(uniswapRouter.address, toWei("100000000000000"), {
-      from: externalTrader
+      from: externalTrader,
     });
 
     // For these test, say the synthetic starts trading at uniswap at 1000 TokenA/TokenB. To set this up we will seed the
@@ -177,7 +177,7 @@ describe("UniswapV2Trader.js", function() {
     await tokenPriceFeed.update();
   });
 
-  it("Correctly detects overpriced tokens and executes trades", async function() {
+  it("Correctly detects overpriced tokens and executes trades", async function () {
     // The default behavior of the bot is to preform a trade if and only if the absolute error is greater than 20%. If
     //  it is then trade the error down to 5%. To start with, the tokenPriceFeed and referencePriceFeed should both
     // equal 1000, due to the seeing, where no trading should be done as no error between the feeds.
@@ -252,7 +252,7 @@ describe("UniswapV2Trader.js", function() {
     assert.isTrue(spyLogIncludes(spy, -2, "Checking if the priceFeed error exceeds the threshold"));
     assert.isTrue(spyLogIncludes(spy, -1, "less than the threshold to execute a trade"));
   });
-  it("Correctly detects underpriced tokens and executes trades", async function() {
+  it("Correctly detects underpriced tokens and executes trades", async function () {
     // This test is very similar to the previous one but instead of setting the synth to be overpriced we set to to
     // underpriced. To get directly to the test case we can simply set the reference price feed to be greater than the
     // synthetic dex price + the threshold. Any price for the reference feed over 1250 should trigger a trade as the %
@@ -295,17 +295,17 @@ describe("UniswapV2Trader.js", function() {
     assert.equal(parseFloat(spy.getCall(-1).lastArg.postTradePriceDeviationError.replace("%", "")).toFixed(0), "-5");
   });
 
-  it("Correctly rejects invalid config and params", async function() {
+  it("Correctly rejects invalid config and params", async function () {
     // tradeExecutionThreshold should only be strictly larger than 0.
 
     assert.throws(() => {
       new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, {
-        tradeExecutionThreshold: -1
+        tradeExecutionThreshold: -1,
       });
     });
     assert.throws(() => {
       new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, {
-        tradeExecutionThreshold: 0
+        tradeExecutionThreshold: 0,
       });
     });
 
@@ -326,10 +326,10 @@ describe("UniswapV2Trader.js", function() {
       new RangeTrader(spyLogger, web3, nonStandardDecimalPriceFeed, referencePriceFeed, exchangeAdapter, {});
     });
   });
-  it("Correctly respects custom trade threshold configs", async function() {
+  it("Correctly respects custom trade threshold configs", async function () {
     const customRangeTrader = new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, {
       tradeExecutionThreshold: 0.5, // Only trade if price greater than 50%.
-      targetPriceSpread: 0.2 // Trade price back to within 20% of the "true" price.
+      targetPriceSpread: 0.2, // Trade price back to within 20% of the "true" price.
     });
 
     assert.equal(customRangeTrader.tradeExecutionThreshold, 0.5);

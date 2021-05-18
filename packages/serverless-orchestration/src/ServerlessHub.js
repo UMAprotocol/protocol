@@ -46,7 +46,7 @@ const defaultHubConfig = {
   configRetrieval: "localStorage",
   saveQueriedBlock: "localStorage",
   spokeRunner: "localStorage",
-  rejectSpokeDelay: 120 // 2 min.
+  rejectSpokeDelay: 120, // 2 min.
 };
 
 hub.post("/", async (req, res) => {
@@ -55,7 +55,7 @@ hub.post("/", async (req, res) => {
       at: "ServerlessHub",
       message: "Running Serverless hub query",
       reqBody: req.body,
-      hubConfig
+      hubConfig,
     });
 
     // Validate the post request has both the `bucket` and `configFile` params.
@@ -92,7 +92,7 @@ hub.post("/", async (req, res) => {
       promiseArray.push(
         Promise.race([
           _executeServerlessSpoke(spokeUrl, botConfig),
-          _rejectAfterDelay(hubConfig.rejectSpokeDelay, botName)
+          _rejectAfterDelay(hubConfig.rejectSpokeDelay, botName),
         ])
       );
     }
@@ -102,7 +102,7 @@ hub.post("/", async (req, res) => {
       lastQueriedBlockNumber,
       latestBlockNumber,
       spokeUrl,
-      botsExecuted: Object.keys(configObject)
+      botsExecuted: Object.keys(configObject),
     });
 
     // Loop through promise array and submit all in parallel. `allSettled` does not fail early if a promise is rejected.
@@ -129,14 +129,14 @@ hub.post("/", async (req, res) => {
       logger.debug({
         at: "ServerlessHub",
         message: "One or more spoke calls were rejected - Retrying",
-        retriedOutputs
+        retriedOutputs,
       });
       let rejectedRetryPromiseArray = [];
-      retriedOutputs.forEach(botName => {
+      retriedOutputs.forEach((botName) => {
         rejectedRetryPromiseArray.push(
           Promise.race([
             _executeServerlessSpoke(spokeUrl, botConfigs[botName]),
-            _rejectAfterDelay(hubConfig.rejectSpokeDelay, botName)
+            _rejectAfterDelay(hubConfig.rejectSpokeDelay, botName),
           ])
         );
       });
@@ -154,7 +154,7 @@ hub.post("/", async (req, res) => {
     logger.debug({
       at: "ServerlessHub",
       message: "All calls returned correctly",
-      output: { errorOutputs, validOutputs, retriedOutputs }
+      output: { errorOutputs, validOutputs, retriedOutputs },
     });
     await delay(2); // Wait a few seconds to be sure the the winston logs are processed upstream.
     res
@@ -167,39 +167,39 @@ hub.post("/", async (req, res) => {
       logger.error({
         at: "ServerlessHub",
         message: "A fatal error occurred in the hub",
-        output: errorOutput.message
+        output: errorOutput.message,
       });
     } else {
       // Else, the error was produced within one of the spokes. If this is the case then we need to process the errors a bit.
       logger.debug({
         at: "ServerlessHub",
         message: "Some spoke calls returned errors (details)🚨",
-        output: errorOutput
+        output: errorOutput,
       });
       logger.error({
         at: "ServerlessHub",
         message: "Some spoke calls returned errors 🚨",
         retriedSpokes: errorOutput.retriedOutputs,
-        errorOutputs: Object.keys(errorOutput.errorOutputs).map(spokeName => {
+        errorOutputs: Object.keys(errorOutput.errorOutputs).map((spokeName) => {
           try {
             return {
               spokeName: spokeName,
               errorReported: errorOutput.errorOutputs[spokeName].execResponse
                 ? errorOutput.errorOutputs[spokeName].execResponse.stderr
-                : errorOutput.errorOutputs[spokeName]
+                : errorOutput.errorOutputs[spokeName],
             };
           } catch (err) {
             // `errorMessages` is in an unexpected JSON shape.
             return "Hub unable to parse error";
           }
         }), // eslint-disable-line indent
-        validOutputs: Object.keys(errorOutput.validOutputs) // eslint-disable-line indent
+        validOutputs: Object.keys(errorOutput.validOutputs), // eslint-disable-line indent
       });
     }
     await delay(2); // Wait a few seconds to be sure the the winston logs are processed upstream.
     res.status(500).send({
       message: errorOutput instanceof Error ? "A fatal error occurred in the hub" : "Some spoke calls returned errors",
-      output: errorOutput instanceof Error ? errorOutput.message : errorOutput
+      output: errorOutput instanceof Error ? errorOutput.message : errorOutput,
     });
   }
 });
@@ -214,7 +214,7 @@ const _executeServerlessSpoke = async (url, body) => {
     const res = await client.request({
       url: url,
       method: "post",
-      data: body
+      data: body,
     });
 
     return res.data;
@@ -237,8 +237,8 @@ const _fetchConfig = async (bucket, file) => {
           Authorization: `token ${hubConfig.gitSettings.accessToken}`,
           "Content-type": "application/json",
           Accept: "application/vnd.github.v3.raw",
-          "Accept-Charset": "utf-8"
-        }
+          "Accept-Charset": "utf-8",
+        },
       }
     );
     const config = await response.json(); // extract JSON from the http response
@@ -253,9 +253,9 @@ const _fetchConfig = async (bucket, file) => {
         .bucket(bucket)
         .file(file)
         .createReadStream()
-        .on("data", d => (buf += d))
+        .on("data", (d) => (buf += d))
         .on("end", () => resolve(buf))
-        .on("error", e => reject(e));
+        .on("error", (e) => reject(e));
     });
     return JSON.parse(await requestPromise);
   } else if (hubConfig.configRetrieval == "localStorage") {
@@ -278,8 +278,8 @@ async function _saveQueriedBlockNumber(configIdentifier, blockNumber) {
         const dataBlob = {
           key: key,
           data: {
-            blockNumber
-          }
+            blockNumber,
+          },
         };
         await datastore.save(dataBlob); // Saves the entity
       } else if (hubConfig.saveQueriedBlock == "localStorage") {
@@ -289,13 +289,13 @@ async function _saveQueriedBlockNumber(configIdentifier, blockNumber) {
     {
       retries: 2,
       minTimeout: 2000, // delay between retries in ms
-      onRetry: error => {
+      onRetry: (error) => {
         logger.debug({
           at: "serverlessHub",
           message: "An error was thrown when saving the previously queried block number - retrying",
-          error: typeof error === "string" ? new Error(error) : error
+          error: typeof error === "string" ? new Error(error) : error,
         });
-      }
+      },
     }
   );
 }
@@ -321,13 +321,13 @@ async function _getLastQueriedBlockNumber(configIdentifier) {
     {
       retries: 2,
       minTimeout: 2000, // delay between retries in ms
-      onRetry: error => {
+      onRetry: (error) => {
         logger.debug({
           at: "serverlessHub",
           message: "An error was thrown when fetching the most recent block number - retrying",
-          error: typeof error === "string" ? new Error(error) : error
+          error: typeof error === "string" ? new Error(error) : error,
         });
-      }
+      },
     }
   );
 }
@@ -355,8 +355,8 @@ async function _postJson(url, body) {
     headers: {
       "Content-type": "application/json",
       Accept: "application/json",
-      "Accept-Charset": "utf-8"
-    }
+      "Accept-Charset": "utf-8",
+    },
   });
   return await response.json(); // extract JSON from the http response
 }
@@ -368,7 +368,7 @@ function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs
     errorOutputs[botKey] = {
       status: "timeout",
       message: spokeResponse.reason.message,
-      botIdentifier: botKey
+      botIdentifier: botKey,
     };
   } else if (
     spokeResponse.status == "rejected" ||
@@ -383,13 +383,13 @@ function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs
           spokeResponse.reason.response &&
           spokeResponse.reason.response.data &&
           spokeResponse.reason.response.data.execResponse),
-      botIdentifier: botKey
+      botIdentifier: botKey,
     };
   } else {
     validOutputs[botKey] = {
       status: spokeResponse.status,
       execResponse: spokeResponse.value && spokeResponse.value.execResponse,
-      botIdentifier: botKey
+      botIdentifier: botKey,
     };
   }
 }
@@ -400,7 +400,7 @@ const _rejectAfterDelay = (seconds, childProcessIdentifier) =>
     setTimeout(reject, seconds * 1000, {
       status: "timeout",
       message: `The spoke call took longer than ${seconds} seconds to reply`,
-      childProcessIdentifier
+      childProcessIdentifier,
     });
   });
 
@@ -428,7 +428,7 @@ async function Poll(_Logger = Logger, port = 8080, _spokeURL, _CustomNodeUrl, _h
       customNodeUrl,
       hubConfig,
       port,
-      processEnvironment: process.env
+      processEnvironment: process.env,
     });
   });
 }

@@ -24,7 +24,7 @@ const createObjectFromDefaultProps = (overrideProps, defaultProps) => {
 
   const newObject = {};
 
-  Object.keys(defaultProps).forEach(prop => {
+  Object.keys(defaultProps).forEach((prop) => {
     // Set property value to that contained in `overrideProps` if it exists, else set to `defaultProps`.
     newObject[prop] = prop in overrideProps ? overrideProps[prop] : defaultProps[prop].value;
 
@@ -42,5 +42,5 @@ const createObjectFromDefaultProps = (overrideProps, defaultProps) => {
 };
 
 module.exports = {
-  createObjectFromDefaultProps
+  createObjectFromDefaultProps,
 };

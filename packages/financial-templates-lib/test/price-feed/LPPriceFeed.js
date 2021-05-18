@@ -8,7 +8,7 @@ const { getTruffleContract } = require("@uma/core");
 const ERC20Interface = getTruffleContract("IERC20Standard", web3);
 const ERC20 = getTruffleContract("ExpandedERC20", web3);
 
-contract("LPPriceFeed.js", function(accounts) {
+contract("LPPriceFeed.js", function (accounts) {
   const owner = accounts[0];
 
   let pool;
@@ -20,7 +20,7 @@ contract("LPPriceFeed.js", function(accounts) {
   let tokenDecimals = 8;
   let priceFeedDecimals = 12;
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     pool = await ERC20.new("LP Pool", "LP", poolDecimals, { from: owner });
     token = await ERC20.new("Test Token", "TT", tokenDecimals, { from: owner });
     pool.addMinter(owner);
@@ -28,7 +28,7 @@ contract("LPPriceFeed.js", function(accounts) {
 
     dummyLogger = winston.createLogger({
       level: "info",
-      transports: [new winston.transports.Console()]
+      transports: [new winston.transports.Console()],
     });
 
     lpPriceFeed = new LPPriceFeed({
@@ -38,11 +38,11 @@ contract("LPPriceFeed.js", function(accounts) {
       erc20Abi: ERC20Interface.abi,
       tokenAddress: token.address,
       poolAddress: pool.address,
-      priceFeedDecimals
+      priceFeedDecimals,
     });
   });
 
-  it("Basic current price", async function() {
+  it("Basic current price", async function () {
     await pool.mint(owner, parseFixed("100", poolDecimals));
     await token.mint(pool.address, parseFixed("25", tokenDecimals));
     await lpPriceFeed.update();
@@ -50,7 +50,7 @@ contract("LPPriceFeed.js", function(accounts) {
     assert.equal(lpPriceFeed.getCurrentPrice().toString(), parseFixed("0.25", priceFeedDecimals).toString());
   });
 
-  it("Correctly selects most recent price", async function() {
+  it("Correctly selects most recent price", async function () {
     await pool.mint(owner, parseFixed("100", poolDecimals));
     await token.mint(pool.address, parseFixed("25", tokenDecimals));
     await pool.mint(owner, parseFixed("100", poolDecimals));
@@ -59,7 +59,7 @@ contract("LPPriceFeed.js", function(accounts) {
     assert.equal(lpPriceFeed.getCurrentPrice().toString(), parseFixed("0.125", priceFeedDecimals).toString());
   });
 
-  it("Historical Price", async function() {
+  it("Historical Price", async function () {
     await pool.mint(owner, parseFixed("100", poolDecimals));
     await token.mint(pool.address, parseFixed("25", tokenDecimals));
 
@@ -91,7 +91,7 @@ contract("LPPriceFeed.js", function(accounts) {
     );
   });
 
-  it("Zero LP shares", async function() {
+  it("Zero LP shares", async function () {
     await token.mint(pool.address, parseFixed("25", tokenDecimals));
 
     await lpPriceFeed.update();
@@ -99,7 +99,7 @@ contract("LPPriceFeed.js", function(accounts) {
     assert.equal(lpPriceFeed.getCurrentPrice().toString(), "0");
   });
 
-  it("Update Frequency", async function() {
+  it("Update Frequency", async function () {
     await pool.mint(owner, parseFixed("1", poolDecimals));
     await token.mint(pool.address, parseFixed("50", tokenDecimals));
     await lpPriceFeed.update();
@@ -123,11 +123,11 @@ contract("LPPriceFeed.js", function(accounts) {
     assert.equal(lpPriceFeed.getLastUpdateTime(), mockTime); // Update time should have no incremented.
   });
 
-  it("PriceFeedDecimals", async function() {
+  it("PriceFeedDecimals", async function () {
     assert.equal(lpPriceFeed.getPriceFeedDecimals(), priceFeedDecimals);
   });
 
-  it("BlockFinder correctly passed in", async function() {
+  it("BlockFinder correctly passed in", async function () {
     const blockFinder = BlockFinder(() => {
       throw "err";
     }); // BlockFinder should throw immediately.
@@ -140,7 +140,7 @@ contract("LPPriceFeed.js", function(accounts) {
       tokenAddress: token.address,
       poolAddress: pool.address,
       priceFeedDecimals,
-      blockFinder
+      blockFinder,
     });
 
     await lpPriceFeed.update();

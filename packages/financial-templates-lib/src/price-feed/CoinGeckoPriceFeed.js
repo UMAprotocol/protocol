@@ -43,7 +43,7 @@ class CoinGeckoPriceFeed extends PriceFeedInterface {
 
     this.priceHistory = []; // array of { time: number, price: BN }
 
-    this.convertPriceFeedDecimals = number => {
+    this.convertPriceFeedDecimals = (number) => {
       // Converts price result to wei
       // returns price conversion to correct decimals as a big number.
       // Note: Must ensure that `number` has no more decimal places than `priceFeedDecimals`.
@@ -63,7 +63,7 @@ class CoinGeckoPriceFeed extends PriceFeedInterface {
         message: "Update skipped because the last one was too recent",
         currentTime: currentTime,
         lastUpdateTimestamp: this.lastUpdateTime,
-        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime
+        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime,
       });
       return;
     }
@@ -72,7 +72,7 @@ class CoinGeckoPriceFeed extends PriceFeedInterface {
       at: "CoinGeckoPriceFeed",
       message: "Updating CoinGeckoPriceFeed",
       currentTime: currentTime,
-      lastUpdateTimestamp: this.lastUpdateTime
+      lastUpdateTimestamp: this.lastUpdateTime,
     });
 
     // 1. Construct URL.
@@ -145,9 +145,7 @@ class CoinGeckoPriceFeed extends PriceFeedInterface {
 
   _invertPriceSafely(priceBN) {
     if (priceBN && !priceBN.isZero()) {
-      return this.convertPriceFeedDecimals("1")
-        .mul(this.convertPriceFeedDecimals("1"))
-        .div(priceBN);
+      return this.convertPriceFeedDecimals("1").mul(this.convertPriceFeedDecimals("1")).div(priceBN);
     } else {
       return undefined;
     }
@@ -155,5 +153,5 @@ class CoinGeckoPriceFeed extends PriceFeedInterface {
 }
 
 module.exports = {
-  CoinGeckoPriceFeed
+  CoinGeckoPriceFeed,
 };

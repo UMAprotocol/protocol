@@ -13,7 +13,7 @@ import {
   createTokenPriceFeedForFinancialContract,
   waitForLogger,
   delay,
-  DSProxyManager
+  DSProxyManager,
 } from "@uma/financial-templates-lib";
 
 import { RangeTrader } from "./RangeTrader";
@@ -39,7 +39,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       tokenPriceFeedConfig: config.tokenPriceFeedConfig,
       referencePriceFeedConfig: config.referencePriceFeedConfig,
       exchangeAdapterConfig: config.exchangeAdapterConfig,
-      rangeTraderConfig: config.rangeTraderConfig
+      rangeTraderConfig: config.rangeTraderConfig,
     });
 
     // Load unlocked web3 accounts, get the networkId and set up price feed.
@@ -55,7 +55,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       account: accounts[0],
       dsProxyFactoryAddress: config.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
       dsProxyFactoryAbi: getAbi("DSProxyFactory"),
-      dsProxyAbi: getAbi("DSProxy")
+      dsProxyAbi: getAbi("DSProxy"),
     });
     await dsProxyManager.initializeDSProxy();
 
@@ -77,7 +77,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
         config.financialContractAddress,
         config.referencePriceFeedConfig
       ),
-      createExchangeAdapter(logger, web3, dsProxyManager, config.exchangeAdapterConfig, networkId)
+      createExchangeAdapter(logger, web3, dsProxyManager, config.exchangeAdapterConfig, networkId),
     ]);
     const rangeTrader = new RangeTrader(
       logger,
@@ -94,7 +94,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
           await Promise.all([
             (tokenPriceFeed as any).update(),
             (referencePriceFeed as any).update(),
-            gasEstimator.update()
+            gasEstimator.update(),
           ]);
 
           // Check if a trade should be done. If so, trade.
@@ -104,20 +104,20 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
           retries: config.errorRetries,
           minTimeout: config.errorRetriesTimeout * 1000, // delay between retries in ms
           randomize: false,
-          onRetry: error => {
+          onRetry: (error) => {
             logger.debug({
               at: "Trader#index",
               message: "An error was thrown in the execution loop - retrying",
-              error: typeof error === "string" ? new Error(error) : error
+              error: typeof error === "string" ? new Error(error) : error,
             });
-          }
+          },
         }
       );
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (config.pollingDelay === 0) {
         logger.debug({
           at: "Trader#index",
-          message: "End of serverless execution loop - terminating process"
+          message: "End of serverless execution loop - terminating process",
         });
         await waitForLogger(logger);
         await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
@@ -126,7 +126,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       logger.debug({
         at: "Trader#index",
         message: "End of execution loop - waiting polling delay",
-        pollingDelay: `${config.pollingDelay} (s)`
+        pollingDelay: `${config.pollingDelay} (s)`,
       });
       await delay(Number(config.pollingDelay));
     }
@@ -141,11 +141,11 @@ if (require.main === module) {
     .then(() => {
       process.exit(0);
     })
-    .catch(error => {
+    .catch((error) => {
       Logger.error({
         at: "Trader#index",
         message: "Trader execution error🚨",
-        error: typeof error === "string" ? new Error(error) : error
+        error: typeof error === "string" ? new Error(error) : error,
       });
       process.exit(1);
     });

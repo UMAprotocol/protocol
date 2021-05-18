@@ -152,7 +152,7 @@ class FinancialContractEventClient {
     // Define a config to bound the queries by.
     const blockSearchConfig = {
       fromBlock: this.firstBlockToSearch,
-      toBlock: lastBlockToSearch
+      toBlock: lastBlockToSearch,
     };
 
     // Look for events on chain from the previous seen block number to the current block number.
@@ -169,7 +169,7 @@ class FinancialContractEventClient {
       regularFeeEventsObj,
       finalFeeEventsObj,
       liquidationWithdrawnEventsObj,
-      settleExpiredPositionEventsObj
+      settleExpiredPositionEventsObj,
     ] = await Promise.all([
       this.financialContract.methods.getCurrentTime().call(),
       this.financialContract.getPastEvents("LiquidationCreated", blockSearchConfig),
@@ -185,7 +185,7 @@ class FinancialContractEventClient {
       this.financialContract.getPastEvents("LiquidationWithdrawn", blockSearchConfig),
       this.contractType == "ExpiringMultiParty" // If the contract is an EMP then find the SettleExpiredPosition events.
         ? this.financialContract.getPastEvents("SettleExpiredPosition", blockSearchConfig)
-        : this.financialContract.getPastEvents("SettleEmergencyShutdown", blockSearchConfig) // Else, find the SettleEmergencyShutdown events.
+        : this.financialContract.getPastEvents("SettleEmergencyShutdown", blockSearchConfig), // Else, find the SettleEmergencyShutdown events.
     ]);
     // Set the current contract time as the last update timestamp from the contract.
     this.lastUpdateTimestamp = currentTime;
@@ -201,7 +201,7 @@ class FinancialContractEventClient {
         liquidationId: event.returnValues.liquidationId,
         tokensOutstanding: event.returnValues.tokensOutstanding,
         lockedCollateral: event.returnValues.lockedCollateral,
-        liquidatedCollateral: event.returnValues.liquidatedCollateral
+        liquidatedCollateral: event.returnValues.liquidatedCollateral,
       });
     }
 
@@ -214,7 +214,7 @@ class FinancialContractEventClient {
         liquidator: event.returnValues.liquidator,
         disputer: event.returnValues.disputer,
         liquidationId: event.returnValues.liquidationId,
-        disputeBondAmount: event.returnValues.disputeBondAmount
+        disputeBondAmount: event.returnValues.disputeBondAmount,
       });
     }
 
@@ -228,7 +228,7 @@ class FinancialContractEventClient {
         liquidator: event.returnValues.liquidator,
         disputer: event.returnValues.disputer,
         liquidationId: event.returnValues.liquidationId,
-        disputeSucceeded: event.returnValues.disputeSucceeded
+        disputeSucceeded: event.returnValues.disputeSucceeded,
       });
     }
 
@@ -239,7 +239,7 @@ class FinancialContractEventClient {
         blockNumber: event.blockNumber,
         sponsor: event.returnValues.sponsor,
         collateralAmount: event.returnValues.collateralAmount,
-        tokenAmount: event.returnValues.tokenAmount
+        tokenAmount: event.returnValues.tokenAmount,
       });
     }
 
@@ -248,14 +248,14 @@ class FinancialContractEventClient {
       // Every transaction that emits a NewSponsor event must also emit a PositionCreated event.
       // We assume that there is only one PositionCreated event that has the same block number as
       // the current NewSponsor event.
-      const createEvent = this.createEvents.filter(e => e.blockNumber === event.blockNumber);
+      const createEvent = this.createEvents.filter((e) => e.blockNumber === event.blockNumber);
 
       this.newSponsorEvents.push({
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
         sponsor: event.returnValues.sponsor,
         collateralAmount: createEvent[0].collateralAmount,
-        tokenAmount: createEvent[0].tokenAmount
+        tokenAmount: createEvent[0].tokenAmount,
       });
     }
 
@@ -265,7 +265,7 @@ class FinancialContractEventClient {
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
         sponsor: event.returnValues.sponsor,
-        collateralAmount: event.returnValues.collateralAmount
+        collateralAmount: event.returnValues.collateralAmount,
       });
     }
 
@@ -275,7 +275,7 @@ class FinancialContractEventClient {
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
         sponsor: event.returnValues.sponsor,
-        collateralAmount: event.returnValues.collateralAmount
+        collateralAmount: event.returnValues.collateralAmount,
       });
     }
 
@@ -286,7 +286,7 @@ class FinancialContractEventClient {
         blockNumber: event.blockNumber,
         sponsor: event.returnValues.sponsor,
         collateralAmount: event.returnValues.collateralAmount,
-        tokenAmount: event.returnValues.tokenAmount
+        tokenAmount: event.returnValues.tokenAmount,
       });
     }
 
@@ -296,7 +296,7 @@ class FinancialContractEventClient {
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
         regularFee: event.returnValues.regularFee,
-        lateFee: event.returnValues.lateFee
+        lateFee: event.returnValues.lateFee,
       });
     }
 
@@ -305,7 +305,7 @@ class FinancialContractEventClient {
       this.finalFeeEvents.push({
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
-        amount: event.returnValues.amount
+        amount: event.returnValues.amount,
       });
     }
 
@@ -325,7 +325,7 @@ class FinancialContractEventClient {
           this.contractVersion == "1.2.0" || this.contractVersion == "1.2.1" || this.contractVersion == "1.2.2"
             ? event.returnValues.withdrawalAmount
             : event.returnValues.paidToLiquidator,
-        liquidationStatus: event.returnValues.liquidationStatus
+        liquidationStatus: event.returnValues.liquidationStatus,
       });
     }
 
@@ -337,14 +337,14 @@ class FinancialContractEventClient {
         blockNumber: event.blockNumber,
         caller: event.returnValues.caller,
         collateralReturned: event.returnValues.collateralReturned,
-        tokensBurned: event.returnValues.tokensBurned
+        tokensBurned: event.returnValues.tokensBurned,
       });
     }
 
     // Look for perpetual specific events:
     if (this.contractType == "Perpetual") {
       const [fundingRateUpdatedEventsObj] = await Promise.all([
-        this.financialContract.getPastEvents("FundingRateUpdated", blockSearchConfig)
+        this.financialContract.getPastEvents("FundingRateUpdated", blockSearchConfig),
       ]);
 
       // Funding Rate Updated events
@@ -354,7 +354,7 @@ class FinancialContractEventClient {
           blockNumber: event.blockNumber,
           newFundingRate: event.returnValues.newFundingRate,
           updateTime: event.returnValues.updateTime,
-          reward: event.returnValues.reward
+          reward: event.returnValues.reward,
         });
       }
     }
@@ -365,11 +365,11 @@ class FinancialContractEventClient {
     this.logger.debug({
       at: "FinancialContractEventClient",
       message: "Financial Contract event state updated",
-      lastUpdateTimestamp: this.lastUpdateTimestamp
+      lastUpdateTimestamp: this.lastUpdateTimestamp,
     });
   }
 }
 
 module.exports = {
-  FinancialContractEventClient
+  FinancialContractEventClient,
 };

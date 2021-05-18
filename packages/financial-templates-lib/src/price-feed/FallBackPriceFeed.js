@@ -57,8 +57,8 @@ class FallBackPriceFeed extends PriceFeedInterface {
   getLastUpdateTime() {
     // Filter out missing update times:
     let lastUpdateTimes = this.priceFeeds
-      .map(priceFeed => priceFeed.getLastUpdateTime())
-      .filter(element => element !== undefined && element !== null);
+      .map((priceFeed) => priceFeed.getLastUpdateTime())
+      .filter((element) => element !== undefined && element !== null);
 
     if (lastUpdateTimes.length > 0) {
       // Take the most recent update time.
@@ -70,14 +70,14 @@ class FallBackPriceFeed extends PriceFeedInterface {
 
   // Return the longest lookback within all the fallback feeds.
   getLookback() {
-    return Math.max(this.priceFeeds.map(feed => feed.historicalLookback));
+    return Math.max(this.priceFeeds.map((feed) => feed.historicalLookback));
   }
 
   // Errors out if any price feed had a different number of decimals.
   getPriceFeedDecimals() {
-    const priceFeedDecimals = this.priceFeeds.map(priceFeed => priceFeed.getPriceFeedDecimals());
+    const priceFeedDecimals = this.priceFeeds.map((priceFeed) => priceFeed.getPriceFeedDecimals());
     // Check that every price feeds decimals match the 0th price feeds decimals.
-    if (!priceFeedDecimals[0] || !priceFeedDecimals.every(feedDecimals => feedDecimals === priceFeedDecimals[0])) {
+    if (!priceFeedDecimals[0] || !priceFeedDecimals.every((feedDecimals) => feedDecimals === priceFeedDecimals[0])) {
       throw new Error("FallBackPriceFeed's feeds do not all have the same decimals or invalid decimals!");
     }
 
@@ -91,10 +91,10 @@ class FallBackPriceFeed extends PriceFeedInterface {
     let errors = [];
     // allSettled() does not short-circuit if any promises reject, instead it returns
     // an array of ["fulfilled", "rejected"] statuses.
-    const results = await Promise.allSettled(this.priceFeeds.map(priceFeed => priceFeed.update()));
+    const results = await Promise.allSettled(this.priceFeeds.map((priceFeed) => priceFeed.update()));
 
     // Filter out rejected updates:
-    results.map(result => {
+    results.map((result) => {
       if (result.status === "rejected") {
         errors.push(new Error(result.reason));
       }
@@ -106,5 +106,5 @@ class FallBackPriceFeed extends PriceFeedInterface {
 }
 
 module.exports = {
-  FallBackPriceFeed
+  FallBackPriceFeed,
 };

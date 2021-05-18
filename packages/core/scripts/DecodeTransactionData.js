@@ -11,11 +11,11 @@ function _decodeData(data) {
   return getAbiDecoder().decodeMethod(data);
 }
 
-const _printTransactionDataRecursive = function(txnObj) {
+const _printTransactionDataRecursive = function (txnObj) {
   // If transaction is a proposal then recursively print out its transactions
   if (txnObj.name === "propose" && txnObj.params.transactions.length > 0) {
     console.group(`Transaction is a proposal containing ${txnObj.params.transactions.length} transactions:`);
-    txnObj.params.transactions.forEach(_txn => {
+    txnObj.params.transactions.forEach((_txn) => {
       const decodedTxnData = _decodeData(_txn.data);
       _printTransactionDataRecursive({ ...decodedTxnData, to: _txn.to, value: _txn.value });
     });
@@ -26,7 +26,7 @@ const _printTransactionDataRecursive = function(txnObj) {
   }
 };
 
-const decodeTransactionData = function(callback) {
+const decodeTransactionData = function (callback) {
   try {
     if (!argv.data) {
       callback("You must provide the transaction data using the --data argument, e.g. --data 0x1234");

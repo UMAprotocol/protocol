@@ -86,7 +86,7 @@ export async function getClaimsForAddress(merkleDistributorAddress: string, clai
       return {
         ...claim,
         ...chainWIndowInformation[claim.windowIndex.toString()],
-        hasClaimed: hasAccountClaimed[claim.windowIndex]
+        hasClaimed: hasAccountClaimed[claim.windowIndex],
       };
     });
 }

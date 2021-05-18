@@ -17,13 +17,11 @@ async function run() {
   const logstream = queries.streamLogsByContract(empCreator);
   const decode = DecodeLog(empCreatorAbi);
   await highland(logstream)
-    .doto(log => {
+    .doto((log) => {
       const result = decode(log);
       console.log(result.name, result.args, log);
     })
     .resume();
 }
 
-run()
-  .then(console.log)
-  .catch(console.log);
+run().then(console.log).catch(console.log);

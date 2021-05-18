@@ -22,7 +22,7 @@ let pair;
 let pairAddress;
 
 // Takes in a json object from a compiled contract and returns a truffle contract instance that can be deployed.
-const createContractObjectFromJson = contractJsonObject => {
+const createContractObjectFromJson = (contractJsonObject) => {
   let truffleContractCreator = truffleContract(contractJsonObject);
   truffleContractCreator.setProvider(web3.currentProvider);
   return truffleContractCreator;
@@ -47,7 +47,7 @@ const getAmountOut = async (amountIn, aToB) => {
   return numerator.div(denominator);
 };
 
-contract("UniswapV2Broker", function(accounts) {
+contract("UniswapV2Broker", function (accounts) {
   const deployer = accounts[0];
   const trader = accounts[1];
   before(async () => {
@@ -55,7 +55,7 @@ contract("UniswapV2Broker", function(accounts) {
     // deploy Uniswap V2 Factory & router.
     factory = await createContractObjectFromJson(UniswapV2Factory).new(deployer, { from: deployer });
     router = await createContractObjectFromJson(UniswapV2Router02).new(factory.address, WETH.address, {
-      from: deployer
+      from: deployer,
     });
 
     // create a uniswapV2Broker
@@ -90,7 +90,7 @@ contract("UniswapV2Broker", function(accounts) {
     assert.equal(await getPoolSpotPrice(), "1000.0000"); // price should be exactly 1000 TokenA/TokenB.
   });
 
-  it("Broker can correctly trade the price up to a desired price", async function() {
+  it("Broker can correctly trade the price up to a desired price", async function () {
     // Say that someone comes and trades in size against the pool, trading a large amount of tokenB for tokenA,
     // dropping the token price to something off peg. We will compute that the price changes as expected. Say a trade of
     // 100000 token B for token A. Based on the pool size, the resultant price will be 980.3252 (see logic below for calc).
@@ -162,7 +162,7 @@ contract("UniswapV2Broker", function(accounts) {
     assert.equal(Number((await getPoolSpotPrice()).toString()).toFixed(0), "1000");
   });
 
-  it("Broker can correctly trade the price down to a desired price", async function() {
+  it("Broker can correctly trade the price down to a desired price", async function () {
     // Say that someone comes and trades in size against the pool, trading a large amount of tokenA for tokenB,
     // increasing the token price to something off peg. We will compute that the price changes as expected. Say a trade of
     // 1000000000 token A for token B. Based on the pool size, the resultant price will be 1209.6700 (see logic below for calc).

@@ -3,15 +3,15 @@ const { assert } = require("chai");
 
 const Voting = artifacts.require("Voting");
 
-contract("index.js", function() {
-  it("Read Contract ABI", async function() {
+contract("index.js", function () {
+  it("Read Contract ABI", async function () {
     assert.deepEqual(getAbi("Voting"), Voting.abi);
 
     // Bad contract name.
     assert.throws(() => getAbi("Nonsense"));
   });
 
-  it("Read Contract Address", async function() {
+  it("Read Contract Address", async function () {
     const networkId = await web3.eth.net.getId();
     assert.equal(getAddress("Voting", networkId), (await Voting.deployed()).address);
 
@@ -22,7 +22,7 @@ contract("index.js", function() {
     assert.throws(() => getAddress("Nonsense", networkId));
   });
 
-  it("Truffle contract", function() {
+  it("Truffle contract", function () {
     // Cannot deepEqual the entire object as some of the getters cause the process to hang.
     assert.deepEqual(getTruffleContract("Voting").networks, Voting.networks);
 
@@ -30,7 +30,7 @@ contract("index.js", function() {
     assert.throws(() => getTruffleContract("Nonsense"));
   });
 
-  it("Legacy Contract Abis", function() {
+  it("Legacy Contract Abis", function () {
     // Note: the "PositionManager" specifically existed in version 1.1.0.
     assert.isNotNull(getAbi("PositionManager", "1.1.0"));
     assert.isNotNull(getTruffleContract("PositionManager", undefined, "1.1.0"));

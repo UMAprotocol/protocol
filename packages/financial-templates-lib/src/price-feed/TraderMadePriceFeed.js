@@ -81,7 +81,7 @@ class TraderMadePriceFeed extends PriceFeedInterface {
     this.priceFeedDecimals = priceFeedDecimals;
     this.ohlcPeriod = ohlcPeriod;
 
-    this.convertPriceFeedDecimals = number => {
+    this.convertPriceFeedDecimals = (number) => {
       // Converts price result to wei
       // returns price conversion to correct decimals as a big number
       return this.toBN(parseFixed(number.toString(), priceFeedDecimals).toString());
@@ -127,7 +127,7 @@ class TraderMadePriceFeed extends PriceFeedInterface {
 
     // historicalPricesToCheck are ordered from oldest to newest.
     // This finds the first priceTime whose closeTime is after the provided time.
-    const match = historicalPricesToCheck.find(price => {
+    const match = historicalPricesToCheck.find((price) => {
       return time < price.closeTime;
     });
 
@@ -195,7 +195,7 @@ class TraderMadePriceFeed extends PriceFeedInterface {
         message: "Update skipped because the last one was too recent",
         currentTime: currentTime,
         lastUpdateTimestamp: this.lastUpdateTime,
-        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime
+        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime,
       });
       return;
     }
@@ -204,7 +204,7 @@ class TraderMadePriceFeed extends PriceFeedInterface {
       at: "TraderMade_PriceFeed",
       message: "Updating Latest Price",
       currentTime: currentTime,
-      lastUpdateTimestamp: this.lastUpdateTime
+      lastUpdateTimestamp: this.lastUpdateTime,
     });
 
     // 1. Construct URLs.
@@ -251,7 +251,7 @@ class TraderMadePriceFeed extends PriceFeedInterface {
       at: "TraderMade_PriceFeed",
       message: "Updating Minute Price",
       currentTime: currentTime,
-      lastUpdateTimestamp: this.lastUpdateTime
+      lastUpdateTimestamp: this.lastUpdateTime,
     });
 
     // Round down to the nearest ohlc period so the queries captures the OHLC of the period *before* this earliest
@@ -295,11 +295,11 @@ class TraderMadePriceFeed extends PriceFeedInterface {
     // }
     // For more info, see: https://marketdata.tradermade.com/documentation
     const newHistoricalPricesMinute = ohlcMinuteResponse.quotes
-      .map(ohlcMinute => ({
+      .map((ohlcMinute) => ({
         // Output data should be a list of objects with only the open and close times and prices.
         closePrice: this.convertPriceFeedDecimals(ohlcMinute.close),
         openTime: this._dateTimeToSecond(ohlcMinute.date) - this.ohlcPeriod * 60,
-        closeTime: this._dateTimeToSecond(ohlcMinute.date)
+        closeTime: this._dateTimeToSecond(ohlcMinute.date),
       }))
       .sort((a, b) => {
         // Sorts the data such that the oldest elements come first.
@@ -322,7 +322,7 @@ class TraderMadePriceFeed extends PriceFeedInterface {
       at: "TraderMade_PriceFeed",
       message: "Updating Hourly Price",
       currentTime: currentTime,
-      lastUpdateTimestamp: this.lastUpdateTime
+      lastUpdateTimestamp: this.lastUpdateTime,
     });
 
     // Round down to the nearest ohlc period so the queries captures the OHLC of the period *before* this earliest
@@ -366,11 +366,11 @@ class TraderMadePriceFeed extends PriceFeedInterface {
     // }
     // For more info, see: https://marketdata.tradermade.com/documentation
     const newHistoricalPricesHourly = ohlcHourlyResponse.quotes
-      .map(ohlcHourly => ({
+      .map((ohlcHourly) => ({
         // Output data should be a list of objects with only the open and close times and prices.
         closePrice: this.convertPriceFeedDecimals(ohlcHourly.close),
         openTime: this._dateTimeToSecond(ohlcHourly.date) - 3600,
-        closeTime: this._dateTimeToSecond(ohlcHourly.date)
+        closeTime: this._dateTimeToSecond(ohlcHourly.date),
       }))
       .sort((a, b) => {
         // Sorts the data such that the oldest elements come first.
@@ -403,14 +403,14 @@ class TraderMadePriceFeed extends PriceFeedInterface {
         if (this.hourlyLookback) {
           this.logger.debug({
             at: "TraderMade_PriceFeed#update",
-            message: "updateMinute failed, falling back to updateHourly"
+            message: "updateMinute failed, falling back to updateHourly",
           });
           try {
             await this.updateHourly(lastUpdateTime);
           } catch (hourlyError) {
             this.logger.debug({
               at: "TraderMade_PriceFeed#update",
-              message: "fallback to updateHourly also failed"
+              message: "fallback to updateHourly also failed",
             });
             throw [minuteError, hourlyError];
           }
@@ -440,5 +440,5 @@ class TraderMadePriceFeed extends PriceFeedInterface {
 }
 
 module.exports = {
-  TraderMadePriceFeed
+  TraderMadePriceFeed,
 };

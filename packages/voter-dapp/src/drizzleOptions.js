@@ -11,22 +11,22 @@ const OldDesignatedVotingFactory = {
   networks: {
     ...DesignatedVotingFactory.networks, // Unless overridden, this will make the "old" voting contract == new voting contract.
     1: {
-      address: "0xE81EeE5Da165fA6863bBc82dF66E62d18625d592"
+      address: "0xE81EeE5Da165fA6863bBc82dF66E62d18625d592",
     },
     42: {
-      address: "0xF988f9f62f355966a758c5936C9080183C176585"
-    }
+      address: "0xF988f9f62f355966a758c5936C9080183C176585",
+    },
   },
-  contractName: "OldDesignatedVotingFactory"
+  contractName: "OldDesignatedVotingFactory",
 };
 
 const options = {
   contracts: [DesignatedVotingFactory, Governor, Voting, VotingToken, OldDesignatedVotingFactory],
   polls: {
     accounts: 1000,
-    blocks: 3000
+    blocks: 3000,
   },
-  syncAlways: true
+  syncAlways: true,
 };
 
 export default options;

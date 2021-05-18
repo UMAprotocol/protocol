@@ -11,5 +11,3 @@ cache
 .github
 types
 contract-types
-packages/core/index.ts
-packages/core/browser.ts

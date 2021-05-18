@@ -125,14 +125,13 @@ Note: this is a work in progress and the typescript API will likely change and i
 The best support is for Ethers contract types. To construct an Ethers contract in node, simply import from the ethers factories:
 
 ```ts
-import { EthersContracts } from "@uma/core";
+import { EthersContracts } from "@uma/core"
 const provider = new ethers.providers.JsonRpcProvider(RPC_HOST)
 const votingInstance = EthersContracts.Voting__factory.connect(VOTING_ADDRESS, provider)
 
-
 // Raw type rather than the factory.
-import type { EthersContracts } from "@uma/core";
-const { Voting } = EthersContracts;
+import type { EthersContracts } from "@uma/core"
+const { Voting } = EthersContracts
 ```
 
 ### Truffle
@@ -140,13 +139,13 @@ const { Voting } = EthersContracts;
 Truffle has well-defined contract types as well, but there are no built-in truffle factories.
 
 ```ts
-import type { TruffleContracts } from "@uma/core/contract-types/truffle";
-const { VotingInstance, VotingContract } = TruffleContracts;
+import type { TruffleContracts } from "@uma/core/contract-types/truffle"
+const { VotingInstance, VotingContract } = TruffleContracts
 
-import { getTruffleContract } from "@uma/core";
+import { getTruffleContract } from "@uma/core"
 
-const Voting = getTruffleContract("Voting", web3) as VotingContract;
-const voting = Voting.deployed(); // Should be a VotingInstance.
+const Voting = getTruffleContract("Voting", web3) as VotingContract
+const voting = Voting.deployed() // Should be a VotingInstance.
 ```
 
 ### Web3
@@ -155,7 +154,7 @@ Web3 types can't be imported directly from the index file. However, if you are a
 this way:
 
 ```ts
-import type { Voting } from "@uma/core/contract-types/web3/Voting";
+import type { Voting } from "@uma/core/contract-types/web3/Voting"
 
-const voting = new web3.eth.Contract(VOTING_ABI, VOTING_ADDRESS) as Voting;
+const voting = new web3.eth.Contract(VOTING_ABI, VOTING_ADDRESS) as Voting
 ```

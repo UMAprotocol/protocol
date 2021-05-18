@@ -1,5 +1,5 @@
 const { interfaceName, getBridgeChainId } = require("@uma/common");
-const func = async function(hre) {
+const func = async function (hre) {
   const { deployments, getNamedAccounts, getChainId, web3 } = hre;
   const { utf8ToHex, padRight } = web3.utils;
   const { deploy, log, execute } = deployments;
@@ -14,12 +14,12 @@ const func = async function(hre) {
     [deployer], // Initial relayers defaults to deployer as 1 of 1
     1, // Relayer threshold set to 1
     0, // Deposit fee
-    100 // # of blocks after which a proposal expires
+    100, // # of blocks after which a proposal expires
   ];
   const deployResult = await deploy("Bridge", {
     from: deployer,
     args,
-    log: true
+    log: true,
   });
 
   if (deployResult.newlyDeployed) {

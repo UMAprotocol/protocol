@@ -73,7 +73,7 @@ class TokenBalanceClient {
 
     this.logger.debug({
       at: "TokenBalanceClient",
-      message: "Token balance storage updated"
+      message: "Token balance storage updated",
     });
   }
 
@@ -82,7 +82,7 @@ class TokenBalanceClient {
     const [collateralBalance, syntheticBalance, etherBalance] = await Promise.all([
       this.collateralToken.methods.balanceOf(account).call(),
       this.syntheticToken.methods.balanceOf(account).call(),
-      this.web3.eth.getBalance(account)
+      this.web3.eth.getBalance(account),
     ]);
     return { collateralBalance, syntheticBalance, etherBalance };
   }
@@ -98,12 +98,12 @@ class TokenBalanceClient {
       this.logger.debug({
         at: "TokenBalanceClient",
         message: "New address requested, adding address to monitor list.",
-        address: address
+        address: address,
       });
     }
   }
 }
 
 module.exports = {
-  TokenBalanceClient
+  TokenBalanceClient,
 };

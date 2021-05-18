@@ -28,7 +28,7 @@ export class TraderConfig {
       DS_PROXY_FACTORY_ADDRESS,
       REFERENCE_PRICE_FEED_CONFIG,
       EXCHANGE_ADAPTER_CONFIG,
-      RANGE_TRADER_CONFIG
+      RANGE_TRADER_CONFIG,
     } = env;
     assert(EMP_ADDRESS, "EMP_ADDRESS required");
     this.financialContractAddress = Web3.utils.toChecksumAddress(EMP_ADDRESS);

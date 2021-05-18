@@ -10,7 +10,7 @@ const {
   advanceBlockAndSetTime,
   takeSnapshot,
   revertToSnapshot,
-  computeVoteHash
+  computeVoteHash,
 } = require("@uma/common");
 
 const Token = artifacts.require("ExpandedERC20");
@@ -40,7 +40,7 @@ const upgradeAddresses = {
   FinancialContractsAdmin: FinancialContractsAdmin.address,
   IdentifierWhitelist: IdentifierWhitelist.address,
   Governor: Governor.address,
-  Finder: Finder.address // Finder was not upgraded in UMIP3
+  Finder: Finder.address, // Finder was not upgraded in UMIP3
 };
 
 let snapshotId;
@@ -115,10 +115,10 @@ async function runExport() {
   const additionProposalTx = await governor.propose(
     [
       { to: registry.address, value: 0, data: empCreatorRegistrationTx },
-      { to: identifierWhitelist.address, value: 0, data: identiferRegistrationTx }
+      { to: identifierWhitelist.address, value: 0, data: identiferRegistrationTx },
     ],
     {
-      from: proposerWallet
+      from: proposerWallet,
     }
   );
 
@@ -187,7 +187,7 @@ async function runExport() {
     account: foundationWallet,
     time: time,
     roundId: currentRoundId,
-    identifier
+    identifier,
   });
 
   /** *******************************************************************************
@@ -201,7 +201,7 @@ async function runExport() {
     time: time,
     roundId: currentRoundId,
     identifier: identifier,
-    voteHash: voteHash
+    voteHash: voteHash,
   });
   // send the foundation wallet some eth to submit the Tx
   await web3.eth.sendTransaction({ from: accounts[0], to: foundationWallet, value: web3.utils.toWei("1") });
@@ -277,7 +277,7 @@ async function runExport() {
     sponsorDisputeRewardPercentage: { rawValue: web3.utils.toWei("0.1") },
     disputerDisputeRewardPercentage: { rawValue: web3.utils.toWei("0.1") },
     minSponsorTokens: { rawValue: web3.utils.toWei("1") },
-    timerAddress: zeroAddress
+    timerAddress: zeroAddress,
   };
 
   console.log(
@@ -327,10 +327,10 @@ async function runExport() {
   for (let i = 1; i < 4; i++) {
     console.log("collateral and synthetic approval and seeding account", accounts[i]);
     await collateralToken.approve(expiringMultiParty.address, web3.utils.toWei("1000000"), {
-      from: accounts[i]
+      from: accounts[i],
     });
     await syntheticToken.approve(expiringMultiParty.address, web3.utils.toWei("1000000"), {
-      from: accounts[i]
+      from: accounts[i],
     });
     await collateralToken.transfer(accounts[i], web3.utils.toWei("1000000"), { from: largeDaiTokenHolder });
   }
@@ -410,7 +410,7 @@ async function runExport() {
     account: foundationWallet,
     time: time2,
     roundId: currentRoundId,
-    identifer: identifier2
+    identifer: identifier2,
   });
 
   console.table({
@@ -420,7 +420,7 @@ async function runExport() {
     time: time2,
     roundId: currentRoundId,
     identifier: identifier2,
-    voteHash: voteHash2
+    voteHash: voteHash2,
   });
 
   const VoteTx2 = await voting.commitVote(identifier2, time2, voteHash2, { from: foundationWallet });
@@ -440,7 +440,7 @@ async function runExport() {
   );
 
   const revealTx2 = await voting.revealVote(identifier2, time2, liquidatorObservedPrice, salt2, {
-    from: foundationWallet
+    from: foundationWallet,
   });
   console.log("Reveal Tx done!", revealTx2.tx);
 
@@ -468,7 +468,7 @@ async function runExport() {
   await revertToSnapshot(web3, snapshotId);
 }
 
-const run = async function(callback) {
+const run = async function (callback) {
   try {
     await runExport();
   } catch (err) {

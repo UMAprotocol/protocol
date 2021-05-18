@@ -32,11 +32,11 @@ export default (accountId: string | undefined, namespaceId: string | undefined, 
     chainId: number,
     windowIndex: number
   ) {
-    const KV = Object.keys(recipientsData).map(account => {
+    const KV = Object.keys(recipientsData).map((account) => {
       const claim = recipientsData[account];
       return {
         key: `${chainId}:${windowIndex}:${account}`,
-        value: JSON.stringify(claim)
+        value: JSON.stringify(claim),
       };
     });
 

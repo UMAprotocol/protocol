@@ -11,7 +11,7 @@ const { utf8ToHex, hexToUtf8, padRight } = web3.utils;
 
 const { blankFunctionSig, createGenericDepositData } = require("./helpers");
 
-contract("SinkOracle", async accounts => {
+contract("SinkOracle", async (accounts) => {
   const owner = accounts[0];
   const rando = accounts[1];
 
@@ -31,12 +31,12 @@ contract("SinkOracle", async accounts => {
 
   let sinkOracleResourceId;
 
-  before(async function() {
+  before(async function () {
     registry = await Registry.deployed();
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner);
     await registry.registerContract([], owner, { from: owner });
   });
-  beforeEach(async function() {
+  beforeEach(async function () {
     finder = await Finder.deployed();
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.address);
     bridge = await Bridge.new(chainID, [owner], 1, 0, 100);
@@ -60,10 +60,10 @@ contract("SinkOracle", async accounts => {
       { from: owner }
     );
   });
-  it("construction", async function() {
+  it("construction", async function () {
     assert.equal(await sinkOracle.destinationChainID(), destinationChainID.toString(), "destination chain ID not set");
   });
-  it("requestPrice: should call Bridge.deposit", async function() {
+  it("requestPrice: should call Bridge.deposit", async function () {
     assert(
       await didContractThrow(sinkOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: rando })),
       "Only callable by registered contract"
@@ -72,7 +72,7 @@ contract("SinkOracle", async accounts => {
     TruffleAssert.eventEmitted(
       txn,
       "PriceRequestAdded",
-      event =>
+      (event) =>
         event.requester.toLowerCase() === owner.toLowerCase() &&
         event.chainID.toString() === chainID.toString() &&
         hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
@@ -93,13 +93,13 @@ contract("SinkOracle", async accounts => {
     TruffleAssert.eventEmitted(
       internalTxn,
       "Deposit",
-      event =>
+      (event) =>
         event.destinationChainID.toString() === destinationChainID.toString() &&
         event.resourceID.toLowerCase() === sinkOracleResourceId.toLowerCase() &&
         event.depositNonce.toString() === expectedDepositNonce.toString()
     );
   });
-  it("validateDeposit", async function() {
+  it("validateDeposit", async function () {
     assert(
       await didContractThrow(sinkOracle.validateDeposit(chainID, testIdentifier, testRequestTime, testAncillary)),
       "Reverts if price not requested yet"
@@ -107,7 +107,7 @@ contract("SinkOracle", async accounts => {
     await sinkOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: owner });
     await sinkOracle.validateDeposit(chainID, testIdentifier, testRequestTime, testAncillary);
   });
-  it("executePublishPrice", async function() {
+  it("executePublishPrice", async function () {
     await sinkOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: owner });
     assert(
       await didContractThrow(
@@ -117,7 +117,7 @@ contract("SinkOracle", async accounts => {
     );
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), rando);
     await sinkOracle.executePublishPrice(chainID, testIdentifier, testRequestTime, testAncillary, testPrice, {
-      from: rando
+      from: rando,
     });
     assert(
       await didContractThrow(sinkOracle.hasPrice(testIdentifier, testRequestTime, testAncillary, { from: rando })),
@@ -137,7 +137,7 @@ contract("SinkOracle", async accounts => {
       "should not revert after publish"
     );
   });
-  it("formatMetadata", async function() {
+  it("formatMetadata", async function () {
     const metadata = await sinkOracle.formatMetadata(chainID, testIdentifier, testRequestTime, testAncillary);
     const encoded = web3.eth.abi.encodeParameters(
       ["uint8", "bytes32", "uint256", "bytes"],

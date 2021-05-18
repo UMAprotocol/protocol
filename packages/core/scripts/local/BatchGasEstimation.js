@@ -14,7 +14,7 @@ const {
   encryptMessage,
   deriveKeyPairFromSignatureTruffle,
   getKeyGenMessage,
-  computeVoteHash
+  computeVoteHash,
 } = require("@uma/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 
@@ -139,7 +139,7 @@ const cycleCommit = async (voting, identifier, time, requestNum, registeredContr
       account: voter,
       time: time + i,
       roundId,
-      identifier
+      identifier,
     });
     salts[i] = salt;
 
@@ -178,7 +178,7 @@ const cycleReveal = async (voting, identifier, time, requestNum, registeredContr
       account: voter,
       time: time + i,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time + i, hash, { from: voter });
     salts[i] = salt;
@@ -217,7 +217,7 @@ const cycleClaim = async (voting, identifier, time, requestNum, registeredContra
       account: voter,
       time: time + i,
       roundId,
-      identifier
+      identifier,
     });
     await voting.commitVote(identifier, time + i, hash, { from: voter });
     salts[i] = salt;
@@ -246,7 +246,7 @@ const cycleClaim = async (voting, identifier, time, requestNum, registeredContra
   results["retrieveRewards"] = { number: requestNum, gasUsed: result.receipt.gasUsed };
 };
 
-module.exports = async function(cb) {
+module.exports = async function (cb) {
   try {
     await run();
   } catch (err) {

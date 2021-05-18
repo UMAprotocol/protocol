@@ -34,7 +34,7 @@ const { createTransports } = require("./Transports");
 // By calling `await waitForLogger(Logger)`, with the local Logger instance, the process will wait for all upstream
 // transports to clear. This enables slower transports like slack to still send their messages before the process yields.
 async function waitForLogger(logger) {
-  const loggerDone = new Promise(resolve => logger.on("finish", resolve));
+  const loggerDone = new Promise((resolve) => logger.on("finish", resolve));
   logger.end();
   return await loggerDone;
 }
@@ -59,7 +59,7 @@ function handleRecursiveErrorArray(error) {
 
 // This formatter checks if the `BOT_IDENTIFIER` env variable is present. If it is, the name is appended to the message.
 function botIdentifyFormatter(botIdentifier) {
-  return function(logEntry) {
+  return function (logEntry) {
     if (botIdentifier) logEntry["bot-identifier"] = botIdentifier;
     return logEntry;
   };
@@ -70,12 +70,12 @@ function createNewLogger(injectedTransports = [], transportsConfig = {}, botIden
     level: "debug",
     format: winston.format.combine(
       winston.format(botIdentifyFormatter(botIdentifier))(),
-      winston.format(logEntry => logEntry)(),
+      winston.format((logEntry) => logEntry)(),
       winston.format(errorStackTracerFormatter)(),
       winston.format.json()
     ),
     transports: [...createTransports(transportsConfig), ...injectedTransports],
-    exitOnError: process.env.EXIT_ON_ERROR ? process.env.EXIT_ON_ERROR : false
+    exitOnError: process.env.EXIT_ON_ERROR ? process.env.EXIT_ON_ERROR : false,
   });
 }
 

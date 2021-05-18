@@ -50,7 +50,7 @@ export async function buildGlobalWhitelist(config: strategyRunnerConfig) {
       else throw new Error("Global Whitelist file does not have the `empWhitelist` key or is malformed");
     });
   }
-  if (config.globalAddressBlacklist) whitelist = whitelist.filter(el => !config.globalAddressBlacklist?.includes(el));
+  if (config.globalAddressBlacklist) whitelist = whitelist.filter((el) => !config.globalAddressBlacklist?.includes(el));
   return replaceAddressCase(whitelist);
 }
 
@@ -114,7 +114,7 @@ function buildConfigForBotType(
     botTypeWhitelist = [...globalWhitelist, ...config[settingsKey].addressWhitelist];
 
   if (config[settingsKey].addressBlacklist)
-    botTypeWhitelist = botTypeWhitelist.filter(el => !config[settingsKey].addressBlacklist.includes(el));
+    botTypeWhitelist = botTypeWhitelist.filter((el) => !config[settingsKey].addressBlacklist.includes(el));
 
   const botConfigs: any = [];
   botTypeWhitelist.forEach((contractAddress: string) => {
@@ -133,14 +133,14 @@ function buildConfigForBotType(
       errorRetriesTimeout: addressConfig.errorRetriesTimeout,
       pollingDelay: 0,
       startingBlock: addressConfig.startingBlock ? addressConfig.startingBlock : process.env.STARTING_BLOCK_NUMBER,
-      endingBlock: addressConfig.endingBlock ? addressConfig.endingBlock : process.env.ENDING_BLOCK_NUMBER
+      endingBlock: addressConfig.endingBlock ? addressConfig.endingBlock : process.env.ENDING_BLOCK_NUMBER,
     };
     if (botType == "liquidator") {
       const botConfig: liquidatorConfig = {
         ...commonConfig,
         priceFeedConfig: addressConfig.priceFeedConfig,
         liquidatorConfig: addressConfig.liquidatorConfig,
-        liquidatorOverridePrice: addressConfig.liquidatorOverridePrice
+        liquidatorOverridePrice: addressConfig.liquidatorOverridePrice,
       };
       botConfigs.push(botConfig);
     }
@@ -150,7 +150,7 @@ function buildConfigForBotType(
         ...commonConfig,
         priceFeedConfig: addressConfig.priceFeedConfig,
         disputerConfigConfig: addressConfig.disputerConfigConfig,
-        disputerOverridePrice: addressConfig.disputerOverridePrice
+        disputerOverridePrice: addressConfig.disputerOverridePrice,
       };
       botConfigs.push(botConfig);
     }
@@ -161,7 +161,7 @@ function buildConfigForBotType(
         monitorConfigConfig: addressConfig.monitorConfigConfig,
         tokenPriceFeedConfig: addressConfig.tokenPriceFeedConfig,
         medianizerPriceFeedConfig: addressConfig.medianizerPriceFeedConfig,
-        denominatorPriceFeedConfig: addressConfig.denominatorPriceFeedConfig
+        denominatorPriceFeedConfig: addressConfig.denominatorPriceFeedConfig,
       };
       botConfigs.push(botConfig);
     }

@@ -13,7 +13,7 @@ const { utf8ToHex, hexToUtf8, padRight } = web3.utils;
 
 const { blankFunctionSig, createGenericDepositData } = require("./helpers");
 
-contract("SourceOracle", async accounts => {
+contract("SourceOracle", async (accounts) => {
   const owner = accounts[0];
   const rando = accounts[1];
 
@@ -36,14 +36,14 @@ contract("SourceOracle", async accounts => {
 
   let sourceOracleResourceId;
 
-  before(async function() {
+  before(async function () {
     registry = await Registry.deployed();
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner);
     await registry.registerContract([], owner, { from: owner });
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(testIdentifier);
   });
-  beforeEach(async function() {
+  beforeEach(async function () {
     finder = await Finder.deployed();
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.address);
     bridge = await Bridge.new(chainID, [owner], 1, 0, 100);
@@ -72,16 +72,16 @@ contract("SourceOracle", async accounts => {
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), voting.address);
     await voting.requestPrice(testIdentifier, testRequestTime, testAncillary);
   });
-  describe("Requesting a price on Source Oracle", function() {
-    beforeEach(async function() {
+  describe("Requesting a price on Source Oracle", function () {
+    beforeEach(async function () {
       // Need to request a price first on the source oracle before we can publish:
       await finder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), rando);
       await sourceOracle.executeRequestPrice(destinationChainID, testIdentifier, testRequestTime, testAncillary, {
-        from: rando
+        from: rando,
       });
       await finder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), handler.address);
     });
-    it("publishPrice: should call Bridge.deposit", async function() {
+    it("publishPrice: should call Bridge.deposit", async function () {
       assert(
         await didContractThrow(
           sourceOracle.publishPrice(destinationChainID, testIdentifier, testRequestTime, testAncillary, { from: owner })
@@ -92,12 +92,12 @@ contract("SourceOracle", async accounts => {
       await voting.pushPrice(testIdentifier, testRequestTime, testAncillary, testPrice);
 
       const txn = await sourceOracle.publishPrice(destinationChainID, testIdentifier, testRequestTime, testAncillary, {
-        from: owner
+        from: owner,
       });
       TruffleAssert.eventEmitted(
         txn,
         "PushedPrice",
-        event =>
+        (event) =>
           event.pusher.toLowerCase() === owner.toLowerCase() &&
           event.chainID.toString() === destinationChainID.toString() &&
           hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
@@ -112,13 +112,13 @@ contract("SourceOracle", async accounts => {
       TruffleAssert.eventEmitted(
         internalTxn,
         "Deposit",
-        event =>
+        (event) =>
           event.destinationChainID.toString() === destinationChainID.toString() &&
           event.resourceID.toLowerCase() === sourceOracleResourceId.toLowerCase() &&
           event.depositNonce.toString() === expectedDepositNonce.toString()
       );
     });
-    it("validateDeposit", async function() {
+    it("validateDeposit", async function () {
       assert(
         await didContractThrow(
           sourceOracle.validateDeposit(destinationChainID, testIdentifier, testRequestTime, testAncillary, testPrice)
@@ -127,7 +127,7 @@ contract("SourceOracle", async accounts => {
       );
       await voting.pushPrice(testIdentifier, testRequestTime, testAncillary, testPrice);
       await sourceOracle.publishPrice(destinationChainID, testIdentifier, testRequestTime, testAncillary, {
-        from: owner
+        from: owner,
       });
       await sourceOracle.validateDeposit(destinationChainID, testIdentifier, testRequestTime, testAncillary, testPrice);
       assert(
@@ -144,11 +144,11 @@ contract("SourceOracle", async accounts => {
       );
     });
   });
-  it("executeRequestPrice", async function() {
+  it("executeRequestPrice", async function () {
     assert(
       await didContractThrow(
         sourceOracle.executeRequestPrice(destinationChainID, testIdentifier, testRequestTime, testAncillary, {
-          from: rando
+          from: rando,
         })
       ),
       "Only callable by GenericHandler"
@@ -164,7 +164,7 @@ contract("SourceOracle", async accounts => {
     TruffleAssert.eventEmitted(
       txn,
       "PriceRequestAdded",
-      event =>
+      (event) =>
         event.requester.toLowerCase() === rando.toLowerCase() &&
         event.chainID.toString() === destinationChainID.toString() &&
         hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
@@ -172,7 +172,7 @@ contract("SourceOracle", async accounts => {
         event.ancillaryData.toLowerCase() === testAncillary.toLowerCase()
     );
   });
-  it("formatMetadata", async function() {
+  it("formatMetadata", async function () {
     const metadata = await sourceOracle.formatMetadata(
       chainID,
       testIdentifier,

@@ -2,10 +2,10 @@ const { didContractThrow } = require("@uma/common");
 
 const FixedPointTest = artifacts.require("UnsignedFixedPointTest");
 
-contract("UnsignedFixedPoint", function() {
+contract("UnsignedFixedPoint", function () {
   const uint_max = web3.utils.toBN("115792089237316195423570985008687907853269984665640564039457584007913129639935");
 
-  it("Construction", async function() {
+  it("Construction", async function () {
     const fixedPoint = await FixedPointTest.new();
 
     assert.equal(await fixedPoint.wrapFromUnscaledUint("53"), web3.utils.toWei("53"));
@@ -15,7 +15,7 @@ contract("UnsignedFixedPoint", function() {
     assert(await didContractThrow(fixedPoint.wrapFromUnscaledUint(tenToSixty)));
   });
 
-  it("Unsigned Comparison", async function() {
+  it("Unsigned Comparison", async function () {
     const fixedPoint = await FixedPointTest.new();
 
     assert.isTrue(await fixedPoint.wrapIsGreaterThan(web3.utils.toWei("2"), web3.utils.toWei("1")));
@@ -39,7 +39,7 @@ contract("UnsignedFixedPoint", function() {
     assert.isTrue(await fixedPoint.wrapIsLessThanOrEqual(web3.utils.toWei("2"), web3.utils.toWei("3")));
   });
 
-  it("Unsigned Mixed Comparison", async function() {
+  it("Unsigned Mixed Comparison", async function () {
     const fixedPoint = await FixedPointTest.new();
 
     assert.isTrue(await fixedPoint.wrapMixedIsEqual(web3.utils.toWei("2"), "2"));
@@ -79,14 +79,14 @@ contract("UnsignedFixedPoint", function() {
     assert.isTrue(await fixedPoint.wrapMixedIsLessThanOrEqualOpposite("1", web3.utils.toWei("2")));
   });
 
-  it("Minimum and Maximum", async function() {
+  it("Minimum and Maximum", async function () {
     const fixedPoint = await FixedPointTest.new();
 
     assert.equal((await fixedPoint.wrapMin("5", "6")).toString(), "5");
     assert.equal((await fixedPoint.wrapMax("5", "6")).toString(), "6");
   });
 
-  it("Addition", async function() {
+  it("Addition", async function () {
     const fixedPoint = await FixedPointTest.new();
 
     // Additions below 10**18.
@@ -102,7 +102,7 @@ contract("UnsignedFixedPoint", function() {
     assert(await didContractThrow(fixedPoint.wrapAdd(uint_max.sub(web3.utils.toBN("10")), web3.utils.toBN("11"))));
   });
 
-  it("Mixed addition", async function() {
+  it("Mixed addition", async function () {
     const fixedPoint = await FixedPointTest.new();
 
     // Basic mixed addition.
@@ -117,7 +117,7 @@ contract("UnsignedFixedPoint", function() {
     // TODO: Add this annoying test case.
   });
 
-  it("Subtraction", async function() {
+  it("Subtraction", async function () {
     const fixedPoint = await FixedPointTest.new();
 
     // Subtractions below 10**18.
@@ -132,7 +132,7 @@ contract("UnsignedFixedPoint", function() {
     assert(await didContractThrow(fixedPoint.wrapSub("1", "2")));
   });
 
-  it("Mixed subtraction", async function() {
+  it("Mixed subtraction", async function () {
     const fixedPoint = await FixedPointTest.new();
 
     // Basic mixed subtraction case.
@@ -150,7 +150,7 @@ contract("UnsignedFixedPoint", function() {
     assert(await didContractThrow(fixedPoint.wrapMixedSub(web3.utils.toWei("1.5"), "2")));
   });
 
-  it("Mixed subtraction opposite", async function() {
+  it("Mixed subtraction opposite", async function () {
     const fixedPoint = await FixedPointTest.new();
 
     // Basic mixed subtraction case.
@@ -161,7 +161,7 @@ contract("UnsignedFixedPoint", function() {
     assert(await didContractThrow(fixedPoint.wrapMixedSub("5", web3.utils.toWei("5.5"))));
   });
 
-  it("Multiplication", async function() {
+  it("Multiplication", async function () {
     const fixedPoint = await FixedPointTest.new();
 
     // Whole numbers above 10**18.
@@ -185,7 +185,7 @@ contract("UnsignedFixedPoint", function() {
     assert(await didContractThrow(fixedPoint.wrapMul(uint_max.sub(web3.utils.toBN("1")), web3.utils.toWei("2"))));
   });
 
-  it("Multiplication, with ceil", async function() {
+  it("Multiplication, with ceil", async function () {
     const fixedPoint = await FixedPointTest.new();
 
     // Whole numbers above 10**18.
@@ -209,7 +209,7 @@ contract("UnsignedFixedPoint", function() {
     assert(await didContractThrow(fixedPoint.wrapMulCeil(uint_max.sub(web3.utils.toBN("1")), web3.utils.toWei("2"))));
   });
 
-  it("Mixed multiplication", async function() {
+  it("Mixed multiplication", async function () {
     const fixedPoint = await FixedPointTest.new();
 
     let product = await fixedPoint.wrapMixedMul(web3.utils.toWei("1.5"), "3");
@@ -226,7 +226,7 @@ contract("UnsignedFixedPoint", function() {
     assert(await didContractThrow(fixedPoint.wrapMixedMul(uint_max.div(web3.utils.toBN("2")), "3")));
   });
 
-  it("Mixed multiplication, with ceil", async function() {
+  it("Mixed multiplication, with ceil", async function () {
     const fixedPoint = await FixedPointTest.new();
 
     let product = await fixedPoint.wrapMixedMulCeil(web3.utils.toWei("1.5"), "3");
@@ -243,7 +243,7 @@ contract("UnsignedFixedPoint", function() {
     assert(await didContractThrow(fixedPoint.wrapMixedMulCeil(uint_max.div(web3.utils.toBN("2")), "3")));
   });
 
-  it("Division", async function() {
+  it("Division", async function () {
     const fixedPoint = await FixedPointTest.new();
 
     // Normal division case.
@@ -266,7 +266,7 @@ contract("UnsignedFixedPoint", function() {
     assert(await didContractThrow(fixedPoint.wrapDiv("1", "0")));
   });
 
-  it("Division, with ceil", async function() {
+  it("Division, with ceil", async function () {
     const fixedPoint = await FixedPointTest.new();
 
     // Normal division case.
@@ -289,7 +289,7 @@ contract("UnsignedFixedPoint", function() {
     assert(await didContractThrow(fixedPoint.wrapDiv("1", "0")));
   });
 
-  it("Mixed division", async function() {
+  it("Mixed division", async function () {
     const fixedPoint = await FixedPointTest.new();
 
     // Normal mixed division case.
@@ -305,7 +305,7 @@ contract("UnsignedFixedPoint", function() {
     assert.equal(quotient.toString(), "0");
   });
 
-  it("Mixed division, with ceil", async function() {
+  it("Mixed division, with ceil", async function () {
     const fixedPoint = await FixedPointTest.new();
 
     // Normal mixed division case.
@@ -321,7 +321,7 @@ contract("UnsignedFixedPoint", function() {
     assert(await didContractThrow(fixedPoint.wrapMixedDivCeil(web3.utils.toWei("1"), bigDenominator)));
   });
 
-  it("Mixed division opposite", async function() {
+  it("Mixed division opposite", async function () {
     const fixedPoint = await FixedPointTest.new();
 
     // Normal mixed division case.
@@ -332,7 +332,7 @@ contract("UnsignedFixedPoint", function() {
     assert(await didContractThrow(fixedPoint.wrapMixedDivOpposite("1", "0")));
   });
 
-  it("Power", async function() {
+  it("Power", async function () {
     const fixedPoint = await FixedPointTest.new();
 
     // 1.5^0 = 1

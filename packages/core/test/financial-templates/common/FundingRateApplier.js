@@ -17,7 +17,7 @@ const ConfigStore = artifacts.require("ConfigStore");
 
 const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
 
-contract("FundingRateApplier", function(accounts) {
+contract("FundingRateApplier", function (accounts) {
   // Single-deploy contracts.
   let finder;
   let timer;
@@ -51,7 +51,7 @@ contract("FundingRateApplier", function(accounts) {
   const other = accounts[1];
   const disputer = accounts[2];
 
-  const pushPrice = async price => {
+  const pushPrice = async (price) => {
     const [lastQuery] = (await mockOracle.getPendingQueries()).slice(-1);
 
     // Check that the ancillary data matches expectations.
@@ -104,7 +104,7 @@ contract("FundingRateApplier", function(accounts) {
         proposerBondPercentage: { rawValue: bondPercentage },
         maxFundingRate: { rawValue: maxFundingRate },
         minFundingRate: { rawValue: minFundingRate },
-        proposalTimePastLimit: proposalTimePastLimit // 30 mins
+        proposalTimePastLimit: proposalTimePastLimit, // 30 mins
       },
       timer.address
     );
@@ -211,7 +211,7 @@ contract("FundingRateApplier", function(accounts) {
     truffleAssert.eventNotEmitted(receipt, "FundingRateUpdated");
   });
 
-  it("Funding rate proposal must be within limits", async function() {
+  it("Funding rate proposal must be within limits", async function () {
     // Max/min funding rate per second is [< +1e-5, > -1e-5].
     const currentTime = (await fundingRateApplier.getCurrentTime()).toNumber();
     assert(await didContractThrow(fundingRateApplier.proposeFundingRate({ rawValue: toWei("0.00002") }, currentTime)));
@@ -264,7 +264,7 @@ contract("FundingRateApplier", function(accounts) {
 
       // Apply the newly expired rate.
       const receipt = await fundingRateApplier.applyFundingRate();
-      truffleAssert.eventEmitted(receipt, "FundingRateUpdated", ev => {
+      truffleAssert.eventEmitted(receipt, "FundingRateUpdated", (ev) => {
         return (
           ev.newFundingRate.toString() === defaultProposal &&
           ev.updateTime.toString() === (currentTime - delay).toString() && // Update time is equal to the proposal time.
@@ -358,7 +358,7 @@ contract("FundingRateApplier", function(accounts) {
 
       // Dispute proposal
       await optimisticOracle.disputePrice(fundingRateApplier.address, identifier, currentTime, ancillaryData, {
-        from: disputer
+        from: disputer,
       });
     });
 
