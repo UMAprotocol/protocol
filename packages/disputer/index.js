@@ -293,11 +293,11 @@ async function Poll(callback) {
       // If there is a dsproxy config, the bot can be configured to send transactions via a smart contract wallet (DSProxy).
       // This enables the bot to preform swap, dispute, enabling a single reserve currency.
       // Note that the DSProxy will be deployed on the first run of the bot. Subsequent runs will re-use the proxy. example:
-      // { "useDsProxyToLiquidate": "true", If enabled, the bot will send liquidations via a DSProxy.
+      // { "useDsProxyToDispute": "true", If enabled, the bot will send disputes via a DSProxy.
       //  "dsProxyFactoryAddress": "0x123..." -> Will default to an UMA deployed version if non provided.
-      // "disputerReserveCurrencyAddress": "0x123..." -> currency DSProxy will trade from when liquidating.
+      // "disputerReserveCurrencyAddress": "0x123..." -> currency DSProxy will trade from when disputing.
       // "uniswapRouterAddress": "0x123..." -> uniswap router address to enable reserve trading. Defaults to mainnet router.
-      // "maxReserverTokenSpent": "10000000000"} -> max amount to spend in reserve currency. scaled by reserve currency
+      // "maxReserverTokenSpent": "10000000000"} -> max amount to spend in reserve currency. Scaled by reserve currency
       //      decimals. defaults to MAX_UINT (no limit).
       proxyTransactionWrapperConfig: process.env.DSPROXY_CONFIG ? JSON.parse(process.env.DSPROXY_CONFIG) : {}
     };

@@ -156,7 +156,7 @@ class Disputer {
               at: "Disputer",
               message: "Detected a disputable liquidation",
               price: price.toString(),
-              liquidation: JSON.stringify(liquidation)
+              liquidation: liquidation
             });
             return { ...liquidation, price: price.toString() };
           }
