@@ -18,10 +18,10 @@ task("register-accounts", "Register deployer plus custom account with Registry c
     const { deployments, getNamedAccounts, web3 } = hre;
     const { deployer } = await getNamedAccounts();
     const { account } = taskArguments;
-    console.log(`Registering deployer @ ${deployer}`);
 
     const Registry = await deployments.get("Registry");
     const registry = new web3.eth.Contract(Registry.abi, Registry.address);
+    console.log(`Using Registry @ ${registry.options.address}`);
 
     // Only those holding the ContractCreator role can register contracts. So we'll first add the deployer
     // as a ContractCreator so that it can register itself.

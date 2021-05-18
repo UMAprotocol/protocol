@@ -50,6 +50,10 @@ function getHardhatConfig(configOverrides) {
         url: getNodeUrl("polygon-matic", true),
         accounts: { mnemonic },
       },
+      mainnet: {
+        url: getNodeUrl("mainnet", true),
+        accounts: { mnemonic },
+      },
     },
     mocha: {
       timeout: 1800000,

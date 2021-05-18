@@ -1,14 +1,19 @@
+const { ZERO_ADDRESS } = require("@uma/common");
+
 const func = async function (hre) {
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
 
   const { deployer } = await getNamedAccounts();
 
-  await deploy("Registry", {
+  const Finder = await deployments.get("Finder");
+
+  const args = [Finder.address, ZERO_ADDRESS];
+  await deploy("MockOracleAncillary", {
     from: deployer,
-    args: [],
+    args,
     log: true,
   });
 };
 module.exports = func;
-func.tags = ["Registry", "dvm", "sink-oracle", "source-oracle"];
+func.tags = ["MockOracle", "test"];

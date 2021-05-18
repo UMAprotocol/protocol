@@ -4,11 +4,14 @@ const func = async function (hre) {
 
   const { deployer } = await getNamedAccounts();
 
-  await deploy("Registry", {
+  const Finder = await deployments.get("Finder");
+
+  await deploy("SinkGovernor", {
     from: deployer,
-    args: [],
+    args: [Finder.address],
     log: true,
   });
 };
 module.exports = func;
-func.tags = ["Registry", "dvm", "sink-oracle", "source-oracle"];
+func.tags = ["SinkGovernor", "sink-governor"];
+func.dependencies = ["Finder"];
