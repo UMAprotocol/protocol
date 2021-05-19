@@ -7,9 +7,9 @@ import { drizzleReactHooks } from "@umaprotocol/react-plugin";
 function DrizzleInit(props) {
   const { initializationFinished } = props;
 
-  const drizzleState = drizzleReactHooks.useDrizzleState(drizzleState => {
+  const drizzleState = drizzleReactHooks.useDrizzleState((drizzleState) => {
     return {
-      initialized: drizzleState.drizzleStatus.initialized
+      initialized: drizzleState.drizzleStatus.initialized,
     };
   });
 

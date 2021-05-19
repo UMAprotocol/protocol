@@ -31,7 +31,7 @@ class ETHVIXPriceFeed extends PriceFeedInterface {
 
     this.toBN = this.web3.utils.toBN;
 
-    this.convertPriceFeedDecimals = number => {
+    this.convertPriceFeedDecimals = (number) => {
       // Converts the decimal price result to a BigNumber integer scaled to wei units.
       // Note: Must ensure that `number` has no more decimal places than `priceFeedDecimals`.
       return this.toBN(parseFixed(number.toString().substring(0, priceFeedDecimals), priceFeedDecimals).toString());
@@ -57,7 +57,7 @@ class ETHVIXPriceFeed extends PriceFeedInterface {
       roundedTime = roundedTime.subtract(roundedTime.minutes() % 15, "minutes");
     }
 
-    const result = this.historicalPrices.find(price => roundedTime.isSame(price.timestamp));
+    const result = this.historicalPrices.find((price) => roundedTime.isSame(price.timestamp));
     assert(result, `${this.uuid}: No cached result found for timestamp: ${roundedTime.toISOString()}`);
 
     return this.convertPriceFeedDecimals(result.vix);
@@ -78,7 +78,7 @@ class ETHVIXPriceFeed extends PriceFeedInterface {
         message: "Update skipped because the last one was too recent",
         currentTime: currentTime,
         lastUpdateTimestamp: this.lastUpdateTime,
-        timeRemainingUntilUpdate: earliestAllowableUpdateTime - currentTime
+        timeRemainingUntilUpdate: earliestAllowableUpdateTime - currentTime,
       });
       return;
     }
@@ -87,7 +87,7 @@ class ETHVIXPriceFeed extends PriceFeedInterface {
       at: "ETHVIXPriceFeed",
       message: "Updating",
       currentTime: currentTime,
-      lastUpdateTimestamp: this.lastUpdateTime
+      lastUpdateTimestamp: this.lastUpdateTime,
     });
 
     // 1. Request the data.
@@ -125,5 +125,5 @@ class ETHVIXPriceFeed extends PriceFeedInterface {
 }
 
 module.exports = {
-  ETHVIXPriceFeed
+  ETHVIXPriceFeed,
 };

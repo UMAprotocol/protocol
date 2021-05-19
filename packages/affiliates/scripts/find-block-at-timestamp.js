@@ -14,11 +14,9 @@ async function run() {
   const web3 = getWeb3();
   const [a, b] = await Promise.all([
     queries.getBlocks(time, time + 30000, ["timestamp", "number"]),
-    FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(time / 1000))
+    FindBlockAtTimestamp._findBlockNumberAtTimestamp(web3, Number(time / 1000)),
   ]);
   console.log(timeStr, a, b);
 }
 
-run()
-  .then(console.log)
-  .catch(console.log);
+run().then(console.log).catch(console.log);

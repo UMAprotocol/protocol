@@ -13,11 +13,11 @@ const Store = artifacts.require("Store");
 
 const { toWei, utf8ToHex, padRight } = web3.utils;
 
-contract("contracts", function(accounts) {
-  describe("emp contract", function() {
+contract("contracts", function (accounts) {
+  describe("emp contract", function () {
     let emp, empContract, web3, collateralToken, token, timer, collateral;
     const contractCreator = accounts[4];
-    before(async function() {
+    before(async function () {
       const identifier = "TEST_IDENTIFIER";
       const identifierWhitelist = await IdentifierWhitelist.deployed();
       await identifierWhitelist.addSupportedIdentifier(utf8ToHex(identifier));
@@ -25,7 +25,7 @@ contract("contracts", function(accounts) {
       token = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18);
       const finder = await Finder.deployed();
       const mockOracle = await MockOracle.new(finder.address, Timer.address, {
-        from: contractCreator
+        from: contractCreator,
       });
       const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
       await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
@@ -46,7 +46,7 @@ contract("contracts", function(accounts) {
         minSponsorTokens: { rawValue: toWei("5") },
         timerAddress: timer.address,
         excessTokenBeneficiary: store.address,
-        financialProductLibraryAddress: ZERO_ADDRESS
+        financialProductLibraryAddress: ZERO_ADDRESS,
       };
 
       web3 = getWeb3();
@@ -58,33 +58,33 @@ contract("contracts", function(accounts) {
       collateral = Erc20({ web3 });
       token = Erc20({ web3 });
     });
-    it("gets collateral address", async function() {
+    it("gets collateral address", async function () {
       const result = await emp.collateralCurrency(empContract.address);
       assert.equal(result, collateralToken.address);
     });
-    it("gets token address", async function() {
+    it("gets token address", async function () {
       const result = await emp.tokenCurrency(empContract.address);
       assert.equal(result, await empContract.tokenCurrency());
     });
-    it("check token decimals", async function() {
+    it("check token decimals", async function () {
       const result = await token.decimals(await empContract.tokenCurrency());
       assert.equal(result, 18);
     });
-    it("check collateral decimals", async function() {
+    it("check collateral decimals", async function () {
       const result = await collateral.decimals(collateralToken.address);
       assert.equal(result, 18);
     });
-    it("gets collateral info", async function() {
+    it("gets collateral info", async function () {
       const result = await emp.collateralInfo(empContract.address);
       assert.equal(result.address, collateralToken.address);
       assert.equal(result.decimals, 18);
     });
-    it("gets token info", async function() {
+    it("gets token info", async function () {
       const result = await emp.tokenInfo(empContract.address);
       assert.equal(result.address, await empContract.tokenCurrency());
       assert.equal(result.decimals, 18);
     });
-    it("gets emp info", async function() {
+    it("gets emp info", async function () {
       const result = await emp.info(empContract.address);
       assert.equal(result.address, empContract.address);
       assert.equal(result.token.address, await empContract.tokenCurrency());

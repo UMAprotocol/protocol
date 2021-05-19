@@ -16,7 +16,7 @@ async function advanceBlockAndSetTime(web3, time) {
         jsonrpc: "2.0",
         method: "evm_mine",
         params: [time],
-        id: new Date().getTime()
+        id: new Date().getTime(),
       },
       (err, result) => {
         if (err) {
@@ -36,7 +36,7 @@ async function stopMining(web3) {
         jsonrpc: "2.0",
         method: "miner_stop",
         params: [],
-        id: new Date().getTime()
+        id: new Date().getTime(),
       },
       (err, result) => {
         if (err) {
@@ -56,7 +56,7 @@ async function startMining(web3) {
         jsonrpc: "2.0",
         method: "miner_start",
         params: [],
-        id: new Date().getTime()
+        id: new Date().getTime(),
       },
       (err, result) => {
         if (err) {
@@ -75,7 +75,7 @@ async function takeSnapshot(web3) {
       {
         jsonrpc: "2.0",
         method: "evm_snapshot",
-        id: new Date().getTime()
+        id: new Date().getTime(),
       },
       (err, snapshotId) => {
         if (err) {
@@ -94,7 +94,7 @@ async function revertToSnapshot(web3, id) {
         jsonrpc: "2.0",
         method: "evm_revert",
         params: [id],
-        id: new Date().getTime()
+        id: new Date().getTime(),
       },
       (err, result) => {
         if (err) {
@@ -122,10 +122,10 @@ async function mineTransactionsAtTime(web3, transactions, time, sender) {
 
       // Awaits the transactionHash, which signifies the transaction was sent, but not necessarily mined.
       await new Promise((resolve, reject) => {
-        result.on("transactionHash", function() {
+        result.on("transactionHash", function () {
           resolve();
         });
-        result.on("error", function(error) {
+        result.on("error", function (error) {
           reject(error);
         });
       });
@@ -152,5 +152,5 @@ module.exports = {
   takeSnapshot,
   revertToSnapshot,
   stopMining,
-  startMining
+  startMining,
 };

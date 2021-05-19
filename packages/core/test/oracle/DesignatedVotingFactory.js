@@ -3,7 +3,7 @@ const { ZERO_ADDRESS } = require("@uma/common");
 const DesignatedVoting = artifacts.require("DesignatedVoting");
 const DesignatedVotingFactory = artifacts.require("DesignatedVotingFactory");
 
-contract("DesignatedVotingFactory", function(accounts) {
+contract("DesignatedVotingFactory", function (accounts) {
   const owner = accounts[1];
   const voter = accounts[2];
   const voter2 = accounts[3];
@@ -11,11 +11,11 @@ contract("DesignatedVotingFactory", function(accounts) {
 
   let factory;
 
-  before(async function() {
+  before(async function () {
     factory = await DesignatedVotingFactory.deployed();
   });
 
-  it("Deploy new", async function() {
+  it("Deploy new", async function () {
     const designatedVotingAddress = await factory.newDesignatedVoting.call(owner, { from: voter });
     await factory.newDesignatedVoting(owner, { from: voter });
 
@@ -34,7 +34,7 @@ contract("DesignatedVotingFactory", function(accounts) {
     assert.equal(ZERO_ADDRESS, (await factory.designatedVotingContracts(voter)).toString());
   });
 
-  it("Multiple Deployments", async function() {
+  it("Multiple Deployments", async function () {
     const designatedVoting1Address = await factory.newDesignatedVoting.call(owner, { from: voter3 });
     await factory.newDesignatedVoting(owner, { from: voter3 });
 

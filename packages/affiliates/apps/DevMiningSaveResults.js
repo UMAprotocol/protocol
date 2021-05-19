@@ -10,6 +10,4 @@ async function App(params) {
   return { fn, ...params };
 }
 
-makeUnixPipe(App)
-  .then(console.log)
-  .catch(console.error);
+makeUnixPipe(App).then(console.log).catch(console.error);

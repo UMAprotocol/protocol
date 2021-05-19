@@ -14,14 +14,14 @@ const setAllowance = async (web3, gasEstimator, ownerAddress, spenderAddress, cu
     return {
       tx: await collateralToken.methods.approve(spenderAddress, MAX_UINT_VAL).send({
         from: ownerAddress,
-        gasPrice: gasEstimator.getCurrentFastPrice()
+        gasPrice: gasEstimator.getCurrentFastPrice(),
       }),
       spenderAddress,
-      currencyAddress
+      currencyAddress,
     };
   }
 };
 
 module.exports = {
-  setAllowance
+  setAllowance,
 };

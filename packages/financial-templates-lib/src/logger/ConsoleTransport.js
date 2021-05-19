@@ -10,7 +10,7 @@ function createConsoleTransport() {
       // Adds timestamp.
       colorize(),
       timestamp(),
-      printf(info => {
+      printf((info) => {
         const { timestamp, level, error, ...args } = info;
 
         // This slice changes a timestamp formatting from `2020-03-25T10:50:57.168Z` -> `2020-03-25 10:50:57`
@@ -25,7 +25,7 @@ function createConsoleTransport() {
         }
         return log;
       })
-    )
+    ),
   });
 }
 

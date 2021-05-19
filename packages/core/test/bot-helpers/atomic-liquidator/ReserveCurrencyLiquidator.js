@@ -52,20 +52,20 @@ const getPoolSpotPrice = async () => {
 };
 
 // Takes in a json object from a compiled contract and returns a truffle contract instance that can be deployed.
-const createContractObjectFromJson = contractJsonObject => {
+const createContractObjectFromJson = (contractJsonObject) => {
   let truffleContractCreator = truffleContract(contractJsonObject);
   truffleContractCreator.setProvider(web3.currentProvider);
   return truffleContractCreator;
 };
 
-contract("ReserveTokenLiquidator", function(accounts) {
+contract("ReserveTokenLiquidator", function (accounts) {
   const deployer = accounts[0];
   const sponsor1 = accounts[1];
   const sponsor2 = accounts[2];
   const liquidator = accounts[2];
 
   // Common liquidation sanity checks. repeated in the different unit tests.
-  const validateLiquidationOutput = async liquidations => {
+  const validateLiquidationOutput = async (liquidations) => {
     assert.equal(liquidations.length, 1);
     assert.equal(liquidations[0].sponsor, sponsor1); // The selected sponsor should be liquidated.
     assert.equal(liquidations[0].liquidator, dsProxy.address); // The dSProxy did the liquidation.
@@ -127,7 +127,7 @@ contract("ReserveTokenLiquidator", function(accounts) {
     // deploy Uniswap V2 Factory & router.
     factory = await createContractObjectFromJson(UniswapV2Factory).new(deployer, { from: deployer });
     router = await createContractObjectFromJson(UniswapV2Router02).new(factory.address, collateralToken.address, {
-      from: deployer
+      from: deployer,
     });
 
     // initialize the pair
@@ -155,7 +155,7 @@ contract("ReserveTokenLiquidator", function(accounts) {
       disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: timer.address,
-      financialProductLibraryAddress: ZERO_ADDRESS
+      financialProductLibraryAddress: ZERO_ADDRESS,
     };
 
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, { from: deployer });
@@ -179,7 +179,7 @@ contract("ReserveTokenLiquidator", function(accounts) {
     dsProxy = await DSProxy.at((await dsProxyFactory.getPastEvents("Created"))[0].returnValues.proxy);
   });
 
-  it("can correctly swap,mint,liquidate", async function() {
+  it("can correctly swap,mint,liquidate", async function () {
     // Send tokens from liquidator to DSProxy. This would be done by seeding the common DSProxy shared between multiple bots.
     await reserveToken.mint(dsProxy.address, toWei("10000"));
 
@@ -196,7 +196,7 @@ contract("ReserveTokenLiquidator", function(accounts) {
     const callData = buildCallData();
 
     await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.address, callData).send({
-      from: liquidator
+      from: liquidator,
     });
 
     // The DSProxy should not have any synthetics or collateral after the liquidation as everything was used.
@@ -215,7 +215,7 @@ contract("ReserveTokenLiquidator", function(accounts) {
     assert.equal((await pair.getPastEvents("Swap")).length, 1);
     assert.equal((await financialContract.getPastEvents("LiquidationCreated")).length, 1);
   });
-  it("should use existing token and synthetic balances", async function() {
+  it("should use existing token and synthetic balances", async function () {
     // If the DSProxy already has any synthetics or collateral, the contract should use them all within the liquidation.
     await reserveToken.mint(dsProxy.address, toWei("10000")); // mint some reserve tokens.
     await collateralToken.mint(dsProxy.address, toWei("0.5")); // send half of 1 eth to the DSProxy
@@ -225,7 +225,7 @@ contract("ReserveTokenLiquidator", function(accounts) {
     const callData = buildCallData();
 
     await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.address, callData).send({
-      from: liquidator
+      from: liquidator,
     });
 
     // The DSProxy should not have any synthetics or collateral after the liquidation as everything was used, including
@@ -242,7 +242,7 @@ contract("ReserveTokenLiquidator", function(accounts) {
     assert.equal((await pair.getPastEvents("Swap")).length, 1);
     assert.equal((await financialContract.getPastEvents("LiquidationCreated")).length, 1);
   });
-  it("should correctly handel synthetic balance larger than liquidated position", async function() {
+  it("should correctly handel synthetic balance larger than liquidated position", async function () {
     // If the DSProxy's synthetic balance is larger than that to be liquidated, then it does not need to preform any
     // extra buys OR mints. Send the synthetic reserve token, of which it should use only enough to buy the final fee.
     // Send synthetics larger than the position liquidated.
@@ -253,7 +253,7 @@ contract("ReserveTokenLiquidator", function(accounts) {
     const callData = buildCallData();
 
     await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.address, callData).send({
-      from: liquidator
+      from: liquidator,
     });
 
     // The DSProxy should not have any collateral after the liquidation as everything was used. The synthetic ballance
@@ -270,7 +270,7 @@ contract("ReserveTokenLiquidator", function(accounts) {
     assert.equal((await pair.getPastEvents("Swap")).length, 1);
     assert.equal((await financialContract.getPastEvents("LiquidationCreated")).length, 1);
   });
-  it("should correctly handel collateral balance larger than required for synthetic position mint", async function() {
+  it("should correctly handel collateral balance larger than required for synthetic position mint", async function () {
     // If the DSProxy's balance collateral balance is larger than then that to be minted, then it does not need to preform
     // any extra buys. However, the DSProxy still needs to mint synthetics to preform the liquidation. Send the synthetic
     // reserve token, of which it should use none. Send collateral larger than needed to mint positions.
@@ -281,7 +281,7 @@ contract("ReserveTokenLiquidator", function(accounts) {
     const callData = buildCallData();
 
     await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.address, callData).send({
-      from: liquidator
+      from: liquidator,
     });
 
     // The DSProxy should have used some of it's collateral and no additional reserves when executing the liquidation.
@@ -301,7 +301,7 @@ contract("ReserveTokenLiquidator", function(accounts) {
     assert.equal((await pair.getPastEvents("Swap")).length, 0);
     assert.equal((await financialContract.getPastEvents("LiquidationCreated")).length, 1);
   });
-  it("can correctly deal with collateral and reserve being the same token", async function() {
+  it("can correctly deal with collateral and reserve being the same token", async function () {
     // Send tokens from liquidator to DSProxy. This would be done by seeding the common DSProxy shared between multiple bots.
     await collateralToken.mint(dsProxy.address, toWei("10000"));
 
@@ -331,7 +331,7 @@ contract("ReserveTokenLiquidator", function(accounts) {
       .encodeABI();
 
     await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.address, callData).send({
-      from: liquidator
+      from: liquidator,
     });
 
     // The DSProxy should not have any synthetics or collateral after the liquidation as everything was used.
@@ -349,7 +349,7 @@ contract("ReserveTokenLiquidator", function(accounts) {
     assert.equal((await pair.getPastEvents("Swap")).length, 0);
     assert.equal((await financialContract.getPastEvents("LiquidationCreated")).length, 1);
   });
-  it("can correctly deal with collateral and reserving shortfall for liquidation size", async function() {
+  it("can correctly deal with collateral and reserving shortfall for liquidation size", async function () {
     // In the even that the DSProxy does not have enough collateral or reserves it should liquidate as much as posable,
     // using all ammunition it can. Send tokens from liquidator to DSProxy.Send less than the amount needed for the liquidation.
     await collateralToken.mint(dsProxy.address, toWei("1"));
@@ -381,7 +381,7 @@ contract("ReserveTokenLiquidator", function(accounts) {
       .encodeABI();
 
     await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.address, callData).send({
-      from: liquidator
+      from: liquidator,
     });
 
     // The DSProxy should not have any synthetics or collateral after the liquidation as everything was used.

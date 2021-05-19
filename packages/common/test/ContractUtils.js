@@ -4,9 +4,9 @@ const { getTruffleContract, getAbi } = require("@uma/core");
 const ERC20 = getTruffleContract("BasicERC20", web3);
 const ERC20ABI = getAbi("BasicERC20");
 
-contract("ContractUtils.js", function(accounts) {
-  describe("runTransaction", function() {
-    it("sets error.type correctly", async function() {
+contract("ContractUtils.js", function (accounts) {
+  describe("runTransaction", function () {
+    it("sets error.type correctly", async function () {
       // `.call()` fails, error.type = "call"
       try {
         const erc20 = await ERC20.new("0");
@@ -14,7 +14,7 @@ contract("ContractUtils.js", function(accounts) {
         // Allowance is not set for accounts[0] so this should fail on .call()
         const transaction = erc20Contract.methods.transferFrom(accounts[0], accounts[1], "1");
         const config = {
-          from: accounts[0]
+          from: accounts[0],
         };
         await ContractUtils.runTransaction({ transaction, config });
 

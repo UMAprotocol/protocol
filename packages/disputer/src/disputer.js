@@ -175,8 +175,6 @@ class Disputer {
     }
 
     for (const disputeableLiquidation of disputableLiquidationsWithPrices) {
-      const disputeArgs = [disputeableLiquidation.id, disputeableLiquidation.sponsor];
-
       this.logger.debug({
         at: "Disputer",
         message: "Disputing liquidation",
@@ -184,7 +182,10 @@ class Disputer {
       });
 
       // Submit the dispute transaction. This will use the DSProxy if configured or will send the tx with the unlocked EOA.
-      const logResult = await this.proxyTransactionWrapper.submitDisputeTransaction(disputeArgs);
+      const logResult = await this.proxyTransactionWrapper.submitDisputeTransaction([
+        disputeableLiquidation.id,
+        disputeableLiquidation.sponsor,
+      ]);
 
       if (logResult instanceof Error || !logResult)
         this.logger.error({

@@ -23,6 +23,4 @@ async function runTest() {
   fs.writeFileSync(path, JSON.stringify(data, null, 2));
 }
 
-runTest()
-  .then(console.log)
-  .catch(console.log);
+runTest().then(console.log).catch(console.log);

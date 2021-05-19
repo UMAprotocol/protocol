@@ -24,7 +24,7 @@ class ProxyTransactionWrapper {
     gasEstimator,
     account,
     dsProxyManager = undefined,
-    proxyTransactionWrapperConfig
+    proxyTransactionWrapperConfig,
   }) {
     this.web3 = web3;
     this.financialContract = financialContract;
@@ -43,28 +43,28 @@ class ProxyTransactionWrapper {
     const defaultConfig = {
       useDsProxyToDispute: {
         value: false,
-        isValid: x => {
+        isValid: (x) => {
           return typeof x == "boolean";
-        }
+        },
       },
       uniswapRouterAddress: {
         value: "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
-        isValid: x => {
+        isValid: (x) => {
           return this.web3.utils.isAddress(x);
-        }
+        },
       },
       disputerReserveCurrencyAddress: {
         value: "",
-        isValid: x => {
+        isValid: (x) => {
           return this.web3.utils.isAddress(x) || x === "";
-        }
+        },
       },
       maxReserverTokenSpent: {
         value: MAX_UINT_VAL,
-        isValid: x => {
+        isValid: (x) => {
           return typeof x == "string";
-        }
-      }
+        },
+      },
     };
 
     // Validate and set config settings to class state.
@@ -110,8 +110,8 @@ class ProxyTransactionWrapper {
         config: {
           gasPrice: this.gasEstimator.getCurrentFastPrice(),
           from: this.account,
-          nonce: await this.web3.eth.getTransactionCount(this.account)
-        }
+          nonce: await this.web3.eth.getTransactionCount(this.account),
+        },
       });
       receipt = transactionResult.receipt;
       returnValue = transactionResult.returnValue.toString();
@@ -129,8 +129,8 @@ class ProxyTransactionWrapper {
       totalPaid: returnValue,
       txnConfig: {
         gasPrice: this.gasEstimator.getCurrentFastPrice(),
-        from: this.account
-      }
+        from: this.account,
+      },
     };
   }
 
@@ -159,7 +159,7 @@ class ProxyTransactionWrapper {
     const DisputeEvent = (
       await this.financialContract.getPastEvents("LiquidationDisputed", {
         fromBlock: blockAfterDispute - 1,
-        filter: { disputer: this.dsProxyManager.getDSProxyAddress() }
+        filter: { disputer: this.dsProxyManager.getDSProxyAddress() },
       })
     )[0];
 
@@ -174,8 +174,8 @@ class ProxyTransactionWrapper {
       disputeBondAmount: DisputeEvent.returnValues.disputeBondAmount,
       txnConfig: {
         from: dsProxyCallReturn.from,
-        gas: dsProxyCallReturn.gasUsed
-      }
+        gas: dsProxyCallReturn.gasUsed,
+      },
     };
   }
 }

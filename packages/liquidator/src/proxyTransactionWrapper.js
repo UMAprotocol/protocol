@@ -33,7 +33,7 @@ class ProxyTransactionWrapper {
     collateralToken,
     account,
     dsProxyManager = undefined,
-    proxyTransactionWrapperConfig
+    proxyTransactionWrapperConfig,
   }) {
     this.web3 = web3;
     this.financialContract = financialContract;
@@ -52,34 +52,34 @@ class ProxyTransactionWrapper {
     const defaultConfig = {
       useDsProxyToLiquidate: {
         value: false,
-        isValid: x => {
+        isValid: (x) => {
           return typeof x == "boolean";
-        }
+        },
       },
       uniswapRouterAddress: {
         value: "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
-        isValid: x => {
+        isValid: (x) => {
           return this.web3.utils.isAddress(x);
-        }
+        },
       },
       uniswapFactoryAddress: {
         value: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
-        isValid: x => {
+        isValid: (x) => {
           return this.web3.utils.isAddress(x);
-        }
+        },
       },
       liquidatorReserveCurrencyAddress: {
         value: "",
-        isValid: x => {
+        isValid: (x) => {
           return this.web3.utils.isAddress(x) || x === "";
-        }
+        },
       },
       maxReserverTokenSpent: {
         value: MAX_UINT_VAL,
-        isValid: x => {
+        isValid: (x) => {
           return typeof x == "string";
-        }
-      }
+        },
+      },
     };
 
     // Validate and set config settings to class state.
@@ -123,7 +123,7 @@ class ProxyTransactionWrapper {
         this.financialContract.methods.pfc().call(),
         this.financialContract.methods.totalTokensOutstanding().call(),
         this.reserveToken.methods.balanceOf(this.dsProxyManager.getDSProxyAddress()).call(),
-        this.collateralToken.methods.balanceOf(this.dsProxyManager.getDSProxyAddress()).call()
+        this.collateralToken.methods.balanceOf(this.dsProxyManager.getDSProxyAddress()).call(),
       ]);
       let maxPurchasableCollateral = this.toBN("0"); // set to the reserve token balance (if reserve==collateral) or the max purchasable.
 
@@ -193,8 +193,8 @@ class ProxyTransactionWrapper {
         config: {
           gasPrice: this.gasEstimator.getCurrentFastPrice(),
           from: this.account,
-          nonce: await this.web3.eth.getTransactionCount(this.account)
-        }
+          nonce: await this.web3.eth.getTransactionCount(this.account),
+        },
       });
       receipt = txResponse.receipt;
     } catch (error) {
@@ -212,8 +212,8 @@ class ProxyTransactionWrapper {
       liquidatedCollateral: receipt.events.LiquidationCreated.returnValues.liquidatedCollateral,
       txnConfig: {
         gasPrice: this.gasEstimator.getCurrentFastPrice(),
-        from: this.account
-      }
+        from: this.account,
+      },
     };
   }
 
@@ -247,8 +247,8 @@ class ProxyTransactionWrapper {
       await this.financialContract.getPastEvents("LiquidationCreated", {
         fromBlock: blockAfterLiquidation - 1,
         filter: {
-          liquidator: this.dsProxyManager.getDSProxyAddress()
-        }
+          liquidator: this.dsProxyManager.getDSProxyAddress(),
+        },
       })
     )[0];
 
@@ -264,8 +264,8 @@ class ProxyTransactionWrapper {
       liquidatedCollateral: liquidationEvent.returnValues.liquidatedCollateral,
       txnConfig: {
         from: dsProxyCallReturn.from,
-        gas: dsProxyCallReturn.gasUsed
-      }
+        gas: dsProxyCallReturn.gasUsed,
+      },
     };
   }
 }

@@ -81,7 +81,7 @@ async function runExport() {
     finder.address,
     proposerWallet, // Pass proposer wallet as the "migrated" address.
     {
-      from: proposerWallet
+      from: proposerWallet,
     }
   );
 
@@ -121,23 +121,23 @@ async function runExport() {
       {
         to: votingToken.address,
         value: 0,
-        data: addVotingAsTokenMinterTx
+        data: addVotingAsTokenMinterTx,
       },
       {
         to: finder.address,
         value: 0,
-        data: transferFinderOwnershipTx
+        data: transferFinderOwnershipTx,
       },
       {
         to: existingVoting.address,
         value: 0,
-        data: transferExistingVotingOwnershipTx
+        data: transferExistingVotingOwnershipTx,
       },
       {
         to: votingUpgrader.address,
         value: 0,
-        data: upgraderExecuteUpgradeTx
-      }
+        data: upgraderExecuteUpgradeTx,
+      },
     ],
     { from: proposerWallet, gas: 2000000 }
   );
@@ -150,7 +150,7 @@ async function runExport() {
   }
 }
 
-const run = async function(callback) {
+const run = async function (callback) {
   try {
     await runExport();
   } catch (err) {

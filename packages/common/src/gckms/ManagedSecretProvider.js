@@ -34,14 +34,14 @@ class ManagedSecretProvider {
 
   // Passes the call through, by attaching a callback to the wrapper provider promise.
   sendAsync(...all) {
-    this.wrappedProviderPromise.then(wrappedProvider => {
+    this.wrappedProviderPromise.then((wrappedProvider) => {
       wrappedProvider.sendAsync(...all);
     });
   }
 
   // Passes the call through. Requires that the wrapped provider has been created via, e.g., `constructWrappedProvider`.
   send(...all) {
-    this.wrappedProviderPromise.then(wrappedProvider => {
+    this.wrappedProviderPromise.then((wrappedProvider) => {
       wrappedProvider.send(...all);
     });
   }
@@ -66,12 +66,12 @@ class ManagedSecretProvider {
       return Promise.resolve(this.wrappedProvider);
     }
 
-    const fetchKeys = this.cloudKmsSecretConfigs.map(config => {
+    const fetchKeys = this.cloudKmsSecretConfigs.map((config) => {
       const storage = new Storage();
       const keyMaterialBucket = storage.bucket(config.ciphertextBucket);
       const ciphertextFile = keyMaterialBucket.file(config.ciphertextFilename);
 
-      return ciphertextFile.download().then(data => {
+      return ciphertextFile.download().then((data) => {
         // Send the request to decrypt the downloaded file.
         const contentsBuffer = data[0];
         const ciphertext = contentsBuffer.toString("base64");
@@ -83,11 +83,9 @@ class ManagedSecretProvider {
     });
 
     return Promise.all(fetchKeys).then(
-      results => {
+      (results) => {
         let keys = results.map(([result]) => {
-          return Buffer.from(result.plaintext, "base64")
-            .toString()
-            .trim();
+          return Buffer.from(result.plaintext, "base64").toString().trim();
         });
 
         // If there is only 1 key, convert into a single element before constructing `HDWalletProvider`
@@ -100,7 +98,7 @@ class ManagedSecretProvider {
 
         return this.wrappedProvider;
       },
-      reason => {
+      (reason) => {
         console.error(reason);
         throw reason;
       }

@@ -9,8 +9,8 @@ const VotingInterfaceTesting = artifacts.require("VotingInterfaceTesting");
 const VotingToken = artifacts.require("VotingToken");
 const Governor = artifacts.require("Governor");
 
-contract("scripts/TransferPermissions.js", function(accounts) {
-  it("TestRun", async function() {
+contract("scripts/TransferPermissions.js", function (accounts) {
+  it("TestRun", async function () {
     const multisig = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
     await TransferPermissions.transferPermissions(multisig);
 

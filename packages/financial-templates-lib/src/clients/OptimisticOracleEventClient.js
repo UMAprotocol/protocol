@@ -82,7 +82,7 @@ class OptimisticOracleEventClient {
     // Define a config to bound the queries by.
     const blockSearchConfig = {
       fromBlock: this.firstBlockToSearch,
-      toBlock: lastBlockToSearch
+      toBlock: lastBlockToSearch,
     };
 
     // Look for events on chain from the previous seen block number to the current block number.
@@ -91,13 +91,13 @@ class OptimisticOracleEventClient {
       requestPriceEventsObj,
       proposePriceEventsObj,
       disputePriceEventsObj,
-      settlementEventsObj
+      settlementEventsObj,
     ] = await Promise.all([
       this.optimisticOracleContract.methods.getCurrentTime().call(),
       this.optimisticOracleContract.getPastEvents("RequestPrice", blockSearchConfig),
       this.optimisticOracleContract.getPastEvents("ProposePrice", blockSearchConfig),
       this.optimisticOracleContract.getPastEvents("DisputePrice", blockSearchConfig),
-      this.optimisticOracleContract.getPastEvents("Settle", blockSearchConfig)
+      this.optimisticOracleContract.getPastEvents("Settle", blockSearchConfig),
     ]);
     // Set the current contract time as the last update timestamp from the contract.
     this.lastUpdateTimestamp = currentTime;
@@ -114,7 +114,7 @@ class OptimisticOracleEventClient {
         ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
         currency: event.returnValues.currency,
         reward: event.returnValues.reward,
-        finalFee: event.returnValues.finalFee
+        finalFee: event.returnValues.finalFee,
       });
     }
 
@@ -130,7 +130,7 @@ class OptimisticOracleEventClient {
         ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
         proposedPrice: event.returnValues.proposedPrice,
         expirationTimestamp: event.returnValues.expirationTimestamp,
-        currency: event.returnValues.currency
+        currency: event.returnValues.currency,
       });
     }
 
@@ -145,7 +145,7 @@ class OptimisticOracleEventClient {
         identifier: this.hexToUtf8(event.returnValues.identifier),
         timestamp: event.returnValues.timestamp,
         ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
-        proposedPrice: event.returnValues.proposedPrice
+        proposedPrice: event.returnValues.proposedPrice,
       });
     }
 
@@ -161,7 +161,7 @@ class OptimisticOracleEventClient {
         timestamp: event.returnValues.timestamp,
         ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
         price: event.returnValues.price,
-        payout: event.returnValues.payout
+        payout: event.returnValues.payout,
       });
     }
 
@@ -171,11 +171,11 @@ class OptimisticOracleEventClient {
     this.logger.debug({
       at: "OptimisticOracleEventClient",
       message: "Optimistic Oracle event state updated",
-      lastUpdateTimestamp: this.lastUpdateTimestamp
+      lastUpdateTimestamp: this.lastUpdateTimestamp,
     });
   }
 }
 
 module.exports = {
-  OptimisticOracleEventClient
+  OptimisticOracleEventClient,
 };

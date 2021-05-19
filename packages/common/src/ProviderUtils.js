@@ -28,10 +28,10 @@ let web3 = null;
 
 function createBasicProvider(nodeRetryConfig) {
   return new RetryProvider(
-    nodeRetryConfig.map(configElement => {
+    nodeRetryConfig.map((configElement) => {
       const protocol = Url.parse(configElement.url).protocol;
       let options = {
-        timeout: 10000 // 10 second timeout
+        timeout: 10000, // 10 second timeout
       };
 
       if (protocol.startsWith("ws")) {
@@ -40,14 +40,14 @@ function createBasicProvider(nodeRetryConfig) {
           ...options,
           clientConfig: {
             maxReceivedFrameSize: 100000000, // Useful if requests result are large bytes - default: 1MiB
-            maxReceivedMessageSize: 100000000 // bytes - default: 8MiB
+            maxReceivedMessageSize: 100000000, // bytes - default: 8MiB
           },
           reconnect: {
             auto: true, // Enable auto reconnection
             delay: 5000, // ms
             maxAttempts: 10,
-            onTimeout: false
-          }
+            onTimeout: false,
+          },
         };
       }
       return { options, ...configElement };

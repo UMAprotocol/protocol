@@ -10,6 +10,4 @@ async function App(params) {
   return { filename, ...params };
 }
 
-makeUnixPipe(App)
-  .then(console.log)
-  .catch(console.error);
+makeUnixPipe(App).then(console.log).catch(console.error);
