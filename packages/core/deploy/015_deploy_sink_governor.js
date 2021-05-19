@@ -14,4 +14,4 @@ const func = async function (hre) {
 };
 module.exports = func;
 func.tags = ["SinkGovernor", "bridge-l2"];
-func.dependencies = ["Finder"];
+func.dependencies = ["Finder", "Registry"];

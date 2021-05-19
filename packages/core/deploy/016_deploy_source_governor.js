@@ -9,9 +9,11 @@ const func = async function (hre) {
   const chainId = await getChainId();
   const bridgeId = getBridgeChainId(chainId);
 
+  const Finder = await deployments.get("Finder");
+
   await deploy("SourceGovernor", {
     from: deployer,
-    args: ["0x40f941E48A552bF496B154Af6bf55725f18D77c3", bridgeId],
+    args: [Finder.address, bridgeId],
     log: true,
   });
 };

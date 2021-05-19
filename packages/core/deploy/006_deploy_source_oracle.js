@@ -9,6 +9,8 @@ const func = async function (hre) {
   const chainId = await getChainId();
   const bridgeId = getBridgeChainId(chainId);
 
+  const Finder = await deployments.get("Finder");
+
   const args = [
     Finder.address,
     bridgeId, // Current chain ID.
