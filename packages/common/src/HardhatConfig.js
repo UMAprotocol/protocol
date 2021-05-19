@@ -1,7 +1,7 @@
 const { getNodeUrl, mnemonic } = require("./TruffleConfig");
 const path = require("path");
 
-function getHardhatConfig(configOverrides, truffleContextDir = "./") {
+function getHardhatConfig(configOverrides, workingDir = "./") {
   // Hard hat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function
   // get access to the plugins as well.
   require("@nomiclabs/hardhat-truffle5");
@@ -74,10 +74,10 @@ function getHardhatConfig(configOverrides, truffleContextDir = "./") {
     },
     external: {
       deployments: {
-        mainnet: [path.join(truffleContextDir, "build/contracts"), path.join(truffleContextDir, "deployments/mainnet")],
-        mumbai: [path.join(truffleContextDir, "build/contracts"), path.join(truffleContextDir, "deployments/mumbai")],
-        matic: [path.join(truffleContextDir, "build/contracts"), path.join(truffleContextDir, "deployments/matic")],
-        rinkeby: [path.join(truffleContextDir, "build/contracts"), path.join(truffleContextDir, "deployments/rinkeby")],
+        mainnet: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/mainnet")],
+        mumbai: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/mumbai")],
+        matic: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/matic")],
+        rinkeby: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/rinkeby")],
       },
     },
   };
