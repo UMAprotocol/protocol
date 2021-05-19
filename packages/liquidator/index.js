@@ -381,7 +381,7 @@ async function Poll(callback) {
       // until. If either startingBlock or endingBlock is not sent, then the bot will search for event.
       endingBlock: process.env.ENDING_BLOCK_NUMBER,
       // If there is a dsproxy config, the bot can be configured to send transactions via a smart contract wallet (DSProxy).
-      // This enables the bot to preform swap, mint liquidate, enabling a single reserve currency.
+      // This enables the bot to preform swap, mint & liquidate, enabling a single reserve currency.
       // Note that the DSProxy will be deployed on the first run of the bot. Subsequent runs will re-use the proxy. example:
       // { "useDsProxyToLiquidate": "true", If enabled, the bot will send liquidations via a DSProxy.
       //  "dsProxyFactoryAddress": "0x123..." -> Will default to an UMA deployed version if non provided.

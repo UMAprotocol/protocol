@@ -12,6 +12,7 @@ class Liquidator {
    * @notice Constructs new Liquidator bot.
    * @param {Object} logger Module used to send logs.
    * @param {Object} financialContractClient Module used to query Financial Contract information on-chain.
+   * @param {Object} proxyTransactionWrapper Module enable the liquidator to send transactions via a DSProxy.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {Object} syntheticToken Synthetic token (tokenCurrency).
    * @param {Object} priceFeed Module used to query the current token price.

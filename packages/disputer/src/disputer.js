@@ -9,6 +9,7 @@ class Disputer {
    * @notice Constructs new Disputer bot.
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} financialContractClient Module used to query Financial Contract information on-chain.
+   * @param {Object} proxyTransactionWrapper Module enable the disputer to send transactions via a DSProxy.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {Object} priceFeed Module used to get the current or historical token price.
    * @param {String} account Ethereum account from which to send txns.
@@ -19,6 +20,7 @@ class Disputer {
   constructor({
     logger,
     financialContractClient,
+    proxyTransactionWrapper,
     gasEstimator,
     priceFeed,
     account,
@@ -27,6 +29,8 @@ class Disputer {
   }) {
     this.logger = logger;
     this.account = account;
+
+    this.proxyTransactionWrapper = proxyTransactionWrapper;
 
     // Expiring multiparty contract to read contract state
     this.financialContractClient = financialContractClient;
@@ -154,7 +158,6 @@ class Disputer {
               price: price.toString(),
               liquidation: JSON.stringify(liquidation),
             });
-
             return { ...liquidation, price: price.toString() };
           }
 
@@ -172,54 +175,35 @@ class Disputer {
     }
 
     for (const disputeableLiquidation of disputableLiquidationsWithPrices) {
-      // Create the transaction.
-      const dispute = this.financialContract.methods.dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor);
-
       this.logger.debug({
         at: "Disputer",
         message: "Disputing liquidation",
         liquidation: disputeableLiquidation,
       });
-      try {
-        // Get successful transaction receipt and return value or error.
-        const transactionResult = await runTransaction({
-          transaction: dispute,
-          config: {
-            gasPrice: this.gasEstimator.getCurrentFastPrice(),
-            from: this.account,
-            nonce: await this.web3.eth.getTransactionCount(this.account),
-          },
-        });
-        const receipt = transactionResult.receipt;
-        const returnValue = transactionResult.returnValue.toString();
-        const logResult = {
-          tx: receipt.transactionHash,
-          sponsor: receipt.events.LiquidationDisputed.returnValues.sponsor,
-          liquidator: receipt.events.LiquidationDisputed.returnValues.liquidator,
-          id: receipt.events.LiquidationDisputed.returnValues.liquidationId,
-          disputeBondPaid: receipt.events.LiquidationDisputed.returnValues.disputeBondAmount,
-        };
-        this.logger.info({
-          at: "Disputer",
-          message: "Position has been disputed!👮‍♂️",
-          liquidation: disputeableLiquidation,
-          disputeResult: logResult,
-          totalPaid: returnValue,
-        });
-      } catch (error) {
-        const message =
-          error.type === "call"
-            ? "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute✋"
-            : "Failed to dispute liquidation🚨";
+
+      // Submit the dispute transaction. This will use the DSProxy if configured or will send the tx with the unlocked EOA.
+      const logResult = await this.proxyTransactionWrapper.submitDisputeTransaction([
+        disputeableLiquidation.id,
+        disputeableLiquidation.sponsor,
+      ]);
+
+      if (logResult instanceof Error || !logResult)
         this.logger.error({
           at: "Disputer",
-          message,
-          disputer: this.account,
+          message:
+            logResult.type === "call"
+              ? "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute✋"
+              : "Failed to dispute liquidation🚨",
           liquidation: disputeableLiquidation,
-          error,
+          logResult,
         });
-        continue;
-      }
+      else
+        this.logger.info({
+          at: "Disputer",
+          message: "Liquidation has been disputed!👮‍♂️",
+          liquidation: disputeableLiquidation,
+          logResult,
+        });
     }
   }
 

@@ -28,7 +28,6 @@ const {
 // Script to test
 const { Liquidator } = require("../src/liquidator.js");
 const { ProxyTransactionWrapper } = require("../src/proxyTransactionWrapper");
-const { assert } = require("chai");
 
 // Run the tests against 3 different kinds of token/synth decimal combinations:
 // 1) matching 18 & 18 for collateral for most token types with normal tokens.
@@ -1722,15 +1721,11 @@ contract("Liquidator.js", function (accounts) {
             uniswapRouter = await createContractObjectFromJson(UniswapV2Router02).new(
               uniswapFactory.address,
               collateralToken.address,
-              {
-                from: contractCreator,
-              }
+              { from: contractCreator }
             );
 
             // initialize the pair between the reserve and collateral token.
-            await uniswapFactory.createPair(reserveToken.address, collateralToken.address, {
-              from: contractCreator,
-            });
+            await uniswapFactory.createPair(reserveToken.address, collateralToken.address, { from: contractCreator });
             pairAddress = await uniswapFactory.getPair(reserveToken.address, collateralToken.address);
             pair = await createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
 
@@ -2097,7 +2092,6 @@ contract("Liquidator.js", function (accounts) {
               // Next, try another liquidation. This time around the bot does not have enough collateral to mint enough
               // to liquidate the min sponsor size. The bot should correctly report this without generating any errors
               // or throwing any txs.
-
               priceFeedMock.setCurrentPrice(convertPrice("2"));
               await liquidator.update();
               await liquidator.liquidatePositions();
