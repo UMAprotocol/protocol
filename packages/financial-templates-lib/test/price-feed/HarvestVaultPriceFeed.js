@@ -1,6 +1,6 @@
 const winston = require("winston");
 
-const { VaultPriceFeed } = require("../../src/price-feed/HarvestVaultPriceFeed");
+const { HarvestVaultPriceFeed } = require("../../src/price-feed/HarvestVaultPriceFeed");
 const { advanceBlockAndSetTime, parseFixed } = require("@uma/common");
 const { BlockFinder } = require("../../src/price-feed/utils");
 const { getTruffleContract } = require("@uma/core");
@@ -30,7 +30,7 @@ contract("HarvestVaultPriceFeed.js", function(accounts) {
       transports: [new winston.transports.Console()]
     });
 
-    vaultPriceFeed = new VaultPriceFeed({
+    vaultPriceFeed = new HarvestVaultPriceFeed({
       logger: dummyLogger,
       web3,
       getTime: () => mockTime,
