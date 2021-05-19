@@ -197,20 +197,20 @@ async function run({
 
     // The Financial Contract requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.
     // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-    const collateralApproval = await setAllowance(
-      web3,
-      gasEstimator,
-      accounts[0],
-      financialContractAddress,
-      collateralTokenAddress
-    );
-    if (collateralApproval) {
-      logger.info({
-        at: "Disputer#index",
-        message: "Approved Financial Contract to transfer unlimited collateral tokens 💰",
-        collateralApprovalTx: collateralApproval.tx.transactionHash,
-      });
-    }
+    // const collateralApproval = await setAllowance(
+    //   web3,
+    //   gasEstimator,
+    //   accounts[0],
+    //   financialContractAddress,
+    //   collateralTokenAddress
+    // );
+    // if (collateralApproval) {
+    //   logger.info({
+    //     at: "Disputer#index",
+    //     message: "Approved Financial Contract to transfer unlimited collateral tokens 💰",
+    //     collateralApprovalTx: collateralApproval.tx.transactionHash,
+    //   });
+    // }
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {

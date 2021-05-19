@@ -1,7 +1,7 @@
 {
   "extends": "@tsconfig/node14/tsconfig.json",
   "include": ["./**/*.ts"],
-  "module": "es2015",
+  "module": "commonjs",
   "esModuleInterop": true,
   "compilerOptions": {
     "outDir": "../dist",
