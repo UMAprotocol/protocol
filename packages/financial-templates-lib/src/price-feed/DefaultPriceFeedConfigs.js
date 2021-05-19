@@ -971,7 +971,7 @@ const defaultConfigs = {
     expression: "ETHDEXTF * USDETH",
     lookback: 7200,
     minTimeBetweenUpdates: 60,
-    twapLength: 3600,
+    twapLength: 300,
     customFeeds: {
       ETHDEXTF: {
         type: "uniswap",
