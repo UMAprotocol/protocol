@@ -1,8 +1,7 @@
 const { getNodeUrl, mnemonic } = require("./TruffleConfig");
 const path = require("path");
-const coreWkdir = path.dirname(require.resolve("@uma/core/package.json"));
 
-function getHardhatConfig(configOverrides) {
+function getHardhatConfig(configOverrides, truffleContextDir = "./") {
   // Hard hat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function
   // get access to the plugins as well.
   require("@nomiclabs/hardhat-truffle5");
@@ -70,7 +69,10 @@ function getHardhatConfig(configOverrides) {
     },
     external: {
       deployments: {
-        mainnet: [`${coreWkdir}/build/contracts`, `${coreWkdir}/deployments/mainnet`],
+        mainnet: [path.join(truffleContextDir, "build/contracts"), path.join(truffleContextDir, "deployments/mainnet")],
+        mumbai: [path.join(truffleContextDir, "build/contracts"), path.join(truffleContextDir, "deployments/mumbai")],
+        matic: [path.join(truffleContextDir, "build/contracts"), path.join(truffleContextDir, "deployments/matic")],
+        rinkeby: [path.join(truffleContextDir, "build/contracts"), path.join(truffleContextDir, "deployments/rinkeby")],
       },
     },
   };

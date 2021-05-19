@@ -13,4 +13,4 @@ const configOverride = {
   },
 };
 
-module.exports = getHardhatConfig(configOverride);
+module.exports = getHardhatConfig(configOverride, __dirname);
