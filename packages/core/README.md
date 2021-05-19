@@ -113,6 +113,10 @@ Whitelist hardcoded identifiers from the `config/identifiers.json` file. Optiona
 
 `yarn hardhat whitelist-identifiers --network <NETWORK-NAME> --id <CUSTOM-IDENTIFIER>`
 
+Sets specified contracts in the deployed Finder. More contracts available to be set can be found in the `common/hardhat/tasks/finder.js` script.
+
+`yarn hardhat setup-finder --network <NETWORK-NAME> --registry --bridge --generichandler`
+
 ## Typescript!
 
 In addition to the above import styles, you can import typescript types for truffle, ethers, and web3. Because of existing

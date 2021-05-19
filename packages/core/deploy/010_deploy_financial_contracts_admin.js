@@ -4,11 +4,11 @@ const func = async function (hre) {
 
   const { deployer } = await getNamedAccounts();
 
-  await deploy("Registry", {
+  await deploy("FinancialContractsAdmin", {
     from: deployer,
     args: [],
     log: true,
   });
 };
 module.exports = func;
-func.tags = ["Registry", "dvm", "sink-oracle", "source-oracle"];
+func.tags = ["FinancialContractsAdmin", "dvm"];
