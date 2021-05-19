@@ -36,22 +36,27 @@ function getHardhatConfig(configOverrides, truffleContextDir = "./") {
         url: "http://127.0.0.1:8545",
       },
       rinkeby: {
+        chainId: 4,
         url: getNodeUrl("rinkeby", true),
         accounts: { mnemonic },
       },
       goerli: {
+        chainId: 5,
         url: getNodeUrl("goerli", true),
         accounts: { mnemonic },
       },
       mumbai: {
+        chainId: 80001,
         url: getNodeUrl("polygon-mumbai", true),
         accounts: { mnemonic },
       },
       matic: {
+        chainId: 137,
         url: getNodeUrl("polygon-matic", true),
         accounts: { mnemonic },
       },
       mainnet: {
+        chainId: 1,
         url: getNodeUrl("mainnet", true),
         accounts: { mnemonic },
       },
