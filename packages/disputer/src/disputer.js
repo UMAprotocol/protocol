@@ -1,7 +1,7 @@
 const {
   PostWithdrawLiquidationRewardsStatusTranslations,
   createObjectFromDefaultProps,
-  runTransaction
+  runTransaction,
 } = require("@uma/common");
 
 class Disputer {
@@ -25,7 +25,7 @@ class Disputer {
     priceFeed,
     account,
     financialContractProps,
-    disputerConfig
+    disputerConfig,
   }) {
     this.logger = logger;
     this.account = account;
@@ -63,29 +63,29 @@ class Disputer {
         // `disputeDelay`: Amount of time to wait after the request timestamp of the liquidation to be disputed.
         // This makes the reading of the historical price more reliable. Denominated in seconds.
         value: 60,
-        isValid: x => {
+        isValid: (x) => {
           return x >= 0;
-        }
+        },
       },
       txnGasLimit: {
         // `txnGasLimit`: Gas limit to set for sending on-chain transactions.
         value: 9000000, // Can see recent averages here: https://etherscan.io/chart/gaslimit
-        isValid: x => {
+        isValid: (x) => {
           return x >= 6000000 && x < 15000000;
-        }
+        },
       },
       contractType: {
         value: undefined,
-        isValid: x => {
+        isValid: (x) => {
           return x === "ExpiringMultiParty" || x === "Perpetual";
-        }
+        },
       },
       contractVersion: {
         value: undefined,
-        isValid: x => {
+        isValid: (x) => {
           return x === "1.2.0" || x === "1.2.1" || x === "1.2.2" || x === "2.0.1";
-        }
-      }
+        },
+      },
     };
 
     // Validate and set config settings to class state.
@@ -107,14 +107,14 @@ class Disputer {
   async dispute(disputerOverridePrice) {
     this.logger.debug({
       at: "Disputer",
-      message: "Checking for any disputable liquidations"
+      message: "Checking for any disputable liquidations",
     });
 
     // Get the latest disputable liquidations from the client.
     const undisputedLiquidations = this.financialContractClient.getUndisputedLiquidations();
     const disputableLiquidationsWithPrices = (
       await Promise.all(
-        undisputedLiquidations.map(async liquidation => {
+        undisputedLiquidations.map(async (liquidation) => {
           // If liquidation time is before the price feed's lookback window, then we can skip this liquidation
           // because we will not be able to get a historical price. If a dispute override price is provided then
           // we can ignore this check.
@@ -126,7 +126,7 @@ class Disputer {
               at: "Disputer",
               message: "Cannot dispute: liquidation time before earliest price feed historical timestamp",
               liquidationTime,
-              historicalLookbackWindow
+              historicalLookbackWindow,
             });
             return null;
           }
@@ -142,7 +142,7 @@ class Disputer {
               this.logger.error({
                 at: "Disputer",
                 message: "Cannot dispute: price feed returned invalid value",
-                error
+                error,
               });
             }
           }
@@ -156,7 +156,7 @@ class Disputer {
               at: "Disputer",
               message: "Detected a disputable liquidation",
               price: price.toString(),
-              liquidation: liquidation
+              liquidation: liquidation,
             });
             return { ...liquidation, price: price.toString() };
           }
@@ -164,12 +164,12 @@ class Disputer {
           return null;
         })
       )
-    ).filter(liquidation => liquidation !== null);
+    ).filter((liquidation) => liquidation !== null);
 
     if (disputableLiquidationsWithPrices.length === 0) {
       this.logger.debug({
         at: "Disputer",
-        message: "No disputable liquidations"
+        message: "No disputable liquidations",
       });
       return;
     }
@@ -180,7 +180,7 @@ class Disputer {
       this.logger.debug({
         at: "Disputer",
         message: "Disputing liquidation",
-        liquidation: disputeableLiquidation
+        liquidation: disputeableLiquidation,
       });
 
       // Submit the dispute transaction. This will use the DSProxy if configured or will send the tx with the unlocked EOA.
@@ -194,14 +194,14 @@ class Disputer {
               ? "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute✋"
               : "Failed to dispute liquidation🚨",
           liquidation: disputeableLiquidation,
-          logResult
+          logResult,
         });
       else
         this.logger.info({
           at: "Disputer",
           message: "Liquidation has been disputed!👮‍♂️",
           liquidation: disputeableLiquidation,
-          logResult
+          logResult,
         });
     }
   }
@@ -210,18 +210,39 @@ class Disputer {
   async withdrawRewards() {
     this.logger.debug({
       at: "Disputer",
-      message: "Checking for disputed liquidations that may have resolved"
+      message: "Checking for disputed liquidations that may have resolved",
     });
+
+    // The disputer address is either the DSProxy (if using a DSProxy to dispute) or the unlocked account.
+    const disputerAddress = this.proxyTransactionWrapper.useDsProxyToDispute
+      ? this.proxyTransactionWrapper.dsProxyManager.getDSProxyAddress()
+      : this.account;
 
     // Can only derive rewards from disputed liquidations that this account disputed.
     const disputedLiquidations = this.financialContractClient
       .getDisputedLiquidations()
-      .filter(liquidation => liquidation.disputer === this.account);
+      .filter((liquidation) => liquidation.disputer === disputerAddress);
 
     if (disputedLiquidations.length === 0) {
       this.logger.debug({
         at: "Disputer",
-        message: "No withdrawable disputes"
+        message: "No withdrawable disputes",
+      });
+      return;
+    }
+
+    // In legacy versions of the EMP, withdrawing needs to be done by a party involved in the liquidation (i.e liquidator,
+    // sponsor or disputer). As the disputer is the DSProxy, we would require the ability to send the withdrawal tx
+    // directly from the DSProxy to facilitate this. This functionality is not implemented as almost all legacy EMPs expired.
+    if (
+      this.proxyTransactionWrapper?.useDsProxyToDispute &&
+      this.isLegacyEmpVersion &&
+      disputedLiquidations.length > 0
+    ) {
+      this.logger.warn({
+        at: "Disputer",
+        message: "Attempting to withdraw dispute from a legacy EMP🙈",
+        details: "This is not supported on legacy with a DSProxy! Please manually withdraw the dispute",
       });
       return;
     }
@@ -230,7 +251,7 @@ class Disputer {
       this.logger.debug({
         at: "Disputer",
         message: "Detected a disputed liquidation",
-        liquidation: JSON.stringify(liquidation)
+        liquidation: JSON.stringify(liquidation),
       });
 
       // Construct transaction.
@@ -239,7 +260,7 @@ class Disputer {
       this.logger.debug({
         at: "Disputer",
         message: "Withdrawing dispute",
-        liquidation: liquidation
+        liquidation: liquidation,
       });
       try {
         // Get successful transaction receipt and return value or error.
@@ -248,8 +269,8 @@ class Disputer {
           config: {
             gasPrice: this.gasEstimator.getCurrentFastPrice(),
             from: this.account,
-            nonce: await this.web3.eth.getTransactionCount(this.account)
-          }
+            nonce: await this.web3.eth.getTransactionCount(this.account),
+          },
         });
         let receipt = transactionResult.receipt;
         let logResult = {
@@ -259,7 +280,7 @@ class Disputer {
           liquidationStatus:
             PostWithdrawLiquidationRewardsStatusTranslations[
               receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
-            ]
+            ],
         };
         // In contract version 1.2.2 and below this function returns one value: the amount withdrawn by the function caller.
         // In later versions it returns an object containing all payouts.
@@ -274,7 +295,7 @@ class Disputer {
           at: "Disputer",
           message: "Dispute withdrawn🤑",
           liquidation: liquidation,
-          liquidationResult: logResult
+          liquidationResult: logResult,
         });
       } catch (error) {
         // If the withdrawal simulation fails, then it is likely that the dispute has not resolved yet, and we don't
@@ -283,7 +304,7 @@ class Disputer {
           this.logger.debug({
             at: "Disputer",
             message: "No rewards to withdraw",
-            liquidation: liquidation
+            liquidation: liquidation,
           });
         } else {
           const message = "Failed to withdraw dispute rewards🚨";
@@ -292,7 +313,7 @@ class Disputer {
             message,
             disputer: this.account,
             liquidation: liquidation,
-            error
+            error,
           });
         }
         continue;
@@ -302,5 +323,5 @@ class Disputer {
 }
 
 module.exports = {
-  Disputer
+  Disputer,
 };

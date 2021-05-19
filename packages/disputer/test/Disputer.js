@@ -11,7 +11,7 @@ const {
   runTestForVersion,
   createConstructorParamsForContractVersion,
   TESTED_CONTRACT_VERSIONS,
-  parseFixed
+  parseFixed,
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
@@ -25,7 +25,7 @@ const {
   GasEstimator,
   PriceFeedMock,
   SpyTransport,
-  DSProxyManager
+  DSProxyManager,
 } = require("@uma/financial-templates-lib");
 
 // Run the tests against 3 different kinds of token/synth decimal combinations:
@@ -34,8 +34,8 @@ const {
 // 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
 const configs = [
   { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 }
+  // { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
+  // { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 }
 ];
 
 let iterationTestVersion; // store the test version between tests that is currently being tested.
@@ -75,7 +75,7 @@ let dsProxyManager;
 let proxyTransactionWrapper;
 
 // Set the funding rate and advances time by 10k seconds.
-const _setFundingRateAndAdvanceTime = async fundingRate => {
+const _setFundingRateAndAdvanceTime = async (fundingRate) => {
   const currentTime = (await financialContract.getCurrentTime()).toNumber();
   await financialContract.proposeFundingRate({ rawValue: fundingRate }, currentTime);
   await financialContract.setCurrentTime(currentTime + 10000);
@@ -86,15 +86,15 @@ const _setFundingRateAndAdvanceTime = async fundingRate => {
 // for a given test.eg: versionedIt([{ contractType: "any", contractVersion: "any" }])(["Perpetual-latest"])("test name", async function () { assert.isTrue(true) })
 // Note that a second param can be provided to make the test an `it.only` thereby ONLY running that single test, on
 // the provided version. This is very useful for debugging and writing single unit tests without having ro run all tests.
-const versionedIt = function(supportedVersions, shouldBeItOnly = false) {
+const versionedIt = function (supportedVersions, shouldBeItOnly = false) {
   if (shouldBeItOnly)
     return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it.only : () => {};
   return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it : () => {};
 };
 
-const Convert = decimals => number => (number ? parseFixed(number.toString(), decimals).toString() : number);
+const Convert = (decimals) => (number) => (number ? parseFixed(number.toString(), decimals).toString() : number);
 
-contract("Disputer.js", function(accounts) {
+contract("Disputer.js", function (accounts) {
   const disputeBot = accounts[0];
   const sponsor1 = accounts[1];
   const sponsor2 = accounts[2];
@@ -103,7 +103,7 @@ contract("Disputer.js", function(accounts) {
   const contractCreator = accounts[5];
   const rando = accounts[6];
 
-  TESTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
+  TESTED_CONTRACT_VERSIONS.forEach(function (contractVersion) {
     // Store the contractVersion.contractVersion, type and version being tested
     iterationTestVersion = contractVersion;
 
@@ -123,8 +123,8 @@ contract("Disputer.js", function(accounts) {
     const MulticallMock = getTruffleContract("MulticallMock", web3);
 
     for (let testConfig of configs) {
-      describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
-        before(async function() {
+      describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
+        before(async function () {
           identifier = `${testConfig.tokenName}TEST`;
           fundingRateIdentifier = `${testConfig.tokenName}_FUNDING_IDENTIFIER`;
           convertCollateral = Convert(testConfig.collateralDecimals);
@@ -136,12 +136,12 @@ contract("Disputer.js", function(accounts) {
             testConfig.tokenSymbol,
             testConfig.collateralDecimals,
             {
-              from: contractCreator
+              from: contractCreator,
             }
           );
 
           await collateralToken.addMember(1, contractCreator, {
-            from: contractCreator
+            from: contractCreator,
           });
 
           // Seed the accounts.
@@ -172,10 +172,10 @@ contract("Disputer.js", function(accounts) {
 
           multicall = await MulticallMock.new();
         });
-        beforeEach(async function() {
+        beforeEach(async function () {
           await timer.setCurrentTime(startTime - 1);
           mockOracle = await MockOracle.new(finder.address, timer.address, {
-            from: contractCreator
+            from: contractCreator,
           });
           await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
 
@@ -191,7 +191,7 @@ contract("Disputer.js", function(accounts) {
                 proposerBondPercentage: { rawValue: "0" },
                 maxFundingRate: { rawValue: toWei("0.00001") },
                 minFundingRate: { rawValue: toWei("-0.00001") },
-                proposalTimePastLimit: 0
+                proposalTimePastLimit: 0,
               },
               timer.address
             );
@@ -215,13 +215,13 @@ contract("Disputer.js", function(accounts) {
               fundingRateIdentifier,
               timer,
               store,
-              configStore: configStore || {} // if the contract type is not a perp this will be null.
+              configStore: configStore || {}, // if the contract type is not a perp this will be null.
             },
             { minSponsorTokens: { rawValue: convertSynthetic("1") } } // these tests assume a min sponsor size of 1, not 5 as default
           );
 
           await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
-            from: accounts[0]
+            from: accounts[0],
           });
 
           // Deploy a new expiring multi party OR perpetual, depending on what the financialContract has been set to.
@@ -233,17 +233,17 @@ contract("Disputer.js", function(accounts) {
 
           // Generate Financial Contract properties to inform bot of important on-chain state values that we only want to query once.
           financialContractProps = {
-            priceIdentifier: await financialContract.priceIdentifier()
+            priceIdentifier: await financialContract.priceIdentifier(),
           };
 
           await collateralToken.approve(financialContract.address, convertCollateral("100000000"), { from: sponsor1 });
           await collateralToken.approve(financialContract.address, convertCollateral("100000000"), { from: sponsor2 });
           await collateralToken.approve(financialContract.address, convertCollateral("100000000"), { from: sponsor3 });
           await collateralToken.approve(financialContract.address, convertCollateral("100000000"), {
-            from: liquidator
+            from: liquidator,
           });
           await collateralToken.approve(financialContract.address, convertCollateral("100000000"), {
-            from: disputeBot
+            from: disputeBot,
           });
 
           syntheticToken = await Token.at(await financialContract.tokenCurrency());
@@ -257,7 +257,7 @@ contract("Disputer.js", function(accounts) {
 
           spyLogger = winston.createLogger({
             level: "info",
-            transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+            transports: [new SpyTransport({ level: "info" }, { spy: spy })],
           });
 
           // Create a new instance of the FinancialContractClient & GasEstimator to construct the disputer
@@ -277,7 +277,7 @@ contract("Disputer.js", function(accounts) {
           disputerConfig = {
             disputeDelay: 0,
             contractType: contractVersion.contractType,
-            contractVersion: contractVersion.contractVersion
+            contractVersion: contractVersion.contractVersion,
           };
 
           // Create price feed mock.
@@ -292,7 +292,7 @@ contract("Disputer.js", function(accounts) {
             account: accounts[0],
             dsProxyManager: null,
             useDsProxyToLiquidate: false,
-            proxyTransactionWrapperConfig: {}
+            proxyTransactionWrapperConfig: {},
           });
 
           disputer = new Disputer({
@@ -303,13 +303,13 @@ contract("Disputer.js", function(accounts) {
             priceFeed: priceFeedMock,
             account: accounts[0],
             financialContractProps,
-            disputerConfig
+            disputerConfig,
           });
         });
 
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Detect disputable positions and send disputes",
-          async function() {
+          async function () {
             // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
             await financialContract.create(
               { rawValue: convertCollateral("125") },
@@ -445,7 +445,7 @@ contract("Disputer.js", function(accounts) {
         );
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Detect disputable withdraws and send disputes",
-          async function() {
+          async function () {
             // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
             await financialContract.create(
               { rawValue: convertCollateral("125") },
@@ -512,7 +512,7 @@ contract("Disputer.js", function(accounts) {
 
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
           "Withdraw from successful disputes",
-          async function() {
+          async function () {
             // sponsor1 creates a position with 150 units of collateral, creating 100 synthetic tokens.
             await financialContract.create(
               { rawValue: convertCollateral("150") },
@@ -623,7 +623,7 @@ contract("Disputer.js", function(accounts) {
           }
         );
 
-        versionedIt([{ contractType: "any", contractVersion: "any" }])("Too little collateral", async function() {
+        versionedIt([{ contractType: "any", contractVersion: "any" }])("Too little collateral", async function () {
           // sponsor1 creates a position with 150 units of collateral, creating 100 synthetic tokens.
           await financialContract.create(
             { rawValue: convertCollateral("150") },
@@ -694,10 +694,10 @@ contract("Disputer.js", function(accounts) {
           );
         });
 
-        describe("Overrides the default disputer configuration settings", function() {
+        describe("Overrides the default disputer configuration settings", function () {
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Cannot set `disputeDelay` < 0",
-            async function() {
+            async function () {
               let errorThrown;
               try {
                 disputerConfig = { ...disputerConfig, disputeDelay: -1 };
@@ -709,7 +709,7 @@ contract("Disputer.js", function(accounts) {
                   priceFeed: priceFeedMock,
                   account: accounts[0],
                   financialContractProps,
-                  disputerConfig
+                  disputerConfig,
                 });
                 errorThrown = false;
               } catch (err) {
@@ -721,7 +721,7 @@ contract("Disputer.js", function(accounts) {
 
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Sets `disputeDelay` to 60 seconds",
-            async function() {
+            async function () {
               disputerConfig = { ...disputerConfig, disputeDelay: 60 };
               disputer = new Disputer({
                 logger: spyLogger,
@@ -731,7 +731,7 @@ contract("Disputer.js", function(accounts) {
                 priceFeed: priceFeedMock,
                 account: accounts[0],
                 financialContractProps,
-                disputerConfig
+                disputerConfig,
               });
 
               // sponsor1 creates a position with 150 units of collateral, creating 100 synthetic tokens.
@@ -792,7 +792,7 @@ contract("Disputer.js", function(accounts) {
 
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Can provide an override price to disputer",
-            async function() {
+            async function () {
               // sponsor1 creates a position with 130 units of collateral, creating 100 synthetic tokens.
               await financialContract.create(
                 { rawValue: convertCollateral("130") },
@@ -859,7 +859,7 @@ contract("Disputer.js", function(accounts) {
           describe("disputer correctly deals with funding rates from perpetual contract", () => {
             versionedIt([{ contractType: "Perpetual", contractVersion: "2.0.1" }])(
               "Can correctly detect invalid liquidations and dispute them",
-              async function() {
+              async function () {
                 // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
                 await financialContract.create(
                   { rawValue: convertCollateral("125") },
@@ -1054,7 +1054,7 @@ contract("Disputer.js", function(accounts) {
 
           // Takes in a json object from a compiled contract and returns a truffle contract instance that can be deployed.
           // TODO: refactor this to be from a common file
-          const createContractObjectFromJson = contractJsonObject => {
+          const createContractObjectFromJson = (contractJsonObject) => {
             let truffleContractCreator = truffleContract(contractJsonObject);
             truffleContractCreator.setProvider(web3.currentProvider);
             return truffleContractCreator;
@@ -1067,7 +1067,7 @@ contract("Disputer.js", function(accounts) {
 
             // deploy Uniswap V2 Factory & router.
             uniswapFactory = await createContractObjectFromJson(UniswapV2Factory).new(contractCreator, {
-              from: contractCreator
+              from: contractCreator,
             });
             uniswapRouter = await createContractObjectFromJson(UniswapV2Router02).new(
               uniswapFactory.address,
@@ -1077,7 +1077,7 @@ contract("Disputer.js", function(accounts) {
 
             // initialize the pair between the reserve and collateral token.
             await uniswapFactory.createPair(reserveToken.address, collateralToken.address, {
-              from: contractCreator
+              from: contractCreator,
             });
             pairAddress = await uniswapFactory.getPair(reserveToken.address, collateralToken.address);
             pair = await createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
@@ -1086,10 +1086,10 @@ contract("Disputer.js", function(accounts) {
             // token is Dai this starts off the uniswap market at 1 reserve/collateral. Note the amount of collateral
             // is scaled according to the collateral decimals.
             await reserveToken.mint(pairAddress, toBN(toWei("1000")).muln(10000000), {
-              from: contractCreator
+              from: contractCreator,
             });
             await collateralToken.mint(pairAddress, toBN(convertCollateral("1000")).muln(10000000), {
-              from: contractCreator
+              from: contractCreator,
             });
             await pair.sync({ from: contractCreator });
 
@@ -1103,7 +1103,7 @@ contract("Disputer.js", function(accounts) {
               account: disputeBot,
               dsProxyFactoryAddress: dsProxyFactory.address,
               dsProxyFactoryAbi: DSProxyFactory.abi,
-              dsProxyAbi: DSProxy.abi
+              dsProxyAbi: DSProxy.abi,
             });
             // Initialize the DSProxy manager. This will deploy a new DSProxy contract as the liquidator bot EOA does not
             // yet have one deployed.
@@ -1118,8 +1118,8 @@ contract("Disputer.js", function(accounts) {
               proxyTransactionWrapperConfig: {
                 useDsProxyToDispute: true,
                 uniswapRouterAddress: uniswapRouter.address,
-                disputerReserveCurrencyAddress: reserveToken.address
-              }
+                disputerReserveCurrencyAddress: reserveToken.address,
+              },
             });
 
             disputer = new Disputer({
@@ -1130,12 +1130,12 @@ contract("Disputer.js", function(accounts) {
               priceFeed: priceFeedMock,
               account: accounts[0],
               financialContractProps,
-              disputerConfig
+              disputerConfig,
             });
           });
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Can correctly detect initialized DSProxy and ProxyTransactionWrapper",
-            async function() {
+            async function () {
               // The initialization in the before-each should be correct.
               assert.isTrue(isAddress(dsProxy.address));
               assert.equal(await dsProxy.owner(), disputeBot);
@@ -1148,7 +1148,7 @@ contract("Disputer.js", function(accounts) {
           );
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Rejects invalid invocation of proxy transaction wrapper",
-            async function() {
+            async function () {
               // Invalid invocation should reject. Missing reserve currency.
               assert.throws(() => {
                 new ProxyTransactionWrapper({
@@ -1160,8 +1160,8 @@ contract("Disputer.js", function(accounts) {
                   proxyTransactionWrapperConfig: {
                     useDsProxyToDispute: true,
                     uniswapRouterAddress: uniswapRouter.address,
-                    disputerReserveCurrencyAddress: null
-                  }
+                    disputerReserveCurrencyAddress: null,
+                  },
                 });
               });
 
@@ -1176,8 +1176,8 @@ contract("Disputer.js", function(accounts) {
                   proxyTransactionWrapperConfig: {
                     useDsProxyToDispute: true,
                     uniswapRouterAddress: "not-an-address",
-                    disputerReserveCurrencyAddress: reserveToken.address
-                  }
+                    disputerReserveCurrencyAddress: reserveToken.address,
+                  },
                 });
               });
               // Invalid invocation should reject. Requests to use DSProxy to Dispute but does not provide DSProxy manager.
@@ -1191,8 +1191,8 @@ contract("Disputer.js", function(accounts) {
                   proxyTransactionWrapperConfig: {
                     useDsProxyToDispute: true,
                     uniswapRouterAddress: uniswapRouter.address,
-                    disputerReserveCurrencyAddress: reserveToken.address
-                  }
+                    disputerReserveCurrencyAddress: reserveToken.address,
+                  },
                 });
               });
               // Invalid invocation should reject. DSProxy Manager not yet initalized.
@@ -1205,7 +1205,7 @@ contract("Disputer.js", function(accounts) {
                 account: disputeBot,
                 dsProxyFactoryAddress: dsProxyFactory.address,
                 dsProxyFactoryAbi: DSProxyFactory.abi,
-                dsProxyAbi: DSProxy.abi
+                dsProxyAbi: DSProxy.abi,
               });
               assert.throws(() => {
                 new ProxyTransactionWrapper({
@@ -1217,15 +1217,15 @@ contract("Disputer.js", function(accounts) {
                   proxyTransactionWrapperConfig: {
                     useDsProxyToDispute: true,
                     uniswapRouterAddress: uniswapRouter.address,
-                    disputerReserveCurrencyAddress: reserveToken.address
-                  }
+                    disputerReserveCurrencyAddress: reserveToken.address,
+                  },
                 });
               });
             }
           );
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Correctly disputes positions using DSProxy",
-            async function() {
+            async function () {
               // Seed the dsProxy with some reserve tokens so it can buy collateral to execute the dispute.
               await reserveToken.mint(dsProxy.address, toWei("10000"), { from: contractCreator });
 
@@ -1326,11 +1326,47 @@ contract("Disputer.js", function(accounts) {
               // The dsProxy should be the disputer in sponsor2 and sponsor3's liquidations.
               assert.equal((await financialContract.getLiquidations(sponsor2))[0].disputer, dsProxy.address);
               assert.equal((await financialContract.getLiquidations(sponsor3))[0].disputer, dsProxy.address);
+
+              // Note we only test withdrawal logic on versions that are not 1.2.2 as withdrawing using a DSProxy is
+              // on legacy contracts is currently not supported. This is not a problem as almost all of these contracts
+              // are expired.
+              if (contractVersion.contractVersion != "1.2.2") {
+                // Push a price of 1.1, which should cause the two disputes to be correct (invalid liquidations)
+                const liquidationTime = await financialContract.getCurrentTime();
+                await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidationTime, convertPrice("1.1"));
+
+                // rewards should be withdrawn and the DSProxy collateral ballance should increase.
+
+                const dsProxyCollateralBalanceBefore = await collateralToken.balanceOf(dsProxy.address);
+
+                await disputer.update();
+                await disputer.withdrawRewards();
+                assert.equal(spy.callCount, 7); // two new info after withdrawing the two disputes.
+
+                const dsProxyCollateralBalanceAfter = await collateralToken.balanceOf(dsProxy.address);
+                assert.isTrue(dsProxyCollateralBalanceAfter.gt(dsProxyCollateralBalanceBefore));
+
+                // Pre-dispute as nothing should have change and rewards by liquidator are not withdrawn.
+                assert.equal(
+                  (await financialContract.getLiquidations(sponsor1))[0].state,
+                  LiquidationStatesEnum.PRE_DISPUTE
+                );
+
+                // Uninitialized as reward withdrawal deletes the liquidation object.
+                assert.equal(
+                  (await financialContract.getLiquidations(sponsor2))[0].state,
+                  LiquidationStatesEnum.UNINITIALIZED
+                );
+                assert.equal(
+                  (await financialContract.getLiquidations(sponsor3))[0].state,
+                  LiquidationStatesEnum.UNINITIALIZED
+                );
+              }
             }
           );
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Correctly deals with reserve being the same as collateral currency using DSProxy",
-            async function() {
+            async function () {
               // Create a new disputer set to use the same collateral as the reserve currency.
               proxyTransactionWrapper = new ProxyTransactionWrapper({
                 web3,
@@ -1341,8 +1377,8 @@ contract("Disputer.js", function(accounts) {
                 proxyTransactionWrapperConfig: {
                   useDsProxyToDispute: true,
                   uniswapRouterAddress: uniswapRouter.address,
-                  disputerReserveCurrencyAddress: collateralToken.address
-                }
+                  disputerReserveCurrencyAddress: collateralToken.address,
+                },
               });
 
               disputer = new Disputer({
@@ -1353,7 +1389,7 @@ contract("Disputer.js", function(accounts) {
                 priceFeed: priceFeedMock,
                 account: accounts[0],
                 financialContractProps,
-                disputerConfig
+                disputerConfig,
               });
 
               // Seed the dsProxy with some reserve tokens so it can buy collateral to execute the dispute.
@@ -1407,7 +1443,7 @@ contract("Disputer.js", function(accounts) {
           );
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Correctly respects existing collateral balances when using DSProxy",
-            async function() {
+            async function () {
               // Seed the dsProxy with a few collateral but not enough to finish the dispute. All collateral available
               // should be spent and the shortfall should be purchased.
               await collateralToken.mint(dsProxy.address, convertCollateral("0.5"), { from: contractCreator });
