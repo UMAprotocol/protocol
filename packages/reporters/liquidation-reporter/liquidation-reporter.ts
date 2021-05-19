@@ -125,7 +125,8 @@ export async function fetchUmaEcosystemData() {
         ...uniqueCollateralTypes[collateralAddress].activeFinancialContracts[financialContractIndex],
         contractPriceIdentifier: hexToUtf8((contractPriceIdentifier as any).value),
         collateralRequirement: Number(fromWei(collateralRequirement)),
-        contractExpirationTime,
+        contractExpirationTime:
+          contractExpirationTime.status == "fulfilled" ? contractExpirationTime.value : "perpetual",
       };
 
       // Else, we can start building up draw down information.
