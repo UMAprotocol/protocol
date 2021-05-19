@@ -12,7 +12,7 @@ require("dotenv").config();
 const assert = require("assert");
 const { makeUnixPipe, devMiningTemplate, createGithubIssue } = require("../libs/affiliates/utils");
 
-const App = env => async params => {
+const App = (env) => async (params) => {
   const { config, whitelist } = params;
   assert(config, "requires config");
   assert(whitelist, "requires whitelist");
@@ -21,10 +21,8 @@ const App = env => async params => {
   return {
     // data.number is the issue number
     ...params,
-    issueNumber: githubIssue.data.number
+    issueNumber: githubIssue.data.number,
   };
 };
 
-makeUnixPipe(App(process.env))
-  .then(console.log)
-  .catch(console.error);
+makeUnixPipe(App(process.env)).then(console.log).catch(console.error);

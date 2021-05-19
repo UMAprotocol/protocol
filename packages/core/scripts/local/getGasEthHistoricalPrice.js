@@ -47,9 +47,7 @@ async function getGasEthHistoricalPrice(callback) {
 
     queryTime = new Date(queryTime * 1000);
     // Using moment package to convert queryTime to a usable BQ UTC format.
-    let laterTimeBound = moment(queryTime)
-      .utc()
-      .format(dateFormat);
+    let laterTimeBound = moment(queryTime).utc().format(dateFormat);
 
     // Subtracting 30 days from the current time to give the earlier time bound.
     let earlierTimeBound = moment(queryTime).subtract(30, "days");
@@ -58,9 +56,7 @@ async function getGasEthHistoricalPrice(callback) {
     let earlierLoggingTime = new Date(earlierTimeBound).toUTCString();
 
     // Creates BQ acceptable time format
-    earlierTimeBound = moment(earlierTimeBound)
-      .utc()
-      .format(dateFormat);
+    earlierTimeBound = moment(earlierTimeBound).utc().format(dateFormat);
 
     // Create the query with the needed time interval.
     const query = createQuery(earlierTimeBound, laterTimeBound);

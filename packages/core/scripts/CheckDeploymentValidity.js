@@ -3,7 +3,7 @@ const Migrations = artifacts.require("Migrations");
 const Registry = artifacts.require("Registry");
 const { interfaceName } = require("@uma/common");
 
-const checkDeploymentValidity = async function(callback) {
+const checkDeploymentValidity = async function (callback) {
   try {
     // Note: this script pulls the all contracts that are deployed as singletons and does a rough verification that
     // the deployed address points to a contract of the correct type. This will not catch minor bytecode mismatches.

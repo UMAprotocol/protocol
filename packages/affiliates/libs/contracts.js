@@ -18,7 +18,7 @@ function DecodeLog(abi, meta = {}) {
     return {
       ...iface.parseLog(log),
       ...meta,
-      ...props
+      ...props,
     };
   };
 }
@@ -29,7 +29,7 @@ function DecodeTransaction(abi, meta = {}) {
     return {
       ...iface.parseTransaction({ data: transaction.input }),
       ...meta,
-      ...props
+      ...props,
     };
   };
 }
@@ -60,8 +60,8 @@ function GetInputLength(abi) {
       return sum + componentLength(component);
     }, 0);
   }
-  return name => {
-    const find = abi.find(x => x.name === name);
+  return (name) => {
+    const find = abi.find((x) => x.name === name);
     assert(find, "unable to find name in abi: " + name);
     if (find.inputs == null || find.inputs.length == 0) return 0;
     return find.inputs.reduce((length, input) => {
@@ -74,7 +74,7 @@ function GetInputLength(abi) {
 const DecodeAttribution = (abi, name = "create") => {
   // convert bits to hex (div by 4) and add 2 for 0x
   const inputLength = GetInputLength(abi)(name) / 4 + 2;
-  return transaction => {
+  return (transaction) => {
     // tagged transactions are assumed to exist when there is more data than the required inputLength
     // in this case we may return nothing if no tag was added
     return transaction.input.slice(inputLength);
@@ -89,7 +89,7 @@ const encodeAttribution = (data, tag) => {
 };
 
 // Utility for encoding data for a transaction
-const EncodeCallData = abi => {
+const EncodeCallData = (abi) => {
   const contract = new web3.eth.Contract(abi);
   return (name, ...args) => {
     return contract.methods[name](...args).encodeABI();
@@ -106,7 +106,7 @@ function Erc20({ abi = getAbi("ERC20"), web3 }) {
     return contract.methods.decimals().call();
   }
   return {
-    decimals
+    decimals,
   };
 }
 
@@ -129,21 +129,21 @@ function Emp({ abi = getAbi("ExpiringMultiParty"), web3 } = {}) {
     const tokenAddress = await tokenCurrency(empAddress);
     return {
       address: tokenAddress,
-      decimals: await erc20.decimals(tokenAddress)
+      decimals: await erc20.decimals(tokenAddress),
     };
   }
   async function collateralInfo(empAddress) {
     const tokenAddress = await collateralCurrency(empAddress);
     return {
       address: tokenAddress,
-      decimals: await erc20.decimals(tokenAddress)
+      decimals: await erc20.decimals(tokenAddress),
     };
   }
   async function info(empAddress) {
     return {
       address: empAddress,
       token: await tokenInfo(empAddress),
-      collateral: await collateralInfo(empAddress)
+      collateral: await collateralInfo(empAddress),
     };
   }
   return {
@@ -151,7 +151,7 @@ function Emp({ abi = getAbi("ExpiringMultiParty"), web3 } = {}) {
     collateralCurrency,
     collateralInfo,
     tokenInfo,
-    info
+    info,
   };
 }
 
@@ -165,5 +165,5 @@ module.exports = {
   GetInputLength,
   toChecksumAddress,
   isAddress,
-  EncodeCallData
+  EncodeCallData,
 };

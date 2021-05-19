@@ -5,7 +5,7 @@ const Token = artifacts.require("ExpandedERC20");
 const Store = artifacts.require("Store");
 const Timer = artifacts.require("Timer");
 
-contract("Store", function(accounts) {
+contract("Store", function (accounts) {
   // A deployed instance of the Store contract, ready for testing.
   let store;
   let timer;
@@ -19,12 +19,12 @@ contract("Store", function(accounts) {
 
   // TODO Add test final fee for test identifier
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     store = await Store.deployed();
     timer = await Timer.deployed();
   });
 
-  it("Compute fees basic check", async function() {
+  it("Compute fees basic check", async function () {
     // Set fee to 10%
     let newFee = { rawValue: web3.utils.toWei("0.1", "ether") };
     await store.setFixedOracleFeePerSecondPerPfc(newFee, { from: owner });
@@ -41,7 +41,7 @@ contract("Store", function(accounts) {
     assert.equal(fees.regularFee.toString(), web3.utils.toWei("2", "ether"));
   });
 
-  it("Compute fees at 20%", async function() {
+  it("Compute fees at 20%", async function () {
     // Change fee to 20%
     let newFee = { rawValue: web3.utils.toWei("0.2", "ether") };
     await store.setFixedOracleFeePerSecondPerPfc(newFee, { from: owner });
@@ -56,7 +56,7 @@ contract("Store", function(accounts) {
     assert.equal(fees.regularFee.toString(), web3.utils.toWei("4", "ether"));
   });
 
-  it("Check for illegal params", async function() {
+  it("Check for illegal params", async function () {
     // Disallow endTime < startTime.
     assert(await didContractThrow(store.computeRegularFee(2, 1, 10)));
 
@@ -77,7 +77,7 @@ contract("Store", function(accounts) {
     // TODO Check that only permitted role can change the fee
   });
 
-  it("Final fees", async function() {
+  it("Final fees", async function () {
     // Add final fee and confirm
     const result = await store.setFinalFee(
       arbitraryTokenAddr,
@@ -85,26 +85,26 @@ contract("Store", function(accounts) {
       { from: owner }
     );
 
-    truffleAssert.eventEmitted(result, "NewFinalFee", ev => {
+    truffleAssert.eventEmitted(result, "NewFinalFee", (ev) => {
       return ev.newFinalFee.rawValue === web3.utils.toWei("5", "ether");
     });
     const fee = await store.computeFinalFee(arbitraryTokenAddr);
     assert.equal(fee.rawValue, web3.utils.toWei("5", "ether"));
   });
 
-  it("Weekly delay fees", async function() {
+  it("Weekly delay fees", async function () {
     // Add weekly delay fee and confirm
     const result = await store.setWeeklyDelayFeePerSecondPerPfc(
       { rawValue: web3.utils.toWei("0.5", "ether") },
       { from: owner }
     );
 
-    truffleAssert.eventEmitted(result, "NewWeeklyDelayFeePerSecondPerPfc", ev => {
+    truffleAssert.eventEmitted(result, "NewWeeklyDelayFeePerSecondPerPfc", (ev) => {
       return ev.newWeeklyDelayFeePerSecondPerPfc.rawValue === web3.utils.toWei("0.5", "ether");
     });
   });
 
-  it("Pay fees in Ether", async function() {
+  it("Pay fees in Ether", async function () {
     // Verify the starting balance is 0.
     let balance = await web3.eth.getBalance(store.address);
     assert.equal(balance.toString(), "0");
@@ -139,7 +139,7 @@ contract("Store", function(accounts) {
     assert.equal(balance.toString(), web3.utils.toWei("0", "ether"));
   });
 
-  it("Pay fees in ERC20 token", async function() {
+  it("Pay fees in ERC20 token", async function () {
     const firstMarginToken = await Token.new("Wrapped Ether", "WETH", 18, { from: erc20TokenOwner });
     const secondMarginToken = await Token.new("Wrapped Ether2", "WETH2", 18, { from: erc20TokenOwner });
 
@@ -212,7 +212,7 @@ contract("Store", function(accounts) {
     assert.equal(secondTokenBalanceInStore.toString(), web3.utils.toWei("0", "ether"));
   });
 
-  it("Withdraw permissions", async function() {
+  it("Withdraw permissions", async function () {
     const withdrawRole = "1";
     await store.payOracleFees({ from: derivative, value: web3.utils.toWei("1", "ether") });
 
@@ -230,7 +230,7 @@ contract("Store", function(accounts) {
     await store.resetMember(withdrawRole, owner, { from: owner });
   });
 
-  it("Basic late penalty", async function() {
+  it("Basic late penalty", async function () {
     const lateFeeRate = web3.utils.toWei("0.0001");
     const regularFeeRate = web3.utils.toWei("0.0002");
     await store.setWeeklyDelayFeePerSecondPerPfc({ rawValue: lateFeeRate }, { from: owner });
@@ -246,7 +246,7 @@ contract("Store", function(accounts) {
     // The period is 100 seconds long and the pfc is 100 units of collateral. This means that the fee amount should
     // effectively be scaled by 1000.
     let { latePenalty, regularFee } = await store.computeRegularFee(startTime, startTime.addn(100), {
-      rawValue: web3.utils.toWei("100")
+      rawValue: web3.utils.toWei("100"),
     });
 
     // Regular fee is double the per week late fee. So after 1 week, the late fee should be 1 and the regular should be 2.
@@ -257,7 +257,7 @@ contract("Store", function(accounts) {
     await store.setCurrentTime(startTime.addn(secondsPerWeek * 3));
 
     ({ latePenalty, regularFee } = await store.computeRegularFee(startTime, startTime.addn(100), {
-      rawValue: web3.utils.toWei("100")
+      rawValue: web3.utils.toWei("100"),
     }));
 
     // Regular fee is double the per week late fee. So after 3 weeks, the late fee should be 3 and the regular should be 2.
@@ -265,7 +265,7 @@ contract("Store", function(accounts) {
     assert.equal(regularFee.rawValue.toString(), web3.utils.toWei("2"));
   });
 
-  it("Late penalty based on current time", async function() {
+  it("Late penalty based on current time", async function () {
     await store.setWeeklyDelayFeePerSecondPerPfc({ rawValue: web3.utils.toWei("0.1", "ether") }, { from: owner });
 
     const startTime = await store.getCurrentTime();
@@ -278,7 +278,7 @@ contract("Store", function(accounts) {
     // Pay for a short period a week ago. Even though the endTime is < 1 week past the start time, the currentTime
     // should cause the late fee to be charged.
     const { latePenalty } = await store.computeRegularFee(startTime, startTime.addn(1), {
-      rawValue: web3.utils.toWei("1")
+      rawValue: web3.utils.toWei("1"),
     });
 
     // Payment is 1 week late, but the penalty is 10% per second of the period. Since the period is only 1 second,
@@ -286,7 +286,7 @@ contract("Store", function(accounts) {
     assert.equal(latePenalty.rawValue, web3.utils.toWei("0.1"));
   });
 
-  it("Constructor checks", async function() {
+  it("Constructor checks", async function () {
     const highFee = { rawValue: web3.utils.toWei("1.1", "ether") };
     const normalFee = { rawValue: web3.utils.toWei("0.1", "ether") };
 
@@ -297,7 +297,7 @@ contract("Store", function(accounts) {
     assert(await didContractThrow(Store.new(normalFee, highFee, timer.address, { from: rando })));
   });
 
-  it("Initialization", async function() {
+  it("Initialization", async function () {
     const regularFee = { rawValue: web3.utils.toWei("0.2", "ether") };
     const lateFee = { rawValue: web3.utils.toWei("0.1", "ether") };
 

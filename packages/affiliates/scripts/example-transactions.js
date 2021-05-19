@@ -25,9 +25,9 @@ async function runTest() {
     highland(stream)
       // this filters based on matts scheme for matching attribution tag
       // but we could easily do any type of scheme with JS filtering
-      .map(x => decode(x, x))
-      .filter(x => x.name == "create")
-      .map(x => x.input.slice(inputLength))
+      .map((x) => decode(x, x))
+      .filter((x) => x.name == "create")
+      .map((x) => x.input.slice(inputLength))
       .collect()
       // emit the stream as a promise when the stream ends
       // this is the start of a data pipeline so you can imagine
@@ -36,6 +36,4 @@ async function runTest() {
   );
 }
 
-runTest()
-  .then(console.log)
-  .catch(console.log);
+runTest().then(console.log).catch(console.log);

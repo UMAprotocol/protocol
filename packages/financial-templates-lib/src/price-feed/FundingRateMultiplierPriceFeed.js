@@ -27,7 +27,7 @@ class FundingRateMultiplierPriceFeed extends PriceFeedInterface {
     getTime,
     blockFinder,
     minTimeBetweenUpdates = 60,
-    priceFeedDecimals = 18
+    priceFeedDecimals = 18,
   }) {
     super();
 
@@ -88,7 +88,7 @@ class FundingRateMultiplierPriceFeed extends PriceFeedInterface {
     const target = this.perpetual.options.address;
     const transactions = [
       { target, callData: applyFundingRateData },
-      { target, callData: getFundingRateData }
+      { target, callData: getFundingRateData },
     ];
     const [, { cumulativeMultiplier }] = await aggregateTransactionsAndCall(
       this.multicallAddress,
@@ -101,5 +101,5 @@ class FundingRateMultiplierPriceFeed extends PriceFeedInterface {
 }
 
 module.exports = {
-  FundingRateMultiplierPriceFeed
+  FundingRateMultiplierPriceFeed,
 };

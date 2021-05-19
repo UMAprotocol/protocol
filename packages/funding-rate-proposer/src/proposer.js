@@ -3,7 +3,7 @@ const {
   createReferencePriceFeedForFinancialContract,
   setAllowance,
   isDeviationOutsideErrorMargin,
-  aggregateTransactionsAndCall
+  aggregateTransactionsAndCall,
 } = require("@uma/financial-templates-lib");
 const { createObjectFromDefaultProps, runTransaction } = require("@uma/common");
 const { getAbi } = require("@uma/core");
@@ -28,7 +28,7 @@ class FundingRateProposer {
     gasEstimator,
     account,
     commonPriceFeedConfig,
-    perpetualProposerConfig
+    perpetualProposerConfig,
   }) {
     this.logger = logger;
     this.account = account;
@@ -38,10 +38,10 @@ class FundingRateProposer {
     this.web3 = this.perpetualFactoryClient.web3;
     this.commonPriceFeedConfig = commonPriceFeedConfig;
 
-    this.createPerpetualContract = perpAddress => {
+    this.createPerpetualContract = (perpAddress) => {
       return new this.web3.eth.Contract(getAbi("Perpetual"), perpAddress);
     };
-    this.createConfigStoreContract = storeAddress => {
+    this.createConfigStoreContract = (storeAddress) => {
       return new this.web3.eth.Contract(getAbi("ConfigStore"), storeAddress);
     };
 
@@ -73,12 +73,12 @@ class FundingRateProposer {
         //                                      and proposed to.
         //                                      e.g. 0.05 implies 5% margin of error.
         value: 0.05,
-        isValid: x => {
+        isValid: (x) => {
           return !isNaN(x);
           // Negative allowed-margins might be useful based on the implementation
           // of `isDeviationOutsideErrorMargin()`
-        }
-      }
+        },
+      },
     };
 
     // Validate and set config settings to class state.
@@ -100,7 +100,7 @@ class FundingRateProposer {
       this._setAllowances(),
       // For each contract, create and save a pricefeed instance for its identifier,
       // or just fetch the pricefeed if the identifier already has cached an instance.
-      this._createOrGetCachedPriceFeed()
+      this._createOrGetCachedPriceFeed(),
     ]);
   }
 
@@ -113,7 +113,7 @@ class FundingRateProposer {
     this.logger.debug({
       at: "PerpetualProposer#updateFundingRates",
       message: "Checking for contract funding rates to update",
-      perpetualsChecked: Object.keys(this.contractCache)
+      perpetualsChecked: Object.keys(this.contractCache),
     });
 
     // TODO: Should allow user to set an ROI-based metric to customize whether
@@ -147,7 +147,7 @@ class FundingRateProposer {
       this.logger.error({
         at: "PerpetualProposer",
         message: "Failed to create pricefeed for funding rate identifier",
-        fundingRateIdentifier
+        fundingRateIdentifier,
       });
       return null;
     }
@@ -168,7 +168,7 @@ class FundingRateProposer {
         message: "Failed to query current price for funding rate identifier",
         fundingRateIdentifier,
         requestTimestamp,
-        error
+        error,
       });
       return;
     }
@@ -182,7 +182,7 @@ class FundingRateProposer {
         at: "PerpetualProposer#updateFundingRate",
         message: "Proposal is already pending, cannot propose",
         fundingRateIdentifier,
-        proposalTime
+        proposalTime,
       });
       return;
     }
@@ -200,7 +200,7 @@ class FundingRateProposer {
         fundingRateIdentifier,
         minFundingRate,
         maxFundingRate,
-        pricefeedPrice
+        pricefeedPrice,
       });
       return;
     }
@@ -228,7 +228,7 @@ class FundingRateProposer {
         proposedRate: pricefeedPrice,
         currentRate: onchainFundingRate,
         allowedError: this.fundingRateErrorPercent,
-        proposer: this.account
+        proposer: this.account,
       });
       try {
         // Get successful transaction receipt and return value or error.
@@ -237,8 +237,8 @@ class FundingRateProposer {
           config: {
             gasPrice: this.gasEstimator.getCurrentFastPrice(),
             from: this.account,
-            nonce: await this.web3.eth.getTransactionCount(this.account)
-          }
+            nonce: await this.web3.eth.getTransactionCount(this.account),
+          },
         });
         let receipt = transactionResult.receipt;
         let returnValue = transactionResult.returnValue.toString();
@@ -251,13 +251,13 @@ class FundingRateProposer {
           requestTimestamp,
           proposedRate: pricefeedPrice,
           currentRate: onchainFundingRate,
-          proposalBond: returnValue
+          proposalBond: returnValue,
         };
         this.logger.info({
           at: "PerpetualProposer#updateFundingRate",
           message: "Proposed new funding rate!🌻",
           proposalBond: returnValue,
-          proposalResult: logResult
+          proposalResult: logResult,
         });
       } catch (error) {
         const message =
@@ -268,7 +268,7 @@ class FundingRateProposer {
           at: "PerpetualProposer#updateFundingRate",
           message,
           fundingRateIdentifier,
-          error
+          error,
         });
         return;
       }
@@ -279,14 +279,14 @@ class FundingRateProposer {
         fundingRateIdentifier,
         proposedRate: pricefeedPrice,
         currentRate: onchainFundingRate,
-        allowedError: this.fundingRateErrorPercent
+        allowedError: this.fundingRateErrorPercent,
       });
     }
   }
 
   // Sets allowances for all collateral currencies used live perpetual contracts.
   async _setAllowances() {
-    await Promise.map(Object.keys(this.contractCache), async contractAddress => {
+    await Promise.map(Object.keys(this.contractCache), async (contractAddress) => {
       // The Perpetual requires approval to transfer the contract's collateral currency in order to post a bond.
       // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
       const receipt = await setAllowance(
@@ -303,14 +303,14 @@ class FundingRateProposer {
           message: "Approved Perpetual contract to transfer unlimited collateral tokens 💰",
           perpetual: receipt.spenderAddress,
           currency: receipt.currencyAddress,
-          collateralApprovalTx: receipt.tx.transactionHash
+          collateralApprovalTx: receipt.tx.transactionHash,
         });
       }
     });
   }
 
   async _createOrGetCachedPriceFeed() {
-    await Promise.map(Object.keys(this.contractCache), async contractAddress => {
+    await Promise.map(Object.keys(this.contractCache), async (contractAddress) => {
       const fundingRateIdentifier = this.hexToUtf8(
         this.contractCache[contractAddress].state.currentFundingRateData.identifier
       );
@@ -320,7 +320,7 @@ class FundingRateProposer {
           at: "PerpetualProposer",
           message: "Caching new pricefeed for identifier",
           commonPriceFeedConfig: this.commonPriceFeedConfig,
-          fundingRateIdentifier
+          fundingRateIdentifier,
         });
 
         // Create a new pricefeed for this identifier. We might consider caching these price requests
@@ -342,12 +342,12 @@ class FundingRateProposer {
   // Create contract object for each perpetual address created. Addresses fetched from PerpFactoryEventClient.
   // Fetch and cache latest contract state.
   async _cachePerpetualContracts() {
-    await Promise.map(this.perpetualFactoryClient.getAllCreatedContractAddresses(), async contractAddress => {
+    await Promise.map(this.perpetualFactoryClient.getAllCreatedContractAddresses(), async (contractAddress) => {
       if (!this.contractCache[contractAddress]) {
         this.logger.debug({
           at: "PerpetualProposer",
           message: "Caching new perpetual contract",
-          perpetualAddress: contractAddress
+          perpetualAddress: contractAddress,
         });
         // Failure to construct a Perpetual instance using the contract address should be fatal,
         // so we don't catch that error.
@@ -358,7 +358,7 @@ class FundingRateProposer {
 
         this.contractCache[contractAddress] = {
           contract: perpetualContract,
-          collateralAddress
+          collateralAddress,
         };
       }
       // For this contract, load state.
@@ -374,17 +374,17 @@ class FundingRateProposer {
     // account for any unpublished, pending funding rates.
     const applyFundingRateCall = {
       target: contractAddress,
-      callData: perpetualContract.methods.applyFundingRate().encodeABI()
+      callData: perpetualContract.methods.applyFundingRate().encodeABI(),
     };
     const fundingRateCall = {
       target: contractAddress,
-      callData: perpetualContract.methods.fundingRate().encodeABI()
+      callData: perpetualContract.methods.fundingRate().encodeABI(),
     };
     // `aggregateTransactionsAndCall` returns an array of decoded return data bytes corresponding to the transactions
     // passed to the multicall aggregate method. Therefore, `fundingRate()`'s return output is the second element.
     const [[, fundingRateData], configStoreAddress] = await Promise.all([
       aggregateTransactionsAndCall(this.multicallContractAddress, this.web3, [applyFundingRateCall, fundingRateCall]),
-      perpetualContract.methods.configStore().call()
+      perpetualContract.methods.configStore().call(),
     ]);
 
     const configStoreContract = this.createConfigStoreContract(configStoreAddress);
@@ -396,12 +396,12 @@ class FundingRateProposer {
       ...this.contractCache[contractAddress],
       state: {
         currentFundingRateData: fundingRateData,
-        currentConfig
-      }
+        currentConfig,
+      },
     };
   }
 }
 
 module.exports = {
-  FundingRateProposer
+  FundingRateProposer,
 };

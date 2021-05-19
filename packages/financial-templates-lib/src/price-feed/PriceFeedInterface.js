@@ -50,5 +50,5 @@ class PriceFeedInterface {
 }
 
 module.exports = {
-  PriceFeedInterface
+  PriceFeedInterface,
 };

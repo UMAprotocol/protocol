@@ -49,7 +49,7 @@ const { makeUnixPipe } = require("../libs/affiliates/utils");
 //   ]
 // }
 // This config can be generated through the apps/GenerateDappMiningConfig
-const App = async params => {
+const App = async (params) => {
   const { config } = params;
   const web3 = getWeb3();
   const { version = "v2" } = config;
@@ -79,7 +79,7 @@ const App = async params => {
 
   return {
     ...params,
-    result
+    result,
   };
 };
 

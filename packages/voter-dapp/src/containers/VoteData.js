@@ -17,7 +17,7 @@ function useVoteData() {
   // are not expected to change much.
   // Source: https://www.apollographql.com/docs/react/data/queries/#polling
   const { loading, error, data } = useQuery(PRICE_REQUEST_VOTING_DATA, {
-    pollInterval: 5000
+    pollInterval: 5000,
   });
 
   const getRequestKey = (time, identifier, roundId) => {
@@ -31,13 +31,13 @@ function useVoteData() {
       const newVoteData = {};
 
       // Load data into `newVoteData` synchronously
-      data.priceRequestRounds.forEach(dataForRequest => {
+      data.priceRequestRounds.forEach((dataForRequest) => {
         const identifier = dataForRequest.identifier.id;
         const newRoundKey = getRequestKey(dataForRequest.time, identifier, dataForRequest.roundId);
 
         // Commit vote data:
         let uniqueVotersCommitted = {};
-        dataForRequest.committedVotes.forEach(e => {
+        dataForRequest.committedVotes.forEach((e) => {
           uniqueVotersCommitted[toChecksumAddress(e.voter.address)] = true;
         });
 
@@ -51,7 +51,7 @@ function useVoteData() {
         // If the total supply has not been snapshotted yet, then there will not be revealed
         // vote data because the round has not entered the Reveal phase yet
         if (dataForRequest.totalSupplyAtSnapshot) {
-          dataForRequest.revealedVotes.forEach(e => {
+          dataForRequest.revealedVotes.forEach((e) => {
             totalVotesRevealed = totalVotesRevealed.add(toBN(e.numTokens));
             if (e.price === dataForRequest.request.price) {
               correctVotesRevealed = correctVotesRevealed.add(toBN(e.numTokens));
@@ -73,7 +73,7 @@ function useVoteData() {
 
         // If the inflation rate was not snapshotted yet, then rewards could not have been claimed yet.
         if (dataForRequest.inflationRate) {
-          dataForRequest.rewardsClaimed.forEach(e => {
+          dataForRequest.rewardsClaimed.forEach((e) => {
             rewardsClaimed = rewardsClaimed.add(toBN(e.numTokens));
             uniqueRewardClaimers[toChecksumAddress(e.claimer.address)] = true;
           });
@@ -110,7 +110,7 @@ function useVoteData() {
           rewardsClaimed: fromWei(rewardsClaimed.toString()),
           rewardsClaimedPct: fromWei(rewardsClaimedPct.mul(toBN("100")).toString()),
           uniqueClaimers: uniqueClaimers.toString(),
-          uniqueClaimersPctOfReveals: uniqueClaimersPctOfReveals.toString()
+          uniqueClaimersPctOfReveals: uniqueClaimersPctOfReveals.toString(),
         };
       });
 

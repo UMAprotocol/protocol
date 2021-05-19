@@ -5,7 +5,7 @@ const Governor = artifacts.require("Governor");
 const { GasEstimator } = require("@uma/financial-templates-lib");
 const winston = require("winston");
 const argv = require("minimist")(process.argv.slice(), {
-  string: ["start", "end"]
+  string: ["start", "end"],
 });
 
 async function execute(callback) {
@@ -18,7 +18,7 @@ async function execute(callback) {
 
     const gasEstimator = new GasEstimator(
       winston.createLogger({
-        silent: true
+        silent: true,
       }),
       60, // Time between updates.
       100 // Default gas price.
@@ -32,7 +32,7 @@ async function execute(callback) {
         await gasEstimator.update();
         console.log(`Proposal ${j}, Transaction ${i}: Submitting tx...`);
         let tx = await governor.executeProposal(j.toString(), i.toString(), {
-          gasPrice: gasEstimator.getCurrentFastPrice()
+          gasPrice: gasEstimator.getCurrentFastPrice(),
         });
         console.log(`${i}: Done: `, tx.tx);
       }

@@ -28,7 +28,7 @@ function DrizzleLogin(props) {
 
         // Note: don't re-enable the button because the request was accepted and we don't want them to fire it again.
       },
-      error => {
+      (error) => {
         console.log("Error in login: " + error);
 
         // Re-enable the button so the user can attempt to log in a second time.

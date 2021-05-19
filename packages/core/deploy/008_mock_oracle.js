@@ -1,6 +1,6 @@
 const { interfaceName, ZERO_ADDRESS } = require("@uma/common");
 
-const func = async function(hre) {
+const func = async function (hre) {
   const { deployments, getNamedAccounts, web3 } = hre;
   const { utf8ToHex, padRight } = web3.utils;
   const { deploy, log, execute } = deployments;
@@ -13,7 +13,7 @@ const func = async function(hre) {
   const deployResult = await deploy("MockOracleAncillary", {
     from: deployer,
     args,
-    log: true
+    log: true,
   });
 
   if (deployResult.newlyDeployed) {

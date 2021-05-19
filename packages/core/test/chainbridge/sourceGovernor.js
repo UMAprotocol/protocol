@@ -11,7 +11,7 @@ const { utf8ToHex } = web3.utils;
 
 const { blankFunctionSig, getFunctionSignature, createGenericDepositData } = require("./helpers");
 
-contract("SourceGovernor", async accounts => {
+contract("SourceGovernor", async (accounts) => {
   const owner = accounts[0];
   const rando = accounts[1];
 
@@ -28,19 +28,19 @@ contract("SourceGovernor", async accounts => {
 
   let sourceGovernorResourceId;
 
-  const getResourceId = chainId => {
+  const getResourceId = (chainId) => {
     const encodedParams = web3.eth.abi.encodeParameters(["string", "uint8"], ["Governor", chainId]);
     return web3.utils.soliditySha3(encodedParams);
   };
 
-  before(async function() {
+  before(async function () {
     registry = await Registry.deployed();
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner);
     await registry.registerContract([], owner, { from: owner });
     finder = await Finder.deployed();
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.address);
   });
-  beforeEach(async function() {
+  beforeEach(async function () {
     bridge = await Bridge.new(chainID, [owner], 1, 0, 100);
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridge.address);
     sourceGovernor = await SourceGovernor.new(finder.address, chainID);
@@ -66,13 +66,13 @@ contract("SourceGovernor", async accounts => {
     await erc20.addMember(1, owner);
     await erc20.mint(sourceGovernor.address, web3.utils.toWei("1"));
   });
-  it("construction", async function() {
+  it("construction", async function () {
     assert.equal(await sourceGovernor.finder(), finder.address, "finder not set");
   });
-  it("resource id", async function() {
+  it("resource id", async function () {
     assert.equal(await sourceGovernor.getResourceId(), getResourceId(chainID), "resource id not computed correctly");
   });
-  it("unauthorized request", async function() {
+  it("unauthorized request", async function () {
     const innerTransactionCalldata = erc20.contract.methods.transfer(rando, web3.utils.toWei("1")).encodeABI();
     const depositData = web3.eth.abi.encodeParameters(
       ["address", "uint256", "bytes"],
@@ -85,7 +85,7 @@ contract("SourceGovernor", async accounts => {
       )
     );
   });
-  it("relayGovernance", async function() {
+  it("relayGovernance", async function () {
     const innerTransactionCalldata = erc20.contract.methods.transfer(rando, web3.utils.toWei("1")).encodeABI();
     const depositData = web3.eth.abi.encodeParameters(
       ["address", "uint256", "bytes"],
@@ -95,14 +95,14 @@ contract("SourceGovernor", async accounts => {
     assert(
       await didContractThrow(
         sourceGovernor.relayGovernance(destinationChainID, erc20.address, "0", innerTransactionCalldata, {
-          from: rando
+          from: rando,
         })
       ),
       "Only callable by GenericHandler"
     );
 
     await sourceGovernor.relayGovernance(destinationChainID, erc20.address, "0", innerTransactionCalldata, {
-      from: owner
+      from: owner,
     });
 
     const { _destinationChainID, _depositer, _resourceID, _metaData } = await handler._depositRecords(

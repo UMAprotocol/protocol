@@ -62,7 +62,7 @@ const claimsObject = JSON.parse(fs.readFileSync(options.input, { encoding: "utf8
 // things simple for now we can just double check that some important keys are present within the JSON file.
 if (typeof claimsObject !== "object") throw new Error("Invalid JSON");
 const expectedKeys = ["chainId", "rewardToken", "windowIndex", "totalRewardsDistributed", "claims"];
-expectedKeys.forEach(expectedKey => {
+expectedKeys.forEach((expectedKey) => {
   if (!Object.keys(claimsObject).includes(expectedKey)) {
     throw new Error("claims object missing expected key");
   }
@@ -133,7 +133,7 @@ async function main() {
       rewardsToDeposit: claimsObject.totalRewardsDistributed.toString(),
       rewardToken: claimsObject.rewardToken,
       merkleRoot: claimsObject.merkleRoot,
-      ipfsHash
+      ipfsHash,
     });
   }
   console.log("\n6. Saving payout info to disk 💿");
@@ -149,14 +149,14 @@ async function main() {
         rewardsToDeposit: claimsObject.totalRewardsDistributed.toString(),
         rewardToken: claimsObject.rewardToken,
         merkleRoot: claimsObject.merkleRoot,
-        ipfsHash
-      }
+        ipfsHash,
+      },
     })
   );
   console.log("🗄  File successfully written to", savePath);
 }
 
-main().catch(e => {
+main().catch((e) => {
   console.log(e);
   process.exit(1);
 });
