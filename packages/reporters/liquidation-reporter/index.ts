@@ -12,7 +12,7 @@ fetchDataAndWriteToExcelFile()
       process.exit(0);
     }, 2000);
   })
-  .catch(e => {
+  .catch((e) => {
     console.error(e);
     process.exit(1);
   });

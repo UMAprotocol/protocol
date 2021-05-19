@@ -248,7 +248,7 @@ export async function fetchUmaEcosystemData() {
   // If we've stripped out a contract from a collateral type then we should remove the whole collateral from the output
   // as it will produce a blank spreadsheet.
   const strippedCollateralTypes: any = {};
-  Object.keys(uniqueCollateralTypes).forEach(collateralAddress => {
+  Object.keys(uniqueCollateralTypes).forEach((collateralAddress) => {
     if (uniqueCollateralTypes[collateralAddress].activeFinancialContracts.length > 0)
       strippedCollateralTypes[collateralAddress] = uniqueCollateralTypes[collateralAddress];
   });
