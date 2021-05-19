@@ -86,5 +86,9 @@
   {
     "contractName": "SourceOracle",
     "address": "0x3811A29571c9912f15fEFF0747d2F34Aa48f6721"
+  },
+  {
+    "contractName": "SourceGovernor",
+    "address": "0x1ccC90F5dd09c747fe46e176f5b5F7762a13Ba8F"
   }
 ]

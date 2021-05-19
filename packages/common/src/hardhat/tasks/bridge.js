@@ -45,5 +45,4 @@ task("register-generic-resource", "Admin can set generic resource ID on Bridge")
       .adminSetGenericResource(genericHandler.options.address, id, target, depositFuncSig, executeFuncSig)
       .send({ from: deployer });
     console.log(`tx: ${txn.transactionHash}`);
-    console.log(txn);
   });
