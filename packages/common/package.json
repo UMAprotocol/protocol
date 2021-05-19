@@ -19,7 +19,7 @@
   },
   "scripts": {
     "test": "hardhat test ./test/*",
-    "build": "tsc"
+    "build": "rm -rf dist && tsc"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
