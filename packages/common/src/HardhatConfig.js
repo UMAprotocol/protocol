@@ -1,4 +1,6 @@
 const { getNodeUrl, mnemonic } = require("./TruffleConfig");
+const path = require("path");
+const coreWkdir = path.dirname(require.resolve("@uma/core/package.json"));
 
 function getHardhatConfig(configOverrides) {
   // Hard hat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function
@@ -65,6 +67,11 @@ function getHardhatConfig(configOverrides) {
     },
     namedAccounts: {
       deployer: 0,
+    },
+    external: {
+      deployments: {
+        mainnet: [`${coreWkdir}/build/contracts`, `${coreWkdir}/deployments/mainnet`],
+      },
     },
   };
   return { ...defaultConfig, ...configOverrides };
