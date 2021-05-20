@@ -1,7 +1,7 @@
 const fetch = require("node-fetch");
 
 export async function getAllEmpsPositions() {
-  const subgraphUrl = "https://api.thegraph.com/subgraphs/name/umaprotocol/uma";
+  const subgraphUrl = "https://api.thegraph.com/subgraphs/name/umaprotocol/mainnet-contracts";
   const query = `
     query activePositions {
       financialContracts {

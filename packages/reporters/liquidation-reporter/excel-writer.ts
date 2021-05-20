@@ -50,11 +50,13 @@ export function createExcelSheetFromLiquidationDrawDownData(drawDownData: any) {
     );
 
     collateralData.activeFinancialContracts.forEach((financialContractInfo: any, index: number) => {
-      sheet.cell(4 + index, 7).string(financialContractInfo.contractAddress);
-      sheet.cell(4 + index, 8).number(Number(Number(financialContractInfo.collateralValueInUsd).toFixed(2)));
-      sheet.cell(4 + index, 9).string(financialContractInfo.contractPriceIdentifier);
-      sheet.cell(4 + index, 10).date(new Date(financialContractInfo.contractExpirationTime * 1000));
-      sheet.cell(4 + index, 11).number(financialContractInfo.collateralRequirement);
+      sheet.cell(4 + index, 7).string(financialContractInfo.contractAddress || "unknown address");
+      sheet.cell(4 + index, 8).number(Number(Number(financialContractInfo.collateralValueInUsd).toFixed(2)) || 0);
+      sheet.cell(4 + index, 9).string(financialContractInfo.contractPriceIdentifier || "unknown identifier");
+      if (financialContractInfo.contractExpirationTime && financialContractInfo.contractExpirationTime != "perpetual")
+        sheet.cell(4 + index, 10).date(new Date(financialContractInfo.contractExpirationTime * 1000));
+      else sheet.cell(4 + index, 10).string("perpetual");
+      sheet.cell(4 + index, 11).number(financialContractInfo.collateralRequirement || 0);
     });
 
     // DrawDown prices
@@ -67,10 +69,10 @@ export function createExcelSheetFromLiquidationDrawDownData(drawDownData: any) {
     sheet.cell(6, 4).string("USD To Liquidate Collateral").style(boldStyle);
     sheet.column(4).setWidth("USD To liquidate Collateral".length);
     collateralData.drawDownAmounts.forEach((drawDownData: any, index: number) => {
-      sheet.cell(7 + index, 1).number(Number(drawDownData.priceDrop));
-      sheet.cell(7 + index, 2).number(Number(drawDownData.effectiveCollateralPrice));
-      sheet.cell(7 + index, 3).number(Number(drawDownData.collateralLiquidated));
-      sheet.cell(7 + index, 4).number(Number(drawDownData.usdNeededToLiquidate));
+      sheet.cell(7 + index, 1).number(Number(drawDownData.priceDrop) || 0);
+      sheet.cell(7 + index, 2).number(Number(drawDownData.effectiveCollateralPrice) || 0);
+      sheet.cell(7 + index, 3).number(Number(drawDownData.collateralLiquidated) || 0);
+      sheet.cell(7 + index, 4).number(Number(drawDownData.usdNeededToLiquidate) || 0);
     });
   });
 
