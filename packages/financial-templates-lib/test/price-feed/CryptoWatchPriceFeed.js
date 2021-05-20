@@ -138,16 +138,8 @@ contract("CryptoWatchPriceFeed.js", function () {
         .toString()
     );
 
-    // After period 3 should return the most recent price.
-    assert.equal(
-      // Should be equal to: toWei(1/1.5)
-      await invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376521),
-      toBN(toWei("1"))
-        .mul(toBN(toWei("1")))
-        .div(toBN(toWei("1.5")))
-        .div(toBN("10").pow(toBN(18 - 10)))
-        .toString()
-    );
+    // After period 3 should error.
+    assert.isTrue(await invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376521).catch(() => true));
   });
 
   it("No update", async function () {
