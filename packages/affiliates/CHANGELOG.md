@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.2.0...@uma/affiliates@1.3.0) (2021-05-20)
+
+### Bug Fixes
+
+- **affiliates-ci:** removed private from package.json ([#2978](https://github.com/UMAprotocol/protocol/issues/2978)) ([5e1e72f](https://github.com/UMAprotocol/protocol/commit/5e1e72f01f9ded4b870125a7cd7f1413f58e0135))
+- **core,affiliates:** log warning to console.error, make json piping easier to find issues ([#2913](https://github.com/UMAprotocol/protocol/issues/2913)) ([3679242](https://github.com/UMAprotocol/protocol/commit/3679242181b4134595048ecf8134c7916f8559fc))
+
+### Features
+
+- **affiliates:** add uniswap v3 single pool LM script ([#2953](https://github.com/UMAprotocol/protocol/issues/2953)) ([3b55015](https://github.com/UMAprotocol/protocol/commit/3b550158414d6384a2b44cd9232345f78d1430be))
+- **affiliates:** uniswap v3 fetch state proof of concept ([#2923](https://github.com/UMAprotocol/protocol/issues/2923)) ([269aee9](https://github.com/UMAprotocol/protocol/commit/269aee9b3379941dfe7a79f4eb0435f580d0ac0e))
+- **core:** add typescript types for core ([#2927](https://github.com/UMAprotocol/protocol/issues/2927)) ([3ba662f](https://github.com/UMAprotocol/protocol/commit/3ba662f99bb9d1c33b207457ce9fa6cb90336d98))
+- **gas-rebate:** Rebate 9 ([#2948](https://github.com/UMAprotocol/protocol/issues/2948)) ([4bc5fcf](https://github.com/UMAprotocol/protocol/commit/4bc5fcf93b7526655fec75d8da6d3ab6c04f55cf))
+- **version-management:** Update hard coded latest package versions in the bots to use 2.0 packages ([#2872](https://github.com/UMAprotocol/protocol/issues/2872)) ([b8225c5](https://github.com/UMAprotocol/protocol/commit/b8225c580ea48f58ef44aa308f966fbed5a99cf3))
+
 # [1.2.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.1.0...@uma/affiliates@1.2.0) (2021-04-23)
 
 ### Bug Fixes

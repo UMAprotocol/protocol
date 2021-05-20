@@ -1,6 +1,6 @@
 {
   "name": "@uma/common",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "description": "Common js utilities used by other UMA packages",
   "homepage": "http://umaproject.org",
   "license": "AGPL-3.0-or-later",
@@ -36,9 +36,9 @@
     "@nomiclabs/hardhat-etherscan": "^2.1.0",
     "@nomiclabs/hardhat-truffle5": "^2.0.0",
     "@nomiclabs/hardhat-web3": "^2.0.0",
+    "@truffle/hdwallet-provider": "^1.2.3",
     "@umaprotocol/truffle-ledger-provider": "^1.0.5",
     "@umaprotocol/ynatm": "^0.0.1",
-    "@truffle/hdwallet-provider": "^1.2.3",
     "abi-decoder": "github:UMAprotocol/abi-decoder",
     "bignumber.js": "^8.0.1",
     "chalk-pipe": "^3.0.0",
