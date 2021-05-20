@@ -1,5 +1,5 @@
 const { PriceFeedInterface } = require("./PriceFeedInterface");
-const { parseFixed } = require("@uma/common");
+const { parseFixed, formatFixed } = require("@uma/common");
 const { computeTWAP } = require("./utils");
 
 // An implementation of PriceFeedInterface that uses CryptoWatch to retrieve prices.
@@ -46,7 +46,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     this.pair = pair;
     this.lookback = lookback;
     this.twapLength = twapLength;
-    this.uuid = `CryptoWatch-${exchange}-${pair}`;
+    this.uuid = `Cryptowatch-${exchange}-${pair}`;
     this.networker = networker;
     this.getTime = getTime;
     this.minTimeBetweenUpdates = minTimeBetweenUpdates;
@@ -109,12 +109,32 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       return time < pricePeriod.closeTime && time >= pricePeriod.openTime;
     });
 
-    if (match === undefined) throw new Error(`Cryptowatch didn't return an ohlc for time ${time}`);
+    if (match === undefined) {
+      const before = this.historicalPricePeriods
+        .slice()
+        .reverse()
+        .find((pricePeriod) => time >= pricePeriod.openTime);
+      const after = this.historicalPricePeriods.find((pricePeriod) => time < pricePeriod.closeTime);
+
+      const format = (value) =>
+        value &&
+        formatFixed((this.invertPrice ? this._invertPriceSafely(value) : value).toString(), this.priceFeedDecimals);
+
+      throw new Error(`
+        Cryptowatch price feed ${this.uuid} didn't return an ohlc for time ${time}.
+        Closest price point before is close time: ${before?.closeTime}, close price: ${format(before?.closePrice)}.
+        Closest price point after is open time: ${after?.openTime}, open price: ${format(after?.openPrice)}.
+        To see these prices, make a GET request to:
+        https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/ohlc?after=${
+        before?.openTime + this.ohlcPeriod
+      }&before=${after?.closeTime}&periods=60
+      `);
+    }
 
     const returnPrice = this.invertPrice ? this._invertPriceSafely(match.openPrice) : match.openPrice;
     if (verbose) {
       console.group(`\n(${this.exchange}:${this.pair}) Historical OHLC @ ${match.closeTime}`);
-      console.log(`- ✅ Open Price:${this.web3.utils.fromWei(returnPrice.toString())}`);
+      console.log(`- ✅ Open Price:${formatFixed(returnPrice.toString(), this.priceFeedDecimals)}`);
       console.log(
         `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n- https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/ohlc?after=${match.closeTime}&before=${match.closeTime}&periods=60`
       );
