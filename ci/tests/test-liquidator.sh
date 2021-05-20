@@ -1,8 +1,5 @@
 #!/bin/bash
 
-TESTS_GLOB="$(echo 'circleci tests glob "test/**/*.js"')"
-TESTS_FILE="$(echo '$(cat /tmp/test-files)')"
-
 cat << EOF
   test-liquidator-package:
     docker:
@@ -26,7 +23,6 @@ cat << EOF
             ./ci/truffle_workaround.sh
             pwd
             cd packages/liquidator
-            echo $TESTS_GLOB
             circleci tests glob "test/**/*.js" | circleci tests split > /tmp/test-files
-            yarn hardhat test ./$TESTS_FILE
+            yarn hardhat test ./$(echo '$(cat /tmp/test-files)')
 EOF

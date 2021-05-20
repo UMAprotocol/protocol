@@ -1,8 +1,5 @@
 #!/bin/bash
 
-TESTS_GLOB="$(echo 'circleci tests glob "test/**/*.js"')"
-TESTS_FILE="$(echo '$(cat /tmp/test-files)')"
-
 cat << EOF
   test-financial-templates-lib-hardhat:
     docker:
@@ -21,9 +18,8 @@ cat << EOF
             ./ci/truffle_workaround.sh
             pwd
             cd packages/financial-templates-lib
-            echo $TESTS_GLOB
             circleci tests glob "test/**/*.js" | circleci tests split > /tmp/test-files
-            yarn hardhat test ./$TESTS_FILE
+            yarn hardhat test ./$(echo '$(cat /tmp/test-files)')
   test-financial-templates-lib-truffle:
     docker:
       - image: circleci/node:lts
