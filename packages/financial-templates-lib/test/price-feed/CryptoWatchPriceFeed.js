@@ -175,8 +175,35 @@ contract("CryptoWatchPriceFeed.js", function () {
     // During period 3.
     assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376515)).toString(), toWei("1.3"));
 
-    // After period 3 should return the most recent price.
-    assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376521)).toString(), toWei("1.5"));
+    // After period 3 should error.
+    assert.isTrue(await cryptoWatchPriceFeed.getHistoricalPrice(1588376521).catch(() => true));
+  });
+
+  it("Missing historical data", async function () {
+    // Missing middle data point
+    networker.getJsonReturns = [
+      {
+        result: {
+          60: [
+            [1588376400, 1.1, 1.7, 0.5, 1.2, 281.73395575, 2705497.370853147],
+            [1588376520, 1.3, 1.9, 0.7, 1.4, 888.92215493, 8601704.133826157],
+          ],
+        },
+      },
+      {
+        result: {
+          price: 1.5,
+        },
+      },
+    ];
+
+    await cryptoWatchPriceFeed.update();
+
+    // During missing data point should fail.
+    assert.isTrue(await cryptoWatchPriceFeed.getHistoricalPrice(1588376405).catch(() => true));
+
+    // During last data point.
+    assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376515)).toString(), toWei("1.3"));
   });
 
   it("Basic TWAP price", async function () {
