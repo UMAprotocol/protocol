@@ -8,18 +8,15 @@ const func = async function (hre) {
 
   const chainId = await getChainId();
   const bridgeId = getBridgeChainId(chainId);
+
   const Finder = await deployments.get("Finder");
 
-  const args = [
-    Finder.address,
-    bridgeId, // Current chain ID.
-  ];
-  await deploy("SourceOracle", {
+  await deploy("SourceGovernor", {
     from: deployer,
-    args,
+    args: [Finder.address, bridgeId],
     log: true,
   });
 };
 module.exports = func;
-func.tags = ["SourceOracle", "bridge-l1"];
+func.tags = ["SourceGovernor", "bridge-l1"];
 func.dependencies = ["Finder"];

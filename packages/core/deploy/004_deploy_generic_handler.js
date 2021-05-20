@@ -14,5 +14,5 @@ const func = async function (hre) {
   });
 };
 module.exports = func;
-func.tags = ["GenericHandler", "sink-oracle", "source-oracle"];
+func.tags = ["GenericHandler", "bridge-l2", "bridge-l1"];
 func.dependencies = ["Bridge"];

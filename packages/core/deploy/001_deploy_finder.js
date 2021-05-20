@@ -11,4 +11,4 @@ const func = async function (hre) {
   });
 };
 module.exports = func;
-func.tags = ["Finder", "dvm", "sink-oracle", "source-oracle"];
+func.tags = ["Finder", "dvm"];
