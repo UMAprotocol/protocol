@@ -49,6 +49,7 @@ class Disputer {
 
     // Helper functions from web3.
     this.fromWei = this.web3.utils.fromWei;
+    this.toWei = this.web3.utils.toWei;
     this.toBN = this.web3.utils.toBN;
     this.utf8ToHex = this.web3.utils.utf8ToHex;
 
@@ -59,6 +60,21 @@ class Disputer {
     // values via the `disputerConfig` input object. The `isValid` property is a function that should be called
     // before resetting any config settings. `isValid` must return a Boolean.
     const defaultConfig = {
+      crThreshold: {
+        // `crThreshold`: If collateral falls more than `crThreshold` % below the min collateral requirement,
+        // then it will be liquidated. For example: If the minimum collateralization ratio is 120% and the TRV is 100,
+        // then the minimum collateral requirement is 120. However, if `crThreshold = 0.02`, then the minimum
+        // collateral requirement is 120 * (1-0.02) = 117.6, or 2% below 120. This parallels the config variable of the
+        // same name for the `liquidator`. However, the disputer uses the inverse of this variable because disputes
+        // should only be sent if the price that the disputer sees is lower than the liquidation price. (If collateral
+        // falls more than `crThreshold` % below the min collateral requirement, then it will be liquidated) So we
+        // multiply the price that the disputer sees by (1+crThreshold) to give the disputer some threshold before it
+        // submits disputes.
+        value: 0.02,
+        isValid: (x) => {
+          return x < 1 && x >= 0;
+        },
+      },
       disputeDelay: {
         // `disputeDelay`: Amount of time to wait after the request timestamp of the liquidation to be disputed.
         // This makes the reading of the historical price more reliable. Denominated in seconds.
@@ -146,19 +162,31 @@ class Disputer {
               });
             }
           }
+
+          if (!price) return null;
+
+          // The `price` is a BN that is used to determine if a position is correctly collateralized. The higher the
+          // `price` value, the more collateral that the position is required to have to be correctly collateralized.
+          // Therefore, if the price is lower than the liquidation price, then the liquidation is disputable
+          // because the position was correctly collateralized.
+          // We add a buffer by deriving scaledPrice = price * (1 + crThreshold)
+          const scaledPrice = price
+            .mul(this.toBN(this.toWei("1")).add(this.toBN(this.toWei(this.crThreshold.toString()))))
+            .div(this.toBN(this.toWei("1")));
+
           // Price is available, use it to determine if the liquidation is disputable
           if (
-            price &&
-            this.financialContractClient.isDisputable(liquidation, price) &&
+            scaledPrice &&
+            this.financialContractClient.isDisputable(liquidation, scaledPrice) &&
             this.financialContractClient.getLastUpdateTime() >= Number(liquidationTime) + this.disputeDelay
           ) {
             this.logger.debug({
               at: "Disputer",
               message: "Detected a disputable liquidation",
-              price: price.toString(),
+              price: scaledPrice.toString(),
               liquidation: JSON.stringify(liquidation),
             });
-            return { ...liquidation, price: price.toString() };
+            return { ...liquidation, price: scaledPrice.toString() };
           }
 
           return null;
