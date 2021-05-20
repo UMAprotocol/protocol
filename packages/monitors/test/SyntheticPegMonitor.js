@@ -310,6 +310,7 @@ contract("SyntheticPegMonitor", function () {
             { timestamp: 109, price: null },
           ];
           medianizerPriceFeedMock.setHistoricalPrices(historicalPrices);
+          medianizerPriceFeedMock.setCurrentPrice(convertPrice("17"));
 
           // Volatility window is 5, so historical volatility will be calculated 5 timestamps back of the last update time.
           const volatilityWindow = 5;
@@ -373,6 +374,9 @@ contract("SyntheticPegMonitor", function () {
           medianizerPriceFeedMock.setHistoricalPrices(historicalPrices);
           uniswapPriceFeedMock.setHistoricalPrices(historicalPrices);
 
+          medianizerPriceFeedMock.setCurrentPrice(convertPrice("13"));
+          uniswapPriceFeedMock.setCurrentPrice(convertPrice("13"));
+
           // Test when volatility is under threshold. Monitor should not emit any events.
           // Min/Max from time 103 should be 10/13, so volatility should be 3/10 = 30%, which is
           // not greater than the 30% threshold.
@@ -387,6 +391,7 @@ contract("SyntheticPegMonitor", function () {
           // Test when volatility is over threshold. Monitor should emit an error message.
           // Min/Max from time 104 is 10/14, so volatility is 4/10 = 40%.
           medianizerPriceFeedMock.setLastUpdateTime(104);
+          medianizerPriceFeedMock.setCurrentPrice(convertPrice("14"));
           await syntheticPegMonitor.checkPegVolatility();
           assert.equal(spy.callCount, 1);
           assert.isTrue(lastSpyLogIncludes(spy, "Peg price volatility alert"));
@@ -396,6 +401,7 @@ contract("SyntheticPegMonitor", function () {
           assert.isTrue(lastSpyLogIncludes(spy, "30")); // volatility threshold parameter
 
           uniswapPriceFeedMock.setLastUpdateTime(104);
+          uniswapPriceFeedMock.setCurrentPrice(convertPrice("14"));
           await syntheticPegMonitor.checkSyntheticVolatility();
           assert.equal(spy.callCount, 2);
           assert.isTrue(lastSpyLogIncludes(spy, "Synthetic price volatility alert"));
@@ -407,6 +413,7 @@ contract("SyntheticPegMonitor", function () {
           // Correctly reports negative volatility. The last 4 sets of time series data move in the opposite direction.
           // Logger should correctly report the negative swing.
           medianizerPriceFeedMock.setLastUpdateTime(108);
+          medianizerPriceFeedMock.setCurrentPrice(convertPrice("10"));
           await syntheticPegMonitor.checkPegVolatility();
           assert.equal(spy.callCount, 3);
           assert.isTrue(lastSpyLogIncludes(spy, "Peg price volatility alert"));
@@ -416,6 +423,7 @@ contract("SyntheticPegMonitor", function () {
           assert.isTrue(lastSpyLogIncludes(spy, "30")); // volatility threshold parameter
 
           uniswapPriceFeedMock.setLastUpdateTime(108);
+          uniswapPriceFeedMock.setCurrentPrice(convertPrice("10"));
           await syntheticPegMonitor.checkSyntheticVolatility();
           assert.equal(spy.callCount, 4);
           assert.isTrue(lastSpyLogIncludes(spy, "Synthetic price volatility alert"));
@@ -435,6 +443,10 @@ contract("SyntheticPegMonitor", function () {
             monitorConfig: {},
             financialContractProps,
           });
+
+          // Set current prices.
+          medianizerPriceFeedMock.setCurrentPrice(convertPrice("14"));
+          uniswapPriceFeedMock.setCurrentPrice(convertPrice("14"));
 
           // Test when no update time in the price feed is set.
           await syntheticPegMonitor.checkPegVolatility();
@@ -469,6 +481,9 @@ contract("SyntheticPegMonitor", function () {
           }
           medianizerPriceFeedMock.setHistoricalPrices(historicalPrices);
           uniswapPriceFeedMock.setHistoricalPrices(historicalPrices);
+
+          medianizerPriceFeedMock.setCurrentPrice(convertPrice("9999"));
+          uniswapPriceFeedMock.setCurrentPrice(convertPrice("9999"));
 
           medianizerPriceFeedMock.setLastUpdateTime(historicalPrices.length - 1);
           uniswapPriceFeedMock.setLastUpdateTime(historicalPrices.length - 1);
@@ -517,6 +532,9 @@ contract("SyntheticPegMonitor", function () {
           ];
           medianizerPriceFeedMock.setHistoricalPrices(historicalPrices);
           uniswapPriceFeedMock.setHistoricalPrices(historicalPrices);
+
+          medianizerPriceFeedMock.setCurrentPrice(convertPrice("14"));
+          uniswapPriceFeedMock.setCurrentPrice(convertPrice("14"));
 
           // Test when volatility is over threshold. Monitor should emit an no error message as threshold set to 0.
           // Min/Max from time 104 is 10/14, so volatility is 4/10 = 40%. First test peg volatility.
