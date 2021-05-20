@@ -313,7 +313,17 @@ class SyntheticPegMonitor {
     // @dev: This might mean that the current price reported is a bit after the volatility window, but the error
     // should be small enough that it shouldn't impact the results. Furthermore, the price is not used in the vol
     // computation (which depends on the min/max), it only is reported alongside it as a reference point.
-    const pricefeedLatestPrice = await pricefeed.getCurrentPrice();
+    let pricefeedLatestPrice;
+    try {
+      pricefeedLatestPrice = pricefeed.getCurrentPrice();
+    } catch (error) {
+      this.logger.debug({
+        at: "SyntheticPegMonitor",
+        message: "Issue getting current price",
+        error,
+      });
+      pricefeedLatestPrice = null;
+    }
 
     // `_calculateHistoricalVolatility` will throw an error if it does not return successfully.
     const volData = await this._calculateHistoricalVolatility(pricefeed, latestTime, this.volatilityWindow);
