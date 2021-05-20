@@ -134,7 +134,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     const returnPrice = this.invertPrice ? this._invertPriceSafely(match.openPrice) : match.openPrice;
     if (verbose) {
       console.group(`\n(${this.exchange}:${this.pair}) Historical OHLC @ ${match.closeTime}`);
-      console.log(`- ✅ Open Price:${formatFixed(returnPrice.toString(), this.priceFeedDecimals)}`);
+      console.log(`- ✅ Open Price: ${formatFixed(returnPrice.toString(), this.priceFeedDecimals)}`);
       console.log(
         `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n- https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/ohlc?after=${match.closeTime}&before=${match.closeTime}&periods=60`
       );
