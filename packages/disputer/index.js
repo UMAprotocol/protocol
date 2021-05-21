@@ -195,23 +195,23 @@ async function run({
       disputerConfig,
     });
 
-    // The Financial Contract requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.
-    // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-    const collateralApproval = await setAllowance(
-      web3,
-      gasEstimator,
-      accounts[0],
-      financialContractAddress,
-      collateralTokenAddress
-    );
-    if (collateralApproval) {
-      logger.info({
-        at: "Disputer#index",
-        message: "Approved Financial Contract to transfer unlimited collateral tokens 💰",
-        collateralApprovalTx: collateralApproval.tx.transactionHash,
-      });
+    if (proxyTransactionWrapperConfig == {} || !proxyTransactionWrapperConfig?.useDsProxyToLiquidate) {
+      // The Financial Contract requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.
+      // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
+      const collateralApproval = await setAllowance(
+        web3,
+        gasEstimator,
+        accounts[0],
+        financialContractAddress,
+        collateralTokenAddress
+      );
+      if (collateralApproval)
+        logger.info({
+          at: "Disputer#index",
+          message: "Approved Financial Contract to transfer unlimited collateral tokens 💰",
+          collateralApprovalTx: collateralApproval.tx.transactionHash,
+        });
     }
-
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
       await retry(
@@ -293,11 +293,11 @@ async function Poll(callback) {
       // If there is a dsproxy config, the bot can be configured to send transactions via a smart contract wallet (DSProxy).
       // This enables the bot to preform swap, dispute, enabling a single reserve currency.
       // Note that the DSProxy will be deployed on the first run of the bot. Subsequent runs will re-use the proxy. example:
-      // { "useDsProxyToLiquidate": "true", If enabled, the bot will send liquidations via a DSProxy.
+      // { "useDsProxyToDispute": "true", If enabled, the bot will send disputes via a DSProxy.
       //  "dsProxyFactoryAddress": "0x123..." -> Will default to an UMA deployed version if non provided.
-      // "disputerReserveCurrencyAddress": "0x123..." -> currency DSProxy will trade from when liquidating.
+      // "disputerReserveCurrencyAddress": "0x123..." -> currency DSProxy will trade from when disputing.
       // "uniswapRouterAddress": "0x123..." -> uniswap router address to enable reserve trading. Defaults to mainnet router.
-      // "maxReserverTokenSpent": "10000000000"} -> max amount to spend in reserve currency. scaled by reserve currency
+      // "maxReserverTokenSpent": "10000000000"} -> max amount to spend in reserve currency. Scaled by reserve currency
       //      decimals. defaults to MAX_UINT (no limit).
       proxyTransactionWrapperConfig: process.env.DSPROXY_CONFIG ? JSON.parse(process.env.DSPROXY_CONFIG) : {},
     };

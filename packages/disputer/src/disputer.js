@@ -183,8 +183,9 @@ class Disputer {
             this.logger.debug({
               at: "Disputer",
               message: "Detected a disputable liquidation",
-              price: scaledPrice.toString(),
-              liquidation: JSON.stringify(liquidation),
+              price: price.toString(),
+              scaledPrice: scaledPrice.toString(),
+              liquidation: liquidation,
             });
             return { ...liquidation, price: scaledPrice.toString() };
           }
@@ -242,15 +243,36 @@ class Disputer {
       message: "Checking for disputed liquidations that may have resolved",
     });
 
+    // The disputer address is either the DSProxy (if using a DSProxy to dispute) or the unlocked account.
+    const disputerAddress = this.proxyTransactionWrapper.useDsProxyToDispute
+      ? this.proxyTransactionWrapper.dsProxyManager.getDSProxyAddress()
+      : this.account;
+
     // Can only derive rewards from disputed liquidations that this account disputed.
     const disputedLiquidations = this.financialContractClient
       .getDisputedLiquidations()
-      .filter((liquidation) => liquidation.disputer === this.account);
+      .filter((liquidation) => liquidation.disputer === disputerAddress);
 
     if (disputedLiquidations.length === 0) {
       this.logger.debug({
         at: "Disputer",
         message: "No withdrawable disputes",
+      });
+      return;
+    }
+
+    // In legacy versions of the EMP, withdrawing needs to be done by a party involved in the liquidation (i.e liquidator,
+    // sponsor or disputer). As the disputer is the DSProxy, we would require the ability to send the withdrawal tx
+    // directly from the DSProxy to facilitate this. This functionality is not implemented as almost all legacy EMPs expired.
+    if (
+      this.proxyTransactionWrapper?.useDsProxyToDispute &&
+      this.isLegacyEmpVersion &&
+      disputedLiquidations.length > 0
+    ) {
+      this.logger.warn({
+        at: "Disputer",
+        message: "Attempting to withdraw dispute from a legacy EMP🙈",
+        details: "This is not supported on legacy with a DSProxy! Please manually withdraw the dispute",
       });
       return;
     }

@@ -263,20 +263,19 @@ async function run({
         setAllowance(web3, gasEstimator, accounts[0], financialContractAddress, collateralTokenAddress),
         setAllowance(web3, gasEstimator, accounts[0], financialContractAddress, syntheticTokenAddress),
       ]);
-      if (collateralApproval) {
+      if (collateralApproval)
         logger.info({
           at: "Liquidator#index",
           message: "Approved Financial Contract to transfer unlimited collateral tokens 💰",
           collateralApprovalTx: collateralApproval.tx.transactionHash,
         });
-      }
-      if (syntheticApproval) {
+
+      if (syntheticApproval)
         logger.info({
           at: "Liquidator#index",
           message: "Approved Financial Contract to transfer unlimited synthetic tokens 💰",
           syntheticApprovalTx: syntheticApproval.tx.transactionHash,
         });
-      }
     }
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)

@@ -1452,6 +1452,42 @@ contract("Disputer.js", function (accounts) {
               // The dsProxy should be the disputer in sponsor2 and sponsor3's liquidations.
               assert.equal((await financialContract.getLiquidations(sponsor2))[0].disputer, dsProxy.address);
               assert.equal((await financialContract.getLiquidations(sponsor3))[0].disputer, dsProxy.address);
+
+              // Note we only test withdrawal logic on versions that are not 1.2.2 as withdrawing using a DSProxy is
+              // on legacy contracts is currently not supported. This is not a problem as almost all of these contracts
+              // are expired.
+              if (contractVersion.contractVersion != "1.2.2") {
+                // Push a price of 1.1, which should cause the two disputes to be correct (invalid liquidations)
+                const liquidationTime = await financialContract.getCurrentTime();
+                await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidationTime, convertPrice("1.1"));
+
+                // rewards should be withdrawn and the DSProxy collateral ballance should increase.
+
+                const dsProxyCollateralBalanceBefore = await collateralToken.balanceOf(dsProxy.address);
+
+                await disputer.update();
+                await disputer.withdrawRewards();
+                assert.equal(spy.callCount, 7); // two new info after withdrawing the two disputes.
+
+                const dsProxyCollateralBalanceAfter = await collateralToken.balanceOf(dsProxy.address);
+                assert.isTrue(dsProxyCollateralBalanceAfter.gt(dsProxyCollateralBalanceBefore));
+
+                // Pre-dispute as nothing should have change and rewards by liquidator are not withdrawn.
+                assert.equal(
+                  (await financialContract.getLiquidations(sponsor1))[0].state,
+                  LiquidationStatesEnum.PRE_DISPUTE
+                );
+
+                // Uninitialized as reward withdrawal deletes the liquidation object.
+                assert.equal(
+                  (await financialContract.getLiquidations(sponsor2))[0].state,
+                  LiquidationStatesEnum.UNINITIALIZED
+                );
+                assert.equal(
+                  (await financialContract.getLiquidations(sponsor3))[0].state,
+                  LiquidationStatesEnum.UNINITIALIZED
+                );
+              }
             }
           );
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
