@@ -20,6 +20,14 @@ const _printTransactionDataRecursive = function (txnObj) {
       _printTransactionDataRecursive({ ...decodedTxnData, to: _txn.to, value: _txn.value });
     });
     console.groupEnd();
+    // Multicall
+  } else if (txnObj.name === "aggregate" && txnObj?.params?.calls?.length > 0) {
+    console.group(`Transaction is a multicall transaction containing ${txnObj.params.calls.length} transactions:`);
+    txnObj.params.calls.forEach((_call) => {
+      const decodedTxnData = _decodeData(_call.callData);
+      _printTransactionDataRecursive({ ...decodedTxnData, to: _call.target, value: "0" });
+    });
+    console.groupEnd();
   } else {
     // Pretty print:
     console.log(`${JSON.stringify(txnObj, null, 4)}`);
