@@ -22,4 +22,4 @@ const func = async function (hre) {
   });
 };
 module.exports = func;
-func.tags = ["Bridge", "sink-oracle", "source-oracle"];
+func.tags = ["Bridge", "bridge-l2", "bridge-l1"];

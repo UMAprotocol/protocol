@@ -13,5 +13,5 @@ const func = async function (hre) {
   });
 };
 module.exports = func;
-func.tags = ["SinkGovernor", "sink-governor"];
-func.dependencies = ["Finder"];
+func.tags = ["SinkGovernor", "bridge-l2"];
+func.dependencies = ["Finder", "Registry"];

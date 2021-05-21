@@ -1,6 +1,7 @@
 const { getNodeUrl, mnemonic } = require("./TruffleConfig");
+const path = require("path");
 
-function getHardhatConfig(configOverrides) {
+function getHardhatConfig(configOverrides, workingDir = "./") {
   // Hard hat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function
   // get access to the plugins as well.
   require("@nomiclabs/hardhat-truffle5");
@@ -35,22 +36,27 @@ function getHardhatConfig(configOverrides) {
         url: "http://127.0.0.1:8545",
       },
       rinkeby: {
+        chainId: 4,
         url: getNodeUrl("rinkeby", true),
         accounts: { mnemonic },
       },
       goerli: {
+        chainId: 5,
         url: getNodeUrl("goerli", true),
         accounts: { mnemonic },
       },
       mumbai: {
+        chainId: 80001,
         url: getNodeUrl("polygon-mumbai", true),
         accounts: { mnemonic },
       },
       matic: {
+        chainId: 137,
         url: getNodeUrl("polygon-matic", true),
         accounts: { mnemonic },
       },
       mainnet: {
+        chainId: 1,
         url: getNodeUrl("mainnet", true),
         accounts: { mnemonic },
       },
@@ -65,6 +71,14 @@ function getHardhatConfig(configOverrides) {
     },
     namedAccounts: {
       deployer: 0,
+    },
+    external: {
+      deployments: {
+        mainnet: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/mainnet")],
+        mumbai: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/mumbai")],
+        matic: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/matic")],
+        rinkeby: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/rinkeby")],
+      },
     },
   };
   return { ...defaultConfig, ...configOverrides };
