@@ -1,8 +1,12 @@
-export { default as JsMap } from "./js-map";
+import JsMap from './js-map'
 
-export type Block = {
-  id?: string;
+export {JsMap}
+export type JsMap = ReturnType<typeof JsMap>
+
+export type Data = {
+  id?: number;
   number: number;
   hash: string;
   timestamp: number;
 };
+

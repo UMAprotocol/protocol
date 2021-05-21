@@ -41,6 +41,9 @@ export default function <D>(kind: string, store: Datastore): Store<string, D> {
   async function keys() {
     return [];
   }
+  async function size() {
+    return 0;
+  }
 
   return {
     get,
@@ -50,5 +53,6 @@ export default function <D>(kind: string, store: Datastore): Store<string, D> {
     entries,
     values,
     keys,
+    size,
   };
 }

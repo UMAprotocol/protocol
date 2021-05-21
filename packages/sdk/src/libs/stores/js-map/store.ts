@@ -13,13 +13,16 @@ export default function <I, D>(map: Map<I, D> = new Map<I, D>()): Store<I, D> {
     map.delete(id);
   }
   async function entries() {
-    return [...map.entries()];
+    return Array.from(map.entries());
   }
   async function values() {
-    return [...map.values()];
+    return Array.from(map.values());
   }
   async function keys() {
-    return [...map.keys()];
+    return Array.from(map.keys());
+  }
+  async function size() {
+    return map.size;
   }
 
   return {
@@ -30,5 +33,6 @@ export default function <I, D>(map: Map<I, D> = new Map<I, D>()): Store<I, D> {
     entries,
     values,
     keys,
+    size,
   };
 }

@@ -1,13 +1,9 @@
-import Base from "../base";
-import Store from "../../stores/js-map";
-import type { Block } from ".";
+import type { Data } from ".";
+import { JsMap } from "../generic";
 
-const BlocksTable = () => {
-  function makeId(data: Block) {
-    return data.number.toString();
+export default (type:string="Block") => {
+  function makeId(data: Data) {
+    return data.number;
   }
-  const store = Store<string, Block>();
-  const table = Base<string, Block>({ makeId, type: "Block" }, store);
-  return table;
+  return JsMap<number, Data>(type, makeId);
 };
-export default BlocksTable;
