@@ -88,7 +88,7 @@ contract ReserveCurrencyLiquidator {
             router.swapTokensForExactTokens(
                 collateralToBePurchased, // amountOut
                 (router.getAmountsIn(1000000, path)[0] * collateralToBePurchased * (1e18 + maxSlippage / 2) * 997) /
-                    (1000000e18 * 1000), // amountInMax
+                    (1000000 * 1e18 * 1000), // amountInMax
                 path,
                 address(this),
                 deadline
