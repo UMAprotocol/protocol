@@ -1,7 +1,7 @@
 const assert = require("assert");
 const truffleContract = require("@truffle/contract");
 
-const { createObjectFromDefaultProps, runTransaction, blockUntilBlockMined, MAX_UINT_VAL } = require("@uma/common");
+const { createObjectFromDefaultProps, runTransaction, blockUntilBlockMined } = require("@uma/common");
 const { getAbi, getTruffleContract } = require("@uma/core");
 
 const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json");
