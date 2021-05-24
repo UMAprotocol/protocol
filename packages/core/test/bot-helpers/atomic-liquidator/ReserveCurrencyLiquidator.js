@@ -372,19 +372,7 @@ contract("ReserveTokenLiquidator", function (accounts) {
 
     // Build the transaction call data. This differs from the previous tests in that it uses the collateral as reserve token.
     // Also, note that the maxTokensToLiquidate is more than the bot could do with just 1 wei of collateral.
-    const callData = reserveCurrencyLiquidator.contract.methods
-      .swapMintLiquidate(
-        router.address, // uniswapRouter
-        financialContract.address, // financialContract
-        collateralToken.address, // reserveCurrency
-        sponsor1, // liquidatedSponsor
-        { rawValue: 0 }, // minCollateralPerTokenLiquidated
-        { rawValue: MAX_SAFE_ALLOWANCE }, // maxCollateralPerTokenLiquidated. This number need to be >= the token price.
-        { rawValue: toWei("1000") }, // maxTokensToLiquidate. This is how many tokens the positions has (liquidated debt).
-        toWei("0.5"), // maxSlippage above any achievable slippage given the pool sizes (50%)
-        unreachableDeadline
-      )
-      .encodeABI();
+    let callData = buildCallData(collateralToken.address, toWei("0.5")); // maxSlippage above any achievable slippage given the pool sizes (50%)
 
     await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.address, callData).send({
       from: liquidator,
