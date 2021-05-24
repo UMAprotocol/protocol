@@ -1,7 +1,9 @@
 # UMA SDK
+
 This package is meant as a low level cross platform utility library for viewing and interacting with UMA and other relevant contracts.
 
 ## Architecture
+
 This is meant to be modular and add features as needed. This was bootstraped with TSDX, which you can find usage at the bottom of this file.
 
 - [**clients**](./src/libs/clients/README.md): are meant to be contract interaction clients that can lookup deployed contracts by network and return an ethers contract instance as well as parse events into useful state.
@@ -12,12 +14,14 @@ This is meant to be modular and add features as needed. This was bootstraped wit
 Each folder should contain a README, index.ts and index.d.ts if needed which expose any code to the root of the SDK.
 
 ## Install
+
 `yarn add @uma/sdk`
 
 Or if running locally, checkout the protocol repo, and run `yarn link` inside the `packages/sdk` folder
 Then inside your project type `yarn link @uma/sdk` to link to your local copy.
 
 ## Quick Start
+
 ```js
 import uma from '@uma/sdk'
 
@@ -105,11 +109,11 @@ Please see the main `tsdx` [optimizations docs](https://github.com/palmerhq/tsdx
 
 ```js
 // ./types/index.d.ts
-declare var __DEV__: boolean;
+declare var __DEV__: boolean
 
 // inside your code...
 if (__DEV__) {
-  console.log('foo');
+  console.log("foo")
 }
 ```
 

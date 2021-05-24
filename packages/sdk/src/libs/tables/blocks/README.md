@@ -1,7 +1,9 @@
 # Blocks Table
+
 Defines an ethereum block type and returns a base table typed to that. Currently exposes a js-map compatible table.
 
 ## Usage
+
 See [tests](./js-map.test.ts) for more example usage.
 
 ```js
@@ -37,8 +39,10 @@ See [tests](./js-map.test.ts) for more example usage.
 ```
 
 ## Types
-Found in [index.d.ts](./index.d.ts)
-```js
-  import type {BlockType} from '@uma/sdk'
-``
 
+Found in [index.d.ts](./index.d.ts)
+
+```js
+import type { BlockType } from "@uma/sdk"
+;``
+```

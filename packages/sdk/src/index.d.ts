@@ -1,1 +1,1 @@
-export * from './libs/index.d.ts'
+export * from "./libs/index.d.ts";

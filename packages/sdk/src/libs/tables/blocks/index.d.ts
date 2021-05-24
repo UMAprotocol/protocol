@@ -1,6 +1,6 @@
 export type BlockType = {
-  id?:string;
-  number:number;
-  hash:string;
-  timestamp:number;
-}
+  id?: string;
+  number: number;
+  hash: string;
+  timestamp: number;
+};

@@ -1,7 +1,9 @@
 # JS Map Store
+
 This store is a simple cache which wraps an underlying Map. All stores functions are async, unlike a map.
 
 ## Usage
+
 See [tests](./store.test.ts) for more example usage.
 
 ```js
@@ -13,7 +15,7 @@ See [tests](./store.test.ts) for more example usage.
   console.log(await store.has('a')) // true
   console.log(await store.has('b')) // false
   console.log(await store.get('a')) // 'b'
-  console.log(await store.delete('b')) 
+  console.log(await store.delete('b'))
   console.log(await store.has('a')) // false
 
   // initialize store with a pre warmed map

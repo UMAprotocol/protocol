@@ -1,7 +1,9 @@
 # Base Table
+
 Contains basic functions you want in most of your tables, unless its a really special case.
 
 ## Usage
+
 See [tests](./base.test.ts) for more example usage.
 
 ```js
@@ -35,4 +37,3 @@ See [tests](./base.test.ts) for more example usage.
   // returns {id:'john',name:'john',age:20, verified:true})
 
 ```
-
