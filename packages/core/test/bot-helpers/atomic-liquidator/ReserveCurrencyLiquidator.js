@@ -55,6 +55,8 @@ const getPoolSpotPrice = async () => {
   return Number(fromWei(poolTokenABallance.mul(fixedPointAdjustment).div(poolTokenBBallance))).toFixed(4);
 };
 
+// For a given number of tokens to liquidate, calculate the expected number of tokens that the DSProxy will likely buy
+// to facilitate the swap/mint/liquidate action.
 const computeExpectedTokenBuy = async (tokensToLiquidate) => {
   const contractGcr = toBN((await financialContract.pfc()).toString())
     .mul(fixedPointAdjustment)
@@ -386,7 +388,7 @@ contract("ReserveTokenLiquidator", function (accounts) {
         { rawValue: 0 }, // minCollateralPerTokenLiquidated
         { rawValue: MAX_SAFE_ALLOWANCE }, // maxCollateralPerTokenLiquidated. This number need to be >= the token price.
         { rawValue: toWei("1000") }, // maxTokensToLiquidate. This is how many tokens the positions has (liquidated debt).
-        toWei("0.5"), //maxSlippage above any achievable slippage given the pool sizes (50%)
+        toWei("0.5"), // maxSlippage above any achievable slippage given the pool sizes (50%)
         unreachableDeadline
       )
       .encodeABI();
@@ -429,7 +431,6 @@ contract("ReserveTokenLiquidator", function (accounts) {
     // synthetics and a GCR of 2.5 the bot will need 2.5 units of collateral to mint + 0.1 for the final fee, totalling 2.6.
     // Based on the pool size of 50000 reserve to 50 collateral a purchase of 2.6 collateral with reserve will require a
     // reserve input of 2750.86.
-
     const expectedTokenBuy = await computeExpectedTokenBuy(toBN(toWei("1000"))); // how much collateral to liquidate the full 1000 unit position
     const amountsIn = await router.getAmountsIn(expectedTokenBuy, [reserveToken.address, collateralToken.address]);
 
@@ -502,9 +503,8 @@ contract("ReserveTokenLiquidator", function (accounts) {
     // tokens in these pools have 8 and 9 decimals for WBTC and DIGG respectively,  but the LP tokens have 18, leading to
     // the strange sizing.To ensure slippage tolerances are correctly respected on this kind of pool we can mimic the exact SLP setup.
 
-    // Create the reserve,collateral and synthetic tokens afresh using new decimals. Reserve token in this case is wBTC
+    // Create the reserve, collateral and synthetic tokens afresh using new decimals. Reserve token in this case is wBTC
     // and collateral token is DIGG.
-
     reserveToken = await Token.new("reserveToken", "wBTC", 8);
     // Synthetic and collateral precision must match.
     collateralToken = await Token.new("collateralToken", "DIGG", 9);
@@ -575,7 +575,6 @@ contract("ReserveTokenLiquidator", function (accounts) {
     // numerator=10881694425*20e9*1000; denominator=(136567052391-20e9)*997; amountIn = 1872645403. From this, the resultant
     // price is expected to be (10881694425+1872645403)/(136567052391-20e9)=0.1094. From this, we can see the expected slippage
     // is 0.1094/0.0797-1 ≈ 0.37. A slippage tolerance of 30% should revert but and a tolerance of 40% should not.
-
     let callData = reserveCurrencyLiquidator.contract.methods
       .swapMintLiquidate(
         router.address, // uniswapRouter
@@ -697,7 +696,6 @@ contract("ReserveTokenLiquidator", function (accounts) {
     // will be 1000e18 * 20000e6 * 1000 / ((1000000e6 - 20000e6) * 997)=2.046957e18. Considering this, the dex price will be
     // (1000e18+20.469e18)/(1000000e6-20000e6)=1041295481.61. This is then divided by 1e6 to remove the decimals from the price
     // yielding 1041.2. Therefore, the price slippage is 4.12% to preform this liquidation, from the starting price of 1000.
-
     let callData = reserveCurrencyLiquidator.contract.methods
       .swapMintLiquidate(
         router.address, // uniswapRouter
