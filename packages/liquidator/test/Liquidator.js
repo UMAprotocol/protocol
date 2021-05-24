@@ -1,4 +1,4 @@
-const { toWei, toBN, utf8ToHex, padRight, isAddress } = web3.utils;
+const { toWei, toBN, utf8ToHex, padRight, isAddress, fromWei } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 const truffleContract = require("@truffle/contract");
@@ -10,6 +10,8 @@ const {
   runTestForVersion,
   createConstructorParamsForContractVersion,
   TESTED_CONTRACT_VERSIONS,
+  MAX_SAFE_ALLOWANCE,
+  MAX_UINT_VAL,
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
@@ -1709,6 +1711,14 @@ contract("Liquidator.js", function (accounts) {
             return truffleContractCreator;
           };
 
+          const getPoolSpotPrice = async () => {
+            const poolTokenABallance = await reserveToken.balanceOf(pairAddress);
+            const poolTokenBBallance = await collateralToken.balanceOf(pairAddress);
+            return Number(
+              fromWei(poolTokenABallance.mul(toBN(convertCollateral("1"))).div(poolTokenBBallance))
+            ).toFixed(4);
+          };
+
           beforeEach(async () => {
             // Create the reserve currency for the liquidator to hold.
             reserveToken = await Token.new("reserveToken", "DAI", 18, { from: contractCreator });
@@ -1732,11 +1742,21 @@ contract("Liquidator.js", function (accounts) {
             // Seed the market. This sets up the initial price to be 1/1 reserve to collateral token. As the collateral
             // token is Dai this starts off the uniswap market at 1 reserve/collateral. Note the amount of collateral
             // is scaled according to the collateral decimals.
-            await reserveToken.mint(pairAddress, toBN(toWei("1000")).muln(10000000), { from: contractCreator });
-            await collateralToken.mint(pairAddress, toBN(convertCollateral("1000")).muln(10000000), {
-              from: contractCreator,
-            });
-            await pair.sync({ from: contractCreator });
+            await reserveToken.approve(uniswapRouter.address, MAX_SAFE_ALLOWANCE, { from: contractCreator });
+            await collateralToken.approve(uniswapRouter.address, MAX_SAFE_ALLOWANCE, { from: contractCreator });
+            await reserveToken.mint(contractCreator, toBN(toWei("1000")).muln(10000000), { from: contractCreator });
+            await collateralToken.mint(contractCreator, toBN(toWei("1000")).muln(10000000), { from: contractCreator });
+            await uniswapRouter.addLiquidity(
+              reserveToken.address,
+              collateralToken.address,
+              toBN(toWei("1000")).muln(10000000),
+              toBN(convertCollateral("1000")).muln(10000000),
+              "0",
+              "0",
+              contractCreator,
+              MAX_UINT_VAL,
+              { from: contractCreator }
+            );
 
             dsProxyFactory = await DSProxyFactory.new({ from: contractCreator });
 
@@ -2266,6 +2286,159 @@ contract("Liquidator.js", function (accounts) {
               // The liquidator at this point should have spent all its DSProxy funds. Note we check that this is less
               // than 10 wei as there could be a tiny bit of dust left due to rounding.
               assert.isTrue((await reserveToken.balanceOf(dsProxy.address)).lt(toBN(toWei("0.000001"))));
+            }
+          );
+          versionedIt([{ contractType: "any", contractVersion: "any" }], true)(
+            "Correctly respects max slippage parameters",
+            async function () {
+              await reserveToken.mint(dsProxy.address, toWei("1000000"), { from: contractCreator });
+
+              // The uniswap pool starts with 10000000000 collateral and reserve, equalling a price of 1. To liquidate
+              // positions with 100 synthetics we dont need much collateral relative to the pool so slippage is minimal.
+              // To increase slippage, we decrease the liquidity to 1/10000000th and check the bot does not trade over slippage limit.
+              const lpTokenBalance = toBN(await pair.balanceOf(contractCreator));
+              const lpTokensToRedeem = lpTokenBalance.muln(999999).divn(1000000);
+
+              await await pair.approve(uniswapRouter.address, MAX_SAFE_ALLOWANCE, { from: contractCreator });
+              await uniswapRouter.removeLiquidity(
+                reserveToken.address,
+                collateralToken.address,
+                lpTokensToRedeem,
+                "0",
+                "0",
+                contractCreator,
+                MAX_UINT_VAL,
+                { from: contractCreator }
+              );
+
+              // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
+              await financialContract.create(
+                { rawValue: convertCollateral("125") },
+                { rawValue: convertSynthetic("100") },
+                { from: sponsor1 }
+              );
+
+              // sponsor2 creates a position with 175 units of collateral, creating 100 synthetic tokens.
+              await financialContract.create(
+                { rawValue: convertCollateral("175") },
+                { rawValue: convertSynthetic("100") },
+                { from: sponsor2 }
+              );
+
+              // sponsor3 creates a position with 200 units of collateral, creating 100 synthetic tokens.
+              await financialContract.create(
+                { rawValue: convertCollateral("200") },
+                { rawValue: convertSynthetic("100") },
+                { from: sponsor3 }
+              );
+
+              // The contract GCR is now (125+175+200)/(100+100+100)=1.666. To liquidate one sponsor with 100 units of
+              // debt we will need 1.666*100=collateral=166. After removing liquidity, the pool has 10000 reserve and
+              // collateral tokens. The amount in for a given buy of 166 is 10000e18*166e18*1000/((10000e18-166e18)*997)
+              //=1.693100452E20. using this, the expected spot price after the trade is (10000e18+1.693100452e20)/(10000e18-166e18)
+              // =1.0342. This is a price slippage of 3.42%. We can therefore check that if the slippage paramter is set
+              // to something more than this (say 5%) the bot correctly liquidates and something less than this (say 3%) it reverts.
+
+              // Create a new proxyTransaction wrapper and liquidator to use the 3% slippage limit.
+              proxyTransactionWrapper = new ProxyTransactionWrapper({
+                web3,
+                financialContract: financialContract.contract,
+                gasEstimator,
+                syntheticToken: syntheticToken.contract,
+                collateralToken: collateralToken.contract,
+                account: accounts[0],
+                dsProxyManager,
+                proxyTransactionWrapperConfig: {
+                  useDsProxyToLiquidate: true,
+                  uniswapRouterAddress: uniswapRouter.address,
+                  uniswapFactoryAddress: uniswapFactory.address,
+                  liquidatorReserveCurrencyAddress: reserveToken.address,
+                  maxAcceptableSlippage: toWei("0.03"), // 3% should revert as it's less than the 3.39% expected slippage
+                },
+              });
+
+              liquidator = new Liquidator({
+                logger: spyLogger,
+                financialContractClient: financialContractClient,
+                proxyTransactionWrapper,
+                gasEstimator,
+                syntheticToken: syntheticToken.contract,
+                priceFeed: priceFeedMock,
+                account: accounts[0],
+                financialContractProps,
+                liquidatorConfig: {
+                  crThreshold: 0,
+                  contractType: contractVersion.contractType,
+                  contractVersion: contractVersion.contractVersion,
+                },
+              });
+
+              // to only liquidate one sponsor we can set the price to 1.3. this makes
+              // Sponsor1: 100 * 1.3 * 1.2 > 125 [undercollateralized]
+              // Sponsor2: 100 * 1.3 * 1.2 < 150 [sufficiently collateralized]
+              // Sponsor3: 100 * 1.3 * 1.2 < 175 [sufficiently collateralized]
+              priceFeedMock.setCurrentPrice(convertPrice("1.3"));
+              await liquidator.update();
+
+              // should throw as threshold below expected slip.
+              let didThrow = false;
+              try {
+                await liquidator.liquidatePositions();
+              } catch (error) {
+                didThrow = true;
+              }
+              assert.isTrue(didThrow);
+
+              // Create another proxyTransaction wrapper and liquidator to use the 4% slippage limit.
+              proxyTransactionWrapper = new ProxyTransactionWrapper({
+                web3,
+                financialContract: financialContract.contract,
+                gasEstimator,
+                syntheticToken: syntheticToken.contract,
+                collateralToken: collateralToken.contract,
+                account: accounts[0],
+                dsProxyManager,
+                proxyTransactionWrapperConfig: {
+                  useDsProxyToLiquidate: true,
+                  uniswapRouterAddress: uniswapRouter.address,
+                  uniswapFactoryAddress: uniswapFactory.address,
+                  liquidatorReserveCurrencyAddress: reserveToken.address,
+                  maxAcceptableSlippage: toWei("0.05"), // 5% should not revert as it's larger than the expected slippage.
+                },
+              });
+
+              liquidator = new Liquidator({
+                logger: spyLogger,
+                financialContractClient: financialContractClient,
+                proxyTransactionWrapper,
+                gasEstimator,
+                syntheticToken: syntheticToken.contract,
+                priceFeed: priceFeedMock,
+                account: accounts[0],
+                financialContractProps,
+                liquidatorConfig: {
+                  crThreshold: 0,
+                  contractType: contractVersion.contractType,
+                  contractVersion: contractVersion.contractVersion,
+                },
+              });
+
+              // should not revert as threshold above expected slip.
+              await liquidator.liquidatePositions();
+
+              // Validate the liquidation was done correctly.
+              const liquidationObject = (await financialContract.getLiquidations(sponsor1))[0];
+              assert.equal(liquidationObject.sponsor, sponsor1);
+              assert.equal(liquidationObject.liquidator, dsProxy.address);
+              assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+              assert.equal(liquidationObject.liquidatedCollateral, convertCollateral("125"));
+
+              // Sponsor1 should have zero collateral left in their position from the liquidation.
+              assert.equal((await financialContract.getCollateral(sponsor1)).rawValue, 0);
+
+              // the spot price after the liquidation should match our calculations at the top of this test to validate
+              // the slippage calculations.
+              assert.equal(await getPoolSpotPrice(), "1.0342");
             }
           );
         });

@@ -74,8 +74,9 @@ class ProxyTransactionWrapper {
           return this.web3.utils.isAddress(x) || x === "";
         },
       },
-      maxReserverTokenSpent: {
-        value: MAX_UINT_VAL,
+      maxAcceptableSlippage: {
+        // default to reverting on >10% slippage on trades.
+        value: this.toWei("0.1"),
         isValid: (x) => {
           return typeof x == "string";
         },
@@ -228,10 +229,10 @@ class ProxyTransactionWrapper {
         this.financialContract._address, // financialContract
         this.reserveToken._address, // reserveCurrency
         liquidationArgs[0], // liquidatedSponsor
-        { rawValue: this.maxReserverTokenSpent }, // maxReserverTokenSpent
         { rawValue: liquidationArgs[1].rawValue }, // minCollateralPerTokenLiquidated
         { rawValue: liquidationArgs[2].rawValue }, // maxCollateralPerTokenLiquidated. This number need to be >= the token price.
         { rawValue: liquidationArgs[3].rawValue }, // maxTokensToLiquidate. This is how many tokens the positions has (liquidated debt).
+        this.maxAcceptableSlippage, // maxSlippage. liquidation will revert if the slippage on the dex is more than this.
         liquidationArgs[4]
       )
       .encodeABI();
