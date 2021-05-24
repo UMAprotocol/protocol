@@ -53,6 +53,7 @@ contract SinkOracle is BeaconOracle, OracleAncillaryInterface {
         bytes32 priceRequestId = _encodePriceRequest(currentChainID, identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
         if (lookup.state != RequestState.NeverRequested) {
+            // Clients expect that `requestPrice` does not revert if a price is already requested, so return gracefully.
             return;
         } else {
             _requestPrice(currentChainID, identifier, time, ancillaryData);
