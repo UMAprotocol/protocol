@@ -71,10 +71,13 @@ contract ReserveCurrencyLiquidator {
 
         // 4.b. If there is some collateral to be purchased, execute a trade on uniswap to meet the shortfall.
         // Note the path assumes a direct route from the reserve currency to the collateral currency.
-        // Note the maxInputAmount is computed by taking the 11000000 wei trade as the spot price from the router,
+        // Note the maxInputAmount is computed by taking the 1000000 wei trade as the spot price from the router,
         // multiplied by collateral to be purchased to arrive at a "zero slippage input amount". This would be the amount of
         // required input to buy the amountOut, assuming zero slippage. This is then scalded by maxSlippage & swap fees
-        // to find the amountInMax that factors in the max tolerable exchange slippage.
+        // to find the amountInMax that factors in the max tolerable exchange slippage. The maxSlippage is divided by two
+        // as slippage in an AMM is constituted by the inputToken going up and the outputToken going down in proportion.
+        // the +1e18 is used to offset the slippage percentage provided. i.e a 5% will be input at 0.05e18, offset by 1e18
+        // to bring it up to 1.05e18. the *997 and *1000 in the numerator and denominator respectively are for uniswap fees.
         if (collateralToBePurchased > 0 && reserveCurrency != fc.collateralCurrency()) {
             IUniswapV2Router01 router = IUniswapV2Router01(uniswapRouter);
             address[] memory path = new address[](2);
