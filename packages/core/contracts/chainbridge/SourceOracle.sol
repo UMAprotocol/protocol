@@ -40,7 +40,8 @@ contract SourceOracle is BeaconOracle {
         int256 price = _getOracle().getPrice(identifier, time, ancillaryData);
         _publishPrice(sinkChainID, identifier, time, ancillaryData, price);
 
-        // Call Bridge.deposit() to initiate cross-chain publishing of price request.
+        // Initiate cross-chain price request, which should lead the `Bridge` to call `validateDeposit` on this
+        // contract.
         _getBridge().deposit(
             sinkChainID,
             getResourceId(),
@@ -59,11 +60,13 @@ contract SourceOracle is BeaconOracle {
         uint256 time,
         bytes memory ancillaryData,
         int256 price
-    ) public view {
+    ) public {
         bytes32 priceRequestId = _encodePriceRequest(sinkChainID, identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
-        require(lookup.state == RequestState.Resolved, "Price has not been published");
+        require(lookup.state == RequestState.PendingResolve, "Price has not been published");
         require(lookup.price == price, "Unexpected price published");
+        // Advance state so that directly calling Bridge.deposit will revert and not emit a duplicate `Deposit` event.
+        lookup.state = RequestState.Resolved;
     }
 
     /***************************************************************
@@ -86,6 +89,9 @@ contract SourceOracle is BeaconOracle {
     ) public onlyGenericHandlerContract() {
         _requestPrice(sinkChainID, identifier, time, ancillaryData);
         _getOracle().requestPrice(identifier, time, ancillaryData);
+        bytes32 priceRequestId = _encodePriceRequest(sinkChainID, identifier, time, ancillaryData);
+        Price storage lookup = prices[priceRequestId];
+        lookup.state = RequestState.Requested;
     }
 
     /**
