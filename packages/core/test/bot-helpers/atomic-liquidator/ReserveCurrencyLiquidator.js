@@ -42,6 +42,7 @@ let store;
 // set the starting pool price at 1000 reserveToken/collateralToken
 let startingReservePoolAmount = toBN(toWei("1000")).muln(50);
 let startingCollateralPoolAmount = toBN(toWei("1")).muln(50);
+let constructorParams;
 
 const priceFeedIdentifier = padRight(utf8ToHex("TEST_IDENTIFIER"), 64);
 const unreachableDeadline = 4772084478; // 100 years in the future
@@ -91,17 +92,21 @@ contract("ReserveTokenLiquidator", function (accounts) {
   };
 
   // Generate common call data for unit tests.
-  const buildCallData = () => {
+  const buildCallData = (
+    reserveTokenAddress = reserveToken.address,
+    maxSlippage = toWei("0.5"),
+    maxTokensToLiquidate = toWei("1000")
+  ) => {
     return reserveCurrencyLiquidator.contract.methods
       .swapMintLiquidate(
         router.address, // uniswapRouter
         financialContract.address, // financialContract
-        reserveToken.address, // reserveCurrency
+        reserveTokenAddress, // reserveCurrency
         sponsor1, // liquidatedSponsor
         { rawValue: 0 }, // minCollateralPerTokenLiquidated
         { rawValue: MAX_SAFE_ALLOWANCE }, // maxCollateralPerTokenLiquidated. This number need to be >= the token price.
-        { rawValue: toWei("1000") }, // maxTokensToLiquidate. This is how many tokens the positions has (liquidated debt).
-        toWei("0.5"), // maxSlippage set to 50% to not worry about slippage in inital tests.
+        { rawValue: maxTokensToLiquidate }, // maxTokensToLiquidate. This is how many tokens the positions has (liquidated debt).
+        maxSlippage, // maxSlippage set to 50% to not worry about slippage in inital tests.
         unreachableDeadline
       )
       .encodeABI();
@@ -154,7 +159,7 @@ contract("ReserveTokenLiquidator", function (accounts) {
     assert.equal(await getPoolSpotPrice(), "1000.0000"); // price should be exactly 1000 reserveToken/collateralToken.
 
     // Create the EMP to mint positions.
-    const constructorParams = {
+    constructorParams = {
       expirationTimestamp: unreachableDeadline,
       withdrawalLiveness: "100",
       collateralAddress: collateralToken.address,
@@ -329,19 +334,7 @@ contract("ReserveTokenLiquidator", function (accounts) {
     assert.equal((await financialContract.getLiquidations(sponsor1)).length, 0);
 
     // Build the transaction call data. This differs from the previous tests in that it uses the collateral as reserve token.
-    const callData = reserveCurrencyLiquidator.contract.methods
-      .swapMintLiquidate(
-        router.address, // uniswapRouter
-        financialContract.address, // financialContract
-        collateralToken.address, // reserveCurrency
-        sponsor1, // liquidatedSponsor
-        { rawValue: 0 }, // minCollateralPerTokenLiquidated
-        { rawValue: MAX_SAFE_ALLOWANCE }, // maxCollateralPerTokenLiquidated. This number need to be >= the token price.
-        { rawValue: toWei("1000") }, // maxTokensToLiquidate. This is how many tokens the positions has (liquidated debt).
-        toWei("0.5"),
-        unreachableDeadline
-      )
-      .encodeABI();
+    const callData = buildCallData(collateralToken.address);
 
     await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.address, callData).send({
       from: liquidator,
@@ -449,20 +442,8 @@ contract("ReserveTokenLiquidator", function (accounts) {
       .sub(fixedPointAdjustment);
     assert.equal(Number(fromWei(expectedTradeSlippage)).toFixed(7), "0.1128875"); // check the expected slip matches our calculations
 
-    // Build the transaction call data with a slippage tolerance below the expected slippage. This should revert.
-    let callData = reserveCurrencyLiquidator.contract.methods
-      .swapMintLiquidate(
-        router.address, // uniswapRouter
-        financialContract.address, // financialContract
-        reserveToken.address, // reserveCurrency
-        sponsor1, // liquidatedSponsor
-        { rawValue: 0 }, // minCollateralPerTokenLiquidated
-        { rawValue: MAX_SAFE_ALLOWANCE }, // maxCollateralPerTokenLiquidated. This number need to be >= the token price.
-        { rawValue: toWei("1000") }, // maxTokensToLiquidate. This is how many tokens the positions has (liquidated debt).
-        toWei("0.11"), // maxSlippage 11.2% is below the expected slippage of 11.28%. should revert
-        unreachableDeadline
-      )
-      .encodeABI();
+    // Build call data with a slippage tolerance of 11%. this is below the expected slippage of 11.28. Should revert.
+    let callData = buildCallData(reserveToken.address, toWei("0.11"));
 
     assert(
       await didContractThrow(
@@ -472,20 +453,8 @@ contract("ReserveTokenLiquidator", function (accounts) {
       )
     );
 
-    // Build the transaction call data with a slippage tolerance right above the threshold. this should not revert.
-    callData = reserveCurrencyLiquidator.contract.methods
-      .swapMintLiquidate(
-        router.address, // uniswapRouter
-        financialContract.address, // financialContract
-        reserveToken.address, // reserveCurrency
-        sponsor1, // liquidatedSponsor
-        { rawValue: 0 }, // minCollateralPerTokenLiquidated
-        { rawValue: MAX_SAFE_ALLOWANCE }, // maxCollateralPerTokenLiquidated. This number need to be >= the token price.
-        { rawValue: toWei("1000") }, // maxTokensToLiquidate. This is how many tokens the positions has (liquidated debt).
-        toWei("0.12"), // maxSlippage 12% is above the expected slippage of 11.28. should not revert
-        unreachableDeadline
-      )
-      .encodeABI();
+    // Build call data with a slippage tolerance of 12%, right above the expected slippage of 12.28%. This should not revert.
+    callData = buildCallData(reserveToken.address, toWei("0.12"));
 
     await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.address, callData).send({
       from: liquidator,
@@ -533,25 +502,13 @@ contract("ReserveTokenLiquidator", function (accounts) {
     await pair.sync({ from: deployer });
 
     // Create the EMP to mint positions.
-    const constructorParams = {
-      expirationTimestamp: unreachableDeadline,
-      withdrawalLiveness: "100",
+    constructorParams = {
+      ...constructorParams,
       collateralAddress: collateralToken.address,
       tokenAddress: syntheticToken.address,
-      finderAddress: finder.address,
-      priceFeedIdentifier: priceFeedIdentifier,
-      liquidationLiveness: "100",
-      collateralRequirement: { rawValue: toWei("1.5") },
-      disputeBondPercentage: { rawValue: toWei("0.1") },
-      sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
-      disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: convertSynthetic("100") },
-      timerAddress: timer.address,
-      financialProductLibraryAddress: ZERO_ADDRESS,
     };
-
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, { from: deployer });
-
     financialContract = await ExpiringMultiParty.new(constructorParams);
     await syntheticToken.addMinter(financialContract.address);
     await syntheticToken.addBurner(financialContract.address);
@@ -575,19 +532,9 @@ contract("ReserveTokenLiquidator", function (accounts) {
     // numerator=10881694425*20e9*1000; denominator=(136567052391-20e9)*997; amountIn = 1872645403. From this, the resultant
     // price is expected to be (10881694425+1872645403)/(136567052391-20e9)=0.1094. From this, we can see the expected slippage
     // is 0.1094/0.0797-1 ≈ 0.37. A slippage tolerance of 30% should revert but and a tolerance of 40% should not.
-    let callData = reserveCurrencyLiquidator.contract.methods
-      .swapMintLiquidate(
-        router.address, // uniswapRouter
-        financialContract.address, // financialContract
-        reserveToken.address, // reserveCurrency
-        sponsor1, // liquidatedSponsor
-        { rawValue: 0 }, // minCollateralPerTokenLiquidated
-        { rawValue: MAX_SAFE_ALLOWANCE }, // maxCollateralPerTokenLiquidated. This number need to be >= the token price.
-        { rawValue: convertSynthetic("10000") }, // maxTokensToLiquidate. This is how many tokens the positions has (liquidated debt).
-        toWei("0.34"), // maxSlippage. 34% is below the expected slippage of 37% for this liquidation. should revert.
-        unreachableDeadline
-      )
-      .encodeABI();
+
+    // maxSlippage set to 34% is below the expected slippage of 37% for this liquidation. should revert.
+    let callData = buildCallData(reserveToken.address, toWei("0.34"), convertSynthetic("10000"));
 
     assert(
       await didContractThrow(
@@ -597,20 +544,8 @@ contract("ReserveTokenLiquidator", function (accounts) {
       )
     );
 
-    // Build the transaction call data with a slippage tolerance right above the threshold. this should not revert.
-    callData = reserveCurrencyLiquidator.contract.methods
-      .swapMintLiquidate(
-        router.address, // uniswapRouter
-        financialContract.address, // financialContract
-        reserveToken.address, // reserveCurrency
-        sponsor1, // liquidatedSponsor
-        { rawValue: 0 }, // minCollateralPerTokenLiquidated
-        { rawValue: MAX_SAFE_ALLOWANCE }, // maxCollateralPerTokenLiquidated. This number need to be >= the token price.
-        { rawValue: convertSynthetic("10000") }, // maxTokensToLiquidate. This is how many tokens the positions has (liquidated debt).
-        toWei("0.4"), // maxSlippage. 40% is above the expected slippage of 37% for this liquidation. should not revert.
-        unreachableDeadline
-      )
-      .encodeABI();
+    // maxSlippage set to 40% is above the expected slippage of 37% for this liquidation. should not revert.
+    callData = buildCallData(reserveToken.address, toWei("0.40"), convertSynthetic("10000"));
 
     await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.address, callData).send({
       from: liquidator,
@@ -656,25 +591,13 @@ contract("ReserveTokenLiquidator", function (accounts) {
     await pair.sync({ from: deployer });
 
     // Create the EMP to mint positions.
-    const constructorParams = {
-      expirationTimestamp: unreachableDeadline,
-      withdrawalLiveness: "100",
+    constructorParams = {
+      ...constructorParams,
       collateralAddress: collateralToken.address,
       tokenAddress: syntheticToken.address,
-      finderAddress: finder.address,
-      priceFeedIdentifier: priceFeedIdentifier,
-      liquidationLiveness: "100",
-      collateralRequirement: { rawValue: toWei("1.5") },
-      disputeBondPercentage: { rawValue: toWei("0.1") },
-      sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
-      disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: convertSynthetic("100") },
-      timerAddress: timer.address,
-      financialProductLibraryAddress: ZERO_ADDRESS,
     };
-
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, { from: deployer });
-
     financialContract = await ExpiringMultiParty.new(constructorParams);
     await syntheticToken.addMinter(financialContract.address);
     await syntheticToken.addBurner(financialContract.address);
@@ -696,19 +619,9 @@ contract("ReserveTokenLiquidator", function (accounts) {
     // will be 1000e18 * 20000e6 * 1000 / ((1000000e6 - 20000e6) * 997)=2.046957e18. Considering this, the dex price will be
     // (1000e18+20.469e18)/(1000000e6-20000e6)=1041295481.61. This is then divided by 1e6 to remove the decimals from the price
     // yielding 1041.2. Therefore, the price slippage is 4.12% to preform this liquidation, from the starting price of 1000.
-    let callData = reserveCurrencyLiquidator.contract.methods
-      .swapMintLiquidate(
-        router.address, // uniswapRouter
-        financialContract.address, // financialContract
-        reserveToken.address, // reserveCurrency
-        sponsor1, // liquidatedSponsor
-        { rawValue: 0 }, // minCollateralPerTokenLiquidated
-        { rawValue: MAX_SAFE_ALLOWANCE }, // maxCollateralPerTokenLiquidated. This number need to be >= the token price.
-        { rawValue: toWei("10000") }, // maxTokensToLiquidate. This is how many tokens the positions has (liquidated debt).
-        toWei("0.04"), // maxSlippage. 4% is below the expected slippage of 4.12% for this liquidation. should revert.
-        unreachableDeadline
-      )
-      .encodeABI();
+
+    // maxSlippage set to 4% is below the expected slippage of 4.12% for this liquidation. should revert.
+    let callData = buildCallData(reserveToken.address, toWei("0.04"), convertSynthetic("10000"));
 
     assert(
       await didContractThrow(
@@ -718,20 +631,8 @@ contract("ReserveTokenLiquidator", function (accounts) {
       )
     );
 
-    // Build the transaction call data with a slippage tolerance right above the threshold. this should not revert.
-    callData = reserveCurrencyLiquidator.contract.methods
-      .swapMintLiquidate(
-        router.address, // uniswapRouter
-        financialContract.address, // financialContract
-        reserveToken.address, // reserveCurrency
-        sponsor1, // liquidatedSponsor
-        { rawValue: 0 }, // minCollateralPerTokenLiquidated
-        { rawValue: MAX_SAFE_ALLOWANCE }, // maxCollateralPerTokenLiquidated. This number need to be >= the token price.
-        { rawValue: convertSynthetic("10000") }, // maxTokensToLiquidate. This is how many tokens the positions has (liquidated debt).
-        toWei("0.05"), // maxSlippage. 5% is above the expected slippage of 4.12% for this liquidation. should not revert.
-        unreachableDeadline
-      )
-      .encodeABI();
+    // maxSlippage set to 5% is above the expected slippage of 4.12% for this liquidation. should not revert.
+    callData = buildCallData(reserveToken.address, toWei("0.05"), convertSynthetic("10000"));
 
     await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.address, callData).send({
       from: liquidator,
