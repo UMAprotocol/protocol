@@ -78,7 +78,7 @@ class ProxyTransactionWrapper {
         // default to reverting on >10% slippage on trades.
         value: this.toWei("0.1"),
         isValid: (x) => {
-          return typeof x == "string";
+          return typeof x == "string" && this.toBN(x).gt(this.toBN("0"));
         },
       },
     };

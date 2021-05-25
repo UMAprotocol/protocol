@@ -2335,7 +2335,7 @@ contract("Liquidator.js", function (accounts) {
               // The contract GCR is now (125+175+200)/(100+100+100)=1.666. To liquidate one sponsor with 100 units of
               // debt we will need 1.666*100=collateral=166. After removing liquidity, the pool has 10000 reserve and
               // collateral tokens. The amount in for a given buy of 166 is 10000e18*166e18*1000/((10000e18-166e18)*997)
-              //=1.693100452E20. using this, the expected spot price after the trade is (10000e18+1.693100452e20)/(10000e18-166e18)
+              // =1.693100452E20. using this, the expected spot price after the trade is (10000e18+1.693100452e20)/(10000e18-166e18)
               // =1.0342. This is a price slippage of 3.42%. We can therefore check that if the slippage paramter is set
               // to something more than this (say 5%) the bot correctly liquidates and something less than this (say 3%) it reverts.
 
