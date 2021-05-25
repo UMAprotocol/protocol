@@ -83,7 +83,7 @@ abstract contract BeaconOracle {
     }
 
     /**
-     * @notice Derived contract needs call this method in order to advance state from PendingRequest --> Requested 
+     * @notice Derived contract needs call this method in order to advance state from PendingRequest --> Requested
      * before _publishPrice can be called.
      */
     function _finalizeRequest(
@@ -128,7 +128,6 @@ abstract contract BeaconOracle {
         require(lookup.state == RequestState.PendingResolve, "Price has not been published");
         lookup.state = RequestState.Resolved;
     }
-
 
     /**
      * @notice Returns Bridge contract on network.
