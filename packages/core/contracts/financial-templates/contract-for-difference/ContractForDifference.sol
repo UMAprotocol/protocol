@@ -65,11 +65,11 @@ contract ContractForDifference is Testable, Lockable {
     constructor(
         uint32 _expirationTimestamp,
         uint256 _collateralPerPair,
-        address _longTokenAddress,
-        address _shortTokenAddress,
-        address _finderAddress,
         bytes32 _priceIdentifier,
-        address _collateralAddress,
+        ExpandedIERC20 _longTokenAddress,
+        ExpandedIERC20 _shortTokenAddress,
+        IERC20 _collateralAddress,
+        address _finderAddress,
         address _financialProductLibrary,
         address _timerAddress
     ) Testable(_timerAddress) {
@@ -80,9 +80,9 @@ contract ContractForDifference is Testable, Lockable {
 
         expirationTimestamp = _expirationTimestamp;
         collateralPerPair = _collateralPerPair;
-        longToken = ExpandedIERC20(_longTokenAddress);
-        shortToken = ExpandedIERC20(_shortTokenAddress);
-        collateralToken = IERC20(_collateralAddress);
+        longToken = _longTokenAddress;
+        shortToken = _shortTokenAddress;
+        collateralToken = _collateralAddress;
         priceIdentifier = _priceIdentifier;
 
         financialProductLibrary = ContractForDifferenceFinancialProductLibrary(_financialProductLibrary);
@@ -132,8 +132,6 @@ contract ContractForDifference is Testable, Lockable {
 
         // ExpirationTokensForCollateral is a number between 0 and 1e18. 0 means all collateral goes to short tokens and
         // 1 means all collateral goes to the long token. Total collateral returned is the sum of payouts.
-        // uint256 collateralPerToken = collateralPerPair;
-
         uint256 longCollateralRedeemed =
             FixedPoint
                 .Unsigned(longTokensToRedeem)

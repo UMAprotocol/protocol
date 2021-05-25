@@ -37,6 +37,7 @@ contract LinearContractForDiffrenceFinancialProductLibrary is ContractForDiffere
 
         if (expiryPrice < params.lowerBound) return FixedPoint.fromUnscaledUint(0).rawValue;
 
+        // if not exceeding bounds, collateralPerToken = 1- (expiryPrice - upperBound) / lowerBound
         return FixedPoint.fromUnscaledUint(1).sub(params.upperBound.sub(expiryPrice).div(params.lowerBound)).rawValue;
     }
 }

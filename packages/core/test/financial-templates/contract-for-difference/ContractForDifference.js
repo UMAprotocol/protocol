@@ -90,11 +90,11 @@ contract("ContractForDifference", function (accounts) {
     contractForDifference = await ContractForDifference.new(
       expirationTimestamp,
       collateralPerPair,
+      priceFeedIdentifier,
       longToken.address,
       shortToken.address,
-      finder.address,
-      priceFeedIdentifier,
       collateralToken.address,
+      finder.address,
       contractForDifferenceLibrary.address,
       timer.address
     );
@@ -105,7 +105,7 @@ contract("ContractForDifference", function (accounts) {
     await longToken.addMember(2, contractForDifference.address, { from: deployer });
     await shortToken.addMember(2, contractForDifference.address, { from: deployer });
   });
-  it("Basic lifecycle", async function () {
+  it("Mint, redeem, expire lifecycle", async function () {
     // Create some sponsor tokens. Send half to the holder account.
     assert.equal(await collateralToken.balanceOf(sponsor), toWei("1000"));
     assert.equal(await longToken.balanceOf(sponsor), toWei("0"));
