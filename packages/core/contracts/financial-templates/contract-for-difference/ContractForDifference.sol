@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
 
 import "../common/financial-product-libraries/ContractForDifferenceFinancialProductLibrary.sol";
 
@@ -22,12 +21,11 @@ import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 
 import "../../oracle/implementation/Constants.sol";
 
-abstract contract ContractForDifference is Testable, Lockable {
+contract ContractForDifference is Testable, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using SafeERC20 for ExpandedIERC20;
-    using Address for address;
 
     enum ContractState { Open, ExpiredPriceRequested, ExpiredPriceReceived }
     ContractState public contractState;
@@ -36,9 +34,7 @@ abstract contract ContractForDifference is Testable, Lockable {
 
     uint256 public collateralPerPair;
     uint256 public totalCollateral;
-
-    int256 public expiryPrice;
-
+    uint256 public expiryPrice;
     uint256 public expirationTokensForCollateral;
 
     bytes32 public priceIdentifier;
@@ -62,7 +58,7 @@ abstract contract ContractForDifference is Testable, Lockable {
     }
 
     modifier onlyOpenState() {
-        require(contractState == ContractState.Open, "Contract state is not OPEN");
+        require(contractState == ContractState.Open, "Contract state is not Open");
         _;
     }
 
@@ -92,22 +88,22 @@ abstract contract ContractForDifference is Testable, Lockable {
         financialProductLibrary = ContractForDifferenceFinancialProductLibrary(_financialProductLibrary);
     }
 
-    function mint(uint256 tokensToMint) public preExpiration() nonReentrant() returns (uint256 collateralUsed) {
-        collateralUsed = FixedPoint.fromUnscaledUint(tokensToMint).mul(collateralPerPair).rawValue;
+    function create(uint256 tokensToCreate) public preExpiration() returns (uint256 collateralUsed) {
+        collateralUsed = FixedPoint.Unsigned(tokensToCreate).mul(FixedPoint.Unsigned(collateralPerPair)).rawValue;
 
         collateralToken.safeTransferFrom(msg.sender, address(this), collateralUsed);
 
-        require(longToken.mint(msg.sender, tokensToMint));
-        require(shortToken.mint(msg.sender, tokensToMint));
+        require(longToken.mint(msg.sender, tokensToCreate));
+        require(shortToken.mint(msg.sender, tokensToCreate));
     }
 
     function redeem(uint256 tokensToRedeem) public preExpiration() nonReentrant() returns (uint256 collateralReturned) {
         require(longToken.burnFrom(msg.sender, tokensToRedeem));
         require(shortToken.burnFrom(msg.sender, tokensToRedeem));
 
-        collateralReturned = FixedPoint.fromUnscaledUint(tokensToRedeem).mul(collateralPerPair).rawValue;
+        collateralReturned = FixedPoint.Unsigned(tokensToRedeem).mul(FixedPoint.Unsigned(collateralPerPair)).rawValue;
 
-        collateralToken.safeTransferFrom(msg.sender, address(this), collateralReturned);
+        collateralToken.safeTransfer(msg.sender, collateralReturned);
     }
 
     function expire() public postExpiration() onlyOpenState() nonReentrant() {
@@ -115,7 +111,7 @@ abstract contract ContractForDifference is Testable, Lockable {
         contractState = ContractState.ExpiredPriceRequested;
     }
 
-    function settleExpired(uint256 longTokensToRedeem, uint256 shortTokensToRedeem)
+    function settle(uint256 longTokensToRedeem, uint256 shortTokensToRedeem)
         public
         postExpiration()
         nonReentrant()
@@ -134,32 +130,35 @@ abstract contract ContractForDifference is Testable, Lockable {
         require(longToken.burnFrom(msg.sender, longTokensToRedeem));
         require(shortToken.burnFrom(msg.sender, shortTokensToRedeem));
 
-        // expirationTokensForCollateral is a number between 0 and 1e18. 0 means all collateral goes to short tokens and
+        // ExpirationTokensForCollateral is a number between 0 and 1e18. 0 means all collateral goes to short tokens and
         // 1 means all collateral goes to the long token. Total collateral returned is the sum of payouts.
-        uint256 collateralPerToken = collateralPerPair.div(2);
+        // uint256 collateralPerToken = collateralPerPair;
 
         uint256 longCollateralRedeemed =
             FixedPoint
-                .fromUnscaledUint(longTokensToRedeem)
-                .mul(collateralPerToken)
-                .mul(expirationTokensForCollateral)
+                .Unsigned(longTokensToRedeem)
+                .mul(FixedPoint.Unsigned(collateralPerPair))
+                .mul(FixedPoint.Unsigned(expirationTokensForCollateral))
                 .rawValue;
         uint256 shortCollateralRedeemed =
             FixedPoint
-                .fromUnscaledUint(shortTokensToRedeem)
-                .mul(collateralPerToken)
-                .mul(FixedPoint.fromUnscaledUint(1).sub(expirationTokensForCollateral))
+                .Unsigned(shortTokensToRedeem)
+                .mul(FixedPoint.Unsigned(collateralPerPair))
+                .mul(FixedPoint.fromUnscaledUint(1).sub(FixedPoint.Unsigned(expirationTokensForCollateral)))
                 .rawValue;
 
         collateralReturned = longCollateralRedeemed.add(shortCollateralRedeemed);
         collateralToken.safeTransfer(msg.sender, collateralReturned);
     }
 
-    function _getOraclePriceExpiration(uint256 requestedTime) internal returns (int256) {
+    function _getOraclePriceExpiration(uint256 requestedTime) internal returns (uint256) {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
         require(optimisticOracle.hasPrice(address(this), priceIdentifier, requestedTime, _getAncillaryData()));
-        return optimisticOracle.settleAndGetPrice(priceIdentifier, requestedTime, _getAncillaryData());
+        int256 oraclePrice = optimisticOracle.settleAndGetPrice(priceIdentifier, requestedTime, _getAncillaryData());
+
+        if (oraclePrice < 0) oraclePrice = 0;
+        return uint256(oraclePrice);
     }
 
     function _requestOraclePriceExpiration() internal {
