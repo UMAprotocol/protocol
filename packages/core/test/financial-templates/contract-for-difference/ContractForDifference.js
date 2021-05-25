@@ -111,7 +111,6 @@ contract("ContractForDifference", function (accounts) {
     assert.equal(await shortToken.balanceOf(sponsor), toWei("0"));
 
     await collateralToken.approve(contractForDifference.address, MAX_UINT_VAL, { from: sponsor });
-
     await contractForDifference.create(toWei("100"), { from: sponsor });
 
     // Collateral should have decreased by tokensMinted/collateral per token. Long & short should have increase by tokensMinted.
