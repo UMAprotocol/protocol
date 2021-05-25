@@ -83,6 +83,22 @@ abstract contract BeaconOracle {
     }
 
     /**
+     * @notice Derived contract needs call this method in order to advance state from PendingRequest --> Requested 
+     * before _publishPrice can be called.
+     */
+    function _finalizeRequest(
+        uint8 chainID,
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) internal {
+        bytes32 priceRequestId = _encodePriceRequest(chainID, identifier, time, ancillaryData);
+        Price storage lookup = prices[priceRequestId];
+        require(lookup.state == RequestState.PendingRequest, "Price has not been requested");
+        lookup.state = RequestState.Requested;
+    }
+
+    /**
      * @notice Publishes price for a requested query. Will revert if request hasn't been requested yet or has been
      * resolved already.
      */
@@ -100,6 +116,19 @@ abstract contract BeaconOracle {
         lookup.state = RequestState.PendingResolve;
         emit PushedPrice(msg.sender, chainID, identifier, time, ancillaryData, lookup.price);
     }
+
+    function _finalizePublish(
+        uint8 chainID,
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) internal {
+        bytes32 priceRequestId = _encodePriceRequest(chainID, identifier, time, ancillaryData);
+        Price storage lookup = prices[priceRequestId];
+        require(lookup.state == RequestState.PendingResolve, "Price has not been published");
+        lookup.state = RequestState.Resolved;
+    }
+
 
     /**
      * @notice Returns Bridge contract on network.

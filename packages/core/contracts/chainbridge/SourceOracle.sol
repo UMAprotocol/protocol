@@ -63,10 +63,9 @@ contract SourceOracle is BeaconOracle {
     ) public {
         bytes32 priceRequestId = _encodePriceRequest(sinkChainID, identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
-        require(lookup.state == RequestState.PendingResolve, "Price has not been published");
         require(lookup.price == price, "Unexpected price published");
         // Advance state so that directly calling Bridge.deposit will revert and not emit a duplicate `Deposit` event.
-        lookup.state = RequestState.Resolved;
+        _finalizePublish(sinkChainID, identifier, time, ancillaryData);
     }
 
     /***************************************************************
@@ -88,9 +87,7 @@ contract SourceOracle is BeaconOracle {
         bytes memory ancillaryData
     ) public onlyGenericHandlerContract() {
         _requestPrice(sinkChainID, identifier, time, ancillaryData);
-        bytes32 priceRequestId = _encodePriceRequest(sinkChainID, identifier, time, ancillaryData);
-        Price storage lookup = prices[priceRequestId];
-        lookup.state = RequestState.Requested;
+        _finalizeRequest(sinkChainID, identifier, time, ancillaryData);
         _getOracle().requestPrice(identifier, time, ancillaryData);
     }
 

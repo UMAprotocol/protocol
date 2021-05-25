@@ -81,11 +81,8 @@ contract SinkOracle is BeaconOracle, OracleAncillaryInterface {
         uint256 time,
         bytes memory ancillaryData
     ) public {
-        bytes32 priceRequestId = _encodePriceRequest(sinkChainID, identifier, time, ancillaryData);
-        Price storage lookup = prices[priceRequestId];
-        require(lookup.state == RequestState.PendingRequest, "Price has not been requested");
         // Advance state so that directly calling Bridge.deposit will revert and not emit a duplicate `Deposit` event.
-        lookup.state = RequestState.Requested;
+        _finalizeRequest(sinkChainID, identifier, time, ancillaryData);
     }
 
     /***************************************************************
@@ -107,9 +104,7 @@ contract SinkOracle is BeaconOracle, OracleAncillaryInterface {
         int256 price
     ) public onlyGenericHandlerContract() {
         _publishPrice(sinkChainID, identifier, time, ancillaryData, price);
-        bytes32 priceRequestId = _encodePriceRequest(sinkChainID, identifier, time, ancillaryData);
-        Price storage lookup = prices[priceRequestId];
-        lookup.state = RequestState.Resolved;
+        _finalizePublish(sinkChainID, identifier, time, ancillaryData);
     }
 
     /**
