@@ -88,10 +88,10 @@ contract SourceOracle is BeaconOracle {
         bytes memory ancillaryData
     ) public onlyGenericHandlerContract() {
         _requestPrice(sinkChainID, identifier, time, ancillaryData);
-        _getOracle().requestPrice(identifier, time, ancillaryData);
         bytes32 priceRequestId = _encodePriceRequest(sinkChainID, identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
         lookup.state = RequestState.Requested;
+        _getOracle().requestPrice(identifier, time, ancillaryData);
     }
 
     /**
