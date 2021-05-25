@@ -114,13 +114,13 @@ contract ContractForDifference is Testable, Lockable {
         ExpandedIERC20 _shortTokenAddress,
         IERC20 _collateralAddress,
         address _finderAddress,
-        address _financialProductLibrary,
+        address _financialProductLibraryAddress,
         address _timerAddress
     ) Testable(_timerAddress) {
         finder = FinderInterface(_finderAddress);
         require(_expirationTimestamp > getCurrentTime());
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier));
-        require(_financialProductLibrary != address(0));
+        require(_financialProductLibraryAddress != address(0));
 
         expirationTimestamp = _expirationTimestamp;
         collateralPerPair = _collateralPerPair;
@@ -129,7 +129,7 @@ contract ContractForDifference is Testable, Lockable {
         collateralToken = _collateralAddress;
         priceIdentifier = _priceIdentifier;
 
-        financialProductLibrary = ContractForDifferenceFinancialProductLibrary(_financialProductLibrary);
+        financialProductLibrary = ContractForDifferenceFinancialProductLibrary(_financialProductLibraryAddress);
     }
 
     /****************************************
@@ -190,7 +190,7 @@ contract ContractForDifference is Testable, Lockable {
         // Get the current settlement price and store it. If it is not resolved, will revert.
         if (contractState != ContractState.ExpiredPriceReceived) {
             expiryPrice = _getOraclePriceExpiration(expirationTimestamp);
-            expiraryTokensForCollateral = financialProductLibrary.expiraryTokensForCollateral(expiryPrice);
+            expiraryTokensForCollateral = financialProductLibrary.computeExpiraryTokensForCollateral(expiryPrice);
             contractState = ContractState.ExpiredPriceReceived;
         }
 

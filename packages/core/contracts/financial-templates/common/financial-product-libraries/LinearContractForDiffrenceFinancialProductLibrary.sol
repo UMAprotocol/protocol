@@ -30,7 +30,7 @@ contract LinearContractForDiffrenceFinancialProductLibrary is ContractForDiffere
         });
     }
 
-    function expirationTokensForCollateral(uint256 expiryPrice) public view override returns (uint256) {
+    function computeExpiraryTokensForCollateral(uint256 expiryPrice) public view override returns (uint256) {
         LinearContractForDifferenceParameters memory params = contractForDifferenceParameters[msg.sender];
 
         if (expiryPrice > params.upperBound) return FixedPoint.fromUnscaledUint(1).rawValue;
