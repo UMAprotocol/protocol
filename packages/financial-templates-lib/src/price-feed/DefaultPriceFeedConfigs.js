@@ -952,6 +952,34 @@ const defaultConfigs = {
       },
     },
   },
+  USDDEXTF: {
+    type: "expression",
+    expression: "ETHDEXTF * USDETH",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    twapLength: 300,
+    customFeeds: {
+      ETHDEXTF: {
+        type: "uniswap",
+        uniswapAddress: "0xa1444ac5b8ac4f20f748558fe4e848087f528e00",
+        invertPrice: true,
+      },
+    },
+  },
+  DEXTFUSD: {
+    type: "expression",
+    expression: "1 / (ETHDEXTF * USDETH)",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    twapLength: 300,
+    customFeeds: {
+      ETHDEXTF: {
+        type: "uniswap",
+        uniswapAddress: "0xa1444ac5b8ac4f20f748558fe4e848087f528e00",
+        invertPrice: true,
+      },
+    },
+  },
 };
 
 // Pull in the number of decimals for each identifier from the common getPrecisionForIdentifier. This is used within the
