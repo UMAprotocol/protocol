@@ -77,7 +77,6 @@ contract("ContractForDifference", function (accounts) {
     longToken = await Token.new("Long Token", "lTKN", 18, { from: deployer });
     shortToken = await Token.new("Short Token", "sTKN", 18, { from: deployer });
     ancillaryData = longToken.address + shortToken.address.substring(2, 42);
-    console.log("ancillaryData", ancillaryData);
 
     optimisticOracle = await OptimisticOracle.new(optimisticOracleLiveness, finder.address, timer.address);
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.address, {
@@ -113,8 +112,7 @@ contract("ContractForDifference", function (accounts) {
 
     await collateralToken.approve(contractForDifference.address, MAX_UINT_VAL, { from: sponsor });
 
-    console.log((await contractForDifference.create(toWei("100"), { from: sponsor })).toString());
-    // await contractForDifference.create(toWei("100"), { from: sponsor });
+    await contractForDifference.create(toWei("100"), { from: sponsor });
 
     // Collateral should have decreased by tokensMinted/collateral per token. Long & short should have increase by tokensMinted.
     assert.equal((await collateralToken.balanceOf(sponsor)).toString(), toWei("900")); // 1000 starting balance - 100 for mint.
