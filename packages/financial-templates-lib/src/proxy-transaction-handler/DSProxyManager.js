@@ -141,7 +141,7 @@ class DSProxyManager {
       libraryAddress,
       callData,
       tx: receipt.transactionHash,
-      returnValue,
+      returnValue: returnValue.toString(),
       transactionConfig,
     });
     return receipt;
@@ -171,7 +171,7 @@ class DSProxyManager {
       message: "Executed function on a freshly deployed library, created in the same tx 🤗",
       callData,
       tx: receipt.transactionHash,
-      returnValue,
+      returnValue: returnValue.toString(),
       transactionConfig,
     });
     return receipt;

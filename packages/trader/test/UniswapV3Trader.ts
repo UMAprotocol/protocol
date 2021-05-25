@@ -49,6 +49,13 @@ const NonfungibleTokenPositionDescriptor = replaceLibraryBindingReferenceInArtit
   "NFTDescriptor"
 );
 
+const createContractObjectFromJson = (contractJsonObject: any) => {
+  const contract = require("@truffle/contract");
+  const truffleContractCreator = contract(contractJsonObject);
+  truffleContractCreator.setProvider(web3.currentProvider);
+  return truffleContractCreator;
+};
+
 let accounts: string[];
 let deployer: string;
 let trader: string;

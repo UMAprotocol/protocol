@@ -43,7 +43,7 @@ const runTransaction = async ({ web3, transaction, transactionConfig, availableA
   try {
     [returnValue, estimatedGas] = await Promise.all([
       transaction.call({ from: transactionConfig.from }),
-      transaction.estimateGas({ from: transactionConfig.from })
+      transaction.estimateGas({ from: transactionConfig.from }),
     ]);
   } catch (error) {
     error.type = "call";
@@ -62,11 +62,11 @@ const runTransaction = async ({ web3, transaction, transactionConfig, availableA
     const maxGasPrice = 2 * 3 * minGasPrice;
 
     const receipt = await ynatm.send({
-      sendTransactionFunction: gasPrice => transaction.send({ ...transactionConfig, gasPrice }),
+      sendTransactionFunction: (gasPrice) => transaction.send({ ...transactionConfig, gasPrice }),
       minGasPrice,
       maxGasPrice,
       gasPriceScalingFunction,
-      delay: retryDelay
+      delay: retryDelay,
     });
 
     return { receipt, returnValue, transactionConfig };
@@ -85,7 +85,7 @@ const runTransaction = async ({ web3, transaction, transactionConfig, availableA
 const accountHasPendingTransactions = async (web3, account) => {
   const [currentMindedTransactions, currentTransactionsIncludingPending] = await Promise.all([
     web3.eth.getTransactionCount(account, "latest"),
-    getPendingTransactionCount(web3, account)
+    getPendingTransactionCount(web3, account),
   ]);
   return currentTransactionsIncludingPending > currentMindedTransactions;
 };
@@ -105,7 +105,7 @@ const getPendingTransactionCount = async (web3, account) => {
     jsonrpc: "2.0",
     method: "eth_getTransactionCount",
     params: [account, "pending"],
-    id: Math.round(Math.random() * 100000)
+    id: Math.round(Math.random() * 100000),
   });
   return web3.utils.toDecimal(rpcResponse.result);
 };
@@ -116,12 +116,12 @@ const getPendingTransactionCount = async (web3, account) => {
  * @param {Object} web3 Provider from Truffle/node to connect to Ethereum network.
  * @param {number} blockerBlockNumber block execution until this block number is mined.
  */
-const blockUntilBlockMined = async (web3, blockerBlockNumber) => {
+const blockUntilBlockMined = async (web3, blockerBlockNumber, delay = 500) => {
   if (argv._.indexOf("test") !== -1) return;
   for (;;) {
     const currentBlockNumber = await web3.eth.getBlockNumber();
     if (currentBlockNumber >= blockerBlockNumber) break;
-    await new Promise(r => setTimeout(r, 500));
+    await new Promise((r) => setTimeout(r, delay));
   }
 };
 
