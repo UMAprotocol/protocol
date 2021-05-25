@@ -28,7 +28,7 @@ abstract contract OptimisticOracleInterface {
         bool refundOnDispute; // True if the requester should be refunded their reward on dispute.
         int256 proposedPrice; // Price that the proposer submitted.
         int256 resolvedPrice; // Price resolved once the request is settled.
-        uint256 expirationTime; // Time at which the request auto-settles without a dispute.
+        uint256 expirationTime; // Time at which the request expires if no price was proposed.
         uint256 reward; // Amount of the currency to pay to the proposer on settlement.
         uint256 finalFee; // Final fee to pay to the Store upon request to the DVM.
         uint256 bond; // Bond that the proposer and disputer must pay on top of the final fee.

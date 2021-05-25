@@ -2,13 +2,13 @@
 pragma solidity ^0.8.0;
 
 import "../../common/implementation/Testable.sol";
-import "../interfaces/OracleInterface.sol";
+import "../interfaces/OptimisticOracleInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/FinderInterface.sol";
 import "../implementation/Constants.sol";
 
 // A mock optimistic oracle used for testing.
-contract OptimisticMockOracle is OracleInterface, Testable {
+contract OptimisticMockOracle is OptimisticOracleInterface, Testable {
     // Represents an available price. Have to keep a separate bool to allow for price=0.
     struct Price {
         bool isAvailable;
@@ -47,7 +47,13 @@ contract OptimisticMockOracle is OracleInterface, Testable {
 
     // Enqueues a request (if a request isn't already present) for the given (identifier, time) pair.
 
-    function requestPrice(bytes32 identifier, uint256 time) public override {
+    function requestPrice(
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData,
+        address currency,
+        uint256 reward
+    ) public override returns (uint256 totalBond) {
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time];
         if (!lookup.isAvailable && !queryIndices[identifier][time].isValid) {
@@ -55,6 +61,7 @@ contract OptimisticMockOracle is OracleInterface, Testable {
             queryIndices[identifier][time] = QueryIndex(true, requestedPrices.length);
             requestedPrices.push(QueryPoint(identifier, time));
         }
+        return 200000000000000000;
     }
 
     // Pushes the verified price for a requested query.
