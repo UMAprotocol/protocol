@@ -107,9 +107,9 @@ contract SinkOracle is BeaconOracle, OracleAncillaryInterface {
         int256 price
     ) public onlyGenericHandlerContract() {
         _publishPrice(sinkChainID, identifier, time, ancillaryData, price);
-        // For completeness, we could mark the price request as Resolved, but that doesn't change this contract's
-        // logic at all, because subsequent calls to this method will always fail since the state should advance from
-        // Requested --> PendingResolve.
+        bytes32 priceRequestId = _encodePriceRequest(sinkChainID, identifier, time, ancillaryData);
+        Price storage lookup = prices[priceRequestId];
+        lookup.state = RequestState.Resolved;
     }
 
     /**
