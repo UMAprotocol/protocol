@@ -19,7 +19,7 @@ async function runTest() {
   const balances = EmpBalances();
 
   await highland(stream)
-    .map(log => {
+    .map((log) => {
       try {
         return decode(log, { blockNumber: log.block_number, blockTimestamp: log.block_timestamp });
       } catch (err) {
@@ -28,7 +28,7 @@ async function runTest() {
       }
     })
     .compact()
-    .doto(log => {
+    .doto((log) => {
       try {
         balancesHistory.handleEvent(log.blockNumber, log);
         balances.handleEvent(log);
@@ -42,8 +42,8 @@ async function runTest() {
   console.log("blocks updated count", balancesHistory.history.length());
 
   // quick sanity check to make sure snapshots were generated from the first 10 blocks
-  const checkblocks = balancesHistory.history.history.slice(0, 10).map(x => x.blockNumber);
-  checkblocks.forEach(blockNumber => {
+  const checkblocks = balancesHistory.history.history.slice(0, 10).map((x) => x.blockNumber);
+  checkblocks.forEach((blockNumber) => {
     const result = balancesHistory.history.lookup(blockNumber);
     console.log(result);
   });
@@ -53,6 +53,4 @@ async function runTest() {
   // console.log(balances.tokens.snapshot())
 }
 
-runTest()
-  .then(console.log)
-  .catch(console.log);
+runTest().then(console.log).catch(console.log);

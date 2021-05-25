@@ -53,7 +53,7 @@ async function main() {
     rewardToken: o.rewardToken,
     windowIndex: Number(o.windowIndex),
     totalRewardsDistributed: "0", // Initialized after all data read in. Sum of all rewards.
-    recipients: {} // Built up from the n input files defined in the params.
+    recipients: {}, // Built up from the n input files defined in the params.
   };
 
   // Build up payouts for recipients for each input file.
@@ -74,17 +74,15 @@ async function main() {
       // This will be set once the full data structure is built and ordered by payout amount.
       if (outputObject.recipients[checkSumRecipientAddress]) {
         outputObject.recipients[checkSumRecipientAddress] = {
-          amount: toBN(outputObject.recipients[checkSumRecipientAddress].amount)
-            .add(recipientAmountScaled)
-            .toString(),
+          amount: toBN(outputObject.recipients[checkSumRecipientAddress].amount).add(recipientAmountScaled).toString(),
           metaData: [...outputObject.recipients[checkSumRecipientAddress].metaData, o.reason[i]],
-          accountIndex: -1
+          accountIndex: -1,
         };
       } else {
         outputObject.recipients[checkSumRecipientAddress] = {
           amount: recipientAmountScaled.toString(),
           metaData: [o.reason[i]],
-          accountIndex: -1
+          accountIndex: -1,
         };
       }
     });
@@ -116,7 +114,7 @@ async function main() {
   console.log("🗄  File successfully written to", savePath);
 }
 
-main().catch(e => {
+main().catch((e) => {
   console.log(e);
   process.exit(1);
 });

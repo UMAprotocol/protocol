@@ -52,14 +52,14 @@ export class RangeTrader {
         value: 0.2,
         isValid: (x: number) => {
           return x > 0;
-        }
+        },
       },
       targetPriceSpread: {
         value: 0.05,
         isValid: (x: number) => {
           return x > 0 && x <= 1;
-        }
-      }
+        },
+      },
     };
 
     // Validate and set config settings to class state.
@@ -74,7 +74,7 @@ export class RangeTrader {
       at: "RangeTrader",
       message: "Checking if the priceFeed error exceeds the threshold",
       tradeExecutionThreshold: this.tradeExecutionThreshold,
-      targetPriceSpread: this.targetPriceSpread
+      targetPriceSpread: this.targetPriceSpread,
     });
     const currentTokenPrice = this.tokenPriceFeed.getCurrentPrice();
     const currentReferencePrice = this.referencePriceFeed.getCurrentPrice();
@@ -84,7 +84,7 @@ export class RangeTrader {
         at: "RangeTrader",
         message: "Failed to get either the currentTokenPrice or the currentReferencePrice!",
         currentTokenPrice: currentTokenPrice ? currentTokenPrice.toString() : "no data returned",
-        currentReferencePrice: currentReferencePrice ? currentReferencePrice.toString() : "no data returned"
+        currentReferencePrice: currentReferencePrice ? currentReferencePrice.toString() : "no data returned",
       });
       return;
     }
@@ -95,14 +95,14 @@ export class RangeTrader {
       targetPriceSpread: this.targetPriceSpread * 100 + "%",
       preTradeTokenPrice: this.formatDecimalString(this.normalizePriceFeedDecimals(currentTokenPrice)),
       preTradeReferencePrice: this.formatDecimalString(this.normalizePriceFeedDecimals(currentReferencePrice)),
-      preTradePriceDeviation: this.formatDecimalString(deviationError.muln(100)) + "%"
+      preTradePriceDeviation: this.formatDecimalString(deviationError.muln(100)) + "%",
     };
     // If the deviation error is less then the threshold, then log and return. Else, enter trade execution logic.
     if (deviationError.abs().lt(toBNWei(this.tradeExecutionThreshold))) {
       this.logger.debug({
         at: "RangeTrader",
         message: "The deviationError is less than the threshold to execute a trade",
-        ...commonLogObject
+        ...commonLogObject,
       });
       return;
     }
@@ -115,15 +115,19 @@ export class RangeTrader {
     // the scalar = 1 - 0.05 = 0.95. Therefore the bot will trade the price up to 950.
     const priceScalar = deviationError.gte(toBN("0")) ? 1 + this.targetPriceSpread : 1 - this.targetPriceSpread;
 
-    const desiredPrice = currentReferencePrice.mul(toBNWei(priceScalar)).div(this.fixedPointAdjustment);
+    let desiredPrice = currentReferencePrice.mul(toBNWei(priceScalar)).div(this.fixedPointAdjustment);
 
     this.logger.debug({
       at: "RangeTrader",
       message: "The deviationError is greater than the threshold to execute a trade. Executing a correcting trade",
       ...commonLogObject,
       priceScalar,
-      desiredPrice: this.formatDecimalString(this.normalizePriceFeedDecimals(desiredPrice))
+      desiredPrice: this.formatDecimalString(this.normalizePriceFeedDecimals(desiredPrice)),
     });
+
+    if (this.tokenPriceFeed.invertPrice === "true") {
+      desiredPrice = this._invertPriceSafely(desiredPrice);
+    }
 
     const tradeExecutionTransaction = await this.exchangeAdapter.tradeMarketToDesiredPrice(desiredPrice.toString());
     if (tradeExecutionTransaction instanceof Error) {
@@ -131,7 +135,7 @@ export class RangeTrader {
         at: "RangeTrader",
         message: "The exchange adapter returned an error in execution",
         ...commonLogObject,
-        error: tradeExecutionTransaction
+        error: tradeExecutionTransaction,
       });
       throw tradeExecutionTransaction;
     }
@@ -154,7 +158,7 @@ export class RangeTrader {
       ...commonLogObject,
       postTradeSpotPrice: this.formatDecimalString(exchangeSpotPriceAfterTrade),
       postTradePriceDeviationError: this.formatDecimalString(postTradePriceDeviationError.muln(100)) + "%",
-      tx: tradeExecutionTransaction.transactionHash
+      tx: tradeExecutionTransaction.transactionHash,
     });
   }
 
@@ -164,6 +168,13 @@ export class RangeTrader {
       .sub(this.normalizePriceFeedDecimals(expectedValue))
       .mul(this.fixedPointAdjustment) // Scale the numerator before division
       .div(this.normalizePriceFeedDecimals(expectedValue));
+  }
+
+  // TODO: there are a number of places through the repo that re-use this method. it should be refactored to a common util.
+  _invertPriceSafely(price: BigNumber) {
+    return toBN(toWei(this.normalizePriceFeedDecimals("1")).toString())
+      .mul(toBN(toWei(this.normalizePriceFeedDecimals("1")).toString()))
+      .div(toBN(price.toString()));
   }
 }
 

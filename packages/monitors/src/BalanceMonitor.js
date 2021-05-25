@@ -4,7 +4,7 @@ const {
   ConvertDecimals,
   createFormatFunction,
   createEtherscanLinkMarkdown,
-  createObjectFromDefaultProps
+  createObjectFromDefaultProps,
 } = require("@uma/common");
 
 class BalanceMonitor {
@@ -43,12 +43,12 @@ class BalanceMonitor {
     const defaultConfig = {
       botsToMonitor: {
         value: [],
-        isValid: x => {
+        isValid: (x) => {
           // For the config to be valid it must be an array of objects with the right keys within the object as being
           // the `name`, `address`, `collateralThreshold`, `syntheticThreshold` and `etherThreshold`.
           return (
             Array.isArray(x) && // the value of `botsToMonitor` must be an array of objects.
-            x.every(y => {
+            x.every((y) => {
               // Each object within the array must have the following keys.
               return (
                 Object.keys(y).includes("name") &&
@@ -66,31 +66,31 @@ class BalanceMonitor {
               );
             })
           );
-        }
+        },
       },
       logOverrides: {
         // Specify an override object to change default logging behaviour. Defaults to no overrides. If specified, this
         // object is structured to contain key for the log to override and value for the logging level. EG:
         // { syntheticThreshold:'error' } would override the default `warn` behaviour for synthetic-balance-threshold events.
         value: {},
-        isValid: overrides => {
+        isValid: (overrides) => {
           // Override must be one of the default logging levels: ['error','warn','info','http','verbose','debug','silly']
-          return Object.values(overrides).every(param => Object.keys(this.logger.levels).includes(param));
-        }
-      }
+          return Object.values(overrides).every((param) => Object.keys(this.logger.levels).includes(param));
+        },
+      },
     };
 
     Object.assign(this, createObjectFromDefaultProps(monitorConfig, defaultConfig));
 
     // Loop over all bots in the provided monitorConfig and register them in the tokenBalanceClient. This will ensure that
     // the addresses are populated on the first fire of the clients `update` function enabling stateless execution.
-    this.client.batchRegisterAddresses(this.botsToMonitor.map(bot => this.web3.utils.toChecksumAddress(bot.address)));
+    this.client.batchRegisterAddresses(this.botsToMonitor.map((bot) => this.web3.utils.toChecksumAddress(bot.address)));
 
     // Validate the financialContractProps object. This contains a set of important info within it so need to be sure it's structured correctly.
     const defaultFinancialContractProps = {
       financialContractProps: {
         value: {},
-        isValid: x => {
+        isValid: (x) => {
           // The config must contain the following keys and types:
           return (
             Object.keys(x).includes("collateralSymbol") &&
@@ -104,8 +104,8 @@ class BalanceMonitor {
             Object.keys(x).includes("networkId") &&
             typeof x.networkId === "number"
           );
-        }
-      }
+        },
+      },
     };
     Object.assign(this, createObjectFromDefaultProps({ financialContractProps }, defaultFinancialContractProps));
 
@@ -123,7 +123,7 @@ class BalanceMonitor {
   async checkBotBalances() {
     this.logger.debug({
       at: "BalanceMonitor",
-      message: "Checking bot balances"
+      message: "Checking bot balances",
     });
 
     // Loop over all the bot objects specified to monitor in the this.botsToMonitor object and for each bot
@@ -143,7 +143,7 @@ class BalanceMonitor {
             this.financialContractProps.collateralSymbol,
             "collateral",
             this.normalizeCollateralDecimals
-          )
+          ),
         });
       }
       if (this.toBN(this.client.getSyntheticBalance(monitoredAddress)).lt(this.toBN(bot.syntheticThreshold))) {
@@ -157,7 +157,7 @@ class BalanceMonitor {
             this.financialContractProps.syntheticSymbol,
             "synthetic",
             this.normalizeSyntheticDecimals
-          )
+          ),
         });
       }
       if (this.toBN(this.client.getEtherBalance(monitoredAddress)).lt(this.toBN(bot.etherThreshold))) {
@@ -170,8 +170,8 @@ class BalanceMonitor {
             this.client.getEtherBalance(monitoredAddress),
             "ETH",
             "ether",
-            num => this.toBN(num)
-          )
+            (num) => this.toBN(num)
+          ),
         });
       }
     }
@@ -197,5 +197,5 @@ class BalanceMonitor {
 }
 
 module.exports = {
-  BalanceMonitor
+  BalanceMonitor,
 };

@@ -19,5 +19,5 @@ async function triggerOnRequest(fn) {
 }
 
 module.exports = {
-  triggerOnRequest
+  triggerOnRequest,
 };

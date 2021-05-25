@@ -3,6 +3,41 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.2.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.1.0...@uma/common@2.2.0) (2021-05-20)
+
+### Bug Fixes
+
+- **allowances:** Change default allowance value ([#2725](https://github.com/UMAprotocol/protocol/issues/2725)) ([94bcf9c](https://github.com/UMAprotocol/protocol/commit/94bcf9cba1cc258ac7f8536e12ddbbef37c9a4ce))
+- **common:** duplicate key causing lint to fail ([#2719](https://github.com/UMAprotocol/protocol/issues/2719)) ([f53147d](https://github.com/UMAprotocol/protocol/commit/f53147d24b29f79f268aa4db5d32fcdb1c925284))
+- **common:** fix build issue ([#3000](https://github.com/UMAprotocol/protocol/issues/3000)) ([c0b5f58](https://github.com/UMAprotocol/protocol/commit/c0b5f5832cf552959f855ba7df30bcbc52874f8d))
+- **find-contract-version:** Add EMP and perp contract hashes ([#2791](https://github.com/UMAprotocol/protocol/issues/2791)) ([89aa209](https://github.com/UMAprotocol/protocol/commit/89aa2091f1e5ebcebe4f1ca1e78b9130f7948c01))
+- **find-contract-version:** Fix the perpetual bytecode hash ([#2777](https://github.com/UMAprotocol/protocol/issues/2777)) ([02b70a2](https://github.com/UMAprotocol/protocol/commit/02b70a22ea8e8b9d03a0d467754a7a558b16998b))
+- **package.json:** bump web3 to 1.3.5 ([#2982](https://github.com/UMAprotocol/protocol/issues/2982)) ([335d0d4](https://github.com/UMAprotocol/protocol/commit/335d0d47b4e1f90cd77ee28116f6d06da83e8865))
+- **trader & atomic liquidator:** add wait for block to be mined util to address slow node updates ([#2871](https://github.com/UMAprotocol/protocol/issues/2871)) ([0106a8d](https://github.com/UMAprotocol/protocol/commit/0106a8dc22c26ee3d7aaf777ed12b6d894e88863))
+
+### Features
+
+- Add Mainnet deployments for Beacon (L2<>L1) contracts + new hardhat features ([#2998](https://github.com/UMAprotocol/protocol/issues/2998)) ([0f2d295](https://github.com/UMAprotocol/protocol/commit/0f2d295d43b3f27b4f14962148d239e124796d6b))
+- Deploy Polygon mainnet and testnet contracts + update helper scripts ([#2980](https://github.com/UMAprotocol/protocol/issues/2980)) ([4a4e4d3](https://github.com/UMAprotocol/protocol/commit/4a4e4d385d27937e3e3e5da0aa20cb5e5df90331))
+- **trader:** add uniswapv3 broker to trader ([#2942](https://github.com/UMAprotocol/protocol/issues/2942)) ([4612097](https://github.com/UMAprotocol/protocol/commit/4612097ead953b89daa6e237cdb6c704460025dd))
+- Add polygon networks to truffle and hardhat configs ([#2973](https://github.com/UMAprotocol/protocol/issues/2973)) ([24be128](https://github.com/UMAprotocol/protocol/commit/24be12837b51bdf81c1e3eba0eaea2041437a410))
+- **common:** Refactor HardhatConfig exported module ([#2960](https://github.com/UMAprotocol/protocol/issues/2960)) ([42a7b5c](https://github.com/UMAprotocol/protocol/commit/42a7b5c46ba2a03f29d7f54b555d7bcaa85129d8))
+- Add hardhat deployment infrastructure ([#2950](https://github.com/UMAprotocol/protocol/issues/2950)) ([45c8851](https://github.com/UMAprotocol/protocol/commit/45c8851643407aeb3cd745f5dee923546658fa6f))
+- **common:** add retry provider ([#2907](https://github.com/UMAprotocol/protocol/issues/2907)) ([528f5df](https://github.com/UMAprotocol/protocol/commit/528f5df3d7c81da530e017c3d2dc1e37ff2bd96c))
+- **core:** updated solidity version to 0.8.x ([#2924](https://github.com/UMAprotocol/protocol/issues/2924)) ([5db0d71](https://github.com/UMAprotocol/protocol/commit/5db0d7178cd6a3c807db4586eeb22a16229e9213))
+- **financial-product-library:** Create a KPI Options financial product library ([#2768](https://github.com/UMAprotocol/protocol/issues/2768)) ([4648458](https://github.com/UMAprotocol/protocol/commit/464845861cb0781dfc31196cdd78c34bc9d8ba57))
+- **financial-templates-lib:** Add default price feed configs for XSUSHIUSD, BALUSD and uSTONKS_JUN21 ([#2876](https://github.com/UMAprotocol/protocol/issues/2876)) ([709f23a](https://github.com/UMAprotocol/protocol/commit/709f23a2b8827bcab8c849507ac799de0ffb01d1))
+- **find-contract-verion:** add back perpetual hash ([#2827](https://github.com/UMAprotocol/protocol/issues/2827)) ([7976f92](https://github.com/UMAprotocol/protocol/commit/7976f927fb8e6266a30fd47df19d989fdc23ad7d))
+- **FindContractVersion:** update FindContractVersion to build contract hashes during core build process ([#2873](https://github.com/UMAprotocol/protocol/issues/2873)) ([4e5a3bd](https://github.com/UMAprotocol/protocol/commit/4e5a3bddfb90b2e868bbd04274947b5bcf0eebb9))
+- **L2:** Implement BeaconOracle designed for cross-chain PriceRequest communication ([#2903](https://github.com/UMAprotocol/protocol/issues/2903)) ([e0df36b](https://github.com/UMAprotocol/protocol/commit/e0df36be3765df77305db4980ea5dbc763ffbfa9))
+- **liquidation-reserve-currency:** add reserve currency liquidator to bots and refine smart contract ([#2775](https://github.com/UMAprotocol/protocol/issues/2775)) ([0eea3fb](https://github.com/UMAprotocol/protocol/commit/0eea3fbb610f74694c22ca36f6902faf3fa9092b))
+- **liquidator:** remove one inch intergration ([#2756](https://github.com/UMAprotocol/protocol/issues/2756)) ([03e20c0](https://github.com/UMAprotocol/protocol/commit/03e20c09a6a2e1ced754507b64ebfb67ee812c75))
+- **optimistic-oracle-proposer:** Blacklist identifiers to skip post-expiry ([#2826](https://github.com/UMAprotocol/protocol/issues/2826)) ([0de392f](https://github.com/UMAprotocol/protocol/commit/0de392f18bf0f3e5019c118996ebca771ebb2aa7))
+- **packages:** update version of truffle-ledger-provider to avoid libudev ([#2690](https://github.com/UMAprotocol/protocol/issues/2690)) ([69b87e9](https://github.com/UMAprotocol/protocol/commit/69b87e98283b6970375358010d906f55fa29dd9b))
+- **run-transaction-helper:** Move ynatm functionality into runTransaction helper ([#2804](https://github.com/UMAprotocol/protocol/issues/2804)) ([cd3f3ef](https://github.com/UMAprotocol/protocol/commit/cd3f3ef0c96be742a2a585a957db2f884a234744))
+- **scripts:** improve scripts for running Kovan EMP war games ([#2605](https://github.com/UMAprotocol/protocol/issues/2605)) ([0ddb8db](https://github.com/UMAprotocol/protocol/commit/0ddb8db66af688b4ade346a6738aba49d766db81))
+- **version-management:** Update hard coded latest package versions in the bots to use 2.0 packages ([#2872](https://github.com/UMAprotocol/protocol/issues/2872)) ([b8225c5](https://github.com/UMAprotocol/protocol/commit/b8225c580ea48f58ef44aa308f966fbed5a99cf3))
+
 # [2.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.0.1...@uma/common@2.1.0) (2021-03-16)
 
 ### Bug Fixes

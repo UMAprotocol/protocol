@@ -2,7 +2,7 @@ const argv = require("minimist")(process.argv.slice(), { string: ["contract", "r
 
 const MultiRole = artifacts.require("MultiRole");
 
-const addMemberToRole = async function(callback) {
+const addMemberToRole = async function (callback) {
   try {
     const roleManager = (await web3.eth.getAccounts())[0];
 

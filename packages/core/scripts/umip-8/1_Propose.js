@@ -41,8 +41,8 @@ async function runExport() {
       {
         to: finder.address,
         value: 0,
-        data: addWhitelistToFinderTx
-      }
+        data: addWhitelistToFinderTx,
+      },
     ],
     { from: proposerWallet }
   );
@@ -54,7 +54,7 @@ Newly Proposed Collateral Whitelist contract: ${collateralWhitelist.address}
 `);
 }
 
-const run = async function(callback) {
+const run = async function (callback) {
   try {
     await runExport();
   } catch (err) {

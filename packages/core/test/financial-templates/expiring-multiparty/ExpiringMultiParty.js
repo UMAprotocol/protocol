@@ -10,7 +10,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
 
-contract("ExpiringMultiParty", function(accounts) {
+contract("ExpiringMultiParty", function (accounts) {
   let finder, timer;
 
   beforeEach(async () => {
@@ -18,7 +18,7 @@ contract("ExpiringMultiParty", function(accounts) {
     finder = await Finder.deployed();
   });
 
-  it("Can deploy", async function() {
+  it("Can deploy", async function () {
     const collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: accounts[0] });
     const syntheticToken = await Token.new("Test Synthetic Token", "SYNTH", 18, { from: accounts[0] });
     const currentTime = (await timer.getCurrentTime()).toNumber();
@@ -37,12 +37,12 @@ contract("ExpiringMultiParty", function(accounts) {
       disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: timer.address,
-      financialProductLibraryAddress: ZERO_ADDRESS
+      financialProductLibraryAddress: ZERO_ADDRESS,
     };
 
     const identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
-      from: accounts[0]
+      from: accounts[0],
     });
 
     await ExpiringMultiParty.new(constructorParams);

@@ -26,7 +26,7 @@ const { interfaceName, ZERO_ADDRESS, parseFixed } = require("@uma/common");
 const { getAbi, getTruffleContract } = require("../../dist/index");
 const argv = require("minimist")(process.argv.slice(), {
   boolean: ["test"],
-  string: ["identifier", "collateral", "cversion", "name", "symbol", "duration"]
+  string: ["identifier", "collateral", "cversion", "name", "symbol", "duration"],
 });
 const abiVersion = argv.cversion || "1.2.2"; // Default to most recent mainnet deployment, 1.2.2.
 const syntheticName = argv.name || "Test Synth";
@@ -47,14 +47,14 @@ const TokenFactory = getTruffleContract("TokenFactory", web3, abiVersion);
 const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, abiVersion);
 const Store = getTruffleContract("Store", web3, abiVersion);
 
-const isUsingWeth = identifier => {
+const isUsingWeth = (identifier) => {
   return identifier.toUpperCase().endsWith("ETH");
 };
 
 /** ***************************************************
  * Main Script
  /*****************************************************/
-const deployEMP = async callback => {
+const deployEMP = async (callback) => {
   try {
     const accounts = await web3.eth.getAccounts();
     const deployer = accounts[0];
@@ -116,14 +116,14 @@ const deployEMP = async callback => {
       minSponsorTokens: { rawValue: minSponsorTokens },
       liquidationLiveness: 7200,
       withdrawalLiveness: 7200,
-      excessTokenBeneficiary: store.address
+      excessTokenBeneficiary: store.address,
     };
 
     // Inject constructor params neccessary for "latest" version of the EMPCreator:
     if (abiVersion === "latest") {
       constructorParams = {
         ...constructorParams,
-        financialProductLibraryAddress: ZERO_ADDRESS
+        financialProductLibraryAddress: ZERO_ADDRESS,
       };
     }
 
@@ -135,19 +135,19 @@ const deployEMP = async callback => {
       ...constructorParams,
       finderAddress: finder.address,
       tokenFactoryAddress: tokenFactory.address,
-      timerAddress: await expiringMultiPartyCreator.timerAddress()
+      timerAddress: await expiringMultiPartyCreator.timerAddress(),
     };
 
     // Grab `tokenAddress` from newly constructed EMP and add to `empConstructorParams` for new EMP's
     if (abiVersion === "latest") {
       empConstructorParams = {
         ...empConstructorParams,
-        tokenAddress: await emp.tokenCurrency()
+        tokenAddress: await emp.tokenCurrency(),
       };
     }
 
     const encodedParameters = web3.eth.abi.encodeParameters(getAbi("ExpiringMultiParty", abiVersion)[0].inputs, [
-      empConstructorParams
+      empConstructorParams,
     ]);
 
     // Done!

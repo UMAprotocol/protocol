@@ -25,10 +25,10 @@ async function createPosition(callback) {
     const emp = await ExpiringMultiParty.at(argv.emp);
     const collateralToken = await ExpandedERC20.at(await emp.collateralCurrency());
     const collateralDecimals = (await collateralToken.decimals()).toString();
-    const convertCollateral = numString => toBN(parseFixed(numString, collateralDecimals).toString());
+    const convertCollateral = (numString) => toBN(parseFixed(numString, collateralDecimals).toString());
     const syntheticToken = await ExpandedERC20.at(await emp.tokenCurrency());
     const syntheticDecimals = (await syntheticToken.decimals()).toString();
-    const convertSynthetic = numString => toBN(parseFixed(numString, syntheticDecimals).toString());
+    const convertSynthetic = (numString) => toBN(parseFixed(numString, syntheticDecimals).toString());
 
     if ((await collateralToken.symbol()) === "WETH") {
       const weth = await WETH9.at(collateralToken.address);

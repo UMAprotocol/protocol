@@ -9,7 +9,7 @@ const nativeIsAlpha = math.parse.isAlpha;
 const allowedSpecialCharacters = Array.from("[]/ -");
 
 // Modifies math.js's function to determine whether a character is allowed in a symbol name.
-math.parse.isAlpha = function(c, cPrev, cNext) {
+math.parse.isAlpha = function (c, cPrev, cNext) {
   // This character is the escape and the next is the special character.
   const isValidEscapeChar = c === "\\" && allowedSpecialCharacters.includes(cNext);
 
@@ -63,7 +63,7 @@ class ExpressionPriceFeed extends PriceFeedInterface {
     const errors = [];
     await Promise.all(
       Object.entries(this.priceFeedMap).map(async ([name, pf]) => {
-        const price = await pf.getHistoricalPrice(Number(time), verbose).catch(err => errors.push(err));
+        const price = await pf.getHistoricalPrice(Number(time), verbose).catch((err) => errors.push(err));
         historicalPrices[name] = this._convertToDecimal(price, pf.getPriceFeedDecimals());
       })
     );
@@ -76,10 +76,10 @@ class ExpressionPriceFeed extends PriceFeedInterface {
   }
 
   getLastUpdateTime() {
-    const lastUpdateTimes = Object.values(this.priceFeedMap).map(pf => pf.getLastUpdateTime());
+    const lastUpdateTimes = Object.values(this.priceFeedMap).map((pf) => pf.getLastUpdateTime());
 
     // If any constituents returned an invalid value, bubble it up.
-    if (lastUpdateTimes.some(time => time === null || time === undefined)) {
+    if (lastUpdateTimes.some((time) => time === null || time === undefined)) {
       return null;
     }
 
@@ -88,10 +88,10 @@ class ExpressionPriceFeed extends PriceFeedInterface {
   }
 
   getLookback() {
-    const lookbacks = Object.values(this.priceFeedMap).map(priceFeed => priceFeed.getLookback());
+    const lookbacks = Object.values(this.priceFeedMap).map((priceFeed) => priceFeed.getLookback());
 
     // If any constituents returned an invalid value, bubble it up.
-    if (lookbacks.some(lookback => lookback === undefined || lookback === null)) {
+    if (lookbacks.some((lookback) => lookback === undefined || lookback === null)) {
       return null;
     }
 
@@ -123,7 +123,7 @@ class ExpressionPriceFeed extends PriceFeedInterface {
 
   async update() {
     // Update all constituent price feeds.
-    await Promise.all(Object.values(this.priceFeedMap).map(pf => pf.update()));
+    await Promise.all(Object.values(this.priceFeedMap).map((pf) => pf.update()));
   }
 
   // Takes a BN fixed point number and converts it to a math.bignumber decimal number that the math library can handle.
@@ -150,5 +150,5 @@ module.exports = {
   ExpressionPriceFeed,
   math,
   allowedSpecialCharacters,
-  escapeSpecialCharacters
+  escapeSpecialCharacters,
 };

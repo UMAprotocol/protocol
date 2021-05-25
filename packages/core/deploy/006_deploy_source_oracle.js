@@ -1,6 +1,6 @@
 const { getBridgeChainId } = require("@uma/common");
 
-const func = async function(hre) {
+const func = async function (hre) {
   const { deployments, getNamedAccounts, getChainId } = hre;
   const { deploy } = deployments;
 
@@ -12,14 +12,14 @@ const func = async function(hre) {
 
   const args = [
     Finder.address,
-    bridgeId // Current chain ID.
+    bridgeId, // Current chain ID.
   ];
   await deploy("SourceOracle", {
     from: deployer,
     args,
-    log: true
+    log: true,
   });
 };
 module.exports = func;
-func.tags = ["SourceOracle", "source-oracle"];
+func.tags = ["SourceOracle", "bridge-l1"];
 func.dependencies = ["Finder"];

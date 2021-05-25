@@ -14,7 +14,7 @@ let uniswap;
 /** ***************************************************
  * Main Script
  /*****************************************************/
-const deployUniswapMock = async callback => {
+const deployUniswapMock = async (callback) => {
   try {
     uniswap = await UniswapMock.new();
     console.log(`Deployed new UniswapMock @ ${uniswap.address}`);

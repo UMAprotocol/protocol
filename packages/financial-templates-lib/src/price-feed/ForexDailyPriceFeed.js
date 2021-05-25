@@ -50,7 +50,7 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
 
     this.toBN = this.web3.utils.toBN;
 
-    this.convertPriceFeedDecimals = number => {
+    this.convertPriceFeedDecimals = (number) => {
       // Converts price result to wei
       // returns price conversion to correct decimals as a big number.
       // Note: Must ensure that `number` has no more decimal places than `priceFeedDecimals`.
@@ -89,7 +89,7 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
 
     // historicalPricePeriods are ordered from oldest to newest.
     // This finds the first pricePeriod whose closeTime is after the provided time.
-    const match = this.historicalPricePeriods.find(pricePeriod => {
+    const match = this.historicalPricePeriods.find((pricePeriod) => {
       return time < pricePeriod.closeTime;
     });
 
@@ -126,7 +126,7 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
   }
 
   getHistoricalPricePeriods() {
-    return this.historicalPricePeriods.map(historicalPrice => {
+    return this.historicalPricePeriods.map((historicalPrice) => {
       return [historicalPrice.closeTime, historicalPrice.closePrice];
     });
   }
@@ -153,7 +153,7 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
         message: "Update skipped because the last one was too recent",
         currentTime: currentTime,
         lastUpdateTimestamp: this.lastUpdateTime,
-        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime
+        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime,
       });
       return;
     }
@@ -162,7 +162,7 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
       at: "ForexDailyPriceFeed",
       message: "Updating ForexDailyPriceFeed",
       currentTime: currentTime,
-      lastUpdateTimestamp: this.lastUpdateTime
+      lastUpdateTimestamp: this.lastUpdateTime,
     });
 
     // Find the closest day that completed before the beginning of the lookback window, and use
@@ -176,7 +176,7 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
     const url = [
       "https://api.exchangerate.host/timeseries?",
       `start_date=${startDateString}&end_date=${endDateString}`,
-      `&base=${this.base}&symbols=${this.symbol}`
+      `&base=${this.base}&symbols=${this.symbol}`,
     ].join("");
 
     // 2. Send request.
@@ -186,7 +186,7 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
     if (
       !historyResponse?.rates ||
       Object.keys(historyResponse.rates).length === 0 ||
-      Object.values(historyResponse.rates).some(rate => !rate[this.symbol])
+      Object.values(historyResponse.rates).some((rate) => !rate[this.symbol])
     ) {
       throw new Error(`🚨Could not parse price result from url ${url}: ${JSON.stringify(historyResponse)}`);
     }
@@ -200,14 +200,14 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
     //   }
     // }
     const newHistoricalPricePeriods = Object.keys(historyResponse.rates)
-      .map(dateString => ({
+      .map((dateString) => ({
         // Output data should be a list of objects with only the open and close times and prices.
         openTime: this._dateTimeToSecond(dateString),
         closeTime: this._dateTimeToSecond(dateString, true),
         // Note: We make the assumption that prices apply for a full 24 hours starting
         // from the beginning of the day denoted by the datetime string. The beginning of the day
         // begins at 16:00 CET.
-        closePrice: this.convertPriceFeedDecimals(historyResponse.rates[dateString][this.symbol])
+        closePrice: this.convertPriceFeedDecimals(historyResponse.rates[dateString][this.symbol]),
       }))
       .sort((a, b) => {
         // Sorts the data such that the oldest elements come first.
@@ -224,26 +224,15 @@ class ForexDailyPriceFeed extends PriceFeedInterface {
   _secondToDateTime(inputSecond) {
     // To convert from unix to date string, first we convert to CET and then we subtract 16 hours since
     // the ECB "begins" days at 16:00 CET. This reverses the calculation performed in `_dateTimeToSecond`.
-    return moment
-      .unix(inputSecond)
-      .tz("Europe/Berlin")
-      .subtract(16, "hours")
-      .format("YYYY-MM-DD");
+    return moment.unix(inputSecond).tz("Europe/Berlin").subtract(16, "hours").format("YYYY-MM-DD");
   }
   _dateTimeToSecond(inputDateTime, endOfDay = false) {
     // To convert from date string to unix, we assume that the date string
     // denotes CET time, and then we add 16 hours since the ECB "begins" days at 16:00 CET.
     if (endOfDay) {
-      return moment
-        .tz(inputDateTime, "YYYY-MM-DD", "Europe/Berlin")
-        .endOf("day")
-        .add(16, "hours")
-        .unix();
+      return moment.tz(inputDateTime, "YYYY-MM-DD", "Europe/Berlin").endOf("day").add(16, "hours").unix();
     } else {
-      return moment
-        .tz(inputDateTime, "YYYY-MM-DD", "Europe/Berlin")
-        .add(16, "hours")
-        .unix();
+      return moment.tz(inputDateTime, "YYYY-MM-DD", "Europe/Berlin").add(16, "hours").unix();
     }
   }
 }
@@ -282,9 +271,9 @@ const VALID_SYMBOLS = [
   "GBP",
   "KRW",
   "MYR",
-  "EUR"
+  "EUR",
 ];
 
 module.exports = {
-  ForexDailyPriceFeed
+  ForexDailyPriceFeed,
 };

@@ -40,10 +40,10 @@ export function PoolEvents({ positions }: { positions: ReturnType<typeof Positio
           sender: sender,
           tickLower: tickLower,
           tickUpper: tickUpper,
-          blockCreated: blockNumber
+          blockCreated: blockNumber,
         })
       );
-    }
+    },
   };
   return HandleEvent(handlers);
 }

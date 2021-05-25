@@ -15,7 +15,7 @@ const { toWei, toBN, fromWei } = web3.utils;
 
 const argv = require("minimist")(process.argv.slice(), {
   integer: ["week", "rollNum"],
-  string: ["tokenName"]
+  string: ["tokenName"],
 });
 
 async function JoinRolledPayouts(week, rollNum, tokenName) {
@@ -95,7 +95,7 @@ function _joinPayouts(weeklyRewards, rollRewards, rollPool1EqualsWeeklyRewards) 
   // then add their balances together. If they are not present in the weeklyRewards then their balance stays the same.
   // Note that if a shareholder is only in weeklyRewards (not rollRewards) then they are not iterated over in this loop.
   // This is fine as their balance is preserved from the original copy of weeklyRewards into outputData.
-  Object.entries(rollRewards.shareHolderPayout).forEach(shareHolder => {
+  Object.entries(rollRewards.shareHolderPayout).forEach((shareHolder) => {
     const rollShareHolderAddr = shareHolder[0];
     const rollShareHolderRewards = toBN(toWei(shareHolder[1]));
     // If the address was already in the weeklyRewards then add their previous balance to the rolled ballance.

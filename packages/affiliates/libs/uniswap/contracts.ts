@@ -41,7 +41,7 @@ const networks: Networks = {
     nonfungibleTokenPositionDescriptorAddress: "0xc4b81504F9a2bd6a6f2617091FB01Efb38D119c8",
     descriptorProxyAddress: "0xDbe2c61E85D06eaA6E7916049f38B93288BA30f3",
     nonfungibleTokenPositionManagerAddress: "0xd3808aBF85aC69D2DBf53794DEa08e75222Ad9a1",
-    v3MigratorAddress: "0x9dF511178D1438065F7672379414F5C46D5B51b4"
+    v3MigratorAddress: "0x9dF511178D1438065F7672379414F5C46D5B51b4",
   },
   rinkeby: {
     v3CoreFactoryAddress: "0xFeabCc62240297F1e4b238937D68e7516f0918D7",
@@ -54,7 +54,7 @@ const networks: Networks = {
     nonfungibleTokenPositionDescriptorAddress: "0x0Fb45B7E5e306fdE29602dE0a0FA2bE088d04899",
     descriptorProxyAddress: "0xd6852c52B9c97cBfb7e79B6ab4407AA20Ba31439",
     nonfungibleTokenPositionManagerAddress: "0x2F9e608FD881861B8916257B76613Cb22EE0652c",
-    v3MigratorAddress: "0x03782388516e94FcD4c18666303601A12Aa729Ea"
+    v3MigratorAddress: "0x03782388516e94FcD4c18666303601A12Aa729Ea",
   },
   ropsten: {
     v3CoreFactoryAddress: "0xDbe2c61E85D06eaA6E7916049f38B93288BA30f3",
@@ -67,8 +67,8 @@ const networks: Networks = {
     nonfungibleTokenPositionDescriptorAddress: "0xeb86f5BE368c3C5e562f7eA1470ACC431d30fB0C",
     descriptorProxyAddress: "0xB79bDE60fc227217f4EE2102dC93fa1264E33DaB",
     nonfungibleTokenPositionManagerAddress: "0x865F20efC14A5186bF985aD42c64f5e71C055376",
-    v3MigratorAddress: "0x1988F2e49A72C4D73961C7f4Bb896819d3d2F6a3"
-  }
+    v3MigratorAddress: "0x1988F2e49A72C4D73961C7f4Bb896819d3d2F6a3",
+  },
 };
 
 export function getAddress(network: NetworkName, contractName: ContractType) {
@@ -89,7 +89,7 @@ export function PoolClient(provider: ethers.providers.Provider) {
     return {
       ...slot0,
       address,
-      liquidity: liquidity.toString()
+      liquidity: liquidity.toString(),
     };
   }
 
@@ -99,7 +99,7 @@ export function PoolClient(provider: ethers.providers.Provider) {
     const contract = new ethers.Contract(address, abi, provider);
     return {
       pool: address,
-      ...convertValuesToString<Position>(await contract.positions(position.id, { blockTag: blockNumber }))
+      ...convertValuesToString<Position>(await contract.positions(position.id, { blockTag: blockNumber })),
     };
   }
 
@@ -115,7 +115,7 @@ export function PoolClient(provider: ethers.providers.Provider) {
   return {
     getPoolState,
     getPositionState,
-    processEvents
+    processEvents,
   };
 }
 export type PoolClient = ReturnType<typeof PoolClient>;

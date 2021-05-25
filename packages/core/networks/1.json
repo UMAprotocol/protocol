@@ -74,5 +74,21 @@
   {
     "contractName": "DSProxyFactory",
     "address": "0xAB75727d4e89A7f7F04f57C00234a35950527115"
+  },
+  {
+    "contractName": "Bridge",
+    "address": "0xBA26bC014c4c889431826C123492861e886408b9"
+  },
+  {
+    "contractName": "GenericHandler",
+    "address": "0x60E6140330F8FE31e785190F39C1B5e5e833c2a9"
+  },
+  {
+    "contractName": "SourceOracle",
+    "address": "0x3811A29571c9912f15fEFF0747d2F34Aa48f6721"
+  },
+  {
+    "contractName": "SourceGovernor",
+    "address": "0x1ccC90F5dd09c747fe46e176f5b5F7762a13Ba8F"
   }
 ]

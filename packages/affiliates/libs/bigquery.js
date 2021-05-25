@@ -73,7 +73,7 @@ module.exports = ({ client } = {}) => {
     },
     // search transactions for many contracts
     transactionsByContracts(contracts = [], start, end = Date.now(), selection = ["*"]) {
-      contracts = lodash.castArray(contracts).map(x => x.toLowerCase());
+      contracts = lodash.castArray(contracts).map((x) => x.toLowerCase());
       assert(contracts, "requires contracts");
       assert(contracts.length, "requires at least one contract");
       assert(start >= 0, "requires start");
@@ -128,7 +128,7 @@ module.exports = ({ client } = {}) => {
         ORDER BY timestamp DESC
         LIMIT ${limit};
       `;
-    }
+    },
   };
 
   function streamAllLogsByContract(...args) {
@@ -213,7 +213,7 @@ module.exports = ({ client } = {}) => {
     // exposed for testing or as utilities
     utils: {
       queries,
-      client
-    }
+      client,
+    },
   };
 };

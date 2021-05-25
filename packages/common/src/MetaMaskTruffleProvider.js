@@ -11,14 +11,14 @@ class MetaMaskTruffleProvider {
 
   // Passes the call through, by attaching a callback to the wrapper provider promise.
   sendAsync(...all) {
-    this.wrappedProviderPromise.then(wrappedProvider => {
+    this.wrappedProviderPromise.then((wrappedProvider) => {
       wrappedProvider.sendAsync(...all);
     });
   }
 
   // Passes the call through. Requires that the wrapped provider has been created via, e.g., `constructWrappedProvider`.
   send(...all) {
-    this.wrappedProviderPromise.then(wrappedProvider => {
+    this.wrappedProviderPromise.then((wrappedProvider) => {
       wrappedProvider.send(...all);
     });
   }
@@ -54,7 +54,7 @@ class MetaMaskTruffleProvider {
       port: 3333,
       onConnect() {
         console.log("MetaMask client connected!");
-      }
+      },
     });
 
     return connector.start().then(() => {

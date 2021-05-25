@@ -7,7 +7,7 @@ async function App(whitelist) {
   const config = generateDevMiningConfig({ whitelist });
   return {
     config,
-    whitelist
+    whitelist,
   };
 }
 

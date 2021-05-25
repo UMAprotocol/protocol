@@ -9,7 +9,7 @@ const {
   delay,
   FinancialContractFactoryClient,
   GasEstimator,
-  multicallAddressMap
+  multicallAddressMap,
 } = require("@uma/financial-templates-lib");
 const { FundingRateProposer } = require("./src/proposer");
 
@@ -42,7 +42,7 @@ async function run({
   commonPriceFeedConfig,
   perpetualProposerConfig,
   multicallAddress,
-  isTest = false
+  isTest = false,
 }) {
   try {
     const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
@@ -58,7 +58,7 @@ async function run({
       errorRetriesTimeout,
       commonPriceFeedConfig,
       perpetualProposerConfig,
-      multicallAddress
+      multicallAddress,
     });
 
     // Create the FinancialContractFactoryClient to query on-chain information,
@@ -86,7 +86,7 @@ async function run({
       gasEstimator,
       account: accounts[0],
       commonPriceFeedConfig,
-      perpetualProposerConfig
+      perpetualProposerConfig,
     });
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
@@ -101,20 +101,20 @@ async function run({
           retries: errorRetries,
           minTimeout: errorRetriesTimeout * 1000, // delay between retries in ms
           randomize: false,
-          onRetry: error => {
+          onRetry: (error) => {
             logger.debug({
               at: "PerpetualFundingRateProposer#index",
               message: "An error was thrown in the execution loop - retrying",
-              error: typeof error === "string" ? new Error(error) : error
+              error: typeof error === "string" ? new Error(error) : error,
             });
-          }
+          },
         }
       );
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (pollingDelay === 0) {
         logger.debug({
           at: "PerpetualFundingRateProposer#index",
-          message: "End of serverless execution loop - terminating process"
+          message: "End of serverless execution loop - terminating process",
         });
         await waitForLogger(logger);
         await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
@@ -123,7 +123,7 @@ async function run({
       logger.debug({
         at: "PerpetualFundingRateProposer#index",
         message: "End of execution loop - waiting polling delay",
-        pollingDelay: `${pollingDelay} (s)`
+        pollingDelay: `${pollingDelay} (s)`,
       });
       await delay(Number(pollingDelay));
     }
@@ -161,7 +161,7 @@ async function Poll(callback) {
         : {},
       // Overrides the default multicall contract fetched for the detected provider's network. This param is useful
       // primarily for test networks which do not have a default multicall contract already deployed.
-      multicallAddress: process.env.MULTICALL_ADDRESS ? process.env.MULTICALL_ADDRESS : null
+      multicallAddress: process.env.MULTICALL_ADDRESS ? process.env.MULTICALL_ADDRESS : null,
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
@@ -169,7 +169,7 @@ async function Poll(callback) {
     Logger.error({
       at: "PerpetualFundingRateProposer#index",
       message: "Perpetual funding rate proposer execution error🚨",
-      error: typeof error === "string" ? new Error(error) : error
+      error: typeof error === "string" ? new Error(error) : error,
     });
     await waitForLogger(Logger);
     callback(error);

@@ -16,7 +16,7 @@ const { isPublicNetwork } = require("./MigrationUtils");
 const Web3 = require("web3");
 require("dotenv").config();
 const argv = require("minimist")(process.argv.slice(), {
-  string: ["gasPrice"]
+  string: ["gasPrice"],
 });
 
 // Fallback to a public mnemonic to prevent exceptions.
@@ -62,7 +62,7 @@ function addPublicNetwork(networks, name, networkId, customTruffleConfig) {
     network_id: networkId,
     gas: customTruffleConfig?.gas || gas,
     gasPrice: customTruffleConfig?.gasPrice || gasPx,
-    ...customTruffleConfig
+    ...customTruffleConfig,
   };
 
   const nodeUrl = getNodeUrl(name);
@@ -70,69 +70,69 @@ function addPublicNetwork(networks, name, networkId, customTruffleConfig) {
   // GCS ManagedSecretProvider network.
   networks[name + "_gckms"] = {
     ...options,
-    provider: function(provider = nodeUrl) {
+    provider: function (provider = nodeUrl) {
       if (!singletonProvider) {
         singletonProvider = new ManagedSecretProvider(GckmsConfig, provider, 0, GckmsConfig.length);
       }
       return singletonProvider;
-    }
+    },
   };
 
   // Private key network.
   networks[name + "_privatekey"] = {
     ...options,
-    provider: function(provider = nodeUrl) {
+    provider: function (provider = nodeUrl) {
       if (!singletonProvider) {
         singletonProvider = new HDWalletProvider([privateKey], provider);
       }
       return singletonProvider;
-    }
+    },
   };
 
   // Mnemonic network.
   networks[name + "_mnemonic"] = {
     ...options,
-    provider: function(provider = nodeUrl) {
+    provider: function (provider = nodeUrl) {
       if (!singletonProvider) {
         singletonProvider = new HDWalletProvider(mnemonic, provider, keyOffset, numKeys);
       }
       return singletonProvider;
-    }
+    },
   };
 
   const legacyLedgerOptions = {
     networkId: networkId,
     accountsLength: numKeys,
-    accountsOffset: keyOffset
+    accountsOffset: keyOffset,
   };
 
   // Ledger has changed their standard derivation path since this library was created, so we must override the default one.
   const ledgerOptions = {
     ...legacyLedgerOptions,
-    path: "44'/60'/0'/0/0"
+    path: "44'/60'/0'/0/0",
   };
 
   // Normal ledger wallet network.
   networks[name + "_ledger"] = {
     ...options,
-    provider: function(provider = nodeUrl) {
+    provider: function (provider = nodeUrl) {
       if (!singletonProvider) {
         singletonProvider = new LedgerWalletProvider(ledgerOptions, provider);
       }
       return singletonProvider;
-    }
+    },
   };
 
   // Legacy ledger wallet network.
   // Note: the default derivation path matches the "legacy" ledger account in Ledger Live.
   networks[name + "_ledger_legacy"] = {
     ...options,
-    provider: function(provider = nodeUrl) {
+    provider: function (provider = nodeUrl) {
       if (!singletonProvider) {
         singletonProvider = new LedgerWalletProvider(legacyLedgerOptions, provider);
       }
       return singletonProvider;
-    }
+    },
   };
 }
 
@@ -145,7 +145,7 @@ function addLocalNetwork(networks, name, customOptions) {
     network_id: "*",
     gas: gas,
     gasPrice: gasPx,
-    provider: function(provider = nodeUrl) {
+    provider: function (provider = nodeUrl) {
       // Don't use the singleton here because there's no reason to for local networks.
 
       // Note: this is the way that truffle initializes their host + port http provider.
@@ -155,12 +155,12 @@ function addLocalNetwork(networks, name, customOptions) {
       }
       const tempWeb3 = new Web3(provider);
       return tempWeb3.eth.currentProvider;
-    }
+    },
   };
 
   networks[name] = {
     ...defaultOptions,
-    ...customOptions
+    ...customOptions,
   };
 }
 
@@ -182,12 +182,12 @@ addLocalNetwork(networks, "polygon-matic-fork", { network_id: 137, gas: 6721975 
 // MetaMask truffle provider requires a longer timeout so that user has time to point web browser with metamask to localhost:3333
 addLocalNetwork(networks, "metamask", {
   networkCheckTimeout: 500000,
-  provider: function() {
+  provider: function () {
     if (!singletonProvider) {
       singletonProvider = new MetaMaskTruffleProvider();
     }
     return singletonProvider;
-  }
+  },
 });
 
 function getTruffleConfig(truffleContextDir = "./") {
@@ -198,7 +198,7 @@ function getTruffleConfig(truffleContextDir = "./") {
     plugins: ["solidity-coverage"],
     mocha: {
       enableTimeouts: false,
-      before_timeout: 1800000
+      before_timeout: 1800000,
     },
     compilers: {
       solc: {
@@ -206,14 +206,14 @@ function getTruffleConfig(truffleContextDir = "./") {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 199
-          }
-        }
-      }
+            runs: 199,
+          },
+        },
+      },
     },
     migrations_directory: path.join(truffleContextDir, "migrations"),
     contracts_directory: path.join(truffleContextDir, "contracts"),
-    contracts_build_directory: path.join(truffleContextDir, "build/contracts")
+    contracts_build_directory: path.join(truffleContextDir, "build/contracts"),
   };
 }
 

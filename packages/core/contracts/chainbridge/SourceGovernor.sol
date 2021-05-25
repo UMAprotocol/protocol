@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./IBridge.sol";
 
 /**
- * @title Governor contract on L2 that receives governance actions from L1.
+ * @title Governance relayer contract on L1 that receives messages from the owner (Governor) and sends them to L2.
  */
 contract SourceGovernor is Ownable {
     FinderInterface public finder;

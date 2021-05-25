@@ -5,7 +5,7 @@ const winston = require("winston");
 const sinon = require("sinon");
 const moment = require("moment");
 
-contract("TraderMadePriceFeed.js", function() {
+contract("TraderMadePriceFeed.js", function () {
   let traderMadePriceFeed;
   let mockTime = 1614314000;
   let networker;
@@ -35,49 +35,49 @@ contract("TraderMadePriceFeed.js", function() {
     {
       quotes: [
         {
-          ask: 0.1553
-        }
-      ]
+          ask: 0.1553,
+        },
+      ],
     },
     {
       quotes: [
         {
           close: 0.1543,
-          date: "2021-01-25 21:00:00"
+          date: "2021-01-25 21:00:00",
         },
         {
           close: 0.1533,
-          date: "2021-01-25 21:10:00"
+          date: "2021-01-25 21:10:00",
         },
         {
           close: 0.1523,
-          date: "2021-01-25 21:20:00"
-        }
-      ]
+          date: "2021-01-25 21:20:00",
+        },
+      ],
     },
     {
       quotes: [
         {
           close: 0.1543,
-          date: "2021-01-25 21:00:00"
+          date: "2021-01-25 21:00:00",
         },
         {
           close: 0.1533,
-          date: "2021-01-25 22:00:00"
+          date: "2021-01-25 22:00:00",
         },
         {
           close: 0.1523,
-          date: "2021-01-25 23:00:00"
-        }
-      ]
-    }
+          date: "2021-01-25 23:00:00",
+        },
+      ],
+    },
   ];
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     networker = new NetworkerMock();
     const dummyLogger = winston.createLogger({
       level: "info",
-      transports: [new winston.transports.Console()]
+      transports: [new winston.transports.Console()],
     });
     traderMadePriceFeed = new TraderMadePriceFeed(
       dummyLogger,
@@ -94,13 +94,13 @@ contract("TraderMadePriceFeed.js", function() {
     );
   });
 
-  it("No update", async function() {
+  it("No update", async function () {
     assert.equal(traderMadePriceFeed.getCurrentPrice(), undefined);
     assert.isTrue(await traderMadePriceFeed.getHistoricalPrice(1000).catch(() => true));
     assert.equal(traderMadePriceFeed.getLastUpdateTime(), undefined);
   });
 
-  it("Basic historical price", async function() {
+  it("Basic historical price", async function () {
     // Inject data.
     networker.getJsonReturns = [...validResponses];
 
@@ -136,16 +136,16 @@ contract("TraderMadePriceFeed.js", function() {
     const expectOhlcHourlyPrices = [
       {
         closeTime: 1611608400,
-        openTime: 1611604800
+        openTime: 1611604800,
       },
       {
         closeTime: 1611612000,
-        openTime: 1611608400
+        openTime: 1611608400,
       },
       {
         closeTime: 1611615600,
-        openTime: 1611612000
-      }
+        openTime: 1611612000,
+      },
     ];
     const actualOhlcHourlyPrices = traderMadePriceFeed.getHistoricalPricePeriods();
     for (let i = 0; i < expectOhlcHourlyPrices.length; i++) {
@@ -154,7 +154,7 @@ contract("TraderMadePriceFeed.js", function() {
     }
   });
 
-  it("Basic current price", async function() {
+  it("Basic current price", async function () {
     // Inject data.
     networker.getJsonReturns = [...validResponses];
 
@@ -164,7 +164,7 @@ contract("TraderMadePriceFeed.js", function() {
     assert.equal(traderMadePriceFeed.getCurrentPrice().toString(), toWei("0.1553"));
   });
 
-  it("Last update time", async function() {
+  it("Last update time", async function () {
     // Inject data.
     networker.getJsonReturns = [...validResponses];
 
@@ -174,41 +174,41 @@ contract("TraderMadePriceFeed.js", function() {
     assert.equal(traderMadePriceFeed.getLastUpdateTime(), mockTime);
   });
 
-  describe("Hourly interval can act as historical price fallback for minute interval", function() {
-    it("Fallback to hourly interval ENABLED, failure to fetch minute interval successfully fetches hourly data", async function() {
+  describe("Hourly interval can act as historical price fallback for minute interval", function () {
+    it("Fallback to hourly interval ENABLED, failure to fetch minute interval successfully fetches hourly data", async function () {
       // Missing minute interval historical ohlc response. Fallback to hourly interval succeeds,
       // so historical price is available.
       networker.getJsonReturns = [
         {
           quotes: [
             {
-              ask: 0.1553
-            }
-          ]
+              ask: 0.1553,
+            },
+          ],
         },
         {
           quotes: [
             {
-              error: "test"
-            }
-          ]
+              error: "test",
+            },
+          ],
         },
         {
           quotes: [
             {
               close: 0.1543,
-              date: "2021-01-25 21:00:00"
+              date: "2021-01-25 21:00:00",
             },
             {
               close: 0.1533,
-              date: "2021-01-25 22:00:00"
+              date: "2021-01-25 22:00:00",
             },
             {
               close: 0.1523,
-              date: "2021-01-25 23:00:00"
-            }
-          ]
-        }
+              date: "2021-01-25 23:00:00",
+            },
+          ],
+        },
       ];
 
       // Create spy to listen for debug level events to catch fallback log.
@@ -216,7 +216,7 @@ contract("TraderMadePriceFeed.js", function() {
       traderMadePriceFeed = new TraderMadePriceFeed(
         winston.createLogger({
           level: "info",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         }),
         web3,
         apiKey,
@@ -241,39 +241,39 @@ contract("TraderMadePriceFeed.js", function() {
       );
       assert.equal(traderMadePriceFeed.getHistoricalPricePeriods().length, 3);
     });
-    it("Fallback to hourly interval DISABLED, failure to fetch minute interval fails", async function() {
+    it("Fallback to hourly interval DISABLED, failure to fetch minute interval fails", async function () {
       // Missing minute interval historical ohlc response.
       networker.getJsonReturns = [
         {
           quotes: [
             {
-              ask: 0.1553
-            }
-          ]
+              ask: 0.1553,
+            },
+          ],
         },
         {
           quotes: [
             {
-              error: "test"
-            }
-          ]
+              error: "test",
+            },
+          ],
         },
         {
           quotes: [
             {
               close: 0.1543,
-              date: "2021-01-25 21:00:00"
+              date: "2021-01-25 21:00:00",
             },
             {
               close: 0.1533,
-              date: "2021-01-25 22:00:00"
+              date: "2021-01-25 22:00:00",
             },
             {
               close: 0.1523,
-              date: "2021-01-25 23:00:00"
-            }
-          ]
-        }
+              date: "2021-01-25 23:00:00",
+            },
+          ],
+        },
       ];
 
       // Create spy to make sure no "fallback" logs are emitted
@@ -281,7 +281,7 @@ contract("TraderMadePriceFeed.js", function() {
       traderMadePriceFeed = new TraderMadePriceFeed(
         winston.createLogger({
           level: "info",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         }),
         web3,
         apiKey,
@@ -305,48 +305,48 @@ contract("TraderMadePriceFeed.js", function() {
       );
       assert.equal(traderMadePriceFeed.getHistoricalPricePeriods(), undefined);
     });
-    it("Fallback to hourly interval ENABLED, latest, minute and hourly intervals all fail to respond", async function() {
+    it("Fallback to hourly interval ENABLED, latest, minute and hourly intervals all fail to respond", async function () {
       // Bad current price response causes update() to throw regardless of historical data.
       networker.getJsonReturns = [
         {
           quotes: [
             {
-              error: "test"
-            }
-          ]
+              error: "test",
+            },
+          ],
         },
         {
           quotes: [
             {
               close: 0.1543,
-              date: "2021-01-26 00:00:00"
+              date: "2021-01-26 00:00:00",
             },
             {
               close: 0.1533,
-              date: "2021-01-26 00:00:00"
+              date: "2021-01-26 00:00:00",
             },
             {
               close: 0.1523,
-              date: "2021-01-26 00:00:00"
-            }
-          ]
+              date: "2021-01-26 00:00:00",
+            },
+          ],
         },
         {
           quotes: [
             {
               close: 0.1543,
-              date: "2021-01-26 00:00:00"
+              date: "2021-01-26 00:00:00",
             },
             {
               close: 0.1533,
-              date: "2021-01-26 00:00:00"
+              date: "2021-01-26 00:00:00",
             },
             {
               close: 0.1523,
-              date: "2021-01-26 00:00:00"
-            }
-          ]
-        }
+              date: "2021-01-26 00:00:00",
+            },
+          ],
+        },
       ];
 
       // Update should throw errors in both cases because the `updateLatest` method throws.
@@ -364,24 +364,24 @@ contract("TraderMadePriceFeed.js", function() {
         {
           quotes: [
             {
-              ask: 0.1553
-            }
-          ]
+              ask: 0.1553,
+            },
+          ],
         },
         {
           quotes: [
             {
-              error: "test"
-            }
-          ]
+              error: "test",
+            },
+          ],
         },
         {
           quotes: [
             {
-              error: "test"
-            }
-          ]
-        }
+              error: "test",
+            },
+          ],
+        },
       ];
 
       // Create spy to listen for fallback failure
@@ -389,7 +389,7 @@ contract("TraderMadePriceFeed.js", function() {
       traderMadePriceFeed = new TraderMadePriceFeed(
         winston.createLogger({
           level: "info",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         }),
         web3,
         apiKey,
@@ -412,44 +412,44 @@ contract("TraderMadePriceFeed.js", function() {
       );
       assert.equal(traderMadePriceFeed.getHistoricalPricePeriods(), undefined);
     });
-    it("minuteLookback is undefined, only need to fetch hourly interval data", async function() {
+    it("minuteLookback is undefined, only need to fetch hourly interval data", async function () {
       // Missing minute interval historical ohlc response is not a problem if minuteLookback is not set.
       networker.getJsonReturns = [
         {
           quotes: [
             {
-              ask: 0.1553
-            }
-          ]
+              ask: 0.1553,
+            },
+          ],
         },
         {
           quotes: [
             {
-              error: "test"
-            }
-          ]
+              error: "test",
+            },
+          ],
         },
         {
           quotes: [
             {
               close: 0.1543,
-              date: "2021-01-25 21:00:00"
+              date: "2021-01-25 21:00:00",
             },
             {
               close: 0.1533,
-              date: "2021-01-25 22:00:00"
+              date: "2021-01-25 22:00:00",
             },
             {
               close: 0.1523,
-              date: "2021-01-25 23:00:00"
-            }
-          ]
-        }
+              date: "2021-01-25 23:00:00",
+            },
+          ],
+        },
       ];
       traderMadePriceFeed = new TraderMadePriceFeed(
         winston.createLogger({
           level: "info",
-          transports: [new winston.transports.Console()]
+          transports: [new winston.transports.Console()],
         }),
         web3,
         apiKey,
@@ -473,7 +473,7 @@ contract("TraderMadePriceFeed.js", function() {
     });
   });
 
-  it("Update frequency", async function() {
+  it("Update frequency", async function () {
     networker.getJsonReturns = [...validResponses];
 
     await traderMadePriceFeed.update();
@@ -491,7 +491,7 @@ contract("TraderMadePriceFeed.js", function() {
     assert.equal(traderMadePriceFeed.getCurrentPrice().toString(), toWei("0.1553"));
   });
 
-  it("apiKey present", async function() {
+  it("apiKey present", async function () {
     networker.getJsonReturns = [...validResponses];
     await traderMadePriceFeed.update();
 
@@ -499,11 +499,11 @@ contract("TraderMadePriceFeed.js", function() {
     assert.deepStrictEqual(networker.getJsonInputs, [
       "https://marketdata.tradermade.com/api/v1/timeseries?currency=test-pair&api_key=test-api-key&start_date=2021-02-24-04:00&end_date=2021-02-26-04:43&format=records&interval=hourly",
       "https://marketdata.tradermade.com/api/v1/timeseries?currency=test-pair&api_key=test-api-key&start_date=2021-02-26-04:30&end_date=2021-02-26-04:43&format=records&interval=minute&period=10",
-      "https://marketdata.tradermade.com/api/v1/live?currency=test-pair&api_key=test-api-key"
+      "https://marketdata.tradermade.com/api/v1/live?currency=test-pair&api_key=test-api-key",
     ]);
   });
 
-  it("apiKey absent", async function() {
+  it("apiKey absent", async function () {
     traderMadePriceFeed.apiKey = undefined;
     networker.getJsonReturns = [...validResponses];
     await traderMadePriceFeed.update();
@@ -512,7 +512,7 @@ contract("TraderMadePriceFeed.js", function() {
     assert.deepStrictEqual(networker.getJsonInputs, [
       "https://marketdata.tradermade.com/api/v1/timeseries?currency=test-pair&api_key=undefined&start_date=2021-02-24-04:00&end_date=2021-02-26-04:43&format=records&interval=hourly",
       "https://marketdata.tradermade.com/api/v1/timeseries?currency=test-pair&api_key=undefined&start_date=2021-02-26-04:30&end_date=2021-02-26-04:43&format=records&interval=minute&period=10",
-      "https://marketdata.tradermade.com/api/v1/live?currency=test-pair&api_key=undefined"
+      "https://marketdata.tradermade.com/api/v1/live?currency=test-pair&api_key=undefined",
     ]);
   });
 });

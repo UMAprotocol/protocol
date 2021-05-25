@@ -1,8 +1,7 @@
-const { interfaceName, getBridgeChainId } = require("@uma/common");
-const func = async function(hre) {
-  const { deployments, getNamedAccounts, getChainId, web3 } = hre;
-  const { utf8ToHex, padRight } = web3.utils;
-  const { deploy, log, execute } = deployments;
+const { getBridgeChainId } = require("@uma/common");
+const func = async function (hre) {
+  const { deployments, getNamedAccounts, getChainId } = hre;
+  const { deploy } = deployments;
 
   const { deployer } = await getNamedAccounts();
 
@@ -14,27 +13,13 @@ const func = async function(hre) {
     [deployer], // Initial relayers defaults to deployer as 1 of 1
     1, // Relayer threshold set to 1
     0, // Deposit fee
-    100 // # of blocks after which a proposal expires
+    100, // # of blocks after which a proposal expires
   ];
-  const deployResult = await deploy("Bridge", {
+  await deploy("Bridge", {
     from: deployer,
     args,
-    log: true
+    log: true,
   });
-
-  if (deployResult.newlyDeployed) {
-    const txn = await execute(
-      "Finder",
-      { from: deployer },
-      "changeImplementationAddress",
-      padRight(utf8ToHex(interfaceName.Bridge), 64),
-      deployResult.address
-    );
-    log(
-      `Set ${interfaceName.Bridge} in Finder to deployed instance @ ${deployResult.address}, tx: ${txn.transactionHash}`
-    );
-  }
 };
 module.exports = func;
-func.tags = ["Bridge", "sink-oracle", "source-oracle"];
-func.dependencies = ["Finder"];
+func.tags = ["Bridge", "bridge-l2", "bridge-l1"];

@@ -1,5 +1,5 @@
 {
-  "name": "uma-tvl-calculator",
+  "name": "@uma/tvl-calculator",
   "version": "0.0.1",
   "dependencies": {
     "@uma/merkle-distributor": "npm:@uma/merkle-distributor@1.0.3",

@@ -51,7 +51,7 @@ class GasEstimator {
         currentTime: currentTime,
         lastUpdateTimestamp: this.lastUpdateTimestamp,
         currentFastPriceGwei: this.lastFastPriceGwei,
-        timeRemainingUntilUpdate: this.lastUpdateTimestamp + this.updateThreshold - currentTime
+        timeRemainingUntilUpdate: this.lastUpdateTimestamp + this.updateThreshold - currentTime,
       });
       return;
     } else {
@@ -61,7 +61,7 @@ class GasEstimator {
         at: "GasEstimator",
         message: "Gas estimator updated",
         lastUpdateTimestamp: this.lastUpdateTimestamp,
-        currentFastPriceGwei: this.lastFastPriceGwei
+        currentFastPriceGwei: this.lastFastPriceGwei,
       });
     }
   }
@@ -92,7 +92,7 @@ class GasEstimator {
       this.logger.debug({
         at: "GasEstimator",
         message: "client polling error, trying backup API🚨",
-        error: typeof error === "string" ? new Error(error) : error
+        error: typeof error === "string" ? new Error(error) : error,
       });
 
       // Try backup API.
@@ -109,7 +109,7 @@ class GasEstimator {
           at: "GasEstimator",
           message: "backup API failed, falling back to default fast gas price🚨",
           defaultFastPriceGwei: this.defaultFastPriceGwei,
-          error: typeof errorBackup === "string" ? new Error(errorBackup) : errorBackup
+          error: typeof errorBackup === "string" ? new Error(errorBackup) : errorBackup,
         });
       }
 
@@ -120,5 +120,5 @@ class GasEstimator {
 }
 
 module.exports = {
-  GasEstimator
+  GasEstimator,
 };

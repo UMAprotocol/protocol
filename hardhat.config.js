@@ -9,8 +9,8 @@ const configOverride = {
     root: coreWkdir,
     sources: `${coreWkdir}/contracts`,
     artifacts: `${coreWkdir}/artifacts`,
-    cache: `${coreWkdir}/cache`
-  }
+    cache: `${coreWkdir}/cache`,
+  },
 };
 
-module.exports = getHardhatConfig(configOverride);
+module.exports = getHardhatConfig(configOverride, coreWkdir);

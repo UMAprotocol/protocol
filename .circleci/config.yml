@@ -124,7 +124,7 @@ jobs:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Install Prereqs
-          command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev yarn
+          command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev yarn rsync
       - run:
           name: Publish
           command: yarn run publish-release

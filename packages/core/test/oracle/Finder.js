@@ -5,11 +5,11 @@ const Finder = artifacts.require("Finder");
 
 const truffleAssert = require("truffle-assertions");
 
-contract("Finder", function(accounts) {
+contract("Finder", function (accounts) {
   const owner = accounts[0];
   const user = accounts[1];
 
-  it("General methods", async function() {
+  it("General methods", async function () {
     const finder = await Finder.deployed();
 
     const interfaceName1 = utf8ToHex("interface1");
@@ -37,7 +37,7 @@ contract("Finder", function(accounts) {
 
     // Can reset and then find an interface.
     const result = await finder.changeImplementationAddress(interfaceName1, implementationAddress3, { from: owner });
-    truffleAssert.eventEmitted(result, "InterfaceImplementationChanged", ev => {
+    truffleAssert.eventEmitted(result, "InterfaceImplementationChanged", (ev) => {
       return (
         web3.utils.hexToUtf8(ev.interfaceName) === web3.utils.hexToUtf8(interfaceName1) &&
         ev.newImplementationAddress === implementationAddress3

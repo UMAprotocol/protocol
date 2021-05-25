@@ -9,8 +9,8 @@ const defaultConfigs = {
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro" },
       { type: "cryptowatch", exchange: "binance" },
-      { type: "cryptowatch", exchange: "bitstamp" }
-    ]
+      { type: "cryptowatch", exchange: "bitstamp" },
+    ],
   },
   "COMP/USD": {
     // Kovan uses the "/"
@@ -19,8 +19,8 @@ const defaultConfigs = {
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "compusd" },
       { type: "cryptowatch", exchange: "poloniex", pair: "compusdt" },
-      { type: "cryptowatch", exchange: "ftx", pair: "compusd" }
-    ]
+      { type: "cryptowatch", exchange: "ftx", pair: "compusd" },
+    ],
   },
   COMPUSD: {
     // Mainnet has no "/"
@@ -29,8 +29,8 @@ const defaultConfigs = {
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "compusd" },
       { type: "cryptowatch", exchange: "poloniex", pair: "compusdt" },
-      { type: "cryptowatch", exchange: "ftx", pair: "compusd" }
-    ]
+      { type: "cryptowatch", exchange: "ftx", pair: "compusd" },
+    ],
   },
   USDETH: {
     type: "medianizer",
@@ -39,8 +39,8 @@ const defaultConfigs = {
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "ethusd" },
       { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
-      { type: "cryptowatch", exchange: "kraken", pair: "ethusd" }
-    ]
+      { type: "cryptowatch", exchange: "kraken", pair: "ethusd" },
+    ],
   },
   USDBTC: {
     type: "medianizer",
@@ -49,14 +49,14 @@ const defaultConfigs = {
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "btcusd" },
       { type: "cryptowatch", exchange: "binance", pair: "btcusdt" },
-      { type: "cryptowatch", exchange: "bitstamp", pair: "btcusd" }
-    ]
+      { type: "cryptowatch", exchange: "bitstamp", pair: "btcusd" },
+    ],
   },
   USDPERL: {
     type: "medianizer",
     invertPrice: true,
     minTimeBetweenUpdates: 60,
-    medianizedFeeds: [{ type: "cryptowatch", exchange: "binance", pair: "perlusdt" }]
+    medianizedFeeds: [{ type: "cryptowatch", exchange: "binance", pair: "perlusdt" }],
   },
   BCHNBTC: {
     type: "medianizer",
@@ -64,8 +64,8 @@ const defaultConfigs = {
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "BCHBTC" },
       { type: "cryptowatch", exchange: "binance", pair: "BCHBTC" },
-      { type: "cryptowatch", exchange: "huobi", pair: "BCHBTC" }
-    ]
+      { type: "cryptowatch", exchange: "huobi", pair: "BCHBTC" },
+    ],
   },
   STABLESPREAD: {
     // This is alternatively known as "STABLESPREAD/ETH"
@@ -81,9 +81,9 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38",
-            twapLength: 2
-          }
-        ]
+            twapLength: 2,
+          },
+        ],
       },
       {
         type: "medianizer",
@@ -93,20 +93,20 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd",
-            twapLength: 2
-          }
-        ]
+            twapLength: 2,
+          },
+        ],
       },
       {
         type: "medianizer",
         computeMean: true,
         medianizedFeeds: [
-          { type: "cryptowatch", exchange: "bittrex", pair: "cusdusdt" }
+          { type: "cryptowatch", exchange: "bittrex", pair: "cusdusdt" },
           // NOTE: The OKCoin exchange is not available on Cryptowatch for this pair,
           // presumably because it has such low volume.
           // { type: "cryptowatch", exchange: "okcoin" }
-        ]
-      }
+        ],
+      },
     ],
     baselinePriceFeeds: [
       {
@@ -117,27 +117,27 @@ const defaultConfigs = {
             computeMean: true,
             medianizedFeeds: [
               { type: "cryptowatch", exchange: "bitfinex", pair: "usdtusd" },
-              { type: "cryptowatch", exchange: "kraken", pair: "usdtusd" }
-            ]
+              { type: "cryptowatch", exchange: "kraken", pair: "usdtusd" },
+            ],
           },
           {
             type: "medianizer",
             computeMean: true,
             medianizedFeeds: [
               { type: "cryptowatch", exchange: "kraken", pair: "usdcusd" },
-              { type: "cryptowatch", exchange: "bitstamp", pair: "usdcusd" }
-            ]
-          }
-        ]
-      }
+              { type: "cryptowatch", exchange: "bitstamp", pair: "usdcusd" },
+            ],
+          },
+        ],
+      },
     ],
     denominatorPriceFeed: {
       type: "medianizer",
       medianizedFeeds: [
         { type: "cryptowatch", exchange: "coinbase-pro", pair: "ethusd" },
-        { type: "cryptowatch", exchange: "binance", pair: "ethusdt" }
-      ]
-    }
+        { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
+      ],
+    },
   },
   "STABLESPREAD/USDC": {
     type: "basketspread",
@@ -152,9 +152,9 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38",
-            twapLength: 2
-          }
-        ]
+            twapLength: 2,
+          },
+        ],
       },
       {
         type: "medianizer",
@@ -164,20 +164,20 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd",
-            twapLength: 2
-          }
-        ]
+            twapLength: 2,
+          },
+        ],
       },
       {
         type: "medianizer",
         computeMean: true,
         medianizedFeeds: [
-          { type: "cryptowatch", exchange: "bittrex", pair: "cusdusdt" }
+          { type: "cryptowatch", exchange: "bittrex", pair: "cusdusdt" },
           // NOTE: The OKCoin exchange is not available on Cryptowatch for this pair,
           // presumably because it has such low volume.
           // { type: "cryptowatch", exchange: "okcoin" }
-        ]
-      }
+        ],
+      },
     ],
     baselinePriceFeeds: [
       {
@@ -188,20 +188,20 @@ const defaultConfigs = {
             computeMean: true,
             medianizedFeeds: [
               { type: "cryptowatch", exchange: "bitfinex", pair: "usdtusd" },
-              { type: "cryptowatch", exchange: "kraken", pair: "usdtusd" }
-            ]
+              { type: "cryptowatch", exchange: "kraken", pair: "usdtusd" },
+            ],
           },
           {
             type: "medianizer",
             computeMean: true,
             medianizedFeeds: [
               { type: "cryptowatch", exchange: "kraken", pair: "usdcusd" },
-              { type: "cryptowatch", exchange: "bitstamp", pair: "usdcusd" }
-            ]
-          }
-        ]
-      }
-    ]
+              { type: "cryptowatch", exchange: "bitstamp", pair: "usdcusd" },
+            ],
+          },
+        ],
+      },
+    ],
   },
   "STABLESPREAD/BTC": {
     type: "basketspread",
@@ -216,9 +216,9 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38",
-            twapLength: 2
-          }
-        ]
+            twapLength: 2,
+          },
+        ],
       },
       {
         type: "medianizer",
@@ -228,20 +228,20 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd",
-            twapLength: 2
-          }
-        ]
+            twapLength: 2,
+          },
+        ],
       },
       {
         type: "medianizer",
         computeMean: true,
         medianizedFeeds: [
-          { type: "cryptowatch", exchange: "bittrex", pair: "cusdusdt" }
+          { type: "cryptowatch", exchange: "bittrex", pair: "cusdusdt" },
           // NOTE: The OKCoin exchange is not available on Cryptowatch for this pair,
           // presumably because it has such low volume.
           // { type: "cryptowatch", exchange: "okcoin" }
-        ]
-      }
+        ],
+      },
     ],
     baselinePriceFeeds: [
       {
@@ -252,27 +252,27 @@ const defaultConfigs = {
             computeMean: true,
             medianizedFeeds: [
               { type: "cryptowatch", exchange: "bitfinex", pair: "usdtusd" },
-              { type: "cryptowatch", exchange: "kraken", pair: "usdtusd" }
-            ]
+              { type: "cryptowatch", exchange: "kraken", pair: "usdtusd" },
+            ],
           },
           {
             type: "medianizer",
             computeMean: true,
             medianizedFeeds: [
               { type: "cryptowatch", exchange: "kraken", pair: "usdcusd" },
-              { type: "cryptowatch", exchange: "bitstamp", pair: "usdcusd" }
-            ]
-          }
-        ]
-      }
+              { type: "cryptowatch", exchange: "bitstamp", pair: "usdcusd" },
+            ],
+          },
+        ],
+      },
     ],
     denominatorPriceFeed: {
       type: "medianizer",
       medianizedFeeds: [
         { type: "cryptowatch", exchange: "kraken", pair: "btcusd" },
-        { type: "cryptowatch", exchange: "bitstamp", pair: "btcusd" }
-      ]
-    }
+        { type: "cryptowatch", exchange: "bitstamp", pair: "btcusd" },
+      ],
+    },
   },
   "ELASTIC_STABLESPREAD/USDC": {
     type: "basketspread",
@@ -286,9 +286,9 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0x97c4adc5d28a86f9470c70dd91dc6cc2f20d2d4d",
-            twapLength: 2
-          }
-        ]
+            twapLength: 2,
+          },
+        ],
       },
       {
         type: "medianizer",
@@ -297,17 +297,17 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0x88ff79eb2bc5850f27315415da8685282c7610f9",
-            twapLength: 2
-          }
-        ]
+            twapLength: 2,
+          },
+        ],
       },
       {
         type: "medianizer",
         medianizedFeeds: [
           // BAC/DAI:
-          { type: "uniswap", uniswapAddress: "0xd4405f0704621dbe9d4dea60e128e0c3b26bddbd", twapLength: 2 }
-        ]
-      }
+          { type: "uniswap", uniswapAddress: "0xd4405f0704621dbe9d4dea60e128e0c3b26bddbd", twapLength: 2 },
+        ],
+      },
     ],
     baselinePriceFeeds: [
       {
@@ -318,53 +318,53 @@ const defaultConfigs = {
             computeMean: true,
             medianizedFeeds: [
               { type: "cryptowatch", exchange: "bitfinex", pair: "usdtusd" },
-              { type: "cryptowatch", exchange: "kraken", pair: "usdtusd" }
-            ]
+              { type: "cryptowatch", exchange: "kraken", pair: "usdtusd" },
+            ],
           },
           {
             type: "medianizer",
             computeMean: true,
             medianizedFeeds: [
               { type: "cryptowatch", exchange: "kraken", pair: "usdcusd" },
-              { type: "cryptowatch", exchange: "bitstamp", pair: "usdcusd" }
-            ]
-          }
-        ]
-      }
-    ]
+              { type: "cryptowatch", exchange: "bitstamp", pair: "usdcusd" },
+            ],
+          },
+        ],
+      },
+    ],
   },
   "GASETH-TWAP-1Mx1M": {
     type: "uniswap",
     uniswapAddress: "0x2b5dfb7874f685bea30b7d8426c9643a4bcf5873",
-    twapLength: 7200
+    twapLength: 7200,
   },
   "GASETH-FEB21": {
     type: "uniswap",
     uniswapAddress: "0x4a8a2ea3718964ed0551a3191c30e49ea38a5ade",
-    twapLength: 7200
+    twapLength: 7200,
   },
   "GASETH-MAR21": {
     type: "uniswap",
     uniswapAddress: "0x683ea972ffa19b7bad6d6be0440e0a8465dba71c",
-    twapLength: 7200
+    twapLength: 7200,
   },
   "COMPUSDC-APR-MAR28/USDC": {
     type: "uniswap",
     uniswapAddress: "0xd8ecab1d50c3335d01885c17b1ce498105238f24",
     twapLength: 7200,
-    poolDecimals: 6
+    poolDecimals: 6,
   },
   BTCDOM: {
     type: "domfi",
     pair: "BTCDOM",
     minTimeBetweenUpdates: 60,
-    lookback: 7200
+    lookback: 7200,
   },
   ALTDOM: {
     type: "domfi",
     pair: "ALTDOM",
     minTimeBetweenUpdates: 60,
-    lookback: 7200
+    lookback: 7200,
   },
   AMPLUSD: {
     type: "medianizer",
@@ -373,30 +373,30 @@ const defaultConfigs = {
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "ftx", pair: "amplusdt" },
       { type: "cryptowatch", exchange: "gateio", pair: "amplusdt" },
-      { type: "cryptowatch", exchange: "bitfinex", pair: "amplusd" }
-    ]
+      { type: "cryptowatch", exchange: "bitfinex", pair: "amplusd" },
+    ],
   },
   DEFI_PULSE_TOTAL_TVL: {
     type: "defipulse",
     lookback: 604800,
     minTimeBetweenUpdates: 600,
-    project: "all"
+    project: "all",
   },
   DEFI_PULSE_SUSHI_TVL: {
     type: "defipulse",
     lookback: 604800,
     minTimeBetweenUpdates: 600,
-    project: "SushiSwap"
+    project: "SushiSwap",
   },
   DEFI_PULSE_UNISWAP_TVL: {
     type: "defipulse",
     lookback: 604800,
     minTimeBetweenUpdates: 600,
-    project: "Uniswap"
+    project: "Uniswap",
   },
   SUSHIUNI: {
     type: "expression",
-    expression: "10 * DEFI_PULSE_SUSHI_TVL / DEFI_PULSE_UNISWAP_TVL"
+    expression: "10 * DEFI_PULSE_SUSHI_TVL / DEFI_PULSE_UNISWAP_TVL",
   },
   CNYUSD: {
     type: "fallback",
@@ -407,15 +407,15 @@ const defaultConfigs = {
         minTimeBetweenUpdates: 600,
         minuteLookback: 7200,
         hourlyLookback: 259200,
-        ohlcPeriod: 10 // CNYUSD only available at 10 minute granularity
+        ohlcPeriod: 10, // CNYUSD only available at 10 minute granularity
       },
       {
         type: "forexdaily",
         base: "CNY",
         symbol: "USD",
-        lookback: 259200
-      }
-    ]
+        lookback: 259200,
+      },
+    ],
   },
   EURUSD: {
     type: "fallback",
@@ -425,15 +425,15 @@ const defaultConfigs = {
         pair: "EURUSD",
         minTimeBetweenUpdates: 60,
         minuteLookback: 7200,
-        hourlyLookback: 259200
+        hourlyLookback: 259200,
       },
       {
         type: "forexdaily",
         base: "EUR",
         symbol: "USD",
-        lookback: 259200
-      }
-    ]
+        lookback: 259200,
+      },
+    ],
   },
   PHPDAI: {
     type: "medianizer",
@@ -445,15 +445,15 @@ const defaultConfigs = {
         type: "coinmarketcap",
         symbol: "DAI",
         quoteCurrency: "PHP",
-        invertPrice: true
+        invertPrice: true,
       },
       {
         type: "coingecko",
         contractAddress: "0x6b175474e89094c44da98b954eedeac495271d0f",
         quoteCurrency: "php",
-        invertPrice: true
-      }
-    ]
+        invertPrice: true,
+      },
+    ],
   },
   "ETH-BASIS-6M/USDC": {
     type: "expression",
@@ -470,8 +470,8 @@ const defaultConfigs = {
       SPOT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusdt" },
       FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "ethusd-quarterly-future-inverse-25jun21" },
       FUT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "ethusd-biquarterly-future-inverse" },
-      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusd-quarterly-futures-25jun21" }
-    }
+      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusd-quarterly-futures-25jun21" },
+    },
   },
   "ETH-BASIS-3M/USDC": {
     type: "expression",
@@ -488,8 +488,8 @@ const defaultConfigs = {
       SPOT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusdt" },
       FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "ethusd-quarterly-future-inverse-26mar21" },
       FUT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "ethusd-quarterly-future-inverse" },
-      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusd-quarterly-futures-26mar21" }
-    }
+      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusd-quarterly-futures-26mar21" },
+    },
   },
   "BTC-BASIS-6M/USDC": {
     type: "expression",
@@ -506,8 +506,8 @@ const defaultConfigs = {
       SPOT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusdt" },
       FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "btcusd-quarterly-future-inverse-25jun21" },
       FUT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "btcusd-biquarterly-future-inverse" },
-      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusd-quarterly-futures-25jun21" }
-    }
+      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusd-quarterly-futures-25jun21" },
+    },
   },
   "BTC-BASIS-3M/USDC": {
     type: "expression",
@@ -524,8 +524,8 @@ const defaultConfigs = {
       SPOT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusdt" },
       FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "btcusd-quarterly-future-inverse-26mar21" },
       FUT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "btcusd-quarterly-future-inverse" },
-      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusd-quarterly-futures-26mar21" }
-    }
+      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusd-quarterly-futures-26mar21" },
+    },
   },
   "USD/bBadger": {
     type: "expression",
@@ -547,16 +547,16 @@ const defaultConfigs = {
       BADGER_WBTC_SUSHI: {
         type: "uniswap",
         uniswapAddress: "0x110492b31c59716ac47337e616804e3e3adc0b4a",
-        invertPrice: true
+        invertPrice: true,
       },
       BADGER_WBTC_UNI: {
         type: "uniswap",
         uniswapAddress: "0xcd7989894bc033581532d2cd88da5db0a4b12859",
-        invertPrice: true
+        invertPrice: true,
       },
       BADGER_USD_HUOBI: { type: "cryptowatch", exchange: "huobi", pair: "badgerusdt", twapLength: 0 },
-      BBADGER_BADGER: { type: "vault", address: "0x19d97d8fa813ee2f51ad4b4e04ea08baf4dffc28" }
-    }
+      BBADGER_BADGER: { type: "vault", address: "0x19d97d8fa813ee2f51ad4b4e04ea08baf4dffc28" },
+    },
   },
   "USD-[bwBTC/ETH SLP]": {
     type: "expression",
@@ -576,19 +576,19 @@ const defaultConfigs = {
       ETH_PER_SHARE: {
         type: "lp",
         poolAddress: "0xCEfF51756c56CeFFCA006cD410B03FFC46dd3a58",
-        tokenAddress: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
+        tokenAddress: "0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2",
       },
       WBTC_PER_SHARE: {
         type: "lp",
         poolAddress: "0xCEfF51756c56CeFFCA006cD410B03FFC46dd3a58",
-        tokenAddress: "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599"
+        tokenAddress: "0x2260fac5e5542a773aa44fbcfedf7c193bc2c599",
       },
-      BLP_LP: { type: "vault", address: "0x758A43EE2BFf8230eeb784879CdcFF4828F2544D" }
-    }
+      BLP_LP: { type: "vault", address: "0x758A43EE2BFf8230eeb784879CdcFF4828F2544D" },
+    },
   },
   XAUPERL: {
     type: "expression",
-    expression: "XAUUSD * USDPERL"
+    expression: "XAUUSD * USDPERL",
   },
   XAUUSD: {
     type: "fallback",
@@ -598,15 +598,15 @@ const defaultConfigs = {
         pair: "XAUUSD",
         minuteLookback: 7200,
         hourlyLookback: 259200,
-        minTimeBetweenUpdates: 60
-      }
-    ]
+        minTimeBetweenUpdates: 60,
+      },
+    ],
   },
   uSTONKS_APR21: {
     type: "uniswap",
     uniswapAddress: "0xedf187890af846bd59f560827ebd2091c49b75df",
     twapLength: 7200,
-    invertPrice: true
+    invertPrice: true,
   },
   DIGGBTC: {
     type: "expression",
@@ -620,8 +620,8 @@ const defaultConfigs = {
     priceFeedDecimals: 8,
     customFeeds: {
       DIGG_WBTC_SUSHI: { type: "uniswap", uniswapAddress: "0x9a13867048e01c663ce8ce2fe0cdae69ff9f35e3" },
-      DIGG_WBTC_UNI: { type: "uniswap", uniswapAddress: "0xe86204c4eddd2f70ee00ead6805f917671f56c52" }
-    }
+      DIGG_WBTC_UNI: { type: "uniswap", uniswapAddress: "0xe86204c4eddd2f70ee00ead6805f917671f56c52" },
+    },
   },
   DIGGETH: {
     type: "expression",
@@ -636,8 +636,8 @@ const defaultConfigs = {
     priceFeedDecimals: 8,
     customFeeds: {
       WBTC_ETH_SUSHI: { type: "uniswap", uniswapAddress: "0xCEfF51756c56CeFFCA006cD410B03FFC46dd3a58" },
-      WBTC_ETH_UNI: { type: "uniswap", uniswapAddress: "0xBb2b8038a1640196FbE3e38816F3e67Cba72D940" }
-    }
+      WBTC_ETH_UNI: { type: "uniswap", uniswapAddress: "0xBb2b8038a1640196FbE3e38816F3e67Cba72D940" },
+    },
   },
   DIGGUSD: {
     type: "expression",
@@ -649,7 +649,7 @@ const defaultConfigs = {
     lookback: 7200,
     minTimeBetweenUpdates: 60,
     twapLength: 1800,
-    priceFeedDecimals: 6
+    priceFeedDecimals: 6,
   },
   USDAAVE: {
     type: "medianizer",
@@ -658,8 +658,8 @@ const defaultConfigs = {
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "aaveusd" },
       { type: "cryptowatch", exchange: "binance", pair: "aaveusdt" },
-      { type: "cryptowatch", exchange: "okex", pair: "aaveusdt" }
-    ]
+      { type: "cryptowatch", exchange: "okex", pair: "aaveusdt" },
+    ],
   },
   AAVEUSD: {
     type: "medianizer",
@@ -667,8 +667,8 @@ const defaultConfigs = {
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "aaveusd" },
       { type: "cryptowatch", exchange: "binance", pair: "aaveusdt" },
-      { type: "cryptowatch", exchange: "okex", pair: "aaveusdt" }
-    ]
+      { type: "cryptowatch", exchange: "okex", pair: "aaveusdt" },
+    ],
   },
   USDLINK: {
     type: "medianizer",
@@ -677,8 +677,8 @@ const defaultConfigs = {
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "linkusd" },
       { type: "cryptowatch", exchange: "binance", pair: "linkusdt" },
-      { type: "cryptowatch", exchange: "okex", pair: "linkusdt" }
-    ]
+      { type: "cryptowatch", exchange: "okex", pair: "linkusdt" },
+    ],
   },
   LINKUSD: {
     type: "medianizer",
@@ -686,8 +686,8 @@ const defaultConfigs = {
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "linkusd" },
       { type: "cryptowatch", exchange: "binance", pair: "linkusdt" },
-      { type: "cryptowatch", exchange: "okex", pair: "linkusdt" }
-    ]
+      { type: "cryptowatch", exchange: "okex", pair: "linkusdt" },
+    ],
   },
   USDSNX: {
     type: "medianizer",
@@ -696,8 +696,8 @@ const defaultConfigs = {
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "snxusd" },
       { type: "cryptowatch", exchange: "binance", pair: "snxusdt" },
-      { type: "cryptowatch", exchange: "okex", pair: "snxusdt" }
-    ]
+      { type: "cryptowatch", exchange: "okex", pair: "snxusdt" },
+    ],
   },
   SNXUSD: {
     type: "medianizer",
@@ -705,8 +705,8 @@ const defaultConfigs = {
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "snxusd" },
       { type: "cryptowatch", exchange: "binance", pair: "snxusdt" },
-      { type: "cryptowatch", exchange: "okex", pair: "snxusdt" }
-    ]
+      { type: "cryptowatch", exchange: "okex", pair: "snxusdt" },
+    ],
   },
   USDUMA: {
     type: "medianizer",
@@ -715,8 +715,8 @@ const defaultConfigs = {
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "umausd" },
       { type: "cryptowatch", exchange: "binance", pair: "umausdt" },
-      { type: "cryptowatch", exchange: "okex", pair: "umausdt" }
-    ]
+      { type: "cryptowatch", exchange: "okex", pair: "umausdt" },
+    ],
   },
   UMAUSD: {
     type: "medianizer",
@@ -724,8 +724,8 @@ const defaultConfigs = {
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "umausd" },
       { type: "cryptowatch", exchange: "binance", pair: "umausdt" },
-      { type: "cryptowatch", exchange: "okex", pair: "umausdt" }
-    ]
+      { type: "cryptowatch", exchange: "okex", pair: "umausdt" },
+    ],
   },
   USDUNI: {
     type: "medianizer",
@@ -734,8 +734,8 @@ const defaultConfigs = {
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "uniusd" },
       { type: "cryptowatch", exchange: "binance", pair: "uniusdt" },
-      { type: "cryptowatch", exchange: "okex", pair: "uniusdt" }
-    ]
+      { type: "cryptowatch", exchange: "okex", pair: "uniusdt" },
+    ],
   },
   UNIUSD: {
     type: "medianizer",
@@ -743,8 +743,8 @@ const defaultConfigs = {
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "uniusd" },
       { type: "cryptowatch", exchange: "binance", pair: "uniusdt" },
-      { type: "cryptowatch", exchange: "okex", pair: "uniusdt" }
-    ]
+      { type: "cryptowatch", exchange: "okex", pair: "uniusdt" },
+    ],
   },
   USDOCEAN: {
     type: "medianizer",
@@ -752,9 +752,9 @@ const defaultConfigs = {
     minTimeBetweenUpdates: 60,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "binance", pair: "oceanusdt" },
-      { type: "cryptowatch", exchange: "bittrex", pair: "oceanusdt" },
-      { type: "cryptowatch", exchange: "bitz", pair: "oceanusdt" }
-    ]
+      { type: "cryptowatch", exchange: "kraken", pair: "oceanusd" },
+      { type: "cryptowatch", exchange: "bitz", pair: "oceanusdt" },
+    ],
   },
   OCEANUSD: {
     type: "medianizer",
@@ -762,8 +762,8 @@ const defaultConfigs = {
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "binance", pair: "oceanusdt" },
       { type: "cryptowatch", exchange: "bittrex", pair: "oceanusdt" },
-      { type: "cryptowatch", exchange: "bitz", pair: "oceanusdt" }
-    ]
+      { type: "cryptowatch", exchange: "bitz", pair: "oceanusdt" },
+    ],
   },
   USDBTC_18DEC: {
     type: "medianizer",
@@ -772,8 +772,8 @@ const defaultConfigs = {
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "btcusd" },
       { type: "cryptowatch", exchange: "binance", pair: "btcusdt" },
-      { type: "cryptowatch", exchange: "bitstamp", pair: "btcusd" }
-    ]
+      { type: "cryptowatch", exchange: "bitstamp", pair: "btcusd" },
+    ],
   },
   "STABLESPREAD/USDC_18DEC": {
     type: "basketspread",
@@ -788,9 +788,9 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38",
-            twapLength: 2
-          }
-        ]
+            twapLength: 2,
+          },
+        ],
       },
       {
         type: "medianizer",
@@ -800,20 +800,20 @@ const defaultConfigs = {
           {
             type: "uniswap",
             uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd",
-            twapLength: 2
-          }
-        ]
+            twapLength: 2,
+          },
+        ],
       },
       {
         type: "medianizer",
         computeMean: true,
         medianizedFeeds: [
-          { type: "cryptowatch", exchange: "bittrex", pair: "cusdusdt" }
+          { type: "cryptowatch", exchange: "bittrex", pair: "cusdusdt" },
           // NOTE: The OKCoin exchange is not available on Cryptowatch for this pair,
           // presumably because it has such low volume.
           // { type: "cryptowatch", exchange: "okcoin" }
-        ]
-      }
+        ],
+      },
     ],
     baselinePriceFeeds: [
       {
@@ -824,20 +824,20 @@ const defaultConfigs = {
             computeMean: true,
             medianizedFeeds: [
               { type: "cryptowatch", exchange: "bitfinex", pair: "usdtusd" },
-              { type: "cryptowatch", exchange: "kraken", pair: "usdtusd" }
-            ]
+              { type: "cryptowatch", exchange: "kraken", pair: "usdtusd" },
+            ],
           },
           {
             type: "medianizer",
             computeMean: true,
             medianizedFeeds: [
               { type: "cryptowatch", exchange: "kraken", pair: "usdcusd" },
-              { type: "cryptowatch", exchange: "bitstamp", pair: "usdcusd" }
-            ]
-          }
-        ]
-      }
-    ]
+              { type: "cryptowatch", exchange: "bitstamp", pair: "usdcusd" },
+            ],
+          },
+        ],
+      },
+    ],
   },
   BCHNBTC_18DEC: {
     type: "medianizer",
@@ -845,8 +845,8 @@ const defaultConfigs = {
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "BCHBTC" },
       { type: "cryptowatch", exchange: "binance", pair: "BCHBTC" },
-      { type: "cryptowatch", exchange: "huobi", pair: "BCHBTC" }
-    ]
+      { type: "cryptowatch", exchange: "huobi", pair: "BCHBTC" },
+    ],
   },
   ETHBTC_FR: {
     type: "expression",
@@ -859,8 +859,8 @@ const defaultConfigs = {
     twapLength: 3600,
     customFeeds: {
       ETHBTC_PERP: { type: "uniswap", invertPrice: true, uniswapAddress: "0x899a45ee5a03d8cc57447157a17ce4ea4745b199" },
-      PERP_FRM: { type: "frm", perpetualAddress: "0x32f0405834c4b50be53199628c45603cea3a28aa" }
-    }
+      PERP_FRM: { type: "frm", perpetualAddress: "0x32f0405834c4b50be53199628c45603cea3a28aa" },
+    },
   },
   BALUSD: {
     type: "expression",
@@ -878,7 +878,7 @@ const defaultConfigs = {
         balancerAddress: "0x59a19d8c652fa0284f44113d0ff9aba70bd46fb4",
         balancerTokenIn: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
         balancerTokenOut: "0xba100000625a3754423978a60c9317c58a424e3D",
-        poolDecimals: 18
+        poolDecimals: 18,
       },
       SPOT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "balusdt" },
       SPOT_COINBASE_PRO: { type: "cryptowatch", exchange: "coinbase-pro", pair: "balusd" },
@@ -888,10 +888,10 @@ const defaultConfigs = {
         medianizedFeeds: [
           { type: "cryptowatch", exchange: "coinbase-pro", pair: "ethusd" },
           { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
-          { type: "cryptowatch", exchange: "kraken", pair: "ethusd" }
-        ]
-      }
-    }
+          { type: "cryptowatch", exchange: "kraken", pair: "ethusd" },
+        ],
+      },
+    },
   },
   XSUSHIUSD: {
     type: "expression",
@@ -908,7 +908,7 @@ const defaultConfigs = {
       SPOT_SUSHISWAP_ETH: {
         type: "uniswap",
         uniswapAddress: "0x795065dCc9f64b5614C407a6EFDC400DA6221FB0",
-        twapLength: 2
+        twapLength: 2,
       },
       ETHUSD: {
         type: "medianizer",
@@ -916,27 +916,27 @@ const defaultConfigs = {
         medianizedFeeds: [
           { type: "cryptowatch", exchange: "coinbase-pro", pair: "ethusd" },
           { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
-          { type: "cryptowatch", exchange: "kraken", pair: "ethusd" }
-        ]
+          { type: "cryptowatch", exchange: "kraken", pair: "ethusd" },
+        ],
       },
       SUSHI_PER_SHARE: {
         type: "lp",
         poolAddress: "0x8798249c2E607446EfB7Ad49eC89dD1865Ff4272",
-        tokenAddress: "0x6b3595068778dd592e39a122f4f5a5cf09c90fe2"
-      }
-    }
+        tokenAddress: "0x6b3595068778dd592e39a122f4f5a5cf09c90fe2",
+      },
+    },
   },
   uSTONKS_JUN21: {
     type: "uniswap",
     uniswapAddress: "0x360acfeb5c1548bad3583c559a646d803077236d",
     twapLength: 7200,
-    invertPrice: false
+    invertPrice: false,
   },
   PUNKETH_TWAP: {
     type: "uniswap",
     uniswapAddress: "0x6E01DB46b183593374A49c0025e42c4bB7Ee3ffA",
     twapLength: 7200,
-    invertPrice: false
+    invertPrice: false,
   },
   USDXIO: {
     type: "expression",
@@ -948,15 +948,15 @@ const defaultConfigs = {
       ETHXIO: {
         type: "uniswap",
         uniswapAddress: "0xe0cc5afc0ff2c76183416fb8d1a29f6799fb2cdf",
-        invertPrice: true
-      }
-    }
-  }
+        invertPrice: true,
+      },
+    },
+  },
 };
 
 // Pull in the number of decimals for each identifier from the common getPrecisionForIdentifier. This is used within the
 // Voterdapp and ensures that price feeds are consistently scaled through the UMA ecosystem.
-Object.keys(defaultConfigs).forEach(identifierName => {
+Object.keys(defaultConfigs).forEach((identifierName) => {
   defaultConfigs[identifierName].priceFeedDecimals = getPrecisionForIdentifier(identifierName);
 });
 

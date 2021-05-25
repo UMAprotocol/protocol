@@ -2,7 +2,7 @@ const {
   decryptMessage,
   encryptMessage,
   deriveKeyPairFromSignatureTruffle,
-  deriveKeyPairFromSignatureMetamask
+  deriveKeyPairFromSignatureMetamask,
 } = require("./Crypto");
 const { getKeyGenMessage, computeVoteHash } = require("./EncryptionHelper");
 const { BATCH_MAX_COMMITS, BATCH_MAX_RETRIEVALS, BATCH_MAX_REVEALS } = require("./Constants");
@@ -26,13 +26,13 @@ const getVotingRoles = (account, voting, designatedVoting) => {
     return {
       votingContract: designatedVoting,
       votingAccount: designatedVoting.address,
-      signingAddress: account
+      signingAddress: account,
     };
   } else {
     return {
       votingContract: voting,
       votingAccount: account,
-      signingAddress: account
+      signingAddress: account,
     };
   }
 };
@@ -57,7 +57,7 @@ const constructCommitment = async (request, roundId, web3, price, signingAccount
     account: votingAccount,
     time: request.time,
     roundId,
-    identifier: request.identifier
+    identifier: request.identifier,
   });
 
   const vote = { price: priceWei, salt };
@@ -75,7 +75,7 @@ const constructCommitment = async (request, roundId, web3, price, signingAccount
     hash,
     encryptedVote,
     price: priceWei,
-    salt
+    salt,
   };
 };
 
@@ -104,7 +104,7 @@ const constructReveal = async (request, roundId, web3, signingAccount, votingCon
     identifier: request.identifier,
     time: request.time,
     price: vote.price.toString(),
-    salt: vote.salt
+    salt: vote.salt,
   };
 };
 
@@ -119,7 +119,7 @@ const batchCommitVotes = async (newCommitments, votingContract, account) => {
 
     // Always call `batchCommit`, even if there's only one commitment. Difference in gas cost is negligible.
     const { receipt } = await votingContract.batchCommit(
-      maxBatchSize.map(commitment => {
+      maxBatchSize.map((commitment) => {
         // This filters out the parts of the commitment that we don't need to send to solidity.
         // Note: this isn't strictly necessary since web3 will only encode variables that share names with properties in
         // the solidity struct.
@@ -131,7 +131,7 @@ const batchCommitVotes = async (newCommitments, votingContract, account) => {
     );
 
     // Add the batch transaction hash to each commitment.
-    maxBatchSize.forEach(commitment => {
+    maxBatchSize.forEach((commitment) => {
       commitment.txnHash = receipt.transactionHash;
     });
 
@@ -142,7 +142,7 @@ const batchCommitVotes = async (newCommitments, votingContract, account) => {
 
   return {
     successes,
-    batches
+    batches,
   };
 };
 
@@ -159,7 +159,7 @@ const batchRevealVotes = async (newReveals, votingContract, account) => {
     const { receipt } = await votingContract.batchReveal(maxBatchSize, { from: account });
 
     // Add the batch transaction hash to each reveal.
-    maxBatchSize.forEach(reveal => {
+    maxBatchSize.forEach((reveal) => {
       reveal.txnHash = receipt.transactionHash;
     });
 
@@ -170,7 +170,7 @@ const batchRevealVotes = async (newReveals, votingContract, account) => {
 
   return {
     successes,
-    batches
+    batches,
   };
 };
 
@@ -186,17 +186,17 @@ const batchRetrieveRewards = async (requests, roundId, votingContract, votingAcc
     for (let j = 0; j < maxBatchSize.length; j++) {
       pendingRequests.push({
         identifier: maxBatchSize[j].identifier,
-        time: maxBatchSize[j].time
+        time: maxBatchSize[j].time,
       });
     }
 
     // Always call `retrieveRewards`, even if there's only one reward. Difference in gas cost is negligible.
     const { receipt } = await votingContract.retrieveRewards(votingAccount, roundId, pendingRequests, {
-      from: signingAccount
+      from: signingAccount,
     });
 
     // Add the batch transaction hash to each reveal.
-    maxBatchSize.forEach(retrieve => {
+    maxBatchSize.forEach((retrieve) => {
       retrieve.txnHash = receipt.transactionHash;
     });
 
@@ -207,7 +207,7 @@ const batchRetrieveRewards = async (requests, roundId, votingContract, votingAcc
 
   return {
     successes,
-    batches
+    batches,
   };
 };
 
@@ -216,7 +216,7 @@ const batchRetrieveRewards = async (requests, roundId, votingContract, votingAcc
 const getLatestEvent = async (eventName, request, roundId, account, votingContract) => {
   const events = await votingContract.getPastEvents(eventName, {
     fromBlock: 0,
-    filter: { identifier: request.identifier, roundId: roundId.toString(), voter: account.toString() }
+    filter: { identifier: request.identifier, roundId: roundId.toString(), voter: account.toString() },
   });
   // Sort descending. Primary sort on block number. Secondary sort on transactionIndex. Tertiary sort on logIndex.
   events.sort((a, b) => {
@@ -245,5 +245,5 @@ module.exports = {
   constructReveal,
   batchCommitVotes,
   batchRevealVotes,
-  batchRetrieveRewards
+  batchRetrieveRewards,
 };

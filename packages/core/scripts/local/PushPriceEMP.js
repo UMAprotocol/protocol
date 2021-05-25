@@ -19,7 +19,7 @@ const argv = require("minimist")(process.argv.slice(), { string: ["id", "price"]
 let mockOracle;
 let finder;
 
-const pushPriceEMP = async callback => {
+const pushPriceEMP = async (callback) => {
   try {
     // Get MockOracle in Finder.
     finder = await Finder.deployed();
@@ -36,8 +36,9 @@ const pushPriceEMP = async callback => {
     }
     if (priceRequestIndex >= pendingRequests.length) {
       console.log(
-        `Price request "id" is greater than count of pending requests, defaulting to highest index ${pendingRequests.length -
-          1}`
+        `Price request "id" is greater than count of pending requests, defaulting to highest index ${
+          pendingRequests.length - 1
+        }`
       );
       priceRequestIndex = pendingRequests.length - 1;
     }

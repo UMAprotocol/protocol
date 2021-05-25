@@ -22,7 +22,7 @@ class DSProxyManager {
     dsProxyFactoryAddress,
     dsProxyFactoryAbi,
     dsProxyAbi,
-    availableAccounts = 1
+    availableAccounts = 1,
   }) {
     assert(web3.utils.isAddress(account), "Account needs to be a valid address");
     assert(web3.utils.isAddress(dsProxyFactoryAddress), "dsProxyFactoryAddress needs to be a valid contract address");
@@ -60,7 +60,7 @@ class DSProxyManager {
       this.logger.debug({
         at: "DSProxyManager",
         message: "Initalizing to a provided DSProxy Address",
-        dsProxyAddress
+        dsProxyAddress,
       });
       this.dsProxyAddress = dsProxyAddress;
       this.dsProxy = new this.web3.eth.Contract(this.dsProxyAbi, this.dsProxyAddress);
@@ -69,7 +69,7 @@ class DSProxyManager {
     this.logger.debug({
       at: "DSProxyManager",
       message: "Initalizing...Looking for existing DSProxies or deploying a new one for the provided EOA",
-      dsProxyFactoryAddress: this.dsProxyFactoryAddress
+      dsProxyFactoryAddress: this.dsProxyFactoryAddress,
     });
 
     if (this.dsProxy && this.dsProxyAddress) return this.dsProxyAddress;
@@ -85,7 +85,7 @@ class DSProxyManager {
         message: "DSProxy has been loaded in for the EOA",
         dsProxyAddress: this.dsProxyAddress,
         tx: events[events.length - 1].transactionHash,
-        account: this.account
+        account: this.account,
       });
     }
 
@@ -94,14 +94,14 @@ class DSProxyManager {
       this.logger.debug({
         at: "DSProxyManager",
         message: "No DSProxy found for EOA. Deploying new DSProxy",
-        account: this.account
+        account: this.account,
       });
       await this.gasEstimator.update();
       const { receipt, transactionConfig } = await runTransaction({
         web3: this.web3,
         transaction: this.dsProxyFactory.methods.build(),
         transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
-        availableAccounts: this.availableAccounts // give the run transaction access to additional EOAs, if they are set.
+        availableAccounts: this.availableAccounts, // give the run transaction access to additional EOAs, if they are set.
       });
       this.dsProxyAddress = receipt.events.Created.returnValues.proxy;
       this.dsProxy = new this.web3.eth.Contract(this.dsProxyAbi, this.dsProxyAddress);
@@ -111,7 +111,7 @@ class DSProxyManager {
         dsProxyAddress: this.dsProxyAddress,
         tx: receipt.transactionHash,
         account: this.account,
-        transactionConfig
+        transactionConfig,
       });
     }
     return this.dsProxyAddress;
@@ -125,14 +125,14 @@ class DSProxyManager {
       at: "DSProxyManager",
       message: "Executing function on deployed library",
       libraryAddress,
-      callData
+      callData,
     });
     await this.gasEstimator.update();
     const { receipt, returnValue, transactionConfig } = await runTransaction({
       web3: this.web3,
       transaction: this.dsProxy.methods["execute(address,bytes)"](libraryAddress, callData),
       transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
-      availableAccounts: this.availableAccounts
+      availableAccounts: this.availableAccounts,
     });
 
     this.logger.info({
@@ -141,8 +141,8 @@ class DSProxyManager {
       libraryAddress,
       callData,
       tx: receipt.transactionHash,
+      returnValue,
       transactionConfig,
-      returnValue
     });
     return receipt;
   }
@@ -155,7 +155,7 @@ class DSProxyManager {
       at: "DSProxyManager",
       message: "Executing function on library that will be deployed in the same transaction",
       callData,
-      callCode
+      callCode,
     });
 
     await this.gasEstimator.update();
@@ -163,7 +163,7 @@ class DSProxyManager {
       web3: this.web3,
       transaction: this.dsProxy.methods["execute(bytes,bytes)"](callCode, callData),
       transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
-      availableAccounts: this.availableAccounts
+      availableAccounts: this.availableAccounts,
     });
 
     this.logger.info({
@@ -171,13 +171,13 @@ class DSProxyManager {
       message: "Executed function on a freshly deployed library, created in the same tx 🤗",
       callData,
       tx: receipt.transactionHash,
+      returnValue,
       transactionConfig,
-      returnValue
     });
     return receipt;
   }
 }
 
 module.exports = {
-  DSProxyManager
+  DSProxyManager,
 };

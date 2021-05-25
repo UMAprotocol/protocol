@@ -3,23 +3,23 @@ const { didContractThrow } = require("@uma/common");
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const MockAdministratee = artifacts.require("MockAdministratee");
 
-contract("FinancialContractsAdmin", function(accounts) {
+contract("FinancialContractsAdmin", function (accounts) {
   let financialContractsAdmin;
   let mockAdministratee;
 
   const owner = accounts[0];
   const rando = accounts[1];
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     financialContractsAdmin = await FinancialContractsAdmin.deployed();
     mockAdministratee = await MockAdministratee.new();
   });
 
-  it("pfc", async function() {
+  it("pfc", async function () {
     // AdministrateeInterfaces must implement pfc().
     assert.equal((await mockAdministratee.pfc()).toString(), "0");
   });
-  it("Remargin", async function() {
+  it("Remargin", async function () {
     assert.equal(await mockAdministratee.timesRemargined(), "0");
 
     // Can't call remargin without being the owner.
@@ -34,7 +34,7 @@ contract("FinancialContractsAdmin", function(accounts) {
     await financialContractsAdmin.transferOwnership(owner, { from: rando });
   });
 
-  it("Emergency Shutdown", async function() {
+  it("Emergency Shutdown", async function () {
     assert.equal(await mockAdministratee.timesEmergencyShutdown(), "0");
 
     // Can't call emergencyShutdown without being the owner.

@@ -13,7 +13,7 @@ const { interfaceName } = require("@uma/common");
 const Finder = artifacts.require("Finder");
 const Voting = artifacts.require("Voting");
 
-const advanceTime = async callback => {
+const advanceTime = async (callback) => {
   try {
     const leapForward = argv.time ? argv.time : 7200;
     console.log(`Advancing contract time forward by ${leapForward} seconds`);

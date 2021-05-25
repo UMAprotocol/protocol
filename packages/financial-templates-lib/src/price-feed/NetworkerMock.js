@@ -19,5 +19,5 @@ class NetworkerMock {
 }
 
 module.exports = {
-  NetworkerMock
+  NetworkerMock,
 };

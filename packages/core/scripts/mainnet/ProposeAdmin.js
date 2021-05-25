@@ -15,7 +15,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Governor = artifacts.require("Governor");
 const assert = require("assert");
 const argv = require("minimist")(process.argv.slice(), {
-  boolean: ["prod"]
+  boolean: ["prod"],
 });
 
 // Customizable settings:
@@ -68,8 +68,8 @@ async function propose(callback) {
       {
         to: identifierWhitelist.address,
         value: 0,
-        data: proposedTx
-      }
+        data: proposedTx,
+      },
     ]);
     const estimatedGas = await proposalTxn.estimateGas({ from: proposerAddress });
     console.log(`Successful simulated execution! Estimated gas: ${estimatedGas}`);
@@ -81,13 +81,13 @@ async function propose(callback) {
           {
             to: identifierWhitelist.address,
             value: 0,
-            data: proposedTx
-          }
+            data: proposedTx,
+          },
         ])
-        .on("transactionHash", function(hash) {
+        .on("transactionHash", function (hash) {
           console.log(`- Pending transaction hash: ${hash}`);
         })
-        .on("receipt", function(receipt) {
+        .on("receipt", function (receipt) {
           console.log("- Successfully sent:", receipt);
         })
         .on("error", console.error);

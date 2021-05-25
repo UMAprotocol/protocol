@@ -20,28 +20,28 @@ describe("EthVixPriceFeed.js", () => {
       timestamp: "2021-03-24T14:30:00.000Z",
       spotPrice: "1737.04",
       vix: "88.47",
-      iVix: "113.04"
+      iVix: "113.04",
     },
     {
       currency: "ETH",
       timestamp: "2021-03-24T14:45:00.000Z",
       spotPrice: "1738.36",
       vix: "88.78",
-      iVix: "112.62"
+      iVix: "112.62",
     },
     {
       currency: "ETH",
       timestamp: "2021-03-24T15:00:00.000Z",
       spotPrice: "1740.26",
       vix: "70.2",
-      iVix: "142.44"
-    }
+      iVix: "142.44",
+    },
   ];
 
   beforeEach(() => {
     const logger = winston.createLogger({
       level: "info",
-      transports: [new winston.transports.Console()]
+      transports: [new winston.transports.Console()],
     });
     networker = new NetworkerMock();
     priceFeed = new ETHVIXPriceFeed(logger, web3, false, networker, getTime, minTimeBetweenUpdates, 18);
@@ -87,27 +87,17 @@ describe("EthVixPriceFeed.js", () => {
       it("can return the most recent historical ethVIX price within 15m of a given time", async () => {
         await priceFeed.update();
         const historicalPrice = await priceFeed.getHistoricalPrice(
-          moment
-            .utc(historicalResponse[1].timestamp)
-            .add(1, "minute")
-            .valueOf()
+          moment.utc(historicalResponse[1].timestamp).add(1, "minute").valueOf()
         );
         assert.equal(historicalPrice.toString(), parseFixed(historicalResponse[1].vix, 18).toString());
 
         const justBeforeNextPrice = await priceFeed.getHistoricalPrice(
-          moment
-            .utc(historicalResponse[1].timestamp)
-            .add(15, "minutes")
-            .subtract(1, "ms")
-            .valueOf()
+          moment.utc(historicalResponse[1].timestamp).add(15, "minutes").subtract(1, "ms").valueOf()
         );
         assert.equal(justBeforeNextPrice.toString(), parseFixed(historicalResponse[1].vix, 18).toString());
 
         const nextPrice = await priceFeed.getHistoricalPrice(
-          moment
-            .utc(historicalResponse[1].timestamp)
-            .add(15, "minutes")
-            .valueOf()
+          moment.utc(historicalResponse[1].timestamp).add(15, "minutes").valueOf()
         );
         assert.equal(nextPrice.toString(), parseFixed(historicalResponse[2].vix, 18).toString());
       });

@@ -5,7 +5,7 @@
  * @param {Object} result Return value from calling a contract's view-only method.
  * @return null if the call reverted or the view method's result.
  */
-const revertWrapper = result => {
+const revertWrapper = (result) => {
   if (!result) {
     return null;
   }
@@ -13,7 +13,7 @@ const revertWrapper = result => {
   if (result.toString() === revertValue) {
     return null;
   }
-  const isObject = obj => {
+  const isObject = (obj) => {
     return obj === Object(obj);
   };
   if (isObject(result)) {
