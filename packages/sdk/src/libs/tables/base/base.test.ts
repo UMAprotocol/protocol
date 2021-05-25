@@ -4,10 +4,11 @@ import assert from "assert";
 
 type D = {
   id: string;
-  [any: string]: string;
+  [key: string]: string;
 };
 describe("basic table", function () {
-  let table: any, store: any;
+  let table: any;
+  let store: any;
   test("init", function () {
     store = Store<string, D>();
     table = Table<string, D>({ makeId: (x: D) => x.id, type: "test" }, store);

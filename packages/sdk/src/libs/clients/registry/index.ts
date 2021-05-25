@@ -1,1 +1,1 @@
-export * as Registry from "./registry";
+export * as Registry from "./client";

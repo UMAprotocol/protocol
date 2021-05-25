@@ -2,7 +2,7 @@ import type { Store } from "../index.d";
 import type { Datastore, Key } from "@google-cloud/datastore";
 
 export default function <D>(kind: string, store: Datastore): Store<string, D> {
-  function makeKey(id: string) {
+  function makeKey(id: string): Key {
     return store.key([kind, id]);
   }
   async function get(id: string) {
