@@ -38,7 +38,8 @@
   "types": "dist/src/index.d.ts",
   "main": "dist/src/index.js",
   "scripts": {
-    "build": "tsc -b"
+    "build": "tsc -b",
+    "test": "yarn mocha test ./test/* -r ts-node/register --exit"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
