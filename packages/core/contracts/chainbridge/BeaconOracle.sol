@@ -14,7 +14,7 @@ import "../oracle/implementation/Constants.sol";
  * price requests from the DVM on Mainnet.
  */
 abstract contract BeaconOracle {
-    enum RequestState { NeverRequested, Requested, Resolved }
+    enum RequestState { NeverRequested, PendingRequest, Requested, PendingResolve, Resolved }
 
     struct Price {
         RequestState state;
@@ -77,10 +77,25 @@ abstract contract BeaconOracle {
         bytes32 priceRequestId = _encodePriceRequest(chainID, identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
         if (lookup.state == RequestState.NeverRequested) {
-            // New query, change state to Requested:
-            lookup.state = RequestState.Requested;
+            lookup.state = RequestState.PendingRequest;
             emit PriceRequestAdded(msg.sender, chainID, identifier, time, ancillaryData);
         }
+    }
+
+    /**
+     * @notice Derived contract needs call this method in order to advance state from PendingRequest --> Requested
+     * before _publishPrice can be called.
+     */
+    function _finalizeRequest(
+        uint8 chainID,
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) internal {
+        bytes32 priceRequestId = _encodePriceRequest(chainID, identifier, time, ancillaryData);
+        Price storage lookup = prices[priceRequestId];
+        require(lookup.state == RequestState.PendingRequest, "Price has not been requested");
+        lookup.state = RequestState.Requested;
     }
 
     /**
@@ -98,8 +113,20 @@ abstract contract BeaconOracle {
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Requested, "Price request is not currently pending");
         lookup.price = price;
-        lookup.state = RequestState.Resolved;
+        lookup.state = RequestState.PendingResolve;
         emit PushedPrice(msg.sender, chainID, identifier, time, ancillaryData, lookup.price);
+    }
+
+    function _finalizePublish(
+        uint8 chainID,
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) internal {
+        bytes32 priceRequestId = _encodePriceRequest(chainID, identifier, time, ancillaryData);
+        Price storage lookup = prices[priceRequestId];
+        require(lookup.state == RequestState.PendingResolve, "Price has not been published");
+        lookup.state = RequestState.Resolved;
     }
 
     /**

@@ -58,7 +58,7 @@ function getNodeUrl(networkName, useHttps = false) {
 // shell environment.
 function addPublicNetwork(networks, name, networkId, customTruffleConfig) {
   const options = {
-    networkCheckTimeout: 10000,
+    networkCheckTimeout: 15000,
     network_id: networkId,
     gas: customTruffleConfig?.gas || gas,
     gasPrice: customTruffleConfig?.gasPrice || gasPx,

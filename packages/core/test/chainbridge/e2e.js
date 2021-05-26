@@ -9,7 +9,7 @@ const TruffleAssert = require("truffle-assertions");
 const Ethers = require("ethers");
 
 const Helpers = require("./helpers");
-const { interfaceName, RegistryRolesEnum, ZERO_ADDRESS } = require("@uma/common");
+const { interfaceName, RegistryRolesEnum, ZERO_ADDRESS, didContractThrow } = require("@uma/common");
 const { assert } = require("chai");
 
 // Chainbridge Contracts:
@@ -217,6 +217,10 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
     // Now, we should be able to take the metadata stored in DepositRecord and execute the proposal on the mainnet
     // Bridge.
     const depositRecord = await genericHandlerSidechain.getDepositRecord(expectedDepositNonce, chainId);
+    assert(
+      await didContractThrow(bridgeSidechain.deposit(chainId, votingResourceId, depositRecord._metaData)),
+      "Should not be able to call Bridge.deposit directly"
+    );
     const proposalData = Helpers.createGenericDepositData(depositRecord._metaData);
     const proposalDataHash = Ethers.utils.keccak256(genericHandlerMainnet.address + proposalData.substr(2));
     TruffleAssert.passes(
@@ -309,6 +313,10 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
     // Now, we should be able to take the metadata stored in DepositRecord and execute the proposal on the sidechain
     // Bridge.
     const depositRecord = await genericHandlerMainnet.getDepositRecord(expectedDepositNonce, sidechainId);
+    assert(
+      await didContractThrow(bridgeMainnet.deposit(sidechainId, votingResourceId, depositRecord._metaData)),
+      "Should not be able to call Bridge.deposit directly"
+    );
     const proposalData = Helpers.createGenericDepositData(depositRecord._metaData);
     const proposalDataHash = Ethers.utils.keccak256(genericHandlerSidechain.address + proposalData.substr(2));
     TruffleAssert.passes(

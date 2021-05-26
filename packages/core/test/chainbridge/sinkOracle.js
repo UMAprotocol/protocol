@@ -98,6 +98,11 @@ contract("SinkOracle", async (accounts) => {
         event.resourceID.toLowerCase() === sinkOracleResourceId.toLowerCase() &&
         event.depositNonce.toString() === expectedDepositNonce.toString()
     );
+    // Calling requestPrice again should succeed but not call Bridge.deposit.
+    const dupeTxn = await sinkOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: owner });
+    TruffleAssert.eventNotEmitted(dupeTxn, "PriceRequestAdded");
+    const internalDupeTxn = await TruffleAssert.createTransactionResult(bridge, dupeTxn.tx);
+    TruffleAssert.eventNotEmitted(internalDupeTxn, "Deposit");
   });
   it("validateDeposit", async function () {
     assert(
@@ -106,9 +111,14 @@ contract("SinkOracle", async (accounts) => {
     );
     await sinkOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: owner });
     await sinkOracle.validateDeposit(chainID, testIdentifier, testRequestTime, testAncillary);
+    assert(
+      await didContractThrow(sinkOracle.validateDeposit(chainID, testIdentifier, testRequestTime, testAncillary)),
+      "Should not be able to call validateDeposit again."
+    );
   });
   it("executePublishPrice", async function () {
     await sinkOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: owner });
+    await sinkOracle.validateDeposit(chainID, testIdentifier, testRequestTime, testAncillary);
     assert(
       await didContractThrow(
         sinkOracle.executePublishPrice(chainID, testIdentifier, testRequestTime, testAncillary, { from: rando })
@@ -135,6 +145,14 @@ contract("SinkOracle", async (accounts) => {
       (await sinkOracle.getPrice(testIdentifier, testRequestTime, testAncillary, { from: owner })).toString(),
       testPrice,
       "should not revert after publish"
+    );
+    assert(
+      await didContractThrow(
+        sinkOracle.executePublishPrice(chainID, testIdentifier, testRequestTime, testAncillary, testPrice, {
+          from: rando,
+        })
+      ),
+      "Should not be able to call executePublishPrice again."
     );
   });
   it("formatMetadata", async function () {

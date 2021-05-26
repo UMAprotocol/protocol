@@ -8,9 +8,22 @@ class DSProxyManager {
    * @param {Object} web3 Web3 object to submit transactions and process on-chain info.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {String} account Ethereum account from which to send txns.
-   * @param {String} dsProxyFactoryAddress address of the DSProxy factory to create new DSProxies and the like.
+   * @param {String} dsProxyFactoryAddress address of the DSProxy factory to create new DSProxies.
+   * @param {object} dsProxyFactoryAbi ABI of DSProxy factory to enable methods to be called on the contract.
+   * @param {object} dsProxyAbi ABI of DSProxy to enable `execute` to be called.
+   * @param {number} availableAccounts the number of EOAs that should be accessible when calling the DSProxy. Each EOA
+   * needs to be permissioned to call the DSProxy with `DSAuthority`.
    */
-  constructor({ logger, web3, gasEstimator, account, dsProxyFactoryAddress, dsProxyFactoryAbi, dsProxyAbi }) {
+  constructor({
+    logger,
+    web3,
+    gasEstimator,
+    account,
+    dsProxyFactoryAddress,
+    dsProxyFactoryAbi,
+    dsProxyAbi,
+    availableAccounts = 1,
+  }) {
     assert(web3.utils.isAddress(account), "Account needs to be a valid address");
     assert(web3.utils.isAddress(dsProxyFactoryAddress), "dsProxyFactoryAddress needs to be a valid contract address");
     this.logger = logger;
@@ -20,6 +33,7 @@ class DSProxyManager {
     this.dsProxyFactoryAddress = dsProxyFactoryAddress;
     this.dsProxyFactory = new web3.eth.Contract(dsProxyFactoryAbi, dsProxyFactoryAddress);
     this.dsProxyAbi = dsProxyAbi;
+    this.availableAccounts = availableAccounts;
     this.dsProxy = null;
     this.dsProxyAddress = null;
 
@@ -83,13 +97,11 @@ class DSProxyManager {
         account: this.account,
       });
       await this.gasEstimator.update();
-      const { receipt } = await runTransaction({
+      const { receipt, transactionConfig } = await runTransaction({
+        web3: this.web3,
         transaction: this.dsProxyFactory.methods.build(),
-        config: {
-          gasPrice: this.gasEstimator.getCurrentFastPrice(),
-          from: this.account,
-          nonce: await this.web3.eth.getTransactionCount(this.account),
-        },
+        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
+        availableAccounts: this.availableAccounts, // give the run transaction access to additional EOAs, if they are set.
       });
       this.dsProxyAddress = receipt.events.Created.returnValues.proxy;
       this.dsProxy = new this.web3.eth.Contract(this.dsProxyAbi, this.dsProxyAddress);
@@ -99,6 +111,7 @@ class DSProxyManager {
         dsProxyAddress: this.dsProxyAddress,
         tx: receipt.transactionHash,
         account: this.account,
+        transactionConfig,
       });
     }
     return this.dsProxyAddress;
@@ -115,13 +128,11 @@ class DSProxyManager {
       callData,
     });
     await this.gasEstimator.update();
-    const { receipt } = await runTransaction({
+    const { receipt, returnValue, transactionConfig } = await runTransaction({
+      web3: this.web3,
       transaction: this.dsProxy.methods["execute(address,bytes)"](libraryAddress, callData),
-      config: {
-        gasPrice: this.gasEstimator.getCurrentFastPrice(),
-        from: this.account,
-        nonce: await this.web3.eth.getTransactionCount(this.account),
-      },
+      transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
+      availableAccounts: this.availableAccounts,
     });
 
     this.logger.info({
@@ -130,6 +141,8 @@ class DSProxyManager {
       libraryAddress,
       callData,
       tx: receipt.transactionHash,
+      returnValue: returnValue.toString(),
+      transactionConfig,
     });
     return receipt;
   }
@@ -146,13 +159,11 @@ class DSProxyManager {
     });
 
     await this.gasEstimator.update();
-    const { receipt } = await runTransaction({
+    const { receipt, returnValue, transactionConfig } = await runTransaction({
+      web3: this.web3,
       transaction: this.dsProxy.methods["execute(bytes,bytes)"](callCode, callData),
-      config: {
-        gasPrice: this.gasEstimator.getCurrentFastPrice(),
-        from: this.account,
-        nonce: await this.web3.eth.getTransactionCount(this.account),
-      },
+      transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
+      availableAccounts: this.availableAccounts,
     });
 
     this.logger.info({
@@ -160,6 +171,8 @@ class DSProxyManager {
       message: "Executed function on a freshly deployed library, created in the same tx 🤗",
       callData,
       tx: receipt.transactionHash,
+      returnValue: returnValue.toString(),
+      transactionConfig,
     });
     return receipt;
   }

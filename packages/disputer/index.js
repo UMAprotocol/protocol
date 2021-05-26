@@ -163,6 +163,7 @@ async function run({
           proxyTransactionWrapperConfig?.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
         dsProxyFactoryAbi: getAbi("DSProxyFactory"),
         dsProxyAbi: getAbi("DSProxy"),
+        availableAccounts: proxyTransactionWrapperConfig.availableAccounts || 1,
       });
 
       // Load in an existing DSProxy for the account EOA if one already exists or create a new one for the user.
@@ -301,8 +302,10 @@ async function Poll(callback) {
       //  "dsProxyFactoryAddress": "0x123..." -> Will default to an UMA deployed version if non provided.
       // "disputerReserveCurrencyAddress": "0x123..." -> currency DSProxy will trade from when disputing.
       // "uniswapRouterAddress": "0x123..." -> uniswap router address to enable reserve trading. Defaults to mainnet router.
-      // "maxReserverTokenSpent": "10000000000"} -> max amount to spend in reserve currency. Scaled by reserve currency
+      // "maxReserverTokenSpent": "10000000000" -> max amount to spend in reserve currency. Scaled by reserve currency
       //      decimals. defaults to MAX_UINT (no limit).
+      // "availableAccounts": "1"} -> the number of EOAs the bot should use when preforming liquidations. This only works
+      // if you have configured your DSProxy with a DSGuard with permissions on your other EOAs unlocked from your account.
       proxyTransactionWrapperConfig: process.env.DSPROXY_CONFIG ? JSON.parse(process.env.DSPROXY_CONFIG) : {},
     };
 
