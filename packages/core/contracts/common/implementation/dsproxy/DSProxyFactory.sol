@@ -1,4 +1,4 @@
-// This file was originally take from from Maker: DS Proxy Factory and modified. The original source code can be found
+// This file was originally take from the Maker DS Proxy Factory and modified. The original source code can be found
 // here: https://etherscan.io/address/0xa26e15c895efc0616177b7c1e7270a4c7d51c997#code
 // Changes are limited to updating the Solidity version and some stylistic modifications.
 
@@ -24,6 +24,12 @@
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 pragma solidity ^0.8.0;
+
+// DSProxy
+// Allows code execution using a persistant identity This can be very
+// useful to execute a sequence of atomic actions. Since the owner of
+// the proxy can be changed, this allows for dynamic ownership models
+// i.e. a multisig
 
 abstract contract DSAuthority {
     function canCall(
@@ -99,11 +105,6 @@ contract DSNote {
     }
 }
 
-// DSProxy
-// Allows code execution using a persistant identity This can be very
-// useful to execute a sequence of atomic actions. Since the owner of
-// the proxy can be changed, this allows for dynamic ownership models
-// i.e. a multisig
 contract DSProxy is DSAuth, DSNote {
     DSProxyCache public cache; // global cache for contracts
 
