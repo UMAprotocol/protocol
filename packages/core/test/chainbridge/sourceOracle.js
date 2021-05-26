@@ -31,7 +31,6 @@ contract("SourceOracle", async (accounts) => {
   const testAncillary = utf8ToHex("TEST-ANCILLARY");
   const testRequestTime = 123;
   const testPrice = "6";
-  const invalidTestPrice = "7";
   const expectedDepositNonce = 1;
 
   let sourceOracleResourceId;
@@ -117,6 +116,13 @@ contract("SourceOracle", async (accounts) => {
           event.resourceID.toLowerCase() === sourceOracleResourceId.toLowerCase() &&
           event.depositNonce.toString() === expectedDepositNonce.toString()
       );
+      // Repeat call should fail:
+      assert(
+        await didContractThrow(
+          sourceOracle.publishPrice(destinationChainID, testIdentifier, testRequestTime, testAncillary, { from: owner })
+        ),
+        "can only publish price once"
+      );
     });
     it("validateDeposit", async function () {
       assert(
@@ -132,15 +138,9 @@ contract("SourceOracle", async (accounts) => {
       await sourceOracle.validateDeposit(destinationChainID, testIdentifier, testRequestTime, testAncillary, testPrice);
       assert(
         await didContractThrow(
-          sourceOracle.validateDeposit(
-            destinationChainID,
-            testIdentifier,
-            testRequestTime,
-            testAncillary,
-            invalidTestPrice
-          )
+          sourceOracle.validateDeposit(destinationChainID, testRequestTime, testAncillary, testPrice)
         ),
-        "Reverts if not same price resolved on MockOracle"
+        "Should not be able to call validateDeposit again."
       );
     });
   });
@@ -170,6 +170,13 @@ contract("SourceOracle", async (accounts) => {
         hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
         event.time.toString() === testRequestTime.toString() &&
         event.ancillaryData.toLowerCase() === testAncillary.toLowerCase()
+    );
+    assert(
+      await didContractThrow(
+        sourceOracle.executeRequestPrice(destinationChainID, testRequestTime, testAncillary, testPrice),
+        { from: rando }
+      ),
+      "Should not be able to call executeRequestPrice again."
     );
   });
   it("formatMetadata", async function () {

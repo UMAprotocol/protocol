@@ -50,14 +50,22 @@ contract SinkOracle is BeaconOracle, OracleAncillaryInterface {
         uint256 time,
         bytes memory ancillaryData
     ) public override onlyRegisteredContract() {
-        _requestPrice(currentChainID, identifier, time, ancillaryData);
+        bytes32 priceRequestId = _encodePriceRequest(currentChainID, identifier, time, ancillaryData);
+        Price storage lookup = prices[priceRequestId];
+        if (lookup.state != RequestState.NeverRequested) {
+            // Clients expect that `requestPrice` does not revert if a price is already requested, so return gracefully.
+            return;
+        } else {
+            _requestPrice(currentChainID, identifier, time, ancillaryData);
 
-        // Call Bridge.deposit() to intiate cross-chain price request.
-        _getBridge().deposit(
-            destinationChainID,
-            getResourceId(),
-            formatMetadata(currentChainID, identifier, time, ancillaryData)
-        );
+            // Initiate cross-chain price request, which should lead the `Bridge` to call `validateDeposit` on this
+            // contract.
+            _getBridge().deposit(
+                destinationChainID,
+                getResourceId(),
+                formatMetadata(currentChainID, identifier, time, ancillaryData)
+            );
+        }
     }
 
     /**
@@ -72,10 +80,9 @@ contract SinkOracle is BeaconOracle, OracleAncillaryInterface {
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public view {
-        bytes32 priceRequestId = _encodePriceRequest(sinkChainID, identifier, time, ancillaryData);
-        Price storage lookup = prices[priceRequestId];
-        require(lookup.state == RequestState.Requested, "Price has not been requested");
+    ) public {
+        // Advance state so that directly calling Bridge.deposit will revert and not emit a duplicate `Deposit` event.
+        _finalizeRequest(sinkChainID, identifier, time, ancillaryData);
     }
 
     /***************************************************************
@@ -97,6 +104,7 @@ contract SinkOracle is BeaconOracle, OracleAncillaryInterface {
         int256 price
     ) public onlyGenericHandlerContract() {
         _publishPrice(sinkChainID, identifier, time, ancillaryData, price);
+        _finalizePublish(sinkChainID, identifier, time, ancillaryData);
     }
 
     /**
