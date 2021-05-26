@@ -246,7 +246,7 @@ abstract contract OptimisticOracleInterface {
      * @param identifier price identifier to identify the existing request.
      * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
-     * @return the State.
+     * @return true if price has resolved or settled, false otherwise.
      */
     function hasPrice(
         address requester,
