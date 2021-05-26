@@ -34,7 +34,6 @@ async function run({
   try {
     const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
     const optimisticOracleAddress = getAddress("OptimisticOracle", networkId);
-    const votingAddress = getAddress("Voting", networkId);
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
@@ -48,15 +47,18 @@ async function run({
       optimisticOracleProposerConfig,
     });
 
+    // If bot is not running on mainnet, then assume that the network's "Oracle" in the Finder is a SinkOracle.
+    const isMainnet = Boolean((await web3.eth.getChainId()) === 1);
+
     // Create the OptimisticOracleClient to query on-chain information, GasEstimator to get latest gas prices and an
     // instance of the OO Proposer to respond to price requests and proposals.
     const optimisticOracleClient = new OptimisticOracleClient(
       logger,
       getAbi("OptimisticOracle"),
-      getAbi("Voting"),
+      isMainnet ? getAbi("Voting") : getAbi("SinkOracle"),
       web3,
       optimisticOracleAddress,
-      votingAddress
+      isMainnet ? getAddress("SinkOracle", networkId) : getAddress("SinkOracle", networkId)
     );
     const gasEstimator = new GasEstimator(logger);
 

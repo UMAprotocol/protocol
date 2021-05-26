@@ -85,7 +85,7 @@ class OptimisticOracleContractMonitor {
     latestEvents = latestEvents.filter((event) => event.blockNumber > this.lastRequestPriceBlockNumber);
 
     for (let event of latestEvents) {
-      const convertCollateralDecimals = await this._getCollateralDecimalsConverted(event.requester);
+      const convertCollateralDecimals = await this._getCollateralDecimalsConverted(event.currency);
       const mrkdwn =
         createEtherscanLinkMarkdown(event.requester, this.contractProps.networkId) +
         ` requested a price at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
@@ -187,7 +187,7 @@ class OptimisticOracleContractMonitor {
     latestEvents = latestEvents.filter((event) => event.blockNumber > this.lastSettlementBlockNumber);
 
     for (let event of latestEvents) {
-      const convertCollateralDecimals = await this._getCollateralDecimalsConverted(event.requester);
+      const convertCollateralDecimals = await this._getCollateralDecimalsConverted(event.currency);
       const mrkdwn =
         `Detected a price request settlement for the request made by ${event.requester} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
         `The proposer was ${event.proposer} and the disputer was ${event.disputer}. ` +
@@ -210,12 +210,10 @@ class OptimisticOracleContractMonitor {
     this.lastSettlementBlockNumber = this._getLastSeenBlockNumber(latestEvents);
   }
 
-  // Returns helper method for converting collateral token associated with financial contract to human readable form.
-  async _getCollateralDecimalsConverted(financialContractAddress) {
-    const financialContract = new this.web3.eth.Contract(getAbi("FeePayer"), financialContractAddress);
-    const collateralAddress = await financialContract.methods.collateralCurrency().call();
-    const collateralContract = new this.web3.eth.Contract(getAbi("ExpandedERC20"), collateralAddress);
-    const collateralDecimals = await collateralContract.methods.decimals().call();
+  // Returns helper method for converting collateral token to human readable form.
+  async _getCollateralDecimalsConverted(currencyAddress) {
+    const collateralContract = new this.web3.eth.Contract(getAbi("ExpandedERC20"), currencyAddress);
+    let collateralDecimals = await collateralContract.methods.decimals().call();  
     return ConvertDecimals(collateralDecimals.toString(), 18, this.web3);
   }
 

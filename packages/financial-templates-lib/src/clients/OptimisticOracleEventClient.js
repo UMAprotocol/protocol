@@ -136,6 +136,12 @@ class OptimisticOracleEventClient {
 
     // DisputePrice events.
     for (let event of disputePriceEventsObj) {
+      const requestData = await this._getRequestData(
+        event.returnValues.requester, 
+        event.returnValues.identifier, 
+        event.returnValues.timestamp, 
+        event.returnValues.ancillaryData
+      );     
       this.disputePriceEvents.push({
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
@@ -146,11 +152,18 @@ class OptimisticOracleEventClient {
         timestamp: event.returnValues.timestamp,
         ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
         proposedPrice: event.returnValues.proposedPrice,
+        currency: requestData.currency
       });
     }
 
     // Settlement events.
     for (let event of settlementEventsObj) {
+      const requestData = await this._getRequestData(
+        event.returnValues.requester, 
+        event.returnValues.identifier, 
+        event.returnValues.timestamp, 
+        event.returnValues.ancillaryData
+      );
       this.settlementEvents.push({
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
@@ -162,6 +175,7 @@ class OptimisticOracleEventClient {
         ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
         price: event.returnValues.price,
         payout: event.returnValues.payout,
+        currency: requestData.currency
       });
     }
 
@@ -173,6 +187,15 @@ class OptimisticOracleEventClient {
       message: "Optimistic Oracle event state updated",
       lastUpdateTimestamp: this.lastUpdateTimestamp,
     });
+  }
+
+  async _getRequestData(requester, identifier, timestamp, ancillaryData) {
+    return await this.optimisticOracleContract.methods.getRequest(
+      requester,
+      identifier,
+      timestamp,
+      ancillaryData || "0x"
+    ).call()
   }
 }
 
