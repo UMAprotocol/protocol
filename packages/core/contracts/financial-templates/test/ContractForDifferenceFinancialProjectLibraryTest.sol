@@ -12,7 +12,9 @@ contract ContractForDifferenceFinancialProjectLibraryTest is ContractForDifferen
         valueToReturn = value;
     }
 
-    function computeExpiraryTokensForCollateral(uint256 expiryPrice) public view override returns (uint256) {
+    function computeExpiraryTokensForCollateral(
+        int256 /*expiryPrice*/
+    ) public view override returns (uint256) {
         return valueToReturn;
     }
 }
