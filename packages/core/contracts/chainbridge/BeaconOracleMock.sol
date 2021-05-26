@@ -17,10 +17,7 @@ contract BeaconOracleMock is BeaconOracle {
         bytes memory ancillaryData
     ) public {
         _requestPrice(currentChainID, identifier, time, ancillaryData);
-        bytes32 priceRequestId = _encodePriceRequest(currentChainID, identifier, time, ancillaryData);
-        Price storage lookup = prices[priceRequestId];
-        require(lookup.state == RequestState.PendingRequest, "requestPrice was not called yet");
-        lookup.state = RequestState.Requested;
+        _finalizeRequest(currentChainID, identifier, time, ancillaryData);
     }
 
     function encodePriceRequest(
