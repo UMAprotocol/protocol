@@ -216,7 +216,7 @@ contract ContractForDifference is Testable, Lockable {
                 .mul(FixedPoint.fromUnscaledUint(1).sub(FixedPoint.Unsigned(expiryPercentLong)))
                 .rawValue;
 
-        collateralReturned = longCollateralRedeemed.add(shortCollateralRedeemed);
+        collateralReturned = longCollateralRedeemed + shortCollateralRedeemed;
         collateralToken.safeTransfer(msg.sender, collateralReturned);
 
         emit PositionSettled(msg.sender, collateralReturned, longTokensToRedeem, shortTokensToRedeem);
