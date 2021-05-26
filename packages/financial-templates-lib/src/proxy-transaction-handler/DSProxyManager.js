@@ -8,10 +8,10 @@ class DSProxyManager {
    * @param {Object} web3 Web3 object to submit transactions and process on-chain info.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {String} account Ethereum account from which to send txns.
-   * @param {String} dsProxyFactoryAddress address of the DSProxy factory to create new DSProxies
+   * @param {String} dsProxyFactoryAddress address of the DSProxy factory to create new DSProxies.
    * @param {object} dsProxyFactoryAbi ABI of DSProxy factory to enable methods to be called on the contract.
    * @param {object} dsProxyAbi ABI of DSProxy to enable `execute` to be called.
-   * @param {availableAccounts} number the number of EOAs that should be accessible when calling the DSProxy. Each EOA
+   * @param {number} availableAccounts the number of EOAs that should be accessible when calling the DSProxy. Each EOA
    * needs to be permissioned to call the DSProxy with `DSAuthority`.
    */
   constructor({
