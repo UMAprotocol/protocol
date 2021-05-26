@@ -2,10 +2,6 @@
 // here: https://etherscan.io/address/0xa26e15c895efc0616177b7c1e7270a4c7d51c997#code
 // Changes are limited to updating the Solidity version and some stylistic modifications.
 
-/**
- *Submitted for verification at Etherscan.io on 2018-06-22
- */
-
 // proxy.sol - execute actions atomically through the proxy's identity
 
 // Copyright (C) 2017  DappHub, LLC

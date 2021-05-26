@@ -1,4 +1,4 @@
-// This file was originally take from dapphub dsGuarg and modified. Original source code can be found
+// This file was originally take from dapphub DSGuard and modified. Original source code can be found
 // here: https://github.com/dapphub/ds-guard/blob/master/src/guard.sol
 // Changes are limited to updating the Solidity version and some stylistic modifications.
 
