@@ -25,11 +25,11 @@ const store:Store = ...
 
 ## Adding a store
 
-Create a new folder named for the type of store technology you are adapting in the stores directory with the following files:
+Create a new folder named for the type of store technology you are adapting in the store's directory with the following files:
 
 - README.md: Add some notes on what the store is for and what technology it is connecting with
-- index.ts: Expose a single function which represents your stores constructor
-- store.ts: Store logic which should expose a default function or class to instanciate the store
+- index.ts: Expose a single function which represents your store's constructor
+- store.ts: Store logic which should expose a default function or class to instantiate the store
 - store.test.ts: Any tests you want to run
 
 ### Store interface
@@ -39,7 +39,7 @@ to interoperate with the store seamlesly. See an example store [here](./js-map/s
 
 ### Design Tips
 
-- the name of the stores directory should reflect the underlying technology, ie: google-store, js-map, mongo, etc.
+- the name of the store's directory should reflect the underlying technology, ie: google-store, js-map, mongo, etc.
 - consider injecting your specific database client into the constructor of the store, this makes it possible to
-  mock this for testing later, and lets the user instanciate this outside your class.
-- the interface is modeled from a JS Map, so keep in mind this should simply act like a key value store
+  mock this for testing later, and lets the user instantiate this outside your class.
+- the interface is modeled from a JS Map, so keep in mind this should simply act like a key value store.

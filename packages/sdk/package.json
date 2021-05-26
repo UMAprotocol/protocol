@@ -44,7 +44,6 @@
     "@size-limit/preset-small-lib": "^4.10.2",
     "size-limit": "^4.10.2",
     "tsdx": "^0.14.1",
-    "tslib": "^2.2.0",
-    "typescript": "^4.2.4"
+    "tslib": "^2.2.0"
   }
 }

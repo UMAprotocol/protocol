@@ -18,8 +18,9 @@ export function getAddress(network: Network): string {
   return address;
 }
 
-export type Instance = ReturnType<typeof Registry__factory.connect>;
-export function connect(address: string, provider: SignerOrProvider): Instance {
+// exporting Registry type in case its needed
+export { Registry };
+export function connect(address: string, provider: SignerOrProvider): Registry {
   return Registry__factory.connect(address, provider);
 }
 

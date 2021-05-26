@@ -27,4 +27,12 @@ Create a new folder named after the type of data you are storing in the tables d
 - ${store-type}.ts: Create a table file named for the store its compatible with, for example `js-map.ts`
 - ${store-type}.test.ts: Any tests you want to run
 
-See the [blocks table](./blocks/README.md] as an example.
+See the [blocks table](./blocks/README.md) as an example.
+
+## Usage Considerations
+
+These tables are designed to work in such a way that data is queried and updated in the application layer
+rather than in the database layer. This is a subtle distinction, but in some usecases this may cause race conditions
+during times where many updates may be happening concurrently ( queried state within table functions may be inconsitent with database state).
+If this applies to your use case, you may need to write a custom table using the database driver directly or
+order your mutations such that they execute serially.

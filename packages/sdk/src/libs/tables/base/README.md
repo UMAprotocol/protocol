@@ -1,6 +1,7 @@
 # Base Table
 
-Contains basic functions you want in most of your tables, unless its a really special case.
+Contains basic functions you want in your tables. Also allows you to compose stores and tables
+with custom data types outside of the sdk if desired.
 
 ## Usage
 
