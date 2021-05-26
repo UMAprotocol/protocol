@@ -50,8 +50,8 @@ function errorStackTracerFormatter(logEntry) {
 // Handle case where `error` is an array of errors and we want to display all of the error stacks recursively.
 // i.e. `error` is in the shape: [[Error, Error], [Error], [Error, Error]]
 function handleRecursiveErrorArray(error) {
-  // If error is not an array, then just return the stack for there is no need to recurse further.
-  if (!Array.isArray(error)) return error.stack || error.message || error.toString();
+  // If error is not an array, then just return error information for there is no need to recurse further.
+  if (!Array.isArray(error)) return error.stack || error.message || error.toString() || "could not extract error info";
   // Recursively add all errors to an array and flatten the output.
   return error.map(handleRecursiveErrorArray).flat();
 }
