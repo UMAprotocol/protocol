@@ -125,11 +125,6 @@ class OptimisticOracleProposer {
     }
   }
 
-  /** **********************************
-   *
-   * INTERNAL METHODS
-   *
-   ************************************/
   // Returns true if the price request should be ignored by the OO proposer + disputer for any reason, False otherwise.
   async _shouldIgnorePriceRequest(priceRequest) {
     // If the price request is an expiry price request for a specific type of EMP
@@ -204,16 +199,11 @@ class OptimisticOracleProposer {
       proposer: this.account,
     });
     try {
-      const transactionResult = await runTransaction({
+      const { receipt, returnValue, transactionConfig } = await runTransaction({
+        web3: this.web3,
         transaction: proposal,
-        config: {
-          gasPrice: this.gasEstimator.getCurrentFastPrice(),
-          from: this.account,
-          nonce: await this.web3.eth.getTransactionCount(this.account),
-        },
+        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
       });
-      let receipt = transactionResult.receipt;
-      let returnValue = transactionResult.returnValue;
 
       const logResult = {
         tx: receipt.transactionHash,
@@ -229,9 +219,10 @@ class OptimisticOracleProposer {
         at: "OptimisticOracleProposer#sendProposals",
         message: "Proposed price!💍",
         priceRequest,
-        proposalBond: returnValue,
+        proposalBond: returnValue.toString(),
         proposalPrice,
         proposalResult: logResult,
+        transactionConfig,
       });
     } catch (error) {
       const message =
@@ -307,16 +298,11 @@ class OptimisticOracleProposer {
         disputer: this.account,
       });
       try {
-        const transactionResult = await runTransaction({
+        const { receipt, returnValue, transactionConfig } = await runTransaction({
+          web3: this.web3,
           transaction: dispute,
-          config: {
-            gasPrice: this.gasEstimator.getCurrentFastPrice(),
-            from: this.account,
-            nonce: await this.web3.eth.getTransactionCount(this.account),
-          },
+          transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
         });
-        let receipt = transactionResult.receipt;
-        let returnValue = transactionResult.returnValue;
 
         const logResult = {
           tx: receipt.transactionHash,
@@ -333,9 +319,10 @@ class OptimisticOracleProposer {
           message: "Disputed proposal!⛑",
           priceRequest,
           disputePrice,
-          disputeBond: returnValue,
+          disputeBond: returnValue.toString(),
           allowedError: this.disputePriceErrorPercent,
           disputeResult: logResult,
+          transactionConfig,
         });
       } catch (error) {
         const message =
@@ -376,15 +363,11 @@ class OptimisticOracleProposer {
       priceRequest,
     });
     try {
-      const transactionResult = await runTransaction({
+      const { receipt, returnValue, transactionConfig } = await runTransaction({
+        web3: this.web3,
         transaction: settle,
-        config: {
-          gasPrice: this.gasEstimator.getCurrentFastPrice(),
-          from: this.account,
-        },
+        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
       });
-      let receipt = transactionResult.receipt;
-      let returnValue = transactionResult.returnValue;
 
       const logResult = {
         tx: receipt.transactionHash,
@@ -401,8 +384,9 @@ class OptimisticOracleProposer {
         at: "OptimisticOracleProposer#settleRequests",
         message: "Settled proposal or dispute!⛑",
         priceRequest,
-        payout: returnValue,
+        payout: returnValue.toString(),
         settleResult: logResult,
+        transactionConfig,
       });
     } catch (error) {
       const message =

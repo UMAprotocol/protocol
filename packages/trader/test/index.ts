@@ -163,7 +163,7 @@ describe("index.js", function () {
     process.env.EMP_ADDRESS = financialContract.address;
     process.env.REFERENCE_PRICE_FEED_CONFIG = JSON.stringify(defaultPriceFeedConfig);
     process.env.TOKEN_PRICE_FEED_CONFIG = JSON.stringify(defaultPriceFeedConfig);
-    process.env.DS_PROXY_FACTORY_ADDRESS = dsProxyFactory.address;
+    process.env.DSPROXY_CONFIG = JSON.stringify({ dsProxyFactoryAddress: dsProxyFactory.address });
     process.env.EXCHANGE_ADAPTER_CONFIG = JSON.stringify({
       type: "uniswap-v2",
       tokenAAddress: syntheticToken.address,
