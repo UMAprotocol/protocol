@@ -1,4 +1,4 @@
-import type { Store } from "../index.d";
+import type { Store } from "..";
 import type { Datastore, Key } from "@google-cloud/datastore";
 
 export default function <D>(kind: string, store: Datastore): Store<string, D> {

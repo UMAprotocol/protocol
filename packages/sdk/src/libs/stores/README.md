@@ -7,6 +7,22 @@ This contain classes which conform to a specific API for storing data to a speci
 - [js-map](./js-map/README.md): a simple cache which wraps a Map to be a store
 - [google-datastore](./google-datastore/README.md): wraps the google datastore client
 
+## Types
+
+```js
+// Import from top level
+import * as uma from '@uma/sdk'
+
+// the main store interface
+const store:uma.stores.Store = ...
+
+// or within package
+import {Store} from '../stores'
+
+// the main store interface
+const store:Store = ...
+```
+
 ## Adding a store
 
 Create a new folder named for the type of store technology you are adapting in the stores directory with the following files:
@@ -18,7 +34,7 @@ Create a new folder named for the type of store technology you are adapting in t
 
 ### Store interface
 
-Stores should try to conform to the interface defined [here](./index.d.ts). This will allow [tables](../tables/README.md)
+Stores should try to conform to the interface defined [here](./index.ts). This will allow [tables](../tables/README.md)
 to interoperate with the store seamlesly. See an example store [here](./js-map/store).
 
 ### Design Tips

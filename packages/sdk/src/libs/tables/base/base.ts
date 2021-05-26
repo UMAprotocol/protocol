@@ -1,8 +1,8 @@
 import assert from "assert";
 import { exists } from "../../utils";
-import type { Store, MakeId, MaybeId, HasId } from "../../index.d";
+import type { stores, MakeId, MaybeId, HasId } from "../..";
 
-export default function Table<I, D>(config: { makeId: MakeId<I, D>; type: string }, store: Store<I, D>) {
+export default function Table<I, D>(config: { makeId: MakeId<I, D>; type: string }, store: stores.Store<I, D>) {
   const { makeId, type } = config;
   async function create(data: D & MaybeId<I>) {
     const id = exists(data.id) ? data.id : makeId(data);

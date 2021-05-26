@@ -26,6 +26,5 @@ Create a new folder named after the type of data you are storing in the tables d
 - index.ts: Expose your tables based on the name type of store it uses, for example `export {default as JsMap} from './js-map'`
 - ${store-type}.ts: Create a table file named for the store its compatible with, for example `js-map.ts`
 - ${store-type}.test.ts: Any tests you want to run
-- index.d.ts: in case you want to expose any data types
 
 See the [blocks table](./blocks/README.md] as an example.

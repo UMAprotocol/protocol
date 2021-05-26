@@ -1,11 +1,10 @@
 require("dotenv").config();
 import assert from "assert";
 import * as Client from "./client";
-import { RegistryInstance } from "../../index.d";
 import { ethers } from "ethers";
 
 describe("emp factory", function () {
-  let client: RegistryInstance;
+  let client: Client.Instance;
   test("inits", function () {
     const provider = ethers.providers.getDefaultProvider(process.env.CUSTOM_NODE_URL);
     const address = Client.getAddress("1");

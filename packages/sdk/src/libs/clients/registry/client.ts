@@ -1,36 +1,34 @@
 import assert from "assert";
 import { Registry__factory, Registry } from "@uma/core/contract-types/ethers";
 import RegistryArtifacts from "@uma/core/build/contracts/Registry.json";
-import type { SignerOrProvider, GetEventType } from "../../index.d";
+import type { SignerOrProvider, GetEventType } from "../..";
 import { Event } from "ethers";
 
-type NewContractRegistered = GetEventType<Registry["filters"]["NewContractRegistered"]>;
+type NewContractRegistered = GetEventType<Registry, "NewContractRegistered">;
 
 export interface EventState {
   contracts?: { [key: string]: NewContractRegistered };
 }
 
-type Network = keyof typeof RegistryArtifacts.networks;
+export type Network = keyof typeof RegistryArtifacts.networks;
 
-export function getAddress(network: Network) {
+export function getAddress(network: Network): string {
   const address = RegistryArtifacts?.networks?.[network]?.address;
   assert(address, "no address found for network: " + network);
   return address;
 }
 
-export function connect(address: string, provider: SignerOrProvider) {
+export type Instance = ReturnType<typeof Registry__factory.connect>;
+export function connect(address: string, provider: SignerOrProvider): Instance {
   return Registry__factory.connect(address, provider);
 }
 
 // experimenting with a generalized way of handling events and returning state, inspired from react style reducers
 export function reduceEvents(state: EventState = {}, event: Event, index?: number): EventState {
   switch (event.event) {
-    // event NewContractRegistered(address indexed contractAddress, address indexed creator, address[] parties);
     case "NewContractRegistered": {
-      // this TypedEventFilter was copied from the typechain file. Dont know a better way to get this.
       const typedEvent = event as NewContractRegistered;
       const contracts = state?.contracts || {};
-      assert(event.args, `event ${event.event} missing args`);
       return {
         ...state,
         contracts: {
@@ -42,6 +40,6 @@ export function reduceEvents(state: EventState = {}, event: Event, index?: numbe
   }
   return state;
 }
-export function getEventState(events: Event[]) {
+export function getEventState(events: Event[]): EventState {
   return events.reduce(reduceEvents, {});
 }

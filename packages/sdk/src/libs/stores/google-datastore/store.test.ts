@@ -1,7 +1,7 @@
 import assert from "assert";
 import Store from ".";
 
-import { Datastore, Key } from "@google-cloud/datastore";
+import { Datastore } from "@google-cloud/datastore";
 
 // need access to google store
 describe.skip("google-store", function () {

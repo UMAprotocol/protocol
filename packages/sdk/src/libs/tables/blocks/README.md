@@ -40,9 +40,9 @@ See [tests](./js-map.test.ts) for more example usage.
 
 ## Types
 
-Found in [index.d.ts](./index.d.ts)
+Found in [index.ts](./index.ts)
 
 ```js
-import type { BlockType } from "@uma/sdk"
-;``
+import type * as uma from "@uma/sdk";
+type Block = uma.tables.Blocks.Block;
 ```

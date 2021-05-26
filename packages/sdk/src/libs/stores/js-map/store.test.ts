@@ -1,6 +1,6 @@
 import assert from "assert";
 import Store from ".";
-import type { Store as StoreType } from "../index.d";
+import type { Store as StoreType } from "..";
 
 describe("map store", function () {
   let store: StoreType<string, string>;
