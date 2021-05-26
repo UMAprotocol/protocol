@@ -67,6 +67,22 @@ contract ExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
     }
 
     /**
+     * @dev Burns `value` tokens owned by `recipient`.
+     * @param recipient address to burn tokens from.
+     * @param value amount of tokens to burn.
+     * @return True if the burn succeeded, or False.
+     */
+    function burnFrom(address recipient, uint256 value)
+        external
+        override
+        onlyRoleHolder(uint256(Roles.Burner))
+        returns (bool)
+    {
+        _burn(recipient, value);
+        return true;
+    }
+
+    /**
      * @notice Add Minter role to account.
      * @dev The caller must have the Owner role.
      * @param account The address to which the Minter role is added.
