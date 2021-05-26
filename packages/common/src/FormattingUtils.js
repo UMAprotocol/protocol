@@ -1,4 +1,4 @@
-const networkUtils = require("./PublicNetworks");
+const { PublicNetworks: networkUtils } = require("./PublicNetworks");
 
 const BigNumber = require("bignumber.js");
 const moment = require("moment");
