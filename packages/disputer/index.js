@@ -32,9 +32,13 @@ const { getWeb3, PublicNetworks } = require("@uma/common");
  * @param {String} address Contract address of the Financial Contract.
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
+ * @param {Number} errorRetries The number of times the execution loop will re-try before throwing if an error occurs.
+ * @param {Number} errorRetriesTimeout The amount of milliseconds to wait between re-try iterations on failed loops.
  * @param {Object} priceFeedConfig Configuration to construct the price feed object.
  * @param {Object} [disputerConfig] Configuration to construct the disputer.
  * @param {String} [disputerOverridePrice] Optional String representing a Wei number to override the disputer price feed.
+ * @param {Object} [proxyTransactionWrapperConfig] Configuration to construct the proxy transaction wrapper to enable DSProxy
+ *     disputes. This facilitates atomic swap, and disputes transactions against a reserve currency.
  * @return None or throws an Error.
  */
 async function run({
@@ -195,7 +199,7 @@ async function run({
       disputerConfig,
     });
 
-    if (proxyTransactionWrapperConfig == {} || !proxyTransactionWrapperConfig?.useDsProxyToLiquidate) {
+    if (proxyTransactionWrapperConfig == {} || !proxyTransactionWrapperConfig?.useDsProxyToDispute) {
       // The Financial Contract requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.
       // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
       const collateralApproval = await setAllowance(
