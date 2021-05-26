@@ -752,7 +752,7 @@ const defaultConfigs = {
     minTimeBetweenUpdates: 60,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "binance", pair: "oceanusdt" },
-      { type: "cryptowatch", exchange: "bittrex", pair: "oceanusdt" },
+      { type: "cryptowatch", exchange: "kraken", pair: "oceanusd" },
       { type: "cryptowatch", exchange: "bitz", pair: "oceanusdt" },
     ],
   },
@@ -948,6 +948,34 @@ const defaultConfigs = {
       ETHXIO: {
         type: "uniswap",
         uniswapAddress: "0xe0cc5afc0ff2c76183416fb8d1a29f6799fb2cdf",
+        invertPrice: true,
+      },
+    },
+  },
+  USDDEXTF: {
+    type: "expression",
+    expression: "ETHDEXTF * USDETH",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    twapLength: 300,
+    customFeeds: {
+      ETHDEXTF: {
+        type: "uniswap",
+        uniswapAddress: "0xa1444ac5b8ac4f20f748558fe4e848087f528e00",
+        invertPrice: true,
+      },
+    },
+  },
+  DEXTFUSD: {
+    type: "expression",
+    expression: "1 / (ETHDEXTF * USDETH)",
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    twapLength: 300,
+    customFeeds: {
+      ETHDEXTF: {
+        type: "uniswap",
+        uniswapAddress: "0xa1444ac5b8ac4f20f748558fe4e848087f528e00",
         invertPrice: true,
       },
     },

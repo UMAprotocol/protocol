@@ -99,43 +99,34 @@ export async function fetchUmaEcosystemData() {
         (info: any) => toChecksumAddress(info.id) === toChecksumAddress(financialContractAddress)
       )[0];
       // If there is no position info, then continue. This would happen if there is data that is not on the graph.
-      if (contractPositionsInfo == undefined) {
-        continue;
-      }
+      if (contractPositionsInfo == undefined) continue;
 
       // If the contract has no positions, we should also continue. Remove the contract from the list of active contracts
-      if (contractPositionsInfo.positions.length == 0) {
-        uniqueCollateralTypes[collateralAddress].activeFinancialContracts = removeItemFromArrayOfObjects(
-          uniqueCollateralTypes[collateralAddress].activeFinancialContracts,
-          "contractAddress",
-          financialContractAddress
-        );
-        continue;
-      }
+      if (contractPositionsInfo.positions.length == 0) continue;
+
       // If we got to this point we know that the financial contract matches what was returned from the graph and
       // the contract has positions in it. We can now fetch some extra info about the contract.
       const financialContract = new web3.eth.Contract(getAbi("ExpiringMultiParty"), financialContractAddress);
-      const [collateralRequirementString, contractExpirationTime, contractPriceIdentifier] = await Promise.all([
+      const [collateralRequirementString, contractExpirationTime, contractPriceIdentifier] = await Promise.allSettled([
         financialContract.methods.collateralRequirement().call(),
         financialContract.methods.expirationTimestamp().call(),
         financialContract.methods.priceIdentifier().call(),
       ]);
-      const collateralRequirement = toBN(collateralRequirementString);
+
+      const collateralRequirement = toBN((collateralRequirementString as any).value);
+
+      // If the collateral requirement is 1 then it is a KPI option or a kind of product that can be liquidated. Skip.
+      if (Number(fromWei(collateralRequirement)) == 1) continue;
 
       // If expired, remove it from the list as it is not active.
-      if (getTime() > Number(contractExpirationTime)) {
-        uniqueCollateralTypes[collateralAddress].activeFinancialContracts = removeItemFromArrayOfObjects(
-          uniqueCollateralTypes[collateralAddress].activeFinancialContracts,
-          "contractAddress",
-          financialContractAddress
-        );
-        continue;
-      }
+      if (contractExpirationTime.status == "fulfilled" && getTime() > Number(contractExpirationTime.value)) continue;
+
       uniqueCollateralTypes[collateralAddress].activeFinancialContracts[financialContractIndex] = {
         ...uniqueCollateralTypes[collateralAddress].activeFinancialContracts[financialContractIndex],
-        contractPriceIdentifier: hexToUtf8(contractPriceIdentifier),
+        contractPriceIdentifier: hexToUtf8((contractPriceIdentifier as any).value),
         collateralRequirement: Number(fromWei(collateralRequirement)),
-        contractExpirationTime,
+        contractExpirationTime:
+          contractExpirationTime.status == "fulfilled" ? contractExpirationTime.value : "perpetual",
       };
 
       // Else, we can start building up draw down information.
@@ -166,6 +157,17 @@ export async function fetchUmaEcosystemData() {
         if (samplePriceFeed.invertPrice) invertedPrice = true;
         if (samplePriceFeed.priceFeeds && samplePriceFeed.priceFeeds[0].invertPrice) invertedPrice = true;
 
+        // If the collateral type is stable, then we must invert the price feed by default. These kinds of feeds (such
+        // as the BasketSpreadPriceFeed) do not contain the `invertPrice` flag, but they are all "inverted". As additional
+        // stable collaterals are added this will need to be updated or the page will show up no liquidatable positions
+        // for that collateral type.
+        if (
+          uniqueCollateralTypes[collateralAddress].collateralSymbol == "USDC" ||
+          uniqueCollateralTypes[collateralAddress].collateralSymbol == "DAI" ||
+          uniqueCollateralTypes[collateralAddress].collateralSymbol == "USDT" ||
+          uniqueCollateralTypes[collateralAddress].collateralSymbol == "rDAI"
+        )
+          invertedPrice = true;
         // Next, using the value from the sample price feed, we can compute the drawdown intervals. These are steps
         // of 10% decrease from the current price. At each price point we can compute the CR of each position within
         // the financial contract. if it is below the contracts collateral Requirement add to the total liquidated amount.
@@ -233,32 +235,26 @@ export async function fetchUmaEcosystemData() {
         console.error(error);
       }
     }
-    // Finally, remove any elements that have undefined params.
-    uniqueCollateralTypes[collateralAddress].activeFinancialContracts.forEach(() => {
-      uniqueCollateralTypes[collateralAddress].activeFinancialContracts ==
-        removeItemFromArrayOfObjects(
-          uniqueCollateralTypes[collateralAddress].activeFinancialContracts,
-          "collateralRequirement",
-          undefined
-        );
+    // Remove any elements that have undefined params. This would be any contract that was skipped due to being
+    // expired, having no sponsors or having no graph data.
+    const builtUpExistingCollaterals: any = [];
+
+    uniqueCollateralTypes[collateralAddress].activeFinancialContracts.forEach((activeFinancialContractInfo, index) => {
+      if (activeFinancialContractInfo.contractExpirationTime)
+        builtUpExistingCollaterals.push(activeFinancialContractInfo);
     });
+    uniqueCollateralTypes[collateralAddress].activeFinancialContracts = builtUpExistingCollaterals;
   }
 
-  return uniqueCollateralTypes;
-}
-
-function removeItemFromArrayOfObjects(
-  array: Array<any>,
-  objectKey: string | number,
-  objectValue: string | number | undefined
-) {
-  let index = -1;
-  array.forEach((object, i) => {
-    if (object[objectKey] == objectValue) index = i;
+  // If we've stripped out a contract from a collateral type then we should remove the whole collateral from the output
+  // as it will produce a blank spreadsheet.
+  const strippedCollateralTypes: any = {};
+  Object.keys(uniqueCollateralTypes).forEach((collateralAddress) => {
+    if (uniqueCollateralTypes[collateralAddress].activeFinancialContracts.length > 0)
+      strippedCollateralTypes[collateralAddress] = uniqueCollateralTypes[collateralAddress];
   });
 
-  if (index > -1) array.splice(index, 1);
-  return array;
+  return strippedCollateralTypes;
 }
 
 function computeCollateralizationRatio(collateral: any, debt: any, tokenPrice: any) {

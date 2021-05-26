@@ -9,8 +9,8 @@ const DEFAULT_ADMIN_ROLE = "0x00000000000000000000000000000000000000000000000000
 task("register-generic-resource", "Admin can set generic resource ID on Bridge")
   .addParam("id", "Resource ID to set", "0x0", types.string)
   .addParam("target", "Contract to delegate call to for this resource ID", ZERO_ADDRESS, types.string)
-  .addOptionalParam("deposit", "Deposit function prototype string (e.g. func(uint256,bool))", null, types.string)
-  .addOptionalParam("execute", "Contract to delegate call to for this resource ID", null, types.string)
+  .addOptionalParam("deposit", "Deposit function prototype string (e.g. func(uint256,bool))", "", types.string)
+  .addOptionalParam("execute", "Contract to delegate call to for this resource ID", "", types.string)
   .setAction(async function (taskArguments, hre) {
     const { deployments, getNamedAccounts, web3 } = hre;
     const { deployer } = await getNamedAccounts();
@@ -33,8 +33,8 @@ task("register-generic-resource", "Admin can set generic resource ID on Bridge")
     const genericHandler = new web3.eth.Contract(GenericHandler.abi, GenericHandler.address);
 
     // Compute function signatures by hashing prototype strings:
-    const depositFuncSig = deposit ? _getFunctionSignature(deposit) : BLANK_FUNCTION_SIG;
-    const executeFuncSig = execute ? _getFunctionSignature(execute) : BLANK_FUNCTION_SIG;
+    const depositFuncSig = deposit !== "" ? _getFunctionSignature(deposit) : BLANK_FUNCTION_SIG;
+    const executeFuncSig = execute !== "" ? _getFunctionSignature(execute) : BLANK_FUNCTION_SIG;
     console.log(`Deposit function signature: ${depositFuncSig}`);
     console.log(`Execute function signature: ${executeFuncSig}`);
     console.log(

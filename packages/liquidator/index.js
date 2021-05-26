@@ -256,28 +256,27 @@ async function run({
       liquidatorConfig,
     });
 
-    // if (proxyTransactionWrapperConfig == {} || !proxyTransactionWrapperConfig?.useDsProxyToLiquidate) {
-    //   // The Financial Contract requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
-    //   // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-    //   const [collateralApproval, syntheticApproval] = await Promise.all([
-    //     setAllowance(web3, gasEstimator, accounts[0], financialContractAddress, collateralTokenAddress),
-    //     setAllowance(web3, gasEstimator, accounts[0], financialContractAddress, syntheticTokenAddress),
-    //   ]);
-    //   if (collateralApproval) {
-    //     logger.info({
-    //       at: "Liquidator#index",
-    //       message: "Approved Financial Contract to transfer unlimited collateral tokens 💰",
-    //       collateralApprovalTx: collateralApproval.tx.transactionHash,
-    //     });
-    //   }
-    //   if (syntheticApproval) {
-    //     logger.info({
-    //       at: "Liquidator#index",
-    //       message: "Approved Financial Contract to transfer unlimited synthetic tokens 💰",
-    //       syntheticApprovalTx: syntheticApproval.tx.transactionHash,
-    //     });
-    //   }
-    // }
+    if (proxyTransactionWrapperConfig == {} || !proxyTransactionWrapperConfig?.useDsProxyToLiquidate) {
+      // The Financial Contract requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
+      // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
+      const [collateralApproval, syntheticApproval] = await Promise.all([
+        setAllowance(web3, gasEstimator, accounts[0], financialContractAddress, collateralTokenAddress),
+        setAllowance(web3, gasEstimator, accounts[0], financialContractAddress, syntheticTokenAddress),
+      ]);
+      if (collateralApproval)
+        logger.info({
+          at: "Liquidator#index",
+          message: "Approved Financial Contract to transfer unlimited collateral tokens 💰",
+          collateralApprovalTx: collateralApproval.tx.transactionHash,
+        });
+
+      if (syntheticApproval)
+        logger.info({
+          at: "Liquidator#index",
+          message: "Approved Financial Contract to transfer unlimited synthetic tokens 💰",
+          syntheticApprovalTx: syntheticApproval.tx.transactionHash,
+        });
+    }
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {

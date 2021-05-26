@@ -275,6 +275,7 @@ contract("Disputer.js", function (accounts) {
 
           // Create a new instance of the disputer to test
           disputerConfig = {
+            crThreshold: 0,
             disputeDelay: 0,
             contractType: contractVersion.contractType,
             contractVersion: contractVersion.contractVersion,
@@ -695,6 +696,131 @@ contract("Disputer.js", function (accounts) {
         });
 
         describe("Overrides the default disputer configuration settings", function () {
+          versionedIt([{ contractType: "any", contractVersion: "any" }])(
+            "Cannot set `crThreshold` >= 1",
+            async function () {
+              let errorThrown;
+              try {
+                disputerConfig = { ...disputerConfig, crThreshold: 1 };
+                disputer = new Disputer({
+                  logger: spyLogger,
+                  financialContractClient,
+                  proxyTransactionWrapper,
+                  gasEstimator,
+                  priceFeed: priceFeedMock,
+                  account: accounts[0],
+                  financialContractProps,
+                  disputerConfig,
+                });
+                errorThrown = false;
+              } catch (err) {
+                errorThrown = true;
+              }
+              assert.isTrue(errorThrown);
+            }
+          );
+
+          versionedIt([{ contractType: "any", contractVersion: "any" }])(
+            "Cannot set `crThreshold` < 0",
+            async function () {
+              let errorThrown;
+              try {
+                disputerConfig = { ...disputerConfig, crThreshold: -0.02 };
+                disputer = new Disputer({
+                  logger: spyLogger,
+                  financialContractClient,
+                  proxyTransactionWrapper,
+                  gasEstimator,
+                  priceFeed: priceFeedMock,
+                  account: accounts[0],
+                  financialContractProps,
+                  disputerConfig,
+                });
+                errorThrown = false;
+              } catch (err) {
+                errorThrown = true;
+              }
+              assert.isTrue(errorThrown);
+            }
+          );
+
+          versionedIt([{ contractType: "any", contractVersion: "any" }])("Sets `crThreshold` to 2%", async function () {
+            disputerConfig = { ...disputerConfig, crThreshold: 0.02 };
+            disputer = new Disputer({
+              logger: spyLogger,
+              financialContractClient,
+              proxyTransactionWrapper,
+              gasEstimator,
+              priceFeed: priceFeedMock,
+              account: accounts[0],
+              financialContractProps,
+              disputerConfig,
+            });
+
+            // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
+            await financialContract.create(
+              { rawValue: convertCollateral("115") },
+              { rawValue: convertSynthetic("100") },
+              { from: sponsor1 }
+            );
+
+            // sponsor2 creates a position with 118 units of collateral, creating 100 synthetic tokens.
+            await financialContract.create(
+              { rawValue: convertCollateral("118") },
+              { rawValue: convertSynthetic("100") },
+              { from: sponsor2 }
+            );
+
+            // liquidator creates a position to have synthetic tokens to pay off debt upon liquidation.
+            await financialContract.create(
+              { rawValue: convertCollateral("1000") },
+              { rawValue: convertSynthetic("500") },
+              { from: liquidator }
+            );
+
+            // The liquidator liquidates sponsor1 at a price of 1.15 and sponsor2 at a price of 1.18. Now, assume
+            // that the disputer sees a price of 0.95. The 2% buffer should lead the disputer to NOT dispute the
+            // liquidation made at a price of 1.15, but should dispute the one made at 1.18.
+            // Numerically: (tokens_outstanding * price * coltReq * (1+crThreshold) > debt)
+            // must hold for correctly collateralized liquidations. If the price feed is 0.95 USD, then
+            // there must be more than (100 * 0.95 * 1.2 * 1.02 = 116.28) collateral in the position. This means that
+            // the price of 0.95 and the buffer of 2% leads the disputer to believe that sponsor1 is
+            // undercollateralized and was correctly liquidated, while sponsor2 has enough collateral and should NOT
+            // have been liquidated. Note that without the buffer of 2%, the required position collateral would be
+            // (100 * 0.95 * 1.2 * 1 = 114), which would make both sponsors correctly collateralized and both
+            // liquidations disputable.
+            await financialContract.createLiquidation(
+              sponsor1,
+              { rawValue: "0" },
+              { rawValue: convertPrice("1.15") },
+              { rawValue: convertSynthetic("100") },
+              unreachableDeadline,
+              { from: liquidator }
+            );
+            await financialContract.createLiquidation(
+              sponsor2,
+              { rawValue: "0" },
+              { rawValue: convertPrice("1.18") },
+              { rawValue: convertSynthetic("100") },
+              unreachableDeadline,
+              { from: liquidator }
+            );
+
+            priceFeedMock.setHistoricalPrice(convertPrice("0.95"));
+            await disputer.update();
+            await disputer.dispute();
+
+            assert.equal(spy.callCount, 1); // 1 info level events should be sent at the conclusion of the 1 dispute.
+
+            // Sponsor1 should still be in a liquidation state.
+            let liquidationObject = (await financialContract.getLiquidations(sponsor1))[0];
+            assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
+
+            // Sponsor2 should have been disputed.
+            liquidationObject = (await financialContract.getLiquidations(sponsor2))[0];
+            assert.equal(liquidationObject.state, LiquidationStatesEnum.PENDING_DISPUTE);
+          });
+
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Cannot set `disputeDelay` < 0",
             async function () {
@@ -1326,6 +1452,42 @@ contract("Disputer.js", function (accounts) {
               // The dsProxy should be the disputer in sponsor2 and sponsor3's liquidations.
               assert.equal((await financialContract.getLiquidations(sponsor2))[0].disputer, dsProxy.address);
               assert.equal((await financialContract.getLiquidations(sponsor3))[0].disputer, dsProxy.address);
+
+              // Note we only test withdrawal logic on versions that are not 1.2.2 as withdrawing using a DSProxy is
+              // on legacy contracts is currently not supported. This is not a problem as almost all of these contracts
+              // are expired.
+              if (contractVersion.contractVersion != "1.2.2") {
+                // Push a price of 1.1, which should cause the two disputes to be correct (invalid liquidations)
+                const liquidationTime = await financialContract.getCurrentTime();
+                await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidationTime, convertPrice("1.1"));
+
+                // rewards should be withdrawn and the DSProxy collateral ballance should increase.
+
+                const dsProxyCollateralBalanceBefore = await collateralToken.balanceOf(dsProxy.address);
+
+                await disputer.update();
+                await disputer.withdrawRewards();
+                assert.equal(spy.callCount, 7); // two new info after withdrawing the two disputes.
+
+                const dsProxyCollateralBalanceAfter = await collateralToken.balanceOf(dsProxy.address);
+                assert.isTrue(dsProxyCollateralBalanceAfter.gt(dsProxyCollateralBalanceBefore));
+
+                // Pre-dispute as nothing should have change and rewards by liquidator are not withdrawn.
+                assert.equal(
+                  (await financialContract.getLiquidations(sponsor1))[0].state,
+                  LiquidationStatesEnum.PRE_DISPUTE
+                );
+
+                // Uninitialized as reward withdrawal deletes the liquidation object.
+                assert.equal(
+                  (await financialContract.getLiquidations(sponsor2))[0].state,
+                  LiquidationStatesEnum.UNINITIALIZED
+                );
+                assert.equal(
+                  (await financialContract.getLiquidations(sponsor3))[0].state,
+                  LiquidationStatesEnum.UNINITIALIZED
+                );
+              }
             }
           );
           versionedIt([{ contractType: "any", contractVersion: "any" }])(

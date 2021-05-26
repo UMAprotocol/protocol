@@ -1,10 +1,10 @@
 {
   "name": "@uma/core",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "description": "UMA smart contracts and unit tests",
   "dependencies": {
     "@truffle/contract": "^4.3.15",
-    "@uma/common": "^2.1.0",
+    "@uma/common": "^2.2.0",
     "@uma/core-1-1-0": "npm:@uma/core@1.1.0",
     "@uma/core-1-2-0": "npm:@uma/core@1.2.0",
     "@uma/core-1-2-1": "npm:@uma/core@1.2.1",
@@ -14,8 +14,8 @@
     "@uniswap/lib": "4.0.1-alpha",
     "@uniswap/v2-core": "1.0.0",
     "@uniswap/v2-periphery": "1.1.0-beta.0",
-    "@uniswap/v3-periphery": "^1.0.0-beta.23",
     "@uniswap/v3-core": "^1.0.0-rc.2",
+    "@uniswap/v3-periphery": "^1.0.0-beta.23",
     "decimal.js": "^10.2.1"
   },
   "devDependencies": {
@@ -27,8 +27,8 @@
     "@typechain/ethers-v5": "^6.0.5",
     "@typechain/truffle-v5": "^4.0.1",
     "@typechain/web3-v1": "^2.2.0",
-    "@uma/financial-templates-lib": "^2.2.0",
-    "@uma/merkle-distributor": "^1.1.0",
+    "@uma/financial-templates-lib": "^2.3.0",
+    "@uma/merkle-distributor": "^1.2.0",
     "bignumber.js": "^8.0.1",
     "bip39": "^3.0.2",
     "chai": "^4.2.0",
