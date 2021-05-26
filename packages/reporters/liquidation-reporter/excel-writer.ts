@@ -69,10 +69,10 @@ export function createExcelSheetFromLiquidationDrawDownData(drawDownData: any) {
     sheet.cell(6, 4).string("USD To Liquidate Collateral").style(boldStyle);
     sheet.column(4).setWidth("USD To liquidate Collateral".length);
     collateralData.drawDownAmounts.forEach((drawDownData: any, index: number) => {
-      sheet.cell(7 + index, 1).number(Number(drawDownData.priceDrop));
-      sheet.cell(7 + index, 2).number(Number(drawDownData.effectiveCollateralPrice));
-      sheet.cell(7 + index, 3).number(Number(drawDownData.collateralLiquidated));
-      sheet.cell(7 + index, 4).number(Number(drawDownData.usdNeededToLiquidate));
+      sheet.cell(7 + index, 1).number(Number(drawDownData.priceDrop) || 0);
+      sheet.cell(7 + index, 2).number(Number(drawDownData.effectiveCollateralPrice) || 0);
+      sheet.cell(7 + index, 3).number(Number(drawDownData.collateralLiquidated) || 0);
+      sheet.cell(7 + index, 4).number(Number(drawDownData.usdNeededToLiquidate) || 0);
     });
   });
 
