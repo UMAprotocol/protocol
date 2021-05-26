@@ -21,12 +21,6 @@
 
 pragma solidity ^0.8.0;
 
-// DSProxy
-// Allows code execution using a persistant identity This can be very
-// useful to execute a sequence of atomic actions. Since the owner of
-// the proxy can be changed, this allows for dynamic ownership models
-// i.e. a multisig
-
 abstract contract DSAuthority {
     function canCall(
         address src,
@@ -101,6 +95,11 @@ contract DSNote {
     }
 }
 
+// DSProxy
+// Allows code execution using a persistant identity This can be very
+// useful to execute a sequence of atomic actions. Since the owner of
+// the proxy can be changed, this allows for dynamic ownership models
+// i.e. a multisig
 contract DSProxy is DSAuth, DSNote {
     DSProxyCache public cache; // global cache for contracts
 
