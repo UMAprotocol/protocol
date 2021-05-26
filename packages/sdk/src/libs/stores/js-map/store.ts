@@ -1,4 +1,4 @@
-import type { Store } from "../index.d";
+import type { Store } from "../index";
 export default function <I, D>(map: Map<I, D> = new Map<I, D>()): Store<I, D> {
   async function get(id: I) {
     return map.get(id);
