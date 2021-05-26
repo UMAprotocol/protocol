@@ -213,7 +213,7 @@ class OptimisticOracleContractMonitor {
   // Returns helper method for converting collateral token to human readable form.
   async _getCollateralDecimalsConverted(currencyAddress) {
     const collateralContract = new this.web3.eth.Contract(getAbi("ExpandedERC20"), currencyAddress);
-    let collateralDecimals = await collateralContract.methods.decimals().call();  
+    let collateralDecimals = await collateralContract.methods.decimals().call();
     return ConvertDecimals(collateralDecimals.toString(), 18, this.web3);
   }
 

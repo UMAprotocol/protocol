@@ -331,7 +331,7 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
         ancillaryData: defaultAncillaryData,
         timestamp: requestTime.toString(),
         proposedPrice: correctPrice,
-        currency: collateral.address
+        currency: collateral.address,
       },
       {
         transactionHash: disputeTxn2.tx,
@@ -343,7 +343,7 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
         ancillaryData: defaultAncillaryData,
         timestamp: (requestTime + 1).toString(),
         proposedPrice: correctPrice,
-        currency: collateral.address
+        currency: collateral.address,
       },
     ]);
 
@@ -381,7 +381,7 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
         ancillaryData: collateral.address.toLowerCase(),
         timestamp: requestTime.toString(),
         proposedPrice: correctPrice,
-        currency: collateral.address
+        currency: collateral.address,
       },
     ]);
   });
@@ -402,7 +402,7 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
         timestamp: requestTime.toString(),
         price: correctPrice,
         payout: disputePayout,
-        currency: collateral.address
+        currency: collateral.address,
       },
       {
         transactionHash: settlementTxn2.tx,
@@ -415,7 +415,7 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
         timestamp: (requestTime + 1).toString(),
         price: correctPrice,
         payout: disputePayout,
-        currency: collateral.address
+        currency: collateral.address,
       },
     ]);
 
@@ -455,7 +455,7 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
         timestamp: requestTime.toString(),
         price: correctPrice,
         payout: totalDefaultBond,
-        currency: collateral.address
+        currency: collateral.address,
       },
     ]);
   });

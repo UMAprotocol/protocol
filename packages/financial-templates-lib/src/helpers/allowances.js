@@ -17,7 +17,7 @@ const setAllowance = async (web3, gasEstimator, ownerAddress, spenderAddress, cu
         gasPrice: gasEstimator.getCurrentFastPrice(),
         // Note: Add chainId in case RPC enforces transactions to be replay-protected, (i.e. enforced in geth v1.10,
         // https://blog.ethereum.org/2021/03/03/geth-v1-10-0/).
-        chainId: (await web3.eth.getChainId())
+        chainId: await web3.eth.getChainId(),
       }),
       spenderAddress,
       currencyAddress,

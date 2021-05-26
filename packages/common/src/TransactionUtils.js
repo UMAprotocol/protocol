@@ -16,7 +16,7 @@ const runTransaction = async ({ web3, transaction, transactionConfig, availableA
   // Add chainId in case RPC enforces transactions to be replay-protected, (i.e. enforced in geth v1.10,
   // https://blog.ethereum.org/2021/03/03/geth-v1-10-0/).
   transactionConfig.chainId = await web3.eth.getChainId();
-  
+
   // Multiplier applied to Truffle's estimated gas limit for a transaction to send.
   const GAS_LIMIT_BUFFER = 1.25;
 
