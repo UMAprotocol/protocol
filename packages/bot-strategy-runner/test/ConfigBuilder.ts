@@ -8,11 +8,11 @@ import { strategyRunnerConfig, buildBotConfigs, buildGlobalWhitelist } from "../
 const minimalConfig: strategyRunnerConfig = {
   botNetwork: "mainnet_mnemonic",
   globalAddressWhitelistUrls: [
-    "https://raw.githubusercontent.com/UMAprotocol/protocol/4612097ead953b89daa6e237cdb6c704460025dd/packages/affiliates/payouts/devmining-status.json"
+    "https://raw.githubusercontent.com/UMAprotocol/protocol/4612097ead953b89daa6e237cdb6c704460025dd/packages/affiliates/payouts/devmining-status.json",
   ],
   liquidatorSettings: { enableBotType: true },
   disputerSettings: { enableBotType: true },
-  monitorSettings: { enableBotType: true }
+  monitorSettings: { enableBotType: true },
 };
 
 const sampleEMPAddressNotOnWhitelist = "0xAb5801a7D398351b8bE11C439e05C5B3259aeC9B";
@@ -23,7 +23,7 @@ const sampleWhitelist = [
   "0x56BaBEcb3dCaC063697fE38AB745c10181c56fA6",
   "0x10E018C01792705BefB7A757628C2947E38B9426",
   "0xb40BA94747c59d076B3c189E3A031547492013da",
-  "0x46f5E363e69798a74c8422BFb9EDB63e3FB0f08a"
+  "0x46f5E363e69798a74c8422BFb9EDB63e3FB0f08a",
 ];
 
 const minimumRequiredConfigKeys = [
@@ -32,15 +32,15 @@ const minimumRequiredConfigKeys = [
   "botIdentifier",
   "botNetwork",
   "financialContractAddress",
-  "pollingDelay"
+  "pollingDelay",
 ];
-describe("buildGlobalWhitelist", async function() {
-  it("Correctly fetches global whitelist", async function() {
+describe("buildGlobalWhitelist", async function () {
+  it("Correctly fetches global whitelist", async function () {
     this.timeout(60000);
     // Construct a whitelist from all current EMPs on the affiliates payout. Append a sample address to the list.
     const constructedWhitelist = await buildGlobalWhitelist({
       ...minimalConfig,
-      globalAddressWhitelist: [sampleEMPAddressNotOnWhitelist]
+      globalAddressWhitelist: [sampleEMPAddressNotOnWhitelist],
     });
     // First address should be the sample and the list returned should contain other valid addresses.
     assert.equal(constructedWhitelist[0], sampleEMPAddressNotOnWhitelist);
@@ -49,12 +49,12 @@ describe("buildGlobalWhitelist", async function() {
       assert.isTrue(isAddress(address));
     });
   });
-  it("Correctly removes black listed addresses", async function() {
+  it("Correctly removes black listed addresses", async function () {
     this.timeout(60000);
     // Construct a whitelist from all current EMPs on the affiliates payout and remove the first address from the sampleWhitelist.
     const constructedWhitelist = await buildGlobalWhitelist({
       ...minimalConfig,
-      globalAddressBlacklist: [sampleWhitelist[0]]
+      globalAddressBlacklist: [sampleWhitelist[0]],
     });
     // The returned whitelist should contain additional addresses over and above the sample whitelist - the black listed.
     assert.isTrue(constructedWhitelist.length > sampleWhitelist.length - 1);
@@ -64,14 +64,14 @@ describe("buildGlobalWhitelist", async function() {
       assert.isTrue(constructedWhitelist.includes(address)); // all addresses, except for the blacklisted address, should be included.
     });
   });
-  it("Correctly errors on incorrectly structured external whitelist file", async function() {
+  it("Correctly errors on incorrectly structured external whitelist file", async function () {
     this.timeout(60000);
     let errorsThrown = 0; // count the number of errors. note that // assert.throws(()... syntax did not work for some reason.
 
     // Invalid URL should throw.
     try {
       await buildGlobalWhitelist({
-        globalAddressWhitelistUrls: ["not-a-url"]
+        globalAddressWhitelistUrls: ["not-a-url"],
       });
     } catch (error) {
       errorsThrown += 1;
@@ -80,8 +80,8 @@ describe("buildGlobalWhitelist", async function() {
     try {
       await buildGlobalWhitelist({
         globalAddressWhitelistUrls: [
-          "https://raw.githubusercontent.com/UMAprotocol/protocol/4612097ead953b89daa6e237cdb6c704460025dd/packages/affiliates/payouts/dappmining/2021-05-03_2021-05-10_YD-ETH-JUN21_0017.json"
-        ]
+          "https://raw.githubusercontent.com/UMAprotocol/protocol/4612097ead953b89daa6e237cdb6c704460025dd/packages/affiliates/payouts/dappmining/2021-05-03_2021-05-10_YD-ETH-JUN21_0017.json",
+        ],
       });
     } catch (error) {
       errorsThrown += 1;
@@ -89,8 +89,8 @@ describe("buildGlobalWhitelist", async function() {
     assert.equal(errorsThrown, 2);
   });
 });
-describe("buildBotConfigs", async function() {
-  it("Correctly builds bot config from given input", async function() {
+describe("buildBotConfigs", async function () {
+  it("Correctly builds bot config from given input", async function () {
     this.timeout(60000);
     // Construct a whitelist from all current EMPs on the affiliates payout. Append a sample address to the list.
     const constructedConfig = await buildBotConfigs(sampleWhitelist, minimalConfig);
@@ -114,7 +114,7 @@ describe("buildBotConfigs", async function() {
       assert.equal(botTypeCount, sampleWhitelist.length);
     });
   });
-  it("Correctly respects override configs all bots", async function() {
+  it("Correctly respects override configs all bots", async function () {
     this.timeout(60000);
     // Append a common config. This should be injected into every config.
     const configWithOverride = { ...minimalConfig, commonConfig: { testInjection: "some-key-value-pair" } };
@@ -129,14 +129,14 @@ describe("buildBotConfigs", async function() {
       assert.equal(config["testInjection"], "some-key-value-pair");
     });
   });
-  it("Correctly respects override configs for a specific contract address", async function() {
+  it("Correctly respects override configs for a specific contract address", async function () {
     this.timeout(60000);
     // add some override to a specific bot address. All bots of this type should contain this override.
     const overriddenAddress = sampleWhitelist[3];
 
     const configWithOverride = {
       ...minimalConfig,
-      addressConfigOverride: { [overriddenAddress]: { someKey: "some-value" } }
+      addressConfigOverride: { [overriddenAddress]: { someKey: "some-value" } },
     };
 
     const constructedConfig = await buildBotConfigs(sampleWhitelist, configWithOverride);

@@ -50,7 +50,7 @@ export async function buildGlobalWhitelist(config: strategyRunnerConfig) {
       else throw new Error("Global Whitelist file does not have the `empWhitelist` key or is malformed");
     });
   }
-  if (config.globalAddressBlacklist) whitelist = whitelist.filter(el => !config.globalAddressBlacklist?.includes(el));
+  if (config.globalAddressBlacklist) whitelist = whitelist.filter((el) => !config.globalAddressBlacklist?.includes(el));
   return replaceAddressCase(whitelist);
 }
 
@@ -92,7 +92,7 @@ export async function buildBotConfigs(globalWhitelist: Array<string>, config: st
   supportedBotTypes.forEach((botType: string) => {
     botConfigs = [
       ...botConfigs,
-      ...buildConfigForBotType(replaceAddressCase(globalWhitelist), config, botType, syntheticSymbols)
+      ...buildConfigForBotType(replaceAddressCase(globalWhitelist), config, botType, syntheticSymbols),
     ];
   });
   return replaceAddressCase(botConfigs);
@@ -117,7 +117,7 @@ function buildConfigForBotType(
     botTypeWhitelist = [...globalWhitelist, ...config[settingsKey].addressWhitelist];
 
   if (config[settingsKey].addressBlacklist)
-    botTypeWhitelist = botTypeWhitelist.filter(el => !config[settingsKey].addressBlacklist.includes(el));
+    botTypeWhitelist = botTypeWhitelist.filter((el) => !config[settingsKey].addressBlacklist.includes(el));
 
   const botConfigs: any = [];
   botTypeWhitelist.forEach((contractAddress: string) => {
@@ -138,7 +138,7 @@ function buildConfigForBotType(
       errorRetriesTimeout: addressConfig.errorRetriesTimeout,
       pollingDelay: 0,
       startingBlock: addressConfig.startingBlock ? addressConfig.startingBlock : process.env.STARTING_BLOCK_NUMBER,
-      endingBlock: addressConfig.endingBlock ? addressConfig.endingBlock : process.env.ENDING_BLOCK_NUMBER
+      endingBlock: addressConfig.endingBlock ? addressConfig.endingBlock : process.env.ENDING_BLOCK_NUMBER,
     };
 
     botConfigs.push({ ...commonConfig, ...addressConfig });
