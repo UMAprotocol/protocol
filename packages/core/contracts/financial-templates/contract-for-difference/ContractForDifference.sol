@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -29,9 +30,7 @@ import "../../oracle/implementation/Constants.sol";
 
 contract ContractForDifference is Testable, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
-    using SafeERC20 for ExpandedIERC20;
 
     /*********************************************
      *  CONTRACT FOR DIFFERENCE DATA STRUCTURES  *
@@ -40,17 +39,18 @@ contract ContractForDifference is Testable, Lockable {
     enum ContractState { Open, ExpiredPriceRequested, ExpiredPriceReceived }
     ContractState public contractState;
 
-    uint32 public expirationTimestamp;
+    uint64 public expirationTimestamp;
 
     // Amount of collateral a pair of tokens is always redeemable for.
     uint256 public collateralPerPair;
 
     // Price returned from the Optimistic oracle at settlement time.
-    uint256 public expiryPrice;
+    // TODO: should this variable be stored?
+    int256 public expiryPrice;
 
     // number between 0 and 1e18 representing how much collateral long & short tokens are redeemable for. 0 makes each
     // short token worth collateralPerPair and long tokens worth 0. 1 makes each long token worth collateralPerPair and short 0.
-    uint256 public expiraryTokensForCollateral;
+    uint256 public expiryPercentLong;
 
     bytes32 public priceIdentifier;
 
@@ -107,20 +107,20 @@ contract ContractForDifference is Testable, Lockable {
      * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 in production.
      */
     constructor(
-        uint32 _expirationTimestamp,
+        uint64 _expirationTimestamp,
         uint256 _collateralPerPair,
         bytes32 _priceIdentifier,
         ExpandedIERC20 _longTokenAddress,
         ExpandedIERC20 _shortTokenAddress,
         IERC20 _collateralAddress,
-        address _finderAddress,
-        address _financialProductLibraryAddress,
+        FinderInterface _finderAddress,
+        ContractForDifferenceFinancialProductLibrary _financialProductLibraryAddress,
         address _timerAddress
     ) Testable(_timerAddress) {
-        finder = FinderInterface(_finderAddress);
+        finder = _finderAddress;
         require(_expirationTimestamp > getCurrentTime());
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier));
-        require(_financialProductLibraryAddress != address(0));
+        require(address(_financialProductLibraryAddress) != address(0));
 
         expirationTimestamp = _expirationTimestamp;
         collateralPerPair = _collateralPerPair;
@@ -129,7 +129,7 @@ contract ContractForDifference is Testable, Lockable {
         collateralToken = _collateralAddress;
         priceIdentifier = _priceIdentifier;
 
-        financialProductLibrary = ContractForDifferenceFinancialProductLibrary(_financialProductLibraryAddress);
+        financialProductLibrary = _financialProductLibraryAddress;
     }
 
     /****************************************
@@ -190,7 +190,11 @@ contract ContractForDifference is Testable, Lockable {
         // Get the current settlement price and store it. If it is not resolved, will revert.
         if (contractState != ContractState.ExpiredPriceReceived) {
             expiryPrice = _getOraclePriceExpiration(expirationTimestamp);
-            expiraryTokensForCollateral = financialProductLibrary.computeExpiraryTokensForCollateral(expiryPrice);
+            // Cap the return value at 1.
+            expiryPercentLong = Math.min(
+                financialProductLibrary.computeExpiraryTokensForCollateral(expiryPrice),
+                FixedPoint.fromUnscaledUint(1).rawValue
+            );
             contractState = ContractState.ExpiredPriceReceived;
         }
 
@@ -203,13 +207,13 @@ contract ContractForDifference is Testable, Lockable {
             FixedPoint
                 .Unsigned(longTokensToRedeem)
                 .mul(FixedPoint.Unsigned(collateralPerPair))
-                .mul(FixedPoint.Unsigned(expiraryTokensForCollateral))
+                .mul(FixedPoint.Unsigned(expiryPercentLong))
                 .rawValue;
         uint256 shortCollateralRedeemed =
             FixedPoint
                 .Unsigned(shortTokensToRedeem)
                 .mul(FixedPoint.Unsigned(collateralPerPair))
-                .mul(FixedPoint.fromUnscaledUint(1).sub(FixedPoint.Unsigned(expiraryTokensForCollateral)))
+                .mul(FixedPoint.fromUnscaledUint(1).sub(FixedPoint.Unsigned(expiryPercentLong)))
                 .rawValue;
 
         collateralReturned = longCollateralRedeemed.add(shortCollateralRedeemed);
@@ -234,14 +238,13 @@ contract ContractForDifference is Testable, Lockable {
      *          INTERNAL FUNCTIONS          *
      ****************************************/
 
-    function _getOraclePriceExpiration(uint256 requestedTime) internal returns (uint256) {
+    function _getOraclePriceExpiration(uint256 requestedTime) internal returns (int256) {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
         require(optimisticOracle.hasPrice(address(this), priceIdentifier, requestedTime, _getAncillaryData()));
         int256 oraclePrice = optimisticOracle.settleAndGetPrice(priceIdentifier, requestedTime, _getAncillaryData());
 
-        if (oraclePrice < 0) oraclePrice = 0;
-        return uint256(oraclePrice);
+        return oraclePrice;
     }
 
     function _requestOraclePriceExpiration() internal {
