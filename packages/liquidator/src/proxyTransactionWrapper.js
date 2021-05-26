@@ -186,35 +186,29 @@ class ProxyTransactionWrapper {
     const liquidation = this.financialContract.methods.createLiquidation(...liquidationArgs);
 
     // Send the transaction or report failure.
-    let receipt;
-    try {
-      const txResponse = await runTransaction({
-        transaction: liquidation,
-        config: {
-          gasPrice: this.gasEstimator.getCurrentFastPrice(),
-          from: this.account,
-          nonce: await this.web3.eth.getTransactionCount(this.account),
-        },
-      });
-      receipt = txResponse.receipt;
-    } catch (error) {
-      return new Error("Failed to liquidate position🚨");
-    }
 
-    return {
-      type: "Standard EOA liquidation",
-      tx: receipt && receipt.transactionHash,
-      sponsor: receipt.events.LiquidationCreated.returnValues.sponsor,
-      liquidator: receipt.events.LiquidationCreated.returnValues.liquidator,
-      liquidationId: receipt.events.LiquidationCreated.returnValues.liquidationId,
-      tokensOutstanding: receipt.events.LiquidationCreated.returnValues.tokensOutstanding,
-      lockedCollateral: receipt.events.LiquidationCreated.returnValues.lockedCollateral,
-      liquidatedCollateral: receipt.events.LiquidationCreated.returnValues.liquidatedCollateral,
-      txnConfig: {
-        gasPrice: this.gasEstimator.getCurrentFastPrice(),
-        from: this.account,
-      },
-    };
+    try {
+      const { receipt, returnValue, transactionConfig } = await runTransaction({
+        web3: this.web3,
+        transaction: liquidation,
+        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
+      });
+
+      return {
+        type: "Standard EOA liquidation",
+        tx: receipt && receipt.transactionHash,
+        sponsor: receipt.events.LiquidationCreated.returnValues.sponsor,
+        liquidator: receipt.events.LiquidationCreated.returnValues.liquidator,
+        liquidationId: receipt.events.LiquidationCreated.returnValues.liquidationId,
+        tokensOutstanding: receipt.events.LiquidationCreated.returnValues.tokensOutstanding,
+        lockedCollateral: receipt.events.LiquidationCreated.returnValues.lockedCollateral,
+        liquidatedCollateral: receipt.events.LiquidationCreated.returnValues.liquidatedCollateral,
+        returnValue: returnValue.toString(),
+        transactionConfig,
+      };
+    } catch (error) {
+      return error;
+    }
   }
 
   async _executeLiquidationWithDsProxy(liquidationArgs) {

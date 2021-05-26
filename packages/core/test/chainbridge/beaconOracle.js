@@ -46,9 +46,6 @@ contract("BeaconOracle", async (accounts) => {
         event.time.toString() === testRequestTime.toString() &&
         event.ancillaryData.toLowerCase() === testAncillary.toLowerCase()
     );
-    // Requesting another price does not throw an error or emit a PriceRequested event:
-    const txn2 = await beaconOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: owner });
-    TruffleAssert.eventNotEmitted(txn2, "PriceRequestAdded");
   });
   it("publishPrice", async function () {
     await beaconOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: owner });
