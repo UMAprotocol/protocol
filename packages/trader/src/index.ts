@@ -35,7 +35,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       pollingDelay: config.pollingDelay,
       errorRetries: config.errorRetries,
       errorRetriesTimeout: config.errorRetriesTimeout,
-      dsProxyFactoryAddress: config.dsProxyConfig,
+      dsProxyConfig: config.dsProxyConfig,
       tokenPriceFeedConfig: config.tokenPriceFeedConfig,
       referencePriceFeedConfig: config.referencePriceFeedConfig,
       exchangeAdapterConfig: config.exchangeAdapterConfig,
