@@ -1,3 +1,5 @@
+const truffleContract = require("@truffle/contract");
+
 /**
  * This is a hack to handle reverts for view/pure functions that don't actually revert on public networks.
  * See https://forum.openzeppelin.com/t/require-in-view-pure-functions-dont-revert-on-public-networks/1211 for more
@@ -27,4 +29,26 @@ const revertWrapper = (result) => {
   return result;
 };
 
-module.exports = { revertWrapper };
+/**
+ * create a truffle contract from a json object, usually read in from an artifact.
+ * @param {*} contractJsonObject json object representing a contract.
+ * @returns truffle contract instance
+ */
+const createContractObjectFromJson = (contractJsonObject) => {
+  let truffleContractCreator = truffleContract(contractJsonObject);
+  truffleContractCreator.setProvider(web3.currentProvider);
+  return truffleContractCreator;
+};
+/**
+ * Helper to enable enables library linking on artifacts that were not compiled within this repo, such as artifacts
+ * produced by an external project. Can also be useful if the artifact was compiled using ethers.
+ * @param {object} artifact representing the compiled contract instance.
+ * @param {string} libraryName to be found and replaced within the artifact.
+ * @returns
+ */
+const replaceLibraryBindingReferenceInArtitifact = (artifact, libraryName) => {
+  const artifactString = JSON.stringify(artifact);
+  return JSON.parse(artifactString.replace(/\$.*\$/g, libraryName));
+};
+
+module.exports = { revertWrapper, createContractObjectFromJson, replaceLibraryBindingReferenceInArtitifact };
