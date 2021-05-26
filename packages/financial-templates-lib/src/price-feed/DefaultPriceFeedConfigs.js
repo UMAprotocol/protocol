@@ -2,6 +2,16 @@ const { getPrecisionForIdentifier } = require("@uma/common");
 
 // Default price feed configs for currently approved identifiers.
 const defaultConfigs = {
+  "Test Identifier": {
+    type: "medianizer",
+    invertPrice: true,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "ethusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
+      { type: "cryptowatch", exchange: "kraken", pair: "ethusd" },
+    ],
+  },
   "ETH/BTC": {
     type: "medianizer",
     pair: "ethbtc",
