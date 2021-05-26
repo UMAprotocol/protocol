@@ -31,7 +31,7 @@ async function run({
   errorRetriesTimeout,
   commonPriceFeedConfig,
   optimisticOracleProposerConfig,
-  oracleType="Voting"
+  oracleType = "Voting",
 }) {
   try {
     const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
@@ -47,7 +47,7 @@ async function run({
       errorRetriesTimeout,
       commonPriceFeedConfig,
       optimisticOracleProposerConfig,
-      oracleType
+      oracleType,
     });
 
     // Create the OptimisticOracleClient to query on-chain information, GasEstimator to get latest gas prices and an
@@ -146,9 +146,7 @@ async function Poll(callback) {
         ? JSON.parse(process.env.OPTIMISTIC_ORACLE_PROPOSER_CONFIG)
         : {},
       // Type of "Oracle" set for this network's Finder, default is "Voting". Other possible types include "SinkOracle".
-      oracleType: process.env.ORACLE_TYPE
-      ? process.env.ORACLE_TYPE
-      : "Voting",
+      oracleType: process.env.ORACLE_TYPE ? process.env.ORACLE_TYPE : "Voting",
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
