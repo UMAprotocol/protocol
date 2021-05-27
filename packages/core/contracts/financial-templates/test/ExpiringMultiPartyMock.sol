@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import "../../common/implementation/Testable.sol";
 import "../../common/implementation/FixedPoint.sol";
-import "../common/financial-product-libraries/FinancialProductLibrary.sol";
+import "../common/financial-product-libraries/expiring-multiparty-libraries/FinancialProductLibrary.sol";
 
 contract ExpiringMultiPartyMock is Testable {
     using FixedPoint for FixedPoint.Unsigned;
