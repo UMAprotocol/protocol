@@ -37,7 +37,7 @@ task("register-generic-resource", "Admin can set generic resource ID on Bridge")
 
     if (rname || cid) {
       if (id) throw new Error("Cannot provide --cid or --resouceName with --id");
-      if (!cid || !rname) throw new Error("Must provide --cid and --resouceName when generating the resouce id");
+      if (!cid || !rname) throw new Error("Must provide --cid and --resouceName when generating the resource id");
       id = _getResourceId(rname, cid);
     } else if (!id) {
       throw new Error("Must --id when not using --cid and --resouceName to generate the resource id");
