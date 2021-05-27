@@ -83,7 +83,7 @@ contract SinkOracle is BeaconOracle, OracleAncillaryInterface {
      * @dev This method should basically check that the `Bridge.deposit()` was triggered by a valid price request,
      * specifically one that has not resolved yet and was called by a registered contract. Without this check,
      * `Bridge.deposit()` could be called by non-registered contracts to make price requests to the DVM.
-     * @param sinkChainID Chain ID of for this contract.
+     * @param sinkChainID Chain ID for this contract.
      * @param identifier Identifier of price request.
      * @param time Timestamp of price request.
      * @param ancillaryData extra data of price request.
@@ -175,9 +175,9 @@ contract SinkOracle is BeaconOracle, OracleAncillaryInterface {
      *     len(data)                              uint256     bytes  0  - 32
      *     data                                   bytes       bytes  64 - END
      * @param chainID Chain ID for this contract.
-     * @param identifier Identifier of price request to request.
-     * @param time Timestamp of price request to request.
-     * @param ancillaryData extra data of price request to request.
+     * @param identifier Identifier of price request.
+     * @param time Timestamp of price request.
+     * @param ancillaryData extra data of price request.
      * @return bytes Formatted metadata.
      */
     function formatMetadata(
