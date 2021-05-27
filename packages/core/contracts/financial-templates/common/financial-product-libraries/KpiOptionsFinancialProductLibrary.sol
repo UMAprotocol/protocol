@@ -62,7 +62,7 @@ contract KpiOptionsFinancialProductLibrary is FinancialProductLibrary, Lockable 
     }
 
     /**
-     * @notice Returns a transformed collateral requirement that is set to be equivalent to 2 tokens pre-expiry.
+     * @notice Returns a transformed collateral requirement that is set to be equivalent to 1 token pre-expiry.
      * @param oraclePrice price from the oracle to transform the collateral requirement.
      * @param collateralRequirement financial products collateral requirement to be scaled to a flat rate.
      * @return transformedCollateralRequirement the input collateral requirement with the transformation logic applied to it.

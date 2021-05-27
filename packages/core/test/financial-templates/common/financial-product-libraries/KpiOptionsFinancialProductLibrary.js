@@ -11,7 +11,7 @@ const { toWei, toBN, utf8ToHex } = web3.utils;
 const priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
 const collateralizationRatio = toBN(toWei("1")).addn(1);
 
-contract("KpiOptionsFinancialProductLibrary", function() {
+contract("KpiOptionsFinancialProductLibrary", function () {
   let kpiFPL;
   let expiringMultiParty;
   let timer;
@@ -31,7 +31,7 @@ contract("KpiOptionsFinancialProductLibrary", function() {
     );
   });
   describe("price transformation", () => {
-    it("Library returns 2 price if before expiration", async () => {
+    it("Library returns 1 price if before expiration", async () => {
       // Calling the transformation function through the emp mock.
       assert.equal(
         (
@@ -40,7 +40,7 @@ contract("KpiOptionsFinancialProductLibrary", function() {
             (await expiringMultiParty.getCurrentTime()).toString()
           )
         ).toString(),
-        toWei("2")
+        toWei("1")
       );
 
       // Calling the transformation function as a mocked emp caller should also work.
@@ -52,7 +52,7 @@ contract("KpiOptionsFinancialProductLibrary", function() {
             { from: expiringMultiParty.address }
           )
         ).toString(),
-        toWei("2")
+        toWei("1")
       );
     });
 
