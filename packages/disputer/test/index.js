@@ -48,7 +48,7 @@ let dsProxyFactory;
 
 let pollingDelay = 0; // 0 polling delay creates a serverless bot that yields after one full execution.
 let errorRetries = 1;
-let errorRetriesTimeout = 0.1; // 100 milliseconds between preforming retries
+let errorRetriesTimeout = 0.1; // 100 milliseconds between performing retries
 let identifier = "TEST_IDENTIFIER";
 let fundingRateIdentifier = "TEST_FUNDING_IDENTIFIER";
 

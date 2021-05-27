@@ -304,7 +304,7 @@ async function Poll(callback) {
       // "uniswapRouterAddress": "0x123..." -> uniswap router address to enable reserve trading. Defaults to mainnet router.
       // "maxReserverTokenSpent": "10000000000" -> max amount to spend in reserve currency. Scaled by reserve currency
       //      decimals. defaults to MAX_UINT (no limit).
-      // "availableAccounts": "1"} -> the number of EOAs the bot should use when preforming liquidations. This only works
+      // "availableAccounts": "1"} -> the number of EOAs the bot should use when performing liquidations. This only works
       // if you have configured your DSProxy with a DSGuard with permissions on your other EOAs unlocked from your account.
       proxyTransactionWrapperConfig: process.env.DSPROXY_CONFIG ? JSON.parse(process.env.DSPROXY_CONFIG) : {},
     };

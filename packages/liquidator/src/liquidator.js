@@ -202,7 +202,7 @@ class Liquidator {
   async liquidatePositions(maxTokensToLiquidateWei, liquidatorOverridePrice) {
     this.logger.debug({
       at: "Liquidator",
-      message: "Checking for liquidatable positions and preforming liquidations",
+      message: "Checking for liquidatable positions and performing liquidations",
       maxTokensToLiquidateWei,
       liquidatorOverridePrice,
     });

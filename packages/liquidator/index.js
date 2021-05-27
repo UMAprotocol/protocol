@@ -391,7 +391,7 @@ async function Poll(callback) {
       // "maxReserverTokenSpent": "10000000000" -> max amount to spend in reserve currency. scaled by reserve currency
       //      decimals. defaults to MAX_UINT (no limit). Note that this is separate to the WDF, which behaves as per usual
       //      and considers the maximum amount of synthetics that could be minted, given the current reserve balance.
-      // "availableAccounts": "1"} -> the number of EOAs the bot should use when preforming liquidations. This only works
+      // "availableAccounts": "1"} -> the number of EOAs the bot should use when performing liquidations. This only works
       // if you have configured your DSProxy with a DSGuard with permissions on your other EOAs unlocked from your account.
       proxyTransactionWrapperConfig: process.env.DSPROXY_CONFIG ? JSON.parse(process.env.DSPROXY_CONFIG) : {},
     };
