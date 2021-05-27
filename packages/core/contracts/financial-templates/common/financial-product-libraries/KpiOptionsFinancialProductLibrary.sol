@@ -15,7 +15,7 @@ contract KpiOptionsFinancialProductLibrary is FinancialProductLibrary, Lockable 
 
     struct TransformedPrice {
         bool set;
-        FixedPoint.Unsigned transformedPrice;
+        FixedPoint.Unsigned memory price;
     }
 
     mapping(address => TransformedPrice) public financialProductTransformedPrices;
@@ -35,7 +35,7 @@ contract KpiOptionsFinancialProductLibrary is FinancialProductLibrary, Lockable 
         require(financialProductTransformedPrices[financialProduct].set == false, "Price already set");
         require(ExpiringContractInterface(financialProduct).expirationTimestamp() != 0, "Invalid EMP contract");
         financialProductTransformedPrices[financialProduct].set = true;
-        financialProductTransformedPrices[financialProduct].transformedPrice = transformedPrice;
+        financialProductTransformedPrices[financialProduct].price = transformedPrice;
     }
 
     /**
@@ -51,11 +51,11 @@ contract KpiOptionsFinancialProductLibrary is FinancialProductLibrary, Lockable 
         nonReentrantView()
         returns (FixedPoint.Unsigned memory)
     {
-        FixedPoint.Unsigned memory transformedPrice = financialProductTransformedPrices[msg.sender];
+        TransformedPrice transformedPrice = financialProductTransformedPrices[msg.sender];
         require(transformedPrice.set == true, "Caller has no transformation");
         // If price request is made before expiry, return transformed price. Post-expiry, leave unchanged.
         if (requestTime < ExpiringContractInterface(msg.sender).expirationTimestamp()) {
-            return transformedPrice;
+            return transformedPrice.price;
         } else {
             return oraclePrice;
         }
