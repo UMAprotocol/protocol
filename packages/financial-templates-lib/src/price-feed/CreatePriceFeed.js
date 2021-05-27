@@ -26,7 +26,7 @@ const { PriceFeedMockScaled } = require("./PriceFeedMockScaled");
 const { QuandlPriceFeed } = require("./QuandlPriceFeed");
 const { TraderMadePriceFeed } = require("./TraderMadePriceFeed");
 const { UniswapV2PriceFeed, UniswapV3PriceFeed } = require("./UniswapPriceFeed");
-const { VaultPriceFeed } = require("./VaultPriceFeed");
+const { VaultPriceFeed, HarvestVaultPriceFeed } = require("./VaultPriceFeed");
 
 // Global cache for block (promises) used by uniswap price feeds.
 const uniswapBlockCache = {};
@@ -37,6 +37,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
   const ERC20 = getTruffleContract("ExpandedERC20", web3);
   const Balancer = getTruffleContract("Balancer", web3);
   const VaultInterface = getTruffleContract("VaultInterface", web3);
+  const HarvestVaultInterface = getTruffleContract("HarvestVaultInterface", web3);
   const Perpetual = getTruffleContract("Perpetual", web3);
 
   if (config.type === "cryptowatch") {
@@ -440,6 +441,28 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       web3,
       getTime,
       vaultAbi: VaultInterface.abi,
+      erc20Abi: ERC20.abi,
+      vaultAddress: config.address,
+      blockFinder: getSharedBlockFinder(web3),
+    });
+  } else if (config.type === "harvestvault") {
+    const requiredFields = ["address"];
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({
+      at: "createPriceFeed",
+      message: "Creating HarvestVaultPriceFeed",
+      config,
+    });
+
+    return new HarvestVaultPriceFeed({
+      ...config,
+      logger,
+      web3,
+      getTime,
+      vaultAbi: HarvestVaultInterface.abi,
       erc20Abi: ERC20.abi,
       vaultAddress: config.address,
       blockFinder: getSharedBlockFinder(web3),
