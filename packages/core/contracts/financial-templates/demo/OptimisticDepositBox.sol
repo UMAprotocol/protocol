@@ -5,10 +5,10 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../common/FeePayer.sol";
-
 import "../../common/implementation/FixedPoint.sol";
+import "../../common/implementation/AddressWhitelist.sol";
 
+import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/interfaces/OptimisticOracleInterface.sol";
 import "../../oracle/implementation/ContractCreator.sol";
@@ -36,7 +36,7 @@ import "../../oracle/implementation/ContractCreator.sol";
  * - Optimistic Oracle resolves the exchange rate at: 1 wETH is worth 2000 USD.
  * - OptimisticDepositBox transfers 0.5 wETH to user.
  */
-contract OptimisticDepositBox is FeePayer, ContractCreator {
+contract OptimisticDepositBox is Testable {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
@@ -56,14 +56,14 @@ contract OptimisticDepositBox is FeePayer, ContractCreator {
     // Maps addresses to their deposit boxes. Each address can have only one position.
     mapping(address => OptimisticDepositBoxData) private depositBoxes;
 
-    // Unique identifier for DVM price feed ticker.
+    // Unique identifier for price feed ticker.
     bytes32 private priceIdentifier;
+
+    // Finder for UMA contracts.
+    FinderInterface finder;
 
     // Total collateral of all depositors.
     FixedPoint.Unsigned private totalOptimisticDepositBoxCollateral;
-
-    // This blocks every public state-modifying method until it flips to true, via the `initialize()` method.
-    bool private initialized;
 
     /****************************************
      *                EVENTS                *
@@ -94,11 +94,6 @@ contract OptimisticDepositBox is FeePayer, ContractCreator {
         _;
     }
 
-    modifier isInitialized() {
-        _isInitialized();
-        _;
-    }
-
     /****************************************
      *           PUBLIC FUNCTIONS           *
      ****************************************/
@@ -111,19 +106,16 @@ contract OptimisticDepositBox is FeePayer, ContractCreator {
      * The price identifier consists of a "base" asset and a "quote" asset. The "base" asset corresponds to the collateral ERC20
      * currency deposited into this account, and it is denominated in the "quote" asset on withdrawals.
      * An example price identifier would be "ETH-USD" which will resolve and return the USD price of ETH.
-     * @param _timerAddress Contract that stores the current time in a testing environment.
-     * Must be set to 0x0 for production environments that use live time.
      */
     constructor(
         address _collateralAddress,
         address _finderAddress,
-        bytes32 _priceIdentifier,
-        address _timerAddress
-    ) ContractCreator(_finderAddress) FeePayer(_collateralAddress, _finderAddress, _timerAddress) nonReentrant() {
+        bytes32 _priceIdentifier
+    ) nonReentrant() {
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported identifier");
         require(_getCollateralWhitelist().isOnWhitelist(_collateralAddress), "Unsupported currency");
-
         priceIdentifier = _priceIdentifier;
+        finder = FinderInterface(_finderAddress);
     }
 
     /**
@@ -131,7 +123,7 @@ contract OptimisticDepositBox is FeePayer, ContractCreator {
      * @dev This contract must be approved to spend at least `collateralAmount` of `collateralCurrency`.
      * @param collateralAmount total amount of collateral tokens to be sent to the sponsor's position.
      */
-    function deposit(FixedPoint.Unsigned memory collateralAmount) public isInitialized() fees() nonReentrant() {
+    function deposit(FixedPoint.Unsigned memory collateralAmount) public fees() nonReentrant() {
         require(collateralAmount.isGreaterThan(0), "Invalid collateral amount");
         OptimisticDepositBoxData storage depositBoxData = depositBoxes[msg.sender];
         if (_getFeeAdjustedCollateral(depositBoxData.collateral).isEqual(0)) {
@@ -156,7 +148,6 @@ contract OptimisticDepositBox is FeePayer, ContractCreator {
      */
     function requestWithdrawal(FixedPoint.Unsigned memory denominatedCollateralAmount)
         public
-        isInitialized()
         noPendingWithdrawal(msg.sender)
         nonReentrant()
     {
@@ -189,7 +180,6 @@ contract OptimisticDepositBox is FeePayer, ContractCreator {
      */
     function executeWithdrawal()
         external
-        isInitialized()
         fees()
         nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
@@ -237,7 +227,7 @@ contract OptimisticDepositBox is FeePayer, ContractCreator {
     /**
      * @notice Cancels a pending withdrawal request.
      */
-    function cancelWithdrawal() external isInitialized() nonReentrant() {
+    function cancelWithdrawal() external nonReentrant() {
         OptimisticDepositBoxData storage depositBoxData = depositBoxes[msg.sender];
         require(depositBoxData.requestPassTimestamp != 0, "No pending withdrawal");
 
@@ -255,14 +245,14 @@ contract OptimisticDepositBox is FeePayer, ContractCreator {
      * @notice `emergencyShutdown` and `remargin` are required to be implemented by all financial contracts and exposed to the DVM, but
      * because this is a minimal demo they will simply exit silently.
      */
-    function emergencyShutdown() external override isInitialized() nonReentrant() {
+    function emergencyShutdown() external override nonReentrant() {
         return;
     }
 
     /**
      * @notice Same comment as `emergencyShutdown`. For the sake of simplicity, this will simply exit silently.
      */
-    function remargin() external override isInitialized() nonReentrant() {
+    function remargin() external override nonReentrant() {
         return;
     }
 
@@ -330,21 +320,21 @@ contract OptimisticDepositBox is FeePayer, ContractCreator {
         require(depositBoxes[user].requestPassTimestamp == 0, "Pending withdrawal");
     }
 
-    function _isInitialized() internal view {
-        require(initialized, "Uninitialized contract");
-    }
-
     function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 
-    function _getOracle() internal view returns (OracleInterface) {
+    function _getCollateralWhitelist() internal view returns (AddressWhitelist) {
+        return AddressWhitelist(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
+    }
+
+    function _getOracle() internal view returns (OptimisticOracleInterface) {
         return OptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 
-    // Fetches a resolved Oracle price from the Oracle. Reverts if the Oracle hasn't resolved for this request.
+    // Fetches a resolved oracle price from the Optimistic Oracle. Reverts if the oracle hasn't resolved for this request.
     function _getOraclePrice(uint256 requestedTime) internal view returns (FixedPoint.Unsigned memory) {
-        OracleInterface oracle = _getOracle();
+        OptimisticOracleInterface oracle = _getOracle();
         require(oracle.hasPrice(priceIdentifier, requestedTime), "Unresolved oracle price");
         int256 oraclePrice = oracle.getPrice(priceIdentifier, requestedTime);
 
@@ -353,12 +343,5 @@ contract OptimisticDepositBox is FeePayer, ContractCreator {
             oraclePrice = 0;
         }
         return FixedPoint.Unsigned(uint256(oraclePrice));
-    }
-
-    // `_pfc()` is inherited from FeePayer and must be implemented to return the available pool of collateral from
-    // which fees can be charged. For this contract, the available fee pool is simply all of the collateral locked up in the
-    // contract.
-    function _pfc() internal view virtual override returns (FixedPoint.Unsigned memory) {
-        return _getFeeAdjustedCollateral(totalOptimisticDepositBoxCollateral);
     }
 }

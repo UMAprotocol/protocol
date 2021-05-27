@@ -34,6 +34,7 @@ const { RegistryRolesEnum } = require("@uma/common");
 const OptimisticDepositBox = artifacts.require("OptimisticDepositBox");
 const WETH9 = artifacts.require("WETH9");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
+const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Finder = artifacts.require("Finder");
 const Timer = artifacts.require("Timer");
 const Registry = artifacts.require("Registry");
@@ -83,7 +84,7 @@ const deploy = async () => {
 const setupWallets = async (optimisticDepositBoxAddress, amountOfWethToMint) => {
   const accounts = await web3.eth.getAccounts();
 
-  console.group("3. Minting ERC20 to user and giving OptimisticDepositBox allowance to transfer collateral");
+  console.group("2. Minting ERC20 to user and giving OptimisticDepositBox allowance to transfer collateral");
   // This WETH contract is copied from the officially deployed WETH contract on mainnet.
   const collateral = await WETH9.deployed();
 
@@ -109,7 +110,7 @@ const deposit = async (optimisticDepositBoxAddress, amountOfWethToDeposit) => {
   const optimisticDepositBox = await OptimisticDepositBox.at(optimisticDepositBoxAddress);
   const accounts = await web3.eth.getAccounts();
 
-  console.group("4. Depositing ERC20 into the OptimisticDepositBox");
+  console.group("3. Depositing ERC20 into the OptimisticDepositBox");
   // Note: The DVM charges a "regular" fee as a % of the deposited collateral every second. However, because the
   // default regular fee is 0, this test setup incurs no periodic fees.
   await optimisticDepositBox.deposit({ rawValue: amountOfWethToDeposit });
@@ -139,10 +140,10 @@ const withdraw = async (optimisticDepositBoxAddress, mockPrice, amountOfUsdToWit
   const finder = await Finder.deployed();
   const mockOracle = await OptimisticMockOracle.at(await finder.getImplementationAddress(utf8ToHex(interfaceName.Oracle)));
 
-  console.group("5. Withdrawing ERC20 from OptimisticDepositBox");
+  console.group("4. Withdrawing ERC20 from OptimisticDepositBox");
 
-  // Technically, withdrawing is a two step process. First, a request to withdraw must be submitted to the DVM.
-  // Next, the DVM voters will resolve and return a price (in production, each voting round takes ~2 days).
+  // Technically, withdrawing is a two step process. First, a request to withdraw must be submitted to the Optimistic Oracle.
+  // Next, the Optimistic Oracle will resolve and return a price (in production, this may take two hours after a price proposal).
   // Once a price is resolved, the user of the OptimisticDepositBox can finalize the withdrawal. However, for test purposes
   // we can "resolve" prices instantaneously by pushing a price (i.e. `mockPrice`) to the OptimisticMockOracle.
 
@@ -150,14 +151,11 @@ const withdraw = async (optimisticDepositBoxAddress, mockPrice, amountOfUsdToWit
   // The user wants to withdraw a USD-denominated amount of WETH.
   // Note: If the USD amount is greater than the user's deposited balance, the contract will simply withdraw
   // the full user balance.
-  // Note-2: The DVM charges a fixed fee on every price request. Therefore, in practice each `requestWithdrawal()` call
-  // would incur this fixed fee, which is paid from the deposited collateral pool. However, because the
-  // default fee is 0, this test setup incurs no fixed fee.
   const requestTimestamp = await optimisticDepositBox.getCurrentTime();
   await optimisticDepositBox.requestWithdrawal({ rawValue: amountOfUsdToWithdraw });
   console.log(`- Submitted a withdrawal request for ${fromWei(amountOfUsdToWithdraw)} USD of WETH`);
 
-  // Manually push a price to the DVM. This price must be a positive integer.
+  // Manually push a price to the Optimistic Oracle. This price must be a positive integer.
   await mockOracle.pushPrice(priceFeedIdentifier, requestTimestamp.toNumber(), mockPrice);
   console.log(`- Resolved a price of ${fromWei(mockPrice)} WETH-USD`);
 
