@@ -9,10 +9,7 @@ const setAllowance = async (web3, gasEstimator, ownerAddress, spenderAddress, cu
   const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), currencyAddress);
   const currentCollateralAllowance = await collateralToken.methods.allowance(ownerAddress, spenderAddress).call();
   if (toBN(currentCollateralAllowance).lt(toBN(MAX_SAFE_ALLOWANCE))) {
-    const approveTransaction = collateralToken.methods.approve(
-      spenderAddress,
-      MAX_UINT_VAL
-    );
+    const approveTransaction = collateralToken.methods.approve(spenderAddress, MAX_UINT_VAL);
     const { receipt } = await runTransaction({
       web3,
       transaction: approveTransaction,

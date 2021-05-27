@@ -405,11 +405,12 @@ class OptimisticOracleProposer {
     // hardcode the nonce, which could cause unintended reverts due to duplicate transactions. Once the `ynatm` package
     // can handle nonce management, then we should update this logic to run in parallel.
 
-    // The OptimisticOracle requires approval to transfer the proposed price request's collateral currency in order to 
-    // post a bond. We'll set this once to the max value and top up whenever the bot's allowance drops below 
+    // The OptimisticOracle requires approval to transfer the proposed price request's collateral currency in order to
+    // post a bond. We'll set this once to the max value and top up whenever the bot's allowance drops below
     // MAX_INT / 2. We also approve currencies stored in disputes if for some reason they were not approved already.
-    const allPriceRequests = this.optimisticOracleClient.getUnproposedPriceRequests()
-      .concat(this.optimisticOracleClient.getUndisputedProposals())
+    const allPriceRequests = this.optimisticOracleClient
+      .getUnproposedPriceRequests()
+      .concat(this.optimisticOracleClient.getUndisputedProposals());
     for (let priceRequest of allPriceRequests) {
       const receipt = await setAllowance(
         this.web3,
@@ -417,14 +418,14 @@ class OptimisticOracleProposer {
         this.account,
         this.optimisticOracleContract.options.address,
         priceRequest.currency
-      )
+      );
       if (receipt) {
         this.logger.info({
           at: "OptimisticOracle#Proposer",
           message: "Approved OptimisticOracle to transfer unlimited collateral tokens 💰",
           currency: receipt.currencyAddress,
           collateralApprovalTx: receipt.tx.transactionHash,
-        });  
+        });
       }
     }
   }
