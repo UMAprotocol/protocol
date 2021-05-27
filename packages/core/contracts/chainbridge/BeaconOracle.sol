@@ -65,7 +65,7 @@ abstract contract BeaconOracle {
     }
 
     /**
-     * @notice Enqueues a request (if a request isn't already present) for the given (chainID, identifier, time, 
+     * @notice Enqueues a request (if a request isn't already present) for the given (chainID, identifier, time,
      * ancillary data) combination. Will only emit an event if the request has never been requested.
      */
     function _requestPrice(
