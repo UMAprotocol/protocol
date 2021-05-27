@@ -1,7 +1,7 @@
 const assert = require("assert");
 const truffleContract = require("@truffle/contract");
 
-const { createObjectFromDefaultProps, runTransaction, blockUntilBlockMined, MAX_UINT_VAL } = require("@uma/common");
+const { createObjectFromDefaultProps, runTransaction, blockUntilBlockMined } = require("@uma/common");
 const { getAbi, getTruffleContract } = require("@uma/core");
 
 const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json");
@@ -74,10 +74,11 @@ class ProxyTransactionWrapper {
           return this.web3.utils.isAddress(x) || x === "";
         },
       },
-      maxReserverTokenSpent: {
-        value: MAX_UINT_VAL,
+      maxAcceptableSlippage: {
+        // default to reverting on >10% slippage on trades.
+        value: this.toWei("0.1"),
         isValid: (x) => {
-          return typeof x == "string";
+          return typeof x == "string" && this.toBN(x).gt(this.toBN("0"));
         },
       },
     };
@@ -186,35 +187,29 @@ class ProxyTransactionWrapper {
     const liquidation = this.financialContract.methods.createLiquidation(...liquidationArgs);
 
     // Send the transaction or report failure.
-    let receipt;
-    try {
-      const txResponse = await runTransaction({
-        transaction: liquidation,
-        config: {
-          gasPrice: this.gasEstimator.getCurrentFastPrice(),
-          from: this.account,
-          nonce: await this.web3.eth.getTransactionCount(this.account),
-        },
-      });
-      receipt = txResponse.receipt;
-    } catch (error) {
-      return new Error("Failed to liquidate position🚨");
-    }
 
-    return {
-      type: "Standard EOA liquidation",
-      tx: receipt && receipt.transactionHash,
-      sponsor: receipt.events.LiquidationCreated.returnValues.sponsor,
-      liquidator: receipt.events.LiquidationCreated.returnValues.liquidator,
-      liquidationId: receipt.events.LiquidationCreated.returnValues.liquidationId,
-      tokensOutstanding: receipt.events.LiquidationCreated.returnValues.tokensOutstanding,
-      lockedCollateral: receipt.events.LiquidationCreated.returnValues.lockedCollateral,
-      liquidatedCollateral: receipt.events.LiquidationCreated.returnValues.liquidatedCollateral,
-      txnConfig: {
-        gasPrice: this.gasEstimator.getCurrentFastPrice(),
-        from: this.account,
-      },
-    };
+    try {
+      const { receipt, returnValue, transactionConfig } = await runTransaction({
+        web3: this.web3,
+        transaction: liquidation,
+        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
+      });
+
+      return {
+        type: "Standard EOA liquidation",
+        tx: receipt && receipt.transactionHash,
+        sponsor: receipt.events.LiquidationCreated.returnValues.sponsor,
+        liquidator: receipt.events.LiquidationCreated.returnValues.liquidator,
+        liquidationId: receipt.events.LiquidationCreated.returnValues.liquidationId,
+        tokensOutstanding: receipt.events.LiquidationCreated.returnValues.tokensOutstanding,
+        lockedCollateral: receipt.events.LiquidationCreated.returnValues.lockedCollateral,
+        liquidatedCollateral: receipt.events.LiquidationCreated.returnValues.liquidatedCollateral,
+        returnValue: returnValue.toString(),
+        transactionConfig,
+      };
+    } catch (error) {
+      return error;
+    }
   }
 
   async _executeLiquidationWithDsProxy(liquidationArgs) {
@@ -228,10 +223,10 @@ class ProxyTransactionWrapper {
         this.financialContract._address, // financialContract
         this.reserveToken._address, // reserveCurrency
         liquidationArgs[0], // liquidatedSponsor
-        { rawValue: this.maxReserverTokenSpent }, // maxReserverTokenSpent
         { rawValue: liquidationArgs[1].rawValue }, // minCollateralPerTokenLiquidated
         { rawValue: liquidationArgs[2].rawValue }, // maxCollateralPerTokenLiquidated. This number need to be >= the token price.
         { rawValue: liquidationArgs[3].rawValue }, // maxTokensToLiquidate. This is how many tokens the positions has (liquidated debt).
+        this.maxAcceptableSlippage, // maxSlippage. liquidation will revert if the slippage on the dex is more than this.
         liquidationArgs[4]
       )
       .encodeABI();

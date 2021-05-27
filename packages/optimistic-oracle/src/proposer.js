@@ -78,8 +78,6 @@ class OptimisticOracleProposer {
     await Promise.all([this.optimisticOracleClient.update(), this.gasEstimator.update()]);
 
     // Increase allowances for all relevant collateral currencies.
-    // TODO: Consider whether this should happen in a separate function (i.e. `setAllowances`) or within
-    // the `sendProposals()` method.
     await this._setAllowances();
   }
 
@@ -125,11 +123,6 @@ class OptimisticOracleProposer {
     }
   }
 
-  /** **********************************
-   *
-   * INTERNAL METHODS
-   *
-   ************************************/
   // Returns true if the price request should be ignored by the OO proposer + disputer for any reason, False otherwise.
   async _shouldIgnorePriceRequest(priceRequest) {
     // If the price request is an expiry price request for a specific type of EMP
@@ -204,16 +197,11 @@ class OptimisticOracleProposer {
       proposer: this.account,
     });
     try {
-      const transactionResult = await runTransaction({
+      const { receipt, returnValue, transactionConfig } = await runTransaction({
+        web3: this.web3,
         transaction: proposal,
-        config: {
-          gasPrice: this.gasEstimator.getCurrentFastPrice(),
-          from: this.account,
-          nonce: await this.web3.eth.getTransactionCount(this.account),
-        },
+        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
       });
-      let receipt = transactionResult.receipt;
-      let returnValue = transactionResult.returnValue;
 
       const logResult = {
         tx: receipt.transactionHash,
@@ -229,9 +217,10 @@ class OptimisticOracleProposer {
         at: "OptimisticOracleProposer#sendProposals",
         message: "Proposed price!💍",
         priceRequest,
-        proposalBond: returnValue,
+        proposalBond: returnValue.toString(),
         proposalPrice,
         proposalResult: logResult,
+        transactionConfig,
       });
     } catch (error) {
       const message =
@@ -307,16 +296,11 @@ class OptimisticOracleProposer {
         disputer: this.account,
       });
       try {
-        const transactionResult = await runTransaction({
+        const { receipt, returnValue, transactionConfig } = await runTransaction({
+          web3: this.web3,
           transaction: dispute,
-          config: {
-            gasPrice: this.gasEstimator.getCurrentFastPrice(),
-            from: this.account,
-            nonce: await this.web3.eth.getTransactionCount(this.account),
-          },
+          transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
         });
-        let receipt = transactionResult.receipt;
-        let returnValue = transactionResult.returnValue;
 
         const logResult = {
           tx: receipt.transactionHash,
@@ -333,9 +317,10 @@ class OptimisticOracleProposer {
           message: "Disputed proposal!⛑",
           priceRequest,
           disputePrice,
-          disputeBond: returnValue,
+          disputeBond: returnValue.toString(),
           allowedError: this.disputePriceErrorPercent,
           disputeResult: logResult,
+          transactionConfig,
         });
       } catch (error) {
         const message =
@@ -376,15 +361,11 @@ class OptimisticOracleProposer {
       priceRequest,
     });
     try {
-      const transactionResult = await runTransaction({
+      const { receipt, returnValue, transactionConfig } = await runTransaction({
+        web3: this.web3,
         transaction: settle,
-        config: {
-          gasPrice: this.gasEstimator.getCurrentFastPrice(),
-          from: this.account,
-        },
+        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
       });
-      let receipt = transactionResult.receipt;
-      let returnValue = transactionResult.returnValue;
 
       const logResult = {
         tx: receipt.transactionHash,
@@ -401,8 +382,9 @@ class OptimisticOracleProposer {
         at: "OptimisticOracleProposer#settleRequests",
         message: "Settled proposal or dispute!⛑",
         priceRequest,
-        payout: returnValue,
+        payout: returnValue.toString(),
         settleResult: logResult,
+        transactionConfig,
       });
     } catch (error) {
       const message =
@@ -418,38 +400,25 @@ class OptimisticOracleProposer {
   }
   // Sets allowances for all collateral currencies used in unproposed price requests
   async _setAllowances() {
-    const approvalPromises = [];
+    // TODO: Note we set allowances sequentially so that we can hardcode the nonce before passing
+    // transactions to the `ynatm` package. If these calls were submitted in parallel then we wouldn't be able to
+    // hardcode the nonce, which could cause unintended reverts due to duplicate transactions. Once the `ynatm` package
+    // can handle nonce management, then we should update this logic to run in parallel.
 
-    // The OptimisticOracle requires approval to transfer the proposed price request's collateral currency in order to post a bond.
-    // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-    for (let priceRequest of this.optimisticOracleClient.getUnproposedPriceRequests()) {
-      approvalPromises.push(
-        setAllowance(
-          this.web3,
-          this.gasEstimator,
-          this.account,
-          this.optimisticOracleContract.options.address,
-          priceRequest.currency
-        )
+    // The OptimisticOracle requires approval to transfer the proposed price request's collateral currency in order to
+    // post a bond. We'll set this once to the max value and top up whenever the bot's allowance drops below
+    // MAX_INT / 2. We also approve currencies stored in disputes if for some reason they were not approved already.
+    const allPriceRequests = this.optimisticOracleClient
+      .getUnproposedPriceRequests()
+      .concat(this.optimisticOracleClient.getUndisputedProposals());
+    for (let priceRequest of allPriceRequests) {
+      const receipt = await setAllowance(
+        this.web3,
+        this.gasEstimator,
+        this.account,
+        this.optimisticOracleContract.options.address,
+        priceRequest.currency
       );
-    }
-
-    // We also approve currencies stored in disputes if for some reason they were not approved already.
-    for (let priceRequest of this.optimisticOracleClient.getUndisputedProposals()) {
-      approvalPromises.push(
-        setAllowance(
-          this.web3,
-          this.gasEstimator,
-          this.account,
-          this.optimisticOracleContract.options.address,
-          priceRequest.currency
-        )
-      );
-    }
-
-    // Get new approval receipts or null if approval was unneccessary.
-    const newApprovals = await Promise.all(approvalPromises);
-    newApprovals.forEach((receipt) => {
       if (receipt) {
         this.logger.info({
           at: "OptimisticOracle#Proposer",
@@ -458,7 +427,7 @@ class OptimisticOracleProposer {
           collateralApprovalTx: receipt.tx.transactionHash,
         });
       }
-    });
+    }
   }
 
   // Create the pricefeed for a specific identifier and save it to the state, or

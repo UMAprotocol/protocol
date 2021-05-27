@@ -8,8 +8,5 @@ interface ExpiringContractInterface {
 }
 
 abstract contract ContractForDifferenceFinancialProductLibrary {
-    using FixedPoint for FixedPoint.Unsigned;
-    using SafeMath for uint256;
-
-    function computeExpiraryTokensForCollateral(uint256 expiryPrice) public view virtual returns (uint256);
+    function computeExpiraryTokensForCollateral(int256 expiryPrice) public view virtual returns (uint256);
 }

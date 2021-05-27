@@ -232,16 +232,11 @@ class FundingRateProposer {
       });
       try {
         // Get successful transaction receipt and return value or error.
-        const transactionResult = await runTransaction({
+        const { receipt, returnValue, transactionConfig } = await runTransaction({
+          web3: this.web3,
           transaction: proposal,
-          config: {
-            gasPrice: this.gasEstimator.getCurrentFastPrice(),
-            from: this.account,
-            nonce: await this.web3.eth.getTransactionCount(this.account),
-          },
+          transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
         });
-        let receipt = transactionResult.receipt;
-        let returnValue = transactionResult.returnValue.toString();
 
         const logResult = {
           tx: receipt.transactionHash,
@@ -251,13 +246,14 @@ class FundingRateProposer {
           requestTimestamp,
           proposedRate: pricefeedPrice,
           currentRate: onchainFundingRate,
-          proposalBond: returnValue,
+          proposalBond: returnValue.toString(),
         };
         this.logger.info({
           at: "PerpetualProposer#updateFundingRate",
           message: "Proposed new funding rate!🌻",
           proposalBond: returnValue,
           proposalResult: logResult,
+          transactionConfig,
         });
       } catch (error) {
         const message =
@@ -286,7 +282,11 @@ class FundingRateProposer {
 
   // Sets allowances for all collateral currencies used live perpetual contracts.
   async _setAllowances() {
-    await Promise.map(Object.keys(this.contractCache), async (contractAddress) => {
+    // TODO: Note we set allowances sequentially so that we can hardcode the nonce before passing
+    // transactions to the `ynatm` package. If these calls were submitted in parallel then we wouldn't be able to
+    // hardcode the nonce, which could cause unintended reverts due to duplicate transactions. Once the `ynatm` package
+    // can handle nonce management, then we should update this logic to run in parallel.
+    for (const contractAddress of Object.keys(this.contractCache)) {
       // The Perpetual requires approval to transfer the contract's collateral currency in order to post a bond.
       // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
       const receipt = await setAllowance(
@@ -306,7 +306,7 @@ class FundingRateProposer {
           collateralApprovalTx: receipt.tx.transactionHash,
         });
       }
-    });
+    }
   }
 
   async _createOrGetCachedPriceFeed() {

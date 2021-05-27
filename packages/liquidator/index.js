@@ -217,6 +217,7 @@ async function run({
           proxyTransactionWrapperConfig?.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
         dsProxyFactoryAbi: getAbi("DSProxyFactory"),
         dsProxyAbi: getAbi("DSProxy"),
+        availableAccounts: proxyTransactionWrapperConfig.availableAccounts || 1,
       });
 
       // Load in an existing DSProxy for the account EOA if one already exists or create a new one for the user.
@@ -259,10 +260,20 @@ async function run({
     if (proxyTransactionWrapperConfig == {} || !proxyTransactionWrapperConfig?.useDsProxyToLiquidate) {
       // The Financial Contract requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
       // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-      const [collateralApproval, syntheticApproval] = await Promise.all([
-        setAllowance(web3, gasEstimator, accounts[0], financialContractAddress, collateralTokenAddress),
-        setAllowance(web3, gasEstimator, accounts[0], financialContractAddress, syntheticTokenAddress),
-      ]);
+      const collateralApproval = await setAllowance(
+        web3,
+        gasEstimator,
+        accounts[0],
+        financialContractAddress,
+        collateralTokenAddress
+      );
+      const syntheticApproval = await setAllowance(
+        web3,
+        gasEstimator,
+        accounts[0],
+        financialContractAddress,
+        syntheticTokenAddress
+      );
       if (collateralApproval)
         logger.info({
           at: "Liquidator#index",

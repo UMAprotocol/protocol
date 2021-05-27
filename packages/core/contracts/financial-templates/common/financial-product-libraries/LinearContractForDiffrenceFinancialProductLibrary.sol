@@ -1,28 +1,33 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
-import "./ContractForDifferenceFinancialProductLibrary.sol";
 
+import "@openzeppelin/contracts/utils/math/SignedSafeMath.sol";
+
+import "./ContractForDifferenceFinancialProductLibrary.sol";
 import "../../../common/implementation/Lockable.sol";
 
 contract LinearContractForDiffrenceFinancialProductLibrary is ContractForDifferenceFinancialProductLibrary, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
-    using SafeMath for uint256;
+    using SignedSafeMath for int256;
 
     struct LinearContractForDifferenceParameters {
-        uint256 upperBound;
-        uint256 lowerBound;
+        int256 upperBound;
+        int256 lowerBound;
     }
 
     mapping(address => LinearContractForDifferenceParameters) contractForDifferenceParameters;
 
     function setContractForDifferenceParameters(
         address contractForDifferenceAddress,
-        uint256 upperBound,
-        uint256 lowerBound
+        int256 upperBound,
+        int256 lowerBound
     ) public nonReentrant() {
         require(ExpiringContractInterface(contractForDifferenceAddress).expirationTimestamp() != 0, "Invalid address");
         require(upperBound > lowerBound, "Invalid bounds");
-        require(contractForDifferenceParameters[contractForDifferenceAddress].upperBound > 0, "Parameters already set");
+
+        LinearContractForDifferenceParameters memory params =
+            contractForDifferenceParameters[contractForDifferenceAddress];
+        require(params.upperBound != 0 || params.lowerBound != 0, "Parameters already set");
 
         contractForDifferenceParameters[contractForDifferenceAddress] = LinearContractForDifferenceParameters({
             upperBound: upperBound,
@@ -30,14 +35,18 @@ contract LinearContractForDiffrenceFinancialProductLibrary is ContractForDiffere
         });
     }
 
-    function computeExpiraryTokensForCollateral(uint256 expiryPrice) public view override returns (uint256) {
+    function computeExpiraryTokensForCollateral(int256 expiryPrice) public view override returns (uint256) {
         LinearContractForDifferenceParameters memory params = contractForDifferenceParameters[msg.sender];
 
         if (expiryPrice > params.upperBound) return FixedPoint.fromUnscaledUint(1).rawValue;
 
         if (expiryPrice < params.lowerBound) return FixedPoint.fromUnscaledUint(0).rawValue;
 
-        // if not exceeding bounds, collateralPerToken = 1- (expiryPrice - upperBound) / lowerBound
-        return FixedPoint.fromUnscaledUint(1).sub(params.upperBound.sub(expiryPrice).div(params.lowerBound)).rawValue;
+        // if not exceeding bounds, collateralPerToken = (expiryPrice - lower) / (upper - lower)
+        return
+            FixedPoint
+                .Unsigned(uint256(expiryPrice - params.lowerBound))
+                .div(FixedPoint.Unsigned(uint256(params.upperBound - params.lowerBound)))
+                .rawValue;
     }
 }

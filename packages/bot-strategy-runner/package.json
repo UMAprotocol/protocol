@@ -21,7 +21,8 @@
     "@types/bluebird": "^3.5.33",
     "@types/cli-progress": "^3.9.1",
     "@types/commander": "^2.12.2",
-    "@types/node-fetch": "^2.5.8"
+    "@types/node-fetch": "^2.5.8",
+    "@types/mocha": "^8.2.2"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.com/",
@@ -38,7 +39,8 @@
   "types": "dist/src/index.d.ts",
   "main": "dist/src/index.js",
   "scripts": {
-    "build": "tsc -b"
+    "build": "tsc -b",
+    "test": "yarn mocha test ./test/* -r ts-node/register --exit"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"

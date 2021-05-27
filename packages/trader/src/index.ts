@@ -35,7 +35,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       pollingDelay: config.pollingDelay,
       errorRetries: config.errorRetries,
       errorRetriesTimeout: config.errorRetriesTimeout,
-      dsProxyFactoryAddress: config.dsProxyFactoryAddress,
+      dsProxyConfig: config.dsProxyConfig,
       tokenPriceFeedConfig: config.tokenPriceFeedConfig,
       referencePriceFeedConfig: config.referencePriceFeedConfig,
       exchangeAdapterConfig: config.exchangeAdapterConfig,
@@ -53,9 +53,10 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       web3,
       gasEstimator,
       account: accounts[0],
-      dsProxyFactoryAddress: config.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
+      dsProxyFactoryAddress: config.dsProxyConfig?.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
       dsProxyFactoryAbi: getAbi("DSProxyFactory"),
       dsProxyAbi: getAbi("DSProxy"),
+      availableAccounts: config.dsProxyConfig?.availableAccounts || 1,
     });
     await dsProxyManager.initializeDSProxy();
 

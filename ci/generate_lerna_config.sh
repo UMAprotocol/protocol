@@ -76,7 +76,6 @@ EOF
     do
       cat <<EOF >> $CI_CONFIG_FILE
       - test-${PACKAGE:5}:
-          context: api_keys
 EOF
   done
 

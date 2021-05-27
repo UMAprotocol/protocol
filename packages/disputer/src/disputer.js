@@ -294,15 +294,11 @@ class Disputer {
       });
       try {
         // Get successful transaction receipt and return value or error.
-        const transactionResult = await runTransaction({
+        const { receipt, transactionConfig } = await runTransaction({
+          web3: this.web3,
           transaction: withdraw,
-          config: {
-            gasPrice: this.gasEstimator.getCurrentFastPrice(),
-            from: this.account,
-            nonce: await this.web3.eth.getTransactionCount(this.account),
-          },
+          transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
         });
-        let receipt = transactionResult.receipt;
         let logResult = {
           tx: receipt.transactionHash,
           caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
@@ -326,6 +322,7 @@ class Disputer {
           message: "Dispute withdrawn🤑",
           liquidation: liquidation,
           liquidationResult: logResult,
+          transactionConfig,
         });
       } catch (error) {
         // If the withdrawal simulation fails, then it is likely that the dispute has not resolved yet, and we don't

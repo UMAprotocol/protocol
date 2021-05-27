@@ -102,36 +102,28 @@ class ProxyTransactionWrapper {
     const dispute = this.financialContract.methods.dispute(...disputeArgs);
 
     // Send the transaction or report failure.
-    let receipt, returnValue;
+
     try {
       // Get successful transaction receipt and return value or error.
-      const transactionResult = await runTransaction({
+      const { receipt, returnValue, transactionConfig } = await runTransaction({
+        web3: this.web3,
         transaction: dispute,
-        config: {
-          gasPrice: this.gasEstimator.getCurrentFastPrice(),
-          from: this.account,
-          nonce: await this.web3.eth.getTransactionCount(this.account),
-        },
+        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
       });
-      receipt = transactionResult.receipt;
-      returnValue = transactionResult.returnValue.toString();
+
+      return {
+        type: "Standard EOA Dispute",
+        tx: receipt && receipt.transactionHash,
+        sponsor: receipt.events.LiquidationDisputed.returnValues.sponsor,
+        liquidator: receipt.events.LiquidationDisputed.returnValues.liquidator,
+        id: receipt.events.LiquidationDisputed.returnValues.liquidationId,
+        disputeBondPaid: receipt.events.LiquidationDisputed.returnValues.disputeBondAmount,
+        totalPaid: returnValue,
+        transactionConfig,
+      };
     } catch (error) {
       return error;
     }
-
-    return {
-      type: "Standard EOA Dispute",
-      tx: receipt && receipt.transactionHash,
-      sponsor: receipt.events.LiquidationDisputed.returnValues.sponsor,
-      liquidator: receipt.events.LiquidationDisputed.returnValues.liquidator,
-      id: receipt.events.LiquidationDisputed.returnValues.liquidationId,
-      disputeBondPaid: receipt.events.LiquidationDisputed.returnValues.disputeBondAmount,
-      totalPaid: returnValue,
-      txnConfig: {
-        gasPrice: this.gasEstimator.getCurrentFastPrice(),
-        from: this.account,
-      },
-    };
   }
 
   async _executeDisputeWithDsProxy(disputeArgs) {

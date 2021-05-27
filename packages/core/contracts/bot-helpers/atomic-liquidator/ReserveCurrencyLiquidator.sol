@@ -33,7 +33,7 @@ contract ReserveCurrencyLiquidator {
      * @param financialContract address of the financial contract on which the liquidation is occurring.
      * @param reserveCurrency address of the token to swap for collateral. THis is the common currency held by the DSProxy.
      * @param liquidatedSponsor address of the sponsor to be liquidated.
-     * @param maxReserveTokenSpent maximum number of reserve tokens to spend in the trade. Bounds slippage.
+     * @param maxSlippage max slip the trade on uniswap will accept before reverting.
      * @param minCollateralPerTokenLiquidated abort the liquidation if the position's collateral per token is below this value.
      * @param maxCollateralPerTokenLiquidated abort the liquidation if the position's collateral per token exceeds this value.
      * @param maxTokensToLiquidate max number of tokens to liquidate. For a full liquidation this is the full position debt.
@@ -44,10 +44,10 @@ contract ReserveCurrencyLiquidator {
         address financialContract,
         address reserveCurrency,
         address liquidatedSponsor,
-        FixedPoint.Unsigned calldata maxReserveTokenSpent,
         FixedPoint.Unsigned calldata minCollateralPerTokenLiquidated,
         FixedPoint.Unsigned calldata maxCollateralPerTokenLiquidated,
-        FixedPoint.Unsigned calldata maxTokensToLiquidate,
+        FixedPoint.Unsigned memory maxTokensToLiquidate,
+        uint256 maxSlippage,
         uint256 deadline
     ) public {
         IFinancialContract fc = IFinancialContract(financialContract);
@@ -67,28 +67,35 @@ contract ReserveCurrencyLiquidator {
 
         // 4.a. Calculate how much collateral needs to be purchased. If the DSProxy already has some collateral then this
         // will factor this in. If the DSProxy has more collateral than the total amount required the purchased = 0.
-        FixedPoint.Unsigned memory collateralToBePurchased =
-            subOrZero(totalCollateralRequired, getCollateralBalance(fc));
+        uint256 collateralToBePurchased = subOrZero(totalCollateralRequired, getCollateralBalance(fc)).rawValue;
 
         // 4.b. If there is some collateral to be purchased, execute a trade on uniswap to meet the shortfall.
         // Note the path assumes a direct route from the reserve currency to the collateral currency.
-        if (collateralToBePurchased.isGreaterThan(0) && reserveCurrency != fc.collateralCurrency()) {
+        // Note the maxInputAmount is computed by taking the 1000000 wei trade as the spot price from the router,
+        // multiplied by collateral to be purchased to arrive at a "zero slippage input amount". This would be the amount of
+        // required input to buy the amountOut, assuming zero slippage. This is then scalded by maxSlippage & swap fees
+        // to find the amountInMax that factors in the max tolerable exchange slippage. The maxSlippage is divided by two
+        // as slippage in an AMM is constituted by the inputToken going up and the outputToken going down in proportion.
+        // the +1e18 is used to offset the slippage percentage provided. i.e a 5% will be input at 0.05e18, offset by 1e18
+        // to bring it up to 1.05e18. the *997 and *1000 in the numerator and denominator respectively are for uniswap fees.
+        if (collateralToBePurchased > 0 && reserveCurrency != fc.collateralCurrency()) {
             IUniswapV2Router01 router = IUniswapV2Router01(uniswapRouter);
             address[] memory path = new address[](2);
             path[0] = reserveCurrency;
             path[1] = fc.collateralCurrency();
 
-            TransferHelper.safeApprove(reserveCurrency, address(router), maxReserveTokenSpent.rawValue);
+            TransferHelper.safeApprove(reserveCurrency, address(router), type(uint256).max);
             router.swapTokensForExactTokens(
-                collateralToBePurchased.rawValue,
-                maxReserveTokenSpent.rawValue,
+                collateralToBePurchased, // amountOut
+                (router.getAmountsIn(1000000, path)[0] * collateralToBePurchased * (1e18 + maxSlippage / 2) * 997) /
+                    (1000000 * 1e18 * 1000), // amountInMax
                 path,
                 address(this),
                 deadline
             );
         }
 
-        // 4.c. If at this point we were not able to get the required amount of collateral (due to insufficient reserve
+        // 4.c. If at this point we were not able to get `the required amount of collateral (due to insufficient reserve
         // or not enough collateral in the contract) the script should try to liquidate as much as it can regardless.
         // Update the values of total collateral to the current collateral balance and re-compute the tokenShortfall
         // as the maximum tokens that could be liquidated at the current GCR.
@@ -105,16 +112,15 @@ contract ReserveCurrencyLiquidator {
 
         // The liquidatableTokens is either the maxTokensToLiquidate (if we were able to buy/mint enough) or the full
         // token token balance at this point if there was a shortfall.
-        FixedPoint.Unsigned memory liquidatableTokens = maxTokensToLiquidate;
-        if (maxTokensToLiquidate.isGreaterThan(getSyntheticBalance(fc))) liquidatableTokens = getSyntheticBalance(fc);
+        if (maxTokensToLiquidate.isGreaterThan(getSyntheticBalance(fc))) maxTokensToLiquidate = getSyntheticBalance(fc);
 
         // 6. Liquidate position with newly minted synthetics.
-        TransferHelper.safeApprove(fc.tokenCurrency(), address(fc), liquidatableTokens.rawValue);
+        TransferHelper.safeApprove(fc.tokenCurrency(), address(fc), maxTokensToLiquidate.rawValue);
         fc.createLiquidation(
             liquidatedSponsor,
             minCollateralPerTokenLiquidated,
             maxCollateralPerTokenLiquidated,
-            liquidatableTokens,
+            maxTokensToLiquidate,
             deadline
         );
     }
@@ -154,17 +160,17 @@ interface IFinancialContract {
         uint256 transferPositionRequestPassTimestamp;
     }
 
-    function positions(address sponsor) external returns (PositionData memory);
+    function positions(address sponsor) external view returns (PositionData memory);
 
-    function collateralCurrency() external returns (address);
+    function collateralCurrency() external view returns (address);
 
-    function tokenCurrency() external returns (address);
+    function tokenCurrency() external view returns (address);
 
-    function finder() external returns (address);
+    function finder() external view returns (address);
 
-    function pfc() external returns (FixedPoint.Unsigned memory);
+    function pfc() external view returns (FixedPoint.Unsigned memory);
 
-    function totalTokensOutstanding() external returns (FixedPoint.Unsigned memory);
+    function totalTokensOutstanding() external view returns (FixedPoint.Unsigned memory);
 
     function create(FixedPoint.Unsigned memory collateralAmount, FixedPoint.Unsigned memory numTokens) external;
 
@@ -184,7 +190,7 @@ interface IFinancialContract {
 }
 
 interface IStore {
-    function computeFinalFee(address currency) external returns (FixedPoint.Unsigned memory);
+    function computeFinalFee(address currency) external view returns (FixedPoint.Unsigned memory);
 }
 
 interface IFinder {
