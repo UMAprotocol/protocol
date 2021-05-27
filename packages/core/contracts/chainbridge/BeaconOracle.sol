@@ -30,12 +30,7 @@ abstract contract BeaconOracle {
     // Finder to provide addresses for DVM system contracts.
     FinderInterface public finder;
 
-    event PriceRequestAdded(
-        uint8 indexed chainID,
-        bytes32 indexed identifier,
-        uint256 time,
-        bytes ancillaryData
-    );
+    event PriceRequestAdded(uint8 indexed chainID, bytes32 indexed identifier, uint256 time, bytes ancillaryData);
     event PushedPrice(
         uint8 indexed chainID,
         bytes32 indexed identifier,
