@@ -26,7 +26,7 @@ export default async (config: Config, actions: Actions) => {
     return res.send("ok");
   });
 
-  app.all("/:action", (req: Request, res: Response, next: NextFunction) => {
+  app.post("/:action", (req: Request, res: Response, next: NextFunction) => {
     const action = req?.params?.action;
     actions(action, ...lodash.castArray(req.body))
       .then(res.json.bind(res))

@@ -1,13 +1,13 @@
 import assert from "assert";
 import * as uma from "@uma/sdk";
 import Promise from "bluebird";
-const { Emp } = uma.clients;
+const { emp } = uma.clients;
 import { BigNumber, utils } from "ethers";
 const { parseBytes32String } = utils;
 import { asyncValues } from "../libs/utils";
 import { Json, Libs } from "..";
 
-type Instance = ReturnType<typeof Emp.connect>;
+type Instance = ReturnType<typeof emp.connect>;
 export default (config: Json, libs: Libs) => {
   const { registeredEmps, provider, emps } = libs;
 
@@ -104,67 +104,61 @@ export default (config: Json, libs: Libs) => {
   }
 
   async function updateOne(address: string, startBlock?: number | "latest", endBlock?: number) {
-    const instance: uma.clients.Emp.Instance = Emp.connect(address, provider);
+    // ignore expired emps
+    if (await emps.expired.has(address)) return;
 
+    const instance: uma.clients.emp.Instance = emp.connect(address, provider);
     let currentState: uma.tables.emps.Data = { address };
     let staticState: uma.tables.emps.Data = { address };
     let dynamicState: uma.tables.emps.Data = { address };
-    let eventState: uma.clients.Emp.EventState = { sponsors: [] };
-    let state = "start";
+    let eventState: uma.clients.emp.EventState = { sponsors: [] };
+    const state = "start";
 
-    async function runStateMachine() {
-      switch (state) {
-        case "start": {
-          // ignore expired emps
-          if (await emps.expired.has(address)) return (state = "end");
-          // query all events
-          const events = await instance.queryFilter({}, startBlock, endBlock);
-          // returns all sponsors ( this should really be a seperate table eventually)
-          eventState = await Emp.getEventState(events);
-          dynamicState = await readEmpDynamicState(instance, address);
-          if (eventState.expired) return (state = "expired");
-          return (state = "active");
-        }
-        case "expired": {
-          if (await emps.active.has(address)) return (state = "expireActive");
-          await emps.expired.create({ ...staticState, ...dynamicState, sponsors: eventState.sponsors });
-          return (state = "end");
-        }
-        case "expireActive": {
-          currentState = await emps.active.get(address);
-          await emps.expired.create({ ...staticState, ...dynamicState, sponsors: eventState.sponsors });
-          await emps.active.delete(address);
-          return (state = "end");
-        }
-        case "active": {
-          // emp is new
-          if (!(await emps.active.has(address))) {
-            // get static state once
-            staticState = await readEmpStaticState(instance, address);
-            currentState = await emps.active.create({ ...staticState, ...dynamicState });
-          } else {
-            currentState = await emps.active.get(address);
-          }
-          await emps.active.addSponsors(address, eventState.sponsors || []);
-          const gcr = await calcGcr(currentState)
-            .then((x: BigNumber) => x.toString())
-            .catch(() => null);
-          await emps.active.update(address, { gcr });
-          return (state = "end");
-        }
-        default:
-          throw new Error("unhandled state: " + state);
+    // query all events
+    const events = await instance.queryFilter({}, startBlock, endBlock);
+    // returns all sponsors ( this should really be a seperate table eventually)
+    eventState = await emp.getEventState(events);
+    dynamicState = await readEmpDynamicState(instance, address);
+
+    // emp expired, must handle this
+    if (eventState.expired) {
+      // see if it used to be active
+      if (await emps.active.has(address)) {
+        // get state
+        currentState = await emps.active.get(address);
+        // add it to expired emps
+        await emps.expired.create({ ...staticState, ...dynamicState, sponsors: eventState.sponsors, expired: true });
+        // delete it from active
+        await emps.active.delete(address);
+      } else {
+        // if it was never active, just create an expired emp
+        await emps.expired.create({ ...staticState, ...dynamicState, sponsors: eventState.sponsors, expired: true });
       }
-    }
-
-    // this logic was quite complicated and i thought it made more sense as a state machine
-    while (state != "end") {
-      await runStateMachine();
+      // handle the case wehre emp is not yet expired
+    } else {
+      // if exists, pull all current state
+      if (await emps.active.has(address)) {
+        currentState = await emps.active.get(address);
+        // if it doesnt exist we need to create it
+      } else {
+        // get static state once if it does not exist (optimizes network calls)
+        staticState = await readEmpStaticState(instance, address);
+        // create active emp with static/dynamic state
+        currentState = await emps.active.create({ ...staticState, ...dynamicState });
+      }
+      // add any new sponsors
+      await emps.active.addSponsors(address, eventState.sponsors || []);
+      // calculate gcr with current state
+      const gcr = await calcGcr(currentState)
+        .then((x: BigNumber) => x.toString())
+        .catch(() => null);
+      // update gcr
+      await emps.active.update(address, { gcr });
     }
   }
 
   async function update(startBlock?: number | "latest", endBlock?: number) {
-    await Promise.map(Array.from(await registeredEmps.values()).slice(-10), (address: string) =>
+    await Promise.map(Array.from(await registeredEmps.values()), (address: string) =>
       updateOne(address, startBlock, endBlock)
     );
   }

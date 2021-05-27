@@ -1,5 +1,5 @@
 import * as uma from "@uma/sdk";
-import { ethers } from 'ethers'
+import { ethers } from "ethers";
 export type { BigNumber } from "ethers";
 export type Provider = ethers.providers.Provider;
 export type ProcessEnv = {
@@ -17,9 +17,9 @@ export type Actions = { [key: string]: Action };
 export type Libs = {
   blocks: uma.tables.blocks.JsMap;
   emps: {
-    active:uma.tables.emps.JsMap;
-    expired:uma.tables.emps.JsMap;
-  }
+    active: uma.tables.emps.JsMap;
+    expired: uma.tables.emps.JsMap;
+  };
   registeredEmps: Set<string>;
   provider: Provider;
   lastBlock: number;

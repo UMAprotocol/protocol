@@ -2,7 +2,7 @@ import assert from "assert";
 import { Json, Actions, Libs } from "..";
 
 export function Handlers(config: Json, libs: Libs): Actions {
-  return {
+  const actions: Actions = {
     echo(...args: Json[]) {
       return args;
     },
@@ -23,6 +23,12 @@ export function Handlers(config: Json, libs: Libs): Actions {
       return blocks.slice(start, end);
     },
   };
+
+  // list all available actions
+  const keys = Object.keys(actions);
+  actions.actions = () => keys;
+
+  return actions;
 }
 export default (config: Json, libs: Libs) => {
   const actions = Handlers(config, libs);

@@ -2,7 +2,7 @@ import { clients } from "@uma/sdk";
 import Promise from "bluebird";
 import { Libs } from "..";
 
-const { Registry } = clients;
+const { registry } = clients;
 
 type Config = {
   network?: number;
@@ -10,8 +10,8 @@ type Config = {
 export default (config: Config, libs: Libs) => {
   const { network = 1 } = config;
   const { registeredEmps, provider } = libs;
-  const address = Registry.getAddress(network)
-  const contract = Registry.connect(address,provider);
+  const address = registry.getAddress(network);
+  const contract = registry.connect(address, provider);
 
   async function update(startBlock?: number | "latest", endBlock?: number) {
     const events = await contract.queryFilter(
@@ -19,7 +19,7 @@ export default (config: Config, libs: Libs) => {
       startBlock,
       endBlock
     );
-    const { contracts } = Registry.getEventState(events);
+    const { contracts } = registry.getEventState(events);
     await Promise.map(Object.keys(contracts || {}), (x) => {
       return registeredEmps.add(x);
     });
