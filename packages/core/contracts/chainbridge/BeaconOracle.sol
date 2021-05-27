@@ -31,14 +31,12 @@ abstract contract BeaconOracle {
     FinderInterface public finder;
 
     event PriceRequestAdded(
-        address indexed requester,
         uint8 indexed chainID,
         bytes32 indexed identifier,
         uint256 time,
         bytes ancillaryData
     );
     event PushedPrice(
-        address indexed pusher,
         uint8 indexed chainID,
         bytes32 indexed identifier,
         uint256 time,
@@ -78,7 +76,7 @@ abstract contract BeaconOracle {
         Price storage lookup = prices[priceRequestId];
         if (lookup.state == RequestState.NeverRequested) {
             lookup.state = RequestState.PendingRequest;
-            emit PriceRequestAdded(msg.sender, chainID, identifier, time, ancillaryData);
+            emit PriceRequestAdded(chainID, identifier, time, ancillaryData);
         }
     }
 
@@ -114,7 +112,7 @@ abstract contract BeaconOracle {
         require(lookup.state == RequestState.Requested, "Price request is not currently pending");
         lookup.price = price;
         lookup.state = RequestState.PendingResolve;
-        emit PushedPrice(msg.sender, chainID, identifier, time, ancillaryData, lookup.price);
+        emit PushedPrice(chainID, identifier, time, ancillaryData, lookup.price);
     }
 
     function _finalizePublish(

@@ -97,7 +97,6 @@ contract("SourceOracle", async (accounts) => {
         txn,
         "PushedPrice",
         (event) =>
-          event.pusher.toLowerCase() === owner.toLowerCase() &&
           event.chainID.toString() === destinationChainID.toString() &&
           hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
           event.time.toString() === testRequestTime.toString() &&
@@ -165,7 +164,6 @@ contract("SourceOracle", async (accounts) => {
       txn,
       "PriceRequestAdded",
       (event) =>
-        event.requester.toLowerCase() === rando.toLowerCase() &&
         event.chainID.toString() === destinationChainID.toString() &&
         hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
         event.time.toString() === testRequestTime.toString() &&
