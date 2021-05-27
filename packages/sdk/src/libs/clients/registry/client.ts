@@ -19,7 +19,7 @@ export function getAddress(network: Network): string {
 }
 
 // exporting Registry type in case its needed
-export { Registry };
+export { Registry as Instance };
 export function connect(address: string, provider: SignerOrProvider): Registry {
   return Registry__factory.connect(address, provider);
 }
