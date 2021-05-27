@@ -1,5 +1,5 @@
 /**
- * @notice Deploys a TOY financial contract, registers it with the DVM, and goes through a simple user flow.
+ * @notice Deploys a TOY financial contract and goes through a simple user flow.
  * @dev OptimisticDepositBox is an example financial contract that integrates the optimistic oracle for on-chain price discovery.
  * It is intended for educational purposes and would not be very useful in practice. The purpose of the contract
  * is to custody a user's ERC20 token balance. The user links the OptimisticDepositBox with one of the price identifiers
@@ -37,7 +37,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Finder = artifacts.require("Finder");
 const Timer = artifacts.require("Timer");
 const Registry = artifacts.require("Registry");
-const MockOracle = artifacts.require("MockOracle");
+const OptimisticMockOracle = artifacts.require("OptimisticMockOracle");
 
 // Constants
 const priceFeedIdentifier = utf8ToHex("ETH/USD");
@@ -59,10 +59,10 @@ const deploy = async () => {
   // - The user should pass in the zero address (i.e. 0x0) for the Timer, but using the deployed Timer
   // for testing purposes is convenient because they can advance time as needed.
   const finder = await Finder.deployed();
-  const mockOracle = await MockOracle.new(finder.address, Timer.address);
+  const mockOracle = await OptimisticMockOracle.new(finder.address, Timer.address);
   const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
   await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
-  console.log("- Deployed a MockOracle");
+  console.log("- Deployed a OptimisticMockOracle");
 
   // Deploy a new OptimisticDepositBox contract. We pass in the collateral token address (i.e. the token we will deposit into
   // the contract), the Finder address (which stores references to all of the important system contracts like
@@ -74,34 +74,9 @@ const deploy = async () => {
     priceFeedIdentifier,
     Timer.address
   );
-  console.log("- Deployed a new OptimisticDepositBox and linked it with the MockOracle");
+  console.log("- Deployed a new OptimisticDepositBox and linked it with the OptimisticMockOracle");
   console.groupEnd();
   return optimisticDepositBox.address;
-};
-
-// Register contract with DVM.
-const register = async (optimisticDepositBoxAddress) => {
-  console.group("2. Registering OptimisticDepositBox with DVM");
-
-  // To use the DVM, every financial contract needs to be registered. Since the OptimisticDepositBox
-  // is intended to be used on local blockchains for educational purposes, it has an
-  // `initialize()` public method that will register itself with the DVM.  Therefore
-  // we need to grant the OptimisticDepositBox the power to register contracts with the DVM.
-  //
-  // Note: In production environments, only the Governor contract owns the privilege to register contracts
-  // with the DVM. Therefore, the `initialize()` method would fail in production environments.
-  const optimisticDepositBox = await OptimisticDepositBox.at(optimisticDepositBoxAddress);
-
-  // The `CONTRACT_CREATOR` role grants the OptimisticDepositBox the power to register itself with the DVM.
-  // This step assumes that the user has the ability to assign Registry roles, which is a role
-  // held by the deployer of the Registry.
-  const registry = await Registry.deployed();
-  await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, optimisticDepositBox.address);
-  console.log("- Granted OptimisticDepositBox contract right to register itself with DVM");
-  await optimisticDepositBox.initialize();
-  console.log("- OptimisticDepositBox is registered");
-  console.groupEnd();
-  return;
 };
 
 // Set up allowances and mint collateral tokens.
@@ -162,14 +137,14 @@ const withdraw = async (optimisticDepositBoxAddress, mockPrice, amountOfUsdToWit
   const optimisticDepositBox = await OptimisticDepositBox.at(optimisticDepositBoxAddress);
   const accounts = await web3.eth.getAccounts();
   const finder = await Finder.deployed();
-  const mockOracle = await MockOracle.at(await finder.getImplementationAddress(utf8ToHex(interfaceName.Oracle)));
+  const mockOracle = await OptimisticMockOracle.at(await finder.getImplementationAddress(utf8ToHex(interfaceName.Oracle)));
 
   console.group("5. Withdrawing ERC20 from OptimisticDepositBox");
 
   // Technically, withdrawing is a two step process. First, a request to withdraw must be submitted to the DVM.
   // Next, the DVM voters will resolve and return a price (in production, each voting round takes ~2 days).
   // Once a price is resolved, the user of the OptimisticDepositBox can finalize the withdrawal. However, for test purposes
-  // we can "resolve" prices instantaneously by pushing a price (i.e. `mockPrice`) to the MockOracle.
+  // we can "resolve" prices instantaneously by pushing a price (i.e. `mockPrice`) to the OptimisticMockOracle.
 
   // Submit a withdrawal request, which sends a price request for the current timestamp to the DVM.
   // The user wants to withdraw a USD-denominated amount of WETH.
@@ -210,10 +185,6 @@ const main = async (callback) => {
   try {
     // Deploy
     const deployedContract = await deploy();
-    console.log("\n");
-
-    // Register
-    await register(deployedContract);
     console.log("\n");
 
     // Mint collateral

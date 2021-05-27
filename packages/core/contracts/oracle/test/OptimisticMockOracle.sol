@@ -9,52 +9,63 @@ import "../implementation/Constants.sol";
 
 // A mock optimistic oracle used for testing.
 contract OptimisticMockOracle is OptimisticOracleInterface, Testable {
-    // Represents an available price. Have to keep a separate bool to allow for price=0.
-    struct Price {
-        bool isAvailable;
-        int256 price;
-        // Time the verified price became available.
-        uint256 verifiedTime;
-    }
+    // Mapping to store and retrieve information about price requests
+    mapping(bytes32 => Request) public requests;
 
-    // The two structs below are used in an array and mapping to keep track of prices that have been requested but are
-    // not yet available.
-    struct QueryIndex {
-        bool isValid;
-        uint256 index;
-    }
+    // Default liveness value for all price requests. Will be set in constructor.
+    uint256 public defaultLiveness;
 
-    // Represents a (identifier, time) point that has been queried.
-    struct QueryPoint {
-        bytes32 identifier;
-        uint256 time;
-    }
+    // // Represents an available price. Have to keep a separate bool to allow for price=0.
+    // struct Price {
+    //     bool isAvailable;
+    //     int256 price;
+    //     // Time the verified price became available.
+    //     uint256 verifiedTime;
+    // }
+    //
+    // // The two structs below are used in an array and mapping to keep track of prices that have been requested but are
+    // // not yet available.
+    // struct QueryIndex {
+    //     bool isValid;
+    //     uint256 index;
+    // }
+    //
+    // // Represents a (identifier, time) point that has been queried.
+    // struct QueryPoint {
+    //     bytes32 identifier;
+    //     uint256 time;
+    // }
 
     // Reference to the Finder.
     FinderInterface private finder;
 
-    // Conceptually we want a (time, identifier) -> price map.
-    mapping(bytes32 => mapping(uint256 => Price)) private verifiedPrices;
+    // // Conceptually we want a (time, identifier) -> price map.
+    // mapping(bytes32 => mapping(uint256 => Price)) private verifiedPrices;
 
-    // The mapping and array allow retrieving all the elements in a mapping and finding/deleting elements.
-    // Can we generalize this data structure?
-    mapping(bytes32 => mapping(uint256 => QueryIndex)) private queryIndices;
-    QueryPoint[] private requestedPrices;
+    // // The mapping and array allow retrieving all the elements in a mapping and finding/deleting elements.
+    // // Can we generalize this data structure?
+    // mapping(bytes32 => mapping(uint256 => QueryIndex)) private queryIndices;
+    // QueryPoint[] private requestedPrices;
 
-    constructor(address _finderAddress, address _timerAddress) Testable(_timerAddress) {
+    constructor(
+        uint256 _liveness,
+        address _finderAddress,
+        address _timerAddress
+    ) Testable(_timerAddress) {
         finder = FinderInterface(_finderAddress);
+        defaultLiveness = _liveness; // 7200 == 2 hours
     }
 
     // Enqueues a request (if a request isn't already present) for the given (identifier, time) pair.
-
     function requestPrice(
-        bytes32 identifier,
-        uint256 time,
-        bytes memory ancillaryData,
-        address currency,
-        uint256 reward
+      bytes32 identifier,
+      uint256 time,
+      bytes memory ancillaryData,
+      address currency,
+      uint256 reward
     ) public override returns (uint256 totalBond) {
-        require(_getIdentifierWhitelist().isIdentifierSupported(identifier));
+        require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
+        require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
         Price storage lookup = verifiedPrices[identifier][time];
         if (!lookup.isAvailable && !queryIndices[identifier][time].isValid) {
             // New query, enqueue it for review.

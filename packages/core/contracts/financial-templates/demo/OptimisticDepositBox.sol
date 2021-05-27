@@ -10,31 +10,30 @@ import "../common/FeePayer.sol";
 import "../../common/implementation/FixedPoint.sol";
 
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
-import "../../oracle/interfaces/OracleInterface.sol";
+import "../../oracle/interfaces/OptimisticOracleInterface.sol";
 import "../../oracle/implementation/ContractCreator.sol";
 
 /**
  * @title Token Deposit Box
- * @notice This is a minimal example of a financial template that depends on price requests from the DVM.
+ * @notice This is a minimal example of a financial template that depends on price requests from the Optimistic Oracle.
  * This contract should be thought of as a "Deposit Box" into which the user deposits some ERC20 collateral.
  * The main feature of this box is that the user can withdraw their ERC20 corresponding to a desired USD amount.
- * When the user wants to make a withdrawal, a price request is enqueued with the UMA DVM.
+ * When the user wants to make a withdrawal, a price request is made to the Optimistic Oracle.
  * For simplicty, the user is constrained to have one outstanding withdrawal request at any given time.
- * Regular fees are charged on the collateral in the deposit box throughout the lifetime of the deposit box,
- * and final fees are charged on each price request.
+ * Final fees are charged to the proposer of a price but not to the contract making a price request.
  *
- * This example is intended to accompany a technical tutorial for how to integrate the DVM into a project.
+ * This example is intended to accompany a technical tutorial for how to integrate the Optimistic Oracle into a project.
  * The main feature this demo serves to showcase is how to build a financial product on-chain that "pulls" price
- * requests from the DVM on-demand, which is an implementation of the "priceless" oracle framework.
+ * requests from the Optimistic Oracle on-demand, which is an implementation of the "priceless" oracle framework.
  *
  * The typical user flow would be:
  * - User sets up a deposit box for the (wETH - USD) price-identifier. The "collateral currency" in this deposit
  *   box is therefore wETH.
  *   The user can subsequently make withdrawal requests for USD-denominated amounts of wETH.
  * - User deposits 10 wETH into their deposit box.
- * - User later requests to withdraw $100 USD of wETH.
- * - OptimisticDepositBox asks DVM for latest wETH/USD exchange rate.
- * - DVM resolves the exchange rate at: 1 wETH is worth 200 USD.
+ * - User later requests to withdraw $1000 USD of wETH.
+ * - OptimisticDepositBox asks Optimistic Oracle for latest wETH/USD exchange rate.
+ * - Optimistic Oracle resolves the exchange rate at: 1 wETH is worth 2000 USD.
  * - OptimisticDepositBox transfers 0.5 wETH to user.
  */
 contract OptimisticDepositBox is FeePayer, ContractCreator {
@@ -45,14 +44,13 @@ contract OptimisticDepositBox is FeePayer, ContractCreator {
     // Represents a single caller's deposit box. All collateral is held by this contract.
     struct OptimisticDepositBoxData {
         // Requested amount of collateral, denominated in quote asset of the price identifier.
-        // Example: If the price identifier is wETH-USD, and the `withdrawalRequestAmount = 100`, then
-        // this represents a withdrawal request for 100 USD worth of wETH.
+        // Example: If the price identifier is wETH-USD, and the `withdrawalRequestAmount = 1000`, then
+        // this represents a withdrawal request for 1000 USD worth of wETH.
         FixedPoint.Unsigned withdrawalRequestAmount;
         // Timestamp of the latest withdrawal request. A withdrawal request is pending if `requestPassTimestamp != 0`.
         uint256 requestPassTimestamp;
-        // Raw collateral value. This value should never be accessed directly -- always use _getFeeAdjustedCollateral().
-        // To add or remove collateral, use _addCollateral() and _removeCollateral().
-        FixedPoint.Unsigned rawCollateral;
+        // Raw collateral value.
+        FixedPoint.Unsigned collateral;
     }
 
     // Maps addresses to their deposit boxes. Each address can have only one position.
@@ -61,9 +59,8 @@ contract OptimisticDepositBox is FeePayer, ContractCreator {
     // Unique identifier for DVM price feed ticker.
     bytes32 private priceIdentifier;
 
-    // Similar to the rawCollateral in OptimisticDepositBoxData, this value should not be used directly.
-    // _getFeeAdjustedCollateral(), _addCollateral() and _removeCollateral() must be used to access and adjust.
-    FixedPoint.Unsigned private rawTotalOptimisticDepositBoxCollateral;
+    // Total collateral of all depositors.
+    FixedPoint.Unsigned private totalOptimisticDepositBoxCollateral;
 
     // This blocks every public state-modifying method until it flips to true, via the `initialize()` method.
     bool private initialized;
@@ -123,21 +120,10 @@ contract OptimisticDepositBox is FeePayer, ContractCreator {
         bytes32 _priceIdentifier,
         address _timerAddress
     ) ContractCreator(_finderAddress) FeePayer(_collateralAddress, _finderAddress, _timerAddress) nonReentrant() {
-        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported price identifier");
+        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported identifier");
+        require(_getCollateralWhitelist().isOnWhitelist(_collateralAddress), "Unsupported currency");
 
         priceIdentifier = _priceIdentifier;
-    }
-
-    /**
-     * @notice This should be called after construction of the OptimisticDepositBox and handles registration with the Registry, which is required
-     * to make price requests in production environments.
-     * @dev This contract must hold the `ContractCreator` role with the Registry in order to register itself as a financial-template with the DVM.
-     * Note that `_registerContract` cannot be called from the constructor because this contract first needs to be given the `ContractCreator` role
-     * in order to register with the `Registry`. But, its address is not known until after deployment.
-     */
-    function initialize() public nonReentrant() {
-        initialized = true;
-        _registerContract(new address[](0), address(this));
     }
 
     /**
@@ -148,7 +134,7 @@ contract OptimisticDepositBox is FeePayer, ContractCreator {
     function deposit(FixedPoint.Unsigned memory collateralAmount) public isInitialized() fees() nonReentrant() {
         require(collateralAmount.isGreaterThan(0), "Invalid collateral amount");
         OptimisticDepositBoxData storage depositBoxData = depositBoxes[msg.sender];
-        if (_getFeeAdjustedCollateral(depositBoxData.rawCollateral).isEqual(0)) {
+        if (_getFeeAdjustedCollateral(depositBoxData.collateral).isEqual(0)) {
             emit NewOptimisticDepositBox(msg.sender);
         }
 
@@ -186,7 +172,7 @@ contract OptimisticDepositBox is FeePayer, ContractCreator {
         // Every price request costs a fixed fee. Check that this user has enough deposited to cover the final fee.
         FixedPoint.Unsigned memory finalFee = _computeFinalFees();
         require(
-            _getFeeAdjustedCollateral(depositBoxData.rawCollateral).isGreaterThanOrEqual(finalFee),
+            _getFeeAdjustedCollateral(depositBoxData.collateral).isGreaterThanOrEqual(finalFee),
             "Cannot pay final fee"
         );
         _payFinalFees(address(this), finalFee);
@@ -224,8 +210,8 @@ contract OptimisticDepositBox is FeePayer, ContractCreator {
             depositBoxData.withdrawalRequestAmount.div(exchangeRate);
 
         // If withdrawal request amount is > collateral, then withdraw the full collateral amount and delete the deposit box data.
-        if (denominatedAmountToWithdraw.isGreaterThan(_getFeeAdjustedCollateral(depositBoxData.rawCollateral))) {
-            denominatedAmountToWithdraw = _getFeeAdjustedCollateral(depositBoxData.rawCollateral);
+        if (denominatedAmountToWithdraw.isGreaterThan(_getFeeAdjustedCollateral(depositBoxData.collateral))) {
+            denominatedAmountToWithdraw = _getFeeAdjustedCollateral(depositBoxData.collateral);
 
             // Reset the position state as all the value has been removed after settlement.
             emit EndedOptimisticDepositBox(msg.sender);
@@ -283,12 +269,12 @@ contract OptimisticDepositBox is FeePayer, ContractCreator {
     /**
      * @notice Accessor method for a user's collateral.
      * @dev This is necessary because the struct returned by the depositBoxes() method shows
-     * rawCollateral, which isn't a user-readable value.
+     * collateral, which isn't a user-readable value.
      * @param user address whose collateral amount is retrieved.
      * @return the fee-adjusted collateral amount in the deposit box (i.e. available for withdrawal).
      */
     function getCollateral(address user) external view nonReentrantView() returns (FixedPoint.Unsigned memory) {
-        return _getFeeAdjustedCollateral(depositBoxes[user].rawCollateral);
+        return _getFeeAdjustedCollateral(depositBoxes[user].collateral);
     }
 
     /**
@@ -301,7 +287,7 @@ contract OptimisticDepositBox is FeePayer, ContractCreator {
         nonReentrantView()
         returns (FixedPoint.Unsigned memory)
     {
-        return _getFeeAdjustedCollateral(rawTotalOptimisticDepositBoxCollateral);
+        return _getFeeAdjustedCollateral(totalOptimisticDepositBoxCollateral);
     }
 
     /****************************************
@@ -319,8 +305,8 @@ contract OptimisticDepositBox is FeePayer, ContractCreator {
         OptimisticDepositBoxData storage depositBoxData,
         FixedPoint.Unsigned memory collateralAmount
     ) internal returns (FixedPoint.Unsigned memory) {
-        _addCollateral(depositBoxData.rawCollateral, collateralAmount);
-        return _addCollateral(rawTotalOptimisticDepositBoxCollateral, collateralAmount);
+        _addCollateral(depositBoxData.collateral, collateralAmount);
+        return _addCollateral(totalOptimisticDepositBoxCollateral, collateralAmount);
     }
 
     // Ensure individual and global consistency when decrementing collateral balances. Returns the change to the
@@ -331,8 +317,8 @@ contract OptimisticDepositBox is FeePayer, ContractCreator {
         OptimisticDepositBoxData storage depositBoxData,
         FixedPoint.Unsigned memory collateralAmount
     ) internal returns (FixedPoint.Unsigned memory) {
-        _removeCollateral(depositBoxData.rawCollateral, collateralAmount);
-        return _removeCollateral(rawTotalOptimisticDepositBoxCollateral, collateralAmount);
+        _removeCollateral(depositBoxData.collateral, collateralAmount);
+        return _removeCollateral(totalOptimisticDepositBoxCollateral, collateralAmount);
     }
 
     function _resetWithdrawalRequest(OptimisticDepositBoxData storage depositBoxData) internal {
@@ -353,7 +339,7 @@ contract OptimisticDepositBox is FeePayer, ContractCreator {
     }
 
     function _getOracle() internal view returns (OracleInterface) {
-        return OracleInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
+        return OptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 
     // Fetches a resolved Oracle price from the Oracle. Reverts if the Oracle hasn't resolved for this request.
@@ -373,6 +359,6 @@ contract OptimisticDepositBox is FeePayer, ContractCreator {
     // which fees can be charged. For this contract, the available fee pool is simply all of the collateral locked up in the
     // contract.
     function _pfc() internal view virtual override returns (FixedPoint.Unsigned memory) {
-        return _getFeeAdjustedCollateral(rawTotalOptimisticDepositBoxCollateral);
+        return _getFeeAdjustedCollateral(totalOptimisticDepositBoxCollateral);
     }
 }
