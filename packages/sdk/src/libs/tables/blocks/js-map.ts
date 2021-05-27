@@ -1,9 +1,11 @@
 import type { Data } from ".";
-import { JsMap } from "../generic";
+import { JsMap as GenericJsMap } from "../generic";
 
-export default (type:string="Block") => {
+// personally dont like to have this as a named export, but cannot export both function and type as default
+export const JsMap = (type = "Block") => {
   function makeId(data: Data) {
     return data.number;
   }
-  return JsMap<number, Data>(type, makeId);
+  return GenericJsMap<number, Data>(type, makeId);
 };
+export type JsMap = ReturnType<typeof JsMap>;

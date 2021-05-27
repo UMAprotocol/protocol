@@ -1,11 +1,7 @@
-import assert from "assert";
 import { ExpiringMultiParty__factory, ExpiringMultiParty } from "@uma/core/contract-types/ethers";
-import type { TypedEventFilter, TypedEvent } from "@uma/core/contract-types/ethers/commons";
 import type { SignerOrProvider, GetEventType } from "../..";
-import { EventFragment, Result } from "@ethersproject/abi";
-import { BlockTag } from "@ethersproject/abstract-provider";
-import { EventFilter, Event, BigNumber } from "ethers";
-import { exists, Balances } from "../../utils";
+import { Event } from "ethers";
+import { Balances } from "../../utils";
 
 export { ExpiringMultiParty as Instance };
 export function connect(address: string, provider: SignerOrProvider): ExpiringMultiParty {
@@ -20,13 +16,13 @@ export interface EventState {
   expired?: boolean;
 }
 
-type RequestTransferPositionExecuted = GetEventType<ExpiringMultiParty, "RequestTransferPositionExecuted">;
-type PositionCreated = GetEventType<ExpiringMultiParty, "PositionCreated">;
-type NewSponsor = GetEventType<ExpiringMultiParty, "NewSponsor">;
-type SettleExpiredPosition = GetEventType<ExpiringMultiParty, "SettleExpiredPosition">;
-type Redeem = GetEventType<ExpiringMultiParty, "Redeem">;
-type Withdrawal = GetEventType<ExpiringMultiParty, "Withdrawal">;
-type LiquidationCreated = GetEventType<ExpiringMultiParty, "LiquidationCreated">;
+export type RequestTransferPositionExecuted = GetEventType<ExpiringMultiParty, "RequestTransferPositionExecuted">;
+export type PositionCreated = GetEventType<ExpiringMultiParty, "PositionCreated">;
+export type NewSponsor = GetEventType<ExpiringMultiParty, "NewSponsor">;
+export type SettleExpiredPosition = GetEventType<ExpiringMultiParty, "SettleExpiredPosition">;
+export type Redeem = GetEventType<ExpiringMultiParty, "Redeem">;
+export type Withdrawal = GetEventType<ExpiringMultiParty, "Withdrawal">;
+export type LiquidationCreated = GetEventType<ExpiringMultiParty, "LiquidationCreated">;
 
 // experimenting with a generalized way of handling events and returning state, inspired from react style reducers
 export function reduceEvents(state: EventState = {}, event: Event, index?: number): EventState {
@@ -100,14 +96,7 @@ export function reduceEvents(state: EventState = {}, event: Event, index?: numbe
     }
     case "LiquidationCreated": {
       const typedEvent = event as LiquidationCreated;
-      const {
-        sponsor,
-        liquidator,
-        liquidationId,
-        tokensOutstanding,
-        lockedCollateral,
-        liquidatedCollateral,
-      } = typedEvent.args;
+      const { sponsor, tokensOutstanding, liquidatedCollateral } = typedEvent.args;
       const tokens = Balances(state.tokens || {});
       const collateral = Balances(state.collateral || {});
       collateral.sub(sponsor, liquidatedCollateral.toString());
@@ -140,6 +129,6 @@ export function reduceEvents(state: EventState = {}, event: Event, index?: numbe
   return state;
 }
 
-export function getEventState(events: Event[], initialState: EventState = {}) {
+export function getEventState(events: Event[], initialState: EventState = {}): EventState {
   return events.reduce(reduceEvents, initialState);
 }

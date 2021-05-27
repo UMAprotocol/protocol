@@ -4,7 +4,7 @@ import RegistryArtifacts from "@uma/core/build/contracts/Registry.json";
 import type { SignerOrProvider, GetEventType } from "../..";
 import { Event } from "ethers";
 
-type NewContractRegistered = GetEventType<Registry, "NewContractRegistered">;
+export type NewContractRegistered = GetEventType<Registry, "NewContractRegistered">;
 
 export interface EventState {
   contracts?: { [key: string]: NewContractRegistered };

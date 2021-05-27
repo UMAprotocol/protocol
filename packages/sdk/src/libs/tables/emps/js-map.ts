@@ -1,11 +1,11 @@
 import type { Data } from ".";
-import { JsMap } from "../generic";
+import { JsMap as GenericJsMap } from "../generic";
 
-export default (type = "Emp") => {
+export const JsMap = (type = "Emp") => {
   function makeId(data: Data) {
     return data.address;
   }
-  const table = JsMap<string, Data>(type, makeId);
+  const table = GenericJsMap<string, Data>(type, makeId);
 
   async function addSponsors(id: string, sponsors: string[]) {
     const data = await table.get(id);
@@ -19,3 +19,5 @@ export default (type = "Emp") => {
     addSponsors,
   };
 };
+// want to export the type as the same name
+export type JsMap = ReturnType<typeof JsMap>;

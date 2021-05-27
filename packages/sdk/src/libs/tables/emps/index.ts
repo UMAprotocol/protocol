@@ -1,7 +1,4 @@
-import JsMap from "./js-map";
-
-export { JsMap };
-export type JsMap = ReturnType<typeof JsMap>;
+export * from "./js-map";
 
 export type Data = {
   id?: string;
@@ -25,4 +22,5 @@ export type Data = {
   expiryPrice?: string | null;
   sponsors?: string[] | null;
   gcr?: string | null;
+  expired?: boolean | null;
 };

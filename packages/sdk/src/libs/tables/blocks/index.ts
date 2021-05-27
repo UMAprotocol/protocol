@@ -1,7 +1,4 @@
-import JsMap from './js-map'
-
-export {JsMap}
-export type JsMap = ReturnType<typeof JsMap>
+export * from "./js-map";
 
 export type Data = {
   id?: number;
@@ -9,4 +6,3 @@ export type Data = {
   hash: string;
   timestamp: number;
 };
-
