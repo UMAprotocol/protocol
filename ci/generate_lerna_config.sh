@@ -75,7 +75,7 @@ EOF
   for PACKAGE in "${PACKAGES_ARRAY[@]}"
     do
       cat <<EOF >> $CI_CONFIG_FILE
-      - test-${PACKAGE:5}:
+      - test-${PACKAGE:5}
 EOF
   done
 
