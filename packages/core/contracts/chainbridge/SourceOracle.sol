@@ -17,6 +17,11 @@ import "../oracle/interfaces/OracleAncillaryInterface.sol";
  * @dev This contract must be a registered financial contract in order to call DVM methods.
  */
 contract SourceOracle is BeaconOracle {
+    /**
+     * @notice Constructor.
+     * @param _finderAddress Address of Finder that this contract uses to locate Bridge.
+     * @param _chainID Chain ID for this contract.
+     */
     constructor(address _finderAddress, uint8 _chainID) BeaconOracle(_finderAddress, _chainID) {}
 
     /***************************************************************
@@ -29,6 +34,10 @@ contract SourceOracle is BeaconOracle {
      * @dev Publishes the DVM resolved price for the price request, or reverts if not resolved yet. Will call the
      * local Bridge's deposit() method which will emit a Deposit event in order to signal to an off-chain
      * relayer to begin the cross-chain process.
+     * @param sinkChainID Chain ID of SinkOracle that this price should ultimately be sent to.
+     * @param identifier Identifier of price request to resolve.
+     * @param time Timestamp of price request to resolve.
+     * @param ancillaryData extra data of price request to resolve.
      */
     function publishPrice(
         uint8 sinkChainID,
@@ -53,6 +62,11 @@ contract SourceOracle is BeaconOracle {
      * @notice This method will ultimately be called after `publishPrice` calls `Bridge.deposit()`, which will call
      * `GenericHandler.deposit()` and ultimately this method.
      * @dev This method should basically check that the `Bridge.deposit()` was triggered by a valid publish event.
+     * @param sinkChainID Chain ID of SinkOracle that this price should ultimately be sent to.
+     * @param identifier Identifier of price request to resolve.
+     * @param time Timestamp of price request to resolve.
+     * @param ancillaryData extra data of price request to resolve.
+     * @param price Price resolved on DVM to send to SinkOracle.
      */
     function validateDeposit(
         uint8 sinkChainID,
@@ -78,6 +92,10 @@ contract SourceOracle is BeaconOracle {
      * local network, which call `GenericHandler.executeProposal()` and ultimately this method.
      * @dev This method should prepare this oracle to receive a published price and then forward the price request
      * to the DVM. Can only be called by the `GenericHandler`.
+     * @param sinkChainID Chain ID of SinkOracle that originally sent price request.
+     * @param identifier Identifier of price request.
+     * @param time Timestamp of price request.
+     * @param ancillaryData extra data of price request.
      */
 
     function executeRequestPrice(
@@ -108,10 +126,16 @@ contract SourceOracle is BeaconOracle {
     }
 
     /**
-     * @notice This helper method is useful for calling Bridge.deposit().
+     * @notice This helper method is useful for shaping metadata that is passed into Bridge.deposit() that will
+     * ultimately be used to publish a price on the SinkOracle.
      * @dev GenericHandler.deposit() expects data to be formatted as:
-     *     len(data)                              uint256     bytes  0  - 64
+     *     len(data)                              uint256     bytes  0  - 32
      *     data                                   bytes       bytes  64 - END
+     * @param chainID Chain ID of SinkOracle to publish price to.
+     * @param identifier Identifier of price request to publish.
+     * @param time Timestamp of price request to publish.
+     * @param ancillaryData extra data of price request to publish.
+     * @return bytes Formatted metadata.
      */
     function formatMetadata(
         uint8 chainID,

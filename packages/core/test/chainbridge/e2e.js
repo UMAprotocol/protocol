@@ -198,7 +198,6 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
       depositTxn,
       "PriceRequestAdded",
       (event) =>
-        event.requester.toLowerCase() === depositerAddress.toLowerCase() &&
         event.chainID.toString() === sidechainId.toString() &&
         hexToUtf8(event.identifier) === hexToUtf8(identifier) &&
         event.time.toString() === requestTime.toString() &&
@@ -249,7 +248,6 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
       internalTx,
       "PriceRequestAdded",
       (event) =>
-        event.requester.toLowerCase() === genericHandlerMainnet.address.toLowerCase() &&
         event.chainID.toString() === sidechainId.toString() &&
         hexToUtf8(event.identifier) === hexToUtf8(identifier) &&
         event.time.toString() === requestTime.toString() &&
@@ -260,7 +258,6 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
       internalTx,
       "PriceRequestAdded",
       (event) =>
-        event.requester.toLowerCase() === sourceOracle.address.toLowerCase() &&
         hexToUtf8(event.identifier) === hexToUtf8(identifier) &&
         event.time.toString() === requestTime.toString() &&
         event.ancillaryData.toLowerCase() === ancillaryData.toLowerCase()
@@ -292,7 +289,6 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
     // Bridge emits a Deposit event and the SinkOracle emitted a PushedPrice event.
     TruffleAssert.eventEmitted(depositTxn, "PushedPrice", (event) => {
       return (
-        event.pusher.toLowerCase() === depositerAddress.toLowerCase() &&
         event.chainID.toString() === sidechainId.toString() &&
         hexToUtf8(event.identifier) === hexToUtf8(identifier) &&
         event.time.toString() === requestTime.toString() &&
@@ -345,7 +341,6 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
     const internalTx = await TruffleAssert.createTransactionResult(sinkOracle, executeProposalTx.tx);
     TruffleAssert.eventEmitted(internalTx, "PushedPrice", (event) => {
       return (
-        event.pusher.toLowerCase() === genericHandlerSidechain.address.toLowerCase() &&
         event.chainID.toString() === sidechainId.toString() &&
         hexToUtf8(event.identifier) === hexToUtf8(identifier) &&
         event.time.toString() === requestTime.toString() &&
