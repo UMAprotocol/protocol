@@ -13,7 +13,12 @@ import "../../../common/implementation/Lockable.sol";
 contract KpiOptionsFinancialProductLibrary is FinancialProductLibrary, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
 
-    mapping(address => FixedPoint.Unsigned) public financialProductTransformedPrices;
+    struct TransformedPrice {
+        bool set;
+        FixedPoint.Unsigned transformedPrice;
+    }
+
+    mapping(address => TransformedPrice) public financialProductTransformedPrices;
 
     /**
      * @notice Enables any address to set the transformed price for an associated financial product.
@@ -27,10 +32,10 @@ contract KpiOptionsFinancialProductLibrary is FinancialProductLibrary, Lockable 
         public
         nonReentrant()
     {
-        require(transformedPrice.isGreaterThan(0), "Cannot set price to 0");
-        require(financialProductTransformedPrices[financialProduct].isEqual(0), "Price already set");
+        require(financialProductTransformedPrices[financialProduct].set == false, "Price already set");
         require(ExpiringContractInterface(financialProduct).expirationTimestamp() != 0, "Invalid EMP contract");
-        financialProductTransformedPrices[financialProduct] = transformedPrice;
+        financialProductTransformedPrices[financialProduct].set = true;
+        financialProductTransformedPrices[financialProduct].transformedPrice = transformedPrice;
     }
 
     /**
@@ -47,9 +52,8 @@ contract KpiOptionsFinancialProductLibrary is FinancialProductLibrary, Lockable 
         returns (FixedPoint.Unsigned memory)
     {
         FixedPoint.Unsigned memory transformedPrice = financialProductTransformedPrices[msg.sender];
-        require(transformedPrice.isGreaterThan(0), "Caller has no transformation");
+        require(transformedPrice.set == true, "Caller has no transformation");
         // If price request is made before expiry, return transformed price. Post-expiry, leave unchanged.
-        //
         if (requestTime < ExpiringContractInterface(msg.sender).expirationTimestamp()) {
             return transformedPrice;
         } else {
