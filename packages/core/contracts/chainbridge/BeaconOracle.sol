@@ -8,7 +8,7 @@ import "../oracle/implementation/Constants.sol";
 /**
  * @title Simple implementation of the OracleInterface used to communicate price request data cross-chain between
  * EVM networks. Can be extended either into a "Source" or "Sink" oracle that specializes in making and resolving
- * cross-chain price requests, respectivly. The "Source" Oracle is the originator or source of price resolution data
+ * cross-chain price requests, respectively. The "Source" Oracle is the originator or source of price resolution data
  * and can only resolve prices already published by the DVM. The "Sink" Oracle receives the price resolution data
  * from the Source Oracle and makes it available on non-Mainnet chains. The "Sink" Oracle can also be used to trigger
  * price requests from the DVM on Mainnet.
@@ -24,7 +24,7 @@ abstract contract BeaconOracle {
     // Chain ID for this Oracle.
     uint8 public currentChainID;
 
-    // Mapping of encoded price requests {identifier, time, ancillaryData} to Price objects.
+    // Mapping of encoded price requests {chainID, identifier, time, ancillaryData} to Price objects.
     mapping(bytes32 => Price) internal prices;
 
     // Finder to provide addresses for DVM system contracts.
@@ -65,8 +65,8 @@ abstract contract BeaconOracle {
     }
 
     /**
-     * @notice Enqueues a request (if a request isn't already present) for the given (identifier, time, ancillary data)
-     * pair. Will revert if request has been requested already.
+     * @notice Enqueues a request (if a request isn't already present) for the given (chainID, identifier, time, 
+     * ancillary data) combination. Will only emit an event if the request has never been requested.
      */
     function _requestPrice(
         uint8 chainID,
