@@ -13,38 +13,24 @@ import "../../../common/implementation/Lockable.sol";
 contract KpiOptionsFinancialProductLibrary is FinancialProductLibrary, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
 
-    mapping(address => FixedPoint.Unsigned) financialProductTransformedPrices;
+    mapping(address => FixedPoint.Unsigned) public financialProductTransformedPrices;
 
     /**
      * @notice Enables any address to set the transformed price for an associated financial product.
-     * @param financialProduct address of the financial product.
-     * @param transformedPrice the price for the financial product to be used if the contract is pre-expiration.
      * @dev Note: a) Any address can set price transformations b) The price can't be set to blank.
      * c) A transformed price can only be set once to prevent the deployer from changing it after the fact.
      * d)  financialProduct must expose an expirationTimestamp method.
+     * @param financialProduct address of the financial product.
+     * @param transformedPrice the price for the financial product to be used if the contract is pre-expiration.
      */
     function setFinancialProductTransformedPrice(address financialProduct, FixedPoint.Unsigned memory transformedPrice)
         public
         nonReentrant()
     {
-        require(transformedPrice.isGreaterThan(0), "Cant set price of 0");
+        require(transformedPrice.isGreaterThan(0), "Cannot set price to 0");
         require(financialProductTransformedPrices[financialProduct].isEqual(0), "Price already set");
         require(ExpiringContractInterface(financialProduct).expirationTimestamp() != 0, "Invalid EMP contract");
         financialProductTransformedPrices[financialProduct] = transformedPrice;
-    }
-
-    /**
-     * @notice Returns the transformed price associated with a given financial product address.
-     * @param financialProduct address of the financial product.
-     * @return transformed price for the associated financial product.
-     */
-    function getTransformedPriceForFinancialProduct(address financialProduct)
-        public
-        view
-        nonReentrantView()
-        returns (FixedPoint.Unsigned memory)
-    {
-        return financialProductTransformedPrices[financialProduct];
     }
 
     /**
