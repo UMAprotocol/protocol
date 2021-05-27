@@ -15,7 +15,7 @@ contract KpiOptionsFinancialProductLibrary is FinancialProductLibrary, Lockable 
 
     struct TransformedPrice {
         bool set;
-        FixedPoint.Unsigned memory price;
+        FixedPoint.Unsigned price;
     }
 
     mapping(address => TransformedPrice) public financialProductTransformedPrices;
