@@ -20,6 +20,7 @@ const { getWeb3 } = require("@uma/common");
  * @param {Number} errorRetriesTimeout The amount of milliseconds to wait between re-try iterations on failed loops.
  * @param {Object} [commonPriceFeedConfig] Common configuration to pass to all PriceFeeds constructed by proposer.
  * @param {Object} [optimisticOracleProposerConfig] Configuration to construct the OptimisticOracle proposer.
+ * @param {String} [oracleType] Type of "Oracle" for this network, defaults to "Votng"
  * @return None or throws an Error.
  */
 async function run({
@@ -30,11 +31,11 @@ async function run({
   errorRetriesTimeout,
   commonPriceFeedConfig,
   optimisticOracleProposerConfig,
+  oracleType = "Voting",
 }) {
   try {
     const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
     const optimisticOracleAddress = getAddress("OptimisticOracle", networkId);
-    const votingAddress = getAddress("Voting", networkId);
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
@@ -46,6 +47,7 @@ async function run({
       errorRetriesTimeout,
       commonPriceFeedConfig,
       optimisticOracleProposerConfig,
+      oracleType,
     });
 
     // Create the OptimisticOracleClient to query on-chain information, GasEstimator to get latest gas prices and an
@@ -53,10 +55,10 @@ async function run({
     const optimisticOracleClient = new OptimisticOracleClient(
       logger,
       getAbi("OptimisticOracle"),
-      getAbi("Voting"),
+      getAbi(oracleType),
       web3,
       optimisticOracleAddress,
-      votingAddress
+      getAddress(oracleType, networkId)
     );
     const gasEstimator = new GasEstimator(logger);
 
@@ -143,6 +145,8 @@ async function Poll(callback) {
       optimisticOracleProposerConfig: process.env.OPTIMISTIC_ORACLE_PROPOSER_CONFIG
         ? JSON.parse(process.env.OPTIMISTIC_ORACLE_PROPOSER_CONFIG)
         : {},
+      // Type of "Oracle" set for this network's Finder, default is "Voting". Other possible types include "SinkOracle".
+      oracleType: process.env.ORACLE_TYPE ? process.env.ORACLE_TYPE : "Voting",
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
