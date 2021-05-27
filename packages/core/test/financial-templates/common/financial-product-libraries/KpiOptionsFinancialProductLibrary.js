@@ -11,7 +11,7 @@ const { toWei, toBN, utf8ToHex } = web3.utils;
 const priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
 const collateralizationRatio = toBN(toWei("1")).addn(1);
 
-contract("KpiOptionsFinancialProductLibrary", function () {
+contract("KpiOptionsFinancialProductLibrary", function() {
   let kpiFPL;
   let expiringMultiParty;
   let timer;
