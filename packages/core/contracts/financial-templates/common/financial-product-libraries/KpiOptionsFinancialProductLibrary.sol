@@ -51,7 +51,7 @@ contract KpiOptionsFinancialProductLibrary is FinancialProductLibrary, Lockable 
         nonReentrantView()
         returns (FixedPoint.Unsigned memory)
     {
-        TransformedPrice transformedPrice = financialProductTransformedPrices[msg.sender];
+        TransformedPrice storage transformedPrice = financialProductTransformedPrices[msg.sender];
         require(transformedPrice.set == true, "Caller has no transformation");
         // If price request is made before expiry, return transformed price. Post-expiry, leave unchanged.
         if (requestTime < ExpiringContractInterface(msg.sender).expirationTimestamp()) {
