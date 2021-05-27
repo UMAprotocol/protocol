@@ -1,4 +1,4 @@
-// This file was originally take from the Maker DS Proxy Factory and modified. The original source code can be found
+// This file was originally taken from the Maker DS Proxy Factory and modified. The original source code can be found
 // here: https://etherscan.io/address/0xa26e15c895efc0616177b7c1e7270a4c7d51c997#code
 // Changes are limited to updating the Solidity version and some stylistic modifications.
 
