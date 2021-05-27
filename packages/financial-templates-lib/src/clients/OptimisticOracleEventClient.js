@@ -136,6 +136,8 @@ class OptimisticOracleEventClient {
 
     // DisputePrice events.
     for (let event of disputePriceEventsObj) {
+      // The OptimisticOracle contract should ideally emit `currency` as part of this event, but alternatively we can
+      // query the currency address on-chain.
       const requestData = await this._getRequestData(
         event.returnValues.requester,
         event.returnValues.identifier,
@@ -158,6 +160,7 @@ class OptimisticOracleEventClient {
 
     // Settlement events.
     for (let event of settlementEventsObj) {
+      // See explanation above in disputeEventsObj loop.
       const requestData = await this._getRequestData(
         event.returnValues.requester,
         event.returnValues.identifier,
