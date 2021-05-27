@@ -4,7 +4,7 @@ const truffleAssert = require("truffle-assertions");
 
 const Registry = artifacts.require("Registry");
 
-contract("Registry", function(accounts) {
+contract("Registry", function (accounts) {
   // A deployed instance of the Registry contract, ready for testing.
   let registry;
 
@@ -19,7 +19,7 @@ contract("Registry", function(accounts) {
   const contract1 = accounts[4];
   const contract2 = accounts[5];
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     registry = await Registry.new();
   });
 
@@ -27,7 +27,7 @@ contract("Registry", function(accounts) {
     return address1.toLowerCase() === address2.toLowerCase();
   };
 
-  it("Contract creation", async function() {
+  it("Contract creation", async function () {
     // No creators should be registered initially.
     assert.isNotTrue(await registry.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, creator1));
 
@@ -54,16 +54,16 @@ contract("Registry", function(accounts) {
     assert.isTrue(await registry.isContractRegistered(arbitraryContract));
 
     // Make sure a PartyAdded event is emitted on initial contract registration.
-    truffleAssert.eventEmitted(result, "PartyAdded", ev => {
+    truffleAssert.eventEmitted(result, "PartyAdded", (ev) => {
       return (
         web3.utils.toChecksumAddress(ev.contractAddress) === web3.utils.toChecksumAddress(arbitraryContract) &&
         // Check that the party is a member of the parties array used in registration above
-        parties.map(party => web3.utils.toChecksumAddress(party).indexOf(web3.utils.toChecksumAddress(ev.party)))
+        parties.map((party) => web3.utils.toChecksumAddress(party).indexOf(web3.utils.toChecksumAddress(ev.party)))
       );
     });
 
     // Make sure a NewContractRegistered event is emitted.
-    truffleAssert.eventEmitted(result, "NewContractRegistered", ev => {
+    truffleAssert.eventEmitted(result, "NewContractRegistered", (ev) => {
       return (
         web3.utils.toChecksumAddress(ev.contractAddress) === web3.utils.toChecksumAddress(arbitraryContract) &&
         web3.utils.toChecksumAddress(ev.creator) === web3.utils.toChecksumAddress(creator1)
@@ -90,7 +90,7 @@ contract("Registry", function(accounts) {
     );
   });
 
-  it("Register and query contracts", async function() {
+  it("Register and query contracts", async function () {
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1, { from: owner });
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator2, { from: owner });
 
@@ -137,7 +137,7 @@ contract("Registry", function(accounts) {
     assert.isFalse(await registry.isPartyMemberOfContract(rando1, fc1));
   });
 
-  it("Double-register contract", async function() {
+  it("Double-register contract", async function () {
     // Approve creator.
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1, { from: owner });
 
@@ -158,7 +158,7 @@ contract("Registry", function(accounts) {
     );
   });
 
-  it("Adding parties to contracts", async function() {
+  it("Adding parties to contracts", async function () {
     // Approve creator and register contract.
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1, { from: owner });
     await registry.registerContract([], contract1, { from: creator1 });
@@ -167,7 +167,7 @@ contract("Registry", function(accounts) {
     let result = await registry.addPartyToContract(creator2, { from: contract1 });
 
     // Make sure a PartyMemberAdded event is emitted.
-    truffleAssert.eventEmitted(result, "PartyAdded", ev => {
+    truffleAssert.eventEmitted(result, "PartyAdded", (ev) => {
       return (
         web3.utils.toChecksumAddress(ev.contractAddress) === web3.utils.toChecksumAddress(contract1) &&
         web3.utils.toChecksumAddress(ev.party) === web3.utils.toChecksumAddress(creator2)
@@ -198,7 +198,7 @@ contract("Registry", function(accounts) {
     assert.equal((await registry.getRegisteredContracts(creator2))[1], contract2);
   });
 
-  it("Removing parties from contracts", async function() {
+  it("Removing parties from contracts", async function () {
     // Approve creator and register two contract.
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1, { from: owner });
     await registry.registerContract([], contract1, { from: creator1 });
@@ -212,7 +212,7 @@ contract("Registry", function(accounts) {
     // Remove party member from the first contract and check they are part of only the second contract.
     let result = await registry.removePartyFromContract(creator2, { from: contract1 });
 
-    truffleAssert.eventEmitted(result, "PartyRemoved", ev => {
+    truffleAssert.eventEmitted(result, "PartyRemoved", (ev) => {
       return (
         web3.utils.toChecksumAddress(ev.contractAddress) === web3.utils.toChecksumAddress(contract1) &&
         web3.utils.toChecksumAddress(ev.party) === web3.utils.toChecksumAddress(creator2)

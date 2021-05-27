@@ -27,8 +27,8 @@ export default (pinataApiKey: string | undefined, pinataApiSecret: string | unde
         headers: {
           "Content-Type": "application/json",
           pinata_api_key: pinataApiKey,
-          pinata_secret_api_key: pinataApiSecret
-        }
+          pinata_secret_api_key: pinataApiSecret,
+        },
       });
       if (pinataResponse.status != 200) throw { pinataResponse, error: new Error("Failed to pin on pinata") };
     }

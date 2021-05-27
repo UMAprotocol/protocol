@@ -1,12 +1,11 @@
 import winston from "winston";
 import Web3 from "web3";
-
+import retry from "async-retry";
 import { config } from "dotenv";
 
-import retry from "async-retry";
-const { getWeb3 } = require("@uma/common");
-const { getAbi, getAddress } = require("@uma/core");
-const {
+import { getWeb3 } from "@uma/common";
+import { getAbi, getAddress } from "@uma/core";
+import {
   GasEstimator,
   Networker,
   Logger,
@@ -14,11 +13,11 @@ const {
   createTokenPriceFeedForFinancialContract,
   waitForLogger,
   delay,
-  DSProxyManager
-} = require("@uma/financial-templates-lib");
+  DSProxyManager,
+} from "@uma/financial-templates-lib";
 
-const { RangeTrader } = require("./RangeTrader");
-const { createExchangeAdapter } = require("./exchange-adapters/CreateExchangeAdapter");
+import { RangeTrader } from "./RangeTrader";
+import { createExchangeAdapter } from "./exchange-adapters/CreateExchangeAdapter";
 import { TraderConfig } from "./TraderConfig";
 config();
 
@@ -36,11 +35,11 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       pollingDelay: config.pollingDelay,
       errorRetries: config.errorRetries,
       errorRetriesTimeout: config.errorRetriesTimeout,
-      dsProxyFactoryAddress: config.dsProxyFactoryAddress,
+      dsProxyConfig: config.dsProxyConfig,
       tokenPriceFeedConfig: config.tokenPriceFeedConfig,
       referencePriceFeedConfig: config.referencePriceFeedConfig,
       exchangeAdapterConfig: config.exchangeAdapterConfig,
-      rangeTraderConfig: config.rangeTraderConfig
+      rangeTraderConfig: config.rangeTraderConfig,
     });
 
     // Load unlocked web3 accounts, get the networkId and set up price feed.
@@ -54,9 +53,10 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       web3,
       gasEstimator,
       account: accounts[0],
-      dsProxyFactoryAddress: config.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
+      dsProxyFactoryAddress: config.dsProxyConfig?.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
       dsProxyFactoryAbi: getAbi("DSProxyFactory"),
-      dsProxyAbi: getAbi("DSProxy")
+      dsProxyAbi: getAbi("DSProxy"),
+      availableAccounts: config.dsProxyConfig?.availableAccounts || 1,
     });
     await dsProxyManager.initializeDSProxy();
 
@@ -78,7 +78,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
         config.financialContractAddress,
         config.referencePriceFeedConfig
       ),
-      createExchangeAdapter(logger, web3, dsProxyManager, config.exchangeAdapterConfig, networkId)
+      createExchangeAdapter(logger, web3, dsProxyManager, config.exchangeAdapterConfig, networkId),
     ]);
     const rangeTrader = new RangeTrader(
       logger,
@@ -92,7 +92,11 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       await retry(
         async () => {
           // Update the price feeds & gasEstimator.
-          await Promise.all([tokenPriceFeed.update(), referencePriceFeed.update(), gasEstimator.update()]);
+          await Promise.all([
+            (tokenPriceFeed as any).update(),
+            (referencePriceFeed as any).update(),
+            gasEstimator.update(),
+          ]);
 
           // Check if a trade should be done. If so, trade.
           await rangeTrader.checkRangeMovementsAndTrade();
@@ -101,20 +105,20 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
           retries: config.errorRetries,
           minTimeout: config.errorRetriesTimeout * 1000, // delay between retries in ms
           randomize: false,
-          onRetry: error => {
+          onRetry: (error) => {
             logger.debug({
               at: "Trader#index",
               message: "An error was thrown in the execution loop - retrying",
-              error: typeof error === "string" ? new Error(error) : error
+              error: typeof error === "string" ? new Error(error) : error,
             });
-          }
+          },
         }
       );
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (config.pollingDelay === 0) {
         logger.debug({
           at: "Trader#index",
-          message: "End of serverless execution loop - terminating process"
+          message: "End of serverless execution loop - terminating process",
         });
         await waitForLogger(logger);
         await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
@@ -123,7 +127,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       logger.debug({
         at: "Trader#index",
         message: "End of execution loop - waiting polling delay",
-        pollingDelay: `${config.pollingDelay} (s)`
+        pollingDelay: `${config.pollingDelay} (s)`,
       });
       await delay(Number(config.pollingDelay));
     }
@@ -138,11 +142,11 @@ if (require.main === module) {
     .then(() => {
       process.exit(0);
     })
-    .catch(error => {
+    .catch((error) => {
       Logger.error({
         at: "Trader#index",
         message: "Trader execution error🚨",
-        error: typeof error === "string" ? new Error(error) : error
+        error: typeof error === "string" ? new Error(error) : error,
       });
       process.exit(1);
     });

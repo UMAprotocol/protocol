@@ -5,9 +5,11 @@ import "./BeaconOracle.sol";
 
 /**
  * @title Test implementation of BeaconOracle enabling unit tests on internal methods.
+ * @dev Unit tests should ensure that internal methods `_requestPrice` and `_publishPrice` emit the correct events
+ * and modify state as expected.
  */
 contract BeaconOracleMock is BeaconOracle {
-    constructor(address _finderAddress, uint8 _chainID) public BeaconOracle(_finderAddress, _chainID) {}
+    constructor(address _finderAddress, uint8 _chainID) BeaconOracle(_finderAddress, _chainID) {}
 
     function requestPrice(
         bytes32 identifier,
@@ -15,6 +17,7 @@ contract BeaconOracleMock is BeaconOracle {
         bytes memory ancillaryData
     ) public {
         _requestPrice(currentChainID, identifier, time, ancillaryData);
+        _finalizeRequest(currentChainID, identifier, time, ancillaryData);
     }
 
     function encodePriceRequest(

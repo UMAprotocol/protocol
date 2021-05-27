@@ -24,17 +24,17 @@ class RetryProvider {
    */
   constructor(configs) {
     assert(configs.length > 0, "Must have at least one provider");
-    this.providerCaches = configs.map(config => ({
+    this.providerCaches = configs.map((config) => ({
       retries: 1,
       delay: 0,
-      ...config
+      ...config,
     }));
   }
 
   // Passes the send through, catches errors, and retries on error.
   send(payload, callback) {
     // Turn callback into async-await internally.
-    const sendWithProvider = provider => {
+    const sendWithProvider = (provider) => {
       return new Promise((resolve, reject) => {
         provider.send(payload, (error, result) => {
           if (error) {
@@ -53,8 +53,8 @@ class RetryProvider {
 
     // Turn retry promise result back into a callback.
     this._runRetry(sendWithProvider).then(
-      result => callback(null, result),
-      reason => callback(reason, null)
+      (result) => callback(null, result),
+      (reason) => callback(reason, null)
     );
   }
 
@@ -93,7 +93,7 @@ class RetryProvider {
       let nextRetryIndex = shouldMoveToNextProvider ? 0 : retryIndex + 1;
       let nextProviderIndex = shouldMoveToNextProvider ? providerIndex + 1 : providerIndex;
       if (nextProviderIndex >= this.providerCaches.length) throw error; // No more providers to try.
-      if (!shouldMoveToNextProvider) await new Promise(resolve => setTimeout(resolve, delay * 1000)); // Delay only if not moving to a new provider.
+      if (!shouldMoveToNextProvider) await new Promise((resolve) => setTimeout(resolve, delay * 1000)); // Delay only if not moving to a new provider.
 
       // Run function again with a different provider or retry index.
       return await this._runRetry(fn, nextProviderIndex, nextRetryIndex);

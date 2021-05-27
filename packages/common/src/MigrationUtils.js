@@ -11,10 +11,10 @@ const tdr = require("truffle-deploy-registry");
 const argv = require("minimist")(process.argv.slice(), { boolean: ["keep_finder", "keep_token", "keep_system"] });
 
 // Grab the name property from each to get a list of the names of the public networks.
-const publicNetworkNames = Object.values(require("./PublicNetworks.js").PublicNetworks).map(elt => elt.name);
+const publicNetworkNames = Object.values(require("./PublicNetworks.js").PublicNetworks).map((elt) => elt.name);
 
 function isPublicNetwork(network) {
-  return publicNetworkNames.some(name => network.startsWith(name));
+  return publicNetworkNames.some((name) => network.startsWith(name));
 }
 
 // Determines whether the network requires timestamps to be manually controlled or not.
@@ -113,7 +113,7 @@ async function deploy(deployer, network, contractType, ...args) {
   // Return relevant info about the contract.
   return {
     contract: contractInstance,
-    didDeploy: willDeploy
+    didDeploy: willDeploy,
   };
 }
 
@@ -134,7 +134,7 @@ async function setToExistingAddress(network, contractType, address) {
 function getKeysForNetwork(network, accounts) {
   // Must be exactly equal to a public network name to exclude the _mnemonic network configurations that don't use
   // gcloud key encryption.
-  if (publicNetworkNames.some(name => name === network)) {
+  if (publicNetworkNames.some((name) => name === network)) {
     return {
       deployer: accounts[0],
       registry: accounts[1],
@@ -142,7 +142,7 @@ function getKeysForNetwork(network, accounts) {
       priceFeed: accounts[3],
       sponsorWhitelist: accounts[4],
       returnCalculatorWhitelist: accounts[5],
-      marginCurrencyWhitelist: accounts[6]
+      marginCurrencyWhitelist: accounts[6],
     };
   } else {
     return {
@@ -152,7 +152,7 @@ function getKeysForNetwork(network, accounts) {
       priceFeed: accounts[0],
       sponsorWhitelist: accounts[0],
       returnCalculatorWhitelist: accounts[0],
-      marginCurrencyWhitelist: accounts[0]
+      marginCurrencyWhitelist: accounts[0],
     };
   }
 }
@@ -184,8 +184,8 @@ async function addToTvr(address, args, network, networkId) {
     // As well as empty objects
     // And destructure the single tuple (with rawValue keys)
     const argsFixed = args
-      .filter(x => !x.from && (typeof x === "object" ? Object.keys(x).length > 0 : true))
-      .map(x => {
+      .filter((x) => !x.from && (typeof x === "object" ? Object.keys(x).length > 0 : true))
+      .map((x) => {
         // Tuple
         if (x.rawValue) return [x.rawValue];
         return x;
@@ -202,5 +202,5 @@ module.exports = {
   setToExistingAddress,
   getKeysForNetwork,
   addToTdr,
-  isPublicNetwork
+  isPublicNetwork,
 };

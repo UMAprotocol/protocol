@@ -25,6 +25,4 @@ async function runTest() {
   return `wrote ${data.length} blocks`;
 }
 
-runTest()
-  .then(console.log)
-  .catch(console.log);
+runTest().then(console.log).catch(console.log);

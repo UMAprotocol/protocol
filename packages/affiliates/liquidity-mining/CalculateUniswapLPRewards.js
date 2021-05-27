@@ -25,7 +25,7 @@ const { toWei, toBN, fromWei } = web3.utils;
 
 const argv = require("minimist")(process.argv.slice(), {
   string: ["poolAddress", "empAddress", "tokenName"],
-  integer: ["fromBlock", "toBlock", "week", "umaPerWeek", "blocksPerSnapshot"]
+  integer: ["fromBlock", "toBlock", "week", "umaPerWeek", "blocksPerSnapshot"],
 });
 
 async function calculateUniswapLPRewards(
@@ -73,7 +73,7 @@ async function calculateUniswapLPRewards(
   const poolInfo = await _fetchUniswapPoolInfo(poolAddress);
   console.log("poolInfo", JSON.stringify(poolInfo));
   // Extract the addresses of all historic shareholders.
-  const shareHolders = poolInfo.flatMap(a => a.user.id);
+  const shareHolders = poolInfo.flatMap((a) => a.user.id);
   console.log("shareHolders", shareHolders);
   console.log("🏖  Number of historic liquidity providers:", shareHolders.length);
 
@@ -137,7 +137,7 @@ async function _calculatePayoutsBetweenBlocks(
   // create new progress bar to show the status of blocks traversed.
   const progressBar = new cliProgress.SingleBar(
     {
-      format: "[{bar}] {percentage}% | snapshots traversed: {value}/{total}"
+      format: "[{bar}] {percentage}% | snapshots traversed: {value}/{total}",
     },
     cliProgress.Presets.shades_classic
   );
@@ -182,18 +182,18 @@ async function _updatePayoutAtBlock(
   // Get the given holders balance at the given block. Generate an array of promises to resolve in parallel.
   const uniswapBalanceResults = await Promise.map(
     Object.keys(shareHolderPayout),
-    shareHolder => uniswapPool.methods.balanceOf(shareHolder).call(undefined, blockNumber),
+    (shareHolder) => uniswapPool.methods.balanceOf(shareHolder).call(undefined, blockNumber),
     {
-      concurrency: 50 // Keep infura happy about the number of incoming requests.
+      concurrency: 50, // Keep infura happy about the number of incoming requests.
     }
   );
 
   // Also, get the position information for all shareholders.
   const tokenShareHolderPositionResults = await Promise.map(
     Object.keys(shareHolderPayout),
-    shareHolder => empContract.methods.positions(shareHolder).call(undefined, blockNumber),
+    (shareHolder) => empContract.methods.positions(shareHolder).call(undefined, blockNumber),
     {
-      concurrency: 50 // Keep infura happy about the number of incoming requests.
+      concurrency: 50, // Keep infura happy about the number of incoming requests.
     }
   );
 
@@ -202,7 +202,7 @@ async function _updatePayoutAtBlock(
   // synths from their LP position.
   let shareHolderEffectiveSnapshotBalance = {};
   let cumulativeEffectiveSnapshotBalance = toBN("0");
-  uniswapBalanceResults.forEach(function(uniswapResult, index) {
+  uniswapBalanceResults.forEach(function (uniswapResult, index) {
     // If the given shareholder had no BLP tokens at the given block, skip them.
     if (uniswapResult === "0") return;
     // The holders fraction is the number of BPTs at the block divided by the total supply at that block.
@@ -235,7 +235,7 @@ async function _updatePayoutAtBlock(
   // At this point we know each sponsors effective balance and the overall cumulative effective balance at the current
   // snapshot. Using this, we can compute how much each sponsor contributed to the overall effective balance and
   // allocate rewards accordingly.
-  Object.keys(shareHolderEffectiveSnapshotBalance).forEach(shareHolderAddress => {
+  Object.keys(shareHolderEffectiveSnapshotBalance).forEach((shareHolderAddress) => {
     const shareHolderFractionAtSnapshot = toBN(toWei("1"))
       .mul(shareHolderEffectiveSnapshotBalance[shareHolderAddress])
       .div(cumulativeEffectiveSnapshotBalance);
@@ -278,7 +278,7 @@ function _saveShareHolderPayout(
     syntheticTokenAddress,
     blocksPerSnapshot,
     umaPerWeek,
-    shareHolderPayout
+    shareHolderPayout,
   };
   const savePath = `${path.resolve(__dirname)}/${tokenName}-weekly-payouts/Week_${week}_Mining_Rewards.json`;
   fs.writeFileSync(savePath, JSON.stringify(outputObject));
@@ -302,9 +302,9 @@ async function _fetchUniswapPoolInfo(poolAddress) {
     method: "POST",
     headers: {
       Accept: "application/json",
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify({ query })
+    body: JSON.stringify({ query }),
   });
   const data = (await response.json()).data;
   if (data.liquidityPositions.length > 0) {

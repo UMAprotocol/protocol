@@ -4,28 +4,28 @@ const { advanceBlockAndSetTime } = require("@uma/common");
 
 const {
   _updatePayoutAtBlock,
-  _calculatePayoutsBetweenBlocks
+  _calculatePayoutsBetweenBlocks,
 } = require("../../../liquidity-mining/CalculateBalancerLPRewards");
 
 const Token = artifacts.require("ExpandedERC20"); // Helper contracts to mock balancer pool.
 
 let bpToken; // balancerPoolToken. Used to mock liquidity provision.
 
-contract("CalculateBalancerLPProviders.js", function(accounts) {
+contract("CalculateBalancerLPProviders.js", function (accounts) {
   const contractCreator = accounts[0];
   const shareHolders = accounts.slice(1, 6); // Array of accounts 1 -> 5 to represent shareholders(liquidity providers).
 
-  describe("Correctly calculates payout at a given block number (_updatePayoutAtBlock)", function() {
-    beforeEach(async function() {
+  describe("Correctly calculates payout at a given block number (_updatePayoutAtBlock)", function () {
+    beforeEach(async function () {
       bpToken = await Token.new("BPT", "BPT", 18, {
-        from: contractCreator
+        from: contractCreator,
       });
       await bpToken.addMember(1, contractCreator, {
-        from: contractCreator
+        from: contractCreator,
       });
     });
 
-    it("Correctly splits payout over all liquidity providers (balanced case)", async function() {
+    it("Correctly splits payout over all liquidity providers (balanced case)", async function () {
       // Create 10e18 tokens to distribute, sending 2e18 to each liquidity provider.
       for (let shareHolder of shareHolders) {
         await bpToken.mint(shareHolder, toWei("2"), { from: contractCreator });
@@ -57,7 +57,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
         assert.equal(payoutAtBlock[shareHolder].toString(), expectedPayoutPerShareholder.toString());
       }
     });
-    it("Correctly splits payout over all liquidity providers (unbalanced case)", async function() {
+    it("Correctly splits payout over all liquidity providers (unbalanced case)", async function () {
       // Create 10e18 tokens to distribute, sending all to one liquidity provider.
       await bpToken.mint(shareHolders[0], toWei("10"), { from: contractCreator });
 
@@ -88,13 +88,13 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
         assert.equal(payoutAtBlock[shareHolder].toString(), expectedPayoutPerOtherShareholder.toString());
       }
     });
-    it("Correctly splits payout over all liquidity providers (extreme fractional case)", async function() {
+    it("Correctly splits payout over all liquidity providers (extreme fractional case)", async function () {
       // Create 10e18 tokens to distribute, sending all to one LP and send 100 wei of tokens to another provider.
       await bpToken.mint(shareHolders[0], toWei("10"), {
-        from: contractCreator
+        from: contractCreator,
       }); // shareholder0 gets 10e18 tokens
       await bpToken.mint(shareHolders[1], "100", {
-        from: contractCreator
+        from: contractCreator,
       }); // Shareholder1 gets 100 tokens. (100 wei)
 
       // Create an object to store the payouts for a given block. This should be an object with key being the
@@ -145,17 +145,17 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       }
     });
   });
-  describe("Correctly calculates payouts over a range of block numbers (_calculatePayoutsBetweenBlocks)", function() {
-    beforeEach(async function() {
+  describe("Correctly calculates payouts over a range of block numbers (_calculatePayoutsBetweenBlocks)", function () {
+    beforeEach(async function () {
       bpToken = await Token.new("BPT", "BPT", 18, {
-        from: contractCreator
+        from: contractCreator,
       });
       await bpToken.addMember(1, contractCreator, {
-        from: contractCreator
+        from: contractCreator,
       });
     });
 
-    it("Correctly splits rewards over n blocks (simple case)", async function() {
+    it("Correctly splits rewards over n blocks (simple case)", async function () {
       // Create 10e18 tokens to distribute, sending 2e18 to each liquidity provider.
       for (let shareHolder of shareHolders) {
         await bpToken.mint(shareHolder, toWei("2"), { from: contractCreator });
@@ -199,7 +199,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       }
       assert.equal(expectedTotalRewardsDistributed.toString(), totalRewardsDistributed.toString());
     });
-    it("Correctly splits rewards over n blocks (multiple block per snapshot and non-equal distribution)", async function() {
+    it("Correctly splits rewards over n blocks (multiple block per snapshot and non-equal distribution)", async function () {
       // Create 31e18 tokens to distribute, sending 2^n*110^18 tokens to each liquidity provider. this works out to:
       //      shareholder0 2^0=1e18
       //      shareholder1 2^1=2e18
@@ -251,7 +251,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
         index += 1;
       }
     });
-    it("Correctly splits rewards over blocks including inter-snapshot transfers", async function() {
+    it("Correctly splits rewards over blocks including inter-snapshot transfers", async function () {
       // Create 10e18 tokens. Start with all LPs owning 1/5 of the supply (2e18 each). For this test we will move tokens
       // around over a number of blocks and validate that the LPs get paid the correct output. This test will update a
       // "local" expectoration of the payouts as blocks progress and then compare it to what the script returns.
@@ -293,7 +293,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       // create another 5 transactions bringing the block count: 25 -> 30
       for (let shareHolder of shareHolders.slice(1, shareHolders.length)) {
         await bpToken.transfer(shareHolders[0], (await bpToken.balanceOf(shareHolder)).toString(), {
-          from: shareHolder
+          from: shareHolder,
         });
       }
 
@@ -313,7 +313,7 @@ contract("CalculateBalancerLPProviders.js", function(accounts) {
       const newShareHolder = accounts[9];
       for (let shareHolder of shareHolders) {
         await bpToken.transfer(newShareHolder, (await bpToken.balanceOf(shareHolder)).toString(), {
-          from: shareHolder
+          from: shareHolder,
         });
       }
 

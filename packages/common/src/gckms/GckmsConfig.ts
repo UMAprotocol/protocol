@@ -8,7 +8,7 @@ const argv = minimist(process.argv.slice());
 dotenv.config();
 
 // Grab the name property from each to get a list of the names of the public networks.
-const publicNetworkNames = Object.values(require("../PublicNetworks.js").PublicNetworks).map(elt => elt.name);
+const publicNetworkNames = Object.values(require("../PublicNetworks.js").PublicNetworks).map((elt) => elt.name);
 const { isPublicNetwork } = require("../MigrationUtils.js");
 
 interface GckmsConfig {
@@ -71,9 +71,9 @@ function getDefaultStaticConfig() {
         keyRingId: "Keyring_Test",
         cryptoKeyId: "keyname",
         ciphertextBucket: "cipher_bucket",
-        ciphertextFilename: "ciphertext_fname.enc"
-      }
-    }
+        ciphertextFilename: "ciphertext_fname.enc",
+      },
+    },
   };
 
   // Add a blank network config for all public networks so they don't fail to process but will fail if selected.
@@ -84,7 +84,7 @@ function getDefaultStaticConfig() {
     priceFeed: {},
     sponsorWhitelist: {},
     returnCalculatorWhitelist: {},
-    marginCurrencyWhitelist: {}
+    marginCurrencyWhitelist: {},
   };
 
   for (const name of publicNetworkNames) {
@@ -117,7 +117,7 @@ if (!keys) {
   // If a single key was provided, package it into an array.
   keys = [keys];
 }
-const keyConfigs = keys.map(keyName => {
+const keyConfigs = keys.map((keyName) => {
   return networkConfig[keyName];
 });
 

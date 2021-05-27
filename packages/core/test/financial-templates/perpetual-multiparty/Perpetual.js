@@ -10,7 +10,7 @@ const Token = artifacts.require("SyntheticToken");
 const Timer = artifacts.require("Timer");
 const ConfigStore = artifacts.require("ConfigStore");
 
-contract("Perpetual", function(accounts) {
+contract("Perpetual", function (accounts) {
   let finder, timer;
 
   beforeEach(async () => {
@@ -18,7 +18,7 @@ contract("Perpetual", function(accounts) {
     finder = await Finder.deployed();
   });
 
-  it("Can deploy", async function() {
+  it("Can deploy", async function () {
     const collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: accounts[0] });
     const tokenCurrency = await Token.new("Test Synthetic Token", "SYNTH", 18, { from: accounts[0] });
     const configStore = await ConfigStore.new(
@@ -28,7 +28,7 @@ contract("Perpetual", function(accounts) {
         proposerBondPercentage: { rawValue: "0" },
         maxFundingRate: { rawValue: "0" },
         minFundingRate: { rawValue: "0" },
-        proposalTimePastLimit: 0
+        proposalTimePastLimit: 0,
       },
       timer.address
     );
@@ -48,12 +48,12 @@ contract("Perpetual", function(accounts) {
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: timer.address,
       configStoreAddress: configStore.address,
-      tokenScaling: { rawValue: toWei("1") }
+      tokenScaling: { rawValue: toWei("1") },
     };
 
     const identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
-      from: accounts[0]
+      from: accounts[0],
     });
 
     await Perpetual.new(constructorParams);

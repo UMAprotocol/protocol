@@ -1,14 +1,14 @@
 {
   "name": "@uma/voter-dapp",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "private": true,
   "dependencies": {
     "@apollo/client": "^3.0.2",
     "@material-ui/core": "^4.3.1",
     "@material-ui/icons": "^3.0.2",
     "@material-ui/styles": "^4.3.0",
-    "@uma/common": "^2.1.0",
-    "@uma/core": "^2.2.0",
+    "@uma/common": "^2.2.0",
+    "@uma/core": "^2.3.0",
     "@umaprotocol/react-plugin": "^1.5.5",
     "@umaprotocol/store": "^1.5.7",
     "bignumber.js": "^8.0.1",

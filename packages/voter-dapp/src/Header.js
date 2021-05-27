@@ -13,8 +13,8 @@ import BigNumber from "bignumber.js";
 export default function Header({ votingAccount }) {
   const { drizzle, useCacheCall } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
-  const account = drizzleReactHooks.useDrizzleState(drizzleState => ({
-    account: drizzleState.accounts[0]
+  const account = drizzleReactHooks.useDrizzleState((drizzleState) => ({
+    account: drizzleState.accounts[0],
   })).account;
 
   const balance = useCacheCall("VotingToken", "balanceOf", votingAccount);
@@ -28,10 +28,7 @@ export default function Header({ votingAccount }) {
       supply.toString() === "0"
         ? "0"
         : formatWithMaxDecimals(
-            BigNumber(balance)
-              .div(BigNumber(supply))
-              .times(BigNumber(100))
-              .toString(),
+            BigNumber(balance).div(BigNumber(supply)).times(BigNumber(100)).toString(),
             2,
             4,
             false
@@ -52,7 +49,7 @@ export default function Header({ votingAccount }) {
 
   const textStyle = {
     paddingRight: "10px",
-    paddingBottom: "3px"
+    paddingBottom: "3px",
   };
 
   const dateTimeOptions = {
@@ -62,7 +59,7 @@ export default function Header({ votingAccount }) {
     day: "numeric",
     hour: "numeric",
     hour12: false,
-    minute: "numeric"
+    minute: "numeric",
   };
 
   return (

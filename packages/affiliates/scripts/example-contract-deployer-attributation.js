@@ -40,7 +40,7 @@ async function getEmpBalances(
   end = moment("10/20/2020", "MM/DD/YYYY").valueOf()
 ) {
   // query starting before emp launch
-  const empBalanceHistories = empContracts.map(async empContract => {
+  const empBalanceHistories = empContracts.map(async (empContract) => {
     const streamEmpEvents = await queries.streamLogsByContract(empContract, start, end);
 
     const decode = DecodeLog(empAbi.abi);
@@ -48,11 +48,11 @@ async function getEmpBalances(
 
     await highland(streamEmpEvents)
       // .doto(console.log)
-      .map(log => {
+      .map((log) => {
         try {
           return decode(log, {
             blockNumber: log.block_number,
-            blockTimestamp: moment(log.block_timestamp.value).valueOf()
+            blockTimestamp: moment(log.block_timestamp.value).valueOf(),
           });
         } catch (err) {
           // decoding log error, abi probably missing an event
@@ -60,7 +60,7 @@ async function getEmpBalances(
         }
       })
       .compact()
-      .doto(log => {
+      .doto((log) => {
         try {
           balancesHistory.handleEvent(log.blockNumber, log);
         } catch (err) {
@@ -84,7 +84,7 @@ async function getEmpDeployers(
   // Get the contract deployer for each EMP.
   const decode = DecodeLog(empCreatorAbi.abi);
   const empCreateLogs = await highland(streamQueryDeployer)
-    .map(log => {
+    .map((log) => {
       try {
         return decode(log, { blockNumber: log.block_number });
       } catch (err) {
@@ -97,7 +97,7 @@ async function getEmpDeployers(
     .toPromise(Promise);
 
   let empCreators = {};
-  empCreateLogs.forEach(log => {
+  empCreateLogs.forEach((log) => {
     const empIndex = empContracts.indexOf(log.args.expiringMultiPartyAddress);
     if (empIndex != -1) {
       empCreators[empContracts[empIndex]] = log.args.deployerAddress;
@@ -115,9 +115,9 @@ async function getEmpPriceHistories(
 ) {
   const daysBetween = moment().diff(start, "days");
   const coinHistories = await Promise.all(
-    empContracts.map(contract => coingecko.chart(contract.toLowerCase(), currency, daysBetween))
+    empContracts.map((contract) => coingecko.chart(contract.toLowerCase(), currency, daysBetween))
   );
-  return coinHistories.map(historyObject => {
+  return coinHistories.map((historyObject) => {
     return historyObject.prices;
   });
 }
@@ -155,10 +155,10 @@ async function runTest() {
   for (let blockNum = startingBlock; blockNum < endingBlock; blockNum = blockNum + snapshotSteps) {
     // at each block compute the sum value of token debt for each empContract
     empContracts.map((empContract, empContractIndex) => {
-      empBalanceHistories[empContractIndex].then(balanceHistory => {
+      empBalanceHistories[empContractIndex].then((balanceHistory) => {
         // calculate the total token debt at the current block for the emp.
         const totalTokenDebtAtBlockForEmp = Object.values(balanceHistory.history.lookup(blockNum).tokens)
-          .map(val => Number(ethers.utils.formatUnits(val, syntheticTokenDecimals[empContractIndex])))
+          .map((val) => Number(ethers.utils.formatUnits(val, syntheticTokenDecimals[empContractIndex])))
           .reduce((a, b) => a + b, 0);
 
         // find the closest price information from the congecko data set at the current block timestamp
@@ -184,9 +184,9 @@ async function runTest() {
   // loop over each snapshot generated in the cumulativeValueLocked data set and compute the pro-rata contribution of
   // each developer by dividing their contribution against the total at each snapshot.
   let finalDevPayouts = {};
-  Object.values(cumulativeValueLocked).forEach(snapShot => {
+  Object.values(cumulativeValueLocked).forEach((snapShot) => {
     const totalLiquidAtSnapshot = Object.values(snapShot).reduce((a, b) => a + b, 0);
-    Object.keys(snapShot).forEach(empContractAddress => {
+    Object.keys(snapShot).forEach((empContractAddress) => {
       const empContribuationAtSnapshot = snapShot[empContractAddress] / totalLiquidAtSnapshot;
       const empRewards = empContribuationAtSnapshot * payoutPerSnapshot;
       if (!finalDevPayouts[empCreators[empContractAddress]]) finalDevPayouts[empCreators[empContractAddress]] = 0;
@@ -198,6 +198,4 @@ async function runTest() {
   console.log("finalDevPayouts", finalDevPayouts);
 }
 
-runTest()
-  .then(console.log)
-  .catch(console.error);
+runTest().then(console.log).catch(console.error);

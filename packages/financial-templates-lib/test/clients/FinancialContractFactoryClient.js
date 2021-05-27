@@ -18,7 +18,7 @@ const Timer = getTruffleContract("Timer", web3);
 const AddressWhitelist = getTruffleContract("AddressWhitelist", web3);
 const Registry = getTruffleContract("Registry", web3);
 
-contract("FinancialContractFactoryClient.js", function(accounts) {
+contract("FinancialContractFactoryClient.js", function (accounts) {
   const deployer = accounts[0];
 
   // Contracts
@@ -48,7 +48,7 @@ contract("FinancialContractFactoryClient.js", function(accounts) {
     disputerDisputeRewardPercentage: { rawValue: toWei("0.04") },
     minSponsorTokens: { rawValue: toWei("10") },
     withdrawalLiveness: "7200",
-    liquidationLiveness: "7300"
+    liquidationLiveness: "7300",
   };
   let defaultEmpCreationParams;
   let defaultPerpCreationParams;
@@ -58,16 +58,16 @@ contract("FinancialContractFactoryClient.js", function(accounts) {
     proposerBondPercentage: { rawValue: toWei("0.0001") },
     maxFundingRate: { rawValue: toWei("0.00001") },
     minFundingRate: { rawValue: toWei("-0.00001") },
-    proposalTimePastLimit: 1800
+    proposalTimePastLimit: 1800,
   };
 
-  const deployNewContract = async type => {
+  const deployNewContract = async (type) => {
     if (type === "PerpetualCreator") {
       const perpAddress = await perpFactory.createPerpetual.call(defaultPerpCreationParams, configStoreParams, {
-        from: deployer
+        from: deployer,
       });
       const perpCreation = await perpFactory.createPerpetual(defaultPerpCreationParams, configStoreParams, {
-        from: deployer
+        from: deployer,
       });
       perpsCreated.push({ transaction: perpCreation, address: perpAddress });
     } else {
@@ -77,7 +77,7 @@ contract("FinancialContractFactoryClient.js", function(accounts) {
     }
   };
 
-  before(async function() {
+  before(async function () {
     finder = await Finder.new();
     const timer = await Timer.new();
     const tokenFactory = await TokenFactory.new();
@@ -102,16 +102,16 @@ contract("FinancialContractFactoryClient.js", function(accounts) {
     // Add collateral to default param
     defaultCreationParams = {
       ...defaultCreationParams,
-      collateralAddress: collateral.address
+      collateralAddress: collateral.address,
     };
     defaultEmpCreationParams = {
       ...defaultCreationParams,
-      financialProductLibraryAddress: ZERO_ADDRESS
+      financialProductLibraryAddress: ZERO_ADDRESS,
     };
     defaultPerpCreationParams = {
       ...defaultCreationParams,
       fundingRateIdentifier: padRight(utf8ToHex("Test Funding Rate Identifier"), 64),
-      tokenScaling: { rawValue: toWei("1") }
+      tokenScaling: { rawValue: toWei("1") },
     };
 
     // Add Registry to finder so factories can register contracts.
@@ -128,10 +128,10 @@ contract("FinancialContractFactoryClient.js", function(accounts) {
     // DummyLogger will not print anything to console as only capture `info` level events.
     dummyLogger = winston.createLogger({
       level: "info",
-      transports: [new winston.transports.Console()]
+      transports: [new winston.transports.Console()],
     });
   });
-  it("createdExpiringMultiParty", async function() {
+  it("createdExpiringMultiParty", async function () {
     empClient = new FinancialContractFactoryClient(
       dummyLogger,
       ExpiringMultiPartyCreator.abi,
@@ -155,8 +155,8 @@ contract("FinancialContractFactoryClient.js", function(accounts) {
           transactionHash: empsCreated[0].transaction.tx,
           blockNumber: empsCreated[0].transaction.receipt.blockNumber,
           deployerAddress: deployer,
-          contractAddress: empsCreated[0].address
-        }
+          contractAddress: empsCreated[0].address,
+        },
       ],
       empClient.getAllCreatedContractEvents()
     );
@@ -172,14 +172,14 @@ contract("FinancialContractFactoryClient.js", function(accounts) {
           transactionHash: empsCreated[1].transaction.tx,
           blockNumber: empsCreated[1].transaction.receipt.blockNumber,
           deployerAddress: deployer,
-          contractAddress: empsCreated[1].address
-        }
+          contractAddress: empsCreated[1].address,
+        },
       ],
       empClient.getAllCreatedContractEvents()
     );
     assert.deepStrictEqual([empsCreated[1].address], empClient.getAllCreatedContractAddresses());
   });
-  it("createdPerpetual", async function() {
+  it("createdPerpetual", async function () {
     perpClient = new FinancialContractFactoryClient(
       dummyLogger,
       PerpetualCreator.abi,
@@ -203,8 +203,8 @@ contract("FinancialContractFactoryClient.js", function(accounts) {
           transactionHash: perpsCreated[0].transaction.tx,
           blockNumber: perpsCreated[0].transaction.receipt.blockNumber,
           deployerAddress: deployer,
-          contractAddress: perpsCreated[0].address
-        }
+          contractAddress: perpsCreated[0].address,
+        },
       ],
       perpClient.getAllCreatedContractEvents()
     );
@@ -220,14 +220,14 @@ contract("FinancialContractFactoryClient.js", function(accounts) {
           transactionHash: perpsCreated[1].transaction.tx,
           blockNumber: perpsCreated[1].transaction.receipt.blockNumber,
           deployerAddress: deployer,
-          contractAddress: perpsCreated[1].address
-        }
+          contractAddress: perpsCreated[1].address,
+        },
       ],
       perpClient.getAllCreatedContractEvents()
     );
     assert.deepStrictEqual([perpsCreated[1].address], perpClient.getAllCreatedContractAddresses());
   });
-  it("Starting client at an offset block number", async function() {
+  it("Starting client at an offset block number", async function () {
     // Init the event client with an offset block number. If the current block number is used then all log events
     // generated before the creation of the client should not be included. Rather, only subsequent logs should be reported.
 
@@ -251,7 +251,7 @@ contract("FinancialContractFactoryClient.js", function(accounts) {
     assert.deepStrictEqual([], offsetClient.getAllCreatedContractEvents());
     assert.deepStrictEqual([], offsetClient.getAllCreatedContractAddresses());
   });
-  it("Client correctly defaults to PerpetualCreator", async function() {
+  it("Client correctly defaults to PerpetualCreator", async function () {
     perpClient = new FinancialContractFactoryClient(
       dummyLogger,
       PerpetualCreator.abi,
@@ -262,7 +262,7 @@ contract("FinancialContractFactoryClient.js", function(accounts) {
     );
     assert.equal(perpClient.getContractType(), "PerpetualCreator");
   });
-  it("Correctly rejects invalid contract types", async function() {
+  it("Correctly rejects invalid contract types", async function () {
     let didThrow = false;
     try {
       perpClient = new FinancialContractFactoryClient(

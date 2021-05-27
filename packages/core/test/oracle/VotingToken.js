@@ -2,7 +2,7 @@ const { didContractThrow } = require("@uma/common");
 
 const VotingToken = artifacts.require("VotingToken");
 
-contract("VotingToken", function(accounts) {
+contract("VotingToken", function (accounts) {
   const governance = accounts[0];
   const votingContractAddress = accounts[1];
   const voter = accounts[2];
@@ -14,7 +14,7 @@ contract("VotingToken", function(accounts) {
 
   const { toBN, toWei } = web3.utils;
 
-  it("Minting/Burning", async function() {
+  it("Minting/Burning", async function () {
     const votingToken = await VotingToken.deployed();
 
     const initialTokenSupply = toWei("100000000");
@@ -38,18 +38,11 @@ contract("VotingToken", function(accounts) {
     await votingToken.mint(voter, numTokens, { from: votingContractAddress });
 
     // Verify updated balances.
-    assert.equal(
-      await votingToken.totalSupply(),
-      toBN(numTokens)
-        .add(toBN(initialTokenSupply))
-        .toString()
-    );
+    assert.equal(await votingToken.totalSupply(), toBN(numTokens).add(toBN(initialTokenSupply)).toString());
     assert.equal(await votingToken.balanceOf(voter), numTokens);
 
     const tokensToBurn = toWei("25");
-    const tokensLeft = toBN(numTokens)
-      .sub(toBN(tokensToBurn))
-      .toString();
+    const tokensLeft = toBN(numTokens).sub(toBN(tokensToBurn)).toString();
     // Voters can't burn their own tokens.
     assert(await didContractThrow(votingToken.burn(tokensToBurn, { from: voter })));
     // Can't burn tokens if you don't own any, not even the governance role.
@@ -64,12 +57,7 @@ contract("VotingToken", function(accounts) {
     await votingToken.burn(tokensToBurn, { from: buybackUser });
 
     // Check updated balances.
-    assert.equal(
-      await votingToken.totalSupply(),
-      toBN(tokensLeft)
-        .add(toBN(initialTokenSupply))
-        .toString()
-    );
+    assert.equal(await votingToken.totalSupply(), toBN(tokensLeft).add(toBN(initialTokenSupply)).toString());
     assert.equal(await votingToken.balanceOf(buybackUser), "0");
   });
 });

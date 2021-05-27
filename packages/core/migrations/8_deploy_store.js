@@ -4,7 +4,7 @@ const Timer = artifacts.require("Timer");
 
 const { getKeysForNetwork, deploy, enableControllableTiming, interfaceName } = require("@uma/common");
 
-module.exports = async function(deployer, network, accounts) {
+module.exports = async function (deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
   const controllableTiming = enableControllableTiming(network);
 
@@ -29,6 +29,6 @@ module.exports = async function(deployer, network, accounts) {
 
   const finder = await Finder.deployed();
   await finder.changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.Store), store.address, {
-    from: keys.deployer
+    from: keys.deployer,
   });
 };

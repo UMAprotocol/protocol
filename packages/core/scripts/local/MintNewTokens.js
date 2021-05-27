@@ -4,7 +4,7 @@ const argv = require("minimist")(process.argv.slice(), { string: ["to", "token",
 // addresses that do not have the `burn` method.
 const TestnetERC20 = artifacts.require("TestnetERC20");
 
-const mintNewTokens = async function(callback) {
+const mintNewTokens = async function (callback) {
   try {
     const deployer = (await web3.eth.getAccounts())[0];
 

@@ -90,7 +90,7 @@ async function runExport() {
   console.log("Deploying new FinancialContractsAdmin contract.");
 
   const financialContractsAdmin = await FinancialContractsAdmin.new({
-    from: proposerWallet
+    from: proposerWallet,
   });
 
   /** *****************************************
@@ -100,7 +100,7 @@ async function runExport() {
   console.log("Deploying new IdentifierWhitelist contract.");
 
   const identifierWhitelist = await IdentifierWhitelist.new({
-    from: proposerWallet
+    from: proposerWallet,
   });
 
   /** *****************************************
@@ -209,28 +209,28 @@ async function runExport() {
       {
         to: votingToken.address,
         value: 0,
-        data: addVotingAsTokenMinterTx
+        data: addVotingAsTokenMinterTx,
       },
       {
         to: votingToken.address,
         value: 0,
-        data: changeVotingTokenOwnerTx
+        data: changeVotingTokenOwnerTx,
       },
       {
         to: finder.address,
         value: 0,
-        data: setUmip3UpgraderFinderOwnerTx
+        data: setUmip3UpgraderFinderOwnerTx,
       },
       {
         to: existingVoting.address,
         value: 0,
-        data: setUmip3UpgraderVotingOwnerTx
+        data: setUmip3UpgraderVotingOwnerTx,
       },
       {
         to: umip3Upgrader.address,
         value: 0,
-        data: executeUmip3UpgraderTx
-      }
+        data: executeUmip3UpgraderTx,
+      },
     ],
     { from: proposerWallet }
   );
@@ -257,7 +257,7 @@ Governor:                ${newGovernor.address}
 `);
 }
 
-const run = async function(callback) {
+const run = async function (callback) {
   try {
     await runExport();
   } catch (err) {

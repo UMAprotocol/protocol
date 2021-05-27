@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
-pragma abicoder v2;
 
 import "../oracle/interfaces/FinderInterface.sol";
 import "./IBridge.sol";
@@ -9,13 +8,13 @@ import "../oracle/implementation/Constants.sol";
 /**
  * @title Simple implementation of the OracleInterface used to communicate price request data cross-chain between
  * EVM networks. Can be extended either into a "Source" or "Sink" oracle that specializes in making and resolving
- * cross-chain price requests, respectivly. The "Source" Oracle is the originator or source of price resolution data
+ * cross-chain price requests, respectively. The "Source" Oracle is the originator or source of price resolution data
  * and can only resolve prices already published by the DVM. The "Sink" Oracle receives the price resolution data
  * from the Source Oracle and makes it available on non-Mainnet chains. The "Sink" Oracle can also be used to trigger
  * price requests from the DVM on Mainnet.
  */
 abstract contract BeaconOracle {
-    enum RequestState { NeverRequested, Requested, Resolved }
+    enum RequestState { NeverRequested, PendingRequest, Requested, PendingResolve, Resolved }
 
     struct Price {
         RequestState state;
@@ -25,21 +24,14 @@ abstract contract BeaconOracle {
     // Chain ID for this Oracle.
     uint8 public currentChainID;
 
-    // Mapping of encoded price requests {identifier, time, ancillaryData} to Price objects.
+    // Mapping of encoded price requests {chainID, identifier, time, ancillaryData} to Price objects.
     mapping(bytes32 => Price) internal prices;
 
     // Finder to provide addresses for DVM system contracts.
     FinderInterface public finder;
 
-    event PriceRequestAdded(
-        address indexed requester,
-        uint8 indexed chainID,
-        bytes32 indexed identifier,
-        uint256 time,
-        bytes ancillaryData
-    );
+    event PriceRequestAdded(uint8 indexed chainID, bytes32 indexed identifier, uint256 time, bytes ancillaryData);
     event PushedPrice(
-        address indexed pusher,
         uint8 indexed chainID,
         bytes32 indexed identifier,
         uint256 time,
@@ -66,8 +58,8 @@ abstract contract BeaconOracle {
     }
 
     /**
-     * @notice Enqueues a request (if a request isn't already present) for the given (identifier, time, ancillary data)
-     * pair. Will revert if request has been requested already.
+     * @notice Enqueues a request (if a request isn't already present) for the given (chainID, identifier, time,
+     * ancillary data) combination. Will only emit an event if the request has never been requested.
      */
     function _requestPrice(
         uint8 chainID,
@@ -78,10 +70,25 @@ abstract contract BeaconOracle {
         bytes32 priceRequestId = _encodePriceRequest(chainID, identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
         if (lookup.state == RequestState.NeverRequested) {
-            // New query, change state to Requested:
-            lookup.state = RequestState.Requested;
-            emit PriceRequestAdded(msg.sender, chainID, identifier, time, ancillaryData);
+            lookup.state = RequestState.PendingRequest;
+            emit PriceRequestAdded(chainID, identifier, time, ancillaryData);
         }
+    }
+
+    /**
+     * @notice Derived contract needs call this method in order to advance state from PendingRequest --> Requested
+     * before _publishPrice can be called.
+     */
+    function _finalizeRequest(
+        uint8 chainID,
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) internal {
+        bytes32 priceRequestId = _encodePriceRequest(chainID, identifier, time, ancillaryData);
+        Price storage lookup = prices[priceRequestId];
+        require(lookup.state == RequestState.PendingRequest, "Price has not been requested");
+        lookup.state = RequestState.Requested;
     }
 
     /**
@@ -99,8 +106,20 @@ abstract contract BeaconOracle {
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Requested, "Price request is not currently pending");
         lookup.price = price;
+        lookup.state = RequestState.PendingResolve;
+        emit PushedPrice(chainID, identifier, time, ancillaryData, lookup.price);
+    }
+
+    function _finalizePublish(
+        uint8 chainID,
+        bytes32 identifier,
+        uint256 time,
+        bytes memory ancillaryData
+    ) internal {
+        bytes32 priceRequestId = _encodePriceRequest(chainID, identifier, time, ancillaryData);
+        Price storage lookup = prices[priceRequestId];
+        require(lookup.state == RequestState.PendingResolve, "Price has not been published");
         lookup.state = RequestState.Resolved;
-        emit PushedPrice(msg.sender, chainID, identifier, time, ancillaryData, lookup.price);
     }
 
     /**

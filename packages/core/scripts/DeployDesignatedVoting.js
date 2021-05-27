@@ -11,7 +11,7 @@ async function run(deployedFactory, ownershipAddress) {
   console.log("DESIGNATED VOTING ADDRESS:", designatedVotingAddress);
 }
 
-const deployDesignatedVoting = async function(callback) {
+const deployDesignatedVoting = async function (callback) {
   if (!argv.ownershipAddress) {
     callback("Must include <ownershipAddress>");
   }

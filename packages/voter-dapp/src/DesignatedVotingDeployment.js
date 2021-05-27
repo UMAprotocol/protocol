@@ -10,14 +10,14 @@ function DesignatedVotingDeployment({ votingAccount }) {
   const { web3 } = drizzle;
   const classes = useTableStyles();
 
-  const { account } = drizzleReactHooks.useDrizzleState(drizzleState => ({
-    account: drizzleState.accounts[0]
+  const { account } = drizzleReactHooks.useDrizzleState((drizzleState) => ({
+    account: drizzleState.accounts[0],
   }));
 
   // A text field to hold an address.
   const [voterAddress, setVoterAddress] = useState("");
   const [errorText, setErrorText] = useState("");
-  const editAddress = event => {
+  const editAddress = (event) => {
     if (event.target.value !== "" && !web3.utils.isAddress(event.target.value)) {
       setErrorText("Invalid address");
     } else {
@@ -69,7 +69,7 @@ function DesignatedVotingDeployment({ votingAccount }) {
           helperText={errorText}
           label="Cold wallet address"
           error={errorText !== ""}
-          onChange={event => editAddress(event)}
+          onChange={(event) => editAddress(event)}
           disabled={hasPendingTransactions}
           style={{ width: 500 }}
         />

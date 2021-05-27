@@ -24,7 +24,7 @@ spoke.post("/", async (req, res) => {
       at: "ServerlessSpoke",
       message: "Executing serverless spoke call",
       childProcessIdentifier: _getChildProcessIdentifier(req),
-      reqBody: req.body
+      reqBody: req.body,
     });
     if (!req.body.serverlessCommand) {
       throw new Error("Missing serverlessCommand in json body! At least this param is needed to run the spoke");
@@ -35,7 +35,7 @@ spoke.post("/", async (req, res) => {
     let processedEnvironmentVariables = {};
 
     if (req.body.environmentVariables) {
-      Object.keys(req.body.environmentVariables).forEach(key => {
+      Object.keys(req.body.environmentVariables).forEach((key) => {
         // All env variables must be a string. If they are not a string (int, object ect) convert them to a string.
         processedEnvironmentVariables[key] =
           typeof req.body.environmentVariables[key] == "string"
@@ -53,13 +53,13 @@ spoke.post("/", async (req, res) => {
       at: "ServerlessSpoke",
       message: "Process exited with no error",
       childProcessIdentifier: _getChildProcessIdentifier(req),
-      execResponse
+      execResponse,
     });
     await delay(2); // Wait a few seconds to be sure the the winston logs are processed upstream.
     res.status(200).send({
       message: "Process exited with no error",
       childProcessIdentifier: _getChildProcessIdentifier(req),
-      execResponse
+      execResponse,
     });
   } catch (execResponse) {
     // If there is an error, send a debug log to the winston transport to capture in GCP. We dont want to trigger a
@@ -69,19 +69,19 @@ spoke.post("/", async (req, res) => {
       message: "Process exited with error 🚨",
       childProcessIdentifier: _getChildProcessIdentifier(req),
       jsonBody: req.body,
-      execResponse: execResponse instanceof Error ? execResponse.message : execResponse
+      execResponse: execResponse instanceof Error ? execResponse.message : execResponse,
     });
     await delay(2); // Wait a few seconds to be sure the the winston logs are processed upstream.
     res.status(500).send({
       message: "Process exited with error",
       childProcessIdentifier: _getChildProcessIdentifier(req),
-      execResponse: execResponse instanceof Error ? execResponse.message : execResponse
+      execResponse: execResponse instanceof Error ? execResponse.message : execResponse,
     });
   }
 });
 
 function _execShellCommand(cmd, inputEnv) {
-  return new Promise(resolve => {
+  return new Promise((resolve) => {
     const { stdout, stderr } = exec(
       cmd,
       { env: { ...process.env, ...inputEnv }, stdio: "inherit" },
@@ -105,7 +105,7 @@ function _stripExecStdout(output) {
   try {
     const strippedOutput = _regexStrip(output).replace(/\r?\n|\r/g, ","); // Remove escaped new line chars. Replace with comma between each log output.
     const logsArray = JSON.parse("[" + strippedOutput.substring(0, strippedOutput.length - 1) + "]");
-    return logsArray.map(logMessage => logMessage["message"]);
+    return logsArray.map((logMessage) => logMessage["message"]);
   } catch (error) {
     return _regexStrip(output).replace(/\r?\n|\r/g, " ");
   }
@@ -138,7 +138,7 @@ async function Poll(injectedLogger = Logger, port = 8080) {
     logger.debug({
       at: "ServerlessSpoke",
       message: "serverless spoke initialized",
-      port
+      port,
     });
   });
 }

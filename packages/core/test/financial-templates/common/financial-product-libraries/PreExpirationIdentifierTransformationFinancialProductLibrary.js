@@ -15,7 +15,7 @@ const priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
 const transformedPriceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER_TRANSFORMED");
 const collateralizationRatio = toWei("1.2");
 
-contract("PreExpirationIdentifierTransformationFinancialProductLibrary", function() {
+contract("PreExpirationIdentifierTransformationFinancialProductLibrary", function () {
   let identifierTransformationFPL;
   let expiringMultiParty;
   let timer;
@@ -70,7 +70,7 @@ contract("PreExpirationIdentifierTransformationFinancialProductLibrary", functio
     assert.equal(
       hexToUtf8(
         await expiringMultiParty.transformPriceIdentifier.call((await expiringMultiParty.getCurrentTime()).toString(), {
-          from: expiringMultiParty.address
+          from: expiringMultiParty.address,
         })
       ),
       hexToUtf8(transformedPriceFeedIdentifier)
@@ -91,7 +91,7 @@ contract("PreExpirationIdentifierTransformationFinancialProductLibrary", functio
     assert.equal(
       hexToUtf8(
         await expiringMultiParty.transformPriceIdentifier.call((await expiringMultiParty.getCurrentTime()).toString(), {
-          from: expiringMultiParty.address
+          from: expiringMultiParty.address,
         })
       ),
       hexToUtf8(priceFeedIdentifier)

@@ -11,7 +11,7 @@ interface CloudKmsConfig {
   ciphertextFilename: string;
 }
 
-type Tail<T extends any[]> = T extends [infer A, ...(infer R)] ? R : never;
+type Tail<T extends any[]> = T extends [infer A, ...infer R] ? R : never;
 
 // Wraps HDWalletProvider, deferring construction and allowing a Cloud KMS managed secret to be fetched asynchronously
 // and used to initialize an HDWalletProvider.
@@ -50,14 +50,14 @@ class ManagedSecretProvider {
 
   // Passes the call through, by attaching a callback to the wrapper provider promise.
   sendAsync(...all: Parameters<HDWalletProvider["sendAsync"]>) {
-    this.wrappedProviderPromise.then(wrappedProvider => {
+    this.wrappedProviderPromise.then((wrappedProvider) => {
       wrappedProvider.sendAsync(...all);
     });
   }
 
   // Passes the call through. Requires that the wrapped provider has been created via, e.g., `constructWrappedProvider`.
   send(...all: Parameters<HDWalletProvider["send"]>) {
-    this.wrappedProviderPromise.then(wrappedProvider => {
+    this.wrappedProviderPromise.then((wrappedProvider) => {
       wrappedProvider.send(...all);
     });
   }
@@ -82,12 +82,12 @@ class ManagedSecretProvider {
       return Promise.resolve(this.wrappedProvider);
     }
 
-    const fetchKeys = this.cloudKmsSecretConfigs.map(config => {
+    const fetchKeys = this.cloudKmsSecretConfigs.map((config) => {
       const storage = new Storage();
       const keyMaterialBucket = storage.bucket(config.ciphertextBucket);
       const ciphertextFile = keyMaterialBucket.file(config.ciphertextFilename);
 
-      return ciphertextFile.download().then(data => {
+      return ciphertextFile.download().then((data) => {
         // Send the request to decrypt the downloaded file.
         const contentsBuffer = data[0];
         const ciphertext = contentsBuffer.toString("base64");
@@ -99,14 +99,12 @@ class ManagedSecretProvider {
     });
 
     return Promise.all(fetchKeys).then(
-      results => {
-        let keys: string[] = results.map(([result]) => {
+      (results) => {
+        let keys: string[] | string = results.map(([result]) => {
           if (result.plaintext !== typeof Uint8Array) {
             throw new Error("Result formatted incorrectly");
           }
-          return Buffer.from(result.plaintext, "base64")
-            .toString()
-            .trim();
+          return Buffer.from(result.plaintext, "base64").toString().trim();
         });
 
         // If there is only 1 key, convert into a single element before constructing `HDWalletProvider`
@@ -119,7 +117,7 @@ class ManagedSecretProvider {
 
         return this.wrappedProvider;
       },
-      reason => {
+      (reason) => {
         console.error(reason);
         throw reason;
       }

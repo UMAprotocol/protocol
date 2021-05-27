@@ -17,7 +17,7 @@ const abiEncode = (valueTypes, values) => {
 };
 
 const getFunctionSignature = (contractInstance, functionName) => {
-  return contractInstance.abi.filter(abiProperty => abiProperty.name === functionName)[0].signature;
+  return contractInstance.abi.filter((abiProperty) => abiProperty.name === functionName)[0].signature;
 };
 
 const createERCDepositData = (tokenAmountOrID, lenRecipientAddress, recipientAddress) => {
@@ -53,7 +53,7 @@ const advanceBlock = () => {
   return provider.send("evm_mine", [time]);
 };
 
-const createGenericDepositData = hexMetaData => {
+const createGenericDepositData = (hexMetaData) => {
   if (hexMetaData === null) {
     return "0x" + toHex(0, 32).substr(2); // len(metaData) (32 bytes)
   }
@@ -117,5 +117,5 @@ module.exports = {
   createGenericDepositData,
   createERC721DepositProposalData,
   assertObjectsMatch,
-  nonceAndId
+  nonceAndId,
 };
