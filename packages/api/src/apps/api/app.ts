@@ -13,6 +13,8 @@ async function run(env: ProcessEnv) {
   const provider = new ethers.providers.WebSocketProvider(env.CUSTOM_NODE_URL);
   // how many blocks to skip before running updates on contract state
   const updateBlocks = Number(env.UPDATE_BLOCKS || 1);
+  // default to 10 days worth of blocks
+  const oldestBlock = Number(env.OLDEST_BLOCK_MS || 10 * 60 * 60 * 24 * 1000);
 
   assert(updateBlocks > 0, "updateBlocks must be 1 or higher");
 
@@ -48,14 +50,15 @@ async function run(env: ProcessEnv) {
   // main update loop, update every block
   provider.on("block", (blockNumber: number) => {
     // dont do update if this number or blocks hasnt passed
+    services.blocks.handleNewBlock(blockNumber).catch(console.error);
+    // update everyting
     if (blockNumber - libs.lastBlockUpdate >= updateBlocks) {
-      // update everyting
-      services.blocks.handleNewBlock(blockNumber).catch(console.error);
       services.registry(libs.lastBlock, blockNumber).catch(console.error);
       services.emps(libs.lastBlock, blockNumber).catch(console.error);
       libs.lastBlockUpdate = blockNumber;
     }
     libs.lastBlock = blockNumber;
+    services.blocks.cleanBlocks(oldestBlock).catch(console.error);
   });
 }
 

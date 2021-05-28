@@ -6,6 +6,26 @@ export const JsMap = (type = "Block") => {
   function makeId(data: Data) {
     return data.number;
   }
-  return GenericJsMap<number, Data>(type, makeId);
+
+  const table = GenericJsMap<number, Data>(type, makeId);
+
+  // delete blocks older than timestamp
+  async function prune(timestamp: number) {
+    const blocks = await table.values();
+    const deleted: Data[] = [];
+    // normally would use a map or filter, but dont want to include bluebird as a dependency
+    for (const block of blocks) {
+      if (block.timestamp < timestamp) {
+        await table.delete(block.id ?? block.number);
+        deleted.push(block);
+      }
+    }
+    return deleted;
+  }
+
+  return {
+    ...table,
+    prune,
+  };
 };
 export type JsMap = ReturnType<typeof JsMap>;
