@@ -177,9 +177,9 @@ function _reduceLog(
 // Apply defaults to the strategyRunnerConfig.
 function _setConfigDefaults(config: strategyRunnerConfig) {
   config.botNetwork = config.botNetwork ? config.botNetwork : defaultNetwork;
-  config.strategyTimeout = config.strategyTimeout ? config.strategyTimeout : defaultStrategyTimeout;
-  config.botConcurrency = config.botConcurrency ? config.botConcurrency : defaultBotConcurrency;
-  config.pollingDelay = config.pollingDelay ? config.pollingDelay : defaultPollingDelay;
+  config.strategyTimeout = config.strategyTimeout != undefined ? config.strategyTimeout : defaultStrategyTimeout;
+  config.botConcurrency = config.botConcurrency != undefined ? config.botConcurrency : defaultBotConcurrency;
+  config.pollingDelay = config.pollingDelay != undefined ? config.pollingDelay : defaultPollingDelay;
   return config;
 }
 
