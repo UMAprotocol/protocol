@@ -9,6 +9,8 @@ Add these to a .env file in the root of the api folder.
 ```
 CUSTOM_NODE_URL=wss://mainnet.infura.io/ws/v3/${your project key}
 EXPRESS_PORT=8282
+UPDATE_BLOCKS=1 // defaults to 1: represents the number of block elapsed before rechecking contract states
+
 ```
 
 ## Starting

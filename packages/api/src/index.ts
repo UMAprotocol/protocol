@@ -23,4 +23,5 @@ export type Libs = {
   registeredEmps: Set<string>;
   provider: Provider;
   lastBlock: number;
+  lastBlockUpdate: number;
 };

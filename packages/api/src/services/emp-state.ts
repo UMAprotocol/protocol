@@ -7,7 +7,7 @@ const { parseBytes32String } = utils;
 import { asyncValues } from "../libs/utils";
 import { Json, Libs } from "..";
 
-type Instance = ReturnType<typeof emp.connect>;
+type Instance = uma.clients.emp.Instance;
 export default (config: Json, libs: Libs) => {
   const { registeredEmps, provider, emps } = libs;
 
@@ -107,12 +107,11 @@ export default (config: Json, libs: Libs) => {
     // ignore expired emps
     if (await emps.expired.has(address)) return;
 
-    const instance: uma.clients.emp.Instance = emp.connect(address, provider);
+    const instance: Instance = emp.connect(address, provider);
     let currentState: uma.tables.emps.Data = { address };
     let staticState: uma.tables.emps.Data = { address };
     let dynamicState: uma.tables.emps.Data = { address };
     let eventState: uma.clients.emp.EventState = { sponsors: [] };
-    const state = "start";
 
     // query all events
     const events = await instance.queryFilter({}, startBlock, endBlock);
@@ -120,6 +119,8 @@ export default (config: Json, libs: Libs) => {
     eventState = await emp.getEventState(events);
     dynamicState = await readEmpDynamicState(instance, address);
 
+    // this is really complex logic which i dont know how to simplify. It optimizes queries so that
+    // static data is only read once per emp, and emps move between tables from active to expired.
     // emp expired, must handle this
     if (eventState.expired) {
       // see if it used to be active
