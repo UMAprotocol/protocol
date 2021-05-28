@@ -237,7 +237,7 @@ contract("ContractForDifference", function (accounts) {
   });
   describe("Settlement Functionality", () => {
     // Create a position, advance time, expire contract and propose price. Manually set diffrent expiryPercentLong values
-    // using the test contractForDiffrenceLibrary that bipasses the OO return value so we dont need to test the lib here.
+    // using the test contractForDifferenceLibrary that bipasses the OO return value so we dont need to test the lib here.
     let sponsorCollateralBefore;
     beforeEach(async () => {
       await collateralToken.approve(contractForDifference.address, MAX_UINT_VAL, { from: sponsor });

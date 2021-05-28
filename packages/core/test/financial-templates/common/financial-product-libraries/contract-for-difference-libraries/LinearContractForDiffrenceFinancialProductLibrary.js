@@ -2,8 +2,8 @@ const { didContractThrow, ZERO_ADDRESS } = require("@uma/common");
 const { assert } = require("chai");
 
 // Tested Contract
-const LinearContractForDiffrenceFinancialProductLibrary = artifacts.require(
-  "LinearContractForDiffrenceFinancialProductLibrary"
+const LinearContractForDifferenceFinancialProductLibrary = artifacts.require(
+  "LinearContractForDifferenceFinancialProductLibrary"
 );
 
 // helper contracts. To test CFD libraries we simply need a financial contract with an `expirationTimestamp` method.
@@ -14,12 +14,12 @@ const { toWei, toBN, utf8ToHex } = web3.utils;
 const upperBound = toBN(toWei("2000"));
 const lowerBound = toBN(toWei("1000"));
 
-contract("LinearContractForDiffrenceFinancialProductLibrary", function () {
+contract("LinearContractForDifferenceFinancialProductLibrary", function () {
   let linearCFDFPL;
   let expiringContractMock;
 
   beforeEach(async () => {
-    linearCFDFPL = await LinearContractForDiffrenceFinancialProductLibrary.new();
+    linearCFDFPL = await LinearContractForDifferenceFinancialProductLibrary.new();
     expiringContractMock = await ExpiringContractMock.new(
       ZERO_ADDRESS, // _financialProductLibraryAddress
       "1000000", // _expirationTimestamp

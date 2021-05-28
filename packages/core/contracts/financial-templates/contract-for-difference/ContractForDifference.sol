@@ -149,8 +149,8 @@ contract ContractForDifference is Testable, Lockable {
 
         collateralToken.safeTransferFrom(msg.sender, address(this), collateralUsed);
 
-        require(longToken.mint(msg.sender, tokensToCreate), "Minting long failed");
-        require(shortToken.mint(msg.sender, tokensToCreate), "Minting short failed");
+        longToken.mint(msg.sender, tokensToCreate);
+        shortToken.mint(msg.sender, tokensToCreate);
 
         emit TokensCreated(msg.sender, collateralUsed, tokensToCreate);
     }
@@ -200,8 +200,8 @@ contract ContractForDifference is Testable, Lockable {
             contractState = ContractState.ExpiredPriceReceived;
         }
 
-        require(longToken.burnFrom(msg.sender, longTokensToRedeem), "Redeeming long failed");
-        require(shortToken.burnFrom(msg.sender, shortTokensToRedeem), "Redeeming short failed");
+        longToken.burnFrom(msg.sender, longTokensToRedeem);
+        shortToken.burnFrom(msg.sender, shortTokensToRedeem);
 
         // expiraryTokensForCollateral is a number between 0 and 1e18. 0 means all collateral goes to short tokens and
         // 1 means all collateral goes to the long token. Total collateral returned is the sum of payouts.
