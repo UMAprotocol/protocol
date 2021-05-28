@@ -174,6 +174,7 @@ class ContractMonitor {
         at: "ContractMonitor",
         message: "New Sponsor Alert 🐣!",
         mrkdwn: mrkdwn,
+        notificationPath: "risk-management",
       });
     }
     this.lastNewSponsorBlockNumber = this._getLastSeenBlockNumber(latestNewSponsorEvents);
@@ -291,6 +292,7 @@ class ContractMonitor {
         at: "ContractMonitor",
         message: "Liquidation Alert 🧙‍♂️!",
         mrkdwn: mrkdwn,
+        notificationPath: "risk-management",
       });
     }
     this.lastLiquidationBlockNumber = this._getLastSeenBlockNumber(latestLiquidationEvents);
@@ -329,6 +331,7 @@ class ContractMonitor {
         at: "ContractMonitor",
         message: "Dispute Alert 👻!",
         mrkdwn: mrkdwn,
+        notificationPath: "risk-management",
       });
     }
     this.lastDisputeBlockNumber = this._getLastSeenBlockNumber(latestDisputeEvents);
@@ -376,6 +379,7 @@ class ContractMonitor {
           resolvedPrice,
           liquidationEvent,
           liquidationTimestamp,
+          notificationPath: "risk-management",
         });
       }
 
@@ -407,6 +411,7 @@ class ContractMonitor {
         at: "ContractMonitor",
         message: "Dispute Settlement Alert 👮‍♂️!",
         mrkdwn: mrkdwn,
+        notificationPath: "risk-management",
       });
     }
     this.lastDisputeSettlementBlockNumber = this._getLastSeenBlockNumber(latestDisputeSettlementEvents);
@@ -441,6 +446,7 @@ class ContractMonitor {
         at: "ContractMonitor",
         message: "Funding Rate Update Alert 🏵!",
         mrkdwn: mrkdwn,
+        notificationPath: "risk-management",
       });
     }
     this.lastFundingRateUpdatedBlockNumber = this._getLastSeenBlockNumber(latestFundingRateUpdatedEvents);

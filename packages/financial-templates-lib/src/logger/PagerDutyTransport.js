@@ -10,9 +10,11 @@ const pdClient = require("node-pagerduty");
 module.exports = class PagerDutyTransport extends Transport {
   constructor(winstonOpts, pagerDutyOptions) {
     super(winstonOpts);
-    this.serviceId = pagerDutyOptions.pdServiceId;
-    this.fromEmail = pagerDutyOptions.fromEmail;
     this.pd = new pdClient(pagerDutyOptions.pdApiToken);
+
+    this.fromEmail = pagerDutyOptions.fromEmail;
+    this.defaultServiceId = pagerDutyOptions.defaultServiceId;
+    this.customServices = pagerDutyOptions.customServices;
   }
 
   async log(info, callback) {
@@ -25,7 +27,7 @@ module.exports = class PagerDutyTransport extends Transport {
           type: "incident",
           title: `${info.level}: ${info.at} ⭢ ${info.message}`,
           service: {
-            id: this.serviceId,
+            id: this.customServices[info.notificationPath] ?? this.defaultServiceId,
             type: "service_reference",
           },
           urgency: info.level == "warn" ? "low" : "high", // If level is warn then urgency is low. If level is error then urgency is high.

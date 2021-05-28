@@ -199,6 +199,7 @@ class CRMonitor {
           at: "CRMonitor",
           message: "Collateralization ratio alert 🙅‍♂️!",
           mrkdwn: mrkdwn,
+          notificationPath: "risk-management",
         });
       }
     }

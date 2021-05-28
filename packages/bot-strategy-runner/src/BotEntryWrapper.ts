@@ -15,7 +15,8 @@ interface commonBotSettings {
   syntheticSymbol: string;
   botIdentifier: string;
   botNetwork: string;
-  slackWebHook?: string;
+  slackConfig?: string;
+  pagerDutyConfig?: string;
   financialContractAddress: string;
   errorRetries?: number;
   errorRetriesTimeout?: number;
@@ -58,7 +59,7 @@ async function _executeBot(
     // continue to work within each executed strategy.
     const logger = createNewLogger(
       [new logCaptureTransport({ level: "debug" }, logs)],
-      { slackWebHook: config.slackWebHook, createConsoleTransport: false },
+      { slackWebHook: config.slackConfig, pagerdutyConfig: config.pagerDutyConfig, createConsoleTransport: false },
       botIdentifier
     );
 

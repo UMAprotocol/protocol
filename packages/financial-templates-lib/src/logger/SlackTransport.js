@@ -169,7 +169,8 @@ class SlackHook extends Transport {
     opts = opts || {};
     this.name = opts.name || "slackWebhook";
     this.level = opts.level || undefined;
-    this.webhookUrl = opts.webhookUrl;
+    this.customServices = opts.transportConfig.customServices;
+    this.defaultWebHookUrl = opts.transportConfig.defaultWebHookUrl;
     this.formatter = opts.formatter || undefined;
     this.mrkdwn = opts.mrkdwn || false;
 
@@ -177,6 +178,8 @@ class SlackHook extends Transport {
   }
 
   async log(info, callback) {
+    const webhookUrl = this.customServices[info.notificationPath] ?? this.defaultWebHookUrl;
+
     let payload = {
       mrkdwn: this.mrkdwn,
     };
@@ -188,7 +191,7 @@ class SlackHook extends Transport {
     let errorThrown = false;
     // If the overall payload is less than 3000 chars then we can send it all in one go to the slack API.
     if (JSON.stringify(payload).length < 3000) {
-      let response = await this.axiosInstance.post(this.webhookUrl, payload);
+      let response = await this.axiosInstance.post(webhookUrl, payload);
       if (response.status != 200) errorThrown = true;
     } else {
       // If it's more than 3000 chars then we need to split the message sent to slack API into multiple calls.
@@ -216,7 +219,7 @@ class SlackHook extends Transport {
       // Iterate over each message to send and generate a axios call for each message.
       for (const processedBlock of processedBlocks) {
         payload.blocks = processedBlock;
-        let response = await this.axiosInstance.post(this.webhookUrl, payload);
+        let response = await this.axiosInstance.post(webhookUrl, payload);
         if (response.status != 200) errorThrown = true;
       }
     }
@@ -225,10 +228,10 @@ class SlackHook extends Transport {
   }
 }
 
-function createSlackTransport(webHookUrl) {
+function createSlackTransport(transportConfig) {
   return new SlackHook({
     level: "info",
-    webhookUrl: webHookUrl,
+    transportConfig,
     formatter: (info) => {
       return slackFormatter(info);
     },

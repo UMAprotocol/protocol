@@ -144,6 +144,7 @@ class BalanceMonitor {
             "collateral",
             this.normalizeCollateralDecimals
           ),
+          notificationPath: "risk-management",
         });
       }
       if (this.toBN(this.client.getSyntheticBalance(monitoredAddress)).lt(this.toBN(bot.syntheticThreshold))) {
@@ -158,6 +159,7 @@ class BalanceMonitor {
             "synthetic",
             this.normalizeSyntheticDecimals
           ),
+          notificationPath: "risk-management",
         });
       }
       if (this.toBN(this.client.getEtherBalance(monitoredAddress)).lt(this.toBN(bot.etherThreshold))) {
@@ -172,6 +174,7 @@ class BalanceMonitor {
             "ether",
             (num) => this.toBN(num)
           ),
+          notificationPath: "risk-management",
         });
       }
     }
