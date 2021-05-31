@@ -874,7 +874,7 @@ const defaultConfigs = {
       SPOT_BALANCER_ETH: {
         type: "balancer",
         twapLength: 2,
-        lookback: 3600,
+        lookback: 7200,
         balancerAddress: "0x59a19d8c652fa0284f44113d0ff9aba70bd46fb4",
         balancerTokenIn: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
         balancerTokenOut: "0xba100000625a3754423978a60c9317c58a424e3D",
