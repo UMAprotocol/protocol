@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// Copied from Polygon demo FxTunnel repo: https://github.com/jdkanani/fx-portal
 pragma solidity ^0.8.0;
 
 library RLPReader {
@@ -16,11 +17,7 @@ library RLPReader {
     /*
      * @param item RLP encoded bytes
      */
-    function toRlpItem(bytes memory item)
-        internal
-        pure
-        returns (RLPItem memory)
-    {
+    function toRlpItem(bytes memory item) internal pure returns (RLPItem memory) {
         require(item.length > 0, "RLPReader: INVALID_BYTES_LENGTH");
         uint256 memPtr;
         assembly {
@@ -33,11 +30,7 @@ library RLPReader {
     /*
      * @param item RLP encoded list in bytes
      */
-    function toList(RLPItem memory item)
-        internal
-        pure
-        returns (RLPItem[] memory)
-    {
+    function toList(RLPItem memory item) internal pure returns (RLPItem[] memory) {
         require(isList(item), "RLPReader: ITEM_NOT_LIST");
 
         uint256 items = numItems(item);
@@ -71,11 +64,7 @@ library RLPReader {
     /** RLPItem conversions into data types **/
 
     // @returns raw rlp encoding in bytes
-    function toRlpBytes(RLPItem memory item)
-        internal
-        pure
-        returns (bytes memory)
-    {
+    function toRlpBytes(RLPItem memory item) internal pure returns (bytes memory) {
         bytes memory result = new bytes(item.len);
 
         uint256 ptr;
@@ -181,8 +170,7 @@ library RLPReader {
         }
 
         if (byte0 < STRING_SHORT_START) itemLen = 1;
-        else if (byte0 < STRING_LONG_START)
-            itemLen = byte0 - STRING_SHORT_START + 1;
+        else if (byte0 < STRING_LONG_START) itemLen = byte0 - STRING_SHORT_START + 1;
         else if (byte0 < LIST_SHORT_START) {
             assembly {
                 let byteLen := sub(byte0, 0xb7) // # of bytes the actual length is
@@ -215,10 +203,7 @@ library RLPReader {
         }
 
         if (byte0 < STRING_SHORT_START) return 0;
-        else if (
-            byte0 < STRING_LONG_START ||
-            (byte0 >= LIST_SHORT_START && byte0 < LIST_LONG_START)
-        ) return 1;
+        else if (byte0 < STRING_LONG_START || (byte0 >= LIST_SHORT_START && byte0 < LIST_LONG_START)) return 1;
         else if (byte0 < LIST_SHORT_START)
             // being explicit
             return byte0 - (STRING_LONG_START - 1) + 1;

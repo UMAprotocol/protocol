@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: MIT
+// Copied from Polygon demo FxTunnel repo: https://github.com/jdkanani/fx-portal
 pragma solidity ^0.8.0;
-
 
 import "../lib/RLPReader.sol";
 import "../lib/MerklePatriciaProof.sol";
 import "../lib/Merkle.sol";
-
 
 interface IFxStateSender {
     function sendMessageToChild(address _receiver, bytes calldata _data) external;
@@ -39,7 +38,7 @@ abstract contract FxBaseRootTunnel {
     IFxStateSender public fxRoot;
     // root chain manager
     ICheckpointManager public checkpointManager;
-    // child tunnel contract which receives and sends messages 
+    // child tunnel contract which receives and sends messages
     address public fxChildTunnel;
 
     // storage to avoid duplicate exits
@@ -69,39 +68,32 @@ abstract contract FxBaseRootTunnel {
     }
 
     function _validateAndExtractMessage(bytes memory inputData) internal returns (bytes memory) {
-        RLPReader.RLPItem[] memory inputDataRLPList = inputData
-            .toRlpItem()
-            .toList();
+        RLPReader.RLPItem[] memory inputDataRLPList = inputData.toRlpItem().toList();
 
         // checking if exit has already been processed
         // unique exit is identified using hash of (blockNumber, branchMask, receiptLogIndex)
-        bytes32 exitHash = keccak256(
-            abi.encodePacked(
-                inputDataRLPList[2].toUint(), // blockNumber
-                // first 2 nibbles are dropped while generating nibble array
-                // this allows branch masks that are valid but bypass exitHash check (changing first 2 nibbles only)
-                // so converting to nibble array and then hashing it
-                MerklePatriciaProof._getNibbleArray(inputDataRLPList[8].toBytes()), // branchMask
-                inputDataRLPList[9].toUint() // receiptLogIndex
-            )
-        );
-        require(
-            processedExits[exitHash] == false,
-            "FxRootTunnel: EXIT_ALREADY_PROCESSED"
-        );
+        bytes32 exitHash =
+            keccak256(
+                abi.encodePacked(
+                    inputDataRLPList[2].toUint(), // blockNumber
+                    // first 2 nibbles are dropped while generating nibble array
+                    // this allows branch masks that are valid but bypass exitHash check (changing first 2 nibbles only)
+                    // so converting to nibble array and then hashing it
+                    MerklePatriciaProof._getNibbleArray(inputDataRLPList[8].toBytes()), // branchMask
+                    inputDataRLPList[9].toUint() // receiptLogIndex
+                )
+            );
+        require(processedExits[exitHash] == false, "FxRootTunnel: EXIT_ALREADY_PROCESSED");
         processedExits[exitHash] = true;
 
-        RLPReader.RLPItem[] memory receiptRLPList = inputDataRLPList[6]
-            .toBytes()
-            .toRlpItem()
-            .toList();
-        RLPReader.RLPItem memory logRLP = receiptRLPList[3]
-            .toList()[
+        RLPReader.RLPItem[] memory receiptRLPList = inputDataRLPList[6].toBytes().toRlpItem().toList();
+        RLPReader.RLPItem memory logRLP =
+            receiptRLPList[3].toList()[
                 inputDataRLPList[9].toUint() // receiptLogIndex
             ];
 
         RLPReader.RLPItem[] memory logRLPList = logRLP.toList();
-        
+
         // check child tunnel
         require(fxChildTunnel == RLPReader.toAddress(logRLPList[0]), "FxRootTunnel: INVALID_FX_CHILD_TUNNEL");
 
@@ -135,7 +127,7 @@ abstract contract FxBaseRootTunnel {
 
         // received message data
         bytes memory receivedData = logRLPList[2].toBytes();
-        (bytes memory message) = abi.decode(receivedData, (bytes)); // event decodes params again, so decoding bytes to get message
+        bytes memory message = abi.decode(receivedData, (bytes)); // event decodes params again, so decoding bytes to get message
         return message;
     }
 
@@ -147,20 +139,11 @@ abstract contract FxBaseRootTunnel {
         uint256 headerNumber,
         bytes memory blockProof
     ) private view returns (uint256) {
-        (
-            bytes32 headerRoot,
-            uint256 startBlock,
-            ,
-            uint256 createdAt,
-
-        ) = checkpointManager.headerBlocks(headerNumber);
+        (bytes32 headerRoot, uint256 startBlock, , uint256 createdAt, ) = checkpointManager.headerBlocks(headerNumber);
 
         require(
-            keccak256(
-                abi.encodePacked(blockNumber, blockTime, txRoot, receiptRoot)
-            )
-                .checkMembership(
-                blockNumber-startBlock,
+            keccak256(abi.encodePacked(blockNumber, blockTime, txRoot, receiptRoot)).checkMembership(
+                blockNumber - startBlock,
                 headerRoot,
                 blockProof
             ),
@@ -197,5 +180,5 @@ abstract contract FxBaseRootTunnel {
      * Since it is called via a system call, any event will not be emitted during its execution.
      * @param message bytes message that was sent from Child Tunnel
      */
-    function _processMessageFromChild(bytes memory message) virtual internal;
+    function _processMessageFromChild(bytes memory message) internal virtual;
 }

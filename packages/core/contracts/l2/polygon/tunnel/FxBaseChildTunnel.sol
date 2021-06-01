@@ -1,15 +1,20 @@
 // SPDX-License-Identifier: MIT
+// Copied from Polygon demo FxTunnel repo: https://github.com/jdkanani/fx-portal
 pragma solidity ^0.8.0;
 
 // IFxMessageProcessor represents interface to process message
 interface IFxMessageProcessor {
-    function processMessageFromRoot(uint256 stateId, address rootMessageSender, bytes calldata data) external;
+    function processMessageFromRoot(
+        uint256 stateId,
+        address rootMessageSender,
+        bytes calldata data
+    ) external;
 }
 
 /**
-* @notice Mock child tunnel contract to receive and send message from L2
-*/
-abstract contract FxBaseChildTunnel is IFxMessageProcessor{
+ * @notice Mock child tunnel contract to receive and send message from L2
+ */
+abstract contract FxBaseChildTunnel is IFxMessageProcessor {
     // MessageTunnel on L1 will get data from this event
     event MessageSent(bytes message);
 
@@ -35,7 +40,11 @@ abstract contract FxBaseChildTunnel is IFxMessageProcessor{
         fxRootTunnel = _fxRootTunnel;
     }
 
-    function processMessageFromRoot(uint256 stateId, address rootMessageSender, bytes calldata data) public override {
+    function processMessageFromRoot(
+        uint256 stateId,
+        address rootMessageSender,
+        bytes calldata data
+    ) public override {
         require(msg.sender == fxChild, "FxBaseChildTunnel: INVALID_SENDER");
         _processMessageFromRoot(stateId, rootMessageSender, data);
     }
@@ -62,5 +71,9 @@ abstract contract FxBaseChildTunnel is IFxMessageProcessor{
      * @param sender root message sender
      * @param message bytes message that was sent from Root Tunnel
      */
-    function _processMessageFromRoot(uint256 stateId, address sender, bytes memory message) virtual internal;
+    function _processMessageFromRoot(
+        uint256 stateId,
+        address sender,
+        bytes memory message
+    ) internal virtual;
 }

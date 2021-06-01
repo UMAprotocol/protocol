@@ -9,16 +9,20 @@ import "../../oracle/interfaces/OracleAncillaryInterface.sol";
  * @title Adapter deployed on L1 that validates and sends price requests from L2 to the DVM on L1.
  * @dev This contract must be a registered financial contract in order to make DVM price requests.
  */
-
 contract OracleRootTunnel is OracleBaseTunnel, FxBaseRootTunnel {
     constructor(
-        address _checkpointManager, 
+        address _checkpointManager,
         address _fxRoot,
         address _finderAddress
-    ) 
-    OracleBaseTunnel(_finderAddress) 
-    FxBaseRootTunnel(_checkpointManager, _fxRoot) {}
+    ) OracleBaseTunnel(_finderAddress) FxBaseRootTunnel(_checkpointManager, _fxRoot) {}
 
+    /**
+     * @notice This is the first method that should be called in order to publish a price request to the child L2 chain.
+     * @dev Publishes the DVM resolved price for the price request, or reverts if not resolved yet. 
+     * @param identifier Identifier of price request to resolve.
+     * @param time Timestamp of price request to resolve.
+     * @param ancillaryData extra data of price request to resolve.
+     */
     function publishPrice(
         bytes32 identifier,
         uint256 time,
@@ -32,6 +36,13 @@ contract OracleRootTunnel is OracleBaseTunnel, FxBaseRootTunnel {
         _sendMessageToChild(abi.encode(identifier, time, ancillaryData, price));
     }
 
+    /** 
+     * @notice Submits a price request.
+     * @dev This internal method will be called inside `receiveMessage(bytes memory inputData)`. The `inputData` is a 
+     * proof of transaction that is derived from the transaction hash of the transaction on the child chain that
+     * originated the cross-chain price request via _sendMessageToRoot.
+     * @param data ABI encoded params with which to call `requestPrice`.
+     */
     function _processMessageFromChild(bytes memory data) internal override {
         (bytes32 identifier, uint256 time, bytes memory ancillaryData) = abi.decode(data, (bytes32, uint256, bytes));
         _requestPrice(identifier, time, ancillaryData);

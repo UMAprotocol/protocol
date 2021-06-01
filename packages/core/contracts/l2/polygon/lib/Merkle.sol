@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: MIT
+// Copied from Polygon demo FxTunnel repo: https://github.com/jdkanani/fx-portal
 pragma solidity ^0.8.0;
 
 library Merkle {
@@ -12,7 +13,7 @@ library Merkle {
         uint256 proofHeight = proof.length / 32;
         // Proof of size n means, height of the tree is n+1.
         // In a tree of height n+1, max #leafs possible is 2 ^ n
-        require(index < 2 ** proofHeight, "Leaf index is too big");
+        require(index < 2**proofHeight, "Leaf index is too big");
 
         bytes32 proofElement;
         bytes32 computedHash = leaf;
@@ -22,13 +23,9 @@ library Merkle {
             }
 
             if (index % 2 == 0) {
-                computedHash = keccak256(
-                    abi.encodePacked(computedHash, proofElement)
-                );
+                computedHash = keccak256(abi.encodePacked(computedHash, proofElement));
             } else {
-                computedHash = keccak256(
-                    abi.encodePacked(proofElement, computedHash)
-                );
+                computedHash = keccak256(abi.encodePacked(proofElement, computedHash));
             }
 
             index = index / 2;

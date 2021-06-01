@@ -4,6 +4,10 @@ pragma solidity ^0.8.0;
 import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
+/**
+ * @notice Enforces lifecyle of price requests for deriving contract. Ensures that price request data is not duplicated
+ * and that only submitted price requests can be resolved.
+ */
 abstract contract OracleBaseTunnel {
     enum RequestState { NeverRequested, Requested, Resolved }
 
@@ -19,12 +23,7 @@ abstract contract OracleBaseTunnel {
     FinderInterface public finder;
 
     event PriceRequestAdded(bytes32 indexed identifier, uint256 time, bytes ancillaryData);
-    event PushedPrice(
-        bytes32 indexed identifier,
-        uint256 time,
-        bytes ancillaryData,
-        int256 price
-    );
+    event PushedPrice(bytes32 indexed identifier, uint256 time, bytes ancillaryData, int256 price);
 
     /**
      * @notice Constructor.
