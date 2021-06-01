@@ -59,7 +59,7 @@ async function _executeBot(
     // continue to work within each executed strategy.
     const logger = createNewLogger(
       [new logCaptureTransport({ level: "debug" }, logs)],
-      { slackWebHook: config.slackConfig, pagerdutyConfig: config.pagerDutyConfig, createConsoleTransport: false },
+      { slackConfig: config.slackConfig, pagerdutyConfig: config.pagerDutyConfig, createConsoleTransport: false },
       botIdentifier
     );
 
