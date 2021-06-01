@@ -137,10 +137,10 @@ contract OptimisticDepositBox is Testable {
         // Increase the individual deposit box and global collateral balance by collateral amount.
         _incrementCollateralBalances(depositBoxData, collateralAmount);
 
-        emit Deposit(msg.sender, collateralAmount.rawValue);
+        emit Deposit(msg.sender, collateralAmount);
 
         // Move collateral currency from sender to contract.
-        collateralCurrency.safeTransferFrom(msg.sender, address(this), collateralAmount.rawValue);
+        collateralCurrency.safeTransferFrom(msg.sender, address(this), collateralAmount);
     }
 
     /**
@@ -162,7 +162,7 @@ contract OptimisticDepositBox is Testable {
         depositBoxData.withdrawalRequestAmount = denominatedCollateralAmount;
         depositBoxData.requestPassTimestamp = getCurrentTime();
 
-        emit RequestWithdrawal(msg.sender, denominatedCollateralAmount.rawValue, depositBoxData.requestPassTimestamp);
+        emit RequestWithdrawal(msg.sender, denominatedCollateralAmount, depositBoxData.requestPassTimestamp);
 
         // Every price request costs a fixed fee. Check that this user has enough deposited to cover the final fee.
         FixedPoint.Unsigned memory finalFee = _computeFinalFees();
@@ -215,7 +215,7 @@ contract OptimisticDepositBox is Testable {
         emit RequestWithdrawalExecuted(
             msg.sender,
             denominatedAmountToWithdraw,
-            exchangeRate.rawValue,
+            exchangeRate,
             depositBoxData.requestPassTimestamp
         );
 
@@ -223,7 +223,7 @@ contract OptimisticDepositBox is Testable {
         _resetWithdrawalRequest(depositBoxData);
 
         // Transfer approved withdrawal amount from the contract to the caller.
-        collateralCurrency.safeTransfer(msg.sender, amountWithdrawn.rawValue);
+        collateralCurrency.safeTransfer(msg.sender, amountWithdrawn);
     }
 
     /**
@@ -235,7 +235,7 @@ contract OptimisticDepositBox is Testable {
 
         emit RequestWithdrawalCanceled(
             msg.sender,
-            depositBoxData.withdrawalRequestAmount.rawValue,
+            depositBoxData.withdrawalRequestAmount,
             depositBoxData.requestPassTimestamp
         );
 
