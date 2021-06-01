@@ -14,12 +14,12 @@ import "../../oracle/interfaces/OptimisticOracleInterface.sol";
 import "../../oracle/implementation/ContractCreator.sol";
 
 /**
- * @title Token Deposit Box
+ * @title Optimistic Token Deposit Box
  * @notice This is a minimal example of a financial template that depends on price requests from the Optimistic Oracle.
  * This contract should be thought of as a "Deposit Box" into which the user deposits some ERC20 collateral.
  * The main feature of this box is that the user can withdraw their ERC20 corresponding to a desired USD amount.
  * When the user wants to make a withdrawal, a price request is made to the Optimistic Oracle.
- * For simplicty, the user is constrained to have one outstanding withdrawal request at any given time.
+ * For simplicity, the user is constrained to have one outstanding withdrawal request at any given time.
  * Final fees are charged to the proposer of a price but not to the contract making a price request.
  *
  * This example is intended to accompany a technical tutorial for how to integrate the Optimistic Oracle into a project.
@@ -61,6 +61,9 @@ contract OptimisticDepositBox is Testable {
 
     // Finder for UMA contracts.
     FinderInterface finder;
+
+    // The collateral currency used to back the positions in this contract.
+    IERC20 public collateralCurrency;
 
     // Total collateral of all depositors.
     FixedPoint.Unsigned private totalOptimisticDepositBoxCollateral;
@@ -115,6 +118,7 @@ contract OptimisticDepositBox is Testable {
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported identifier");
         require(_getCollateralWhitelist().isOnWhitelist(_collateralAddress), "Unsupported currency");
         priceIdentifier = _priceIdentifier;
+        collateralCurrency = IERC20(_collateralAddress);
         finder = FinderInterface(_finderAddress);
     }
 
