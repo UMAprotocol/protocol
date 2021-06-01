@@ -40,7 +40,6 @@ contract("BeaconOracle", async (accounts) => {
       txn,
       "PriceRequestAdded",
       (event) =>
-        event.requester.toLowerCase() === owner.toLowerCase() &&
         event.chainID.toString() === chainID.toString() &&
         hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
         event.time.toString() === testRequestTime.toString() &&
@@ -56,7 +55,6 @@ contract("BeaconOracle", async (accounts) => {
       txn,
       "PushedPrice",
       (event) =>
-        event.pusher.toLowerCase() === owner.toLowerCase() &&
         event.chainID.toString() === chainID.toString() &&
         hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
         event.time.toString() === testRequestTime.toString() &&

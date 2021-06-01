@@ -3,7 +3,7 @@ const { BlockFinder } = require("./utils");
 const { ConvertDecimals } = require("@uma/common");
 const assert = require("assert");
 
-class VaultPriceFeed extends PriceFeedInterface {
+class VaultPriceFeedBase extends PriceFeedInterface {
   /**
    * @notice Constructs new price feed object that tracks the share price of a yearn-style vault.
    * @dev Note: this only supports badger Setts and Yearn v1 right now.
@@ -89,7 +89,7 @@ class VaultPriceFeed extends PriceFeedInterface {
 
   async _convertDecimals(value) {
     if (!this.cachedConvertDecimalsFn) {
-      const underlyingTokenAddress = await this.vault.methods.token().call();
+      const underlyingTokenAddress = await this._tokenTransaction().call();
       const underlyingToken = new this.web3.eth.Contract(this.erc20Abi, underlyingTokenAddress);
 
       let underlyingTokenDecimals;
@@ -107,8 +107,26 @@ class VaultPriceFeed extends PriceFeedInterface {
     }
     return this.cachedConvertDecimalsFn(value);
   }
+
+  _tokenTransaction() {
+    throw new Error("Must be implemented by derived class");
+  }
+}
+
+// Note: we may rename this in the future to YearnV1Vault or something, but just for simplicity, we can keep the name the same for now.
+class VaultPriceFeed extends VaultPriceFeedBase {
+  _tokenTransaction() {
+    return this.vault.methods.token();
+  }
+}
+
+class HarvestVaultPriceFeed extends VaultPriceFeedBase {
+  _tokenTransaction() {
+    return this.vault.methods.underlying();
+  }
 }
 
 module.exports = {
   VaultPriceFeed,
+  HarvestVaultPriceFeed,
 };

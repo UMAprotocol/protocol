@@ -76,6 +76,10 @@
     "address": "0xAB75727d4e89A7f7F04f57C00234a35950527115"
   },
   {
+    "contractName": "DSGuardFactory",
+    "address": "0x63200E25db9Af015d1e3240D30269d29D80830F6"
+  },
+  {
     "contractName": "Bridge",
     "address": "0xBA26bC014c4c889431826C123492861e886408b9"
   },
@@ -85,7 +89,7 @@
   },
   {
     "contractName": "SourceOracle",
-    "address": "0x3811A29571c9912f15fEFF0747d2F34Aa48f6721"
+    "address": "0xa37001be797637bb27f88f079607db2fdf264c24"
   },
   {
     "contractName": "SourceGovernor",

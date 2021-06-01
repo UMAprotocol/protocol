@@ -19,6 +19,12 @@ contract SinkOracle is BeaconOracle, OracleAncillaryInterface {
     // Chain ID of the Source Oracle that will communicate this contract's price request to the DVM on Mainnet.
     uint8 public destinationChainID;
 
+    /**
+     * @notice Constructor.
+     * @param _finderAddress Address of Finder that this contract uses to locate Bridge.
+     * @param _chainID Chain ID for this contract.
+     * @param _destinationChainID Chain ID for SourceOracle that will resolve price requests sent from this contract.
+     */
     constructor(
         address _finderAddress,
         uint8 _chainID,
@@ -44,6 +50,9 @@ contract SinkOracle is BeaconOracle, OracleAncillaryInterface {
      * price request as Requested, and therefore able to receive the ultimate price resolution data, and also
      * calls the local Bridge's deposit() method which will emit a Deposit event in order to signal to an off-chain
      * relayer to begin the cross-chain process.
+     * @param identifier Identifier of price request.
+     * @param time Timestamp of price request.
+     * @param ancillaryData extra data of price request.
      */
     function requestPrice(
         bytes32 identifier,
@@ -74,6 +83,10 @@ contract SinkOracle is BeaconOracle, OracleAncillaryInterface {
      * @dev This method should basically check that the `Bridge.deposit()` was triggered by a valid price request,
      * specifically one that has not resolved yet and was called by a registered contract. Without this check,
      * `Bridge.deposit()` could be called by non-registered contracts to make price requests to the DVM.
+     * @param sinkChainID Chain ID for this contract.
+     * @param identifier Identifier of price request.
+     * @param time Timestamp of price request.
+     * @param ancillaryData extra data of price request.
      */
     function validateDeposit(
         uint8 sinkChainID,
@@ -95,6 +108,10 @@ contract SinkOracle is BeaconOracle, OracleAncillaryInterface {
      * which call `GenericHandler.executeProposal()` and ultimately this method.
      * @dev This method should publish the price data for a requested price request. If this method fails for some
      * reason, then it means that the price was never requested. Can only be called by the `GenericHandler`.
+     * @param sinkChainID Chain ID for this contract.
+     * @param identifier Identifier of price request to resolve.
+     * @param time Timestamp of price request to resolve.
+     * @param ancillaryData extra data of price request to resolve.
      */
     function executePublishPrice(
         uint8 sinkChainID,
@@ -109,6 +126,9 @@ contract SinkOracle is BeaconOracle, OracleAncillaryInterface {
 
     /**
      * @notice Returns whether a price has resolved for the request.
+     * @param identifier Identifier of price request.
+     * @param time Timestamp of price request
+     * @param ancillaryData extra data of price request.
      * @return True if a price is available, False otherwise. If true, then getPrice will succeed for the request.
      */
     function hasPrice(
@@ -122,6 +142,10 @@ contract SinkOracle is BeaconOracle, OracleAncillaryInterface {
 
     /**
      * @notice Returns resolved price for the request.
+     * @dev Reverts if price is not available.
+     * @param identifier Identifier of price request.
+     * @param time Timestamp of price request
+     * @param ancillaryData extra data of price request.
      * @return int256 Price, or reverts if no resolved price for any reason.
      */
 
@@ -148,8 +172,13 @@ contract SinkOracle is BeaconOracle, OracleAncillaryInterface {
     /**
      * @notice This helper method is useful for calling Bridge.deposit().
      * @dev GenericHandler.deposit() expects data to be formatted as:
-     *     len(data)                              uint256     bytes  0  - 64
+     *     len(data)                              uint256     bytes  0  - 32
      *     data                                   bytes       bytes  64 - END
+     * @param chainID Chain ID for this contract.
+     * @param identifier Identifier of price request.
+     * @param time Timestamp of price request.
+     * @param ancillaryData extra data of price request.
+     * @return bytes Formatted metadata.
      */
     function formatMetadata(
         uint8 chainID,
