@@ -3,4 +3,5 @@ module.exports = {
   ...require("./registry.js"),
   ...require("./finder.js"),
   ...require("./bridge.js"),
+  ...require("./fxtunnel.js")
 };

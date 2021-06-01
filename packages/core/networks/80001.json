@@ -54,5 +54,9 @@
   {
     "contractName": "SinkGovernor",
     "address": "0xB0b9f73B424AD8dc58156C2AE0D7A1115D1EcCd1"
+  },
+  {
+    "contractName": "OracleChildTunnel",
+    "address": "0xCbf361EE59Cc74b9d6e7Af947fe4136828faf2C5"
   }
 ]
