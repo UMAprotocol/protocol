@@ -98,7 +98,7 @@ contract OptimisticMockOracle is OptimisticOracleInterface, Testable {
     }
 
     // Checks whether a price has been resolved.
-    function hasPrice(bytes32 identifier, uint256 time) public view override returns (bool) {
+    function hasPrice(address requester, bytes32 identifier, uint256 time, bytes memory ancillaryData) public view override returns (bool) {
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier));
         Price storage lookup = verifiedPrices[identifier][time];
         return lookup.isAvailable;

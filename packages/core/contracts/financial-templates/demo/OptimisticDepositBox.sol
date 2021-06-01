@@ -145,8 +145,8 @@ contract OptimisticDepositBox is Testable {
 
     /**
      * @notice Starts a withdrawal request that allows the sponsor to withdraw `denominatedCollateralAmount`
-     * from their position denominated in the quote asset of the price identifier, following a DVM price resolution.
-     * @dev The request will be pending for the duration of the DVM vote and can be cancelled at any time.
+     * from their position denominated in the quote asset of the price identifier, following a Optimistic Oracle price resolution.
+     * @dev The request will be pending for the duration of the liveness period and can be cancelled at any time.
      * Only one withdrawal request can exist for the user.
      * @param denominatedCollateralAmount the quote-asset denominated amount of collateral requested to withdraw.
      */
@@ -164,19 +164,12 @@ contract OptimisticDepositBox is Testable {
 
         emit RequestWithdrawal(msg.sender, denominatedCollateralAmount, depositBoxData.requestPassTimestamp);
 
-        // Every price request costs a fixed fee. Check that this user has enough deposited to cover the final fee.
-        FixedPoint.Unsigned memory finalFee = _computeFinalFees();
-        require(
-            _getFeeAdjustedCollateral(depositBoxData.collateral).isGreaterThanOrEqual(finalFee),
-            "Cannot pay final fee"
-        );
-        _payFinalFees(address(this), finalFee);
         // A price request is sent for the current timestamp.
         _requestOraclePrice(depositBoxData.requestPassTimestamp);
     }
 
     /**
-     * @notice After a passed withdrawal request (i.e., by a call to `requestWithdrawal` and subsequent DVM price resolution),
+     * @notice After a passed withdrawal request (i.e., by a call to `requestWithdrawal` and subsequent Optimistic Oracle price resolution),
      * withdraws `depositBoxData.withdrawalRequestAmount` of collateral currency denominated in the quote asset.
      * @dev Might not withdraw the full requested amount in order to account for precision loss.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
@@ -288,8 +281,9 @@ contract OptimisticDepositBox is Testable {
 
     // Requests a price for `priceIdentifier` at `requestedTime` from the Oracle.
     function _requestOraclePrice(uint256 requestedTime) internal {
-        OracleInterface oracle = _getOracle();
-        oracle.requestPrice(priceIdentifier, requestedTime);
+        OptimisticOracleInterface oracle = _getOracle();
+        // No ancillary data or reward
+        oracle.requestPrice(priceIdentifier, requestedTime, '', address(collateralCurrency), 0);
     }
 
     // Ensure individual and global consistency when increasing collateral balances. Returns the change to the position.
@@ -337,7 +331,7 @@ contract OptimisticDepositBox is Testable {
     // Fetches a resolved oracle price from the Optimistic Oracle. Reverts if the oracle hasn't resolved for this request.
     function _getOraclePrice(uint256 requestedTime) internal view returns (FixedPoint.Unsigned memory) {
         OptimisticOracleInterface oracle = _getOracle();
-        require(oracle.hasPrice(priceIdentifier, requestedTime), "Unresolved oracle price");
+        require(oracle.hasPrice(address(this), priceIdentifier, requestedTime, ''), "Unresolved oracle price");
         int256 oraclePrice = oracle.getPrice(priceIdentifier, requestedTime);
 
         // For simplicity we don't want to deal with negative prices.
