@@ -3,12 +3,13 @@ pragma solidity ^0.8.0;
 
 import "../../common/implementation/Testable.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
+import "../interfaces/OptimisticOracleInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/FinderInterface.sol";
 import "../implementation/Constants.sol";
 
 // A mock optimistic oracle used for testing.
-contract OptimisticMockOracle is OracleAncillaryInterface, Testable {
+contract OptimisticMockOracle is OptimisticOracleInterface, Testable {
     // Mapping to store and retrieve information about price requests
     mapping(bytes32 => Request) public requests;
 
@@ -119,5 +120,9 @@ contract OptimisticMockOracle is OracleAncillaryInterface, Testable {
 
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface supportedIdentifiers) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
+    }
+
+    function _getOracle() internal view returns (OracleAncillaryInterface) {
+        return OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 }
