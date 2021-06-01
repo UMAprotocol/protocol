@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import "../../common/implementation/Testable.sol";
-import "../interfaces/OracleAncillaryInterface.sol";
 import "../interfaces/OptimisticOracleInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/FinderInterface.sol";
@@ -120,9 +119,5 @@ contract OptimisticMockOracle is OptimisticOracleInterface, Testable {
 
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface supportedIdentifiers) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
-    }
-
-    function _getOracle() internal view returns (OracleAncillaryInterface) {
-        return OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 }
