@@ -172,12 +172,12 @@ contract OptimisticDepositBox is Testable {
      * @notice After a passed withdrawal request (i.e., by a call to `requestWithdrawal` and subsequent Optimistic Oracle price resolution),
      * withdraws `depositBoxData.withdrawalRequestAmount` of collateral currency denominated in the quote asset.
      * @dev Might not withdraw the full requested amount in order to account for precision loss.
-     * @return amountWithdrawn The actual amount of collateral withdrawn.
+     * @return denominatedAmountToWithdraw The actual amount of collateral withdrawn.
      */
     function executeWithdrawal()
         external
         nonReentrant()
-        returns (FixedPoint.Unsigned memory amountWithdrawn)
+        returns (FixedPoint.Unsigned memory denominatedAmountToWithdraw)
     {
         OptimisticDepositBoxData storage depositBoxData = depositBoxes[msg.sender];
         require(
@@ -189,14 +189,14 @@ contract OptimisticDepositBox is Testable {
         FixedPoint.Unsigned memory exchangeRate = _getOraclePrice(depositBoxData.requestPassTimestamp);
 
         // Calculate denomated amount of collateral based on resolved exchange rate.
-        // Example 1: User wants to withdraw $100 of ETH, exchange rate is $200/ETH, therefore user to receive 0.5 ETH.
-        // Example 2: User wants to withdraw $250 of ETH, exchange rate is $200/ETH, therefore user to receive 1.25 ETH.
+        // Example 1: User wants to withdraw $1000 of ETH, exchange rate is $2000/ETH, therefore user to receive 0.5 ETH.
+        // Example 2: User wants to withdraw $2500 of ETH, exchange rate is $2000/ETH, therefore user to receive 1.25 ETH.
         FixedPoint.Unsigned memory denominatedAmountToWithdraw =
             depositBoxData.withdrawalRequestAmount.div(exchangeRate);
 
         // If withdrawal request amount is > collateral, then withdraw the full collateral amount and delete the deposit box data.
-        if (denominatedAmountToWithdraw.isGreaterThan(_getFeeAdjustedCollateral(depositBoxData.collateral))) {
-            denominatedAmountToWithdraw = _getFeeAdjustedCollateral(depositBoxData.collateral);
+        if (denominatedAmountToWithdraw.isGreaterThan(depositBoxData.collateral)) {
+            denominatedAmountToWithdraw = depositBoxData.collateral;
 
             // Reset the position state as all the value has been removed after settlement.
             emit EndedOptimisticDepositBox(msg.sender);
@@ -216,7 +216,7 @@ contract OptimisticDepositBox is Testable {
         _resetWithdrawalRequest(depositBoxData);
 
         // Transfer approved withdrawal amount from the contract to the caller.
-        collateralCurrency.safeTransfer(msg.sender, amountWithdrawn);
+        collateralCurrency.safeTransfer(msg.sender, denominatedAmountToWithdraw);
     }
 
     /**
@@ -234,21 +234,6 @@ contract OptimisticDepositBox is Testable {
 
         // Reset withdrawal request by setting withdrawal request timestamp to 0.
         _resetWithdrawalRequest(depositBoxData);
-    }
-
-    /**
-     * @notice `emergencyShutdown` and `remargin` are required to be implemented by all financial contracts and exposed to the DVM, but
-     * because this is a minimal demo they will simply exit silently.
-     */
-    function emergencyShutdown() external override nonReentrant() {
-        return;
-    }
-
-    /**
-     * @notice Same comment as `emergencyShutdown`. For the sake of simplicity, this will simply exit silently.
-     */
-    function remargin() external override nonReentrant() {
-        return;
     }
 
     /****************************************
