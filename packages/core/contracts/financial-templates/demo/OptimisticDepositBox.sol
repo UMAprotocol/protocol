@@ -210,11 +210,11 @@ contract OptimisticDepositBox is Testable {
         }
 
         // Decrease the individual deposit box and global collateral balance.
-        amountWithdrawn = _decrementCollateralBalances(depositBoxData, denominatedAmountToWithdraw);
+        _decrementCollateralBalances(depositBoxData, denominatedAmountToWithdraw);
 
         emit RequestWithdrawalExecuted(
             msg.sender,
-            amountWithdrawn.rawValue,
+            denominatedAmountToWithdraw,
             exchangeRate.rawValue,
             depositBoxData.requestPassTimestamp
         );
@@ -308,9 +308,9 @@ contract OptimisticDepositBox is Testable {
     function _decrementCollateralBalances(
         OptimisticDepositBoxData storage depositBoxData,
         FixedPoint.Unsigned memory collateralAmount
-    ) internal returns (FixedPoint.Unsigned memory) {
-        _removeCollateral(depositBoxData.collateral, collateralAmount);
-        return _removeCollateral(totalOptimisticDepositBoxCollateral, collateralAmount);
+    ) internal {
+        depositBoxData.collateral.sub(collateralAmount);
+        totalOptimisticDepositBoxCollateral = totalOptimisticDepositBoxCollateral.sub(collateralAmount);
     }
 
     function _resetWithdrawalRequest(OptimisticDepositBoxData storage depositBoxData) internal {
