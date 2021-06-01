@@ -115,10 +115,10 @@ contract OptimisticDepositBox is Testable {
         address _finderAddress,
         bytes32 _priceIdentifier
     ) nonReentrant() {
-        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported identifier");
         require(_getCollateralWhitelist().isOnWhitelist(_collateralAddress), "Unsupported currency");
-        priceIdentifier = _priceIdentifier;
+        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported identifier");
         collateralCurrency = IERC20(_collateralAddress);
+        priceIdentifier = _priceIdentifier;
         finder = FinderInterface(_finderAddress);
     }
 
@@ -127,10 +127,10 @@ contract OptimisticDepositBox is Testable {
      * @dev This contract must be approved to spend at least `collateralAmount` of `collateralCurrency`.
      * @param collateralAmount total amount of collateral tokens to be sent to the sponsor's position.
      */
-    function deposit(FixedPoint.Unsigned memory collateralAmount) public fees() nonReentrant() {
+    function deposit(FixedPoint.Unsigned memory collateralAmount) public nonReentrant() {
         require(collateralAmount.isGreaterThan(0), "Invalid collateral amount");
         OptimisticDepositBoxData storage depositBoxData = depositBoxes[msg.sender];
-        if (_getFeeAdjustedCollateral(depositBoxData.collateral).isEqual(0)) {
+        if (depositBoxData.collateral.isEqual(0)) {
             emit NewOptimisticDepositBox(msg.sender);
         }
 
@@ -178,13 +178,11 @@ contract OptimisticDepositBox is Testable {
     /**
      * @notice After a passed withdrawal request (i.e., by a call to `requestWithdrawal` and subsequent DVM price resolution),
      * withdraws `depositBoxData.withdrawalRequestAmount` of collateral currency denominated in the quote asset.
-     * @dev Might not withdraw the full requested amount in order to account for precision loss or if the full requested
-     * amount exceeds the collateral in the position (due to paying fees).
+     * @dev Might not withdraw the full requested amount in order to account for precision loss.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
     function executeWithdrawal()
         external
-        fees()
         nonReentrant()
         returns (FixedPoint.Unsigned memory amountWithdrawn)
     {
@@ -298,9 +296,9 @@ contract OptimisticDepositBox is Testable {
     function _incrementCollateralBalances(
         OptimisticDepositBoxData storage depositBoxData,
         FixedPoint.Unsigned memory collateralAmount
-    ) internal returns (FixedPoint.Unsigned memory) {
-        _addCollateral(depositBoxData.collateral, collateralAmount);
-        return _addCollateral(totalOptimisticDepositBoxCollateral, collateralAmount);
+    ) internal {
+        depositBoxData.collateral.add(collateralAmount);
+        totalOptimisticDepositBoxCollateral = totalOptimisticDepositBoxCollateral.add(collateralAmount);
     }
 
     // Ensure individual and global consistency when decrementing collateral balances. Returns the change to the
