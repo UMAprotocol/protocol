@@ -46,8 +46,7 @@ task("migrate-identifiers", "Adds all whitelisted identifiers on one IdentifierW
         oldWhitelist.methods.isIdentifierSupported(_event.returnValues.identifier).call()
       );
     });
-    let isIdentifierSupportedResults = await Promise.all(isIdentifierSupportedPromises);
-    isIdentifierSupportedResults.forEach((supported, i) => {
+    (await Promise.all(isIdentifierSupportedPromises)).forEach((supported, i) => {
       if (supported) {
         identifiersToWhitelist.push(addedIdentifierEvents[i].returnValues.identifier);
       }
@@ -64,20 +63,21 @@ task("migrate-identifiers", "Adds all whitelisted identifiers on one IdentifierW
     if (to) {
       const newWhitelist = new web3.eth.Contract(IdentifierWhitelist.abi, to);
       isIdentifierSupportedPromises = [];
-      addedIdentifierEvents.forEach((_event) => {
+      identifiersToWhitelist.forEach(id => {
         isIdentifierSupportedPromises.push(
-          newWhitelist.methods.isIdentifierSupported(_event.returnValues.identifier).call()
+          newWhitelist.methods.isIdentifierSupported(id).call()
         );
       });
-      isIdentifierSupportedResults = await Promise.all(isIdentifierSupportedPromises);
-      const addSupportedIdentifierReceipts = [];
+
+      const isIdentifierSupportedResults = await Promise.all(isIdentifierSupportedPromises);
 
       // Send transactions sequentially to avoid nonce collisions. Note that this might fail due to timeout if there
       // are a lot of transactions to send or the gas price to send with is too low.
+      const addSupportedIdentifierReceipts = [];
       for (let i = 0; i < isIdentifierSupportedResults.length; i++) {
         if (!isIdentifierSupportedResults[i]) {
           const receipt = await newWhitelist.methods
-            .addSupportedIdentifier(addedIdentifierEvents[i].returnValues.identifier)
+            .addSupportedIdentifier(identifiersToWhitelist[i])
             .send({
               from: deployer,
             });
