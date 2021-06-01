@@ -63,10 +63,8 @@ task("migrate-identifiers", "Adds all whitelisted identifiers on one IdentifierW
     if (to) {
       const newWhitelist = new web3.eth.Contract(IdentifierWhitelist.abi, to);
       isIdentifierSupportedPromises = [];
-      identifiersToWhitelist.forEach(id => {
-        isIdentifierSupportedPromises.push(
-          newWhitelist.methods.isIdentifierSupported(id).call()
-        );
+      identifiersToWhitelist.forEach((id) => {
+        isIdentifierSupportedPromises.push(newWhitelist.methods.isIdentifierSupported(id).call());
       });
 
       const isIdentifierSupportedResults = await Promise.all(isIdentifierSupportedPromises);
@@ -76,11 +74,9 @@ task("migrate-identifiers", "Adds all whitelisted identifiers on one IdentifierW
       const addSupportedIdentifierReceipts = [];
       for (let i = 0; i < isIdentifierSupportedResults.length; i++) {
         if (!isIdentifierSupportedResults[i]) {
-          const receipt = await newWhitelist.methods
-            .addSupportedIdentifier(identifiersToWhitelist[i])
-            .send({
-              from: deployer,
-            });
+          const receipt = await newWhitelist.methods.addSupportedIdentifier(identifiersToWhitelist[i]).send({
+            from: deployer,
+          });
           addSupportedIdentifierReceipts.push(receipt);
         }
       }
