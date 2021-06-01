@@ -114,7 +114,7 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
         account: voter,
         time: time + i,
         roundId,
-        identifier
+        identifier,
       });
 
       const result = await voting.commitVote(identifier, time + i, hash, { from: voter });
@@ -156,7 +156,7 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
   console.groupEnd();
 };
 
-module.exports = async function(cb) {
+module.exports = async function (cb) {
   try {
     await run();
   } catch (err) {

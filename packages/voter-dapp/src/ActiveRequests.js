@@ -24,7 +24,7 @@ import {
   TableCell,
   TableHead,
   TableRow,
-  Switch
+  Switch,
 } from "@material-ui/core";
 import { Help as HelpIcon, FileCopy as FileCopyIcon } from "@material-ui/icons";
 import { drizzleReactHooks } from "@umaprotocol/react-plugin";
@@ -48,7 +48,7 @@ import {
   IDENTIFIER_BLACKLIST,
   getPrecisionForIdentifier,
   parseFixed,
-  formatFixed
+  formatFixed,
 } from "@uma/common";
 import { useTableStyles } from "./Styles.js";
 
@@ -79,7 +79,7 @@ const toVotingAccountAndPriceRequestKey = (votingAccount, identifier, time, anci
   [votingAccount, time, identifier, ancillaryData].join(",");
 
 // Snapshot button with hint, sets some default props
-function SnapshotButton({ hint = snapshotHint, onClick = x => x }) {
+function SnapshotButton({ hint = snapshotHint, onClick = (x) => x }) {
   return (
     <div>
       <Button variant="contained" color="primary" onClick={onClick}>
@@ -105,7 +105,7 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
 
   const [checkboxesChecked, setCheckboxesChecked] = useState({});
   const check = (index, event) => {
-    setCheckboxesChecked(old => ({ ...old, [index]: event.target.checked }));
+    setCheckboxesChecked((old) => ({ ...old, [index]: event.target.checked }));
   };
 
   const allPendingRequests = useCacheCall("Voting", "getPendingRequests");
@@ -122,7 +122,7 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
     setHasSpamRequests(false);
 
     if (allPendingRequests) {
-      const nonBlacklistedRequests = allPendingRequests.filter(req => {
+      const nonBlacklistedRequests = allPendingRequests.filter((req) => {
         if (!IDENTIFIER_BLACKLIST[hexToUtf8(req.identifier)]) return true;
         else {
           if (!IDENTIFIER_BLACKLIST[hexToUtf8(req.identifier)].includes(req.time)) {
@@ -145,8 +145,8 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
 
   const { roundVoteData, getRequestKey } = VoteData.useContainer();
 
-  const { account } = drizzleReactHooks.useDrizzleState(drizzleState => ({
-    account: drizzleState.accounts[0]
+  const { account } = drizzleReactHooks.useDrizzleState((drizzleState) => ({
+    account: drizzleState.accounts[0],
   }));
 
   const initialFetchComplete = pendingRequests && currentRoundId && votePhase && account;
@@ -156,7 +156,7 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
     "VoteRevealed",
     useMemo(() => ({ filter: { voter: votingAccount, roundId: currentRoundId }, fromBlock: 0 }), [
       votingAccount,
-      currentRoundId
+      currentRoundId,
     ])
   );
 
@@ -165,7 +165,7 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
     "EncryptedVote",
     useMemo(() => ({ filter: { voter: votingAccount, roundId: currentRoundId }, fromBlock: 0 }), [
       votingAccount,
-      currentRoundId
+      currentRoundId,
     ])
   );
   const closedDialogIndex = -1;
@@ -174,15 +174,15 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
   const [openVoteStatsDialog, setOpenVoteStatsDialog] = useState(false);
   const [voteStatsDialogData, setVoteStatDialogData] = useState(null);
 
-  const handleClickExplain = index => {
+  const handleClickExplain = (index) => {
     setDialogContentIndex(index);
   };
 
-  const handleClickDisplayCommitBackup = index => {
+  const handleClickDisplayCommitBackup = (index) => {
     setCommitBackupIndex(index);
   };
 
-  const handleClickStats = index => {
+  const handleClickStats = (index) => {
     // Set voteStatsDialogData to stats from selected round.
     const priceRequest = pendingRequests[index];
     if (priceRequest) {
@@ -194,7 +194,7 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
     }
   };
 
-  const prettyFormatNumber = x => {
+  const prettyFormatNumber = (x) => {
     if (!x) {
       return "N/A";
     }
@@ -207,17 +207,17 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
     setOpenVoteStatsDialog(false);
   };
 
-  const proposals = useCacheCall(["Governor"], call => {
+  const proposals = useCacheCall(["Governor"], (call) => {
     if (!initialFetchComplete) {
       return null;
     }
-    return pendingRequests.map(request => ({
+    return pendingRequests.map((request) => ({
       proposal: isAdminRequest(hexToUtf8(request.identifier))
         ? call("Governor", "getProposal", getAdminRequestId(hexToUtf8(request.identifier)))
-        : null
+        : null,
     }));
   });
-  const decodeRequestIndex = index => {
+  const decodeRequestIndex = (index) => {
     if (index === closedDialogIndex) {
       return "";
     }
@@ -263,7 +263,7 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
         committedValue:
           encryptedVoteMap[
             toPriceRequestKey(request.identifier, request.time, request.ancillaryData || DEFAULT_ANCILLARY_DATA)
-          ]
+          ],
       });
     }
   }
@@ -273,7 +273,7 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
     encryptedVoteEvents &&
     voteStatuses.length === pendingRequests.length &&
     proposals &&
-    proposals.every(prop => prop.proposal !== undefined);
+    proposals.every((prop) => prop.proposal !== undefined);
   // Future hook calls that depend on `voteStatuses` should use `voteStatusesStringified` in their dependencies array
   // because `voteStatuses` will never compare equal after a re-render, even if no values in it actually changed.
   // Also note that `JSON.stringify` doesn't distinguish `undefined` and `null`, but in Drizzle, those mean different
@@ -300,9 +300,9 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
         getKeyGenMessage(currentRoundId),
         account
       );
-      setDecryptionKeys(prev => ({
+      setDecryptionKeys((prev) => ({
         ...prev,
-        [account]: { ...prev[account], [currentRoundId]: { privateKey, publicKey } }
+        [account]: { ...prev[account], [currentRoundId]: { privateKey, publicKey } },
       }));
     }
 
@@ -343,7 +343,7 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
       }
     }
 
-    decryptAll().catch(err => console.log(err));
+    decryptAll().catch((err) => console.log(err));
     return () => {
       didCancel = true;
     };
@@ -357,10 +357,10 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
   const onSnapshotHandler = () => {
     const hashedSnapshotMessage = web3.utils.soliditySha3(snapshotMessage);
     return getMessageSignatureMetamask(web3, hashedSnapshotMessage, account)
-      .then(signature => {
+      .then((signature) => {
         return snapshotCurrentRound(signature, { from: account });
       })
-      .catch(err => console.log("snapshot error", err));
+      .catch((err) => console.log("snapshot error", err));
   };
 
   const onClickHandler = () => {
@@ -372,7 +372,7 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
           time: pendingRequests[index].time,
           ancillaryData: pendingRequests[index].ancillaryData || DEFAULT_ANCILLARY_DATA,
           price: decryptedCommits[index].price.toString(),
-          salt: decryptedCommits[index].salt
+          salt: decryptedCommits[index].salt,
         });
       }
     }
@@ -415,9 +415,9 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
           time: pendingRequests[index].time,
           roundId: currentRoundId,
           identifier: pendingRequests[index].identifier,
-          ancillaryData
+          ancillaryData,
         }),
-        encryptedVote
+        encryptedVote,
       });
       indicesCommitted.push(index);
 
@@ -441,8 +441,8 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
             salt,
             price,
             identifierPrecision,
-            ancillaryData
-          }
+            ancillaryData,
+          },
         }
       );
       setCookie(newCommitKey, updatedCommitBackups, { path: "/" });
@@ -496,7 +496,7 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
       return {
         statusString: "Commit",
         currentVote: currentVote,
-        enabled: editState[index] && !hasPendingTransactions
+        enabled: editState[index] && !hasPendingTransactions,
       };
     }
     // In the REVEAL phase.
@@ -512,7 +512,7 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
       return {
         statusString: "Revealed",
         currentVote: revealEvent,
-        enabled: false
+        enabled: false,
       };
     }
     // In the REVEAL phase, but the vote hasn't been revealed (yet).
@@ -523,7 +523,7 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
     }
   });
 
-  const canExecuteBatch = limit => {
+  const canExecuteBatch = (limit) => {
     let totalSelected = 0;
     for (let checked in checkboxesChecked) {
       totalSelected += checkboxesChecked[checked];
@@ -535,18 +535,18 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
     votePhase.toString() === VotePhasesEnum.REVEAL && round && round.snapshotId === "0" && pendingRequests.length > 0;
   const revealButtonShown = votePhase.toString() === VotePhasesEnum.REVEAL && round && round.snapshotId !== "0";
   const revealButtonEnabled =
-    statusDetails.some(statusDetail => statusDetail.enabled) && canExecuteBatch(BATCH_MAX_REVEALS);
+    statusDetails.some((statusDetail) => statusDetail.enabled) && canExecuteBatch(BATCH_MAX_REVEALS);
   const saveButtonShown = votePhase.toString() === VotePhasesEnum.COMMIT;
   const saveButtonEnabled =
-    Object.values(checkboxesChecked).some(checked => checked) && canExecuteBatch(BATCH_MAX_COMMITS);
+    Object.values(checkboxesChecked).some((checked) => checked) && canExecuteBatch(BATCH_MAX_COMMITS);
 
-  const editCommit = index => {
+  const editCommit = (index) => {
     dispatchEditState({ type: "EDIT_COMMIT", index, price: statusDetails[index].currentVote });
   };
   const editCommittedValue = (index, event) => {
     dispatchEditState({ type: "EDIT_COMMITTED_VALUE", index, price: event.target.value });
   };
-  const getCommittedData = index => {
+  const getCommittedData = (index) => {
     if (index === closedDialogIndex) {
       return "";
     }
@@ -569,7 +569,7 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
               aria-label="admin-vote"
               name="admin-vote"
               value={editState[index]}
-              onChange={event => editCommittedValue(index, event)}
+              onChange={(event) => editCommittedValue(index, event)}
             >
               <FormControlLabel value={"1"} control={<Radio />} label={translateAdminVote("1")} />
               <FormControlLabel value={"0"} control={<Radio />} label={translateAdminVote("0")} />
@@ -581,7 +581,7 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
           <TextField
             type="number"
             defaultValue={statusDetails[index].currentVote}
-            onChange={event => editCommittedValue(index, event)}
+            onChange={(event) => editCommittedValue(index, event)}
           />
         );
       }
@@ -609,7 +609,7 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
     }
   };
 
-  const copyStringToClipboard = string => {
+  const copyStringToClipboard = (string) => {
     // Source for implementation details: https://stackoverflow.com/questions/400212/how-do-i-copy-to-the-clipboard-in-javascript
     if (!navigator.clipboard) {
       // Synchronously copy
@@ -637,10 +637,10 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
     } else {
       // Asynchronously copy. This has been the way to copy to the clipboard for Chrome since v66.
       navigator.clipboard.writeText(string).then(
-        function() {
+        function () {
           console.log(`Async: Copied to clipboard`);
         },
-        function(err) {
+        function (err) {
           console.error("Async: Could not copy text: ", err);
         }
       );
@@ -786,7 +786,7 @@ function ActiveRequests({ votingAccount, votingGateway, snapshotContract }) {
                     disabled={!statusDetails[index].enabled}
                     color="primary"
                     checked={checkboxesChecked[index] ? true : false}
-                    onChange={event => check(index, event)}
+                    onChange={(event) => check(index, event)}
                   />
                 </TableCell>
                 <TableCell>{formatDate(pendingRequest.time, drizzle.web3)}</TableCell>

@@ -54,13 +54,13 @@ const getPoolSpotPrice = async () => {
 };
 
 // Takes in a json object from a compiled contract and returns a truffle contract instance that can be deployed.
-const createContractObjectFromJson = contractJsonObject => {
+const createContractObjectFromJson = (contractJsonObject) => {
   let truffleContractCreator = truffleContract(contractJsonObject);
   truffleContractCreator.setProvider(web3.currentProvider);
   return truffleContractCreator;
 };
 
-contract("ReserveTokenDisputer", function(accounts) {
+contract("ReserveTokenDisputer", function (accounts) {
   const deployer = accounts[0];
   const sponsor1 = accounts[1];
   const liquidator = accounts[2];
@@ -119,7 +119,7 @@ contract("ReserveTokenDisputer", function(accounts) {
     // deploy Uniswap V2 Factory & router.
     factory = await createContractObjectFromJson(UniswapV2Factory).new(deployer, { from: deployer });
     router = await createContractObjectFromJson(UniswapV2Router02).new(factory.address, collateralToken.address, {
-      from: deployer
+      from: deployer,
     });
 
     // initialize the pair
@@ -147,7 +147,7 @@ contract("ReserveTokenDisputer", function(accounts) {
       disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: timer.address,
-      financialProductLibraryAddress: ZERO_ADDRESS
+      financialProductLibraryAddress: ZERO_ADDRESS,
     };
 
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, { from: deployer });
@@ -191,7 +191,7 @@ contract("ReserveTokenDisputer", function(accounts) {
     dsProxy = await DSProxy.at((await dsProxyFactory.getPastEvents("Created"))[0].returnValues.proxy);
   });
 
-  it("can correctly swap,dispute", async function() {
+  it("can correctly swap,dispute", async function () {
     // Send tokens from liquidator to DSProxy. This would be done by seeding the common DSProxy shared between multiple bots.
     await reserveToken.mint(dsProxy.address, toWei("10000"));
 
@@ -205,7 +205,7 @@ contract("ReserveTokenDisputer", function(accounts) {
     const callData = buildCallData(0, sponsor1);
 
     await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyDisputer.address, callData).send({
-      from: disputer
+      from: disputer,
     });
 
     // The price in the uniswap pool should be greater than what it started at as we traded reserve for collateral.
@@ -223,7 +223,7 @@ contract("ReserveTokenDisputer", function(accounts) {
     assert.equal((await pair.getPastEvents("Swap")).length, 1);
     assert.equal((await financialContract.getPastEvents("LiquidationDisputed")).length, 1);
   });
-  it("can use existing collateral to dispute without buying anything", async function() {
+  it("can use existing collateral to dispute without buying anything", async function () {
     // If the DSProxy already has any collateral, the contract should it before buying anything to fund the dispute.
     await collateralToken.mint(dsProxy.address, toWei("10000")); // mint enough to do the full dispute
 
@@ -236,7 +236,7 @@ contract("ReserveTokenDisputer", function(accounts) {
     const callData = buildCallData(0, sponsor1);
 
     await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyDisputer.address, callData).send({
-      from: disputer
+      from: disputer,
     });
 
     assert.equal(Number(await getPoolSpotPrice()), Number(startingUniswapPrice));
@@ -250,7 +250,7 @@ contract("ReserveTokenDisputer", function(accounts) {
     assert.equal((await pair.getPastEvents("Swap")).length, 0);
     assert.equal((await financialContract.getPastEvents("LiquidationDisputed")).length, 1);
   });
-  it("can use some existing collateral and some purchased collateral to dispute", async function() {
+  it("can use some existing collateral and some purchased collateral to dispute", async function () {
     // If the DSProxy already has any collateral, the contract should it before buying anything to fund the dispute.
     await collateralToken.mint(dsProxy.address, toWei("0.5")); // mint enough to pay the final fee but not enough for the whole dispute.
     await reserveToken.mint(dsProxy.address, toWei("10000")); // mint some reserve tokens to buy the shortfall
@@ -259,7 +259,7 @@ contract("ReserveTokenDisputer", function(accounts) {
     const callData = buildCallData(0, sponsor1);
     console.log("a");
     await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyDisputer.address, callData).send({
-      from: disputer
+      from: disputer,
     });
     console.log("b");
 

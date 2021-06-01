@@ -1,5 +1,5 @@
 const browserSafe = {
-  ...require("./browser.js")
+  ...require("./browser.js"),
 };
 
 const browserUnsafe = {
@@ -9,10 +9,11 @@ const browserUnsafe = {
   ...require("./src/TruffleConfig"),
   ...require("./src/ProviderUtils"),
   ...require("./src/HardhatConfig"),
-  ...require("./src/RetryProvider")
+  ...require("./src/RetryProvider"),
+  ...require("./src/UniswapV3Helpers"),
 };
 
 module.exports = {
   ...browserSafe,
-  ...browserUnsafe
+  ...browserUnsafe,
 };

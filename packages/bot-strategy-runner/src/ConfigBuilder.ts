@@ -50,7 +50,7 @@ export async function buildGlobalWhitelist(config: strategyRunnerConfig) {
       else throw new Error("Global Whitelist file does not have the `empWhitelist` key or is malformed");
     });
   }
-  if (config.globalAddressBlacklist) whitelist = whitelist.filter(el => !config.globalAddressBlacklist?.includes(el));
+  if (config.globalAddressBlacklist) whitelist = whitelist.filter((el) => !config.globalAddressBlacklist?.includes(el));
   return replaceAddressCase(whitelist);
 }
 
@@ -90,7 +90,10 @@ export async function buildBotConfigs(globalWhitelist: Array<string>, config: st
   let botConfigs: any = [];
   const syntheticSymbols = await fetchSynthNames(globalWhitelist, config);
   supportedBotTypes.forEach((botType: string) => {
-    botConfigs = [...botConfigs, ...buildConfigForBotType(globalWhitelist, config, botType, syntheticSymbols)];
+    botConfigs = [
+      ...botConfigs,
+      ...buildConfigForBotType(replaceAddressCase(globalWhitelist), config, botType, syntheticSymbols),
+    ];
   });
   return replaceAddressCase(botConfigs);
 }
@@ -114,15 +117,17 @@ function buildConfigForBotType(
     botTypeWhitelist = [...globalWhitelist, ...config[settingsKey].addressWhitelist];
 
   if (config[settingsKey].addressBlacklist)
-    botTypeWhitelist = botTypeWhitelist.filter(el => !config[settingsKey].addressBlacklist.includes(el));
+    botTypeWhitelist = botTypeWhitelist.filter((el) => !config[settingsKey].addressBlacklist.includes(el));
 
   const botConfigs: any = [];
   botTypeWhitelist.forEach((contractAddress: string) => {
     const addressConfig = lodash.merge(
       config.commonConfig,
       config[settingsKey].commonConfig,
-      config[settingsKey].addressConfigOverride ? config[settingsKey].addressConfigOverride[contractAddress] : null
+      config[settingsKey].addressConfigOverride ? config[settingsKey].addressConfigOverride[contractAddress] : null,
+      config.addressConfigOverride ? config.addressConfigOverride[contractAddress] : null
     );
+
     const commonConfig = {
       botType,
       syntheticSymbol: syntheticSymbols[contractAddress],
@@ -133,38 +138,10 @@ function buildConfigForBotType(
       errorRetriesTimeout: addressConfig.errorRetriesTimeout,
       pollingDelay: 0,
       startingBlock: addressConfig.startingBlock ? addressConfig.startingBlock : process.env.STARTING_BLOCK_NUMBER,
-      endingBlock: addressConfig.endingBlock ? addressConfig.endingBlock : process.env.ENDING_BLOCK_NUMBER
+      endingBlock: addressConfig.endingBlock ? addressConfig.endingBlock : process.env.ENDING_BLOCK_NUMBER,
     };
-    if (botType == "liquidator") {
-      const botConfig: liquidatorConfig = {
-        ...commonConfig,
-        priceFeedConfig: addressConfig.priceFeedConfig,
-        liquidatorConfig: addressConfig.liquidatorConfig,
-        liquidatorOverridePrice: addressConfig.liquidatorOverridePrice
-      };
-      botConfigs.push(botConfig);
-    }
 
-    if (botType == "disputer") {
-      const botConfig: disputerConfig = {
-        ...commonConfig,
-        priceFeedConfig: addressConfig.priceFeedConfig,
-        disputerConfigConfig: addressConfig.disputerConfigConfig,
-        disputerOverridePrice: addressConfig.disputerOverridePrice
-      };
-      botConfigs.push(botConfig);
-    }
-    if (botType == "monitor") {
-      const botConfig: monitorConfig = {
-        ...commonConfig,
-        optimisticOracleAddress: addressConfig.optimisticOracleAddress,
-        monitorConfigConfig: addressConfig.monitorConfigConfig,
-        tokenPriceFeedConfig: addressConfig.tokenPriceFeedConfig,
-        medianizerPriceFeedConfig: addressConfig.medianizerPriceFeedConfig,
-        denominatorPriceFeedConfig: addressConfig.denominatorPriceFeedConfig
-      };
-      botConfigs.push(botConfig);
-    }
+    botConfigs.push({ ...commonConfig, ...addressConfig });
   });
   return botConfigs;
 }

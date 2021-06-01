@@ -1,55 +1,45 @@
+import assert from "assert";
 import winston from "winston";
+import BigNumber from "bignumber.js";
 import Web3 from "web3";
 const { toWei, toBN } = Web3.utils;
 const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
-import BigNumber from "bignumber.js";
-const ExchangeAdapterInterface = require("./exchange-adapters/ExchangeAdapterInterface");
 
-const {
-  ConvertDecimals,
-  createFormatFunction,
-  createObjectFromDefaultProps,
-  blockUntilBlockMined
-} = require("@uma/common");
-import assert from "assert";
+import ExchangeAdapterInterface from "./exchange-adapters/ExchangeAdapterInterface";
+
+import { ConvertDecimals, createFormatFunction, createObjectFromDefaultProps, blockUntilBlockMined } from "@uma/common";
 
 export class RangeTrader {
   readonly normalizePriceFeedDecimals: any;
   readonly formatDecimalString: any;
-
   readonly tradeExecutionThreshold: any;
   readonly targetPriceSpread: any;
   readonly fixedPointAdjustment: any;
 
+  /**
+ * @notice Constructs new Range Trader.
+ * @param {Object} logger Module used to send logs.
+ * @param {Object} web3 Provider from Truffle/node to connect to Ethereum network.
+ * @param {Object} tokenPriceFeed Price feed to fetch the current synthetic token trading price. EG a Dex price feed.
+ * @param {Object} referencePriceFeed Price feed to fetch the "real" identifier price. EG a Cryptowatch price feed.
+ * @param {Object} exchangeAdapter Interface to interact with on-chain exchange. EG: Uniswap.
+ * @param {Object} rangeTraderConfig: Config to parameterize the range trader. Expected:
+ *      { tradeExecutionThreshold: 0.2,  -> error amount which must be exceeded for a correcting trade to be executed.
+          targetPriceSpread: 0.05 }      -> target price that should be present after a correcting trade has concluded.
+ */
   constructor(
-    /**
-   * @notice Constructs new Range Trader.
-   * @param {Object} logger Module used to send logs.
-   * @param {Object} web3 Provider from Truffle/node to connect to Ethereum network.
-   * @param {Object} tokenPriceFeed Price feed to fetch the current synthetic token trading price. EG a Dex price feed.
-   * @param {Object} referencePriceFeed Price feed to fetch the "real" identifier price. EG a Cryptowatch price feed.
-   * @param {Object} exchangeAdapter Interface to interact with on-chain exchange. EG: Uniswap.
-   * @param {Object} rangeTraderConfig: Config to parameterize the range trader. Expected:
-   *      { tradeExecutionThreshold: 0.2,  -> error amount which must be exceeded for a correcting trade to be executed.
-            targetPriceSpread: 0.05 }      -> target price that should be present after a correcting trade has concluded.
-   */
     readonly logger: winston.Logger,
     readonly web3: Web3,
     readonly tokenPriceFeed: any,
     readonly referencePriceFeed: any,
-    readonly exchangeAdapter: typeof ExchangeAdapterInterface,
+    readonly exchangeAdapter: ExchangeAdapterInterface,
     readonly rangeTraderConfig: {
       tradeExecutionThreshold?: number;
       targetPriceSpread?: number;
     }
   ) {
     assert(tokenPriceFeed.getPriceFeedDecimals() === referencePriceFeed.getPriceFeedDecimals(), "decimals must match");
-
-    this.logger = logger;
-    this.web3 = web3;
-    this.tokenPriceFeed = tokenPriceFeed;
-    this.referencePriceFeed = referencePriceFeed;
-    this.exchangeAdapter = exchangeAdapter;
+    assert(exchangeAdapter, "Exchange adapter must be initialized");
 
     this.normalizePriceFeedDecimals = ConvertDecimals(tokenPriceFeed.getPriceFeedDecimals(), 18, this.web3);
 
@@ -62,14 +52,14 @@ export class RangeTrader {
         value: 0.2,
         isValid: (x: number) => {
           return x > 0;
-        }
+        },
       },
       targetPriceSpread: {
         value: 0.05,
         isValid: (x: number) => {
           return x > 0 && x <= 1;
-        }
-      }
+        },
+      },
     };
 
     // Validate and set config settings to class state.
@@ -84,7 +74,7 @@ export class RangeTrader {
       at: "RangeTrader",
       message: "Checking if the priceFeed error exceeds the threshold",
       tradeExecutionThreshold: this.tradeExecutionThreshold,
-      targetPriceSpread: this.targetPriceSpread
+      targetPriceSpread: this.targetPriceSpread,
     });
     const currentTokenPrice = this.tokenPriceFeed.getCurrentPrice();
     const currentReferencePrice = this.referencePriceFeed.getCurrentPrice();
@@ -94,7 +84,7 @@ export class RangeTrader {
         at: "RangeTrader",
         message: "Failed to get either the currentTokenPrice or the currentReferencePrice!",
         currentTokenPrice: currentTokenPrice ? currentTokenPrice.toString() : "no data returned",
-        currentReferencePrice: currentReferencePrice ? currentReferencePrice.toString() : "no data returned"
+        currentReferencePrice: currentReferencePrice ? currentReferencePrice.toString() : "no data returned",
       });
       return;
     }
@@ -105,14 +95,14 @@ export class RangeTrader {
       targetPriceSpread: this.targetPriceSpread * 100 + "%",
       preTradeTokenPrice: this.formatDecimalString(this.normalizePriceFeedDecimals(currentTokenPrice)),
       preTradeReferencePrice: this.formatDecimalString(this.normalizePriceFeedDecimals(currentReferencePrice)),
-      preTradePriceDeviation: this.formatDecimalString(deviationError.muln(100)) + "%"
+      preTradePriceDeviation: this.formatDecimalString(deviationError.muln(100)) + "%",
     };
     // If the deviation error is less then the threshold, then log and return. Else, enter trade execution logic.
     if (deviationError.abs().lt(toBNWei(this.tradeExecutionThreshold))) {
       this.logger.debug({
         at: "RangeTrader",
         message: "The deviationError is less than the threshold to execute a trade",
-        ...commonLogObject
+        ...commonLogObject,
       });
       return;
     }
@@ -125,15 +115,19 @@ export class RangeTrader {
     // the scalar = 1 - 0.05 = 0.95. Therefore the bot will trade the price up to 950.
     const priceScalar = deviationError.gte(toBN("0")) ? 1 + this.targetPriceSpread : 1 - this.targetPriceSpread;
 
-    const desiredPrice = currentReferencePrice.mul(toBNWei(priceScalar)).div(this.fixedPointAdjustment);
+    let desiredPrice = currentReferencePrice.mul(toBNWei(priceScalar)).div(this.fixedPointAdjustment);
 
     this.logger.debug({
       at: "RangeTrader",
       message: "The deviationError is greater than the threshold to execute a trade. Executing a correcting trade",
       ...commonLogObject,
       priceScalar,
-      desiredPrice: this.formatDecimalString(this.normalizePriceFeedDecimals(desiredPrice))
+      desiredPrice: this.formatDecimalString(this.normalizePriceFeedDecimals(desiredPrice)),
     });
+
+    if (this.tokenPriceFeed.invertPrice === "true") {
+      desiredPrice = this._invertPriceSafely(desiredPrice);
+    }
 
     const tradeExecutionTransaction = await this.exchangeAdapter.tradeMarketToDesiredPrice(desiredPrice.toString());
     if (tradeExecutionTransaction instanceof Error) {
@@ -141,7 +135,7 @@ export class RangeTrader {
         at: "RangeTrader",
         message: "The exchange adapter returned an error in execution",
         ...commonLogObject,
-        error: tradeExecutionTransaction
+        error: tradeExecutionTransaction,
       });
       throw tradeExecutionTransaction;
     }
@@ -151,7 +145,7 @@ export class RangeTrader {
 
     // Get the post trade spot price to double check deviation error.
     await this.tokenPriceFeed.update();
-    const exchangeSpotPriceAfterTrade = this.tokenPriceFeed.getCurrentPrice();
+    const exchangeSpotPriceAfterTrade = this.tokenPriceFeed.getLastBlockPrice();
 
     const postTradePriceDeviationError = this._calculateDeviationError(
       exchangeSpotPriceAfterTrade,
@@ -164,7 +158,7 @@ export class RangeTrader {
       ...commonLogObject,
       postTradeSpotPrice: this.formatDecimalString(exchangeSpotPriceAfterTrade),
       postTradePriceDeviationError: this.formatDecimalString(postTradePriceDeviationError.muln(100)) + "%",
-      tx: tradeExecutionTransaction.transactionHash
+      tx: tradeExecutionTransaction.transactionHash,
     });
   }
 
@@ -174,6 +168,13 @@ export class RangeTrader {
       .sub(this.normalizePriceFeedDecimals(expectedValue))
       .mul(this.fixedPointAdjustment) // Scale the numerator before division
       .div(this.normalizePriceFeedDecimals(expectedValue));
+  }
+
+  // TODO: there are a number of places through the repo that re-use this method. it should be refactored to a common util.
+  _invertPriceSafely(price: BigNumber) {
+    return toBN(toWei(this.normalizePriceFeedDecimals("1")).toString())
+      .mul(toBN(toWei(this.normalizePriceFeedDecimals("1")).toString()))
+      .div(toBN(price.toString()));
   }
 }
 

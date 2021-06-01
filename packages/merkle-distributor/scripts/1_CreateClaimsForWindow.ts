@@ -39,7 +39,7 @@ const recipientsObject = JSON.parse(fs.readFileSync(options.input, { encoding: "
 // things simple for now we can just double check that some important keys are present within the JSON file.
 if (typeof recipientsObject !== "object") throw new Error("Invalid JSON");
 const expectedKeys = ["chainId", "rewardToken", "windowIndex", "totalRewardsDistributed", "recipients"];
-expectedKeys.forEach(expectedKey => {
+expectedKeys.forEach((expectedKey) => {
   if (!Object.keys(recipientsObject).includes(expectedKey)) {
     throw new Error(`recipients object missing expected key: ${expectedKey}`);
   }
@@ -75,7 +75,7 @@ async function main() {
     totalRewardsDistributed: recipientsObject.totalRewardsDistributed,
     windowStart: recipientsObject.windowStart,
     merkleRoot,
-    claims: recipientsDataWithProof
+    claims: recipientsDataWithProof,
   };
 
   console.log("\n3. Saving proofs to disk 💿");
@@ -86,7 +86,7 @@ async function main() {
   console.log("🗄  File successfully written to", savePath);
 }
 
-main().catch(e => {
+main().catch((e) => {
   console.log(e);
   process.exit(1);
 });

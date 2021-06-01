@@ -2,7 +2,7 @@ const IdentiferWhitelist = artifacts.require("IdentifierWhitelist");
 const { getKeysForNetwork } = require("@uma/common");
 const identifiers = require("../config/identifiers");
 
-module.exports = async function(deployer, network, accounts) {
+module.exports = async function (deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
 
   const supportedIdentifiers = await IdentiferWhitelist.deployed();

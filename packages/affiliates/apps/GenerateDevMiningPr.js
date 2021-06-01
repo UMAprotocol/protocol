@@ -30,15 +30,13 @@ const { makeUnixPipe, devMiningPrTemplate } = require("../libs/affiliates/utils"
 //     body: 'Pr body',
 //   }
 // }
-const App = async params => {
+const App = async (params) => {
   const input = { ...params, ...params.config };
   const prTemplate = devMiningPrTemplate(input);
   return {
     ...params,
-    prTemplate
+    prTemplate,
   };
 };
 
-makeUnixPipe(App)
-  .then(console.log)
-  .catch(console.error);
+makeUnixPipe(App).then(console.log).catch(console.error);

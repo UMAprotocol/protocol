@@ -13,7 +13,7 @@ const { utf8ToHex, hexToUtf8, padRight } = web3.utils;
 
 const { blankFunctionSig, createGenericDepositData } = require("./helpers");
 
-contract("SourceOracle", async accounts => {
+contract("SourceOracle", async (accounts) => {
   const owner = accounts[0];
   const rando = accounts[1];
 
@@ -31,19 +31,18 @@ contract("SourceOracle", async accounts => {
   const testAncillary = utf8ToHex("TEST-ANCILLARY");
   const testRequestTime = 123;
   const testPrice = "6";
-  const invalidTestPrice = "7";
   const expectedDepositNonce = 1;
 
   let sourceOracleResourceId;
 
-  before(async function() {
+  before(async function () {
     registry = await Registry.deployed();
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner);
     await registry.registerContract([], owner, { from: owner });
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(testIdentifier);
   });
-  beforeEach(async function() {
+  beforeEach(async function () {
     finder = await Finder.deployed();
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.address);
     bridge = await Bridge.new(chainID, [owner], 1, 0, 100);
@@ -72,16 +71,16 @@ contract("SourceOracle", async accounts => {
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), voting.address);
     await voting.requestPrice(testIdentifier, testRequestTime, testAncillary);
   });
-  describe("Requesting a price on Source Oracle", function() {
-    beforeEach(async function() {
+  describe("Requesting a price on Source Oracle", function () {
+    beforeEach(async function () {
       // Need to request a price first on the source oracle before we can publish:
       await finder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), rando);
       await sourceOracle.executeRequestPrice(destinationChainID, testIdentifier, testRequestTime, testAncillary, {
-        from: rando
+        from: rando,
       });
       await finder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), handler.address);
     });
-    it("publishPrice: should call Bridge.deposit", async function() {
+    it("publishPrice: should call Bridge.deposit", async function () {
       assert(
         await didContractThrow(
           sourceOracle.publishPrice(destinationChainID, testIdentifier, testRequestTime, testAncillary, { from: owner })
@@ -92,13 +91,12 @@ contract("SourceOracle", async accounts => {
       await voting.pushPrice(testIdentifier, testRequestTime, testAncillary, testPrice);
 
       const txn = await sourceOracle.publishPrice(destinationChainID, testIdentifier, testRequestTime, testAncillary, {
-        from: owner
+        from: owner,
       });
       TruffleAssert.eventEmitted(
         txn,
         "PushedPrice",
-        event =>
-          event.pusher.toLowerCase() === owner.toLowerCase() &&
+        (event) =>
           event.chainID.toString() === destinationChainID.toString() &&
           hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
           event.time.toString() === testRequestTime.toString() &&
@@ -112,13 +110,20 @@ contract("SourceOracle", async accounts => {
       TruffleAssert.eventEmitted(
         internalTxn,
         "Deposit",
-        event =>
+        (event) =>
           event.destinationChainID.toString() === destinationChainID.toString() &&
           event.resourceID.toLowerCase() === sourceOracleResourceId.toLowerCase() &&
           event.depositNonce.toString() === expectedDepositNonce.toString()
       );
+      // Repeat call should fail:
+      assert(
+        await didContractThrow(
+          sourceOracle.publishPrice(destinationChainID, testIdentifier, testRequestTime, testAncillary, { from: owner })
+        ),
+        "can only publish price once"
+      );
     });
-    it("validateDeposit", async function() {
+    it("validateDeposit", async function () {
       assert(
         await didContractThrow(
           sourceOracle.validateDeposit(destinationChainID, testIdentifier, testRequestTime, testAncillary, testPrice)
@@ -127,28 +132,22 @@ contract("SourceOracle", async accounts => {
       );
       await voting.pushPrice(testIdentifier, testRequestTime, testAncillary, testPrice);
       await sourceOracle.publishPrice(destinationChainID, testIdentifier, testRequestTime, testAncillary, {
-        from: owner
+        from: owner,
       });
       await sourceOracle.validateDeposit(destinationChainID, testIdentifier, testRequestTime, testAncillary, testPrice);
       assert(
         await didContractThrow(
-          sourceOracle.validateDeposit(
-            destinationChainID,
-            testIdentifier,
-            testRequestTime,
-            testAncillary,
-            invalidTestPrice
-          )
+          sourceOracle.validateDeposit(destinationChainID, testRequestTime, testAncillary, testPrice)
         ),
-        "Reverts if not same price resolved on MockOracle"
+        "Should not be able to call validateDeposit again."
       );
     });
   });
-  it("executeRequestPrice", async function() {
+  it("executeRequestPrice", async function () {
     assert(
       await didContractThrow(
         sourceOracle.executeRequestPrice(destinationChainID, testIdentifier, testRequestTime, testAncillary, {
-          from: rando
+          from: rando,
         })
       ),
       "Only callable by GenericHandler"
@@ -164,15 +163,21 @@ contract("SourceOracle", async accounts => {
     TruffleAssert.eventEmitted(
       txn,
       "PriceRequestAdded",
-      event =>
-        event.requester.toLowerCase() === rando.toLowerCase() &&
+      (event) =>
         event.chainID.toString() === destinationChainID.toString() &&
         hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
         event.time.toString() === testRequestTime.toString() &&
         event.ancillaryData.toLowerCase() === testAncillary.toLowerCase()
     );
+    assert(
+      await didContractThrow(
+        sourceOracle.executeRequestPrice(destinationChainID, testRequestTime, testAncillary, testPrice),
+        { from: rando }
+      ),
+      "Should not be able to call executeRequestPrice again."
+    );
   });
-  it("formatMetadata", async function() {
+  it("formatMetadata", async function () {
     const metadata = await sourceOracle.formatMetadata(
       chainID,
       testIdentifier,

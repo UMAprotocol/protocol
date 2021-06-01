@@ -35,7 +35,7 @@ class SyntheticPegMonitor {
     denominatorPriceFeed,
     monitorConfig,
     financialContractProps,
-    financialContractClient
+    financialContractClient,
   }) {
     this.logger = logger;
 
@@ -62,41 +62,41 @@ class SyntheticPegMonitor {
         // `deviationAlertThreshold`: Error threshold used to compare observed and expected token prices.
         // If the deviation in token price exceeds this value an alert is fired. If set to zero then fire no logs.
         value: uniswapPriceFeed && medianizerPriceFeed ? 0.2 : 0,
-        isValid: x => {
+        isValid: (x) => {
           return typeof x === "number" && x < 1 && x >= 0;
-        }
+        },
       },
       volatilityWindow: {
         // `volatilityWindow`: Length of time (in seconds) to snapshot volatility.
         value: uniswapPriceFeed || medianizerPriceFeed ? 60 * 10 : 0, // 10 minutes
-        isValid: x => {
+        isValid: (x) => {
           return typeof x === "number" && x >= 0;
-        }
+        },
       },
       pegVolatilityAlertThreshold: {
         // `pegVolatilityAlertThreshold`: Error threshold for synthetic peg price volatility over `volatilityWindow`.
         value: uniswapPriceFeed ? 0.1 : 0,
-        isValid: x => {
+        isValid: (x) => {
           return typeof x === "number" && x < 1 && x >= 0;
-        }
+        },
       },
       syntheticVolatilityAlertThreshold: {
         // `syntheticVolatilityAlertThreshold`: Error threshold for synthetic price volatility over `volatilityWindow`.
         value: medianizerPriceFeed ? 0.1 : 0,
-        isValid: x => {
+        isValid: (x) => {
           return typeof x === "number" && x < 1 && x >= 0;
-        }
+        },
       },
       logOverrides: {
         // Specify an override object to change default logging behaviour. Defaults to no overrides. If specified, this
         // object is structured to contain key for the log to override and value for the logging level. EG:
         // { deviation:'error' } would override the default `warn` behaviour for synthetic-peg deviation events.
         value: {},
-        isValid: overrides => {
+        isValid: (overrides) => {
           // Override must be one of the default logging levels: ['error','warn','info','http','verbose','debug','silly']
-          return Object.values(overrides).every(param => Object.keys(this.logger.levels).includes(param));
-        }
-      }
+          return Object.values(overrides).every((param) => Object.keys(this.logger.levels).includes(param));
+        },
+      },
     };
     Object.assign(this, createObjectFromDefaultProps(monitorConfig, defaultConfig));
 
@@ -104,7 +104,7 @@ class SyntheticPegMonitor {
     const defaultFinancialContractProps = {
       financialContractProps: {
         value: {},
-        isValid: x => {
+        isValid: (x) => {
           // The config must contain the following keys and types:
           return (
             Object.keys(x).includes("priceIdentifier") &&
@@ -114,8 +114,8 @@ class SyntheticPegMonitor {
             Object.keys(x).includes("priceFeedDecimals") &&
             typeof x.priceFeedDecimals === "number"
           );
-        }
-      }
+        },
+      },
     };
     Object.assign(this, createObjectFromDefaultProps({ financialContractProps }, defaultFinancialContractProps));
 
@@ -143,7 +143,7 @@ class SyntheticPegMonitor {
         at: "SyntheticPegMonitor",
         message: "Unable to get price",
         uniswapTokenPrice: uniswapTokenPrice ? uniswapTokenPrice.toString() : "N/A",
-        cryptoWatchTokenPrice: cryptoWatchTokenPrice ? cryptoWatchTokenPrice.toString() : "N/A"
+        cryptoWatchTokenPrice: cryptoWatchTokenPrice ? cryptoWatchTokenPrice.toString() : "N/A",
       });
       return;
     }
@@ -170,7 +170,7 @@ class SyntheticPegMonitor {
       at: "SyntheticPegMonitor",
       message: "Checking price deviation",
       uniswapTokenPrice: uniswapTokenPrice.toString(),
-      cryptoWatchTokenPrice: cryptoWatchTokenPrice.toString()
+      cryptoWatchTokenPrice: cryptoWatchTokenPrice.toString(),
     });
 
     const deviationError = this._calculateDeviationError(uniswapTokenPrice, cryptoWatchTokenPrice);
@@ -188,7 +188,7 @@ class SyntheticPegMonitor {
           this.formatDecimalString(this.normalizePriceFeedDecimals(cryptoWatchTokenPrice)) +
           ". Error of " +
           this.formatDecimalString(deviationError.muln(100)) + // multiply by 100 to make the error a percentage
-          "%."
+          "%.",
       });
     }
   }
@@ -209,7 +209,7 @@ class SyntheticPegMonitor {
         at: "SyntheticPegMonitor",
         message: "Unable to get volatility data, missing historical price data",
         error,
-        lookback: this.volatilityWindow
+        lookback: this.volatilityWindow,
       });
       return;
     }
@@ -225,7 +225,7 @@ class SyntheticPegMonitor {
       pricefeedVolatility: pricefeedVolatility.toString(),
       pricefeedLatestPrice: pricefeedLatestPrice.toString(),
       minPrice: min.toString(),
-      maxPrice: max.toString()
+      maxPrice: max.toString(),
     });
 
     // If the volatility percentage is greater than (gt) the threshold send a message.
@@ -244,7 +244,7 @@ class SyntheticPegMonitor {
           formatHours(this.volatilityWindow) +
           " hour(s). Threshold is " +
           this.pegVolatilityAlertThreshold * 100 +
-          "%."
+          "%.",
       });
     }
   }
@@ -263,7 +263,7 @@ class SyntheticPegMonitor {
         at: "SyntheticPegMonitor",
         message: "Unable to get volatility data, missing historical price data",
         error,
-        lookback: this.volatilityWindow
+        lookback: this.volatilityWindow,
       });
       return;
     }
@@ -279,7 +279,7 @@ class SyntheticPegMonitor {
       pricefeedVolatility: pricefeedVolatility.toString(),
       pricefeedLatestPrice: pricefeedLatestPrice.toString(),
       minPrice: min.toString(),
-      maxPrice: max.toString()
+      maxPrice: max.toString(),
     });
 
     // If the volatility percentage is greater than (gt) the threshold send a message.
@@ -298,7 +298,7 @@ class SyntheticPegMonitor {
           formatHours(this.volatilityWindow) +
           " hour(s). Threshold is " +
           this.syntheticVolatilityAlertThreshold * 100 +
-          "%."
+          "%.",
       });
     }
   }
@@ -310,20 +310,29 @@ class SyntheticPegMonitor {
     // record the minimum and maximum.
     const latestTime = pricefeed.getLastUpdateTime();
 
+    // @dev: This might mean that the current price reported is a bit after the volatility window, but the error
+    // should be small enough that it shouldn't impact the results. Furthermore, the price is not used in the vol
+    // computation (which depends on the min/max), it only is reported alongside it as a reference point.
+    let pricefeedLatestPrice;
+    try {
+      pricefeedLatestPrice = pricefeed.getCurrentPrice();
+    } catch (error) {
+      this.logger.debug({
+        at: "SyntheticPegMonitor",
+        message: "Issue getting current price",
+        error,
+      });
+      pricefeedLatestPrice = null;
+    }
+
     // `_calculateHistoricalVolatility` will throw an error if it does not return successfully.
     const volData = await this._calculateHistoricalVolatility(pricefeed, latestTime, this.volatilityWindow);
-
-    // @dev: This is not `getCurrentTime` in order to enforce that the volatility calculation is counting back from
-    // precisely the same timestamp as the "latest price". This would prevent inaccurate volatility readings where
-    // `currentTime` differs from `lastUpdateTime`.
-
-    const pricefeedLatestPrice = await pricefeed.getHistoricalPrice(latestTime);
 
     return {
       pricefeedVolatility: volData.volatility,
       pricefeedLatestPrice,
       min: volData.min,
-      max: volData.max
+      max: volData.max,
     };
   }
 
@@ -394,11 +403,11 @@ class SyntheticPegMonitor {
     return {
       min: min,
       max: max,
-      volatility: this._calculateDeviationError(max, min).mul(this.toBN(volatilityDirection))
+      volatility: this._calculateDeviationError(max, min).mul(this.toBN(volatilityDirection)),
     };
   }
 }
 
 module.exports = {
-  SyntheticPegMonitor
+  SyntheticPegMonitor,
 };

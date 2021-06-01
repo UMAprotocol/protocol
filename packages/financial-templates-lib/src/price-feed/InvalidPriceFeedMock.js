@@ -36,5 +36,5 @@ class InvalidPriceFeedMock extends PriceFeedInterface {
 }
 
 module.exports = {
-  InvalidPriceFeedMock
+  InvalidPriceFeedMock,
 };

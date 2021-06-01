@@ -15,7 +15,7 @@ function printBytecodeInfo(path) {
   console.log("This leaves a total of", remainingSize, "bytes within the EIP170 limit.");
 }
 
-module.exports = async function(callback) {
+module.exports = async function (callback) {
   if (!argv.contract) {
     console.log("Please enter the contract name as a parameter as `--contract <name>`.");
     callback();

@@ -82,7 +82,7 @@ class OptimisticOracleEventClient {
     // Define a config to bound the queries by.
     const blockSearchConfig = {
       fromBlock: this.firstBlockToSearch,
-      toBlock: lastBlockToSearch
+      toBlock: lastBlockToSearch,
     };
 
     // Look for events on chain from the previous seen block number to the current block number.
@@ -91,13 +91,13 @@ class OptimisticOracleEventClient {
       requestPriceEventsObj,
       proposePriceEventsObj,
       disputePriceEventsObj,
-      settlementEventsObj
+      settlementEventsObj,
     ] = await Promise.all([
       this.optimisticOracleContract.methods.getCurrentTime().call(),
       this.optimisticOracleContract.getPastEvents("RequestPrice", blockSearchConfig),
       this.optimisticOracleContract.getPastEvents("ProposePrice", blockSearchConfig),
       this.optimisticOracleContract.getPastEvents("DisputePrice", blockSearchConfig),
-      this.optimisticOracleContract.getPastEvents("Settle", blockSearchConfig)
+      this.optimisticOracleContract.getPastEvents("Settle", blockSearchConfig),
     ]);
     // Set the current contract time as the last update timestamp from the contract.
     this.lastUpdateTimestamp = currentTime;
@@ -114,7 +114,7 @@ class OptimisticOracleEventClient {
         ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
         currency: event.returnValues.currency,
         reward: event.returnValues.reward,
-        finalFee: event.returnValues.finalFee
+        finalFee: event.returnValues.finalFee,
       });
     }
 
@@ -130,12 +130,20 @@ class OptimisticOracleEventClient {
         ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
         proposedPrice: event.returnValues.proposedPrice,
         expirationTimestamp: event.returnValues.expirationTimestamp,
-        currency: event.returnValues.currency
+        currency: event.returnValues.currency,
       });
     }
 
     // DisputePrice events.
     for (let event of disputePriceEventsObj) {
+      // The OptimisticOracle contract should ideally emit `currency` as part of this event, but alternatively we can
+      // query the currency address on-chain.
+      const requestData = await this._getRequestData(
+        event.returnValues.requester,
+        event.returnValues.identifier,
+        event.returnValues.timestamp,
+        event.returnValues.ancillaryData
+      );
       this.disputePriceEvents.push({
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
@@ -145,12 +153,20 @@ class OptimisticOracleEventClient {
         identifier: this.hexToUtf8(event.returnValues.identifier),
         timestamp: event.returnValues.timestamp,
         ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
-        proposedPrice: event.returnValues.proposedPrice
+        proposedPrice: event.returnValues.proposedPrice,
+        currency: requestData.currency,
       });
     }
 
     // Settlement events.
     for (let event of settlementEventsObj) {
+      // See explanation above in disputeEventsObj loop.
+      const requestData = await this._getRequestData(
+        event.returnValues.requester,
+        event.returnValues.identifier,
+        event.returnValues.timestamp,
+        event.returnValues.ancillaryData
+      );
       this.settlementEvents.push({
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
@@ -161,7 +177,8 @@ class OptimisticOracleEventClient {
         timestamp: event.returnValues.timestamp,
         ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
         price: event.returnValues.price,
-        payout: event.returnValues.payout
+        payout: event.returnValues.payout,
+        currency: requestData.currency,
       });
     }
 
@@ -171,11 +188,17 @@ class OptimisticOracleEventClient {
     this.logger.debug({
       at: "OptimisticOracleEventClient",
       message: "Optimistic Oracle event state updated",
-      lastUpdateTimestamp: this.lastUpdateTimestamp
+      lastUpdateTimestamp: this.lastUpdateTimestamp,
     });
+  }
+
+  async _getRequestData(requester, identifier, timestamp, ancillaryData) {
+    return await this.optimisticOracleContract.methods
+      .getRequest(requester, identifier, timestamp, ancillaryData || "0x")
+      .call();
   }
 }
 
 module.exports = {
-  OptimisticOracleEventClient
+  OptimisticOracleEventClient,
 };

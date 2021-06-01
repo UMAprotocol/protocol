@@ -8,6 +8,7 @@ const { SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
 
 // JS libs
 const { Disputer } = require("./src/disputer");
+const { ProxyTransactionWrapper } = require("./src/proxyTransactionWrapper");
 const {
   multicallAddressMap,
   FinancialContractClient,
@@ -17,11 +18,12 @@ const {
   delay,
   waitForLogger,
   createReferencePriceFeedForFinancialContract,
-  setAllowance
+  setAllowance,
+  DSProxyManager,
 } = require("@uma/financial-templates-lib");
 
 // Truffle contracts.
-const { getAbi, findContractVersion } = require("@uma/core");
+const { getAbi, findContractVersion, getAddress } = require("@uma/core");
 const { getWeb3, PublicNetworks } = require("@uma/common");
 
 /**
@@ -30,9 +32,13 @@ const { getWeb3, PublicNetworks } = require("@uma/common");
  * @param {String} address Contract address of the Financial Contract.
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
+ * @param {Number} errorRetries The number of times the execution loop will re-try before throwing if an error occurs.
+ * @param {Number} errorRetriesTimeout The amount of milliseconds to wait between re-try iterations on failed loops.
  * @param {Object} priceFeedConfig Configuration to construct the price feed object.
  * @param {Object} [disputerConfig] Configuration to construct the disputer.
  * @param {String} [disputerOverridePrice] Optional String representing a Wei number to override the disputer price feed.
+ * @param {Object} [proxyTransactionWrapperConfig] Configuration to construct the proxy transaction wrapper to enable DSProxy
+ *     disputes. This facilitates atomic swap, and disputes transactions against a reserve currency.
  * @return None or throws an Error.
  */
 async function run({
@@ -44,7 +50,8 @@ async function run({
   errorRetriesTimeout,
   priceFeedConfig,
   disputerConfig,
-  disputerOverridePrice
+  disputerOverridePrice,
+  proxyTransactionWrapperConfig,
 }) {
   try {
     const getTime = () => Math.round(new Date().getTime() / 1000);
@@ -60,14 +67,14 @@ async function run({
       errorRetriesTimeout,
       priceFeedConfig,
       disputerConfig,
-      disputerOverridePrice
+      disputerOverridePrice,
     });
 
     // Load unlocked web3 accounts and get the networkId.
     const [detectedContract, accounts, networkId] = await Promise.all([
       findContractVersion(financialContractAddress, web3),
       web3.eth.getAccounts(),
-      web3.eth.net.getId()
+      web3.eth.net.getId(),
     ]);
 
     const networkName = PublicNetworks[Number(networkId)] ? PublicNetworks[Number(networkId)].name : null;
@@ -80,7 +87,7 @@ async function run({
     // Check that the version and type is supported. Note if either is null this check will also catch it.
     if (
       SUPPORTED_CONTRACT_VERSIONS.filter(
-        vo => vo.contractType == disputerConfig.contractType && vo.contractVersion == disputerConfig.contractVersion
+        (vo) => vo.contractType == disputerConfig.contractType && vo.contractVersion == disputerConfig.contractVersion
       ).length == 0
     )
       throw new Error(
@@ -100,7 +107,7 @@ async function run({
     // Generate Financial Contract properties to inform bot of important on-chain state values that we only want to query once.
     const [collateralTokenAddress, syntheticTokenAddress] = await Promise.all([
       financialContract.methods.collateralCurrency().call(),
-      financialContract.methods.tokenCurrency().call()
+      financialContract.methods.tokenCurrency().call(),
     ]);
 
     const collateralToken = new web3.eth.Contract(getAbi("ExpandedERC20"), collateralTokenAddress);
@@ -108,7 +115,7 @@ async function run({
     const [priceIdentifier, collateralDecimals, syntheticDecimals] = await Promise.all([
       financialContract.methods.priceIdentifier().call(),
       collateralToken.methods.decimals().call(),
-      syntheticToken.methods.decimals().call()
+      syntheticToken.methods.decimals().call(),
     ]);
 
     const priceFeed = await createReferencePriceFeedForFinancialContract(
@@ -126,7 +133,7 @@ async function run({
 
     // Generate Financial Contract properties to inform bot of important on-chain state values that we only want to query once.
     const financialContractProps = {
-      priceIdentifier: priceIdentifier
+      priceIdentifier: priceIdentifier,
     };
 
     // Client and dispute bot.
@@ -145,14 +152,42 @@ async function run({
     const gasEstimator = new GasEstimator(logger);
     await gasEstimator.update();
 
+    let dsProxyManager;
+    if (proxyTransactionWrapperConfig?.useDsProxyToDispute) {
+      dsProxyManager = new DSProxyManager({
+        logger,
+        web3,
+        gasEstimator,
+        account: accounts[0],
+        dsProxyFactoryAddress:
+          proxyTransactionWrapperConfig?.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
+        dsProxyFactoryAbi: getAbi("DSProxyFactory"),
+        dsProxyAbi: getAbi("DSProxy"),
+        availableAccounts: proxyTransactionWrapperConfig.availableAccounts || 1,
+      });
+
+      // Load in an existing DSProxy for the account EOA if one already exists or create a new one for the user.
+      await dsProxyManager.initializeDSProxy();
+    }
+
+    const proxyTransactionWrapper = new ProxyTransactionWrapper({
+      web3,
+      financialContract,
+      gasEstimator,
+      account: accounts[0],
+      dsProxyManager,
+      proxyTransactionWrapperConfig,
+    });
+
     const disputer = new Disputer({
       logger,
       financialContractClient,
+      proxyTransactionWrapper,
       gasEstimator,
       priceFeed,
       account: accounts[0],
       financialContractProps,
-      disputerConfig
+      disputerConfig,
     });
 
     logger.debug({
@@ -162,26 +197,26 @@ async function run({
       syntheticDecimals: Number(syntheticDecimals),
       priceFeedDecimals: Number(priceFeed.getPriceFeedDecimals()),
       priceFeedConfig,
-      disputerConfig
+      disputerConfig,
     });
 
-    // The Financial Contract requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.
-    // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-    const collateralApproval = await setAllowance(
-      web3,
-      gasEstimator,
-      accounts[0],
-      financialContractAddress,
-      collateralTokenAddress
-    );
-    if (collateralApproval) {
-      logger.info({
-        at: "Disputer#index",
-        message: "Approved Financial Contract to transfer unlimited collateral tokens 💰",
-        collateralApprovalTx: collateralApproval.tx.transactionHash
-      });
+    if (proxyTransactionWrapperConfig == {} || !proxyTransactionWrapperConfig?.useDsProxyToDispute) {
+      // The Financial Contract requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.
+      // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
+      const collateralApproval = await setAllowance(
+        web3,
+        gasEstimator,
+        accounts[0],
+        financialContractAddress,
+        collateralTokenAddress
+      );
+      if (collateralApproval)
+        logger.info({
+          at: "Disputer#index",
+          message: "Approved Financial Contract to transfer unlimited collateral tokens 💰",
+          collateralApprovalTx: collateralApproval.tx.transactionHash,
+        });
     }
-
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
     for (;;) {
       await retry(
@@ -194,20 +229,20 @@ async function run({
           retries: errorRetries,
           minTimeout: errorRetriesTimeout * 1000,
           randomize: false,
-          onRetry: error => {
+          onRetry: (error) => {
             logger.debug({
               at: "Disputer#index",
               message: "An error was thrown in the execution loop - retrying",
-              error: typeof error === "string" ? new Error(error) : error
+              error: typeof error === "string" ? new Error(error) : error,
             });
-          }
+          },
         }
       );
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (pollingDelay === 0) {
         logger.debug({
           at: "Disputer#index",
-          message: "End of serverless execution loop - terminating process"
+          message: "End of serverless execution loop - terminating process",
         });
         await waitForLogger(logger);
         await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
@@ -216,7 +251,7 @@ async function run({
       logger.debug({
         at: "Disputer#index",
         message: "End of execution loop - waiting polling delay",
-        pollingDelay: `${pollingDelay} (s)`
+        pollingDelay: `${pollingDelay} (s)`,
       });
       await delay(Number(pollingDelay));
     }
@@ -259,7 +294,19 @@ async function Poll(callback) {
       disputerConfig: process.env.DISPUTER_CONFIG ? JSON.parse(process.env.DISPUTER_CONFIG) : null,
       // If there is a DISPUTER_OVERRIDE_PRICE environment variable then the disputer will disregard the price from the
       // price feed and preform disputes at this override price. Use with caution as wrong input could cause invalid disputes.
-      disputerOverridePrice: process.env.DISPUTER_OVERRIDE_PRICE
+      disputerOverridePrice: process.env.DISPUTER_OVERRIDE_PRICE,
+      // If there is a dsproxy config, the bot can be configured to send transactions via a smart contract wallet (DSProxy).
+      // This enables the bot to preform swap, dispute, enabling a single reserve currency.
+      // Note that the DSProxy will be deployed on the first run of the bot. Subsequent runs will re-use the proxy. example:
+      // { "useDsProxyToDispute": "true", If enabled, the bot will send disputes via a DSProxy.
+      //  "dsProxyFactoryAddress": "0x123..." -> Will default to an UMA deployed version if non provided.
+      // "disputerReserveCurrencyAddress": "0x123..." -> currency DSProxy will trade from when disputing.
+      // "uniswapRouterAddress": "0x123..." -> uniswap router address to enable reserve trading. Defaults to mainnet router.
+      // "maxReserverTokenSpent": "10000000000" -> max amount to spend in reserve currency. Scaled by reserve currency
+      //      decimals. defaults to MAX_UINT (no limit).
+      // "availableAccounts": "1"} -> the number of EOAs the bot should use when performing liquidations. This only works
+      // if you have configured your DSProxy with a DSGuard with permissions on your other EOAs unlocked from your account.
+      proxyTransactionWrapperConfig: process.env.DSPROXY_CONFIG ? JSON.parse(process.env.DSPROXY_CONFIG) : {},
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
@@ -267,7 +314,7 @@ async function Poll(callback) {
     Logger.error({
       at: "Disputer#index",
       message: "Disputer execution error🚨",
-      error: typeof error === "string" ? new Error(error) : error
+      error: typeof error === "string" ? new Error(error) : error,
     });
     await waitForLogger(Logger);
     callback(error);

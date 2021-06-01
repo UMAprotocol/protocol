@@ -31,6 +31,6 @@ module.exports = (host = "https://api.coingecko.com") => {
 
   return {
     call,
-    getHistoricContractPrices
+    getHistoricContractPrices,
   };
 };

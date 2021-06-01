@@ -1,4 +1,4 @@
-const networkUtils = require("./PublicNetworks");
+const { PublicNetworks: networkUtils } = require("./PublicNetworks");
 
 const BigNumber = require("bignumber.js");
 const moment = require("moment");
@@ -13,21 +13,13 @@ const { formatFixed, parseFixed } = require("@ethersproject/bignumber");
 BigNumber.set({ ROUNDING_MODE: 2, RANGE: 500, EXPONENTIAL_AT: 500 });
 
 // Given a timestamp in seconds, returns the date in the format: "MM/DD/YYYY"
-const formatDateShort = timestampInSeconds => {
+const formatDateShort = (timestampInSeconds) => {
   const date = moment.unix(parseInt(Number(timestampInSeconds)));
   return date.format("MM/DD/YYYY");
 };
 
 const formatDate = (timestampInSeconds, web3) => {
-  return new Date(
-    parseInt(
-      web3.utils
-        .toBN(timestampInSeconds)
-        .muln(1000)
-        .toString(),
-      10
-    )
-  ).toString();
+  return new Date(parseInt(web3.utils.toBN(timestampInSeconds).muln(1000).toString(), 10)).toString();
 };
 
 const formatHours = (seconds, decimals = 2) => {
@@ -59,13 +51,9 @@ const formatWithMaxDecimals = (num, decimalPlaces, minPrecision, roundUp, showSi
   // 1 then truncate to `decimalPlaces` number of decimal places. EG 999.999 -> 999.99 with decimalPlaces=2 If the number
   // is less than 1 then truncate to minPrecision precision. EG: 0.0022183471 -> 0.002218 with minPrecision=4
   if (fullPrecisionFloat.abs().gte(BigNumber(1))) {
-    fixedPrecisionFloat = BigNumber(fullPrecisionFloat)
-      .toFixed(decimalPlaces)
-      .toString();
+    fixedPrecisionFloat = BigNumber(fullPrecisionFloat).toFixed(decimalPlaces).toString();
   } else {
-    fixedPrecisionFloat = BigNumber(fullPrecisionFloat)
-      .toPrecision(minPrecision)
-      .toString();
+    fixedPrecisionFloat = BigNumber(fullPrecisionFloat).toPrecision(minPrecision).toString();
   }
   // This puts commas in the thousands places, but only before the decimal point.
   const fixedPrecisionFloatParts = fixedPrecisionFloat.split(".");
@@ -74,7 +62,7 @@ const formatWithMaxDecimals = (num, decimalPlaces, minPrecision, roundUp, showSi
 };
 
 const createFormatFunction = (web3, numDisplayedDecimals, minDisplayedPrecision, showSign = false, decimals = 18) => {
-  return valInWei =>
+  return (valInWei) =>
     formatWithMaxDecimals(
       formatWei(ConvertDecimals(decimals, 18, web3)(valInWei), web3),
       numDisplayedDecimals,
@@ -138,7 +126,7 @@ const ConvertDecimals = (fromDecimals, toDecimals, web3) => {
   assert(web3, "requires web3 instance");
   // amount: string, BN, number - integer amount in fromDecimals smallest unit that want to convert toDecimals
   // returns: BN with toDecimals in smallest unit
-  return amount => {
+  return (amount) => {
     amount = web3.utils.toBN(amount);
     if (amount.isZero()) return amount;
     const diff = fromDecimals - toDecimals;
@@ -161,5 +149,5 @@ module.exports = {
   addSign,
   formatFixed,
   parseFixed,
-  ConvertDecimals
+  ConvertDecimals,
 };

@@ -13,7 +13,7 @@ const strikePrice = toBN(toWei("400"));
 const priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
 const collateralizationRatio = toBN(toWei("1")).addn(1);
 
-contract("CoveredCallFinancialProductLibrary", function() {
+contract("CoveredCallFinancialProductLibrary", function () {
   let coveredCallFPL;
   let expiringMultiParty;
   let timer;
@@ -33,7 +33,7 @@ contract("CoveredCallFinancialProductLibrary", function() {
     );
 
     await coveredCallFPL.setFinancialProductStrike(expiringMultiParty.address, {
-      rawValue: strikePrice.toString()
+      rawValue: strikePrice.toString(),
     });
   });
   it("Strike correctly set", async () => {
@@ -47,7 +47,7 @@ contract("CoveredCallFinancialProductLibrary", function() {
       assert(
         await didContractThrow(
           coveredCallFPL.setFinancialProductStrike(expiringMultiParty.address, {
-            rawValue: strikePrice.toString()
+            rawValue: strikePrice.toString(),
           })
         )
       );
@@ -56,14 +56,14 @@ contract("CoveredCallFinancialProductLibrary", function() {
       assert(
         await didContractThrow(
           coveredCallFPL.setFinancialProductStrike(ZERO_ADDRESS, {
-            rawValue: strikePrice.toString()
+            rawValue: strikePrice.toString(),
           })
         )
       );
       assert(
         await didContractThrow(
           coveredCallFPL.setFinancialProductStrike(timer.address, {
-            rawValue: strikePrice.toString()
+            rawValue: strikePrice.toString(),
           })
         )
       );

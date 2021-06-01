@@ -10,7 +10,7 @@ const {
   // how many tokens to mint
   tokens = "100",
   // how much collateral to back the tokens
-  collateral = "100000"
+  collateral = "100000",
 } = argv;
 
 // This is an example of creating a position in an EMP, the only function which needs to be tagged with your address
@@ -18,7 +18,7 @@ function createData(empAddress, collateralToSend, tokensToCreate) {
   const emp = new ethers.utils.Interface(getAbi("ExpiringMultiParty"));
   return emp.encodeFunctionData("create", [
     { rawValue: ethers.utils.parseUnits(collateralToSend) },
-    { rawValue: ethers.utils.parseUnits(tokensToCreate) }
+    { rawValue: ethers.utils.parseUnits(tokensToCreate) },
   ]);
 }
 
@@ -33,7 +33,7 @@ function makeTransaction(data) {
   return {
     from: tag,
     to: emp,
-    data
+    data,
   };
 }
 
@@ -43,7 +43,7 @@ function runExample() {
     emp,
     tag,
     tokens,
-    collateral
+    collateral,
   });
   const data = createData(emp, collateral, tokens);
   const taggedData = tagData(data, tag);

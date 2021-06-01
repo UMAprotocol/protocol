@@ -53,7 +53,7 @@ function Prices(prices = []) {
   return {
     lookup,
     prices,
-    closest
+    closest,
   };
 }
 
@@ -132,7 +132,7 @@ function AttributionLookback({ scale = 10n ** 18n } = {}) {
 
         return {
           attributions,
-          amountRemaining
+          amountRemaining,
         };
       },
       { attributions: {}, amountRemaining: BigInt(amount) }
@@ -165,7 +165,7 @@ function AttributionLookback({ scale = 10n ** 18n } = {}) {
     getAttributionPercents,
     getAttributions,
     forEach,
-    getTable
+    getTable,
   };
 }
 
@@ -259,7 +259,7 @@ function SharedAttributions({ scale = 10n ** 18n } = {}) {
     snapshot,
     addresses,
     forEach,
-    getAttribution
+    getAttribution,
   };
 }
 
@@ -343,7 +343,7 @@ function Balances({ allowNegative = false } = {}) {
     getTotal,
     getPercent,
     forEach,
-    balances
+    balances,
   };
 }
 
@@ -371,12 +371,12 @@ function History() {
   }
   // get exact block number
   function get(blockNumber) {
-    const result = history.find(x => x.blockNumber == blockNumber);
+    const result = history.find((x) => x.blockNumber == blockNumber);
     assert(result, "Not found in history: " + blockNumber);
     return result;
   }
   function has(blockNumber) {
-    return !!history.find(x => x.blockNumber == blockNumber);
+    return !!history.find((x) => x.blockNumber == blockNumber);
   }
   function length() {
     return history.length;
@@ -387,7 +387,7 @@ function History() {
     insert,
     lookup,
     history,
-    length
+    length,
   };
 }
 
@@ -396,5 +396,5 @@ module.exports = {
   AttributionLookback,
   History,
   Balances,
-  Prices
+  Prices,
 };

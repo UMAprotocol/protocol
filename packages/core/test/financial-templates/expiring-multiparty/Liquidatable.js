@@ -23,7 +23,7 @@ const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const FinancialProductLibraryTest = artifacts.require("FinancialProductLibraryTest");
 const Timer = artifacts.require("Timer");
 
-contract("Liquidatable", function(accounts) {
+contract("Liquidatable", function (accounts) {
   // Roles
   const contractDeployer = accounts[0];
   const sponsor = accounts[1];
@@ -51,20 +51,14 @@ contract("Liquidatable", function(accounts) {
   const sponsorDisputeReward = sponsorDisputeRewardPercentage.mul(settlementTRV).div(toBN(toWei("1")));
   const disputerDisputeRewardPercentage = toBN(toWei("0.05"));
   const disputerDisputeReward = disputerDisputeRewardPercentage.mul(settlementTRV).div(toBN(toWei("1")));
-  const liquidationLiveness = toBN(60)
-    .muln(60)
-    .muln(3); // In seconds
+  const liquidationLiveness = toBN(60).muln(60).muln(3); // In seconds
   const startTime = "15798990420";
   const minSponsorTokens = toBN(toWei("1"));
 
   // Synthetic Token Position contract params
   const positionLiveness = toBN(60 * 60).mul(liquidationLiveness); // Add this to liquidation liveness so we can create more positions post-liquidation
-  const expirationTimestamp = toBN(startTime)
-    .add(positionLiveness)
-    .toString();
-  const withdrawalLiveness = toBN(60)
-    .muln(60)
-    .muln(1);
+  const expirationTimestamp = toBN(startTime).add(positionLiveness).toString();
+  const withdrawalLiveness = toBN(60).muln(60).muln(1);
   const pendingWithdrawalAmount = "0"; // Amount to liquidate can be less than amount of collateral iff there is a pending withdrawal
   const amountOfCollateralToLiquidate = amountOfCollateral.add(toBN(pendingWithdrawalAmount));
   const unreachableDeadline = MAX_UINT_VAL;
@@ -91,7 +85,7 @@ contract("Liquidatable", function(accounts) {
     falseLiquidationId: 123456789,
     tokensOutstanding: amountOfSynthetic,
     lockedCollateral: amountOfCollateral,
-    liquidatedCollateral: amountOfCollateralToLiquidate
+    liquidatedCollateral: amountOfCollateralToLiquidate,
   };
 
   beforeEach(async () => {
@@ -102,25 +96,25 @@ contract("Liquidatable", function(accounts) {
     // Create Collateral and Synthetic ERC20's
     collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractDeployer });
     syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, {
-      from: contractDeployer
+      from: contractDeployer,
     });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
     priceFeedIdentifier = padRight(utf8ToHex("TEST_IDENTIFIER"), 64);
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, {
-      from: contractDeployer
+      from: contractDeployer,
     });
 
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
     finder = await Finder.deployed();
     mockOracle = await MockOracle.new(finder.address, timer.address, {
-      from: contractDeployer
+      from: contractDeployer,
     });
 
     const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
     await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address, {
-      from: contractDeployer
+      from: contractDeployer,
     });
 
     liquidatableParameters = {
@@ -137,7 +131,7 @@ contract("Liquidatable", function(accounts) {
       disputerDisputeRewardPercentage: { rawValue: disputerDisputeRewardPercentage.toString() },
       minSponsorTokens: { rawValue: minSponsorTokens.toString() },
       timerAddress: timer.address,
-      financialProductLibraryAddress: zeroAddress
+      financialProductLibraryAddress: zeroAddress,
     };
 
     // Deploy liquidation contract and set global params
@@ -162,7 +156,7 @@ contract("Liquidatable", function(accounts) {
 
     // Set allowance for contract to pull dispute bond and final fee from disputer
     await collateralToken.increaseAllowance(liquidationContract.address, disputeBond.add(finalFeeAmount), {
-      from: disputer
+      from: disputer,
     });
 
     // Set allowance for contract to pull the final fee from the liquidator
@@ -389,7 +383,7 @@ contract("Liquidatable", function(accounts) {
         { from: liquidator }
       );
       const liquidationTime = await liquidationContract.getCurrentTime();
-      truffleAssert.eventEmitted(createLiquidationResult, "LiquidationCreated", ev => {
+      truffleAssert.eventEmitted(createLiquidationResult, "LiquidationCreated", (ev) => {
         return (
           ev.sponsor == sponsor &&
           ev.liquidator == liquidator &&
@@ -400,7 +394,7 @@ contract("Liquidatable", function(accounts) {
           ev.liquidationTime == liquidationTime.toString()
         );
       });
-      truffleAssert.eventEmitted(createLiquidationResult, "EndedSponsorPosition", ev => {
+      truffleAssert.eventEmitted(createLiquidationResult, "EndedSponsorPosition", (ev) => {
         return ev.sponsor == sponsor;
       });
     });
@@ -448,12 +442,7 @@ contract("Liquidatable", function(accounts) {
         unreachableDeadline,
         { from: liquidator }
       );
-      assert.equal(
-        liquidationId.toString(),
-        toBN(liquidationParams.liquidationId)
-          .addn(1)
-          .toString()
-      );
+      assert.equal(liquidationId.toString(), toBN(liquidationParams.liquidationId).addn(1).toString());
     });
     it("Partial liquidation", async () => {
       // Request a withdrawal.
@@ -558,9 +547,7 @@ contract("Liquidatable", function(accounts) {
       await liquidationContract.requestWithdrawal({ rawValue: withdrawalAmount.toString() }, { from: sponsor });
 
       const startingTime = await liquidationContract.getCurrentTime();
-      let expectedTimestamp = toBN(startingTime)
-        .add(withdrawalLiveness)
-        .toString();
+      let expectedTimestamp = toBN(startingTime).add(withdrawalLiveness).toString();
 
       assert.equal(
         expectedTimestamp,
@@ -708,7 +695,7 @@ contract("Liquidatable", function(accounts) {
         assert.equal(newLiquidation.settlementPrice.toString(), "0");
       });
       it("EndedSponsorPosition event was emitted", async () => {
-        truffleAssert.eventEmitted(liquidationResult, "EndedSponsorPosition", ev => {
+        truffleAssert.eventEmitted(liquidationResult, "EndedSponsorPosition", (ev) => {
           return ev.sponsor == sponsor;
         });
       });
@@ -726,11 +713,7 @@ contract("Liquidatable", function(accounts) {
         );
       });
       it("Liquidation already expired", async () => {
-        await liquidationContract.setCurrentTime(
-          toBN(startTime)
-            .add(liquidationLiveness)
-            .toString()
-        );
+        await liquidationContract.setCurrentTime(toBN(startTime).add(liquidationLiveness).toString());
         assert(
           await didContractThrow(
             liquidationContract.dispute(liquidationParams.liquidationId, sponsor, { from: disputer })
@@ -756,9 +739,9 @@ contract("Liquidatable", function(accounts) {
       });
       it("Dispute emits an event", async () => {
         const disputeResult = await liquidationContract.dispute(liquidationParams.liquidationId, sponsor, {
-          from: disputer
+          from: disputer,
         });
-        truffleAssert.eventEmitted(disputeResult, "LiquidationDisputed", ev => {
+        truffleAssert.eventEmitted(disputeResult, "LiquidationDisputed", (ev) => {
           return (
             ev.sponsor == sponsor &&
             ev.liquidator == liquidator &&
@@ -782,7 +765,7 @@ contract("Liquidatable", function(accounts) {
 
         // Returns correct total bond.
         const totalPaid = await liquidationContract.dispute.call(liquidationParams.liquidationId, sponsor, {
-          from: disputer
+          from: disputer,
         });
         assert.equal(totalPaid.toString(), disputeBond.add(finalFeeAmount).toString());
 
@@ -793,9 +776,7 @@ contract("Liquidatable", function(accounts) {
         assert.equal(storeAfterDisputeBalance.sub(storeInitialBalance).toString(), finalFeeAmount);
 
         // Check that the contract only has one final fee refund, not two.
-        const expectedContractBalance = toBN(amountOfCollateral)
-          .add(disputeBond)
-          .add(finalFeeAmount);
+        const expectedContractBalance = toBN(amountOfCollateral).add(disputeBond).add(finalFeeAmount);
         assert.equal(
           (await collateralToken.balanceOf(liquidationContract.address)).toString(),
           expectedContractBalance.toString()
@@ -890,7 +871,7 @@ contract("Liquidatable", function(accounts) {
         await mockOracle.pushPrice(priceFeedIdentifier, liquidationTime, disputePrice);
         const withdrawTxn = await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor);
 
-        truffleAssert.eventEmitted(withdrawTxn, "LiquidationWithdrawn", ev => {
+        truffleAssert.eventEmitted(withdrawTxn, "LiquidationWithdrawn", (ev) => {
           return ev.settlementPrice.toString() === disputePrice;
         });
 
@@ -911,10 +892,10 @@ contract("Liquidatable", function(accounts) {
 
         const withdrawTxn = await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor);
 
-        truffleAssert.eventEmitted(withdrawTxn, "DisputeSettled", ev => {
+        truffleAssert.eventEmitted(withdrawTxn, "DisputeSettled", (ev) => {
           return ev.disputeSucceeded;
         });
-        truffleAssert.eventEmitted(withdrawTxn, "LiquidationWithdrawn", ev => {
+        truffleAssert.eventEmitted(withdrawTxn, "LiquidationWithdrawn", (ev) => {
           return ev.liquidationStatus.toString() === LiquidationStatesEnum.DISPUTE_SUCCEEDED;
         });
       });
@@ -931,10 +912,10 @@ contract("Liquidatable", function(accounts) {
         );
 
         // Events should show that the dispute failed.
-        truffleAssert.eventEmitted(withdrawLiquidationResult, "DisputeSettled", ev => {
+        truffleAssert.eventEmitted(withdrawLiquidationResult, "DisputeSettled", (ev) => {
           return !ev.disputeSucceeded;
         });
-        truffleAssert.eventEmitted(withdrawLiquidationResult, "LiquidationWithdrawn", ev => {
+        truffleAssert.eventEmitted(withdrawLiquidationResult, "LiquidationWithdrawn", (ev) => {
           return ev.liquidationStatus.toString() === LiquidationStatesEnum.DISPUTE_FAILED;
         });
       });
@@ -950,7 +931,7 @@ contract("Liquidatable", function(accounts) {
           sponsor
         );
 
-        truffleAssert.eventEmitted(withdrawLiquidationResult, "DisputeSettled", ev => {
+        truffleAssert.eventEmitted(withdrawLiquidationResult, "DisputeSettled", (ev) => {
           return (
             ev.caller == contractDeployer &&
             ev.sponsor == sponsor &&
@@ -964,7 +945,7 @@ contract("Liquidatable", function(accounts) {
         const expectedPayoutToDisputer = disputeBond.add(disputerDisputeReward).add(finalFeeAmount);
         const expectedPayoutToLiquidator = amountOfSynthetic.sub(disputerDisputeReward).sub(sponsorDisputeReward);
         const expectedPayoutToSponsor = sponsorDisputeReward.add(amountOfCollateral.sub(amountOfSynthetic));
-        truffleAssert.eventEmitted(withdrawLiquidationResult, "LiquidationWithdrawn", ev => {
+        truffleAssert.eventEmitted(withdrawLiquidationResult, "LiquidationWithdrawn", (ev) => {
           return (
             ev.caller === contractDeployer &&
             ev.paidToLiquidator.toString() === expectedPayoutToLiquidator.toString() &&
@@ -987,11 +968,7 @@ contract("Liquidatable", function(accounts) {
           await didContractThrow(liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor))
         );
         // Expire contract
-        await liquidationContract.setCurrentTime(
-          toBN(startTime)
-            .add(liquidationLiveness)
-            .toString()
-        );
+        await liquidationContract.setCurrentTime(toBN(startTime).add(liquidationLiveness).toString());
         assert(
           await didContractThrow(liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor))
         );
@@ -1001,11 +978,7 @@ contract("Liquidatable", function(accounts) {
     describe("Withdraw: Liquidation expires without dispute (but synthetic token has not expired)", () => {
       beforeEach(async () => {
         // Expire contract
-        await liquidationContract.setCurrentTime(
-          toBN(startTime)
-            .add(liquidationLiveness)
-            .toString()
-        );
+        await liquidationContract.setCurrentTime(toBN(startTime).add(liquidationLiveness).toString());
       });
       it("Liquidation does not exist", async () => {
         assert(await didContractThrow(liquidationContract.withdrawLiquidation(liquidationParams.falseUuid, sponsor)));
@@ -1031,7 +1004,7 @@ contract("Liquidatable", function(accounts) {
         assert.equal(liquidation.state.toString(), LiquidationStatesEnum.UNINITIALIZED);
 
         // Event is emitted correctly.
-        truffleAssert.eventEmitted(withdrawTxn, "LiquidationWithdrawn", ev => {
+        truffleAssert.eventEmitted(withdrawTxn, "LiquidationWithdrawn", (ev) => {
           return (
             ev.caller === contractDeployer &&
             ev.paidToLiquidator.toString() === amountOfCollateral.add(finalFeeAmount).toString() &&
@@ -1076,12 +1049,7 @@ contract("Liquidatable", function(accounts) {
           unreachableDeadline,
           { from: liquidator }
         );
-        assert.equal(
-          liquidationId.toString(),
-          toBN(liquidationParams.liquidationId)
-            .addn(1)
-            .toString()
-        );
+        assert.equal(liquidationId.toString(), toBN(liquidationParams.liquidationId).addn(1).toString());
 
         // Cannot withdraw again.
         assert(await didContractThrow(liquidationContract.withdrawLiquidation(liquidationParams.falseUuid, sponsor)));
@@ -1126,11 +1094,7 @@ contract("Liquidatable", function(accounts) {
         });
         it("Withdraw still succeeds even if liquidation has expired", async () => {
           // Expire contract
-          await liquidationContract.setCurrentTime(
-            toBN(startTime)
-              .add(liquidationLiveness)
-              .toString()
-          );
+          await liquidationContract.setCurrentTime(toBN(startTime).add(liquidationLiveness).toString());
           await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor);
         });
         it("Liquidated contact should have no assets remaining after all withdrawals and be deleted", async () => {
@@ -1168,7 +1132,7 @@ contract("Liquidatable", function(accounts) {
 
           // Withdraw liquidation
           const withdrawTxn = await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor);
-          truffleAssert.eventEmitted(withdrawTxn, "LiquidationWithdrawn", ev => {
+          truffleAssert.eventEmitted(withdrawTxn, "LiquidationWithdrawn", (ev) => {
             return (
               ev.paidToLiquidator.toString() === liquidatorAmount &&
               ev.paidToSponsor.toString() === sponsorAmount &&
@@ -1230,11 +1194,7 @@ contract("Liquidatable", function(accounts) {
         });
         it("Withdraw still succeeds even if liquidation has expired", async () => {
           // Expire contract
-          await liquidationContract.setCurrentTime(
-            toBN(startTime)
-              .add(liquidationLiveness)
-              .toString()
-          );
+          await liquidationContract.setCurrentTime(toBN(startTime).add(liquidationLiveness).toString());
           await liquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor);
         });
       });
@@ -1295,7 +1255,7 @@ contract("Liquidatable", function(accounts) {
 
       // Create  Liquidation
       syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, {
-        from: contractDeployer
+        from: contractDeployer,
       });
       liquidatableParameters.tokenAddress = syntheticToken.address;
       const edgeLiquidationContract = await Liquidatable.new(liquidatableParameters, { from: contractDeployer });
@@ -1315,7 +1275,7 @@ contract("Liquidatable", function(accounts) {
       await collateralToken.increaseAllowance(edgeLiquidationContract.address, edgeDisputeBond, { from: disputer });
       // Set allowance for contract to pull synthetic tokens from liquidator
       await edgeSyntheticToken.increaseAllowance(edgeLiquidationContract.address, amountOfSynthetic, {
-        from: liquidator
+        from: liquidator,
       });
       // Create position
       await edgeLiquidationContract.create(
@@ -1373,7 +1333,7 @@ contract("Liquidatable", function(accounts) {
         { from: liquidator }
       );
       const liquidationTime = await liquidationContract.getCurrentTime();
-      truffleAssert.eventEmitted(createLiquidationResult, "LiquidationCreated", ev => {
+      truffleAssert.eventEmitted(createLiquidationResult, "LiquidationCreated", (ev) => {
         return (
           ev.sponsor == sponsor &&
           ev.liquidator == liquidator &&
@@ -1395,7 +1355,7 @@ contract("Liquidatable", function(accounts) {
       );
       // Liquidator should get the full locked collateral.
       const expectedPayment = amountOfCollateral.add(disputeBond);
-      truffleAssert.eventEmitted(withdrawLiquidationResult, "LiquidationWithdrawn", ev => {
+      truffleAssert.eventEmitted(withdrawLiquidationResult, "LiquidationWithdrawn", (ev) => {
         return (
           ev.caller == contractDeployer &&
           ev.paidToLiquidator.toString() == expectedPayment.toString() &&
@@ -1448,11 +1408,7 @@ contract("Liquidatable", function(accounts) {
     beforeEach(async () => {
       // Fast forward time to right before expiry so that you can still create a liquidation.
       let positionExpiry = await liquidationContract.expirationTimestamp();
-      await liquidationContract.setCurrentTime(
-        toBN(positionExpiry)
-          .sub(toBN(1))
-          .toString()
-      );
+      await liquidationContract.setCurrentTime(toBN(positionExpiry).sub(toBN(1)).toString());
       // Create a new position.
       await liquidationContract.create(
         { rawValue: amountOfCollateral.toString() },
@@ -1476,7 +1432,7 @@ contract("Liquidatable", function(accounts) {
     });
     it("Can expire the underlying position", async () => {
       const expireResult = await liquidationContract.expire({ from: rando });
-      truffleAssert.eventEmitted(expireResult, "ContractExpired", ev => {
+      truffleAssert.eventEmitted(expireResult, "ContractExpired", (ev) => {
         return ev.caller == rando;
       });
     });
@@ -1532,7 +1488,7 @@ contract("Liquidatable", function(accounts) {
       USDCLiquidatableParameters.tokenAddress = syntheticToken.address;
       USDCLiquidatableParameters.minSponsorTokens = { rawValue: minSponsorTokens.div(USDCScalingFactor).toString() };
       USDCLiquidationContract = await Liquidatable.new(USDCLiquidatableParameters, {
-        from: contractDeployer
+        from: contractDeployer,
       });
 
       await syntheticToken.addMinter(USDCLiquidationContract.address);
@@ -1541,10 +1497,10 @@ contract("Liquidatable", function(accounts) {
       // Approve the contract to spend the tokens on behalf of the sponsor & liquidator. Simplify this process in a loop
       for (let i = 1; i < 4; i++) {
         await syntheticToken.approve(USDCLiquidationContract.address, toWei("100000"), {
-          from: accounts[i]
+          from: accounts[i],
         });
         await collateralToken.approve(USDCLiquidationContract.address, toWei("100000"), {
-          from: accounts[i]
+          from: accounts[i],
         });
       }
 
@@ -1646,7 +1602,7 @@ contract("Liquidatable", function(accounts) {
         // Withdraw liquidation
         const withdrawTxn = await USDCLiquidationContract.withdrawLiquidation(liquidationParams.liquidationId, sponsor);
 
-        truffleAssert.eventEmitted(withdrawTxn, "LiquidationWithdrawn", ev => {
+        truffleAssert.eventEmitted(withdrawTxn, "LiquidationWithdrawn", (ev) => {
           return (
             ev.paidToLiquidator.toString() === liquidatorAmount.toString() &&
             ev.paidToSponsor.toString() === sponsorAmount.toString() &&
@@ -1706,7 +1662,7 @@ contract("Liquidatable", function(accounts) {
   describe("Custom Financial Contract Library", () => {
     // All tests up until now have not used a custom financial contract library to preform any kind of transformations
     // against the contract collateralization ratio. In this set of tests we will verify that a financial contract
-    // library can apply transformation logic to a contracts collateral requirement & price identifie when preforming
+    // library can apply transformation logic to a contracts collateral requirement & price identifie when performing
     // liquidations/disputed.
 
     let fclLiquidationContract;
@@ -1724,7 +1680,7 @@ contract("Liquidatable", function(accounts) {
         let fclLiquidatableParameters = liquidatableParameters;
         fclLiquidatableParameters.financialProductLibraryAddress = financialProductLibraryTest.address;
         fclLiquidationContract = await Liquidatable.new(fclLiquidatableParameters, {
-          from: contractDeployer
+          from: contractDeployer,
         });
 
         await syntheticToken.addMinter(fclLiquidationContract.address);
@@ -1733,10 +1689,10 @@ contract("Liquidatable", function(accounts) {
         // Approve the contract to spend the tokens on behalf of the sponsor & liquidator. Simplify this process in a loop.
         for (let i = 1; i < 4; i++) {
           await syntheticToken.approve(fclLiquidationContract.address, toWei("100000"), {
-            from: accounts[i]
+            from: accounts[i],
           });
           await collateralToken.approve(fclLiquidationContract.address, toWei("100000"), {
-            from: accounts[i]
+            from: accounts[i],
           });
         }
 
@@ -1803,16 +1759,16 @@ contract("Liquidatable", function(accounts) {
             liquidationParams.liquidationId,
             sponsor,
             {
-              from: liquidator
+              from: liquidator,
             }
           );
 
           // Verify the dispute succeeded from the event.
-          truffleAssert.eventEmitted(withdrawResult, "DisputeSettled", ev => {
+          truffleAssert.eventEmitted(withdrawResult, "DisputeSettled", (ev) => {
             return ev.disputeSucceeded; // disputeSuccess should be true.
           });
 
-          truffleAssert.eventEmitted(withdrawResult, "LiquidationWithdrawn", ev => {
+          truffleAssert.eventEmitted(withdrawResult, "LiquidationWithdrawn", (ev) => {
             return (
               ev.liquidationStatus.toString() == LiquidationStatesEnum.DISPUTE_SUCCEEDED && // liquidationStatus should be DISPUTE_SUCCEEDED.
               ev.settlementPrice.toString() == toBN(toWei("0.62")).toString() // Correct settlement price
@@ -1831,16 +1787,16 @@ contract("Liquidatable", function(accounts) {
             liquidationParams.liquidationId,
             sponsor,
             {
-              from: liquidator
+              from: liquidator,
             }
           );
 
           // Verify the dispute failed from the event.
-          truffleAssert.eventEmitted(withdrawResult, "DisputeSettled", ev => {
+          truffleAssert.eventEmitted(withdrawResult, "DisputeSettled", (ev) => {
             return !ev.disputeSucceeded; // disputeSuccess should be false.
           });
 
-          truffleAssert.eventEmitted(withdrawResult, "LiquidationWithdrawn", ev => {
+          truffleAssert.eventEmitted(withdrawResult, "LiquidationWithdrawn", (ev) => {
             return (
               ev.liquidationStatus.toString() == LiquidationStatesEnum.DISPUTE_FAILED && // liquidationStatus should be DISPUTE_FAILED.
               ev.settlementPrice.toString() == toBN(toWei("0.63")).toString() // Correct settlement price
@@ -1875,7 +1831,7 @@ contract("Liquidatable", function(accounts) {
           let brokenFclLiquidatableParameters = liquidatableParameters;
           brokenFclLiquidatableParameters.financialProductLibraryAddress = mockOracle.address; // set to something that is not at all a financial contract library to test
           fclLiquidationContract = await Liquidatable.new(brokenFclLiquidatableParameters, {
-            from: contractDeployer
+            from: contractDeployer,
           });
 
           assert.equal(
@@ -1889,7 +1845,7 @@ contract("Liquidatable", function(accounts) {
           let brokenFclLiquidatableParameters = liquidatableParameters;
           brokenFclLiquidatableParameters.financialProductLibraryAddress = rando; // set to EOA.
           fclLiquidationContract = await Liquidatable.new(brokenFclLiquidatableParameters, {
-            from: contractDeployer
+            from: contractDeployer,
           });
 
           assert.equal(
@@ -1912,14 +1868,14 @@ contract("Liquidatable", function(accounts) {
         // Register the transformed price identifier with the identifier whitelist.
         identifierWhitelist = await IdentifierWhitelist.deployed();
         await identifierWhitelist.addSupportedIdentifier(transformedPriceFeedIdentifier, {
-          from: contractDeployer
+          from: contractDeployer,
         });
 
         // Create a custom liquidatable object, containing the financialProductLibraryAddress.
         let fclLiquidatableParameters = liquidatableParameters;
         fclLiquidatableParameters.financialProductLibraryAddress = financialProductLibraryTest.address;
         fclLiquidationContract = await Liquidatable.new(fclLiquidatableParameters, {
-          from: contractDeployer
+          from: contractDeployer,
         });
 
         await syntheticToken.addMinter(fclLiquidationContract.address);
@@ -1928,10 +1884,10 @@ contract("Liquidatable", function(accounts) {
         // Approve the contract to spend the tokens on behalf of the sponsor & liquidator. Simplify this process in a loop.
         for (let i = 1; i < 4; i++) {
           await syntheticToken.approve(fclLiquidationContract.address, toWei("100000"), {
-            from: accounts[i]
+            from: accounts[i],
           });
           await collateralToken.approve(fclLiquidationContract.address, toWei("100000"), {
-            from: accounts[i]
+            from: accounts[i],
           });
         }
 
@@ -1978,16 +1934,16 @@ contract("Liquidatable", function(accounts) {
             liquidationParams.liquidationId,
             sponsor,
             {
-              from: liquidator
+              from: liquidator,
             }
           );
 
           // Verify the dispute succeeded from the event.
-          truffleAssert.eventEmitted(withdrawResult, "DisputeSettled", ev => {
+          truffleAssert.eventEmitted(withdrawResult, "DisputeSettled", (ev) => {
             return ev.disputeSucceeded; // disputeSuccess should be true.
           });
 
-          truffleAssert.eventEmitted(withdrawResult, "LiquidationWithdrawn", ev => {
+          truffleAssert.eventEmitted(withdrawResult, "LiquidationWithdrawn", (ev) => {
             return (
               ev.liquidationStatus.toString() == LiquidationStatesEnum.DISPUTE_SUCCEEDED && // liquidationStatus should be DISPUTE_SUCCEEDED.
               ev.settlementPrice.toString() == toBN(toWei("1.24")).toString() // Correct settlement price
@@ -2006,16 +1962,16 @@ contract("Liquidatable", function(accounts) {
             liquidationParams.liquidationId,
             sponsor,
             {
-              from: liquidator
+              from: liquidator,
             }
           );
 
           // Verify the dispute failed from the event.
-          truffleAssert.eventEmitted(withdrawResult, "DisputeSettled", ev => {
+          truffleAssert.eventEmitted(withdrawResult, "DisputeSettled", (ev) => {
             return !ev.disputeSucceeded; // disputeSuccess should be false.
           });
 
-          truffleAssert.eventEmitted(withdrawResult, "LiquidationWithdrawn", ev => {
+          truffleAssert.eventEmitted(withdrawResult, "LiquidationWithdrawn", (ev) => {
             return (
               ev.liquidationStatus.toString() == LiquidationStatesEnum.DISPUTE_FAILED && // liquidationStatus should be DISPUTE_FAILED.
               ev.settlementPrice.toString() == toBN(toWei("1.26")).toString() // Correct settlement price
@@ -2029,7 +1985,7 @@ contract("Liquidatable", function(accounts) {
     beforeEach(async () => {
       // Deploy a new Liquidation contract with no minimum sponsor token size.
       syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, {
-        from: contractDeployer
+        from: contractDeployer,
       });
       liquidatableParameters.tokenAddress = syntheticToken.address;
       liquidatableParameters.minSponsorTokens = { rawValue: "0" };
@@ -2123,11 +2079,7 @@ contract("Liquidatable", function(accounts) {
 
       // First, expire the liquidation
       let startTime = await liquidationContract.getCurrentTime();
-      await liquidationContract.setCurrentTime(
-        toBN(startTime)
-          .add(liquidationLiveness)
-          .toString()
-      );
+      await liquidationContract.setCurrentTime(toBN(startTime).add(liquidationLiveness).toString());
 
       // The liquidator is owed (0.999999999999999999 * 28 = 27.9999...) which gets truncated to 27.
       // The contract should have 29 - 27 = 2 collateral remaining, and the liquidation should be deleted.

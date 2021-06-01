@@ -28,7 +28,7 @@ const { toWei, toBN, fromWei, isAddress } = web3.utils;
 
 const argv = require("minimist")(process.argv.slice(), {
   string: ["pool1Address", "pool2Address", "synth1Address", "synth2Address", "tokenName"],
-  integer: ["fromBlock", "toBlock", "rollNum", "umaPerWeek", "blocksPerSnapshot"]
+  integer: ["fromBlock", "toBlock", "rollNum", "umaPerWeek", "blocksPerSnapshot"],
 });
 
 async function calculateRollBalancerLPProviders(
@@ -82,8 +82,8 @@ async function calculateRollBalancerLPProviders(
   const pool2Info = await _fetchBalancerPoolInfo(pool2Address);
 
   // Extract the addresses of all historic shareholders.
-  const pool1ShareHolders = pool1Info.shares.flatMap(a => a.userAddress.id);
-  const pool2ShareHolders = pool2Info.shares.flatMap(a => a.userAddress.id);
+  const pool1ShareHolders = pool1Info.shares.flatMap((a) => a.userAddress.id);
+  const pool2ShareHolders = pool2Info.shares.flatMap((a) => a.userAddress.id);
   const shareHolders = [...pool1ShareHolders, ...pool2ShareHolders];
   console.log("🏖  Number of historic liquidity providers:", shareHolders.length);
 
@@ -142,7 +142,7 @@ async function _calculatePayoutsBetweenBlocks(
   // create new progress bar to show the status of blocks traversed.
   const progressBar = new cliProgress.SingleBar(
     {
-      format: "[{bar}] {percentage}% | snapshots traversed: {value}/{total}"
+      format: "[{bar}] {percentage}% | snapshots traversed: {value}/{total}",
     },
     cliProgress.Presets.shades_classic
   );
@@ -265,7 +265,7 @@ function _saveShareHolderPayout(
     pool2Address,
     umaPerWeek,
     blocksPerSnapshot,
-    shareHolderPayout
+    shareHolderPayout,
   };
   const savePath = `${path.resolve(
     __dirname

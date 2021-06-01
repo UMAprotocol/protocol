@@ -76,9 +76,9 @@ class UniswapPriceFeed extends PriceFeedInterface {
 
   // This function does not return the same type of price data as getHistoricalPrice. It returns the raw
   // price history from uniswap without a twap. This is by choice, since a twap calculation across the entire
-  // history is 1. complicated and 2. unecessary as this function is only needed for affliate calculations.
+  // history is 1. complicated and 2. unnecessary as this function is only needed for affiliate calculations.
   getHistoricalPricePeriods() {
-    return this.events.map(event => {
+    return this.events.map((event) => {
       return [event.timestamp, this.convertToPriceFeedDecimals(event.price)];
     });
   }
@@ -105,20 +105,19 @@ class UniswapPriceFeed extends PriceFeedInterface {
     if (!this.token0Precision || !this.token1Precision || !this.convertToPriceFeedDecimals) {
       const [token0Address, token1Address] = await Promise.all([
         this.uniswap.methods.token0().call(),
-        this.uniswap.methods.token1().call()
+        this.uniswap.methods.token1().call(),
       ]);
       this.token0 = new this.web3.eth.Contract(this.erc20Abi, token0Address);
       this.token1 = new this.web3.eth.Contract(this.erc20Abi, token1Address);
       const [token0Precision, token1Precision] = await Promise.all([
         this.token0.methods.decimals().call(),
-        this.token1.methods.decimals().call()
+        this.token1.methods.decimals().call(),
       ]);
       this.token0Precision = token0Precision;
       this.token1Precision = token1Precision;
       // `_getPriceFromSyncEvent()` returns prices in the same precision as `token1` unless price is inverted.
-      // Therefore, `convertToPriceFeedDecimals` will convert from `token1Precision`
-      // to the user's desired `priceFeedDecimals`, unless inverted then it will convert from
-      // `token0Precision` to `priceFeedDecimals`.
+      // Therefore, `convertToPriceFeedDecimals` will convert from `token1Precision` to the user's desired
+      // `priceFeedDecimals`, unless inverted then it will convert from `token0Precision` to `priceFeedDecimals`.
       this.convertToPriceFeedDecimals = ConvertDecimals(
         Number(this.invertPrice ? this.token0Precision : this.token1Precision),
         this.priceFeedDecimals,
@@ -126,8 +125,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
       );
     }
 
-    // Approximate the first block from which we'll need price data from based on the
-    // lookback and twap length:
+    // Approximate the first block from which we'll need price data from based on the lookback and twap length:
     const lookbackWindow = this.twapLength + this.historicalLookback;
     const currentTime = await this.getTime();
     const earliestLookbackTime = currentTime - lookbackWindow;
@@ -138,7 +136,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
     let events = []; // Caches sorted events (to keep subsequent event queries as small as possible).
     let fromBlock = Infinity; // Arbitrary initial value > 0.
 
-    // For loop continues until the start block hits 0 or the first event is before the earlest lookback time.
+    // For loop continues until the start block hits 0 or the first event is before the earliest lookback time.
     for (let i = 0; !(fromBlock === 0 || events[0]?.timestamp <= earliestLookbackTime); i++) {
       // Uses latest unless the events array already has data. If so, it only queries _before_ existing events.
       const toBlock = events[0] ? events[0].blockNumber - 1 : "latest";
@@ -146,19 +144,19 @@ class UniswapPriceFeed extends PriceFeedInterface {
       // By taking larger powers of 2, this doubles the lookback each time.
       fromBlock = Math.max(0, latestBlockNumber - lookbackBlocks * 2 ** i);
 
-      const newEvents = await this._getSortedEvents(fromBlock, toBlock).then(newEvents => {
+      const newEvents = await this._getSortedEvents(fromBlock, toBlock).then((newEvents) => {
         // Grabs the timestamps for all blocks, but avoids re-querying by .then-ing any cached blocks.
         return Promise.all(
-          newEvents.map(event => {
+          newEvents.map((event) => {
             // If there is nothing in the cache for this block number, add a new promise that will resolve to the block.
             if (!this.blocks[event.blockNumber]) {
               this.blocks[event.blockNumber] = this.web3.eth
                 .getBlock(event.blockNumber)
-                .then(block => ({ timestamp: block.timestamp, number: block.number }));
+                .then((block) => ({ timestamp: block.timestamp, number: block.number }));
             }
 
             // Add a .then to the promise that sets the timestamp (and price) for this event after the promise resolves.
-            return this.blocks[event.blockNumber].then(block => {
+            return this.blocks[event.blockNumber].then((block) => {
               event.timestamp = block.timestamp;
               event.price = this._getPriceFromEvent(event);
               return event;
@@ -180,7 +178,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
     }
 
     // Filter out events where price is null.
-    this.events = events.filter(e => e.price !== null);
+    this.events = events.filter((e) => e.price !== null);
 
     // Price at the end of the most recent block.
     this.lastBlockPrice = this.events[this.events.length - 1].price;
@@ -192,7 +190,7 @@ class UniswapPriceFeed extends PriceFeedInterface {
   }
 
   _computeTwap(eventsIn, startTime, endTime) {
-    const events = eventsIn.map(e => {
+    const events = eventsIn.map((e) => {
       return [e.timestamp, e.price];
     });
     return computeTWAP(events, startTime, endTime, this.toBN("0"));
@@ -286,5 +284,5 @@ class UniswapV3PriceFeed extends UniswapPriceFeed {
 
 module.exports = {
   UniswapV2PriceFeed,
-  UniswapV3PriceFeed
+  UniswapV3PriceFeed,
 };

@@ -1,5 +1,5 @@
 const { PriceFeedInterface } = require("./PriceFeedInterface");
-const { parseFixed } = require("@uma/common");
+const { parseFixed, formatFixed } = require("@uma/common");
 const { computeTWAP } = require("./utils");
 
 // An implementation of PriceFeedInterface that uses CryptoWatch to retrieve prices.
@@ -46,7 +46,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     this.pair = pair;
     this.lookback = lookback;
     this.twapLength = twapLength;
-    this.uuid = `CryptoWatch-${exchange}-${pair}`;
+    this.uuid = `Cryptowatch-${exchange}-${pair}`;
     this.networker = networker;
     this.getTime = getTime;
     this.minTimeBetweenUpdates = minTimeBetweenUpdates;
@@ -57,7 +57,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
     this.ohlcPeriod = ohlcPeriod;
 
-    this.convertPriceFeedDecimals = number => {
+    this.convertPriceFeedDecimals = (number) => {
       // Converts price result to wei
       // returns price conversion to correct decimals as a big number.
       // Note: Must ensure that `number` has no more decimal places than `priceFeedDecimals`.
@@ -105,34 +105,36 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
     // historicalPricePeriods are ordered from oldest to newest.
     // This finds the first pricePeriod whose closeTime is after the provided time.
-    const match = this.historicalPricePeriods.find(pricePeriod => {
-      return time < pricePeriod.closeTime;
+    const match = this.historicalPricePeriods.find((pricePeriod) => {
+      return time < pricePeriod.closeTime && time >= pricePeriod.openTime;
     });
 
-    // If there is no match, that means that the time was past the last data point.
-    // In this case, the best match for this price is the current price.
-    let returnPrice;
     if (match === undefined) {
-      returnPrice = this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
-      if (verbose) {
-        console.group(`\n(${this.exchange}:${this.pair}) No OHLC available @ ${time}`);
-        console.log(
-          `- ✅ Time is later than earliest historical time, fetching current price: ${this.web3.utils.fromWei(
-            returnPrice.toString()
-          )}`
-        );
-        console.log(
-          `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n- https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/price`
-        );
-        console.groupEnd();
-      }
-      return returnPrice;
+      const before = this.historicalPricePeriods
+        .slice()
+        .reverse()
+        .find((pricePeriod) => time >= pricePeriod.openTime);
+      const after = this.historicalPricePeriods.find((pricePeriod) => time < pricePeriod.closeTime);
+
+      const format = (value) =>
+        value &&
+        formatFixed((this.invertPrice ? this._invertPriceSafely(value) : value).toString(), this.priceFeedDecimals);
+
+      throw new Error(`
+        Cryptowatch price feed ${this.uuid} didn't return an ohlc for time ${time}.
+        Closest price point before is close time: ${before?.closeTime}, close price: ${format(before?.closePrice)}.
+        Closest price point after is open time: ${after?.openTime}, open price: ${format(after?.openPrice)}.
+        To see these prices, make a GET request to:
+        https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/ohlc?after=${
+        before?.openTime + this.ohlcPeriod
+      }&before=${after?.closeTime}&periods=60
+      `);
     }
 
-    returnPrice = this.invertPrice ? this._invertPriceSafely(match.openPrice) : match.openPrice;
+    const returnPrice = this.invertPrice ? this._invertPriceSafely(match.openPrice) : match.openPrice;
     if (verbose) {
       console.group(`\n(${this.exchange}:${this.pair}) Historical OHLC @ ${match.closeTime}`);
-      console.log(`- ✅ Open Price:${this.web3.utils.fromWei(returnPrice.toString())}`);
+      console.log(`- ✅ Open Price: ${formatFixed(returnPrice.toString(), this.priceFeedDecimals)}`);
       console.log(
         `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n- https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/ohlc?after=${match.closeTime}&before=${match.closeTime}&periods=60`
       );
@@ -149,11 +151,11 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
   getHistoricalPricePeriods() {
     if (!this.invertPrice)
-      return this.historicalPricePeriods.map(historicalPrice => {
+      return this.historicalPricePeriods.map((historicalPrice) => {
         return [historicalPrice.closeTime, historicalPrice.closePrice];
       });
     else
-      return this.historicalPricePeriods.map(historicalPrice => {
+      return this.historicalPricePeriods.map((historicalPrice) => {
         return [historicalPrice.closeTime, this._invertPriceSafely(historicalPrice.closePrice)];
       });
   }
@@ -179,7 +181,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
         message: "Update skipped because the last one was too recent",
         currentTime: currentTime,
         lastUpdateTimestamp: this.lastUpdateTime,
-        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime
+        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime,
       });
       return;
     }
@@ -188,7 +190,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       at: "CryptoWatchPriceFeed",
       message: "Updating CryptoWatchPriceFeed",
       currentTime: currentTime,
-      lastUpdateTimestamp: this.lastUpdateTime
+      lastUpdateTimestamp: this.lastUpdateTime,
     });
 
     // Round down to the nearest ohlc period so the queries captures the OHLC of the period *before* this earliest
@@ -235,7 +237,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       `?before=${toTimestamp}`,
       `&after=${fromTimestamp}`,
       `&periods=${this.ohlcPeriod}`,
-      this.apiKey ? `&apikey=${this.apiKey}` : ""
+      this.apiKey ? `&apikey=${this.apiKey}` : "",
     ].join("");
 
     const ohlcResponse = await this.networker.getJson(ohlcUrl);
@@ -263,12 +265,12 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     // }
     // For more info, see: https://docs.cryptowat.ch/rest-api/markets/ohlc
     return ohlcResponse.result[this.ohlcPeriod.toString()]
-      .map(ohlc => ({
+      .map((ohlc) => ({
         // Output data should be a list of objects with only the open and close times and prices.
         openTime: ohlc[0] - this.ohlcPeriod,
         closeTime: ohlc[0],
         openPrice: this.convertPriceFeedDecimals(ohlc[1]),
-        closePrice: this.convertPriceFeedDecimals(ohlc[4])
+        closePrice: this.convertPriceFeedDecimals(ohlc[4]),
       }))
       .sort((a, b) => {
         // Sorts the data such that the oldest elements come first.
@@ -279,10 +281,10 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
   _computeTwap(endTime, ohlcs) {
     // Combine open and close to get more data fidelity at the edges of the range.
     const priceTimes = ohlcs
-      .map(pricePeriod => {
+      .map((pricePeriod) => {
         return [
           [pricePeriod.openTime, pricePeriod.openPrice],
-          [pricePeriod.closeTime, pricePeriod.closePrice]
+          [pricePeriod.closeTime, pricePeriod.closePrice],
         ];
       })
       .flat();
@@ -294,9 +296,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
   _invertPriceSafely(priceBN) {
     if (priceBN && !priceBN.isZero()) {
-      return this.convertPriceFeedDecimals("1")
-        .mul(this.convertPriceFeedDecimals("1"))
-        .div(priceBN);
+      return this.convertPriceFeedDecimals("1").mul(this.convertPriceFeedDecimals("1")).div(priceBN);
     } else {
       return undefined;
     }
@@ -304,5 +304,5 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 }
 
 module.exports = {
-  CryptoWatchPriceFeed
+  CryptoWatchPriceFeed,
 };

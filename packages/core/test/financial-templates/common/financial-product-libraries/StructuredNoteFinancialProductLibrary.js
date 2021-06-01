@@ -13,7 +13,7 @@ const strikePrice = toBN(toWei("400"));
 const priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
 const collateralizationRatio = toWei("1.2");
 
-contract("StructuredNoteFinancialProductLibrary", function() {
+contract("StructuredNoteFinancialProductLibrary", function () {
   let structuredNoteFPL;
   let expiringMultiParty;
   let timer;
@@ -33,7 +33,7 @@ contract("StructuredNoteFinancialProductLibrary", function() {
     );
 
     await structuredNoteFPL.setFinancialProductStrike(expiringMultiParty.address, {
-      rawValue: strikePrice.toString()
+      rawValue: strikePrice.toString(),
     });
   });
   it("Strike correctly set", async () => {
@@ -47,7 +47,7 @@ contract("StructuredNoteFinancialProductLibrary", function() {
       assert(
         await didContractThrow(
           structuredNoteFPL.setFinancialProductStrike(expiringMultiParty.address, {
-            rawValue: strikePrice.toString()
+            rawValue: strikePrice.toString(),
           })
         )
       );
@@ -56,14 +56,14 @@ contract("StructuredNoteFinancialProductLibrary", function() {
       assert(
         await didContractThrow(
           structuredNoteFPL.setFinancialProductStrike(ZERO_ADDRESS, {
-            rawValue: strikePrice.toString()
+            rawValue: strikePrice.toString(),
           })
         )
       );
       assert(
         await didContractThrow(
           structuredNoteFPL.setFinancialProductStrike(timer.address, {
-            rawValue: strikePrice.toString()
+            rawValue: strikePrice.toString(),
           })
         )
       );

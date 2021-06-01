@@ -75,23 +75,23 @@ async function runExport() {
       {
         to: registry.address,
         value: 0,
-        data: addGovernorToRegistryTx
+        data: addGovernorToRegistryTx,
       },
       {
         to: registry.address,
         value: 0,
-        data: registerOptimisticOracleTx
+        data: registerOptimisticOracleTx,
       },
       {
         to: registry.address,
         value: 0,
-        data: removeGovernorFromRegistryTx
+        data: removeGovernorFromRegistryTx,
       },
       {
         to: finder.address,
         value: 0,
-        data: addOptimisticOracleToFinderTx
-      }
+        data: addOptimisticOracleToFinderTx,
+      },
     ],
     { from: proposerWallet, gas: 2000000 }
   );
@@ -99,7 +99,7 @@ async function runExport() {
   console.log("Proposal Done.");
 }
 
-const run = async function(callback) {
+const run = async function (callback) {
   try {
     await runExport();
   } catch (err) {

@@ -28,7 +28,7 @@ class LPPriceFeed extends PriceFeedInterface {
     getTime,
     blockFinder,
     minTimeBetweenUpdates = 60,
-    priceFeedDecimals = 18
+    priceFeedDecimals = 18,
   }) {
     super();
 
@@ -125,5 +125,5 @@ class LPPriceFeed extends PriceFeedInterface {
 }
 
 module.exports = {
-  LPPriceFeed
+  LPPriceFeed,
 };

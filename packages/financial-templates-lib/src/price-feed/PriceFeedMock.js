@@ -21,7 +21,7 @@ class PriceFeedMock extends PriceFeedInterface {
   // Store an array of historical prices [{timestamp, price}] so that await  getHistoricalPrice can return
   // a price for a specific timestamp if found in this array.
   setHistoricalPrices(historicalPrices) {
-    historicalPrices.forEach(_price => {
+    historicalPrices.forEach((_price) => {
       if (isNaN(_price.timestamp)) {
         throw "Invalid historical price => [{timestamp, price}]";
       }
@@ -80,5 +80,5 @@ class PriceFeedMock extends PriceFeedInterface {
 }
 
 module.exports = {
-  PriceFeedMock
+  PriceFeedMock,
 };

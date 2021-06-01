@@ -28,5 +28,5 @@ async function moveToNextPhase(voting) {
 
 module.exports = {
   moveToNextRound,
-  moveToNextPhase
+  moveToNextPhase,
 };

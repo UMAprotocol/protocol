@@ -1,7 +1,7 @@
 const fetch = require("node-fetch");
 
 export async function getAllEmpsPositions() {
-  const subgraphUrl = "https://api.thegraph.com/subgraphs/name/umaprotocol/uma";
+  const subgraphUrl = "https://api.thegraph.com/subgraphs/name/umaprotocol/mainnet-contracts";
   const query = `
     query activePositions {
       financialContracts {
@@ -24,9 +24,9 @@ export async function getAllEmpsPositions() {
     method: "POST",
     headers: {
       Accept: "application/json",
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
-    body: JSON.stringify({ query })
+    body: JSON.stringify({ query }),
   });
   return (await response.json()).data.financialContracts;
 }
