@@ -10,7 +10,7 @@ import "../../common/implementation/AddressWhitelist.sol";
 
 import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
-import "../../oracle/interfaces/OptimisticOracleInterface.sol";
+import "../../oracle/interfaces/OracleAncillaryInterface.sol";
 import "../../oracle/implementation/ContractCreator.sol";
 
 /**
@@ -281,9 +281,9 @@ contract OptimisticDepositBox is Testable {
 
     // Requests a price for `priceIdentifier` at `requestedTime` from the Oracle.
     function _requestOraclePrice(uint256 requestedTime) internal {
-        OptimisticOracleInterface oracle = _getOracle();
+        OracleAncillaryInterface oracle = _getOracle();
         // No ancillary data or reward
-        oracle.requestPrice(priceIdentifier, requestedTime, '', address(collateralCurrency), 0);
+        oracle.requestPrice(priceIdentifier, requestedTime, '');
     }
 
     // Ensure individual and global consistency when increasing collateral balances. Returns the change to the position.
@@ -324,15 +324,15 @@ contract OptimisticDepositBox is Testable {
         return AddressWhitelist(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
     }
 
-    function _getOracle() internal view returns (OptimisticOracleInterface) {
+    function _getOracle() internal view returns (OracleAncillaryInterface) {
         return OracleAncillaryInterface(finder.getImplementationAddress(OracleInterfaces.Oracle));
     }
 
     // Fetches a resolved oracle price from the Optimistic Oracle. Reverts if the oracle hasn't resolved for this request.
     function _getOraclePrice(uint256 requestedTime) internal view returns (FixedPoint.Unsigned memory) {
-        OptimisticOracleInterface oracle = _getOracle();
-        require(oracle.hasPrice(address(this), priceIdentifier, requestedTime, ''), "Unresolved oracle price");
-        int256 oraclePrice = oracle.getPrice(priceIdentifier, requestedTime);
+        OracleAncillaryInterface oracle = _getOracle();
+        require(oracle.hasPrice(priceIdentifier, requestedTime, ''), "Unresolved oracle price");
+        int256 oraclePrice = oracle.getPrice(priceIdentifier, requestedTime, '');
 
         // For simplicity we don't want to deal with negative prices.
         if (oraclePrice < 0) {

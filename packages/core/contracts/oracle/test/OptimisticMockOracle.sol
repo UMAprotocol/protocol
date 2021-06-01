@@ -2,13 +2,13 @@
 pragma solidity ^0.8.0;
 
 import "../../common/implementation/Testable.sol";
-import "../interfaces/OptimisticOracleInterface.sol";
+import "../interfaces/OracleAncillaryInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "../interfaces/FinderInterface.sol";
 import "../implementation/Constants.sol";
 
 // A mock optimistic oracle used for testing.
-contract OptimisticMockOracle is OptimisticOracleInterface, Testable {
+contract OptimisticMockOracle is OracleAncillaryInterface, Testable {
     // Mapping to store and retrieve information about price requests
     mapping(bytes32 => Request) public requests;
 
