@@ -251,30 +251,6 @@ contract OptimisticDepositBox is Testable {
         return;
     }
 
-    /**
-     * @notice Accessor method for a user's collateral.
-     * @dev This is necessary because the struct returned by the depositBoxes() method shows
-     * collateral, which isn't a user-readable value.
-     * @param user address whose collateral amount is retrieved.
-     * @return the fee-adjusted collateral amount in the deposit box (i.e. available for withdrawal).
-     */
-    function getCollateral(address user) external view nonReentrantView() returns (FixedPoint.Unsigned memory) {
-        return _getFeeAdjustedCollateral(depositBoxes[user].collateral);
-    }
-
-    /**
-     * @notice Accessor method for the total collateral stored within the entire contract.
-     * @return the total fee-adjusted collateral amount in the contract (i.e. across all users).
-     */
-    function totalOptimisticDepositBoxCollateral()
-        external
-        view
-        nonReentrantView()
-        returns (FixedPoint.Unsigned memory)
-    {
-        return _getFeeAdjustedCollateral(totalOptimisticDepositBoxCollateral);
-    }
-
     /****************************************
      *          INTERNAL FUNCTIONS          *
      ****************************************/
