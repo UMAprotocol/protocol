@@ -309,6 +309,7 @@ async function Poll(callback) {
       at: "Disputer#index",
       message: "Disputer execution error🚨",
       error: typeof error === "string" ? new Error(error) : error,
+      notificationPath: "infrastructure-error",
     });
     await waitForLogger(Logger);
     callback(error);

@@ -48,10 +48,10 @@ function slackFormatter(info) {
     // for each key value pair with a bullet point. If the section is an object then it was passed containing multiple
     // sub points. This is also expanded as a sub indented section.
     for (const key in info) {
-      // these keys have been printed in the previous block.
-      if (key == "at" || key == "level" || key == "message" || key == "bot-identifier") {
+      // these keys have been printed in the previous block or should not be included in slack messages.
+      if (key == "at" || key == "level" || key == "message" || key == "bot-identifier" || key == "notificationPath")
         continue;
-      }
+
       // If the key is `mrkdwn` then simply return only the markdown as the txt object. This assumes all formatting has
       // been applied in the bot itself. For example the monitor bots which conform to strict formatting rules.
       if (key == "mrkdwn") {
@@ -169,7 +169,7 @@ class SlackHook extends Transport {
     opts = opts || {};
     this.name = opts.name || "slackWebhook";
     this.level = opts.level || undefined;
-    this.customServices = opts.transportConfig.customServices;
+    this.escilationPathWebhookUrls = opts.transportConfig.escilationPathWebhookUrls || {};
     this.defaultWebHookUrl = opts.transportConfig.defaultWebHookUrl;
     this.formatter = opts.formatter || undefined;
     this.mrkdwn = opts.mrkdwn || false;
@@ -178,12 +178,14 @@ class SlackHook extends Transport {
   }
 
   async log(info, callback) {
-    const webhookUrl = this.customServices[info.notificationPath] ?? this.defaultWebHookUrl;
+    // If the log contains a notification path then use a custom slack webhook service. This lets the transport route to
+    // diffrent slack channels depending on the context of the log.
+    const webhookUrl = this.escilationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
+    // delete info.notificationPath; // Dont log the notification path.
 
     let payload = {
       mrkdwn: this.mrkdwn,
     };
-
     let layout = this.formatter(info);
     payload.text = layout.text || undefined;
     payload.attachments = layout.attachments || undefined;

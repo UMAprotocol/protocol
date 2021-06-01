@@ -173,7 +173,7 @@ class ContractMonitor {
       this.logger[this.logOverrides.newPositionCreated || "info"]({
         at: "ContractMonitor",
         message: "New Sponsor Alert 🐣!",
-        mrkdwn: mrkdwn,
+        mrkdwn,
         notificationPath: "risk-management",
       });
     }
@@ -291,7 +291,7 @@ class ContractMonitor {
       this.logger.info({
         at: "ContractMonitor",
         message: "Liquidation Alert 🧙‍♂️!",
-        mrkdwn: mrkdwn,
+        mrkdwn,
         notificationPath: "risk-management",
       });
     }
@@ -330,7 +330,7 @@ class ContractMonitor {
       this.logger.info({
         at: "ContractMonitor",
         message: "Dispute Alert 👻!",
-        mrkdwn: mrkdwn,
+        mrkdwn,
         notificationPath: "risk-management",
       });
     }
@@ -410,7 +410,7 @@ class ContractMonitor {
       this.logger.info({
         at: "ContractMonitor",
         message: "Dispute Settlement Alert 👮‍♂️!",
-        mrkdwn: mrkdwn,
+        mrkdwn,
         notificationPath: "risk-management",
       });
     }
@@ -445,7 +445,7 @@ class ContractMonitor {
       this.logger.info({
         at: "ContractMonitor",
         message: "Funding Rate Update Alert 🏵!",
-        mrkdwn: mrkdwn,
+        mrkdwn,
         notificationPath: "risk-management",
       });
     }
