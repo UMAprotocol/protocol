@@ -91,14 +91,12 @@ class ProxyTransactionWrapper {
   // Main entry point for submitting a dispute. If the bot is not using a DSProxy then simply send a normal EOA tx.
   // If the bot is using a DSProxy then route the tx via it.
   async submitDisputeTransaction(disputeArgs) {
-    // If the liquidator is not using a DSProxy, use the old method of liquidating
+    // If the disputer is not using a DSProxy, use the old method of liquidating
     if (!this.useDsProxyToDispute) return await this._executeDisputeWithoutDsProxy(disputeArgs);
     else return await this._executeDisputeWithDsProxy(disputeArgs);
   }
 
   async _executeDisputeWithoutDsProxy(disputeArgs) {
-    // Dispute strategy will control how much to liquidate
-    // Create the transaction.
     const dispute = this.financialContract.methods.dispute(...disputeArgs);
 
     // Send the transaction or report failure.

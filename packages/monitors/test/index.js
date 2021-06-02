@@ -40,7 +40,7 @@ let pollingDelay = 0; // 0 polling delay creates a serverless bot that yields af
 let fromBlock = 0; // setting the from block to 0 will query all historic logs events.
 let toBlock = null; // setting the to block to 0 will query up to the latest block Number.
 let errorRetries = 1; // setting execution re-tried to 0 will exit as soon as the process encounters an error.
-let errorRetriesTimeout = 0.1; // 100 milliseconds between preforming retries
+let errorRetriesTimeout = 0.1; // 100 milliseconds between performing retries
 let identifier = "TEST_IDENTIFIER";
 let fundingRateIdentifier = "TEST_FUNDiNG_IDENTIFIER";
 

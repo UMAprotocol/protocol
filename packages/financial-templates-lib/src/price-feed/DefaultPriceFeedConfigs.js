@@ -874,7 +874,7 @@ const defaultConfigs = {
       SPOT_BALANCER_ETH: {
         type: "balancer",
         twapLength: 2,
-        lookback: 3600,
+        lookback: 7200,
         balancerAddress: "0x59a19d8c652fa0284f44113d0ff9aba70bd46fb4",
         balancerTokenIn: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
         balancerTokenOut: "0xba100000625a3754423978a60c9317c58a424e3D",
@@ -951,6 +951,30 @@ const defaultConfigs = {
         invertPrice: true,
       },
     },
+  },
+  iFARMUSD: {
+    type: "expression",
+    expression: `
+        FARMUSD = FARMETH_UNISWAP / USDETH;
+        FARMUSD * FARM_PER_SHARE
+    `,
+    lookback: 7200,
+    minTimeBetweenUpdates: 60,
+    customFeeds: {
+      FARMETH_UNISWAP: {
+        type: "uniswap",
+        uniswapAddress: "0x56feAccb7f750B997B36A68625C7C596F0B41A58",
+        twapLength: 900,
+      },
+      FARM_PER_SHARE: {
+        type: "harvestvault",
+        address: "0x1571eD0bed4D987fe2b498DdBaE7DFA19519F651",
+      },
+    },
+  },
+  USDiFARM: {
+    type: "expression",
+    expression: "1 / iFARMUSD",
   },
   USDDEXTF: {
     type: "expression",

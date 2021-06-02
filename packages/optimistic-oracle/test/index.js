@@ -20,7 +20,7 @@ contract("index.js", function () {
 
   let pollingDelay = 0; // 0 polling delay creates a serverless bot that yields after one full execution.
   let errorRetries = 1;
-  let errorRetriesTimeout = 0.1; // 100 milliseconds between preforming retries
+  let errorRetriesTimeout = 0.1; // 100 milliseconds between performing retries
 
   let finder;
   let timer;

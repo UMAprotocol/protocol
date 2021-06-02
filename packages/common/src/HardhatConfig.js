@@ -40,6 +40,11 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
         url: getNodeUrl("rinkeby", true),
         accounts: { mnemonic },
       },
+      kovan: {
+        chainId: 42,
+        url: getNodeUrl("kovan", true),
+        accounts: { mnemonic },
+      },
       goerli: {
         chainId: 5,
         url: getNodeUrl("goerli", true),
@@ -78,6 +83,7 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
         mumbai: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/mumbai")],
         matic: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/matic")],
         rinkeby: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/rinkeby")],
+        kovan: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/kovan")],
       },
     },
   };

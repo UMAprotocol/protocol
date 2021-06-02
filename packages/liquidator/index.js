@@ -260,10 +260,20 @@ async function run({
     if (proxyTransactionWrapperConfig == {} || !proxyTransactionWrapperConfig?.useDsProxyToLiquidate) {
       // The Financial Contract requires approval to transfer the liquidator's collateral and synthetic tokens in order to liquidate
       // a position. We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
-      const [collateralApproval, syntheticApproval] = await Promise.all([
-        setAllowance(web3, gasEstimator, accounts[0], financialContractAddress, collateralTokenAddress),
-        setAllowance(web3, gasEstimator, accounts[0], financialContractAddress, syntheticTokenAddress),
-      ]);
+      const collateralApproval = await setAllowance(
+        web3,
+        gasEstimator,
+        accounts[0],
+        financialContractAddress,
+        collateralTokenAddress
+      );
+      const syntheticApproval = await setAllowance(
+        web3,
+        gasEstimator,
+        accounts[0],
+        financialContractAddress,
+        syntheticTokenAddress
+      );
       if (collateralApproval)
         logger.info({
           at: "Liquidator#index",
@@ -388,9 +398,11 @@ async function Poll(callback) {
       // "liquidatorReserveCurrencyAddress": "0x123..." -> currency DSProxy will trade from when liquidating.
       // "uniswapRouterAddress": "0x123..." -> uniswap router address to enable reserve trading. Defaults to mainnet router.
       // "uniswapFactoryAddress": "0x123..." -> uniswap factory address. Defaults to mainnet factory.
-      // "maxReserverTokenSpent": "10000000000"} -> max amount to spend in reserve currency. scaled by reserve currency
+      // "maxReserverTokenSpent": "10000000000" -> max amount to spend in reserve currency. scaled by reserve currency
       //      decimals. defaults to MAX_UINT (no limit). Note that this is separate to the WDF, which behaves as per usual
       //      and considers the maximum amount of synthetics that could be minted, given the current reserve balance.
+      // "availableAccounts": "1"} -> the number of EOAs the bot should use when performing liquidations. This only works
+      // if you have configured your DSProxy with a DSGuard with permissions on your other EOAs unlocked from your account.
       proxyTransactionWrapperConfig: process.env.DSPROXY_CONFIG ? JSON.parse(process.env.DSPROXY_CONFIG) : {},
     };
 
