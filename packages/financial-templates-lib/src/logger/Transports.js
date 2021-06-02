@@ -36,7 +36,7 @@ function createTransports(transportsConfig = {}) {
   // If there is "test" in the environment then skip the slack or pagerduty.
   if (argv._.indexOf("test") == -1) {
     // If there is a slack web hook, add to the transports array to enable slack messages.
-    const slackConfig = transportsConfig.slackConfig ?? JSON.parse(process.env.SLACK_CONFIG);
+    const slackConfig = transportsConfig.slackConfig ?? JSON.parse(process.env.SLACK_CONFIG || null);
     if (slackConfig) {
       transports.push(SlackTransport.createSlackTransport(slackConfig));
     }
@@ -46,7 +46,7 @@ function createTransports(transportsConfig = {}) {
       transports.push(
         new PagerDutyTransport(
           { level: "warn" },
-          transportsConfig.pagerDutyConfig ?? JSON.parse(process.env.PAGER_DUTY_CONFIG)
+          transportsConfig.pagerDutyConfig ?? JSON.parse(process.env.PAGER_DUTY_CONFIG || null)
         )
       );
     }
