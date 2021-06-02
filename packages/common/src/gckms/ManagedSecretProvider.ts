@@ -11,7 +11,8 @@ interface CloudKmsConfig {
   ciphertextFilename: string;
 }
 
-type Tail<T extends any[]> = T extends [infer A, ...infer R] ? R : never;
+type Tail2<T extends any[]> = T extends [unknown, unknown, ...infer R] ? R : never;
+type RemainingHDWalletArgs = Tail2<ConstructorParameters<typeof HDWalletProvider>>;
 
 // Wraps HDWalletProvider, deferring construction and allowing a Cloud KMS managed secret to be fetched asynchronously
 // and used to initialize an HDWalletProvider.
@@ -27,12 +28,13 @@ class ManagedSecretProvider {
   //     locationId: Google Cloud location, e.g., 'global'.
   //     ciphertextBucket: ID of a Google Cloud storage bucket.
   //     ciphertextFilename: Name of a file within `ciphertextBucket`.
-  private readonly remainingArgs: Tail<ConstructorParameters<typeof HDWalletProvider>>;
+  private readonly remainingArgs: RemainingHDWalletArgs;
   private wrappedProvider: null | HDWalletProvider;
   private wrappedProviderPromise: Promise<HDWalletProvider>;
   constructor(
     private readonly cloudKmsSecretConfigs: CloudKmsConfig[],
-    ...remainingArgs: Tail<ConstructorParameters<typeof HDWalletProvider>>
+    private readonly providerOrUrl: string | any, // Mirrors the type that HDWalletProvider expects.
+    ...remainingArgs: Tail2<ConstructorParameters<typeof HDWalletProvider>>
   ) {
     if (!Array.isArray(cloudKmsSecretConfigs)) {
       cloudKmsSecretConfigs = [cloudKmsSecretConfigs];
@@ -113,7 +115,7 @@ class ManagedSecretProvider {
           keys = keys[0];
         }
 
-        this.wrappedProvider = new HDWalletProvider(keys, ...this.remainingArgs);
+        this.wrappedProvider = new HDWalletProvider(keys, this.providerOrUrl, ...this.remainingArgs);
 
         return this.wrappedProvider;
       },

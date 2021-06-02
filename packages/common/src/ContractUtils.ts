@@ -1,4 +1,8 @@
 const truffleContract = require("@truffle/contract");
+import type { BN } from "./types";
+import Web3 from "web3";
+
+type CallResult = string | BN | { [key: string]: any };
 
 /**
  * This is a hack to handle reverts for view/pure functions that don't actually revert on public networks.
@@ -7,20 +11,18 @@ const truffleContract = require("@truffle/contract");
  * @param {Object} result Return value from calling a contract's view-only method.
  * @return null if the call reverted or the view method's result.
  */
-const revertWrapper = (result) => {
+export const revertWrapper = (result: CallResult): null | CallResult => {
   if (!result) {
     return null;
   }
-  let revertValue = "3963877391197344453575983046348115674221700746820753546331534351508065746944";
+  const revertValue = "3963877391197344453575983046348115674221700746820753546331534351508065746944";
   if (result.toString() === revertValue) {
     return null;
   }
-  const isObject = (obj) => {
-    return obj === Object(obj);
-  };
-  if (isObject(result)) {
+
+  if (typeof result !== "string") {
     // Iterate over the properties of the object and see if any match the revert value.
-    for (let prop in result) {
+    for (const prop in result) {
       if (result[prop] && result[prop].toString() === revertValue) {
         return null;
       }
@@ -34,8 +36,8 @@ const revertWrapper = (result) => {
  * @param {*} contractJsonObject json object representing a contract.
  * @returns truffle contract instance
  */
-const createContractObjectFromJson = (contractJsonObject) => {
-  let truffleContractCreator = truffleContract(contractJsonObject);
+const createContractObjectFromJson = (contractJsonObject: { [key: string]: any }) => {
+  const truffleContractCreator = truffleContract(contractJsonObject);
   truffleContractCreator.setProvider(web3.currentProvider);
   return truffleContractCreator;
 };

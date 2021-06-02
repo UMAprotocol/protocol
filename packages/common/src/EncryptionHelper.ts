@@ -1,11 +1,16 @@
-const web3 = require("web3");
+import Web3 from "web3";
+import type { BN } from "./types";
+
+interface Request {
+  identifier: string;
+  time: string | BN;
+}
 
 // Web3's soliditySha3 will attempt to auto-detect the type of given input parameters,
 // but this won't produce expected behavior for certain types such as `bytes32` or `address`.
 // Therefore, these helper methods will explicitly set types.
-
 function computeTopicHash(request, roundId) {
-  return web3.utils.soliditySha3(
+  return Web3.utils.soliditySha3(
     { t: "bytes32", v: request.identifier },
     { t: "uint", v: request.time },
     { t: "uint", v: roundId }

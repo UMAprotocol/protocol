@@ -1,8 +1,15 @@
-const { getAbiDecoder } = require("./AbiUtils.js");
+import { getAbiDecoder } from "./AbiUtils";
+import type { BN } from "./types";
 
-let abiDecoder;
+let abiDecoder: ReturnType<getAbiDecoder>;
 
-function decodeTransaction(transaction) {
+interface Transaction {
+  data?: string;
+  to: string;
+  value: string | BN;
+}
+
+export function decodeTransaction(transaction: Transaction): string {
   let returnValue = "";
 
   // Give to and value.
@@ -33,17 +40,17 @@ function decodeTransaction(transaction) {
 
 const adminPrefix = "Admin ";
 
-function isAdminRequest(identifierUtf8) {
+export function isAdminRequest(identifierUtf8: string): boolean {
   return identifierUtf8.startsWith(adminPrefix);
 }
 
 // Assumes that `identifierUtf8` is an admin request, i.e., `isAdminRequest()` returns true for it.
-function getAdminRequestId(identifierUtf8) {
+export function getAdminRequestId(identifierUtf8: string): number {
   return parseInt(identifierUtf8.slice(adminPrefix.length), 10);
 }
 
 // Vote 1 for Yes, 0 for No. Any vote > 0 is technically a Yes, but the 1 is treated as the canonical yes.
-const translateAdminVote = (voteValue) => {
+export const translateAdminVote = (voteValue: string): string => {
   if (!voteValue) {
     return "No Vote";
   } else {
@@ -60,11 +67,4 @@ const translateAdminVote = (voteValue) => {
         return "INVALID ADMIN VOTE";
     }
   }
-};
-
-module.exports = {
-  decodeTransaction,
-  isAdminRequest,
-  getAdminRequestId,
-  translateAdminVote,
 };
