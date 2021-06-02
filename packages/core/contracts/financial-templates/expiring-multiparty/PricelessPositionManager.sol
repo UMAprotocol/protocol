@@ -16,7 +16,7 @@ import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
 import "../common/FeePayer.sol";
-import "../common/financial-product-libraries/FinancialProductLibrary.sol";
+import "../common/financial-product-libraries/expiring-multiparty-libraries/FinancialProductLibrary.sol";
 
 /**
  * @title Financial contract with priceless position management.

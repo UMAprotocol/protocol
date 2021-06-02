@@ -4,9 +4,9 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/math/SignedSafeMath.sol";
 
 import "./ContractForDifferenceFinancialProductLibrary.sol";
-import "../../../common/implementation/Lockable.sol";
+import "../../../../common/implementation/Lockable.sol";
 
-contract LinearContractForDiffrenceFinancialProductLibrary is ContractForDifferenceFinancialProductLibrary, Lockable {
+contract LinearContractForDifferenceFinancialProductLibrary is ContractForDifferenceFinancialProductLibrary, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
     using SignedSafeMath for int256;
 
@@ -15,19 +15,22 @@ contract LinearContractForDiffrenceFinancialProductLibrary is ContractForDiffere
         int256 lowerBound;
     }
 
-    mapping(address => LinearContractForDifferenceParameters) contractForDifferenceParameters;
+    mapping(address => LinearContractForDifferenceParameters) public contractForDifferenceParameters;
 
     function setContractForDifferenceParameters(
         address contractForDifferenceAddress,
         int256 upperBound,
         int256 lowerBound
     ) public nonReentrant() {
-        require(ExpiringContractInterface(contractForDifferenceAddress).expirationTimestamp() != 0, "Invalid address");
+        require(
+            ExpiringContractInterface(contractForDifferenceAddress).expirationTimestamp() != 0,
+            "Invalid CFD address"
+        );
         require(upperBound > lowerBound, "Invalid bounds");
 
         LinearContractForDifferenceParameters memory params =
             contractForDifferenceParameters[contractForDifferenceAddress];
-        require(params.upperBound != 0 || params.lowerBound != 0, "Parameters already set");
+        require(params.upperBound == 0 && params.lowerBound == 0, "Parameters already set");
 
         contractForDifferenceParameters[contractForDifferenceAddress] = LinearContractForDifferenceParameters({
             upperBound: upperBound,
