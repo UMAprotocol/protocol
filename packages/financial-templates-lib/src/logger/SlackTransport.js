@@ -169,7 +169,7 @@ class SlackHook extends Transport {
     opts = opts || {};
     this.name = opts.name || "slackWebhook";
     this.level = opts.level || undefined;
-    this.escilationPathWebhookUrls = opts.transportConfig.escilationPathWebhookUrls || {};
+    this.escalationPathWebhookUrls = opts.transportConfig.escalationPathWebhookUrls || {};
     this.defaultWebHookUrl = opts.transportConfig.defaultWebHookUrl;
     this.formatter = opts.formatter || undefined;
     this.mrkdwn = opts.mrkdwn || false;
@@ -180,8 +180,7 @@ class SlackHook extends Transport {
   async log(info, callback) {
     // If the log contains a notification path then use a custom slack webhook service. This lets the transport route to
     // diffrent slack channels depending on the context of the log.
-    const webhookUrl = this.escilationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
-    // delete info.notificationPath; // Dont log the notification path.
+    const webhookUrl = this.escalationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
 
     let payload = {
       mrkdwn: this.mrkdwn,

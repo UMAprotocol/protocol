@@ -24,7 +24,7 @@ module.exports = class PagerDutyTransport extends Transport {
       const logMessage = info.mrkdwn ? info.mrkdwn + `\n${info["bot-identifier"]}` : JSON.stringify(info);
 
       // If the log contains a notification path then use a custom PagerDuty service. This lets the transport route to
-      // diffrent pagerduty escilation paths depending on the context of the log.
+      // different pagerduty escilation paths depending on the context of the log.
       const serviceId = this.customServices[info.notificationPath] ?? this.defaultServiceId;
 
       await this.pd.incidents.createIncident(this.fromEmail, {
