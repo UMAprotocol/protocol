@@ -44,6 +44,9 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         Price storage lookup = prices[priceRequestId];
         if (lookup.state != RequestState.NeverRequested) {
             // Clients expect that `requestPrice` does not revert if a price is already requested, so return gracefully.
+            // TODO: Should we allow duplicate price requests to emit multiple Messages via _sendMessageToRoot? The DVM
+            // on L1 will not have a problem handling duplicate requests, as it will just ignore them. This could be
+            // useful if the checkpointing on Ethereum for some reason misses a Message.
             return;
         } else {
             _requestPrice(identifier, time, ancillaryData);
@@ -59,6 +62,8 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
      * @notice Resolves a price request.
      * @dev The data will be received automatically from the state receiver when the state is synced between Ethereum
      * and Polygon. This will revert if the Root chain sender is not the `fxRootTunnel` contract.
+     * This is called by an `onStateReceive` function, and since it is called via a system call, no event will be 
+     * emitted during its execution. More details here: https://docs.matic.network/docs/contribute/bor/core_concepts/#system-call
      * @param sender The sender of `data` from the Root chain.
      * @param data ABI encoded params with which to call `_publishPrice`.
      */
