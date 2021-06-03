@@ -29,7 +29,7 @@ let collateralWhitelist;
 let identifierWhitelist;
 let optimisticOracle;
 let finder;
-let ancillaryData = web3.utf8ToHex("some-address-field:0x1234");
+let ancillaryData = web3.utils.utf8ToHex("some-address-field:0x1234");
 let timer;
 let constructorParams;
 
