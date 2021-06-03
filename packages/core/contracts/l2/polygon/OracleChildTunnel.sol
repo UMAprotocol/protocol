@@ -7,11 +7,12 @@ import "../../oracle/interfaces/RegistryInterface.sol";
 import "./OracleBaseTunnel.sol";
 
 /**
- * @title Adapter deployed on L2 to give financial contracts the ability to trigger cross-chain price requests to the
- * L1 DVM. Also has the ability to receive published prices from L1. This contract can be treated as the "DVM" for this
- * network, because a calling contract can request and access a resolved price request from this contract.
- * @dev The intended client of this contract is an OptimisticOracle on L2 that needs price
- * resolution secured by the DVM on L1.
+ * @title Adapter deployed on sidechain to give financial contracts the ability to trigger cross-chain price requests to 
+ * the mainnet DVM. Also has the ability to receive published prices from mainnet. This contract can be treated as the 
+ * "DVM" for this network, because a calling contract can request and access a resolved price request from this 
+ * contract.
+ * @dev The intended client of this contract is an OptimisticOracle on sidechain that needs price
+ * resolution secured by the DVM on mainnet.
  */
 contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBaseChildTunnel {
     constructor(address _fxChild, address _finderAddress)
@@ -19,7 +20,7 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         FxBaseChildTunnel(_fxChild)
     {}
 
-    // This assumes that the local network has a Registry that resembles the Mainnet registry.
+    // This assumes that the local network has a Registry that resembles the mainnet registry.
     modifier onlyRegisteredContract() {
         RegistryInterface registry = RegistryInterface(finder.getImplementationAddress(OracleInterfaces.Registry));
         require(registry.isContractRegistered(msg.sender), "Caller must be registered");
@@ -27,10 +28,10 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
     }
 
     /**
-     * @notice This should be called to bridge a price request to Mainnet.
-     * @dev Can be called only by a Registered contract that is allowed to make DVM price requests. Will mark this
-     * price request as Requested, and therefore able to receive the price resolution data from L1. Emits a message
-     * that will be included in regular checkpoint of all Matic transactions to Ethereum.
+     * @notice This should be called to bridge a price request to mainnet.
+     * @dev Can be called only by a registered contract that is allowed to make DVM price requests. Will mark this
+     * price request as Requested, and therefore able to receive the price resolution data from mainnet. Emits a message
+     * that will be included in regular checkpoint of all sidechain transactions to mainnet.
      * @param identifier Identifier of price request.
      * @param time Timestamp of price request.
      * @param ancillaryData extra data of price request.
@@ -45,8 +46,8 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         if (lookup.state != RequestState.NeverRequested) {
             // Clients expect that `requestPrice` does not revert if a price is already requested, so return gracefully.
             // TODO: Should we allow duplicate price requests to emit multiple Messages via _sendMessageToRoot? The DVM
-            // on L1 will not have a problem handling duplicate requests, as it will just ignore them. This could be
-            // useful if the checkpointing on Ethereum for some reason misses a Message.
+            // will not have a problem handling duplicate requests, as it will just ignore them. This could be
+            // useful if the checkpointing on mainnet for some reason misses a Message.
             return;
         } else {
             _requestPrice(identifier, time, ancillaryData);

@@ -6,7 +6,7 @@ import "./OracleBaseTunnel.sol";
 import "../../oracle/interfaces/OracleAncillaryInterface.sol";
 
 /**
- * @title Adapter deployed on L1 that validates and sends price requests from L2 to the DVM on L1.
+ * @title Adapter deployed on mainnet that validates and sends price requests from sidechain to the DVM on mainnet.
  * @dev This contract must be a registered financial contract in order to make DVM price requests.
  */
 contract OracleRootTunnel is OracleBaseTunnel, FxBaseRootTunnel {
@@ -17,7 +17,7 @@ contract OracleRootTunnel is OracleBaseTunnel, FxBaseRootTunnel {
     ) OracleBaseTunnel(_finderAddress) FxBaseRootTunnel(_checkpointManager, _fxRoot) {}
 
     /**
-     * @notice This is the first method that should be called in order to publish a price request to the child L2 chain.
+     * @notice This is the first method that should be called in order to publish a price request to the sidechain.
      * @dev Publishes the DVM resolved price for the price request, or reverts if not resolved yet. 
      * @param identifier Identifier of price request to resolve.
      * @param time Timestamp of price request to resolve.
