@@ -54,7 +54,7 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
 
             // Initiate cross-chain price request:
             // TODO: Can we pack more information into this request? We could try to check if the requester is an
-            // OptimisticOracle and pull price request metadata from that?
+            // OptimisticOracle and pull price request metadata from it such as fees, original requester, etc?
             _sendMessageToRoot(abi.encode(identifier, time, ancillaryData));
         }
     }
