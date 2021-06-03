@@ -48,10 +48,10 @@ function slackFormatter(info) {
     // for each key value pair with a bullet point. If the section is an object then it was passed containing multiple
     // sub points. This is also expanded as a sub indented section.
     for (const key in info) {
-      // these keys have been printed in the previous block.
-      if (key == "at" || key == "level" || key == "message" || key == "bot-identifier") {
+      // these keys have been printed in the previous block or should not be included in slack messages.
+      if (key == "at" || key == "level" || key == "message" || key == "bot-identifier" || key == "notificationPath")
         continue;
-      }
+
       // If the key is `mrkdwn` then simply return only the markdown as the txt object. This assumes all formatting has
       // been applied in the bot itself. For example the monitor bots which conform to strict formatting rules.
       if (key == "mrkdwn") {
@@ -169,7 +169,8 @@ class SlackHook extends Transport {
     opts = opts || {};
     this.name = opts.name || "slackWebhook";
     this.level = opts.level || undefined;
-    this.webhookUrl = opts.webhookUrl;
+    this.escalationPathWebhookUrls = opts.transportConfig.escalationPathWebhookUrls || {};
+    this.defaultWebHookUrl = opts.transportConfig.defaultWebHookUrl;
     this.formatter = opts.formatter || undefined;
     this.mrkdwn = opts.mrkdwn || false;
 
@@ -177,10 +178,13 @@ class SlackHook extends Transport {
   }
 
   async log(info, callback) {
+    // If the log contains a notification path then use a custom slack webhook service. This lets the transport route to
+    // diffrent slack channels depending on the context of the log.
+    const webhookUrl = this.escalationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
+
     let payload = {
       mrkdwn: this.mrkdwn,
     };
-
     let layout = this.formatter(info);
     payload.text = layout.text || undefined;
     payload.attachments = layout.attachments || undefined;
@@ -188,7 +192,7 @@ class SlackHook extends Transport {
     let errorThrown = false;
     // If the overall payload is less than 3000 chars then we can send it all in one go to the slack API.
     if (JSON.stringify(payload).length < 3000) {
-      let response = await this.axiosInstance.post(this.webhookUrl, payload);
+      let response = await this.axiosInstance.post(webhookUrl, payload);
       if (response.status != 200) errorThrown = true;
     } else {
       // If it's more than 3000 chars then we need to split the message sent to slack API into multiple calls.
@@ -216,7 +220,7 @@ class SlackHook extends Transport {
       // Iterate over each message to send and generate a axios call for each message.
       for (const processedBlock of processedBlocks) {
         payload.blocks = processedBlock;
-        let response = await this.axiosInstance.post(this.webhookUrl, payload);
+        let response = await this.axiosInstance.post(webhookUrl, payload);
         if (response.status != 200) errorThrown = true;
       }
     }
@@ -225,10 +229,10 @@ class SlackHook extends Transport {
   }
 }
 
-function createSlackTransport(webHookUrl) {
+function createSlackTransport(transportConfig) {
   return new SlackHook({
     level: "info",
-    webhookUrl: webHookUrl,
+    transportConfig,
     formatter: (info) => {
       return slackFormatter(info);
     },
