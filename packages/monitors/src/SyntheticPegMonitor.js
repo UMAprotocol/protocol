@@ -189,6 +189,7 @@ class SyntheticPegMonitor {
           ". Error of " +
           this.formatDecimalString(deviationError.muln(100)) + // multiply by 100 to make the error a percentage
           "%.",
+        notificationPath: "risk-management",
       });
     }
   }
@@ -245,6 +246,7 @@ class SyntheticPegMonitor {
           " hour(s). Threshold is " +
           this.pegVolatilityAlertThreshold * 100 +
           "%.",
+        notificationPath: "risk-management",
       });
     }
   }
@@ -299,6 +301,7 @@ class SyntheticPegMonitor {
           " hour(s). Threshold is " +
           this.syntheticVolatilityAlertThreshold * 100 +
           "%.",
+        notificationPath: "risk-management",
       });
     }
   }
