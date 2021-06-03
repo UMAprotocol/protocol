@@ -51,8 +51,7 @@ abstract contract OracleBaseTunnel {
     }
 
     /**
-     * @notice Publishes price for a requested query. Will revert if request hasn't been requested yet or has been
-     * resolved already.
+     * @notice Publishes price for a requested query. Will only emit an event if the request has never been resolved.
      */
     function _publishPrice(
         bytes32 identifier,
@@ -62,10 +61,11 @@ abstract contract OracleBaseTunnel {
     ) internal {
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
-        require(lookup.state == RequestState.Requested, "Price request is not currently pending");
-        lookup.price = price;
-        lookup.state = RequestState.Resolved;
-        emit PushedPrice(identifier, time, ancillaryData, lookup.price);
+        if (lookup.state == RequestState.Requested) {
+            lookup.price = price;
+            lookup.state = RequestState.Resolved;
+            emit PushedPrice(identifier, time, ancillaryData, lookup.price);
+        }
     }
 
     /**

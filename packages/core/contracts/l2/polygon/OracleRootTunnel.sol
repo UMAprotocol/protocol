@@ -30,9 +30,11 @@ contract OracleRootTunnel is OracleBaseTunnel, FxBaseRootTunnel {
     ) public {
         require(_getOracle().hasPrice(identifier, time, ancillaryData), "DVM has not resolved price");
         int256 price = _getOracle().getPrice(identifier, time, ancillaryData);
-        // TODO: Duplicate price publications will fail, meaning that the first Message that is sent via
-        // _sendMessageToChild must successfully sync to Polygon, or this price can never be published on Polygon.
-        // Perhaps we shouldn't revert if the price was already resolved?
+        // This implementation allows duplicate MessageSent events via _sendMessageToRoot. The child tunnel on the
+        // sidechain will not have a problem handling duplicate price resolutions (it will just ignore them). This is 
+        // potentially a fallback in case the automatic state sync to the sidechain is missing the `publishPrice` 
+        // transaction for some reason. There is little risk in duplicating MessageSent emissions because the sidechain
+        // bridge does not impose any rate-limiting.
         _publishPrice(identifier, time, ancillaryData, price);
         // Initiate cross-chain price request:
         // TODO: Should we pack more information into this request?

@@ -41,22 +41,15 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         uint256 time,
         bytes memory ancillaryData
     ) public override onlyRegisteredContract() {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
-        Price storage lookup = prices[priceRequestId];
-        if (lookup.state != RequestState.NeverRequested) {
-            // Clients expect that `requestPrice` does not revert if a price is already requested, so return gracefully.
-            // TODO: Should we allow duplicate price requests to emit multiple Messages via _sendMessageToRoot? The DVM
-            // will not have a problem handling duplicate requests, as it will just ignore them. This could be
-            // useful if the checkpointing on mainnet for some reason misses a Message.
-            return;
-        } else {
-            _requestPrice(identifier, time, ancillaryData);
-
-            // Initiate cross-chain price request:
-            // TODO: Can we pack more information into this request? We could try to check if the requester is an
-            // OptimisticOracle and pull price request metadata from it such as fees, original requester, etc?
-            _sendMessageToRoot(abi.encode(identifier, time, ancillaryData));
-        }
+        // This implementation allows duplicate price requests to emit duplicate MessageSent events via 
+        // _sendMessageToRoot. The DVM will not have a problem handling duplicate requests (it will just ignore them). 
+        // This is potentially a fallback in case the checkpointing to mainnet is missing the `requestPrice` transaction 
+        // for some reason. There is little risk in duplicating MessageSent emissions because the sidechain bridge 
+        // does not impose any rate-limiting and this method is only callable by registered callers.
+        _requestPrice(identifier, time, ancillaryData);
+        // TODO: Can we pack more information into this request? We could try to check if the requester is an
+        // OptimisticOracle and pull price request metadata from it such as fees, original requester, etc?
+        _sendMessageToRoot(abi.encode(identifier, time, ancillaryData));
     }
 
     /** 
