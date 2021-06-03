@@ -7,9 +7,9 @@ import "../../oracle/interfaces/RegistryInterface.sol";
 import "./OracleBaseTunnel.sol";
 
 /**
- * @title Adapter deployed on sidechain to give financial contracts the ability to trigger cross-chain price requests to 
- * the mainnet DVM. Also has the ability to receive published prices from mainnet. This contract can be treated as the 
- * "DVM" for this network, because a calling contract can request and access a resolved price request from this 
+ * @title Adapter deployed on sidechain to give financial contracts the ability to trigger cross-chain price requests to
+ * the mainnet DVM. Also has the ability to receive published prices from mainnet. This contract can be treated as the
+ * "DVM" for this network, because a calling contract can request and access a resolved price request from this
  * contract.
  * @dev The intended client of this contract is an OptimisticOracle on sidechain that needs price
  * resolution secured by the DVM on mainnet.
@@ -41,10 +41,10 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         uint256 time,
         bytes memory ancillaryData
     ) public override onlyRegisteredContract() {
-        // This implementation allows duplicate price requests to emit duplicate MessageSent events via 
-        // _sendMessageToRoot. The DVM will not have a problem handling duplicate requests (it will just ignore them). 
-        // This is potentially a fallback in case the checkpointing to mainnet is missing the `requestPrice` transaction 
-        // for some reason. There is little risk in duplicating MessageSent emissions because the sidechain bridge 
+        // This implementation allows duplicate price requests to emit duplicate MessageSent events via
+        // _sendMessageToRoot. The DVM will not have a problem handling duplicate requests (it will just ignore them).
+        // This is potentially a fallback in case the checkpointing to mainnet is missing the `requestPrice` transaction
+        // for some reason. There is little risk in duplicating MessageSent emissions because the sidechain bridge
         // does not impose any rate-limiting and this method is only callable by registered callers.
         _requestPrice(identifier, time, ancillaryData);
         // TODO: Can we pack more information into this request? We could try to check if the requester is an
@@ -52,7 +52,7 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         _sendMessageToRoot(abi.encode(identifier, time, ancillaryData));
     }
 
-    /** 
+    /**
      * @notice Resolves a price request.
      * @dev The data will be received automatically from the state receiver when the state is synced between Ethereum
      * and Polygon. This will revert if the Root chain sender is not the `fxRootTunnel` contract.

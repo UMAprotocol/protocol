@@ -18,21 +18,13 @@ task("check-price", "Check whether price has resolved for Oracle and return pric
     if (!isRegistered) {
       console.log("Caller not registered");
     } else {
-        const Oracle = await deployments.get("OracleAncillaryInterface");
-        const oracleContract = new web3.eth.Contract(Oracle.abi, oracle);
-        const hasPrice = await oracleContract.methods.hasPrice(
-            identifier,
-            timestamp,
-            ancillary
-        ).call({ from: deployer })
-        console.log(`Oracle @ ${oracle} ${hasPrice ? "has" : "does not have"} a price`)
-        if (hasPrice) {
-            const price = await oracleContract.methods.getPrice(
-                identifier,
-                timestamp,
-                ancillary
-            ).call({ from: deployer })
-            console.log(`Price: ${price.toString()}`)
-        }
+      const Oracle = await deployments.get("OracleAncillaryInterface");
+      const oracleContract = new web3.eth.Contract(Oracle.abi, oracle);
+      const hasPrice = await oracleContract.methods.hasPrice(identifier, timestamp, ancillary).call({ from: deployer });
+      console.log(`Oracle @ ${oracle} ${hasPrice ? "has" : "does not have"} a price`);
+      if (hasPrice) {
+        const price = await oracleContract.methods.getPrice(identifier, timestamp, ancillary).call({ from: deployer });
+        console.log(`Price: ${price.toString()}`);
+      }
     }
   });

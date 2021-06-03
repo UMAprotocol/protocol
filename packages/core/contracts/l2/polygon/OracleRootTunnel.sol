@@ -18,7 +18,7 @@ contract OracleRootTunnel is OracleBaseTunnel, FxBaseRootTunnel {
 
     /**
      * @notice This is the first method that should be called in order to publish a price request to the sidechain.
-     * @dev Publishes the DVM resolved price for the price request, or reverts if not resolved yet. 
+     * @dev Publishes the DVM resolved price for the price request, or reverts if not resolved yet.
      * @param identifier Identifier of price request to resolve.
      * @param time Timestamp of price request to resolve.
      * @param ancillaryData extra data of price request to resolve.
@@ -31,8 +31,8 @@ contract OracleRootTunnel is OracleBaseTunnel, FxBaseRootTunnel {
         require(_getOracle().hasPrice(identifier, time, ancillaryData), "DVM has not resolved price");
         int256 price = _getOracle().getPrice(identifier, time, ancillaryData);
         // This implementation allows duplicate MessageSent events via _sendMessageToRoot. The child tunnel on the
-        // sidechain will not have a problem handling duplicate price resolutions (it will just ignore them). This is 
-        // potentially a fallback in case the automatic state sync to the sidechain is missing the `publishPrice` 
+        // sidechain will not have a problem handling duplicate price resolutions (it will just ignore them). This is
+        // potentially a fallback in case the automatic state sync to the sidechain is missing the `publishPrice`
         // transaction for some reason. There is little risk in duplicating MessageSent emissions because the sidechain
         // bridge does not impose any rate-limiting.
         _publishPrice(identifier, time, ancillaryData, price);
@@ -41,9 +41,9 @@ contract OracleRootTunnel is OracleBaseTunnel, FxBaseRootTunnel {
         _sendMessageToChild(abi.encode(identifier, time, ancillaryData, price));
     }
 
-    /** 
+    /**
      * @notice Submits a price request.
-     * @dev This internal method will be called inside `receiveMessage(bytes memory inputData)`. The `inputData` is a 
+     * @dev This internal method will be called inside `receiveMessage(bytes memory inputData)`. The `inputData` is a
      * proof of transaction that is derived from the transaction hash of the transaction on the child chain that
      * originated the cross-chain price request via _sendMessageToRoot.
      * @param data ABI encoded params with which to call `requestPrice`.

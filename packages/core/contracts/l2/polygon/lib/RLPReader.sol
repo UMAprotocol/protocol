@@ -223,23 +223,23 @@ library RLPReader {
         unchecked {
             if (len == 0) return;
 
-                // copy as many word sizes as possible
-                for (; len >= WORD_SIZE; len -= WORD_SIZE) {
-                    assembly {
-                        mstore(dest, mload(src))
-                    }
-
-                    src += WORD_SIZE;
-                    dest += WORD_SIZE;
-                }
-
-                // left over bytes. Mask is used to remove unwanted bytes from the word
-                uint256 mask = 256**(WORD_SIZE - len) - 1;
+            // copy as many word sizes as possible
+            for (; len >= WORD_SIZE; len -= WORD_SIZE) {
                 assembly {
-                    let srcpart := and(mload(src), not(mask)) // zero out src
-                    let destpart := and(mload(dest), mask) // retrieve the bytes
-                    mstore(dest, or(destpart, srcpart))
+                    mstore(dest, mload(src))
                 }
+
+                src += WORD_SIZE;
+                dest += WORD_SIZE;
+            }
+
+            // left over bytes. Mask is used to remove unwanted bytes from the word
+            uint256 mask = 256**(WORD_SIZE - len) - 1;
+            assembly {
+                let srcpart := and(mload(src), not(mask)) // zero out src
+                let destpart := and(mload(dest), mask) // retrieve the bytes
+                mstore(dest, or(destpart, srcpart))
             }
         }
+    }
 }
