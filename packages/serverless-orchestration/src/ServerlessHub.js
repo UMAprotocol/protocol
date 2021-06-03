@@ -194,6 +194,7 @@ hub.post("/", async (req, res) => {
           }
         }), // eslint-disable-line indent
         validOutputs: Object.keys(errorOutput.validOutputs), // eslint-disable-line indent
+        notificationPath: "infrastructure-error",
       });
     }
     await delay(2); // Wait a few seconds to be sure the the winston logs are processed upstream.

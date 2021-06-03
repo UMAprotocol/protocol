@@ -412,6 +412,7 @@ async function Poll(callback) {
       at: "Liquidator#index",
       message: "Liquidator execution error🚨",
       error: typeof error === "string" ? new Error(error) : error,
+      notificationPath: "infrastructure-error",
     });
     await waitForLogger(Logger);
     callback(error);

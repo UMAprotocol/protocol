@@ -101,7 +101,8 @@ class OptimisticOracleContractMonitor {
       ]({
         at: "OptimisticOracleContractMonitor",
         message: "Price Request Alert 👮🏻!",
-        mrkdwn: mrkdwn,
+        mrkdwn,
+        notificationPath: "risk-management",
       });
     }
     this.lastRequestPriceBlockNumber = this._getLastSeenBlockNumber(latestEvents);
@@ -137,7 +138,8 @@ class OptimisticOracleContractMonitor {
       ]({
         at: "OptimisticOracleContractMonitor",
         message: "Price Proposal Alert 🧞‍♂️!",
-        mrkdwn: mrkdwn,
+        mrkdwn,
+        notificationPath: "risk-management",
       });
     }
     this.lastProposePriceBlockNumber = this._getLastSeenBlockNumber(latestEvents);
@@ -167,7 +169,8 @@ class OptimisticOracleContractMonitor {
       this.logger[this.logOverrides.disputedPrice || "error"]({
         at: "OptimisticOracleContractMonitor",
         message: "Price Dispute Alert ⛔️!",
-        mrkdwn: mrkdwn,
+        mrkdwn,
+        notificationPath: "risk-management",
       });
     }
     this.lastDisputePriceBlockNumber = this._getLastSeenBlockNumber(latestEvents);
@@ -204,7 +207,8 @@ class OptimisticOracleContractMonitor {
       ]({
         at: "OptimisticOracleContractMonitor",
         message: "Price Settlement Alert 🏧!",
-        mrkdwn: mrkdwn,
+        mrkdwn,
+        notificationPath: "risk-management",
       });
     }
     this.lastSettlementBlockNumber = this._getLastSeenBlockNumber(latestEvents);

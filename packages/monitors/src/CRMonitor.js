@@ -198,7 +198,8 @@ class CRMonitor {
         this.logger[this.logOverrides.crThreshold || "warn"]({
           at: "CRMonitor",
           message: "Collateralization ratio alert 🙅‍♂️!",
-          mrkdwn: mrkdwn,
+          mrkdwn,
+          notificationPath: "risk-management",
         });
       }
     }
