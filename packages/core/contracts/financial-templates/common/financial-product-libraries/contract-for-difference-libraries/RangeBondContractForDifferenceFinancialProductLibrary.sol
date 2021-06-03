@@ -70,8 +70,7 @@ contract RangeBondContractForDifferenceFinancialProductLibrary is
         // multiplications. However this introduces rounding issues. By keeping it in this form this is avoided.
         // NOTE: the ternary is used over Math.max for the second term to avoid negative numbers.
 
-        uint256 positiveExpiraryPrice = 0;
-        if (expiryPrice > 0) positiveExpiraryPrice = uint256(expiryPrice);
+        uint256 positiveExpiraryPrice = expiryPrice > 0 ? uint256(expiryPrice) : 0;
 
         FixedPoint.Unsigned memory longTokensRedeemed =
             FixedPoint
