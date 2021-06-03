@@ -39,14 +39,16 @@ task("migrate-identifiers", "Adds all whitelisted identifiers on one IdentifierW
 
     // Filter out identifiers that are not currently whitelisted.
     const isIdentifierSupported = await Promise.all(
-      addedIdentifierEvents.map(_event => 
+      addedIdentifierEvents.map((_event) =>
         oldWhitelist.methods.isIdentifierSupported(_event.returnValues.identifier).call()
       )
     );
-    const identifiersToWhitelist = isIdentifierSupported.map((isOnWhitelist, i) => {
-      if (isOnWhitelist) return addedIdentifierEvents[i].returnValues.identifier
-      return null;
-    }).filter(id => id)
+    const identifiersToWhitelist = isIdentifierSupported
+      .map((isOnWhitelist, i) => {
+        if (isOnWhitelist) return addedIdentifierEvents[i].returnValues.identifier;
+        return null;
+      })
+      .filter((id) => id);
 
     // Create table with results to display to user:
     let resultsTable = identifiersToWhitelist.map((id) => {
@@ -59,8 +61,8 @@ task("migrate-identifiers", "Adds all whitelisted identifiers on one IdentifierW
     if (to) {
       const newWhitelist = new web3.eth.Contract(IdentifierWhitelist.abi, to);
       const isIdentifierSupportedOnNewWhitelist = await Promise.all(
-        identifiersToWhitelist.map(id => newWhitelist.methods.isIdentifierSupported(id).call())
-      )
+        identifiersToWhitelist.map((id) => newWhitelist.methods.isIdentifierSupported(id).call())
+      );
 
       // Send transactions sequentially to avoid nonce collisions. Note that this might fail due to timeout if there
       // are a lot of transactions to send or the gas price to send with is too low.
