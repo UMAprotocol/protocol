@@ -29,7 +29,7 @@ let collateralWhitelist;
 let identifierWhitelist;
 let optimisticOracle;
 let finder;
-let ancillaryData;
+let ancillaryData = web3.utf8ToHex("CUSTOM_DATA");
 let timer;
 let constructorParams;
 
@@ -77,7 +77,6 @@ contract("ContractForDifference", function (accounts) {
 
     longToken = await Token.new("Long Token", "lTKN", 18, { from: deployer });
     shortToken = await Token.new("Short Token", "sTKN", 18, { from: deployer });
-    ancillaryData = longToken.address + shortToken.address.substring(2, 42);
 
     optimisticOracle = await OptimisticOracle.new(optimisticOracleLiveness, finder.address, timer.address);
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.address, {
@@ -96,6 +95,7 @@ contract("ContractForDifference", function (accounts) {
       collateralTokenAddress: collateralToken.address,
       finderAddress: finder.address,
       contractForDifferenceLibraryAddress: contractForDifferenceLibrary.address,
+      ancillaryData,
       timerAddress: timer.address,
     };
 
