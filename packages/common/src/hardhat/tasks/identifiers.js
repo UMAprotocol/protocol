@@ -35,22 +35,18 @@ task("migrate-identifiers", "Adds all whitelisted identifiers on one IdentifierW
 
     const IdentifierWhitelist = await deployments.get("IdentifierWhitelist");
     const oldWhitelist = new web3.eth.Contract(IdentifierWhitelist.abi, from);
-
-    const identifiersToWhitelist = [];
     const addedIdentifierEvents = await oldWhitelist.getPastEvents("SupportedIdentifierAdded", { fromBlock: 0 });
 
     // Filter out identifiers that are not currently whitelisted.
-    let isIdentifierSupportedPromises = [];
-    addedIdentifierEvents.forEach((_event) => {
-      isIdentifierSupportedPromises.push(
+    const isIdentifierSupported = await Promise.all(
+      addedIdentifierEvents.map(_event => 
         oldWhitelist.methods.isIdentifierSupported(_event.returnValues.identifier).call()
-      );
-    });
-    (await Promise.all(isIdentifierSupportedPromises)).forEach((supported, i) => {
-      if (supported) {
-        identifiersToWhitelist.push(addedIdentifierEvents[i].returnValues.identifier);
-      }
-    });
+      )
+    );
+    const identifiersToWhitelist = isIdentifierSupported.map((isOnWhitelist, i) => {
+      if (isOnWhitelist) return addedIdentifierEvents[i].returnValues.identifier
+      return null;
+    }).filter(id => id)
 
     // Create table with results to display to user:
     let resultsTable = identifiersToWhitelist.map((id) => {
@@ -62,18 +58,15 @@ task("migrate-identifiers", "Adds all whitelisted identifiers on one IdentifierW
 
     if (to) {
       const newWhitelist = new web3.eth.Contract(IdentifierWhitelist.abi, to);
-      isIdentifierSupportedPromises = [];
-      identifiersToWhitelist.forEach((id) => {
-        isIdentifierSupportedPromises.push(newWhitelist.methods.isIdentifierSupported(id).call());
-      });
-
-      const isIdentifierSupportedResults = await Promise.all(isIdentifierSupportedPromises);
+      const isIdentifierSupportedOnNewWhitelist = await Promise.all(
+        identifiersToWhitelist.map(id => newWhitelist.methods.isIdentifierSupported(id).call())
+      )
 
       // Send transactions sequentially to avoid nonce collisions. Note that this might fail due to timeout if there
       // are a lot of transactions to send or the gas price to send with is too low.
       const addSupportedIdentifierReceipts = [];
-      for (let i = 0; i < isIdentifierSupportedResults.length; i++) {
-        if (!isIdentifierSupportedResults[i]) {
+      for (let i = 0; i < isIdentifierSupportedOnNewWhitelist.length; i++) {
+        if (!isIdentifierSupportedOnNewWhitelist[i]) {
           const receipt = await newWhitelist.methods.addSupportedIdentifier(identifiersToWhitelist[i]).send({
             from: deployer,
           });
