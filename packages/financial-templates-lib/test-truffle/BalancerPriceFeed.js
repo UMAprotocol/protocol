@@ -1,9 +1,9 @@
 const { toWei, toBN } = web3.utils;
 const winston = require("winston");
 
-const { BalancerPriceFeed } = require("../../src/price-feed/BalancerPriceFeed");
+const { BalancerPriceFeed } = require("../src/price-feed/BalancerPriceFeed");
 const { mineTransactionsAtTime, MAX_SAFE_JS_INT } = require("@uma/common");
-const { delay } = require("../../src/helpers/delay.js");
+const { delay } = require("../src/helpers/delay.js");
 const { getTruffleContract } = require("@uma/core");
 
 const BalancerMock = getTruffleContract("BalancerMock", web3);
