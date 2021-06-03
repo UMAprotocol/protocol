@@ -44,8 +44,6 @@ contract OracleRootTunnel is OracleBaseTunnel, FxBaseRootTunnel {
      * @dev This internal method will be called inside `receiveMessage(bytes memory inputData)`. The `inputData` is a 
      * proof of transaction that is derived from the transaction hash of the transaction on the child chain that
      * originated the cross-chain price request via _sendMessageToRoot.
-     * This is called by an `onStateReceive` function, and since it is called via a system call, no event will be 
-     * emitted during its execution. More details here: https://docs.matic.network/docs/contribute/bor/core_concepts/#system-call
      * @param data ABI encoded params with which to call `requestPrice`.
      */
     function _processMessageFromChild(bytes memory data) internal override {
