@@ -32,4 +32,3 @@ const func = async function (hre) {
 };
 module.exports = func;
 func.tags = ["OracleRootTunnel"];
-func.dependencies = ["Finder"];
