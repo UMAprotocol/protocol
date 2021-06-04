@@ -27,10 +27,7 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
     },
     networks: {
       hardhat: {
-        gas: 12000000,
-        blockGasLimit: 12000000,
-        allowUnlimitedContractSize: true,
-        timeout: 1800000,
+        allowUnlimitedContractSize: true
       },
       localhost: {
         url: "http://127.0.0.1:8545",
