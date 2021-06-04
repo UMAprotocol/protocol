@@ -32,6 +32,7 @@ const revertWrapper = (result) => {
 /**
  * create a truffle contract from a json object, usually read in from an artifact.
  * @param {*} contractJsonObject json object representing a contract.
+ * @param {Object} web3 instance. In unit tests this is globally accessable but when used in production needs injection.
  * @returns truffle contract instance
  */
 const createContractObjectFromJson = (contractJsonObject, web3) => {
