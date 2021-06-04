@@ -22,8 +22,8 @@ abstract contract OracleBaseTunnel {
     // Finder to provide addresses for DVM system contracts.
     FinderInterface public finder;
 
-    event PriceRequestAdded(bytes32 indexed identifier, uint256 time, bytes ancillaryData);
-    event PushedPrice(bytes32 indexed identifier, uint256 time, bytes ancillaryData, int256 price);
+    event PriceRequestAdded(bytes32 indexed identifier, uint256 time, bytes ancillaryData, bytes32 requestHash);
+    event PushedPrice(bytes32 indexed identifier, uint256 time, bytes ancillaryData, int256 price, bytes32 requestHash);
 
     /**
      * @notice Constructor.
@@ -46,7 +46,7 @@ abstract contract OracleBaseTunnel {
         Price storage lookup = prices[priceRequestId];
         if (lookup.state == RequestState.NeverRequested) {
             lookup.state = RequestState.Requested;
-            emit PriceRequestAdded(identifier, time, ancillaryData);
+            emit PriceRequestAdded(identifier, time, ancillaryData, priceRequestId);
         }
     }
 
@@ -64,7 +64,7 @@ abstract contract OracleBaseTunnel {
         if (lookup.state == RequestState.Requested) {
             lookup.price = price;
             lookup.state = RequestState.Resolved;
-            emit PushedPrice(identifier, time, ancillaryData, lookup.price);
+            emit PushedPrice(identifier, time, ancillaryData, lookup.price, priceRequestId);
         }
     }
 

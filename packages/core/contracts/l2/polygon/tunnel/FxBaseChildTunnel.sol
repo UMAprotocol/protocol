@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
-// Copied from Polygon demo FxTunnel repo: https://github.com/jdkanani/fx-portal
+// Copied with no modifications from Polygon demo FxTunnel repo: https://github.com/jdkanani/fx-portal
+// except bumping version from 0.7.3 --> 0.8
 pragma solidity ^0.8.0;
 
 // IFxMessageProcessor represents interface to process message
