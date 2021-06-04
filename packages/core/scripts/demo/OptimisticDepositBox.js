@@ -13,15 +13,15 @@
  * to withdraw USD-denominated amounts of ETH.
  *
  * How to run:
- * - `cd core && $(npm bin)/truffle exec ./scripts/demo/OptimisticDepositBox.js --network test`
+ * - `cd core && yarn truffle exec ./scripts/demo/OptimisticDepositBox.js --network test`
  * Assumptions:
- * - User is using a local blockchain (i.e. not Kovan/Ropsten/Rinkeby/Mainnet)
+ * - User is using a local blockchain (i.e. not Kovan/Ropsten/Rinkeby/Mainnet) (`ganache-cli --port 9545`)
  * - User is running this script in the web3 environment injected by Truffle.
  * - User is sending transactions from accounts[0] of the injected web3.
  * - User is using wETH as the collateral ERC20.
  * - User is referencing the ETHUSD pricefeed identifier.
  * Prerequisites:
- * - Migrate the contracts via `$(npm bin)/truffle migrate --reset --network test`.
+ * - Migrate the contracts via `yarn truffle migrate --reset --network test`.
  * - The migration step ensures that the user is the owner of the Finder, IdentifierWhitelist,
  *   Registry, and other important system contracts and can therefore modify their configurations.
  */
