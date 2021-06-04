@@ -653,6 +653,13 @@ contract("OptimisticOracle", function (accounts) {
     assert.equal(await optimisticRequester.ancillaryData(), ancillaryData);
     await optimisticRequester.clearState();
 
+    // Check that OptimisticOracle stamped ancillary data as expected before sending to Oracle.
+    const priceRequests = await mockOracle.getPastEvents("PriceRequestAdded", { fromBlock: 0 })
+    assert.equal(priceRequests.length, 1, "should only be one price request escalated to MockOracle");
+    const stampedAncillaryData = priceRequests[0].returnValues.ancillaryData;
+    const expectedStampedAncillaryData = await optimisticOracle.stampAncillaryData(ancillaryData, optimisticRequester.address)
+    assert.equal(stampedAncillaryData, expectedStampedAncillaryData);
+
     // Settled
     await pushPrice(correctPrice);
     await optimisticRequester.settleAndGetPrice(identifier, requestTime, ancillaryData);
