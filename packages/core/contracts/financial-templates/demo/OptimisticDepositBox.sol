@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/AddressWhitelist.sol";
 import "../../common/implementation/Testable.sol";
 import "../../common/implementation/Lockable.sol";
@@ -40,7 +39,6 @@ import "../../oracle/implementation/ContractCreator.sol";
  */
 contract OptimisticDepositBox is Testable, Lockable {
     using SafeMath for uint256;
-    using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
 
     // Represents a single caller's deposit box. All collateral is held by this contract.
@@ -48,11 +46,11 @@ contract OptimisticDepositBox is Testable, Lockable {
         // Requested amount of collateral, denominated in quote asset of the price identifier.
         // Example: If the price identifier is wETH-USD, and the `withdrawalRequestAmount = 1000`, then
         // this represents a withdrawal request for 1000 USD worth of wETH.
-        FixedPoint.Unsigned withdrawalRequestAmount;
+        uint256 withdrawalRequestAmount;
         // Timestamp of the latest withdrawal request. A withdrawal request is pending if `requestPassTimestamp != 0`.
         uint256 requestPassTimestamp;
         // Raw collateral value.
-        FixedPoint.Unsigned collateral;
+        uint256 collateral;
     }
 
     // Maps addresses to their deposit boxes. Each address can have only one position.
@@ -68,7 +66,7 @@ contract OptimisticDepositBox is Testable, Lockable {
     IERC20 public collateralCurrency;
 
     // Total collateral of all depositors.
-    FixedPoint.Unsigned public totalOptimisticDepositBoxCollateral;
+    uint256 public totalOptimisticDepositBoxCollateral;
 
     /****************************************
      *                EVENTS                *
@@ -132,10 +130,10 @@ contract OptimisticDepositBox is Testable, Lockable {
      * @dev This contract must be approved to spend at least `collateralAmount` of `collateralCurrency`.
      * @param collateralAmount total amount of collateral tokens to be sent to the sponsor's position.
      */
-    function deposit(FixedPoint.Unsigned memory collateralAmount) public nonReentrant() {
-        require(collateralAmount.isGreaterThan(0), "Invalid collateral amount");
+    function deposit(uint256 collateralAmount) public nonReentrant() {
+        require(collateralAmount > 0, "Invalid collateral amount");
         OptimisticDepositBoxData storage depositBoxData = depositBoxes[msg.sender];
-        if (depositBoxData.collateral.isEqual(0)) {
+        if (depositBoxData.collateral == 0) {
             emit NewOptimisticDepositBox(msg.sender);
         }
 
@@ -155,13 +153,13 @@ contract OptimisticDepositBox is Testable, Lockable {
      * Only one withdrawal request can exist for the user.
      * @param denominatedCollateralAmount the quote-asset denominated amount of collateral requested to withdraw.
      */
-    function requestWithdrawal(FixedPoint.Unsigned memory denominatedCollateralAmount)
+    function requestWithdrawal(uint256 denominatedCollateralAmount)
         public
         noPendingWithdrawal(msg.sender)
         nonReentrant()
     {
         OptimisticDepositBoxData storage depositBoxData = depositBoxes[msg.sender];
-        require(denominatedCollateralAmount.isGreaterThan(0), "Invalid collateral amount");
+        require(denominatedCollateralAmount > 0, "Invalid collateral amount");
 
         // Update the position object for the user.
         depositBoxData.withdrawalRequestAmount = denominatedCollateralAmount;
@@ -182,7 +180,7 @@ contract OptimisticDepositBox is Testable, Lockable {
     function executeWithdrawal()
         external
         nonReentrant()
-        returns (FixedPoint.Unsigned memory denominatedAmountToWithdraw)
+        returns (uint256 denominatedAmountToWithdraw)
     {
         OptimisticDepositBoxData storage depositBoxData = depositBoxes[msg.sender];
         require(
@@ -191,16 +189,16 @@ contract OptimisticDepositBox is Testable, Lockable {
         );
 
         // Get the resolved price or revert.
-        FixedPoint.Unsigned memory exchangeRate = _getOraclePrice(depositBoxData.requestPassTimestamp);
+        uint256 exchangeRate = _getOraclePrice(depositBoxData.requestPassTimestamp);
 
         // Calculate denomated amount of collateral based on resolved exchange rate.
         // Example 1: User wants to withdraw $1000 of ETH, exchange rate is $2000/ETH, therefore user to receive 0.5 ETH.
         // Example 2: User wants to withdraw $2500 of ETH, exchange rate is $2000/ETH, therefore user to receive 1.25 ETH.
-        FixedPoint.Unsigned memory denominatedAmountToWithdraw =
+        uint256 denominatedAmountToWithdraw =
             depositBoxData.withdrawalRequestAmount.div(exchangeRate);
 
         // If withdrawal request amount is > collateral, then withdraw the full collateral amount and delete the deposit box data.
-        if (denominatedAmountToWithdraw.isGreaterThan(depositBoxData.collateral)) {
+        if (denominatedAmountToWithdraw > depositBoxData.collateral) {
             denominatedAmountToWithdraw = depositBoxData.collateral;
 
             // Reset the position state as all the value has been removed after settlement.
@@ -246,7 +244,7 @@ contract OptimisticDepositBox is Testable, Lockable {
      * @param user address whose collateral amount is retrieved.
      * @return the collateral amount in the deposit box (i.e. available for withdrawal).
      */
-    function getCollateral(address user) external view nonReentrantView() returns (FixedPoint.Unsigned memory) {
+    function getCollateral(address user) external view nonReentrantView() returns (uint256) {
         return depositBoxes[user].collateral;
     }
 
@@ -264,7 +262,7 @@ contract OptimisticDepositBox is Testable, Lockable {
     // Ensure individual and global consistency when increasing collateral balances. Returns the change to the position.
     function _incrementCollateralBalances(
         OptimisticDepositBoxData storage depositBoxData,
-        FixedPoint.Unsigned memory collateralAmount
+        uint256 collateralAmount
     ) internal {
         depositBoxData.collateral.add(collateralAmount);
         totalOptimisticDepositBoxCollateral = totalOptimisticDepositBoxCollateral.add(collateralAmount);
@@ -276,14 +274,14 @@ contract OptimisticDepositBox is Testable, Lockable {
     // <= the collateral owned by the contract to avoid reverts on withdrawals. The amount returned = amount withdrawn.
     function _decrementCollateralBalances(
         OptimisticDepositBoxData storage depositBoxData,
-        FixedPoint.Unsigned memory collateralAmount
+        uint256 collateralAmount
     ) internal {
         depositBoxData.collateral.sub(collateralAmount);
         totalOptimisticDepositBoxCollateral = totalOptimisticDepositBoxCollateral.sub(collateralAmount);
     }
 
     function _resetWithdrawalRequest(OptimisticDepositBoxData storage depositBoxData) internal {
-        depositBoxData.withdrawalRequestAmount = FixedPoint.fromUnscaledUint(0);
+        depositBoxData.withdrawalRequestAmount = 0;
         depositBoxData.requestPassTimestamp = 0;
     }
 
@@ -304,7 +302,7 @@ contract OptimisticDepositBox is Testable, Lockable {
     }
 
     // Fetches a resolved oracle price from the Optimistic Oracle. Reverts if the oracle hasn't resolved for this request.
-    function _getOraclePrice(uint256 requestedTime) internal view returns (FixedPoint.Unsigned memory) {
+    function _getOraclePrice(uint256 requestedTime) internal view returns (uint256) {
         OptimisticOracleInterface oracle = _getOptimisticOracle();
         require(oracle.hasPrice(priceIdentifier, requestedTime, ''), "Unresolved oracle price");
         int256 oraclePrice = oracle.settleAndGetPrice(priceIdentifier, requestedTime, '');
@@ -313,6 +311,6 @@ contract OptimisticDepositBox is Testable, Lockable {
         if (oraclePrice < 0) {
             oraclePrice = 0;
         }
-        return FixedPoint.Unsigned(uint256(oraclePrice));
+        return uint256(oraclePrice);
     }
 }
