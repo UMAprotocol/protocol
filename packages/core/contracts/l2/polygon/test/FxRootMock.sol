@@ -15,7 +15,7 @@ interface IFxStateSender {
 /** 
  * @title FxRoot root contract for fx-portal
  */
-contract FxRoot is IFxStateSender {
+contract FxRootMock is IFxStateSender {
     IStateSender public stateSender;
     address public fxChild;
 

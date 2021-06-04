@@ -18,7 +18,7 @@ interface IFxMessageProcessor {
 /**
  * @title FxChild child contract for state receiver
  */
-contract FxChild is IStateReceiver {
+contract FxChildMock is IStateReceiver {
     address public fxRoot;
     address public systemCaller;
 
