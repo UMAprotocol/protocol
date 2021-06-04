@@ -256,7 +256,7 @@ contract OptimisticDepositBox is Testable, Lockable {
     function _requestOraclePrice(uint256 requestedTime) internal {
         OptimisticOracleInterface oracle = _getOptimisticOracle();
         // No ancillary data or reward
-        oracle.requestPrice(priceIdentifier, requestedTime, '', address(collateralCurrency), 0);
+        oracle.requestPrice(priceIdentifier, requestedTime, '', IERC20(collateralCurrency), 0);
     }
 
     // Ensure individual and global consistency when increasing collateral balances. Returns the change to the position.
@@ -302,9 +302,9 @@ contract OptimisticDepositBox is Testable, Lockable {
     }
 
     // Fetches a resolved oracle price from the Optimistic Oracle. Reverts if the oracle hasn't resolved for this request.
-    function _getOraclePrice(uint256 requestedTime) internal view returns (uint256) {
+    function _getOraclePrice(uint256 requestedTime) internal returns (uint256) {
         OptimisticOracleInterface oracle = _getOptimisticOracle();
-        require(oracle.hasPrice(priceIdentifier, requestedTime, ''), "Unresolved oracle price");
+        require(oracle.hasPrice(msg.sender, priceIdentifier, requestedTime, ''), "Unresolved oracle price");
         int256 oraclePrice = oracle.settleAndGetPrice(priceIdentifier, requestedTime, '');
 
         // For simplicity we don't want to deal with negative prices.
