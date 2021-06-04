@@ -168,6 +168,7 @@ hub.post("/", async (req, res) => {
         at: "ServerlessHub",
         message: "A fatal error occurred in the hub",
         output: errorOutput.message,
+        notificationPath: "infrastructure-error",
       });
     } else {
       // Else, the error was produced within one of the spokes. If this is the case then we need to process the errors a bit.
