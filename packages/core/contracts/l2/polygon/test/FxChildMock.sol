@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 // Copied with no modifications from Polygon demo FxTunnel repo: https://github.com/jdkanani/fx-portal
-// except bumping version from 0.7.3 --> 0.8 and changing required `onStateReceive` caller from 
-// `0x0000000000000000000000000000000000001001` to an address that is set upon construction. This is to make testing 
+// except bumping version from 0.7.3 --> 0.8 and changing required `onStateReceive` caller from
+// `0x0000000000000000000000000000000000001001` to an address that is set upon construction. This is to make testing
 // more convenient.
 pragma solidity ^0.8.0;
 
@@ -12,7 +12,11 @@ interface IStateReceiver {
 
 // IFxMessageProcessor represents interface to process message
 interface IFxMessageProcessor {
-    function processMessageFromRoot(uint256 stateId, address rootMessageSender, bytes calldata data) external;
+    function processMessageFromRoot(
+        uint256 stateId,
+        address rootMessageSender,
+        bytes calldata data
+    ) external;
 }
 
 /**

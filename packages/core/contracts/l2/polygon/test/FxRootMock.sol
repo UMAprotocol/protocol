@@ -3,7 +3,6 @@
 // except bumping version from 0.7.3 --> 0.8
 pragma solidity ^0.8.0;
 
-
 interface IStateSender {
     function syncState(address receiver, bytes calldata data) external;
 }
@@ -12,7 +11,7 @@ interface IFxStateSender {
     function sendMessageToChild(address _receiver, bytes calldata _data) external;
 }
 
-/** 
+/**
  * @title FxRoot root contract for fx-portal
  */
 contract FxRootMock is IFxStateSender {

@@ -35,10 +35,7 @@ contract("OracleBaseTunnel", async (accounts) => {
     );
     // Duplicate call does not emit an event.
     txn = await tunnel.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: owner });
-    TruffleAssert.eventNotEmitted(
-      txn,
-      "PriceRequestAdded"
-    );
+    TruffleAssert.eventNotEmitted(txn, "PriceRequestAdded");
   });
   it("publishPrice", async function () {
     await tunnel.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: owner });
@@ -56,10 +53,7 @@ contract("OracleBaseTunnel", async (accounts) => {
     );
     // Duplicate call does not emit an event.
     txn = await tunnel.publishPrice(testIdentifier, testRequestTime, testAncillary, testPrice, { from: owner });
-    TruffleAssert.eventNotEmitted(
-      txn,
-      "PushedPrice"
-    );
+    TruffleAssert.eventNotEmitted(txn, "PushedPrice");
   });
   it("encodePriceRequest", async function () {
     const encodedPrice = await tunnel.encodePriceRequest(testIdentifier, testRequestTime, testAncillary);
