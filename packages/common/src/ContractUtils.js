@@ -34,7 +34,7 @@ const revertWrapper = (result) => {
  * @param {*} contractJsonObject json object representing a contract.
  * @returns truffle contract instance
  */
-const createContractObjectFromJson = (contractJsonObject) => {
+const createContractObjectFromJson = (contractJsonObject, web3) => {
   let truffleContractCreator = truffleContract(contractJsonObject);
   truffleContractCreator.setProvider(web3.currentProvider);
   return truffleContractCreator;

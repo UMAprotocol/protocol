@@ -45,8 +45,8 @@ contract("UniswapV2Broker", function (accounts) {
   before(async () => {
     const WETH = await WETH9.new();
     // deploy Uniswap V2 Factory & router.
-    factory = await createContractObjectFromJson(UniswapV2Factory).new(deployer, { from: deployer });
-    router = await createContractObjectFromJson(UniswapV2Router02).new(factory.address, WETH.address, {
+    factory = await createContractObjectFromJson(UniswapV2Factory, web3).new(deployer, { from: deployer });
+    router = await createContractObjectFromJson(UniswapV2Router02, web3).new(factory.address, WETH.address, {
       from: deployer,
     });
 
@@ -72,7 +72,7 @@ contract("UniswapV2Broker", function (accounts) {
     // initialize the pair
     await factory.createPair(tokenA.address, tokenB.address, { from: deployer });
     pairAddress = await factory.getPair(tokenA.address, tokenB.address);
-    pair = await createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
+    pair = await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress);
 
     // For these test, say the synthetic starts trading at uniswap at 1000 TokenA/TokenB. To set this up we will seed the
     // pair with 1000x units of TokenA, relative to TokenB.

@@ -121,20 +121,20 @@ describe("uniswapV3Trader.js", function () {
     WETH = await WETH9.new();
 
     // deploy Uniswap V3 Factory, router, position manager, position descriptor and tickLens.
-    uniswapFactory = await createContractObjectFromJson(UniswapV3Factory).new({
+    uniswapFactory = await createContractObjectFromJson(UniswapV3Factory, web3).new({
       from: deployer,
     });
-    uniswapRouter = await createContractObjectFromJson(SwapRouter).new(uniswapFactory.address, WETH.address, {
+    uniswapRouter = await createContractObjectFromJson(SwapRouter, web3).new(uniswapFactory.address, WETH.address, {
       from: deployer,
     });
 
-    const PositionDescriptor = createContractObjectFromJson(NonfungibleTokenPositionDescriptor);
+    const PositionDescriptor = createContractObjectFromJson(NonfungibleTokenPositionDescriptor, web3);
     await PositionDescriptor.detectNetwork();
 
-    PositionDescriptor.link(await createContractObjectFromJson(NFTDescriptor).new({ from: deployer }));
+    PositionDescriptor.link(await createContractObjectFromJson(NFTDescriptor, web3).new({ from: deployer }));
     positionDescriptor = await PositionDescriptor.new(WETH.address, { from: deployer });
 
-    positionManager = await createContractObjectFromJson(NonfungiblePositionManager).new(
+    positionManager = await createContractObjectFromJson(NonfungiblePositionManager, web3).new(
       uniswapFactory.address,
       WETH.address,
       positionDescriptor.address,
@@ -253,7 +253,7 @@ describe("uniswapV3Trader.js", function () {
     // The default behavior of the bot is to preform a trade if and only if the absolute error is greater than 20%. If
     //  it is then trade the error down to 5%. To start with, the tokenPriceFeed and referencePriceFeed should both
     // equal 1000, due to the seeing, where no trading should be done as no error between the feeds.
-    assert.equal((await getCurrentPrice(poolAddress)).toNumber(), 1000); // price should be exactly 1000 TokenA/TokenB.
+    assert.equal((await getCurrentPrice(poolAddress, web3)).toNumber(), 1000); // price should be exactly 1000 TokenA/TokenB.
 
     await tokenPriceFeed.update();
     assert.equal(tokenPriceFeed.getCurrentPrice(), toWei("1000"));
@@ -284,7 +284,7 @@ describe("uniswapV3Trader.js", function () {
     await uniswapRouter.exactInput(params, { from: trader });
 
     // Double check the market moved correctly and that the uniswap Price feed correctly reports the price.
-    const currentSpotPrice = (await getCurrentPrice(poolAddress)).toNumber();
+    const currentSpotPrice = (await getCurrentPrice(poolAddress, web3)).toNumber();
 
     assert.isTrue(currentSpotPrice < 1302 && currentSpotPrice > 1298);
     mockTime = Number((await web3.eth.getBlock("latest")).timestamp) + 1;
@@ -316,13 +316,13 @@ describe("uniswapV3Trader.js", function () {
     // The default configuration for the range trader bot is to trade the price back to 5% off the current reference price.
     // Seeing the reference price is set to 1000, the pool price should now be set to 1050 exactly after the correcting trade.
 
-    assert.equal((await getCurrentPrice(poolAddress)).toNumber(), 1050);
+    assert.equal((await getCurrentPrice(poolAddress, web3)).toNumber(), 1050);
     // Equally, the price in the uniswap feed should report a price of 1050.
     mockTime = Number((await web3.eth.getBlock("latest")).timestamp) + 1;
     await tokenPriceFeed.update();
     assert.equal(
       Number(fromWei(tokenPriceFeed.getLastBlockPrice())).toFixed(4),
-      (await getCurrentPrice(poolAddress)).toNumber()
+      (await getCurrentPrice(poolAddress, web3)).toNumber()
     );
 
     // If the checkRangeMovementsAndTrade is called again no trade should occur as the deviation error is less than 20%.
@@ -340,7 +340,7 @@ describe("uniswapV3Trader.js", function () {
     // to 1249 we should not execute a trade as the price is right below the execution threshold of 20%.
 
     // First, double check everything is set correctly to start with.
-    assert.equal((await getCurrentPrice(poolAddress)).toNumber(), 1000); // price should be exactly 1000 TokenA/TokenB before any trades.
+    assert.equal((await getCurrentPrice(poolAddress, web3)).toNumber(), 1000); // price should be exactly 1000 TokenA/TokenB before any trades.
     await tokenPriceFeed.update();
     assert.equal(tokenPriceFeed.getLastBlockPrice().toString(), toWei("1000"));
     assert.equal(tokenPriceFeed.getCurrentPrice(), toWei("1000"));
@@ -370,7 +370,7 @@ describe("uniswapV3Trader.js", function () {
 
     // The spot price should be set to 5% below the reference price feed as the bot was trading up from the previous number.
     // This yields 1250*0.95 = 1187.5 as the expected market price.
-    assert.equal((await getCurrentPrice(poolAddress)).toNumber(), 1187.5);
+    assert.equal((await getCurrentPrice(poolAddress, web3)).toNumber(), 1187.5);
     // Check that the resultant post Trade Price Deviation is -5%, as we should be 5% below the reference price after the trade.
     assert.equal(parseFloat(spy.getCall(-1).lastArg.postTradePriceDeviationError.replace("%", "")).toFixed(0), "-5");
   });

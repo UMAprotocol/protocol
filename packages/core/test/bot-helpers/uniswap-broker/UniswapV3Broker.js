@@ -88,23 +88,25 @@ contract("UniswapV3Broker", function (accounts) {
 
     weth = await WETH9.new();
     // deploy Uniswap V3 Factory, router, position manager, position descriptor and tickLens.
-    factory = await createContractObjectFromJson(UniswapV3Factory).new({ from: deployer });
-    router = await createContractObjectFromJson(SwapRouter).new(factory.address, weth.address, { from: deployer });
+    factory = await createContractObjectFromJson(UniswapV3Factory, web3).new({ from: deployer });
+    router = await createContractObjectFromJson(SwapRouter, web3).new(factory.address, weth.address, {
+      from: deployer,
+    });
 
     const PositionDescriptor = createContractObjectFromJson(NonfungibleTokenPositionDescriptor);
     await PositionDescriptor.detectNetwork();
 
-    PositionDescriptor.link(await createContractObjectFromJson(NFTDescriptor).new({ from: deployer }));
+    PositionDescriptor.link(await createContractObjectFromJson(NFTDescriptor, web3).new({ from: deployer }));
     positionDescriptor = await PositionDescriptor.new(weth.address, { from: deployer });
 
-    positionManager = await createContractObjectFromJson(NonfungiblePositionManager).new(
+    positionManager = await createContractObjectFromJson(NonfungiblePositionManager, web3).new(
       factory.address,
       weth.address,
       positionDescriptor.address,
       { from: deployer }
     );
 
-    tickLens = await createContractObjectFromJson(TickLens).new({ from: deployer });
+    tickLens = await createContractObjectFromJson(TickLens, web3).new({ from: deployer });
   });
   beforeEach(async () => {
     // deploy tokens
@@ -130,7 +132,7 @@ contract("UniswapV3Broker", function (accounts) {
       await addLiquidityToPool(toWei("1000"), toWei("100"), getTickFromPrice(8, fee), getTickFromPrice(15, fee));
 
       // The starting price should be 10.
-      assert.equal((await getCurrentPrice(poolAddress)).toNumber(), 10);
+      assert.equal((await getCurrentPrice(poolAddress, web3)).toNumber(), 10);
 
       // Validate the liquidity is within the range. There is one LP within the pool and their range is between 8 and 15.
       const liquidityInRange = await tickLens.getPopulatedTicksInWord(
@@ -174,7 +176,7 @@ contract("UniswapV3Broker", function (accounts) {
       // With just one liquidity provider, uniswapV3 acts like a standard AMM.
       await addLiquidityToPool(toWei("1000"), toWei("100"), getTickFromPrice(8, fee), getTickFromPrice(15, fee));
       // The starting price should be 10.
-      assert.equal((await getCurrentPrice(poolAddress)).toNumber(), 10);
+      assert.equal((await getCurrentPrice(poolAddress, web3)).toNumber(), 10);
     });
     it("Broker can correctly move the price up with a single liquidity provider", async function () {
       // The broker should be able to trade up to a desired price. The starting price is 10. Try trade the market to 13.
@@ -190,7 +192,7 @@ contract("UniswapV3Broker", function (accounts) {
       );
 
       // check the price moved up to 13 correctly.
-      const postTradePrice = (await getCurrentPrice(poolAddress)).toNumber();
+      const postTradePrice = (await getCurrentPrice(poolAddress, web3)).toNumber();
       assert.equal(postTradePrice, 13);
     });
 
@@ -208,7 +210,7 @@ contract("UniswapV3Broker", function (accounts) {
       );
 
       // check the price moved up to 12 correctly.
-      const postTradePrice = (await getCurrentPrice(poolAddress)).toNumber();
+      const postTradePrice = (await getCurrentPrice(poolAddress, web3)).toNumber();
       assert.equal(postTradePrice, 8.5);
     });
   });
@@ -225,7 +227,7 @@ contract("UniswapV3Broker", function (accounts) {
       await addLiquidityToPool(toWei("65"), toWei("6.5"), getTickFromPrice(10, fee), getTickFromPrice(11, fee));
       await addLiquidityToPool(toWei("65"), toWei("6.5"), getTickFromPrice(8.5, fee), getTickFromPrice(9, fee));
       // The starting price should be 10 as all LPs added at the same price.
-      assert.equal((await getCurrentPrice(poolAddress)).toNumber(), 10);
+      assert.equal((await getCurrentPrice(poolAddress, web3)).toNumber(), 10);
     });
     it("Broker can correctly move the price up with a set of liquidity provider", async function () {
       // The broker should be able to trade up to a desired price. The starting price is 10. Try trade the market to 13.
@@ -241,7 +243,7 @@ contract("UniswapV3Broker", function (accounts) {
       );
 
       // check the price moved up to 12 correctly.
-      const postTradePrice = (await getCurrentPrice(poolAddress)).toNumber();
+      const postTradePrice = (await getCurrentPrice(poolAddress, web3)).toNumber();
       assert.equal(postTradePrice, 13);
     });
 
@@ -259,7 +261,7 @@ contract("UniswapV3Broker", function (accounts) {
       );
 
       // check the price moved up to 8.5 correctly.
-      const postTradePrice = (await getCurrentPrice(poolAddress)).toNumber();
+      const postTradePrice = (await getCurrentPrice(poolAddress, web3)).toNumber();
       assert.equal(postTradePrice, 8.5);
     });
   });
