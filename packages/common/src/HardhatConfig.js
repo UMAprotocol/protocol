@@ -27,8 +27,8 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
     },
     networks: {
       hardhat: {
-        gas: 11500000,
-        blockGasLimit: 11500000,
+        gas: 12000000,
+        blockGasLimit: 12000000,
         allowUnlimitedContractSize: true,
         timeout: 1800000,
       },
