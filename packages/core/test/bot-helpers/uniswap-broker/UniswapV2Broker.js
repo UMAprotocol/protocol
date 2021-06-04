@@ -1,7 +1,6 @@
-const { MAX_UINT_VAL } = require("@uma/common");
+const { MAX_UINT_VAL, createContractObjectFromJson } = require("@uma/common");
 const { toWei, toBN, fromWei } = web3.utils;
 const { getTruffleContract } = require("@uma/core");
-const truffleContract = require("@truffle/contract");
 
 // Tested Contract
 const UniswapV2Broker = getTruffleContract("UniswapV2Broker", web3);
@@ -20,13 +19,6 @@ let router;
 let uniswapV2Broker;
 let pair;
 let pairAddress;
-
-// Takes in a json object from a compiled contract and returns a truffle contract instance that can be deployed.
-const createContractObjectFromJson = (contractJsonObject) => {
-  let truffleContractCreator = truffleContract(contractJsonObject);
-  truffleContractCreator.setProvider(web3.currentProvider);
-  return truffleContractCreator;
-};
 
 // Returns the current spot price of a uniswap pool, scaled to 4 decimal points.
 const getPoolSpotPrice = async () => {

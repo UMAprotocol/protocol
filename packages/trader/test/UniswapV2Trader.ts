@@ -12,6 +12,7 @@ import {
   UniswapV2PriceFeed,
 } from "@uma/financial-templates-lib";
 import { getTruffleContract } from "@uma/core";
+import { createContractObjectFromJson } from "@uma/common";
 
 // Script to test
 import { RangeTrader } from "../src/RangeTrader";
@@ -52,16 +53,6 @@ let pair: any;
 let pairAddress: any;
 let WETH: any;
 let dsProxyFactory: any;
-
-// Takes in a json object from a compiled contract and returns a truffle contract instance that can be deployed.
-// TODO: these methods are taken from the UniswapV2Broker tests verbatim. they should be refactored to a common util that
-// can be re-used between different uniswap tests.
-const createContractObjectFromJson = (contractJsonObject: any) => {
-  const contract = require("@truffle/contract");
-  const truffleContractCreator = contract(contractJsonObject);
-  truffleContractCreator.setProvider(web3.currentProvider);
-  return truffleContractCreator;
-};
 
 // Returns the current spot price of a uniswap pool, scaled to 4 decimal points.
 const getPoolSpotPrice = async () => {

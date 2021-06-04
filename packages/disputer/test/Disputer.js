@@ -1,7 +1,6 @@
 const { toWei, toBN, utf8ToHex, padRight, isAddress } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
-const truffleContract = require("@truffle/contract");
 const {
   PostWithdrawLiquidationRewardsStatusTranslations,
   LiquidationStatesEnum,
@@ -12,6 +11,7 @@ const {
   createConstructorParamsForContractVersion,
   TESTED_CONTRACT_VERSIONS,
   parseFixed,
+  createContractObjectFromJson,
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
@@ -1177,14 +1177,6 @@ contract("Disputer.js", function (accounts) {
           let pair;
           let dsProxyFactory;
           let dsProxy;
-
-          // Takes in a json object from a compiled contract and returns a truffle contract instance that can be deployed.
-          // TODO: refactor this to be from a common file
-          const createContractObjectFromJson = (contractJsonObject) => {
-            let truffleContractCreator = truffleContract(contractJsonObject);
-            truffleContractCreator.setProvider(web3.currentProvider);
-            return truffleContractCreator;
-          };
 
           beforeEach(async () => {
             // Create the reserve currency for the liquidator to hold.

@@ -1,7 +1,13 @@
-const { MAX_UINT_VAL, MAX_SAFE_ALLOWANCE, ZERO_ADDRESS, didContractThrow, parseFixed } = require("@uma/common");
+const {
+  MAX_UINT_VAL,
+  MAX_SAFE_ALLOWANCE,
+  ZERO_ADDRESS,
+  didContractThrow,
+  parseFixed,
+  createContractObjectFromJson,
+} = require("@uma/common");
 const { toWei, toBN, fromWei, padRight, utf8ToHex } = web3.utils;
 const { getTruffleContract } = require("@uma/core");
-const truffleContract = require("@truffle/contract");
 const { assert } = require("chai");
 
 // Tested Contract
@@ -63,13 +69,6 @@ const computeExpectedTokenBuy = async (tokensToLiquidate) => {
     .mul(fixedPointAdjustment)
     .div(toBN((await financialContract.totalTokensOutstanding()).toString()));
   return tokensToLiquidate.mul(contractGcr).div(fixedPointAdjustment).add(finalFeeAmount);
-};
-
-// Takes in a json object from a compiled contract and returns a truffle contract instance that can be deployed.
-const createContractObjectFromJson = (contractJsonObject) => {
-  let truffleContractCreator = truffleContract(contractJsonObject);
-  truffleContractCreator.setProvider(web3.currentProvider);
-  return truffleContractCreator;
 };
 
 contract("ReserveTokenLiquidator", function (accounts) {
