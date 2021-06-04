@@ -4,7 +4,7 @@
 // - Line 86: cannot convert directly from uint256 --> address
 // - Line 226: cannot rely on wrapping arithmetic, must explicitly catch underflow/overflow with an unchecked{...}
 //   statement
-// More details on Solidity v0.8.0 breaking changes here: 
+// More details on Solidity v0.8.0 breaking changes here:
 // https://docs.soliditylang.org/en/v0.8.4/080-breaking-changes.html#new-restrictions
 pragma solidity ^0.8.0;
 
