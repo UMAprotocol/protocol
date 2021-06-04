@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/Testable.sol";
+import "../../common/implementation/AncillaryData.sol";
 
 import "../../oracle/implementation/Constants.sol";
 import "../../oracle/interfaces/OptimisticOracleInterface.sol";
@@ -321,9 +322,11 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
     }
 
     function _getAncillaryData() internal view returns (bytes memory) {
-        // Note: when ancillary data is passed to the optimistic oracle, it should be tagged with the token address
-        // whose funding rate it's trying to get.
-        return abi.encodePacked(_getTokenAddress());
+        // When ancillary data is passed to the optimistic oracle, it should be tagged with the token address
+        // whose funding rate it's trying to get so that financial contracts can re-use the same identifier for
+        // multiple funding rate products.
+        bytes memory prefix = "tokenAddress:";
+        return abi.encodePacked(prefix, AncillaryData.toUtf8Bytes(_getTokenAddress()));
     }
 
     function _getTokenAddress() internal view virtual returns (address);

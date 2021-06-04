@@ -1,6 +1,6 @@
 const { OptimisticOracleRequestStatesEnum, didContractThrow, interfaceName } = require("@uma/common");
 
-const { toWei, toBN, hexToUtf8 } = web3.utils;
+const { toWei, toBN, hexToUtf8, utf8ToHex } = web3.utils;
 
 const OptimisticOracle = artifacts.require("OptimisticOracle");
 const Finder = artifacts.require("Finder");
@@ -617,7 +617,7 @@ contract("OptimisticOracle", function (accounts) {
   });
 
   it("Ancillary data lifecycle", async function () {
-    const ancillaryData = "0x1234";
+    const ancillaryData = utf8ToHex("key:value,key2:value2");
 
     // Initial state.
     await verifyState(OptimisticOracleRequestStatesEnum.INVALID, ancillaryData);
@@ -658,18 +658,10 @@ contract("OptimisticOracle", function (accounts) {
     const priceRequests = await mockOracle.getPastEvents("PriceRequestAdded", { fromBlock: 0 });
     assert.equal(priceRequests.length, 1, "should only be one price request escalated to MockOracle");
     const stampedAncillaryData = priceRequests[0].returnValues.ancillaryData;
-    const expectedStampedAncillaryData = await optimisticOracle.stampAncillaryData(
-      ancillaryData,
-      optimisticRequester.address
-    );
-    assert.equal(stampedAncillaryData, expectedStampedAncillaryData);
-    const decodedStampedAncillaryData = web3.eth.abi.decodeParameters(
-      ["bytes", "string", "address"],
-      stampedAncillaryData
-    );
-    assert.equal(decodedStampedAncillaryData[0], ancillaryData);
-    assert.equal(decodedStampedAncillaryData[1], "OptimisticOracle");
-    assert.equal(decodedStampedAncillaryData[2], optimisticRequester.address);
+    assert.equal(
+      hexToUtf8(stampedAncillaryData),
+      `${hexToUtf8(ancillaryData)},requester:${optimisticRequester.address.substr(2).toLowerCase()}`
+    )
 
     // Settled
     await pushPrice(correctPrice);

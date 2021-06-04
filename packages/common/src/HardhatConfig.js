@@ -29,7 +29,7 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
       hardhat: {
         gas: 11500000,
         blockGasLimit: 11500000,
-        allowUnlimitedContractSize: false,
+        allowUnlimitedContractSize: true,
         timeout: 1800000,
       },
       localhost: {

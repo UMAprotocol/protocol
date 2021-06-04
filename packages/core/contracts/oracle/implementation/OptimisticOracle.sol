@@ -16,6 +16,7 @@ import "./Constants.sol";
 import "../../common/implementation/Testable.sol";
 import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/FixedPoint.sol";
+import "../../common/implementation/AncillaryData.sol";
 import "../../common/implementation/AddressWhitelist.sol";
 
 /**
@@ -382,7 +383,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             }
         }
 
-        _getOracle().requestPrice(identifier, timestamp, _stampAncillaryData(ancillaryData, requester));
+        _getOracle().requestPrice(identifier, timestamp, _appendToAncillaryData(ancillaryData, requester));
 
         // Compute refund.
         uint256 refund = 0;
@@ -515,7 +516,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         }
 
         return
-            _getOracle().hasPrice(identifier, timestamp, _stampAncillaryData(ancillaryData, requester))
+            _getOracle().hasPrice(identifier, timestamp, _appendToAncillaryData(ancillaryData, requester))
                 ? State.Resolved
                 : State.Disputed;
     }
@@ -545,7 +546,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
      * @return the stampped ancillary bytes.
      */
     function stampAncillaryData(bytes memory ancillaryData, address requester) public pure returns (bytes memory) {
-        return _stampAncillaryData(ancillaryData, requester);
+        return _appendToAncillaryData(ancillaryData, requester);
     }
 
     function _getId(
@@ -579,7 +580,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             request.resolvedPrice = _getOracle().getPrice(
                 identifier,
                 timestamp,
-                _stampAncillaryData(ancillaryData, requester)
+                _appendToAncillaryData(ancillaryData, requester)
             );
             bool disputeSuccess = request.resolvedPrice != request.proposedPrice;
             uint256 bond = request.bond;
@@ -651,10 +652,10 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 
-    // Stamps the ancillary data blob with the optimistic oracle tag denoting what contract requested it.
-    function _stampAncillaryData(bytes memory ancillaryData, address requester) internal pure returns (bytes memory) {
-        // We use the more standard `encode` instead of `encodePacked` to make decoding easier via `abi.decode`
-        // on-chain, or `web3.eth.abi.decodeParameters` off-chain.
-        return abi.encode(ancillaryData, "OptimisticOracle", requester);
+    function _appendToAncillaryData(bytes memory ancillaryData, address requester) internal pure returns (bytes memory) {
+        // Since this contract will be the one to formally submit DVM price requests, its useful for voters to know who
+        // the original requester was.
+        bytes memory prefix = ",requester:";
+        return abi.encodePacked(ancillaryData, prefix, AncillaryData.toUtf8Bytes(requester));
     }
 }
