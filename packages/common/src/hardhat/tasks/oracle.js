@@ -1,10 +1,10 @@
 const { task, types } = require("hardhat/config");
 
 task("check-price", "Check whether price has resolved for Oracle and return price")
-  .addParam("oracle", "OracleInterface implementation to check", "", types.string)
-  .addParam("identifier", "Request identifier", "", types.string)
-  .addParam("timestamp", "Request timestamp", "", types.string)
-  .addParam("ancillary", "Request ancillary data", "", types.string)
+  .addParam("oracle", "OracleInterface implementation address to check", undefined, types.string)
+  .addParam("identifier", "Request identifier", undefined, types.string)
+  .addParam("timestamp", "Request timestamp", undefined, types.string)
+  .addParam("ancillary", "Request ancillary data", undefined, types.string)
   .setAction(async function (taskArguments, hre) {
     const { deployments, getNamedAccounts, web3 } = hre;
     const { deployer } = await getNamedAccounts();

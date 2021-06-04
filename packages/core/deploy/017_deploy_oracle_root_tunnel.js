@@ -31,4 +31,4 @@ const func = async function (hre) {
   });
 };
 module.exports = func;
-func.tags = ["OracleRootTunnel"];
+func.tags = ["OracleRootTunnel", "l1-polygon"];

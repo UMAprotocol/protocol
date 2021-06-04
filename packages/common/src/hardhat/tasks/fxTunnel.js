@@ -5,7 +5,7 @@ require("dotenv").config();
 // In order to receive a message on Ethereum from Polygon, `receiveMessage` must be called on the Root Tunnel contract
 // with a proof derived from the Polygon transaction hash that was checkpointed to Mainnet.
 task("root-chain-manager-proof", "Generate proof needed to receive data from root chain manager")
-  .addParam("hash", "Transaction hash on Polygon that called _sendMessageToRoot", "", types.string)
+  .addParam("hash", "Transaction hash on Polygon that called _sendMessageToRoot", undefined, types.string)
   .addOptionalParam("chain", "'testnet' or 'mainnet'", "mainnet", types.string)
   .setAction(async function (taskArguments) {
     const { hash, chain } = taskArguments;

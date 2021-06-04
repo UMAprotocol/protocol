@@ -226,7 +226,6 @@ library RLPReader {
         uint256 dest,
         uint256 len
     ) private pure {
-        unchecked {
             if (len == 0) return;
 
             // copy as many word sizes as possible
@@ -239,13 +238,14 @@ library RLPReader {
                 dest += WORD_SIZE;
             }
 
-            // left over bytes. Mask is used to remove unwanted bytes from the word
-            uint256 mask = 256**(WORD_SIZE - len) - 1;
-            assembly {
-                let srcpart := and(mload(src), not(mask)) // zero out src
-                let destpart := and(mload(dest), mask) // retrieve the bytes
-                mstore(dest, or(destpart, srcpart))
+            unchecked {
+                // left over bytes. Mask is used to remove unwanted bytes from the word
+                uint256 mask = 256**(WORD_SIZE - len) - 1;
+                assembly {
+                    let srcpart := and(mload(src), not(mask)) // zero out src
+                    let destpart := and(mload(dest), mask) // retrieve the bytes
+                    mstore(dest, or(destpart, srcpart))
+                }
             }
-        }
     }
 }
