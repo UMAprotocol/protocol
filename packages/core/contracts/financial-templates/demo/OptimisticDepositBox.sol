@@ -7,6 +7,8 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/AddressWhitelist.sol";
+import "../../common/implementation/Testable.sol";
+import "../../common/implementation/Lockable.sol";
 
 import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
@@ -36,7 +38,7 @@ import "../../oracle/implementation/ContractCreator.sol";
  * - Optimistic Oracle resolves the exchange rate at: 1 wETH is worth 2000 USD.
  * - OptimisticDepositBox transfers 0.5 wETH to user.
  */
-contract OptimisticDepositBox is Testable {
+contract OptimisticDepositBox is Testable, Lockable {
     using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
