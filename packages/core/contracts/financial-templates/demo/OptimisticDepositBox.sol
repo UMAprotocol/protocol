@@ -66,7 +66,7 @@ contract OptimisticDepositBox is Testable {
     IERC20 public collateralCurrency;
 
     // Total collateral of all depositors.
-    FixedPoint.Unsigned private totalOptimisticDepositBoxCollateral;
+    FixedPoint.Unsigned public totalOptimisticDepositBoxCollateral;
 
     /****************************************
      *                EVENTS                *
@@ -109,12 +109,15 @@ contract OptimisticDepositBox is Testable {
      * The price identifier consists of a "base" asset and a "quote" asset. The "base" asset corresponds to the collateral ERC20
      * currency deposited into this account, and it is denominated in the "quote" asset on withdrawals.
      * An example price identifier would be "ETH-USD" which will resolve and return the USD price of ETH.
+     * @param _timerAddress Contract that stores the current time in a testing environment.
+     * Must be set to 0x0 for production environments that use live time.
      */
     constructor(
         address _collateralAddress,
         address _finderAddress,
-        bytes32 _priceIdentifier
-    ) nonReentrant() {
+        bytes32 _priceIdentifier,
+        address _timerAddress
+    ) nonReentrant() Testable(_timerAddress) {
         require(_getCollateralWhitelist().isOnWhitelist(_collateralAddress), "Unsupported currency");
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported identifier");
         collateralCurrency = IERC20(_collateralAddress);
@@ -234,6 +237,15 @@ contract OptimisticDepositBox is Testable {
 
         // Reset withdrawal request by setting withdrawal request timestamp to 0.
         _resetWithdrawalRequest(depositBoxData);
+    }
+
+    /**
+     * @notice Accessor method for a user's collateral.
+     * @param user address whose collateral amount is retrieved.
+     * @return the collateral amount in the deposit box (i.e. available for withdrawal).
+     */
+    function getCollateral(address user) external view nonReentrantView() returns (FixedPoint.Unsigned memory) {
+        return depositBoxes[user].collateral;
     }
 
     /****************************************

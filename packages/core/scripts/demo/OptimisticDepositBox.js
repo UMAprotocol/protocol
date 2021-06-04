@@ -38,10 +38,12 @@ const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Finder = artifacts.require("Finder");
 const Timer = artifacts.require("Timer");
 const Registry = artifacts.require("Registry");
-const OptimisticMockOracle = artifacts.require("OptimisticMockOracle");
+const MockOracleAncillary = artifacts.require("MockOracleAncillary");
+const OptimisticOracle = artifacts.require("OptimisticOracle");
 
 // Constants
 const priceFeedIdentifier = utf8ToHex("ETH/USD");
+const liveness = 7200;
 
 // Deploy contract and return its address.
 const deploy = async () => {
@@ -55,15 +57,19 @@ const deploy = async () => {
   console.log(`- Pricefeed identifier for ${hexToUtf8(priceFeedIdentifier)} is whitelisted`);
 
   // The following steps would differ if the user is on a testnet like Kovan in the following ways:
-  // - The user would not need to deploy a "Mock Oracle" and register it with the Finder,
+  // - The user would not need to deploy a "Mock Ancillary Oracle" and register it with the Finder,
   // but using the mock oracle is convenient for testing by allowing the user to manually resolves prices.
+  // - The user would not need to deploy an Optimistic Oracle and register it with the Finder, either.
   // - The user should pass in the zero address (i.e. 0x0) for the Timer, but using the deployed Timer
   // for testing purposes is convenient because they can advance time as needed.
   const finder = await Finder.deployed();
-  const mockOracle = await OptimisticMockOracle.new(finder.address, Timer.address);
+  const mockOracle = await MockOracleAncillary.new(finder.address, Timer.address);
+  const optimisticOracle = await OptimisticOracle.new(liveness, finder.address, Timer.address);
   const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
+  const optimisticOracleInterfaceName = utf8ToHex(interfaceName.OptimisticOracle);
   await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
-  console.log("- Deployed a OptimisticMockOracle");
+  await finder.changeImplementationAddress(optimisticOracleInterfaceName, optimisticOracle.address);
+  console.log("- Deployed a MockAncillaryOracle and OptimisticOracle");
 
   // Deploy a new OptimisticDepositBox contract. We pass in the collateral token address (i.e. the token we will deposit into
   // the contract), the Finder address (which stores references to all of the important system contracts like
@@ -75,7 +81,7 @@ const deploy = async () => {
     priceFeedIdentifier,
     Timer.address
   );
-  console.log("- Deployed a new OptimisticDepositBox and linked it with the OptimisticMockOracle");
+  console.log("- Deployed a new OptimisticDepositBox and linked it with the OptimisticOracle");
   console.groupEnd();
   return optimisticDepositBox.address;
 };
@@ -111,8 +117,6 @@ const deposit = async (optimisticDepositBoxAddress, amountOfWethToDeposit) => {
   const accounts = await web3.eth.getAccounts();
 
   console.group("3. Depositing ERC20 into the OptimisticDepositBox");
-  // Note: The DVM charges a "regular" fee as a % of the deposited collateral every second. However, because the
-  // default regular fee is 0, this test setup incurs no periodic fees.
   await optimisticDepositBox.deposit({ rawValue: amountOfWethToDeposit });
   console.log(`- Deposited ${fromWei(amountOfWethToDeposit)} WETH into the OptimisticDepositBox`);
 
@@ -138,16 +142,17 @@ const withdraw = async (optimisticDepositBoxAddress, mockPrice, amountOfUsdToWit
   const optimisticDepositBox = await OptimisticDepositBox.at(optimisticDepositBoxAddress);
   const accounts = await web3.eth.getAccounts();
   const finder = await Finder.deployed();
-  const mockOracle = await OptimisticMockOracle.at(await finder.getImplementationAddress(utf8ToHex(interfaceName.Oracle)));
+  const mockOracle = await MockOracleAncillary.at(await finder.getImplementationAddress(utf8ToHex(interfaceName.Oracle)));
+  const optimisticOracle = await OptimisticOracle.at(await finder.getImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle)));
 
   console.group("4. Withdrawing ERC20 from OptimisticDepositBox");
 
-  // Technically, withdrawing is a two step process. First, a request to withdraw must be submitted to the Optimistic Oracle.
+  // Withdrawing is a multi-step process. First, a request to withdraw must be submitted to the Optimistic Oracle.
   // Next, the Optimistic Oracle will resolve and return a price (in production, this may take two hours after a price proposal).
-  // Once a price is resolved, the user of the OptimisticDepositBox can finalize the withdrawal. However, for test purposes
-  // we can "resolve" prices instantaneously by pushing a price (i.e. `mockPrice`) to the OptimisticMockOracle.
+  // Once a price is resolved, the user of the OptimisticDepositBox can finalize the withdrawal. For test purposes,
+  // we can "resolve" prices by calling `proposePrice` and `settleAndGetPrice` while fast-forwarding past the liveness window.
 
-  // Submit a withdrawal request, which sends a price request for the current timestamp to the DVM.
+  // Submit a withdrawal request, which sends a price request for the current timestamp to the Optimistic Oracle.
   // The user wants to withdraw a USD-denominated amount of WETH.
   // Note: If the USD amount is greater than the user's deposited balance, the contract will simply withdraw
   // the full user balance.
@@ -155,15 +160,28 @@ const withdraw = async (optimisticDepositBoxAddress, mockPrice, amountOfUsdToWit
   await optimisticDepositBox.requestWithdrawal({ rawValue: amountOfUsdToWithdraw });
   console.log(`- Submitted a withdrawal request for ${fromWei(amountOfUsdToWithdraw)} USD of WETH`);
 
-  // Manually push a price to the Optimistic Oracle. This price must be a positive integer.
-  await mockOracle.pushPrice(priceFeedIdentifier, requestTimestamp.toNumber(), mockPrice);
-  console.log(`- Resolved a price of ${fromWei(mockPrice)} WETH-USD`);
+  // Request a price to the Optimistic Oracle.
+  await optimisticOracle.requestPrice(priceFeedIdentifier, requestTimestamp.toNumber(), '', collateral.address, 0);
+  console.log(`- Requested a price for WETH-USD at ${requestTimestamp}`);
 
-  // Following a price resolution, the user can withdraw their requested USD amount.
+  // Manually propose a price to the Optimistic Oracle. This price must be a positive integer.
+  await optimisticOracle.proposePrice(account[0], priceFeedIdentifier, requestTimestamp.toNumber(), '', mockPrice);
+  console.log(`- Proposed a price of ${fromWei(mockPrice)} WETH-USD`);
+
+  // Fast-forward until after the liveness window. This only works in test mode.
+  await optimisticOracle.setCurrentTime(requestTimestamp.toNumber() + 7200);
+  console.log(`- Fast-forwarded the Optimistic Oracle to after the liveness window so we can settle`);
+
+  // After the liveness window, call settleAndGetPrice to resolve the price.
+  await optimisticOracle.settleAndGetPrice(priceFeedIdentifier, requestTimestamp.toNumber(), '');
+  console.log(`- Settled and got a price of ${fromWei(mockPrice)} WETH-USD`);
+
+  // The user can withdraw their requested USD amount.
   await optimisticDepositBox.executeWithdrawal();
+  console.log(`- Executed withdrawal. This would have also settled and gotten a price within the withdrawal function.`)
 
-  // Let's check the token balances. At an exchange rate of (1 WETH = $200 USD) and given a requested withdrawal
-  // amount of $10,000, the OptimisticDepositBox should have withdrawn ($10,000/$200) 50 WETH.
+  // Let's check the token balances. At an exchange rate of (1 WETH = $2000 USD) and given a requested withdrawal
+  // amount of $10,000, the OptimisticDepositBox should have withdrawn ($10,000/$2000) 5 WETH.
   const userCollateral = await optimisticDepositBox.getCollateral(accounts[0]);
   const totalCollateral = await optimisticDepositBox.totalOptimisticDepositBoxCollateral();
   const userBalance = await collateral.balanceOf(accounts[0]);
@@ -197,7 +215,7 @@ const main = async (callback) => {
 
     // Withdraw USD denominated collateteral
     const amountOfUsdToWithdraw = toWei("10000"); // $10,000
-    const exchangeRate = toWei("200"); // 1 ETH = $200
+    const exchangeRate = toWei("2000"); // 1 ETH = $2000
     await withdraw(deployedContract, exchangeRate, amountOfUsdToWithdraw);
     console.log("\n");
 
