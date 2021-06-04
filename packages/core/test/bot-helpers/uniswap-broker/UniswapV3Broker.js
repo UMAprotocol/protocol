@@ -93,7 +93,7 @@ contract("UniswapV3Broker", function (accounts) {
       from: deployer,
     });
 
-    const PositionDescriptor = createContractObjectFromJson(NonfungibleTokenPositionDescriptor);
+    const PositionDescriptor = createContractObjectFromJson(NonfungibleTokenPositionDescriptor, web3);
     await PositionDescriptor.detectNetwork();
 
     PositionDescriptor.link(await createContractObjectFromJson(NFTDescriptor, web3).new({ from: deployer }));

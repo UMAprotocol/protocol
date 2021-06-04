@@ -35,9 +35,9 @@ const revertWrapper = (result) => {
  * @param {Object} web3 instance. In unit tests this is globally accessable but when used in production needs injection.
  * @returns truffle contract instance
  */
-const createContractObjectFromJson = (contractJsonObject, web3) => {
+const createContractObjectFromJson = (contractJsonObject, _web3 = web3) => {
   let truffleContractCreator = truffleContract(contractJsonObject);
-  truffleContractCreator.setProvider(web3.currentProvider);
+  truffleContractCreator.setProvider(_web3.currentProvider);
   return truffleContractCreator;
 };
 /**
