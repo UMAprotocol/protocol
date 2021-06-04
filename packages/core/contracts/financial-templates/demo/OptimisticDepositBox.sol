@@ -118,8 +118,7 @@ contract OptimisticDepositBox is Testable, Lockable {
         bytes32 _priceIdentifier,
         address _timerAddress
     ) nonReentrant() Testable(_timerAddress) {
-        require(_getCollateralWhitelist().isOnWhitelist(_collateralAddress), "Unsupported currency");
-        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported identifier");
+        // require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Unsupported identifier");
         collateralCurrency = IERC20(_collateralAddress);
         priceIdentifier = _priceIdentifier;
         finder = FinderInterface(_finderAddress);
@@ -291,10 +290,6 @@ contract OptimisticDepositBox is Testable, Lockable {
 
     function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
-    }
-
-    function _getCollateralWhitelist() internal view returns (AddressWhitelist) {
-        return AddressWhitelist(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
     }
 
     function _getOptimisticOracle() internal view returns (OptimisticOracleInterface) {
