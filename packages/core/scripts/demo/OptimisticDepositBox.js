@@ -21,7 +21,7 @@
  * - User is using wETH as the collateral ERC20.
  * - User is referencing the ETHUSD pricefeed identifier.
  * Prerequisites:
- * - Migrate the contracts via `yarn truffle migrate --reset --network test`.
+   * - Migrate the contracts via `yarn truffle migrate --reset --network test`.
  * - The migration step ensures that the user is the owner of the Finder, IdentifierWhitelist,
  *   Registry, and other important system contracts and can therefore modify their configurations.
  */
@@ -56,6 +56,11 @@ const deploy = async () => {
   await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier);
   console.log(`- Pricefeed identifier for ${hexToUtf8(priceFeedIdentifier)} is whitelisted`);
 
+  // Collateral must be whitelisted prior to OptimisticDepositBox construction.
+  const collateralWhitelist = await AddressWhitelist.deployed();
+  await collateralWhitelist.addToWhitelist(collateral.address);
+  console.log(`- Collateral address for wETH is whitelisted`);
+
   // The following steps would differ if the user is on a testnet like Kovan in the following ways:
   // - The user would not need to deploy a "Mock Ancillary Oracle" and register it with the Finder,
   // but using the mock oracle is convenient for testing by allowing the user to manually resolves prices.
@@ -79,7 +84,11 @@ const deploy = async () => {
     collateral.address,
     finder.address,
     priceFeedIdentifier,
-    Timer.address
+    Timer.address,
+    {
+      gas: 4712388,
+      gasPrice: 100000000000
+    }
   );
   console.log("- Deployed a new OptimisticDepositBox and linked it with the OptimisticOracle");
   console.groupEnd();
