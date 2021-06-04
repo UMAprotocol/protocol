@@ -55,11 +55,13 @@ contract("FundingRateApplier", function (accounts) {
     const [lastQuery] = (await mockOracle.getPendingQueries()).slice(-1);
 
     // FundingRateApplier initially saves the synthetic token address to ancillary data:
-    const expectedFRAAncillaryData = utf8ToHex(`tokenAddress:${collateral.address.substr(2).toLowerCase()}`)
+    const expectedFRAAncillaryData = utf8ToHex(`tokenAddress:${collateral.address.substr(2).toLowerCase()}`);
 
     // OptimisticOracle should append its address:
-    const expectedAppendedAncillaryData = utf8ToHex(`,requester:${fundingRateApplier.address.substr(2).toLowerCase()}`).substr(2)
-    const expectedAncillaryData = `${expectedFRAAncillaryData}${expectedAppendedAncillaryData}`
+    const expectedAppendedAncillaryData = utf8ToHex(
+      `,requester:${fundingRateApplier.address.substr(2).toLowerCase()}`
+    ).substr(2);
+    const expectedAncillaryData = `${expectedFRAAncillaryData}${expectedAppendedAncillaryData}`;
     assert.equal(lastQuery.ancillaryData, expectedAncillaryData);
 
     await mockOracle.pushPrice(lastQuery.identifier, lastQuery.time, lastQuery.ancillaryData, price);

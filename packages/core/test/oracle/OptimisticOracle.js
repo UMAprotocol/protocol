@@ -661,7 +661,7 @@ contract("OptimisticOracle", function (accounts) {
     assert.equal(
       hexToUtf8(stampedAncillaryData),
       `${hexToUtf8(ancillaryData)},requester:${optimisticRequester.address.substr(2).toLowerCase()}`
-    )
+    );
 
     // Settled
     await pushPrice(correctPrice);
