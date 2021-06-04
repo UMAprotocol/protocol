@@ -1,5 +1,4 @@
 const { toWei, utf8ToHex, padRight, toBN } = web3.utils;
-const truffleContract = require("@truffle/contract");
 const {
   MAX_UINT_VAL,
   ZERO_ADDRESS,
@@ -7,6 +6,7 @@ const {
   addGlobalHardhatTestingAddress,
   createConstructorParamsForContractVersion,
   TESTED_CONTRACT_VERSIONS,
+  createContractObjectFromJson,
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
@@ -19,12 +19,6 @@ const { SpyTransport, spyLogLevel, spyLogIncludes } = require("@uma/financial-te
 const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json");
 const IUniswapV2Pair = require("@uniswap/v2-core/build/IUniswapV2Pair.json");
 const UniswapV2Router02 = require("@uniswap/v2-periphery/build/UniswapV2Router02.json");
-
-const createContractObjectFromJson = (contractJsonObject) => {
-  let truffleContractCreator = truffleContract(contractJsonObject);
-  truffleContractCreator.setProvider(web3.currentProvider);
-  return truffleContractCreator;
-};
 
 // Script to test
 const Poll = require("../index.js");
