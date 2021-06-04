@@ -1,4 +1,4 @@
-import * as uma from "@uma/sdk";
+import type * as uma from "@uma/sdk";
 import { ethers } from "ethers";
 export type { BigNumber } from "ethers";
 export type Provider = ethers.providers.Provider;

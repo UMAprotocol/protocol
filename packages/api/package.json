@@ -40,6 +40,6 @@
     "eslint": "eslint './src/**/*.ts'",                     
     "prettier": "prettier './**/*.md' './src/**/*.ts'",     
     "lint": "yarn prettier --write && yarn eslint --fix",
-    "api":"ts-node src/apps/api"
+    "api":"ts-node src/start api"
   }
 }

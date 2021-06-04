@@ -4,22 +4,12 @@ import Promise from "bluebird";
 const { emp } = uma.clients;
 import { BigNumber, utils } from "ethers";
 const { parseBytes32String } = utils;
-import { asyncValues } from "../libs/utils";
+import { asyncValues, calcGcr } from "../libs/utils";
 import { Json, Libs } from "..";
 
 type Instance = uma.clients.emp.Instance;
 export default (config: Json, libs: Libs) => {
   const { registeredEmps, provider, emps } = libs;
-
-  async function calcGcr(params: uma.tables.emps.Data) {
-    const { totalTokensOutstanding, totalPositionCollateral } = params;
-    assert(uma.utils.exists(totalTokensOutstanding), "requires total tokens outstanding");
-    assert(uma.utils.exists(totalPositionCollateral), "requires total position collateral");
-    if (BigNumber.from(totalTokensOutstanding).gt(0)) {
-      return utils.parseUnits(totalPositionCollateral).div(totalTokensOutstanding);
-    }
-    return BigNumber.from(0);
-  }
 
   async function readEmpDynamicState(instance: Instance, address: string) {
     return asyncValues<uma.tables.emps.Data>({
@@ -43,6 +33,7 @@ export default (config: Json, libs: Libs) => {
         .catch(() => null),
     });
   }
+
   async function readEmpStaticState(instance: Instance, address: string) {
     const state = await asyncValues<uma.tables.emps.Data>({
       address,
@@ -150,9 +141,12 @@ export default (config: Json, libs: Libs) => {
       // add any new sponsors
       await emps.active.addSponsors(address, eventState.sponsors || []);
       // calculate gcr with current state
-      const gcr = await calcGcr(currentState)
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null);
+      let gcr = null;
+      try {
+        gcr = calcGcr(currentState).toString();
+      } catch (err) {
+        // ignore
+      }
       // update gcr
       await emps.active.update(address, { gcr });
     }
