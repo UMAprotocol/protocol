@@ -652,11 +652,8 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     }
 
     // Stamps the ancillary data blob with the optimistic oracle tag denoting what contract requested it.
-    function _stampAncillaryData(
-        bytes memory ancillaryData, 
-        address requester
-    ) internal pure returns (bytes memory) {
-        // We use the more standard `encode` instead of `encodePacked` to make decoding easier via `abi.decode` 
+    function _stampAncillaryData(bytes memory ancillaryData, address requester) internal pure returns (bytes memory) {
+        // We use the more standard `encode` instead of `encodePacked` to make decoding easier via `abi.decode`
         // on-chain, or `web3.eth.abi.decodeParameters` off-chain.
         return abi.encode(ancillaryData, "OptimisticOracle", requester);
     }

@@ -655,15 +655,21 @@ contract("OptimisticOracle", function (accounts) {
 
     // Check that OptimisticOracle stamped ancillary data as expected before sending to Oracle, and that we can decode
     // it.
-    const priceRequests = await mockOracle.getPastEvents("PriceRequestAdded", { fromBlock: 0 })
+    const priceRequests = await mockOracle.getPastEvents("PriceRequestAdded", { fromBlock: 0 });
     assert.equal(priceRequests.length, 1, "should only be one price request escalated to MockOracle");
     const stampedAncillaryData = priceRequests[0].returnValues.ancillaryData;
-    const expectedStampedAncillaryData = await optimisticOracle.stampAncillaryData(ancillaryData, optimisticRequester.address)
+    const expectedStampedAncillaryData = await optimisticOracle.stampAncillaryData(
+      ancillaryData,
+      optimisticRequester.address
+    );
     assert.equal(stampedAncillaryData, expectedStampedAncillaryData);
-    const decodedStampedAncillaryData = web3.eth.abi.decodeParameters(["bytes","string","address"], stampedAncillaryData);
-    assert.equal(decodedStampedAncillaryData[0], ancillaryData)
-    assert.equal(decodedStampedAncillaryData[1], "OptimisticOracle")
-    assert.equal(decodedStampedAncillaryData[2], optimisticRequester.address)
+    const decodedStampedAncillaryData = web3.eth.abi.decodeParameters(
+      ["bytes", "string", "address"],
+      stampedAncillaryData
+    );
+    assert.equal(decodedStampedAncillaryData[0], ancillaryData);
+    assert.equal(decodedStampedAncillaryData[1], "OptimisticOracle");
+    assert.equal(decodedStampedAncillaryData[2], optimisticRequester.address);
 
     // Settled
     await pushPrice(correctPrice);
