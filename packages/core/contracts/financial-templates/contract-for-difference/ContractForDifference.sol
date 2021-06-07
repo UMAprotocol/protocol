@@ -139,6 +139,12 @@ contract ContractForDifference is Testable, Lockable {
         collateralToken = _collateralAddress;
 
         financialProductLibrary = _financialProductLibraryAddress;
+        OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
+        require(
+            optimisticOracle.stampAncillaryData(_customAncillaryData, address(this)).length <=
+                optimisticOracle.ancillaryBytesLimit(),
+            "Ancillary Data too long"
+        );
         customAncillaryData = _customAncillaryData;
     }
 
