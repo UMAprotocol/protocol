@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
  * @title Library for encoding and decoding ancillary data for DVM price requests.
  */
 library AncillaryData {
-    // TODO: Get source for this code, h/t Matt.
+    // Source: https://ethereum.stackexchange.com/questions/8346/convert-address-to-string/8447#8447
     function toUtf8Bytes(address x) internal pure returns (bytes memory) {
         bytes memory s = new bytes(40);
         for (uint256 i = 0; i < 20; i++) {

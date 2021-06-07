@@ -659,7 +659,12 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     {
         // Since this contract will be the one to formally submit DVM price requests, its useful for voters to know who
         // the original requester was.
-        bytes memory prefix = ",requester:";
+        bytes memory prefix;
+        if (ancillaryData.length > 0) {
+            prefix = ",requester:";
+        } else {
+            prefix = "requester:";
+        }
         return abi.encodePacked(ancillaryData, prefix, AncillaryData.toUtf8Bytes(requester));
     }
 }
