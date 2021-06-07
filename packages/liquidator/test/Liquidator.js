@@ -1717,10 +1717,10 @@ contract("Liquidator.js", function (accounts) {
             await reserveToken.addMember(1, contractCreator, { from: contractCreator });
 
             // deploy Uniswap V2 Factory & router.
-            uniswapFactory = await createContractObjectFromJson(UniswapV2Factory).new(contractCreator, {
+            uniswapFactory = await createContractObjectFromJson(UniswapV2Factory, web3).new(contractCreator, {
               from: contractCreator,
             });
-            uniswapRouter = await createContractObjectFromJson(UniswapV2Router02).new(
+            uniswapRouter = await createContractObjectFromJson(UniswapV2Router02, web3).new(
               uniswapFactory.address,
               collateralToken.address,
               { from: contractCreator }
@@ -1729,7 +1729,7 @@ contract("Liquidator.js", function (accounts) {
             // initialize the pair between the reserve and collateral token.
             await uniswapFactory.createPair(reserveToken.address, collateralToken.address, { from: contractCreator });
             pairAddress = await uniswapFactory.getPair(reserveToken.address, collateralToken.address);
-            pair = await createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
+            pair = await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress);
 
             // Seed the market. This sets up the initial price to be 1/1 reserve to collateral token. As the collateral
             // token is Dai this starts off the uniswap market at 1 reserve/collateral. Note the amount of collateral

@@ -130,10 +130,12 @@ class ProxyTransactionWrapper {
       // Else, work out how much collateral could be purchased using all the reserve currency.
       else {
         // Instantiate uniswap factory to fetch the pair address.
-        const uniswapFactory = await createContractObjectFromJson(UniswapV2Factory).at(this.uniswapFactoryAddress);
+        const uniswapFactory = await createContractObjectFromJson(UniswapV2Factory, this.web3).at(
+          this.uniswapFactoryAddress
+        );
 
         const pairAddress = await uniswapFactory.getPair(this.reserveToken._address, this.collateralToken._address);
-        const uniswapPair = await createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
+        const uniswapPair = await createContractObjectFromJson(IUniswapV2Pair, this.web3).at(pairAddress);
 
         // We can now fetch the reserves. At the same time, we can batch a few other required async calls.
         const [reserves, token0] = await Promise.all([uniswapPair.getReserves(), uniswapPair.token0()]);
