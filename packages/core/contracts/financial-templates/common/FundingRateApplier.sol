@@ -323,6 +323,9 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
         // whose funding rate it's trying to get so that financial contracts can re-use the same identifier for
         // multiple funding rate products.
         bytes memory prefix = "tokenAddress:";
+        // We assume that the ancillary data is empty at this point and that we are stamping it with some metadata for
+        // the first time. Therefore we do not need to check the ancillary data length against the limit hardcoded
+        // in the OptimistcOracle contract.
         return abi.encodePacked(prefix, AncillaryData.toUtf8Bytes(_getTokenAddress()));
     }
 

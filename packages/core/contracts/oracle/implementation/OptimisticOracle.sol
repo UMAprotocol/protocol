@@ -163,7 +163,11 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
         require(timestamp <= getCurrentTime(), "Timestamp in future");
-        require(ancillaryData.length <= ancillaryBytesLimit, "Invalid ancillary data");
+        require(
+            stampAncillaryData(ancillaryData, msg.sender).length <=
+                ancillaryBytesLimit,
+            "Ancillary Data too long"
+        );
         uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
         requests[_getId(msg.sender, identifier, timestamp, ancillaryData)] = Request({
             proposer: address(0),

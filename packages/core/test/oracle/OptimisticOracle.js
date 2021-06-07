@@ -710,7 +710,10 @@ contract("OptimisticOracle", function (accounts) {
     });
 
     it("Stress testing the size of ancillary data", async function () {
-      const DATA_LIMIT_BYTES = 8192;
+      // Ancillary data length must not be more than the limit + stamped length. The limit hardcoded into the contract
+      // is 8192, and the stamped utf8 string is ",optimisticOracleRequester:<address>" where address has 40 characters
+      // and ",optimisticOracleRequester:" is 27 characters. So the max length is:
+      const DATA_LIMIT_BYTES = 8192-27-40;
       let ancillaryData = web3.utils.randomHex(DATA_LIMIT_BYTES);
 
       // Initial state.
@@ -719,7 +722,6 @@ contract("OptimisticOracle", function (accounts) {
 
       // Requested.
       await collateral.transfer(optimisticRequester.address, reward);
-      // Ancillary data length must not be more than the limit.
       assert(
         await didContractThrow(
           optimisticRequester.requestPrice(
@@ -731,39 +733,15 @@ contract("OptimisticOracle", function (accounts) {
           )
         )
       );
-      await optimisticRequester.requestPrice(identifier, requestTime, ancillaryData, collateral.address, reward);
-      await verifyState(OptimisticOracleRequestStatesEnum.REQUESTED, ancillaryData);
 
-      // Proposed.
-      await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
-      await optimisticOracle.proposePrice(
-        optimisticRequester.address,
+      // Show ancillary succeeds if you don't add 1 byte:
+      await optimisticRequester.requestPrice(
         identifier,
         requestTime,
-        ancillaryData,
-        incorrectPrice,
-        {
-          from: proposer,
-        }
-      );
-      await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED, ancillaryData);
-      assert.equal(await optimisticRequester.ancillaryData(), ancillaryData);
-      await optimisticRequester.clearState();
-
-      // Disputed.
-      await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: disputer });
-      await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, ancillaryData, {
-        from: disputer,
-      });
-      await verifyState(OptimisticOracleRequestStatesEnum.DISPUTED, ancillaryData);
-      assert.equal(await optimisticRequester.ancillaryData(), ancillaryData);
-      await optimisticRequester.clearState();
-
-      // Settled
-      await pushPrice(correctPrice);
-      await optimisticRequester.settleAndGetPrice(identifier, requestTime, ancillaryData);
-      await verifyState(OptimisticOracleRequestStatesEnum.SETTLED, ancillaryData);
-      assert.equal(await optimisticRequester.ancillaryData(), ancillaryData);
+        web3.utils.randomHex(DATA_LIMIT_BYTES),
+        collateral.address,
+        reward
+      )
     });
   });
 });
