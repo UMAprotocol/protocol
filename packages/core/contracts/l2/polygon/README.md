@@ -6,6 +6,8 @@ This document describes the architecture of how arbitrary messages can be passed
 
 At a high level we are deploying "Root" and "Child" bridge contracts on both networks that communicate only with each other and the native [state sync](https://docs.matic.network/docs/contribute/state-sync/state-sync/) infrastructure that Polygon uses to pass data between the Ethereum and Polygon EVM's. Polygon uses "tunnel" to describe what [other](https://docs.tokenbridge.net/amb-bridge/about-amb-bridge) [relayer](https://forum.makerdao.com/t/announcing-the-optimism-dai-bridge-with-fast-withdrawals/6938) [systems](https://developer.offchainlabs.com/docs/inside_arbitrum#bridging) call "bridges".
 
+Diagram of oracle tunnel system can be found [here](https://docs.google.com/presentation/d/19KdCTYFzCOR3H-ns2K2HB5eiTrPIwKTakKT4Qkr7G0I/edit#slide=id.p).
+
 # Root Tunnel Contract
 
 This contract is deployed on Ethereum and inherits from the official tunnel implementation called the "FxBaseRootTunnel" which implements `_processMessageFromChild(bytes memory data)` to receive messages from Polygon and enforces that the message originated from a Polygon transaction that has been provably [checkpointed](https://docs.matic.network/docs/contribute/heimdall/checkpoint/) to Ethereum. Notably, the root tunnel can only communicate with one child tunnel on Polygon, and the child tunnel address cannot be overwritten after being set.
