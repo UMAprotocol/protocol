@@ -22,8 +22,8 @@ function decodePriceSqrt(priseSqrt) {
 }
 
 // Fetch the decoded price from a uniswap pool from slot0.
-async function getCurrentPrice(poolAddress) {
-  const pool = await createContractObjectFromJson(UniswapV3Pool).at(poolAddress);
+async function getCurrentPrice(poolAddress, web3) {
+  const pool = await createContractObjectFromJson(UniswapV3Pool, web3).at(poolAddress);
 
   const slot0 = await pool.slot0();
 

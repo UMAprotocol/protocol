@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
-import "../common/financial-product-libraries/ContractForDifferenceFinancialProductLibrary.sol";
+import "../common/financial-product-libraries/contract-for-difference-libraries/ContractForDifferenceFinancialProductLibrary.sol";
 
 // Implements a simple FinancialProductLibrary to test price and collateral requirement transoformations.
 contract ContractForDifferenceFinancialProjectLibraryTest is ContractForDifferenceFinancialProductLibrary {

@@ -112,6 +112,7 @@ contract SinkOracle is BeaconOracle, OracleAncillaryInterface {
      * @param identifier Identifier of price request to resolve.
      * @param time Timestamp of price request to resolve.
      * @param ancillaryData extra data of price request to resolve.
+     * @param price Price to publish to this oracle.
      */
     function executePublishPrice(
         uint8 sinkChainID,
@@ -173,7 +174,7 @@ contract SinkOracle is BeaconOracle, OracleAncillaryInterface {
      * @notice This helper method is useful for calling Bridge.deposit().
      * @dev GenericHandler.deposit() expects data to be formatted as:
      *     len(data)                              uint256     bytes  0  - 32
-     *     data                                   bytes       bytes  64 - END
+     *     data                                   bytes       bytes  32 - END
      * @param chainID Chain ID for this contract.
      * @param identifier Identifier of price request.
      * @param time Timestamp of price request.

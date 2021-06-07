@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../common/financial-product-libraries/ContractForDifferenceFinancialProductLibrary.sol";
+import "../common/financial-product-libraries/contract-for-difference-libraries/ContractForDifferenceFinancialProductLibrary.sol";
 
 import "../../common/implementation/Testable.sol";
 import "../../common/implementation/Lockable.sol";
@@ -119,15 +119,17 @@ contract ContractForDifference is Testable, Lockable {
     ) Testable(_timerAddress) {
         finder = _finderAddress;
         require(_expirationTimestamp > getCurrentTime());
-        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier));
-        require(address(_financialProductLibraryAddress) != address(0));
+        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Identifier not registered");
+        require(address(_getOptimisticOracle()) != address(0), "Invalid finder");
+        require(address(_financialProductLibraryAddress) != address(0), "Invalid FinancialProductLibrary");
 
         expirationTimestamp = _expirationTimestamp;
         collateralPerPair = _collateralPerPair;
+        priceIdentifier = _priceIdentifier;
+
         longToken = _longTokenAddress;
         shortToken = _shortTokenAddress;
         collateralToken = _collateralAddress;
-        priceIdentifier = _priceIdentifier;
 
         financialProductLibrary = _financialProductLibraryAddress;
     }
@@ -147,8 +149,8 @@ contract ContractForDifference is Testable, Lockable {
 
         collateralToken.safeTransferFrom(msg.sender, address(this), collateralUsed);
 
-        require(longToken.mint(msg.sender, tokensToCreate));
-        require(shortToken.mint(msg.sender, tokensToCreate));
+        longToken.mint(msg.sender, tokensToCreate);
+        shortToken.mint(msg.sender, tokensToCreate);
 
         emit TokensCreated(msg.sender, collateralUsed, tokensToCreate);
     }
@@ -167,7 +169,7 @@ contract ContractForDifference is Testable, Lockable {
 
         collateralToken.safeTransfer(msg.sender, collateralReturned);
 
-        emit TokensCreated(msg.sender, collateralReturned, tokensToRedeem);
+        emit TokensRedeemed(msg.sender, collateralReturned, tokensToRedeem);
     }
 
     /**
@@ -198,8 +200,8 @@ contract ContractForDifference is Testable, Lockable {
             contractState = ContractState.ExpiredPriceReceived;
         }
 
-        require(longToken.burnFrom(msg.sender, longTokensToRedeem));
-        require(shortToken.burnFrom(msg.sender, shortTokensToRedeem));
+        longToken.burnFrom(msg.sender, longTokensToRedeem);
+        shortToken.burnFrom(msg.sender, shortTokensToRedeem);
 
         // expiraryTokensForCollateral is a number between 0 and 1e18. 0 means all collateral goes to short tokens and
         // 1 means all collateral goes to the long token. Total collateral returned is the sum of payouts.
@@ -229,6 +231,8 @@ contract ContractForDifference is Testable, Lockable {
     function expire() public postExpiration() onlyOpenState() nonReentrant() {
         _requestOraclePriceExpiration();
         contractState = ContractState.ExpiredPriceRequested;
+
+        emit ContractExpired(msg.sender);
     }
 
     // TODO: add additional state fetching methods. for example a method to return the long and short tokens owned

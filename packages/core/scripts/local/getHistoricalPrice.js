@@ -20,7 +20,7 @@ require("dotenv").config();
 
 const UMIP_PRECISION = {
   USDBTC: 8,
-  USDETH: 5,
+  USDETH: 8,
   BTCDOM: 2,
   ALTDOM: 2,
   BCHNBTC: 8,
