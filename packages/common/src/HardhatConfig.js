@@ -30,7 +30,7 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
         gas: 11500000,
         blockGasLimit: 11500000,
         allowUnlimitedContractSize: false,
-        timeout: 1800000
+        timeout: 1800000,
       },
       localhost: {
         url: "http://127.0.0.1:8545",
