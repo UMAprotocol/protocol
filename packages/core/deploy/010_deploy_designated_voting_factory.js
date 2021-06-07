@@ -5,9 +5,9 @@ const func = async function (hre) {
   const { deployer } = await getNamedAccounts();
   const Finder = await deployments.get("Finder");
 
-  await deploy("Governor", {
+  await deploy("DesignatedVotingFactory", {
     from: deployer,
-    args: [Finder.address, Finder.address],
+    args: [Finder.address],
     log: true,
   });
 };

@@ -3,8 +3,7 @@ const func = async function (hre) {
   const { deploy } = deployments;
 
   const { deployer } = await getNamedAccounts();
-
-  const { live } = network.config;
+  const { live } = network;
 
   if (live === undefined) throw new Error("Network has no live parameter");
 
@@ -18,4 +17,4 @@ const func = async function (hre) {
   }
 };
 module.exports = func;
-func.tags = ["Timer", "test"];
+func.tags = ["Timer"];
