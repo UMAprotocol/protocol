@@ -450,8 +450,8 @@ contract("index.js", function (accounts) {
         const reserveToken = await Token.new("Reserve Token", "RTKN", 18);
         await reserveToken.addMember(1, contractCreator);
         // deploy Uniswap V2 Factory & router.
-        const factory = await createContractObjectFromJson(UniswapV2Factory).new(contractCreator);
-        const router = await createContractObjectFromJson(UniswapV2Router02).new(
+        const factory = await createContractObjectFromJson(UniswapV2Factory, web3).new(contractCreator);
+        const router = await createContractObjectFromJson(UniswapV2Router02, web3).new(
           factory.address,
           collateralToken.address
         );
@@ -459,7 +459,7 @@ contract("index.js", function (accounts) {
         // initialize the pair
         await factory.createPair(reserveToken.address, collateralToken.address);
         const pairAddress = await factory.getPair(reserveToken.address, collateralToken.address);
-        const pair = await createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
+        const pair = await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress);
 
         await reserveToken.mint(pairAddress, toBN(toWei("1000")).muln(10000000));
         await collateralToken.mint(pairAddress, toBN(toWei("1")).muln(10000000));

@@ -115,15 +115,15 @@ contract("ReserveTokenDisputer", function (accounts) {
     await collateralToken.mint(liquidator, toWei("100000000000000"));
 
     // deploy Uniswap V2 Factory & router.
-    factory = await createContractObjectFromJson(UniswapV2Factory).new(deployer, { from: deployer });
-    router = await createContractObjectFromJson(UniswapV2Router02).new(factory.address, collateralToken.address, {
+    factory = await createContractObjectFromJson(UniswapV2Factory, web3).new(deployer, { from: deployer });
+    router = await createContractObjectFromJson(UniswapV2Router02, web3).new(factory.address, collateralToken.address, {
       from: deployer,
     });
 
     // initialize the pair
     await factory.createPair(reserveToken.address, collateralToken.address, { from: deployer });
     pairAddress = await factory.getPair(reserveToken.address, collateralToken.address);
-    pair = await createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
+    pair = await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress);
 
     await reserveToken.mint(pairAddress, toBN(toWei("1000")).muln(10000000));
     await collateralToken.mint(pairAddress, toBN(toWei("1")).muln(10000000));
