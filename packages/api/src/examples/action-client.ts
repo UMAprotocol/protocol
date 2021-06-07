@@ -3,6 +3,7 @@ import type { Json } from "..";
 import assert from "assert";
 import join from "url-join";
 
+// TODO: this should be moved into a frontend library repo when available
 // This is a basic client to allow you to call into the server in the form of
 // client(action,arg1,arg2,...etc) => Promise<Json>.
 // see tests for usage.
