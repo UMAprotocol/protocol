@@ -141,9 +141,7 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
         // Timestamp must be after the last funding rate update time, within the last 30 minutes.
         uint256 currentTime = getCurrentTime();
         uint256 updateTime = fundingRate.updateTime;
-        require(
-            timestamp > updateTime && timestamp >= currentTime.sub(_getConfig().proposalTimePastLimit)
-        );
+        require(timestamp > updateTime && timestamp >= currentTime.sub(_getConfig().proposalTimePastLimit));
 
         // Set the proposal time in order to allow this contract to track this request.
         fundingRate.proposalTime = timestamp;

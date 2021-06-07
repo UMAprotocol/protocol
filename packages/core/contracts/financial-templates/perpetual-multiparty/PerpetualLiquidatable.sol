@@ -255,13 +255,9 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             FixedPoint.Unsigned memory startTokens = positionToLiquidate.tokensOutstanding;
 
             // The Position's collateralization ratio must be between [minCollateralPerToken, maxCollateralPerToken].
-            require(
-                maxCollateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal)
-            );
+            require(maxCollateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal));
             // minCollateralPerToken >= startCollateralNetOfWithdrawal / startTokens.
-            require(
-                minCollateralPerToken.mul(startTokens).isLessThanOrEqual(startCollateralNetOfWithdrawal)
-            );
+            require(minCollateralPerToken.mul(startTokens).isLessThanOrEqual(startCollateralNetOfWithdrawal));
         }
 
         // Compute final fee at time of liquidation.
@@ -582,9 +578,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
     // source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
     function _disputable(uint256 liquidationId, address sponsor) internal view {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
-        require(
-            (getCurrentTime() < _getLiquidationExpiry(liquidation)) && (liquidation.state == Status.NotDisputed)
-        );
+        require((getCurrentTime() < _getLiquidationExpiry(liquidation)) && (liquidation.state == Status.NotDisputed));
     }
 
     function _withdrawable(uint256 liquidationId, address sponsor) internal view {
