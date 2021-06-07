@@ -616,19 +616,19 @@ contract("OptimisticOracle", function (accounts) {
     });
   });
 
-  describe.only("Ancillary Data stamping", function() {
+  describe("Ancillary Data stamping", function () {
     it("Appends to original ancillary data", async function () {
       const ancillaryData = utf8ToHex("key:value,key2:value2");
-  
+
       // Initial state.
       await verifyState(OptimisticOracleRequestStatesEnum.INVALID, ancillaryData);
       assert.isNull(await optimisticRequester.ancillaryData());
-  
+
       // Requested.
       await collateral.transfer(optimisticRequester.address, reward);
       await optimisticRequester.requestPrice(identifier, requestTime, ancillaryData, collateral.address, reward);
       await verifyState(OptimisticOracleRequestStatesEnum.REQUESTED, ancillaryData);
-  
+
       // Proposed.
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
       await optimisticOracle.proposePrice(
@@ -644,7 +644,7 @@ contract("OptimisticOracle", function (accounts) {
       await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED, ancillaryData);
       assert.equal(await optimisticRequester.ancillaryData(), ancillaryData);
       await optimisticRequester.clearState();
-  
+
       // Disputed.
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: disputer });
       await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, ancillaryData, {
@@ -653,7 +653,7 @@ contract("OptimisticOracle", function (accounts) {
       await verifyState(OptimisticOracleRequestStatesEnum.DISPUTED, ancillaryData);
       assert.equal(await optimisticRequester.ancillaryData(), ancillaryData);
       await optimisticRequester.clearState();
-  
+
       // Check that OptimisticOracle stamped ancillary data as expected before sending to Oracle, and that we can decode
       // it.
       const priceRequests = await mockOracle.getPastEvents("PriceRequestAdded", { fromBlock: 0 });
@@ -663,21 +663,21 @@ contract("OptimisticOracle", function (accounts) {
         hexToUtf8(stampedAncillaryData),
         `${hexToUtf8(ancillaryData)},requester:${optimisticRequester.address.substr(2).toLowerCase()}`
       );
-  
+
       // Settled
       await pushPrice(correctPrice);
       await optimisticRequester.settleAndGetPrice(identifier, requestTime, ancillaryData);
       await verifyState(OptimisticOracleRequestStatesEnum.SETTLED, ancillaryData);
       assert.equal(await optimisticRequester.ancillaryData(), ancillaryData);
     });
-  
+
     it("Original ancillary data is empty", async function () {
       const ancillaryData = utf8ToHex("");
-  
+
       // Requested.
       await collateral.transfer(optimisticRequester.address, reward);
       await optimisticRequester.requestPrice(identifier, requestTime, ancillaryData, collateral.address, reward);
-  
+
       // Proposed.
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
       await optimisticOracle.proposePrice(
@@ -690,13 +690,13 @@ contract("OptimisticOracle", function (accounts) {
           from: proposer,
         }
       );
-  
+
       // Disputed.
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: disputer });
       await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, ancillaryData, {
         from: disputer,
       });
-  
+
       // Check that OptimisticOracle stamped ancillary data as expected before sending to Oracle, and that we can decode
       // it.
       const priceRequests = await mockOracle.getPastEvents("PriceRequestAdded", { fromBlock: 0 });
@@ -708,15 +708,15 @@ contract("OptimisticOracle", function (accounts) {
         "Should not stamp with a leading comma ','"
       );
     });
-  
+
     it("Stress testing the size of ancillary data", async function () {
       const DATA_LIMIT_BYTES = 8192;
       let ancillaryData = web3.utils.randomHex(DATA_LIMIT_BYTES);
-  
+
       // Initial state.
       await verifyState(OptimisticOracleRequestStatesEnum.INVALID, ancillaryData);
       assert.isNull(await optimisticRequester.ancillaryData());
-  
+
       // Requested.
       await collateral.transfer(optimisticRequester.address, reward);
       // Ancillary data length must not be more than the limit.
@@ -733,7 +733,7 @@ contract("OptimisticOracle", function (accounts) {
       );
       await optimisticRequester.requestPrice(identifier, requestTime, ancillaryData, collateral.address, reward);
       await verifyState(OptimisticOracleRequestStatesEnum.REQUESTED, ancillaryData);
-  
+
       // Proposed.
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
       await optimisticOracle.proposePrice(
@@ -749,7 +749,7 @@ contract("OptimisticOracle", function (accounts) {
       await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED, ancillaryData);
       assert.equal(await optimisticRequester.ancillaryData(), ancillaryData);
       await optimisticRequester.clearState();
-  
+
       // Disputed.
       await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: disputer });
       await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, ancillaryData, {
@@ -758,12 +758,12 @@ contract("OptimisticOracle", function (accounts) {
       await verifyState(OptimisticOracleRequestStatesEnum.DISPUTED, ancillaryData);
       assert.equal(await optimisticRequester.ancillaryData(), ancillaryData);
       await optimisticRequester.clearState();
-  
+
       // Settled
       await pushPrice(correctPrice);
       await optimisticRequester.settleAndGetPrice(identifier, requestTime, ancillaryData);
       await verifyState(OptimisticOracleRequestStatesEnum.SETTLED, ancillaryData);
       assert.equal(await optimisticRequester.ancillaryData(), ancillaryData);
     });
-  })
+  });
 });
