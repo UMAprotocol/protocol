@@ -44,6 +44,16 @@ export default function <D>(kind: string, store: Datastore): Store<string, D> {
   async function size() {
     return 0;
   }
+  // TODO: implement these functions
+  async function clear() {
+    throw new Error("clear is not implemented");
+  }
+  async function slice() {
+    return [];
+  }
+  async function between() {
+    return [];
+  }
 
   return {
     get,
@@ -54,5 +64,8 @@ export default function <D>(kind: string, store: Datastore): Store<string, D> {
     values,
     keys,
     size,
+    clear,
+    between,
+    slice,
   };
 }

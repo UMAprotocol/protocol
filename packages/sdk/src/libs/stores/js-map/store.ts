@@ -1,4 +1,5 @@
 import type { Store } from "../index";
+
 export default function <I, D>(map: Map<I, D> = new Map<I, D>()): Store<I, D> {
   async function get(id: I) {
     return map.get(id);
@@ -24,6 +25,17 @@ export default function <I, D>(map: Map<I, D> = new Map<I, D>()): Store<I, D> {
   async function size() {
     return map.size;
   }
+  async function clear() {
+    map.clear();
+  }
+  // not available, use sorted map
+  async function between(a: I, b: I) {
+    return [];
+  }
+  // not available, use sorted map
+  async function slice(a: I, len: number) {
+    return [];
+  }
 
   return {
     get,
@@ -34,5 +46,8 @@ export default function <I, D>(map: Map<I, D> = new Map<I, D>()): Store<I, D> {
     values,
     keys,
     size,
+    clear,
+    between,
+    slice,
   };
 }
