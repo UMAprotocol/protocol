@@ -18,7 +18,7 @@ function createTransports(transportsConfig = {}) {
   // If the logger is running in serverless mode then add the GCP winston transport and console transport.
   if ((transportsConfig.environment ?? process.env.ENVIRONMENT) == "serverless") {
     const { LoggingWinston } = require("@google-cloud/logging-winston");
-    require("@google-cloud/trace-agent").start();
+    if (!require("@google-cloud/trace-agent").get().enabled) require("@google-cloud/trace-agent").start();
     transports.push(new LoggingWinston());
     transports.push(JsonTransport.createJsonTransport());
   }
@@ -26,7 +26,7 @@ function createTransports(transportsConfig = {}) {
   // If the logger is running in production mode then add the GCE winston transport. Else, add a console transport.
   else if ((transportsConfig.environment ?? process.env.ENVIRONMENT) == "production") {
     const { LoggingWinston } = require("@google-cloud/logging-winston");
-    require("@google-cloud/trace-agent").start();
+    if (!require("@google-cloud/trace-agent").get().enabled) require("@google-cloud/trace-agent").start();
     transports.push(new LoggingWinston());
   } else if (transportsConfig.createConsoleTransport != undefined ? transportsConfig.createConsoleTransport : true) {
     // Add a console transport to log to the console.

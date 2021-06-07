@@ -118,13 +118,18 @@ const processExecutionOptions = async () => {
     .option("-fc, --fileConfig <path>", "input path to JSON config file.")
     .option("-uc, --urlConfig <path>", "url to JSON config hosted online. Private resources use access token")
     .option("-at, --accessToken <string>", "access token to access private configs online. EG private a repo")
+    .option("-env, --envConfig <bool>", "use a stringified config within your env set under `RUNNER_CONFIG")
     .parse(process.argv)
     .opts();
 
-  assert(options.fileConfig != undefined || options.urlConfig != undefined, "provide a file config or a URL config");
+  assert(
+    options.fileConfig != undefined || options.urlConfig != undefined || options.envConfig,
+    "provide a file config, URL config or env config to run the strategy runner"
+  );
 
   let fileConfig: any = {},
-    urlConfig: any = {};
+    urlConfig: any = {},
+    envConfig: any = {};
 
   if (options.fileConfig) fileConfig = JSON.parse(fs.readFileSync(options.fileConfig, { encoding: "utf8" }));
 
@@ -144,7 +149,9 @@ const processExecutionOptions = async () => {
     urlConfig = await response.json(); // extract JSON from the http response
     assert(!urlConfig.message && !urlConfig.error, `Could not fetch config! :${JSON.stringify(urlConfig)}`);
   }
-  return lodash.merge(fileConfig, urlConfig);
+
+  if (options.envConfig && process.env.RUNNER_CONFIG) envConfig = JSON.parse(process.env.RUNNER_CONFIG);
+  return lodash.merge(fileConfig, urlConfig, envConfig);
 };
 
 // Returns a promise that is resolved after `seconds` delay. Used to limit how long a spoke can run for.
