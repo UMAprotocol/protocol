@@ -383,7 +383,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             }
         }
 
-        _getOracle().requestPrice(identifier, timestamp, _appendToAncillaryData(ancillaryData, requester));
+        _getOracle().requestPrice(identifier, timestamp, _stampAncillaryData(ancillaryData, requester));
 
         // Compute refund.
         uint256 refund = 0;
@@ -516,7 +516,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         }
 
         return
-            _getOracle().hasPrice(identifier, timestamp, _appendToAncillaryData(ancillaryData, requester))
+            _getOracle().hasPrice(identifier, timestamp, _stampAncillaryData(ancillaryData, requester))
                 ? State.Resolved
                 : State.Disputed;
     }
@@ -546,7 +546,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
      * @return the stampped ancillary bytes.
      */
     function stampAncillaryData(bytes memory ancillaryData, address requester) public pure returns (bytes memory) {
-        return _appendToAncillaryData(ancillaryData, requester);
+        return _stampAncillaryData(ancillaryData, requester);
     }
 
     function _getId(
@@ -580,7 +580,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             request.resolvedPrice = _getOracle().getPrice(
                 identifier,
                 timestamp,
-                _appendToAncillaryData(ancillaryData, requester)
+                _stampAncillaryData(ancillaryData, requester)
             );
             bool disputeSuccess = request.resolvedPrice != request.proposedPrice;
             uint256 bond = request.bond;
@@ -652,7 +652,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 
-    function _appendToAncillaryData(bytes memory ancillaryData, address requester)
+    function _stampAncillaryData(bytes memory ancillaryData, address requester)
         internal
         pure
         returns (bytes memory)
