@@ -24,4 +24,7 @@ const usersTable = uma.tables.generic.JsMap<string, Data>('User',makeId)
 
 ## Types
 
-Generic tables are typed to a specific store. Currently only the [js-map](./js-map.ts) table exists.
+Generic tables are typed to a specific store. Currently support:
+
+- [js-map](./js-map.ts)
+- [sorted-js-map](./sorted-js-map.ts)
