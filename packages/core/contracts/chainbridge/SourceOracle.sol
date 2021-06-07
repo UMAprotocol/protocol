@@ -130,7 +130,7 @@ contract SourceOracle is BeaconOracle {
      * ultimately be used to publish a price on the SinkOracle.
      * @dev GenericHandler.deposit() expects data to be formatted as:
      *     len(data)                              uint256     bytes  0  - 32
-     *     data                                   bytes       bytes  64 - END
+     *     data                                   bytes       bytes  32 - END
      * @param chainID Chain ID of SinkOracle to publish price to.
      * @param identifier Identifier of price request to publish.
      * @param time Timestamp of price request to publish.

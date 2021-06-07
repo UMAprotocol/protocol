@@ -12,6 +12,7 @@ import {
   UniswapV2PriceFeed,
 } from "@uma/financial-templates-lib";
 import { getTruffleContract } from "@uma/core";
+import { createContractObjectFromJson } from "@uma/common";
 
 // Script to test
 import { RangeTrader } from "../src/RangeTrader";
@@ -53,16 +54,6 @@ let pairAddress: any;
 let WETH: any;
 let dsProxyFactory: any;
 
-// Takes in a json object from a compiled contract and returns a truffle contract instance that can be deployed.
-// TODO: these methods are taken from the UniswapV2Broker tests verbatim. they should be refactored to a common util that
-// can be re-used between different uniswap tests.
-const createContractObjectFromJson = (contractJsonObject: any) => {
-  const contract = require("@truffle/contract");
-  const truffleContractCreator = contract(contractJsonObject);
-  truffleContractCreator.setProvider(web3.currentProvider);
-  return truffleContractCreator;
-};
-
 // Returns the current spot price of a uniswap pool, scaled to 4 decimal points.
 const getPoolSpotPrice = async () => {
   const poolTokenABallance = await tokenA.balanceOf(pairAddress);
@@ -81,10 +72,14 @@ describe("UniswapV2Trader.js", function () {
 
     WETH = await WETH9.new();
     // deploy Uniswap V2 Factory & router.
-    uniswapFactory = await createContractObjectFromJson(UniswapV2Factory).new(deployer, { from: deployer });
-    uniswapRouter = await createContractObjectFromJson(UniswapV2Router02).new(uniswapFactory.address, WETH.address, {
-      from: deployer,
-    });
+    uniswapFactory = await createContractObjectFromJson(UniswapV2Factory, web3).new(deployer, { from: deployer });
+    uniswapRouter = await createContractObjectFromJson(UniswapV2Router02, web3).new(
+      uniswapFactory.address,
+      WETH.address,
+      {
+        from: deployer,
+      }
+    );
   });
 
   beforeEach(async function () {
@@ -99,7 +94,7 @@ describe("UniswapV2Trader.js", function () {
     // initialize the Uniswap pair
     await uniswapFactory.createPair(tokenA.address, tokenB.address, { from: deployer });
     pairAddress = await uniswapFactory.getPair(tokenA.address, tokenB.address);
-    pair = await createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
+    pair = await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress);
 
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
     spy = sinon.spy(); // Create a new spy for each test.

@@ -5,6 +5,7 @@ This folder contains contract interaction clients for the Ethersjs library. This
 ## Clients
 
 - [registry](./registry/README.md): emp registry contract, useful to see all emps registered
+- [emps](./emps/README.md): emp contract client, useful for getting emp state and user token/collateral balances
 
 ## Creating a Client
 
