@@ -661,9 +661,9 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         // the original requester was.
         bytes memory prefix;
         if (ancillaryData.length > 0) {
-            prefix = ",requester:";
+            prefix = ",optimisticOracleRequester:";
         } else {
-            prefix = "requester:";
+            prefix = "optimisticOracleRequester:";
         }
         return abi.encodePacked(ancillaryData, prefix, AncillaryData.toUtf8Bytes(requester));
     }

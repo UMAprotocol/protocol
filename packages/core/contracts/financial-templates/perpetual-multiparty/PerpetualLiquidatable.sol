@@ -234,7 +234,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         )
     {
         // Check that this transaction was mined pre-deadline.
-        require(getCurrentTime() <= deadline, "Mined after deadline");
+        require(getCurrentTime() <= deadline);
 
         // Retrieve Position data for sponsor
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
@@ -256,13 +256,11 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
 
             // The Position's collateralization ratio must be between [minCollateralPerToken, maxCollateralPerToken].
             require(
-                maxCollateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal),
-                "CR is more than max liq. price"
+                maxCollateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal)
             );
             // minCollateralPerToken >= startCollateralNetOfWithdrawal / startTokens.
             require(
-                minCollateralPerToken.mul(startTokens).isLessThanOrEqual(startCollateralNetOfWithdrawal),
-                "CR is less than min liq. price"
+                minCollateralPerToken.mul(startTokens).isLessThanOrEqual(startCollateralNetOfWithdrawal)
             );
         }
 
@@ -585,8 +583,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
     function _disputable(uint256 liquidationId, address sponsor) internal view {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
         require(
-            (getCurrentTime() < _getLiquidationExpiry(liquidation)) && (liquidation.state == Status.NotDisputed),
-            "Liquidation not disputable"
+            (getCurrentTime() < _getLiquidationExpiry(liquidation)) && (liquidation.state == Status.NotDisputed)
         );
     }
 

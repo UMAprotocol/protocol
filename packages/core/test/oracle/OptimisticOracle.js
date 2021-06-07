@@ -661,7 +661,7 @@ contract("OptimisticOracle", function (accounts) {
       const stampedAncillaryData = priceRequests[0].returnValues.ancillaryData;
       assert.equal(
         hexToUtf8(stampedAncillaryData),
-        `${hexToUtf8(ancillaryData)},requester:${optimisticRequester.address.substr(2).toLowerCase()}`
+        `${hexToUtf8(ancillaryData)},optimisticOracleRequester:${optimisticRequester.address.substr(2).toLowerCase()}`
       );
 
       // Settled
@@ -704,7 +704,7 @@ contract("OptimisticOracle", function (accounts) {
       const stampedAncillaryData = priceRequests[0].returnValues.ancillaryData;
       assert.equal(
         hexToUtf8(stampedAncillaryData),
-        `requester:${optimisticRequester.address.substr(2).toLowerCase()}`,
+        `optimisticOracleRequester:${optimisticRequester.address.substr(2).toLowerCase()}`,
         "Should not stamp with a leading comma ','"
       );
     });

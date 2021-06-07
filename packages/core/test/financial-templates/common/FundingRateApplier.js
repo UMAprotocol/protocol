@@ -59,7 +59,7 @@ contract("FundingRateApplier", function (accounts) {
 
     // OptimisticOracle should append its address:
     const expectedAppendedAncillaryData = utf8ToHex(
-      `,requester:${fundingRateApplier.address.substr(2).toLowerCase()}`
+      `,optimisticOracleRequester:${fundingRateApplier.address.substr(2).toLowerCase()}`
     ).substr(2);
     const expectedAncillaryData = `${expectedFRAAncillaryData}${expectedAppendedAncillaryData}`;
     assert.equal(lastQuery.ancillaryData, expectedAncillaryData);
