@@ -37,8 +37,6 @@ contract OracleRootTunnel is OracleBaseTunnel, FxBaseRootTunnel {
         // transaction for some reason. There is little risk in duplicating MessageSent emissions because the sidechain
         // bridge does not impose any rate-limiting.
         _publishPrice(identifier, time, ancillaryData, price);
-        // Initiate cross-chain price request:
-        // TODO: Should we pack more information into this request?
         _sendMessageToChild(abi.encode(identifier, time, ancillaryData, price));
     }
 

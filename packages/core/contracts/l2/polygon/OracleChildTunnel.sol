@@ -47,8 +47,6 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         // for some reason. There is little risk in duplicating MessageSent emissions because the sidechain bridge
         // does not impose any rate-limiting and this method is only callable by registered callers.
         _requestPrice(identifier, time, ancillaryData);
-        // TODO: Can we pack more information into this request? We could try to check if the requester is an
-        // OptimisticOracle and pull price request metadata from it such as fees, original requester, etc?
         _sendMessageToRoot(abi.encode(identifier, time, ancillaryData));
     }
 

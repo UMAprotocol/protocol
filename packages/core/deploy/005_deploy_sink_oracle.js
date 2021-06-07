@@ -25,5 +25,5 @@ const func = async function (hre) {
   });
 };
 module.exports = func;
-func.tags = ["SinkOracle", "bridge-l2"];
+func.tags = ["SinkOracle", "l2-chainbridge"];
 func.dependencies = ["Finder"];

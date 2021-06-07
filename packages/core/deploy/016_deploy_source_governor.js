@@ -18,5 +18,5 @@ const func = async function (hre) {
   });
 };
 module.exports = func;
-func.tags = ["SourceGovernor", "bridge-l1"];
+func.tags = ["SourceGovernor", "l1-chainbridge"];
 func.dependencies = ["Finder"];
