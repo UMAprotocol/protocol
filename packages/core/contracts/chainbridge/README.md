@@ -22,22 +22,24 @@ The relationship between `SinkOracle` and `SourceOracle` is "N-to-1":
 
 - We anticipate that there will be 1 `SourceOracle` deployed to mainnet, and 1 `SinkOracle` deployed to each L2 network that needs to securely obtain prices from L1.
 - Each `SinkOracle` will have a unique `chainId` that it will submit with price requests to the `SourceOracle`. This effectively enables a unique communication channel between each `SinkOracle` and the 1 `SourceOracle`.
-### Diagram of the architecture: 
-Theoretical context: `OptimisticOracle` on L2 fails to resolve price optimistically, wants to raise a dispute to the DVM on L1. 
+
+### Diagram of the architecture:
+
+Theoretical context: `OptimisticOracle` on L2 fails to resolve price optimistically, wants to raise a dispute to the DVM on L1.
 
 L2 price request results in emitting `Deposit` event through `Bridge` contract:
 
 ![image](https://user-images.githubusercontent.com/9457025/121192990-736bc380-c83b-11eb-983f-c5ea2c54bfe6.png)
 
-Off-chain relayer bridges `Deposit` data to L1 `Bridge` which forwards request to DVM: 
+Off-chain relayer bridges `Deposit` data to L1 `Bridge` which forwards request to DVM:
 
 ![image](https://user-images.githubusercontent.com/9457025/121193025-7d8dc200-c83b-11eb-8cfa-4b8513ab5f02.png)
 
-DVM resolves price request. Someone detects price resolution and wants to signal (via a `Deposit` event) to off-chain relayer to send resolved price back to L2: 
+DVM resolves price request. Someone detects price resolution and wants to signal (via a `Deposit` event) to off-chain relayer to send resolved price back to L2:
 
 ![image](https://user-images.githubusercontent.com/9457025/121193110-8da5a180-c83b-11eb-88b1-defd40d37e1c.png)
 
-Off-chain relayer bridges `Deposit` data to L2 `Bridge` which makes price available to `OptimisticOracle`: 
+Off-chain relayer bridges `Deposit` data to L2 `Bridge` which makes price available to `OptimisticOracle`:
 
 ![image](https://user-images.githubusercontent.com/9457025/121193150-96967300-c83b-11eb-9367-912737c93ef0.png)
 
