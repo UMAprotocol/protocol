@@ -1,4 +1,4 @@
-import { Data, makeId } from ".";
+import { Data, makeId } from "./utils";
 import { JsMap } from "../generic";
 
 export const Table = (type = "Emp") => {

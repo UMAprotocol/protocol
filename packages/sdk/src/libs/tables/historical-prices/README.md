@@ -1,13 +1,11 @@
-# UMA SDK Prices Table
+# UMA SDK Historical Prices Table
 
 This table uses a sorted key value under the hood so that you can add time series price data. You may need the flexibility to define your own price structure
-and identification mapping, in this case use the [generic](../generic/README.md) table which requires you provide
-these explicitly.
+and identification mapping, in this case use the [generic](../generic/README.md) table which requires you provide these explicitly.
 
 ## Key Design
 
-For this particular table, only timestamp is considered as part of the key. Timestamp will be converted into
-a string, and padded with '0' in order to guarantee strings are the same length.
+For this particular table, only timestamp is considered as part of the key. Timestamp will be converted into a string, and padded with '0' in order to guarantee strings are the same length.
 
 ## Usage
 
