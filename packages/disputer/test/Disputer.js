@@ -1,7 +1,6 @@
 const { toWei, toBN, utf8ToHex, padRight, isAddress } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
-const truffleContract = require("@truffle/contract");
 const {
   PostWithdrawLiquidationRewardsStatusTranslations,
   LiquidationStatesEnum,
@@ -12,6 +11,7 @@ const {
   createConstructorParamsForContractVersion,
   TESTED_CONTRACT_VERSIONS,
   parseFixed,
+  createContractObjectFromJson,
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
@@ -1178,24 +1178,16 @@ contract("Disputer.js", function (accounts) {
           let dsProxyFactory;
           let dsProxy;
 
-          // Takes in a json object from a compiled contract and returns a truffle contract instance that can be deployed.
-          // TODO: refactor this to be from a common file
-          const createContractObjectFromJson = (contractJsonObject) => {
-            let truffleContractCreator = truffleContract(contractJsonObject);
-            truffleContractCreator.setProvider(web3.currentProvider);
-            return truffleContractCreator;
-          };
-
           beforeEach(async () => {
             // Create the reserve currency for the liquidator to hold.
             reserveToken = await Token.new("reserveToken", "DAI", 18, { from: contractCreator });
             await reserveToken.addMember(1, contractCreator, { from: contractCreator });
 
             // deploy Uniswap V2 Factory & router.
-            uniswapFactory = await createContractObjectFromJson(UniswapV2Factory).new(contractCreator, {
+            uniswapFactory = await createContractObjectFromJson(UniswapV2Factory, web3).new(contractCreator, {
               from: contractCreator,
             });
-            uniswapRouter = await createContractObjectFromJson(UniswapV2Router02).new(
+            uniswapRouter = await createContractObjectFromJson(UniswapV2Router02, web3).new(
               uniswapFactory.address,
               collateralToken.address,
               { from: contractCreator }
@@ -1206,7 +1198,7 @@ contract("Disputer.js", function (accounts) {
               from: contractCreator,
             });
             pairAddress = await uniswapFactory.getPair(reserveToken.address, collateralToken.address);
-            pair = await createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
+            pair = await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress);
 
             // Seed the market. This sets up the initial price to be 1/1 reserve to collateral token. As the collateral
             // token is Dai this starts off the uniswap market at 1 reserve/collateral. Note the amount of collateral

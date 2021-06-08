@@ -246,4 +246,10 @@ abstract contract OptimisticOracleInterface {
         uint256 timestamp,
         bytes memory ancillaryData
     ) public view virtual returns (bool);
+
+    function stampAncillaryData(bytes memory ancillaryData, address requester)
+        public
+        view
+        virtual
+        returns (bytes memory);
 }

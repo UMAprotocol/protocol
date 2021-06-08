@@ -168,6 +168,7 @@ hub.post("/", async (req, res) => {
         at: "ServerlessHub",
         message: "A fatal error occurred in the hub",
         output: errorOutput.message,
+        notificationPath: "infrastructure-error",
       });
     } else {
       // Else, the error was produced within one of the spokes. If this is the case then we need to process the errors a bit.
@@ -194,6 +195,7 @@ hub.post("/", async (req, res) => {
           }
         }), // eslint-disable-line indent
         validOutputs: Object.keys(errorOutput.validOutputs), // eslint-disable-line indent
+        notificationPath: "infrastructure-error",
       });
     }
     await delay(2); // Wait a few seconds to be sure the the winston logs are processed upstream.

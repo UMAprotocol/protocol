@@ -39,7 +39,8 @@ const runTransaction = async ({ web3, transaction, transactionConfig, availableA
   if (await accountHasPendingTransactions(web3, transactionConfig.from))
     transactionConfig.nonce = await getPendingTransactionCount(web3, transactionConfig.from);
   // Else, there is no pending transaction and we use the current account transaction count as the nonce.
-  else transactionConfig.nonce = await web3.eth.getTransactionCount(transactionConfig.from);
+  // This method does not play niceley in tests. Leave the nounce null to auto fill.
+  else if (argv.network != "test") transactionConfig.nonce = await web3.eth.getTransactionCount(transactionConfig.from);
 
   // Next, simulate transaction and also extract return value if its a state-modifying transaction. If the function is state
   // modifying, then successfully sending it will return the transaction receipt, not the return value, so we grab it here.

@@ -761,7 +761,7 @@ const defaultConfigs = {
     minTimeBetweenUpdates: 60,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "binance", pair: "oceanusdt" },
-      { type: "cryptowatch", exchange: "bittrex", pair: "oceanusdt" },
+      { type: "cryptowatch", exchange: "kraken", pair: "oceanusd" },
       { type: "cryptowatch", exchange: "bitz", pair: "oceanusdt" },
     ],
   },

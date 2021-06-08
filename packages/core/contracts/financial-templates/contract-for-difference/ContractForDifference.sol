@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../common/financial-product-libraries/ContractForDifferenceFinancialProductLibrary.sol";
+import "../common/financial-product-libraries/contract-for-difference-libraries/ContractForDifferenceFinancialProductLibrary.sol";
 
 import "../../common/implementation/Testable.sol";
 import "../../common/implementation/Lockable.sol";
@@ -62,6 +62,8 @@ contract ContractForDifference is Testable, Lockable {
 
     ContractForDifferenceFinancialProductLibrary public financialProductLibrary;
 
+    bytes public customAncillaryData;
+
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -100,10 +102,12 @@ contract ContractForDifference is Testable, Lockable {
      * @param _expirationTimestamp unix timestamp of when the contract will expire.
      * @param _collateralPerPair how many units of collateral are required to mint one pair of synthetic tokens.
      * @param _priceIdentifier registered in the DVM for the synthetic.
-     * @param _longTokenAddress ERC20 token used as long in the CFD. Requires mint and burn rights granted to this contract.
-     * @param _shortTokenAddress ERC20 token used as short in the CFD. Requires mint and burn rights granted to this contract.
+     * @param _longTokenAddress ERC20 token used as long in the CFD. Requires mint and burn needed by this contract.
+     * @param _shortTokenAddress ERC20 token used as short in the CFD. Mint and burn rights needed by this contract.
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _financialProductLibraryAddress Contract providing settlement payout logic.
+     * @param _customAncillaryData Custom ancillary data to be passed along with the price request. If not needed, this
+     *                             should be left as a 0-length bytes array.
      * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 in production.
      */
     constructor(
@@ -115,21 +119,31 @@ contract ContractForDifference is Testable, Lockable {
         IERC20 _collateralAddress,
         FinderInterface _finderAddress,
         ContractForDifferenceFinancialProductLibrary _financialProductLibraryAddress,
+        bytes memory _customAncillaryData,
         address _timerAddress
     ) Testable(_timerAddress) {
         finder = _finderAddress;
         require(_expirationTimestamp > getCurrentTime());
-        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier));
-        require(address(_financialProductLibraryAddress) != address(0));
+        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Identifier not registered");
+        require(address(_getOptimisticOracle()) != address(0), "Invalid finder");
+        require(address(_financialProductLibraryAddress) != address(0), "Invalid FinancialProductLibrary");
 
         expirationTimestamp = _expirationTimestamp;
         collateralPerPair = _collateralPerPair;
+        priceIdentifier = _priceIdentifier;
+
         longToken = _longTokenAddress;
         shortToken = _shortTokenAddress;
         collateralToken = _collateralAddress;
-        priceIdentifier = _priceIdentifier;
 
         financialProductLibrary = _financialProductLibraryAddress;
+        OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
+        require(
+            optimisticOracle.stampAncillaryData(_customAncillaryData, address(this)).length <=
+                optimisticOracle.ancillaryBytesLimit(),
+            "Ancillary Data too long"
+        );
+        customAncillaryData = _customAncillaryData;
     }
 
     /****************************************
@@ -147,8 +161,8 @@ contract ContractForDifference is Testable, Lockable {
 
         collateralToken.safeTransferFrom(msg.sender, address(this), collateralUsed);
 
-        require(longToken.mint(msg.sender, tokensToCreate));
-        require(shortToken.mint(msg.sender, tokensToCreate));
+        longToken.mint(msg.sender, tokensToCreate);
+        shortToken.mint(msg.sender, tokensToCreate);
 
         emit TokensCreated(msg.sender, collateralUsed, tokensToCreate);
     }
@@ -167,7 +181,7 @@ contract ContractForDifference is Testable, Lockable {
 
         collateralToken.safeTransfer(msg.sender, collateralReturned);
 
-        emit TokensCreated(msg.sender, collateralReturned, tokensToRedeem);
+        emit TokensRedeemed(msg.sender, collateralReturned, tokensToRedeem);
     }
 
     /**
@@ -198,8 +212,8 @@ contract ContractForDifference is Testable, Lockable {
             contractState = ContractState.ExpiredPriceReceived;
         }
 
-        require(longToken.burnFrom(msg.sender, longTokensToRedeem));
-        require(shortToken.burnFrom(msg.sender, shortTokensToRedeem));
+        longToken.burnFrom(msg.sender, longTokensToRedeem);
+        shortToken.burnFrom(msg.sender, shortTokensToRedeem);
 
         // expiraryTokensForCollateral is a number between 0 and 1e18. 0 means all collateral goes to short tokens and
         // 1 means all collateral goes to the long token. Total collateral returned is the sum of payouts.
@@ -229,6 +243,8 @@ contract ContractForDifference is Testable, Lockable {
     function expire() public postExpiration() onlyOpenState() nonReentrant() {
         _requestOraclePriceExpiration();
         contractState = ContractState.ExpiredPriceRequested;
+
+        emit ContractExpired(msg.sender);
     }
 
     // TODO: add additional state fetching methods. for example a method to return the long and short tokens owned
@@ -241,8 +257,8 @@ contract ContractForDifference is Testable, Lockable {
     function _getOraclePriceExpiration(uint256 requestedTime) internal returns (int256) {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
-        require(optimisticOracle.hasPrice(address(this), priceIdentifier, requestedTime, _getAncillaryData()));
-        int256 oraclePrice = optimisticOracle.settleAndGetPrice(priceIdentifier, requestedTime, _getAncillaryData());
+        require(optimisticOracle.hasPrice(address(this), priceIdentifier, requestedTime, customAncillaryData));
+        int256 oraclePrice = optimisticOracle.settleAndGetPrice(priceIdentifier, requestedTime, customAncillaryData);
 
         return oraclePrice;
     }
@@ -251,7 +267,7 @@ contract ContractForDifference is Testable, Lockable {
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
 
         // For now, we add no fees the the OO and set the reward to 0.
-        optimisticOracle.requestPrice(priceIdentifier, expirationTimestamp, _getAncillaryData(), collateralToken, 0);
+        optimisticOracle.requestPrice(priceIdentifier, expirationTimestamp, customAncillaryData, collateralToken, 0);
     }
 
     function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
@@ -260,9 +276,5 @@ contract ContractForDifference is Testable, Lockable {
 
     function _getOptimisticOracle() internal view returns (OptimisticOracleInterface) {
         return OptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
-    }
-
-    function _getAncillaryData() internal view returns (bytes memory) {
-        return abi.encodePacked(address(longToken), address(shortToken));
     }
 }

@@ -1,7 +1,10 @@
 const assert = require("assert");
-const truffleContract = require("@truffle/contract");
-
-const { createObjectFromDefaultProps, runTransaction, blockUntilBlockMined } = require("@uma/common");
+const {
+  createObjectFromDefaultProps,
+  runTransaction,
+  blockUntilBlockMined,
+  createContractObjectFromJson,
+} = require("@uma/common");
 const { getAbi, getTruffleContract } = require("@uma/core");
 
 const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json");
@@ -104,13 +107,6 @@ class ProxyTransactionWrapper {
     this.ReserveCurrencyLiquidator = getTruffleContract("ReserveCurrencyLiquidator", this.web3);
   }
 
-  // TODO: wrap this into a common util.
-  createContractObjectFromJson(contractJsonObject) {
-    let truffleContractCreator = truffleContract(contractJsonObject);
-    truffleContractCreator.setProvider(this.web3.currentProvider);
-    return truffleContractCreator;
-  }
-
   // Get the effective synthetic token balance. If the bot is executing in normal mode (liquidations sent from an EOA)
   // then this is simply the token balance of the unlocked account. If the liquidator is using a DSProxy to liquidate,
   // then consider the synthetics could be minted, + any synthetics the DSProxy already has.
@@ -134,10 +130,12 @@ class ProxyTransactionWrapper {
       // Else, work out how much collateral could be purchased using all the reserve currency.
       else {
         // Instantiate uniswap factory to fetch the pair address.
-        const uniswapFactory = await this.createContractObjectFromJson(UniswapV2Factory).at(this.uniswapFactoryAddress);
+        const uniswapFactory = await createContractObjectFromJson(UniswapV2Factory, this.web3).at(
+          this.uniswapFactoryAddress
+        );
 
         const pairAddress = await uniswapFactory.getPair(this.reserveToken._address, this.collateralToken._address);
-        const uniswapPair = await this.createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
+        const uniswapPair = await createContractObjectFromJson(IUniswapV2Pair, this.web3).at(pairAddress);
 
         // We can now fetch the reserves. At the same time, we can batch a few other required async calls.
         const [reserves, token0] = await Promise.all([uniswapPair.getReserves(), uniswapPair.token0()]);
