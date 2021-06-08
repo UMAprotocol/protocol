@@ -11,7 +11,6 @@ const func = async function (hre) {
   if (live === false) {
     await deploy("Timer", {
       from: deployer,
-      args: [],
       log: true,
     });
   }

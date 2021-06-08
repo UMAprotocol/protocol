@@ -6,7 +6,6 @@ const func = async function (hre) {
 
   await deploy("FinancialContractsAdmin", {
     from: deployer,
-    args: [],
     log: true,
   });
 };
