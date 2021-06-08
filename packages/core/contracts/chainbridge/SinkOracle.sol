@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 import "./BeaconOracle.sol";
-import "../../oracle/interfaces/OracleAncillaryInterface.sol";
-import "../../oracle/interfaces/RegistryInterface.sol";
+import "../oracle/interfaces/OracleAncillaryInterface.sol";
+import "../oracle/interfaces/RegistryInterface.sol";
 
 /**
  * @title Extension of BeaconOracle that is intended to be deployed on non-Mainnet networks to give financial

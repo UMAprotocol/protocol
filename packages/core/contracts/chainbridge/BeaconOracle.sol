@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../../oracle/interfaces/FinderInterface.sol";
-import "./IBridge.sol";
-import "../../oracle/implementation/Constants.sol";
+import "../oracle/interfaces/FinderInterface.sol";
+import "../external/chainbridge/interfaces/IBridge.sol";
+import "../oracle/implementation/Constants.sol";
 
 /**
  * @title Simple implementation of the OracleInterface used to communicate price request data cross-chain between

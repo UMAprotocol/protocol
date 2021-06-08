@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "../../external/polygon/tunnel/FxBaseRootTunnel.sol";
+import "../external/polygon/tunnel/FxBaseRootTunnel.sol";
 import "./OracleBaseTunnel.sol";
-import "../../oracle/interfaces/OracleAncillaryInterface.sol";
+import "../oracle/interfaces/OracleAncillaryInterface.sol";
 
 /**
  * @title Adapter deployed on mainnet that validates and sends price requests from sidechain to the DVM on mainnet.
