@@ -652,14 +652,23 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 
+    /**
+     * @notice  We assume that on-chain ancillary data can be formatted directly from bytes to utf8 encoding via
+     * web3.utils.hexToUtf8, and that clients will parse the utf8-encoded ancillary data as a comma-delimitted key-value
+     * dictionary. Therefore, this internal method appends additional metadata about this optimistic oracle price
+     * price request to the original ancillary data.
+     * @dev We don't handle specifically the case where `ancillaryData` is not already readily translateable in utf8.
+     * For those cases, we assume that the client will be able to strip out the utf8-translateable part of the
+     * ancillary data that this contract stamps.
+     */
     function _stampAncillaryData(bytes memory ancillaryData, address requester) internal pure returns (bytes memory) {
         // Since this contract will be the one to formally submit DVM price requests, its useful for voters to know who
         // the original requester was.
         bytes memory prefix;
         if (ancillaryData.length > 0) {
-            prefix = ",optimisticOracleRequester:";
+            prefix = ",ooRequester:";
         } else {
-            prefix = "optimisticOracleRequester:";
+            prefix = "ooRequester:";
         }
         return abi.encodePacked(ancillaryData, prefix, AncillaryData.toUtf8Bytes(requester));
     }

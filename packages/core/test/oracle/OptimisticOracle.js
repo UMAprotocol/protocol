@@ -661,7 +661,7 @@ contract("OptimisticOracle", function (accounts) {
       const stampedAncillaryData = priceRequests[0].returnValues.ancillaryData;
       assert.equal(
         hexToUtf8(stampedAncillaryData),
-        `${hexToUtf8(ancillaryData)},optimisticOracleRequester:${optimisticRequester.address.substr(2).toLowerCase()}`
+        `${hexToUtf8(ancillaryData)},ooRequester:${optimisticRequester.address.substr(2).toLowerCase()}`
       );
 
       // Settled
@@ -704,16 +704,16 @@ contract("OptimisticOracle", function (accounts) {
       const stampedAncillaryData = priceRequests[0].returnValues.ancillaryData;
       assert.equal(
         hexToUtf8(stampedAncillaryData),
-        `optimisticOracleRequester:${optimisticRequester.address.substr(2).toLowerCase()}`,
+        `ooRequester:${optimisticRequester.address.substr(2).toLowerCase()}`,
         "Should not stamp with a leading comma ','"
       );
     });
 
     it("Stress testing the size of ancillary data", async function () {
       // Ancillary data length must not be more than the limit + stamped length. The limit hardcoded into the contract
-      // is 8192, and the stamped utf8 string is ",optimisticOracleRequester:<address>" where address has 40 characters
-      // and ",optimisticOracleRequester:" is 27 characters. So the max length is:
-      const DATA_LIMIT_BYTES = 8192 - 27 - 40;
+      // is 8192, and the stamped utf8 string is ",ooRequester:<address>" where address has 40 characters
+      // and ",ooRequester:" is 13 characters. So the max length is:
+      const DATA_LIMIT_BYTES = 8192 - 13 - 40;
       let ancillaryData = web3.utils.randomHex(DATA_LIMIT_BYTES);
 
       // Initial state.
