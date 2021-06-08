@@ -16,7 +16,7 @@ import "../../common/interfaces/ExpandedIERC20.sol";
 import "../../common/interfaces/IERC20Standard.sol";
 
 import "../../oracle/interfaces/OracleInterface.sol";
-
+import "../../common/interfaces/AddressWhitelistInterface.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
 import "../../oracle/interfaces/OptimisticOracleInterface.sol";
 import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
@@ -102,6 +102,7 @@ contract ContractForDifference is Testable, Lockable {
      * @param _priceIdentifier registered in the DVM for the synthetic.
      * @param _longTokenAddress ERC20 token used as long in the CFD. Requires mint and burn rights granted to this contract.
      * @param _shortTokenAddress ERC20 token used as short in the CFD. Requires mint and burn rights granted to this contract.
+     * @param _collateralAddress ERC20 token used as as collateral in the CFD.
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _financialProductLibraryAddress Contract providing settlement payout logic.
      * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 in production.
@@ -118,10 +119,11 @@ contract ContractForDifference is Testable, Lockable {
         address _timerAddress
     ) Testable(_timerAddress) {
         finder = _finderAddress;
-        require(_expirationTimestamp > getCurrentTime());
+        require(_expirationTimestamp > getCurrentTime(), "Expiration time stamp in past");
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Identifier not registered");
         require(address(_getOptimisticOracle()) != address(0), "Invalid finder");
         require(address(_financialProductLibraryAddress) != address(0), "Invalid FinancialProductLibrary");
+        require(_getAddressWhitelist().isOnWhitelist(address(_collateralAddress)), "Collateral not whitelisted");
 
         expirationTimestamp = _expirationTimestamp;
         collateralPerPair = _collateralPerPair;
@@ -260,6 +262,10 @@ contract ContractForDifference is Testable, Lockable {
 
     function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
+    }
+
+    function _getAddressWhitelist() internal view returns (AddressWhitelistInterface) {
+        return AddressWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
     }
 
     function _getOptimisticOracle() internal view returns (OptimisticOracleInterface) {
