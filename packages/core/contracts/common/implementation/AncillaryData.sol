@@ -6,7 +6,7 @@ pragma solidity ^0.8.0;
  * @notice  We assume that on-chain ancillary data can be formatted directly from bytes to utf8 encoding via
  * web3.utils.hexToUtf8, and that clients will parse the utf8-encoded ancillary data as a comma-delimitted key-value
  * dictionary. Therefore, this libraries provides internal methods that aid appending to ancillary data from Solidity
- * smart contracts. More details on UMA's ancillary data guidelines below: 
+ * smart contracts. More details on UMA's ancillary data guidelines below:
  * https://docs.google.com/document/d/1zhKKjgY1BupBGPPrY_WOJvui0B6DMcd-xDR8-9-SPDw/edit
  */
 library AncillaryData {
