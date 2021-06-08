@@ -4,6 +4,7 @@ const func = async function (hre) {
   const { deploy } = deployments;
 
   const { deployer } = await getNamedAccounts();
+  const Timer = (await deployments.getOrNull("Timer")) || { address: ZERO_ADDRESS };
 
   // Initialize both fees to 0.
   const initialFixedOracleFeePerSecondPerPfc = { rawValue: "0" };
@@ -11,9 +12,10 @@ const func = async function (hre) {
 
   await deploy("Store", {
     from: deployer,
-    args: [initialFixedOracleFeePerSecondPerPfc, initialWeeklyDelayFeePerSecondPerPfc, ZERO_ADDRESS],
+    args: [initialFixedOracleFeePerSecondPerPfc, initialWeeklyDelayFeePerSecondPerPfc, Timer.address],
     log: true,
   });
 };
 module.exports = func;
 func.tags = ["Store", "dvm"];
+func.dependencies = ["Timer"];

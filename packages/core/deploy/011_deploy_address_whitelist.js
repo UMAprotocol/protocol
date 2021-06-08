@@ -4,9 +4,10 @@ const func = async function (hre) {
 
   const { deployer } = await getNamedAccounts();
 
-  await deploy("Finder", {
+  await deploy("AddressWhitelist", {
     from: deployer,
+    log: true,
   });
 };
 module.exports = func;
-func.tags = ["Finder", "dvm"];
+func.tags = ["AddressWhitelist", "dvm"];

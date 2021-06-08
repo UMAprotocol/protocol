@@ -4,18 +4,17 @@ const func = async function (hre) {
   const { deploy } = deployments;
 
   const { deployer } = await getNamedAccounts();
-
-  // 2 hours.
-  const defaultLiveness = 7200;
+  const Timer = (await deployments.getOrNull("Timer")) || { address: ZERO_ADDRESS };
   const Finder = await deployments.get("Finder");
-  const Timer = (await deployments.getOrNull("Timer")) || ZERO_ADDRESS;
 
-  await deploy("OptimisticOracle", {
+  const startingProposalId = 0;
+
+  await deploy("Governor", {
     from: deployer,
-    args: [defaultLiveness, Finder.address, Timer.address],
+    args: [Finder.address, startingProposalId, Timer.address],
     log: true,
   });
 };
 module.exports = func;
-func.tags = ["OptimisticOracle", "dvm"];
+func.tags = ["Governor", "dvm"];
 func.dependencies = ["Finder", "Timer"];

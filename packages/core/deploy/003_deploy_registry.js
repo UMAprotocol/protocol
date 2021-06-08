@@ -4,11 +4,10 @@ const func = async function (hre) {
 
   const { deployer } = await getNamedAccounts();
 
-  await deploy("FinancialContractsAdmin", {
+  await deploy("Registry", {
     from: deployer,
-    args: [],
     log: true,
   });
 };
 module.exports = func;
-func.tags = ["FinancialContractsAdmin", "dvm"];
+func.tags = ["Registry", "dvm"];
