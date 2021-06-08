@@ -544,7 +544,12 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
      * @param requester sender of the initial price request.
      * @return the stampped ancillary bytes.
      */
-    function stampAncillaryData(bytes memory ancillaryData, address requester) public pure returns (bytes memory) {
+    function stampAncillaryData(bytes memory ancillaryData, address requester)
+        public
+        pure
+        override
+        returns (bytes memory)
+    {
         return _stampAncillaryData(ancillaryData, requester);
     }
 
