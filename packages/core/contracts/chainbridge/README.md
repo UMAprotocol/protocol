@@ -16,14 +16,30 @@ For bridging DVM data to non-Ethereum EVM chains that do NOT already have an arb
 
 We have implemented and deployed a [trusted bridge system](https://chainbridge.chainsafe.io/) on other EVM networks so that registered contracts, like `OptimisticOracles`, can submit price requests to "beacon" oracles that will ultimately relay the requests to mainnet via off-chain relayers. The bridge contract system was conceived by Chainbridge and has been cloned into the `UMAprotocol/protocol` repository [here](https://github.com/ChainSafe/chainbridge-solidity/tree/849db5657b8ce7c340a8847078de87d3a9e421f1).
 
-A diagram of the architecture can be found [here](https://docs.google.com/presentation/d/1sGvKMknFAhDf-tfd6EkEOijGMrXCieC2hIycIObAVGs/edit#slide=id.gd5fbfb2d7f_0_30).
-
 There are no DVMs (`Voting.sol` contracts) deployed to L2; instead we deploy a "beacon" contract called a `SinkOracle`. The purpose of the `SinkOracle` is to send price requests to the L1 DVM and receive corresponding price resolution data from the L1 DVM. A corresponding `SourceOracle` is deployed on L1 that parses price request information before communicating directly with the DVM. Generally, price resolution data flows from `SourceOracle` to `SinkOracle`, while price requests are bubbled up from the `SinkOracle` to the `SourceOracle`.
 
 The relationship between `SinkOracle` and `SourceOracle` is "N-to-1":
 
 - We anticipate that there will be 1 `SourceOracle` deployed to mainnet, and 1 `SinkOracle` deployed to each L2 network that needs to securely obtain prices from L1.
 - Each `SinkOracle` will have a unique `chainId` that it will submit with price requests to the `SourceOracle`. This effectively enables a unique communication channel between each `SinkOracle` and the 1 `SourceOracle`.
+### Diagram of the architecture: 
+Theoretical context: `OptimisticOracle` on L2 fails to resolve price optimistically, wants to raise a dispute to the DVM on L1. 
+
+L2 price request results in emitting `Deposit` event through `Bridge` contract:
+
+![image](https://user-images.githubusercontent.com/9457025/121192990-736bc380-c83b-11eb-983f-c5ea2c54bfe6.png)
+
+Off-chain relayer bridges `Deposit` data to L1 `Bridge` which forwards request to DVM: 
+
+![image](https://user-images.githubusercontent.com/9457025/121193025-7d8dc200-c83b-11eb-8cfa-4b8513ab5f02.png)
+
+DVM resolves price request. Someone detects price resolution and wants to signal (via a `Deposit` event) to off-chain relayer to send resolved price back to L2: 
+
+![image](https://user-images.githubusercontent.com/9457025/121193110-8da5a180-c83b-11eb-88b1-defd40d37e1c.png)
+
+Off-chain relayer bridges `Deposit` data to L2 `Bridge` which makes price available to `OptimisticOracle`: 
+
+![image](https://user-images.githubusercontent.com/9457025/121193150-96967300-c83b-11eb-9367-912737c93ef0.png)
 
 ## Technical Example: bridging a price request from L2 to L1:
 
