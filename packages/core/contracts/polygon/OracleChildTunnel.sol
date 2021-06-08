@@ -5,6 +5,7 @@ import "../external/polygon/tunnel/FxBaseChildTunnel.sol";
 import "../oracle/interfaces/OracleAncillaryInterface.sol";
 import "../oracle/interfaces/RegistryInterface.sol";
 import "./OracleBaseTunnel.sol";
+import "../common/implementation/AncillaryData.sol";
 
 /**
  * @title Adapter deployed on sidechain to give financial contracts the ability to trigger cross-chain price requests to
@@ -46,8 +47,8 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         // This is potentially a fallback in case the checkpointing to mainnet is missing the `requestPrice` transaction
         // for some reason. There is little risk in duplicating MessageSent emissions because the sidechain bridge
         // does not impose any rate-limiting and this method is only callable by registered callers.
-        _requestPrice(identifier, time, ancillaryData);
-        _sendMessageToRoot(abi.encode(identifier, time, ancillaryData));
+        _requestPrice(identifier, time, _stampAncillaryData(ancillaryData, msg.sender));
+        _sendMessageToRoot(abi.encode(identifier, time, _stampAncillaryData(ancillaryData, msg.sender)));
     }
 
     /**
@@ -64,7 +65,7 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
     ) internal override validateSender(sender) {
         (bytes32 identifier, uint256 time, bytes memory ancillaryData, int256 price) =
             abi.decode(data, (bytes32, uint256, bytes, int256));
-        _publishPrice(identifier, time, ancillaryData, price);
+        _publishPrice(identifier, time, _stampAncillaryData(ancillaryData, msg.sender), price);
     }
 
     /**
@@ -79,7 +80,7 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         uint256 time,
         bytes memory ancillaryData
     ) public view override onlyRegisteredContract() returns (bool) {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(ancillaryData, msg.sender));
         return prices[priceRequestId].state == RequestState.Resolved;
     }
 
@@ -96,9 +97,37 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         uint256 time,
         bytes memory ancillaryData
     ) public view override onlyRegisteredContract() returns (int256) {
-        bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
+        bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(ancillaryData, msg.sender));
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Resolved, "Price has not been resolved");
         return lookup.price;
+    }
+
+    /**
+     * @dev We don't handle specifically the case where `ancillaryData` is not already readily translateable in utf8.
+     * For those cases, we assume that the client will be able to strip out the utf8-translateable part of the
+     * ancillary data that this contract stamps.
+     */
+    function _stampAncillaryData(bytes memory ancillaryData, address requester) internal view returns (bytes memory) {
+        // Price requests that originate from this method, on Polygon, will ultimately be submitted to the DVM on 
+        // Ethereum via the OracleRootTunnel. Therefore this contract should stamp its requester's address in the 
+        // ancillary data so voters can conveniently track the requests path to the DVM.
+        bytes memory requesterPrefix;
+        if (ancillaryData.length > 0) {
+            requesterPrefix = ",childTunnelRequester:";
+        } else {
+            requesterPrefix = "childTunnelRequester:";
+        }
+        bytes memory childTunnelPrefix = ",childTunnel:";
+        bytes memory rootTunnelPrefix = ",rootTunnel:";
+        return abi.encodePacked(
+            ancillaryData, 
+            requesterPrefix, 
+            AncillaryData.toUtf8Bytes(requester),
+            childTunnelPrefix,
+            AncillaryData.toUtf8Bytes(address(this)),
+            rootTunnelPrefix,
+            AncillaryData.toUtf8Bytes(address(fxRootTunnel))
+        );
     }
 }

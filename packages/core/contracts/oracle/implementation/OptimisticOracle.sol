@@ -658,10 +658,6 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     }
 
     /**
-     * @notice  We assume that on-chain ancillary data can be formatted directly from bytes to utf8 encoding via
-     * web3.utils.hexToUtf8, and that clients will parse the utf8-encoded ancillary data as a comma-delimitted key-value
-     * dictionary. Therefore, this internal method appends additional metadata about this optimistic oracle price
-     * price request to the original ancillary data.
      * @dev We don't handle specifically the case where `ancillaryData` is not already readily translateable in utf8.
      * For those cases, we assume that the client will be able to strip out the utf8-translateable part of the
      * ancillary data that this contract stamps.

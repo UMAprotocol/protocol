@@ -319,10 +319,6 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
     }
 
     /**
-     * @notice  We assume that on-chain ancillary data can be formatted directly from bytes to utf8 encoding via
-     * web3.utils.hexToUtf8, and that clients will parse the utf8-encoded ancillary data as a comma-delimitted key-value
-     * dictionary. Therefore, this internal method appends additional metadata about this optimistic oracle price
-     * price request to the original ancillary data.
      * @dev We do not need to check that the ancillary data length is less than the hardcoded max length in the
      * OptimisticOracle because the length of the ancillary data is fixed in this function.
      */
