@@ -174,10 +174,7 @@ contract("Perpetual: proposer.js", function (accounts) {
       });
       const perpContract = await Perpetual.at(perpAddress);
       const tokenAddress = await perpContract.tokenCurrency();
-      // When the perpetuals make requests+proposals to the OptimisticOracle, they will cast their
-      // respective token addresses to bytes and use that as their ancillary data. We store the ancillary
-      // data now to make testing easier.
-      const ancillaryData = tokenAddress;
+      const ancillaryData = utf8ToHex(`tokenAddress:${tokenAddress.substr(2).toLowerCase()}`);
       perpsCreated.push({ transaction: perpCreation, address: perpContract.address, ancillaryData });
     }
 
