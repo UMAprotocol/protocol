@@ -6,7 +6,7 @@ This document describes the architecture of how arbitrary messages can be passed
 
 At a high level we are deploying "Root" and "Child" bridge contracts on both networks that communicate only with each other and the native [state sync](https://docs.matic.network/docs/contribute/state-sync/state-sync/) infrastructure that Polygon uses to pass data between the Ethereum and Polygon EVM's. Polygon uses "tunnel" to describe what [other](https://docs.tokenbridge.net/amb-bridge/about-amb-bridge) [relayer](https://forum.makerdao.com/t/announcing-the-optimism-dai-bridge-with-fast-withdrawals/6938) [systems](https://developer.offchainlabs.com/docs/inside_arbitrum#bridging) call "bridges".
 
-Diagram of oracle tunnel system can be found [here](https://user-images.githubusercontent.com/12886084/121140379-115e8e80-c83a-11eb-89e9-27a694e20814.png).
+Diagram of oracle tunnel system: ![image](https://user-images.githubusercontent.com/12886084/121140379-115e8e80-c83a-11eb-89e9-27a694e20814.png).
 
 # Root Tunnel Contract
 
