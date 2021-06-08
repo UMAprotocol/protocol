@@ -13,15 +13,26 @@ export type Json = null | undefined | boolean | number | string | Json[] | { [pr
 export type Action = (...args: any[]) => Json | Promise<Json>;
 export type Actions = { [key: string]: Action };
 
+export type PriceSample = [timestamp: number, price: string];
 // These are library dependencies to all services
 export type Libs = {
   blocks: uma.tables.blocks.JsMap;
+  coingecko: uma.Coingecko;
   emps: {
     active: uma.tables.emps.JsMap;
     expired: uma.tables.emps.JsMap;
+  };
+  prices: {
+    usd: {
+      latest: {
+        [key: string]: PriceSample;
+      };
+    };
   };
   registeredEmps: Set<string>;
   provider: Provider;
   lastBlock: number;
   lastBlockUpdate: number;
+  collateralAddresses: Set<string>;
+  syntheticAddresses: Set<string>;
 };
