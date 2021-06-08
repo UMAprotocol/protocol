@@ -36,6 +36,7 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
   const testTimestamp = 100;
   const testAncillaryData = utf8ToHex("key:value");
   const testPrice = toWei("0.5");
+  let expectedStampedAncillaryData; // Can determine this after contracts are deployed.
 
   before(async function () {
     finder = await Finder.deployed();
@@ -66,6 +67,9 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
     await oracleChild.setFxRootTunnel(oracleRoot.address);
     await oracleRoot.setFxChildTunnel(oracleChild.address);
     await registry.registerContract([], oracleRoot.address, { from: owner });
+
+    expectedStampedAncillaryData = utf8ToHex(`${hexToUtf8(testAncillaryData)},childTunnelRequester:${owner.substr(2).toLowerCase()}`)
+    console.log(expectedStampedAncillaryData)
   });
   it("request price from Polygon to Ethereum, resolve price from Ethereum to Polygon", async function () {
     // Only registered caller can call.
@@ -79,7 +83,7 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
     let txn = await oracleChild.requestPrice(testIdentifier, testTimestamp, testAncillaryData, { from: owner });
     let messageBytes = web3.eth.abi.encodeParameters(
       ["bytes32", "uint256", "bytes"],
-      [testIdentifier, testTimestamp, testAncillaryData]
+      [testIdentifier, testTimestamp, expectedStampedAncillaryData]
     );
     TruffleAssert.eventEmitted(
       txn,
@@ -87,7 +91,7 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
       (event) =>
         hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
         event.time.toString() === testTimestamp.toString() &&
-        event.ancillaryData.toLowerCase() === testAncillaryData.toLowerCase()
+        event.ancillaryData.toLowerCase() === expectedStampedAncillaryData.toLowerCase()
     );
     TruffleAssert.eventEmitted(txn, "MessageSent", (event) => event.message === messageBytes);
 
@@ -100,19 +104,19 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
       (event) =>
         hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
         event.time.toString() === testTimestamp.toString() &&
-        event.ancillaryData.toLowerCase() === testAncillaryData.toLowerCase()
+        event.ancillaryData.toLowerCase() === expectedStampedAncillaryData.toLowerCase()
     );
 
     // We should be able to resolve price now and emit message to send back to Polygon:
-    await mockOracle.pushPrice(testIdentifier, testTimestamp, testAncillaryData, testPrice);
-    txn = await oracleRoot.publishPrice(testIdentifier, testTimestamp, testAncillaryData);
+    await mockOracle.pushPrice(testIdentifier, testTimestamp, expectedStampedAncillaryData, testPrice);
+    txn = await oracleRoot.publishPrice(testIdentifier, testTimestamp, expectedStampedAncillaryData);
     TruffleAssert.eventEmitted(
       txn,
       "PushedPrice",
       (event) =>
         hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
         event.time.toString() === testTimestamp.toString() &&
-        event.ancillaryData.toLowerCase() === testAncillaryData.toLowerCase() &&
+        event.ancillaryData.toLowerCase() === expectedStampedAncillaryData.toLowerCase() &&
         event.price.toString() === testPrice
     );
     let internalTxn = await TruffleAssert.createTransactionResult(stateSync, txn.tx);
@@ -126,7 +130,7 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
         oracleChild.address,
         web3.eth.abi.encodeParameters(
           ["bytes32", "uint256", "bytes", "int256"],
-          [testIdentifier, testTimestamp, testAncillaryData, testPrice]
+          [testIdentifier, testTimestamp, expectedStampedAncillaryData, testPrice]
         ),
       ]
     );
@@ -154,11 +158,14 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
       (event) =>
         hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
         event.time.toString() === testTimestamp.toString() &&
-        event.ancillaryData.toLowerCase() === testAncillaryData.toLowerCase() &&
+        event.ancillaryData.toLowerCase() === expectedStampedAncillaryData.toLowerCase() &&
         event.price.toString() === testPrice
     );
 
     // Until price is resolved on Child, hasPrice and getPrice should return false and revert, respectively.
+    // Note: the ancillary data input into hasPrice and getPrice is the original, pre-stamped ancillary data, which
+    // means that the original requester does not know about the ancillary data stamping that took place behind the
+    // scene.
     assert.isTrue(await oracleChild.hasPrice(testIdentifier, testTimestamp, testAncillaryData, { from: owner }));
     assert.equal(
       (await oracleChild.getPrice(testIdentifier, testTimestamp, testAncillaryData, { from: owner })).toString(),

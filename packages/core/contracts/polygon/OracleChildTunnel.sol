@@ -108,27 +108,21 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
      * For those cases, we assume that the client will be able to strip out the utf8-translateable part of the
      * ancillary data that this contract stamps.
      */
-    function _stampAncillaryData(bytes memory ancillaryData, address requester) internal view returns (bytes memory) {
+    function _stampAncillaryData(bytes memory ancillaryData, address requester) internal pure returns (bytes memory) {
         // Price requests that originate from this method, on Polygon, will ultimately be submitted to the DVM on
         // Ethereum via the OracleRootTunnel. Therefore this contract should stamp its requester's address in the
         // ancillary data so voters can conveniently track the requests path to the DVM.
-        bytes memory requesterPrefix;
+        bytes memory prefix;
         if (ancillaryData.length > 0) {
-            requesterPrefix = ",childTunnelRequester:";
+            prefix = ",childTunnelRequester:";
         } else {
-            requesterPrefix = "childTunnelRequester:";
+            prefix = "childTunnelRequester:";
         }
-        bytes memory childTunnelPrefix = ",childTunnel:";
-        bytes memory rootTunnelPrefix = ",rootTunnel:";
         return
             abi.encodePacked(
                 ancillaryData,
-                requesterPrefix,
-                AncillaryData.toUtf8Bytes(requester),
-                childTunnelPrefix,
-                AncillaryData.toUtf8Bytes(address(this)),
-                rootTunnelPrefix,
-                AncillaryData.toUtf8Bytes(address(fxRootTunnel))
+                prefix,
+                AncillaryData.toUtf8Bytes(requester)
             );
     }
 }
