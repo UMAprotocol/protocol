@@ -1,12 +1,8 @@
 // Grabbed from official Polygon docs
 // https://docs.matic.network/docs/develop/l1-l2-communication/state-transfer/#pre-requisite
 const ADDRESSES_FOR_NETWORK = {
-  80001: {
-    fxChild: "0xCf73231F28B7331BBe3124B907840A94851f9f11",
-  },
-  137: {
-    fxChild: "0x8397259c983751DAf40400790063935a11afa28a",
-  },
+  80001: { fxChild: "0xCf73231F28B7331BBe3124B907840A94851f9f11" },
+  137: { fxChild: "0x8397259c983751DAf40400790063935a11afa28a" }
 };
 const func = async function (hre) {
   const { deployments, getNamedAccounts, getChainId } = hre;
