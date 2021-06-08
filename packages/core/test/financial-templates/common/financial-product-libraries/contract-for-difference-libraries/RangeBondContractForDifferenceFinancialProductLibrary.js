@@ -136,7 +136,6 @@ contract("RangeBondContractForDifferenceFinancialProductLibrary", function () {
           toBN(bondNotional).mul(fixedPointAdjustment).div(toBN(price)),
           toBN(bondNotional).mul(fixedPointAdjustment).div(toBN(lowPriceRange))
         );
-        console.log("term1", term1.toString());
 
         const term2 = BN.max(
           toBN(bondNotional)
@@ -147,14 +146,12 @@ contract("RangeBondContractForDifferenceFinancialProductLibrary", function () {
             .addn(1),
           toBN("0")
         );
-        console.log("term2", term2.toString());
 
         const longTokenRedemptionInCollateral = term1.add(term2);
         const expectedExpiraryTokensForCollateral = longTokenRedemptionInCollateral
           .mul(fixedPointAdjustment)
           .div(collateralPerPair);
 
-        console.log("expectedExpiraryTokensForCollateral", expectedExpiraryTokensForCollateral.toString());
         assert.equal(expiraryTokensForCollateral.toString(), expectedExpiraryTokensForCollateral.toString());
       }
     });

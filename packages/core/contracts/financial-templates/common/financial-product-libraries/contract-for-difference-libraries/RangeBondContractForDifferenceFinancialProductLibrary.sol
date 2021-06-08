@@ -62,32 +62,29 @@ contract RangeBondContractForDifferenceFinancialProductLibrary is
         // R1 = Low Price Range
         // R2 = High Price Range
         // T = min(N/P,N/R1) + max((N/R2*(P-R2))/P,0)
+        // T = min(N/P,N/R1) + max(N/R2-N/P,0) [simplified form]
         // This represents the value of the long token(range bond holder). This function's method must return a value
         //  between 0 and 1 to be used as a collateralPerPair that allocates collateral between the short and long tokens.
         // We can use the value of the long token to compute the relative distribution between long and short CFD tokens
-        // by simply computing longTokenRedeemed using equation above devided by the collateralPerPair of the CFD.
-        // NOTE: the equation's second term could be simplified slightly alebraically to have fewer devided and
+        // by simply computing longTokenRedeemed using equation above divided by the collateralPerPair of the CFD.
+        // NOTE: the equation's second term could be simplified slightly algebraically to have fewer divided and
         // multiplications. However this introduces rounding issues. By keeping it in this form this is avoided.
         // NOTE: the ternary is used over Math.max for the second term to avoid negative numbers.
 
-        uint256 positiveExpiraryPrice = expiryPrice > 0 ? uint256(expiryPrice) : 0;
+        uint256 positiveExpiryPrice = expiryPrice > 0 ? uint256(expiryPrice) : 0;
 
         FixedPoint.Unsigned memory longTokensRedeemed =
             FixedPoint
                 .Unsigned(
                 Math.min(
-                    FixedPoint.Unsigned(params.bondNotional).div(FixedPoint.Unsigned(positiveExpiraryPrice)).rawValue,
+                    FixedPoint.Unsigned(params.bondNotional).div(FixedPoint.Unsigned(positiveExpiryPrice)).rawValue,
                     FixedPoint.Unsigned(params.bondNotional).div(FixedPoint.Unsigned(params.lowPriceRange)).rawValue
                 )
             )
                 .add(
-                FixedPoint.Unsigned(positiveExpiraryPrice).isGreaterThan(FixedPoint.Unsigned(params.highPriceRange))
-                    ? FixedPoint
-                        .Unsigned(params.bondNotional)
-                        .divCeil(FixedPoint.Unsigned(params.highPriceRange))
-                        .mulCeil(
-                        (FixedPoint.Unsigned(positiveExpiraryPrice).sub(FixedPoint.Unsigned(params.highPriceRange)))
-                            .divCeil(FixedPoint.Unsigned(positiveExpiraryPrice))
+                FixedPoint.Unsigned(positiveExpiryPrice).isGreaterThan(FixedPoint.Unsigned(params.highPriceRange))
+                    ? FixedPoint.Unsigned(params.bondNotional).div(FixedPoint.Unsigned(params.highPriceRange)).sub(
+                        FixedPoint.Unsigned(params.bondNotional).div(FixedPoint.Unsigned(positiveExpiryPrice))
                     )
                     : FixedPoint.Unsigned(0)
             );
