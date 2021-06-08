@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./tunnel/FxBaseRootTunnel.sol";
+import "../../external/polygon/tunnel/FxBaseRootTunnel.sol";
 import "./OracleBaseTunnel.sol";
 import "../../oracle/interfaces/OracleAncillaryInterface.sol";
 
