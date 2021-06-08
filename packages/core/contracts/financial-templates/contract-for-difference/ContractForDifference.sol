@@ -102,10 +102,8 @@ contract ContractForDifference is Testable, Lockable {
      * @param _expirationTimestamp unix timestamp of when the contract will expire.
      * @param _collateralPerPair how many units of collateral are required to mint one pair of synthetic tokens.
      * @param _priceIdentifier registered in the DVM for the synthetic.
-     * @param _longTokenAddress ERC20 token used as long in the CFD. Requires mint and burn rights granted to this
-     *                          contract.
-     * @param _shortTokenAddress ERC20 token used as short in the CFD. Requires mint and burn rights granted to this
-     *                           contract.
+     * @param _longTokenAddress ERC20 token used as long in the CFD. Requires mint and burn needed by this contract.
+     * @param _shortTokenAddress ERC20 token used as short in the CFD. Mint and burn rights needed by this contract.
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _financialProductLibraryAddress Contract providing settlement payout logic.
      * @param _customAncillaryData Custom ancillary data to be passed along with the price request. If not needed, this
