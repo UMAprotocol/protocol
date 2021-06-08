@@ -118,11 +118,6 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         } else {
             prefix = "childTunnelRequester:";
         }
-        return
-            abi.encodePacked(
-                ancillaryData,
-                prefix,
-                AncillaryData.toUtf8Bytes(requester)
-            );
+        return abi.encodePacked(ancillaryData, prefix, AncillaryData.toUtf8Bytes(requester));
     }
 }

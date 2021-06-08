@@ -2,8 +2,8 @@
 pragma solidity ^0.8.0;
 
 /**
-* @notice Dummy State Sender contract to simulate plasma state sender while testing
-*/
+ * @notice Dummy State Sender contract to simulate plasma state sender while testing
+ */
 contract StateSyncMock {
     /**
      * @notice Event emitted when when syncState is called

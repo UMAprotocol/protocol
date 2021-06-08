@@ -29,4 +29,3 @@ Any modifications to original source code can be found in this document. Origina
   - Changed version from from `0.7.3` --> `0.8`
 - **[StateSyncMock.sol](https://github.com/maticnetwork/pos-portal/blob/d06271188412a91ab9e4bdea4bbbfeb6cb9d7669/contracts/root/StateSender/DummyStateSender.sol):**
   - Inspired by, but not copied directly from, the linked contract.
-
