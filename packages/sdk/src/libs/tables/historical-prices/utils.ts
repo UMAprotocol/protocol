@@ -1,4 +1,4 @@
-export function makeId(data: Data) {
+export function makeId(data: Pick<Data, "timestamp">) {
   return data.timestamp.toString().padStart(24, "0");
 }
 
