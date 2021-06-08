@@ -1,7 +1,12 @@
-const { MAX_UINT_VAL, MAX_SAFE_ALLOWANCE, ZERO_ADDRESS, interfaceName } = require("@uma/common");
+const {
+  MAX_UINT_VAL,
+  MAX_SAFE_ALLOWANCE,
+  ZERO_ADDRESS,
+  interfaceName,
+  createContractObjectFromJson,
+} = require("@uma/common");
 const { toWei, toBN, fromWei, padRight, utf8ToHex } = web3.utils;
 const { getTruffleContract } = require("@uma/core");
-const truffleContract = require("@truffle/contract");
 const { assert } = require("chai");
 
 // Tested Contract
@@ -51,13 +56,6 @@ const getPoolSpotPrice = async () => {
   const poolTokenABallance = await reserveToken.balanceOf(pairAddress);
   const poolTokenBBallance = await collateralToken.balanceOf(pairAddress);
   return Number(fromWei(poolTokenABallance.mul(toBN(toWei("1"))).div(poolTokenBBallance))).toFixed(4);
-};
-
-// Takes in a json object from a compiled contract and returns a truffle contract instance that can be deployed.
-const createContractObjectFromJson = (contractJsonObject) => {
-  let truffleContractCreator = truffleContract(contractJsonObject);
-  truffleContractCreator.setProvider(web3.currentProvider);
-  return truffleContractCreator;
 };
 
 contract("ReserveTokenDisputer", function (accounts) {
@@ -117,15 +115,15 @@ contract("ReserveTokenDisputer", function (accounts) {
     await collateralToken.mint(liquidator, toWei("100000000000000"));
 
     // deploy Uniswap V2 Factory & router.
-    factory = await createContractObjectFromJson(UniswapV2Factory).new(deployer, { from: deployer });
-    router = await createContractObjectFromJson(UniswapV2Router02).new(factory.address, collateralToken.address, {
+    factory = await createContractObjectFromJson(UniswapV2Factory, web3).new(deployer, { from: deployer });
+    router = await createContractObjectFromJson(UniswapV2Router02, web3).new(factory.address, collateralToken.address, {
       from: deployer,
     });
 
     // initialize the pair
     await factory.createPair(reserveToken.address, collateralToken.address, { from: deployer });
     pairAddress = await factory.getPair(reserveToken.address, collateralToken.address);
-    pair = await createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
+    pair = await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress);
 
     await reserveToken.mint(pairAddress, toBN(toWei("1000")).muln(10000000));
     await collateralToken.mint(pairAddress, toBN(toWei("1")).muln(10000000));

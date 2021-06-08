@@ -1,7 +1,13 @@
-const { MAX_UINT_VAL, MAX_SAFE_ALLOWANCE, ZERO_ADDRESS, didContractThrow, parseFixed } = require("@uma/common");
+const {
+  MAX_UINT_VAL,
+  MAX_SAFE_ALLOWANCE,
+  ZERO_ADDRESS,
+  didContractThrow,
+  parseFixed,
+  createContractObjectFromJson,
+} = require("@uma/common");
 const { toWei, toBN, fromWei, padRight, utf8ToHex } = web3.utils;
 const { getTruffleContract } = require("@uma/core");
-const truffleContract = require("@truffle/contract");
 const { assert } = require("chai");
 
 // Tested Contract
@@ -63,13 +69,6 @@ const computeExpectedTokenBuy = async (tokensToLiquidate) => {
     .mul(fixedPointAdjustment)
     .div(toBN((await financialContract.totalTokensOutstanding()).toString()));
   return tokensToLiquidate.mul(contractGcr).div(fixedPointAdjustment).add(finalFeeAmount);
-};
-
-// Takes in a json object from a compiled contract and returns a truffle contract instance that can be deployed.
-const createContractObjectFromJson = (contractJsonObject) => {
-  let truffleContractCreator = truffleContract(contractJsonObject);
-  truffleContractCreator.setProvider(web3.currentProvider);
-  return truffleContractCreator;
 };
 
 contract("ReserveTokenLiquidator", function (accounts) {
@@ -143,15 +142,15 @@ contract("ReserveTokenLiquidator", function (accounts) {
     await collateralToken.mint(sponsor2, toWei("100000000000000"));
 
     // deploy Uniswap V2 Factory & router.
-    factory = await createContractObjectFromJson(UniswapV2Factory).new(deployer, { from: deployer });
-    router = await createContractObjectFromJson(UniswapV2Router02).new(factory.address, collateralToken.address, {
+    factory = await createContractObjectFromJson(UniswapV2Factory, web3).new(deployer, { from: deployer });
+    router = await createContractObjectFromJson(UniswapV2Router02, web3).new(factory.address, collateralToken.address, {
       from: deployer,
     });
 
     // initialize the pair
     await factory.createPair(reserveToken.address, collateralToken.address, { from: deployer });
     pairAddress = await factory.getPair(reserveToken.address, collateralToken.address);
-    pair = await createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
+    pair = await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress);
 
     await reserveToken.mint(pairAddress, startingReservePoolAmount);
     await collateralToken.mint(pairAddress, startingCollateralPoolAmount);
@@ -478,11 +477,11 @@ contract("ReserveTokenLiquidator", function (accounts) {
     const convertSynthetic = Convert(9);
 
     // create a new router and pair to re-initalize from fresh.
-    factory = await createContractObjectFromJson(UniswapV2Factory).new(deployer, { from: deployer });
-    router = await createContractObjectFromJson(UniswapV2Router02).new(factory.address, collateralToken.address);
+    factory = await createContractObjectFromJson(UniswapV2Factory, web3).new(deployer, { from: deployer });
+    router = await createContractObjectFromJson(UniswapV2Router02, web3).new(factory.address, collateralToken.address);
     await factory.createPair(reserveToken.address, collateralToken.address, { from: deployer });
     pairAddress = await factory.getPair(reserveToken.address, collateralToken.address);
-    pair = await createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
+    pair = await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress);
 
     // Add in the exact reserves as seen on the live pools. At these reserve ratios the starting price is 0.0797.
     await reserveToken.mint(pairAddress, "10881694425");
@@ -567,11 +566,11 @@ contract("ReserveTokenLiquidator", function (accounts) {
     const convertSynthetic = Convert(6);
 
     // create a new router and pair to re-initalize from fresh.
-    factory = await createContractObjectFromJson(UniswapV2Factory).new(deployer, { from: deployer });
-    router = await createContractObjectFromJson(UniswapV2Router02).new(factory.address, collateralToken.address);
+    factory = await createContractObjectFromJson(UniswapV2Factory, web3).new(deployer, { from: deployer });
+    router = await createContractObjectFromJson(UniswapV2Router02, web3).new(factory.address, collateralToken.address);
     await factory.createPair(reserveToken.address, collateralToken.address, { from: deployer });
     pairAddress = await factory.getPair(reserveToken.address, collateralToken.address);
-    pair = await createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
+    pair = await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress);
 
     // Add liquidity to the pool such that the price is 1000 ETH/USDC.
     await reserveToken.mint(pairAddress, toWei("1000")); // 1000 Weth.

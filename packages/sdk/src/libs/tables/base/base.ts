@@ -6,7 +6,7 @@ export default function Table<I, D>(config: { makeId: MakeId<I, D>; type: string
   const { makeId, type } = config;
   async function create(data: D & MaybeId<I>) {
     const id = exists(data.id) ? data.id : makeId(data);
-    assert(!(await has(id)), `${type} exists`);
+    assert(!(await has(id)), `${type} exists: ` + id);
     return set({ id, ...data });
   }
   async function set(data: D & HasId<I>) {
