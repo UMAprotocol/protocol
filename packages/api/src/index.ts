@@ -30,6 +30,9 @@ export type Libs = {
       latest: {
         [key: string]: PriceSample;
       };
+      history: {
+        [key: string]: uma.tables.historicalPrices.SortedJsMap;
+      };
     };
   };
   registeredEmps: Set<string>;

@@ -30,6 +30,7 @@ async function run(env: ProcessEnv) {
     prices: {
       usd: {
         latest: {},
+        history: {},
       },
     },
     lastBlock: 0,
