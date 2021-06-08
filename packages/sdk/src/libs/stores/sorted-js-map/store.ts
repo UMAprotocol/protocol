@@ -1,10 +1,10 @@
 import { sortedIndex, sortedLastIndex } from "lodash";
-import type { Store } from "../index";
+import type { SortedStore } from "../index";
 import { exists } from "../../utils";
 
-// this class will basically give you similar functionality to a sorted key value store
-// this is really useful for time series data, and JS does not have a native way to do this, but comes for free with most NoSql databases
-export default function <Id, Data>(): Store<Id, Data> {
+// this class will basically give you similar functionality to a sorted key value store this is really useful for
+// time series data, and JS does not have a native way to do this, but comes for free with most NoSql databases.
+export default function <Id, Data>(): SortedStore<Id, Data> {
   const ids: Id[] = [];
   const map = new Map<Id, Data>();
 
@@ -64,6 +64,7 @@ export default function <Id, Data>(): Store<Id, Data> {
       return ids.length;
     },
     async delete(id: Id) {
+      if (!map.has(id)) return;
       del(id);
     },
     // assume [a,b)

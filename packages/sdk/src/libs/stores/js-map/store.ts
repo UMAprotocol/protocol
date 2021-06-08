@@ -28,15 +28,6 @@ export default function <I, D>(map: Map<I, D> = new Map<I, D>()): Store<I, D> {
   async function clear() {
     map.clear();
   }
-  // not available, use sorted map
-  async function between(a: I, b: I) {
-    return [];
-  }
-  // not available, use sorted map
-  async function slice(a: I, len: number) {
-    return [];
-  }
-
   return {
     get,
     set,
@@ -47,7 +38,5 @@ export default function <I, D>(map: Map<I, D> = new Map<I, D>()): Store<I, D> {
     keys,
     size,
     clear,
-    between,
-    slice,
   };
 }

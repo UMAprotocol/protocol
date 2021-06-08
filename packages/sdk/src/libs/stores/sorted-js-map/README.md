@@ -1,4 +1,4 @@
-# JS Map Store
+# Sorted JS Map Store
 
 This wraps a JS map, but also includes a sorted array which allows you to query data between keys. Useful
 for time series data or anything that needs to be ordered. Uses lodash binary searches under the hood

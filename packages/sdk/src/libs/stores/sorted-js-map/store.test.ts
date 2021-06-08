@@ -78,4 +78,14 @@ describe("sorted map", () => {
       assert.ok(makeId(price) >= makeId(last));
     });
   });
+  test("delete", async () => {
+    const keys = await map.keys();
+    await map.delete(keys[0]);
+    await map.delete(keys[0]);
+    const result = await map.keys();
+    assert.equal(result.length, keys.length - 1);
+    for (const val of result) {
+      assert.ok(await map.has(val));
+    }
+  });
 });

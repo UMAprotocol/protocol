@@ -1,8 +1,8 @@
-import type { Store } from "..";
+import type { SortedStore } from "..";
 import type { Datastore, Key } from "@google-cloud/datastore";
 
 // TODO: this is a work in progress which will be completed during datastore integration.
-export default function <D>(kind: string, store: Datastore): Store<string, D> {
+export default function <D>(kind: string, store: Datastore): SortedStore<string, D> {
   function makeKey(id: string): Key {
     return store.key([kind, id]);
   }
