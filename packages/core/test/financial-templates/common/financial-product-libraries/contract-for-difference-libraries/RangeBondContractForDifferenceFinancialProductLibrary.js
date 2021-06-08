@@ -63,7 +63,27 @@ contract("RangeBondContractForDifferenceFinancialProductLibrary", function () {
       // upper bound larger than lower bound by swapping upper and lower
       assert(
         await didContractThrow(
-          rangeBondCFDFPL.setContractForDifferenceParameters(cfdMock.address, lowPriceRange, highPriceRange)
+          rangeBondCFDFPL.setContractForDifferenceParameters(
+            cfdMock.address,
+            bondNotional,
+            lowPriceRange,
+            highPriceRange
+          )
+        )
+      );
+
+      // Bounds and notional relative to collateralPerPair must be valid. For a Range bond, at the exact price of the
+      // minPriceRange, the value of the payout of long tokens should be worth exactly the notional as at this point
+      // all short tokens are worth 0 and all long tokens are worth the full collateralPerPair. Using this we can enforce
+      // that collateralPerPair*lowPriceRange=bondNotional.
+      assert(
+        await didContractThrow(
+          rangeBondCFDFPL.setContractForDifferenceParameters(
+            cfdMock.address,
+            bondNotional.addn(100), // a notational of 1001e18+100 is wrong relative to the lowPriceRange.
+            lowPriceRange,
+            highPriceRange
+          )
         )
       );
     });

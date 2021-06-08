@@ -45,6 +45,11 @@ contract RangeBondContractForDifferenceFinancialProductLibrary is
             "Parameters already set"
         );
 
+        uint256 cfdCollateralPerPair = ContractForDifferenceInterface(contractForDifferenceAddress).collateralPerPair();
+
+        require(FixedPoint.Unsigned(cfdCollateralPerPair).mul(lowPriceRange).isEqual(bondNotional), "Bad params");
+        require(FixedPoint.Unsigned(bondNotional).div(highPriceRange).isLessThan(cfdCollateralPerPair), "Bad params");
+
         contractForDifferenceParameters[contractForDifferenceAddress] = RangeBondContractForDifferenceParameters({
             bondNotional: bondNotional,
             lowPriceRange: lowPriceRange,
