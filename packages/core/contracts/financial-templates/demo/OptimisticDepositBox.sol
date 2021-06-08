@@ -138,7 +138,7 @@ contract OptimisticDepositBox is Testable, Lockable {
 
         // Increase the individual deposit box and global collateral balance by collateral amount.
         // depositBoxData.collateral.add(collateralAmount);
-        depositBoxData.collateral = collateralAmount;
+        depositBoxData.collateral = depositBoxData.collateral.add(collateralAmount);
         require(depositBoxData.collateral > 0, "Collateral not added");
         totalOptimisticDepositBoxCollateral = totalOptimisticDepositBoxCollateral.add(collateralAmount);
 
@@ -208,7 +208,7 @@ contract OptimisticDepositBox is Testable, Lockable {
         }
 
         // Decrease the individual deposit box and global collateral balance.
-        depositBoxData.collateral.sub(denominatedAmountToWithdraw);
+        depositBoxData.collateral = depositBoxData.collateral.sub(denominatedAmountToWithdraw);
         totalOptimisticDepositBoxCollateral = totalOptimisticDepositBoxCollateral.sub(denominatedAmountToWithdraw);
 
         emit RequestWithdrawalExecuted(
