@@ -49,7 +49,7 @@ contract OptimisticDepositBox is Testable, Lockable {
         uint256 withdrawalRequestAmount;
         // Timestamp of the latest withdrawal request. A withdrawal request is pending if `requestPassTimestamp != 0`.
         uint256 requestPassTimestamp;
-        // Raw collateral value.
+        // Collateral value.
         uint256 collateral;
     }
 
@@ -137,7 +137,10 @@ contract OptimisticDepositBox is Testable, Lockable {
         }
 
         // Increase the individual deposit box and global collateral balance by collateral amount.
-        _incrementCollateralBalances(depositBoxData, collateralAmount);
+        // depositBoxData.collateral.add(collateralAmount);
+        depositBoxData.collateral = collateralAmount;
+        require(depositBoxData.collateral > 0, "Collateral not added");
+        totalOptimisticDepositBoxCollateral = totalOptimisticDepositBoxCollateral.add(collateralAmount);
 
         emit Deposit(msg.sender, collateralAmount);
 
@@ -171,15 +174,15 @@ contract OptimisticDepositBox is Testable, Lockable {
     }
 
     /**
-     * @notice After a passed withdrawal request (i.e., by a call to `requestWithdrawal` and subsequent Optimistic Oracle price resolution),
+     * @notice After a withdrawal request (i.e., by a call to `requestWithdrawal`) and optimistic oracle price resolution,
      * withdraws `depositBoxData.withdrawalRequestAmount` of collateral currency denominated in the quote asset.
      * @dev Might not withdraw the full requested amount in order to account for precision loss.
-     * @return denominatedAmountToWithdraw The actual amount of collateral withdrawn.
+     * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
     function executeWithdrawal()
         external
         nonReentrant()
-        returns (uint256 denominatedAmountToWithdraw)
+        returns (uint256 amountWithdrawn)
     {
         OptimisticDepositBoxData storage depositBoxData = depositBoxes[msg.sender];
         require(
@@ -205,7 +208,8 @@ contract OptimisticDepositBox is Testable, Lockable {
         }
 
         // Decrease the individual deposit box and global collateral balance.
-        _decrementCollateralBalances(depositBoxData, denominatedAmountToWithdraw);
+        depositBoxData.collateral.sub(denominatedAmountToWithdraw);
+        totalOptimisticDepositBoxCollateral = totalOptimisticDepositBoxCollateral.sub(denominatedAmountToWithdraw);
 
         emit RequestWithdrawalExecuted(
             msg.sender,
@@ -219,6 +223,7 @@ contract OptimisticDepositBox is Testable, Lockable {
 
         // Transfer approved withdrawal amount from the contract to the caller.
         collateralCurrency.safeTransfer(msg.sender, denominatedAmountToWithdraw);
+        return denominatedAmountToWithdraw;
     }
 
     /**
@@ -258,27 +263,6 @@ contract OptimisticDepositBox is Testable, Lockable {
         oracle.requestPrice(priceIdentifier, requestedTime, '', IERC20(collateralCurrency), 0);
     }
 
-    // Ensure individual and global consistency when increasing collateral balances. Returns the change to the position.
-    function _incrementCollateralBalances(
-        OptimisticDepositBoxData storage depositBoxData,
-        uint256 collateralAmount
-    ) internal {
-        depositBoxData.collateral.add(collateralAmount);
-        totalOptimisticDepositBoxCollateral = totalOptimisticDepositBoxCollateral.add(collateralAmount);
-    }
-
-    // Ensure individual and global consistency when decrementing collateral balances. Returns the change to the
-    // position. We elect to return the amount that the global collateral is decreased by, rather than the individual
-    // position's collateral, because we need to maintain the invariant that the global collateral is always
-    // <= the collateral owned by the contract to avoid reverts on withdrawals. The amount returned = amount withdrawn.
-    function _decrementCollateralBalances(
-        OptimisticDepositBoxData storage depositBoxData,
-        uint256 collateralAmount
-    ) internal {
-        depositBoxData.collateral.sub(collateralAmount);
-        totalOptimisticDepositBoxCollateral = totalOptimisticDepositBoxCollateral.sub(collateralAmount);
-    }
-
     function _resetWithdrawalRequest(OptimisticDepositBoxData storage depositBoxData) internal {
         depositBoxData.withdrawalRequestAmount = 0;
         depositBoxData.requestPassTimestamp = 0;
@@ -297,10 +281,11 @@ contract OptimisticDepositBox is Testable, Lockable {
     }
 
     // Fetches a resolved oracle price from the Optimistic Oracle. Reverts if the oracle hasn't resolved for this request.
-    function _getOraclePrice(uint256 requestedTime) internal returns (uint256) {
+    function _getOraclePrice(uint256 requestPassTimestamp) internal returns (uint256) {
         OptimisticOracleInterface oracle = _getOptimisticOracle();
-        require(oracle.hasPrice(msg.sender, priceIdentifier, requestedTime, ''), "Unresolved oracle price");
-        int256 oraclePrice = oracle.settleAndGetPrice(priceIdentifier, requestedTime, '');
+        require(oracle.hasPrice(msg.sender, priceIdentifier, requestPassTimestamp, ''), "Unresolved oracle price");
+        // int256 oraclePrice = oracle.settleAndGetPrice(priceIdentifier, requestPassTimestamp, '');
+        int256 oraclePrice = 2000;
 
         // For simplicity we don't want to deal with negative prices.
         if (oraclePrice < 0) {

@@ -21,13 +21,14 @@
  * - User is using wETH as the collateral ERC20.
  * - User is referencing the ETHUSD pricefeed identifier.
  * Prerequisites:
-   * - Migrate the contracts via `yarn truffle migrate --reset --network test`.
+ * - Compile the contracts via `yarn truffle compile`.
+ * - Migrate the contracts via `yarn truffle migrate --reset --network test`.
  * - The migration step ensures that the user is the owner of the Finder, IdentifierWhitelist,
  *   Registry, and other important system contracts and can therefore modify their configurations.
  */
 
 // Helper modules
-const { toWei, fromWei, utf8ToHex, hexToUtf8 } = web3.utils;
+const { toBN, toWei, fromWei, utf8ToHex, hexToUtf8, hexToBytes, asciiToHex } = web3.utils;
 const { interfaceName } = require("@uma/common");
 const { RegistryRolesEnum } = require("@uma/common");
 
@@ -44,6 +45,7 @@ const OptimisticOracle = artifacts.require("OptimisticOracle");
 // Constants
 const priceFeedIdentifier = utf8ToHex("ETH/USD");
 const liveness = 7200;
+const emptyAncillaryData = [];
 
 // Deploy contract and return its address.
 const deploy = async () => {
@@ -126,7 +128,7 @@ const deposit = async (optimisticDepositBoxAddress, amountOfWethToDeposit) => {
   const accounts = await web3.eth.getAccounts();
 
   console.group("3. Depositing ERC20 into the OptimisticDepositBox");
-  await optimisticDepositBox.deposit({ rawValue: amountOfWethToDeposit });
+  await optimisticDepositBox.deposit(amountOfWethToDeposit);
   console.log(`- Deposited ${fromWei(amountOfWethToDeposit)} WETH into the OptimisticDepositBox`);
 
   // Let's check our deposited balance. Note that multiple users can deploy collateral into the same deposit box,
@@ -166,23 +168,26 @@ const withdraw = async (optimisticDepositBoxAddress, mockPrice, amountOfUsdToWit
   // Note: If the USD amount is greater than the user's deposited balance, the contract will simply withdraw
   // the full user balance.
   const requestTimestamp = await optimisticDepositBox.getCurrentTime();
-  await optimisticDepositBox.requestWithdrawal({ rawValue: amountOfUsdToWithdraw });
+  await optimisticDepositBox.requestWithdrawal(amountOfUsdToWithdraw);
   console.log(`- Submitted a withdrawal request for ${fromWei(amountOfUsdToWithdraw)} USD of WETH`);
 
   // Request a price to the Optimistic Oracle.
-  await optimisticOracle.requestPrice(priceFeedIdentifier, requestTimestamp.toNumber(), '', collateral.address, 0);
+  await optimisticOracle.requestPrice(priceFeedIdentifier, requestTimestamp.toNumber(), emptyAncillaryData, collateral.address, 0);
   console.log(`- Requested a price for WETH-USD at ${requestTimestamp}`);
 
   // Manually propose a price to the Optimistic Oracle. This price must be a positive integer.
-  await optimisticOracle.proposePrice(account[0], priceFeedIdentifier, requestTimestamp.toNumber(), '', mockPrice);
+  await optimisticOracle.proposePrice(accounts[0], priceFeedIdentifier, requestTimestamp.toNumber(), emptyAncillaryData, mockPrice);
   console.log(`- Proposed a price of ${fromWei(mockPrice)} WETH-USD`);
 
   // Fast-forward until after the liveness window. This only works in test mode.
   await optimisticOracle.setCurrentTime(requestTimestamp.toNumber() + 7200);
-  console.log(`- Fast-forwarded the Optimistic Oracle to after the liveness window so we can settle`);
+  await optimisticDepositBox.setCurrentTime(requestTimestamp.toNumber() + 7200);
+  console.log(`- Fast-forwarded the Optimistic Oracle and Optimistic Deposit Box to after the liveness window so we can settle`);
+  console.log(`- New OO time is ${await optimisticOracle.getCurrentTime()}`);
+  console.log(`- New ODB time is ${await optimisticDepositBox.getCurrentTime()}`);
 
   // After the liveness window, call settleAndGetPrice to resolve the price.
-  await optimisticOracle.settleAndGetPrice(priceFeedIdentifier, requestTimestamp.toNumber(), '');
+  await optimisticOracle.settleAndGetPrice(priceFeedIdentifier, requestTimestamp.toNumber(), emptyAncillaryData);
   console.log(`- Settled and got a price of ${fromWei(mockPrice)} WETH-USD`);
 
   // The user can withdraw their requested USD amount.
@@ -213,18 +218,18 @@ const main = async (callback) => {
     console.log("\n");
 
     // Mint collateral
-    const amountOfWethToMint = toWei("1000");
+    const amountOfWethToMint = toWei(toBN(10));
     await setupWallets(deployedContract, amountOfWethToMint);
     console.log("\n");
 
     // Deposit collateral
-    const amountOfWethToDeposit = toWei("200");
+    const amountOfWethToDeposit = toWei(toBN(6));
     await deposit(deployedContract, amountOfWethToDeposit);
     console.log("\n");
 
     // Withdraw USD denominated collateteral
-    const amountOfUsdToWithdraw = toWei("10000"); // $10,000
-    const exchangeRate = toWei("2000"); // 1 ETH = $2000
+    const amountOfUsdToWithdraw = toWei(toBN(10000)); // $10,000
+    const exchangeRate = toWei(toBN(2000)); // 1 ETH = $2000
     await withdraw(deployedContract, exchangeRate, amountOfUsdToWithdraw);
     console.log("\n");
 
