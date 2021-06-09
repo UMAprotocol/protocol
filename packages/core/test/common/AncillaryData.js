@@ -18,6 +18,12 @@ contract("AncillaryData", function () {
         "Should strip leading 0x and return in all lower case"
       );
     });
+
+    it("toUtf8String", async function () {
+      const utf8EncodedUint = await ancillaryDataTest.toUtf8String("31337");
+      assert.equal(utf8EncodedUint, "31337");
+    });
+
     it("appendAddressKey", async function () {
       let originalAncillaryData, appendedAncillaryData;
       const keyName = utf8ToHex("address");
@@ -55,6 +61,39 @@ contract("AncillaryData", function () {
         await ancillaryDataTest.appendAddressKey(originalAncillaryData, keyName, value),
         utf8ToHex(`ignore this syntax,address:${value.substr(2).toLowerCase()}`),
         "Should be able to utf8-decode the entire ancillary data"
+      );
+    });
+    it("appendChainId", async function () {
+      // Test 1: Normal ancillary data
+      let originalAncillaryData = utf8ToHex("key:value");
+      assert.equal(
+        await ancillaryDataTest.appendChainId(originalAncillaryData),
+        utf8ToHex("key:value,chainId:31337"),
+        "Should append chainId:<chainId> to original ancillary data"
+      );
+
+      // Test 2: Appended to address key
+      let appendedAddressAncillaryData = await ancillaryDataTest.appendAddressKey(
+        originalAncillaryData,
+        utf8ToHex("address"),
+        ancillaryDataTest.address
+      );
+      assert.equal(
+        await ancillaryDataTest.appendChainId(appendedAddressAncillaryData),
+        utf8ToHex(`key:value,address:${ancillaryDataTest.address.substr(2).toLowerCase()},chainId:31337`),
+        "Should append chainId:<chainId> to address-appended ancillary data"
+      );
+
+      // Test 3: added after address key
+      let appendedChainIdAncillaryData = await ancillaryDataTest.appendChainId(originalAncillaryData);
+      assert.equal(
+        await ancillaryDataTest.appendAddressKey(
+          appendedChainIdAncillaryData,
+          utf8ToHex("address"),
+          ancillaryDataTest.address
+        ),
+        utf8ToHex(`key:value,chainId:31337,address:${ancillaryDataTest.address.substr(2).toLowerCase()}`),
+        "Should append address key after chainId:<chainId>"
       );
     });
   });

@@ -35,6 +35,32 @@ library AncillaryData {
     }
 
     /**
+     * @notice Converts a uint into a base-10, UTF-8 representation stored in a `string` type.
+     * @dev This method is based off of this code: https://stackoverflow.com/a/65707309.
+     */
+    function toUtf8String(uint256 x) internal pure returns (string memory) {
+        if (x == 0) {
+            return "0";
+        }
+        uint256 j = x;
+        uint256 len;
+        while (j != 0) {
+            len++;
+            j /= 10;
+        }
+        bytes memory bstr = new bytes(len);
+        uint256 k = len;
+        while (x != 0) {
+            k = k - 1;
+            uint8 temp = (48 + uint8(x - (x / 10) * 10));
+            bytes1 b1 = bytes1(temp);
+            bstr[k] = b1;
+            x /= 10;
+        }
+        return string(bstr);
+    }
+
+    /**
      * @notice Adds "key:value" to `currentAncillaryData` where `value` is an address that first needs to be converted
      * to utf8 bytes. For example, if `utf8(currentAncillaryData)="k1:v1"`, then this function will return
      * `utf8(k1:v1,key:value)`, and if `currentAncillaryData` is blank, then this will return `utf8(key:value)`.
@@ -54,6 +80,16 @@ library AncillaryData {
         } else {
             prefix = abi.encodePacked(key, ":");
         }
-        return abi.encodePacked(currentAncillaryData, prefix, AncillaryData.toUtf8Bytes(value));
+        return abi.encodePacked(currentAncillaryData, prefix, toUtf8Bytes(value));
+    }
+
+    function appendChainId(bytes memory currentAncillaryData) internal view returns (bytes memory) {
+        bytes memory prefix;
+        if (currentAncillaryData.length > 0) {
+            prefix = abi.encodePacked(",chainId:");
+        } else {
+            prefix = abi.encodePacked("chainId:");
+        }
+        return abi.encodePacked(currentAncillaryData, prefix, toUtf8String(block.chainid));
     }
 }
