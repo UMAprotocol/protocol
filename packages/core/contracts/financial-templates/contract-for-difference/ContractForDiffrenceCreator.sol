@@ -54,6 +54,8 @@ contract ContractForDifferenceCreator is Testable, Lockable {
      *     to the start and the short token will "s" appended to the start to distinguish within the CFD's tokens.
      * @param collateralAddress ERC20 token used as as collateral in the CFD.
      * @param financialProductLibraryAddress Contract providing settlement payout logic.
+     * @param _customAncillaryData Custom ancillary data to be passed along with the price request. If not needed, this
+     *                             should be left as a 0-length bytes array.
      * @notice The created CFD is NOT registered within the registry as the CFD contract uses the DVM.
      * @notice The CFD constructor does a number of validations on input params. These are not repeated here.
      */
@@ -64,7 +66,8 @@ contract ContractForDifferenceCreator is Testable, Lockable {
         string memory syntheticName,
         string memory syntheticSymbol,
         address collateralAddress,
-        address financialProductLibraryAddress
+        address financialProductLibraryAddress,
+        bytes memory customAncillaryData
     ) public nonReentrant() returns (address) {
         // Create a new synthetic token using the params.
         require(bytes(syntheticName).length != 0, "Missing synthetic name");
@@ -96,6 +99,7 @@ contract ContractForDifferenceCreator is Testable, Lockable {
                 IERC20Standard(collateralAddress),
                 FinderInterface(finderAddress),
                 ContractForDifferenceFinancialProductLibrary(financialProductLibraryAddress),
+                customAncillaryData,
                 timerAddress
             );
 
