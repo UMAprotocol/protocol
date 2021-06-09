@@ -45,7 +45,7 @@ const OptimisticOracle = artifacts.require("OptimisticOracle");
 // Constants
 const priceFeedIdentifier = utf8ToHex("ETH/USD");
 const liveness = 7200;
-const emptyAncillaryData = [];
+const emptyAncillaryData = "0x";
 
 // Deploy contract and return its address.
 const deploy = async () => {
@@ -192,7 +192,7 @@ const withdraw = async (optimisticDepositBoxAddress, mockPrice, amountOfUsdToWit
 
   // The user can withdraw their requested USD amount.
   await optimisticDepositBox.executeWithdrawal();
-  console.log(`- Executed withdrawal. This would have also settled and gotten a price within the withdrawal function.`)
+  console.log(`- Executed withdrawal. This also settles and gets the resolved price within the withdrawal function.`)
 
   // Let's check the token balances. At an exchange rate of (1 WETH = $2000 USD) and given a requested withdrawal
   // amount of $10,000, the OptimisticDepositBox should have withdrawn ($10,000/$2000) 5 WETH.

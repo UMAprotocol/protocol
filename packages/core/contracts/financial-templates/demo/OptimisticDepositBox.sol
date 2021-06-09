@@ -284,8 +284,8 @@ contract OptimisticDepositBox is Testable, Lockable {
     function _getOraclePrice(uint256 requestPassTimestamp) internal returns (uint256) {
         OptimisticOracleInterface oracle = _getOptimisticOracle();
         require(oracle.hasPrice(msg.sender, priceIdentifier, requestPassTimestamp, ''), "Unresolved oracle price");
-        // int256 oraclePrice = oracle.settleAndGetPrice(priceIdentifier, requestPassTimestamp, '');
-        int256 oraclePrice = 2000;
+        int256 oraclePrice = oracle.settleAndGetPrice(priceIdentifier, requestPassTimestamp, '');
+        // int256 oraclePrice = 2000;
 
         // For simplicity we don't want to deal with negative prices.
         if (oraclePrice < 0) {
