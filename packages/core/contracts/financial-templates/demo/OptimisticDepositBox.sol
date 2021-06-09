@@ -75,7 +75,11 @@ contract OptimisticDepositBox is Testable, Lockable {
     event NewOptimisticDepositBox(address indexed user);
     event EndedOptimisticDepositBox(address indexed user);
     event Deposit(address indexed user, uint256 indexed collateralAmount);
-    event RequestWithdrawal(address indexed user, uint256 indexed collateralAmount, uint256 requestPassTimestamp);
+    event RequestWithdrawal(
+      address indexed user,
+      uint256 indexed collateralAmount,
+      uint256 requestPassTimestamp
+    );
     event RequestWithdrawalExecuted(
         address indexed user,
         uint256 indexed collateralAmount,
@@ -283,7 +287,7 @@ contract OptimisticDepositBox is Testable, Lockable {
     // Fetches a resolved oracle price from the Optimistic Oracle. Reverts if the oracle hasn't resolved for this request.
     function _getOraclePrice(uint256 requestPassTimestamp) internal returns (uint256) {
         OptimisticOracleInterface oracle = _getOptimisticOracle();
-        require(oracle.hasPrice(msg.sender, priceIdentifier, requestPassTimestamp, ''), "Unresolved oracle price");
+        require(oracle.hasPrice(address(this), priceIdentifier, requestPassTimestamp, ''), "Unresolved oracle price");
         int256 oraclePrice = oracle.settleAndGetPrice(priceIdentifier, requestPassTimestamp, '');
         // int256 oraclePrice = 2000;
 

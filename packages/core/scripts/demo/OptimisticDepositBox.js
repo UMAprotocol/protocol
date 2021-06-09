@@ -171,13 +171,9 @@ const withdraw = async (optimisticDepositBoxAddress, mockPrice, amountOfUsdToWit
   await optimisticDepositBox.requestWithdrawal(amountOfUsdToWithdraw);
   console.log(`- Submitted a withdrawal request for ${fromWei(amountOfUsdToWithdraw)} USD of WETH`);
 
-  // Request a price to the Optimistic Oracle.
-  await optimisticOracle.requestPrice(priceFeedIdentifier, requestTimestamp.toNumber(), emptyAncillaryData, collateral.address, 0);
-  console.log(`- Requested a price for WETH-USD at ${requestTimestamp}`);
-
-  // Manually propose a price to the Optimistic Oracle. This price must be a positive integer.
-  await optimisticOracle.proposePrice(accounts[0], priceFeedIdentifier, requestTimestamp.toNumber(), emptyAncillaryData, mockPrice);
-  console.log(`- Proposed a price of ${fromWei(mockPrice)} WETH-USD`);
+  // Propose a price to the Optimistic Oracle for the Optimistic Deposit Box contract. This price must be a positive integer.
+  await optimisticOracle.proposePriceFor(accounts[0], optimisticDepositBox.address, priceFeedIdentifier, requestTimestamp.toNumber(), emptyAncillaryData, mockPrice);
+  console.log(`- Proposed a price of ${mockPrice} WETH-USD`);
 
   // Fast-forward until after the liveness window. This only works in test mode.
   await optimisticOracle.setCurrentTime(requestTimestamp.toNumber() + 7200);
@@ -185,10 +181,6 @@ const withdraw = async (optimisticDepositBoxAddress, mockPrice, amountOfUsdToWit
   console.log(`- Fast-forwarded the Optimistic Oracle and Optimistic Deposit Box to after the liveness window so we can settle`);
   console.log(`- New OO time is ${await optimisticOracle.getCurrentTime()}`);
   console.log(`- New ODB time is ${await optimisticDepositBox.getCurrentTime()}`);
-
-  // After the liveness window, call settleAndGetPrice to resolve the price.
-  await optimisticOracle.settleAndGetPrice(priceFeedIdentifier, requestTimestamp.toNumber(), emptyAncillaryData);
-  console.log(`- Settled and got a price of ${fromWei(mockPrice)} WETH-USD`);
 
   // The user can withdraw their requested USD amount.
   await optimisticDepositBox.executeWithdrawal();
@@ -227,10 +219,10 @@ const main = async (callback) => {
     await deposit(deployedContract, amountOfWethToDeposit);
     console.log("\n");
 
-    // Withdraw USD denominated collateteral
-    const amountOfUsdToWithdraw = toWei(toBN(10000)); // $10,000
-    const exchangeRate = toWei(toBN(2000)); // 1 ETH = $2000
-    await withdraw(deployedContract, exchangeRate, amountOfUsdToWithdraw);
+    // Withdraw USD denominated collateral
+    const amountInUsdToWithdraw = toWei(toBN(10000)); // $10,000
+    const exchangeRate = toBN(2000); // 1 ETH = $2000
+    await withdraw(deployedContract, exchangeRate, amountInUsdToWithdraw);
     console.log("\n");
 
     // Done!
