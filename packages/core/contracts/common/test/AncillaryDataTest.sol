@@ -8,7 +8,11 @@ contract AncillaryDataTest {
         return AncillaryData.toUtf8Bytes(x);
     }
 
-    function appendAddressKey(bytes memory currentAncillaryData, bytes memory key, address value) external pure returns (bytes memory) {
+    function appendAddressKey(
+        bytes memory currentAncillaryData,
+        bytes memory key,
+        address value
+    ) external pure returns (bytes memory) {
         return AncillaryData.appendAddressKey(currentAncillaryData, key, value);
     }
 }

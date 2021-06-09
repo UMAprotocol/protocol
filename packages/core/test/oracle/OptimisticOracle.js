@@ -623,7 +623,7 @@ contract("OptimisticOracle", function (accounts) {
     // - ",ooRequester:<address>", where `,ooRequester:` is 13 bytes and the address is 40 bytes.
     const STAMPED_LENGTH = 13 + 40;
     // Max length of original ancillary data (i.e. pre-stamped) is the data limit minus the additional stamped length.
-    const MAX_ANCILLARY_DATA_LENGTH = DATA_LIMIT_BYTES - STAMPED_LENGTH
+    const MAX_ANCILLARY_DATA_LENGTH = DATA_LIMIT_BYTES - STAMPED_LENGTH;
 
     it("Appends to original ancillary data", async function () {
       const ancillaryData = utf8ToHex("key:value,key2:value2");
@@ -717,7 +717,7 @@ contract("OptimisticOracle", function (accounts) {
       );
     });
 
-    it("Original ancillary data is not UTF8-encodeable", async function() {
+    it("Original ancillary data is not UTF8-encodeable", async function () {
       const ancillaryData = "0xabcd";
 
       // Requested.
@@ -749,20 +749,17 @@ contract("OptimisticOracle", function (accounts) {
       assert.equal(priceRequests.length, 1, "should only be one price request escalated to MockOracle");
       const stampedAncillaryData = priceRequests[0].returnValues.ancillaryData;
 
-      // We know that the stamped ancillary data forms the last 53 bytes, so we can decode the last 53 bytes 
+      // We know that the stamped ancillary data forms the last 53 bytes, so we can decode the last 53 bytes
       // (106 chars) to utf8.
       const utf8EncodedAncillaryData = hexToUtf8(
-        "0x" + stampedAncillaryData.substr(
-          stampedAncillaryData.length - STAMPED_LENGTH * 2
-        )
+        "0x" + stampedAncillaryData.substr(stampedAncillaryData.length - STAMPED_LENGTH * 2)
       );
       assert.equal(
         utf8EncodedAncillaryData,
         `,ooRequester:${optimisticRequester.address.substr(2).toLowerCase()}`,
         "Should be able to decode trailing stamped component of ancillary data"
       );
-
-    })
+    });
 
     it("Stress testing the size of ancillary data", async function () {
       let ancillaryData = web3.utils.randomHex(MAX_ANCILLARY_DATA_LENGTH);

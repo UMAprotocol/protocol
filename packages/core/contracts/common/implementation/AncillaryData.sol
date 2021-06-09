@@ -36,25 +36,24 @@ library AncillaryData {
 
     /**
      * @notice Adds "key:value" to `currentAncillaryData` where `value` is an address that first needs to be converted
-     * to utf8 bytes. For example, if `utf8(currentAncillaryData)="k1:v1"`, then this function will return 
+     * to utf8 bytes. For example, if `utf8(currentAncillaryData)="k1:v1"`, then this function will return
      * `utf8(k1:v1,key:value)`, and if `currentAncillaryData` is blank, then this will return `utf8(key:value)`.
-     * @param currentAncillaryData This bytes data should ideally be able to be utf8-decoded, but its OK if not. 
-     * @param key Again, this bytes data should ideally be able to be utf8-decoded, but its OK if not. 
+     * @param currentAncillaryData This bytes data should ideally be able to be utf8-decoded, but its OK if not.
+     * @param key Again, this bytes data should ideally be able to be utf8-decoded, but its OK if not.
      * @param value An address to set as the value in the key:value pair to append to `currentAncillaryData`.
      * @return Newly appended ancillary data.
      */
-    function appendAddressKey(bytes memory currentAncillaryData, bytes memory key, address value) internal pure returns (bytes memory) {
+    function appendAddressKey(
+        bytes memory currentAncillaryData,
+        bytes memory key,
+        address value
+    ) internal pure returns (bytes memory) {
         bytes memory prefix;
         if (currentAncillaryData.length > 0) {
             prefix = abi.encodePacked(",", key, ":");
         } else {
             prefix = abi.encodePacked(key, ":");
         }
-        return
-            abi.encodePacked(
-                currentAncillaryData,
-                prefix,
-                AncillaryData.toUtf8Bytes(value)
-            );
+        return abi.encodePacked(currentAncillaryData, prefix, AncillaryData.toUtf8Bytes(value));
     }
 }
