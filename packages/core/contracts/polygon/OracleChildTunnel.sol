@@ -65,7 +65,7 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
     ) internal override validateSender(sender) {
         (bytes32 identifier, uint256 time, bytes memory ancillaryData, int256 price) =
             abi.decode(data, (bytes32, uint256, bytes, int256));
-        _publishPrice(identifier, time, _stampAncillaryData(ancillaryData, msg.sender), price);
+        _publishPrice(identifier, time, ancillaryData, price);
     }
 
     /**
