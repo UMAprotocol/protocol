@@ -13,6 +13,9 @@ const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");
 const MockOracle = artifacts.require("MockOracleAncillary");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
+const ExpandedERC20 = artifacts.require("ExpandedERC20");
+const GovernorChildTunnel = artifacts.require("GovernorChildTunnel");
+const GovernorRootTunnel = artifacts.require("GovernorRootTunnel");
 
 contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
   const owner = accounts[0];
@@ -25,6 +28,8 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
   let fxRoot;
   let oracleChild;
   let oracleRoot;
+  let governorChild;
+  let governorRoot;
 
   // Oracle system:
   let finder;
@@ -37,6 +42,7 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
   const testAncillaryData = utf8ToHex("key:value");
   const testPrice = toWei("0.5");
   let expectedStampedAncillaryData; // Can determine this after contracts are deployed.
+  const expectedStateId = "1";
 
   before(async function () {
     finder = await Finder.deployed();
@@ -68,10 +74,15 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
     await oracleRoot.setFxChildTunnel(oracleChild.address);
     await registry.registerContract([], oracleRoot.address, { from: owner });
 
+    // Set up Governor tunnel system
+    governorChild = await GovernorChildTunnel.new(fxChild.address);
+    governorRoot = await GovernorRootTunnel.new(checkpointManager, fxRoot.address, { from: owner });
+    await governorChild.setFxRootTunnel(governorRoot.address);
+    await governorRoot.setFxChildTunnel(governorChild.address);
+
     expectedStampedAncillaryData = utf8ToHex(
       `${hexToUtf8(testAncillaryData)},childTunnelRequester:${owner.substr(2).toLowerCase()}`
     );
-    console.log(expectedStampedAncillaryData);
   });
   it("request price from Polygon to Ethereum, resolve price from Ethereum to Polygon", async function () {
     // Only registered caller can call.
@@ -122,7 +133,6 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
         event.price.toString() === testPrice
     );
     let internalTxn = await TruffleAssert.createTransactionResult(stateSync, txn.tx);
-    const expectedStateId = "1";
     // FxRoot packs the publishPrice ABI-encoded paramaters with additional data:
     // i.e. abi.encode(sender,receiver,message)
     const expectedFxChildData = web3.eth.abi.encodeParameters(
@@ -173,5 +183,72 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
       (await oracleChild.getPrice(testIdentifier, testTimestamp, testAncillaryData, { from: owner })).toString(),
       testPrice.toString()
     );
+  });
+  it("relay governance transaction from Ethereum to Polygon", async function () {
+    // Deploy an ERC20 so the child governor tunnel contract has something to act on.
+    const erc20 = await ExpandedERC20.new("Test Token", "TEST", 18);
+    await erc20.addMember(1, owner);
+    await erc20.mint(governorChild.address, toWei("1"));
+
+    // Governance action to transfer 1 token.
+    const innerTransactionCalldata = erc20.contract.methods.transfer(rando, toWei("1")).encodeABI();
+
+    // Only owner can relay governance:
+    assert(
+      await didContractThrow(
+        governorRoot.relayGovernance(erc20.address, "0", innerTransactionCalldata, {
+          from: rando,
+        })
+      )
+    );
+    let txn = await governorRoot.relayGovernance(erc20.address, "0", innerTransactionCalldata, {
+      from: owner,
+    });
+
+    // Should emit event with governance transaction calldata.
+    TruffleAssert.eventEmitted(
+      txn,
+      "RelayedGovernanceRequest",
+      (event) =>
+        event.to.toLowerCase() === erc20.address.toLowerCase() &&
+        event.value.toString() === "0" &&
+        event.data === innerTransactionCalldata
+    );
+    let internalTxn = await TruffleAssert.createTransactionResult(stateSync, txn.tx);
+    // FxRoot packs the publishPrice ABI-encoded paramaters with additional data:
+    // i.e. abi.encode(sender,receiver,message)
+    let messageBytes = web3.eth.abi.encodeParameters(
+      ["address", "uint256", "bytes"],
+      [erc20.address, "0", innerTransactionCalldata]
+    );
+    const expectedFxChildData = web3.eth.abi.encodeParameters(
+      ["address", "address", "bytes"],
+      [governorRoot.address, governorChild.address, messageBytes]
+    );
+    TruffleAssert.eventEmitted(
+      internalTxn,
+      "StateSynced",
+      (event) =>
+        event.id.toString() === expectedStateId &&
+        event.contractAddress === fxChild.address &&
+        event.data === expectedFxChildData
+    );
+
+    // Off-chain bridge picks up StateSynced event and forwards to Child receiver on Polygon.
+    txn = await fxChild.onStateReceive(expectedStateId, expectedFxChildData, { from: systemSuperUser });
+    internalTxn = await TruffleAssert.createTransactionResult(governorChild, txn.tx);
+    console.log(internalTxn.logs[0].returnValues, erc20.address.toLowerCase(), innerTransactionCalldata);
+    TruffleAssert.eventEmitted(
+      internalTxn,
+      "ExecutedGovernanceTransaction",
+      (event) =>
+        event.to.toLowerCase() === erc20.address.toLowerCase() &&
+        event.value.toString() === "0" &&
+        event.data === innerTransactionCalldata
+    );
+
+    // Child should have transferred tokens, per the governance transaction.
+    assert.equal((await erc20.balanceOf(rando)).toString(), web3.utils.toWei("1"));
+    assert.equal((await erc20.balanceOf(governorChild.address)).toString(), "0");
   });
 });
