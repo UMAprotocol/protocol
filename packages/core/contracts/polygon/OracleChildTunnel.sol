@@ -112,17 +112,6 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         // Price requests that originate from this method, on Polygon, will ultimately be submitted to the DVM on
         // Ethereum via the OracleRootTunnel. Therefore this contract should stamp its requester's address in the
         // ancillary data so voters can conveniently track the requests path to the DVM.
-        bytes memory requesterPrefix;
-        if (ancillaryData.length > 0) {
-            requesterPrefix = ",childTunnelRequester:";
-        } else {
-            requesterPrefix = "childTunnelRequester:";
-        }
-        return
-            abi.encodePacked(
-                ancillaryData,
-                requesterPrefix,
-                AncillaryData.toUtf8Bytes(requester)
-            );
+        return AncillaryData.appendAddressKey(ancillaryData, "childTunnelRequester", requester);
     }
 }
