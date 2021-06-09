@@ -629,7 +629,7 @@ async function getHistoricalUmaEthPrice(dailyPrices) {
   for (let i = 0; i < dailyPrices.length; i++) {
     dailyUmaPrices.push({
       timestamp: dailyPrices[i].timestamp,
-      avgPx: umaEthPrices[i].toString().substr(0,18), // Cut off any digits beyond 18th decimal so that we we can parse
+      avgPx: umaEthPrices[i].toString().substr(0, 18), // Cut off any digits beyond 18th decimal so that we we can parse
       // this `avgPx` using toWei.
     });
   }
