@@ -19,7 +19,6 @@ contract RangeBondContractForDifferenceFinancialProductLibrary is
     using SignedSafeMath for int256;
 
     struct RangeBondContractForDifferenceParameters {
-        uint256 bondNotional;
         uint256 highPriceRange;
         uint256 lowPriceRange;
     }
@@ -28,7 +27,6 @@ contract RangeBondContractForDifferenceFinancialProductLibrary is
 
     function setContractForDifferenceParameters(
         address contractForDifferenceAddress,
-        uint256 bondNotional,
         uint256 highPriceRange,
         uint256 lowPriceRange
     ) public nonReentrant() {
@@ -40,20 +38,10 @@ contract RangeBondContractForDifferenceFinancialProductLibrary is
 
         RangeBondContractForDifferenceParameters memory params =
             contractForDifferenceParameters[contractForDifferenceAddress];
-        require(
-            params.bondNotional == 0 && params.lowPriceRange == 0 && params.highPriceRange == 0,
-            "Parameters already set"
-        );
-
-        uint256 cfdCollateralPerPair = ContractForDifferenceInterface(contractForDifferenceAddress).collateralPerPair();
-
-        require(FixedPoint.Unsigned(cfdCollateralPerPair).mul(lowPriceRange).isEqual(bondNotional), "Bad params");
-        require(FixedPoint.Unsigned(bondNotional).div(highPriceRange).isLessThan(cfdCollateralPerPair), "Bad params");
 
         contractForDifferenceParameters[contractForDifferenceAddress] = RangeBondContractForDifferenceParameters({
-            bondNotional: bondNotional,
-            lowPriceRange: lowPriceRange,
-            highPriceRange: highPriceRange
+            highPriceRange: highPriceRange,
+            lowPriceRange: lowPriceRange
         });
     }
 
@@ -67,35 +55,26 @@ contract RangeBondContractForDifferenceFinancialProductLibrary is
         // R1 = Low Price Range
         // R2 = High Price Range
         // T = min(N/P,N/R1) + max((N/R2*(P-R2))/P,0)
-        // T = min(N/P,N/R1) + max(N/R2-N/P,0) [simplified form]
+        // T = [min(max(1/R2,1/P),1/R1)]/R1 [simplified form without N]
         // This represents the value of the long token(range bond holder). This function's method must return a value
         //  between 0 and 1 to be used as a collateralPerPair that allocates collateral between the short and long tokens.
         // We can use the value of the long token to compute the relative distribution between long and short CFD tokens
         // by simply computing longTokenRedeemed using equation above divided by the collateralPerPair of the CFD.
-        // NOTE: the equation's second term could be simplified slightly algebraically to have fewer divided and
-        // multiplications. However this introduces rounding issues. By keeping it in this form this is avoided.
-        // NOTE: the ternary is used over Math.max for the second term to avoid negative numbers.
 
         uint256 positiveExpiryPrice = expiryPrice > 0 ? uint256(expiryPrice) : 0;
 
-        FixedPoint.Unsigned memory longTokensRedeemed =
-            FixedPoint
-                .Unsigned(
-                Math.min(
-                    FixedPoint.Unsigned(params.bondNotional).div(FixedPoint.Unsigned(positiveExpiryPrice)).rawValue,
-                    FixedPoint.Unsigned(params.bondNotional).div(FixedPoint.Unsigned(params.lowPriceRange)).rawValue
-                )
-            )
-                .add(
-                FixedPoint.Unsigned(positiveExpiryPrice).isGreaterThan(FixedPoint.Unsigned(params.highPriceRange))
-                    ? FixedPoint.Unsigned(params.bondNotional).div(FixedPoint.Unsigned(params.highPriceRange)).sub(
-                        FixedPoint.Unsigned(params.bondNotional).div(FixedPoint.Unsigned(positiveExpiryPrice))
-                    )
-                    : FixedPoint.Unsigned(0)
-            );
+        FixedPoint.Unsigned memory expiryPriceInverted =
+            FixedPoint.fromUnscaledUint(1).div(FixedPoint.Unsigned(positiveExpiryPrice));
 
-        uint256 cfdCollateralPerPair = ContractForDifferenceInterface(msg.sender).collateralPerPair();
+        FixedPoint.Unsigned memory maxPriceInverted =
+            FixedPoint.fromUnscaledUint(1).div(FixedPoint.Unsigned(params.highPriceRange));
 
-        return longTokensRedeemed.div(FixedPoint.Unsigned(cfdCollateralPerPair)).rawValue;
+        FixedPoint.Unsigned memory minPriceInverted =
+            FixedPoint.fromUnscaledUint(1).div(FixedPoint.Unsigned(params.lowPriceRange));
+
+        return
+            (FixedPoint.min(FixedPoint.max(maxPriceInverted, expiryPriceInverted), minPriceInverted))
+                .div(minPriceInverted)
+                .rawValue;
     }
 }

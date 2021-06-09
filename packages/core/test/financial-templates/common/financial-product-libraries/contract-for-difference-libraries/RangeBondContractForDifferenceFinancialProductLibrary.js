@@ -27,22 +27,16 @@ contract("RangeBondContractForDifferenceFinancialProductLibrary", function () {
   });
   describe("Contract For diffrence Paramaterization", () => {
     it("Can set and fetch valid values", async () => {
-      await rangeBondCFDFPL.setContractForDifferenceParameters(
-        cfdMock.address,
-        bondNotional,
-        highPriceRange,
-        lowPriceRange
-      );
+      await rangeBondCFDFPL.setContractForDifferenceParameters(cfdMock.address, highPriceRange, lowPriceRange);
 
       const setParams = await rangeBondCFDFPL.contractForDifferenceParameters(cfdMock.address);
-      assert.equal(setParams.bondNotional.toString(), bondNotional);
       assert.equal(setParams.lowPriceRange.toString(), lowPriceRange);
       assert.equal(setParams.highPriceRange.toString(), highPriceRange);
     });
     it("Can not re-use existing CFD contract address", async () => {
       await rangeBondCFDFPL.setContractForDifferenceParameters(
         cfdMock.address,
-        bondNotional,
+
         highPriceRange,
         lowPriceRange
       );
@@ -52,7 +46,7 @@ contract("RangeBondContractForDifferenceFinancialProductLibrary", function () {
         await didContractThrow(
           rangeBondCFDFPL.setContractForDifferenceParameters(
             cfdMock.address,
-            bondNotional,
+
             lowPriceRange,
             highPriceRange
           )
@@ -65,22 +59,7 @@ contract("RangeBondContractForDifferenceFinancialProductLibrary", function () {
         await didContractThrow(
           rangeBondCFDFPL.setContractForDifferenceParameters(
             cfdMock.address,
-            bondNotional,
-            lowPriceRange,
-            highPriceRange
-          )
-        )
-      );
 
-      // Bounds and notional relative to collateralPerPair must be valid. For a Range bond, at the exact price of the
-      // minPriceRange, the value of the payout of long tokens should be worth exactly the notional as at this point
-      // all short tokens are worth 0 and all long tokens are worth the full collateralPerPair. Using this we can enforce
-      // that collateralPerPair*lowPriceRange=bondNotional.
-      assert(
-        await didContractThrow(
-          rangeBondCFDFPL.setContractForDifferenceParameters(
-            cfdMock.address,
-            bondNotional.addn(100), // a notational of 1001e18+100 is wrong relative to the lowPriceRange.
             lowPriceRange,
             highPriceRange
           )
@@ -91,19 +70,14 @@ contract("RangeBondContractForDifferenceFinancialProductLibrary", function () {
       // CFD Address must implement the `expirationTimestamp method.
       assert(
         await didContractThrow(
-          rangeBondCFDFPL.setContractForDifferenceParameters(ZERO_ADDRESS, bondNotional, highPriceRange, lowPriceRange)
+          rangeBondCFDFPL.setContractForDifferenceParameters(ZERO_ADDRESS, highPriceRange, lowPriceRange)
         )
       );
     });
   });
   describe("Compute expirary tokens for collateral", () => {
     beforeEach(async () => {
-      await rangeBondCFDFPL.setContractForDifferenceParameters(
-        cfdMock.address,
-        bondNotional,
-        highPriceRange,
-        lowPriceRange
-      );
+      await rangeBondCFDFPL.setContractForDifferenceParameters(cfdMock.address, highPriceRange, lowPriceRange);
     });
     it("Lower than low price range should return 1 (long side is short put option)", async () => {
       // If the price is lower than the low price range then the max payout per each long token is hit at the full
@@ -147,7 +121,10 @@ contract("RangeBondContractForDifferenceFinancialProductLibrary", function () {
 
       const fixedPointAdjustment = toBN(toWei("1"));
 
-      for (const price of [toWei("5"), toWei("10"), toWei("30"), toWei("50"), toWei("60"), toWei("100")]) {
+      // Input a range of prices and check the library returns the expected value. The equation below uses the financial
+      // form of the range bond equation where as the library uses an algebraic simplification of this equation. This
+      // test validates the correct mapping between these two forms.
+      for (const price of [toWei("5.555"), toWei("11"), toWei("33"), toWei("55"), toWei("66"), toWei("111")]) {
         const expiraryTokensForCollateral = await rangeBondCFDFPL.computeExpiraryTokensForCollateral.call(price, {
           from: cfdMock.address,
         });
