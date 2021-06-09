@@ -326,7 +326,7 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
         // When ancillary data is passed to the optimistic oracle, it should be tagged with the token address
         // whose funding rate it's trying to get so that financial contracts can re-use the same identifier for
         // multiple funding rate products.
-        return AncillaryData.appendAddressKey("", "tokenAddress", _getTokenAddress());
+        return AncillaryData.appendKeyValueAddress("", "tokenAddress", _getTokenAddress());
     }
 
     function _getTokenAddress() internal view virtual returns (address);

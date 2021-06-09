@@ -4,23 +4,27 @@ pragma solidity ^0.8.0;
 import "../implementation/AncillaryData.sol";
 
 contract AncillaryDataTest {
-    function toUtf8Bytes(address x) external pure returns (bytes memory) {
-        return AncillaryData.toUtf8Bytes(x);
+    function toUtf8BytesAddress(address x) external pure returns (bytes memory) {
+        return AncillaryData.toUtf8BytesAddress(x);
     }
 
-    function toUtf8String(uint256 v) external pure returns (string memory) {
-        return AncillaryData.toUtf8String(v);
+    function toUtf8BytesUint(uint256 v) external pure returns (bytes memory) {
+        return AncillaryData.toUtf8BytesUint(v);
     }
 
-    function appendAddressKey(
+    function appendKeyValueAddress(
         bytes memory currentAncillaryData,
         bytes memory key,
         address value
     ) external pure returns (bytes memory) {
-        return AncillaryData.appendAddressKey(currentAncillaryData, key, value);
+        return AncillaryData.appendKeyValueAddress(currentAncillaryData, key, value);
     }
 
-    function appendChainId(bytes memory currentAncillaryData) external view returns (bytes memory) {
-        return AncillaryData.appendChainId(currentAncillaryData);
+    function appendKeyValueUint(
+        bytes memory currentAncillaryData,
+        bytes memory key,
+        uint256 value
+    ) external pure returns (bytes memory) {
+        return AncillaryData.appendKeyValueUint(currentAncillaryData, key, value);
     }
 }

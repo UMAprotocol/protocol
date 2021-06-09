@@ -17,7 +17,7 @@ library AncillaryData {
      * @param x address to encode.
      * @return utf8 encoded address bytes.
      */
-    function toUtf8Bytes(address x) internal pure returns (bytes memory) {
+    function toUtf8BytesAddress(address x) internal pure returns (bytes memory) {
         bytes memory s = new bytes(40);
         for (uint256 i = 0; i < 20; i++) {
             bytes1 b = bytes1(uint8(uint256(uint160(x)) / (2**(8 * (19 - i)))));
@@ -38,7 +38,7 @@ library AncillaryData {
      * @notice Converts a uint into a base-10, UTF-8 representation stored in a `string` type.
      * @dev This method is based off of this code: https://stackoverflow.com/a/65707309.
      */
-    function toUtf8String(uint256 x) internal pure returns (string memory) {
+    function toUtf8BytesUint(uint256 x) internal pure returns (bytes memory) {
         if (x == 0) {
             return "0";
         }
@@ -57,7 +57,7 @@ library AncillaryData {
             bstr[k] = b1;
             x /= 10;
         }
-        return string(bstr);
+        return bstr;
     }
 
     /**
@@ -69,27 +69,29 @@ library AncillaryData {
      * @param value An address to set as the value in the key:value pair to append to `currentAncillaryData`.
      * @return Newly appended ancillary data.
      */
-    function appendAddressKey(
+    function appendKeyValueAddress(
         bytes memory currentAncillaryData,
         bytes memory key,
         address value
     ) internal pure returns (bytes memory) {
-        bytes memory prefix;
-        if (currentAncillaryData.length > 0) {
-            prefix = abi.encodePacked(",", key, ":");
-        } else {
-            prefix = abi.encodePacked(key, ":");
-        }
-        return abi.encodePacked(currentAncillaryData, prefix, toUtf8Bytes(value));
+        bytes memory prefix = _appendKeyValue(currentAncillaryData, key);
+        return abi.encodePacked(currentAncillaryData, prefix, toUtf8BytesAddress(value));
     }
 
-    function appendChainId(bytes memory currentAncillaryData) internal view returns (bytes memory) {
-        bytes memory prefix;
+    function appendKeyValueUint(
+        bytes memory currentAncillaryData,
+        bytes memory key,
+        uint256 value
+    ) internal pure returns (bytes memory) {
+        bytes memory prefix = _appendKeyValue(currentAncillaryData, key);
+        return abi.encodePacked(currentAncillaryData, prefix, toUtf8BytesUint(value));
+    }
+
+    function _appendKeyValue(bytes memory currentAncillaryData, bytes memory key) internal pure returns (bytes memory) {
         if (currentAncillaryData.length > 0) {
-            prefix = abi.encodePacked(",chainId:");
+            return abi.encodePacked(",", key, ":");
         } else {
-            prefix = abi.encodePacked("chainId:");
+            return abi.encodePacked(key, ":");
         }
-        return abi.encodePacked(currentAncillaryData, prefix, toUtf8String(block.chainid));
     }
 }
