@@ -31,7 +31,7 @@ async function runDefaultFixture({ deployments }) {
     await addToFinder("Bridge", interfaceName.Bridge);
     await addToFinder("GenericHandler", interfaceName.GenericHandler);
 
-    // Setup token
+    // Setup token.
     const votingToken = await getDeployment("VotingToken");
     const minterRoleEnumValue = 1;
     await votingToken.methods.addMember(minterRoleEnumValue, deployer).send({ from: deployer });
@@ -42,16 +42,16 @@ async function runDefaultFixture({ deployments }) {
     const { address: votingAddress } = await deployments.get("Voting");
     await votingToken.addMember(minterRoleEnumValue, votingAddress, { from: deployer });
 
-    // Setup Registry
+    // Setup Registry.
     const registry = await getDeployment("Registry");
 
-    // Add creators
+    // Add creators.
     const { address: empCreatorAddress } = await deployments.get("ExpiringMultiPartyCreator");
     const { address: perpCreatorAddress } = await deployments.get("PerpetualCreator");
     await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, empCreatorAddress).send({ from: deployer });
     await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, perpCreatorAddress).send({ from: deployer });
 
-    // Add pre-registered contracts
+    // Add pre-registered contracts.
     const { address: governorAddress } = await deployments.get("Governor");
     const { address: optimisticOracleAddress } = await deployments.get("OptimisticOracle");
     await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, deployer).send({ from: deployer });
