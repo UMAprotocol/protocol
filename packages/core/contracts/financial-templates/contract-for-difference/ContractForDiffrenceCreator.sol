@@ -76,13 +76,13 @@ contract ContractForDifferenceCreator is Testable, Lockable {
         uint8 collateralDecimals = _getSyntheticDecimals(collateralAddress);
         ExpandedIERC20 longToken =
             tf.createToken(
-                string(abi.encodePacked(syntheticName, "Long Token")),
+                string(abi.encodePacked(syntheticName, " Long Token")),
                 string(abi.encodePacked("l", syntheticSymbol)),
                 collateralDecimals
             );
         ExpandedIERC20 shortToken =
             tf.createToken(
-                string(abi.encodePacked(syntheticName, "Short Token")),
+                string(abi.encodePacked(syntheticName, " Short Token")),
                 string(abi.encodePacked("s", syntheticSymbol)),
                 collateralDecimals
             );

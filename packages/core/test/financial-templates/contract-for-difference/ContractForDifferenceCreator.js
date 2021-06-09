@@ -111,7 +111,7 @@ contract("ContractForDifferenceCreator", function (accounts) {
 
     // Validate token information and permissions are set correctly.
     const longToken = await Token.at(await cfd.longToken());
-    assert.equal(await longToken.name(), syntheticName + "Long Token");
+    assert.equal(await longToken.name(), syntheticName + " Long Token");
     assert.equal(await longToken.symbol(), "l" + syntheticSymbol);
     assert.equal((await longToken.decimals()).toString(), (await collateralToken.decimals()).toString());
     assert.isTrue(await longToken.holdsRole("0", cfdAddress));
@@ -119,7 +119,7 @@ contract("ContractForDifferenceCreator", function (accounts) {
     assert.isTrue(await longToken.holdsRole("2", cfdAddress));
 
     const shortToken = await Token.at(await cfd.shortToken());
-    assert.equal(await shortToken.name(), syntheticName + "Short Token");
+    assert.equal(await shortToken.name(), syntheticName + " Short Token");
     assert.equal(await shortToken.symbol(), "s" + syntheticSymbol);
     assert.equal((await shortToken.decimals()).toString(), (await collateralToken.decimals()).toString());
     assert.isTrue(await shortToken.holdsRole("0", cfdAddress));
