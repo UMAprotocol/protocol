@@ -44,7 +44,11 @@ spoke.post("/", async (req, res) => {
       });
     }
 
-    const execResponse = await _execShellCommand(req.body.serverlessCommand, processedEnvironmentVariables);
+    const execResponse = await _execShellCommand(
+      req.body.serverlessCommand,
+      processedEnvironmentVariables,
+      req.body.strategyRunnerSpoke
+    );
 
     if (execResponse.error) {
       throw execResponse;
@@ -80,14 +84,14 @@ spoke.post("/", async (req, res) => {
   }
 });
 
-function _execShellCommand(cmd, inputEnv) {
+function _execShellCommand(cmd, inputEnv, strategyRunnerSpoke = false) {
   return new Promise((resolve) => {
     const { stdout, stderr } = exec(
       cmd,
       { env: { ...process.env, ...inputEnv }, stdio: "inherit" },
       (error, stdout, stderr) => {
         // The output from the process execution contains a punctuation marks and escape chars that should be stripped.
-        stdout = _stripExecStdout(stdout);
+        stdout = _stripExecStdout(stdout, strategyRunnerSpoke);
         stderr = _stripExecStdError(stderr);
         resolve({ error, stdout, stderr });
       }
@@ -98,14 +102,18 @@ function _execShellCommand(cmd, inputEnv) {
 }
 
 // Format stdout outputs. Turns all logs generated while running the script into an array of Json objects.
-function _stripExecStdout(output) {
+function _stripExecStdout(output, strategyRunnerSpoke = false) {
   if (!output) return output;
   // Parse the outputs into a json object to get an array of logs. It is possible that the output is not in a parable form
   // if the spoke was running a process that did not correctly generate a winston log. In this case simply return the stripped output.
   try {
     const strippedOutput = _regexStrip(output).replace(/\r?\n|\r/g, ","); // Remove escaped new line chars. Replace with comma between each log output.
     const logsArray = JSON.parse("[" + strippedOutput.substring(0, strippedOutput.length - 1) + "]");
-    return logsArray.map((logMessage) => logMessage["message"]);
+    // If the body contains `strategyRunnerSpoke` return filter to only return the `BotStrategyRunner` logs. This is done
+    // to clean up the upstream logs produced by the bots so the serverless hub can still produce meaningful logs while
+    // preserving the individual bot execution logs within GCP when using the strategy runner.
+    if (strategyRunnerSpoke) return logsArray.filter((logMessage) => logMessage.at == "BotStrategyRunner");
+    else return logsArray.map((logMessage) => logMessage["message"]);
   } catch (error) {
     return _regexStrip(output).replace(/\r?\n|\r/g, " ");
   }
