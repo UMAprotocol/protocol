@@ -6,8 +6,6 @@ const func = async function (hre) {
 
   await deploy("Finder", {
     from: deployer,
-    args: [],
-    log: true,
   });
 };
 module.exports = func;

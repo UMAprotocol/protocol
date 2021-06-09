@@ -8,13 +8,14 @@ const func = async function (hre) {
   // 2 hours.
   const defaultLiveness = 7200;
   const Finder = await deployments.get("Finder");
+  const Timer = (await deployments.getOrNull("Timer")) || ZERO_ADDRESS;
 
   await deploy("OptimisticOracle", {
     from: deployer,
-    args: [defaultLiveness, Finder.address, ZERO_ADDRESS],
+    args: [defaultLiveness, Finder.address, Timer.address],
     log: true,
   });
 };
 module.exports = func;
 func.tags = ["OptimisticOracle", "dvm"];
-func.dependencies = ["Finder"];
+func.dependencies = ["Finder", "Timer"];

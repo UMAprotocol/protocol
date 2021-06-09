@@ -8,7 +8,7 @@ See [tests](./js-map.test.ts) for more example usage.
 
 ```js
   import uma from '@uma/sdk'
-  const Table = uma.tables.Blocks.JsMap
+  const Table = uma.tables.blocks.JsMap
   const Store = uma.stores.JsMap
 
   type Data = {

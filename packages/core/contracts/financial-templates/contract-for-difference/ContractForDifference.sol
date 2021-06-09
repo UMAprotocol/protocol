@@ -62,6 +62,8 @@ contract ContractForDifference is Testable, Lockable {
 
     ContractForDifferenceFinancialProductLibrary public financialProductLibrary;
 
+    bytes public customAncillaryData;
+
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -100,11 +102,12 @@ contract ContractForDifference is Testable, Lockable {
      * @param _expirationTimestamp unix timestamp of when the contract will expire.
      * @param _collateralPerPair how many units of collateral are required to mint one pair of synthetic tokens.
      * @param _priceIdentifier registered in the DVM for the synthetic.
-     * @param _longTokenAddress ERC20 token used as long in the CFD. Requires mint and burn rights granted to this contract.
-     * @param _shortTokenAddress ERC20 token used as short in the CFD. Requires mint and burn rights granted to this contract.
-     * @param _collateralAddress ERC20 token used as as collateral in the CFD.
+     * @param _longTokenAddress ERC20 token used as long in the CFD. Requires mint and burn needed by this contract.
+     * @param _shortTokenAddress ERC20 token used as short in the CFD. Mint and burn rights needed by this contract.
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _financialProductLibraryAddress Contract providing settlement payout logic.
+     * @param _customAncillaryData Custom ancillary data to be passed along with the price request. If not needed, this
+     *                             should be left as a 0-length bytes array.
      * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 in production.
      */
     constructor(
@@ -116,6 +119,7 @@ contract ContractForDifference is Testable, Lockable {
         IERC20 _collateralAddress,
         FinderInterface _finderAddress,
         ContractForDifferenceFinancialProductLibrary _financialProductLibraryAddress,
+        bytes memory _customAncillaryData,
         address _timerAddress
     ) Testable(_timerAddress) {
         finder = _finderAddress;
@@ -134,6 +138,13 @@ contract ContractForDifference is Testable, Lockable {
         collateralToken = _collateralAddress;
 
         financialProductLibrary = _financialProductLibraryAddress;
+        OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
+        require(
+            optimisticOracle.stampAncillaryData(_customAncillaryData, address(this)).length <=
+                optimisticOracle.ancillaryBytesLimit(),
+            "Ancillary Data too long"
+        );
+        customAncillaryData = _customAncillaryData;
     }
 
     /****************************************
@@ -247,8 +258,8 @@ contract ContractForDifference is Testable, Lockable {
     function _getOraclePriceExpiration(uint256 requestedTime) internal returns (int256) {
         // Create an instance of the oracle and get the price. If the price is not resolved revert.
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
-        require(optimisticOracle.hasPrice(address(this), priceIdentifier, requestedTime, _getAncillaryData()));
-        int256 oraclePrice = optimisticOracle.settleAndGetPrice(priceIdentifier, requestedTime, _getAncillaryData());
+        require(optimisticOracle.hasPrice(address(this), priceIdentifier, requestedTime, customAncillaryData));
+        int256 oraclePrice = optimisticOracle.settleAndGetPrice(priceIdentifier, requestedTime, customAncillaryData);
 
         return oraclePrice;
     }
@@ -257,7 +268,7 @@ contract ContractForDifference is Testable, Lockable {
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
 
         // For now, we add no fees the the OO and set the reward to 0.
-        optimisticOracle.requestPrice(priceIdentifier, expirationTimestamp, _getAncillaryData(), collateralToken, 0);
+        optimisticOracle.requestPrice(priceIdentifier, expirationTimestamp, customAncillaryData, collateralToken, 0);
     }
 
     function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
@@ -270,9 +281,5 @@ contract ContractForDifference is Testable, Lockable {
 
     function _getOptimisticOracle() internal view returns (OptimisticOracleInterface) {
         return OptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
-    }
-
-    function _getAncillaryData() internal view returns (bytes memory) {
-        return abi.encodePacked(address(longToken), address(shortToken));
     }
 }
