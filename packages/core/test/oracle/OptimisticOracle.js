@@ -617,6 +617,14 @@ contract("OptimisticOracle", function (accounts) {
   });
 
   describe("Ancillary Data stamping", function () {
+    // Max ancillary data length allowed by optimistic oracle:
+    const DATA_LIMIT_BYTES = 8192;
+    // Length of stamped ancillary data appended by optimistic oracle:
+    // - ",ooRequester:<address>", where `,ooRequester:` is 13 bytes and the address is 40 bytes.
+    const STAMPED_LENGTH = 13 + 40;
+    // Max length of original ancillary data (i.e. pre-stamped) is the data limit minus the additional stamped length.
+    const MAX_ANCILLARY_DATA_LENGTH = DATA_LIMIT_BYTES - STAMPED_LENGTH;
+
     it("Appends to original ancillary data", async function () {
       const ancillaryData = utf8ToHex("key:value,key2:value2");
 
@@ -709,12 +717,52 @@ contract("OptimisticOracle", function (accounts) {
       );
     });
 
+    it("Original ancillary data is not UTF8-encodeable", async function () {
+      const ancillaryData = "0xabcd";
+
+      // Requested.
+      await collateral.transfer(optimisticRequester.address, reward);
+      await optimisticRequester.requestPrice(identifier, requestTime, ancillaryData, collateral.address, reward);
+
+      // Proposed.
+      await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
+      await optimisticOracle.proposePrice(
+        optimisticRequester.address,
+        identifier,
+        requestTime,
+        ancillaryData,
+        incorrectPrice,
+        {
+          from: proposer,
+        }
+      );
+
+      // Disputed.
+      await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: disputer });
+      await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, ancillaryData, {
+        from: disputer,
+      });
+
+      // Check that OptimisticOracle stamped ancillary data as expected before sending to Oracle, and that we can decode
+      // it.
+      const priceRequests = await mockOracle.getPastEvents("PriceRequestAdded", { fromBlock: 0 });
+      assert.equal(priceRequests.length, 1, "should only be one price request escalated to MockOracle");
+      const stampedAncillaryData = priceRequests[0].returnValues.ancillaryData;
+
+      // We know that the stamped ancillary data forms the last 53 bytes, so we can decode the last 53 bytes
+      // (106 chars) to utf8.
+      const utf8EncodedAncillaryData = hexToUtf8(
+        "0x" + stampedAncillaryData.substr(stampedAncillaryData.length - STAMPED_LENGTH * 2)
+      );
+      assert.equal(
+        utf8EncodedAncillaryData,
+        `,ooRequester:${optimisticRequester.address.substr(2).toLowerCase()}`,
+        "Should be able to decode trailing stamped component of ancillary data"
+      );
+    });
+
     it("Stress testing the size of ancillary data", async function () {
-      // Ancillary data length must not be more than the limit + stamped length. The limit hardcoded into the contract
-      // is 8192, and the stamped utf8 string is ",ooRequester:<address>" where address has 40 characters
-      // and ",ooRequester:" is 13 characters. So the max length is:
-      const DATA_LIMIT_BYTES = 8192 - 13 - 40;
-      let ancillaryData = web3.utils.randomHex(DATA_LIMIT_BYTES);
+      let ancillaryData = web3.utils.randomHex(MAX_ANCILLARY_DATA_LENGTH);
 
       // Initial state.
       await verifyState(OptimisticOracleRequestStatesEnum.INVALID, ancillaryData);
@@ -727,7 +775,7 @@ contract("OptimisticOracle", function (accounts) {
           optimisticRequester.requestPrice(
             identifier,
             requestTime,
-            web3.utils.randomHex(DATA_LIMIT_BYTES + 1),
+            web3.utils.randomHex(MAX_ANCILLARY_DATA_LENGTH + 1),
             collateral.address,
             reward
           )
@@ -738,7 +786,7 @@ contract("OptimisticOracle", function (accounts) {
       await optimisticRequester.requestPrice(
         identifier,
         requestTime,
-        web3.utils.randomHex(DATA_LIMIT_BYTES),
+        web3.utils.randomHex(MAX_ANCILLARY_DATA_LENGTH),
         collateral.address,
         reward
       );
