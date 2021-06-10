@@ -3,13 +3,13 @@
  * @dev OptimisticDepositBox is an example financial contract that integrates the optimistic oracle for on-chain price discovery.
  * It is intended for educational purposes and would not be very useful in practice. The purpose of the contract
  * is to custody a user's ERC20 token balance. The user links the OptimisticDepositBox with one of the price identifiers
- * enabled on UMA. For example, the user might deposit ETH into the OptimisticDepositBox and register it with the "ETHUSD"
+ * enabled on UMA. For example, the user might deposit ETH into the OptimisticDepositBox and register it with the "ETH/USD"
  * price identifier. The user can now withdraw a "USD"-denominated amount of "ETH" from their OptimisticDepositBox via
  * smart contract calls. The feature introduced by Optimistic Oracle is optimistic on-chain pricing of the user's ERC20 balance.
  * In this example, the user would not have been able to transfer "USD"-denominated amounts of "ETH" without referencing an
- * off-chain "ETHUSD" price feed. The Optimistic Oracle therefore enables the user to "pull" a reference price.
+ * off-chain "ETH/USD" price feed. The Optimistic Oracle therefore enables the user to "pull" a reference price.
  *
- * This script includes steps to deploy a "ETHUSD" OptimisticDepositBox and use the Optimistic Oracle
+ * This script includes steps to deploy a "ETH/USD" OptimisticDepositBox and use the Optimistic Oracle
  * to withdraw USD-denominated amounts of ETH.
  *
  * How to run:
@@ -23,13 +23,12 @@
  * - User is running this script in the web3 environment injected by Truffle.
  * - User is sending transactions from accounts[0] of the injected web3.
  * - User is using wETH as the collateral ERC20.
- * - User is referencing the ETHUSD pricefeed identifier.
+ * - User is referencing the ETH/USD pricefeed identifier.
  */
 
 // Helper modules
-const { toBN, toWei, fromWei, utf8ToHex, hexToUtf8, hexToBytes, asciiToHex } = web3.utils;
+const { toBN, toWei, fromWei, utf8ToHex, hexToUtf8 } = web3.utils;
 const { interfaceName } = require("@uma/common");
-const { RegistryRolesEnum } = require("@uma/common");
 
 const OptimisticDepositBox = artifacts.require("OptimisticDepositBox");
 const WETH9 = artifacts.require("WETH9");
@@ -37,8 +36,6 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Finder = artifacts.require("Finder");
 const Timer = artifacts.require("Timer");
-const Registry = artifacts.require("Registry");
-const MockOracleAncillary = artifacts.require("MockOracleAncillary");
 const OptimisticOracle = artifacts.require("OptimisticOracle");
 
 // Constants
@@ -54,13 +51,14 @@ const deploy = async () => {
 
   // Pricefeed identifier must be whitelisted prior to OptimisticDepositBox construction.
   const identifierWhitelist = await IdentifierWhitelist.deployed();
+  console.log(identifierWhitelist.address);
   await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier);
   console.log(`- Pricefeed identifier for ${hexToUtf8(priceFeedIdentifier)} is whitelisted`);
 
   // Collateral must be whitelisted prior to OptimisticDepositBox construction.
   const collateralWhitelist = await AddressWhitelist.deployed();
   await collateralWhitelist.addToWhitelist(collateral.address);
-  console.log(`- Collateral address for wETH is whitelisted`);
+  console.log("- Collateral address for wETH is whitelisted");
 
   // The following steps would differ if the user is on a testnet like Kovan in the following ways:
   // - The user would not need to deploy a "Mock Ancillary Oracle" and register it with the Finder,
@@ -69,13 +67,10 @@ const deploy = async () => {
   // - The user should pass in the zero address (i.e. 0x0) for the Timer, but using the deployed Timer
   // for testing purposes is convenient because they can advance time as needed.
   const finder = await Finder.deployed();
-  const mockOracle = await MockOracleAncillary.new(finder.address, Timer.address);
   const optimisticOracle = await OptimisticOracle.new(liveness, finder.address, Timer.address);
-  const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
   const optimisticOracleInterfaceName = utf8ToHex(interfaceName.OptimisticOracle);
-  await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
   await finder.changeImplementationAddress(optimisticOracleInterfaceName, optimisticOracle.address);
-  console.log("- Deployed a MockAncillaryOracle and OptimisticOracle");
+  console.log("- Deployed an OptimisticOracle");
 
   // Deploy a new OptimisticDepositBox contract. We pass in the collateral token address (i.e. the token we will deposit into
   // the contract), the Finder address (which stores references to all of the important system contracts like
@@ -88,7 +83,7 @@ const deploy = async () => {
     Timer.address,
     {
       gas: 4712388,
-      gasPrice: 100000000000
+      gasPrice: 100000000000,
     }
   );
   console.log("- Deployed a new OptimisticDepositBox and linked it with the OptimisticOracle");
@@ -152,8 +147,9 @@ const withdraw = async (optimisticDepositBoxAddress, mockPrice, amountOfUsdToWit
   const optimisticDepositBox = await OptimisticDepositBox.at(optimisticDepositBoxAddress);
   const accounts = await web3.eth.getAccounts();
   const finder = await Finder.deployed();
-  const mockOracle = await MockOracleAncillary.at(await finder.getImplementationAddress(utf8ToHex(interfaceName.Oracle)));
-  const optimisticOracle = await OptimisticOracle.at(await finder.getImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle)));
+  const optimisticOracle = await OptimisticOracle.at(
+    await finder.getImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle))
+  );
 
   console.group("4. Withdrawing ERC20 from OptimisticDepositBox");
 
@@ -171,19 +167,28 @@ const withdraw = async (optimisticDepositBoxAddress, mockPrice, amountOfUsdToWit
   console.log(`- Submitted a withdrawal request for ${fromWei(amountOfUsdToWithdraw)} USD of WETH`);
 
   // Propose a price to the Optimistic Oracle for the Optimistic Deposit Box contract. This price must be a positive integer.
-  await optimisticOracle.proposePriceFor(accounts[0], optimisticDepositBox.address, priceFeedIdentifier, requestTimestamp.toNumber(), emptyAncillaryData, mockPrice);
+  await optimisticOracle.proposePriceFor(
+    accounts[0],
+    optimisticDepositBox.address,
+    priceFeedIdentifier,
+    requestTimestamp.toNumber(),
+    emptyAncillaryData,
+    mockPrice
+  );
   console.log(`- Proposed a price of ${mockPrice} WETH-USD`);
 
   // Fast-forward until after the liveness window. This only works in test mode.
   await optimisticOracle.setCurrentTime(requestTimestamp.toNumber() + 7200);
   await optimisticDepositBox.setCurrentTime(requestTimestamp.toNumber() + 7200);
-  console.log(`- Fast-forwarded the Optimistic Oracle and Optimistic Deposit Box to after the liveness window so we can settle.`);
+  console.log(
+    "- Fast-forwarded the Optimistic Oracle and Optimistic Deposit Box to after the liveness window so we can settle."
+  );
   console.log(`- New OO time is ${await optimisticOracle.getCurrentTime()}`);
   console.log(`- New ODB time is ${await optimisticDepositBox.getCurrentTime()}`);
 
   // The user can withdraw their requested USD amount.
   await optimisticDepositBox.executeWithdrawal();
-  console.log(`- Executed withdrawal. This also settles and gets the resolved price within the withdrawal function.`)
+  console.log("- Executed withdrawal. This also settles and gets the resolved price within the withdrawal function.");
 
   // Let's check the token balances. At an exchange rate of (1 WETH = $2000 USD) and given a requested withdrawal
   // amount of $10,000, the OptimisticDepositBox should have withdrawn ($10,000/$2000) 5 WETH.
