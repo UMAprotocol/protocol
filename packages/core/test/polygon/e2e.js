@@ -37,6 +37,7 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
   const testAncillaryData = utf8ToHex("key:value");
   const testPrice = toWei("0.5");
   let expectedStampedAncillaryData; // Can determine this after contracts are deployed.
+  const expectedStateId = "1";
 
   before(async function () {
     finder = await Finder.deployed();
@@ -121,7 +122,6 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
         event.price.toString() === testPrice
     );
     let internalTxn = await TruffleAssert.createTransactionResult(stateSync, txn.tx);
-    const expectedStateId = "1";
     // FxRoot packs the publishPrice ABI-encoded paramaters with additional data:
     // i.e. abi.encode(sender,receiver,message)
     const expectedFxChildData = web3.eth.abi.encodeParameters(
