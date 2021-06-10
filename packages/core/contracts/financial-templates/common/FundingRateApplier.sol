@@ -319,10 +319,6 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
     }
 
     /**
-     * @notice  We assume that on-chain ancillary data can be formatted directly from bytes to utf8 encoding via
-     * web3.utils.hexToUtf8, and that clients will parse the utf8-encoded ancillary data as a comma-delimitted key-value
-     * dictionary. Therefore, this internal method appends additional metadata about this optimistic oracle price
-     * price request to the original ancillary data.
      * @dev We do not need to check that the ancillary data length is less than the hardcoded max length in the
      * OptimisticOracle because the length of the ancillary data is fixed in this function.
      */
@@ -330,8 +326,7 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
         // When ancillary data is passed to the optimistic oracle, it should be tagged with the token address
         // whose funding rate it's trying to get so that financial contracts can re-use the same identifier for
         // multiple funding rate products.
-        bytes memory prefix = "tokenAddress:";
-        return abi.encodePacked(prefix, AncillaryData.toUtf8Bytes(_getTokenAddress()));
+        return AncillaryData.appendKeyValueAddress("", "tokenAddress", _getTokenAddress());
     }
 
     function _getTokenAddress() internal view virtual returns (address);

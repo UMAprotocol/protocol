@@ -1,13 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "./IGenericHandler.sol";
+import "../interfaces/IGenericHandler.sol";
 
 /**
     @title Handles generic deposits and deposit executions.
     @author ChainSafe Systems.
-    @notice This contract is intended to be used with the Bridge contract. Copied directly from here: 
-            https://github.com/ChainSafe/chainbridge-solidity/releases/tag/v1.0.0
+    @notice This contract is intended to be used with the Bridge contract.
  */
 contract GenericHandler is IGenericHandler {
     address public _bridgeAddress;

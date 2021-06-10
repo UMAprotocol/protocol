@@ -46,7 +46,7 @@ const PublicNetworks = {
   },
   137: {
     name: "polygon-matic",
-    etherscan: "https://explorer-mainnet.maticvigil.com/",
+    etherscan: "https://polygonscan.com/",
     customTruffleConfig: {
       confirmations: 2,
       timeoutBlocks: 200,

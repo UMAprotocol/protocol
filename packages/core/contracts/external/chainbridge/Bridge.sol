@@ -4,16 +4,13 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "./IDepositExecute.sol";
-import "./IBridge.sol";
-import "./IERCHandler.sol";
-import "./IGenericHandler.sol";
+import "./interfaces/IDepositExecute.sol";
+import "./interfaces/IBridge.sol";
+import "./interfaces/IERCHandler.sol";
+import "./interfaces/IGenericHandler.sol";
 
 /**
     @title Facilitates deposits, creation and votiing of deposit proposals, and deposit executions.
-    @dev Copied directly from here: https://github.com/ChainSafe/chainbridge-solidity/releases/tag/v1.0.0 except for 
-         one small change to the imported Pausable and SafeMath contracts. We replaced local implementations with 
-         openzeppelin/contracts versions.
     @author ChainSafe Systems.
  */
 contract Bridge is Pausable, AccessControl {
