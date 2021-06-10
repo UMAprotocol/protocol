@@ -2,7 +2,6 @@
 import type { AppState } from "..";
 import uma from "@uma/sdk";
 import { calcGcr } from "./utils";
-import assert from "assert";
 import bluebird from "bluebird";
 
 type Dependencies = Pick<AppState, "erc20s" | "emps">;
@@ -16,10 +15,10 @@ export default (appState: Dependencies) => {
   }
   // joins emp with token state and gcr
   async function getFullEmpState(empState: uma.tables.emps.Data) {
-    assert(empState.tokenCurrency, "requires tokenCurrency");
-    assert(empState.collateralCurrency, "requires collateralCurrency");
-    const token = await appState.erc20s.get(empState.tokenCurrency);
-    const collateral = await appState.erc20s.get(empState.collateralCurrency);
+    const token = empState.tokenCurrency ? await appState.erc20s.get(empState.tokenCurrency).catch(() => null) : null;
+    const collateral = empState.collateralCurrency
+      ? await appState.erc20s.get(empState.collateralCurrency).catch(() => null)
+      : null;
 
     const state = {
       ...empState,
@@ -28,7 +27,12 @@ export default (appState: Dependencies) => {
       tokenName: token?.name,
       collateralName: collateral?.name,
     };
-    const gcr = calcGcr(state).toString();
+    let gcr = "0";
+    try {
+      gcr = calcGcr(state).toString();
+    } catch (err) {
+      // nothing
+    }
     return {
       ...state,
       gcr,

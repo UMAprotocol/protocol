@@ -11,7 +11,7 @@ type Config = undefined;
 
 export function Handlers(config: Config, appState: Dependencies): Actions {
   const queries = Queries(appState);
-  const { registeredEmps, erc20s, collateralAddresses, syntheticAddresses, prices, synthPrices } = appState;
+  const { registeredEmps, erc20s, collateralAddresses, syntheticAddresses, prices, synthPrices,stats  } = appState;
 
   const actions: Actions = {
     echo(...args: Json[]) {
@@ -88,6 +88,17 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       const results = await prices[currency].history[address].sliceByTimestamp(start, length);
       // convert this to tuple to save bytes.
       return results.map(({ price, timestamp }) => [timestamp, price]);
+    },
+    async getEmpStats(address: string, currency: CurrencySymbol = "usd") {
+      assert(address, "requires address");
+      assert(currency, "requires currency");
+      assert(stats[currency], "No stats for currency: " + currency);
+      return stats[currency].latest.get(address);
+    },
+    async listEmpStats(currency: CurrencySymbol = "usd") {
+      assert(currency, "requires currency");
+      assert(stats[currency], "No stats for currency: " + currency);
+      return stats[currency].latest.values();
     },
   };
 
