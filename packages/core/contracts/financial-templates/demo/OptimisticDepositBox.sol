@@ -175,8 +175,9 @@ contract OptimisticDepositBox is Testable, Lockable {
     }
 
     /**
-     * @notice After a withdrawal request (i.e., by a call to `requestWithdrawal`) and optimistic oracle price resolution,
-     * withdraws `depositBoxData.withdrawalRequestAmount` of collateral currency denominated in the quote asset.
+     * @notice After a withdrawal request (i.e., by a call to `requestWithdrawal`) and optimistic oracle
+     * price resolution, withdraws `depositBoxData.withdrawalRequestAmount` of collateral currency
+     * denominated in the quote asset.
      * @dev Might not withdraw the full requested amount in order to account for precision loss.
      * @return amountWithdrawn The actual amount of collateral withdrawn.
      */
@@ -196,11 +197,9 @@ contract OptimisticDepositBox is Testable, Lockable {
         // Example 2: User wants to withdraw $2500 of ETH, exchange rate is $2000/ETH, therefore user to receive 1.25 ETH.
         uint256 denominatedAmountToWithdraw = depositBoxData.withdrawalRequestAmount.div(exchangeRate);
 
-        // If withdrawal request amount is > collateral, then withdraw the full collateral amount and delete the deposit box data.
+        // If withdrawal request amount is > collateral, then withdraw the full collateral amount.
         if (denominatedAmountToWithdraw > depositBoxData.collateral) {
             denominatedAmountToWithdraw = depositBoxData.collateral;
-
-            // Reset the position state as all the value has been removed after settlement.
             emit EndedOptimisticDepositBox(msg.sender);
         }
 
@@ -236,7 +235,7 @@ contract OptimisticDepositBox is Testable, Lockable {
             depositBoxData.withdrawalRequestTimestamp
         );
 
-        // Reset withdrawal request by setting withdrawal request timestamp to 0.
+        // Reset withdrawal request by setting withdrawal request timestamp and withdrawal amount to 0.
         _resetWithdrawalRequest(depositBoxData);
     }
 
@@ -253,10 +252,10 @@ contract OptimisticDepositBox is Testable, Lockable {
      *          INTERNAL FUNCTIONS          *
      ****************************************/
 
-    // Requests a price for `priceIdentifier` at `requestedTime` from the Oracle.
+    // Requests a price for `priceIdentifier` at `requestedTime` from the Optimistic Oracle.
     function _requestOraclePrice(uint256 requestedTime) internal {
         OptimisticOracleInterface oracle = _getOptimisticOracle();
-        // No ancillary data or reward
+        // For other use cases, you may need ancillary data or a reward. Here, they are both zero.
         oracle.requestPrice(priceIdentifier, requestedTime, "", IERC20(collateralCurrency), 0);
     }
 
@@ -281,7 +280,6 @@ contract OptimisticDepositBox is Testable, Lockable {
             "Unresolved oracle price"
         );
         int256 oraclePrice = oracle.settleAndGetPrice(priceIdentifier, withdrawalRequestTimestamp, "");
-        // int256 oraclePrice = 2000;
 
         // For simplicity we don't want to deal with negative prices.
         if (oraclePrice < 0) {
