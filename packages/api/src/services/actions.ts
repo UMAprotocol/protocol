@@ -1,29 +1,35 @@
 import assert from "assert";
 import * as uma from "@uma/sdk";
 import { Json, Actions, Libs, CurrencySymbol, PriceSample } from "..";
+import Queries from "../libs/queries";
 
 const { exists } = uma.utils;
 
 export function Handlers(config: Json, libs: Libs): Actions {
+  const queries = Queries(libs);
+
   const actions: Actions = {
     echo(...args: Json[]) {
       return args;
     },
     listEmpAddresses() {
-      return [...libs.registeredEmps.values()];
+      return Array.from(libs.registeredEmps.values());
     },
     lastBlock() {
       return libs.lastBlock;
     },
-    async listActiveEmps() {
-      return libs.emps.active.values();
+    listActiveEmps: queries.listActiveEmps,
+    listExpiredEmps: queries.listExpiredEmps,
+    async getEmpState(address: string) {
+      assert(await libs.registeredEmps.has(address), "Not a valid emp address: " + address);
+      const state = await queries.getAnyEmp(address);
+      return queries.getFullEmpState(state);
     },
-    async listExpiredEmps() {
-      return libs.emps.expired.values();
+    async getErc20Info(address: string) {
+      return libs.erc20s.get(address);
     },
-    async sliceBlocks(start = -1, end?: number) {
-      const blocks = await libs.blocks.values();
-      return blocks.slice(start, end);
+    async allErc20Info() {
+      return libs.erc20s.values();
     },
     async collateralAddresses() {
       return Array.from(libs.collateralAddresses.values());

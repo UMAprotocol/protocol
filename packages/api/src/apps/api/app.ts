@@ -33,6 +33,7 @@ async function run(env: ProcessEnv) {
         history: {},
       },
     },
+    erc20s: tables.erc20s.JsMap(),
     lastBlock: 0,
     lastBlockUpdate: 0,
     registeredEmps: new Set<string>(),
@@ -45,6 +46,7 @@ async function run(env: ProcessEnv) {
     emps: Services.Emps({}, libs),
     registry: Services.Registry({}, libs),
     prices: Services.Prices({}, libs),
+    erc20s: Services.Erc20s({}, libs),
   };
 
   // services consuming data
@@ -55,6 +57,8 @@ async function run(env: ProcessEnv) {
   console.log("Got all emp addresses");
   await services.emps();
   console.log("Updated emp state");
+  await services.erc20s.update();
+  console.log("Updated tokens");
   await services.prices.update();
   console.log("Updated prices");
 
@@ -69,6 +73,7 @@ async function run(env: ProcessEnv) {
       services.registry(libs.lastBlock, blockNumber).catch(console.error);
       services.emps(libs.lastBlock, blockNumber).catch(console.error);
       libs.lastBlockUpdate = blockNumber;
+      services.erc20s.update().catch(console.error);
     }
     libs.lastBlock = blockNumber;
     services.blocks.cleanBlocks(oldestBlock).catch(console.error);

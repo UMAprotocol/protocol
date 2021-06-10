@@ -88,3 +88,11 @@ This is useful for charting betwen two dates.
 
 Get a range of historical prices between start and count of price samples, sorted by timestamp ascending, from an erc20 token address.
 This is useful for paginating data when you have X elements per page, and you know the last element seen.
+
+### getErc20Info(address:string) => Erc20Data
+
+Get name, decimals of an erc20 by address.
+
+### getAllErc20Info() => Erc20Data[]
+
+List all known erc20s, collateral or synthetic and all known information about them

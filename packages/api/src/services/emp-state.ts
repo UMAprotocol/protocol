@@ -1,10 +1,9 @@
-import assert from "assert";
 import * as uma from "@uma/sdk";
 import Promise from "bluebird";
 const { emp } = uma.clients;
 import { BigNumber, utils } from "ethers";
 const { parseBytes32String } = utils;
-import { asyncValues, calcGcr } from "../libs/utils";
+import { asyncValues } from "../libs/utils";
 import { Json, Libs } from "..";
 
 type Instance = uma.clients.emp.Instance;
@@ -82,15 +81,7 @@ export default (config: Json, libs: Libs) => {
         .cumulativeFeeMultiplier()
         .then((x: BigNumber) => x.toString())
         .catch(() => null),
-      tokenDecimals: null,
-      collateralDecimals: null,
     });
-    if (state.tokenCurrency) {
-      state.tokenDecimals = await instance._getSyntheticDecimals(state.tokenCurrency).catch(() => null);
-    }
-    if (state.collateralCurrency) {
-      state.collateralDecimals = await instance._getSyntheticDecimals(state.collateralCurrency).catch(() => null);
-    }
     return state;
   }
 
@@ -140,15 +131,6 @@ export default (config: Json, libs: Libs) => {
       }
       // add any new sponsors
       await emps.active.addSponsors(address, eventState.sponsors || []);
-      // calculate gcr with current state
-      let gcr = null;
-      try {
-        gcr = calcGcr(currentState).toString();
-      } catch (err) {
-        // ignore
-      }
-      // update gcr
-      await emps.active.update(address, { gcr });
     }
   }
 

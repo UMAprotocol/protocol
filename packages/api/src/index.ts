@@ -1,4 +1,4 @@
-import type * as uma from "@uma/sdk";
+import uma from "@uma/sdk";
 import { ethers } from "ethers";
 export type { BigNumber } from "ethers";
 export type Provider = ethers.providers.Provider;
@@ -35,6 +35,7 @@ export type Libs = {
       };
     };
   };
+  erc20s: uma.tables.erc20s.JsMap;
   registeredEmps: Set<string>;
   provider: Provider;
   lastBlock: number;
