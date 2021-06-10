@@ -248,8 +248,17 @@ contract ContractForDifference is Testable, Lockable {
         emit ContractExpired(msg.sender);
     }
 
-    // TODO: add additional state fetching methods. for example a method to return the long and short tokens owned
-    // by a given address.
+    /****************************************
+     *      GLOBAL ACCESSORS FUNCTIONS      *
+     ****************************************/
+    /**
+     * @notice Returns the number of long and short tokens a sponsor wallet holds.
+     * @param sponsor address of the sponsor to query.
+     * @return [uint256, uint256]. First is long tokens held by sponsor and second is short tokens held by sponsor.
+     */
+    function getPositionTokensForAddress(address sponsor) public view returns (uint256, uint256) {
+        return (longToken.balanceOf(sponsor), shortToken.balanceOf(sponsor));
+    }
 
     /****************************************
      *          INTERNAL FUNCTIONS          *
