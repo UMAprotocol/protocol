@@ -123,7 +123,7 @@ contract ContractForDifference is Testable, Lockable {
         address _timerAddress
     ) Testable(_timerAddress) {
         finder = _finderAddress;
-        require(_expirationTimestamp > getCurrentTime(), "Expiration time stamp in past");
+        require(_expirationTimestamp > getCurrentTime(), "Expiration timestamp in past");
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Identifier not registered");
         require(address(_getOptimisticOracle()) != address(0), "Invalid finder");
         require(address(_financialProductLibraryAddress) != address(0), "Invalid FinancialProductLibrary");
