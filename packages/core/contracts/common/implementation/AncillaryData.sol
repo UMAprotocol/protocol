@@ -74,20 +74,33 @@ library AncillaryData {
         bytes memory key,
         address value
     ) internal pure returns (bytes memory) {
-        bytes memory prefix = _appendKeyValue(currentAncillaryData, key);
+        bytes memory prefix = _appendKey(currentAncillaryData, key);
         return abi.encodePacked(currentAncillaryData, prefix, toUtf8BytesAddress(value));
     }
 
+    /**
+     * @notice Adds "key:value" to `currentAncillaryData` where `value` is a uint that first needs to be converted
+     * to utf8 bytes. For example, if `utf8(currentAncillaryData)="k1:v1"`, then this function will return
+     * `utf8(k1:v1,key:value)`, and if `currentAncillaryData` is blank, then this will return `utf8(key:value)`.
+     * @param currentAncillaryData This bytes data should ideally be able to be utf8-decoded, but its OK if not.
+     * @param key Again, this bytes data should ideally be able to be utf8-decoded, but its OK if not.
+     * @param value A uint to set as the value in the key:value pair to append to `currentAncillaryData`.
+     * @return Newly appended ancillary data.
+     */
     function appendKeyValueUint(
         bytes memory currentAncillaryData,
         bytes memory key,
         uint256 value
     ) internal pure returns (bytes memory) {
-        bytes memory prefix = _appendKeyValue(currentAncillaryData, key);
+        bytes memory prefix = _appendKey(currentAncillaryData, key);
         return abi.encodePacked(currentAncillaryData, prefix, toUtf8BytesUint(value));
     }
 
-    function _appendKeyValue(bytes memory currentAncillaryData, bytes memory key) internal pure returns (bytes memory) {
+    /**
+     * @notice Helper method that returns the LHS of a "key:value" pair plus the colon ":" and a leading comma "," if
+     * the ancillary data to append to is not empty.
+     */
+    function _appendKey(bytes memory currentAncillaryData, bytes memory key) internal pure returns (bytes memory) {
         if (currentAncillaryData.length > 0) {
             return abi.encodePacked(",", key, ":");
         } else {

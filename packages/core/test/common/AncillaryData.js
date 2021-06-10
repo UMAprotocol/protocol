@@ -23,13 +23,34 @@ contract("AncillaryData", function () {
     assert.equal(utf8EncodedUint, utf8ToHex("31337"));
   });
 
+  it("_appendKey", async function () {
+    const keyName = utf8ToHex("key");
+    let originalAncillaryData;
+
+    // Test 1: ancillary data is empty
+    originalAncillaryData = "0x";
+    assert.equal(
+      await ancillaryDataTest.appendKey(originalAncillaryData, keyName),
+      utf8ToHex("key:"),
+      "Should return key: with no leading comma"
+    );
+
+    // Test 2: ancillary data is not empty
+    originalAncillaryData = "0xab";
+    assert.equal(
+      await ancillaryDataTest.appendKey(originalAncillaryData, keyName),
+      utf8ToHex(",key:"),
+      "Should return key: with leading comma"
+    );
+  });
+
   it("appendKeyValueAddress", async function () {
     let originalAncillaryData, appendedAncillaryData;
     const keyName = utf8ToHex("address");
     const value = ancillaryDataTest.address;
     const keyValueLengthBytes = 9 + 40; // "," + "address:" + <address> = 1 + 8 + 49 bytes.
 
-    // Test 1: ancillary data is utf8 decodable:
+    // Test 1: append AFTER ancillary data:
     originalAncillaryData = utf8ToHex("key:value");
     assert.equal(
       await ancillaryDataTest.appendKeyValueAddress(originalAncillaryData, keyName, value),
@@ -37,15 +58,7 @@ contract("AncillaryData", function () {
       "Should append key:valueAddress to original ancillary data"
     );
 
-    // Test 2: ancillary data is empty:
-    originalAncillaryData = "0x";
-    assert.equal(
-      await ancillaryDataTest.appendKeyValueAddress(originalAncillaryData, keyName, value),
-      utf8ToHex(`address:${value.substr(2).toLowerCase()}`),
-      "Should set key:valueAddress as ancillary data with no leading comma"
-    );
-
-    // Test 3: ancillary data is not utf8 decodeable:
+    // Test 2: ancillary data is not utf8 decodeable:
     originalAncillaryData = "0xab";
     appendedAncillaryData = await ancillaryDataTest.appendKeyValueAddress(originalAncillaryData, keyName, value);
     assert.equal(
@@ -54,7 +67,7 @@ contract("AncillaryData", function () {
       "Should be able to decode appended ancillary data after stripping out non-utf8 decodeable component"
     );
 
-    // Test 4: ancillary data is utf8 decodeable but not key:value syntax:
+    // Test 3: ancillary data is utf8 decodeable but not key:value syntax:
     originalAncillaryData = utf8ToHex("ignore this syntax");
     assert.equal(
       await ancillaryDataTest.appendKeyValueAddress(originalAncillaryData, keyName, value),
@@ -63,43 +76,34 @@ contract("AncillaryData", function () {
     );
   });
   it("appendKeyValueUint", async function () {
-    // Test 1: Normal ancillary data
     let originalAncillaryData = utf8ToHex("key:value");
+    let appendedAncillaryData;
     const keyName = utf8ToHex("chainId");
     const value = "31337";
+    const keyValueLengthBytes = 9 + value.length; // "," + "chainId:" + "31337" = 1 + 8 + 5 = 14 bytes.
 
+    // Test 1: append AFTER ancillary data:
     assert.equal(
       await ancillaryDataTest.appendKeyValueUint(originalAncillaryData, keyName, value),
       utf8ToHex("key:value,chainId:31337"),
       "Should append chainId:<chainId> to original ancillary data"
     );
 
-    // Test 2: Appended to address key
-    let appendedAddressAncillaryData = await ancillaryDataTest.appendKeyValueAddress(
-      originalAncillaryData,
-      utf8ToHex("address"),
-      ancillaryDataTest.address
-    );
+    // Test 2: ancillary data is not utf8 decodeable:
+    originalAncillaryData = "0xab";
+    appendedAncillaryData = await ancillaryDataTest.appendKeyValueUint(originalAncillaryData, keyName, value);
     assert.equal(
-      await ancillaryDataTest.appendKeyValueUint(appendedAddressAncillaryData, keyName, value),
-      utf8ToHex(`key:value,address:${ancillaryDataTest.address.substr(2).toLowerCase()},chainId:31337`),
-      "Should append chainId:<chainId> to address-appended ancillary data"
+      "0x" + appendedAncillaryData.substr(appendedAncillaryData.length - keyValueLengthBytes * 2),
+      utf8ToHex(`,chainId:${value}`),
+      "Should be able to decode appended ancillary data after stripping out non-utf8 decodeable component"
     );
 
-    // Test 3: added after address key
-    let appendedChainIdAncillaryData = await ancillaryDataTest.appendKeyValueUint(
-      originalAncillaryData,
-      keyName,
-      value
-    );
+    // Test 3: ancillary data is utf8 decodeable but not key:value syntax:
+    originalAncillaryData = utf8ToHex("ignore this syntax");
     assert.equal(
-      await ancillaryDataTest.appendKeyValueAddress(
-        appendedChainIdAncillaryData,
-        utf8ToHex("address"),
-        ancillaryDataTest.address
-      ),
-      utf8ToHex(`key:value,chainId:31337,address:${ancillaryDataTest.address.substr(2).toLowerCase()}`),
-      "Should append address key after chainId:<chainId>"
+      await ancillaryDataTest.appendKeyValueUint(originalAncillaryData, keyName, value),
+      utf8ToHex(`ignore this syntax,chainId:${value}`),
+      "Should be able to utf8-decode the entire ancillary data"
     );
   });
 });

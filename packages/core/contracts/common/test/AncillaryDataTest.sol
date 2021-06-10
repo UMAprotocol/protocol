@@ -27,4 +27,8 @@ contract AncillaryDataTest {
     ) external pure returns (bytes memory) {
         return AncillaryData.appendKeyValueUint(currentAncillaryData, key, value);
     }
+
+    function appendKey(bytes memory currentAncillaryData, bytes memory key) external pure returns (bytes memory) {
+        return AncillaryData._appendKey(currentAncillaryData, key);
+    }
 }
