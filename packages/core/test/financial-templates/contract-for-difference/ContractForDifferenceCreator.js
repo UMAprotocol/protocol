@@ -38,6 +38,7 @@ const priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
 const collateralPerPair = toWei("1"); // each pair of long and short tokens need 1 unit of collateral to mint.
 const syntheticName = "Test CFD";
 const syntheticSymbol = "tCFD";
+const ancillaryData = web3.utils.utf8ToHex("some-address-field:0x1234");
 
 contract("ContractForDifferenceCreator", function (accounts) {
   const deployer = accounts[0];
@@ -84,6 +85,7 @@ contract("ContractForDifferenceCreator", function (accounts) {
       syntheticSymbol,
       collateralAddress: collateralToken.address,
       financialProductLibraryAddress: contractForDifferenceLibrary.address,
+      ancillaryData,
     };
   });
 
@@ -108,6 +110,7 @@ contract("ContractForDifferenceCreator", function (accounts) {
     assert.equal((await cfd.collateralPerPair()).toString(), collateralPerPair.toString());
     assert.equal(hexToUtf8(await cfd.priceIdentifier()), hexToUtf8(priceFeedIdentifier));
     assert.equal(await cfd.collateralToken(), collateralToken.address);
+    assert.equal(await cfd.customAncillaryData(), ancillaryData);
 
     // Validate token information and permissions are set correctly.
     const longToken = await Token.at(await cfd.longToken());
