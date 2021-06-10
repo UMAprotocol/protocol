@@ -237,7 +237,6 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
     // Off-chain bridge picks up StateSynced event and forwards to Child receiver on Polygon.
     txn = await fxChild.onStateReceive(expectedStateId, expectedFxChildData, { from: systemSuperUser });
     internalTxn = await TruffleAssert.createTransactionResult(governorChild, txn.tx);
-    console.log(internalTxn.logs[0].returnValues, erc20.address.toLowerCase(), innerTransactionCalldata);
     TruffleAssert.eventEmitted(
       internalTxn,
       "ExecutedGovernanceTransaction",
