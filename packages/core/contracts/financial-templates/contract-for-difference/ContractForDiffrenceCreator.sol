@@ -14,34 +14,34 @@ import "./ContractForDifference.sol";
 import "../common/financial-product-libraries/contract-for-difference-libraries/ContractForDifferenceFinancialProductLibrary.sol";
 
 /**
- * @title Contract For Difference Contract creator.
+ * @title Contract For Difference Contract Creator.
  * @notice Factory contract to create and register new instances of contract for difference contracts.
- * Responsible for constraining the parameters used to construct a new CFD. These constraints can evolve over time and are
- * initially constrained to conservative values in this first iteration.
+ * Responsible for constraining the parameters used to construct a new CFD. These constraints can evolve over time and
+ * are initially constrained to conservative values in this first iteration.
  */
 contract ContractForDifferenceCreator is Testable, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
 
     // Address of TokenFactory used to create a new synthetic token.
-    address public tokenFactoryAddress;
+    TokenFactory public tokenFactory;
 
-    address public finderAddress;
+    FinderInterface public finderAddress;
 
     event CreatedContractForDifference(address indexed contractForDifference, address indexed deployerAddress);
 
     /**
      * @notice Constructs the ContractForDifferenceCreator contract.
-     * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
-     * @param _tokenFactoryAddress ERC20 token factory used to deploy synthetic token instances.
-     * @param _timerAddress Contract that stores the current time in a testing environment.
+     * @param _finder UMA protocol Finder used to discover other protocol contracts.
+     * @param _tokenFactory ERC20 token factory used to deploy synthetic token instances.
+     * @param _timer Contract that stores the current time in a testing environment.
      */
     constructor(
-        address _finderAddress,
-        address _tokenFactoryAddress,
-        address _timerAddress
-    ) Testable(_timerAddress) nonReentrant() {
-        tokenFactoryAddress = _tokenFactoryAddress;
-        finderAddress = _finderAddress;
+        FinderInterface _finder,
+        TokenFactory _tokenFactory,
+        address _timer
+    ) Testable(_timer) nonReentrant() {
+        tokenFactory = _tokenFactory;
+        finderAddress = _finder;
     }
 
     /**
@@ -52,8 +52,8 @@ contract ContractForDifferenceCreator is Testable, Lockable {
      *     to the end and the short token will "Short Token" appended to the end to distinguish within the CFD's tokens.
      * @param syntheticSymbol Symbol of the synthetic tokens to be created. The long tokens will have "l" appended
      *     to the start and the short token will "s" appended to the start to distinguish within the CFD's tokens.
-     * @param collateralAddress ERC20 token used as as collateral in the CFD.
-     * @param financialProductLibraryAddress Contract providing settlement payout logic.
+     * @param collateralToken ERC20 token used as as collateral in the CFD.
+     * @param financialProductLibrary Contract providing settlement payout logic.
      * @param customAncillaryData Custom ancillary data to be passed along with the price request. If not needed, this
      *                             should be left as a 0-length bytes array.
      * @notice The created CFD is NOT registered within the registry as the CFD contract uses the DVM.
@@ -65,26 +65,25 @@ contract ContractForDifferenceCreator is Testable, Lockable {
         bytes32 priceIdentifier,
         string memory syntheticName,
         string memory syntheticSymbol,
-        address collateralAddress,
-        address financialProductLibraryAddress,
+        IERC20Standard collateralToken,
+        address financialProductLibrary,
         bytes memory customAncillaryData
     ) public nonReentrant() returns (address) {
         // Create a new synthetic token using the params.
         require(bytes(syntheticName).length != 0, "Missing synthetic name");
         require(bytes(syntheticSymbol).length != 0, "Missing synthetic symbol");
-        TokenFactory tf = TokenFactory(tokenFactoryAddress);
 
         // If the collateral token does not have a `decimals()` method, then a default precision of 18 will be
         // applied to the newly created synthetic token.
-        uint8 collateralDecimals = _getSyntheticDecimals(collateralAddress);
+        uint8 collateralDecimals = _getSyntheticDecimals(collateralToken);
         ExpandedIERC20 longToken =
-            tf.createToken(
+            tokenFactory.createToken(
                 string(abi.encodePacked(syntheticName, " Long Token")),
                 string(abi.encodePacked("l", syntheticSymbol)),
                 collateralDecimals
             );
         ExpandedIERC20 shortToken =
-            tf.createToken(
+            tokenFactory.createToken(
                 string(abi.encodePacked(syntheticName, " Short Token")),
                 string(abi.encodePacked("s", syntheticSymbol)),
                 collateralDecimals
@@ -96,9 +95,9 @@ contract ContractForDifferenceCreator is Testable, Lockable {
                 priceIdentifier,
                 longToken,
                 shortToken,
-                IERC20Standard(collateralAddress),
+                collateralToken,
                 FinderInterface(finderAddress),
-                ContractForDifferenceFinancialProductLibrary(financialProductLibraryAddress),
+                ContractForDifferenceFinancialProductLibrary(financialProductLibrary),
                 customAncillaryData,
                 timerAddress
             );
@@ -126,8 +125,8 @@ contract ContractForDifferenceCreator is Testable, Lockable {
     // IERC20Standard.decimals() will revert if the collateral contract has not implemented the decimals() method,
     // which is possible since the method is only an OPTIONAL method in the ERC20 standard:
     // https://eips.ethereum.org/EIPS/eip-20#methods.
-    function _getSyntheticDecimals(address _collateralAddress) public view returns (uint8 decimals) {
-        try IERC20Standard(_collateralAddress).decimals() returns (uint8 _decimals) {
+    function _getSyntheticDecimals(IERC20Standard _collateralToken) public view returns (uint8 decimals) {
+        try _collateralToken.decimals() returns (uint8 _decimals) {
             return _decimals;
         } catch {
             return 18;

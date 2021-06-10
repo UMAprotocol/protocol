@@ -66,19 +66,19 @@ contract("LinearContractForDifferenceFinancialProductLibrary", function () {
       await linearCFDFPL.setContractForDifferenceParameters(expiringContractMock.address, upperBound, lowerBound);
     });
     it("Lower than lower bound should return 0", async () => {
-      const expiraryTokensForCollateral = await linearCFDFPL.computeExpiraryTokensForCollateral.call(toWei("900"), {
+      const expiraryTokensForCollateral = await linearCFDFPL.computeExpiryTokensForCollateral.call(toWei("900"), {
         from: expiringContractMock.address,
       });
       assert.equal(expiraryTokensForCollateral.toString(), toWei("0"));
     });
     it("Higher than upper bound should return 1", async () => {
-      const expiraryTokensForCollateral = await linearCFDFPL.computeExpiraryTokensForCollateral.call(toWei("2100"), {
+      const expiraryTokensForCollateral = await linearCFDFPL.computeExpiryTokensForCollateral.call(toWei("2100"), {
         from: expiringContractMock.address,
       });
       assert.equal(expiraryTokensForCollateral.toString(), toWei("1"));
     });
     it("Midway between bounds should return 0.5", async () => {
-      const expiraryTokensForCollateral = await linearCFDFPL.computeExpiraryTokensForCollateral.call(toWei("1500"), {
+      const expiraryTokensForCollateral = await linearCFDFPL.computeExpiryTokensForCollateral.call(toWei("1500"), {
         from: expiringContractMock.address,
       });
       assert.equal(expiraryTokensForCollateral.toString(), toWei("0.5"));
@@ -86,7 +86,7 @@ contract("LinearContractForDifferenceFinancialProductLibrary", function () {
 
     it("Arbitary price between bounds should return correctly", async () => {
       for (const price of [toWei("1000"), toWei("1200"), toWei("1400"), toWei("1600"), toWei("1800"), toWei("2000")]) {
-        const expiraryTokensForCollateral = await linearCFDFPL.computeExpiraryTokensForCollateral.call(price, {
+        const expiraryTokensForCollateral = await linearCFDFPL.computeExpiryTokensForCollateral.call(price, {
           from: expiringContractMock.address,
         });
         const numerator = toBN(price).sub(toBN(lowerBound));

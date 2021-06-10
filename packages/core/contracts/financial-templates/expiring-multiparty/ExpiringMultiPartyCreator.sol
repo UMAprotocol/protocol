@@ -111,7 +111,7 @@ contract ExpiringMultiPartyCreator is ContractCreator, Testable, Lockable {
         require(params.expirationTimestamp > block.timestamp, "Invalid expiration time");
         _requireWhitelistedCollateral(params.collateralAddress);
 
-        // We don't want EMP deployers to be able to intentionally or unintentionally set
+        // We don't want EMP deployer's to be able to intentionally or unintentionally set
         // liveness periods that could induce arithmetic overflow, but we also don't want
         // to be opinionated about what livenesses are "correct", so we will somewhat
         // arbitrarily set the liveness upper bound to 100 years (5200 weeks). In practice, liveness

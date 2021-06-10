@@ -2,8 +2,8 @@ const { didContractThrow, ZERO_ADDRESS } = require("@uma/common");
 const { assert } = require("chai");
 
 // Tested Contract
-const CallOptionContractForDifferenceFinancialProductLibrary = artifacts.require(
-  "CallOptionContractForDifferenceFinancialProductLibrary"
+const CoveredCallContractForDifferenceFinancialProductLibrary = artifacts.require(
+  "CoveredCallContractForDifferenceFinancialProductLibrary"
 );
 
 // helper contracts. To test CFD libraries we simply need a financial contract with an `expirationTimestamp` method.
@@ -13,12 +13,12 @@ const ExpiringContractMock = artifacts.require("ExpiringMultiPartyMock");
 const { toWei, toBN, utf8ToHex } = web3.utils;
 const strikePrice = toWei("400");
 
-contract("CallOptionContractForDifferenceFinancialProductLibrary", function () {
+contract("CoveredCallContractForDifferenceFinancialProductLibrary", function () {
   let callOptionCFDFPL;
   let expiringContractMock;
 
   beforeEach(async () => {
-    callOptionCFDFPL = await CallOptionContractForDifferenceFinancialProductLibrary.new();
+    callOptionCFDFPL = await CoveredCallContractForDifferenceFinancialProductLibrary.new();
     expiringContractMock = await ExpiringContractMock.new(
       ZERO_ADDRESS, // _financialProductLibraryAddress
       "1000000", // _expirationTimestamp
@@ -54,20 +54,20 @@ contract("CallOptionContractForDifferenceFinancialProductLibrary", function () {
       await callOptionCFDFPL.setContractForDifferenceParameters(expiringContractMock.address, strikePrice);
     });
     it("Lower than strike should return 0", async () => {
-      const expiraryTokensForCollateral = await callOptionCFDFPL.computeExpiraryTokensForCollateral.call(toWei("300"), {
+      const expiraryTokensForCollateral = await callOptionCFDFPL.computeExpiryTokensForCollateral.call(toWei("300"), {
         from: expiringContractMock.address,
       });
       assert.equal(expiraryTokensForCollateral.toString(), toWei("0"));
     });
     it("Higher than strike correct value", async () => {
-      const expiraryTokensForCollateral = await callOptionCFDFPL.computeExpiraryTokensForCollateral.call(toWei("500"), {
+      const expiraryTokensForCollateral = await callOptionCFDFPL.computeExpiryTokensForCollateral.call(toWei("500"), {
         from: expiringContractMock.address,
       });
       assert.equal(expiraryTokensForCollateral.toString(), toWei("0.2"));
     });
     it("Arbitary expirary price above strike should return correctly", async () => {
       for (const price of [toWei("500"), toWei("600"), toWei("1000"), toWei("1500"), toWei("2000")]) {
-        const expiraryTokensForCollateral = await callOptionCFDFPL.computeExpiraryTokensForCollateral.call(price, {
+        const expiraryTokensForCollateral = await callOptionCFDFPL.computeExpiryTokensForCollateral.call(price, {
           from: expiringContractMock.address,
         });
         const expectedPrice = toBN(price)
@@ -79,7 +79,7 @@ contract("CallOptionContractForDifferenceFinancialProductLibrary", function () {
     });
     it("Should never return a value greater than 1", async () => {
       // create a massive expiry price. 1e18*1e18. Under all conditions should return less than 1.
-      const expiraryTokensForCollateral = await callOptionCFDFPL.computeExpiraryTokensForCollateral.call(
+      const expiraryTokensForCollateral = await callOptionCFDFPL.computeExpiryTokensForCollateral.call(
         toWei(toWei("1")),
         { from: expiringContractMock.address }
       );

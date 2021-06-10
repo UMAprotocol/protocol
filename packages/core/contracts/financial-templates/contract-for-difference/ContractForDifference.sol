@@ -45,7 +45,6 @@ contract ContractForDifference is Testable, Lockable {
     uint256 public collateralPerPair;
 
     // Price returned from the Optimistic oracle at settlement time.
-    // TODO: should this variable be stored?
     int256 public expiryPrice;
 
     // number between 0 and 1e18 representing how much collateral long & short tokens are redeemable for. 0 makes each
@@ -102,10 +101,11 @@ contract ContractForDifference is Testable, Lockable {
      * @param _expirationTimestamp unix timestamp of when the contract will expire.
      * @param _collateralPerPair how many units of collateral are required to mint one pair of synthetic tokens.
      * @param _priceIdentifier registered in the DVM for the synthetic.
-     * @param _longTokenAddress ERC20 token used as long in the CFD. Requires mint and burn needed by this contract.
-     * @param _shortTokenAddress ERC20 token used as short in the CFD. Mint and burn rights needed by this contract.
-     * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
-     * @param _financialProductLibraryAddress Contract providing settlement payout logic.
+     * @param _longToken ERC20 token used as long in the CFD. Requires mint and burn needed by this contract.
+     * @param _shortToken ERC20 token used as short in the CFD. Mint and burn rights needed by this contract.
+     * @param _collateralToken ERC20 token used as collateral in the CFD.
+     * @param _finder UMA protocol Finder used to discover other protocol contracts.
+     * @param _financialProductLibrary Contract providing settlement payout logic.
      * @param _customAncillaryData Custom ancillary data to be passed along with the price request. If not needed, this
      *                             should be left as a 0-length bytes array.
      * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 in production.
@@ -114,30 +114,30 @@ contract ContractForDifference is Testable, Lockable {
         uint64 _expirationTimestamp,
         uint256 _collateralPerPair,
         bytes32 _priceIdentifier,
-        ExpandedIERC20 _longTokenAddress,
-        ExpandedIERC20 _shortTokenAddress,
-        IERC20 _collateralAddress,
-        FinderInterface _finderAddress,
-        ContractForDifferenceFinancialProductLibrary _financialProductLibraryAddress,
+        ExpandedIERC20 _longToken,
+        ExpandedIERC20 _shortToken,
+        IERC20 _collateralToken,
+        FinderInterface _finder,
+        ContractForDifferenceFinancialProductLibrary _financialProductLibrary,
         bytes memory _customAncillaryData,
         address _timerAddress
     ) Testable(_timerAddress) {
-        finder = _finderAddress;
+        finder = _finder;
         require(_expirationTimestamp > getCurrentTime(), "Expiration timestamp in past");
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Identifier not registered");
         require(address(_getOptimisticOracle()) != address(0), "Invalid finder");
-        require(address(_financialProductLibraryAddress) != address(0), "Invalid FinancialProductLibrary");
-        require(_getAddressWhitelist().isOnWhitelist(address(_collateralAddress)), "Collateral not whitelisted");
+        require(address(_financialProductLibrary) != address(0), "Invalid FinancialProductLibrary");
+        require(_getAddressWhitelist().isOnWhitelist(address(_collateralToken)), "Collateral not whitelisted");
 
         expirationTimestamp = _expirationTimestamp;
         collateralPerPair = _collateralPerPair;
         priceIdentifier = _priceIdentifier;
 
-        longToken = _longTokenAddress;
-        shortToken = _shortTokenAddress;
-        collateralToken = _collateralAddress;
+        longToken = _longToken;
+        shortToken = _shortToken;
+        collateralToken = _collateralToken;
 
-        financialProductLibrary = _financialProductLibraryAddress;
+        financialProductLibrary = _financialProductLibrary;
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
         require(
             optimisticOracle.stampAncillaryData(_customAncillaryData, address(this)).length <=
@@ -207,7 +207,7 @@ contract ContractForDifference is Testable, Lockable {
             expiryPrice = _getOraclePriceExpiration(expirationTimestamp);
             // Cap the return value at 1.
             expiryPercentLong = Math.min(
-                financialProductLibrary.computeExpiraryTokensForCollateral(expiryPrice),
+                financialProductLibrary.computeExpiryTokensForCollateral(expiryPrice),
                 FixedPoint.fromUnscaledUint(1).rawValue
             );
             contractState = ContractState.ExpiredPriceReceived;
@@ -216,7 +216,7 @@ contract ContractForDifference is Testable, Lockable {
         longToken.burnFrom(msg.sender, longTokensToRedeem);
         shortToken.burnFrom(msg.sender, shortTokensToRedeem);
 
-        // expiraryTokensForCollateral is a number between 0 and 1e18. 0 means all collateral goes to short tokens and
+        // expiryPercentLong is a number between 0 and 1e18. 0 means all collateral goes to short tokens and
         // 1 means all collateral goes to the long token. Total collateral returned is the sum of payouts.
         uint256 longCollateralRedeemed =
             FixedPoint
