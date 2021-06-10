@@ -13,7 +13,7 @@ export function connect(address: string, provider: SignerOrProvider): Instance {
 export interface EventState {
   // any address that created a position, regardless of if they have closed it
   balances?: Balances;
-  // approvals are based on the same kind of kv structure as balances, so we can reuse this class
+  // approvals are keyed both ways here for ease of lookup by either owner or spender
   approvalsByOwner?: {
     [owner: string]: {
       [spender: string]: {
