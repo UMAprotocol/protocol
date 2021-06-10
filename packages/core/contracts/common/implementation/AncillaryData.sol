@@ -17,7 +17,7 @@ library AncillaryData {
      * @param x address to encode.
      * @return utf8 encoded address bytes.
      */
-    function toUtf8Bytes(address x) internal pure returns (bytes memory) {
+    function toUtf8BytesAddress(address x) internal pure returns (bytes memory) {
         bytes memory s = new bytes(40);
         for (uint256 i = 0; i < 20; i++) {
             bytes1 b = bytes1(uint8(uint256(uint160(x)) / (2**(8 * (19 - i)))));
@@ -32,5 +32,79 @@ library AncillaryData {
     function char(bytes1 b) internal pure returns (bytes1 c) {
         if (uint8(b) < 10) return bytes1(uint8(b) + 0x30);
         else return bytes1(uint8(b) + 0x57);
+    }
+
+    /**
+     * @notice Converts a uint into a base-10, UTF-8 representation stored in a `string` type.
+     * @dev This method is based off of this code: https://stackoverflow.com/a/65707309.
+     */
+    function toUtf8BytesUint(uint256 x) internal pure returns (bytes memory) {
+        if (x == 0) {
+            return "0";
+        }
+        uint256 j = x;
+        uint256 len;
+        while (j != 0) {
+            len++;
+            j /= 10;
+        }
+        bytes memory bstr = new bytes(len);
+        uint256 k = len;
+        while (x != 0) {
+            k = k - 1;
+            uint8 temp = (48 + uint8(x - (x / 10) * 10));
+            bytes1 b1 = bytes1(temp);
+            bstr[k] = b1;
+            x /= 10;
+        }
+        return bstr;
+    }
+
+    /**
+     * @notice Adds "key:value" to `currentAncillaryData` where `value` is an address that first needs to be converted
+     * to utf8 bytes. For example, if `utf8(currentAncillaryData)="k1:v1"`, then this function will return
+     * `utf8(k1:v1,key:value)`, and if `currentAncillaryData` is blank, then this will return `utf8(key:value)`.
+     * @param currentAncillaryData This bytes data should ideally be able to be utf8-decoded, but its OK if not.
+     * @param key Again, this bytes data should ideally be able to be utf8-decoded, but its OK if not.
+     * @param value An address to set as the value in the key:value pair to append to `currentAncillaryData`.
+     * @return Newly appended ancillary data.
+     */
+    function appendKeyValueAddress(
+        bytes memory currentAncillaryData,
+        bytes memory key,
+        address value
+    ) internal pure returns (bytes memory) {
+        bytes memory prefix = _appendKey(currentAncillaryData, key);
+        return abi.encodePacked(currentAncillaryData, prefix, toUtf8BytesAddress(value));
+    }
+
+    /**
+     * @notice Adds "key:value" to `currentAncillaryData` where `value` is a uint that first needs to be converted
+     * to utf8 bytes. For example, if `utf8(currentAncillaryData)="k1:v1"`, then this function will return
+     * `utf8(k1:v1,key:value)`, and if `currentAncillaryData` is blank, then this will return `utf8(key:value)`.
+     * @param currentAncillaryData This bytes data should ideally be able to be utf8-decoded, but its OK if not.
+     * @param key Again, this bytes data should ideally be able to be utf8-decoded, but its OK if not.
+     * @param value A uint to set as the value in the key:value pair to append to `currentAncillaryData`.
+     * @return Newly appended ancillary data.
+     */
+    function appendKeyValueUint(
+        bytes memory currentAncillaryData,
+        bytes memory key,
+        uint256 value
+    ) internal pure returns (bytes memory) {
+        bytes memory prefix = _appendKey(currentAncillaryData, key);
+        return abi.encodePacked(currentAncillaryData, prefix, toUtf8BytesUint(value));
+    }
+
+    /**
+     * @notice Helper method that returns the LHS of a "key:value" pair plus the colon ":" and a leading comma "," if
+     * the ancillary data to append to is not empty.
+     */
+    function _appendKey(bytes memory currentAncillaryData, bytes memory key) internal pure returns (bytes memory) {
+        if (currentAncillaryData.length > 0) {
+            return abi.encodePacked(",", key, ":");
+        } else {
+            return abi.encodePacked(key, ":");
+        }
     }
 }

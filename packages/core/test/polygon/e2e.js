@@ -81,7 +81,7 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
     await governorRoot.setFxChildTunnel(governorChild.address);
 
     expectedStampedAncillaryData = utf8ToHex(
-      `${hexToUtf8(testAncillaryData)},childTunnelRequester:${owner.substr(2).toLowerCase()}`
+      `${hexToUtf8(testAncillaryData)},childRequester:${owner.substr(2).toLowerCase()},childChainId:31337`
     );
   });
   it("request price from Polygon to Ethereum, resolve price from Ethereum to Polygon", async function () {
