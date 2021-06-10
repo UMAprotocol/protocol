@@ -1,10 +1,10 @@
-# Uma Api App
+# Uma API App
 
 This is the main application for ingesting data, formatting it and exposing it through restful endpoints.
 
 ## Environment
 
-Add these to a .env file in the root of the api folder.
+Add these to a .env file in the root of the `protocol/packages/api` folder.
 
 ```
 CUSTOM_NODE_URL=wss://mainnet.infura.io/ws/v3/${your project key}
@@ -26,12 +26,12 @@ or directly:
 ## Usage
 
 All queries can be made to `http:localhost:${EXPRESS_PORT}` through a POST.
-Example: `curl -X POST localhost:8282/actions` will list availabe actions
+Example: `curl -X POST localhost:8282/actions` will list available actions
 
 ### Usage with Postman
 
-Api can be tested with [postman](https://www.postman.com/) through this [link](https://www.getpostman.com/collections/e99f4e09e2443cb31ef4)
-You will need to set your environment variable `host` to your deployment of the api, example `http://localhost:8282`.
+API can be tested with [postman](https://www.postman.com/) through this [link](https://www.getpostman.com/collections/e99f4e09e2443cb31ef4)
+You will need to set your environment variable `host` to your deployment of the API, example `http://localhost:8282`.
 
 ## Actions
 

@@ -1,6 +1,6 @@
 import assert from "assert";
 import * as uma from "@uma/sdk";
-import { Json, Actions, Libs } from "..";
+import { Json, Actions, Libs, CurrencySymbol } from "..";
 
 const { exists } = uma.utils;
 
@@ -31,11 +31,11 @@ export function Handlers(config: Json, libs: Libs): Actions {
     async syntheticAddresses() {
       return Array.from(libs.syntheticAddresses.values());
     },
-    async allLatestPrices(currency: "usd" = "usd") {
+    async allLatestPrices(currency: CurrencySymbol = "usd") {
       assert(exists(libs.prices[currency]), "invalid currency type: " + currency);
       return libs.prices[currency].latest;
     },
-    async latestPriceByAddress(address: string, currency: "usd" = "usd") {
+    async latestPriceByAddress(address: string, currency: CurrencySymbol = "usd") {
       assert(address, "requires an erc20 token address");
       assert(exists(libs.prices[currency]), "invalid currency type: " + currency);
       const priceSample = libs.prices[currency].latest[address];

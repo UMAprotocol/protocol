@@ -1,8 +1,8 @@
 import assert from "assert";
-import { Libs } from "..";
+import { Libs, CurrencySymbol } from "..";
 import bluebird from "bluebird";
 type Config = {
-  currency?: "usd";
+  currency?: CurrencySymbol;
   throttle?: number;
 };
 export default function (config: Config, libs: Libs) {
@@ -23,7 +23,7 @@ export default function (config: Config, libs: Libs) {
     });
   }
 
-  // currenly we just care about collateral prices
+  // Currently we just care about collateral prices
   async function update() {
     await updatePrices(Array.from(collateralAddresses.values()));
   }

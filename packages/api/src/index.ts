@@ -13,6 +13,9 @@ export type Json = null | undefined | boolean | number | string | Json[] | { [pr
 export type Action = (...args: any[]) => Json | Promise<Json>;
 export type Actions = { [key: string]: Action };
 
+// this represents valid currencies to check prices against on coingecko
+// see: https://www.coingecko.com/api/documentations/v3#/asset_platforms/get_asset_platforms
+export type CurrencySymbol = "usd";
 export type PriceSample = [timestamp: number, price: string];
 // These are library dependencies to all services
 export type Libs = {
