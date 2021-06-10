@@ -13,3 +13,12 @@ const data:uma.table.emps.Data = await empTable.create({
 })
 // returns data = { id:address, address }
 ```
+
+## Types
+
+Found in [utils.ts](./utils.ts)
+
+```js
+import type * as uma from "@uma/sdk";
+type Emp = uma.tables.emps.Data;
+```

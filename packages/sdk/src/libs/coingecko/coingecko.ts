@@ -39,7 +39,7 @@ class Coingecko {
       const result = await axios(url);
       return result.data;
     } catch (err) {
-      const msg = get(err, "response.data.error", "Coingecko error");
+      const msg = get(err, "response.data.error", get(err, "response.statusText", "Unknown Coingecko Error"));
       throw new Error(msg);
     }
   }
