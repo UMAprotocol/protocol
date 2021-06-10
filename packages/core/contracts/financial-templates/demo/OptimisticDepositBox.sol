@@ -28,14 +28,14 @@ import "../../oracle/implementation/ContractCreator.sol";
  * requests from the Optimistic Oracle on-demand, which is an implementation of the "priceless" oracle framework.
  *
  * The typical user flow would be:
- * - User sets up a deposit box for the (wETH - USD) price-identifier. The "collateral currency" in this deposit
- *   box is therefore wETH.
+ * - User sets up a deposit box for the (wETH - USD) price-identifier.
+ *   The "collateral currency" in this deposit box is therefore wETH.
  *   The user can subsequently make withdrawal requests for USD-denominated amounts of wETH.
  * - User deposits 10 wETH into their deposit box.
- * - User later requests to withdraw $1000 USD of wETH.
+ * - User later requests to withdraw $10,000 USD of wETH.
  * - OptimisticDepositBox asks Optimistic Oracle for latest wETH/USD exchange rate.
  * - Optimistic Oracle resolves the exchange rate at: 1 wETH is worth 2000 USD.
- * - OptimisticDepositBox transfers 0.5 wETH to user.
+ * - OptimisticDepositBox transfers 5 wETH to user.
  */
 contract OptimisticDepositBox is Testable, Lockable {
     using SafeMath for uint256;

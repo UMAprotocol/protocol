@@ -13,18 +13,17 @@
  * to withdraw USD-denominated amounts of ETH.
  *
  * How to run:
- * - `cd core && yarn truffle exec ./scripts/demo/OptimisticDepositBox.js --network test`
+ * - Run a local Ganache instance (i.e. not Kovan/Ropsten/Rinkeby/Mainnet) with `ganache-cli --port 9545`.
+ * - In a separate terminal window, compile the contracts via `yarn truffle compile`.
+ * - Migrate the contracts via `yarn truffle migrate --reset --network test`.
+ * - The migration step ensures that the user is the owner of the Finder, IdentifierWhitelist,
+ *   Registry, and other important system contracts and can therefore modify their configurations.
+ * - Run `yarn truffle exec ./scripts/demo/OptimisticDepositBox.js --network test`.
  * Assumptions:
- * - User is using a local blockchain (i.e. not Kovan/Ropsten/Rinkeby/Mainnet) (`ganache-cli --port 9545`)
  * - User is running this script in the web3 environment injected by Truffle.
  * - User is sending transactions from accounts[0] of the injected web3.
  * - User is using wETH as the collateral ERC20.
  * - User is referencing the ETHUSD pricefeed identifier.
- * Prerequisites:
- * - Compile the contracts via `yarn truffle compile`.
- * - Migrate the contracts via `yarn truffle migrate --reset --network test`.
- * - The migration step ensures that the user is the owner of the Finder, IdentifierWhitelist,
- *   Registry, and other important system contracts and can therefore modify their configurations.
  */
 
 // Helper modules
@@ -178,7 +177,7 @@ const withdraw = async (optimisticDepositBoxAddress, mockPrice, amountOfUsdToWit
   // Fast-forward until after the liveness window. This only works in test mode.
   await optimisticOracle.setCurrentTime(requestTimestamp.toNumber() + 7200);
   await optimisticDepositBox.setCurrentTime(requestTimestamp.toNumber() + 7200);
-  console.log(`- Fast-forwarded the Optimistic Oracle and Optimistic Deposit Box to after the liveness window so we can settle`);
+  console.log(`- Fast-forwarded the Optimistic Oracle and Optimistic Deposit Box to after the liveness window so we can settle.`);
   console.log(`- New OO time is ${await optimisticOracle.getCurrentTime()}`);
   console.log(`- New ODB time is ${await optimisticDepositBox.getCurrentTime()}`);
 
@@ -215,7 +214,7 @@ const main = async (callback) => {
     console.log("\n");
 
     // Deposit collateral
-    const amountOfWethToDeposit = toWei(toBN(6));
+    const amountOfWethToDeposit = toWei(toBN(10));
     await deposit(deployedContract, amountOfWethToDeposit);
     console.log("\n");
 
