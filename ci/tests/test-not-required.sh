@@ -17,5 +17,5 @@ workflows:
   version: 2.1
   build_and_test:
       jobs:
-        - tests_required
+        - tests-required
 EOF
