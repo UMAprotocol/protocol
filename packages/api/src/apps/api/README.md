@@ -135,3 +135,7 @@ Note non synth historical prices are specified by erc20 address.
 ### tvl(addresses?: string[], currency: CurrencySymbol = "usd") => string
 
 Returns tvl of all supplied addresses in USD 18 decimals. If no addresses supplied, returns TVL of all known contracts.
+
+### getEmpStatsBetween(address: string, start = 0, end: number = Date.now(), currency: CurrencySymbol = "usd") => StatData[]
+
+Returns all stats between timestamps at the highest resolution for a particular emp address.

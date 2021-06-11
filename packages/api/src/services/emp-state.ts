@@ -1,10 +1,10 @@
 import * as uma from "@uma/sdk";
+import Promise from "bluebird";
 const { emp } = uma.clients;
 import { BigNumber, utils } from "ethers";
 const { parseBytes32String } = utils;
 import { asyncValues } from "../libs/utils";
 import { AppState } from "..";
-import Promise from "bluebird";
 
 type Instance = uma.clients.emp.Instance;
 type Config = undefined;
