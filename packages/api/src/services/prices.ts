@@ -2,12 +2,12 @@ import * as uma from "@uma/sdk";
 import assert from "assert";
 import { Libs, CurrencySymbol } from "..";
 import bluebird from "bluebird";
+import { ethers } from "ethers";
 type Config = {
   currency?: CurrencySymbol;
-  throttle?: number;
 };
 export default function (config: Config, libs: Libs) {
-  const { currency = "usd", throttle = 100 } = config;
+  const { currency = "usd" } = config;
   const { coingecko, prices, collateralAddresses } = libs;
   assert(coingecko, "requires coingecko library");
   assert(prices[currency], `requires prices.${currency}`);
@@ -22,7 +22,9 @@ export default function (config: Config, libs: Libs) {
 
   // utility to grab last price based on address
   function getLatestPrice(address: string) {
-    return prices[currency].latest[address];
+    const result = prices[currency].latest[address];
+    assert(uma.utils.exists(result), "no latest price found for: " + address);
+    return result;
   }
 
   // pulls price from latest and stuffs it into historical table.
@@ -42,39 +44,23 @@ export default function (config: Config, libs: Libs) {
     return Promise.allSettled(addresses.map(updatePriceHistory));
   }
 
-  async function updateLatestPrice(address: string) {
-    const [timestamp, price] = await coingecko.getCurrentPriceByContract(address, currency);
+  // does not do any queries, just a helper to mutate the latest price table
+  function updateLatestPrice(params: { address: string; price: number; timestamp: number }) {
+    const { address, timestamp, price } = params;
     prices[currency].latest[address] = [timestamp, price.toString()];
+    return params;
   }
 
   async function updateLatestPrices(addresses: string[]) {
-    // this is reproducing promise.allSettled api but in series with a throttle vs all parallel
-    // coingecko might be sensitive to how fast we call for prices, so we throttle here in case.
-    return bluebird.mapSeries(addresses, async (address) => {
-      let result;
-      try {
-        result = {
-          status: "fulfilled",
-          value: await updateLatestPrice(address),
-        };
-      } catch (err) {
-        result = {
-          status: "rejected",
-          reason: err,
-        };
-      }
-      await new Promise((res) => setTimeout(res, throttle));
-      return result;
-    });
+    const prices = await coingecko.getContractPrices(addresses, currency);
+    return prices.map(updateLatestPrice);
   }
 
   // Currently we just care about collateral prices
   async function update() {
     const addresses = Array.from(collateralAddresses.values());
-    await updateLatestPrices(addresses).then((results) => {
-      results.forEach((result) => {
-        if (result.status === "rejected") console.error("Error getting LatestPrice: " + result.reason.message);
-      });
+    await updateLatestPrices(addresses).catch((err) => {
+      console.error("Error getting LatestPrice: " + err.message);
     });
     await updatePriceHistories(addresses).then((results) => {
       results.forEach((result) => {
