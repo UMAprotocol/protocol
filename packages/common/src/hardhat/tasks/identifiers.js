@@ -1,4 +1,7 @@
 const { task, types } = require("hardhat/config");
+require("dotenv").config();
+const assert = require("assert");
+const Web3 = require("web3");
 
 const _whitelistIdentifier = async (web3, identifierUtf8, identifierWhitelist, deployer) => {
   const { padRight, utf8ToHex } = web3.utils;
@@ -28,13 +31,32 @@ task("whitelist-identifiers", "Whitelist identifiers from JSON file")
 task("migrate-identifiers", "Adds all whitelisted identifiers on one IdentifierWhitelist to another")
   .addParam("from", "The contract from which to query a whitelist of identifiers.", "", types.string)
   .addOptionalParam("to", "The contract on which to whitelist new identifiers.", "", types.string)
+  .addOptionalParam(
+    "crosschain",
+    "If true, grab identifier whitelist (deployed at 'from' address) events from CROSS_CHAIN_NODE_URL",
+    false,
+    types.boolean
+  )
   .setAction(async function (taskArguments, hre) {
     const { deployments, getNamedAccounts, web3 } = hre;
     const { deployer } = await getNamedAccounts();
-    const { from, to } = taskArguments;
+    const { from, to, crosschain } = taskArguments;
 
     const IdentifierWhitelist = await deployments.get("IdentifierWhitelist");
-    const oldWhitelist = new web3.eth.Contract(IdentifierWhitelist.abi, from);
+
+    let oldWeb3;
+    if (crosschain) {
+      // Create new web3 provider using crosschain network.
+      assert(
+        process.env.CROSS_CHAIN_NODE_URL,
+        "If --crosschain flag is set to true, must set a CROSS_CHAIN_NODE_URL in the environment"
+      );
+      oldWeb3 = new Web3(process.env.CROSS_CHAIN_NODE_URL);
+    } else {
+      // `--crosschain` flag not set, assume that old and new identifier whitelists are on the current network.
+      oldWeb3 = web3;
+    }
+    const oldWhitelist = new oldWeb3.eth.Contract(IdentifierWhitelist.abi, from);
     const addedIdentifierEvents = await oldWhitelist.getPastEvents("SupportedIdentifierAdded", { fromBlock: 0 });
 
     // Filter out identifiers that are not currently whitelisted.
@@ -72,11 +94,17 @@ task("migrate-identifiers", "Adds all whitelisted identifiers on one IdentifierW
           const receipt = await newWhitelist.methods.addSupportedIdentifier(identifiersToWhitelist[i]).send({
             from: deployer,
           });
+          console.log(
+            `${i}: Added new identifier ${web3.utils.hexToUtf8(identifiersToWhitelist[i])} (${receipt.transactionHash})`
+          );
           addSupportedIdentifierReceipts.push(receipt);
+        } else {
+          // Explicitly push `null` so that `txn` and `identifier` line up in table to print to console.
+          addSupportedIdentifierReceipts.push({ transactionHash: "Already whitelisted" });
         }
       }
       addSupportedIdentifierReceipts.forEach((receipt, i) => {
-        resultsTable[i] = { ...resultsTable[i], txn: receipt.transactionHash };
+        resultsTable[i] = { ...resultsTable[i], txn: receipt?.transactionHash };
       });
     }
 
