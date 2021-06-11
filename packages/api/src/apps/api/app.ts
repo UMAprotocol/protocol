@@ -1,5 +1,5 @@
 import assert from "assert";
-import { tables } from "@uma/sdk";
+import { tables, Coingecko } from "@uma/sdk";
 import { ethers } from "ethers";
 import * as Services from "../../services";
 import Express from "../../services/express";
@@ -21,31 +21,44 @@ async function run(env: ProcessEnv) {
   // state shared between services
   const libs: Libs = {
     provider,
+    coingecko: new Coingecko(),
     blocks: tables.blocks.JsMap(),
     emps: {
       active: tables.emps.JsMap("Active Emp"),
       expired: tables.emps.JsMap("Expired Emp"),
     },
+    prices: {
+      usd: {
+        latest: {},
+      },
+    },
     lastBlock: 0,
     lastBlockUpdate: 0,
     registeredEmps: new Set<string>(),
+    collateralAddresses: new Set<string>(),
+    syntheticAddresses: new Set<string>(),
   };
   // services for ingesting data
   const services = {
     blocks: Services.Blocks({}, libs),
     emps: Services.Emps({}, libs),
     registry: Services.Registry({}, libs),
+    prices: Services.Prices({}, libs),
   };
 
   // services consuming data
   const actions = Actions({}, libs);
 
-  // expose calls through express
-  await Express({ port: Number(env.EXPRESS_PORT) }, actions);
-
   // warm caches
   await services.registry();
+  console.log("Got all emp addresses");
   await services.emps();
+  console.log("Updated emp state");
+  await services.prices.update();
+  console.log("Updated prices");
+
+  // expose calls through express
+  await Express({ port: Number(env.EXPRESS_PORT) }, actions);
 
   // main update loop, update every block
   provider.on("block", (blockNumber: number) => {
@@ -56,6 +69,8 @@ async function run(env: ProcessEnv) {
       services.registry(libs.lastBlock, blockNumber).catch(console.error);
       services.emps(libs.lastBlock, blockNumber).catch(console.error);
       libs.lastBlockUpdate = blockNumber;
+      // price updates need to be throttled, coingecko will rate limit
+      services.prices.update().catch(console.error);
     }
     libs.lastBlock = blockNumber;
     services.blocks.cleanBlocks(oldestBlock).catch(console.error);

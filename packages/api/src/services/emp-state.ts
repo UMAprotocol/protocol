@@ -9,7 +9,7 @@ import { Json, Libs } from "..";
 
 type Instance = uma.clients.emp.Instance;
 export default (config: Json, libs: Libs) => {
-  const { registeredEmps, provider, emps } = libs;
+  const { registeredEmps, provider, emps, collateralAddresses, syntheticAddresses } = libs;
 
   async function readEmpDynamicState(instance: Instance, address: string) {
     return asyncValues<uma.tables.emps.Data>({
@@ -152,10 +152,20 @@ export default (config: Json, libs: Libs) => {
     }
   }
 
+  // add a set of all collateral addresses
+  async function updateTokenAddresses() {
+    const allEmps = await emps.active.values();
+    allEmps.forEach((emp) => {
+      if (emp.collateralCurrency) collateralAddresses.add(emp.collateralCurrency);
+      if (emp.tokenCurrency) syntheticAddresses.add(emp.tokenCurrency);
+    });
+  }
+
   async function update(startBlock?: number | "latest", endBlock?: number) {
     await Promise.map(Array.from(await registeredEmps.values()), (address: string) =>
       updateOne(address, startBlock, endBlock)
     );
+    await updateTokenAddresses();
   }
 
   return update;

@@ -8,6 +8,9 @@ const StateSync = artifacts.require("StateSyncMock");
 const FxChild = artifacts.require("FxChildMock");
 const FxRoot = artifacts.require("FxRootMock");
 const OracleChildTunnel = artifacts.require("OracleChildTunnel");
+// We use the a mock contract for the `OracleRootTunnel`because it has an internal `_processMessageFromChild` that we
+// want to test directly, whereas the corresponding  `_processMessageFromRoot` on the `OracleChildTunnel` gets tested
+// via `FxChildMock.onStateReceive`.
 const OracleRootTunnel = artifacts.require("OracleRootTunnelMock");
 const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");
@@ -43,6 +46,7 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
   const testPrice = toWei("0.5");
   let expectedStampedAncillaryData; // Can determine this after contracts are deployed.
   const expectedStateId = "1";
+  const childChainId = "31337";
 
   before(async function () {
     finder = await Finder.deployed();
@@ -50,9 +54,7 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
     registry = await Registry.deployed();
     mockOracle = await MockOracle.new(finder.address, ZERO_ADDRESS);
 
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.address);
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address);
 
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner);
     await registry.registerContract([], owner, { from: owner });
@@ -80,8 +82,10 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
     await governorChild.setFxRootTunnel(governorRoot.address);
     await governorRoot.setFxChildTunnel(governorChild.address);
 
+    // The OracleChildTunnel should stamp ",childRequester:<requester-address>,childChainId:<chain-id>" to the original
+    // ancillary data.
     expectedStampedAncillaryData = utf8ToHex(
-      `${hexToUtf8(testAncillaryData)},childRequester:${owner.substr(2).toLowerCase()},childChainId:31337`
+      `${hexToUtf8(testAncillaryData)},childRequester:${owner.substr(2).toLowerCase()},childChainId:${childChainId}`
     );
   });
   it("request price from Polygon to Ethereum, resolve price from Ethereum to Polygon", async function () {
@@ -92,7 +96,7 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
       )
     );
 
-    // Should emit MessageSent event with ABI encoded requestPrice parameters..
+    // Should emit MessageSent event with ABI encoded requestPrice parameters.
     let txn = await oracleChild.requestPrice(testIdentifier, testTimestamp, testAncillaryData, { from: owner });
     let messageBytes = web3.eth.abi.encodeParameters(
       ["bytes32", "uint256", "bytes"],
@@ -174,7 +178,7 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
         event.price.toString() === testPrice
     );
 
-    // Until price is resolved on Child, hasPrice and getPrice should return false and revert, respectively.
+    // hasPrice and getPrice should now succeed.
     // Note: the ancillary data input into hasPrice and getPrice is the original, pre-stamped ancillary data, which
     // means that the original requester does not know about the ancillary data stamping that took place behind the
     // scene.
