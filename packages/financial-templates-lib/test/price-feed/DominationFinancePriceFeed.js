@@ -2,7 +2,7 @@ const { DominationFinancePriceFeed } = require("../../src/price-feed/DominationF
 const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
 const winston = require("winston");
 
-contract("DominationFinancePriceFeed.js", function() {
+contract("DominationFinancePriceFeed.js", function () {
   let priceFeed;
   let invertedPriceFeed;
   let mockTime = 1588376548;
@@ -25,24 +25,24 @@ contract("DominationFinancePriceFeed.js", function() {
       rows: [
         [earliestTick + 0 * 60, "1.1"],
         [earliestTick + 1 * 60, "1.2"],
-        [earliestTick + 2 * 60, "1.3"]
-      ]
-    }
+        [earliestTick + 2 * 60, "1.3"],
+      ],
+    },
   };
 
   const priceResponse = {
     status: "success",
     timestamp: 1588376583,
-    price: "1.5"
+    price: "1.5",
   };
 
   const validResponses = [priceResponse, historicalResponse];
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     networker = new NetworkerMock();
     const dummyLogger = winston.createLogger({
       level: "info",
-      transports: [new winston.transports.Console()]
+      transports: [new winston.transports.Console()],
     });
     priceFeed = new DominationFinancePriceFeed(
       dummyLogger,
@@ -68,7 +68,7 @@ contract("DominationFinancePriceFeed.js", function() {
     );
   });
 
-  it("Inverted current price", async function() {
+  it("Inverted current price", async function () {
     networker.getJsonReturns = [...validResponses];
     await invertedPriceFeed.update();
 
@@ -86,7 +86,7 @@ contract("DominationFinancePriceFeed.js", function() {
     );
   });
 
-  it("Inverted historical price", async function() {
+  it("Inverted historical price", async function () {
     networker.getJsonReturns = [...validResponses];
     await invertedPriceFeed.update();
 
@@ -139,14 +139,14 @@ contract("DominationFinancePriceFeed.js", function() {
     );
   });
 
-  it("No update", async function() {
+  it("No update", async function () {
     assert.equal(priceFeed.getCurrentPrice(), undefined);
     assert.isTrue(await priceFeed.getHistoricalPrice(1000).catch(() => true));
     assert.equal(priceFeed.getLastUpdateTime(), undefined);
     assert.equal(priceFeed.getLookback(), lookback);
   });
 
-  it("Basic historical price", async function() {
+  it("Basic historical price", async function () {
     // Inject data.
     networker.getJsonReturns = [...validResponses];
 
@@ -172,7 +172,7 @@ contract("DominationFinancePriceFeed.js", function() {
     );
   });
 
-  it("Basic current price", async function() {
+  it("Basic current price", async function () {
     // Inject data.
     networker.getJsonReturns = [...validResponses];
 
@@ -182,7 +182,7 @@ contract("DominationFinancePriceFeed.js", function() {
     assert.equal(priceFeed.getCurrentPrice().toString(), toWei("1.5"));
   });
 
-  it("Last update time", async function() {
+  it("Last update time", async function () {
     // Inject data.
     networker.getJsonReturns = [...validResponses];
 
@@ -192,18 +192,18 @@ contract("DominationFinancePriceFeed.js", function() {
     assert.equal(priceFeed.getLastUpdateTime(), mockTime);
   });
 
-  it("No or bad response", async function() {
+  it("No or bad response", async function () {
     // Bad price response.
     networker.getJsonReturns = [
       {
         status: "success",
         data: {
-          rows: [] // Valid response, just no data points.
-        }
+          rows: [], // Valid response, just no data points.
+        },
       },
       {
-        status: "error"
-      }
+        status: "error",
+      },
     ];
 
     // Update should throw errors in both cases.
@@ -218,12 +218,12 @@ contract("DominationFinancePriceFeed.js", function() {
     // Bad historical ohlc response.
     networker.getJsonReturns = [
       {
-        status: "error"
+        status: "error",
       },
       {
         status: "success",
-        price: "64.21"
-      }
+        price: "64.21",
+      },
     ];
 
     assert.isTrue(await priceFeed.update().catch(() => true), "Update didn't throw");
@@ -234,12 +234,12 @@ contract("DominationFinancePriceFeed.js", function() {
     // Inverted price feed returns undefined for prices equal to 0 since it cannot divide by 0
     networker.getJsonReturns = [
       {
-        status: "error"
+        status: "error",
       },
       {
         status: "success",
-        price: "0.00"
-      }
+        price: "0.00",
+      },
     ];
 
     assert.isTrue(await invertedPriceFeed.update().catch(() => true), "Update didn't throw");
@@ -248,7 +248,7 @@ contract("DominationFinancePriceFeed.js", function() {
     assert.isTrue(await invertedPriceFeed.getHistoricalPrice(earliestTick).catch(() => true));
   });
 
-  it("Update frequency", async function() {
+  it("Update frequency", async function () {
     networker.getJsonReturns = [...validResponses];
 
     await priceFeed.update();

@@ -13,7 +13,7 @@ const VotingInterfaceTesting = artifacts.require("VotingInterfaceTesting");
 
 const { hexToUtf8, fromWei } = web3.utils;
 
-const revealVote = async callback => {
+const revealVote = async (callback) => {
   try {
     const price = argv.price;
     const identifier = argv.identifier;

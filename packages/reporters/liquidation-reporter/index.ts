@@ -8,10 +8,11 @@ async function fetchDataAndWriteToExcelFile() {
 
 fetchDataAndWriteToExcelFile()
   .then(() => {
-    setTimeout(function() {
+    setTimeout(function () {
       process.exit(0);
     }, 2000);
   })
-  .catch(() => {
+  .catch((e) => {
+    console.error(e);
     process.exit(1);
   });

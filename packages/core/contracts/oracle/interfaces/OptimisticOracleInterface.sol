@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
-pragma abicoder v2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -247,4 +246,10 @@ abstract contract OptimisticOracleInterface {
         uint256 timestamp,
         bytes memory ancillaryData
     ) public view virtual returns (bool);
+
+    function stampAncillaryData(bytes memory ancillaryData, address requester)
+        public
+        view
+        virtual
+        returns (bytes memory);
 }

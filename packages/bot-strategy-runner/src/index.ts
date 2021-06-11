@@ -30,7 +30,7 @@ async function runStrategies(strategyRunnerConfig: strategyRunnerConfig) {
   Logger.debug({
     at: "BotStrategyRunner",
     message: "Starting bot strategy runner",
-    strategyRunnerConfig: strategyRunnerConfig
+    strategyRunnerConfig: strategyRunnerConfig,
   });
 
   // Generate a global whitelist of addresses that all enabled bots will run on.
@@ -45,14 +45,14 @@ async function runStrategies(strategyRunnerConfig: strategyRunnerConfig) {
     message: "Constructed global bot settings and whitelist",
     concurrency: strategyRunnerConfig.botConcurrency,
     globalWhiteList,
-    totalBotsToExecute: allBotsConfigs.length
+    totalBotsToExecute: allBotsConfigs.length,
   });
 
   for (;;) {
     Logger.debug({
       at: "BotStrategyRunner",
       message: "Executing set of bots concurrently",
-      concurrency: strategyRunnerConfig.botConcurrency
+      concurrency: strategyRunnerConfig.botConcurrency,
     });
 
     progressBar.start(allBotsConfigs.length, 0);
@@ -65,10 +65,10 @@ async function runStrategies(strategyRunnerConfig: strategyRunnerConfig) {
       (botConfig: liquidatorConfig | disputerConfig | monitorConfig) =>
         Promise.all([
           _updateProgressBar(botConfig), // As the promise progresses through bots update the progress bar.
-          Promise.race([_rejectAfterDelay(strategyRunnerConfig.strategyTimeout, botConfig), runBot(botConfig)])
+          Promise.race([_rejectAfterDelay(strategyRunnerConfig.strategyTimeout, botConfig), runBot(botConfig)]),
         ]),
       {
-        concurrency: strategyRunnerConfig.botConcurrency || defaultBotConcurrency
+        concurrency: strategyRunnerConfig.botConcurrency || defaultBotConcurrency,
       }
     );
 
@@ -91,13 +91,13 @@ async function runStrategies(strategyRunnerConfig: strategyRunnerConfig) {
       at: "BotStrategyRunner",
       message: "All strategies have finished running",
       rejectedOutputs,
-      validOutputs
+      validOutputs,
     });
 
     if (strategyRunnerConfig.pollingDelay === 0) {
       Logger.debug({
         at: "BotStrategyRunner",
-        message: "End of execution loop - terminating process"
+        message: "End of execution loop - terminating process",
       });
 
       await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
@@ -106,7 +106,7 @@ async function runStrategies(strategyRunnerConfig: strategyRunnerConfig) {
     Logger.debug({
       at: "BotStratergyRunner",
       message: "End of execution loop - waiting polling delay",
-      pollingDelay: `${strategyRunnerConfig.pollingDelay} (s)`
+      pollingDelay: `${strategyRunnerConfig.pollingDelay} (s)`,
     });
     await delay(Number(strategyRunnerConfig.pollingDelay));
   }
@@ -137,9 +137,9 @@ const processExecutionOptions = async () => {
             Authorization: `token ${options.accessToken}`,
             "Content-type": "application/json",
             Accept: "application/vnd.github.v3.raw",
-            "Accept-Charset": "utf-8"
+            "Accept-Charset": "utf-8",
           }
-        : {}
+        : {},
     });
     urlConfig = await response.json(); // extract JSON from the http response
     assert(!urlConfig.message && !urlConfig.error, `Could not fetch config! :${JSON.stringify(urlConfig)}`);
@@ -153,7 +153,7 @@ const _rejectAfterDelay = (seconds: number | undefined, executionConfig: any) =>
     setTimeout(resolve, (seconds ? seconds : defaultStrategyTimeout) * 1000, {
       error: "timeout",
       message: `The strategy call took longer than ${seconds} seconds to exit`,
-      ...executionConfig
+      ...executionConfig,
     });
   });
 
@@ -171,15 +171,15 @@ function _reduceLog(
       if (strategyRunnerConfig.emitDebugLogs) return logInstance.message;
       else if (logInstance.level !== "debug") return logInstance.message;
     })
-    .filter(log => log);
+    .filter((log) => log);
 }
 
 // Apply defaults to the strategyRunnerConfig.
 function _setConfigDefaults(config: strategyRunnerConfig) {
   config.botNetwork = config.botNetwork ? config.botNetwork : defaultNetwork;
-  config.strategyTimeout = config.strategyTimeout ? config.strategyTimeout : defaultStrategyTimeout;
-  config.botConcurrency = config.botConcurrency ? config.botConcurrency : defaultBotConcurrency;
-  config.pollingDelay = config.pollingDelay ? config.pollingDelay : defaultPollingDelay;
+  config.strategyTimeout = config.strategyTimeout != undefined ? config.strategyTimeout : defaultStrategyTimeout;
+  config.botConcurrency = config.botConcurrency != undefined ? config.botConcurrency : defaultBotConcurrency;
+  config.pollingDelay = config.pollingDelay != undefined ? config.pollingDelay : defaultPollingDelay;
   return config;
 }
 

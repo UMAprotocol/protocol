@@ -13,7 +13,4 @@ const client = new BigQuery();
 const queries = Queries({ client });
 const empAbi = getAbi("ExpiringMultiParty");
 
-DappMining({ queries, empAbi, web3 })
-  .getRewards(config)
-  .then(console.log)
-  .catch(console.log);
+DappMining({ queries, empAbi, web3 }).getRewards(config).then(console.log).catch(console.log);

@@ -5,7 +5,4 @@ const days = 60;
 
 const coingecko = Coingecko();
 
-coingecko
-  .chart(contract, symbol, days)
-  .then(console.log)
-  .catch(console.log);
+coingecko.chart(contract, symbol, days).then(console.log).catch(console.log);

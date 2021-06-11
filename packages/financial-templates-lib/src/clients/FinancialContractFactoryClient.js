@@ -62,7 +62,7 @@ class FinancialContractFactoryClient {
   }
 
   getAllCreatedContractAddresses() {
-    return _.uniq(this.createdContractEvents.map(event => event.contractAddress));
+    return _.uniq(this.createdContractEvents.map((event) => event.contractAddress));
   }
 
   // Returns the last update timestamp.
@@ -81,7 +81,7 @@ class FinancialContractFactoryClient {
     // Define a config to bound the queries by.
     const blockSearchConfig = {
       fromBlock: this.firstBlockToSearch,
-      toBlock: lastBlockToSearch
+      toBlock: lastBlockToSearch,
     };
 
     // Look for events on chain from the previous seen block number to the current block number.
@@ -89,7 +89,7 @@ class FinancialContractFactoryClient {
       this.contractType === "PerpetualCreator" ? "CreatedPerpetual" : "CreatedExpiringMultiParty";
     const [currentTime, createdContractEventsObj] = await Promise.all([
       this.financialContractFactory.methods.getCurrentTime().call(),
-      this.financialContractFactory.getPastEvents(eventToSearchFor, blockSearchConfig)
+      this.financialContractFactory.getPastEvents(eventToSearchFor, blockSearchConfig),
     ]);
     // Set the current contract time as the last update timestamp from the contract.
     this.lastUpdateTimestamp = currentTime;
@@ -104,7 +104,7 @@ class FinancialContractFactoryClient {
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
         deployerAddress: event.returnValues.deployerAddress,
-        contractAddress: createdAddress
+        contractAddress: createdAddress,
       });
     }
 
@@ -114,11 +114,11 @@ class FinancialContractFactoryClient {
     this.logger.debug({
       at: "FinancialContractFactoryClient",
       message: "Financial Contract Factory event state updated",
-      lastUpdateTimestamp: this.lastUpdateTimestamp
+      lastUpdateTimestamp: this.lastUpdateTimestamp,
     });
   }
 }
 
 module.exports = {
-  FinancialContractFactoryClient
+  FinancialContractFactoryClient,
 };

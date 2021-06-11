@@ -20,7 +20,7 @@ const queries = Queries({ client });
 
 async function runTest() {
   await mkdirp(subDir);
-  await Promise.map(empContracts, async contract => {
+  await Promise.map(empContracts, async (contract) => {
     const data = await queries.getLogsByContract(contract, startingTimestamp, endingTimestamp);
     const path = Path.join(subDir, `${contract}.json`);
     console.log("writing", data.length, "events");
@@ -28,6 +28,4 @@ async function runTest() {
   });
 }
 
-runTest()
-  .then(console.log)
-  .catch(console.log);
+runTest().then(console.log).catch(console.log);

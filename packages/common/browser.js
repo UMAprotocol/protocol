@@ -4,6 +4,7 @@ module.exports = {
   ...require("./src/AdminUtils"),
   ...require("./src/Constants"),
   ...require("./src/ContractUtils"),
+  ...require("./src/TransactionUtils"),
   ...require("./src/Crypto"),
   ...require("./src/EmpUtils"),
   ...require("./src/EncryptionHelper"),
@@ -17,5 +18,5 @@ module.exports = {
   ...require("./src/TimeUtils"),
   ...require("./src/VotingUtils"),
   ...require("./src/PriceIdentifierUtils"),
-  ...require("./src/MultiVersionTestHelpers.js")
+  ...require("./src/MultiVersionTestHelpers.js"),
 };

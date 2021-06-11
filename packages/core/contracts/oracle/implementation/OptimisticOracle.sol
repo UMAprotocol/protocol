@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
-pragma abicoder v2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -17,6 +16,7 @@ import "./Constants.sol";
 import "../../common/implementation/Testable.sol";
 import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/FixedPoint.sol";
+import "../../common/implementation/AncillaryData.sol";
 import "../../common/implementation/AddressWhitelist.sol";
 
 /**
@@ -163,7 +163,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
         require(timestamp <= getCurrentTime(), "Timestamp in future");
-        require(ancillaryData.length <= ancillaryBytesLimit, "Invalid ancillary data");
+        require(stampAncillaryData(ancillaryData, msg.sender).length <= ancillaryBytesLimit, "Ancillary Data too long");
         uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
         requests[_getId(msg.sender, identifier, timestamp, ancillaryData)] = Request({
             proposer: address(0),
@@ -545,7 +545,12 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
      * @param requester sender of the initial price request.
      * @return the stampped ancillary bytes.
      */
-    function stampAncillaryData(bytes memory ancillaryData, address requester) public pure returns (bytes memory) {
+    function stampAncillaryData(bytes memory ancillaryData, address requester)
+        public
+        pure
+        override
+        returns (bytes memory)
+    {
         return _stampAncillaryData(ancillaryData, requester);
     }
 
@@ -652,8 +657,14 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 
-    // Stamps the ancillary data blob with the optimistic oracle tag denoting what contract requested it.
+    /**
+     * @dev We don't handle specifically the case where `ancillaryData` is not already readily translateable in utf8.
+     * For those cases, we assume that the client will be able to strip out the utf8-translateable part of the
+     * ancillary data that this contract stamps.
+     */
     function _stampAncillaryData(bytes memory ancillaryData, address requester) internal pure returns (bytes memory) {
-        return abi.encodePacked(ancillaryData, "OptimisticOracle", requester);
+        // Since this contract will be the one to formally submit DVM price requests, its useful for voters to know who
+        // the original requester was.
+        return AncillaryData.appendKeyValueAddress(ancillaryData, "ooRequester", requester);
     }
 }

@@ -28,6 +28,9 @@ jobs:
       - restore_cache:
           key: protocol-{{ .Environment.CIRCLE_SHA1 }}
       - run:
+          name: Install Prereqs
+          command: sudo apt-get install -y rsync
+      - run:
           name: Run build
           command: yarn qbuild
       - run:
@@ -86,7 +89,8 @@ jobs:
       - run:
           name: Build Voter dApp
           working_directory: ~/protocol/packages/voter-dapp
-          command: CI=false yarn run build
+          command: export NODE_OPTIONS="--max-old-space-size=8192" CI=false yarn run build
+          resource_class: medium+
       - store_artifacts:
           path: ~/protocol/packages/voter-dapp/build
           destination: voter-dapp-build
@@ -121,7 +125,7 @@ jobs:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
           name: Install Prereqs
-          command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev yarn
+          command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev yarn rsync
       - run:
           name: Publish
           command: yarn run publish-release
@@ -137,7 +141,6 @@ workflows:
           requires:
             - checkout_and_install
       - test:
-          context: api_keys
           requires:
             - build
       - dapp_build:

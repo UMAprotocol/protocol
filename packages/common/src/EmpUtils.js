@@ -13,13 +13,9 @@ function computeCollateralizationRatio(web3, tokenPrice, collateral, tokensOutst
   if (tokensOutstanding.isZero() || tokenPrice.isZero()) {
     return toBN("0");
   }
-  return collateral
-    .mul(fixedPointScalingFactor)
-    .mul(fixedPointScalingFactor)
-    .div(tokensOutstanding)
-    .div(tokenPrice);
+  return collateral.mul(fixedPointScalingFactor).mul(fixedPointScalingFactor).div(tokensOutstanding).div(tokenPrice);
 }
 
 module.exports = {
-  computeCollateralizationRatio
+  computeCollateralizationRatio,
 };

@@ -6,7 +6,7 @@
 // yarn truffle exec ./scripts/optimistic-oracle-umip/1_Propose.js --network mainnet-fork --deployedAddress 0xOPTIMISTIC_ORACLE_ADDRESS
 
 // Use the same ABI's as deployed contracts:
-const { getTruffleContract } = require("../../index");
+const { getTruffleContract } = require("../../dist/index");
 const Governor = getTruffleContract("Governor", web3, "1.1.0");
 const Finder = getTruffleContract("Finder", web3, "1.1.0");
 const Registry = getTruffleContract("Registry", web3, "1.1.0");
@@ -75,23 +75,23 @@ async function runExport() {
       {
         to: registry.address,
         value: 0,
-        data: addGovernorToRegistryTx
+        data: addGovernorToRegistryTx,
       },
       {
         to: registry.address,
         value: 0,
-        data: registerOptimisticOracleTx
+        data: registerOptimisticOracleTx,
       },
       {
         to: registry.address,
         value: 0,
-        data: removeGovernorFromRegistryTx
+        data: removeGovernorFromRegistryTx,
       },
       {
         to: finder.address,
         value: 0,
-        data: addOptimisticOracleToFinderTx
-      }
+        data: addOptimisticOracleToFinderTx,
+      },
     ],
     { from: proposerWallet, gas: 2000000 }
   );
@@ -99,7 +99,7 @@ async function runExport() {
   console.log("Proposal Done.");
 }
 
-const run = async function(callback) {
+const run = async function (callback) {
   try {
     await runExport();
   } catch (err) {

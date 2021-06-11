@@ -22,7 +22,7 @@ const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
 const Store = getTruffleContract("Store", web3);
 const MulticallMock = getTruffleContract("MulticallMock", web3);
 
-contract("index.js", function(accounts) {
+contract("index.js", function (accounts) {
   const deployer = accounts[0];
 
   // Contracts
@@ -39,7 +39,7 @@ contract("index.js", function(accounts) {
 
   let pollingDelay = 0; // 0 polling delay creates a serverless bot that yields after one full execution.
   let errorRetries = 1;
-  let errorRetriesTimeout = 0.1; // 100 milliseconds between preforming retries
+  let errorRetriesTimeout = 0.1; // 100 milliseconds between performing retries
 
   // Default testing values.
   let defaultCreationParams = {
@@ -55,7 +55,7 @@ contract("index.js", function(accounts) {
     minSponsorTokens: { rawValue: toWei("10") },
     withdrawalLiveness: "7200",
     liquidationLiveness: "7300",
-    tokenScaling: { rawValue: toWei("1") }
+    tokenScaling: { rawValue: toWei("1") },
   };
   let configStoreParams = {
     timelockLiveness: 86400, // 1 day
@@ -63,14 +63,14 @@ contract("index.js", function(accounts) {
     proposerBondPercentage: { rawValue: toWei("0.0001") },
     maxFundingRate: { rawValue: toWei("1") },
     minFundingRate: { rawValue: toWei("-1") },
-    proposalTimePastLimit: 1800
+    proposalTimePastLimit: 1800,
   };
   // The TEST identifier will map to a PriceFeedMock, which requires the following
   // config fields to be set to construct a price feed properly:
   let commonPriceFeedConfig = { currentPrice: "1", historicalPrice: "1" };
   const optimisticOracleLiveness = 100;
 
-  before(async function() {
+  before(async function () {
     const timer = await Timer.new();
     const tokenFactory = await TokenFactory.new();
     const finder = await Finder.new();
@@ -102,7 +102,7 @@ contract("index.js", function(accounts) {
     await collateralWhitelist.addToWhitelist(collateral.address);
     defaultCreationParams = {
       ...defaultCreationParams,
-      collateralAddress: collateral.address
+      collateralAddress: collateral.address,
     };
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.address);
 
@@ -114,10 +114,10 @@ contract("index.js", function(accounts) {
 
     // Deploy new Perp
     const perpAddress = await perpFactory.createPerpetual.call(defaultCreationParams, configStoreParams, {
-      from: deployer
+      from: deployer,
     });
     const perpCreation = await perpFactory.createPerpetual(defaultCreationParams, configStoreParams, {
-      from: deployer
+      from: deployer,
     });
     perpsCreated.push({ transaction: perpCreation, address: perpAddress });
     // This is the time that the funding rate applier's update time is initialized to:
@@ -132,13 +132,13 @@ contract("index.js", function(accounts) {
     // the proposal will fail because it is "in the future".
     await timer.setCurrentTime(lastUpdateTime);
   });
-  it("Completes one iteration without logging any errors", async function() {
+  it("Completes one iteration without logging any errors", async function () {
     // We will create a new spy logger, listening for debug events because success logs are tagged with the
     // debug level.
     spy = sinon.spy();
     spyLogger = winston.createLogger({
       level: "debug",
-      transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
     });
 
     await Main.run({
@@ -149,7 +149,7 @@ contract("index.js", function(accounts) {
       errorRetriesTimeout,
       commonPriceFeedConfig,
       multicallAddress: multicall.address,
-      isTest: true // Need to set this to true so that proposal uses correct request timestamp for test environment
+      isTest: true, // Need to set this to true so that proposal uses correct request timestamp for test environment
     });
 
     for (let i = 0; i < spy.callCount; i++) {

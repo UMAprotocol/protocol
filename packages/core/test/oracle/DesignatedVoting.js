@@ -3,7 +3,7 @@ const {
   didContractThrow,
   getRandomSignedInt,
   computeVoteHashAncillary,
-  signMessage
+  signMessage,
 } = require("@uma/common");
 
 const DesignatedVoting = artifacts.require("DesignatedVoting");
@@ -17,7 +17,7 @@ const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 const snapshotMessage = "Sign For Snapshot";
 const { utf8ToHex, padRight } = web3.utils;
 
-contract("DesignatedVoting", function(accounts) {
+contract("DesignatedVoting", function (accounts) {
   const umaAdmin = accounts[0];
   const tokenOwner = accounts[1];
   const voter = accounts[2];
@@ -34,7 +34,7 @@ contract("DesignatedVoting", function(accounts) {
   // Corresponds to DesignatedVoting.Roles.Voter.
   const voterRole = "1";
 
-  before(async function() {
+  before(async function () {
     voting = await VotingAncillaryInterfaceTesting.at((await Voting.deployed()).address);
     supportedIdentifiers = await IdentifierWhitelist.deployed();
     votingToken = await VotingToken.deployed();
@@ -52,7 +52,7 @@ contract("DesignatedVoting", function(accounts) {
     signature = await signMessage(web3, snapshotMessage, umaAdmin);
   });
 
-  it("Deposit and withdraw", async function() {
+  it("Deposit and withdraw", async function () {
     assert.equal(await votingToken.balanceOf(tokenOwner), tokenBalance);
     assert.equal(await votingToken.balanceOf(designatedVoting.address), web3.utils.toWei("0"));
 
@@ -73,7 +73,7 @@ contract("DesignatedVoting", function(accounts) {
     assert.equal(await votingToken.balanceOf(designatedVoting.address), web3.utils.toWei("0"));
   });
 
-  it("Reverts passed through", async function() {
+  it("Reverts passed through", async function () {
     // Verify that there are no silent failures, and reverts get bubbled up.
     assert(
       await didContractThrow(
@@ -87,7 +87,7 @@ contract("DesignatedVoting", function(accounts) {
     );
   });
 
-  it("Commit, reveal and retrieve", async function() {
+  it("Commit, reveal and retrieve", async function () {
     await votingToken.transfer(designatedVoting.address, tokenBalance, { from: tokenOwner });
 
     // Set inflation to 50% to test reward retrieval.
@@ -114,7 +114,7 @@ contract("DesignatedVoting", function(accounts) {
       time,
       ancillaryData: ancillaryData,
       roundId,
-      identifier
+      identifier,
     });
 
     // Only the voter can commit a vote.
@@ -181,7 +181,7 @@ contract("DesignatedVoting", function(accounts) {
     await votingToken.burn(expectedInflation, { from: umaAdmin });
   });
 
-  it("Batch commit and reveal", async function() {
+  it("Batch commit and reveal", async function () {
     await votingToken.transfer(designatedVoting.address, tokenBalance, { from: tokenOwner });
 
     // Request a price.
@@ -206,7 +206,7 @@ contract("DesignatedVoting", function(accounts) {
       time: time1,
       ancillaryData: ancillaryData1,
       roundId,
-      identifier
+      identifier,
     });
     const message1 = web3.utils.randomHex(4);
 
@@ -219,14 +219,14 @@ contract("DesignatedVoting", function(accounts) {
       time: time2,
       ancillaryData: ancillaryData2,
       roundId,
-      identifier
+      identifier,
     });
     const message2 = web3.utils.randomHex(4);
 
     // Batch commit.
     const commits = [
       { identifier, time: time1, ancillaryData: ancillaryData1, hash: hash1, encryptedVote: message1 },
-      { identifier, time: time2, ancillaryData: ancillaryData2, hash: hash2, encryptedVote: message2 }
+      { identifier, time: time2, ancillaryData: ancillaryData2, hash: hash2, encryptedVote: message2 },
     ];
     assert(await didContractThrow(designatedVoting.batchCommit(commits, { from: tokenOwner })));
     await designatedVoting.batchCommit(commits, { from: voter });
@@ -243,7 +243,7 @@ contract("DesignatedVoting", function(accounts) {
     // Batch reveal.
     const reveals = [
       { identifier, time: time1, price: price1.toString(), ancillaryData: ancillaryData1, salt: salt1.toString() },
-      { identifier, time: time2, price: price2.toString(), ancillaryData: ancillaryData2, salt: salt2.toString() }
+      { identifier, time: time2, price: price2.toString(), ancillaryData: ancillaryData2, salt: salt2.toString() },
     ];
     assert(await didContractThrow(designatedVoting.batchReveal(reveals, { from: tokenOwner })));
     await designatedVoting.batchReveal(reveals, { from: voter });

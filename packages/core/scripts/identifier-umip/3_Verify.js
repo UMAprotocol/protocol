@@ -7,7 +7,7 @@
 const assert = require("assert").strict;
 
 // Use the same ABI's as deployed contracts:
-const { getTruffleContract } = require("../../index");
+const { getTruffleContract } = require("../../dist/index");
 const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, "1.1.0");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["identifier"] });
@@ -39,7 +39,7 @@ async function runExport() {
   console.log("Upgrade Verified!");
 }
 
-const run = async function(callback) {
+const run = async function (callback) {
   try {
     await runExport();
   } catch (err) {

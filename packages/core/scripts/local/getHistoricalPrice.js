@@ -20,7 +20,7 @@ require("dotenv").config();
 
 const UMIP_PRECISION = {
   USDBTC: 8,
-  USDETH: 5,
+  USDETH: 8,
   BTCDOM: 2,
   ALTDOM: 2,
   BCHNBTC: 8,
@@ -31,9 +31,9 @@ const UMIP_PRECISION = {
   "STABLESPREAD/USDC": 6,
   STABLESPREAD: 8,
   "ELASTIC_STABLESPREAD/USDC": 6,
-  ETHBTC_FR: 9
+  ETHBTC_FR: 9,
 };
-const DEFAULT_PRECISION = 5;
+const DEFAULT_PRECISION = 18;
 
 async function getHistoricalPrice(callback) {
   try {
@@ -64,7 +64,7 @@ async function getHistoricalPrice(callback) {
 
     // Create and update a new default price feed.
     let dummyLogger = winston.createLogger({
-      silent: true
+      silent: true,
     });
     let priceFeedConfig = {
       // Empirically, Cryptowatch API only returns data up to ~4 days back so that's why we default the lookback
@@ -72,7 +72,7 @@ async function getHistoricalPrice(callback) {
       lookback,
       priceFeedDecimals: 18, // Ensure all prices come out as 18-decimal denominated so the fromWei conversion works at the end.
       // Append price feed config params from environment such as "apiKey" for CryptoWatch price feeds.
-      ...(process.env.PRICE_FEED_CONFIG ? JSON.parse(process.env.PRICE_FEED_CONFIG) : {})
+      ...(process.env.PRICE_FEED_CONFIG ? JSON.parse(process.env.PRICE_FEED_CONFIG) : {}),
     };
     const defaultPriceFeed = await createReferencePriceFeedForFinancialContract(
       dummyLogger,
@@ -93,12 +93,10 @@ async function getHistoricalPrice(callback) {
     // protocol/financial-templates-lib/src/price-feed/CreatePriceFeed.js
     const queryPrice = await defaultPriceFeed.getHistoricalPrice(queryTime, true);
     const precisionToUse = UMIP_PRECISION[queryIdentifier] ? UMIP_PRECISION[queryIdentifier] : DEFAULT_PRECISION;
-    console.log(`\n⚠️ Truncating price to ${precisionToUse} decimals`);
-    console.log(
-      `\n💹 Median ${queryIdentifier} price @ ${queryTime} = ${Number(fromWei(queryPrice.toString())).toFixed(
-        precisionToUse
-      )}`
-    );
+    console.log(`\n⚠️ Truncating price to ${precisionToUse} decimals (default: 18)`);
+    const [predec, postdec] = fromWei(queryPrice.toString()).split(".");
+    const truncated = [predec, postdec.slice(0, precisionToUse)].join(".");
+    console.log(`\n💹 Median ${queryIdentifier} price @ ${queryTime} = ${truncated}`);
   } catch (err) {
     callback(err);
     return;

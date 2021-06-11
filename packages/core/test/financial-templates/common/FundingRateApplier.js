@@ -17,7 +17,7 @@ const ConfigStore = artifacts.require("ConfigStore");
 
 const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
 
-contract("FundingRateApplier", function(accounts) {
+contract("FundingRateApplier", function (accounts) {
   // Single-deploy contracts.
   let finder;
   let timer;
@@ -51,17 +51,18 @@ contract("FundingRateApplier", function(accounts) {
   const other = accounts[1];
   const disputer = accounts[2];
 
-  const pushPrice = async price => {
+  const pushPrice = async (price) => {
     const [lastQuery] = (await mockOracle.getPendingQueries()).slice(-1);
 
-    // Check that the ancillary data matches expectations.
-    // Note: hashing seems to be the only way to generate a tight packing offchain.
-    const expectedHash = web3.utils.soliditySha3(
-      { t: "address", v: collateral.address },
-      { t: "bytes", v: web3.utils.utf8ToHex("OptimisticOracle") },
-      { t: "address", v: fundingRateApplier.address }
-    );
-    assert.equal(web3.utils.soliditySha3({ t: "bytes", v: lastQuery.ancillaryData }), expectedHash);
+    // FundingRateApplier initially saves the synthetic token address to ancillary data:
+    const expectedFRAAncillaryData = utf8ToHex(`tokenAddress:${collateral.address.substr(2).toLowerCase()}`);
+
+    // OptimisticOracle should append its address:
+    const expectedAppendedAncillaryData = utf8ToHex(
+      `,ooRequester:${fundingRateApplier.address.substr(2).toLowerCase()}`
+    ).substr(2);
+    const expectedAncillaryData = `${expectedFRAAncillaryData}${expectedAppendedAncillaryData}`;
+    assert.equal(lastQuery.ancillaryData, expectedAncillaryData);
 
     await mockOracle.pushPrice(lastQuery.identifier, lastQuery.time, lastQuery.ancillaryData, price);
   };
@@ -104,7 +105,7 @@ contract("FundingRateApplier", function(accounts) {
         proposerBondPercentage: { rawValue: bondPercentage },
         maxFundingRate: { rawValue: maxFundingRate },
         minFundingRate: { rawValue: minFundingRate },
-        proposalTimePastLimit: proposalTimePastLimit // 30 mins
+        proposalTimePastLimit: proposalTimePastLimit, // 30 mins
       },
       timer.address
     );
@@ -132,8 +133,8 @@ contract("FundingRateApplier", function(accounts) {
     startTime = (await fundingRateApplier.getCurrentTime()).toNumber();
     currentTime = startTime;
 
-    // Note: in the test funding rate applier, the ancillary data is just the collateral address.
-    ancillaryData = collateral.address;
+    // Expected ancillary data: "tokenAddress:<collateral-token-address>"
+    ancillaryData = utf8ToHex(`tokenAddress:${collateral.address.substr(2).toLowerCase()}`);
   });
 
   it("Correctly sets funding rate multiplier", async () => {
@@ -211,7 +212,7 @@ contract("FundingRateApplier", function(accounts) {
     truffleAssert.eventNotEmitted(receipt, "FundingRateUpdated");
   });
 
-  it("Funding rate proposal must be within limits", async function() {
+  it("Funding rate proposal must be within limits", async function () {
     // Max/min funding rate per second is [< +1e-5, > -1e-5].
     const currentTime = (await fundingRateApplier.getCurrentTime()).toNumber();
     assert(await didContractThrow(fundingRateApplier.proposeFundingRate({ rawValue: toWei("0.00002") }, currentTime)));
@@ -264,7 +265,7 @@ contract("FundingRateApplier", function(accounts) {
 
       // Apply the newly expired rate.
       const receipt = await fundingRateApplier.applyFundingRate();
-      truffleAssert.eventEmitted(receipt, "FundingRateUpdated", ev => {
+      truffleAssert.eventEmitted(receipt, "FundingRateUpdated", (ev) => {
         return (
           ev.newFundingRate.toString() === defaultProposal &&
           ev.updateTime.toString() === (currentTime - delay).toString() && // Update time is equal to the proposal time.
@@ -358,7 +359,7 @@ contract("FundingRateApplier", function(accounts) {
 
       // Dispute proposal
       await optimisticOracle.disputePrice(fundingRateApplier.address, identifier, currentTime, ancillaryData, {
-        from: disputer
+        from: disputer,
       });
     });
 

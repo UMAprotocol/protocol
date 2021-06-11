@@ -24,5 +24,5 @@ class Networker {
 }
 
 module.exports = {
-  Networker
+  Networker,
 };

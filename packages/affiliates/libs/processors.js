@@ -28,7 +28,7 @@ function EmpAttributions(empAbi, defaultAddress, attributions) {
 
   return {
     handleTransaction,
-    attributions
+    attributions,
   };
 }
 
@@ -52,7 +52,7 @@ function EmpBalancesHistory() {
         blockTimestamp: event.blockTimestamp,
         tokens: balances.tokens.snapshot(),
         collateral: balances.collateral.snapshot(),
-        isExpired: balances.isExpired()
+        isExpired: balances.isExpired(),
       });
       lastBlockNumber = blockNumber;
       lastBlockTimestamp = event.blockTimestamp;
@@ -71,7 +71,7 @@ function EmpBalancesHistory() {
       blockTimestamp: lastBlockTimestamp,
       tokens: balances.tokens.snapshot(),
       collateral: balances.collateral.snapshot(),
-      isExpired: balances.isExpired()
+      isExpired: balances.isExpired(),
     });
   }
 
@@ -79,7 +79,7 @@ function EmpBalancesHistory() {
     finalize,
     balances,
     history,
-    handleEvent
+    handleEvent,
   };
 }
 
@@ -176,7 +176,7 @@ function EmpBalances(handlers = {}, { collateral, tokens } = {}) {
       // nothing
     },
     // override defaults
-    ...handlers
+    ...handlers,
   };
 
   function handleEvent({ name, args = [] }) {
@@ -192,12 +192,12 @@ function EmpBalances(handlers = {}, { collateral, tokens } = {}) {
     handleEvent,
     collateral,
     tokens,
-    isExpired
+    isExpired,
   };
 }
 
 module.exports = {
   EmpBalances,
   EmpBalancesHistory,
-  EmpAttributions
+  EmpAttributions,
 };

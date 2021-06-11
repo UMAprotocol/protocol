@@ -1,11 +1,11 @@
 {
   "name": "@uma/reporters",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Suite of reporting utils to aid in monitoring UMA financial contracts",
   "main": "index.js",
   "dependencies": {
-    "excel4node": "^1.7.2",
     "@apollo/client": "^3.0.1",
-    "@uma/merkle-distributor": "^1.0.4"
+    "@uma/merkle-distributor": "^1.2.0",
+    "excel4node": "^1.7.2"
   }
 }

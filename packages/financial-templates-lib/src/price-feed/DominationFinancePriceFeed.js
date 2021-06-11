@@ -46,7 +46,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
     this.toBN = this.web3.utils.toBN;
 
     this.priceFeedDecimals = priceFeedDecimals;
-    this.convertPriceFeedDecimals = number => {
+    this.convertPriceFeedDecimals = (number) => {
       // Converts price result to wei
       // returns price conversion to correct decimals as a big number
       return this.toBN(parseFixed(number.toString(), priceFeedDecimals).toString());
@@ -92,7 +92,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
 
     // `historicalPrices` are ordered from oldest to newest.
     // Find the first entry that is after the requested timestamp
-    const match = this.historicalPricePeriods.find(pricePeriod => {
+    const match = this.historicalPricePeriods.find((pricePeriod) => {
       return time < pricePeriod.closeTime;
     });
 
@@ -134,9 +134,9 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
   }
 
   getHistoricalPricePeriods() {
-    if (!this.invertPrice) return this.historicalPricePeriods.map(x => [x.closeTime, x.closePrice]);
+    if (!this.invertPrice) return this.historicalPricePeriods.map((x) => [x.closeTime, x.closePrice]);
     else
-      return this.historicalPricePeriods.map(historicalPrice => {
+      return this.historicalPricePeriods.map((historicalPrice) => {
         return [historicalPrice.closeTime, this._invertPriceSafely(historicalPrice.closePrice)];
       });
   }
@@ -163,7 +163,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
         message: "Update skipped because the last one was too recent",
         currentTime: currentTime,
         lastUpdateTimestamp: this.lastUpdateTime,
-        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime
+        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime,
       });
       return;
     }
@@ -172,7 +172,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
       at: "DominationFinancePriceFeed",
       message: "Updating",
       currentTime: currentTime,
-      lastUpdateTimestamp: this.lastUpdateTime
+      lastUpdateTimestamp: this.lastUpdateTime,
     });
 
     // 1. Construct URLs.
@@ -183,7 +183,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
     // 2. Send requests.
     const [priceResponse, historyResponse] = await Promise.all([
       this.networker.getJson(priceUrl),
-      this.networker.getJson(historyUrl)
+      this.networker.getJson(historyUrl),
     ]);
 
     // 2. Check responses.
@@ -227,10 +227,10 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
     // Use `closeTime` and `closePrice` to maintain the same format that is
     // expected by `MedianizerPriceFeed`
     const newHistoricalPricePeriods = historyResponse.data.rows
-      .map(row => ({
+      .map((row) => ({
         openTime: row[0],
         closeTime: row[0] + this.tickPeriod,
-        closePrice: this.convertPriceFeedDecimals(row[1])
+        closePrice: this.convertPriceFeedDecimals(row[1]),
       }))
       .sort((a, b) => {
         // Sorts the data such that the oldest elements come first.
@@ -246,9 +246,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
 
   _invertPriceSafely(priceBN) {
     if (priceBN && !priceBN.isZero()) {
-      return this.convertPriceFeedDecimals("1")
-        .mul(this.convertPriceFeedDecimals("1"))
-        .div(priceBN);
+      return this.convertPriceFeedDecimals("1").mul(this.convertPriceFeedDecimals("1")).div(priceBN);
     } else {
       return undefined;
     }
@@ -256,5 +254,5 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
 }
 
 module.exports = {
-  DominationFinancePriceFeed
+  DominationFinancePriceFeed,
 };

@@ -7,10 +7,10 @@ const {
   deploy,
   enableControllableTiming,
   interfaceName,
-  RegistryRolesEnum
+  RegistryRolesEnum,
 } = require("@uma/common");
 
-module.exports = async function(deployer, network, accounts) {
+module.exports = async function (deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
   const controllableTiming = enableControllableTiming(network);
 

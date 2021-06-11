@@ -4,6 +4,7 @@
   "compilerOptions": {
     "outDir": "../dist",
     "rootDir": "../",
-    "composite": true
+    "composite": true,
+    "resolveJsonModule": true
   }
 }

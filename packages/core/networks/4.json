@@ -5,7 +5,7 @@
   },
   {
     "contractName": "Finder",
-    "address": "0x9e416a429De8773e05563a92de4eD589aB5E5f1E"
+    "address": "0x2BEF44A613a09a1007a9D98526A3AAD068FCc480"
   },
   {
     "contractName": "VotingToken",
@@ -13,7 +13,7 @@
   },
   {
     "contractName": "IdentifierWhitelist",
-    "address": "0x26f65d7Da395F01A3e9C21595D1A2C0e173d82A4"
+    "address": "0x7242892cc4653F1214cf700DdCc50ad47EBff564"
   },
   {
     "contractName": "Voting",
@@ -42,5 +42,21 @@
   {
     "contractName": "WETH9",
     "address": "0xc778417E063141139Fce010982780140Aa0cD5Ab"
+  },
+  {
+    "contractName": "Bridge",
+    "address": "0xeCe891697B17d129b660152232A485CdAf8fd0D8"
+  },
+  {
+    "contractName": "GenericHandler",
+    "address": "0x8a99A7B49740B2bF935Ce48e4fEE028DB332595d"
+  },
+  {
+    "contractName": "MockOracleAncillary",
+    "address": "0xd227E520A3328eAe29951DEc5aF8162A5Bfb7fB0"
+  },
+  {
+    "contractName": "SourceOracle",
+    "address": "0x110009DB52a1AcA1A885F494ff5717017D0A8257"
   }
 ]

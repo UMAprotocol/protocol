@@ -1,0 +1,10 @@
+{
+  "extends": "@tsconfig/node14/tsconfig.json",
+  "include": ["src", "types"],
+  "compilerOptions": {
+    "outDir": "build",
+    "esModuleInterop": true,
+    "downlevelIteration": true,
+    "declaration":true
+  }
+}

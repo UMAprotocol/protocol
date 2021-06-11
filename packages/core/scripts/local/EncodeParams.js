@@ -6,9 +6,9 @@
  */
 const { toWei } = web3.utils;
 const { ZERO_ADDRESS } = require("@uma/common");
-const { getAbi, getTruffleContract } = require("../../index");
+const { getAbi, getTruffleContract } = require("../../dist/index");
 const argv = require("minimist")(process.argv.slice(), {
-  string: ["cversion", "address"]
+  string: ["cversion", "address"],
 });
 const abiVersion = argv.cversion || "latest"; // Default to most recent mainnet deployment, 1.2.2.
 const address = argv.address || "0x0";
@@ -22,7 +22,7 @@ const TokenFactory = getTruffleContract("TokenFactory", web3, abiVersion);
 /** ***************************************************
  * Main Script
  /*****************************************************/
-const encodeParams = async callback => {
+const encodeParams = async (callback) => {
   try {
     const expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
     const finder = await Finder.deployed();
@@ -46,7 +46,7 @@ const encodeParams = async callback => {
       withdrawalLiveness: 7200,
       finderAddress: finder.address,
       tokenFactoryAddress: tokenFactory.address,
-      timerAddress: await expiringMultiPartyCreator.timerAddress()
+      timerAddress: await expiringMultiPartyCreator.timerAddress(),
     };
 
     // Inject constructor params neccessary for "2.0.1" version of the EMPCreator:
@@ -54,12 +54,12 @@ const encodeParams = async callback => {
       constructorParams = {
         ...constructorParams,
         financialProductLibraryAddress: ZERO_ADDRESS,
-        tokenAddress: await emp.tokenCurrency()
+        tokenAddress: await emp.tokenCurrency(),
       };
     }
 
     const encodedParameters = web3.eth.abi.encodeParameters(getAbi("ExpiringMultiParty", abiVersion)[0].inputs, [
-      constructorParams
+      constructorParams,
     ]);
 
     // Done!

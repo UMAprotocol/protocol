@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
-pragma abicoder v2;
 
 import "../../common/implementation/Testable.sol";
 import "../../common/implementation/FixedPoint.sol";
-import "../common/financial-product-libraries/FinancialProductLibrary.sol";
+import "../common/financial-product-libraries/expiring-multiparty-libraries/FinancialProductLibrary.sol";
 
 contract ExpiringMultiPartyMock is Testable {
     using FixedPoint for FixedPoint.Unsigned;

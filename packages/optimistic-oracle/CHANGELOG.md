@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.2.0...@uma/optimistic-oracle@2.3.0) (2021-05-20)
+
+### Bug Fixes
+
+- **optimistic-oracle-disputer:** Ignore blacklisted identifiers ([#2925](https://github.com/UMAprotocol/protocol/issues/2925)) ([a0c866e](https://github.com/UMAprotocol/protocol/commit/a0c866edc055e435fa8ee1fd4777e86f4849f7ca))
+
+### Features
+
+- Add Mainnet deployments for Beacon (L2<>L1) contracts + new hardhat features ([#2998](https://github.com/UMAprotocol/protocol/issues/2998)) ([0f2d295](https://github.com/UMAprotocol/protocol/commit/0f2d295d43b3f27b4f14962148d239e124796d6b))
+- **version-management:** Update hard coded latest package versions in the bots to use 2.0 packages ([#2872](https://github.com/UMAprotocol/protocol/issues/2872)) ([b8225c5](https://github.com/UMAprotocol/protocol/commit/b8225c580ea48f58ef44aa308f966fbed5a99cf3))
+
 # [2.2.0](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.1.0...@uma/optimistic-oracle@2.2.0) (2021-04-23)
 
 ### Bug Fixes

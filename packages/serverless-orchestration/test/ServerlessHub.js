@@ -26,7 +26,7 @@ const sinon = require("sinon");
 const { SpyTransport, lastSpyLogIncludes, spyLogIncludes, lastSpyLogLevel } = require("@uma/financial-templates-lib");
 const { ZERO_ADDRESS } = require("@uma/common");
 
-contract("ServerlessHub.js", function(accounts) {
+contract("ServerlessHub.js", function (accounts) {
   const contractDeployer = accounts[0];
 
   let collateralToken;
@@ -60,16 +60,13 @@ contract("ServerlessHub.js", function(accounts) {
   };
 
   const sendHubRequest = (body, port = hubTestPort) => {
-    return request(`http://localhost:${port}`)
-      .post("/")
-      .send(body)
-      .set("Accept", "application/json");
+    return request(`http://localhost:${port}`).post("/").send(body).set("Accept", "application/json");
   };
 
-  before(async function() {
+  before(async function () {
     collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractDeployer });
     syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, {
-      from: contractDeployer
+      from: contractDeployer,
     });
 
     // Create identifier whitelist and register the price tracking ticker with it.
@@ -77,17 +74,17 @@ contract("ServerlessHub.js", function(accounts) {
     await identifierWhitelist.addSupportedIdentifier(utf8ToHex("ETH/BTC"));
   });
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
     hubSpy = sinon.spy(); // Create a new spy for each test.
     hubSpyLogger = winston.createLogger({
       level: "info",
-      transports: [new SpyTransport({ level: "debug" }, { spy: hubSpy })]
+      transports: [new SpyTransport({ level: "debug" }, { spy: hubSpy })],
     });
     spokeSpy = sinon.spy();
     spokeSpyLogger = winston.createLogger({
       level: "info",
-      transports: [new SpyTransport({ level: "debug" }, { spy: spokeSpy })]
+      transports: [new SpyTransport({ level: "debug" }, { spy: spokeSpy })],
     });
 
     // Start the serverless spoke instance with the spy logger injected.
@@ -115,7 +112,7 @@ contract("ServerlessHub.js", function(accounts) {
       disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: (await Timer.deployed()).address,
-      financialProductLibraryAddress: ZERO_ADDRESS
+      financialProductLibraryAddress: ZERO_ADDRESS,
     };
 
     // Deploy a new expiring multi party
@@ -126,20 +123,20 @@ contract("ServerlessHub.js", function(accounts) {
     defaultPricefeedConfig = {
       type: "test",
       currentPrice: "1",
-      historicalPrice: "1"
+      historicalPrice: "1",
     };
 
     // Set two uniswap prices to give it a little history.
     await uniswap.setPrice(toWei("1"), toWei("1"));
     await uniswap.setPrice(toWei("1"), toWei("1"));
   });
-  afterEach(async function() {
+  afterEach(async function () {
     hubInstance.close();
     spokeInstance.close();
     unsetEnvironmentVariables();
   });
 
-  it("ServerlessHub rejects empty json request bodies", async function() {
+  it("ServerlessHub rejects empty json request bodies", async function () {
     // empty body.
     const emptyBody = {};
     const emptyBodyResponse = await sendHubRequest(emptyBody);
@@ -151,7 +148,7 @@ contract("ServerlessHub.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(hubSpy, "A fatal error occurred in the hub"));
     assert.isTrue(lastSpyLogIncludes(hubSpy, "Body missing json bucket or file parameters"));
   });
-  it("ServerlessHub rejects invalid json request bodies", async function() {
+  it("ServerlessHub rejects invalid json request bodies", async function () {
     // body missing serverless command.
     const invalidBody = { someRandomKey: "random input" };
     const invalidBodyResponse = await sendHubRequest(invalidBody);
@@ -163,7 +160,7 @@ contract("ServerlessHub.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(hubSpy, "A fatal error occurred in the hub"));
     assert.isTrue(lastSpyLogIncludes(hubSpy, "Body missing json bucket or file parameters"));
   });
-  it("ServerlessHub can correctly execute bot logic with valid body and config", async function() {
+  it("ServerlessHub can correctly execute bot logic with valid body and config", async function () {
     // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
     // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be
     // used by a user running the hub-spoke on their local machine.
@@ -179,9 +176,9 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" }
-        }
-      }
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
     setEnvironmentVariable(`lastQueriedBlockNumber-${testConfigFile}`, startingBlockNumber);
@@ -198,7 +195,7 @@ contract("ServerlessHub.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(spokeSpy, `${startingBlockNumber + 1}`)); // The spoke should have the correct starting block number.
   });
 
-  it("ServerlessHub correctly deals with rejected spoke calls", async function() {
+  it("ServerlessHub correctly deals with rejected spoke calls", async function () {
     // valid config to send but set the spoke to be off-line
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
@@ -212,9 +209,9 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" }
-        }
-      }
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
     setEnvironmentVariable(`lastQueriedBlockNumber-${testConfigFile}`, startingBlockNumber);
@@ -222,7 +219,7 @@ contract("ServerlessHub.js", function(accounts) {
 
     const validBody = {
       bucket: testBucket,
-      configFile: testConfigFile
+      configFile: testConfigFile,
     };
 
     const testHubPort = 8082; // create a separate port to run this specific test on.
@@ -246,7 +243,7 @@ contract("ServerlessHub.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(hubSpy, "Some spoke calls returned errors"));
     assert.isTrue(lastSpyLogIncludes(hubSpy, "rejected"));
   });
-  it("ServerlessHub correctly deals with timeout spoke calls", async function() {
+  it("ServerlessHub correctly deals with timeout spoke calls", async function () {
     // valid config to send but set the spoke to be off-line.
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
@@ -260,9 +257,9 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" }
-        }
-      }
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
     setEnvironmentVariable(`lastQueriedBlockNumber-${testConfigFile}`, startingBlockNumber);
@@ -270,7 +267,7 @@ contract("ServerlessHub.js", function(accounts) {
 
     const validBody = {
       bucket: testBucket,
-      configFile: testConfigFile
+      configFile: testConfigFile,
     };
 
     // start the timoutSpokemock on a new port. Set the timeout for the response to be 5 seconds.
@@ -301,7 +298,7 @@ contract("ServerlessHub.js", function(accounts) {
 
     timeoutSpokeInstance.close();
   });
-  it("ServerlessHub can correctly execute multiple bots in parallel", async function() {
+  it("ServerlessHub can correctly execute multiple bots in parallel", async function () {
     // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
     // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be
     // used by a user running the hub-spoke on their local machine.
@@ -317,8 +314,8 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" }
-        }
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
       },
       testServerlessLiquidator: {
         serverlessCommand: "yarn --silent liquidator --network test",
@@ -327,8 +324,8 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          LIQUIDATOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" }
-        }
+          LIQUIDATOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
       },
       testServerlessDisputer: {
         serverlessCommand: "yarn --silent disputer --network test",
@@ -337,9 +334,9 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          DISPUTER_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" }
-        }
-      }
+          DISPUTER_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
     setEnvironmentVariable(`lastQueriedBlockNumber-${testConfigFile}`, startingBlockNumber);
@@ -347,7 +344,7 @@ contract("ServerlessHub.js", function(accounts) {
 
     const validBody = {
       bucket: testBucket,
-      configFile: testConfigFile
+      configFile: testConfigFile,
     };
 
     const validResponse = await sendHubRequest(validBody);
@@ -370,7 +367,7 @@ contract("ServerlessHub.js", function(accounts) {
       assert.isTrue(logObject.indexOf("End of serverless execution loop - terminating process") != 0);
     }
   });
-  it("ServerlessHub can correctly deal with some bots erroring out in execution", async function() {
+  it("ServerlessHub can correctly deal with some bots erroring out in execution", async function () {
     // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
     // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be
     // used by a user running the hub-spoke on their local machine.
@@ -387,8 +384,8 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" }
-        }
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
       },
       testServerlessMonitorError: {
         // Create an error in the execution path. Child process spoke will crash.
@@ -397,8 +394,8 @@ contract("ServerlessHub.js", function(accounts) {
           CUSTOM_NODE_URL: web3.currentProvider.host,
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
-          PRICE_FEED_CONFIG: defaultPricefeedConfig
-        }
+          PRICE_FEED_CONFIG: defaultPricefeedConfig,
+        },
       },
       testServerlessMonitorError2: {
         // Create an error in the execution path. Child process will run but will throw an error.
@@ -408,9 +405,9 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: "0x0000000000000000000000000000000000000000",
           PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" }
-        }
-      }
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
     setEnvironmentVariable(`lastQueriedBlockNumber-${testConfigFile}`, startingBlockNumber);
@@ -455,9 +452,9 @@ contract("ServerlessHub.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(hubSpy, "error Command INVALID not found"));
     assert.isTrue(
       responseObject.output.errorOutputs["testServerlessMonitorError2"].execResponse.stderr.includes(
-        "Returned values aren't valid, did it run Out of Gas?"
+        "Contract code hash is null"
       )
     ); // invalid emp error
-    assert.isTrue(lastSpyLogIncludes(hubSpy, "Returned values aren't valid, did it run Out of Gas?"));
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "Contract code hash is null"));
   });
 });

@@ -1,0 +1,58 @@
+[
+  {
+    "contractName": "Finder",
+    "address": "0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64"
+  },
+  {
+    "contractName": "Registry",
+    "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96"
+  },
+  {
+    "contractName": "IdentifierWhitelist",
+    "address": "0x2271a5E74eA8A29764ab10523575b41AA52455f0"
+  },
+  {
+    "contractName": "AddressWhitelist",
+    "address": "0x1020Ae36548ab28Bc0c41Fd2a08D24132C82cc55"
+  },
+  {
+    "contractName": "FinancialContractsAdmin",
+    "address": "0xd8866E76441df243fc98B892362Fc6264dC3ca80"
+  },
+  {
+    "contractName": "Store",
+    "address": "0x2d4710F04Da90184255782d3715224A6C776955D"
+  },
+  {
+    "contractName": "OptimisticOracle",
+    "address": "0x8A481F28C23c72CB01452ca570ba165DB5F55D24"
+  },
+  {
+    "contractName": "TokenFactory",
+    "address": "0x82B564983aE7274c86695917BBf8C99ECb6F0F8F"
+  },
+  {
+    "contractName": "ExpiringMultiPartyLib",
+    "address": "0x00526C1ede46255b752D280620318ab50B24c20e"
+  },
+  {
+    "contractName": "ExpiringMultiPartyCreator",
+    "address": "0xcdf08CB3d3436c3c21F277b6AD45E3D7aB1Ce12F"
+  },
+  {
+    "contractName": "Bridge",
+    "address": "0xEF8b46765ae805537053C59f826C3aD61924Db45"
+  },
+  {
+    "contractName": "GenericHandler",
+    "address": "0x09AFD24Acc170c16f4fF64BDf2A4818C515440e8"
+  },
+  {
+    "contractName": "SinkOracle",
+    "address": "0xe0Fe15CF22B9b52B6aE309C7384e03244A6DD985"
+  },
+  {
+    "contractName": "SinkGovernor",
+    "address": "0xbEAbC2300271986c672b24732f295baFb21d5316"
+  }
+]

@@ -13,8 +13,8 @@ exports.calculateCurrentTvl = async (req, res) => {
       key: key,
       data: {
         tvl: tvl.currentTvl,
-        created: currentTime
-      }
+        created: currentTime,
+      },
     };
     await datastore.save(dataBlob);
 

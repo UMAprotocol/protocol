@@ -10,7 +10,7 @@ async function WithdrawTokens() {
   const winston = require("winston");
   const assert = require("assert");
   const argv = require("minimist")(process.argv.slice(), {
-    string: ["tokenAddress", "amount", "recipientAddress"]
+    string: ["tokenAddress", "amount", "recipientAddress"],
   });
 
   const { getWeb3 } = require("@uma/common");
@@ -35,7 +35,7 @@ async function WithdrawTokens() {
 
   const logger = winston.createLogger({
     level: "debug",
-    transports: [new winston.transports.Console()]
+    transports: [new winston.transports.Console()],
   });
   const gasEstimator = new GasEstimator(logger);
   await gasEstimator.update();
@@ -50,14 +50,14 @@ async function WithdrawTokens() {
   // Send the transaction against the DSProxy manager.
   const tx = await token.transfer(argv.recipientAddress, amountToWithdraw, {
     from: accounts[0],
-    gasPrice: gasEstimator.getCurrentFastPrice()
+    gasPrice: gasEstimator.getCurrentFastPrice(),
   });
 
   console.log(`Sent ${amountToWithdraw} ${await token.symbol()} to ${argv.recipientAddress}.`);
   console.log(tx.transactionHash);
 }
 
-const run = async function(callback) {
+const run = async function (callback) {
   try {
     await WithdrawTokens();
   } catch (err) {

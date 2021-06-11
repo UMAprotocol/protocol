@@ -7,7 +7,7 @@ const {
   createObjectFromDefaultProps,
   ZERO_ADDRESS,
   createFormatFunction,
-  ConvertDecimals
+  ConvertDecimals,
 } = require("@uma/common");
 const { getAbi } = require("@uma/core");
 
@@ -44,11 +44,11 @@ class OptimisticOracleContractMonitor {
         // object is structured to contain key for the log to override and value for the logging level. EG:
         // { newPositionCreated:'debug' } would override the default `info` behaviour for newPositionCreated.
         value: {},
-        isValid: overrides => {
+        isValid: (overrides) => {
           // Override must be one of the default logging levels: ['error','warn','info','http','verbose','debug','silly']
-          return Object.values(overrides).every(param => Object.keys(this.logger.levels).includes(param));
-        }
-      }
+          return Object.values(overrides).every((param) => Object.keys(this.logger.levels).includes(param));
+        },
+      },
     };
 
     Object.assign(this, createObjectFromDefaultProps(monitorConfig, defaultConfig));
@@ -57,11 +57,11 @@ class OptimisticOracleContractMonitor {
     const defaultContractProps = {
       contractProps: {
         value: {},
-        isValid: x => {
+        isValid: (x) => {
           // The config must contain the following keys and types:
           return Object.keys(x).includes("networkId") && typeof x.networkId === "number";
-        }
-      }
+        },
+      },
     };
     Object.assign(this, createObjectFromDefaultProps({ contractProps }, defaultContractProps));
 
@@ -76,16 +76,16 @@ class OptimisticOracleContractMonitor {
     this.logger.debug({
       at: "OptimisticOracleContractMonitor",
       message: "Checking for RequestPrice events",
-      lastRequestPriceBlockNumber: this.lastRequestPriceBlockNumber
+      lastRequestPriceBlockNumber: this.lastRequestPriceBlockNumber,
     });
 
     let latestEvents = this.optimisticOracleContractEventClient.getAllRequestPriceEvents();
 
     // Get events that are newer than the last block number we've seen
-    latestEvents = latestEvents.filter(event => event.blockNumber > this.lastRequestPriceBlockNumber);
+    latestEvents = latestEvents.filter((event) => event.blockNumber > this.lastRequestPriceBlockNumber);
 
     for (let event of latestEvents) {
-      const convertCollateralDecimals = await this._getCollateralDecimalsConverted(event.requester);
+      const convertCollateralDecimals = await this._getCollateralDecimalsConverted(event.currency);
       const mrkdwn =
         createEtherscanLinkMarkdown(event.requester, this.contractProps.networkId) +
         ` requested a price at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
@@ -101,7 +101,8 @@ class OptimisticOracleContractMonitor {
       ]({
         at: "OptimisticOracleContractMonitor",
         message: "Price Request Alert 👮🏻!",
-        mrkdwn: mrkdwn
+        mrkdwn,
+        notificationPath: "risk-management",
       });
     }
     this.lastRequestPriceBlockNumber = this._getLastSeenBlockNumber(latestEvents);
@@ -112,13 +113,13 @@ class OptimisticOracleContractMonitor {
     this.logger.debug({
       at: "OptimisticOracleContractMonitor",
       message: "Checking for ProposePrice events",
-      lastProposePriceBlockNumber: this.lastProposePriceBlockNumber
+      lastProposePriceBlockNumber: this.lastProposePriceBlockNumber,
     });
 
     let latestEvents = this.optimisticOracleContractEventClient.getAllProposePriceEvents();
 
     // Get events that are newer than the last block number we've seen
-    latestEvents = latestEvents.filter(event => event.blockNumber > this.lastProposePriceBlockNumber);
+    latestEvents = latestEvents.filter((event) => event.blockNumber > this.lastProposePriceBlockNumber);
 
     for (let event of latestEvents) {
       const mrkdwn =
@@ -137,7 +138,8 @@ class OptimisticOracleContractMonitor {
       ]({
         at: "OptimisticOracleContractMonitor",
         message: "Price Proposal Alert 🧞‍♂️!",
-        mrkdwn: mrkdwn
+        mrkdwn,
+        notificationPath: "risk-management",
       });
     }
     this.lastProposePriceBlockNumber = this._getLastSeenBlockNumber(latestEvents);
@@ -148,13 +150,13 @@ class OptimisticOracleContractMonitor {
     this.logger.debug({
       at: "OptimisticOracleContractMonitor",
       message: "Checking for DisputePrice events",
-      lastDisputePriceBlockNumber: this.lastDisputePriceBlockNumber
+      lastDisputePriceBlockNumber: this.lastDisputePriceBlockNumber,
     });
 
     let latestEvents = this.optimisticOracleContractEventClient.getAllDisputePriceEvents();
 
     // Get events that are newer than the last block number we've seen
-    latestEvents = latestEvents.filter(event => event.blockNumber > this.lastDisputePriceBlockNumber);
+    latestEvents = latestEvents.filter((event) => event.blockNumber > this.lastDisputePriceBlockNumber);
 
     for (let event of latestEvents) {
       const mrkdwn =
@@ -167,7 +169,8 @@ class OptimisticOracleContractMonitor {
       this.logger[this.logOverrides.disputedPrice || "error"]({
         at: "OptimisticOracleContractMonitor",
         message: "Price Dispute Alert ⛔️!",
-        mrkdwn: mrkdwn
+        mrkdwn,
+        notificationPath: "risk-management",
       });
     }
     this.lastDisputePriceBlockNumber = this._getLastSeenBlockNumber(latestEvents);
@@ -178,16 +181,16 @@ class OptimisticOracleContractMonitor {
     this.logger.debug({
       at: "OptimisticOracleContractMonitor",
       message: "Checking for Settle events",
-      lastSettlementBlockNumber: this.lastSettlementBlockNumber
+      lastSettlementBlockNumber: this.lastSettlementBlockNumber,
     });
 
     let latestEvents = this.optimisticOracleContractEventClient.getAllSettlementEvents();
 
     // Get events that are newer than the last block number we've seen
-    latestEvents = latestEvents.filter(event => event.blockNumber > this.lastSettlementBlockNumber);
+    latestEvents = latestEvents.filter((event) => event.blockNumber > this.lastSettlementBlockNumber);
 
     for (let event of latestEvents) {
-      const convertCollateralDecimals = await this._getCollateralDecimalsConverted(event.requester);
+      const convertCollateralDecimals = await this._getCollateralDecimalsConverted(event.currency);
       const mrkdwn =
         `Detected a price request settlement for the request made by ${event.requester} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
         `The proposer was ${event.proposer} and the disputer was ${event.disputer}. ` +
@@ -204,18 +207,17 @@ class OptimisticOracleContractMonitor {
       ]({
         at: "OptimisticOracleContractMonitor",
         message: "Price Settlement Alert 🏧!",
-        mrkdwn: mrkdwn
+        mrkdwn,
+        notificationPath: "risk-management",
       });
     }
     this.lastSettlementBlockNumber = this._getLastSeenBlockNumber(latestEvents);
   }
 
-  // Returns helper method for converting collateral token associated with financial contract to human readable form.
-  async _getCollateralDecimalsConverted(financialContractAddress) {
-    const financialContract = new this.web3.eth.Contract(getAbi("FeePayer"), financialContractAddress);
-    const collateralAddress = await financialContract.methods.collateralCurrency().call();
-    const collateralContract = new this.web3.eth.Contract(getAbi("ExpandedERC20"), collateralAddress);
-    const collateralDecimals = await collateralContract.methods.decimals().call();
+  // Returns helper method for converting collateral token to human readable form.
+  async _getCollateralDecimalsConverted(currencyAddress) {
+    const collateralContract = new this.web3.eth.Contract(getAbi("ExpandedERC20"), currencyAddress);
+    let collateralDecimals = await collateralContract.methods.decimals().call();
     return ConvertDecimals(collateralDecimals.toString(), 18, this.web3);
   }
 
@@ -234,5 +236,5 @@ class OptimisticOracleContractMonitor {
 }
 
 module.exports = {
-  OptimisticOracleContractMonitor
+  OptimisticOracleContractMonitor,
 };

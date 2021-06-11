@@ -1,7 +1,10 @@
 const assert = require("assert");
-const truffleContract = require("@truffle/contract");
-
-const { createObjectFromDefaultProps, runTransaction, blockUntilBlockMined, MAX_UINT_VAL } = require("@uma/common");
+const {
+  createObjectFromDefaultProps,
+  runTransaction,
+  blockUntilBlockMined,
+  createContractObjectFromJson,
+} = require("@uma/common");
 const { getAbi, getTruffleContract } = require("@uma/core");
 
 const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json");
@@ -33,8 +36,7 @@ class ProxyTransactionWrapper {
     collateralToken,
     account,
     dsProxyManager = undefined,
-    useDsProxyToLiquidate = false,
-    proxyTransactionWrapperConfig
+    proxyTransactionWrapperConfig,
   }) {
     this.web3 = web3;
     this.financialContract = financialContract;
@@ -49,40 +51,39 @@ class ProxyTransactionWrapper {
     this.toWei = this.web3.utils.toWei;
     this.toChecksumAddress = this.web3.utils.toChecksumAddress;
 
-    this.useDsProxyToLiquidate = useDsProxyToLiquidate;
-
     // TODO: refactor the router to pull from a constant file.
     const defaultConfig = {
       useDsProxyToLiquidate: {
         value: false,
-        isValid: x => {
+        isValid: (x) => {
           return typeof x == "boolean";
-        }
+        },
       },
       uniswapRouterAddress: {
         value: "0x7a250d5630b4cf539739df2c5dacb4c659f2488d",
-        isValid: x => {
+        isValid: (x) => {
           return this.web3.utils.isAddress(x);
-        }
+        },
       },
       uniswapFactoryAddress: {
         value: "0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f",
-        isValid: x => {
+        isValid: (x) => {
           return this.web3.utils.isAddress(x);
-        }
+        },
       },
       liquidatorReserveCurrencyAddress: {
         value: "",
-        isValid: x => {
+        isValid: (x) => {
           return this.web3.utils.isAddress(x) || x === "";
-        }
+        },
       },
-      maxReserverTokenSpent: {
-        value: MAX_UINT_VAL,
-        isValid: x => {
-          return typeof x == "string";
-        }
-      }
+      maxAcceptableSlippage: {
+        // default to reverting on >10% slippage on trades.
+        value: this.toWei("0.1"),
+        isValid: (x) => {
+          return typeof x == "string" && this.toBN(x).gt(this.toBN("0"));
+        },
+      },
     };
 
     // Validate and set config settings to class state.
@@ -106,13 +107,6 @@ class ProxyTransactionWrapper {
     this.ReserveCurrencyLiquidator = getTruffleContract("ReserveCurrencyLiquidator", this.web3);
   }
 
-  // TODO: wrap this into a common util.
-  createContractObjectFromJson(contractJsonObject) {
-    let truffleContractCreator = truffleContract(contractJsonObject);
-    truffleContractCreator.setProvider(this.web3.currentProvider);
-    return truffleContractCreator;
-  }
-
   // Get the effective synthetic token balance. If the bot is executing in normal mode (liquidations sent from an EOA)
   // then this is simply the token balance of the unlocked account. If the liquidator is using a DSProxy to liquidate,
   // then consider the synthetics could be minted, + any synthetics the DSProxy already has.
@@ -126,7 +120,7 @@ class ProxyTransactionWrapper {
         this.financialContract.methods.pfc().call(),
         this.financialContract.methods.totalTokensOutstanding().call(),
         this.reserveToken.methods.balanceOf(this.dsProxyManager.getDSProxyAddress()).call(),
-        this.collateralToken.methods.balanceOf(this.dsProxyManager.getDSProxyAddress()).call()
+        this.collateralToken.methods.balanceOf(this.dsProxyManager.getDSProxyAddress()).call(),
       ]);
       let maxPurchasableCollateral = this.toBN("0"); // set to the reserve token balance (if reserve==collateral) or the max purchasable.
 
@@ -136,10 +130,12 @@ class ProxyTransactionWrapper {
       // Else, work out how much collateral could be purchased using all the reserve currency.
       else {
         // Instantiate uniswap factory to fetch the pair address.
-        const uniswapFactory = await this.createContractObjectFromJson(UniswapV2Factory).at(this.uniswapFactoryAddress);
+        const uniswapFactory = await createContractObjectFromJson(UniswapV2Factory, this.web3).at(
+          this.uniswapFactoryAddress
+        );
 
         const pairAddress = await uniswapFactory.getPair(this.reserveToken._address, this.collateralToken._address);
-        const uniswapPair = await this.createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
+        const uniswapPair = await createContractObjectFromJson(IUniswapV2Pair, this.web3).at(pairAddress);
 
         // We can now fetch the reserves. At the same time, we can batch a few other required async calls.
         const [reserves, token0] = await Promise.all([uniswapPair.getReserves(), uniswapPair.token0()]);
@@ -189,35 +185,29 @@ class ProxyTransactionWrapper {
     const liquidation = this.financialContract.methods.createLiquidation(...liquidationArgs);
 
     // Send the transaction or report failure.
-    let receipt;
-    try {
-      const txResponse = await runTransaction({
-        transaction: liquidation,
-        config: {
-          gasPrice: this.gasEstimator.getCurrentFastPrice(),
-          from: this.account,
-          nonce: await this.web3.eth.getTransactionCount(this.account)
-        }
-      });
-      receipt = txResponse.receipt;
-    } catch (error) {
-      return new Error("Failed to liquidate position🚨");
-    }
 
-    return {
-      type: "Standard EOA liquidation",
-      tx: receipt && receipt.transactionHash,
-      sponsor: receipt.events.LiquidationCreated.returnValues.sponsor,
-      liquidator: receipt.events.LiquidationCreated.returnValues.liquidator,
-      liquidationId: receipt.events.LiquidationCreated.returnValues.liquidationId,
-      tokensOutstanding: receipt.events.LiquidationCreated.returnValues.tokensOutstanding,
-      lockedCollateral: receipt.events.LiquidationCreated.returnValues.lockedCollateral,
-      liquidatedCollateral: receipt.events.LiquidationCreated.returnValues.liquidatedCollateral,
-      txnConfig: {
-        gasPrice: this.gasEstimator.getCurrentFastPrice(),
-        from: this.account
-      }
-    };
+    try {
+      const { receipt, returnValue, transactionConfig } = await runTransaction({
+        web3: this.web3,
+        transaction: liquidation,
+        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
+      });
+
+      return {
+        type: "Standard EOA liquidation",
+        tx: receipt && receipt.transactionHash,
+        sponsor: receipt.events.LiquidationCreated.returnValues.sponsor,
+        liquidator: receipt.events.LiquidationCreated.returnValues.liquidator,
+        liquidationId: receipt.events.LiquidationCreated.returnValues.liquidationId,
+        tokensOutstanding: receipt.events.LiquidationCreated.returnValues.tokensOutstanding,
+        lockedCollateral: receipt.events.LiquidationCreated.returnValues.lockedCollateral,
+        liquidatedCollateral: receipt.events.LiquidationCreated.returnValues.liquidatedCollateral,
+        returnValue: returnValue.toString(),
+        transactionConfig,
+      };
+    } catch (error) {
+      return error;
+    }
   }
 
   async _executeLiquidationWithDsProxy(liquidationArgs) {
@@ -231,10 +221,10 @@ class ProxyTransactionWrapper {
         this.financialContract._address, // financialContract
         this.reserveToken._address, // reserveCurrency
         liquidationArgs[0], // liquidatedSponsor
-        { rawValue: this.maxReserverTokenSpent }, // maxReserverTokenSpent
         { rawValue: liquidationArgs[1].rawValue }, // minCollateralPerTokenLiquidated
         { rawValue: liquidationArgs[2].rawValue }, // maxCollateralPerTokenLiquidated. This number need to be >= the token price.
         { rawValue: liquidationArgs[3].rawValue }, // maxTokensToLiquidate. This is how many tokens the positions has (liquidated debt).
+        this.maxAcceptableSlippage, // maxSlippage. liquidation will revert if the slippage on the dex is more than this.
         liquidationArgs[4]
       )
       .encodeABI();
@@ -250,8 +240,8 @@ class ProxyTransactionWrapper {
       await this.financialContract.getPastEvents("LiquidationCreated", {
         fromBlock: blockAfterLiquidation - 1,
         filter: {
-          liquidator: this.dsProxyManager.getDSProxyAddress()
-        }
+          liquidator: this.dsProxyManager.getDSProxyAddress(),
+        },
       })
     )[0];
 
@@ -267,8 +257,8 @@ class ProxyTransactionWrapper {
       liquidatedCollateral: liquidationEvent.returnValues.liquidatedCollateral,
       txnConfig: {
         from: dsProxyCallReturn.from,
-        gas: dsProxyCallReturn.gasUsed
-      }
+        gas: dsProxyCallReturn.gasUsed,
+      },
     };
   }
 }

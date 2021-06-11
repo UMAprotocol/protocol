@@ -16,7 +16,7 @@ const Timer = getTruffleContract("Timer", web3);
 const Store = getTruffleContract("Store", web3);
 const MockOracle = getTruffleContract("MockOracleAncillary", web3);
 
-contract("OptimisticOracleClient.js", function(accounts) {
+contract("OptimisticOracleClient.js", function (accounts) {
   const owner = accounts[0];
   const requester = accounts[1];
   const proposer = accounts[2];
@@ -48,12 +48,12 @@ contract("OptimisticOracleClient.js", function(accounts) {
   const correctPrice = toWei("-17");
   const identifier = web3.utils.utf8ToHex("Test Identifier");
 
-  const pushPrice = async price => {
+  const pushPrice = async (price) => {
     const [lastQuery] = (await mockOracle.getPendingQueries()).slice(-1);
     await mockOracle.pushPrice(lastQuery.identifier, lastQuery.time, lastQuery.ancillaryData, price);
   };
 
-  before(async function() {
+  before(async function () {
     finder = await Finder.new();
     timer = await Timer.new();
 
@@ -72,7 +72,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
   });
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     // Deploy and whitelist a new collateral currency that we will use to pay oracle fees.
     collateral = await Token.new("Wrapped Ether", "WETH", 18);
     await collateral.addMember(1, owner);
@@ -97,7 +97,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
     // DummyLogger will not print anything to console as only capture `info` level events.
     dummyLogger = winston.createLogger({
       level: "info",
-      transports: [new winston.transports.Console()]
+      transports: [new winston.transports.Console()],
     });
 
     client = new OptimisticOracleClient(
@@ -110,7 +110,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
     );
   });
 
-  it("Basic proposal lifecycle: request, propose, expire without dispute", async function() {
+  it("Basic proposal lifecycle: request, propose, expire without dispute", async function () {
     // Initial update.
     await client.update();
 
@@ -140,15 +140,15 @@ contract("OptimisticOracleClient.js", function(accounts) {
         timestamp: requestTime.toString(),
         currency: collateral.address,
         reward: "0",
-        finalFee
-      }
+        finalFee,
+      },
     ]);
 
     // Make a proposal and update, should now show one proposal, 0 unproposed requests, and 0 expired proposals:
     await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
     const currentContractTime = await optimisticOracle.getCurrentTime();
     await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x", correctPrice, {
-      from: proposer
+      from: proposer,
     });
 
     await client.update();
@@ -162,8 +162,8 @@ contract("OptimisticOracleClient.js", function(accounts) {
         currency: collateral.address,
         timestamp: requestTime.toString(),
         proposedPrice: correctPrice,
-        expirationTimestamp: (Number(currentContractTime) + liveness).toString()
-      }
+        expirationTimestamp: (Number(currentContractTime) + liveness).toString(),
+      },
     ]);
     result = client.getUnproposedPriceRequests();
     assert.deepStrictEqual(result, []);
@@ -190,8 +190,8 @@ contract("OptimisticOracleClient.js", function(accounts) {
         currency: collateral.address,
         timestamp: requestTime.toString(),
         proposedPrice: correctPrice,
-        expirationTimestamp: (Number(currentContractTime) + liveness).toString()
-      }
+        expirationTimestamp: (Number(currentContractTime) + liveness).toString(),
+      },
     ]);
 
     // Once proposals are settled they no longer appear as settleable in the client.
@@ -201,7 +201,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
     assert.deepStrictEqual(result, []);
   });
 
-  it("Basic dispute lifecycle: request, propose, dispute, resolve & settle", async function() {
+  it("Basic dispute lifecycle: request, propose, dispute, resolve & settle", async function () {
     // Initial update.
     await client.update();
 
@@ -218,7 +218,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
     // Make a proposal:
     await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
     await optimisticOracle.proposePrice(optimisticRequester.address, identifier, requestTime, "0x", correctPrice, {
-      from: proposer
+      from: proposer,
     });
 
     await client.update();
@@ -245,8 +245,8 @@ contract("OptimisticOracleClient.js", function(accounts) {
         disputer: disputer,
         identifier: hexToUtf8(identifier),
         ancillaryData: "0x",
-        timestamp: requestTime.toString()
-      }
+        timestamp: requestTime.toString(),
+      },
     ]);
 
     // Settle the dispute and make sure that the client no longer sees it as settleable:
@@ -256,7 +256,7 @@ contract("OptimisticOracleClient.js", function(accounts) {
     assert.deepStrictEqual(result, []);
   });
 
-  it("Lookback window enforced", async function() {
+  it("Lookback window enforced", async function () {
     // Create a new client with a shorter lookback equal to approximately
     // the amount of seconds that it takes 1 block to get mined
     let clientShortLookback = new OptimisticOracleClient(
@@ -281,8 +281,8 @@ contract("OptimisticOracleClient.js", function(accounts) {
         timestamp: requestTime.toString(),
         currency: collateral.address,
         reward: "0",
-        finalFee
-      }
+        finalFee,
+      },
     ]);
 
     // Mine two blocks to move past the lookback window, and make sure the shorter lookback client

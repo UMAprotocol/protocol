@@ -2,7 +2,7 @@ const {
   PostWithdrawLiquidationRewardsStatusTranslations,
   createObjectFromDefaultProps,
   revertWrapper,
-  runTransaction
+  runTransaction,
 } = require("@uma/common");
 
 const LiquidationStrategy = require("./liquidationStrategy");
@@ -12,6 +12,7 @@ class Liquidator {
    * @notice Constructs new Liquidator bot.
    * @param {Object} logger Module used to send logs.
    * @param {Object} financialContractClient Module used to query Financial Contract information on-chain.
+   * @param {Object} proxyTransactionWrapper Module enable the liquidator to send transactions via a DSProxy.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {Object} syntheticToken Synthetic token (tokenCurrency).
    * @param {Object} priceFeed Module used to query the current token price.
@@ -31,7 +32,7 @@ class Liquidator {
     priceFeed,
     account,
     financialContractProps,
-    liquidatorConfig
+    liquidatorConfig,
   }) {
     this.logger = logger;
     this.account = account;
@@ -77,79 +78,79 @@ class Liquidator {
         // then the minimum collateral requirement is 120. However, if `crThreshold = 0.02`, then the minimum
         // collateral requirement is 120 * (1-0.02) = 117.6, or 2% below 120.
         value: 0.02,
-        isValid: x => {
+        isValid: (x) => {
           return x < 1 && x >= 0;
-        }
+        },
       },
       liquidationDeadline: {
         // `liquidationDeadline`: Aborts the liquidation if the transaction is mined this amount of time after the
         // Financial Contract client's last update time. Denominated in seconds, so 300 = 5 minutes.
         value: 300,
-        isValid: x => {
+        isValid: (x) => {
           return x >= 0;
-        }
+        },
       },
       liquidationMinPrice: {
         // `liquidationMinPrice`: Aborts the liquidation if the amount of collateral in the position per token
         // outstanding is below this ratio.
         value: this.toWei("0"),
-        isValid: x => {
+        isValid: (x) => {
           return this.toBN(x).gte(this.toBN("0"));
-        }
+        },
         // TODO: We should specify as a percentage of the token price so that no valid
         // liquidation would ever lose money.
       },
       txnGasLimit: {
         // `txnGasLimit`: Gas limit to set for sending on-chain transactions.
         value: 9000000, // Can see recent averages here: https://etherscan.io/chart/gaslimit
-        isValid: x => {
+        isValid: (x) => {
           return x >= 6000000 && x < 15000000;
-        }
+        },
       },
       logOverrides: {
         // Specify an override object to change default logging behaviour. Defaults to no overrides. If specified, this
         // object is structured to contain key for the log to override and value for the logging level. EG:
         // { positionLiquidated:'warn' } would override the default `info` behaviour for liquidationEvents.
         value: {},
-        isValid: overrides => {
+        isValid: (overrides) => {
           // Override must be one of the default logging levels: ['error','warn','info','http','verbose','debug','silly']
-          return Object.values(overrides).every(param => Object.keys(this.logger.levels).includes(param));
-        }
+          return Object.values(overrides).every((param) => Object.keys(this.logger.levels).includes(param));
+        },
       },
       defenseActivationPercent: {
         value: undefined,
-        isValid: x => {
+        isValid: (x) => {
           if (x === undefined) return true;
           return parseFloat(x) >= 0 && parseFloat(x) <= 100;
-        }
+        },
       },
       contractType: {
         value: undefined,
-        isValid: x => {
+        isValid: (x) => {
           return x === "ExpiringMultiParty" || x === "Perpetual";
-        }
+        },
       },
       contractVersion: {
         value: undefined,
-        isValid: x => {
+        isValid: (x) => {
           return x === "1.2.0" || x === "1.2.1" || x === "1.2.2" || x === "2.0.1";
-        }
+        },
       },
       // Start and end block define a window used to filter for contract events.
       startingBlock: {
         value: undefined,
-        isValid: x => {
+        isValid: (x) => {
           if (x === undefined) return true;
           return Number(x) >= 0;
-        }
+        },
       },
       endingBlock: {
         value: undefined,
-        isValid: x => {
+        isValid: (x) => {
           if (x === undefined) return true;
           return Number(x) >= 0;
-        }
-      }
+        },
+      },
     };
 
     // Validate and set config settings to class state.
@@ -170,7 +171,7 @@ class Liquidator {
         return logger.error({
           at: "Liquidator",
           ...data,
-          error: "Trying to submit log with unknown severity: " + severity
+          error: "Trying to submit log with unknown severity: " + severity,
         });
       }
       return logger[severity]({
@@ -178,7 +179,7 @@ class Liquidator {
         // could add in additional context for any error thrown,
         // such as state of financialContract or bot configuration data
         minLiquidationPrice: this.liquidationMinPrice,
-        ...data
+        ...data,
       });
     };
     this.log = log;
@@ -201,9 +202,9 @@ class Liquidator {
   async liquidatePositions(maxTokensToLiquidateWei, liquidatorOverridePrice) {
     this.logger.debug({
       at: "Liquidator",
-      message: "Checking for liquidatable positions and preforming liquidations",
+      message: "Checking for liquidatable positions and performing liquidations",
       maxTokensToLiquidateWei,
-      liquidatorOverridePrice
+      liquidatorOverridePrice,
     });
     // If an override is provided, use that price. Else, get the latest price from the price feed.
     const price = liquidatorOverridePrice
@@ -242,7 +243,7 @@ class Liquidator {
       scaledPrice: scaledPrice.toString(),
       financialContractCRRatio: this.financialContractCRRatio.toString(),
       maxCollateralPerToken: maxCollateralPerToken.toString(),
-      crThreshold: this.crThreshold
+      crThreshold: this.crThreshold,
     });
 
     // Get the latest undercollateralized positions from the client.
@@ -251,7 +252,7 @@ class Liquidator {
     if (underCollateralizedPositions.length === 0) {
       this.logger.debug({
         at: "Liquidator",
-        message: "No undercollateralized position"
+        message: "No undercollateralized position",
       });
       return;
     }
@@ -262,7 +263,7 @@ class Liquidator {
         message: "Detected a liquidatable position",
         scaledPrice: scaledPrice.toString(),
         maxCollateralPerToken: maxCollateralPerToken.toString(),
-        position: position
+        position: position,
       });
 
       // Note: query the time again during each iteration to ensure the deadline is set reasonably.
@@ -282,7 +283,7 @@ class Liquidator {
         currentBlockTime, // this is required to create liquidation object
         maxCollateralPerToken, // maximum tokens we can liquidate in position
         maxTokensToLiquidateWei,
-        inputPrice: scaledPrice.toString() // for logging
+        inputPrice: scaledPrice.toString(), // for logging
       });
 
       // we couldnt liquidate, this typically would only happen if our balance is 0 or the withdrawal liveness
@@ -304,7 +305,7 @@ class Liquidator {
           maxLiquidationPrice: maxCollateralPerToken.toString(),
           tokensToLiquidate: tokensToLiquidate.toString(),
           syntheticTokenBalance: syntheticTokenBalance.toString(),
-          maxTokensToLiquidateWei: maxTokensToLiquidateWei ? maxTokensToLiquidateWei.toString() : null
+          maxTokensToLiquidateWei: maxTokensToLiquidateWei ? maxTokensToLiquidateWei.toString() : null,
         });
       }
       this.logger.debug({
@@ -314,7 +315,7 @@ class Liquidator {
         inputPrice: scaledPrice.toString(),
         minLiquidationPrice: this.liquidationMinPrice,
         maxLiquidationPrice: maxCollateralPerToken.toString(),
-        tokensToLiquidate: tokensToLiquidate.toString()
+        tokensToLiquidate: tokensToLiquidate.toString(),
       });
       const logResult = await this.proxyTransactionWrapper.submitLiquidationTransaction(liquidationArgs);
 
@@ -322,7 +323,7 @@ class Liquidator {
         this.logger.error({
           at: "Liquidator",
           message: "Failed to liquidate position🚨",
-          logResult
+          logResult,
         });
       else
         this.logger[this.logOverrides.positionLiquidated || "info"]({
@@ -330,7 +331,7 @@ class Liquidator {
           message: "Position has been liquidated!🔫",
           position: position,
           inputPrice: scaledPrice.toString(),
-          liquidationResult: logResult
+          liquidationResult: logResult,
         });
     }
   }
@@ -339,7 +340,7 @@ class Liquidator {
   async withdrawRewards() {
     this.logger.debug({
       at: "Liquidator",
-      message: "Checking for expired and disputed liquidations to withdraw rewards from"
+      message: "Checking for expired and disputed liquidations to withdraw rewards from",
     });
 
     // All of the liquidations that we could withdraw rewards from are drawn from the pool of
@@ -353,19 +354,19 @@ class Liquidator {
       : this.account;
     const potentialWithdrawableLiquidations = expiredLiquidations
       .concat(disputedLiquidations)
-      .filter(liquidation => liquidation.liquidator === liquidatorAddress);
+      .filter((liquidation) => liquidation.liquidator === liquidatorAddress);
 
     if (potentialWithdrawableLiquidations.length === 0) {
       this.logger.debug({
         at: "Liquidator",
-        message: "No withdrawable liquidations"
+        message: "No withdrawable liquidations",
       });
       return;
     }
 
     // In legacy versions of the EMP, withdrawing needs to be done by a party involved in the liquidation (i.e liquidator,
     // sponsor or disputer). As the liquidator is the DSProxy, we would require the ability to send the withdrawal tx
-    // directly from the DSProxy to facilitate this.This functionality is not implemented as almost all legacy EMPs expired.
+    // directly from the DSProxy to facilitate this. This functionality is not implemented as almost all legacy EMPs expired.
     if (
       this.proxyTransactionWrapper?.useDsProxyToLiquidate &&
       this.isLegacyEmpVersion &&
@@ -374,7 +375,7 @@ class Liquidator {
       this.logger.warn({
         at: "Liquidator",
         message: "Attempting to withdraw liquidation from a legacy EMP🙈",
-        details: "This is not supported on legacy with a DSProxy! Please manually withdraw the liquidation"
+        details: "This is not supported on legacy with a DSProxy! Please manually withdraw the liquidation",
       });
       return;
     }
@@ -383,7 +384,7 @@ class Liquidator {
       this.logger.debug({
         at: "Liquidator",
         message: "Detected a pending or expired liquidation",
-        liquidation: liquidation
+        liquidation: liquidation,
       });
 
       // Construct transaction.
@@ -404,7 +405,7 @@ class Liquidator {
           at: "Liquidator",
           message: "No rewards to withdraw",
           liquidation: liquidation,
-          error
+          error,
         });
         continue;
       }
@@ -421,61 +422,58 @@ class Liquidator {
         at: "Liquidator",
         message: "Withdrawing liquidation",
         liquidation: liquidation,
-        amountWithdrawn
+        amountWithdrawn,
       });
 
       // Send the transaction or report failure.
-      let receipt;
+
       try {
-        const txResponse = await runTransaction({
+        const { receipt, transactionConfig } = await runTransaction({
+          web3: this.web3,
           transaction: withdraw,
-          config: {
-            gasPrice: this.gasEstimator.getCurrentFastPrice(),
-            from: this.account,
-            nonce: await this.web3.eth.getTransactionCount(this.account)
-          }
+          transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
         });
-        receipt = txResponse.receipt;
+
+        const logResult = {
+          tx: receipt.transactionHash,
+          caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
+          // Settlement price is possible undefined if liquidation expired without a dispute.
+          settlementPrice: receipt.events.LiquidationWithdrawn.returnValues.settlementPrice,
+          liquidationStatus:
+            PostWithdrawLiquidationRewardsStatusTranslations[
+              receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
+            ],
+        };
+
+        // In contract version 1.2.2 and below this event returns one value, `withdrawalAmount`: the amount withdrawn by
+        // the function caller. In later versions it returns an object containing all payouts.
+        if (this.isLegacyEmpVersion) {
+          logResult.withdrawalAmount = receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount;
+        } else {
+          logResult.paidToLiquidator = receipt.events.LiquidationWithdrawn.returnValues.paidToLiquidator;
+          logResult.paidToDisputer = receipt.events.LiquidationWithdrawn.returnValues.paidToDisputer;
+          logResult.paidToSponsor = receipt.events.LiquidationWithdrawn.returnValues.paidToSponsor;
+        }
+
+        this.logger.info({
+          at: "Liquidator",
+          message: "Liquidation withdrawn🤑",
+          liquidation: liquidation,
+          liquidationResult: logResult,
+          transactionConfig,
+        });
       } catch (error) {
         this.logger.error({
           at: "Liquidator",
           message: "Failed to withdraw liquidation rewards🚨",
-          error
+          error,
         });
         continue;
       }
-
-      let logResult = {
-        tx: receipt.transactionHash,
-        caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
-        // Settlement price is possible undefined if liquidation expired without a dispute
-        settlementPrice: receipt.events.LiquidationWithdrawn.returnValues.settlementPrice,
-        liquidationStatus:
-          PostWithdrawLiquidationRewardsStatusTranslations[
-            receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
-          ]
-      };
-
-      // In contract version 1.2.2 and below this event returns one value, `withdrawalAmount`: the amount withdrawn by the function caller.
-      // In later versions it returns an object containing all payouts.
-      if (this.isLegacyEmpVersion) {
-        logResult.withdrawalAmount = receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount;
-      } else {
-        logResult.paidToLiquidator = receipt.events.LiquidationWithdrawn.returnValues.paidToLiquidator;
-        logResult.paidToDisputer = receipt.events.LiquidationWithdrawn.returnValues.paidToDisputer;
-        logResult.paidToSponsor = receipt.events.LiquidationWithdrawn.returnValues.paidToSponsor;
-      }
-
-      this.logger.info({
-        at: "Liquidator",
-        message: "Liquidation withdrawn🤑",
-        liquidation: liquidation,
-        liquidationResult: logResult
-      });
     }
   }
 }
 
 module.exports = {
-  Liquidator
+  Liquidator,
 };
