@@ -25,7 +25,7 @@ import "../../../../common/implementation/Lockable.sol";
  * - At any price above R2 the long holders are entitled to a fixed, minimum number of collateral equal to N/R2 with a
  * expiryPercentLong=(N/R2)/collateralPerPair.
  * The expression for the number of tokens paid out to the long side (T above) can be algebraically simplified,
- * transformed to remove the notional and reframed to express the expiryPercentLong as [min(max(1/R2,1/P),1/R1)]/R1
+ * transformed to remove the notional and reframed to express the expiryPercentLong as [min(max(1/R2,1/P),1/R1)]/(1/R1)
  * With this equation, the contract deployer does not need to specify the bond notional N. The notional can be calculated
  * by taking R1*collateralPerPair from the CFD.
  */
@@ -82,7 +82,7 @@ contract RangeBondContractForDifferenceFinancialProductLibrary is
     function computeExpiryTokensForCollateral(int256 expiryPrice) public view override returns (uint256) {
         RangeBondContractForDifferenceParameters memory params = contractForDifferenceParameters[msg.sender];
 
-        // expiryPercentLong=[min(max(1/R2,1/P),1/R1)]/R1
+        // expiryPercentLong=[min(max(1/R2,1/P),1/R1)]/(1/R1)
         // This function's method must return a value between 0 and 1 to be used in conjunction with the CFD
         // collateralPerPair that allocates collateral between the short and long tokens on expiry.
 
