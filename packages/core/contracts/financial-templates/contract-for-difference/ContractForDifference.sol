@@ -256,7 +256,7 @@ contract ContractForDifference is Testable, Lockable {
      * @param sponsor address of the sponsor to query.
      * @return [uint256, uint256]. First is long tokens held by sponsor and second is short tokens held by sponsor.
      */
-    function getPositionTokensForAddress(address sponsor) public view returns (uint256, uint256) {
+    function getPositionTokens(address sponsor) public view returns (uint256, uint256) {
         return (longToken.balanceOf(sponsor), shortToken.balanceOf(sponsor));
     }
 

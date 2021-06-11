@@ -25,7 +25,7 @@ contract ContractForDifferenceCreator is Testable, Lockable {
     // Address of TokenFactory used to create a new synthetic token.
     TokenFactory public tokenFactory;
 
-    FinderInterface public finderAddress;
+    FinderInterface public finder;
 
     event CreatedContractForDifference(address indexed contractForDifference, address indexed deployerAddress);
 
@@ -41,7 +41,7 @@ contract ContractForDifferenceCreator is Testable, Lockable {
         address _timer
     ) Testable(_timer) nonReentrant() {
         tokenFactory = _tokenFactory;
-        finderAddress = _finder;
+        finder = _finder;
     }
 
     /**
@@ -66,7 +66,7 @@ contract ContractForDifferenceCreator is Testable, Lockable {
         string memory syntheticName,
         string memory syntheticSymbol,
         IERC20Standard collateralToken,
-        address financialProductLibrary,
+        ContractForDifferenceFinancialProductLibrary financialProductLibrary,
         bytes memory customAncillaryData
     ) public nonReentrant() returns (address) {
         // Create a new synthetic token using the params.
@@ -96,8 +96,8 @@ contract ContractForDifferenceCreator is Testable, Lockable {
                 longToken,
                 shortToken,
                 collateralToken,
-                FinderInterface(finderAddress),
-                ContractForDifferenceFinancialProductLibrary(financialProductLibrary),
+                finderAddress,
+                financialProductLibrary,
                 customAncillaryData,
                 timerAddress
             );

@@ -16,8 +16,8 @@ import "../../../../common/implementation/Lockable.sol";
  * expiryPercentLong = 1. if the price is lower than the lower bound then expiryPercentLong = 0. For example, consider
  * a linear CFD on the price of ETH collateralized in USDC with an upperBound = 4000 and lowerBound = 2000 with a
  * collateralPerPair of 1000 (i.e each pair of long and shorts is worth 1000 USDC). At settlement the expiryPercentLong
- * would =1 (each long worth 1000 and short worth 0) if ETH price was > 4000 and it would be = 0 if < 2000 (each long
- * is worthless and each short is worth 1000). If between the two (say 3500) then expiryPercentLong
+ * would equal 1 (each long worth 1000 and short worth 0) if ETH price was > 4000 and it would be equal 0 if < 2000
+ * (each long is worthless and each short is worth 1000). If between the two (say 3500) then expiryPercentLong
  * = (3500 - 2000) / (4000 - 2000) = 0.75. Therefore each long is worth 750 and each short is worth 250.
  */
 contract LinearContractForDifferenceFinancialProductLibrary is ContractForDifferenceFinancialProductLibrary, Lockable {
@@ -68,9 +68,9 @@ contract LinearContractForDifferenceFinancialProductLibrary is ContractForDiffer
     function computeExpiryTokensForCollateral(int256 expiryPrice) public view override returns (uint256) {
         LinearContractForDifferenceParameters memory params = contractForDifferenceParameters[msg.sender];
 
-        if (expiryPrice > params.upperBound) return FixedPoint.fromUnscaledUint(1).rawValue;
+        if (expiryPrice >= params.upperBound) return FixedPoint.fromUnscaledUint(1).rawValue;
 
-        if (expiryPrice < params.lowerBound) return FixedPoint.fromUnscaledUint(0).rawValue;
+        if (expiryPrice <= params.lowerBound) return FixedPoint.fromUnscaledUint(0).rawValue;
 
         // if not exceeding bounds, expiryPercentLong = (expiryPrice - lowerBound) / (upperBound - lowerBound)
         return
