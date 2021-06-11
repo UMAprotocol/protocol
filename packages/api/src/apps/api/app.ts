@@ -51,6 +51,7 @@ async function run(env: ProcessEnv) {
     stats: {
       usd: {
         latest: empStats.JsMap(),
+        history: {},
       },
     },
     lastBlock: 0,

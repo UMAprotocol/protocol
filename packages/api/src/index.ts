@@ -1,6 +1,6 @@
 import uma from "@uma/sdk";
 import { ethers } from "ethers";
-import type { empStats } from "./tables";
+import type { empStats, empStatsHistory } from "./tables";
 
 export type Currencies = "usd";
 export type { BigNumber } from "ethers";
@@ -51,6 +51,9 @@ export type AppState = {
   stats: {
     usd: {
       latest: empStats.JsMap;
+      history: {
+        [address: string]: empStatsHistory.SortedJsMap;
+      };
     };
   };
   registeredEmps: Set<string>;

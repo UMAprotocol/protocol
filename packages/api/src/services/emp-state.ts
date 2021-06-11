@@ -1,10 +1,10 @@
 import * as uma from "@uma/sdk";
-import Promise from "bluebird";
 const { emp } = uma.clients;
 import { BigNumber, utils } from "ethers";
 const { parseBytes32String } = utils;
 import { asyncValues } from "../libs/utils";
 import { AppState } from "..";
+import Promise from "bluebird";
 
 type Instance = uma.clients.emp.Instance;
 type Config = undefined;
@@ -155,9 +155,8 @@ export default (config: Config, appState: Dependencies) => {
   }
 
   async function update(startBlock?: number | "latest", endBlock?: number) {
-    await Promise.map(Array.from(await registeredEmps.values()), (address: string) =>
-      updateOne(address, startBlock, endBlock)
-    );
+    const addresses = Array.from(await registeredEmps.values());
+    await Promise.mapSeries(addresses, (address: string) => updateOne(address, startBlock, endBlock));
     await updateTokenAddresses();
   }
 
