@@ -96,7 +96,7 @@ contract ContractForDifferenceCreator is Testable, Lockable {
                 longToken,
                 shortToken,
                 collateralToken,
-                finderAddress,
+                finder,
                 financialProductLibrary,
                 customAncillaryData,
                 timerAddress
