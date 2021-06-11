@@ -138,7 +138,6 @@ contract OptimisticDepositBox is Testable, Lockable {
 
         // Increase the individual deposit box and global collateral balance by collateral amount.
         depositBoxData.collateral = depositBoxData.collateral.add(collateralAmount);
-        require(depositBoxData.collateral > 0, "Collateral not added");
         totalOptimisticDepositBoxCollateral = totalOptimisticDepositBoxCollateral.add(collateralAmount);
 
         emit Deposit(msg.sender, collateralAmount);
@@ -198,7 +197,7 @@ contract OptimisticDepositBox is Testable, Lockable {
         uint256 denominatedAmountToWithdraw = depositBoxData.withdrawalRequestAmount.div(exchangeRate);
 
         // If withdrawal request amount is > collateral, then withdraw the full collateral amount.
-        if (denominatedAmountToWithdraw > depositBoxData.collateral) {
+        if (denominatedAmountToWithdraw >= depositBoxData.collateral) {
             denominatedAmountToWithdraw = depositBoxData.collateral;
             emit EndedOptimisticDepositBox(msg.sender);
         }
