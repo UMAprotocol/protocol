@@ -231,7 +231,7 @@ const main = async (callback) => {
 
     // Withdraw USD denominated collateral
     const amountInUsdToWithdraw = toWei(toBN(10000)); // $10,000
-    const exchangeRate = toBN(2000); // 1 ETH = $2000
+    const exchangeRate = toWei(toBN(2000)); // 1 ETH = $2000
     await withdraw(deployedContract, exchangeRate, amountInUsdToWithdraw);
     console.log("\n");
 

@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/AddressWhitelist.sol";
 import "../../common/implementation/Testable.sol";
 import "../../common/implementation/Lockable.sol";
@@ -39,6 +40,7 @@ import "../../oracle/implementation/ContractCreator.sol";
  */
 contract OptimisticDepositBox is Testable, Lockable {
     using SafeMath for uint256;
+    using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
 
     // Represents a single caller's deposit box. All collateral is held by this contract.
@@ -189,12 +191,14 @@ contract OptimisticDepositBox is Testable, Lockable {
         );
 
         // Get the resolved price or revert.
+        // Note that in practice, you may have to do some additional math here to deal with scaling in the oracle price.
         uint256 exchangeRate = _getOraclePrice(depositBoxData.withdrawalRequestTimestamp);
 
         // Calculate denomated amount of collateral based on resolved exchange rate.
         // Example 1: User wants to withdraw $1000 of ETH, exchange rate is $2000/ETH, therefore user to receive 0.5 ETH.
         // Example 2: User wants to withdraw $2500 of ETH, exchange rate is $2000/ETH, therefore user to receive 1.25 ETH.
-        uint256 denominatedAmountToWithdraw = depositBoxData.withdrawalRequestAmount.div(exchangeRate);
+        uint256 denominatedAmountToWithdraw =
+            FixedPoint.Unsigned(depositBoxData.withdrawalRequestAmount).div(FixedPoint.Unsigned(exchangeRate)).rawValue;
 
         // If withdrawal request amount is > collateral, then withdraw the full collateral amount.
         if (denominatedAmountToWithdraw >= depositBoxData.collateral) {
