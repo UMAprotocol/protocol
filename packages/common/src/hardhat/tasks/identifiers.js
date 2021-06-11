@@ -71,6 +71,7 @@ task("migrate-identifiers", "Adds all whitelisted identifiers on one IdentifierW
         if (!isIdentifierSupportedOnNewWhitelist[i]) {
           const receipt = await newWhitelist.methods.addSupportedIdentifier(identifiersToWhitelist[i]).send({
             from: deployer,
+            gasPrice: "1000000000000", // 1000 gwei
           });
           addSupportedIdentifierReceipts.push(receipt);
         }

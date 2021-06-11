@@ -25,7 +25,7 @@
   },
   {
     "contractName": "OptimisticOracle",
-    "address": "0x292A00f2368187073E80AB94fA03AFD8c796d450"
+    "address": "0xAB75727d4e89A7f7F04f57C00234a35950527115"
   },
   {
     "contractName": "TokenFactory",
@@ -57,6 +57,6 @@
   },
   {
     "contractName": "OracleChildTunnel",
-    "address": "0x02B8733763dD76f73b8573e668ecA3343a7D65e7"
+    "address": "0x61D5d43F227782F2Fa02Eb811420AB622A785d3a"
   }
 ]
