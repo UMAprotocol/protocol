@@ -9,7 +9,7 @@ async function runDefaultFixture({ deployments }) {
 
     const getDeployment = async (name) => {
       const contract = await deployments.get(name);
-      new web3.eth.Contract(contract.abi, contract.address);
+      return new web3.eth.Contract(contract.abi, contract.address);
     };
 
     // Setup finder.
@@ -40,7 +40,7 @@ async function runDefaultFixture({ deployments }) {
 
     // Set the minter to be the Voting contract.
     const { address: votingAddress } = await deployments.get("Voting");
-    await votingToken.addMember(minterRoleEnumValue, votingAddress, { from: deployer });
+    await votingToken.methods.addMember(minterRoleEnumValue, votingAddress).send({ from: deployer });
 
     // Setup Registry.
     const registry = await getDeployment("Registry");
