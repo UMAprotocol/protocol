@@ -33,7 +33,7 @@ export interface EventState {
 export type Transfer = GetEventType<Instance, "Transfer">;
 export type Approval = GetEventType<Instance, "Approval">;
 
-// experimenting with a generalized way of handling events and returning state, inspired from react style reducers
+// takes all events and returns user balances and approvals
 export function reduceEvents(state: EventState = {}, event: Event, index?: number): EventState {
   switch (event.event) {
     case "Transfer": {

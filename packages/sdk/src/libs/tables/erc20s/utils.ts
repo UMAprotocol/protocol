@@ -8,4 +8,5 @@ export type Data = {
   decimals?: number;
   name?: string;
   totalSupply?: string;
+  symbol?: string;
 };
