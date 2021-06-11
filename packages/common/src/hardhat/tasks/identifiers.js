@@ -99,7 +99,7 @@ task("migrate-identifiers", "Adds all whitelisted identifiers on one IdentifierW
           );
           addSupportedIdentifierReceipts.push(receipt);
         } else {
-          // Explicitly push `null` so that `txn` and `identifier` line up in table to print to console.
+          // Explicitly push `"Already whitelisted"` so that `txn` and `identifier` line up in table to print to console.
           addSupportedIdentifierReceipts.push({ transactionHash: "Already whitelisted" });
         }
       }
