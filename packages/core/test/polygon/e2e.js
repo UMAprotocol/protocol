@@ -85,7 +85,7 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
       )
     );
 
-    // Should emit MessageSent event with ABI encoded requestPrice parameters..
+    // Should emit MessageSent event with ABI encoded requestPrice parameters.
     let txn = await oracleChild.requestPrice(testIdentifier, testTimestamp, testAncillaryData, { from: owner });
     let messageBytes = web3.eth.abi.encodeParameters(
       ["bytes32", "uint256", "bytes"],
