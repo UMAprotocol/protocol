@@ -8,7 +8,7 @@ const func = async function (hre) {
   // 2 hours.
   const defaultLiveness = 7200;
   const Finder = await deployments.get("Finder");
-  const Timer = (await deployments.getOrNull("Timer")) || ZERO_ADDRESS;
+  const Timer = (await deployments.getOrNull("Timer")) || { address: ZERO_ADDRESS };
 
   await deploy("OptimisticOracle", {
     from: deployer,

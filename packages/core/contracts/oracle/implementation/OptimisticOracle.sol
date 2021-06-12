@@ -543,7 +543,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
      * @notice Generates stamped ancillary data in the format that it would be used in the case of a price dispute.
      * @param ancillaryData ancillary data of the price being requested.
      * @param requester sender of the initial price request.
-     * @return the stampped ancillary bytes.
+     * @return the stamped ancillary bytes.
      */
     function stampAncillaryData(bytes memory ancillaryData, address requester)
         public
