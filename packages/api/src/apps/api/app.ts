@@ -30,6 +30,7 @@ async function run(env: ProcessEnv) {
     prices: {
       usd: {
         latest: {},
+        history: {},
       },
     },
     lastBlock: 0,
@@ -64,17 +65,19 @@ async function run(env: ProcessEnv) {
   provider.on("block", (blockNumber: number) => {
     // dont do update if this number or blocks hasnt passed
     services.blocks.handleNewBlock(blockNumber).catch(console.error);
-    // update everyting
     if (blockNumber - libs.lastBlockUpdate >= updateBlocks) {
       services.registry(libs.lastBlock, blockNumber).catch(console.error);
       services.emps(libs.lastBlock, blockNumber).catch(console.error);
       libs.lastBlockUpdate = blockNumber;
-      // price updates need to be throttled, coingecko will rate limit
-      services.prices.update().catch(console.error);
     }
     libs.lastBlock = blockNumber;
     services.blocks.cleanBlocks(oldestBlock).catch(console.error);
   });
+
+  // coingeckos prices don't update very fast, so set it on an interval every few minutes
+  setInterval(() => {
+    services.prices.update().catch(console.error);
+  }, 5 * 60 * 1000);
 }
 
 export default run;
