@@ -88,7 +88,6 @@ task("migrate-identifiers", "Adds all whitelisted identifiers on one IdentifierW
 
       // Send transactions sequentially to avoid nonce collisions. Note that this might fail due to timeout if there
       // are a lot of transactions to send or the gas price to send with is too low.
-      const addSupportedIdentifierReceipts = [];
       for (let i = 0; i < isIdentifierSupportedOnNewWhitelist.length; i++) {
         if (!isIdentifierSupportedOnNewWhitelist[i]) {
           const receipt = await newWhitelist.methods.addSupportedIdentifier(identifiersToWhitelist[i]).send({
@@ -97,15 +96,12 @@ task("migrate-identifiers", "Adds all whitelisted identifiers on one IdentifierW
           console.log(
             `${i}: Added new identifier ${web3.utils.hexToUtf8(identifiersToWhitelist[i])} (${receipt.transactionHash})`
           );
-          addSupportedIdentifierReceipts.push(receipt);
+          resultsTable[i] = { ...resultsTable[i], txn: receipt.transactionHash };
         } else {
-          // Explicitly push `"Already whitelisted"` so that `txn` and `identifier` line up in table to print to console.
-          addSupportedIdentifierReceipts.push({ transactionHash: "Already whitelisted" });
+          // Explicitly push message so that `txn` and `identifier` line up in table to print to console.
+          resultsTable[i] = { ...resultsTable[i], txn: "Already whitelisted" };
         }
       }
-      addSupportedIdentifierReceipts.forEach((receipt, i) => {
-        resultsTable[i] = { ...resultsTable[i], txn: receipt?.transactionHash };
-      });
     }
 
     console.group("Identifiers to Whitelist");
