@@ -200,12 +200,12 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
     // Only owner can relay governance:
     assert(
       await didContractThrow(
-        governorRoot.relayGovernance(erc20.address, "0", innerTransactionCalldata, {
+        governorRoot.relayGovernance(erc20.address, innerTransactionCalldata, {
           from: rando,
         })
       )
     );
-    let txn = await governorRoot.relayGovernance(erc20.address, "0", innerTransactionCalldata, {
+    let txn = await governorRoot.relayGovernance(erc20.address, innerTransactionCalldata, {
       from: owner,
     });
 
@@ -213,18 +213,12 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
     TruffleAssert.eventEmitted(
       txn,
       "RelayedGovernanceRequest",
-      (event) =>
-        event.to.toLowerCase() === erc20.address.toLowerCase() &&
-        event.value.toString() === "0" &&
-        event.data === innerTransactionCalldata
+      (event) => event.to.toLowerCase() === erc20.address.toLowerCase() && event.data === innerTransactionCalldata
     );
     let internalTxn = await TruffleAssert.createTransactionResult(stateSync, txn.tx);
     // FxRoot packs the publishPrice ABI-encoded paramaters with additional data:
     // i.e. abi.encode(sender,receiver,message)
-    let messageBytes = web3.eth.abi.encodeParameters(
-      ["address", "uint256", "bytes"],
-      [erc20.address, "0", innerTransactionCalldata]
-    );
+    let messageBytes = web3.eth.abi.encodeParameters(["address", "bytes"], [erc20.address, innerTransactionCalldata]);
     const expectedFxChildData = web3.eth.abi.encodeParameters(
       ["address", "address", "bytes"],
       [governorRoot.address, governorChild.address, messageBytes]
@@ -244,10 +238,7 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
     TruffleAssert.eventEmitted(
       internalTxn,
       "ExecutedGovernanceTransaction",
-      (event) =>
-        event.to.toLowerCase() === erc20.address.toLowerCase() &&
-        event.value.toString() === "0" &&
-        event.data === innerTransactionCalldata
+      (event) => event.to.toLowerCase() === erc20.address.toLowerCase() && event.data === innerTransactionCalldata
     );
 
     // Child should have transferred tokens, per the governance transaction.

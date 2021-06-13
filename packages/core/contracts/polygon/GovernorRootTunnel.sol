@@ -9,7 +9,7 @@ import "../external/polygon/tunnel/FxBaseRootTunnel.sol";
  * sends them to sidechain.
  */
 contract GovernorRootTunnel is Ownable, FxBaseRootTunnel {
-    event RelayedGovernanceRequest(address indexed to, uint256 value, bytes data);
+    event RelayedGovernanceRequest(address indexed to, bytes data);
 
     constructor(address _checkpointManager, address _fxRoot) FxBaseRootTunnel(_checkpointManager, _fxRoot) {}
 
@@ -17,14 +17,12 @@ contract GovernorRootTunnel is Ownable, FxBaseRootTunnel {
      * @notice This should be called in order to relay a governance request to the `GovernorChildTunnel` contract
      * deployed to the sidechain. Note: this can only be called by the owner (presumably the Ethereum Governor
      * contract).
+     * @dev The transaction submitted to `to` on the sidechain with the calldata `data` is assumed to have 0 `value`
+     * in order to avoid the added complexity of sending cross-chain transactions with positive value.
      */
-    function relayGovernance(
-        address to,
-        uint256 value,
-        bytes memory data
-    ) external onlyOwner {
-        _sendMessageToChild(abi.encode(to, value, data));
-        emit RelayedGovernanceRequest(to, value, data);
+    function relayGovernance(address to, bytes memory data) external onlyOwner {
+        _sendMessageToChild(abi.encode(to, data));
+        emit RelayedGovernanceRequest(to, data);
     }
 
     /**

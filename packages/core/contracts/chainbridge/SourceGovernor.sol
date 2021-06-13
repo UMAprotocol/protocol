@@ -14,12 +14,7 @@ contract SourceGovernor is Ownable {
     uint8 public currentChainId;
     bytes32 internal currentRequestHash;
 
-    event RelayedGovernanceRequest(
-        uint8 indexed destinationChainId,
-        address indexed to,
-        uint256 value,
-        bytes indexed data
-    );
+    event RelayedGovernanceRequest(uint8 indexed destinationChainId, address indexed to, bytes indexed data);
 
     constructor(FinderInterface _finder, uint8 _currentChainId) {
         finder = _finder;
@@ -30,18 +25,19 @@ contract SourceGovernor is Ownable {
     /**
      * @notice This is the first method that should be called in order to relay a governance request to another network
      * marked by `sinkChainID`. Note: this can only be called by the owner (presumably the L1 governor).
+     * @dev The transaction submitted to `to` on the sidechain with the calldata `data` is assumed to have 0 `value`
+     * in order to avoid the added complexity of sending cross-chain transactions with positive value.
      */
     function relayGovernance(
         uint8 destinationChainId,
         address to,
-        uint256 value,
         bytes memory data
     ) external onlyOwner {
         require(currentRequestHash == bytes32(0), "Request hash already set");
-        currentRequestHash = _computeRequestHash(to, value, data);
-        _getBridge().deposit(destinationChainId, getResourceId(), _formatMetadata(to, value, data));
+        currentRequestHash = _computeRequestHash(to, data);
+        _getBridge().deposit(destinationChainId, getResourceId(), _formatMetadata(to, data));
         currentRequestHash = bytes32(0);
-        emit RelayedGovernanceRequest(destinationChainId, to, value, data);
+        emit RelayedGovernanceRequest(destinationChainId, to, data);
     }
 
     /**
@@ -49,12 +45,8 @@ contract SourceGovernor is Ownable {
      * `GenericHandler.deposit()` and ultimately this method.
      * @dev This method should basically check that the `Bridge.deposit()` was triggered by a valid relay event.
      */
-    function verifyRequest(
-        address to,
-        uint256 value,
-        bytes memory data
-    ) external view {
-        require(currentRequestHash == _computeRequestHash(to, value, data), "Invalid Request");
+    function verifyRequest(address to, bytes memory data) external view {
+        require(currentRequestHash == _computeRequestHash(to, data), "Invalid Request");
     }
 
     /**
@@ -68,20 +60,12 @@ contract SourceGovernor is Ownable {
         return IBridge(finder.getImplementationAddress(OracleInterfaces.Bridge));
     }
 
-    function _formatMetadata(
-        address to,
-        uint256 value,
-        bytes memory data
-    ) internal pure returns (bytes memory) {
-        bytes memory metadata = abi.encode(to, value, data);
+    function _formatMetadata(address to, bytes memory data) internal pure returns (bytes memory) {
+        bytes memory metadata = abi.encode(to, data);
         return abi.encodePacked(metadata.length, metadata);
     }
 
-    function _computeRequestHash(
-        address to,
-        uint256 value,
-        bytes memory data
-    ) internal pure returns (bytes32) {
-        return keccak256(abi.encode(to, value, data));
+    function _computeRequestHash(address to, bytes memory data) internal pure returns (bytes32) {
+        return keccak256(abi.encode(to, data));
     }
 }

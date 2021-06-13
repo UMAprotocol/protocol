@@ -7,7 +7,7 @@ import "../external/polygon/tunnel/FxBaseChildTunnel.sol";
  * @title Governor contract deployed on sidechain that receives governance actions from Ethereum.
  */
 contract GovernorChildTunnel is FxBaseChildTunnel {
-    event ExecutedGovernanceTransaction(address indexed to, uint256 value, bytes data);
+    event ExecutedGovernanceTransaction(address indexed to, bytes data);
 
     constructor(address _fxChild) FxBaseChildTunnel(_fxChild) {}
 
@@ -23,20 +23,14 @@ contract GovernorChildTunnel is FxBaseChildTunnel {
         address sender,
         bytes memory data
     ) internal override validateSender(sender) {
-        // TODO: Where do we get `value` amount of MATIC from if its >0? The sender of this method will be the system
-        // super user who we can't assume sends this txn with the correct value.
-        (address to, uint256 value, bytes memory inputData) = abi.decode(data, (address, uint256, bytes));
+        (address to, bytes memory inputData) = abi.decode(data, (address, bytes));
 
-        require(_executeCall(to, value, inputData), "execute call failed");
-        emit ExecutedGovernanceTransaction(to, value, inputData);
+        require(_executeCall(to, inputData), "execute call failed");
+        emit ExecutedGovernanceTransaction(to, inputData);
     }
 
     // Note: this snippet of code is copied from Governor.sol.
-    function _executeCall(
-        address to,
-        uint256 value,
-        bytes memory data
-    ) private returns (bool) {
+    function _executeCall(address to, bytes memory data) private returns (bool) {
         // Note: this snippet of code is copied from Governor.sol.
         // solhint-disable-next-line max-line-length
         // https://github.com/gnosis/safe-contracts/blob/59cfdaebcd8b87a0a32f87b50fead092c10d3a05/contracts/base/Executor.sol#L23-L31
@@ -46,7 +40,9 @@ contract GovernorChildTunnel is FxBaseChildTunnel {
         assembly {
             let inputData := add(data, 0x20)
             let inputDataSize := mload(data)
-            success := call(gas(), to, value, inputData, inputDataSize, 0, 0)
+            // Hardcode value to be 0 for relayed governance calls in order to avoid addressing complexity of bridging
+            // value cross-chain.
+            success := call(gas(), to, 0, inputData, inputDataSize, 0, 0)
         }
         return success;
     }
