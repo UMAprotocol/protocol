@@ -25,7 +25,6 @@ export default function Table<I, D>(config: { makeId: MakeId<I, D>; type: string
     return set({ ...got, ...data });
   }
   return {
-    ...store,
     create,
     set,
     get,

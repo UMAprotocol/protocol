@@ -78,3 +78,13 @@ Returns all known latest prices for collateral addresses. Synthetic prices not y
 ### latestPriceByAddress(address:string,currency:'usd') => [timestamp:number,price:string]}
 
 Returns latest price for a particular collateral address.
+
+### historicalPricesByAddress(address:string,start:number=0,end:number=Date.now(),currency:"usd"="usd") => PriceSample[]
+
+Get a range of historical prices between start and end in MS, sorted by timestamp ascending from an erc20 token address.
+This is useful for charting betwen two dates.
+
+### sliceHistoricalPricesByAddress(address:string,start:number=0,length:number=1,currency:"usd"="usd") => PriceSample[]
+
+Get a range of historical prices between start and count of price samples, sorted by timestamp ascending, from an erc20 token address.
+This is useful for paginating data when you have X elements per page, and you know the last element seen.

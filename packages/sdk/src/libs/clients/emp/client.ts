@@ -3,8 +3,8 @@ import type { SignerOrProvider, GetEventType } from "../..";
 import { Event } from "ethers";
 import { Balances } from "../../utils";
 
-export { ExpiringMultiParty as Instance };
-export function connect(address: string, provider: SignerOrProvider): ExpiringMultiParty {
+export type Instance = ExpiringMultiParty;
+export function connect(address: string, provider: SignerOrProvider): Instance {
   return ExpiringMultiParty__factory.connect(address, provider);
 }
 
@@ -16,13 +16,13 @@ export interface EventState {
   expired?: boolean;
 }
 
-export type RequestTransferPositionExecuted = GetEventType<ExpiringMultiParty, "RequestTransferPositionExecuted">;
-export type PositionCreated = GetEventType<ExpiringMultiParty, "PositionCreated">;
-export type NewSponsor = GetEventType<ExpiringMultiParty, "NewSponsor">;
-export type SettleExpiredPosition = GetEventType<ExpiringMultiParty, "SettleExpiredPosition">;
-export type Redeem = GetEventType<ExpiringMultiParty, "Redeem">;
-export type Withdrawal = GetEventType<ExpiringMultiParty, "Withdrawal">;
-export type LiquidationCreated = GetEventType<ExpiringMultiParty, "LiquidationCreated">;
+export type RequestTransferPositionExecuted = GetEventType<Instance, "RequestTransferPositionExecuted">;
+export type PositionCreated = GetEventType<Instance, "PositionCreated">;
+export type NewSponsor = GetEventType<Instance, "NewSponsor">;
+export type SettleExpiredPosition = GetEventType<Instance, "SettleExpiredPosition">;
+export type Redeem = GetEventType<Instance, "Redeem">;
+export type Withdrawal = GetEventType<Instance, "Withdrawal">;
+export type LiquidationCreated = GetEventType<Instance, "LiquidationCreated">;
 
 // experimenting with a generalized way of handling events and returning state, inspired from react style reducers
 export function reduceEvents(state: EventState = {}, event: Event, index?: number): EventState {

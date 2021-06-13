@@ -1,4 +1,4 @@
-export function makeId(data: Data) {
+export function makeId(data: Pick<Data, "address">) {
   return data.address;
 }
 
