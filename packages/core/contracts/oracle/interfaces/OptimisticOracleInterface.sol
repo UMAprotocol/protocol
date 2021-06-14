@@ -225,6 +225,14 @@ abstract contract OptimisticOracleInterface {
         bytes memory ancillaryData
     ) public view virtual returns (Request memory);
 
+    /**
+     * @notice Returns the state of a price request.
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @return the State enum value.
+     */
     function getState(
         address requester,
         bytes32 identifier,
@@ -238,7 +246,7 @@ abstract contract OptimisticOracleInterface {
      * @param identifier price identifier to identify the existing request.
      * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
-     * @return the State.
+     * @return true if price has resolved or settled, false otherwise.
      */
     function hasPrice(
         address requester,
@@ -246,4 +254,10 @@ abstract contract OptimisticOracleInterface {
         uint256 timestamp,
         bytes memory ancillaryData
     ) public view virtual returns (bool);
+
+    function stampAncillaryData(bytes memory ancillaryData, address requester)
+        public
+        view
+        virtual
+        returns (bytes memory);
 }

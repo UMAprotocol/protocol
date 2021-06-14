@@ -71,7 +71,7 @@
   ],
   "scripts": {
     "test": "yarn mocha-test && yarn hardhat-test && yarn truffle-test",
-    "truffle-test": "truffle test ./truffle-test/*",
+    "truffle-test": "truffle test ./truffle-test/scripts/*",
     "hardhat-test": "hardhat test --network hardhat",
     "mocha-test": "mocha ./mocha-test --recursive",
     "load-addresses": "yarn run apply-registry",

@@ -1,4 +1,5 @@
 import type { Store } from "../index";
+
 export default function <I, D>(map: Map<I, D> = new Map<I, D>()): Store<I, D> {
   async function get(id: I) {
     return map.get(id);
@@ -13,15 +14,20 @@ export default function <I, D>(map: Map<I, D> = new Map<I, D>()): Store<I, D> {
     map.delete(id);
   }
   async function entries() {
-    return [...map.entries()];
+    return Array.from(map.entries());
   }
   async function values() {
-    return [...map.values()];
+    return Array.from(map.values());
   }
   async function keys() {
-    return [...map.keys()];
+    return Array.from(map.keys());
   }
-
+  async function size() {
+    return map.size;
+  }
+  async function clear() {
+    map.clear();
+  }
   return {
     get,
     set,
@@ -30,5 +36,7 @@ export default function <I, D>(map: Map<I, D> = new Map<I, D>()): Store<I, D> {
     entries,
     values,
     keys,
+    size,
+    clear,
   };
 }

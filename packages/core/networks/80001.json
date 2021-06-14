@@ -25,7 +25,7 @@
   },
   {
     "contractName": "OptimisticOracle",
-    "address": "0x292A00f2368187073E80AB94fA03AFD8c796d450"
+    "address": "0xAB75727d4e89A7f7F04f57C00234a35950527115"
   },
   {
     "contractName": "TokenFactory",
@@ -54,5 +54,9 @@
   {
     "contractName": "SinkGovernor",
     "address": "0xB0b9f73B424AD8dc58156C2AE0D7A1115D1EcCd1"
+  },
+  {
+    "contractName": "OracleChildTunnel",
+    "address": "0x61D5d43F227782F2Fa02Eb811420AB622A785d3a"
   }
 ]

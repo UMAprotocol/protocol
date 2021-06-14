@@ -84,6 +84,7 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
         matic: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/matic")],
         rinkeby: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/rinkeby")],
         kovan: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/kovan")],
+        goerli: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/goerli")],
       },
     },
   };

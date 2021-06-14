@@ -29,7 +29,7 @@ const { clients,stores,tables utils } = uma
 
 const {Registry} = clients
 const {JsMap, GoogleDatastore} = stores
-const {Blocks, Base} = tables
+const {blocks, base} = tables
 
 // to see usage of each of these classes, see their individual readme within their directories.
 

@@ -33,6 +33,7 @@
     "@ethersproject/bignumber": "^5.0.5",
     "@google-cloud/kms": "^0.3.0",
     "@google-cloud/storage": "^2.4.2",
+    "@maticnetwork/maticjs": "^2.0.40",
     "@nomiclabs/hardhat-etherscan": "^2.1.0",
     "@nomiclabs/hardhat-truffle5": "^2.0.0",
     "@nomiclabs/hardhat-web3": "^2.0.0",

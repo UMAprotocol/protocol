@@ -9,7 +9,7 @@ See [tests](./base.test.ts) for more example usage.
 
 ```js
   import uma from '@uma/sdk'
-  const Table = uma.tables.Base
+  const Table = uma.tables.base
   const Store = uma.stores.JsMap
 
   type Data = {

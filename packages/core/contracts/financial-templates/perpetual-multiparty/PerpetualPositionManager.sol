@@ -326,8 +326,7 @@ contract PerpetualPositionManager is FundingRateApplier {
             (_checkCollateralization(
                 _getFeeAdjustedCollateral(positionData.rawCollateral).add(collateralAmount),
                 positionData.tokensOutstanding.add(numTokens)
-            ) || _checkCollateralization(collateralAmount, numTokens)),
-            "Insufficient collateral"
+            ) || _checkCollateralization(collateralAmount, numTokens))
         );
 
         require(positionData.withdrawalRequestPassTimestamp == 0);
@@ -711,7 +710,7 @@ contract PerpetualPositionManager is FundingRateApplier {
         FixedPoint.Unsigned memory collateralAmount
     ) internal returns (FixedPoint.Unsigned memory) {
         _removeCollateral(positionData.rawCollateral, collateralAmount);
-        require(_checkPositionCollateralization(positionData), "CR below GCR");
+        require(_checkPositionCollateralization(positionData));
         return _removeCollateral(rawTotalPositionCollateral, collateralAmount);
     }
 

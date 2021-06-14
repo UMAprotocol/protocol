@@ -29,7 +29,7 @@ let collateralWhitelist;
 let identifierWhitelist;
 let optimisticOracle;
 let finder;
-let ancillaryData;
+let ancillaryData = web3.utils.utf8ToHex("some-address-field:0x1234");
 let timer;
 let constructorParams;
 
@@ -77,7 +77,6 @@ contract("ContractForDifference", function (accounts) {
 
     longToken = await Token.new("Long Token", "lTKN", 18, { from: deployer });
     shortToken = await Token.new("Short Token", "sTKN", 18, { from: deployer });
-    ancillaryData = longToken.address + shortToken.address.substring(2, 42);
 
     optimisticOracle = await OptimisticOracle.new(optimisticOracleLiveness, finder.address, timer.address);
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.address, {
@@ -96,6 +95,7 @@ contract("ContractForDifference", function (accounts) {
       collateralTokenAddress: collateralToken.address,
       finderAddress: finder.address,
       contractForDifferenceLibraryAddress: contractForDifferenceLibrary.address,
+      ancillaryData,
       timerAddress: timer.address,
     };
 
@@ -137,6 +137,21 @@ contract("ContractForDifference", function (accounts) {
       assert(
         await didContractThrow(
           ContractForDifference.new(...Object.values({ ...constructorParams, finderAddress: ZERO_ADDRESS }))
+        )
+      );
+
+      // Test ancillary data limits.
+      // Get max lenngth from contract.
+      const maxLength = (await optimisticOracle.ancillaryBytesLimit()).toNumber();
+
+      // Remmove the OO bytes
+      const ooAncillary = await optimisticOracle.stampAncillaryData("0x", web3.utils.randomHex(20));
+      const remainingLength = maxLength - (ooAncillary.length - 2) / 2; // Remove the 0x and divide by 2 to get bytes.
+      assert(
+        await didContractThrow(
+          ContractForDifference.new(
+            ...Object.values({ ...constructorParams, ancillaryData: web3.utils.randomHex(remainingLength + 1) })
+          )
         )
       );
     });
@@ -234,6 +249,18 @@ contract("ContractForDifference", function (accounts) {
         );
       });
     });
+    it("Ancillary data is correctly set in the OO", async function () {
+      await timer.setCurrentTime(expirationTimestamp + 1);
+      await contractForDifference.expire();
+      const request = await optimisticOracle.getRequest(
+        contractForDifference.address,
+        priceFeedIdentifier,
+        expirationTimestamp,
+        ancillaryData
+      );
+
+      assert.equal(request.currency, collateralToken.address);
+    });
   });
   describe("Settlement Functionality", () => {
     // Create a position, advance time, expire contract and propose price. Manually set diffrent expiryPercentLong values
@@ -274,7 +301,7 @@ contract("ContractForDifference", function (accounts) {
         sponsorCollateralBefore.add(toBN(toWei("100"))).toString()
       );
     });
-    it("expiraryTokensForCollateral > 1 should ciel to 1", async function () {
+    it("expiraryTokensForCollateral > 1 should ceil to 1", async function () {
       // anything above 1 for the expiryPercentLong is nonsencial and the CFD should act as if it's set to 1.
       await contractForDifferenceLibrary.setValueToReturn(toWei("1.5"));
 

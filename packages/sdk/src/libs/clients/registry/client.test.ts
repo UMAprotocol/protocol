@@ -3,7 +3,8 @@ import assert from "assert";
 import * as Client from "./client";
 import { ethers } from "ethers";
 
-describe("emp factory", function () {
+// these require integration testing, skip for ci
+describe.skip("emp registry client", function () {
   let client: Client.Instance;
   test("inits", function () {
     const provider = ethers.providers.getDefaultProvider(process.env.CUSTOM_NODE_URL);
