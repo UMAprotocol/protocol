@@ -104,7 +104,7 @@ async function runStrategies(strategyRunnerConfig: strategyRunnerConfig) {
       break;
     }
     Logger.debug({
-      at: "BotStratergyRunner",
+      at: "BotStrategyRunner",
       message: "End of execution loop - waiting polling delay",
       pollingDelay: `${strategyRunnerConfig.pollingDelay} (s)`,
     });

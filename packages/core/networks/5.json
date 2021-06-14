@@ -14,5 +14,9 @@
   {
     "contractName": "IdentifierWhitelist",
     "address": "0x622d59F3dbD28fcFE746E0d2f83ebdC286E89A3c"
+  },
+  {
+    "contractName": "GovernorRootTunnel",
+    "address": "0x6883feb1c131f58c1cd629289da3de0051d2aa0d"
   }
 ]

@@ -363,7 +363,7 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
 
     const innerTransactionCalldata = erc20.contract.methods.transfer(rando, web3.utils.toWei("1")).encodeABI();
 
-    await sourceGovernor.relayGovernance(sidechainId, erc20.address, "0", innerTransactionCalldata, {
+    await sourceGovernor.relayGovernance(sidechainId, erc20.address, innerTransactionCalldata, {
       from: owner,
     });
 

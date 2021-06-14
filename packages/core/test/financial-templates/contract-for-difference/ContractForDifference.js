@@ -108,7 +108,7 @@ contract("ContractForDifference", function (accounts) {
     await shortToken.addMember(2, contractForDifference.address, { from: deployer });
   });
   describe("Basic Functionality", () => {
-    it("Rejects invalid constructor paramaters", async function () {
+    it("Rejects invalid constructor parameters", async function () {
       // Invalid expiration time.
       assert(
         await didContractThrow(
@@ -141,10 +141,10 @@ contract("ContractForDifference", function (accounts) {
       );
 
       // Test ancillary data limits.
-      // Get max lenngth from contract.
+      // Get max length from contract.
       const maxLength = (await optimisticOracle.ancillaryBytesLimit()).toNumber();
 
-      // Remmove the OO bytes
+      // Remove the OO bytes
       const ooAncillary = await optimisticOracle.stampAncillaryData("0x", web3.utils.randomHex(20));
       const remainingLength = maxLength - (ooAncillary.length - 2) / 2; // Remove the 0x and divide by 2 to get bytes.
       assert(
@@ -263,8 +263,8 @@ contract("ContractForDifference", function (accounts) {
     });
   });
   describe("Settlement Functionality", () => {
-    // Create a position, advance time, expire contract and propose price. Manually set diffrent expiryPercentLong values
-    // using the test contractForDifferenceLibrary that bipasses the OO return value so we dont need to test the lib here.
+    // Create a position, advance time, expire contract and propose price. Manually set different expiryPercentLong values
+    // using the test contractForDifferenceLibrary that bypass the OO return value so we dont need to test the lib here.
     let sponsorCollateralBefore;
     beforeEach(async () => {
       await collateralToken.approve(contractForDifference.address, MAX_UINT_VAL, { from: sponsor });
@@ -301,8 +301,8 @@ contract("ContractForDifference", function (accounts) {
         sponsorCollateralBefore.add(toBN(toWei("100"))).toString()
       );
     });
-    it("expiraryTokensForCollateral > 1 should ceil to 1", async function () {
-      // anything above 1 for the expiryPercentLong is nonsencial and the CFD should act as if it's set to 1.
+    it("expiryTokensForCollateral > 1 should ceil to 1", async function () {
+      // anything above 1 for the expiryPercentLong is nonsensical and the CFD should act as if it's set to 1.
       await contractForDifferenceLibrary.setValueToReturn(toWei("1.5"));
 
       // Redeeming long short tokens should send no collateral.
@@ -344,11 +344,11 @@ contract("ContractForDifference", function (accounts) {
       await collateralToken.approve(contractForDifference.address, MAX_UINT_VAL, { from: sponsor });
       await contractForDifference.create(toWei("100"), { from: sponsor });
     });
-    it("Can not expire pre exiprationTimestamp", async function () {
+    it("Can not expire pre expirationTimestamp", async function () {
       assert(await didContractThrow(contractForDifference.expire()));
       assert(await didContractThrow(contractForDifference.settle(toWei("100"), toWei("100"), { from: sponsor })));
     });
-    it("Can not create or redeem post expirary", async function () {
+    it("Can not create or redeem post expiry", async function () {
       await timer.setCurrentTime(expirationTimestamp + 1);
       assert(await didContractThrow(contractForDifference.create(toWei("100"))), { from: sponsor });
       assert(await didContractThrow(contractForDifference.redeem(toWei("100"))), { from: sponsor });
