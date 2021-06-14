@@ -19,4 +19,5 @@ module.exports = {
   ...require("./src/VotingUtils"),
   ...require("./src/PriceIdentifierUtils"),
   ...require("./src/MultiVersionTestHelpers.js"),
+  ...require("./src/hardhat/fixtures"),
 };
