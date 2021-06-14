@@ -7,7 +7,9 @@ const { registry } = clients;
 type Config = {
   network?: number;
 };
-export default (config: Config, appState: AppState) => {
+type Dependencies = Pick<AppState, "registeredEmps" | "provider">;
+
+export default (config: Config, appState: Dependencies) => {
   const { network = 1 } = config;
   const { registeredEmps, provider } = appState;
   const address = registry.getAddress(network);

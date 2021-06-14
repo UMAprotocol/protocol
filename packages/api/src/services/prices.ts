@@ -4,7 +4,9 @@ import { AppState, CurrencySymbol } from "..";
 type Config = {
   currency?: CurrencySymbol;
 };
-export default function (config: Config, appState: AppState) {
+type Dependencies = Pick<AppState, "coingecko" | "prices" | "collateralAddresses">;
+
+export default function (config: Config, appState: Dependencies) {
   const { currency = "usd" } = config;
   const { coingecko, prices, collateralAddresses } = appState;
   assert(coingecko, "requires coingecko library");

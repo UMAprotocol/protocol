@@ -7,7 +7,12 @@ import { asyncValues } from "../libs/utils";
 import { Json, AppState } from "..";
 
 type Instance = uma.clients.emp.Instance;
-export default (config: Json, appState: AppState) => {
+type Dependencies = Pick<
+  AppState,
+  "registeredEmps" | "provider" | "emps" | "collateralAddresses" | "syntheticAddresses"
+>;
+
+export default (config: Json, appState: Dependencies) => {
   const { registeredEmps, provider, emps, collateralAddresses, syntheticAddresses } = appState;
 
   async function readEmpDynamicState(instance: Instance, address: string) {

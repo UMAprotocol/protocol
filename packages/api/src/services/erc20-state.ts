@@ -2,8 +2,14 @@ import { clients } from "@uma/sdk";
 import { AppState, Json } from "..";
 import { asyncValues } from "../libs/utils";
 type Config = Json;
-export default function (config: Config, appState: AppState) {
+
+// break out this services specific state dependencies
+type Dependencies = Pick<AppState, "provider" | "erc20s" | "collateralAddresses" | "syntheticAddresses">;
+
+export default function (config: Config, appState: Dependencies) {
   const { provider, erc20s, collateralAddresses, syntheticAddresses } = appState;
+
+  // get token state based on contract
   async function getTokenStateFromContract(address: string) {
     const instance = clients.erc20.connect(address, provider);
     return asyncValues({
@@ -14,11 +20,14 @@ export default function (config: Config, appState: AppState) {
       symbol: instance.symbol().catch(() => null),
     });
   }
+
   async function updateToken(address: string) {
     if (await erc20s.has(address)) return;
     const state = await getTokenStateFromContract(address);
     return erc20s.upsert(address, state);
   }
+
+  // update all tokens based on address, but dont throw errors.
   async function updateTokens(addresses: string[]) {
     return Promise.allSettled(addresses.map(updateToken));
   }

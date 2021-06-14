@@ -5,7 +5,9 @@ import { calcGcr } from "./utils";
 import assert from "assert";
 import bluebird from "bluebird";
 
-export default (appState: AppState) => {
+type Dependencies = Pick<AppState, "erc20s" | "emps">;
+
+export default (appState: Dependencies) => {
   async function getAnyEmp(empAddress: string) {
     if (await appState.emps.active.has(empAddress)) {
       return appState.emps.active.get(empAddress);

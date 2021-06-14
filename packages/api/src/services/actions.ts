@@ -5,7 +5,10 @@ import Queries from "../libs/queries";
 
 const { exists } = uma.utils;
 
-export function Handlers(config: Json, appState: AppState): Actions {
+// actions use all the app state
+type Dependencies = AppState;
+
+export function Handlers(config: Json, appState: Dependencies): Actions {
   const queries = Queries(appState);
   const { registeredEmps, erc20s, collateralAddresses, syntheticAddresses, prices } = appState;
 

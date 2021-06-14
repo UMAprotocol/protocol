@@ -1,5 +1,8 @@
 import { Json, AppState } from "..";
-export default (config: Json, appState: AppState) => {
+
+type Dependencies = Pick<AppState, "blocks" | "provider">;
+
+export default (config: Json, appState: Dependencies) => {
   const { blocks, provider } = appState;
 
   async function handleNewBlock(blockNumber: number) {
