@@ -361,7 +361,6 @@ async function _saveQueriedBlockNumber(configIdentifier, blockNumbersForChain) {
         await datastore.save(dataBlob); // Overwrites the entire entity
       } else if (hubConfig.saveQueriedBlock == "localStorage") {
         Object.keys(blockNumbersForChain).forEach((chainId) => {
-          // TODO: Is it OK if this key name changes when in `localStorage` mode?
           process.env[`lastQueriedBlockNumber-${chainId}-${configIdentifier}`] =
             blockNumbersForChain[chainId].latestBlockNumber;
         });
