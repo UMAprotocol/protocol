@@ -382,7 +382,8 @@ async function _saveQueriedBlockNumber(configIdentifier, blockNumbersForChain) {
 }
 
 // Query entity kind `BlockNumberLog` with unique entity ID of `configIdentifier`. Used to get the last block number
-// for a network ID recorded by the bot to inform where searches should start from.
+// for a network ID recorded by the bot to inform where searches should start from. Each entity has a column for each
+// chain ID storing the last seen block number for the corresponding network.
 async function _getLastQueriedBlockNumber(configIdentifier, chainId) {
   // sometimes the GCP datastore can be flaky and return errors when saving data. Use re-try logic to re-run on error.
   return await retry(
