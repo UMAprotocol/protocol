@@ -13,9 +13,9 @@ jobs:
             echo "No packages for testing."
             circleci-agent step halt;
 
-  workflows:
+workflows:
   version: 2.1
   build_and_test:
-    jobs:
-      - tests_required
+      jobs:
+        - tests-required
 EOF
