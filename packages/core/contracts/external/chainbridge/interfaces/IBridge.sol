@@ -3,8 +3,6 @@ pragma solidity ^0.8.0;
 
 /**
     @title Interface for Bridge contract.
-    @dev Copied directly from here: https://github.com/ChainSafe/chainbridge-solidity/releases/tag/v1.0.0 except for 
-         the addition of `deposit()` so that this contract can be called from Sink and Source Oracle contracts.
     @author ChainSafe Systems.
  */
 interface IBridge {

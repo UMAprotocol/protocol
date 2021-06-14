@@ -21,5 +21,5 @@ const func = async function (hre) {
   });
 };
 module.exports = func;
-func.tags = ["SourceOracle", "bridge-l1"];
+func.tags = ["SourceOracle", "l1-chainbridge"];
 func.dependencies = ["Finder"];

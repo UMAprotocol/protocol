@@ -1,13 +1,9 @@
-import type { Data } from ".";
-import { JsMap as GenericJsMap } from "../generic";
+import { Data, makeId } from "./utils";
+import { JsMap } from "../generic";
 
 // personally dont like to have this as a named export, but cannot export both function and type as default
-export const JsMap = (type = "Block") => {
-  function makeId(data: Data) {
-    return data.number;
-  }
-
-  const table = GenericJsMap<number, Data>(type, makeId);
+export const Table = (type = "Block") => {
+  const table = JsMap<number, Data>(type, makeId);
 
   // delete blocks older than timestamp
   async function prune(timestamp: number) {
@@ -28,4 +24,4 @@ export const JsMap = (type = "Block") => {
     prune,
   };
 };
-export type JsMap = ReturnType<typeof JsMap>;
+export type Table = ReturnType<typeof Table>;

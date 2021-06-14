@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "../oracle/interfaces/FinderInterface.sol";
 import "../oracle/implementation/Constants.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./IBridge.sol";
+import "../external/chainbridge/interfaces/IBridge.sol";
 
 /**
  * @title Governance relayer contract on L1 that receives messages from the owner (Governor) and sends them to L2.
