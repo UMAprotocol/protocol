@@ -74,10 +74,7 @@ contract("SourceGovernor", async (accounts) => {
   });
   it("unauthorized request", async function () {
     const innerTransactionCalldata = erc20.contract.methods.transfer(rando, web3.utils.toWei("1")).encodeABI();
-    const depositData = web3.eth.abi.encodeParameters(
-      ["address", "uint256", "bytes"],
-      [erc20.address, "0", innerTransactionCalldata]
-    );
+    const depositData = web3.eth.abi.encodeParameters(["address", "bytes"], [erc20.address, innerTransactionCalldata]);
 
     assert(
       await didContractThrow(
@@ -87,21 +84,18 @@ contract("SourceGovernor", async (accounts) => {
   });
   it("relayGovernance", async function () {
     const innerTransactionCalldata = erc20.contract.methods.transfer(rando, web3.utils.toWei("1")).encodeABI();
-    const depositData = web3.eth.abi.encodeParameters(
-      ["address", "uint256", "bytes"],
-      [erc20.address, "0", innerTransactionCalldata]
-    );
+    const depositData = web3.eth.abi.encodeParameters(["address", "bytes"], [erc20.address, innerTransactionCalldata]);
 
     assert(
       await didContractThrow(
-        sourceGovernor.relayGovernance(destinationChainID, erc20.address, "0", innerTransactionCalldata, {
+        sourceGovernor.relayGovernance(destinationChainID, erc20.address, innerTransactionCalldata, {
           from: rando,
         })
       ),
       "Only callable by GenericHandler"
     );
 
-    await sourceGovernor.relayGovernance(destinationChainID, erc20.address, "0", innerTransactionCalldata, {
+    await sourceGovernor.relayGovernance(destinationChainID, erc20.address, innerTransactionCalldata, {
       from: owner,
     });
 

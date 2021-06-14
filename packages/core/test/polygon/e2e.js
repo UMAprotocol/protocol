@@ -16,6 +16,9 @@ const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");
 const MockOracle = artifacts.require("MockOracleAncillary");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
+const ExpandedERC20 = artifacts.require("ExpandedERC20");
+const GovernorChildTunnel = artifacts.require("GovernorChildTunnel");
+const GovernorRootTunnel = artifacts.require("GovernorRootTunnel");
 
 contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
   const owner = accounts[0];
@@ -28,6 +31,8 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
   let fxRoot;
   let oracleChild;
   let oracleRoot;
+  let governorChild;
+  let governorRoot;
 
   // Oracle system:
   let finder;
@@ -70,6 +75,12 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
     await oracleChild.setFxRootTunnel(oracleRoot.address);
     await oracleRoot.setFxChildTunnel(oracleChild.address);
     await registry.registerContract([], oracleRoot.address, { from: owner });
+
+    // Set up Governor tunnel system
+    governorChild = await GovernorChildTunnel.new(fxChild.address);
+    governorRoot = await GovernorRootTunnel.new(checkpointManager, fxRoot.address, { from: owner });
+    await governorChild.setFxRootTunnel(governorRoot.address);
+    await governorRoot.setFxChildTunnel(governorChild.address);
 
     // The OracleChildTunnel should stamp ",childRequester:<requester-address>,childChainId:<chain-id>" to the original
     // ancillary data.
@@ -176,5 +187,62 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
       (await oracleChild.getPrice(testIdentifier, testTimestamp, testAncillaryData, { from: owner })).toString(),
       testPrice.toString()
     );
+  });
+  it("relay governance transaction from Ethereum to Polygon", async function () {
+    // Deploy an ERC20 so the child governor tunnel contract has something to act on.
+    const erc20 = await ExpandedERC20.new("Test Token", "TEST", 18);
+    await erc20.addMember(1, owner);
+    await erc20.mint(governorChild.address, toWei("1"));
+
+    // Governance action to transfer 1 token.
+    const innerTransactionCalldata = erc20.contract.methods.transfer(rando, toWei("1")).encodeABI();
+
+    // Only owner can relay governance:
+    assert(
+      await didContractThrow(
+        governorRoot.relayGovernance(erc20.address, innerTransactionCalldata, {
+          from: rando,
+        })
+      )
+    );
+    let txn = await governorRoot.relayGovernance(erc20.address, innerTransactionCalldata, {
+      from: owner,
+    });
+
+    // Should emit event with governance transaction calldata.
+    TruffleAssert.eventEmitted(
+      txn,
+      "RelayedGovernanceRequest",
+      (event) => event.to.toLowerCase() === erc20.address.toLowerCase() && event.data === innerTransactionCalldata
+    );
+    let internalTxn = await TruffleAssert.createTransactionResult(stateSync, txn.tx);
+    // FxRoot packs the publishPrice ABI-encoded paramaters with additional data:
+    // i.e. abi.encode(sender,receiver,message)
+    let messageBytes = web3.eth.abi.encodeParameters(["address", "bytes"], [erc20.address, innerTransactionCalldata]);
+    const expectedFxChildData = web3.eth.abi.encodeParameters(
+      ["address", "address", "bytes"],
+      [governorRoot.address, governorChild.address, messageBytes]
+    );
+    TruffleAssert.eventEmitted(
+      internalTxn,
+      "StateSynced",
+      (event) =>
+        event.id.toString() === expectedStateId &&
+        event.contractAddress === fxChild.address &&
+        event.data === expectedFxChildData
+    );
+
+    // Off-chain bridge picks up StateSynced event and forwards to Child receiver on Polygon.
+    txn = await fxChild.onStateReceive(expectedStateId, expectedFxChildData, { from: systemSuperUser });
+    internalTxn = await TruffleAssert.createTransactionResult(governorChild, txn.tx);
+    TruffleAssert.eventEmitted(
+      internalTxn,
+      "ExecutedGovernanceTransaction",
+      (event) => event.to.toLowerCase() === erc20.address.toLowerCase() && event.data === innerTransactionCalldata
+    );
+
+    // Child should have transferred tokens, per the governance transaction.
+    assert.equal((await erc20.balanceOf(rando)).toString(), web3.utils.toWei("1"));
+    assert.equal((await erc20.balanceOf(governorChild.address)).toString(), "0");
   });
 });
