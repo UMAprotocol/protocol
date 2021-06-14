@@ -28,7 +28,7 @@ contract("LinearContractForDifferenceFinancialProductLibrary", function () {
       ZERO_ADDRESS // _timerAddress
     );
   });
-  describe("Contract For diffrence Paramaterization", () => {
+  describe("Contract For difference Parameterization", () => {
     it("Can set and fetch valid values", async () => {
       await linearCFDFPL.setContractForDifferenceParameters(expiringContractMock.address, upperBound, lowerBound);
 
@@ -61,38 +61,38 @@ contract("LinearContractForDifferenceFinancialProductLibrary", function () {
       );
     });
   });
-  describe("Compute expirary tokens for collateral", () => {
+  describe("Compute expiry tokens for collateral", () => {
     beforeEach(async () => {
       await linearCFDFPL.setContractForDifferenceParameters(expiringContractMock.address, upperBound, lowerBound);
     });
     it("Lower than lower bound should return 0", async () => {
-      const expiraryTokensForCollateral = await linearCFDFPL.computeExpiraryTokensForCollateral.call(toWei("900"), {
+      const expiryTokensForCollateral = await linearCFDFPL.computeExpiryTokensForCollateral.call(toWei("900"), {
         from: expiringContractMock.address,
       });
-      assert.equal(expiraryTokensForCollateral.toString(), toWei("0"));
+      assert.equal(expiryTokensForCollateral.toString(), toWei("0"));
     });
     it("Higher than upper bound should return 1", async () => {
-      const expiraryTokensForCollateral = await linearCFDFPL.computeExpiraryTokensForCollateral.call(toWei("2100"), {
+      const expiryTokensForCollateral = await linearCFDFPL.computeExpiryTokensForCollateral.call(toWei("2100"), {
         from: expiringContractMock.address,
       });
-      assert.equal(expiraryTokensForCollateral.toString(), toWei("1"));
+      assert.equal(expiryTokensForCollateral.toString(), toWei("1"));
     });
     it("Midway between bounds should return 0.5", async () => {
-      const expiraryTokensForCollateral = await linearCFDFPL.computeExpiraryTokensForCollateral.call(toWei("1500"), {
+      const expiryTokensForCollateral = await linearCFDFPL.computeExpiryTokensForCollateral.call(toWei("1500"), {
         from: expiringContractMock.address,
       });
-      assert.equal(expiraryTokensForCollateral.toString(), toWei("0.5"));
+      assert.equal(expiryTokensForCollateral.toString(), toWei("0.5"));
     });
 
-    it("Arbitary price between bounds should return correctly", async () => {
+    it("Arbitrary price between bounds should return correctly", async () => {
       for (const price of [toWei("1000"), toWei("1200"), toWei("1400"), toWei("1600"), toWei("1800"), toWei("2000")]) {
-        const expiraryTokensForCollateral = await linearCFDFPL.computeExpiraryTokensForCollateral.call(price, {
+        const expiryTokensForCollateral = await linearCFDFPL.computeExpiryTokensForCollateral.call(price, {
           from: expiringContractMock.address,
         });
         const numerator = toBN(price).sub(toBN(lowerBound));
         const denominator = toBN(upperBound).sub(toBN(lowerBound));
         const expectedPrice = numerator.mul(toBN(toWei("1"))).div(denominator);
-        assert.equal(expiraryTokensForCollateral.toString(), expectedPrice.toString());
+        assert.equal(expiryTokensForCollateral.toString(), expectedPrice.toString());
       }
     });
   });

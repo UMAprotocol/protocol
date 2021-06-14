@@ -8,5 +8,5 @@ interface ExpiringContractInterface {
 }
 
 abstract contract ContractForDifferenceFinancialProductLibrary {
-    function computeExpiraryTokensForCollateral(int256 expiryPrice) public view virtual returns (uint256);
+    function computeExpiryTokensForCollateral(int256 expiryPrice) public view virtual returns (uint256);
 }

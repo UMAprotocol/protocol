@@ -4,7 +4,7 @@ import "./FinancialProductLibrary.sol";
 import "../../../../common/implementation/Lockable.sol";
 
 /**
- * @title CoveredCall Financial Product Library
+ * @title Covered Call Financial Product Library.
  * @notice Adds custom price transformation logic to modify the behavior of the expiring multi party contract. The
  * contract holds say 1 WETH in collateral and pays out a portion of that, at expiry, if ETHUSD is above a set strike. If
  * ETHUSD is below that strike, the contract pays out 0. The fraction paid out if above the strike is defined by

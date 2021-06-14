@@ -25,7 +25,7 @@ contract("RangeBondContractForDifferenceFinancialProductLibrary", function () {
       collateralPerPair // _collateralPerPair
     );
   });
-  describe("Contract For diffrence Paramaterization", () => {
+  describe("Contract For difference Parameterization", () => {
     it("Can set and fetch valid values", async () => {
       await rangeBondCFDFPL.setContractForDifferenceParameters(cfdMock.address, highPriceRange, lowPriceRange);
 
@@ -75,46 +75,46 @@ contract("RangeBondContractForDifferenceFinancialProductLibrary", function () {
       );
     });
   });
-  describe("Compute expirary tokens for collateral", () => {
+  describe("Compute expiry tokens for collateral", () => {
     beforeEach(async () => {
       await rangeBondCFDFPL.setContractForDifferenceParameters(cfdMock.address, highPriceRange, lowPriceRange);
     });
     it("Lower than low price range should return 1 (long side is short put option)", async () => {
       // If the price is lower than the low price range then the max payout per each long token is hit at the full
       // collateralPerPair. i.e each short token is worth 0*collateralPerPair and each long token is worth 1*collateralPerPair.
-      const expiraryTokensForCollateral = await rangeBondCFDFPL.computeExpiraryTokensForCollateral.call(toWei("9"), {
+      const expiryTokensForCollateral = await rangeBondCFDFPL.computeExpiryTokensForCollateral.call(toWei("9"), {
         from: cfdMock.address,
       });
-      assert.equal(expiraryTokensForCollateral.toString(), toWei("1"));
+      assert.equal(expiryTokensForCollateral.toString(), toWei("1"));
     });
     it("Higher than upper bound should return 0.2 (long side is long call option)", async () => {
       // If the price is larger than the high price range then the long tokens are equal fixed amount of notional/highPriceRange
-      // Considering the long token to compute the expiryPercentLong (notional/highPriceRange)/collateralPerpair=(100/50)/10=0.2.
-      // i.e each short token is worth 0.8* collateralPerpair = 8 tokens and each long token is worth 0.2*collateralPerpair=2.
-      const expiraryTokensForCollateral = await rangeBondCFDFPL.computeExpiraryTokensForCollateral.call(toWei("60"), {
+      // Considering the long token to compute the expiryPercentLong (notional/highPriceRange)/collateralPerPair=(100/50)/10=0.2.
+      // i.e each short token is worth 0.8* collateralPerPair = 8 tokens and each long token is worth 0.2*collateralPerPair=2.
+      const expiryTokensForCollateral = await rangeBondCFDFPL.computeExpiryTokensForCollateral.call(toWei("60"), {
         from: cfdMock.address,
       });
-      assert.equal(expiraryTokensForCollateral.toString(), toWei("0.2"));
+      assert.equal(expiryTokensForCollateral.toString(), toWei("0.2"));
     });
     it("Midway between bounds should return long worth bond notional (long side is long yield dollar)", async () => {
       // If the price is between the low and high price ranges then the payout is simply that of a yield dollar. i.e every
       // long token is worth the bond notional of 100. At a price of 20 we are between the bounds. Each long should be worth
-      // 100 so there should be 100/20=5 UMA per long token. As each collateralPerpair is worth 10, expiryPercentLong should
+      // 100 so there should be 100/20=5 UMA per long token. As each collateralPerPair is worth 10, expiryPercentLong should
       // be 10/5=0.5, thereby allocating half to the long and half to the short.
-      const expiraryTokensForCollateral1 = await rangeBondCFDFPL.computeExpiraryTokensForCollateral.call(toWei("20"), {
+      const expiryTokensForCollateral1 = await rangeBondCFDFPL.computeExpiryTokensForCollateral.call(toWei("20"), {
         from: cfdMock.address,
       });
-      assert.equal(expiraryTokensForCollateral1.toString(), toWei("0.5"));
+      assert.equal(expiryTokensForCollateral1.toString(), toWei("0.5"));
 
       // Equally, at a price of 40 each long should still be worth 100 so there should be 100/40=2.5 UMA per long. As
-      // each collateralPerpair=10 expiryPercentLong should be 10/2.5=0.25, thereby allocating 25% to long and the remaining to short.
-      const expiraryTokensForCollateral2 = await rangeBondCFDFPL.computeExpiraryTokensForCollateral.call(toWei("20"), {
+      // each collateralPerPair=10 expiryPercentLong should be 10/2.5=0.25, thereby allocating 25% to long and the remaining to short.
+      const expiryTokensForCollateral2 = await rangeBondCFDFPL.computeExpiryTokensForCollateral.call(toWei("20"), {
         from: cfdMock.address,
       });
-      assert.equal(expiraryTokensForCollateral2.toString(), toWei("0.5"));
+      assert.equal(expiryTokensForCollateral2.toString(), toWei("0.5"));
     });
 
-    it("Arbitary price should return correctly", async () => {
+    it("Arbitrary price should return correctly", async () => {
       // Value of long token: T = min(N/P,N/R1) + max((N/R2*(P-R2))/P),0)
       // expected payout is T/collateralPerPair. We can compute the exact numerical amount for a set of input prices
       // and double check the payout maps to what is expected.
@@ -125,7 +125,7 @@ contract("RangeBondContractForDifferenceFinancialProductLibrary", function () {
       // form of the range bond equation where as the library uses an algebraic simplification of this equation. This
       // test validates the correct mapping between these two forms.
       for (const price of [toWei("5.555"), toWei("11"), toWei("33"), toWei("55"), toWei("66"), toWei("111")]) {
-        const expiraryTokensForCollateral = await rangeBondCFDFPL.computeExpiraryTokensForCollateral.call(price, {
+        const expiryTokensForCollateral = await rangeBondCFDFPL.computeExpiryTokensForCollateral.call(price, {
           from: cfdMock.address,
         });
         //
@@ -145,11 +145,11 @@ contract("RangeBondContractForDifferenceFinancialProductLibrary", function () {
         );
 
         const longTokenRedemptionInCollateral = term1.add(term2);
-        const expectedExpiraryTokensForCollateral = longTokenRedemptionInCollateral
+        const expectedExpiryTokensForCollateral = longTokenRedemptionInCollateral
           .mul(fixedPointAdjustment)
           .div(collateralPerPair);
 
-        assert.equal(expiraryTokensForCollateral.toString(), expectedExpiraryTokensForCollateral.toString());
+        assert.equal(expiryTokensForCollateral.toString(), expectedExpiryTokensForCollateral.toString());
       }
     });
   });
