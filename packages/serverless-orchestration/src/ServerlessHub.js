@@ -145,10 +145,7 @@ hub.post("/", async (req, res) => {
     // Now, that we've precomputed all of the last seen blocks for each chain, we can update their values in the
     // GCP Data Store. These will all be the fetched as the "lastQueriedBlockNumber" in the next iteration when the
     // hub is called again.
-    for (const botName in configObject) {
-      const chainId = configObject[botName]?.gcpDataStoreChainId || DEFAULT_GCP_DATASTORE_CHAINID;
-      await _saveQueriedBlockNumber(req.body.configFile, chainId, blockNumbersForChain[chainId].latestBlockNumber);
-    }
+    await _saveQueriedBlockNumber(req.body.configFile, blockNumbersForChain);
 
     // Finally, loop over all config objects in the config file and for each append a call promise to the promiseArray. Note
     // that each promise is a race between the serverlessSpoke command and a `_rejectAfterDelay`. This places an upper
@@ -345,22 +342,29 @@ const _fetchConfig = async (bucket, file) => {
 };
 
 // Save a the last blocknumber seen by the hub to GCP datastore. `BlockNumberLog` is the entity kind and
-// `configIdentifier` is the entity ID. Each entity has a column "<chainID>-blockNumber" which stores the latest block
-// seen for a network, and will override the previous value on each run.
-async function _saveQueriedBlockNumber(configIdentifier, chainId, blockNumber) {
+// `configIdentifier` is the entity ID. Each entity has a column "<chainID>" which stores the latest block
+// seen for a network.
+async function _saveQueriedBlockNumber(configIdentifier, blockNumbersForChain) {
   // Sometimes the GCP datastore can be flaky and return errors when fetching data. Use re-try logic to re-run on error.
   await retry(
     async () => {
       if (hubConfig.saveQueriedBlock == "gcp") {
         const key = datastore.key(["BlockNumberLog", configIdentifier]);
+        const latestBlockNumbersForChain = {};
+        Object.keys(blockNumbersForChain).forEach((chainId) => {
+          latestBlockNumbersForChain[chainId] = blockNumbersForChain[chainId].latestBlockNumber;
+        });
         const dataBlob = {
           key: key,
-          data: { [chainId]: blockNumber },
+          data: latestBlockNumbersForChain,
         };
-        await datastore.save(dataBlob); // Saves the entity
+        await datastore.save(dataBlob); // Overwrites the entire entity
       } else if (hubConfig.saveQueriedBlock == "localStorage") {
-        // TODO: Is it OK if this key name changes when in `localStorage` mode?
-        process.env[`lastQueriedBlockNumber-${chainId}-${configIdentifier}`] = blockNumber;
+        Object.keys(blockNumbersForChain).forEach((chainId) => {
+          // TODO: Is it OK if this key name changes when in `localStorage` mode?
+          process.env[`lastQueriedBlockNumber-${chainId}-${configIdentifier}`] =
+            blockNumbersForChain[chainId].latestBlockNumber;
+        });
       }
     },
     {
