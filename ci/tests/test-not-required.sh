@@ -3,7 +3,7 @@
 cat << EOF
 version: 2.1
 jobs:
-  tests_required:
+  tests-required:
     docker:
       - image: circleci/node:lts
     steps:
