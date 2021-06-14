@@ -49,8 +49,6 @@ const defaultHubConfig = {
   rejectSpokeDelay: 120, // 2 min.
 };
 
-const DEFAULT_GCP_DATASTORE_CHAINID = 1; // Spoke is assumed to be running on Ethereum Mainnet by default.
-
 hub.post("/", async (req, res) => {
   try {
     logger.debug({
@@ -87,10 +85,15 @@ hub.post("/", async (req, res) => {
       //     latestBlockNumber: <int>
       // }
     };
+    let nodeUrlToChainIdCache = {
+      // (url: string): <int>
+    };
     for (const botName in configObject) {
       // Check if bot is running on a non-default chain, and then fetch last block number seen on this or the default
       // chain.
-      const chainId = configObject[botName]?.gcpDataStoreChainId || DEFAULT_GCP_DATASTORE_CHAINID;
+      const spokeCustomNodeUrl = configObject[botName]?.environmentVariables?.CUSTOM_NODE_URL;
+      const chainId = await _getChainId(spokeCustomNodeUrl);
+      nodeUrlToChainIdCache[spokeCustomNodeUrl] = chainId;
 
       // If we've seen this chain ID already we can skip it:
       if (blockNumbersForChain[chainId]) continue;
@@ -100,21 +103,7 @@ hub.post("/", async (req, res) => {
 
       // Next, get the head block for the chosen chain, which we'll use to override the last queried block number
       // stored in GCP at the end of this hub execution.
-      let latestBlockNumber;
-
-      // If bot wants to use a non-default chain, then it must also specify a `CUSTOM_NODE_URL`, which we'll use to
-      // fetch the head block for the chain.
-      const spokeCustomNodeUrl = configObject[botName]?.environmentVariables?.CUSTOM_NODE_URL;
-      if (chainId !== DEFAULT_GCP_DATASTORE_CHAINID) {
-        if (!spokeCustomNodeUrl)
-          throw new Error(
-            `Must specify CUSTOM_NODE_URL environment variable for non-default chainId! gcpDataStoreChainId:${chainId}`
-          );
-        latestBlockNumber = await _getLatestBlockNumber(spokeCustomNodeUrl);
-      } else {
-        // Otherwise, use the hub's CUSTOM_NODE_URL by default.
-        latestBlockNumber = await _getLatestBlockNumber();
-      }
+      let latestBlockNumber = await _getLatestBlockNumber(spokeCustomNodeUrl);
 
       // If the last queried block number stored on GCP Data Store is undefined, then its possible that this is
       // the first time that the hub is being run for this chain. Therefore, try setting it to the head block number
@@ -153,7 +142,8 @@ hub.post("/", async (req, res) => {
     let promiseArray = [];
     let botConfigs = {};
     for (const botName in configObject) {
-      const chainId = configObject[botName]?.gcpDataStoreChainId || DEFAULT_GCP_DATASTORE_CHAINID;
+      const spokeCustomNodeUrl = configObject[botName]?.environmentVariables?.CUSTOM_NODE_URL;
+      const chainId = nodeUrlToChainIdCache[spokeCustomNodeUrl];
       const lastQueriedBlockNumber = blockNumbersForChain[chainId].lastQueriedBlockNumber;
       const latestBlockNumber = blockNumbersForChain[chainId].latestBlockNumber;
 
@@ -414,6 +404,11 @@ async function _getLastQueriedBlockNumber(configIdentifier, chainId) {
 async function _getLatestBlockNumber(overrideNodeUrl) {
   const web3 = new Web3(overrideNodeUrl || customNodeUrl);
   return await web3.eth.getBlockNumber();
+}
+
+async function _getChainId(overrideNodeUrl) {
+  const web3 = new Web3(overrideNodeUrl || customNodeUrl);
+  return await web3.eth.getChainId();
 }
 
 // Add additional environment variables for a given config file. Used to attach starting and ending block numbers.

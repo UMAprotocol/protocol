@@ -46,7 +46,7 @@ contract("ServerlessHub.js", function (accounts) {
   let spokeTestPort = 8081;
   let spokeInstance;
 
-  const defaultChainId = 1;
+  let defaultChainId;
 
   let setEnvironmentVariableKes = []; // record all envs set within a test to unset them after in the afterEach block
   const setEnvironmentVariable = (key, value) => {
@@ -66,6 +66,8 @@ contract("ServerlessHub.js", function (accounts) {
   };
 
   before(async function () {
+    defaultChainId = await web3.eth.getChainId();
+
     collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractDeployer });
     syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, {
       from: contractDeployer,
@@ -311,11 +313,8 @@ contract("ServerlessHub.js", function (accounts) {
     const testConfigFile = "test-config-file"; // name of the config file.
     const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
 
-    // Set one bot to use a different chain ID and test that the hub parses the chain ID correctly.
-    const alternateChainId = defaultChainId + 10;
     const hubConfig = {
       testServerlessMonitor: {
-        gcpDataStoreChainId: alternateChainId,
         serverlessCommand: "yarn --silent monitors --network test",
         environmentVariables: {
           CUSTOM_NODE_URL: web3.currentProvider.host,
@@ -349,7 +348,6 @@ contract("ServerlessHub.js", function (accounts) {
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
     setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
     setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
-    setEnvironmentVariable(`lastQueriedBlockNumber-${alternateChainId}-${testConfigFile}`, startingBlockNumber);
 
     const validBody = {
       bucket: testBucket,
@@ -368,12 +366,7 @@ contract("ServerlessHub.js", function (accounts) {
     // Check hub has correct logs.
     assert.isTrue(lastSpyLogIncludes(hubSpy, "All calls returned correctly")); // The hub should have exited correctly.
     assert.equal(lastSpyLogLevel(hubSpy), "debug"); // most recent log level should be "debug" (no error)
-    assert.isTrue(spyLogIncludes(hubSpy, -2, `"chainId":${defaultChainId}`));
-    assert.isTrue(spyLogIncludes(hubSpy, -3, `"chainId":${defaultChainId}`));
-    assert.isTrue(spyLogIncludes(hubSpy, -4, `"chainId":${alternateChainId}`));
-    assert.isTrue(spyLogIncludes(hubSpy, -5, `"chainId":${defaultChainId}`));
-    assert.isTrue(spyLogIncludes(hubSpy, -6, `"chainId":${alternateChainId}`));
-    assert.isTrue(spyLogIncludes(hubSpy, -7, `"botsExecuted":${JSON.stringify(Object.keys(hubConfig))}`)); // all bots within the config should have been reported to be executed.
+    assert.isTrue(spyLogIncludes(hubSpy, -6, `"botsExecuted":${JSON.stringify(Object.keys(hubConfig))}`)); // all bots within the config should have been reported to be executed.
 
     // Check that each bot identifier returned the correct exit code within the final hub log.
     const lastSpyHubLog = hubSpy.getCall(-1).lastArg;
