@@ -1,22 +1,22 @@
 import { clients } from "@uma/sdk";
-import { Libs, Json } from "..";
+import { AppState, Json } from "..";
 import { asyncValues } from "../libs/utils";
 type Config = Json;
-export default function (config: Config, libs: Libs) {
-  const { provider, erc20s, collateralAddresses, syntheticAddresses } = libs;
-  async function getTokenState(address: string) {
+export default function (config: Config, appState: AppState) {
+  const { provider, erc20s, collateralAddresses, syntheticAddresses } = appState;
+  async function getTokenStateFromContract(address: string) {
     const instance = clients.erc20.connect(address, provider);
     return asyncValues({
       address,
       // just in case these fail, return null
-      decimals: instance.decimals().catch((err) => null),
-      name: instance.name().catch((err) => null),
-      symbol: instance.symbol().catch((err) => null),
+      decimals: instance.decimals().catch(() => null),
+      name: instance.name().catch(() => null),
+      symbol: instance.symbol().catch(() => null),
     });
   }
   async function updateToken(address: string) {
     if (await erc20s.has(address)) return;
-    const state = await getTokenState(address);
+    const state = await getTokenStateFromContract(address);
     return erc20s.upsert(address, state);
   }
   async function updateTokens(addresses: string[]) {
@@ -33,8 +33,11 @@ export default function (config: Config, libs: Libs) {
   }
   return {
     update,
-    getTokenState,
-    updateToken,
-    updateTokens,
+    // internal functions meant to support updating
+    utils: {
+      getTokenStateFromContract,
+      updateToken,
+      updateTokens,
+    },
   };
 }

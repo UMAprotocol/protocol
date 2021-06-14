@@ -1,6 +1,6 @@
-import { Json, Libs } from "..";
-export default (config: Json, libs: Libs) => {
-  const { blocks, provider } = libs;
+import { Json, AppState } from "..";
+export default (config: Json, appState: AppState) => {
+  const { blocks, provider } = appState;
 
   async function handleNewBlock(blockNumber: number) {
     const block = await provider.getBlock(blockNumber);

@@ -4,11 +4,11 @@ const { emp } = uma.clients;
 import { BigNumber, utils } from "ethers";
 const { parseBytes32String } = utils;
 import { asyncValues } from "../libs/utils";
-import { Json, Libs } from "..";
+import { Json, AppState } from "..";
 
 type Instance = uma.clients.emp.Instance;
-export default (config: Json, libs: Libs) => {
-  const { registeredEmps, provider, emps, collateralAddresses, syntheticAddresses } = libs;
+export default (config: Json, appState: AppState) => {
+  const { registeredEmps, provider, emps, collateralAddresses, syntheticAddresses } = appState;
 
   async function readEmpDynamicState(instance: Instance, address: string) {
     return asyncValues<uma.tables.emps.Data>({

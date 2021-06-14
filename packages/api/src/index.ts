@@ -18,7 +18,7 @@ export type Actions = { [key: string]: Action };
 export type CurrencySymbol = "usd";
 export type PriceSample = [timestamp: number, price: string];
 // These are library dependencies to all services
-export type Libs = {
+export type AppState = {
   blocks: uma.tables.blocks.JsMap;
   coingecko: uma.Coingecko;
   emps: {

@@ -1,50 +1,51 @@
 import assert from "assert";
 import * as uma from "@uma/sdk";
-import { Json, Actions, Libs, CurrencySymbol, PriceSample } from "..";
+import { Json, Actions, AppState, CurrencySymbol, PriceSample } from "..";
 import Queries from "../libs/queries";
 
 const { exists } = uma.utils;
 
-export function Handlers(config: Json, libs: Libs): Actions {
-  const queries = Queries(libs);
+export function Handlers(config: Json, appState: AppState): Actions {
+  const queries = Queries(appState);
+  const { registeredEmps, erc20s, collateralAddresses, syntheticAddresses, prices } = appState;
 
   const actions: Actions = {
     echo(...args: Json[]) {
       return args;
     },
     listEmpAddresses() {
-      return Array.from(libs.registeredEmps.values());
+      return Array.from(registeredEmps.values());
     },
     lastBlock() {
-      return libs.lastBlock;
+      return appState.lastBlock;
     },
     listActiveEmps: queries.listActiveEmps,
     listExpiredEmps: queries.listExpiredEmps,
     async getEmpState(address: string) {
-      assert(await libs.registeredEmps.has(address), "Not a valid emp address: " + address);
+      assert(await registeredEmps.has(address), "Not a valid emp address: " + address);
       const state = await queries.getAnyEmp(address);
       return queries.getFullEmpState(state);
     },
     async getErc20Info(address: string) {
-      return libs.erc20s.get(address);
+      return erc20s.get(address);
     },
     async allErc20Info() {
-      return libs.erc20s.values();
+      return erc20s.values();
     },
     async collateralAddresses() {
-      return Array.from(libs.collateralAddresses.values());
+      return Array.from(collateralAddresses.values());
     },
     async syntheticAddresses() {
-      return Array.from(libs.syntheticAddresses.values());
+      return Array.from(syntheticAddresses.values());
     },
     async allLatestPrices(currency: CurrencySymbol = "usd") {
-      assert(exists(libs.prices[currency]), "invalid currency type: " + currency);
-      return libs.prices[currency].latest;
+      assert(exists(prices[currency]), "invalid currency type: " + currency);
+      return prices[currency].latest;
     },
     async latestPriceByAddress(address: string, currency: CurrencySymbol = "usd") {
       assert(address, "requires an erc20 token address");
-      assert(exists(libs.prices[currency]), "invalid currency type: " + currency);
-      const priceSample = libs.prices[currency].latest[address];
+      assert(exists(prices[currency]), "invalid currency type: " + currency);
+      const priceSample = prices[currency].latest[address];
       assert(exists(priceSample), "No price for address: " + address);
       return priceSample;
     },
@@ -55,11 +56,11 @@ export function Handlers(config: Json, libs: Libs): Actions {
       currency: "usd" = "usd"
     ): Promise<PriceSample[]> {
       assert(start >= 0, "requires a start value >= 0");
-      assert(exists(libs.prices[currency]), "invalid currency type: " + currency);
-      assert(exists(libs.prices[currency].history[address]), "no prices for address" + address);
-      const prices = await libs.prices[currency].history[address].betweenByTimestamp(start, end);
+      assert(exists(prices[currency]), "invalid currency type: " + currency);
+      assert(exists(prices[currency].history[address]), "no prices for address" + address);
+      const results = await prices[currency].history[address].betweenByTimestamp(start, end);
       // convert this to tuple to save bytes.
-      return prices.map(({ price, timestamp }) => [timestamp, price]);
+      return results.map(({ price, timestamp }) => [timestamp, price]);
     },
     async sliceHistoricalPricesByAddress(
       address: string,
@@ -68,11 +69,11 @@ export function Handlers(config: Json, libs: Libs): Actions {
       currency: "usd" = "usd"
     ): Promise<PriceSample[]> {
       assert(start >= 0, "requires a start value >= 0");
-      assert(exists(libs.prices[currency]), "invalid currency type: " + currency);
-      assert(exists(libs.prices[currency].history[address]), "no prices for address" + address);
-      const prices = await libs.prices[currency].history[address].sliceByTimestamp(start, length);
+      assert(exists(prices[currency]), "invalid currency type: " + currency);
+      assert(exists(prices[currency].history[address]), "no prices for address" + address);
+      const results = await prices[currency].history[address].sliceByTimestamp(start, length);
       // convert this to tuple to save bytes.
-      return prices.map(({ price, timestamp }) => [timestamp, price]);
+      return results.map(({ price, timestamp }) => [timestamp, price]);
     },
   };
 
@@ -82,8 +83,8 @@ export function Handlers(config: Json, libs: Libs): Actions {
 
   return actions;
 }
-export default (config: Json, libs: Libs) => {
-  const actions = Handlers(config, libs);
+export default (config: Json, appState: AppState) => {
+  const actions = Handlers(config, appState);
   return async (action: string, ...args: Json[]) => {
     assert(actions[action], `Invalid action: ${action}`);
     return actions[action](...args);

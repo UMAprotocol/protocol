@@ -4,7 +4,7 @@ import { ethers } from "ethers";
 import * as Services from "../../services";
 import Express from "../../services/express";
 import Actions from "../../services/actions";
-import { ProcessEnv, Libs } from "../..";
+import { ProcessEnv, AppState } from "../..";
 
 async function run(env: ProcessEnv) {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
@@ -19,7 +19,7 @@ async function run(env: ProcessEnv) {
   assert(updateBlocks > 0, "updateBlocks must be 1 or higher");
 
   // state shared between services
-  const libs: Libs = {
+  const appState: AppState = {
     provider,
     coingecko: new Coingecko(),
     blocks: tables.blocks.JsMap(),
@@ -42,15 +42,15 @@ async function run(env: ProcessEnv) {
   };
   // services for ingesting data
   const services = {
-    blocks: Services.Blocks({}, libs),
-    emps: Services.Emps({}, libs),
-    registry: Services.Registry({}, libs),
-    prices: Services.Prices({}, libs),
-    erc20s: Services.Erc20s({}, libs),
+    blocks: Services.Blocks({}, appState),
+    emps: Services.Emps({}, appState),
+    registry: Services.Registry({}, appState),
+    prices: Services.Prices({}, appState),
+    erc20s: Services.Erc20s({}, appState),
   };
 
   // services consuming data
-  const actions = Actions({}, libs);
+  const actions = Actions({}, appState);
 
   // warm caches
   await services.registry();
@@ -69,13 +69,13 @@ async function run(env: ProcessEnv) {
   provider.on("block", (blockNumber: number) => {
     // dont do update if this number or blocks hasnt passed
     services.blocks.handleNewBlock(blockNumber).catch(console.error);
-    if (blockNumber - libs.lastBlockUpdate >= updateBlocks) {
-      services.registry(libs.lastBlock, blockNumber).catch(console.error);
-      services.emps(libs.lastBlock, blockNumber).catch(console.error);
-      libs.lastBlockUpdate = blockNumber;
+    if (blockNumber - appState.lastBlockUpdate >= updateBlocks) {
+      services.registry(appState.lastBlock, blockNumber).catch(console.error);
+      services.emps(appState.lastBlock, blockNumber).catch(console.error);
+      appState.lastBlockUpdate = blockNumber;
       services.erc20s.update().catch(console.error);
     }
-    libs.lastBlock = blockNumber;
+    appState.lastBlock = blockNumber;
     services.blocks.cleanBlocks(oldestBlock).catch(console.error);
   });
 

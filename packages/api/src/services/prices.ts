@@ -1,14 +1,12 @@
 import * as uma from "@uma/sdk";
 import assert from "assert";
-import { Libs, CurrencySymbol } from "..";
-import bluebird from "bluebird";
-import { ethers } from "ethers";
+import { AppState, CurrencySymbol } from "..";
 type Config = {
   currency?: CurrencySymbol;
 };
-export default function (config: Config, libs: Libs) {
+export default function (config: Config, appState: AppState) {
   const { currency = "usd" } = config;
-  const { coingecko, prices, collateralAddresses } = libs;
+  const { coingecko, prices, collateralAddresses } = appState;
   assert(coingecko, "requires coingecko library");
   assert(prices[currency], `requires prices.${currency}`);
 
@@ -70,12 +68,15 @@ export default function (config: Config, libs: Libs) {
   }
 
   return {
-    getOrCreateHistoryTable,
-    getLatestPrice,
-    updatePriceHistories,
-    updatePriceHistory,
-    updateLatestPrice,
-    updateLatestPrices,
     update,
+    // internal functions meant to support updating
+    utils: {
+      getOrCreateHistoryTable,
+      getLatestPrice,
+      updatePriceHistories,
+      updatePriceHistory,
+      updateLatestPrice,
+      updateLatestPrices,
+    },
   };
 }
