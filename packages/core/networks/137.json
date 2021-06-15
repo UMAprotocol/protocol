@@ -30,5 +30,21 @@
   {
     "contractName": "OracleChildTunnel",
     "address": "0x02B8733763dD76f73b8573e668ecA3343a7D65e7"
+  },
+  {
+    "contractName": "TokenFactory",
+    "address": "0x73C6f823cba34a2AE5e67A46aBB7C6A9Fb815A00"
+  },
+  {
+    "contractName": "ExpiringMultiPartyLib",
+    "address": "0x35b7b0b2A7c545e6E8b944AaD07fD0F4dee8B4e1"
+  },
+  {
+    "contractName": "ExpiringMultiPartyCreator",
+    "address": "0xe3254a3aFce425fC7114B231b39C97ABa6a919D7"
+  },
+  {
+    "contractName": "GovernorChildTunnel",
+    "address": "0x1EC4F63E40631BeDfcf7Ef37D79Dd1c20A953965"
   }
 ]

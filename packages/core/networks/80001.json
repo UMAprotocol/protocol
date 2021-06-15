@@ -33,31 +33,15 @@
   },
   {
     "contractName": "ExpiringMultiPartyLib",
-    "address": "0xAcDE84590A2ba1aCfEbB220997Eb41B7A01f271f"
+    "address": "0x7825c24e94bD06B3CA5d08b75Dcb1786Ac34bAd0"
   },
   {
     "contractName": "ExpiringMultiPartyCreator",
-    "address": "0xbacA1eC2EbE2C93e13ED643f7559c36e476D0B33"
-  },
-  {
-    "contractName": "Bridge",
-    "address": "0x9367CC85B16932b19ee160A7AA2B251C8606d5b4"
-  },
-  {
-    "contractName": "GenericHandler",
-    "address": "0x0D349340Af30778585B149a16c019F8A60e3D963"
-  },
-  {
-    "contractName": "SinkOracle",
-    "address": "0x445693e0cfF9A0b85De60bbc8f1716a7F5C74b8d"
-  },
-  {
-    "contractName": "SinkGovernor",
-    "address": "0xB0b9f73B424AD8dc58156C2AE0D7A1115D1EcCd1"
+    "address": "0xF0E8EFFDb48f09e91D2d9124a7D8c327CaD94f30"
   },
   {
     "contractName": "OracleChildTunnel",
-    "address": "0x02B8733763dD76f73b8573e668ecA3343a7D65e7"
+    "address": "0x61D5d43F227782F2Fa02Eb811420AB622A785d3a"
   },
   {
     "contractName": "GovernorChildTunnel",
