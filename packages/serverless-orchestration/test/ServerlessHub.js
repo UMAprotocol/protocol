@@ -25,6 +25,7 @@ const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport, lastSpyLogIncludes, spyLogIncludes, lastSpyLogLevel } = require("@uma/financial-templates-lib");
 const { ZERO_ADDRESS } = require("@uma/common");
+const { assert } = require("chai");
 
 contract("ServerlessHub.js", function (accounts) {
   const contractDeployer = accounts[0];
@@ -94,7 +95,8 @@ contract("ServerlessHub.js", function (accounts) {
       hubSpyLogger, // injected spy logger
       hubTestPort, // port to run the hub on
       `http://localhost:${spokeTestPort}`, // URL to execute spokes on
-      web3.currentProvider.host // custom node URL to enable the hub to query block numbers.
+      web3.currentProvider.host, // custom node URL to enable the hub to query block numbers.
+      { printHubConfig: true } // set hub config to print config before execution.
     );
 
     const constructorParams = {
@@ -456,5 +458,91 @@ contract("ServerlessHub.js", function (accounts) {
       )
     ); // invalid emp error
     assert.isTrue(lastSpyLogIncludes(hubSpy, "Contract code hash is null"));
+  });
+  it("ServerlessHub can correctly inject common config into child configs", async function () {
+    const testBucket = "test-bucket"; // name of the config bucket.
+    const testConfigFile = "test-config-file"; // name of the config file.
+    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+
+    const hubConfig = {
+      commonConfig: {
+        environmentVariables: {
+          SOME_TEST_ENV: "some value", // a unique env that should be appended to all.
+          MONITOR_CONFIG: { contractType: "Perpetual" }, // a repeated key and a repeated child key. should ignore
+          TOKEN_PRICE_FEED_CONFIG: { someKey: "shouldAppend" }, // a clashing parent with a unique child. should append.
+        },
+      },
+      testServerlessMonitor: {
+        serverlessCommand: "yarn --silent monitors --network test",
+        environmentVariables: {
+          CUSTOM_NODE_URL: web3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
+      testServerlessLiquidator: {
+        serverlessCommand: "yarn --silent liquidator --network test",
+        environmentVariables: {
+          CUSTOM_NODE_URL: web3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          PRICE_FEED_CONFIG: defaultPricefeedConfig,
+          LIQUIDATOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
+      testServerlessDisputer: {
+        serverlessCommand: "yarn --silent disputer --network test",
+        environmentVariables: {
+          CUSTOM_NODE_URL: web3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          PRICE_FEED_CONFIG: defaultPricefeedConfig,
+          DISPUTER_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
+    };
+    // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
+    setEnvironmentVariable(`lastQueriedBlockNumber-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
+
+    const body = {
+      bucket: testBucket,
+      configFile: testConfigFile,
+    };
+
+    await sendHubRequest(body);
+
+    // Check that the concatenated log was correctly constructed.
+    const spyHubExecution = hubSpy.getCall(-2).lastArg;
+    console.log("spyHubExecution", spyHubExecution);
+
+    // validate that the appending worked as expected.
+    // Monitor config applied to the monitor should NOT have changed the contract type as the monitor config should take preference.
+    assert.equal(
+      spyHubExecution.configObject.testServerlessMonitor.environmentVariables.MONITOR_CONFIG.contractType,
+      "ExpiringMultiParty"
+    );
+
+    // All objects should correctly append the "SOME_TEST_ENV".
+    for (const botKey in spyHubExecution.configObject) {
+      const botConfig = spyHubExecution.configObject[botKey].environmentVariables;
+      assert.equal(botConfig.SOME_TEST_ENV, "some value");
+      // The TOKEN_PRICE_FEED_CONFIG should correctly merge in the monitor case and append in the other bots.
+      if (botKey == "testServerlessMonitor") {
+        const expectedConfig = { ...defaultPricefeedConfig, someKey: "shouldAppend" };
+        assert.equal(
+          JSON.stringify(botConfig.TOKEN_PRICE_FEED_CONFIG, Object.keys(botConfig.TOKEN_PRICE_FEED_CONFIG).sort()),
+          JSON.stringify(expectedConfig, Object.keys(expectedConfig).sort())
+        );
+      } else {
+        const expectedConfig = { someKey: "shouldAppend" };
+        assert.equal(
+          JSON.stringify(botConfig.TOKEN_PRICE_FEED_CONFIG, Object.keys(botConfig.TOKEN_PRICE_FEED_CONFIG).sort()),
+          JSON.stringify(expectedConfig, Object.keys(expectedConfig).sort())
+        );
+      }
+    }
   });
 });

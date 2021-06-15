@@ -28,6 +28,7 @@ export interface strategyRunnerConfig {
   strategyTimeout?: number;
   verboseLogs?: boolean;
   emitDebugLogs?: boolean;
+  emitRunnerLogs?: boolean;
   globalAddressWhitelistUrls?: Array<string>;
   globalAddressWhitelist?: Array<string>;
   globalAddressBlacklist?: Array<string>;
