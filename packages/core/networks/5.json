@@ -18,5 +18,9 @@
   {
     "contractName": "GovernorRootTunnel",
     "address": "0x6883feb1c131f58c1cd629289da3de0051d2aa0d"
+  },
+  {
+    "contractName": "MockOracleAncillary",
+    "address": "0x20570e9e27920ac5e2601e0bef7244deff7f0b28"
   }
 ]
