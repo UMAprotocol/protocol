@@ -8,7 +8,7 @@ import "../../../../common/implementation/Lockable.sol";
 
 /**
  * @title Binary Option Contract For Difference Financial Product Library.
- * @notice Adds settlement logic to simply binary option CFDs. Binary options settle with all collateral allocated to
+ * @notice Adds settlement logic to binary option CFDs. Binary options settle with all collateral allocated to
  * either the long or short side, depending on the settlement price. They can be used to make prediction markets or any
  * kind of binary bet. Settlement is defined using a strike price which informs which side of the bet was correct. If
  * settlement price is greater or equal to the strike then all value is sent to the long side. Otherwise, all value
