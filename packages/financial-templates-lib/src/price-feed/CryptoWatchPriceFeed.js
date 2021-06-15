@@ -66,7 +66,11 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
   }
 
   getCurrentPrice() {
-    return this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
+    return this.twapLength
+      ? this.currentPrice
+      : this.invertPrice
+      ? this._invertPriceSafely(this.currentPrice)
+      : this.currentPrice;
   }
 
   async getHistoricalPrice(time, verbose = false) {
