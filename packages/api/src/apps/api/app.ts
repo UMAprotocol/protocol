@@ -5,12 +5,17 @@ import * as Services from "../../services";
 import Express from "../../services/express";
 import Actions from "../../services/actions";
 import { ProcessEnv, AppState } from "../..";
+import Web3 from "web3";
 
 async function run(env: ProcessEnv) {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
   assert(env.EXPRESS_PORT, "requires EXPRESS_PORT");
 
   const provider = new ethers.providers.WebSocketProvider(env.CUSTOM_NODE_URL);
+
+  // we need web3 for syth price feeds
+  const web3 = new Web3(env.CUSTOM_NODE_URL);
+
   // how many blocks to skip before running updates on contract state
   const updateBlocks = Number(env.UPDATE_BLOCKS || 1);
   // default to 10 days worth of blocks
@@ -21,6 +26,7 @@ async function run(env: ProcessEnv) {
   // state shared between services
   const appState: AppState = {
     provider,
+    web3,
     coingecko: new Coingecko(),
     blocks: tables.blocks.JsMap(),
     emps: {
@@ -32,6 +38,9 @@ async function run(env: ProcessEnv) {
         latest: {},
         history: {},
       },
+    },
+    synthPrices: {
+      latest: {},
     },
     erc20s: tables.erc20s.JsMap(),
     lastBlock: 0,
@@ -46,7 +55,16 @@ async function run(env: ProcessEnv) {
     blocks: Services.Blocks(undefined, appState),
     emps: Services.Emps(undefined, appState),
     registry: Services.Registry({}, appState),
-    prices: Services.Prices({}, appState),
+    collateralPrices: Services.CollateralPrices({}, appState),
+    syntheticPrices: Services.SyntheticPrices(
+      {
+        cryptowatchApiKey: env.cryptwatchApiKey,
+        tradermadeApiKey: env.tradermadeApiKey,
+        quandlApiKey: env.quandlApiKey,
+        defipulseApiKey: env.defipulseApiKey,
+      },
+      appState
+    ),
     erc20s: Services.Erc20s(undefined, appState),
   };
 
@@ -60,8 +78,10 @@ async function run(env: ProcessEnv) {
   console.log("Updated emp state");
   await services.erc20s.update();
   console.log("Updated tokens");
-  await services.prices.update();
-  console.log("Updated prices");
+  await services.collateralPrices.update();
+  console.log("Updated Collateral Prices");
+  await services.syntheticPrices.update();
+  console.log("Updated Synthetic Prices");
 
   // expose calls through express
   await Express({ port: Number(env.EXPRESS_PORT) }, actions);
@@ -82,7 +102,8 @@ async function run(env: ProcessEnv) {
 
   // coingeckos prices don't update very fast, so set it on an interval every few minutes
   setInterval(() => {
-    services.prices.update().catch(console.error);
+    services.collateralPrices.update().catch(console.error);
+    services.syntheticPrices.update().catch(console.error);
   }, 5 * 60 * 1000);
 }
 
