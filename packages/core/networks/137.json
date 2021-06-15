@@ -5,7 +5,7 @@
   },
   {
     "contractName": "Registry",
-    "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96"
+    "address": "0xB0C6Ed64a77A3D8F61b21922B13F39525Fbf5fC0"
   },
   {
     "contractName": "IdentifierWhitelist",
@@ -21,38 +21,14 @@
   },
   {
     "contractName": "Store",
-    "address": "0x2d4710F04Da90184255782d3715224A6C776955D"
+    "address": "0xE58480CA74f1A819faFd777BEDED4E2D5629943d"
   },
   {
     "contractName": "OptimisticOracle",
-    "address": "0x8A481F28C23c72CB01452ca570ba165DB5F55D24"
+    "address": "0xAaF3F29521877d7a28C21E379Bf7A5401883A6B2"
   },
   {
-    "contractName": "TokenFactory",
-    "address": "0x82B564983aE7274c86695917BBf8C99ECb6F0F8F"
-  },
-  {
-    "contractName": "ExpiringMultiPartyLib",
-    "address": "0x00526C1ede46255b752D280620318ab50B24c20e"
-  },
-  {
-    "contractName": "ExpiringMultiPartyCreator",
-    "address": "0xcdf08CB3d3436c3c21F277b6AD45E3D7aB1Ce12F"
-  },
-  {
-    "contractName": "Bridge",
-    "address": "0xEF8b46765ae805537053C59f826C3aD61924Db45"
-  },
-  {
-    "contractName": "GenericHandler",
-    "address": "0x09AFD24Acc170c16f4fF64BDf2A4818C515440e8"
-  },
-  {
-    "contractName": "SinkOracle",
-    "address": "0xe0Fe15CF22B9b52B6aE309C7384e03244A6DD985"
-  },
-  {
-    "contractName": "SinkGovernor",
-    "address": "0xbEAbC2300271986c672b24732f295baFb21d5316"
+    "contractName": "OracleChildTunnel",
+    "address": "0x02B8733763dD76f73b8573e668ecA3343a7D65e7"
   }
 ]
