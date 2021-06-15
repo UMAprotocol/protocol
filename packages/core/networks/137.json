@@ -43,7 +43,6 @@
     "contractName": "ExpiringMultiPartyCreator",
     "address": "0xe3254a3aFce425fC7114B231b39C97ABa6a919D7"
   },
-  ,
   {
     "contractName": "GovernorChildTunnel",
     "address": "0x1EC4F63E40631BeDfcf7Ef37D79Dd1c20A953965"
