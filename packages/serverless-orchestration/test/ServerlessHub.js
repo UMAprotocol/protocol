@@ -7,7 +7,7 @@ const request = require("supertest");
 const hub = require("../src/ServerlessHub");
 const spoke = require("../src/ServerlessSpoke");
 
-// Helper scripts to test different kind of rejection behaviou.
+// Helper scripts to test different kind of rejection behaviour.
 const timeoutSpoke = require("../test-helpers/TimeoutSpokeMock.js");
 
 // Contracts and helpers
@@ -25,6 +25,10 @@ const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport, lastSpyLogIncludes, spyLogIncludes, lastSpyLogLevel } = require("@uma/financial-templates-lib");
 const { ZERO_ADDRESS } = require("@uma/common");
+
+// Use Ganache to create additional web3 providers with different chain ID's
+const ganache = require("ganache-core");
+const Web3 = require("web3");
 
 contract("ServerlessHub.js", function (accounts) {
   const contractDeployer = accounts[0];
@@ -463,5 +467,68 @@ contract("ServerlessHub.js", function (accounts) {
       )
     ); // invalid emp error
     assert.isTrue(lastSpyLogIncludes(hubSpy, "Contract code hash is null"));
+  });
+  it("ServerlessHub can correctly deal with multiple providers", async function () {
+    // Temporarily spin up a new web3 provider with an overridden chain ID. The hub should be able to detect the
+    // alternative node URL and fetch its chain ID.
+    const alternateChainId = 666;
+    const alternateNode = ganache.server({ _chainIdRpc: alternateChainId });
+    const alternateNodePort = 7777;
+    alternateNode.listen(alternateNodePort);
+    // This server should automatically tear down after the test.
+    const alternateWeb3 = new Web3("http://127.0.0.1:" + alternateNodePort);
+
+    const testBucket = "test-bucket"; // name of the config bucket.
+    const testConfigFile = "test-config-file"; // name of the config file.
+    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+
+    const hubConfig = {
+      testServerlessMonitor: {
+        serverlessCommand: "yarn --silent monitors --network test",
+        environmentVariables: {
+          CUSTOM_NODE_URL: web3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
+      testServerlessMonitor2: {
+        serverlessCommand: "yarn --silent monitors --network test",
+        environmentVariables: {
+          CUSTOM_NODE_URL: alternateWeb3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          PRICE_FEED_CONFIG: defaultPricefeedConfig,
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
+      testServerlessMonitor3: {
+        serverlessCommand: "yarn --silent monitors --network test",
+        environmentVariables: {
+          CUSTOM_NODE_URL: alternateWeb3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          PRICE_FEED_CONFIG: defaultPricefeedConfig,
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
+    };
+    // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
+    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
+    setEnvironmentVariable(`lastQueriedBlockNumber-${666}-${testConfigFile}`, startingBlockNumber);
+
+    const validBody = {
+      bucket: testBucket,
+      configFile: testConfigFile,
+    };
+
+    const validResponse = await sendHubRequest(validBody);
+    assert.equal(validResponse.res.statusCode, 200); // no error code
+
+    // Check for two hub logs caching each unique chain ID seen:
+    assert.isTrue(spyLogIncludes(hubSpy, 3, `"chainId":${defaultChainId}`));
+    assert.isTrue(spyLogIncludes(hubSpy, 4, `"chainId":${alternateChainId}`));
   });
 });
