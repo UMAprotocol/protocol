@@ -1,8 +1,9 @@
-import { Json, AppState } from "..";
+import { AppState } from "..";
 
+type Config = undefined;
 type Dependencies = Pick<AppState, "blocks" | "provider">;
 
-export default (config: Json, appState: Dependencies) => {
+export default (config: Config, appState: Dependencies) => {
   const { blocks, provider } = appState;
 
   async function handleNewBlock(blockNumber: number) {

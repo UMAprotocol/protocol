@@ -1,8 +1,8 @@
 import { clients } from "@uma/sdk";
-import { AppState, Json } from "..";
+import { AppState } from "..";
 import { asyncValues } from "../libs/utils";
-type Config = Json;
 
+type Config = undefined;
 // break out this services specific state dependencies
 type Dependencies = Pick<AppState, "provider" | "erc20s" | "collateralAddresses" | "syntheticAddresses">;
 

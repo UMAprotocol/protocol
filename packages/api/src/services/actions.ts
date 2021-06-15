@@ -7,8 +7,9 @@ const { exists } = uma.utils;
 
 // actions use all the app state
 type Dependencies = AppState;
+type Config = undefined;
 
-export function Handlers(config: Json, appState: Dependencies): Actions {
+export function Handlers(config: Config, appState: Dependencies): Actions {
   const queries = Queries(appState);
   const { registeredEmps, erc20s, collateralAddresses, syntheticAddresses, prices } = appState;
 
@@ -86,7 +87,7 @@ export function Handlers(config: Json, appState: Dependencies): Actions {
 
   return actions;
 }
-export default (config: Json, appState: AppState) => {
+export default (config: Config, appState: AppState) => {
   const actions = Handlers(config, appState);
   return async (action: string, ...args: Json[]) => {
     assert(actions[action], `Invalid action: ${action}`);

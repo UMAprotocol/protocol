@@ -42,15 +42,16 @@ async function run(env: ProcessEnv) {
   };
   // services for ingesting data
   const services = {
-    blocks: Services.Blocks({}, appState),
-    emps: Services.Emps({}, appState),
+    // these services can optionally be configured with a config object, but currently they are undefined or have defaults
+    blocks: Services.Blocks(undefined, appState),
+    emps: Services.Emps(undefined, appState),
     registry: Services.Registry({}, appState),
     prices: Services.Prices({}, appState),
-    erc20s: Services.Erc20s({}, appState),
+    erc20s: Services.Erc20s(undefined, appState),
   };
 
   // services consuming data
-  const actions = Actions({}, appState);
+  const actions = Actions(undefined, appState);
 
   // warm caches
   await services.registry();
