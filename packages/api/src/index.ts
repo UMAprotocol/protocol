@@ -1,4 +1,4 @@
-import type * as uma from "@uma/sdk";
+import uma from "@uma/sdk";
 import { ethers } from "ethers";
 export type { BigNumber } from "ethers";
 export type Provider = ethers.providers.Provider;
@@ -18,7 +18,7 @@ export type Actions = { [key: string]: Action };
 export type CurrencySymbol = "usd";
 export type PriceSample = [timestamp: number, price: string];
 // These are library dependencies to all services
-export type Libs = {
+export type AppState = {
   blocks: uma.tables.blocks.JsMap;
   coingecko: uma.Coingecko;
   emps: {
@@ -35,6 +35,7 @@ export type Libs = {
       };
     };
   };
+  erc20s: uma.tables.erc20s.JsMap;
   registeredEmps: Set<string>;
   provider: Provider;
   lastBlock: number;

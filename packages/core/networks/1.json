@@ -98,5 +98,9 @@
   {
     "contractName": "MockOracleAncillary",
     "address": "0x514Ae88aB0d24088C0a9d8E76E66457DF200fEe3"
+  },
+  {
+    "contractName": "OracleRootTunnel",
+    "address": "0x57825D1bf50Ad918b39563a57070b0915464D1A8"
   }
 ]

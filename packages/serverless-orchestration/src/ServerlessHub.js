@@ -24,6 +24,7 @@ hub.use(express.json()); // Enables json to be parsed by the express process.
 require("dotenv").config();
 const fetch = require("node-fetch");
 const { URL } = require("url");
+const lodash = require("lodash");
 
 // GCP helpers.
 const { GoogleAuth } = require("google-auth-library"); // Used to get authentication headers to execute cloud run & cloud functions.
@@ -73,6 +74,7 @@ hub.post("/", async (req, res) => {
       message: "Executing Serverless query from config file",
       spokeUrl,
       botsExecuted: Object.keys(configObject),
+      configObject: hubConfig.printHubConfig ? configObject : "REDACTED",
     });
 
     // As a first pass, loop over all config objects in the config file and fetch the last queried block number and
@@ -292,6 +294,7 @@ const _executeServerlessSpoke = async (url, body) => {
 // buffer such that the config file does not need to first be downloaded from the bucket. This will use the local service
 // account. Local configs are read directly from the process's environment variables.
 const _fetchConfig = async (bucket, file) => {
+  let config;
   if (hubConfig.configRetrieval == "git") {
     const response = await fetch(
       `https://api.github.com/repos/${hubConfig.gitSettings.organization}/${hubConfig.gitSettings.repoName}/contents/${bucket}/${file}`,
@@ -305,10 +308,9 @@ const _fetchConfig = async (bucket, file) => {
         },
       }
     );
-    const config = await response.json(); // extract JSON from the http response
+    config = await response.json(); // extract JSON from the http response
     // If there is a message in the config response then something went wrong in fetching from github api.
     if (config.message) throw new Error(`Could not fetch config! :${JSON.stringify(config)}`);
-    return config;
   }
   if (hubConfig.configRetrieval == "gcp") {
     const requestPromise = new Promise((resolve, reject) => {
@@ -321,14 +323,24 @@ const _fetchConfig = async (bucket, file) => {
         .on("end", () => resolve(buf))
         .on("error", (e) => reject(e));
     });
-    return JSON.parse(await requestPromise);
+    config = JSON.parse(await requestPromise);
   } else if (hubConfig.configRetrieval == "localStorage") {
-    const config = process.env[`${bucket}-${file}`];
-    if (!config) {
-      throw new Error(`No local storage config found for ${bucket}-${file}`);
+    const stringConfig = process.env[`${bucket}-${file}`];
+    if (!stringConfig) {
+      throw new Error(`No local storage stringConfig found for ${bucket}-${file}`);
     }
-    return JSON.parse(config);
+    config = JSON.parse(stringConfig);
   }
+
+  // If the config contains a "commonConfig" field, append it it to all configs downstream and then remove common config
+  // from the final config object. The config for a given bot will take precedence for each key. Use deep merge.
+  if (Object.keys(config).includes("commonConfig")) {
+    for (let configKey in config) {
+      if (configKey != "commonConfig") config[configKey] = lodash.merge({}, config.commonConfig, config[configKey]);
+    }
+    delete config.commonConfig;
+  }
+  return config;
 };
 
 // Save a the last blocknumber seen by the hub to GCP datastore. `BlockNumberLog` is the entity kind and
