@@ -65,29 +65,91 @@ hub.post("/", async (req, res) => {
     }
     // Get the config file from the GCP bucket if running in production mode. Else, pull the config from env.
     const configObject = await _fetchConfig(req.body.bucket, req.body.configFile);
-
-    // Fetch the last block number this given config file queried the blockchain at if running in production. Else, pull from env.
-    const lastQueriedBlockNumber = await _getLastQueriedBlockNumber(req.body.configFile);
-    if (!configObject || !lastQueriedBlockNumber)
+    if (!configObject)
       throw new Error(
-        `Serverless hub requires a config object and a last updated block number! configObject:${JSON.stringify(
-          configObject
-        )} lastQueriedBlockNumber:${lastQueriedBlockNumber}`
+        `Serverless hub missing a config object! GCPBucket:${req.body.bucket} configFile:${req.body.configFile}`
       );
+    logger.debug({
+      at: "ServerlessHub",
+      message: "Executing Serverless query from config file",
+      spokeUrl,
+      botsExecuted: Object.keys(configObject),
+      configObject: hubConfig.printHubConfig ? configObject : "REDACTED",
+    });
 
-    // Get the latest block number. The query will run from the last queried block number to the latest block number.
-    const latestBlockNumber = await _getLatestBlockNumber();
+    // As a first pass, loop over all config objects in the config file and fetch the last queried block number and
+    // head block for each unique chain ID. The reason why we precompute these block numbers for each chain ID is so
+    // that each bot connected to the same chain will use the same block number parameters, which is a convenient
+    // assumption if there are many bots running on the same chain.
+    let blockNumbersForChain = {
+      // (chainId: int): {
+      //     lastQueriedBlockNumber: <int>
+      //     latestBlockNumber: <int>
+      // }
+    };
+    let nodeUrlToChainIdCache = {
+      // (url: string): <int>
+    };
+    for (const botName in configObject) {
+      // Check if bot is running on a non-default chain, and then fetch last block number seen on this or the default
+      // chain.
+      const spokeCustomNodeUrl = configObject[botName]?.environmentVariables?.CUSTOM_NODE_URL;
+      const chainId = await _getChainId(spokeCustomNodeUrl);
+      nodeUrlToChainIdCache[spokeCustomNodeUrl] = chainId;
 
-    // Save the current latest block number to the remote cache. This will be the used as the "lastQueriedBlockNumber"
-    // in the next iteration when the hub is called again.
-    await _saveQueriedBlockNumber(req.body.configFile, latestBlockNumber);
+      // If we've seen this chain ID already we can skip it:
+      if (blockNumbersForChain[chainId]) continue;
 
-    // Loop over all config objects in the config file and for each append a call promise to the promiseArray. Note
+      // Fetch last seen block for this chain:
+      let lastQueriedBlockNumber = await _getLastQueriedBlockNumber(req.body.configFile, chainId);
+
+      // Next, get the head block for the chosen chain, which we'll use to override the last queried block number
+      // stored in GCP at the end of this hub execution.
+      let latestBlockNumber = await _getLatestBlockNumber(spokeCustomNodeUrl);
+
+      // If the last queried block number stored on GCP Data Store is undefined, then its possible that this is
+      // the first time that the hub is being run for this chain. Therefore, try setting it to the head block number
+      // for the chosen node.
+      if (!lastQueriedBlockNumber && latestBlockNumber) {
+        lastQueriedBlockNumber = latestBlockNumber;
+      }
+      // If the last queried number is still undefined at this point, then exit with an error.
+      else if (!lastQueriedBlockNumber)
+        throw new Error(
+          `No block number for chain ID stored on GCP and cannot read head block from node! chainID:${chainId} spokeCustomNodeUrl:${spokeCustomNodeUrl}`
+        );
+
+      // Store block number data for this chain ID which we'll use to update the GCP cache later.
+      blockNumbersForChain[chainId] = {
+        lastQueriedBlockNumber,
+        latestBlockNumber,
+      };
+      logger.debug({
+        at: "ServerlessHub",
+        message: "Updated block numbers for network",
+        chainId,
+        lastQueriedBlockNumber,
+        latestBlockNumber,
+      });
+    }
+
+    // Now, that we've precomputed all of the last seen blocks for each chain, we can update their values in the
+    // GCP Data Store. These will all be the fetched as the "lastQueriedBlockNumber" in the next iteration when the
+    // hub is called again.
+    await _saveQueriedBlockNumber(req.body.configFile, blockNumbersForChain);
+
+    // Finally, loop over all config objects in the config file and for each append a call promise to the promiseArray. Note
     // that each promise is a race between the serverlessSpoke command and a `_rejectAfterDelay`. This places an upper
     // bound on how long each spoke can take to respond, acting as a timeout for each spoke call.
     let promiseArray = [];
     let botConfigs = {};
     for (const botName in configObject) {
+      const spokeCustomNodeUrl = configObject[botName]?.environmentVariables?.CUSTOM_NODE_URL;
+      const chainId = nodeUrlToChainIdCache[spokeCustomNodeUrl];
+      const lastQueriedBlockNumber = blockNumbersForChain[chainId].lastQueriedBlockNumber;
+      const latestBlockNumber = blockNumbersForChain[chainId].latestBlockNumber;
+
+      // Execute the spoke's command:
       const botConfig = _appendEnvVars(configObject[botName], botName, lastQueriedBlockNumber, latestBlockNumber);
       botConfigs[botName] = botConfig;
       promiseArray.push(
@@ -96,16 +158,16 @@ hub.post("/", async (req, res) => {
           _rejectAfterDelay(hubConfig.rejectSpokeDelay, botName),
         ])
       );
+
+      logger.debug({
+        at: "ServerlessHub",
+        message: "Running bot on spoke",
+        chainId,
+        lastQueriedBlockNumber,
+        latestBlockNumber,
+        botConfig,
+      });
     }
-    logger.debug({
-      at: "ServerlessHub",
-      message: "Executing Serverless query from config file",
-      lastQueriedBlockNumber,
-      latestBlockNumber,
-      spokeUrl,
-      botsExecuted: Object.keys(configObject),
-      configObject: hubConfig.printHubConfig ? configObject : "REDACTED",
-    });
 
     // Loop through promise array and submit all in parallel. `allSettled` does not fail early if a promise is rejected.
     // This `results` object will contain all information sent back from the spokes. This contains the process exit code,
@@ -281,23 +343,29 @@ const _fetchConfig = async (bucket, file) => {
   return config;
 };
 
-// Save a the last blocknumber seen by the hub to GCP datastore. `BlockNumberLog` is the entry kind and
-// `lastHubUpdateBlockNumber` is the entry ID. Will override the previous value on each run.
-async function _saveQueriedBlockNumber(configIdentifier, blockNumber) {
+// Save a the last blocknumber seen by the hub to GCP datastore. `BlockNumberLog` is the entity kind and
+// `configIdentifier` is the entity ID. Each entity has a column "<chainID>" which stores the latest block
+// seen for a network.
+async function _saveQueriedBlockNumber(configIdentifier, blockNumbersForChain) {
   // Sometimes the GCP datastore can be flaky and return errors when fetching data. Use re-try logic to re-run on error.
   await retry(
     async () => {
       if (hubConfig.saveQueriedBlock == "gcp") {
         const key = datastore.key(["BlockNumberLog", configIdentifier]);
+        const latestBlockNumbersForChain = {};
+        Object.keys(blockNumbersForChain).forEach((chainId) => {
+          latestBlockNumbersForChain[chainId] = blockNumbersForChain[chainId].latestBlockNumber;
+        });
         const dataBlob = {
           key: key,
-          data: {
-            blockNumber,
-          },
+          data: latestBlockNumbersForChain,
         };
-        await datastore.save(dataBlob); // Saves the entity
+        await datastore.save(dataBlob); // Overwrites the entire entity
       } else if (hubConfig.saveQueriedBlock == "localStorage") {
-        process.env[`lastQueriedBlockNumber-${configIdentifier}`] = blockNumber;
+        Object.keys(blockNumbersForChain).forEach((chainId) => {
+          process.env[`lastQueriedBlockNumber-${chainId}-${configIdentifier}`] =
+            blockNumbersForChain[chainId].latestBlockNumber;
+        });
       }
     },
     {
@@ -314,22 +382,19 @@ async function _saveQueriedBlockNumber(configIdentifier, blockNumber) {
   );
 }
 
-// Query entry kind `BlockNumberLog` with unique entry ID of `configIdentifier`. Used to get the last block number
-// recorded by the bot to inform where searches should start from.
-async function _getLastQueriedBlockNumber(configIdentifier) {
+// Query entity kind `BlockNumberLog` with unique entity ID of `configIdentifier`. Used to get the last block number
+// for a network ID recorded by the bot to inform where searches should start from. Each entity has a column for each
+// chain ID storing the last seen block number for the corresponding network.
+async function _getLastQueriedBlockNumber(configIdentifier, chainId) {
   // sometimes the GCP datastore can be flaky and return errors when saving data. Use re-try logic to re-run on error.
   return await retry(
     async () => {
       if (hubConfig.saveQueriedBlock == "gcp") {
         const key = datastore.key(["BlockNumberLog", configIdentifier]);
         const [dataField] = await datastore.get(key);
-        // If the data field is undefined then this is the first time the hub is run. Therefore return the latest block number.
-        if (dataField == undefined) return await _getLatestBlockNumber();
-        return dataField.blockNumber;
+        return dataField[chainId];
       } else if (hubConfig.saveQueriedBlock == "localStorage") {
-        return process.env[`lastQueriedBlockNumber-${configIdentifier}`] != undefined
-          ? process.env[`lastQueriedBlockNumber-${configIdentifier}`]
-          : await _getLatestBlockNumber();
+        return process.env[`lastQueriedBlockNumber-${chainId}-${configIdentifier}`];
       }
     },
     {
@@ -346,10 +411,16 @@ async function _getLastQueriedBlockNumber(configIdentifier) {
   );
 }
 
-// Get the latest block number from `CUSTOM_NODE_URL`. Used to update the `lastSeenBlockNumber` after each run.
-async function _getLatestBlockNumber() {
-  const web3 = new Web3(customNodeUrl);
+// Get the latest block number from either `overrideNodeUrl` or `CUSTOM_NODE_URL`. Used to update the `
+// lastSeenBlockNumber` after each run.
+async function _getLatestBlockNumber(overrideNodeUrl) {
+  const web3 = new Web3(overrideNodeUrl || customNodeUrl);
   return await web3.eth.getBlockNumber();
+}
+
+async function _getChainId(overrideNodeUrl) {
+  const web3 = new Web3(overrideNodeUrl || customNodeUrl);
+  return await web3.eth.getChainId();
 }
 
 // Add additional environment variables for a given config file. Used to attach starting and ending block numbers.
