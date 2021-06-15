@@ -486,9 +486,9 @@ const defaultConfigs = {
       SPOT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
       SPOT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "ethusdt" },
       SPOT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusdt" },
-      FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "ethusd-quarterly-future-inverse-26mar21" },
+      FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "ethusd-quarterly-future-inverse-24sep21" },
       FUT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "ethusd-quarterly-future-inverse" },
-      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusd-quarterly-futures-26mar21" },
+      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusd-quarterly-futures-24sep21" },
     },
   },
   "BTC-BASIS-6M/USDC": {
@@ -522,9 +522,9 @@ const defaultConfigs = {
       SPOT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "btcusdt" },
       SPOT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "btcusdt" },
       SPOT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusdt" },
-      FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "btcusd-quarterly-future-inverse-26mar21" },
+      FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "btcusd-quarterly-future-inverse-24sep21" },
       FUT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "btcusd-quarterly-future-inverse" },
-      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusd-quarterly-futures-26mar21" },
+      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusd-quarterly-futures-24sep21" },
     },
   },
   "USD/bBadger": {
