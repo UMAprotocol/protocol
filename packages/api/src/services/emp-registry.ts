@@ -1,15 +1,17 @@
 import { clients } from "@uma/sdk";
 import Promise from "bluebird";
-import { Libs } from "..";
+import { AppState } from "..";
 
 const { registry } = clients;
 
 type Config = {
   network?: number;
 };
-export default (config: Config, libs: Libs) => {
+type Dependencies = Pick<AppState, "registeredEmps" | "provider">;
+
+export default (config: Config, appState: Dependencies) => {
   const { network = 1 } = config;
-  const { registeredEmps, provider } = libs;
+  const { registeredEmps, provider } = appState;
   const address = registry.getAddress(network);
   const contract = registry.connect(address, provider);
 

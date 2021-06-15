@@ -1,15 +1,20 @@
-import assert from "assert";
 import * as uma from "@uma/sdk";
 import Promise from "bluebird";
 const { emp } = uma.clients;
 import { BigNumber, utils } from "ethers";
 const { parseBytes32String } = utils;
-import { asyncValues, calcGcr } from "../libs/utils";
-import { Json, Libs } from "..";
+import { asyncValues } from "../libs/utils";
+import { AppState } from "..";
 
 type Instance = uma.clients.emp.Instance;
-export default (config: Json, libs: Libs) => {
-  const { registeredEmps, provider, emps, collateralAddresses, syntheticAddresses } = libs;
+type Config = undefined;
+type Dependencies = Pick<
+  AppState,
+  "registeredEmps" | "provider" | "emps" | "collateralAddresses" | "syntheticAddresses"
+>;
+
+export default (config: Config, appState: Dependencies) => {
+  const { registeredEmps, provider, emps, collateralAddresses, syntheticAddresses } = appState;
 
   async function readEmpDynamicState(instance: Instance, address: string) {
     return asyncValues<uma.tables.emps.Data>({
@@ -82,15 +87,7 @@ export default (config: Json, libs: Libs) => {
         .cumulativeFeeMultiplier()
         .then((x: BigNumber) => x.toString())
         .catch(() => null),
-      tokenDecimals: null,
-      collateralDecimals: null,
     });
-    if (state.tokenCurrency) {
-      state.tokenDecimals = await instance._getSyntheticDecimals(state.tokenCurrency).catch(() => null);
-    }
-    if (state.collateralCurrency) {
-      state.collateralDecimals = await instance._getSyntheticDecimals(state.collateralCurrency).catch(() => null);
-    }
     return state;
   }
 
@@ -119,7 +116,13 @@ export default (config: Json, libs: Libs) => {
         // get state
         currentState = await emps.active.get(address);
         // add it to expired emps
-        await emps.expired.create({ ...staticState, ...dynamicState, sponsors: eventState.sponsors, expired: true });
+        await emps.expired.create({
+          ...currentState,
+          ...staticState,
+          ...dynamicState,
+          sponsors: eventState.sponsors,
+          expired: true,
+        });
         // delete it from active
         await emps.active.delete(address);
       } else {
@@ -128,27 +131,15 @@ export default (config: Json, libs: Libs) => {
       }
       // handle the case wehre emp is not yet expired
     } else {
-      // if exists, pull all current state
-      if (await emps.active.has(address)) {
-        currentState = await emps.active.get(address);
-        // if it doesnt exist we need to create it
-      } else {
+      // if it doesnt exist we need to create it
+      if (!(await emps.active.has(address))) {
         // get static state once if it does not exist (optimizes network calls)
         staticState = await readEmpStaticState(instance, address);
         // create active emp with static/dynamic state
-        currentState = await emps.active.create({ ...staticState, ...dynamicState });
+        await emps.active.create({ ...staticState, ...dynamicState });
       }
       // add any new sponsors
       await emps.active.addSponsors(address, eventState.sponsors || []);
-      // calculate gcr with current state
-      let gcr = null;
-      try {
-        gcr = calcGcr(currentState).toString();
-      } catch (err) {
-        // ignore
-      }
-      // update gcr
-      await emps.active.update(address, { gcr });
     }
   }
 
