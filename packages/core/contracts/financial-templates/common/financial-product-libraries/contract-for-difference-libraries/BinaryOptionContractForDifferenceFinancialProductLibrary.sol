@@ -43,7 +43,7 @@ contract BinaryOptionContractForDifferenceFinancialProductLibrary is
         nonReentrant()
     {
         require(ExpiringContractInterface(contractForDifference).expirationTimestamp() != 0, "Invalid CFD address");
-        require(contractForDifferenceParameters[contractForDifference].isSet == false, "Parameters already set");
+        require(!contractForDifferenceParameters[contractForDifference].isSet, "Parameters already set");
 
         contractForDifferenceParameters[contractForDifference] = binaryContractForDifferenceParameters({
             isSet: true,
