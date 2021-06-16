@@ -39,6 +39,7 @@ const collateralPerPair = toWei("1"); // each pair of long and short tokens need
 const syntheticName = "Test CFD";
 const syntheticSymbol = "tCFD";
 const ancillaryData = web3.utils.utf8ToHex("some-address-field:0x1234");
+const prepaidProposerReward = "0";
 
 contract("ContractForDifferenceCreator", function (accounts) {
   const deployer = accounts[0];
@@ -86,6 +87,7 @@ contract("ContractForDifferenceCreator", function (accounts) {
       collateralAddress: collateralToken.address,
       financialProductLibraryAddress: contractForDifferenceLibrary.address,
       ancillaryData,
+      prepaidProposerReward,
     };
   });
 
@@ -143,6 +145,20 @@ contract("ContractForDifferenceCreator", function (accounts) {
 
     assert.equal(await (await Token.at(await cfd.longToken())).decimals(), "6");
     assert.equal(await (await Token.at(await cfd.shortToken())).decimals(), "6");
+  });
+
+  it("Transfers prepaidProposerReward", async function () {
+    const customPrepaidProposerReward = toWei("100");
+    await collateralToken.mint(deployer, customPrepaidProposerReward);
+    await collateralToken.approve(contractForDifferenceCreator.address, customPrepaidProposerReward);
+    await contractForDifferenceCreator.createContractForDifference(
+      ...Object.values({ ...constructorParams, prepaidProposerReward: customPrepaidProposerReward })
+    );
+
+    const cfdAddress = (await contractForDifferenceCreator.getPastEvents("CreatedContractForDifference"))[0]
+      .returnValues.contractForDifference;
+
+    assert.equal((await collateralToken.balanceOf(cfdAddress)).toString(), customPrepaidProposerReward);
   });
 
   it("Rejects on past expirationTimestamp", async function () {

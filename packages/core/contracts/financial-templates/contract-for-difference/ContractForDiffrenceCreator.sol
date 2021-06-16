@@ -12,6 +12,7 @@ import "../common/TokenFactory.sol";
 import "../common/SyntheticToken.sol";
 import "./ContractForDifference.sol";
 import "../common/financial-product-libraries/contract-for-difference-libraries/ContractForDifferenceFinancialProductLibrary.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title Contract For Difference Contract Creator.
@@ -21,6 +22,7 @@ import "../common/financial-product-libraries/contract-for-difference-libraries/
  */
 contract ContractForDifferenceCreator is Testable, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
+    using SafeERC20 for IERC20Standard;
 
     // Address of TokenFactory used to create a new synthetic token.
     TokenFactory public tokenFactory;
@@ -67,7 +69,8 @@ contract ContractForDifferenceCreator is Testable, Lockable {
         string memory syntheticSymbol,
         IERC20Standard collateralToken,
         ContractForDifferenceFinancialProductLibrary financialProductLibrary,
-        bytes memory customAncillaryData
+        bytes memory customAncillaryData,
+        uint256 prepaidProposerReward
     ) public nonReentrant() returns (address) {
         // Create a new synthetic token using the params.
         require(bytes(syntheticName).length != 0, "Missing synthetic name");
@@ -99,8 +102,13 @@ contract ContractForDifferenceCreator is Testable, Lockable {
                 finder,
                 financialProductLibrary,
                 customAncillaryData,
+                prepaidProposerReward,
                 timerAddress
             );
+
+        // Move prepaid proposer reward from the deployer to the newly deployed contract.
+        if (prepaidProposerReward > 0)
+            collateralToken.safeTransferFrom(msg.sender, address(cfd), prepaidProposerReward);
 
         address cfdAddress = address(cfd);
 

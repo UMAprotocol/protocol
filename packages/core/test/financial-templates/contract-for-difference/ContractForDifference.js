@@ -38,6 +38,7 @@ const expirationTimestamp = startTimestamp + 10000;
 const optimisticOracleLiveness = 7200;
 const priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
 const collateralPerPair = toWei("1"); // each pair of long and short tokens need 1 unit of collateral to mint.
+const prepaidProposerReward = toWei("100");
 
 const proposeAndSettleOptimisticOraclePrice = async (priceFeedIdentifier, requestTime, price) => {
   await optimisticOracle.proposePrice(
@@ -96,10 +97,12 @@ contract("ContractForDifference", function (accounts) {
       finderAddress: finder.address,
       contractForDifferenceLibraryAddress: contractForDifferenceLibrary.address,
       ancillaryData,
+      prepaidProposerReward,
       timerAddress: timer.address,
     };
 
     contractForDifference = await ContractForDifference.new(...Object.values(constructorParams));
+    await collateralToken.mint(contractForDifference.address, toWei("100"));
 
     // Add mint and burn roles for the long and short tokens to the contract for difference.
     await longToken.addMember(1, contractForDifference.address, { from: deployer });
@@ -337,6 +340,22 @@ contract("ContractForDifference", function (accounts) {
     it("Cannot settle more tokens than in wallet", async function () {
       // Sponsor only has 100 long and 100 short. anything more than this should revert.
       assert(await didContractThrow(contractForDifference.settle(toWei("110"), toWei("100"), { from: sponsor })));
+    });
+    it("prepaidProposerReward was correctly set/transferred in the OptimisticOracle", async function () {
+      // Deployer should have received a proposal reward.
+      assert.equal((await collateralToken.balanceOf(deployer)).toString(), prepaidProposerReward);
+      // Request should have the reward encoded.
+      assert.equal(
+        (
+          await optimisticOracle.getRequest(
+            contractForDifference.address,
+            priceFeedIdentifier,
+            expirationTimestamp,
+            ancillaryData
+          )
+        ).reward.toString(),
+        toWei("100")
+      );
     });
   });
   describe("Contract States", () => {

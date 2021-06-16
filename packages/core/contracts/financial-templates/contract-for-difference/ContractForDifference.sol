@@ -63,6 +63,8 @@ contract ContractForDifference is Testable, Lockable {
 
     bytes public customAncillaryData;
 
+    uint256 prepaidProposerReward;
+
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -120,6 +122,7 @@ contract ContractForDifference is Testable, Lockable {
         FinderInterface _finder,
         ContractForDifferenceFinancialProductLibrary _financialProductLibrary,
         bytes memory _customAncillaryData,
+        uint256 _prepaidProposerReward,
         address _timerAddress
     ) Testable(_timerAddress) {
         finder = _finder;
@@ -145,6 +148,7 @@ contract ContractForDifference is Testable, Lockable {
             "Ancillary Data too long"
         );
         customAncillaryData = _customAncillaryData;
+        prepaidProposerReward = _prepaidProposerReward;
     }
 
     /****************************************
@@ -276,8 +280,15 @@ contract ContractForDifference is Testable, Lockable {
     function _requestOraclePriceExpiration() internal {
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
 
-        // For now, we add no fees the the OO and set the reward to 0.
-        optimisticOracle.requestPrice(priceIdentifier, expirationTimestamp, customAncillaryData, collateralToken, 0);
+        // Use the prepaidProposerReward as the proposer reward.
+        collateralToken.safeApprove(address(optimisticOracle), prepaidProposerReward);
+        optimisticOracle.requestPrice(
+            priceIdentifier,
+            expirationTimestamp,
+            customAncillaryData,
+            collateralToken,
+            prepaidProposerReward
+        );
     }
 
     function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
