@@ -28,28 +28,28 @@ contract("BinaryOptionLongShortPairFinancialProductLibrary", function () {
   });
   describe("Long Short Pair Parameterization", () => {
     it("Can set and fetch valid values", async () => {
-      await binaryLSPFPL.setLongShortPairParameters(expiringContractMock.address, strikePrice);
+      await binaryLSPFPL.setlongShortPairParameters(expiringContractMock.address, strikePrice);
 
-      const setParams = await binaryLSPFPL.LongShortPairParameters(expiringContractMock.address);
+      const setParams = await binaryLSPFPL.longShortPairParameters(expiringContractMock.address);
       assert.isTrue(setParams.isSet);
       assert.equal(setParams.strikePrice.toString(), strikePrice);
     });
     it("Can not re-use existing LSP contract address", async () => {
-      await binaryLSPFPL.setLongShortPairParameters(expiringContractMock.address, strikePrice);
+      await binaryLSPFPL.setlongShortPairParameters(expiringContractMock.address, strikePrice);
 
       // Second attempt should revert.
       assert(
-        await didContractThrow(binaryLSPFPL.setLongShortPairParameters(expiringContractMock.address, strikePrice))
+        await didContractThrow(binaryLSPFPL.setlongShortPairParameters(expiringContractMock.address, strikePrice))
       );
     });
     it("Can not set invalid LSP contract address", async () => {
       // LSP Address must implement the `expirationTimestamp method.
-      assert(await didContractThrow(binaryLSPFPL.setLongShortPairParameters(ZERO_ADDRESS, strikePrice)));
+      assert(await didContractThrow(binaryLSPFPL.setlongShortPairParameters(ZERO_ADDRESS, strikePrice)));
     });
   });
   describe("Compute expiry tokens for collateral", () => {
     beforeEach(async () => {
-      await binaryLSPFPL.setLongShortPairParameters(expiringContractMock.address, strikePrice);
+      await binaryLSPFPL.setlongShortPairParameters(expiringContractMock.address, strikePrice);
     });
     it("Lower than lower bound should return 0", async () => {
       const expiraryTokensForCollateral = await binaryLSPFPL.computeExpiryTokensForCollateral.call(toWei("2500"), {

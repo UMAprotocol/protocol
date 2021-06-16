@@ -28,19 +28,19 @@ contract("LinearLongShortPairFinancialProductLibrary", function () {
   });
   describe("Long Short Pair Parameterization", () => {
     it("Can set and fetch valid values", async () => {
-      await linearLSPFPL.setLongShortPairParameters(expiringContractMock.address, upperBound, lowerBound);
+      await linearLSPFPL.setlongShortPairParameters(expiringContractMock.address, upperBound, lowerBound);
 
-      const setParams = await linearLSPFPL.LongShortPairParameters(expiringContractMock.address);
+      const setParams = await linearLSPFPL.longShortPairParameters(expiringContractMock.address);
       assert.equal(setParams.upperBound.toString(), upperBound);
       assert.equal(setParams.lowerBound.toString(), lowerBound);
     });
     it("Can not re-use existing LSP contract address", async () => {
-      await linearLSPFPL.setLongShortPairParameters(expiringContractMock.address, upperBound, lowerBound);
+      await linearLSPFPL.setlongShortPairParameters(expiringContractMock.address, upperBound, lowerBound);
 
       // Second attempt should revert.
       assert(
         await didContractThrow(
-          linearLSPFPL.setLongShortPairParameters(expiringContractMock.address, upperBound, lowerBound)
+          linearLSPFPL.setlongShortPairParameters(expiringContractMock.address, upperBound, lowerBound)
         )
       );
     });
@@ -48,18 +48,18 @@ contract("LinearLongShortPairFinancialProductLibrary", function () {
       // upper bound larger than lower bound by swapping upper and lower
       assert(
         await didContractThrow(
-          linearLSPFPL.setLongShortPairParameters(expiringContractMock.address, lowerBound, upperBound)
+          linearLSPFPL.setlongShortPairParameters(expiringContractMock.address, lowerBound, upperBound)
         )
       );
     });
     it("Can not set invalid LSP contract address", async () => {
       // LSP Address must implement the `expirationTimestamp method.
-      assert(await didContractThrow(linearLSPFPL.setLongShortPairParameters(ZERO_ADDRESS, upperBound, lowerBound)));
+      assert(await didContractThrow(linearLSPFPL.setlongShortPairParameters(ZERO_ADDRESS, upperBound, lowerBound)));
     });
   });
   describe("Compute expiry tokens for collateral", () => {
     beforeEach(async () => {
-      await linearLSPFPL.setLongShortPairParameters(expiringContractMock.address, upperBound, lowerBound);
+      await linearLSPFPL.setlongShortPairParameters(expiringContractMock.address, upperBound, lowerBound);
     });
     it("Lower than lower bound should return 0", async () => {
       const expiryTokensForCollateral = await linearLSPFPL.computeExpiryTokensForCollateral.call(toWei("900"), {

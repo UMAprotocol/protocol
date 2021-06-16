@@ -24,12 +24,12 @@ contract LinearLongShortPairFinancialProductLibrary is LongShortPairFinancialPro
     using FixedPoint for FixedPoint.Unsigned;
     using SignedSafeMath for int256;
 
-    struct LinearLongShortPairParameters {
+    struct LinearlongShortPairParameters {
         int256 upperBound;
         int256 lowerBound;
     }
 
-    mapping(address => LinearLongShortPairParameters) public LongShortPairParameters;
+    mapping(address => LinearlongShortPairParameters) public longShortPairParameters;
 
     /**
      * @notice Enables any address to set the parameters price for an associated financial product.
@@ -42,7 +42,7 @@ contract LinearLongShortPairFinancialProductLibrary is LongShortPairFinancialPro
      * e) For safety, a parameters should be set before depositing any synthetic tokens in a liquidity pool.
      * f) financialProduct must expose an expirationTimestamp method to validate it is correctly deployed.
      */
-    function setLongShortPairParameters(
+    function setlongShortPairParameters(
         address LongShortPair,
         int256 upperBound,
         int256 lowerBound
@@ -50,10 +50,10 @@ contract LinearLongShortPairFinancialProductLibrary is LongShortPairFinancialPro
         require(ExpiringContractInterface(LongShortPair).expirationTimestamp() != 0, "Invalid LSP address");
         require(upperBound > lowerBound, "Invalid bounds");
 
-        LinearLongShortPairParameters memory params = LongShortPairParameters[LongShortPair];
+        LinearlongShortPairParameters memory params = longShortPairParameters[LongShortPair];
         require(params.upperBound == 0 && params.lowerBound == 0, "Parameters already set");
 
-        LongShortPairParameters[LongShortPair] = LinearLongShortPairParameters({
+        longShortPairParameters[LongShortPair] = LinearlongShortPairParameters({
             upperBound: upperBound,
             lowerBound: lowerBound
         });
@@ -66,7 +66,7 @@ contract LinearLongShortPairFinancialProductLibrary is LongShortPairFinancialPro
      * @return expiryPercentLong to indicate how much collateral should be sent between long and short tokens.
      */
     function computeExpiryTokensForCollateral(int256 expiryPrice) public view override returns (uint256) {
-        LinearLongShortPairParameters memory params = LongShortPairParameters[msg.sender];
+        LinearlongShortPairParameters memory params = longShortPairParameters[msg.sender];
 
         if (expiryPrice >= params.upperBound) return FixedPoint.fromUnscaledUint(1).rawValue;
 

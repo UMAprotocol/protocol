@@ -23,7 +23,7 @@ contract CoveredCallLongShortPairFinancialProductLibrary is LongShortPairFinanci
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint256;
 
-    mapping(address => uint256) public LongShortPairStrikePrices;
+    mapping(address => uint256) public longShortPairStrikePrices;
 
     /**
      * @notice Enables any address to set the strike price for an associated LSP.
@@ -34,11 +34,11 @@ contract CoveredCallLongShortPairFinancialProductLibrary is LongShortPairFinanci
      * d) For safety, a strike price should be set before depositing any synthetic tokens in a liquidity pool.
      * e) financialProduct must expose an expirationTimestamp method to validate it is correctly deployed.
      */
-    function setLongShortPairParameters(address LongShortPair, uint256 strikePrice) public nonReentrant() {
+    function setlongShortPairParameters(address LongShortPair, uint256 strikePrice) public nonReentrant() {
         require(ExpiringContractInterface(LongShortPair).expirationTimestamp() != 0, "Invalid LSP address");
-        require(LongShortPairStrikePrices[LongShortPair] == 0, "Parameters already set");
+        require(longShortPairStrikePrices[LongShortPair] == 0, "Parameters already set");
 
-        LongShortPairStrikePrices[LongShortPair] = strikePrice;
+        longShortPairStrikePrices[LongShortPair] = strikePrice;
     }
 
     /**
@@ -48,7 +48,7 @@ contract CoveredCallLongShortPairFinancialProductLibrary is LongShortPairFinanci
      * @return expiryPercentLong to indicate how much collateral should be sent between long and short tokens.
      */
     function computeExpiryTokensForCollateral(int256 expiryPrice) public view override returns (uint256) {
-        uint256 contractStrikePrice = LongShortPairStrikePrices[msg.sender];
+        uint256 contractStrikePrice = longShortPairStrikePrices[msg.sender];
 
         // If the expiry price is less than the strike price then the long options expire worthless (out of the money).
         // Note we do not consider negative expiry prices in this call option implementation.

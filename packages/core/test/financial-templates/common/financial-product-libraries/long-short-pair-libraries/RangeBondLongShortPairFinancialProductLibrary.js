@@ -27,14 +27,14 @@ contract("RangeBondLongShortPairFinancialProductLibrary", function () {
   });
   describe("Long Short Pair Parameterization", () => {
     it("Can set and fetch valid values", async () => {
-      await rangeBondLSPFPL.setLongShortPairParameters(lspMock.address, highPriceRange, lowPriceRange);
+      await rangeBondLSPFPL.setlongShortPairParameters(lspMock.address, highPriceRange, lowPriceRange);
 
-      const setParams = await rangeBondLSPFPL.LongShortPairParameters(lspMock.address);
+      const setParams = await rangeBondLSPFPL.longShortPairParameters(lspMock.address);
       assert.equal(setParams.lowPriceRange.toString(), lowPriceRange);
       assert.equal(setParams.highPriceRange.toString(), highPriceRange);
     });
     it("Can not re-use existing LSP contract address", async () => {
-      await rangeBondLSPFPL.setLongShortPairParameters(
+      await rangeBondLSPFPL.setlongShortPairParameters(
         lspMock.address,
 
         highPriceRange,
@@ -44,7 +44,7 @@ contract("RangeBondLongShortPairFinancialProductLibrary", function () {
       // Second attempt should revert.
       assert(
         await didContractThrow(
-          rangeBondLSPFPL.setLongShortPairParameters(
+          rangeBondLSPFPL.setlongShortPairParameters(
             lspMock.address,
 
             lowPriceRange,
@@ -57,7 +57,7 @@ contract("RangeBondLongShortPairFinancialProductLibrary", function () {
       // upper bound larger than lower bound by swapping upper and lower
       assert(
         await didContractThrow(
-          rangeBondLSPFPL.setLongShortPairParameters(
+          rangeBondLSPFPL.setlongShortPairParameters(
             lspMock.address,
 
             lowPriceRange,
@@ -69,13 +69,13 @@ contract("RangeBondLongShortPairFinancialProductLibrary", function () {
     it("Can not set invalid LSP contract address", async () => {
       // LSP Address must implement the `expirationTimestamp method.
       assert(
-        await didContractThrow(rangeBondLSPFPL.setLongShortPairParameters(ZERO_ADDRESS, highPriceRange, lowPriceRange))
+        await didContractThrow(rangeBondLSPFPL.setlongShortPairParameters(ZERO_ADDRESS, highPriceRange, lowPriceRange))
       );
     });
   });
   describe("Compute expiry tokens for collateral", () => {
     beforeEach(async () => {
-      await rangeBondLSPFPL.setLongShortPairParameters(lspMock.address, highPriceRange, lowPriceRange);
+      await rangeBondLSPFPL.setlongShortPairParameters(lspMock.address, highPriceRange, lowPriceRange);
     });
     it("Lower than low price range should return 1 (long side is short put option)", async () => {
       // If the price is lower than the low price range then the max payout per each long token is hit at the full
