@@ -21,10 +21,10 @@ contract("GasEstimator.js", function () {
       assert(gasEstimator.updateThreshold > 0);
       assert.equal(
         gasEstimator.defaultFastPriceGwei,
-        GAS_ESTIMATOR_MAPPING_BY_NETWORK["1"].defaultFastPriceGwei,
+        GAS_ESTIMATOR_MAPPING_BY_NETWORK[1].defaultFastPriceGwei,
         "defaultFastPriceGwei for networkId 1 incorrect"
       );
-      assert.equal(gasEstimator.networkId, "1", "default networkId should be 1");
+      assert.equal(gasEstimator.networkId, 1, "default networkId should be 1");
     });
     it("Returns gas prices in wei before initial update", () => {
       assert.equal(gasEstimator.defaultFastPriceGwei, gasEstimator.getCurrentFastPrice() / 1e9);
@@ -48,7 +48,7 @@ contract("GasEstimator.js", function () {
 
   describe("Construction with custom config", () => {
     // Choose a network ID specified in GAS_ESTIMATOR_MAPPING_BY_NETWORK.
-    const customNetworkId = "137";
+    const customNetworkId = 137;
 
     beforeEach(() => {
       const dummyLogger = winston.createLogger({
@@ -82,7 +82,7 @@ contract("GasEstimator.js", function () {
       gasEstimator = new GasEstimator(
         dummyLogger,
         60,
-        "999" /* networkId that doesn't exist in GAS_ESTIMATOR_MAPPING_BY_NETWORK */
+        999 /* networkId that doesn't exist in GAS_ESTIMATOR_MAPPING_BY_NETWORK */
       );
       assert.equal(
         gasEstimator.defaultFastPriceGwei,

@@ -25,7 +25,7 @@ const GAS_ESTIMATOR_MAPPING_BY_NETWORK = {
   },
 };
 
-const DEFAULT_NETWORK_ID = "1"; // Ethereum Mainnet.
+const DEFAULT_NETWORK_ID = 1; // Ethereum Mainnet.
 class GasEstimator {
   /**
    * @notice Constructs new GasEstimator.
@@ -43,7 +43,7 @@ class GasEstimator {
     // If networkId is not found in GAS_ESTIMATOR_MAPPING_BY_NETWORK, then default to 1.
     if (!Object.keys(GAS_ESTIMATOR_MAPPING_BY_NETWORK).includes(networkId.toString()))
       this.networkId = DEFAULT_NETWORK_ID;
-    else this.networkId = networkId.toString();
+    else this.networkId = networkId;
 
     // If the script fails or the API response fails default to this value.
     this.defaultFastPriceGwei = GAS_ESTIMATOR_MAPPING_BY_NETWORK[this.networkId].defaultFastPriceGwei;
@@ -136,7 +136,7 @@ class GasEstimator {
           if (jsonBackup.result && jsonBackup.result.ProposeGasPrice) {
             return jsonBackup.result.ProposeGasPrice;
           } else {
-            throw new Error("Etherscan API: bad json response");
+            throw new Error(`Backup gas station API @ ${backupUrl}: bad json response`);
           }
         } catch (errorBackup) {
           this.logger.debug({
