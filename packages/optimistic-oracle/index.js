@@ -145,8 +145,8 @@ async function Poll(callback) {
       optimisticOracleProposerConfig: process.env.OPTIMISTIC_ORACLE_PROPOSER_CONFIG
         ? JSON.parse(process.env.OPTIMISTIC_ORACLE_PROPOSER_CONFIG)
         : {},
-      // Type of "Oracle" set for this network's Finder, default is "Voting". Other possible types include "SinkOracle"
-      // and "OracleChildTunnel".
+      // Type of "Oracle" set for this network's Finder, default is "Voting". Other possible types include "SinkOracle",
+      //  "OracleChildTunnel", and "MockOracleAncillary"
       oracleType: process.env.ORACLE_TYPE ? process.env.ORACLE_TYPE : "Voting",
     };
 
