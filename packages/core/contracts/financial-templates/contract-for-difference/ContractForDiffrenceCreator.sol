@@ -58,6 +58,8 @@ contract ContractForDifferenceCreator is Testable, Lockable {
      * @param financialProductLibrary Contract providing settlement payout logic.
      * @param customAncillaryData Custom ancillary data to be passed along with the price request. If not needed, this
      *                             should be left as a 0-length bytes array.
+     * @param prepaidProposerReward Proposal reward to be forwarded to the created contract to be used to incentivize
+                                    price proposals.
      * @notice The created CFD is NOT registered within the registry as the CFD contract uses the DVM.
      * @notice The CFD constructor does a number of validations on input params. These are not repeated here.
      */

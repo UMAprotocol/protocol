@@ -110,6 +110,7 @@ contract ContractForDifference is Testable, Lockable {
      * @param _financialProductLibrary Contract providing settlement payout logic.
      * @param _customAncillaryData Custom ancillary data to be passed along with the price request. If not needed, this
      *                             should be left as a 0-length bytes array.
+     * @param _prepaidProposerReward Preloaded reward to incentivize settlement price proposals.
      * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 in production.
      */
     constructor(
