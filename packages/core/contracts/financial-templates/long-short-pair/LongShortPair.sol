@@ -33,7 +33,7 @@ contract LongShortPair is Testable, Lockable {
     using SafeERC20 for IERC20;
 
     /*********************************************
-     *  CONTRACT FOR DIFFERENCE DATA STRUCTURES  *
+     *  LONG SHORT PAIR DATA STRUCTURES  *
      *********************************************/
 
     enum ContractState { Open, ExpiredPriceRequested, ExpiredPriceReceived }

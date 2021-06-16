@@ -15,7 +15,7 @@ import "../common/financial-product-libraries/long-short-pair-libraries/LongShor
 
 /**
  * @title Long Short Pair Contract Creator.
- * @notice Factory contract to create and register new instances of contract for difference contracts.
+ * @notice Factory contract to create and register new instances of long short pair contracts.
  * Responsible for constraining the parameters used to construct a new LSP. These constraints can evolve over time and
  * are initially constrained to conservative values in this first iteration.
  */

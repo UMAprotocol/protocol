@@ -93,7 +93,7 @@ contract("LongShortPair", function (accounts) {
 
     longShortPair = await LongShortPair.new(...Object.values(constructorParams));
 
-    // Add mint and burn roles for the long and short tokens to the contract for difference.
+    // Add mint and burn roles for the long and short tokens to the long short pair.
     await longToken.addMember(1, longShortPair.address, { from: deployer });
     await shortToken.addMember(1, longShortPair.address, { from: deployer });
     await longToken.addMember(2, longShortPair.address, { from: deployer });
@@ -198,7 +198,7 @@ contract("LongShortPair", function (accounts) {
       assert.equal(await longToken.balanceOf(sponsor), toWei("0"));
       assert.equal((await collateralToken.balanceOf(sponsor)).toString(), toWei("975")); // 925 after redemption + 12.5 redeemed for long and 37.5 for short.
 
-      // Contract for difference should have no collateral left in it as everything has been redeemed.
+      // long short pair should have no collateral left in it as everything has been redeemed.
       assert.equal((await collateralToken.balanceOf(longShortPair.address)).toString(), toWei("0"));
     });
     it("Events are correctly emitted", async function () {
