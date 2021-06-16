@@ -1,13 +1,21 @@
 const { getNodeUrl, mnemonic } = require("./TruffleConfig");
 const path = require("path");
+const { extendConfig } = require("hardhat/config");
 
 function getHardhatConfig(configOverrides, workingDir = "./") {
+
+  // Swap provider
+  extendConfig(hre => {
+    
+  });
+
   // Hard hat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function
   // get access to the plugins as well.
   require("@nomiclabs/hardhat-truffle5");
   require("hardhat-gas-reporter");
   require("@nomiclabs/hardhat-web3");
   require("hardhat-deploy");
+  require("hardhat-deploy-ethers");
 
   // Custom tasks to interact conveniently with smart contracts.
   require("./hardhat/tasks");

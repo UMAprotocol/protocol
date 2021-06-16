@@ -8,7 +8,7 @@ const path = require("path");
 
 const HDWalletProvider = require("@truffle/hdwallet-provider");
 const LedgerWalletProvider = require("@umaprotocol/truffle-ledger-provider");
-const { GckmsConfig } = require("./gckms/GckmsConfig.js");
+const { getGckmsConfig } = require("./gckms/GckmsConfig.js");
 const { ManagedSecretProvider } = require("./gckms/ManagedSecretProvider.js");
 const { PublicNetworks } = require("./PublicNetworks.js");
 const { MetaMaskTruffleProvider } = require("./MetaMaskTruffleProvider.js");
@@ -37,6 +37,7 @@ let singletonProvider;
 // Default options
 const gasPx = argv.gasPrice ? Web3.utils.toWei(argv.gasPrice, "gwei") : 1000000000; // 1 gwei
 const gas = undefined; // Defining this as undefined (rather than leaving undefined) forces truffle estimate gas usage.
+const GckmsConfig = getGckmsConfig();
 
 // If a custom node URL is provided, use that. Otherwise use an infura websocket connection.
 function getNodeUrl(networkName, useHttps = false) {

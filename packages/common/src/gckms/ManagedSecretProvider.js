@@ -2,6 +2,8 @@ const HDWalletProvider = require("@truffle/hdwallet-provider");
 const kms = require("@google-cloud/kms");
 const { Storage } = require("@google-cloud/storage");
 
+const ethers = require("ethers");
+
 // Wraps HDWalletProvider, deferring construction and allowing a Cloud KMS managed secret to be fetched asynchronously
 // and used to initialize an HDWalletProvider.
 class ManagedSecretProvider {
