@@ -68,6 +68,7 @@ async function run({
       priceFeedConfig,
       disputerConfig,
       disputerOverridePrice,
+      proxyTransactionWrapperConfig,
     });
 
     // Load unlocked web3 accounts and get the networkId.
