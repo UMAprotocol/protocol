@@ -3,7 +3,7 @@ const winston = require("winston");
 const { delay } = require("../../src/helpers/delay");
 
 // Script to test
-const { GasEstimator } = require("../../src/helpers/GasEstimator");
+const { GasEstimator, GAS_ESTIMATOR_MAPPING_BY_NETWORK } = require("../../src/helpers/GasEstimator");
 
 contract("GasEstimator.js", function () {
   let gasEstimator;
@@ -19,8 +19,12 @@ contract("GasEstimator.js", function () {
 
     it("Default parameters are set correctly", () => {
       assert(gasEstimator.updateThreshold > 0);
-      assert.equal(gasEstimator.defaultFastPriceGwei, 50, "defaultFastPriceGwei for networkId 1 should be 50");
-      assert.equal(gasEstimator.networkId, 1, "default networkId should be 1");
+      assert.equal(
+        gasEstimator.defaultFastPriceGwei,
+        GAS_ESTIMATOR_MAPPING_BY_NETWORK["1"].defaultFastPriceGwei,
+        "defaultFastPriceGwei for networkId 1 incorrect"
+      );
+      assert.equal(gasEstimator.networkId, "1", "default networkId should be 1");
     });
     it("Returns gas prices in wei before initial update", () => {
       assert.equal(gasEstimator.defaultFastPriceGwei, gasEstimator.getCurrentFastPrice() / 1e9);
@@ -43,18 +47,25 @@ contract("GasEstimator.js", function () {
   });
 
   describe("Construction with custom config", () => {
+    // Choose a network ID specified in GAS_ESTIMATOR_MAPPING_BY_NETWORK.
+    const customNetworkId = "137";
+
     beforeEach(() => {
       const dummyLogger = winston.createLogger({
         level: "info",
         transports: [new winston.transports.Console()],
       });
-      gasEstimator = new GasEstimator(dummyLogger, /* updateThreshold */ 2, /* networkId */ 137);
+      gasEstimator = new GasEstimator(dummyLogger, /* updateThreshold */ 2, /* networkId */ customNetworkId);
     });
 
     it("Default parameters are set correctly", () => {
       assert.equal(gasEstimator.updateThreshold, 2);
-      assert.equal(gasEstimator.defaultFastPriceGwei, 3, "defaultFastPriceGwei for networkId 137 should be 50");
-      assert.equal(gasEstimator.networkId, 137);
+      assert.equal(
+        gasEstimator.defaultFastPriceGwei,
+        GAS_ESTIMATOR_MAPPING_BY_NETWORK[customNetworkId].defaultFastPriceGwei,
+        `defaultFastPriceGwei for networkId ${customNetworkId} incorrect`
+      );
+      assert.equal(gasEstimator.networkId, customNetworkId);
     });
     it("Updates if called after update threshold", async () => {
       await gasEstimator.update();
@@ -62,6 +73,23 @@ contract("GasEstimator.js", function () {
       await delay(3);
       await gasEstimator.update();
       assert(lastUpdateTimestamp < gasEstimator.lastUpdateTimestamp);
+    });
+    it("Defaults network ID if GAS_ESTIMATOR_MAPPING_BY_NETWORK missing network ID", async () => {
+      const dummyLogger = winston.createLogger({
+        level: "info",
+        transports: [new winston.transports.Console()],
+      });
+      gasEstimator = new GasEstimator(
+        dummyLogger,
+        60,
+        "999" /* networkId that doesn't exist in GAS_ESTIMATOR_MAPPING_BY_NETWORK */
+      );
+      assert.equal(
+        gasEstimator.defaultFastPriceGwei,
+        GAS_ESTIMATOR_MAPPING_BY_NETWORK[1].defaultFastPriceGwei,
+        "Should default to defaultFastPriceGwei for networkId 1"
+      );
+      assert.equal(gasEstimator.networkId, 1);
     });
   });
 });

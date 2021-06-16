@@ -2,36 +2,30 @@
 // to inform the Liquidator and dispute bot of a reasonable gas price to use.
 
 const fetch = require("node-fetch");
-// URL expected response structure:
-// {
-//   "safeLow": "25.0",
-//   "standard": "30.0",
-//   "fast": "35.0",
-//   "fastest": "39.6"
-// }
-const urls = {
-  1: "https://www.etherchain.org/api/gasPriceOracle",
-  137: "https://gasstation-mainnet.matic.network",
-};
-// Etherscan API limits 1 request every 3 seconds without passing in an API key. Expected response structure:
-// {
-//   "status": "1",
-//   "message": "OK-Missing/Invalid API Key, rate limit of 1/3sec applied",
-//   "result": {
-//       "LastBlock": "10330323",
-//       "SafeGasPrice": "30",
-//       "ProposeGasPrice": "41"
-//   }
-// }
-const backupUrls = {
-  1: "https://api.etherscan.io/api?module=gastracker&action=gasoracle",
+
+const GAS_ESTIMATOR_MAPPING_BY_NETWORK = {
+  // Expected shape:
+  // <netId>: {
+  //     url: <primary-gas-station-url>,
+  //     backupUrl: <optional-backup-gas-station-url>,
+  //     defaultFastPricesGwei: <default-gas-price-for-network>
+  // }
+  1: {
+    url: "https://www.etherchain.org/api/gasPriceOracle",
+    backupUrl: "https://api.etherscan.io/api?module=gastracker&action=gasoracle",
+    defaultFastPriceGwei: 50,
+  },
+  137: {
+    url: "https://gasstation-mainnet.matic.network",
+    defaultFastPriceGwei: 10,
+  },
+  80001: {
+    url: "https://gasstation-mumbai.matic.today",
+    defaultFastPriceGwei: 20,
+  },
 };
 
-const defaultFastPricesGwei = {
-  1: 50,
-  137: 3,
-};
-
+const DEFAULT_NETWORK_ID = "1"; // Ethereum Mainnet.
 class GasEstimator {
   /**
    * @notice Constructs new GasEstimator.
@@ -40,15 +34,19 @@ class GasEstimator {
    * @param {Integer} networkId Network ID to lookup gas for. Default value is 1 corresponding to Ethereum.
    * @return None or throws an Error.
    */
-  constructor(logger, updateThreshold = 60, networkId = 1) {
+  constructor(logger, updateThreshold = 60, networkId = DEFAULT_NETWORK_ID) {
     this.logger = logger;
     this.updateThreshold = updateThreshold;
     this.lastUpdateTimestamp;
     this.lastFastPriceGwei;
-    this.networkId = networkId;
+
+    // If networkId is not found in GAS_ESTIMATOR_MAPPING_BY_NETWORK, then default to 1.
+    if (!Object.keys(GAS_ESTIMATOR_MAPPING_BY_NETWORK).includes(networkId.toString()))
+      this.networkId = DEFAULT_NETWORK_ID;
+    else this.networkId = networkId.toString();
 
     // If the script fails or the API response fails default to this value.
-    this.defaultFastPriceGwei = defaultFastPricesGwei[networkId];
+    this.defaultFastPriceGwei = GAS_ESTIMATOR_MAPPING_BY_NETWORK[this.networkId].defaultFastPriceGwei;
     this.lastFastPriceGwei = this.defaultFastPriceGwei;
   }
 
@@ -92,14 +90,21 @@ class GasEstimator {
   }
 
   async _getPrice(_networkId) {
-    const url = urls[_networkId];
-    const backupUrl = backupUrls[_networkId];
+    const url = GAS_ESTIMATOR_MAPPING_BY_NETWORK[_networkId].url;
+    const backupUrl = GAS_ESTIMATOR_MAPPING_BY_NETWORK[_networkId].backupUrl;
 
     if (!url) throw new Error(`Missing URL for network ID ${_networkId}`);
 
     try {
       const response = await fetch(url);
       const json = await response.json();
+      // Primary URL expected response structure:
+      // {
+      //   "safeLow": "25.0",
+      //   "standard": "30.0",
+      //   "fast": "35.0",
+      //   "fastest": "39.6"
+      // }
       if (json.fastest) {
         let price = json.fastest;
         return price;
@@ -118,6 +123,16 @@ class GasEstimator {
         try {
           const responseBackup = await fetch(backupUrl);
           const jsonBackup = await responseBackup.json();
+          // Etherscan API limits 1 request every 3 seconds without passing in an API key. Expected response structure:
+          // {
+          //   "status": "1",
+          //   "message": "OK-Missing/Invalid API Key, rate limit of 1/3sec applied",
+          //   "result": {
+          //       "LastBlock": "10330323",
+          //       "SafeGasPrice": "30",
+          //       "ProposeGasPrice": "41"
+          //   }
+          // }
           if (jsonBackup.result && jsonBackup.result.ProposeGasPrice) {
             return jsonBackup.result.ProposeGasPrice;
           } else {
@@ -141,4 +156,5 @@ class GasEstimator {
 
 module.exports = {
   GasEstimator,
+  GAS_ESTIMATOR_MAPPING_BY_NETWORK,
 };
