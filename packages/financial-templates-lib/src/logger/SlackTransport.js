@@ -75,13 +75,13 @@ function slackFormatter(info) {
         // For each key value pair within the object, spread the object out for formatting.
         for (const subKey in info[key]) {
           // If the length of the value is 66 then we know this is a transaction hash. Format accordingly.
-          if (info[key][subKey].length == 66) {
+          if (info[key][subKey]?.length == 66) {
             formattedResponse.blocks[
               formattedResponse.blocks.length - 1
             ].text.text += `    - _tx_: ${createEtherscanLinkMarkdown(info[key][subKey])}\n`;
           }
           // If the length of the value is 42 then we know this is an address. Format accordingly.
-          else if (info[key][subKey].length == 42) {
+          else if (info[key][subKey]?.length == 42) {
             formattedResponse.blocks[
               formattedResponse.blocks.length - 1
             ].text.text += `    - _${subKey}_: ${createEtherscanLinkMarkdown(info[key][subKey])}\n`;
