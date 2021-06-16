@@ -60,7 +60,7 @@ async function run({
       optimisticOracleAddress,
       getAddress(oracleType, networkId)
     );
-    const gasEstimator = new GasEstimator(logger);
+    const gasEstimator = new GasEstimator(logger, 60, networkId);
 
     // Construct default price feed config passed to all pricefeeds constructed by the proposer.
     // The proposer needs to query prices for any identifier approved to use the Optimistic Oracle,

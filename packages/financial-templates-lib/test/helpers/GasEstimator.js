@@ -19,7 +19,8 @@ contract("GasEstimator.js", function () {
 
     it("Default parameters are set correctly", () => {
       assert(gasEstimator.updateThreshold > 0);
-      assert(gasEstimator.defaultFastPriceGwei > 0);
+      assert.equal(gasEstimator.defaultFastPriceGwei, 50, "defaultFastPriceGwei for networkId 1 should be 50");
+      assert.equal(gasEstimator.networkId, 1, "default networkId should be 1");
     });
     it("Returns gas prices in wei before initial update", () => {
       assert.equal(gasEstimator.defaultFastPriceGwei, gasEstimator.getCurrentFastPrice() / 1e9);
@@ -47,12 +48,13 @@ contract("GasEstimator.js", function () {
         level: "info",
         transports: [new winston.transports.Console()],
       });
-      gasEstimator = new GasEstimator(dummyLogger, /* updateThreshold */ 2, /* defaultFastPriceGwei */ 10);
+      gasEstimator = new GasEstimator(dummyLogger, /* updateThreshold */ 2, /* networkId */ 137);
     });
 
     it("Default parameters are set correctly", () => {
       assert.equal(gasEstimator.updateThreshold, 2);
-      assert.equal(gasEstimator.defaultFastPriceGwei, 10);
+      assert.equal(gasEstimator.defaultFastPriceGwei, 3, "defaultFastPriceGwei for networkId 137 should be 50");
+      assert.equal(gasEstimator.networkId, 137);
     });
     it("Updates if called after update threshold", async () => {
       await gasEstimator.update();
