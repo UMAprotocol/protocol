@@ -124,14 +124,13 @@ hub.post("/", async (req, res) => {
         lastQueriedBlockNumber,
         latestBlockNumber,
       };
-      logger.debug({
-        at: "ServerlessHub",
-        message: "Updated block numbers for network",
-        chainId,
-        lastQueriedBlockNumber,
-        latestBlockNumber,
-      });
     }
+    logger.debug({
+      at: "ServerlessHub",
+      message: "Updated block numbers for networks",
+      nodeUrlToChainIdCache,
+      blockNumbersForChain,
+    });
 
     // Now, that we've precomputed all of the last seen blocks for each chain, we can update their values in the
     // GCP Data Store. These will all be the fetched as the "lastQueriedBlockNumber" in the next iteration when the
@@ -158,16 +157,12 @@ hub.post("/", async (req, res) => {
           _rejectAfterDelay(hubConfig.rejectSpokeDelay, botName),
         ])
       );
-
-      logger.debug({
-        at: "ServerlessHub",
-        message: "Running bot on spoke",
-        chainId,
-        lastQueriedBlockNumber,
-        latestBlockNumber,
-        botConfig,
-      });
     }
+    logger.debug({
+      at: "ServerlessHub",
+      message: "Executing Serverless spokes",
+      botConfigs,
+    });
 
     // Loop through promise array and submit all in parallel. `allSettled` does not fail early if a promise is rejected.
     // This `results` object will contain all information sent back from the spokes. This contains the process exit code,
