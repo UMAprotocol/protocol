@@ -46,5 +46,9 @@
   {
     "contractName": "GovernorChildTunnel",
     "address": "0x1EC4F63E40631BeDfcf7Ef37D79Dd1c20A953965"
+  },
+  {
+    "contractName": "MockOracleAncillary",
+    "address": "0x0AD3176133d9C693217B8F8FF32e03C38CD8fA88"
   }
 ]
