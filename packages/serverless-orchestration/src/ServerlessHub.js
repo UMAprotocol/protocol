@@ -121,8 +121,8 @@ hub.post("/", async (req, res) => {
 
       // Store block number data for this chain ID which we'll use to update the GCP cache later.
       blockNumbersForChain[chainId] = {
-        lastQueriedBlockNumber,
-        latestBlockNumber,
+        lastQueriedBlockNumber: Number(lastQueriedBlockNumber),
+        latestBlockNumber: Number(latestBlockNumber),
       };
     }
     logger.debug({
