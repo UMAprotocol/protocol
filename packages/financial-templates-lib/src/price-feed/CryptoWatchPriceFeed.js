@@ -66,7 +66,13 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
   }
 
   getCurrentPrice() {
-    return this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
+    if (!this.twapLength && this.invertPrice) {
+      // The price should only be inverted if invertPrice is true and twapLength is not defined.
+      // If twapLength is defined and invertPrice is true, the price will be inverted in _computeTwap().
+      return this._invertPriceSafely(this.currentPrice);
+    } else {
+      return this.currentPrice;
+    }
   }
 
   async getHistoricalPrice(time, verbose = false) {
