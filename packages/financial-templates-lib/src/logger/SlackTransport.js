@@ -110,13 +110,13 @@ function slackFormatter(info) {
         // Else, if the input is not an object then print the values as key value pairs. First check for addresses or txs
       } else if (info[key]) {
         // like with the previous level, if there is a value that is a transaction or an address format accordingly
-        if (info[key].length == 66) {
+        if (info[key]?.length == 66) {
           formattedResponse.blocks[
             formattedResponse.blocks.length - 1
           ].text.text += ` • _tx_: ${createEtherscanLinkMarkdown(info[key])}\n`;
         }
         // If the length of the value is 42 then we know this is an address. Format accordingly.
-        else if (info[key].length == 42) {
+        else if (info[key]?.length == 42) {
           formattedResponse.blocks[
             formattedResponse.blocks.length - 1
           ].text.text += ` • _${key}_: ${createEtherscanLinkMarkdown(info[key])}\n`;
