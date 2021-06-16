@@ -201,10 +201,10 @@ contract("ServerlessHub.js", function (accounts) {
     assert.isTrue(lastSpyLogIncludes(hubSpy, "All calls returned correctly")); // The hub should have exited correctly.
     assert.isTrue(lastSpyLogIncludes(spokeSpy, "Process exited with no error")); // The spoke should have exited correctly.
     assert.isTrue(lastSpyLogIncludes(spokeSpy, `${startingBlockNumber + 1}`)); // The spoke should have the correct starting block number.
-    assert.isTrue(spyLogIncludes(hubSpy, -2, `${startingBlockNumber}`), "should return block information for chain");
-    assert.isTrue(spyLogIncludes(hubSpy, -2, `${defaultChainId}`), "should return chain ID");
-    assert.isTrue(spyLogIncludes(hubSpy, -3, `${startingBlockNumber}`), "should return block information for chain");
-    assert.isTrue(spyLogIncludes(hubSpy, -3, `${defaultChainId}`), "should return chain ID");
+    assert.isTrue(spyLogIncludes(hubSpy, -3, startingBlockNumber), "should return block information for chain");
+    assert.isTrue(spyLogIncludes(hubSpy, -3, defaultChainId), "should return chain ID");
+    assert.isTrue(spyLogIncludes(hubSpy, -3, startingBlockNumber), "should return block information for chain");
+    assert.isTrue(spyLogIncludes(hubSpy, -3, defaultChainId), "should return chain ID");
     assert.isTrue(spyLogIncludes(hubSpy, -4, `"botsExecuted":${JSON.stringify(Object.keys(hubConfig))}`)); // all bots within the config should have been reported to be executed.
   });
   it("ServerlessHub correctly deals with rejected spoke calls", async function () {
@@ -371,7 +371,7 @@ contract("ServerlessHub.js", function (accounts) {
     // Check hub has correct logs.
     assert.isTrue(lastSpyLogIncludes(hubSpy, "All calls returned correctly")); // The hub should have exited correctly.
     assert.equal(lastSpyLogLevel(hubSpy), "debug"); // most recent log level should be "debug" (no error)
-    assert.isTrue(spyLogIncludes(hubSpy, -6, `"botsExecuted":${JSON.stringify(Object.keys(hubConfig))}`)); // all bots within the config should have been reported to be executed.
+    assert.isTrue(spyLogIncludes(hubSpy, -4, `"botsExecuted":${JSON.stringify(Object.keys(hubConfig))}`)); // all bots within the config should have been reported to be executed.
 
     // Check that each bot identifier returned the correct exit code within the final hub log.
     const lastSpyHubLog = hubSpy.getCall(-1).lastArg;
@@ -615,7 +615,7 @@ contract("ServerlessHub.js", function (accounts) {
     assert.equal(validResponse.res.statusCode, 200); // no error code
 
     // Check for two hub logs caching each unique chain ID seen:
-    assert.isTrue(spyLogIncludes(hubSpy, 3, `"chainId":${defaultChainId}`));
-    assert.isTrue(spyLogIncludes(hubSpy, 4, `"chainId":${alternateChainId}`));
+    assert.isTrue(spyLogIncludes(hubSpy, 3, defaultChainId));
+    assert.isTrue(spyLogIncludes(hubSpy, 3, alternateChainId));
   });
 });
