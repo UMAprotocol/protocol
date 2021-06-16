@@ -23,9 +23,21 @@
 //    The amount is a string value. This is shown as a bullet point item.
 const Transport = require("winston-transport");
 const axios = require("axios").default;
-const { createEtherscanLinkMarkdown } = require("@uma/common");
+const { createEtherscanLinkMarkdown, getWeb3 } = require("@uma/common");
 
 function slackFormatter(info) {
+  // Try and fetch injected web3 which we can use to customize the transaction receipt hyperlink:
+  let networkId = 1;
+  try {
+    getWeb3()
+      .eth.net.getId()
+      .then((_netId) => {
+        if (_netId) networkId = _netId;
+      });
+  } catch (err) {
+    // Do nothing, use default "EtherscanLinkMarkdown"
+  }
+
   try {
     if (!("level" in info) || !("at" in info) || !("message" in info))
       throw new Error("WINSTON MESSAGE INCORRECTLY CONFIGURED");
@@ -78,13 +90,13 @@ function slackFormatter(info) {
           if (info[key][subKey]?.length == 66) {
             formattedResponse.blocks[
               formattedResponse.blocks.length - 1
-            ].text.text += `    - _tx_: ${createEtherscanLinkMarkdown(info[key][subKey])}\n`;
+            ].text.text += `    - _tx_: ${createEtherscanLinkMarkdown(info[key][subKey], networkId)}\n`;
           }
           // If the length of the value is 42 then we know this is an address. Format accordingly.
           else if (info[key][subKey]?.length == 42) {
             formattedResponse.blocks[
               formattedResponse.blocks.length - 1
-            ].text.text += `    - _${subKey}_: ${createEtherscanLinkMarkdown(info[key][subKey])}\n`;
+            ].text.text += `    - _${subKey}_: ${createEtherscanLinkMarkdown(info[key][subKey], networkId)}\n`;
           }
           // If the value within the object itself is an object we dont want to spread it any further. Rather,
           // convert the object to a string and print it along side it's key value pair.
@@ -113,13 +125,13 @@ function slackFormatter(info) {
         if (info[key]?.length == 66) {
           formattedResponse.blocks[
             formattedResponse.blocks.length - 1
-          ].text.text += ` • _tx_: ${createEtherscanLinkMarkdown(info[key])}\n`;
+          ].text.text += ` • _tx_: ${createEtherscanLinkMarkdown(info[key], networkId)}\n`;
         }
         // If the length of the value is 42 then we know this is an address. Format accordingly.
         else if (info[key]?.length == 42) {
           formattedResponse.blocks[
             formattedResponse.blocks.length - 1
-          ].text.text += ` • _${key}_: ${createEtherscanLinkMarkdown(info[key])}\n`;
+          ].text.text += ` • _${key}_: ${createEtherscanLinkMarkdown(info[key], networkId)}\n`;
         } else {
           formattedResponse.blocks.push({
             type: "section",
