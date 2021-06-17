@@ -29,7 +29,7 @@ contract LongShortPairCreator is Testable, Lockable {
 
     FinderInterface public finder;
 
-    event CreatedLongShortPair(address indexed LongShortPair, address indexed deployerAddress);
+    event CreatedLongShortPair(address indexed longShortPair, address indexed deployerAddress);
 
     /**
      * @notice Constructs the LongShortPairCreator contract.
