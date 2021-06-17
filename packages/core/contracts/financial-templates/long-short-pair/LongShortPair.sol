@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "../common/financial-product-libraries/contract-for-difference-libraries/ContractForDifferenceFinancialProductLibrary.sol";
+import "../common/financial-product-libraries/long-short-pair-libraries/LongShortPairFinancialProductLibrary.sol";
 
 import "../../common/implementation/Testable.sol";
 import "../../common/implementation/Lockable.sol";
@@ -24,16 +24,16 @@ import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
 /**
- * @title Contract For Difference.
+ * @title Long Short Pair.
  * @notice Uses a combination of long and short tokens to tokenize the bounded price exposure to a given identifier.
  */
 
-contract ContractForDifference is Testable, Lockable {
+contract LongShortPair is Testable, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
 
     /*********************************************
-     *  CONTRACT FOR DIFFERENCE DATA STRUCTURES  *
+     *  LONG SHORT PAIR DATA STRUCTURES  *
      *********************************************/
 
     enum ContractState { Open, ExpiredPriceRequested, ExpiredPriceReceived }
@@ -59,11 +59,11 @@ contract ContractForDifference is Testable, Lockable {
 
     FinderInterface public finder;
 
-    ContractForDifferenceFinancialProductLibrary public financialProductLibrary;
+    LongShortPairFinancialProductLibrary public financialProductLibrary;
 
     bytes public customAncillaryData;
 
-    uint256 prepaidProposerReward;
+    uint256 public prepaidProposerReward;
 
     /****************************************
      *                EVENTS                *
@@ -99,13 +99,13 @@ contract ContractForDifference is Testable, Lockable {
     }
 
     /**
-     * @notice Construct the ContractForDifference
+     * @notice Construct the LongShortPair
      * @param _expirationTimestamp unix timestamp of when the contract will expire.
      * @param _collateralPerPair how many units of collateral are required to mint one pair of synthetic tokens.
      * @param _priceIdentifier registered in the DVM for the synthetic.
-     * @param _longToken ERC20 token used as long in the CFD. Requires mint and burn needed by this contract.
-     * @param _shortToken ERC20 token used as short in the CFD. Mint and burn rights needed by this contract.
-     * @param _collateralToken ERC20 token used as collateral in the CFD.
+     * @param _longToken ERC20 token used as long in the LSP. Requires mint and burn needed by this contract.
+     * @param _shortToken ERC20 token used as short in the LSP. Mint and burn rights needed by this contract.
+     * @param _collateralToken ERC20 token used as collateral in the LSP.
      * @param _finder UMA protocol Finder used to discover other protocol contracts.
      * @param _financialProductLibrary Contract providing settlement payout logic.
      * @param _customAncillaryData Custom ancillary data to be passed along with the price request. If not needed, this
@@ -121,7 +121,7 @@ contract ContractForDifference is Testable, Lockable {
         ExpandedIERC20 _shortToken,
         IERC20 _collateralToken,
         FinderInterface _finder,
-        ContractForDifferenceFinancialProductLibrary _financialProductLibrary,
+        LongShortPairFinancialProductLibrary _financialProductLibrary,
         bytes memory _customAncillaryData,
         uint256 _prepaidProposerReward,
         address _timerAddress

@@ -6,11 +6,9 @@ const { assert } = require("chai");
 const { interfaceName, didContractThrow, ZERO_ADDRESS } = require("@uma/common");
 
 // Tested Contract
-const ContractForDifference = artifacts.require("ContractForDifference");
-const ContractForDifferenceCreator = artifacts.require("ContractForDifferenceCreator");
-const ContractForDifferenceFinancialProjectLibraryTest = artifacts.require(
-  "ContractForDifferenceFinancialProjectLibraryTest"
-);
+const LongShortPair = artifacts.require("LongShortPair");
+const LongShortPairCreator = artifacts.require("LongShortPairCreator");
+const LongShortPairFinancialProjectLibraryTest = artifacts.require("LongShortPairFinancialProjectLibraryTest");
 
 // Helper contracts
 const AddressWhitelist = artifacts.require("AddressWhitelist");
@@ -22,8 +20,8 @@ const Token = artifacts.require("ExpandedERC20");
 const TokenFactory = artifacts.require("TokenFactory");
 
 let collateralToken;
-let contractForDifferenceLibrary;
-let contractForDifferenceCreator;
+let longShortPairLibrary;
+let longShortPairCreator;
 let collateralWhitelist;
 let identifierWhitelist;
 let optimisticOracle;
@@ -36,12 +34,12 @@ const expirationTimestamp = startTimestamp + 10000;
 const optimisticOracleLiveness = 7200;
 const priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
 const collateralPerPair = toWei("1"); // each pair of long and short tokens need 1 unit of collateral to mint.
-const syntheticName = "Test CFD";
+const syntheticName = "Test LSP";
 const syntheticSymbol = "tCFD";
 const ancillaryData = web3.utils.utf8ToHex("some-address-field:0x1234");
 const prepaidProposerReward = "0";
 
-contract("ContractForDifferenceCreator", function (accounts) {
+contract("LongShortPairCreator", function (accounts) {
   const deployer = accounts[0];
   const sponsor = accounts[1];
 
@@ -69,13 +67,13 @@ contract("ContractForDifferenceCreator", function (accounts) {
       from: deployer,
     });
 
-    contractForDifferenceCreator = await ContractForDifferenceCreator.new(
+    longShortPairCreator = await LongShortPairCreator.new(
       finder.address,
       (await TokenFactory.deployed()).address,
       timer.address
     );
 
-    contractForDifferenceLibrary = await ContractForDifferenceFinancialProjectLibraryTest.new();
+    longShortPairLibrary = await LongShortPairFinancialProjectLibraryTest.new();
 
     // Define an object to easily re-use constructor params
     constructorParams = {
@@ -85,86 +83,81 @@ contract("ContractForDifferenceCreator", function (accounts) {
       syntheticName,
       syntheticSymbol,
       collateralAddress: collateralToken.address,
-      financialProductLibraryAddress: contractForDifferenceLibrary.address,
+      financialProductLibraryAddress: longShortPairLibrary.address,
       ancillaryData,
       prepaidProposerReward,
     };
   });
 
-  it("Can correctly create a CFD with valid params", async function () {
-    // Can create a new CFD with the creator.
-    const cfdAddress = await contractForDifferenceCreator.createContractForDifference.call(
-      ...Object.values(constructorParams)
-    );
+  it("Can correctly create a LSP with valid params", async function () {
+    // Can create a new LSP with the creator.
+    const lspAddress = await longShortPairCreator.createLongShortPair.call(...Object.values(constructorParams));
 
-    const cfdCreateTx = await contractForDifferenceCreator.createContractForDifference(
-      ...Object.values(constructorParams)
-    );
+    const lspCreateTx = await longShortPairCreator.createLongShortPair(...Object.values(constructorParams));
 
     // Event should be emitted correctly.
-    truffleAssert.eventEmitted(cfdCreateTx, "CreatedContractForDifference", (ev) => {
-      return ev.contractForDifference == cfdAddress && ev.deployerAddress == deployer;
+    truffleAssert.eventEmitted(lspCreateTx, "CreatedLongShortPair", (ev) => {
+      return ev.LongShortPair == lspAddress && ev.deployerAddress == deployer;
     });
 
-    // Validate CFD parameters are set correctly.
-    const cfd = await ContractForDifference.at(cfdAddress);
-    assert.equal(await cfd.expirationTimestamp(), expirationTimestamp);
-    assert.equal((await cfd.collateralPerPair()).toString(), collateralPerPair.toString());
-    assert.equal(hexToUtf8(await cfd.priceIdentifier()), hexToUtf8(priceFeedIdentifier));
-    assert.equal(await cfd.collateralToken(), collateralToken.address);
-    assert.equal(await cfd.customAncillaryData(), ancillaryData);
+    // Validate LSP parameters are set correctly.
+    const lsp = await LongShortPair.at(lspAddress);
+    assert.equal(await lsp.expirationTimestamp(), expirationTimestamp);
+    assert.equal((await lsp.collateralPerPair()).toString(), collateralPerPair.toString());
+    assert.equal(hexToUtf8(await lsp.priceIdentifier()), hexToUtf8(priceFeedIdentifier));
+    assert.equal(await lsp.collateralToken(), collateralToken.address);
+    assert.equal(await lsp.customAncillaryData(), ancillaryData);
 
     // Validate token information and permissions are set correctly.
-    const longToken = await Token.at(await cfd.longToken());
+    const longToken = await Token.at(await lsp.longToken());
     assert.equal(await longToken.name(), syntheticName + " Long Token");
     assert.equal(await longToken.symbol(), "l" + syntheticSymbol);
     assert.equal((await longToken.decimals()).toString(), (await collateralToken.decimals()).toString());
-    assert.isTrue(await longToken.holdsRole("0", cfdAddress));
-    assert.isTrue(await longToken.holdsRole("1", cfdAddress));
-    assert.isTrue(await longToken.holdsRole("2", cfdAddress));
+    assert.isTrue(await longToken.holdsRole("0", lspAddress));
+    assert.isTrue(await longToken.holdsRole("1", lspAddress));
+    assert.isTrue(await longToken.holdsRole("2", lspAddress));
 
-    const shortToken = await Token.at(await cfd.shortToken());
+    const shortToken = await Token.at(await lsp.shortToken());
     assert.equal(await shortToken.name(), syntheticName + " Short Token");
     assert.equal(await shortToken.symbol(), "s" + syntheticSymbol);
     assert.equal((await shortToken.decimals()).toString(), (await collateralToken.decimals()).toString());
-    assert.isTrue(await shortToken.holdsRole("0", cfdAddress));
-    assert.isTrue(await shortToken.holdsRole("1", cfdAddress));
-    assert.isTrue(await shortToken.holdsRole("2", cfdAddress));
+    assert.isTrue(await shortToken.holdsRole("0", lspAddress));
+    assert.isTrue(await shortToken.holdsRole("1", lspAddress));
+    assert.isTrue(await shortToken.holdsRole("2", lspAddress));
   });
   it("Correctly respects non-18 decimal collateral currencies", async function () {
     const non18Collateral = await Token.new("USD Coin", "USDC", 6, { from: deployer });
     await collateralWhitelist.addToWhitelist(non18Collateral.address);
-    await contractForDifferenceCreator.createContractForDifference(
+    await longShortPairCreator.createLongShortPair(
       ...Object.values({ ...constructorParams, collateralAddress: non18Collateral.address })
     );
 
-    const cfdAddress = (await contractForDifferenceCreator.getPastEvents("CreatedContractForDifference"))[0]
-      .returnValues.contractForDifference;
+    const lspAddress = (await longShortPairCreator.getPastEvents("CreatedLongShortPair"))[0].returnValues.LongShortPair;
 
-    const cfd = await ContractForDifference.at(cfdAddress);
+    const lsp = await LongShortPair.at(lspAddress);
 
-    assert.equal(await (await Token.at(await cfd.longToken())).decimals(), "6");
-    assert.equal(await (await Token.at(await cfd.shortToken())).decimals(), "6");
+    assert.equal(await (await Token.at(await lsp.longToken())).decimals(), "6");
+    assert.equal(await (await Token.at(await lsp.shortToken())).decimals(), "6");
   });
 
   it("Transfers prepaidProposerReward", async function () {
     const customPrepaidProposerReward = toWei("100");
     await collateralToken.mint(deployer, customPrepaidProposerReward);
-    await collateralToken.approve(contractForDifferenceCreator.address, customPrepaidProposerReward);
-    await contractForDifferenceCreator.createContractForDifference(
+    await collateralToken.approve(longShortPairCreator.address, customPrepaidProposerReward);
+    await longShortPairCreator.createContractForDifference(
       ...Object.values({ ...constructorParams, prepaidProposerReward: customPrepaidProposerReward })
     );
 
-    const cfdAddress = (await contractForDifferenceCreator.getPastEvents("CreatedContractForDifference"))[0]
-      .returnValues.contractForDifference;
+    const lspAddress = (await longShortPairCreator.getPastEvents("CreatedContractForDifference"))[0].returnValues
+      .contractForDifference;
 
-    assert.equal((await collateralToken.balanceOf(cfdAddress)).toString(), customPrepaidProposerReward);
+    assert.equal((await collateralToken.balanceOf(lspAddress)).toString(), customPrepaidProposerReward);
   });
 
   it("Rejects on past expirationTimestamp", async function () {
     assert(
       await didContractThrow(
-        contractForDifferenceCreator.createContractForDifference(
+        longShortPairCreator.createLongShortPair(
           ...Object.values({ ...constructorParams, expirationTimestamp: (await timer.getCurrentTime()) - 100 })
         )
       )
@@ -173,7 +166,7 @@ contract("ContractForDifferenceCreator", function (accounts) {
   it("Rejects on unregistered priceIdentifier", async function () {
     assert(
       await didContractThrow(
-        contractForDifferenceCreator.createContractForDifference(
+        longShortPairCreator.createLongShortPair(
           ...Object.values({ ...constructorParams, priceFeedIdentifier: utf8ToHex("UNREGISTERED_IDENTIFIER") })
         )
       )
@@ -182,7 +175,7 @@ contract("ContractForDifferenceCreator", function (accounts) {
   it("Rejects on unregistered collateralToken", async function () {
     assert(
       await didContractThrow(
-        contractForDifferenceCreator.createContractForDifference(
+        longShortPairCreator.createLongShortPair(
           ...Object.values({ ...constructorParams, collateralAddress: ZERO_ADDRESS })
         )
       )
@@ -191,7 +184,7 @@ contract("ContractForDifferenceCreator", function (accounts) {
   it("Rejects on invalid financialProductLibrary", async function () {
     assert(
       await didContractThrow(
-        contractForDifferenceCreator.createContractForDifference(
+        longShortPairCreator.createLongShortPair(
           ...Object.values({ ...constructorParams, financialProductLibraryAddress: ZERO_ADDRESS })
         )
       )
@@ -200,16 +193,12 @@ contract("ContractForDifferenceCreator", function (accounts) {
   it("Rejects on invalid synthetic token details", async function () {
     assert(
       await didContractThrow(
-        contractForDifferenceCreator.createContractForDifference(
-          ...Object.values({ ...constructorParams, syntheticName: "" })
-        )
+        longShortPairCreator.createLongShortPair(...Object.values({ ...constructorParams, syntheticName: "" }))
       )
     );
     assert(
       await didContractThrow(
-        contractForDifferenceCreator.createContractForDifference(
-          ...Object.values({ ...constructorParams, syntheticSymbol: "" })
-        )
+        longShortPairCreator.createLongShortPair(...Object.values({ ...constructorParams, syntheticSymbol: "" }))
       )
     );
   });

@@ -7,6 +7,6 @@ interface ExpiringContractInterface {
     function expirationTimestamp() external view returns (uint256);
 }
 
-abstract contract ContractForDifferenceFinancialProductLibrary {
+abstract contract LongShortPairFinancialProductLibrary {
     function computeExpiryTokensForCollateral(int256 expiryPrice) public view virtual returns (uint256);
 }

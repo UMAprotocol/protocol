@@ -6,10 +6,8 @@ const { assert } = require("chai");
 const { interfaceName, didContractThrow, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
 
 // Tested Contract
-const ContractForDifference = artifacts.require("ContractForDifference");
-const ContractForDifferenceFinancialProjectLibraryTest = artifacts.require(
-  "ContractForDifferenceFinancialProjectLibraryTest"
-);
+const LongShortPair = artifacts.require("LongShortPair");
+const LongShortPairFinancialProjectLibraryTest = artifacts.require("LongShortPairFinancialProjectLibraryTest");
 
 // Helper contracts
 const AddressWhitelist = artifacts.require("AddressWhitelist");
@@ -23,8 +21,8 @@ const Token = artifacts.require("ExpandedERC20");
 let collateralToken;
 let longToken;
 let shortToken;
-let contractForDifference;
-let contractForDifferenceLibrary;
+let longShortPair;
+let longShortPairLibrary;
 let collateralWhitelist;
 let identifierWhitelist;
 let optimisticOracle;
@@ -41,18 +39,12 @@ const collateralPerPair = toWei("1"); // each pair of long and short tokens need
 const prepaidProposerReward = toWei("100");
 
 const proposeAndSettleOptimisticOraclePrice = async (priceFeedIdentifier, requestTime, price) => {
-  await optimisticOracle.proposePrice(
-    contractForDifference.address,
-    priceFeedIdentifier,
-    requestTime,
-    ancillaryData,
-    price
-  );
+  await optimisticOracle.proposePrice(longShortPair.address, priceFeedIdentifier, requestTime, ancillaryData, price);
   await optimisticOracle.setCurrentTime((await optimisticOracle.getCurrentTime()) + optimisticOracleLiveness);
-  await optimisticOracle.settle(contractForDifference.address, priceFeedIdentifier, requestTime, ancillaryData);
+  await optimisticOracle.settle(longShortPair.address, priceFeedIdentifier, requestTime, ancillaryData);
 };
 
-contract("ContractForDifference", function (accounts) {
+contract("LongShortPair", function (accounts) {
   const deployer = accounts[0];
   const sponsor = accounts[1];
   const holder = accounts[2];
@@ -84,8 +76,8 @@ contract("ContractForDifference", function (accounts) {
       from: deployer,
     });
 
-    // Create CFD library and CFD contract.
-    contractForDifferenceLibrary = await ContractForDifferenceFinancialProjectLibraryTest.new();
+    // Create LSP library and LSP contract.
+    longShortPairLibrary = await LongShortPairFinancialProjectLibraryTest.new();
 
     constructorParams = {
       expirationTimestamp,
@@ -95,27 +87,27 @@ contract("ContractForDifference", function (accounts) {
       shortTokenAddress: shortToken.address,
       collateralTokenAddress: collateralToken.address,
       finderAddress: finder.address,
-      contractForDifferenceLibraryAddress: contractForDifferenceLibrary.address,
+      LongShortPairLibraryAddress: longShortPairLibrary.address,
       ancillaryData,
       prepaidProposerReward,
       timerAddress: timer.address,
     };
 
-    contractForDifference = await ContractForDifference.new(...Object.values(constructorParams));
-    await collateralToken.mint(contractForDifference.address, toWei("100"));
+    longShortPair = await LongShortPair.new(...Object.values(constructorParams));
+    await collateralToken.mint(longShortPair.address, toWei("100"));
 
-    // Add mint and burn roles for the long and short tokens to the contract for difference.
-    await longToken.addMember(1, contractForDifference.address, { from: deployer });
-    await shortToken.addMember(1, contractForDifference.address, { from: deployer });
-    await longToken.addMember(2, contractForDifference.address, { from: deployer });
-    await shortToken.addMember(2, contractForDifference.address, { from: deployer });
+    // Add mint and burn roles for the long and short tokens to the long short pair.
+    await longToken.addMember(1, longShortPair.address, { from: deployer });
+    await shortToken.addMember(1, longShortPair.address, { from: deployer });
+    await longToken.addMember(2, longShortPair.address, { from: deployer });
+    await shortToken.addMember(2, longShortPair.address, { from: deployer });
   });
   describe("Basic Functionality", () => {
     it("Rejects invalid constructor parameters", async function () {
       // Invalid expiration time.
       assert(
         await didContractThrow(
-          ContractForDifference.new(
+          LongShortPair.new(
             ...Object.values({ ...constructorParams, expirationTimestamp: (await timer.getCurrentTime()) - 1 })
           )
         )
@@ -124,22 +116,20 @@ contract("ContractForDifference", function (accounts) {
       // Invalid price identifier time.
       assert(
         await didContractThrow(
-          ContractForDifference.new(...Object.values({ ...constructorParams, priceFeedIdentifier: "BAD-IDENTIFIER" }))
+          LongShortPair.new(...Object.values({ ...constructorParams, priceFeedIdentifier: "BAD-IDENTIFIER" }))
         )
       );
-      // Invalid CFD library address.
+      // Invalid LSP library address.
       assert(
         await didContractThrow(
-          ContractForDifference.new(
-            ...Object.values({ ...constructorParams, contractForDifferenceLibraryAddress: ZERO_ADDRESS })
-          )
+          LongShortPair.new(...Object.values({ ...constructorParams, longShortPairLibraryAddress: ZERO_ADDRESS }))
         )
       );
 
       // Invalid Finder address.
       assert(
         await didContractThrow(
-          ContractForDifference.new(...Object.values({ ...constructorParams, finderAddress: ZERO_ADDRESS }))
+          LongShortPair.new(...Object.values({ ...constructorParams, finderAddress: ZERO_ADDRESS }))
         )
       );
 
@@ -152,7 +142,7 @@ contract("ContractForDifference", function (accounts) {
       const remainingLength = maxLength - (ooAncillary.length - 2) / 2; // Remove the 0x and divide by 2 to get bytes.
       assert(
         await didContractThrow(
-          ContractForDifference.new(
+          LongShortPair.new(
             ...Object.values({ ...constructorParams, ancillaryData: web3.utils.randomHex(remainingLength + 1) })
           )
         )
@@ -164,8 +154,8 @@ contract("ContractForDifference", function (accounts) {
       assert.equal(await longToken.balanceOf(sponsor), toWei("0"));
       assert.equal(await shortToken.balanceOf(sponsor), toWei("0"));
 
-      await collateralToken.approve(contractForDifference.address, MAX_UINT_VAL, { from: sponsor });
-      await contractForDifference.create(toWei("100"), { from: sponsor });
+      await collateralToken.approve(longShortPair.address, MAX_UINT_VAL, { from: sponsor });
+      await longShortPair.create(toWei("100"), { from: sponsor });
 
       // Collateral should have decreased by tokensMinted/collateral per token. Long & short should have increase by tokensMinted.
       assert.equal((await collateralToken.balanceOf(sponsor)).toString(), toWei("900")); // 1000 starting balance - 100 for mint.
@@ -176,7 +166,7 @@ contract("ContractForDifference", function (accounts) {
       await longToken.transfer(holder, toWei("50"), { from: sponsor });
 
       // Token sponsor redeems half their remaining long tokens, along with the associated short tokens.
-      await contractForDifference.redeem(toWei("25"), { from: sponsor });
+      await longShortPair.redeem(toWei("25"), { from: sponsor });
 
       // Sponsor should have 25 remaining long tokens and 75 remaining short tokens. They should have been refunded 25 collateral.
       assert.equal((await collateralToken.balanceOf(sponsor)).toString(), toWei("925")); // 900 after mint + 25 redeemed.
@@ -184,45 +174,45 @@ contract("ContractForDifference", function (accounts) {
       assert.equal(await shortToken.balanceOf(sponsor), toWei("75"));
 
       // holder should not be able to call redeem as they only have the long token and redemption requires a pair.
-      assert(await didContractThrow(contractForDifference.redeem(toWei("25"), { from: holder })));
+      assert(await didContractThrow(longShortPair.redeem(toWei("25"), { from: holder })));
 
       // Advance past the expiry timestamp and settle the contract.
       await timer.setCurrentTime(expirationTimestamp + 1);
 
-      assert.equal(await contractForDifference.contractState(), 0); // state should be Open before.
-      await contractForDifference.expire();
-      assert.equal(await contractForDifference.contractState(), 1); // state should be ExpiredPriceRequested before.
+      assert.equal(await longShortPair.contractState(), 0); // state should be Open before.
+      await longShortPair.expire();
+      assert.equal(await longShortPair.contractState(), 1); // state should be ExpiredPriceRequested before.
 
       await proposeAndSettleOptimisticOraclePrice(priceFeedIdentifier, expirationTimestamp, toWei("0.5"));
 
       // Redemption value scaled between 0 and 1, indicating how much of the collateralPerPair is split between the long and
       // short tokens. Setting to 0.5 makes each long token worth 0.5 collateral and each short token worth 0.5 collateral.
 
-      await contractForDifferenceLibrary.setValueToReturn(toWei("0.5"));
+      await longShortPairLibrary.setValueToReturn(toWei("0.5"));
 
-      await contractForDifference.settle(toWei("50"), toWei("0"), { from: holder }); // holder redeem their 50 long tokens.
+      await longShortPair.settle(toWei("50"), toWei("0"), { from: holder }); // holder redeem their 50 long tokens.
       assert.equal(await longToken.balanceOf(holder), toWei("0")); // they should have no long tokens left.
       assert.equal((await collateralToken.balanceOf(holder)).toString(), toWei("25")); // they should have gotten 0.5 collateral per synthetic.
 
       // Sponsor redeem remaining tokens. They return the remaining 25 long and 75 short. Each should be redeemable for 0.5 collateral.
-      await contractForDifference.settle(toWei("25"), toWei("75"), { from: sponsor });
+      await longShortPair.settle(toWei("25"), toWei("75"), { from: sponsor });
 
       assert.equal(await longToken.balanceOf(sponsor), toWei("0"));
       assert.equal(await longToken.balanceOf(sponsor), toWei("0"));
       assert.equal((await collateralToken.balanceOf(sponsor)).toString(), toWei("975")); // 925 after redemption + 12.5 redeemed for long and 37.5 for short.
 
-      // Contract for difference should have no collateral left in it as everything has been redeemed.
-      assert.equal((await collateralToken.balanceOf(contractForDifference.address)).toString(), toWei("0"));
+      // long short pair should have no collateral left in it as everything has been redeemed.
+      assert.equal((await collateralToken.balanceOf(longShortPair.address)).toString(), toWei("0"));
     });
     it("Events are correctly emitted", async function () {
-      await collateralToken.approve(contractForDifference.address, MAX_UINT_VAL, { from: sponsor });
-      const createTx = await contractForDifference.create(toWei("100"), { from: sponsor });
+      await collateralToken.approve(longShortPair.address, MAX_UINT_VAL, { from: sponsor });
+      const createTx = await longShortPair.create(toWei("100"), { from: sponsor });
 
       truffleAssert.eventEmitted(createTx, "TokensCreated", (ev) => {
         return ev.sponsor == sponsor && ev.collateralUsed == toWei("100") && ev.tokensMinted == toWei("100");
       });
 
-      const redeemTx = await contractForDifference.redeem(toWei("25"), { from: sponsor });
+      const redeemTx = await longShortPair.redeem(toWei("25"), { from: sponsor });
 
       truffleAssert.eventEmitted(redeemTx, "TokensRedeemed", (ev) => {
         return ev.sponsor == sponsor && ev.collateralReturned == toWei("25") && ev.tokensRedeemed == toWei("25");
@@ -231,7 +221,7 @@ contract("ContractForDifference", function (accounts) {
       // Advance past the expiry timestamp and settle the contract.
       await timer.setCurrentTime(expirationTimestamp + 1);
 
-      const expireTx = await contractForDifference.expire();
+      const expireTx = await longShortPair.expire();
 
       truffleAssert.eventEmitted(expireTx, "ContractExpired", (ev) => {
         return ev.caller == deployer;
@@ -239,9 +229,9 @@ contract("ContractForDifference", function (accounts) {
 
       await proposeAndSettleOptimisticOraclePrice(priceFeedIdentifier, expirationTimestamp, toWei("0.5"));
 
-      await contractForDifferenceLibrary.setValueToReturn(toWei("0.5"));
+      await longShortPairLibrary.setValueToReturn(toWei("0.5"));
 
-      const settleTx = await contractForDifference.settle(toWei("75"), toWei("75"), { from: sponsor });
+      const settleTx = await longShortPair.settle(toWei("75"), toWei("75"), { from: sponsor });
 
       truffleAssert.eventEmitted(settleTx, "PositionSettled", (ev) => {
         return (
@@ -254,9 +244,9 @@ contract("ContractForDifference", function (accounts) {
     });
     it("Ancillary data is correctly set in the OO", async function () {
       await timer.setCurrentTime(expirationTimestamp + 1);
-      await contractForDifference.expire();
+      await longShortPair.expire();
       const request = await optimisticOracle.getRequest(
-        contractForDifference.address,
+        longShortPair.address,
         priceFeedIdentifier,
         expirationTimestamp,
         ancillaryData
@@ -267,63 +257,63 @@ contract("ContractForDifference", function (accounts) {
   });
   describe("Settlement Functionality", () => {
     // Create a position, advance time, expire contract and propose price. Manually set different expiryPercentLong values
-    // using the test contractForDifferenceLibrary that bypass the OO return value so we dont need to test the lib here.
+    // using the test longShortPairLibrary that bypass the OO return value so we dont need to test the lib here.
     let sponsorCollateralBefore;
     beforeEach(async () => {
-      await collateralToken.approve(contractForDifference.address, MAX_UINT_VAL, { from: sponsor });
-      await contractForDifference.create(toWei("100"), { from: sponsor });
+      await collateralToken.approve(longShortPair.address, MAX_UINT_VAL, { from: sponsor });
+      await longShortPair.create(toWei("100"), { from: sponsor });
       await timer.setCurrentTime(expirationTimestamp + 1);
-      await contractForDifference.expire();
+      await longShortPair.expire();
       await proposeAndSettleOptimisticOraclePrice(priceFeedIdentifier, expirationTimestamp, toWei("0.5"));
       sponsorCollateralBefore = await collateralToken.balanceOf(sponsor);
     });
     it("expiryPercentLong = 1 should give all collateral to long tokens", async function () {
-      await contractForDifferenceLibrary.setValueToReturn(toWei("1"));
+      await longShortPairLibrary.setValueToReturn(toWei("1"));
 
       // Redeeming only short tokens should send 0 collateral as the short tokens are worthless.
-      await contractForDifference.settle(toWei("0"), toWei("100"), { from: sponsor });
+      await longShortPair.settle(toWei("0"), toWei("100"), { from: sponsor });
       assert.equal((await collateralToken.balanceOf(sponsor)).toString(), sponsorCollateralBefore.toString());
 
       // Redeeming the long tokens should send the full amount of collateral to the sponsor.
-      await contractForDifference.settle(toWei("100"), toWei("0"), { from: sponsor });
+      await longShortPair.settle(toWei("100"), toWei("0"), { from: sponsor });
       assert.equal(
         (await collateralToken.balanceOf(sponsor)).toString(),
         sponsorCollateralBefore.add(toBN(toWei("100"))).toString()
       );
     });
     it("expiryPercentLong = 0 should give all collateral to short tokens", async function () {
-      await contractForDifferenceLibrary.setValueToReturn(toWei("0"));
+      await longShortPairLibrary.setValueToReturn(toWei("0"));
       // Redeeming only long tokens should send 0 collateral as the long tokens are worthless.
-      await contractForDifference.settle(toWei("100"), toWei("0"), { from: sponsor });
+      await longShortPair.settle(toWei("100"), toWei("0"), { from: sponsor });
       assert.equal((await collateralToken.balanceOf(sponsor)).toString(), sponsorCollateralBefore.toString());
 
       // Redeeming the short tokens should send the full amount of collateral to the sponsor.
-      await contractForDifference.settle(toWei("0"), toWei("100"), { from: sponsor });
+      await longShortPair.settle(toWei("0"), toWei("100"), { from: sponsor });
       assert.equal(
         (await collateralToken.balanceOf(sponsor)).toString(),
         sponsorCollateralBefore.add(toBN(toWei("100"))).toString()
       );
     });
     it("expiryTokensForCollateral > 1 should ceil to 1", async function () {
-      // anything above 1 for the expiryPercentLong is nonsensical and the CFD should act as if it's set to 1.
-      await contractForDifferenceLibrary.setValueToReturn(toWei("1.5"));
+      // anything above 1 for the expiryPercentLong is nonsensical and the LSP should act as if it's set to 1.
+      await longShortPairLibrary.setValueToReturn(toWei("1.5"));
 
       // Redeeming long short tokens should send no collateral.
-      await contractForDifference.settle(toWei("0"), toWei("100"), { from: sponsor });
+      await longShortPair.settle(toWei("0"), toWei("100"), { from: sponsor });
       assert.equal((await collateralToken.balanceOf(sponsor)).toString(), sponsorCollateralBefore.toString());
 
       // Redeeming long tokens should send all the collateral.
-      await contractForDifference.settle(toWei("100"), toWei("0"), { from: sponsor });
+      await longShortPair.settle(toWei("100"), toWei("0"), { from: sponsor });
       assert.equal(
         (await collateralToken.balanceOf(sponsor)).toString(),
         sponsorCollateralBefore.add(toBN(toWei("100"))).toString()
       );
     });
     it("expiryPercentLong = 0.25 should give 25% to long and 75% to short", async function () {
-      await contractForDifferenceLibrary.setValueToReturn(toWei("0.25"));
+      await longShortPairLibrary.setValueToReturn(toWei("0.25"));
 
       // Redeeming long tokens should send 25% of the collateral.
-      await contractForDifference.settle(toWei("100"), toWei("0"), { from: sponsor });
+      await longShortPair.settle(toWei("100"), toWei("0"), { from: sponsor });
       assert.equal(
         (await collateralToken.balanceOf(sponsor)).toString(),
         sponsorCollateralBefore.add(toBN(toWei("25"))).toString()
@@ -331,7 +321,7 @@ contract("ContractForDifference", function (accounts) {
       const sponsorCollateralAfterLongRedeem = await collateralToken.balanceOf(sponsor);
 
       // Redeeming short tokens should send the remaining 75% of the collateral.
-      await contractForDifference.settle(toWei("0"), toWei("100"), { from: sponsor });
+      await longShortPair.settle(toWei("0"), toWei("100"), { from: sponsor });
       assert.equal(
         (await collateralToken.balanceOf(sponsor)).toString(),
         sponsorCollateralAfterLongRedeem.add(toBN(toWei("75"))).toString()
@@ -339,7 +329,7 @@ contract("ContractForDifference", function (accounts) {
     });
     it("Cannot settle more tokens than in wallet", async function () {
       // Sponsor only has 100 long and 100 short. anything more than this should revert.
-      assert(await didContractThrow(contractForDifference.settle(toWei("110"), toWei("100"), { from: sponsor })));
+      assert(await didContractThrow(longShortPair.settle(toWei("110"), toWei("100"), { from: sponsor })));
     });
     it("prepaidProposerReward was correctly set/transferred in the OptimisticOracle", async function () {
       // Deployer should have received a proposal reward.
@@ -348,7 +338,7 @@ contract("ContractForDifference", function (accounts) {
       assert.equal(
         (
           await optimisticOracle.getRequest(
-            contractForDifference.address,
+            longShortPair.address,
             priceFeedIdentifier,
             expirationTimestamp,
             ancillaryData
@@ -360,30 +350,30 @@ contract("ContractForDifference", function (accounts) {
   });
   describe("Contract States", () => {
     beforeEach(async () => {
-      await collateralToken.approve(contractForDifference.address, MAX_UINT_VAL, { from: sponsor });
-      await contractForDifference.create(toWei("100"), { from: sponsor });
+      await collateralToken.approve(longShortPair.address, MAX_UINT_VAL, { from: sponsor });
+      await longShortPair.create(toWei("100"), { from: sponsor });
     });
     it("Can not expire pre expirationTimestamp", async function () {
-      assert(await didContractThrow(contractForDifference.expire()));
-      assert(await didContractThrow(contractForDifference.settle(toWei("100"), toWei("100"), { from: sponsor })));
+      assert(await didContractThrow(longShortPair.expire()));
+      assert(await didContractThrow(longShortPair.settle(toWei("100"), toWei("100"), { from: sponsor })));
     });
     it("Can not create or redeem post expiry", async function () {
       await timer.setCurrentTime(expirationTimestamp + 1);
-      assert(await didContractThrow(contractForDifference.create(toWei("100"))), { from: sponsor });
-      assert(await didContractThrow(contractForDifference.redeem(toWei("100"))), { from: sponsor });
+      assert(await didContractThrow(longShortPair.create(toWei("100"))), { from: sponsor });
+      assert(await didContractThrow(longShortPair.redeem(toWei("100"))), { from: sponsor });
     });
     it("Can not settle before price returned from OO", async function () {
       // Set time after expiration, add a price to OO but dont pass OO liveness.
       await timer.setCurrentTime(expirationTimestamp + 1);
-      await contractForDifference.expire();
+      await longShortPair.expire();
       await optimisticOracle.proposePrice(
-        contractForDifference.address,
+        longShortPair.address,
         priceFeedIdentifier,
         expirationTimestamp,
         ancillaryData,
         toWei("0.5")
       );
-      assert(await didContractThrow(contractForDifference.settle(toWei("100"), toWei("100"), { from: sponsor })));
+      assert(await didContractThrow(longShortPair.settle(toWei("100"), toWei("100"), { from: sponsor })));
     });
   });
 });

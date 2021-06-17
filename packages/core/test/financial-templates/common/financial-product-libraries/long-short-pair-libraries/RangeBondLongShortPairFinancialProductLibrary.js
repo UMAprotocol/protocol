@@ -2,11 +2,11 @@ const { didContractThrow, ZERO_ADDRESS } = require("@uma/common");
 const { assert } = require("chai");
 
 // Tested Contract
-const RangeBondContractForDifferenceFinancialProductLibrary = artifacts.require(
-  "RangeBondContractForDifferenceFinancialProductLibrary"
+const RangeBondLongShortPairFinancialProductLibrary = artifacts.require(
+  "RangeBondLongShortPairFinancialProductLibrary"
 );
 
-const ContractForDifferenceMock = artifacts.require("ContractForDifferenceMock");
+const LongShortPairMock = artifacts.require("LongShortPairMock");
 
 const { toWei, toBN, BN } = web3.utils;
 const bondNotional = toBN(toWei("100"));
@@ -14,28 +14,28 @@ const lowPriceRange = toBN(toWei("10"));
 const highPriceRange = toBN(toWei("50"));
 const collateralPerPair = toBN(toWei("10"));
 
-contract("RangeBondContractForDifferenceFinancialProductLibrary", function () {
-  let rangeBondCFDFPL;
-  let cfdMock;
+contract("RangeBondLongShortPairFinancialProductLibrary", function () {
+  let rangeBondLSPFPL;
+  let lspMock;
 
   beforeEach(async () => {
-    rangeBondCFDFPL = await RangeBondContractForDifferenceFinancialProductLibrary.new();
-    cfdMock = await ContractForDifferenceMock.new(
+    rangeBondLSPFPL = await RangeBondLongShortPairFinancialProductLibrary.new();
+    lspMock = await LongShortPairMock.new(
       "1000000", // _expirationTimestamp
       collateralPerPair // _collateralPerPair
     );
   });
-  describe("Contract For difference Parameterization", () => {
+  describe("Long Short Pair Parameterization", () => {
     it("Can set and fetch valid values", async () => {
-      await rangeBondCFDFPL.setContractForDifferenceParameters(cfdMock.address, highPriceRange, lowPriceRange);
+      await rangeBondLSPFPL.setLongShortPairParameters(lspMock.address, highPriceRange, lowPriceRange);
 
-      const setParams = await rangeBondCFDFPL.contractForDifferenceParameters(cfdMock.address);
+      const setParams = await rangeBondLSPFPL.longShortPairParameters(lspMock.address);
       assert.equal(setParams.lowPriceRange.toString(), lowPriceRange);
       assert.equal(setParams.highPriceRange.toString(), highPriceRange);
     });
-    it("Can not re-use existing CFD contract address", async () => {
-      await rangeBondCFDFPL.setContractForDifferenceParameters(
-        cfdMock.address,
+    it("Can not re-use existing LSP contract address", async () => {
+      await rangeBondLSPFPL.setLongShortPairParameters(
+        lspMock.address,
 
         highPriceRange,
         lowPriceRange
@@ -44,8 +44,8 @@ contract("RangeBondContractForDifferenceFinancialProductLibrary", function () {
       // Second attempt should revert.
       assert(
         await didContractThrow(
-          rangeBondCFDFPL.setContractForDifferenceParameters(
-            cfdMock.address,
+          rangeBondLSPFPL.setLongShortPairParameters(
+            lspMock.address,
 
             lowPriceRange,
             highPriceRange
@@ -57,8 +57,8 @@ contract("RangeBondContractForDifferenceFinancialProductLibrary", function () {
       // upper bound larger than lower bound by swapping upper and lower
       assert(
         await didContractThrow(
-          rangeBondCFDFPL.setContractForDifferenceParameters(
-            cfdMock.address,
+          rangeBondLSPFPL.setLongShortPairParameters(
+            lspMock.address,
 
             lowPriceRange,
             highPriceRange
@@ -66,24 +66,22 @@ contract("RangeBondContractForDifferenceFinancialProductLibrary", function () {
         )
       );
     });
-    it("Can not set invalid CFD contract address", async () => {
-      // CFD Address must implement the `expirationTimestamp method.
+    it("Can not set invalid LSP contract address", async () => {
+      // LSP Address must implement the `expirationTimestamp method.
       assert(
-        await didContractThrow(
-          rangeBondCFDFPL.setContractForDifferenceParameters(ZERO_ADDRESS, highPriceRange, lowPriceRange)
-        )
+        await didContractThrow(rangeBondLSPFPL.setLongShortPairParameters(ZERO_ADDRESS, highPriceRange, lowPriceRange))
       );
     });
   });
   describe("Compute expiry tokens for collateral", () => {
     beforeEach(async () => {
-      await rangeBondCFDFPL.setContractForDifferenceParameters(cfdMock.address, highPriceRange, lowPriceRange);
+      await rangeBondLSPFPL.setLongShortPairParameters(lspMock.address, highPriceRange, lowPriceRange);
     });
     it("Lower than low price range should return 1 (long side is short put option)", async () => {
       // If the price is lower than the low price range then the max payout per each long token is hit at the full
       // collateralPerPair. i.e each short token is worth 0*collateralPerPair and each long token is worth 1*collateralPerPair.
-      const expiryTokensForCollateral = await rangeBondCFDFPL.computeExpiryTokensForCollateral.call(toWei("9"), {
-        from: cfdMock.address,
+      const expiryTokensForCollateral = await rangeBondLSPFPL.computeExpiryTokensForCollateral.call(toWei("9"), {
+        from: lspMock.address,
       });
       assert.equal(expiryTokensForCollateral.toString(), toWei("1"));
     });
@@ -91,8 +89,8 @@ contract("RangeBondContractForDifferenceFinancialProductLibrary", function () {
       // If the price is larger than the high price range then the long tokens are equal fixed amount of notional/highPriceRange
       // Considering the long token to compute the expiryPercentLong (notional/highPriceRange)/collateralPerPair=(100/50)/10=0.2.
       // i.e each short token is worth 0.8* collateralPerPair = 8 tokens and each long token is worth 0.2*collateralPerPair=2.
-      const expiryTokensForCollateral = await rangeBondCFDFPL.computeExpiryTokensForCollateral.call(toWei("60"), {
-        from: cfdMock.address,
+      const expiryTokensForCollateral = await rangeBondLSPFPL.computeExpiryTokensForCollateral.call(toWei("60"), {
+        from: lspMock.address,
       });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0.2"));
     });
@@ -101,15 +99,15 @@ contract("RangeBondContractForDifferenceFinancialProductLibrary", function () {
       // long token is worth the bond notional of 100. At a price of 20 we are between the bounds. Each long should be worth
       // 100 so there should be 100/20=5 UMA per long token. As each collateralPerPair is worth 10, expiryPercentLong should
       // be 10/5=0.5, thereby allocating half to the long and half to the short.
-      const expiryTokensForCollateral1 = await rangeBondCFDFPL.computeExpiryTokensForCollateral.call(toWei("20"), {
-        from: cfdMock.address,
+      const expiryTokensForCollateral1 = await rangeBondLSPFPL.computeExpiryTokensForCollateral.call(toWei("20"), {
+        from: lspMock.address,
       });
       assert.equal(expiryTokensForCollateral1.toString(), toWei("0.5"));
 
       // Equally, at a price of 40 each long should still be worth 100 so there should be 100/40=2.5 UMA per long. As
       // each collateralPerPair=10 expiryPercentLong should be 10/2.5=0.25, thereby allocating 25% to long and the remaining to short.
-      const expiryTokensForCollateral2 = await rangeBondCFDFPL.computeExpiryTokensForCollateral.call(toWei("20"), {
-        from: cfdMock.address,
+      const expiryTokensForCollateral2 = await rangeBondLSPFPL.computeExpiryTokensForCollateral.call(toWei("20"), {
+        from: lspMock.address,
       });
       assert.equal(expiryTokensForCollateral2.toString(), toWei("0.5"));
     });
@@ -125,8 +123,8 @@ contract("RangeBondContractForDifferenceFinancialProductLibrary", function () {
       // form of the range bond equation where as the library uses an algebraic simplification of this equation. This
       // test validates the correct mapping between these two forms.
       for (const price of [toWei("5.555"), toWei("11"), toWei("33"), toWei("55"), toWei("66"), toWei("111")]) {
-        const expiryTokensForCollateral = await rangeBondCFDFPL.computeExpiryTokensForCollateral.call(price, {
-          from: cfdMock.address,
+        const expiryTokensForCollateral = await rangeBondLSPFPL.computeExpiryTokensForCollateral.call(price, {
+          from: lspMock.address,
         });
         //
         const term1 = BN.min(
