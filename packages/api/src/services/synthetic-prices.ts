@@ -13,7 +13,7 @@ type Dependencies = Pick<AppState, "web3" | "emps" | "synthPrices">;
 
 export default function (config: Config, appState: Dependencies) {
   const { web3, emps, synthPrices } = appState;
-  const getSynthPrices = SynthPrices(config, { web3 });
+  const getSynthPrices = SynthPrices(config, web3);
 
   async function updatePrice(empAddress: string) {
     const result: PriceSample = await getSynthPrices.getCurrentPrice(empAddress);

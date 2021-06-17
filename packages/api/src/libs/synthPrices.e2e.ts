@@ -4,7 +4,7 @@ import SynthPrices from "./synthPrices";
 import Web3 from "web3";
 
 // this is an integration test, dont run in ci
-describe.skip("synthPrices", function () {
+describe("synthPrices", function () {
   let web3: Web3, synthPrices: ReturnType<typeof SynthPrices>;
   const env = process.env;
   before(function () {
@@ -15,7 +15,7 @@ describe.skip("synthPrices", function () {
       tradermadeApiKey: env.tradermadeApiKey,
       quandlApiKey: env.quandlApiKey,
     };
-    synthPrices = SynthPrices(config, { web3 });
+    synthPrices = SynthPrices(config, web3);
   });
   it("getCurrentPrice", async function () {
     const empAddress = "0xeE44aE0cff6E9E62F26add74784E573bD671F144";

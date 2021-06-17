@@ -10,13 +10,11 @@ type Config = {
   defipulseApiKey?: string;
   priceFeedDecimals?: number;
 };
-type Dependencies = {
-  web3: Web3;
-};
+
 // cannot get type of Pricefeed, would be great if we could
 type PriceFeed = any;
 
-export default (config: Config = {}, { web3 }: Dependencies) => {
+export default (config: Config = {}, web3: Web3) => {
   const logger = winston.createLogger({
     transports: [
       new winston.transports.Console({
