@@ -104,10 +104,15 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       if (addresses == null || addresses.length == 0) return queries.totalTvl(currency);
       return queries.sumTvl(addresses, currency);
     },
-    async getEmpStatsBetween(address: string, start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") {
+    async getEmpStatsBetween(empAddress: string, start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") {
       assert(stats[currency], "Invalid currency type: " + currency);
-      assert(stats[currency].history[address], "Invalid emp address: " + address);
-      return stats[currency].history[address].between(start, end);
+      assert(stats[currency].history[empAddress], "Invalid emp address: " + empAddress);
+      return stats[currency].history[empAddress].between(start, end);
+    },
+    async sliceHistoricalEmpStats(empAddress: string, start = 0, length = 1, currency: CurrencySymbol = "usd") {
+      assert(stats[currency], "Invalid currency type: " + currency);
+      assert(stats[currency].history[empAddress], "Invalid emp address: " + empAddress);
+      return stats[currency].history[empAddress].slice(start, length);
     },
   };
 

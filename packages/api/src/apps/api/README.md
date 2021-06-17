@@ -149,3 +149,7 @@ Returns tvl of all supplied addresses in USD 18 decimals. If no addresses suppli
 ### getEmpStatsBetween(address: string, start = 0, end: number = Math.floor(Date.now() / 1000), currency: CurrencySymbol = "usd") => StatData[]
 
 Returns all stats between timestamps (in seconds) at the highest resolution for a particular emp address.
+
+### sliceHistoricalEmpStats(empAddress: string, start = 0, length = 1, currency:CurrencySymbol='usd') => StatData[]
+
+Returns all stats for emp starting at timestamp in seconds and a length number of samples after that ascending.

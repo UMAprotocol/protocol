@@ -70,6 +70,15 @@ describe("utils", function () {
     const result = utils.calcTvl(price, emp).toString();
     assert.equal(result, parseUnits("25").toString());
   });
+  it("calculateTvm", function () {
+    const emp = {
+      totalTokensOutstanding: parseUnits("100", 8).toString(),
+      tokenDecimals: 8,
+    };
+    const price = parseUnits("0.25").toString();
+    const result = utils.calcTvm(price, emp).toString();
+    assert.equal(result, parseUnits("25").toString());
+  });
   it("calcSyntheticPrice", function () {
     // stablecoin emp, minted 100k usd with eth collateral
     const collateralPrice = parseUnits("2000");
