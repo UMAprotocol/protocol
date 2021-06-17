@@ -11,7 +11,7 @@ type Config = undefined;
 
 export function Handlers(config: Config, appState: Dependencies): Actions {
   const queries = Queries(appState);
-  const { registeredEmps, erc20s, collateralAddresses, syntheticAddresses, prices, synthPrices,stats  } = appState;
+  const { registeredEmps, erc20s, collateralAddresses, syntheticAddresses, prices, synthPrices, stats } = appState;
 
   const actions: Actions = {
     echo(...args: Json[]) {

@@ -21,10 +21,14 @@ export default (config: Config, appState: Dependencies) => {
     const fullState = await queries.getFullEmpState(emp);
 
     assert(uma.utils.exists(fullState.collateralCurrency), "Emp requires collateralCurrency: " + address);
+
+    // PriceSample is type [ timestamp:number, price:string]
     const priceSample: PriceSample = prices[currency].latest[fullState.collateralCurrency];
     assert(uma.utils.exists(priceSample), "No latest price found for emp: " + address);
+
     const price = priceSample[1];
     assert(uma.utils.exists(price), "Invalid latest price found on emp: " + address);
+
     const tvl = calcTvl(price, fullState).toString();
     return stats[currency].latest.upsert(address, { tvl });
   }
