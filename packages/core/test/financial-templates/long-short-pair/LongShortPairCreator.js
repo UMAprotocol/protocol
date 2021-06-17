@@ -148,7 +148,7 @@ contract("LongShortPairCreator", function (accounts) {
       ...Object.values({ ...constructorParams, prepaidProposerReward: customPrepaidProposerReward })
     );
 
-    const lspAddress = (await longShortPairCreator.getPastEvents("CreatedContractForDifference"))[0].returnValues
+    const lspAddress = (await longShortPairCreator.getPastEvents("CreatedLongShortPair"))[0].returnValues
       .contractForDifference;
 
     assert.equal((await collateralToken.balanceOf(lspAddress)).toString(), customPrepaidProposerReward);
