@@ -2,23 +2,23 @@ const { didContractThrow, ZERO_ADDRESS } = require("@uma/common");
 const { assert } = require("chai");
 
 // Tested Contract
-const CoveredCallContractForDifferenceFinancialProductLibrary = artifacts.require(
-  "CoveredCallContractForDifferenceFinancialProductLibrary"
+const CoveredCallLongShortPairFinancialProductLibrary = artifacts.require(
+  "CoveredCallLongShortPairFinancialProductLibrary"
 );
 
-// helper contracts. To test CFD libraries we simply need a financial contract with an `expirationTimestamp` method.
+// helper contracts. To test LSP libraries we simply need a financial contract with an `expirationTimestamp` method.
 
 const ExpiringContractMock = artifacts.require("ExpiringMultiPartyMock");
 
 const { toWei, toBN, utf8ToHex } = web3.utils;
 const strikePrice = toWei("400");
 
-contract("CoveredCallContractForDifferenceFinancialProductLibrary", function () {
-  let callOptionCFDFPL;
+contract("CoveredCallLongShortPairFinancialProductLibrary", function () {
+  let callOptionLSPFPL;
   let expiringContractMock;
 
   beforeEach(async () => {
-    callOptionCFDFPL = await CoveredCallContractForDifferenceFinancialProductLibrary.new();
+    callOptionLSPFPL = await CoveredCallLongShortPairFinancialProductLibrary.new();
     expiringContractMock = await ExpiringContractMock.new(
       ZERO_ADDRESS, // _financialProductLibraryAddress
       "1000000", // _expirationTimestamp
@@ -27,47 +27,45 @@ contract("CoveredCallContractForDifferenceFinancialProductLibrary", function () 
       ZERO_ADDRESS // _timerAddress
     );
   });
-  describe("Contract For difference Parameterization", () => {
+  describe("Long Short Pair Parameterization", () => {
     it("Can set and fetch valid strikes", async () => {
-      await callOptionCFDFPL.setContractForDifferenceParameters(expiringContractMock.address, strikePrice);
+      await callOptionLSPFPL.setLongShortPairParameters(expiringContractMock.address, strikePrice);
 
-      const setStrike = await callOptionCFDFPL.contractForDifferenceStrikePrices(expiringContractMock.address);
+      const setStrike = await callOptionLSPFPL.longShortPairStrikePrices(expiringContractMock.address);
       assert.equal(setStrike.toString(), strikePrice);
     });
-    it("Can not re-use existing CFD contract address", async () => {
-      await callOptionCFDFPL.setContractForDifferenceParameters(expiringContractMock.address, strikePrice);
+    it("Can not re-use existing LSP contract address", async () => {
+      await callOptionLSPFPL.setLongShortPairParameters(expiringContractMock.address, strikePrice);
 
       // Second attempt should revert.
       assert(
-        await didContractThrow(
-          callOptionCFDFPL.setContractForDifferenceParameters(expiringContractMock.address, strikePrice)
-        )
+        await didContractThrow(callOptionLSPFPL.setLongShortPairParameters(expiringContractMock.address, strikePrice))
       );
     });
-    it("Can not set invalid CFD contract address", async () => {
-      // CFD Address must implement the `expirationTimestamp method.
-      assert(await didContractThrow(callOptionCFDFPL.setContractForDifferenceParameters(ZERO_ADDRESS, strikePrice)));
+    it("Can not set invalid LSP contract address", async () => {
+      // LSP Address must implement the `expirationTimestamp method.
+      assert(await didContractThrow(callOptionLSPFPL.setLongShortPairParameters(ZERO_ADDRESS, strikePrice)));
     });
   });
   describe("Compute expiry tokens for collateral", () => {
     beforeEach(async () => {
-      await callOptionCFDFPL.setContractForDifferenceParameters(expiringContractMock.address, strikePrice);
+      await callOptionLSPFPL.setLongShortPairParameters(expiringContractMock.address, strikePrice);
     });
     it("Lower than strike should return 0", async () => {
-      const expiryTokensForCollateral = await callOptionCFDFPL.computeExpiryTokensForCollateral.call(toWei("300"), {
+      const expiryTokensForCollateral = await callOptionLSPFPL.computeExpiryTokensForCollateral.call(toWei("300"), {
         from: expiringContractMock.address,
       });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0"));
     });
     it("Higher than strike correct value", async () => {
-      const expiryTokensForCollateral = await callOptionCFDFPL.computeExpiryTokensForCollateral.call(toWei("500"), {
+      const expiryTokensForCollateral = await callOptionLSPFPL.computeExpiryTokensForCollateral.call(toWei("500"), {
         from: expiringContractMock.address,
       });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0.2"));
     });
     it("Arbitrary expiry price above strike should return correctly", async () => {
       for (const price of [toWei("500"), toWei("600"), toWei("1000"), toWei("1500"), toWei("2000")]) {
-        const expiryTokensForCollateral = await callOptionCFDFPL.computeExpiryTokensForCollateral.call(price, {
+        const expiryTokensForCollateral = await callOptionLSPFPL.computeExpiryTokensForCollateral.call(price, {
           from: expiringContractMock.address,
         });
         const expectedPrice = toBN(price)
@@ -79,7 +77,7 @@ contract("CoveredCallContractForDifferenceFinancialProductLibrary", function () 
     });
     it("Should never return a value greater than 1", async () => {
       // create a massive expiry price. 1e18*1e18. Under all conditions should return less than 1.
-      const expiryTokensForCollateral = await callOptionCFDFPL.computeExpiryTokensForCollateral.call(
+      const expiryTokensForCollateral = await callOptionLSPFPL.computeExpiryTokensForCollateral.call(
         toWei(toWei("1")),
         { from: expiringContractMock.address }
       );

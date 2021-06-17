@@ -10,16 +10,16 @@ import "../../common/implementation/AddressWhitelist.sol";
 import "../../common/implementation/Lockable.sol";
 import "../common/TokenFactory.sol";
 import "../common/SyntheticToken.sol";
-import "./ContractForDifference.sol";
-import "../common/financial-product-libraries/contract-for-difference-libraries/ContractForDifferenceFinancialProductLibrary.sol";
+import "./LongShortPair.sol";
+import "../common/financial-product-libraries/long-short-pair-libraries/LongShortPairFinancialProductLibrary.sol";
 
 /**
- * @title Contract For Difference Contract Creator.
- * @notice Factory contract to create and register new instances of contract for difference contracts.
- * Responsible for constraining the parameters used to construct a new CFD. These constraints can evolve over time and
+ * @title Long Short Pair Contract Creator.
+ * @notice Factory contract to create and register new instances of long short pair contracts.
+ * Responsible for constraining the parameters used to construct a new LSP. These constraints can evolve over time and
  * are initially constrained to conservative values in this first iteration.
  */
-contract ContractForDifferenceCreator is Testable, Lockable {
+contract LongShortPairCreator is Testable, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
 
     // Address of TokenFactory used to create a new synthetic token.
@@ -27,10 +27,10 @@ contract ContractForDifferenceCreator is Testable, Lockable {
 
     FinderInterface public finder;
 
-    event CreatedContractForDifference(address indexed contractForDifference, address indexed deployerAddress);
+    event CreatedLongShortPair(address indexed LongShortPair, address indexed deployerAddress);
 
     /**
-     * @notice Constructs the ContractForDifferenceCreator contract.
+     * @notice Constructs the LongShortPairCreator contract.
      * @param _finder UMA protocol Finder used to discover other protocol contracts.
      * @param _tokenFactory ERC20 token factory used to deploy synthetic token instances.
      * @param _timer Contract that stores the current time in a testing environment.
@@ -49,24 +49,24 @@ contract ContractForDifferenceCreator is Testable, Lockable {
      * @param collateralPerPair how many units of collateral are required to mint one pair of synthetic tokens.
      * @param priceIdentifier registered in the DVM for the synthetic.
      * @param syntheticName Name of the synthetic tokens to be created. The long tokens will have "Long Token" appended
-     *     to the end and the short token will "Short Token" appended to the end to distinguish within the CFD's tokens.
+     *     to the end and the short token will "Short Token" appended to the end to distinguish within the LSP's tokens.
      * @param syntheticSymbol Symbol of the synthetic tokens to be created. The long tokens will have "l" appended
-     *     to the start and the short token will "s" appended to the start to distinguish within the CFD's tokens.
-     * @param collateralToken ERC20 token used as as collateral in the CFD.
+     *     to the start and the short token will "s" appended to the start to distinguish within the LSP's tokens.
+     * @param collateralToken ERC20 token used as as collateral in the LSP.
      * @param financialProductLibrary Contract providing settlement payout logic.
      * @param customAncillaryData Custom ancillary data to be passed along with the price request. If not needed, this
      *                             should be left as a 0-length bytes array.
-     * @notice The created CFD is NOT registered within the registry as the CFD contract uses the DVM.
-     * @notice The CFD constructor does a number of validations on input params. These are not repeated here.
+     * @notice The created LSP is NOT registered within the registry as the LSP contract uses the DVM.
+     * @notice The LSP constructor does a number of validations on input params. These are not repeated here.
      */
-    function createContractForDifference(
+    function createLongShortPair(
         uint64 expirationTimestamp,
         uint256 collateralPerPair,
         bytes32 priceIdentifier,
         string memory syntheticName,
         string memory syntheticSymbol,
         IERC20Standard collateralToken,
-        ContractForDifferenceFinancialProductLibrary financialProductLibrary,
+        LongShortPairFinancialProductLibrary financialProductLibrary,
         bytes memory customAncillaryData
     ) public nonReentrant() returns (address) {
         // Create a new synthetic token using the params.
@@ -88,8 +88,8 @@ contract ContractForDifferenceCreator is Testable, Lockable {
                 string(abi.encodePacked("s", syntheticSymbol)),
                 collateralDecimals
             );
-        ContractForDifference cfd =
-            new ContractForDifference(
+        LongShortPair lsp =
+            new LongShortPair(
                 expirationTimestamp,
                 collateralPerPair,
                 priceIdentifier,
@@ -102,20 +102,20 @@ contract ContractForDifferenceCreator is Testable, Lockable {
                 timerAddress
             );
 
-        address cfdAddress = address(cfd);
+        address lspAddress = address(lsp);
 
-        // Give permissions to new cfd contract and then hand over ownership.
-        longToken.addMinter(cfdAddress);
-        longToken.addBurner(cfdAddress);
-        longToken.resetOwner(cfdAddress);
+        // Give permissions to new lsp contract and then hand over ownership.
+        longToken.addMinter(lspAddress);
+        longToken.addBurner(lspAddress);
+        longToken.resetOwner(lspAddress);
 
-        shortToken.addMinter(cfdAddress);
-        shortToken.addBurner(cfdAddress);
-        shortToken.resetOwner(cfdAddress);
+        shortToken.addMinter(lspAddress);
+        shortToken.addBurner(lspAddress);
+        shortToken.resetOwner(lspAddress);
 
-        emit CreatedContractForDifference(cfdAddress, msg.sender);
+        emit CreatedLongShortPair(lspAddress, msg.sender);
 
-        return cfdAddress;
+        return lspAddress;
     }
 
     /****************************************
