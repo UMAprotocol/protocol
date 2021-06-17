@@ -144,7 +144,7 @@ contract("LongShortPairCreator", function (accounts) {
     const customPrepaidProposerReward = toWei("100");
     await collateralToken.mint(deployer, customPrepaidProposerReward);
     await collateralToken.approve(longShortPairCreator.address, customPrepaidProposerReward);
-    await longShortPairCreator.createContractForDifference(
+    await longShortPairCreator.createLongShortPair(
       ...Object.values({ ...constructorParams, prepaidProposerReward: customPrepaidProposerReward })
     );
 

@@ -282,7 +282,7 @@ contract LongShortPair is Testable, Lockable {
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
 
         // Use the prepaidProposerReward as the proposer reward.
-        collateralToken.safeApprove(address(optimisticOracle), prepaidProposerReward);
+        if (prepaidProposerReward > 0) collateralToken.safeApprove(address(optimisticOracle), prepaidProposerReward);
         optimisticOracle.requestPrice(
             priceIdentifier,
             expirationTimestamp,
