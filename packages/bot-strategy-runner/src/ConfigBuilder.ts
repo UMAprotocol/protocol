@@ -123,10 +123,10 @@ function buildConfigForBotType(
   const botConfigs: any = [];
   botTypeWhitelist.forEach((contractAddress: string) => {
     const addressConfig = lodash.merge(
+      {},
       config.commonConfig,
       config[settingsKey].commonConfig,
-      config[settingsKey].addressConfigOverride ? config[settingsKey].addressConfigOverride[contractAddress] : null,
-      config.addressConfigOverride ? config.addressConfigOverride[contractAddress] : null
+      config[settingsKey].addressConfigOverride ? config[settingsKey].addressConfigOverride[contractAddress] : null
     );
 
     const commonConfig = {
@@ -142,7 +142,7 @@ function buildConfigForBotType(
       endingBlock: addressConfig.endingBlock ? addressConfig.endingBlock : process.env.ENDING_BLOCK_NUMBER,
     };
 
-    botConfigs.push({ ...commonConfig, ...addressConfig });
+    botConfigs.push(lodash.merge({}, commonConfig, addressConfig));
   });
   return botConfigs;
 }
