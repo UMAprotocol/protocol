@@ -1,6 +1,5 @@
 const { getNodeUrl, mnemonic } = require("./TruffleConfig");
 const path = require("path");
-const { extendConfig } = require("hardhat/config");
 
 function getHardhatConfig(configOverrides, workingDir = "./") {
   // Hard hat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function

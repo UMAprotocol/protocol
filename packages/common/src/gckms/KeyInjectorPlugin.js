@@ -3,7 +3,6 @@ const { Storage } = require("@google-cloud/storage");
 const { extendConfig } = require("hardhat/config");
 const { HardhatPluginError } = require("hardhat/plugins");
 const { getGckmsConfig } = require("./GckmsConfig");
-const deasync = require("deasync");
 
 const { GCKMS_KEYS, MNEMONIC } = process.env;
 
@@ -21,12 +20,12 @@ async function retrieveGckmsKeys(gckmsConfigs) {
       const client = new kms.KeyManagementServiceClient();
       const name = client.cryptoKeyPath(config.projectId, config.locationId, config.keyRingId, config.cryptoKeyId);
       const [result] = await client.decrypt({ name, ciphertext });
-      return Buffer.from(result.plaintext, "base64").toString().trim();
+      return "0x" + Buffer.from(result.plaintext, "base64").toString().trim();
     })
   );
 }
 
-extendConfig((config, userConfig) => {
+extendConfig((config) => {
   if (GCKMS_KEYS && MNEMONIC) {
     throw new HardhatPluginError("Key Provider", "Cannot provide both GCKMS_KEYS and MNEMONIC");
   }
@@ -34,6 +33,18 @@ extendConfig((config, userConfig) => {
   if (GCKMS_KEYS) {
     const keyNameArray = GCKMS_KEYS.split(",");
     const gckmsConfigs = getGckmsConfig(keyNameArray);
-    retrieveGckmsKeys(gckmsConfigs).then(keys => (config.networks.localhost.accounts = keys));
+    retrieveGckmsKeys(gckmsConfigs).then((keys) => {
+      config.networks.values().forEach((network) => {
+        network.accounts = keys;
+      });
+    });
+  }
+
+  if (MNEMONIC) {
+    config.networks.values().forEach((network) => {
+      network.accounts = {
+        mnemonic: MNEMONIC,
+      };
+    });
   }
 });
