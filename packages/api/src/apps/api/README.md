@@ -11,6 +11,12 @@ CUSTOM_NODE_URL=wss://mainnet.infura.io/ws/v3/${your project key}
 EXPRESS_PORT=8282
 UPDATE_BLOCKS=1 // defaults to 1: represents the number of block elapsed before rechecking contract states
 OLDEST_BLOCK_MS=1 // defaults to 864,000,000 ( 10 days): represents the max age a block will stay cached
+
+# these configure synthetic price feed. These price feeds may require paid api keys.
+cryptowatchApiKey=
+tradermadeApiKey=
+quandlApiKey=
+defipulseApiKey=
 ```
 
 ## Starting
@@ -96,3 +102,13 @@ Get name, decimals of an erc20 by address.
 ### getAllErc20Info() => Erc20Data[]
 
 List all known erc20s, collateral or synthetic and all known information about them
+
+### allLatestSynthPrices => {[empAddress:string]:[timestamp:number,price:string]}
+
+Returns all known latest synthetic prices based on emp address. This differs from collateral price requests, as
+that call uses the collateral address, not the emp address.
+
+### latestSynthPriceByAddress(empAddress:string,currency:'usd') => [timestamp:number,price:string]}
+
+Returns latest synthetic price for an emp address. This differs from collateral price requests, as
+that call uses the collateral address, not the emp address.

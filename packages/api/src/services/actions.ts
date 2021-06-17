@@ -11,7 +11,7 @@ type Config = undefined;
 
 export function Handlers(config: Config, appState: Dependencies): Actions {
   const queries = Queries(appState);
-  const { registeredEmps, erc20s, collateralAddresses, syntheticAddresses, prices } = appState;
+  const { registeredEmps, erc20s, collateralAddresses, syntheticAddresses, prices, synthPrices } = appState;
 
   const actions: Actions = {
     echo(...args: Json[]) {
@@ -52,6 +52,16 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       const priceSample = prices[currency].latest[address];
       assert(exists(priceSample), "No price for address: " + address);
       return priceSample;
+    },
+    // synthetic prices are determined by bot pricefeeds
+    async latestSynthPriceByAddress(address: string) {
+      assert(address, "requires an erc20 token address");
+      const priceSample = synthPrices.latest[address];
+      assert(exists(priceSample), "No synthetic price for address: " + address);
+      return priceSample;
+    },
+    async allLatestSynthPrices() {
+      return synthPrices.latest;
     },
     async historicalPricesByAddress(
       address: string,

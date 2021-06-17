@@ -5,6 +5,7 @@ export type Provider = ethers.providers.Provider;
 export type ProcessEnv = {
   [key: string]: string | undefined;
 };
+import type Web3 from "web3";
 export type Obj = { [key: string]: any };
 // serializable json type
 export type Json = null | undefined | boolean | number | string | Json[] | { [prop: string]: Json };
@@ -35,9 +36,15 @@ export type AppState = {
       };
     };
   };
+  synthPrices: {
+    latest: {
+      [empAddress: string]: PriceSample;
+    };
+  };
   erc20s: uma.tables.erc20s.JsMap;
   registeredEmps: Set<string>;
   provider: Provider;
+  web3: Web3;
   lastBlock: number;
   lastBlockUpdate: number;
   collateralAddresses: Set<string>;
