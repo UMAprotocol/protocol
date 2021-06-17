@@ -19,12 +19,12 @@ contract BinaryOptionLongShortPairFinancialProductLibrary is LongShortPairFinanc
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint256;
 
-    struct binarylongShortPairParameters {
+    struct BinaryLongShortPairParameters {
         bool isSet;
         int256 strikePrice;
     }
 
-    mapping(address => binarylongShortPairParameters) public longShortPairParameters;
+    mapping(address => BinaryLongShortPairParameters) public longShortPairParameters;
 
     /**
      * @notice Enables any address to set the strike price for an associated binary option.
@@ -35,11 +35,11 @@ contract BinaryOptionLongShortPairFinancialProductLibrary is LongShortPairFinanc
      * d) For safety, a strike price should be set before depositing any synthetic tokens in a liquidity pool.
      * e) financialProduct must expose an expirationTimestamp method to validate it is correctly deployed.
      */
-    function setlongShortPairParameters(address LongShortPair, int256 strikePrice) public nonReentrant() {
+    function setLongShortPairParameters(address LongShortPair, int256 strikePrice) public nonReentrant() {
         require(ExpiringContractInterface(LongShortPair).expirationTimestamp() != 0, "Invalid LSP address");
         require(!longShortPairParameters[LongShortPair].isSet, "Parameters already set");
 
-        longShortPairParameters[LongShortPair] = binarylongShortPairParameters({
+        longShortPairParameters[LongShortPair] = BinaryLongShortPairParameters({
             isSet: true,
             strikePrice: strikePrice
         });
@@ -52,7 +52,7 @@ contract BinaryOptionLongShortPairFinancialProductLibrary is LongShortPairFinanc
      * @return expiryPercentLong to indicate how much collateral should be sent between long and short tokens.
      */
     function computeExpiryTokensForCollateral(int256 expiryPrice) public view override returns (uint256) {
-        binarylongShortPairParameters memory params = longShortPairParameters[msg.sender];
+        BinaryLongShortPairParameters memory params = longShortPairParameters[msg.sender];
         require(params.isSet, "Params not set for calling LSP");
 
         if (expiryPrice >= params.strikePrice) return FixedPoint.fromUnscaledUint(1).rawValue;

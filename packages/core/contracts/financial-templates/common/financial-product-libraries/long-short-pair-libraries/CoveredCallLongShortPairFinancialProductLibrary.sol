@@ -34,7 +34,7 @@ contract CoveredCallLongShortPairFinancialProductLibrary is LongShortPairFinanci
      * d) For safety, a strike price should be set before depositing any synthetic tokens in a liquidity pool.
      * e) financialProduct must expose an expirationTimestamp method to validate it is correctly deployed.
      */
-    function setlongShortPairParameters(address LongShortPair, uint256 strikePrice) public nonReentrant() {
+    function setLongShortPairParameters(address LongShortPair, uint256 strikePrice) public nonReentrant() {
         require(ExpiringContractInterface(LongShortPair).expirationTimestamp() != 0, "Invalid LSP address");
         require(longShortPairStrikePrices[LongShortPair] == 0, "Parameters already set");
 

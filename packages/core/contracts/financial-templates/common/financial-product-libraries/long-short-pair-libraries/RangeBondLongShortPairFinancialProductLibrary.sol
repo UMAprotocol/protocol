@@ -33,12 +33,12 @@ contract RangeBondLongShortPairFinancialProductLibrary is LongShortPairFinancial
     using FixedPoint for FixedPoint.Unsigned;
     using SignedSafeMath for int256;
 
-    struct RangeBondlongShortPairParameters {
+    struct RangeBondLongShortPairParameters {
         uint256 highPriceRange;
         uint256 lowPriceRange;
     }
 
-    mapping(address => RangeBondlongShortPairParameters) public longShortPairParameters;
+    mapping(address => RangeBondLongShortPairParameters) public longShortPairParameters;
 
     /**
      * @notice Enables any address to set the parameters price for an associated financial product.
@@ -53,7 +53,7 @@ contract RangeBondLongShortPairFinancialProductLibrary is LongShortPairFinancial
      * e) For safety, a parameters should be set before depositing any synthetic tokens in a liquidity pool.
      * f) financialProduct must expose an expirationTimestamp method to validate it is correctly deployed.
      */
-    function setlongShortPairParameters(
+    function setLongShortPairParameters(
         address LongShortPair,
         uint256 highPriceRange,
         uint256 lowPriceRange
@@ -62,9 +62,9 @@ contract RangeBondLongShortPairFinancialProductLibrary is LongShortPairFinancial
 
         require(highPriceRange > lowPriceRange, "Invalid bounds");
 
-        RangeBondlongShortPairParameters memory params = longShortPairParameters[LongShortPair];
+        RangeBondLongShortPairParameters memory params = longShortPairParameters[LongShortPair];
 
-        longShortPairParameters[LongShortPair] = RangeBondlongShortPairParameters({
+        longShortPairParameters[LongShortPair] = RangeBondLongShortPairParameters({
             highPriceRange: highPriceRange,
             lowPriceRange: lowPriceRange
         });
@@ -77,7 +77,7 @@ contract RangeBondLongShortPairFinancialProductLibrary is LongShortPairFinancial
      * @return expiryPercentLong to indicate how much collateral should be sent between long and short tokens.
      */
     function computeExpiryTokensForCollateral(int256 expiryPrice) public view override returns (uint256) {
-        RangeBondlongShortPairParameters memory params = longShortPairParameters[msg.sender];
+        RangeBondLongShortPairParameters memory params = longShortPairParameters[msg.sender];
 
         // expiryPercentLong=[min(max(1/R2,1/P),1/R1)]/(1/R1)
         // This function's method must return a value between 0 and 1 to be used in conjunction with the LSP

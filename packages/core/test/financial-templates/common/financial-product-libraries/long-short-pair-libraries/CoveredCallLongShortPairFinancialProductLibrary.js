@@ -29,27 +29,27 @@ contract("CoveredCallLongShortPairFinancialProductLibrary", function () {
   });
   describe("Long Short Pair Parameterization", () => {
     it("Can set and fetch valid strikes", async () => {
-      await callOptionLSPFPL.setlongShortPairParameters(expiringContractMock.address, strikePrice);
+      await callOptionLSPFPL.setLongShortPairParameters(expiringContractMock.address, strikePrice);
 
       const setStrike = await callOptionLSPFPL.longShortPairStrikePrices(expiringContractMock.address);
       assert.equal(setStrike.toString(), strikePrice);
     });
     it("Can not re-use existing LSP contract address", async () => {
-      await callOptionLSPFPL.setlongShortPairParameters(expiringContractMock.address, strikePrice);
+      await callOptionLSPFPL.setLongShortPairParameters(expiringContractMock.address, strikePrice);
 
       // Second attempt should revert.
       assert(
-        await didContractThrow(callOptionLSPFPL.setlongShortPairParameters(expiringContractMock.address, strikePrice))
+        await didContractThrow(callOptionLSPFPL.setLongShortPairParameters(expiringContractMock.address, strikePrice))
       );
     });
     it("Can not set invalid LSP contract address", async () => {
       // LSP Address must implement the `expirationTimestamp method.
-      assert(await didContractThrow(callOptionLSPFPL.setlongShortPairParameters(ZERO_ADDRESS, strikePrice)));
+      assert(await didContractThrow(callOptionLSPFPL.setLongShortPairParameters(ZERO_ADDRESS, strikePrice)));
     });
   });
   describe("Compute expiry tokens for collateral", () => {
     beforeEach(async () => {
-      await callOptionLSPFPL.setlongShortPairParameters(expiringContractMock.address, strikePrice);
+      await callOptionLSPFPL.setLongShortPairParameters(expiringContractMock.address, strikePrice);
     });
     it("Lower than strike should return 0", async () => {
       const expiryTokensForCollateral = await callOptionLSPFPL.computeExpiryTokensForCollateral.call(toWei("300"), {
