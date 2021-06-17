@@ -12,6 +12,7 @@ import "../common/TokenFactory.sol";
 import "../common/SyntheticToken.sol";
 import "./LongShortPair.sol";
 import "../common/financial-product-libraries/long-short-pair-libraries/LongShortPairFinancialProductLibrary.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title Long Short Pair Contract Creator.
@@ -21,13 +22,14 @@ import "../common/financial-product-libraries/long-short-pair-libraries/LongShor
  */
 contract LongShortPairCreator is Testable, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
+    using SafeERC20 for IERC20Standard;
 
     // Address of TokenFactory used to create a new synthetic token.
     TokenFactory public tokenFactory;
 
     FinderInterface public finder;
 
-    event CreatedLongShortPair(address indexed LongShortPair, address indexed deployerAddress);
+    event CreatedLongShortPair(address indexed longShortPair, address indexed deployerAddress);
 
     /**
      * @notice Constructs the LongShortPairCreator contract.
@@ -56,6 +58,8 @@ contract LongShortPairCreator is Testable, Lockable {
      * @param financialProductLibrary Contract providing settlement payout logic.
      * @param customAncillaryData Custom ancillary data to be passed along with the price request. If not needed, this
      *                             should be left as a 0-length bytes array.
+     * @param prepaidProposerReward Proposal reward to be forwarded to the created contract to be used to incentivize
+                                    price proposals.
      * @notice The created LSP is NOT registered within the registry as the LSP contract uses the DVM.
      * @notice The LSP constructor does a number of validations on input params. These are not repeated here.
      */
@@ -67,7 +71,8 @@ contract LongShortPairCreator is Testable, Lockable {
         string memory syntheticSymbol,
         IERC20Standard collateralToken,
         LongShortPairFinancialProductLibrary financialProductLibrary,
-        bytes memory customAncillaryData
+        bytes memory customAncillaryData,
+        uint256 prepaidProposerReward
     ) public nonReentrant() returns (address) {
         // Create a new synthetic token using the params.
         require(bytes(syntheticName).length != 0, "Missing synthetic name");
@@ -99,8 +104,13 @@ contract LongShortPairCreator is Testable, Lockable {
                 finder,
                 financialProductLibrary,
                 customAncillaryData,
+                prepaidProposerReward,
                 timerAddress
             );
+
+        // Move prepaid proposer reward from the deployer to the newly deployed contract.
+        if (prepaidProposerReward > 0)
+            collateralToken.safeTransferFrom(msg.sender, address(lsp), prepaidProposerReward);
 
         address lspAddress = address(lsp);
 
