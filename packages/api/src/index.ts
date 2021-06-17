@@ -1,5 +1,8 @@
 import uma from "@uma/sdk";
 import { ethers } from "ethers";
+import type { empStats } from "./tables";
+
+export type Currencies = "usd";
 export type { BigNumber } from "ethers";
 export type Provider = ethers.providers.Provider;
 export type ProcessEnv = {
@@ -42,6 +45,11 @@ export type AppState = {
     };
   };
   erc20s: uma.tables.erc20s.JsMap;
+  stats: {
+    usd: {
+      latest: empStats.JsMap;
+    };
+  };
   registeredEmps: Set<string>;
   provider: Provider;
   web3: Web3;

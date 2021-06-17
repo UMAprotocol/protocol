@@ -1,11 +1,14 @@
 import assert from "assert";
-import { tables, Coingecko } from "@uma/sdk";
+import Web3 from "web3";
 import { ethers } from "ethers";
+
+import { tables, Coingecko } from "@uma/sdk";
+
 import * as Services from "../../services";
 import Express from "../../services/express";
 import Actions from "../../services/actions";
 import { ProcessEnv, AppState } from "../..";
-import Web3 from "web3";
+import { empStats } from "../../tables";
 
 async function run(env: ProcessEnv) {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
@@ -43,6 +46,11 @@ async function run(env: ProcessEnv) {
       latest: {},
     },
     erc20s: tables.erc20s.JsMap(),
+    stats: {
+      usd: {
+        latest: empStats.JsMap(),
+      },
+    },
     lastBlock: 0,
     lastBlockUpdate: 0,
     registeredEmps: new Set<string>(),
@@ -66,6 +74,7 @@ async function run(env: ProcessEnv) {
       appState
     ),
     erc20s: Services.Erc20s(undefined, appState),
+    empStats: Services.EmpStats({}, appState),
   };
 
   // services consuming data
@@ -82,6 +91,8 @@ async function run(env: ProcessEnv) {
   console.log("Updated Collateral Prices");
   await services.syntheticPrices.update();
   console.log("Updated Synthetic Prices");
+  await services.empStats.update();
+  console.log("Updated EMP Stats");
 
   // expose calls through express
   await Express({ port: Number(env.EXPRESS_PORT) }, actions);
@@ -95,6 +106,7 @@ async function run(env: ProcessEnv) {
       services.emps(appState.lastBlock, blockNumber).catch(console.error);
       appState.lastBlockUpdate = blockNumber;
       services.erc20s.update().catch(console.error);
+      services.empStats.update().catch(console.error);
     }
     appState.lastBlock = blockNumber;
     services.blocks.cleanBlocks(oldestBlock).catch(console.error);

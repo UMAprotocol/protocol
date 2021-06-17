@@ -112,3 +112,11 @@ that call uses the collateral address, not the emp address.
 
 Returns latest synthetic price for an emp address. This differs from collateral price requests, as
 that call uses the collateral address, not the emp address.
+
+### getEmpStats(address: string, currency: "usd" = "usd") => StatData
+
+Get only tvl (and other future statistics) for a single emp.
+
+#### listEmpStats(currency: "usd" = "usd") => StatData[]
+
+Get all tvl (and other future statistics) for all known emps.

@@ -126,6 +126,8 @@ export default (config: Config, appState: Dependencies) => {
         // delete it from active
         await emps.active.delete(address);
       } else {
+        // have to make sure we get static state if we have never seen this expired emp before
+        staticState = await readEmpStaticState(instance, address);
         // if it was never active, just create an expired emp
         await emps.expired.create({ ...staticState, ...dynamicState, sponsors: eventState.sponsors, expired: true });
       }

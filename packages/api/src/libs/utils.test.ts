@@ -58,4 +58,13 @@ describe("utils", function () {
     result = utils.calcGcr(input).toString();
     assert.equal(result, "1000000000000000000");
   });
+  it("calculateTvl", function () {
+    const emp = {
+      totalPositionCollateral: "1000000000",
+      collateralDecimals: 8,
+    };
+    const price = "0.25";
+    const result = utils.calcTvl(price, emp).toString();
+    assert.equal(result, "2500000000000000000");
+  });
 });
