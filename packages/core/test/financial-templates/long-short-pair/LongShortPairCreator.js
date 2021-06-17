@@ -97,7 +97,7 @@ contract("LongShortPairCreator", function (accounts) {
 
     // Event should be emitted correctly.
     truffleAssert.eventEmitted(lspCreateTx, "CreatedLongShortPair", (ev) => {
-      return ev.LongShortPair == lspAddress && ev.deployerAddress == deployer;
+      return ev.longShortPair == lspAddress && ev.deployerAddress == deployer;
     });
 
     // Validate LSP parameters are set correctly.
@@ -132,7 +132,7 @@ contract("LongShortPairCreator", function (accounts) {
       ...Object.values({ ...constructorParams, collateralAddress: non18Collateral.address })
     );
 
-    const lspAddress = (await longShortPairCreator.getPastEvents("CreatedLongShortPair"))[0].returnValues.LongShortPair;
+    const lspAddress = (await longShortPairCreator.getPastEvents("CreatedLongShortPair"))[0].returnValues.longShortPair;
 
     const lsp = await LongShortPair.at(lspAddress);
 
