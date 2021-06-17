@@ -251,7 +251,7 @@ contract("MerkleDistributor.js", function (accounts) {
           },
           { from: rando }
         );
-        assertApproximate(87749, claimTx.receipt.gasUsed);
+        assertApproximate(92049, claimTx.receipt.gasUsed);
       });
       it("Can claim on another account's behalf", async function () {
         const claimerBalanceBefore = await rewardToken.balanceOf(leaf.account);
@@ -522,7 +522,7 @@ contract("MerkleDistributor.js", function (accounts) {
       it("gas", async function () {
         const txn = await merkleDistributor.claimMulti(batchedClaims);
         assertApproximate(
-          37666,
+          32096,
           Math.floor(txn.receipt.gasUsed / (rewardLeafs.length * Object.keys(SamplePayouts.exampleRecipients).length))
         );
       });
@@ -533,7 +533,7 @@ contract("MerkleDistributor.js", function (accounts) {
           totalGas = totalGas.addn(txn.receipt.gasUsed);
         }
         assertApproximate(
-          65559,
+          67881,
           Math.floor(totalGas.divn(rewardLeafs.length * Object.keys(SamplePayouts.exampleRecipients).length).toNumber())
         );
       });
@@ -602,7 +602,7 @@ contract("MerkleDistributor.js", function (accounts) {
           amount: leaf.amount,
           merkleProof: proof,
         });
-        assertApproximate(100282, tx.receipt.gasUsed);
+        assertApproximate(104582, tx.receipt.gasUsed);
       });
       it("gas deeper node", async function () {
         const leafIndex = 90000;
@@ -615,7 +615,7 @@ contract("MerkleDistributor.js", function (accounts) {
           amount: leaf.amount,
           merkleProof: proof,
         });
-        assertApproximate(100284, tx.receipt.gasUsed);
+        assertApproximate(104584, tx.receipt.gasUsed);
       });
       it("gas average random distribution", async function () {
         let total = toBN(0);
@@ -634,7 +634,7 @@ contract("MerkleDistributor.js", function (accounts) {
           count++;
         }
         const average = total.divn(count);
-        assertApproximate(85894, Math.floor(average.toNumber()));
+        assertApproximate(88178, Math.floor(average.toNumber()));
       });
       // Claiming consecutive leaves should result in average gas savings
       // because of using single bits in the bitmap to track claims instead
@@ -656,7 +656,7 @@ contract("MerkleDistributor.js", function (accounts) {
           count++;
         }
         const average = total.divn(count);
-        assertApproximate(76124, Math.floor(average.toNumber()));
+        assertApproximate(77064, Math.floor(average.toNumber()));
       });
       it("no double claims in random distribution", async () => {
         for (let i = 0; i < 25; i += Math.floor(Math.random() * (NUM_LEAVES / SAMPLE_SIZE))) {
@@ -723,7 +723,7 @@ contract("MerkleDistributor.js", function (accounts) {
         }
         const sortedClaims = await sortClaimsByAccountAndToken(batchedClaims);
         const tx = await merkleDistributor.claimMulti(sortedClaims);
-        assertApproximate(50837, Math.floor(tx.receipt.gasUsed / sortedClaims.length));
+        assertApproximate(48897, Math.floor(tx.receipt.gasUsed / sortedClaims.length));
       });
       it("one tree: gas amortized first 25", async function () {
         for (let i = 0; i < 25; i++) {
@@ -739,7 +739,7 @@ contract("MerkleDistributor.js", function (accounts) {
         }
         const sortedClaims = await sortClaimsByAccountAndToken(batchedClaims);
         const tx = await merkleDistributor.claimMulti(sortedClaims);
-        assertApproximate(41392, Math.floor(tx.receipt.gasUsed / sortedClaims.length));
+        assertApproximate(36560, Math.floor(tx.receipt.gasUsed / sortedClaims.length));
       });
       it("many trees, many reward tokens, many accounts: gas amortized", async function () {
         // This is a realistic scenario where the caller is making their claims for various
@@ -792,12 +792,12 @@ contract("MerkleDistributor.js", function (accounts) {
 
         // Check estimated gas for batch claiming unsorted array of claims:
         const gasUnsorted = await merkleDistributor.claimMulti.estimateGas(batchedClaims);
-        assertApproximate(56973, Math.floor(gasUnsorted / batchedClaims.length));
+        assertApproximate(53247, Math.floor(gasUnsorted / batchedClaims.length));
 
         // Sort the claims such that windows with the same reward currency end up next to each other.
         const sortedClaims = await sortClaimsByAccountAndToken(batchedClaims);
         const tx = await merkleDistributor.claimMulti(sortedClaims);
-        assertApproximate(54302, Math.floor(tx.receipt.gasUsed / sortedClaims.length));
+        assertApproximate(51546, Math.floor(tx.receipt.gasUsed / sortedClaims.length));
       });
       it("batch cannot include double claims", async function () {
         for (let i = 0; i < NUM_LEAVES; i += NUM_LEAVES / SAMPLE_SIZE) {
