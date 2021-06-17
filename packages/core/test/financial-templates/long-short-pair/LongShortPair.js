@@ -38,9 +38,9 @@ const priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
 const collateralPerPair = toWei("1"); // each pair of long and short tokens need 1 unit of collateral to mint.
 
 const proposeAndSettleOptimisticOraclePrice = async (priceFeedIdentifier, requestTime, price) => {
-  await optimisticOracle.proposePrice(LongShortPair.address, priceFeedIdentifier, requestTime, ancillaryData, price);
+  await optimisticOracle.proposePrice(longShortPair.address, priceFeedIdentifier, requestTime, ancillaryData, price);
   await optimisticOracle.setCurrentTime((await optimisticOracle.getCurrentTime()) + optimisticOracleLiveness);
-  await optimisticOracle.settle(LongShortPair.address, priceFeedIdentifier, requestTime, ancillaryData);
+  await optimisticOracle.settle(longShortPair.address, priceFeedIdentifier, requestTime, ancillaryData);
 };
 
 contract("LongShortPair", function (accounts) {
@@ -104,7 +104,7 @@ contract("LongShortPair", function (accounts) {
       // Invalid expiration time.
       assert(
         await didContractThrow(
-          longShortPair.new(
+          LongShortPair.new(
             ...Object.values({ ...constructorParams, expirationTimestamp: (await timer.getCurrentTime()) - 1 })
           )
         )
@@ -113,20 +113,20 @@ contract("LongShortPair", function (accounts) {
       // Invalid price identifier time.
       assert(
         await didContractThrow(
-          longShortPair.new(...Object.values({ ...constructorParams, priceFeedIdentifier: "BAD-IDENTIFIER" }))
+          LongShortPair.new(...Object.values({ ...constructorParams, priceFeedIdentifier: "BAD-IDENTIFIER" }))
         )
       );
       // Invalid LSP library address.
       assert(
         await didContractThrow(
-          longShortPair.new(...Object.values({ ...constructorParams, longShortPairLibraryAddress: ZERO_ADDRESS }))
+          LongShortPair.new(...Object.values({ ...constructorParams, longShortPairLibraryAddress: ZERO_ADDRESS }))
         )
       );
 
       // Invalid Finder address.
       assert(
         await didContractThrow(
-          longShortPair.new(...Object.values({ ...constructorParams, finderAddress: ZERO_ADDRESS }))
+          LongShortPair.new(...Object.values({ ...constructorParams, finderAddress: ZERO_ADDRESS }))
         )
       );
 
@@ -139,7 +139,7 @@ contract("LongShortPair", function (accounts) {
       const remainingLength = maxLength - (ooAncillary.length - 2) / 2; // Remove the 0x and divide by 2 to get bytes.
       assert(
         await didContractThrow(
-          longShortPair.new(
+          LongShortPair.new(
             ...Object.values({ ...constructorParams, ancillaryData: web3.utils.randomHex(remainingLength + 1) })
           )
         )
