@@ -1,16 +1,24 @@
 import assert from "assert";
-import { tables, Coingecko } from "@uma/sdk";
+import Web3 from "web3";
 import { ethers } from "ethers";
+
+import { tables, Coingecko } from "@uma/sdk";
+
 import * as Services from "../../services";
 import Express from "../../services/express";
 import Actions from "../../services/actions";
-import { ProcessEnv, Libs } from "../..";
+import { ProcessEnv, AppState } from "../..";
+import { empStats } from "../../tables";
 
 async function run(env: ProcessEnv) {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
   assert(env.EXPRESS_PORT, "requires EXPRESS_PORT");
 
   const provider = new ethers.providers.WebSocketProvider(env.CUSTOM_NODE_URL);
+
+  // we need web3 for syth price feeds
+  const web3 = new Web3(env.CUSTOM_NODE_URL);
+
   // how many blocks to skip before running updates on contract state
   const updateBlocks = Number(env.UPDATE_BLOCKS || 1);
   // default to 10 days worth of blocks
@@ -19,8 +27,9 @@ async function run(env: ProcessEnv) {
   assert(updateBlocks > 0, "updateBlocks must be 1 or higher");
 
   // state shared between services
-  const libs: Libs = {
+  const appState: AppState = {
     provider,
+    web3,
     coingecko: new Coingecko(),
     blocks: tables.blocks.JsMap(),
     emps: {
@@ -33,6 +42,15 @@ async function run(env: ProcessEnv) {
         history: {},
       },
     },
+    synthPrices: {
+      latest: {},
+    },
+    erc20s: tables.erc20s.JsMap(),
+    stats: {
+      usd: {
+        latest: empStats.JsMap(),
+      },
+    },
     lastBlock: 0,
     lastBlockUpdate: 0,
     registeredEmps: new Set<string>(),
@@ -41,22 +59,40 @@ async function run(env: ProcessEnv) {
   };
   // services for ingesting data
   const services = {
-    blocks: Services.Blocks({}, libs),
-    emps: Services.Emps({}, libs),
-    registry: Services.Registry({}, libs),
-    prices: Services.Prices({}, libs),
+    // these services can optionally be configured with a config object, but currently they are undefined or have defaults
+    blocks: Services.Blocks(undefined, appState),
+    emps: Services.Emps(undefined, appState),
+    registry: Services.Registry({}, appState),
+    collateralPrices: Services.CollateralPrices({}, appState),
+    syntheticPrices: Services.SyntheticPrices(
+      {
+        cryptowatchApiKey: env.cryptwatchApiKey,
+        tradermadeApiKey: env.tradermadeApiKey,
+        quandlApiKey: env.quandlApiKey,
+        defipulseApiKey: env.defipulseApiKey,
+      },
+      appState
+    ),
+    erc20s: Services.Erc20s(undefined, appState),
+    empStats: Services.EmpStats({}, appState),
   };
 
   // services consuming data
-  const actions = Actions({}, libs);
+  const actions = Actions(undefined, appState);
 
   // warm caches
   await services.registry();
   console.log("Got all emp addresses");
   await services.emps();
   console.log("Updated emp state");
-  await services.prices.update();
-  console.log("Updated prices");
+  await services.erc20s.update();
+  console.log("Updated tokens");
+  await services.collateralPrices.update();
+  console.log("Updated Collateral Prices");
+  await services.syntheticPrices.update();
+  console.log("Updated Synthetic Prices");
+  await services.empStats.update();
+  console.log("Updated EMP Stats");
 
   // expose calls through express
   await Express({ port: Number(env.EXPRESS_PORT) }, actions);
@@ -65,18 +101,21 @@ async function run(env: ProcessEnv) {
   provider.on("block", (blockNumber: number) => {
     // dont do update if this number or blocks hasnt passed
     services.blocks.handleNewBlock(blockNumber).catch(console.error);
-    if (blockNumber - libs.lastBlockUpdate >= updateBlocks) {
-      services.registry(libs.lastBlock, blockNumber).catch(console.error);
-      services.emps(libs.lastBlock, blockNumber).catch(console.error);
-      libs.lastBlockUpdate = blockNumber;
+    if (blockNumber - appState.lastBlockUpdate >= updateBlocks) {
+      services.registry(appState.lastBlock, blockNumber).catch(console.error);
+      services.emps(appState.lastBlock, blockNumber).catch(console.error);
+      appState.lastBlockUpdate = blockNumber;
+      services.erc20s.update().catch(console.error);
+      services.empStats.update().catch(console.error);
     }
-    libs.lastBlock = blockNumber;
+    appState.lastBlock = blockNumber;
     services.blocks.cleanBlocks(oldestBlock).catch(console.error);
   });
 
   // coingeckos prices don't update very fast, so set it on an interval every few minutes
   setInterval(() => {
-    services.prices.update().catch(console.error);
+    services.collateralPrices.update().catch(console.error);
+    services.syntheticPrices.update().catch(console.error);
   }, 5 * 60 * 1000);
 }
 

@@ -2,11 +2,9 @@ const { didContractThrow, ZERO_ADDRESS } = require("@uma/common");
 const { assert } = require("chai");
 
 // Tested Contract
-const LinearContractForDifferenceFinancialProductLibrary = artifacts.require(
-  "LinearContractForDifferenceFinancialProductLibrary"
-);
+const LinearLongShortPairFinancialProductLibrary = artifacts.require("LinearLongShortPairFinancialProductLibrary");
 
-// helper contracts. To test CFD libraries we simply need a financial contract with an `expirationTimestamp` method.
+// helper contracts. To test LSP libraries we simply need a financial contract with an `expirationTimestamp` method.
 
 const ExpiringContractMock = artifacts.require("ExpiringMultiPartyMock");
 
@@ -14,12 +12,12 @@ const { toWei, toBN, utf8ToHex } = web3.utils;
 const upperBound = toBN(toWei("2000"));
 const lowerBound = toBN(toWei("1000"));
 
-contract("LinearContractForDifferenceFinancialProductLibrary", function () {
-  let linearCFDFPL;
+contract("LinearLongShortPairFinancialProductLibrary", function () {
+  let linearLSPFPL;
   let expiringContractMock;
 
   beforeEach(async () => {
-    linearCFDFPL = await LinearContractForDifferenceFinancialProductLibrary.new();
+    linearLSPFPL = await LinearLongShortPairFinancialProductLibrary.new();
     expiringContractMock = await ExpiringContractMock.new(
       ZERO_ADDRESS, // _financialProductLibraryAddress
       "1000000", // _expirationTimestamp
@@ -28,21 +26,21 @@ contract("LinearContractForDifferenceFinancialProductLibrary", function () {
       ZERO_ADDRESS // _timerAddress
     );
   });
-  describe("Contract For difference Parameterization", () => {
+  describe("Long Short Pair Parameterization", () => {
     it("Can set and fetch valid values", async () => {
-      await linearCFDFPL.setContractForDifferenceParameters(expiringContractMock.address, upperBound, lowerBound);
+      await linearLSPFPL.setLongShortPairParameters(expiringContractMock.address, upperBound, lowerBound);
 
-      const setParams = await linearCFDFPL.contractForDifferenceParameters(expiringContractMock.address);
+      const setParams = await linearLSPFPL.longShortPairParameters(expiringContractMock.address);
       assert.equal(setParams.upperBound.toString(), upperBound);
       assert.equal(setParams.lowerBound.toString(), lowerBound);
     });
-    it("Can not re-use existing CFD contract address", async () => {
-      await linearCFDFPL.setContractForDifferenceParameters(expiringContractMock.address, upperBound, lowerBound);
+    it("Can not re-use existing LSP contract address", async () => {
+      await linearLSPFPL.setLongShortPairParameters(expiringContractMock.address, upperBound, lowerBound);
 
       // Second attempt should revert.
       assert(
         await didContractThrow(
-          linearCFDFPL.setContractForDifferenceParameters(expiringContractMock.address, upperBound, lowerBound)
+          linearLSPFPL.setLongShortPairParameters(expiringContractMock.address, upperBound, lowerBound)
         )
       );
     });
@@ -50,35 +48,33 @@ contract("LinearContractForDifferenceFinancialProductLibrary", function () {
       // upper bound larger than lower bound by swapping upper and lower
       assert(
         await didContractThrow(
-          linearCFDFPL.setContractForDifferenceParameters(expiringContractMock.address, lowerBound, upperBound)
+          linearLSPFPL.setLongShortPairParameters(expiringContractMock.address, lowerBound, upperBound)
         )
       );
     });
-    it("Can not set invalid CFD contract address", async () => {
-      // CFD Address must implement the `expirationTimestamp method.
-      assert(
-        await didContractThrow(linearCFDFPL.setContractForDifferenceParameters(ZERO_ADDRESS, upperBound, lowerBound))
-      );
+    it("Can not set invalid LSP contract address", async () => {
+      // LSP Address must implement the `expirationTimestamp method.
+      assert(await didContractThrow(linearLSPFPL.setLongShortPairParameters(ZERO_ADDRESS, upperBound, lowerBound)));
     });
   });
   describe("Compute expiry tokens for collateral", () => {
     beforeEach(async () => {
-      await linearCFDFPL.setContractForDifferenceParameters(expiringContractMock.address, upperBound, lowerBound);
+      await linearLSPFPL.setLongShortPairParameters(expiringContractMock.address, upperBound, lowerBound);
     });
     it("Lower than lower bound should return 0", async () => {
-      const expiryTokensForCollateral = await linearCFDFPL.computeExpiryTokensForCollateral.call(toWei("900"), {
+      const expiryTokensForCollateral = await linearLSPFPL.computeExpiryTokensForCollateral.call(toWei("900"), {
         from: expiringContractMock.address,
       });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0"));
     });
     it("Higher than upper bound should return 1", async () => {
-      const expiryTokensForCollateral = await linearCFDFPL.computeExpiryTokensForCollateral.call(toWei("2100"), {
+      const expiryTokensForCollateral = await linearLSPFPL.computeExpiryTokensForCollateral.call(toWei("2100"), {
         from: expiringContractMock.address,
       });
       assert.equal(expiryTokensForCollateral.toString(), toWei("1"));
     });
     it("Midway between bounds should return 0.5", async () => {
-      const expiryTokensForCollateral = await linearCFDFPL.computeExpiryTokensForCollateral.call(toWei("1500"), {
+      const expiryTokensForCollateral = await linearLSPFPL.computeExpiryTokensForCollateral.call(toWei("1500"), {
         from: expiringContractMock.address,
       });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0.5"));
@@ -86,7 +82,7 @@ contract("LinearContractForDifferenceFinancialProductLibrary", function () {
 
     it("Arbitrary price between bounds should return correctly", async () => {
       for (const price of [toWei("1000"), toWei("1200"), toWei("1400"), toWei("1600"), toWei("1800"), toWei("2000")]) {
-        const expiryTokensForCollateral = await linearCFDFPL.computeExpiryTokensForCollateral.call(price, {
+        const expiryTokensForCollateral = await linearLSPFPL.computeExpiryTokensForCollateral.call(price, {
           from: expiringContractMock.address,
         });
         const numerator = toBN(price).sub(toBN(lowerBound));

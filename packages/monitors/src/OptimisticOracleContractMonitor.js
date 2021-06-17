@@ -89,7 +89,7 @@ class OptimisticOracleContractMonitor {
       const mrkdwn =
         createEtherscanLinkMarkdown(event.requester, this.contractProps.networkId) +
         ` requested a price at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
-        `The ancillary data field is ${event.ancillaryData}. ` +
+        `The ancillary data field is ${event.ancillaryData || "0x"}. ` +
         `Collateral currency address is ${event.currency}. Reward amount is ${this.formatDecimalString(
           convertCollateralDecimals(event.reward)
         )} and the final fee is ${this.formatDecimalString(convertCollateralDecimals(event.finalFee))}. ` +
@@ -102,7 +102,7 @@ class OptimisticOracleContractMonitor {
         at: "OptimisticOracleContractMonitor",
         message: "Price Request Alert 👮🏻!",
         mrkdwn,
-        notificationPath: "risk-management",
+        notificationPath: "optimistic-oracle",
       });
     }
     this.lastRequestPriceBlockNumber = this._getLastSeenBlockNumber(latestEvents);
@@ -128,7 +128,7 @@ class OptimisticOracleContractMonitor {
         `The proposal price of ${this.formatDecimalString(event.proposedPrice)} will expire at ${
           event.expirationTimestamp
         }. ` +
-        `The ancillary data field is ${event.ancillaryData}. ` +
+        `The ancillary data field is ${event.ancillaryData || "0x"}. ` +
         `Collateral currency address is ${event.currency}. ` +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
@@ -139,7 +139,7 @@ class OptimisticOracleContractMonitor {
         at: "OptimisticOracleContractMonitor",
         message: "Price Proposal Alert 🧞‍♂️!",
         mrkdwn,
-        notificationPath: "risk-management",
+        notificationPath: "optimistic-oracle",
       });
     }
     this.lastProposePriceBlockNumber = this._getLastSeenBlockNumber(latestEvents);
@@ -163,14 +163,14 @@ class OptimisticOracleContractMonitor {
         createEtherscanLinkMarkdown(event.disputer, this.contractProps.networkId) +
         ` disputed a price for the request made by ${event.requester} at the timestamp ${event.timestamp} for the identifier: ${event.identifier}. ` +
         `The proposer ${event.proposer} proposed a price of ${this.formatDecimalString(event.proposedPrice)}. ` +
-        `The ancillary data field is ${event.ancillaryData}. ` +
+        `The ancillary data field is ${event.ancillaryData || "0x"}. ` +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
       this.logger[this.logOverrides.disputedPrice || "error"]({
         at: "OptimisticOracleContractMonitor",
         message: "Price Dispute Alert ⛔️!",
         mrkdwn,
-        notificationPath: "risk-management",
+        notificationPath: "optimistic-oracle",
       });
     }
     this.lastDisputePriceBlockNumber = this._getLastSeenBlockNumber(latestEvents);
@@ -198,7 +198,7 @@ class OptimisticOracleContractMonitor {
         `The payout was ${this.formatDecimalString(convertCollateralDecimals(event.payout))} made to the ${
           event.disputer === ZERO_ADDRESS ? "proposer" : "winner of the dispute"
         }. ` +
-        `The ancillary data field is ${event.ancillaryData}. ` +
+        `The ancillary data field is ${event.ancillaryData || "0x"}. ` +
         `tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.contractProps.networkId)}`;
 
       // The default log level should be reduced to "debug" for funding rate identifiers:
@@ -208,7 +208,7 @@ class OptimisticOracleContractMonitor {
         at: "OptimisticOracleContractMonitor",
         message: "Price Settlement Alert 🏧!",
         mrkdwn,
-        notificationPath: "risk-management",
+        notificationPath: "optimistic-oracle",
       });
     }
     this.lastSettlementBlockNumber = this._getLastSeenBlockNumber(latestEvents);

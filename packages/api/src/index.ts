@@ -1,10 +1,14 @@
-import type * as uma from "@uma/sdk";
+import uma from "@uma/sdk";
 import { ethers } from "ethers";
+import type { empStats } from "./tables";
+
+export type Currencies = "usd";
 export type { BigNumber } from "ethers";
 export type Provider = ethers.providers.Provider;
 export type ProcessEnv = {
   [key: string]: string | undefined;
 };
+import type Web3 from "web3";
 export type Obj = { [key: string]: any };
 // serializable json type
 export type Json = null | undefined | boolean | number | string | Json[] | { [prop: string]: Json };
@@ -18,7 +22,7 @@ export type Actions = { [key: string]: Action };
 export type CurrencySymbol = "usd";
 export type PriceSample = [timestamp: number, price: string];
 // These are library dependencies to all services
-export type Libs = {
+export type AppState = {
   blocks: uma.tables.blocks.JsMap;
   coingecko: uma.Coingecko;
   emps: {
@@ -35,8 +39,20 @@ export type Libs = {
       };
     };
   };
+  synthPrices: {
+    latest: {
+      [empAddress: string]: PriceSample;
+    };
+  };
+  erc20s: uma.tables.erc20s.JsMap;
+  stats: {
+    usd: {
+      latest: empStats.JsMap;
+    };
+  };
   registeredEmps: Set<string>;
   provider: Provider;
+  web3: Web3;
   lastBlock: number;
   lastBlockUpdate: number;
   collateralAddresses: Set<string>;

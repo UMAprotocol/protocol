@@ -16,6 +16,7 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
   require("@nomiclabs/hardhat-web3");
   require("hardhat-deploy");
   require("hardhat-deploy-ethers");
+  require("@nomiclabs/hardhat-etherscan");
 
   // Custom tasks to interact conveniently with smart contracts.
   require("./hardhat/tasks");

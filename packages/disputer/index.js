@@ -68,6 +68,7 @@ async function run({
       priceFeedConfig,
       disputerConfig,
       disputerOverridePrice,
+      proxyTransactionWrapperConfig,
     });
 
     // Load unlocked web3 accounts and get the networkId.
@@ -149,7 +150,7 @@ async function run({
       disputerConfig.contractType
     );
 
-    const gasEstimator = new GasEstimator(logger);
+    const gasEstimator = new GasEstimator(logger, 60, networkId);
     await gasEstimator.update();
 
     let dsProxyManager;

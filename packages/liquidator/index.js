@@ -203,7 +203,7 @@ async function run({
       liquidatorConfig.contractType
     );
 
-    const gasEstimator = new GasEstimator(logger);
+    const gasEstimator = new GasEstimator(logger, 60, networkId);
     await gasEstimator.update();
 
     let dsProxyManager;

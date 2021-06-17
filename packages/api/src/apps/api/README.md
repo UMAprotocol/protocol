@@ -11,6 +11,12 @@ CUSTOM_NODE_URL=wss://mainnet.infura.io/ws/v3/${your project key}
 EXPRESS_PORT=8282
 UPDATE_BLOCKS=1 // defaults to 1: represents the number of block elapsed before rechecking contract states
 OLDEST_BLOCK_MS=1 // defaults to 864,000,000 ( 10 days): represents the max age a block will stay cached
+
+# these configure synthetic price feed. These price feeds may require paid api keys.
+cryptowatchApiKey=
+tradermadeApiKey=
+quandlApiKey=
+defipulseApiKey=
 ```
 
 ## Starting
@@ -88,3 +94,29 @@ This is useful for charting betwen two dates.
 
 Get a range of historical prices between start and count of price samples, sorted by timestamp ascending, from an erc20 token address.
 This is useful for paginating data when you have X elements per page, and you know the last element seen.
+
+### getErc20Info(address:string) => Erc20Data
+
+Get name, decimals of an erc20 by address.
+
+### getAllErc20Info() => Erc20Data[]
+
+List all known erc20s, collateral or synthetic and all known information about them
+
+### allLatestSynthPrices => {[empAddress:string]:[timestamp:number,price:string]}
+
+Returns all known latest synthetic prices based on emp address. This differs from collateral price requests, as
+that call uses the collateral address, not the emp address.
+
+### latestSynthPriceByAddress(empAddress:string,currency:'usd') => [timestamp:number,price:string]}
+
+Returns latest synthetic price for an emp address. This differs from collateral price requests, as
+that call uses the collateral address, not the emp address.
+
+### getEmpStats(address: string, currency: "usd" = "usd") => StatData
+
+Get only tvl (and other future statistics) for a single emp.
+
+#### listEmpStats(currency: "usd" = "usd") => StatData[]
+
+Get all tvl (and other future statistics) for all known emps.

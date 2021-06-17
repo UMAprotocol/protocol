@@ -17,6 +17,7 @@
     "coveralls": "^3.1.0",
     "ethereumjs-wallet": "^1.0.0",
     "express": "^4.17.1",
+    "ganache-core": "^2.13.2",
     "google-auth-library": "^6.0.2",
     "minimist": "^1.2.0",
     "mocha": "^8.1.2",
