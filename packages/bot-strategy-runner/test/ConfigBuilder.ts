@@ -35,7 +35,7 @@ const minimumRequiredConfigKeys = [
   "pollingDelay",
 ];
 describe("buildGlobalWhitelist", async function () {
-  it("Correctly fetches global whitelist", async function () {
+  it("Correctly fetches global whitelist", async function (this: any) {
     this.timeout(60000);
     // Construct a whitelist from all current EMPs on the affiliates payout. Append a sample address to the list.
     const constructedWhitelist = await buildGlobalWhitelist({
@@ -49,7 +49,7 @@ describe("buildGlobalWhitelist", async function () {
       assert.isTrue(isAddress(address));
     });
   });
-  it("Correctly removes black listed addresses", async function () {
+  it("Correctly removes black listed addresses", async function (this: any) {
     this.timeout(60000);
     // Construct a whitelist from all current EMPs on the affiliates payout and remove the first address from the sampleWhitelist.
     const constructedWhitelist = await buildGlobalWhitelist({
@@ -64,7 +64,7 @@ describe("buildGlobalWhitelist", async function () {
       assert.isTrue(constructedWhitelist.includes(address)); // all addresses, except for the blacklisted address, should be included.
     });
   });
-  it("Correctly errors on incorrectly structured external whitelist file", async function () {
+  it("Correctly errors on incorrectly structured external whitelist file", async function (this: any) {
     this.timeout(60000);
     let errorsThrown = 0; // count the number of errors. note that // assert.throws(()... syntax did not work for some reason.
 
@@ -90,7 +90,7 @@ describe("buildGlobalWhitelist", async function () {
   });
 });
 describe("buildBotConfigs", async function () {
-  it("Correctly builds bot config from given input", async function () {
+  it("Correctly builds bot config from given input", async function (this: any) {
     this.timeout(60000);
     // Construct a whitelist from all current EMPs on the affiliates payout. Append a sample address to the list.
     const constructedConfig = await buildBotConfigs(sampleWhitelist, minimalConfig);
@@ -114,7 +114,7 @@ describe("buildBotConfigs", async function () {
       assert.equal(botTypeCount, sampleWhitelist.length);
     });
   });
-  it("Correctly respects override configs all bots", async function () {
+  it("Correctly respects override configs all bots", async function (this: any) {
     this.timeout(60000);
     // Append a common config. This should be injected into every config.
     const configWithOverride = { ...minimalConfig, commonConfig: { testInjection: "some-key-value-pair" } };
@@ -129,7 +129,7 @@ describe("buildBotConfigs", async function () {
       assert.equal(config["testInjection"], "some-key-value-pair");
     });
   });
-  it("Correctly respects override configs for a specific contract address", async function () {
+  it("Correctly respects override configs for a specific contract address", async function (this: any) {
     this.timeout(60000);
     // add some override to a specific bot address. All bots of this type should contain this override.
     const overriddenAddress = sampleWhitelist[3];
