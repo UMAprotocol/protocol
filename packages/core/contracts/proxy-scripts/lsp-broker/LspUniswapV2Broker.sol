@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "@uniswap/lib/contracts/libraries/TransferHelper.sol";
@@ -12,30 +11,43 @@ import "../../common/implementation/FixedPoint.sol";
 import "../../financial-templates/long-short-pair/LongShortPair.sol";
 
 /**
- * @title ReserveCurrencyLiquidator
- * @notice Helper contract to enable a liquidator to hold one reserver currency and liquidate against any number of
- * financial contracts. Is assumed to be called by a DSProxy which holds reserve currency.
+ * @title LspUniswapV2Broker
+ * @notice Helper contract to facilitate batched LSP and UniswapV2 transactions, including Mint+Sell and Mint+LP.
  */
-
 contract LspUniswapV2Broker {
-    using SafeMath for uint256;
     using FixedPoint for FixedPoint.Unsigned;
 
-    function atomicMintAddLiquidity() public {}
+    /**
+     * @notice Mint long and short tokens and deposit them all into a UniV2 Pool.
+     */
+    function atomicMintAddLiquidity() public {
+        /* TODO */
+    }
 
+    /**
+     * @notice Mint long and short tokens and convert all of one side into the other.
+     * @param tradingAsEOA If True, caller has balance of collateral and expects to receive back all long/short tokens.
+     * @param sellLong If True, converts all long tokens into short, else the opposite.
+     * @param longShortPair LSP contract address to mint position on.
+     * @param router Contract to call to exchange long and short tokens.
+     * @param collateralToMintWith Amount of collateral to deposit and borrow long and short tokens against.
+     * @param swapPath `Router.swapExactTokensForTokens` param: path with which to swap token to sell for the other.
+     * @param deadline `Router.swapExactTokensForTokens` param: time before transaction must be mined.
+     */
     function atomicMintSellOneSide(
         bool tradingAsEOA,
-        bool tradingLong,
+        bool sellLong,
         LongShortPair longShortPair,
-        IUniswapV2Router01 router,
+        IUniswapV2Router01 router, /* TODO: Should we allow `router` to be any exchange, such as a Matcha multihop? */
         uint256 collateralToMintWith,
         address[] memory swapPath,
         uint256 deadline
     ) public {
-        require(address(longShortPair) != address(0), "Bad long short pair");
-        require(address(router) != address(0), "Bad router");
+        require(address(longShortPair) != address(0), "Invalid long short pair");
+        require(address(router) != address(0), "Invalid router");
         require(collateralToMintWith != 0, "Collateral to mint with");
 
+        // 0) Pull collateral from caller if necessary and approve LSP to spend it.
         if (tradingAsEOA)
             TransferHelper.safeTransferFrom(
                 address(longShortPair.collateralToken()),
@@ -50,14 +62,17 @@ contract LspUniswapV2Broker {
             collateralToMintWith
         );
 
+        // 1) Deposit collateral into LSP and mint long and short tokens.
+        // TODO: So this assumes we are minting collateral --> long/short tokens in a one-to-one ratio?
+        // i.e. The `LSP.collateralPerPair=1`
         longShortPair.create(collateralToMintWith);
 
-        IERC20 soldToken = IERC20(tradingLong ? longShortPair.shortToken() : longShortPair.longToken());
-
-        require(swapPath[0] == address(soldToken), "Sold token != 0th swapPath");
-
+        // 2) Determine which token we are selling and convert it all into the other.
+        IERC20 soldToken = IERC20(sellLong ? longShortPair.shortToken() : longShortPair.longToken());
+        // TODO: Should we make this check?
+        // require(soldToken.balanceOf(address(this)) > 0, "Missing balance of token to sell");
         TransferHelper.safeApprove(address(soldToken), address(router), soldToken.balanceOf(address(this)));
-
+        require(swapPath[0] == address(soldToken), "Sold token != 0th swapPath");
         router.swapExactTokensForTokens(
             soldToken.balanceOf(address(this)), // sell all of the sold tokens held by the contract.
             0,
@@ -66,8 +81,9 @@ contract LspUniswapV2Broker {
             deadline
         );
 
+        // 3) Send tokens back to caller if neccessary.
         if (tradingAsEOA) {
-            IERC20 otherToken = IERC20(!tradingLong ? longShortPair.shortToken() : longShortPair.longToken());
+            IERC20 otherToken = IERC20(!sellLong ? longShortPair.shortToken() : longShortPair.longToken());
             otherToken.transfer(msg.sender, otherToken.balanceOf(address(this)));
         }
     }

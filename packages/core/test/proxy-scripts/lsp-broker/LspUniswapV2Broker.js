@@ -1,4 +1,10 @@
-const { MAX_UINT_VAL, interfaceName, createContractObjectFromJson } = require("@uma/common");
+const {
+  MAX_UINT_VAL,
+  interfaceName,
+  createContractObjectFromJson,
+  didContractThrow,
+  ZERO_ADDRESS,
+} = require("@uma/common");
 const { toWei, toBN, utf8ToHex, fromWei } = web3.utils;
 
 // Tested Contract
@@ -50,11 +56,11 @@ const priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
 const collateralPerPair = toWei("1"); // each pair of long and short tokens need 1 unit of collateral to mint.
 const prepaidProposerReward = toWei("0");
 
-// Returns the current spot price of a uniswap pool, scaled to 4 decimal points.
-const getPoolSpotPrice = async (tokenA, tokenB) => {
+// Returns the current spot price of a uniswap pool, scaled to `precision` # decimal points.
+const getPoolSpotPrice = async (tokenA, tokenB, precision = 4) => {
   const poolTokenABallance = await tokenA.balanceOf(pairAddress);
   const poolTokenBBallance = await tokenB.balanceOf(pairAddress);
-  return Number(fromWei(poolTokenABallance.mul(toBN(toWei("1"))).div(poolTokenBBallance))).toFixed(4);
+  return Number(fromWei(poolTokenABallance.mul(toBN(toWei("1"))).div(poolTokenBBallance))).toFixed(precision);
 };
 
 // For a given amountIn, return the amount out expected from a trade. aToB defines the direction of the trade. If aToB
@@ -141,9 +147,9 @@ contract("LspUniswapV2Broker", function (accounts) {
     await shortToken.addMember(2, longShortPair.address, { from: deployer });
   });
 
-  describe("AMM contains Long against Short token", () => {
+  describe("atomicMintSellOneSide: AMM contains Long against Short token", () => {
     beforeEach(async () => {
-      // Initialize the pair. For this set of tests the long and short tokens are tokenA and tokenB in the pool.
+      // Initialize the UniV2 pool. For this set of tests the long and short tokens are tokenA and tokenB in the pool.
       await factory.createPair(shortToken.address, longToken.address, { from: deployer });
       pairAddress = await factory.getPair(shortToken.address, longToken.address);
       pair = await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress);
@@ -169,16 +175,17 @@ contract("LspUniswapV2Broker", function (accounts) {
       assert.equal((await longToken.balanceOf(pair.address)).toString(), toWei("100000"));
       assert.equal((await shortToken.balanceOf(pair.address)).toString(), toWei("100000"));
       assert.equal(await getPoolSpotPrice(longToken, shortToken), "1.0000"); // price should be exactly 1000 TokenA/TokenB.})
+
+      // Mint EOA some collateral:
+      await collateralToken.mint(trader, toWei("1000"), { from: deployer });
+      assert.equal((await collateralToken.balanceOf(trader)).toString(), toWei("1000"));
+      await collateralToken.approve(lspUniswapV2Broker.address, toWei("1000"), { from: trader });
     });
 
     it("Can correctly mint and go long in one transaction", async function () {
-      await collateralToken.mint(trader, toWei("1000"), { from: deployer });
-      assert.equal((await collateralToken.balanceOf(trader)).toString(), toWei("1000"));
-
       // Calculate the expected long purchased with the short  from the trade before the trade is done (initial reserves).
       const longFromSale = await getAmountOut(shortToken, longToken, toWei("1000"), true);
 
-      await collateralToken.approve(lspUniswapV2Broker.address, toWei("1000"), { from: trader });
       await lspUniswapV2Broker.atomicMintSellOneSide(
         true, // tradingAsEOA. true as calling from an EOA (not DSProxy).
         true, // tradingLong. we want to hold long tokens after the call.
@@ -206,13 +213,9 @@ contract("LspUniswapV2Broker", function (accounts) {
     });
 
     it("Can correctly mint and go short in one transaction", async function () {
-      await collateralToken.mint(trader, toWei("1000"), { from: deployer });
-      assert.equal((await collateralToken.balanceOf(trader)).toString(), toWei("1000"));
-
       // Calculate the expected short purchased with the long  from the trade before the trade is done (initial reserves).
       const shortFromSale = await getAmountOut(longToken, shortToken, toWei("1000"), true);
 
-      await collateralToken.approve(lspUniswapV2Broker.address, toWei("1000"), { from: trader });
       await lspUniswapV2Broker.atomicMintSellOneSide(
         true, // tradingAsEOA. true as calling from an EOA (not DSProxy).
         false, // tradingLong. we want to hold short tokens after the call so set to false (short trade).
@@ -236,6 +239,132 @@ contract("LspUniswapV2Broker", function (accounts) {
       assert.equal((await longToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
       assert.equal((await shortToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
       assert.equal((await collateralToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
+    });
+
+    it("Invalid params", async function () {
+      // Invalid LSP contract
+      assert(
+        await didContractThrow(
+          lspUniswapV2Broker.atomicMintSellOneSide(
+            true,
+            false,
+            ZERO_ADDRESS, // Zero address
+            router.address,
+            toWei("1000"),
+            [longToken.address, shortToken.address],
+            MAX_UINT_VAL,
+            { from: trader }
+          )
+        )
+      );
+      assert(
+        await didContractThrow(
+          lspUniswapV2Broker.atomicMintSellOneSide(
+            true,
+            false,
+            router.address, // Not an LSP contract
+            router.address,
+            toWei("1000"),
+            [longToken.address, shortToken.address],
+            MAX_UINT_VAL,
+            { from: trader }
+          )
+        )
+      );
+
+      // Invalid router contract
+      assert(
+        await didContractThrow(
+          lspUniswapV2Broker.atomicMintSellOneSide(
+            true,
+            false,
+            longShortPair.address,
+            ZERO_ADDRESS, // Zero address
+            toWei("1000"),
+            [longToken.address, shortToken.address],
+            MAX_UINT_VAL,
+            { from: trader }
+          )
+        )
+      );
+      assert(
+        await didContractThrow(
+          lspUniswapV2Broker.atomicMintSellOneSide(
+            true,
+            false,
+            longShortPair.address,
+            longShortPair.address, // Not a router contract
+            toWei("1000"),
+            [longToken.address, shortToken.address],
+            MAX_UINT_VAL,
+            { from: trader }
+          )
+        )
+      );
+
+      // Cannot mint with 0 collateral
+      assert(
+        await didContractThrow(
+          lspUniswapV2Broker.atomicMintSellOneSide(
+            true,
+            false,
+            longShortPair.address,
+            router.address,
+            "0",
+            [longToken.address, shortToken.address],
+            MAX_UINT_VAL,
+            { from: trader }
+          )
+        )
+      );
+
+      // Swap path doesn't have sold token as first token.
+      assert(
+        await didContractThrow(
+          lspUniswapV2Broker.atomicMintSellOneSide(
+            true, // Selling long token, but long token is not first token in swapPath param.
+            false,
+            longShortPair.address,
+            router.address,
+            toWei("1000"),
+            [shortToken.address, longShortPair.address],
+            MAX_UINT_VAL,
+            { from: trader }
+          )
+        )
+      );
+    });
+
+    it("Caller is not an EOA", async function () {
+      // Send collateral to contract it can use to deposit into LSP:
+      await collateralToken.transfer(lspUniswapV2Broker.address, toWei("1000"), { from: trader });
+      assert.equal((await collateralToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("1000"));
+
+      // Calculate the expected long purchased with the short  from the trade before the trade is done (initial reserves).
+      const longFromSale = await getAmountOut(shortToken, longToken, toWei("1000"), true);
+
+      await lspUniswapV2Broker.atomicMintSellOneSide(
+        false, // tradingAsEOA. False and pretending to call from a contract like a DSProxy.
+        true, // tradingLong. we want the contract to hold long tokens after the call.
+        longShortPair.address, // longShortPair. address to mint tokens against.
+        router.address, // router. uniswap v2 router to execute trades
+        toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
+        [shortToken.address, longToken.address], // swapPath. exchange the short tokens for long tokens.
+        MAX_UINT_VAL, // unreachable deadline
+        { from: trader }
+      );
+
+      // The broker should no collateral left (spent all 1000).
+      assert.equal((await collateralToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
+
+      // The broker should have no short tokens as they were all sold when minting.
+      assert.equal((await shortToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
+
+      // The broker should have the exact number of long tokens from minting + those from buying with the sold short side.
+      assert.equal(
+        (await longToken.balanceOf(lspUniswapV2Broker.address)).toString(),
+        toBN(toWei("1000")).add(longFromSale).toString()
+      );
     });
   });
 });
