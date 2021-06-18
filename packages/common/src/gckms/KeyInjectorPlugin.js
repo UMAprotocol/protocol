@@ -26,9 +26,8 @@ async function retrieveGckmsKeys(gckmsConfigs) {
 }
 
 extendConfig((config) => {
-  if (GCKMS_KEYS && MNEMONIC) {
-    throw new HardhatPluginError("Key Provider", "Cannot provide both GCKMS_KEYS and MNEMONIC");
-  }
+  if (GCKMS_KEYS && MNEMONIC)
+    throw new HardhatPluginError("gckms::KeyInjectorPlugin", "Cannot provide both GCKMS_KEYS and MNEMONIC");
 
   if (GCKMS_KEYS) {
     const keyNameArray = GCKMS_KEYS.split(",");
@@ -37,14 +36,6 @@ extendConfig((config) => {
       config.networks.values().forEach((network) => {
         network.accounts = keys;
       });
-    });
-  }
-
-  if (MNEMONIC) {
-    config.networks.values().forEach((network) => {
-      network.accounts = {
-        mnemonic: MNEMONIC,
-      };
     });
   }
 });

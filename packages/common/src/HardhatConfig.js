@@ -8,7 +8,6 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
   require("hardhat-gas-reporter");
   require("@nomiclabs/hardhat-web3");
   require("hardhat-deploy");
-  require("hardhat-deploy-ethers");
   require("@nomiclabs/hardhat-etherscan");
   require("./gckms/KeyInjectorPlugin");
 
