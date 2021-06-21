@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.5.0](https://github.com/UMAprotocol/protocol/compare/@uma/trader@1.4.0...@uma/trader@1.5.0) (2021-06-21)
+
+### Bug Fixes
+
+- **common-ContractUtils:** Add web3 param injection to createContractObjectFromJson ([#3060](https://github.com/UMAprotocol/protocol/issues/3060)) ([805003a](https://github.com/UMAprotocol/protocol/commit/805003a94c01f2d8fb4556701382b0f4bbf26cd8))
+
+### Features
+
+- **run-transaction:** add multi EOA transaction runner to DSProxy bots ([#2961](https://github.com/UMAprotocol/protocol/issues/2961)) ([ab88497](https://github.com/UMAprotocol/protocol/commit/ab88497f180d72f1d9e8305fdeabf786f5883b7c))
+
 # [1.4.0](https://github.com/UMAprotocol/protocol/compare/@uma/trader@1.3.0...@uma/trader@1.4.0) (2021-05-20)
 
 ### Bug Fixes

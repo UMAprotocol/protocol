@@ -3,6 +3,19 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.4.0](https://github.com/UMAprotocol/protocol/compare/@uma/disputer@2.3.0...@uma/disputer@2.4.0) (2021-06-21)
+
+### Bug Fixes
+
+- **common-ContractUtils:** Add web3 param injection to createContractObjectFromJson ([#3060](https://github.com/UMAprotocol/protocol/issues/3060)) ([805003a](https://github.com/UMAprotocol/protocol/commit/805003a94c01f2d8fb4556701382b0f4bbf26cd8))
+- **disputer:** address wrong comments ([#3025](https://github.com/UMAprotocol/protocol/issues/3025)) ([4c5b70b](https://github.com/UMAprotocol/protocol/commit/4c5b70bf1b3df5c041fe107f200cfeedd08de7ce))
+- **disputer-index:** add a missing log field ([#3113](https://github.com/UMAprotocol/protocol/issues/3113)) ([58695f9](https://github.com/UMAprotocol/protocol/commit/58695f9f9dd65af73102a85afba9c17f83a4d167))
+
+### Features
+
+- **run-transaction:** add multi EOA transaction runner to DSProxy bots ([#2961](https://github.com/UMAprotocol/protocol/issues/2961)) ([ab88497](https://github.com/UMAprotocol/protocol/commit/ab88497f180d72f1d9e8305fdeabf786f5883b7c))
+- **Winston-logger:** add multiple escalation paths depending on message context ([#3042](https://github.com/UMAprotocol/protocol/issues/3042)) ([cd9412d](https://github.com/UMAprotocol/protocol/commit/cd9412d1bac4c0def413309423fe9ff8e487e4c1))
+
 # [2.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/disputer@2.2.0...@uma/disputer@2.3.0) (2021-05-20)
 
 ### Features
