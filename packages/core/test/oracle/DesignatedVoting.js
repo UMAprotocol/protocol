@@ -4,15 +4,19 @@ const {
   getRandomSignedInt,
   computeVoteHashAncillary,
   signMessage,
+  runDefaultFixture,
 } = require("@uma/common");
 
-const DesignatedVoting = artifacts.require("DesignatedVoting");
-const Finder = artifacts.require("Finder");
-const Registry = artifacts.require("Registry");
-const Voting = artifacts.require("Voting");
-const VotingAncillaryInterfaceTesting = artifacts.require("VotingAncillaryInterfaceTesting");
-const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const VotingToken = artifacts.require("VotingToken");
+const hre = require("hardhat");
+const { getContract } = hre;
+
+const DesignatedVoting = getContract("DesignatedVoting");
+const Finder = getContract("Finder");
+const Registry = getContract("Registry");
+const Voting = getContract("Voting");
+const VotingAncillaryInterfaceTesting = getContract("VotingAncillaryInterfaceTesting");
+const IdentifierWhitelist = getContract("IdentifierWhitelist");
+const VotingToken = getContract("VotingToken");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 const snapshotMessage = "Sign For Snapshot";
 const { utf8ToHex, padRight } = web3.utils;
@@ -34,7 +38,8 @@ contract("DesignatedVoting", function (accounts) {
   // Corresponds to DesignatedVoting.Roles.Voter.
   const voterRole = "1";
 
-  before(async function () {
+  beforeEach(async function () {
+    await runDefaultFixture(hre);
     voting = await VotingAncillaryInterfaceTesting.at((await Voting.deployed()).address);
     supportedIdentifiers = await IdentifierWhitelist.deployed();
     votingToken = await VotingToken.deployed();
