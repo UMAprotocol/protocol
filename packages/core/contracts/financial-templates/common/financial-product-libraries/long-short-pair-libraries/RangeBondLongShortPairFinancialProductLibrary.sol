@@ -76,7 +76,13 @@ contract RangeBondLongShortPairFinancialProductLibrary is LongShortPairFinancial
      * @param expiryPrice price from the optimistic oracle for the LSP price identifier.
      * @return expiryPercentLong to indicate how much collateral should be sent between long and short tokens.
      */
-    function computeExpiryTokensForCollateral(int256 expiryPrice) public view override returns (uint256) {
+    function computeExpiryTokensForCollateral(int256 expiryPrice)
+        public
+        view
+        override
+        nonReentrantView()
+        returns (uint256)
+    {
         RangeBondLongShortPairParameters memory params = longShortPairParameters[msg.sender];
 
         // expiryPercentLong=[min(max(1/R2,1/P),1/R1)]/(1/R1)
