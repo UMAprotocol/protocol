@@ -100,6 +100,26 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       assert(stats[currency], "No stats for currency: " + currency);
       return stats[currency].latest.values();
     },
+    async historicalSynthPricesByAddress(
+      empAddress: string,
+      start = 0,
+      end: number = Date.now()
+    ): Promise<PriceSample[]> {
+      assert(empAddress, "requires emp address");
+      assert(start >= 0, "requires a start value >= 0");
+      assert(exists(synthPrices.history[empAddress]), "No synthetic prices for emp address: " + empAddress);
+      const results = await synthPrices.history[empAddress].betweenByTimestamp(start, end);
+      // convert this to tuple to save bytes.
+      return results.map(({ price, timestamp }) => [timestamp, price]);
+    },
+    async sliceHistoricalSynthPricesByAddress(empAddress: string, start = 0, length = 1): Promise<PriceSample[]> {
+      assert(empAddress, "requires emp address");
+      assert(start >= 0, "requires a start value >= 0");
+      assert(exists(synthPrices.history[empAddress]), "No synthetic prices for emp address: " + empAddress);
+      const results = await synthPrices.history[empAddress].sliceByTimestamp(start, length);
+      // convert this to tuple to save bytes.
+      return results.map(({ price, timestamp }) => [timestamp, price]);
+    },
   };
 
   // list all available actions

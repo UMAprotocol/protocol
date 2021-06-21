@@ -37,6 +37,7 @@ const collateralPerPair = toWei("1"); // each pair of long and short tokens need
 const syntheticName = "Test LSP";
 const syntheticSymbol = "tCFD";
 const ancillaryData = web3.utils.utf8ToHex("some-address-field:0x1234");
+const prepaidProposerReward = "0";
 
 contract("LongShortPairCreator", function (accounts) {
   const deployer = accounts[0];
@@ -84,6 +85,7 @@ contract("LongShortPairCreator", function (accounts) {
       collateralAddress: collateralToken.address,
       financialProductLibraryAddress: longShortPairLibrary.address,
       ancillaryData,
+      prepaidProposerReward,
     };
   });
 
@@ -95,7 +97,7 @@ contract("LongShortPairCreator", function (accounts) {
 
     // Event should be emitted correctly.
     truffleAssert.eventEmitted(lspCreateTx, "CreatedLongShortPair", (ev) => {
-      return ev.LongShortPair == lspAddress && ev.deployerAddress == deployer;
+      return ev.longShortPair == lspAddress && ev.deployerAddress == deployer;
     });
 
     // Validate LSP parameters are set correctly.
@@ -130,12 +132,25 @@ contract("LongShortPairCreator", function (accounts) {
       ...Object.values({ ...constructorParams, collateralAddress: non18Collateral.address })
     );
 
-    const lspAddress = (await longShortPairCreator.getPastEvents("CreatedLongShortPair"))[0].returnValues.LongShortPair;
+    const lspAddress = (await longShortPairCreator.getPastEvents("CreatedLongShortPair"))[0].returnValues.longShortPair;
 
     const lsp = await LongShortPair.at(lspAddress);
 
     assert.equal(await (await Token.at(await lsp.longToken())).decimals(), "6");
     assert.equal(await (await Token.at(await lsp.shortToken())).decimals(), "6");
+  });
+
+  it("Transfers prepaidProposerReward", async function () {
+    const customPrepaidProposerReward = toWei("100");
+    await collateralToken.mint(deployer, customPrepaidProposerReward);
+    await collateralToken.approve(longShortPairCreator.address, customPrepaidProposerReward);
+    await longShortPairCreator.createLongShortPair(
+      ...Object.values({ ...constructorParams, prepaidProposerReward: customPrepaidProposerReward })
+    );
+
+    const lspAddress = (await longShortPairCreator.getPastEvents("CreatedLongShortPair"))[0].returnValues.longShortPair;
+
+    assert.equal((await collateralToken.balanceOf(lspAddress)).toString(), customPrepaidProposerReward);
   });
 
   it("Rejects on past expirationTimestamp", async function () {

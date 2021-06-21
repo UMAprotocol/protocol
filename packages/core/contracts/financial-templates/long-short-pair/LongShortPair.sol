@@ -63,6 +63,8 @@ contract LongShortPair is Testable, Lockable {
 
     bytes public customAncillaryData;
 
+    uint256 public prepaidProposerReward;
+
     /****************************************
      *                EVENTS                *
      ****************************************/
@@ -108,6 +110,7 @@ contract LongShortPair is Testable, Lockable {
      * @param _financialProductLibrary Contract providing settlement payout logic.
      * @param _customAncillaryData Custom ancillary data to be passed along with the price request. If not needed, this
      *                             should be left as a 0-length bytes array.
+     * @param _prepaidProposerReward Preloaded reward to incentivize settlement price proposals.
      * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 in production.
      */
     constructor(
@@ -120,6 +123,7 @@ contract LongShortPair is Testable, Lockable {
         FinderInterface _finder,
         LongShortPairFinancialProductLibrary _financialProductLibrary,
         bytes memory _customAncillaryData,
+        uint256 _prepaidProposerReward,
         address _timerAddress
     ) Testable(_timerAddress) {
         finder = _finder;
@@ -145,6 +149,7 @@ contract LongShortPair is Testable, Lockable {
             "Ancillary Data too long"
         );
         customAncillaryData = _customAncillaryData;
+        prepaidProposerReward = _prepaidProposerReward;
     }
 
     /****************************************
@@ -276,8 +281,15 @@ contract LongShortPair is Testable, Lockable {
     function _requestOraclePriceExpiration() internal {
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
 
-        // For now, we add no fees the the OO and set the reward to 0.
-        optimisticOracle.requestPrice(priceIdentifier, expirationTimestamp, customAncillaryData, collateralToken, 0);
+        // Use the prepaidProposerReward as the proposer reward.
+        if (prepaidProposerReward > 0) collateralToken.safeApprove(address(optimisticOracle), prepaidProposerReward);
+        optimisticOracle.requestPrice(
+            priceIdentifier,
+            expirationTimestamp,
+            customAncillaryData,
+            collateralToken,
+            prepaidProposerReward
+        );
     }
 
     function _getIdentifierWhitelist() internal view returns (IdentifierWhitelistInterface) {
