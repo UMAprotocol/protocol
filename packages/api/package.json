@@ -1,5 +1,5 @@
 {
-  "name": "api",
+  "name": "@uma/api",
   "private": true,
   "version": "0.2.0",
   "author": "David Adams",
@@ -43,5 +43,9 @@
     "prettier": "prettier './**/*.md' './src/**/*.ts'",
     "lint": "yarn prettier --write && yarn eslint --fix",
     "api": "ts-node src/start api"
+  },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.com/",
+    "access": "public"
   }
 }
