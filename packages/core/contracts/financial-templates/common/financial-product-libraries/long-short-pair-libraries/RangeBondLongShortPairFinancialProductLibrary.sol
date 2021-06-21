@@ -63,6 +63,7 @@ contract RangeBondLongShortPairFinancialProductLibrary is LongShortPairFinancial
         require(highPriceRange > lowPriceRange, "Invalid bounds");
 
         RangeBondLongShortPairParameters memory params = longShortPairParameters[LongShortPair];
+        require(params.highPriceRange == 0 && params.lowPriceRange == 0, "Parameters already set");
 
         longShortPairParameters[LongShortPair] = RangeBondLongShortPairParameters({
             highPriceRange: highPriceRange,
