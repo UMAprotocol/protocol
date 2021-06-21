@@ -5,6 +5,7 @@ const {
   didContractThrow,
   ZERO_ADDRESS,
 } = require("@uma/common");
+const { getTruffleContract } = require("@uma/core");
 const { toWei, toBN, utf8ToHex, fromWei } = web3.utils;
 
 // Tested Contract
@@ -16,6 +17,8 @@ const WETH9 = artifacts.require("WETH9");
 const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json");
 const IUniswapV2Pair = require("@uniswap/v2-core/build/IUniswapV2Pair.json");
 const UniswapV2Router02 = require("@uniswap/v2-periphery/build/UniswapV2Router02.json");
+const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);
+const DSProxy = getTruffleContract("DSProxy", web3);
 const { assert } = require("chai");
 
 // LSP contracts
@@ -32,6 +35,10 @@ let factory;
 let router;
 let pair;
 let pairAddress;
+
+// DS Proxy contracts
+let dsProxy;
+let dsProxyFactory;
 
 // Tested contract
 let lspUniswapV2Broker;
@@ -79,6 +86,8 @@ contract("LspUniswapV2Broker", function (accounts) {
   const deployer = accounts[0];
   const trader = accounts[1];
   before(async () => {
+    dsProxyFactory = await DSProxyFactory.new();
+
     const WETH = await WETH9.new();
     // deploy Uniswap V2 Factory & router.
     factory = await createContractObjectFromJson(UniswapV2Factory, web3).new(deployer, { from: deployer });
@@ -328,34 +337,43 @@ contract("LspUniswapV2Broker", function (accounts) {
       );
     });
 
-    it("Caller is not an EOA", async function () {
-      // Send collateral to contract it can use to deposit into LSP:
-      await collateralToken.transfer(lspUniswapV2Broker.address, toWei("1000"), { from: trader });
-      assert.equal((await collateralToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("1000"));
+    it("Caller is a DSProxy", async function () {
+      // Finally, create a DSProxy for the caller. This will be used to send mint the LSP position from.
+      await dsProxyFactory.build({ from: trader });
+      dsProxy = await DSProxy.at((await dsProxyFactory.getPastEvents("Created"))[0].returnValues.proxy);
+
+      // Send collateral to DSProxy it can use to deposit into LSP:
+      await collateralToken.transfer(dsProxy.address, toWei("1000"), { from: trader });
+      assert.equal((await collateralToken.balanceOf(dsProxy.address)).toString(), toWei("1000"));
 
       // Calculate the expected long purchased with the short  from the trade before the trade is done (initial reserves).
       const longFromSale = await getAmountOut(shortToken, longToken, toWei("1000"), true);
 
-      await lspUniswapV2Broker.atomicMintSellOneSide(
-        false, // tradingAsEOA. False and pretending to call from a contract like a DSProxy.
-        true, // tradingLong. we want the contract to hold long tokens after the call.
-        longShortPair.address, // longShortPair. address to mint tokens against.
-        router.address, // router. uniswap v2 router to execute trades
-        toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
-        [shortToken.address, longToken.address], // swapPath. exchange the short tokens for long tokens.
-        MAX_UINT_VAL, // unreachable deadline
-        { from: trader }
-      );
+      // Execute mint+sell via DSProxy:
+      const callData = lspUniswapV2Broker.contract.methods
+        .atomicMintSellOneSide(
+          false, // tradingAsEOA. False and pretending to call from a contract like a DSProxy.
+          true, // tradingLong. we want the contract to hold long tokens after the call.
+          longShortPair.address, // longShortPair. address to mint tokens against.
+          router.address, // router. uniswap v2 router to execute trades
+          toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
+          [shortToken.address, longToken.address], // swapPath. exchange the short tokens for long tokens.
+          MAX_UINT_VAL // unreachable deadline
+        )
+        .encodeABI();
+      await dsProxy.contract.methods["execute(address,bytes)"](lspUniswapV2Broker.address, callData).send({
+        from: trader,
+      });
 
-      // The broker should no collateral left (spent all 1000).
-      assert.equal((await collateralToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
+      // The DSProxy should no collateral left (spent all 1000).
+      assert.equal((await collateralToken.balanceOf(dsProxy.address)).toString(), toWei("0"));
 
-      // The broker should have no short tokens as they were all sold when minting.
-      assert.equal((await shortToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
+      // The DSProxy should have no short tokens as they were all sold when minting.
+      assert.equal((await shortToken.balanceOf(dsProxy.address)).toString(), toWei("0"));
 
-      // The broker should have the exact number of long tokens from minting + those from buying with the sold short side.
+      // The DSProxy should have the exact number of long tokens from minting + those from buying with the sold short side.
       assert.equal(
-        (await longToken.balanceOf(lspUniswapV2Broker.address)).toString(),
+        (await longToken.balanceOf(dsProxy.address)).toString(),
         toBN(toWei("1000")).add(longFromSale).toString()
       );
     });
