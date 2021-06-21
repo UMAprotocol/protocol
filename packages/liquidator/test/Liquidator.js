@@ -37,8 +37,8 @@ const { ProxyTransactionWrapper } = require("../src/proxyTransactionWrapper");
 // 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
 const configs = [
   { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 },
+  // { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
+  // { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 },
 ];
 
 let iterationTestVersion; // store the test version between tests that is currently being tested.
@@ -2089,7 +2089,7 @@ contract("Liquidator.js", function (accounts) {
               }
             }
           );
-          versionedIt([{ contractType: "any", contractVersion: "any" }])(
+          versionedIt([{ contractType: "any", contractVersion: "any" }], true)(
             "Correctly deals with reserve being the same as collateral currency using DSProxy",
             async function () {
               // create a new liquidator and set the reserve currency to the collateral currency.
@@ -2175,7 +2175,7 @@ contract("Liquidator.js", function (accounts) {
               assert.isTrue(spyLogIncludes(spy, 3, "Submitting a partial liquidation"));
               assert.isTrue(spyLogIncludes(spy, 4, "Executed function on a freshly deployed library"));
               assert.isTrue(spyLogIncludes(spy, 5, "Position has been liquidated"));
-              assert.isTrue(spyLogIncludes(spy, 6, "Insufficient balance to liquidate the minimum sponsor size"));
+              assert.isTrue(spyLogIncludes(spy, 6, "The liquidator has an open position that is liquidatable"));
             }
           );
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
