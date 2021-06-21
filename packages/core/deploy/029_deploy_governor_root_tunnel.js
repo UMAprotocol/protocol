@@ -18,7 +18,15 @@ const func = async function (hre) {
 
   const chainId = await getChainId();
 
-  const args = [ADDRESSES_FOR_NETWORK[chainId].checkpointManager, ADDRESSES_FOR_NETWORK[chainId].fxRoot];
+  let args;
+  if (ADDRESSES_FOR_NETWORK[chainId]) {
+    args = [ADDRESSES_FOR_NETWORK[chainId].checkpointManager, ADDRESSES_FOR_NETWORK[chainId].fxRoot];
+  } else {
+    // Fall back to mocks if hardhcoded addresses aren't there.
+    const FxRootMock = await deployments.get("FxRootMock");
+    args = [deployer, FxRootMock.address]; // Note: uses deployer as the checkpoint manager.
+  }
+
   await deploy("GovernorRootTunnel", {
     from: deployer,
     args,
