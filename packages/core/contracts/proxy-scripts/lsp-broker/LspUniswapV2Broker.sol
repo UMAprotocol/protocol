@@ -63,14 +63,10 @@ contract LspUniswapV2Broker {
         );
 
         // 1) Deposit collateral into LSP and mint long and short tokens.
-        // TODO: So this assumes we are minting collateral --> long/short tokens in a one-to-one ratio?
-        // i.e. The `LSP.collateralPerPair=1`
         longShortPair.create(collateralToMintWith);
 
         // 2) Determine which token we are selling and convert it all into the other.
         IERC20 soldToken = IERC20(sellLong ? longShortPair.shortToken() : longShortPair.longToken());
-        // TODO: Should we make this check?
-        // require(soldToken.balanceOf(address(this)) > 0, "Missing balance of token to sell");
         TransferHelper.safeApprove(address(soldToken), address(router), soldToken.balanceOf(address(this)));
         require(swapPath[0] == address(soldToken), "Sold token != 0th swapPath");
         router.swapExactTokensForTokens(
