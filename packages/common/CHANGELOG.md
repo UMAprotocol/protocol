@@ -3,6 +3,27 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.2.0...@uma/common@2.3.0) (2021-06-21)
+
+### Bug Fixes
+
+- **common:** explicitly require the hardhat etherscan verification plugin ([#3121](https://github.com/UMAprotocol/protocol/issues/3121)) ([3648597](https://github.com/UMAprotocol/protocol/commit/3648597eaf72bcb8840aacce1139692fd0fe0b78))
+- **common:** Fix PublicNetworks ([#3033](https://github.com/UMAprotocol/protocol/issues/3033)) ([34fda80](https://github.com/UMAprotocol/protocol/commit/34fda805f0fad99b8ae3e53273814e08cc8ede5e))
+- **common-ContractUtils:** Add web3 param injection to createContractObjectFromJson ([#3060](https://github.com/UMAprotocol/protocol/issues/3060)) ([805003a](https://github.com/UMAprotocol/protocol/commit/805003a94c01f2d8fb4556701382b0f4bbf26cd8))
+- **TruffleConfig:** Increase networkCheckTimeout for slower connections ([#3029](https://github.com/UMAprotocol/protocol/issues/3029)) ([930960a](https://github.com/UMAprotocol/protocol/commit/930960aa774c90d4d00725e0928cd9ce9949b45c))
+
+### Features
+
+- **core:** add all truffle migrations to hardhat deploy ([#3068](https://github.com/UMAprotocol/protocol/issues/3068)) ([0004bd7](https://github.com/UMAprotocol/protocol/commit/0004bd7401211f628c80198be6ec99cff3156c36))
+- **hardhat:** add default hardhat test fixture ([#3080](https://github.com/UMAprotocol/protocol/issues/3080)) ([4840786](https://github.com/UMAprotocol/protocol/commit/484078630dd0ced42c3ec3642995834123c8d7c0))
+- **optimistic-oracle:** Enable universal blacklist ([#3127](https://github.com/UMAprotocol/protocol/issues/3127)) ([ad84c86](https://github.com/UMAprotocol/protocol/commit/ad84c861b5081d6b9844d62bf2d8373b049faedb))
+- **polygon-amb:** Add Governor Tunnel contracts and unit tests ([#3089](https://github.com/UMAprotocol/protocol/issues/3089)) ([20a3866](https://github.com/UMAprotocol/protocol/commit/20a386693cc380827b3eedd7ff7382b15d7670f3))
+- **polygon-fx-tunnel:** Add Oracle tunnel integrating with Polygon hosted Arbitrary Message Bridge ([#3054](https://github.com/UMAprotocol/protocol/issues/3054)) ([a3bf462](https://github.com/UMAprotocol/protocol/commit/a3bf46270787cbaae4ed2218f064b1217c153a50))
+- **price-identifier-utils:** Ignore SPACEXLAUNCH price id OO requests ([#3126](https://github.com/UMAprotocol/protocol/issues/3126)) ([22e1dd1](https://github.com/UMAprotocol/protocol/commit/22e1dd15353e33a57914f1bccd3c447cb84cd5d7))
+- Add hardhat task to migrate identifier whitelist to new contract ([#3046](https://github.com/UMAprotocol/protocol/issues/3046)) ([4e98402](https://github.com/UMAprotocol/protocol/commit/4e98402896fe50a5013c8decfaa0f261363ae33c))
+- **run-transaction:** add multi EOA transaction runner to DSProxy bots ([#2961](https://github.com/UMAprotocol/protocol/issues/2961)) ([ab88497](https://github.com/UMAprotocol/protocol/commit/ab88497f180d72f1d9e8305fdeabf786f5883b7c))
+- **Winston-logger:** add multiple escalation paths depending on message context ([#3042](https://github.com/UMAprotocol/protocol/issues/3042)) ([cd9412d](https://github.com/UMAprotocol/protocol/commit/cd9412d1bac4c0def413309423fe9ff8e487e4c1))
+
 # [2.2.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.1.0...@uma/common@2.2.0) (2021-05-20)
 
 ### Bug Fixes

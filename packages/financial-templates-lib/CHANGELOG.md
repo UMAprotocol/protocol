@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.4.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.3.0...@uma/financial-templates-lib@2.4.0) (2021-06-21)
+
+### Bug Fixes
+
+- **cw-pricefeed:** Fix getCurrentPrice when twapLength and invertPrice is defined ([#3101](https://github.com/UMAprotocol/protocol/issues/3101)) ([587ab06](https://github.com/UMAprotocol/protocol/commit/587ab060652fa0593d982a7b0352c2f8dc03d54c))
+- **default-pf-config:** Fix lookback period for BALUSD price id ([#3043](https://github.com/UMAprotocol/protocol/issues/3043)) ([bb4dd0b](https://github.com/UMAprotocol/protocol/commit/bb4dd0bff53733aad3ced3ce9e78c94a64aa8161))
+- **Logger:** address flaky error reporting ([#3028](https://github.com/UMAprotocol/protocol/issues/3028)) ([a61f932](https://github.com/UMAprotocol/protocol/commit/a61f932e6c4d1dbb2e1972d415d9bfa3988a2ac4))
+
+### Features
+
+- **default-pf-config:** Add DEXTFUSD and USDDEXTF price feed configs ([#3017](https://github.com/UMAprotocol/protocol/issues/3017)) ([888b657](https://github.com/UMAprotocol/protocol/commit/888b657f3d185620f61dffdddb8faf68fdf7acf6))
+- **price-feed:** Add iFARM price feed configs and HarvestVault template ([#2996](https://github.com/UMAprotocol/protocol/issues/2996)) ([28613db](https://github.com/UMAprotocol/protocol/commit/28613dbfc9bf48f525abce9a403ee9f4d649b499))
+- **run-transaction:** add multi EOA transaction runner to DSProxy bots ([#2961](https://github.com/UMAprotocol/protocol/issues/2961)) ([ab88497](https://github.com/UMAprotocol/protocol/commit/ab88497f180d72f1d9e8305fdeabf786f5883b7c))
+- **serverless-hub:** Update to enable generalize bot runner to work in production ([#3062](https://github.com/UMAprotocol/protocol/issues/3062)) ([85caf51](https://github.com/UMAprotocol/protocol/commit/85caf519164aced76b55ab9e65c36a49d1077bb4))
+- **Winston-logger:** add multiple escalation paths depending on message context ([#3042](https://github.com/UMAprotocol/protocol/issues/3042)) ([cd9412d](https://github.com/UMAprotocol/protocol/commit/cd9412d1bac4c0def413309423fe9ff8e487e4c1))
+
 # [2.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.2.0...@uma/financial-templates-lib@2.3.0) (2021-05-20)
 
 ### Bug Fixes
