@@ -120,3 +120,14 @@ Get only tvl (and other future statistics) for a single emp.
 #### listEmpStats(currency: "usd" = "usd") => StatData[]
 
 Get all tvl (and other future statistics) for all known emps.
+
+### historicalSynthPricesByAddress(empAddress:string,start:number=0,end:number=Date.now()) => PriceSample[]
+
+Get a range of historical prices synthetic prices by emp address between start and end in MS, sorted by timestamp
+ascending. This is useful for charting betwen two dates. Note non synth historical prices are specified by erc20 address.
+
+### sliceHistoricalSynthPricesByAddress(address:string,start:number=0,length:number=1) => PriceSample[]
+
+Get a range of historical synthetic prices by emp address between start and count of price samples, sorted by timestamp
+ascending. This is useful for paginating data when you have X elements per page, and you know the last element seen.
+Note non synth historical prices are specified by erc20 address.
