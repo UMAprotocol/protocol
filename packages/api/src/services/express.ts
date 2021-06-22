@@ -27,13 +27,9 @@ export default async (config: Config, actions: Actions) => {
   app.post("/:action", (req: Request, res: Response, next: NextFunction) => {
     const action = req?.params?.action;
 
-    // show how long calls take in ms
-    const timeid = lodash.uniqueId(`Action: ${action} `);
-    console.time(timeid);
     actions(action, ...lodash.castArray(req.body))
       .then(res.json.bind(res))
-      .catch(next)
-      .finally(() => console.timeEnd(timeid));
+      .catch(next);
   });
 
   app.use(cors());

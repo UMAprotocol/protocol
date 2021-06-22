@@ -118,12 +118,7 @@ async function run(env: ProcessEnv) {
 
   // main update loop, update every block
   provider.on("block", (blockNumber: number) => {
-    // this timeid/time stuff just logs how long the update takes
-    const timeid = uniqueId("App State Updated ");
-    console.time(timeid);
-    updateByBlock(blockNumber)
-      .catch(console.error)
-      .finally(() => console.timeEnd(timeid));
+    updateByBlock(blockNumber).catch(console.error);
   });
 
   // separate out price updates into a different loop to query every few minutes
@@ -134,11 +129,7 @@ async function run(env: ProcessEnv) {
 
   // coingeckos prices don't update very fast, so set it on an interval every few minutes
   setInterval(() => {
-    const timeid = uniqueId("Prices Updated ");
-    console.time(timeid);
-    updatePrices()
-      .catch(console.error)
-      .finally(() => console.timeEnd(timeid));
+    updatePrices().catch(console.error);
   }, 5 * 60 * 1000);
 }
 
