@@ -652,17 +652,19 @@ contract("LspUniswapV2Broker", function (accounts) {
       // one long and one short token.
       const adjustment = toWei(toBN("1"));
       const longPerLp = (await longToken.balanceOf(pair.address)).mul(adjustment).div(await lpToken.totalSupply());
-      const shortPerLp = (await longToken.balanceOf(pair.address)).mul(adjustment).div(await lpToken.totalSupply());
+      const shortPerLp = (await shortToken.balanceOf(pair.address)).mul(adjustment).div(await lpToken.totalSupply());
 
       // Next, the trader removes their liquidity to validate they get back the right number of long/short tokens.
       await lpToken.approve(router.address, MAX_UINT_VAL, { from: trader });
 
       const traderLpBalance = await lpToken.balanceOf(trader);
+      console.log("longPerLp", longPerLp.toString());
+      console.log("traderLpBalance", traderLpBalance.toString());
 
       await router.removeLiquidity(
         longToken.address,
         shortToken.address,
-        (await lpToken.balanceOf(trader)).toString(),
+        traderLpBalance.toString(),
         "0",
         "0",
         trader,
@@ -673,9 +675,18 @@ contract("LspUniswapV2Broker", function (accounts) {
       // Trader should get back tokens in the exact ratio that the pair has between long and short tokens. This should be
       // approximately equal to a 10:1 ratio, as this is the rate the pool was seeded at (error introduced by single
       // sided deposit that will make this not exactly 10:1) and should be exactly equal to the ratio from the previous calc.
+      // In these calculations we check that the output is within 500 units of the expected value.
+
       assert.equal((await lpToken.balanceOf(trader)).toString(), toWei("0"));
-      assert.equal((await longToken.balanceOf(trader)).toString(), longPerLp.mul(traderLpBalance).toString());
-      assert.equal((await shortToken.balanceOf(trader)).toString(), shortPerLp.mul(traderLpBalance).toString());
+
+      assert.isTrue(
+        (await longToken.balanceOf(trader)).addn(500).gt(longPerLp.mul(traderLpBalance).div(adjustment)) &&
+          (await longToken.balanceOf(trader)).subn(500).lt(longPerLp.mul(traderLpBalance).div(adjustment))
+      );
+      assert.isTrue(
+        (await shortToken.balanceOf(trader)).addn(500).gt(shortPerLp.mul(traderLpBalance).div(adjustment)) &&
+          (await shortToken.balanceOf(trader)).subn(500).lt(shortPerLp.mul(traderLpBalance).div(adjustment))
+      );
     });
   });
 });
