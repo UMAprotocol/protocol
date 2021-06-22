@@ -23,7 +23,6 @@ class Coingecko {
     else throw new Error("Something went wrong fetching coingecko prices!");
   }
   async getContractDetails(contract_address: string, id = "ethereum") {
-    const { host } = this;
     return this.call(`coins/${id}/contract/${contract_address.toLowerCase()}`);
   }
   async getCurrentPriceByContract(contract_address: string, currency = "usd") {
