@@ -21,7 +21,7 @@ contract LspUniswapV2Broker {
 
     /**
      * @notice Mint long and short tokens and deposit them all into a UniV2 Pool.
-
+     * @dev The caller of this method needs to approve `amountCollateral` collateral to be spent by this contract.
      * @param callingAsEOA If True, caller has balance of collateral and expects to receive back all long/short tokens.
      * @param longShortPair LSP contract address to mint position on.
      * @param router Contract to call to exchange long and short tokens.
@@ -60,6 +60,7 @@ contract LspUniswapV2Broker {
 
     /**
      * @notice Mint long and short tokens and convert all of one side into the other.
+     * @dev The caller of this method needs to approve `amountCollateral` collateral to be spent by this contract.
      * @param callingAsEOA If True, caller has balance of collateral and expects to receive back all long/short tokens.
      * @param sellLong If True, converts all long tokens into short, else the opposite.
      * @param longShortPair LSP contract address to mint position on.
