@@ -113,6 +113,11 @@ contract("LongShortPair", function (accounts) {
         )
       );
 
+      // Invalid collateral per pair.
+      assert(
+        await didContractThrow(LongShortPair.new(...Object.values({ ...constructorParams, collateralPerPair: "0" })))
+      );
+
       // Invalid price identifier time.
       assert(
         await didContractThrow(

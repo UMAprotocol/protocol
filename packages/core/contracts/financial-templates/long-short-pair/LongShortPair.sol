@@ -128,6 +128,7 @@ contract LongShortPair is Testable, Lockable {
     ) Testable(_timerAddress) {
         finder = _finder;
         require(_expirationTimestamp > getCurrentTime(), "Expiration timestamp in past");
+        require(_collateralPerPair > 0, "Collateral per pair cannot be 0");
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Identifier not registered");
         require(address(_getOptimisticOracle()) != address(0), "Invalid finder");
         require(address(_financialProductLibrary) != address(0), "Invalid FinancialProductLibrary");
