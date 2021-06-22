@@ -30,7 +30,7 @@ contract LspUniswapV2Broker {
      * @param sellLong If True, converts all long tokens into short, else the opposite.
      * @param longShortPair LSP contract address to mint position on.
      * @param router Contract to call to exchange long and short tokens.
-     * @param collateralToMintWith Amount of collateral to deposit and borrow long and short tokens against.
+     * @param amountCollateral Amount of collateral to deposit and borrow long and short tokens against.
      * @param swapPath `Router.swapExactTokensForTokens` param: path with which to swap token to sell for the other.
      * @param deadline `Router.swapExactTokensForTokens` param: time before transaction must be mined.
      */
@@ -39,31 +39,24 @@ contract LspUniswapV2Broker {
         bool sellLong,
         LongShortPair longShortPair,
         IUniswapV2Router01 router, /* TODO: Should we allow `router` to be any exchange, such as a Matcha multihop? */
-        uint256 collateralToMintWith,
+        uint256 amountCollateral,
         address[] memory swapPath,
         uint256 deadline
     ) public {
         require(address(longShortPair) != address(0), "Invalid long short pair");
         require(address(router) != address(0), "Invalid router");
-        require(collateralToMintWith != 0, "Collateral to mint with");
+        require(amountCollateral != 0, "Collateral to mint with");
+
+        IERC20 collateralToken = IERC20(longShortPair.collateralToken());
 
         // 0) Pull collateral from caller if necessary and approve LSP to spend it.
         if (tradingAsEOA)
-            TransferHelper.safeTransferFrom(
-                address(longShortPair.collateralToken()),
-                msg.sender,
-                address(this),
-                collateralToMintWith
-            );
+            TransferHelper.safeTransferFrom(address(collateralToken), msg.sender, address(this), amountCollateral);
 
-        TransferHelper.safeApprove(
-            address(longShortPair.collateralToken()),
-            address(longShortPair),
-            collateralToMintWith
-        );
+        TransferHelper.safeApprove(address(collateralToken), address(longShortPair), amountCollateral);
 
         // 1) Deposit collateral into LSP and mint long and short tokens.
-        longShortPair.create(collateralToMintWith);
+        longShortPair.create(amountCollateral);
 
         // 2) Determine which token we are selling and convert it all into the other.
         IERC20 soldToken = IERC20(sellLong ? longShortPair.shortToken() : longShortPair.longToken());
@@ -79,8 +72,8 @@ contract LspUniswapV2Broker {
 
         // 3) Send tokens back to caller if neccessary.
         if (tradingAsEOA) {
-            IERC20 otherToken = IERC20(!sellLong ? longShortPair.shortToken() : longShortPair.longToken());
-            otherToken.transfer(msg.sender, otherToken.balanceOf(address(this)));
+            IERC20 purchasedToken = IERC20(!sellLong ? longShortPair.shortToken() : longShortPair.longToken());
+            purchasedToken.transfer(msg.sender, purchasedToken.balanceOf(address(this)));
         }
     }
 }
