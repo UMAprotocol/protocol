@@ -124,9 +124,8 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
       );
     });
 
-    // TODO: Add comments why `match` could be undefined, but the following code within the `if` statement
-    // would succeed?
     if (match === undefined) {
+      // If match doesn't succeed, then give caller details about closest price periods.
       const before = this.historicalPricePeriods
         .slice()
         .reverse()
