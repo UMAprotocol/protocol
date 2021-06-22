@@ -11,14 +11,21 @@ const func = async function (hre) {
   const { deployer } = await getNamedAccounts();
 
   const chainId = await getChainId();
-  const Finder = await deployments.get("Finder");
 
-  const args = [ADDRESSES_FOR_NETWORK[chainId].fxChild, Finder.address];
-  await deploy("OracleChildTunnel", {
+  let args;
+  if (ADDRESSES_FOR_NETWORK[chainId]) {
+    args = [ADDRESSES_FOR_NETWORK[chainId].fxChild];
+  } else {
+    // Fall back to mocks if hardhcoded addresses aren't there.
+    const FxChildMock = await deployments.get("FxChildMock");
+    args = [FxChildMock.address];
+  }
+
+  await deploy("GovernorChildTunnel", {
     from: deployer,
     args,
     log: true,
   });
 };
 module.exports = func;
-func.tags = ["OracleChildTunnel", "l2-polygon"];
+func.tags = ["GovernorChildTunnel", "l2-polygon"];

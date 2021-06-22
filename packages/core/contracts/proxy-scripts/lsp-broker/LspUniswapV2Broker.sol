@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
+
 import "@uniswap/lib/contracts/libraries/TransferHelper.sol";
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router01.sol";
 
@@ -20,6 +21,7 @@ contract LspUniswapV2Broker {
 
     /**
      * @notice Mint long and short tokens and deposit them all into a UniV2 Pool.
+
      * @param callingAsEOA If True, caller has balance of collateral and expects to receive back all long/short tokens.
      * @param longShortPair LSP contract address to mint position on.
      * @param router Contract to call to exchange long and short tokens.
@@ -102,7 +104,7 @@ contract LspUniswapV2Broker {
             deadline
         );
 
-        // 3) Send tokens back to caller if neccessary.
+        // 3) Send tokens back to caller if necessary.
         if (callingAsEOA) {
             IERC20 purchasedToken = IERC20(!sellLong ? longShortPair.shortToken() : longShortPair.longToken());
             TransferHelper.safeTransfer(address(purchasedToken), msg.sender, purchasedToken.balanceOf(address(this)));

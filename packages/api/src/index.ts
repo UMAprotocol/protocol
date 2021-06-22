@@ -43,6 +43,9 @@ export type AppState = {
     latest: {
       [empAddress: string]: PriceSample;
     };
+    history: {
+      [empAddress: string]: uma.tables.historicalPrices.SortedJsMap;
+    };
   };
   erc20s: uma.tables.erc20s.JsMap;
   stats: {

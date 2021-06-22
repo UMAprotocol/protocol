@@ -44,6 +44,7 @@ async function run(env: ProcessEnv) {
     },
     synthPrices: {
       latest: {},
+      history: {},
     },
     erc20s: tables.erc20s.JsMap(),
     stats: {

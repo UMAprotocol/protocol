@@ -34,22 +34,12 @@ contract("RangeBondLongShortPairFinancialProductLibrary", function () {
       assert.equal(setParams.highPriceRange.toString(), highPriceRange);
     });
     it("Can not re-use existing LSP contract address", async () => {
-      await rangeBondLSPFPL.setLongShortPairParameters(
-        lspMock.address,
-
-        highPriceRange,
-        lowPriceRange
-      );
+      await rangeBondLSPFPL.setLongShortPairParameters(lspMock.address, highPriceRange, lowPriceRange);
 
       // Second attempt should revert.
       assert(
         await didContractThrow(
-          rangeBondLSPFPL.setLongShortPairParameters(
-            lspMock.address,
-
-            lowPriceRange,
-            highPriceRange
-          )
+          rangeBondLSPFPL.setLongShortPairParameters(lspMock.address, highPriceRange, lowPriceRange)
         )
       );
     });
@@ -57,12 +47,7 @@ contract("RangeBondLongShortPairFinancialProductLibrary", function () {
       // upper bound larger than lower bound by swapping upper and lower
       assert(
         await didContractThrow(
-          rangeBondLSPFPL.setLongShortPairParameters(
-            lspMock.address,
-
-            lowPriceRange,
-            highPriceRange
-          )
+          rangeBondLSPFPL.setLongShortPairParameters(lspMock.address, lowPriceRange, highPriceRange)
         )
       );
     });

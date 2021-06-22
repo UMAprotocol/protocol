@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.4.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.3.0...@uma/affiliates@1.4.0) (2021-06-21)
+
+### Features
+
+- **affiliates:** Update dev mining whitelist ([#3117](https://github.com/UMAprotocol/protocol/issues/3117)) ([ad298d6](https://github.com/UMAprotocol/protocol/commit/ad298d6fb9c5369550db8401ba42addfa501913e))
+- **bot-strategy-runner:** add unit tests to package ([#2983](https://github.com/UMAprotocol/protocol/issues/2983)) ([186c994](https://github.com/UMAprotocol/protocol/commit/186c994ba12714c13a701c31f49571362748b45f))
+- **gas-rebate:** Rebate 10 ([#3081](https://github.com/UMAprotocol/protocol/issues/3081)) ([06f6190](https://github.com/UMAprotocol/protocol/commit/06f61902a38039ad33ca390f51c4e3a84632d8a0))
+
 # [1.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.2.0...@uma/affiliates@1.3.0) (2021-05-20)
 
 ### Bug Fixes

@@ -128,10 +128,6 @@ contract LongShortPairCreator is Testable, Lockable {
         return lspAddress;
     }
 
-    /****************************************
-     *          PRIVATE FUNCTIONS           *
-     ****************************************/
-
     // IERC20Standard.decimals() will revert if the collateral contract has not implemented the decimals() method,
     // which is possible since the method is only an OPTIONAL method in the ERC20 standard:
     // https://eips.ethereum.org/EIPS/eip-20#methods.
