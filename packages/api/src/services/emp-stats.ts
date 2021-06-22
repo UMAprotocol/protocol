@@ -7,11 +7,11 @@ import Queries from "../libs/queries";
 type Config = {
   currency?: Currencies;
 };
-type Dependencies = Pick<AppState, "emps" | "stats" | "prices" | "erc20s">;
+type Dependencies = Pick<AppState, "emps" | "stats" | "prices" | "erc20s" | "registeredEmps">;
 
 // this service is meant to calculate numbers derived from emp state, things like TVL, TVM and other things
 export default (config: Config, appState: Dependencies) => {
-  const { emps, stats, prices } = appState;
+  const { stats, prices, registeredEmps } = appState;
   const { currency = "usd" } = config;
 
   const queries = Queries(appState);
@@ -41,7 +41,7 @@ export default (config: Config, appState: Dependencies) => {
   }
 
   async function update() {
-    const addresses = [...(await emps.active.keys()), ...(await emps.expired.keys())];
+    const addresses = Array.from(registeredEmps.values());
     await updateTvls(addresses).then((results) => {
       results.forEach((result) => {
         if (result.status === "rejected") console.error("Error updating TVL: " + result.reason.message);

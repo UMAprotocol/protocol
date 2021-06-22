@@ -117,7 +117,7 @@ that call uses the collateral address, not the emp address.
 
 Get only tvl (and other future statistics) for a single emp.
 
-#### listEmpStats(currency: "usd" = "usd") => StatData[]
+### listEmpStats(currency: "usd" = "usd") => StatData[]
 
 Get all tvl (and other future statistics) for all known emps.
 
@@ -131,3 +131,7 @@ ascending. This is useful for charting betwen two dates. Note non synth historic
 Get a range of historical synthetic prices by emp address between start and count of price samples, sorted by timestamp
 ascending. This is useful for paginating data when you have X elements per page, and you know the last element seen.
 Note non synth historical prices are specified by erc20 address.
+
+### tvl(addresses?: string[], currency: CurrencySymbol = "usd") => string
+
+Returns tvl of all supplied addresses in USD 18 decimals. If no addresses supplied, returns TVL of all known contracts.

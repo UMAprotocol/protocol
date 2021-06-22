@@ -120,6 +120,10 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       // convert this to tuple to save bytes.
       return results.map(({ price, timestamp }) => [timestamp, price]);
     },
+    async tvl(addresses?: string[], currency: CurrencySymbol = "usd") {
+      if (addresses == null || addresses.length == 0) return queries.totalTvl(currency);
+      return queries.sumTvl(addresses, currency);
+    },
   };
 
   // list all available actions

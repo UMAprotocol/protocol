@@ -147,7 +147,7 @@ export default (config: Config, appState: Dependencies) => {
 
   // add a set of all collateral addresses
   async function updateTokenAddresses() {
-    const allEmps = await emps.active.values();
+    const allEmps = [...(await emps.active.values()), ...(await emps.expired.values())];
     allEmps.forEach((emp) => {
       if (emp.collateralCurrency) collateralAddresses.add(emp.collateralCurrency);
       if (emp.tokenCurrency) syntheticAddresses.add(emp.tokenCurrency);
