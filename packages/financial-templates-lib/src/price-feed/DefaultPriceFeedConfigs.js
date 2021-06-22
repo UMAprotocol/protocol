@@ -740,6 +740,7 @@ const defaultConfigs = {
   UNIUSD: {
     type: "medianizer",
     minTimeBetweenUpdates: 60,
+    historicalTimestampBuffer: 60,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "uniusd" },
       { type: "cryptowatch", exchange: "binance", pair: "uniusdt" },
@@ -750,6 +751,7 @@ const defaultConfigs = {
     type: "medianizer",
     invertPrice: true,
     minTimeBetweenUpdates: 60,
+    historicalTimestampBuffer: 60,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "binance", pair: "oceanusdt" },
       { type: "cryptowatch", exchange: "kraken", pair: "oceanusd" },

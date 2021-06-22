@@ -171,6 +171,36 @@ contract("CryptoWatchPriceFeed.js", function () {
     assert.isTrue(await cryptoWatchPriceFeed.getHistoricalPrice(1588376521).catch(() => true));
   });
 
+  it("Basic historical price with historicalTimestampBuffer > 0", async function () {
+    // Create new pricefeed with 60 second buffer.
+    cryptoWatchPriceFeed = new CryptoWatchPriceFeed(
+      dummyLogger, // All construction params same as in `beforeEach` statement unless specifically commented.
+      web3,
+      apiKey,
+      exchange,
+      pair,
+      lookback,
+      networker,
+      getTime,
+      minTimeBetweenUpdates,
+      false, // Price not inverted
+      18, // Default decimals
+      60, // Default OHLC period
+      0, // Default TWAP length
+      60 // Overridden historicalTimestampBuffer of 60 seconds.
+    );
+    // Inject data.
+    networker.getJsonReturns = [...validResponses];
+
+    await cryptoWatchPriceFeed.update();
+
+    // Before period 1 should succeed when accounting for historical timestamp buffer.
+    assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376339)).toString(), toWei("1.1"));
+
+    // After period 3 should succeed for same reason.
+    assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376521)).toString(), toWei("1.3"));
+  });
+
   it("Missing historical data", async function () {
     // Missing middle data point
     networker.getJsonReturns = [

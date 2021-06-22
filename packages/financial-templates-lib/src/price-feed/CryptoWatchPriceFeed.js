@@ -21,6 +21,9 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
    * @param {Bool} invertPrice Indicates if prices should be inverted before returned.
    * @param {Number} priceFeedDecimals Number of priceFeedDecimals to use to convert price to wei.
    * @param {Number} ohlcPeriod Number of seconds interval between ohlc prices requested from cryptowatch.
+   * @param {Number} twapLength Number of seconds to use for TWAP window when computing prices.
+   * @param {Number} historicalTimestampBuffer Number of seconds +/- beyond a price period's open and close window
+   * that determines whether a historical timestamp falls "within" that price period.
    */
   constructor(
     logger,
@@ -35,7 +38,9 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     invertPrice,
     priceFeedDecimals = 18,
     ohlcPeriod = 60, // One minute is CryptoWatch's most granular option.
-    twapLength = 0 // No TWAP by default.
+    twapLength = 0, // No TWAP by default.
+    historicalTimestampBuffer = 0 // Buffer of 0 means that historical timestamp must fall strictly within a price
+    // period's open and close time.
   ) {
     super();
     this.logger = logger;
@@ -56,6 +61,7 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
     this.toBN = this.web3.utils.toBN;
 
     this.ohlcPeriod = ohlcPeriod;
+    this.historicalTimestampBuffer = historicalTimestampBuffer;
 
     this.convertPriceFeedDecimals = (number) => {
       // Converts price result to wei
@@ -105,22 +111,29 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
     // If the time is before the first piece of data in the set, return null because
     // the price is before the lookback window.
-    if (time < firstPricePeriod.openTime) {
+    if (time < firstPricePeriod.openTime - this.historicalTimestampBuffer) {
       throw new Error(`${this.uuid}: time ${time} is before firstPricePeriod.openTime`);
     }
 
     // historicalPricePeriods are ordered from oldest to newest.
     // This finds the first pricePeriod whose closeTime is after the provided time.
     const match = this.historicalPricePeriods.find((pricePeriod) => {
-      return time < pricePeriod.closeTime && time >= pricePeriod.openTime;
+      return (
+        time < pricePeriod.closeTime + this.historicalTimestampBuffer &&
+        time >= pricePeriod.openTime - this.historicalTimestampBuffer
+      );
     });
 
+    // TODO: Add comments why `match` could be undefined, but the following code within the `if` statement
+    // would succeed?
     if (match === undefined) {
       const before = this.historicalPricePeriods
         .slice()
         .reverse()
-        .find((pricePeriod) => time >= pricePeriod.openTime);
-      const after = this.historicalPricePeriods.find((pricePeriod) => time < pricePeriod.closeTime);
+        .find((pricePeriod) => time >= pricePeriod.openTime - this.historicalTimestampBuffer);
+      const after = this.historicalPricePeriods.find(
+        (pricePeriod) => time < pricePeriod.closeTime + this.historicalTimestampBuffer
+      );
 
       const format = (value) =>
         value &&
@@ -128,8 +141,12 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
 
       throw new Error(`
         Cryptowatch price feed ${this.uuid} didn't return an ohlc for time ${time}.
-        Closest price point before is close time: ${before?.closeTime}, close price: ${format(before?.closePrice)}.
-        Closest price point after is open time: ${after?.openTime}, open price: ${format(after?.openPrice)}.
+        Closest price point before is close time: ${before?.closeTime} (- buffer of ${
+        this.historicalTimestampBuffer
+      } seconds), close price: ${format(before?.closePrice)}.
+        Closest price point after is open time: ${after?.openTime} (+ buffer of ${
+        this.historicalTimestampBuffer
+      } seconds), open price: ${format(after?.openPrice)}.
         To see these prices, make a GET request to:
         https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/ohlc?after=${
         before?.openTime + this.ohlcPeriod
