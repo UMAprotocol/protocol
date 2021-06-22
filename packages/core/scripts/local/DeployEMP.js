@@ -21,12 +21,13 @@
  *
  * Example: yarn truffle exec ./packages/core/scripts/local/DeployEMP.js --network test --test true --identifier ETH/BTC --cversion 1.1.0
  */
-const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
+const { toWei, utf8ToHex, hexToUtf8, padRight } = web3.utils;
 const { interfaceName, ZERO_ADDRESS, parseFixed } = require("@uma/common");
 const { getAbi, getTruffleContract } = require("../../dist/index");
 const argv = require("minimist")(process.argv.slice(), {
   boolean: ["test"],
   string: ["identifier", "collateral", "cversion", "name", "symbol", "duration"],
+  number: ["gasprice"],
 });
 const abiVersion = argv.cversion || "1.2.2"; // Default to most recent mainnet deployment, 1.2.2.
 const syntheticName = argv.name || "Test Synth";
@@ -43,9 +44,7 @@ const MockOracle = getTruffleContract("MockOracle", web3, abiVersion);
 const TestnetERC20 = getTruffleContract("TestnetERC20", web3, abiVersion);
 const WETH9 = getTruffleContract("WETH9", web3, abiVersion);
 const Timer = getTruffleContract("Timer", web3, abiVersion);
-const TokenFactory = getTruffleContract("TokenFactory", web3, abiVersion);
 const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, abiVersion);
-const Store = getTruffleContract("Store", web3, abiVersion);
 
 const isUsingWeth = (identifier) => {
   return identifier.toUpperCase().endsWith("ETH");
@@ -60,11 +59,9 @@ const deployEMP = async (callback) => {
     const deployer = accounts[0];
     const expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
     const finder = await Finder.deployed();
-    const store = await Store.deployed();
-    const tokenFactory = await TokenFactory.deployed();
 
     const identifierBase = argv.identifier ? argv.identifier : "ETH/BTC";
-    const priceFeedIdentifier = utf8ToHex(identifierBase);
+    const priceFeedIdentifier = padRight(utf8ToHex(identifierBase), 64);
 
     const identifierWhitelist = await IdentifierWhitelist.deployed();
     if (!(await identifierWhitelist.isIdentifierSupported(priceFeedIdentifier))) {
@@ -116,7 +113,6 @@ const deployEMP = async (callback) => {
       minSponsorTokens: { rawValue: minSponsorTokens },
       liquidationLiveness: 7200,
       withdrawalLiveness: 7200,
-      excessTokenBeneficiary: store.address,
     };
 
     // Inject constructor params neccessary for "latest" version of the EMPCreator:
@@ -127,16 +123,27 @@ const deployEMP = async (callback) => {
       };
     }
 
-    let _emp = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, { from: deployer });
-    await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, { from: deployer });
+    if (!argv.gasprice) throw new Error("Specify --gasprice to deploy with");
+    const transactionParams = {
+      gas: 12000000, // 12MM is very high. Set this lower if you only have < 2 ETH or so in your wallet.
+      gasPrice: argv.gasprice * 1000000000, // gasprice arg * 1 GWEI
+      from: deployer,
+      chainId: await web3.eth.getChainId(),
+    };
+    let _emp = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, transactionParams);
+    await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, transactionParams);
     const emp = await ExpiringMultiParty.at(_emp);
 
     let empConstructorParams = {
       ...constructorParams,
       finderAddress: finder.address,
-      tokenFactoryAddress: tokenFactory.address,
       timerAddress: await expiringMultiPartyCreator.timerAddress(),
     };
+
+    // Delete params only needed to pass into EMPCreator.deploy() method that are not included in EMP constructor
+    // params.
+    delete empConstructorParams["syntheticName"];
+    delete empConstructorParams["syntheticSymbol"];
 
     // Grab `tokenAddress` from newly constructed EMP and add to `empConstructorParams` for new EMP's
     if (abiVersion === "latest") {
@@ -153,7 +160,7 @@ const deployEMP = async (callback) => {
     // Done!
     console.log(`Created a new EMP @ ${emp.address} with the configuration:`);
     console.log(`Deployer address @ ${deployer}`);
-    console.log("Encoded EMP Parameters", encodedParameters);
+    console.log("Encoded EMP Parameters", encodedParameters.slice(2));
     console.table(empConstructorParams);
 
     if (argv.test) {
