@@ -47,7 +47,13 @@ contract CoveredCallLongShortPairFinancialProductLibrary is LongShortPairFinanci
      * @param expiryPrice price from the optimistic oracle for the LSP price identifier.
      * @return expiryPercentLong to indicate how much collateral should be sent between long and short tokens.
      */
-    function computeExpiryTokensForCollateral(int256 expiryPrice) public view override returns (uint256) {
+    function computeExpiryTokensForCollateral(int256 expiryPrice)
+        public
+        view
+        override
+        nonReentrantView()
+        returns (uint256)
+    {
         uint256 contractStrikePrice = longShortPairStrikePrices[msg.sender];
 
         // If the expiry price is less than the strike price then the long options expire worthless (out of the money).

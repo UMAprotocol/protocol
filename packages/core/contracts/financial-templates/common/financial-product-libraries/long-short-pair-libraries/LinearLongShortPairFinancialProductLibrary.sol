@@ -65,7 +65,13 @@ contract LinearLongShortPairFinancialProductLibrary is LongShortPairFinancialPro
      * @param expiryPrice price from the optimistic oracle for the LSP price identifier.
      * @return expiryPercentLong to indicate how much collateral should be sent between long and short tokens.
      */
-    function computeExpiryTokensForCollateral(int256 expiryPrice) public view override returns (uint256) {
+    function computeExpiryTokensForCollateral(int256 expiryPrice)
+        public
+        view
+        override
+        nonReentrantView()
+        returns (uint256)
+    {
         LinearLongShortPairParameters memory params = longShortPairParameters[msg.sender];
 
         if (expiryPrice >= params.upperBound) return FixedPoint.fromUnscaledUint(1).rawValue;
