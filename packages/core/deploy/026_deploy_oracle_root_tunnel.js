@@ -19,11 +19,15 @@ const func = async function (hre) {
   const chainId = await getChainId();
   const Finder = await deployments.get("Finder");
 
-  const args = [
-    ADDRESSES_FOR_NETWORK[chainId].checkpointManager,
-    ADDRESSES_FOR_NETWORK[chainId].fxRoot,
-    Finder.address,
-  ];
+  let args;
+  if (ADDRESSES_FOR_NETWORK[chainId]) {
+    args = [ADDRESSES_FOR_NETWORK[chainId].checkpointManager, ADDRESSES_FOR_NETWORK[chainId].fxRoot, Finder.address];
+  } else {
+    // Fall back to mocks if hardhcoded addresses aren't there.
+    const FxRootMock = await deployments.get("FxRootMock");
+    args = [deployer, FxRootMock.address, Finder.address]; // Note: uses deployer as the checkpoint manager.
+  }
+
   await deploy("OracleRootTunnel", {
     from: deployer,
     args,
