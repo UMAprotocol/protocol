@@ -18,14 +18,12 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
   // Add a getContract() method to the hre.
   extendEnvironment((hre) => {
     hre._artifactCache = {};
-    hre.getContract = async (name) => {
-      const deployment = await hre.deployments.getOrNull(name);
-
+    hre.getContract = (name) => {
       if (!hre._artifactCache[name]) hre._artifactCache[name] = hre.artifacts.readArtifactSync(name);
       const artifact = hre._artifactCache[name];
 
       const deployed = async () => {
-        await hre.deployments.get(name);
+        const deployment = await hre.deployments.get(name);
         return new hre.web3.eth.Contract(artifact.abi, deployment.address);
       };
 
