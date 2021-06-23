@@ -11,7 +11,7 @@ contract("DesignatedVotingFactory", function (accounts) {
 
   let factory;
 
-  before(async function () {
+  beforeEach(async function () {
     factory = await DesignatedVotingFactory.deployed();
   });
 

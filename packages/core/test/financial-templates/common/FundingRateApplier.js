@@ -67,19 +67,15 @@ contract("FundingRateApplier", function (accounts) {
     await mockOracle.pushPrice(lastQuery.identifier, lastQuery.time, lastQuery.ancillaryData, price);
   };
 
-  before(async () => {
+  beforeEach(async () => {
     finder = await Finder.deployed();
     timer = await Timer.deployed();
+
     collateralWhitelist = await AddressWhitelist.deployed();
 
     // Approve identifier.
     const identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(identifier);
-  });
-
-  beforeEach(async () => {
-    finder = await Finder.deployed();
-    timer = await Timer.deployed();
 
     // Set up a fresh mock oracle in the finder.
     mockOracle = await MockOracle.new(finder.address, timer.address);

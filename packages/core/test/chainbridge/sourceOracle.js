@@ -35,14 +35,12 @@ contract("SourceOracle", async (accounts) => {
 
   let sourceOracleResourceId;
 
-  before(async function () {
+  beforeEach(async function () {
     registry = await Registry.deployed();
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner);
     await registry.registerContract([], owner, { from: owner });
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(testIdentifier);
-  });
-  beforeEach(async function () {
     finder = await Finder.deployed();
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.address);
     bridge = await Bridge.new(chainID, [owner], 1, 0, 100);

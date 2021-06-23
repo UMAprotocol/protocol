@@ -79,7 +79,7 @@ contract("ReserveTokenDisputer", function (accounts) {
       .encodeABI();
   };
 
-  before(async () => {
+  beforeEach(async () => {
     dsProxyFactory = await DSProxyFactory.new();
 
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
@@ -94,8 +94,7 @@ contract("ReserveTokenDisputer", function (accounts) {
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, { from: deployer });
-  });
-  beforeEach(async () => {
+
     // deploy the ReserveTokenLiquidator
     reserveCurrencyDisputer = await ReserveCurrencyDisputer.new();
 

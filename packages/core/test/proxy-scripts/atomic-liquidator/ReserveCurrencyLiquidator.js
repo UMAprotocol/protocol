@@ -111,7 +111,7 @@ contract("ReserveTokenLiquidator", function (accounts) {
       .encodeABI();
   };
 
-  before(async () => {
+  beforeEach(async () => {
     dsProxyFactory = await DSProxyFactory.new();
 
     finder = await Finder.deployed();
@@ -121,8 +121,7 @@ contract("ReserveTokenLiquidator", function (accounts) {
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, { from: deployer });
-  });
-  beforeEach(async () => {
+
     // deploy the ReserveTokenLiquidator
     reserveCurrencyLiquidator = await ReserveCurrencyLiquidator.new();
 

@@ -21,7 +21,7 @@ contract("TokenFactory", function (accounts) {
     decimals: "18",
   };
 
-  before(async () => {
+  beforeEach(async () => {
     tokenFactory = await TokenFactory.deployed();
   });
   it("Can create new tokens and transfers roles successfully", async () => {

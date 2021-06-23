@@ -108,7 +108,7 @@ contract("PricelessPositionManager", function (accounts) {
     );
   };
 
-  before(async () => {
+  beforeEach(async function () {
     finder = await Finder.deployed();
     store = await Store.deployed();
     timer = await Timer.deployed();
@@ -119,9 +119,7 @@ contract("PricelessPositionManager", function (accounts) {
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, {
       from: contractDeployer,
     });
-  });
 
-  beforeEach(async function () {
     // Represents WETH or some other token that the sponsor and contracts don't control.
     collateral = await MarginToken.new("Wrapped Ether", "WETH", 18, {
       from: collateralOwner,

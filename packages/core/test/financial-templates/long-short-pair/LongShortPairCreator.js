@@ -43,16 +43,14 @@ contract("LongShortPairCreator", function (accounts) {
   const deployer = accounts[0];
   const sponsor = accounts[1];
 
-  before(async () => {
+  beforeEach(async function () {
     finder = await Finder.deployed();
     timer = await Timer.deployed();
     collateralWhitelist = await AddressWhitelist.deployed();
 
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, { from: deployer });
-  });
 
-  beforeEach(async function () {
     // Force each test to start with a simulated time that's synced to the startTimestamp.
     await timer.setCurrentTime(startTimestamp);
 

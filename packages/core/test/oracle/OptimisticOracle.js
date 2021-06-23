@@ -77,7 +77,7 @@ contract("OptimisticOracle", function (accounts) {
     await mockOracle.pushPrice(lastQuery.identifier, lastQuery.time, lastQuery.ancillaryData, price);
   };
 
-  before(async function () {
+  beforeEach(async function () {
     finder = await Finder.deployed();
     timer = await Timer.deployed();
 
@@ -87,9 +87,7 @@ contract("OptimisticOracle", function (accounts) {
 
     collateralWhitelist = await Addresswhitelist.deployed();
     store = await Store.deployed();
-  });
 
-  beforeEach(async function () {
     collateral = await Token.new("Wrapped Ether", "WETH", 18);
     await collateral.addMember(1, owner);
     await collateral.mint(owner, initialUserBalance);

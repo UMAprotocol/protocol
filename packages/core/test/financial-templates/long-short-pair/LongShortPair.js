@@ -38,27 +38,25 @@ const priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
 const collateralPerPair = toWei("1"); // each pair of long and short tokens need 1 unit of collateral to mint.
 const prepaidProposerReward = toWei("100");
 
-const proposeAndSettleOptimisticOraclePrice = async (priceFeedIdentifier, requestTime, price) => {
-  await optimisticOracle.proposePrice(longShortPair.address, priceFeedIdentifier, requestTime, ancillaryData, price);
-  await optimisticOracle.setCurrentTime((await optimisticOracle.getCurrentTime()) + optimisticOracleLiveness);
-  await optimisticOracle.settle(longShortPair.address, priceFeedIdentifier, requestTime, ancillaryData);
-};
-
 contract("LongShortPair", function (accounts) {
   const deployer = accounts[0];
   const sponsor = accounts[1];
   const holder = accounts[2];
 
-  before(async () => {
+  const proposeAndSettleOptimisticOraclePrice = async (priceFeedIdentifier, requestTime, price) => {
+    await optimisticOracle.proposePrice(longShortPair.address, priceFeedIdentifier, requestTime, ancillaryData, price);
+    await optimisticOracle.setCurrentTime((await optimisticOracle.getCurrentTime()) + optimisticOracleLiveness);
+    await optimisticOracle.settle(longShortPair.address, priceFeedIdentifier, requestTime, ancillaryData);
+  };
+
+  beforeEach(async function () {
     finder = await Finder.deployed();
     timer = await Timer.deployed();
     collateralWhitelist = await AddressWhitelist.deployed();
 
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, { from: deployer });
-  });
 
-  beforeEach(async function () {
     // Force each test to start with a simulated time that's synced to the startTimestamp.
     await timer.setCurrentTime(startTimestamp);
 

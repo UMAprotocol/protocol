@@ -20,13 +20,11 @@ contract("BeaconOracle", async (accounts) => {
   const testRequestTime = 123;
   const testPrice = "6";
 
-  before(async function () {
+  beforeEach(async function () {
     registry = await Registry.deployed();
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner);
     // Register EOA as a contract creator that can access price information from BeaconOracle.
     await registry.registerContract([], owner, { from: owner });
-  });
-  beforeEach(async function () {
     finder = await Finder.deployed();
     beaconOracle = await BeaconOracle.new(finder.address, chainID);
   });

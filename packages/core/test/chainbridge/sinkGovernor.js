@@ -35,14 +35,12 @@ contract("SinkGovernor", async (accounts) => {
     return web3.utils.soliditySha3(encodedParams);
   };
 
-  before(async function () {
+  beforeEach(async function () {
     registry = await Registry.deployed();
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner);
     await registry.registerContract([], owner, { from: owner });
     finder = await Finder.deployed();
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.address);
-  });
-  beforeEach(async function () {
     bridge = await Bridge.new(chainID, [owner], 1, 0, 100);
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridge.address);
     sinkGovernor = await SinkGovernor.new(finder.address);

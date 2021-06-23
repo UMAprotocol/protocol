@@ -49,7 +49,7 @@ contract("Voting", function (accounts) {
     await voting.setGatPercentage({ rawValue: gatPercentage.toString() });
   };
 
-  before(async function () {
+  beforeEach(async function () {
     voting = await VotingInterfaceTesting.at((await Voting.deployed()).address);
 
     supportedIdentifiers = await IdentifierWhitelist.deployed();

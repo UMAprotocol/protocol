@@ -45,7 +45,7 @@ contract("Governor", function (accounts) {
     return testToken.contract.methods.transfer(destination, amount).encodeABI();
   };
 
-  before(async function () {
+  beforeEach(async function () {
     voting = await VotingInterfaceTesting.at((await Voting.deployed()).address);
     supportedIdentifiers = await IdentifierWhitelist.deployed();
     governor = await Governor.deployed();
@@ -70,9 +70,7 @@ contract("Governor", function (accounts) {
     await supportedIdentifiers.transferOwnership(governor.address);
 
     signature = await signMessage(web3, snapshotMessage, proposer);
-  });
 
-  beforeEach(async function () {
     // Make sure the governor time and voting time are aligned before each test case.
     let currentTime = await voting.getCurrentTime();
     await governor.setCurrentTime(currentTime);

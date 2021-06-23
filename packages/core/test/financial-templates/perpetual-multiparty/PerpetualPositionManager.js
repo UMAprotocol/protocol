@@ -73,11 +73,9 @@ contract("PerpetualPositionManager", function (accounts) {
     assert.equal(await collateral.balanceOf(positionManager.address), expectedTotalCollateral.toString());
   };
 
-  before(async function () {
-    store = await Store.deployed();
-  });
-
   beforeEach(async function () {
+    store = await Store.deployed();
+
     // Represents WETH or some other token that the sponsor and contracts don't control.
     collateral = await MarginToken.new("Wrapped Ether", "WETH", 18, { from: collateralOwner });
     await collateral.addMember(1, collateralOwner, { from: collateralOwner });

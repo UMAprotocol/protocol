@@ -42,7 +42,7 @@ const getAmountOut = async (amountIn, aToB) => {
 contract("UniswapV2Broker", function (accounts) {
   const deployer = accounts[0];
   const trader = accounts[1];
-  before(async () => {
+  beforeEach(async () => {
     const WETH = await WETH9.new();
     // deploy Uniswap V2 Factory & router.
     factory = await createContractObjectFromJson(UniswapV2Factory, web3).new(deployer, { from: deployer });
@@ -52,8 +52,7 @@ contract("UniswapV2Broker", function (accounts) {
 
     // create a uniswapV2Broker
     uniswapV2Broker = await UniswapV2Broker.new();
-  });
-  beforeEach(async () => {
+
     // deploy tokens
     tokenA = await Token.new("TokenA", "TA", 18);
     tokenB = await Token.new("TokenB", "TB", 18);

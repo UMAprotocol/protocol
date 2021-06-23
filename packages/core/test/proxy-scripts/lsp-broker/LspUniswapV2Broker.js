@@ -85,7 +85,8 @@ const getAmountOut = async (tokenA, tokenB, amountIn, aToB, _pairAddress = pairA
 contract("LspUniswapV2Broker", function (accounts) {
   const deployer = accounts[0];
   const trader = accounts[1];
-  before(async () => {
+
+  beforeEach(async () => {
     dsProxyFactory = await DSProxyFactory.new();
 
     const WETH = await WETH9.new();
@@ -104,8 +105,7 @@ contract("LspUniswapV2Broker", function (accounts) {
 
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, { from: deployer });
-  });
-  beforeEach(async () => {
+
     // Force each test to start with a simulated time that's synced to the startTimestamp.
     await timer.setCurrentTime(startTimestamp);
 

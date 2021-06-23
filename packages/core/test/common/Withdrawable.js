@@ -11,7 +11,7 @@ contract("Withdrawable", function (accounts) {
   const owner = accounts[0];
   const rando = accounts[1];
 
-  before(async function () {
+  beforeEach(async function () {
     // Create token contract and mint tokens for use by rando.
     token = await Token.new("Test Synthetic Token", "SYNTH", 18, { from: owner });
     await token.addMember(1, owner, { from: owner });

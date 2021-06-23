@@ -6,7 +6,7 @@ const Timer = artifacts.require("Timer");
 contract("Testable", function () {
   let timer;
 
-  before(async () => {
+  beforeEach(async () => {
     timer = await Timer.deployed();
   });
 

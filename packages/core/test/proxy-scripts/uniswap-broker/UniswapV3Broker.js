@@ -82,7 +82,7 @@ contract("UniswapV3Broker", function (accounts) {
     poolAddress = computePoolAddress(factory.address, tokenA.address, tokenB.address, fee);
   }
 
-  before(async () => {
+  beforeEach(async () => {
     // deploy an instance of the broker
     uniswapV3Broker = await UniswapV3Broker.new();
 
@@ -107,8 +107,6 @@ contract("UniswapV3Broker", function (accounts) {
     );
 
     tickLens = await createContractObjectFromJson(TickLens, web3).new({ from: deployer });
-  });
-  beforeEach(async () => {
     // deploy tokens
     tokenA = await Token.new("Token0", "T0", 18);
     tokenB = await Token.new("Token1", "T1", 18);

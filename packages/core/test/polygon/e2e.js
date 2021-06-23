@@ -48,7 +48,7 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
   const expectedStateId = "1";
   const childChainId = "31337";
 
-  before(async function () {
+  beforeEach(async function () {
     finder = await Finder.deployed();
     identifierWhitelist = await IdentifierWhitelist.deployed();
     registry = await Registry.deployed();
@@ -60,8 +60,7 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
     await registry.registerContract([], owner, { from: owner });
 
     await identifierWhitelist.addSupportedIdentifier(testIdentifier, { from: owner });
-  });
-  beforeEach(async function () {
+
     // Set up mocked Fx tunnel system:
     stateSync = await StateSync.new();
     fxRoot = await FxRoot.new(stateSync.address);

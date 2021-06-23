@@ -86,13 +86,11 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
   let votingResourceId;
   let governanceResourceId;
 
-  before(async () => {
+  beforeEach(async () => {
     registry = await Registry.deployed();
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, depositerAddress);
     // Register EOA as a contract creator that can make price requests directly to the SinkOracle
     await registry.registerContract([], depositerAddress, { from: depositerAddress });
-  });
-  beforeEach(async () => {
     sourceFinder = await Finder.deployed();
     sinkFinder = await Finder.new();
     await sinkFinder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.address);
