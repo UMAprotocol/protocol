@@ -1,11 +1,17 @@
+const hre = require("hardhat");
+const { runDefaultFixture } = require("@uma/common");
+const { getContract } = hre;
 const { didContractThrow } = require("@uma/common");
 const { utf8ToHex } = web3.utils;
 
-const Finder = artifacts.require("Finder");
+const Finder = getContract("Finder");
 
 const truffleAssert = require("truffle-assertions");
 
 contract("Finder", function (accounts) {
+  beforeEach(async function () {
+    await runDefaultFixture(hre);
+  });
   const owner = accounts[0];
   const user = accounts[1];
 
@@ -20,30 +26,37 @@ contract("Finder", function (accounts) {
 
     // Random users cannot change the implementation address.
     assert(
-      await didContractThrow(finder.changeImplementationAddress(interfaceName1, implementationAddress1, { from: user }))
+      await didContractThrow(
+        finder.methods.changeImplementationAddress(interfaceName1, implementationAddress1).send({ from: user })
+      )
     );
 
     // Looking up unknown interfaces fails.
-    assert(await didContractThrow(finder.getImplementationAddress(interfaceName1)));
+    assert(await didContractThrow(finder.methods.getImplementationAddress(interfaceName1).send({ from: accounts[0] })));
 
     // Can set and then find an interface.
-    await finder.changeImplementationAddress(interfaceName1, implementationAddress1, { from: owner });
-    assert.equal(await finder.getImplementationAddress(interfaceName1, { from: user }), implementationAddress1);
+    await finder.methods.changeImplementationAddress(interfaceName1, implementationAddress1).send({ from: owner });
+    assert.equal(
+      await finder.methods.getImplementationAddress(interfaceName1).call({ from: user }),
+      implementationAddress1
+    );
 
     // Supports multiple interfaces.
-    await finder.changeImplementationAddress(interfaceName2, implementationAddress2, { from: owner });
-    assert.equal(await finder.getImplementationAddress(interfaceName1), implementationAddress1);
-    assert.equal(await finder.getImplementationAddress(interfaceName2), implementationAddress2);
+    await finder.methods.changeImplementationAddress(interfaceName2, implementationAddress2).send({ from: owner });
+    assert.equal(await finder.methods.getImplementationAddress(interfaceName1).call(), implementationAddress1);
+    assert.equal(await finder.methods.getImplementationAddress(interfaceName2).call(), implementationAddress2);
 
     // Can reset and then find an interface.
-    const result = await finder.changeImplementationAddress(interfaceName1, implementationAddress3, { from: owner });
+    const result = await finder.methods
+      .changeImplementationAddress(interfaceName1, implementationAddress3)
+      .call({ from: owner });
     truffleAssert.eventEmitted(result, "InterfaceImplementationChanged", (ev) => {
       return (
         web3.utils.hexToUtf8(ev.interfaceName) === web3.utils.hexToUtf8(interfaceName1) &&
         ev.newImplementationAddress === implementationAddress3
       );
     });
-    assert.equal(await finder.getImplementationAddress(interfaceName1), implementationAddress3);
-    assert.equal(await finder.getImplementationAddress(interfaceName2), implementationAddress2);
+    assert.equal(await finder.methods.getImplementationAddress(interfaceName1).call(), implementationAddress3);
+    assert.equal(await finder.methods.getImplementationAddress(interfaceName2).call(), implementationAddress2);
   });
 });

@@ -1,34 +1,38 @@
+const hre = require("hardhat");
+const { runDefaultFixture } = require("@uma/common");
+const { getContract } = hre;
 const { assert } = require("chai");
 
 // Tested Contract
-const KpiOptionsFinancialProductLibrary = artifacts.require("KpiOptionsFinancialProductLibrary");
+const KpiOptionsFinancialProductLibrary = getContract("KpiOptionsFinancialProductLibrary");
 
 // Helper contracts
-const Timer = artifacts.require("Timer");
-const ExpiringMultiPartyMock = artifacts.require("ExpiringMultiPartyMock");
+const Timer = getContract("Timer");
+const ExpiringMultiPartyMock = getContract("ExpiringMultiPartyMock");
 
 const { toWei, toBN, utf8ToHex } = web3.utils;
 const priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
 const collateralizationRatio = toBN(toWei("1")).addn(1);
 
-contract("KpiOptionsFinancialProductLibrary", function () {
+contract("KpiOptionsFinancialProductLibrary", function (accounts) {
   let kpiFPL;
   let expiringMultiParty;
   let timer;
   let expirationTime;
 
   beforeEach(async () => {
+    await runDefaultFixture(hre);
     timer = await Timer.deployed();
 
-    expirationTime = (await timer.getCurrentTime()) + 100; // use 100 seconds in the future as the expiration time.
-    kpiFPL = await KpiOptionsFinancialProductLibrary.new();
+    expirationTime = (await timer.methods.getCurrentTime().call()) + 100; // use 100 seconds in the future as the expiration time.
+    kpiFPL = await KpiOptionsFinancialProductLibrary.new().send({ from: accounts[0] });
     expiringMultiParty = await ExpiringMultiPartyMock.new(
-      kpiFPL.address,
+      kpiFPL.options.address,
       expirationTime,
       { rawValue: collateralizationRatio.toString() },
       priceFeedIdentifier,
-      timer.address
-    );
+      timer.options.address
+    ).send({ from: accounts[0] });
   });
   describe("price transformation", () => {
     it("Library returns 2 price if before expiration", async () => {
@@ -37,7 +41,7 @@ contract("KpiOptionsFinancialProductLibrary", function () {
         (
           await expiringMultiParty.transformPrice(
             { rawValue: toWei("1") },
-            (await expiringMultiParty.getCurrentTime()).toString()
+            (await expiringMultiParty.methods.getCurrentTime().call()).toString()
           )
         ).toString(),
         toWei("2")
@@ -48,8 +52,8 @@ contract("KpiOptionsFinancialProductLibrary", function () {
         (
           await expiringMultiParty.transformPrice.call(
             { rawValue: toWei("1") },
-            (await expiringMultiParty.getCurrentTime()).toString(),
-            { from: expiringMultiParty.address }
+            (await expiringMultiParty.methods.getCurrentTime().call()).toString(),
+            { from: expiringMultiParty.options.address }
           )
         ).toString(),
         toWei("2")
@@ -64,7 +68,7 @@ contract("KpiOptionsFinancialProductLibrary", function () {
         (
           await expiringMultiParty.transformPrice(
             { rawValue: toWei("0.2") },
-            (await expiringMultiParty.getCurrentTime()).toString()
+            (await expiringMultiParty.methods.getCurrentTime().call()).toString()
           )
         ).toString(),
         toWei("0.2")

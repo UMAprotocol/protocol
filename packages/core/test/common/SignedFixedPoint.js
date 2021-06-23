@@ -1,35 +1,41 @@
+const hre = require("hardhat");
+const { runDefaultFixture } = require("@uma/common");
+const { getContract } = hre;
 const { didContractThrow } = require("@uma/common");
 const { assert } = require("chai");
 
-const SignedFixedPointTest = artifacts.require("SignedFixedPointTest");
+const SignedFixedPointTest = getContract("SignedFixedPointTest");
 
 const { toWei, fromWei, toBN } = web3.utils;
 
-contract("SignedFixedPoint", function () {
+contract("SignedFixedPoint", function (accounts) {
+  beforeEach(async function () {
+    await runDefaultFixture(hre);
+  });
   const int_max = toBN("57896044618658097711785492504343953926634992332820282019728792003956564819967");
   const int_min = toBN("-57896044618658097711785492504343953926634992332820282019728792003956564819968");
 
   it("Construction", async function () {
-    const fixedPoint = await SignedFixedPointTest.new();
+    const fixedPoint = await SignedFixedPointTest.new().send({ from: accounts[0] });
 
     assert.equal(await fixedPoint.wrapFromUnscaledInt("-53"), toWei("-53"));
-    assert.equal(await fixedPoint.wrapFromUnscaledInt("495"), toWei("495"));
+    assert.equal(await fixedPoint.methods.wrapFromUnscaledInt("495").call(), toWei("495"));
 
     // Reverts on overflow.
     const tenToFiftyEight = toBN("10").pow(toBN("59"));
-    assert(await didContractThrow(fixedPoint.wrapFromUnscaledInt(tenToFiftyEight)));
+    assert(await didContractThrow(fixedPoint.methods.wrapFromUnscaledInt(tenToFiftyEight).send({ from: accounts[0] })));
 
     // Signed -> Unsigned
     assert.equal(await fixedPoint.wrapFromSigned(toWei("100")), toWei("100"));
-    assert.equal(await fixedPoint.wrapFromSigned("0"), "0");
-    assert.equal(await fixedPoint.wrapFromSigned(int_max), int_max.toString());
+    assert.equal(await fixedPoint.methods.wrapFromSigned("0").call(), "0");
+    assert.equal(await fixedPoint.methods.wrapFromSigned(int_max).call(), int_max.toString());
     assert(await didContractThrow(fixedPoint.wrapFromSigned("-1")));
-    assert(await didContractThrow(fixedPoint.wrapFromSigned(int_min)));
+    assert(await didContractThrow(fixedPoint.methods.wrapFromSigned(int_min).send({ from: accounts[0] })));
 
     // Unsigned -> Signed
     assert.equal(await fixedPoint.wrapFromUnsigned(toWei("100")), toWei("100"));
-    assert.equal(await fixedPoint.wrapFromSigned("0"), "0");
-    assert.equal(await fixedPoint.wrapFromUnsigned(int_max), int_max.toString());
+    assert.equal(await fixedPoint.methods.wrapFromSigned("0").call(), "0");
+    assert.equal(await fixedPoint.methods.wrapFromUnsigned(int_max).call(), int_max.toString());
     assert(await didContractThrow(fixedPoint.wrapFromUnsigned(int_max.addn(1))));
   });
 
@@ -61,7 +67,7 @@ contract("SignedFixedPoint", function () {
   const numToWei = (a) => toWei(a.toString());
 
   it("Comparison", async function () {
-    const fixedPoint = await SignedFixedPointTest.new();
+    const fixedPoint = await SignedFixedPointTest.new().send({ from: accounts[0] });
 
     // Pairs of inputs that will be provided to each comparison functions.
     const inputPairs = [
@@ -98,7 +104,7 @@ contract("SignedFixedPoint", function () {
   });
 
   it("Mixed Comparison", async function () {
-    const fixedPoint = await SignedFixedPointTest.new();
+    const fixedPoint = await SignedFixedPointTest.new().send({ from: accounts[0] });
 
     // Pairs of inputs that will be provided to each comparison functions.
     const inputPairs = [
@@ -139,7 +145,7 @@ contract("SignedFixedPoint", function () {
   });
 
   it("Minimum and Maximum", async function () {
-    const fixedPoint = await SignedFixedPointTest.new();
+    const fixedPoint = await SignedFixedPointTest.new().send({ from: accounts[0] });
 
     const inputPairs = [
       [5, 6],
@@ -172,7 +178,7 @@ contract("SignedFixedPoint", function () {
   });
 
   it("Basic addition and subtraction", async function () {
-    const fixedPoint = await SignedFixedPointTest.new();
+    const fixedPoint = await SignedFixedPointTest.new().send({ from: accounts[0] });
     const add = (a, b) => a + b;
     const sub = (a, b) => a - b;
 
@@ -201,7 +207,7 @@ contract("SignedFixedPoint", function () {
   });
 
   it("Basic multipication and division", async function () {
-    const fixedPoint = await SignedFixedPointTest.new();
+    const fixedPoint = await SignedFixedPointTest.new().send({ from: accounts[0] });
     const mul = (a, b) => a * b;
     const div = (a, b) => a / b;
 
@@ -233,7 +239,7 @@ contract("SignedFixedPoint", function () {
   });
 
   it("Addition/Subtraction Overflow/Underflow", async function () {
-    const fixedPoint = await SignedFixedPointTest.new();
+    const fixedPoint = await SignedFixedPointTest.new().send({ from: accounts[0] });
 
     // Reverts on overflow.
     // (int_max-10) + 11 will overflow.
@@ -244,23 +250,25 @@ contract("SignedFixedPoint", function () {
 
     // Reverts if uint (second argument) can't be represented as an Signed.
     const tenToFiftyNine = toBN("10").pow(toBN("59"));
-    assert(await didContractThrow(fixedPoint.wrapMixedAdd("0", tenToFiftyNine)));
+    assert(await didContractThrow(fixedPoint.methods.wrapMixedAdd("0", tenToFiftyNine).send({ from: accounts[0] })));
 
     // Reverts on underflow.
-    assert(await didContractThrow(fixedPoint.wrapSub(int_min, "1")));
+    assert(await didContractThrow(fixedPoint.methods.wrapSub(int_min, "1").send({ from: accounts[0] })));
 
     // Reverts if uint (second argument) can't be represented as an Signed.
-    assert(await didContractThrow(fixedPoint.wrapMixedSub(int_max, tenToFiftyNine)));
+    assert(
+      await didContractThrow(fixedPoint.methods.wrapMixedSub(int_max, tenToFiftyNine).send({ from: accounts[0] }))
+    );
 
     // Reverts on underflow (i.e., result goes below int_min).
-    assert(await didContractThrow(fixedPoint.wrapMixedSub(int_min, "2")));
+    assert(await didContractThrow(fixedPoint.methods.wrapMixedSub(int_min, "2").send({ from: accounts[0] })));
 
     // Reverts on underflow (i.e., result goes below int_min).
     assert(await didContractThrow(fixedPoint.wrapMixedSubOpposite("2", int_min.add(toBN(toWei("1"))))));
   });
 
   it("Multipication/Division Overflow/Underflow", async function () {
-    const fixedPoint = await SignedFixedPointTest.new();
+    const fixedPoint = await SignedFixedPointTest.new().send({ from: accounts[0] });
 
     // Reverts on overflow.
     // (uint_max - 1) * 2 overflows.
@@ -277,9 +285,9 @@ contract("SignedFixedPoint", function () {
     assert(await didContractThrow(fixedPoint.wrapMixedMulAwayFromZero(int_min.div(toBN("2")), "3")));
 
     // Reverts on division by zero.
-    assert(await didContractThrow(fixedPoint.wrapDiv("1", "0")));
-    assert(await didContractThrow(fixedPoint.wrapMixedDiv("1", "0")));
-    assert(await didContractThrow(fixedPoint.wrapMixedDivOpposite("1", "0")));
+    assert(await didContractThrow(fixedPoint.methods.wrapDiv("1", "0").send({ from: accounts[0] })));
+    assert(await didContractThrow(fixedPoint.methods.wrapMixedDiv("1", "0").send({ from: accounts[0] })));
+    assert(await didContractThrow(fixedPoint.methods.wrapMixedDivOpposite("1", "0").send({ from: accounts[0] })));
     assert(await didContractThrow(fixedPoint.wrapDiv("-1", "0")));
     assert(await didContractThrow(fixedPoint.wrapMixedDiv("-1", "0")));
     assert(await didContractThrow(fixedPoint.wrapMixedDivOpposite("-1", "0")));
@@ -288,13 +296,17 @@ contract("SignedFixedPoint", function () {
 
     // Large denominator works in normal div but fails in divAwayFromZero due to cast to Signed.
     const bigDenominator = toBN("10").pow(toBN("75"));
-    let quotient = await fixedPoint.wrapMixedDiv(toWei("1"), bigDenominator);
+    let quotient = await fixedPoint.methods.wrapMixedDiv(toWei("1"), bigDenominator).call();
     assert.equal(quotient.toString(), "0");
-    assert(await didContractThrow(fixedPoint.wrapMixedDivAwayFromZero(toWei("1"), bigDenominator)));
+    assert(
+      await didContractThrow(
+        fixedPoint.methods.wrapMixedDivAwayFromZero(toWei("1"), bigDenominator).send({ from: accounts[0] })
+      )
+    );
   });
 
   it("Multiplication towards zero", async function () {
-    const fixedPoint = await SignedFixedPointTest.new();
+    const fixedPoint = await SignedFixedPointTest.new().send({ from: accounts[0] });
 
     // Positives
     // Fractions, no precision loss.
@@ -306,7 +318,7 @@ contract("SignedFixedPoint", function () {
     product = await fixedPoint.wrapMul(toWei("1.2"), "2");
     assert.equal(product.toString(), "2");
     // 1e-18 * 1e-18 = 1e-36, which can't be represented and gets rounded towards zero to 0.
-    product = await fixedPoint.wrapMul("1", "1");
+    product = await fixedPoint.methods.wrapMul("1", "1").call();
     assert.equal(product.toString(), "0");
 
     // Negatives
@@ -329,7 +341,7 @@ contract("SignedFixedPoint", function () {
   });
 
   it("Multiplication, away from zero", async function () {
-    const fixedPoint = await SignedFixedPointTest.new();
+    const fixedPoint = await SignedFixedPointTest.new().send({ from: accounts[0] });
 
     // Positives
     // Whole numbers above 10**18.
@@ -345,7 +357,7 @@ contract("SignedFixedPoint", function () {
     product = await fixedPoint.wrapMulAwayFromZero(toWei("1.2"), "2");
     assert.equal(product.toString(), "3");
     // 1e-18 * 1e-18 = 1e-36, which can't be represented and gets rounded away from zero to 1e-18.
-    product = await fixedPoint.wrapMulAwayFromZero("1", "1");
+    product = await fixedPoint.methods.wrapMulAwayFromZero("1", "1").call();
     assert.equal(product.toString(), "1");
 
     // Negatives
@@ -371,12 +383,12 @@ contract("SignedFixedPoint", function () {
   });
 
   it("Division", async function () {
-    const fixedPoint = await SignedFixedPointTest.new();
+    const fixedPoint = await SignedFixedPointTest.new().send({ from: accounts[0] });
 
     // Positives
     // Fractions, precision loss, rounding down.
     // 1 / 3 = 0.3 repeating, which can't be represented and gets rounded down to 0.333333333333333333.
-    let quotient = await fixedPoint.wrapDiv(toWei("1"), toWei("3"));
+    let quotient = await fixedPoint.methods.wrapDiv(toWei("1"), toWei("3")).call();
     assert.equal(quotient.toString(), "3".repeat(18));
     // 1e-18 / 1e19 = 1e-37, which can't be represented and gets floor'd to 0.
     quotient = await fixedPoint.wrapDiv("1", toWei(toWei("10")));
@@ -398,12 +410,12 @@ contract("SignedFixedPoint", function () {
   });
 
   it("Division, with ceil", async function () {
-    const fixedPoint = await SignedFixedPointTest.new();
+    const fixedPoint = await SignedFixedPointTest.new().send({ from: accounts[0] });
 
     // Positives
     // Fractions, precision loss, rounding away from zero.
     // 1 / 3 = 0.3 repeating, which can't be represented and gets rounded up to 0.333333333333333334.
-    let quotient = await fixedPoint.wrapDivAwayFromZero(toWei("1"), toWei("3"));
+    let quotient = await fixedPoint.methods.wrapDivAwayFromZero(toWei("1"), toWei("3")).call();
     assert.equal(quotient.toString(), "3".repeat(17) + "4");
     // 1e-18 / 1e19 = 1e-37, which can't be represented and gets rounded away from zero to 1.
     quotient = await fixedPoint.wrapDivAwayFromZero("1", toWei(toWei("10")));
@@ -425,7 +437,7 @@ contract("SignedFixedPoint", function () {
   });
 
   it("Power", async function () {
-    const fixedPoint = await SignedFixedPointTest.new();
+    const fixedPoint = await SignedFixedPointTest.new().send({ from: accounts[0] });
 
     // Positives
     // 1.5^0 = 1

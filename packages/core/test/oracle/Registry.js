@@ -1,8 +1,11 @@
+const hre = require("hardhat");
+const { runDefaultFixture } = require("@uma/common");
+const { getContract } = hre;
 const { RegistryRolesEnum, didContractThrow } = require("@uma/common");
 
 const truffleAssert = require("truffle-assertions");
 
-const Registry = artifacts.require("Registry");
+const Registry = getContract("Registry");
 
 contract("Registry", function (accounts) {
   // A deployed instance of the Registry contract, ready for testing.
@@ -20,7 +23,8 @@ contract("Registry", function (accounts) {
   const contract2 = accounts[5];
 
   beforeEach(async function () {
-    registry = await Registry.new();
+    await runDefaultFixture(hre);
+    registry = await Registry.new().send({ from: accounts[0] });
   });
 
   const areAddressesEqual = (address1, address2) => {
@@ -29,35 +33,40 @@ contract("Registry", function (accounts) {
 
   it("Contract creation", async function () {
     // No creators should be registered initially.
-    assert.isNotTrue(await registry.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, creator1));
+    assert.isNotTrue(await registry.methods.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, creator1).call());
 
     // Only the owner should be able to add contract creators.
-    assert(await didContractThrow(registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1, { from: rando1 })));
+    assert(
+      await didContractThrow(
+        registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1).send({ from: rando1 })
+      )
+    );
 
     // Register creator1, but not creator2.
-    let result = await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1, { from: owner });
-    assert.isTrue(await registry.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, creator1));
-    assert.isFalse(await registry.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, creator2));
+    let result = await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1).call({ from: owner });
+    assert.isTrue(await registry.methods.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, creator1).call());
+    assert.isFalse(await registry.methods.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, creator2).call());
 
     // Add it a second time.
-    result = await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1, { from: owner });
+    result = await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1).call({ from: owner });
 
     // Try to register an arbitrary contract.
     const arbitraryContract = web3.utils.randomHex(20);
     const parties = [web3.utils.randomHex(20), web3.utils.randomHex(20)];
 
     // Only approved creators can register contracts.
-    assert(await didContractThrow(registry.registerContract(parties, arbitraryContract, { from: creator2 })));
+    assert(
+      await didContractThrow(registry.methods.registerContract(parties, arbitraryContract).send({ from: creator2 }))
+    );
 
     // creator1 should be able to register a new contract.
-    result = await registry.registerContract(parties, arbitraryContract, { from: creator1 });
-    assert.isTrue(await registry.isContractRegistered(arbitraryContract));
+    result = await registry.methods.registerContract(parties, arbitraryContract).call({ from: creator1 });
+    assert.isTrue(await registry.methods.isContractRegistered(arbitraryContract).call());
 
     // Make sure a PartyAdded event is emitted on initial contract registration.
     truffleAssert.eventEmitted(result, "PartyAdded", (ev) => {
       return (
-        web3.utils.toChecksumAddress(ev.contractAddress) === web3.utils.toChecksumAddress(arbitraryContract) &&
-        // Check that the party is a member of the parties array used in registration above
+        web3.utils.toChecksumAddress(ev.contractAddress) === web3.utils.toChecksumAddress(arbitraryContract) && // Check that the party is a member of the parties array used in registration above
         parties.map((party) => web3.utils.toChecksumAddress(party).indexOf(web3.utils.toChecksumAddress(ev.party)))
       );
     });
@@ -71,28 +80,30 @@ contract("Registry", function (accounts) {
     });
 
     // Remove the contract creator.
-    result = await registry.removeMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1, { from: owner });
-    assert.isFalse(await registry.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, creator1));
+    result = await registry.methods.removeMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1).call({ from: owner });
+    assert.isFalse(await registry.methods.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, creator1).call());
 
     // Creation should fail since creator1 is no longer approved.
     const secondContract = web3.utils.randomHex(20);
-    assert(await didContractThrow(registry.registerContract(parties, secondContract, { from: creator1 })));
+    assert(await didContractThrow(registry.methods.registerContract(parties, secondContract).send({ from: creator1 })));
 
     // A second removal should still work.
-    result = await registry.removeMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1, { from: owner });
+    result = await registry.methods.removeMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1).call({ from: owner });
 
     // Remove the owner.
-    await registry.resetMember(RegistryRolesEnum.OWNER, rando1, { from: owner });
+    await registry.methods.resetMember(RegistryRolesEnum.OWNER, rando1).send({ from: owner });
 
     // The owner can no longer add or remove contract creators.
     assert(
-      await didContractThrow(registry.removeMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1, { from: owner }))
+      await didContractThrow(
+        registry.methods.removeMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1).send({ from: owner })
+      )
     );
   });
 
   it("Register and query contracts", async function () {
-    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1, { from: owner });
-    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator2, { from: owner });
+    await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1).send({ from: owner });
+    await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator2).send({ from: owner });
 
     // Register arbitrary financial contracts.
     const fc1 = web3.utils.randomHex(20);
@@ -103,50 +114,50 @@ contract("Registry", function (accounts) {
     const party3 = web3.utils.randomHex(20);
 
     // Register three derivatives with partially overlapping parties
-    await registry.registerContract([party1, party2], fc1, { from: creator1 });
-    await registry.registerContract([party2, party3], fc2, { from: creator2 });
-    await registry.registerContract([], fc3, { from: creator1 });
+    await registry.methods.registerContract([party1, party2], fc1).send({ from: creator1 });
+    await registry.methods.registerContract([party2, party3], fc2).send({ from: creator2 });
+    await registry.methods.registerContract([], fc3).send({ from: creator1 });
 
     // Query that contract by party and ensure all parties see their correct contracts.
-    const party1Contracts = await registry.getRegisteredContracts(party1);
+    const party1Contracts = await registry.methods.getRegisteredContracts(party1).call();
     assert.equal(party1Contracts.length, 1);
     assert.isTrue(areAddressesEqual(party1Contracts[0], fc1));
 
-    const party2Contracts = await registry.getRegisteredContracts(party2);
+    const party2Contracts = await registry.methods.getRegisteredContracts(party2).call();
     assert.equal(party2Contracts.length, 2);
     assert.isTrue(areAddressesEqual(party2Contracts[0], fc1));
     assert.isTrue(areAddressesEqual(party2Contracts[1], fc2));
 
-    const party3Contracts = await registry.getRegisteredContracts(party3);
+    const party3Contracts = await registry.methods.getRegisteredContracts(party3).call();
     assert.equal(party3Contracts.length, 1);
     assert.isTrue(areAddressesEqual(party3Contracts[0], fc2));
 
-    const allContracts = await registry.getAllRegisteredContracts();
+    const allContracts = await registry.methods.getAllRegisteredContracts().call();
     assert.equal(allContracts.length, 3);
     assert.isTrue(areAddressesEqual(allContracts[0], fc1));
     assert.isTrue(areAddressesEqual(allContracts[1], fc2));
     assert.isTrue(areAddressesEqual(allContracts[2], fc3));
 
     // Check contract information.
-    const financialContractStruct = await registry.contractMap(fc1);
+    const financialContractStruct = await registry.methods.contractMap(fc1).call();
     assert.equal(financialContractStruct.valid.toNumber(), 1);
     assert.equal(financialContractStruct.index.toNumber(), 0);
 
     // Check party is correctly added to contract.
-    assert.isTrue(await registry.isPartyMemberOfContract(party2, fc1));
-    assert.isFalse(await registry.isPartyMemberOfContract(rando1, fc1));
+    assert.isTrue(await registry.methods.isPartyMemberOfContract(party2, fc1).call());
+    assert.isFalse(await registry.methods.isPartyMemberOfContract(rando1, fc1).call());
   });
 
   it("Double-register contract", async function () {
     // Approve creator.
-    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1, { from: owner });
+    await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1).send({ from: owner });
 
     // Register contract.
     const fc1 = web3.utils.randomHex(20);
-    await registry.registerContract([], fc1, { from: creator1 });
+    await registry.methods.registerContract([], fc1).send({ from: creator1 });
 
     // Cannot register a contract that is already registered.
-    assert(await didContractThrow(registry.registerContract([], fc1, { from: creator1 })));
+    assert(await didContractThrow(registry.methods.registerContract([], fc1).send({ from: creator1 })));
 
     // Cannot register the same address to a contract multiple times. In other words one
     // address cant be multiple party members of one contract at registration.
@@ -154,17 +165,19 @@ contract("Registry", function (accounts) {
     const party2 = web3.utils.randomHex(20);
 
     assert(
-      await didContractThrow(registry.registerContract([party, party, party, party2], contract1, { from: creator1 }))
+      await didContractThrow(
+        registry.methods.registerContract([party, party, party, party2], contract1).send({ from: creator1 })
+      )
     );
   });
 
   it("Adding parties to contracts", async function () {
     // Approve creator and register contract.
-    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1, { from: owner });
-    await registry.registerContract([], contract1, { from: creator1 });
+    await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1).send({ from: owner });
+    await registry.methods.registerContract([], contract1).send({ from: creator1 });
 
     // Adding party member.
-    let result = await registry.addPartyToContract(creator2, { from: contract1 });
+    let result = await registry.methods.addPartyToContract(creator2).call({ from: contract1 });
 
     // Make sure a PartyMemberAdded event is emitted.
     truffleAssert.eventEmitted(result, "PartyAdded", (ev) => {
@@ -175,42 +188,42 @@ contract("Registry", function (accounts) {
     });
 
     // Check the party member was added to state.
-    assert.isTrue(await registry.isPartyMemberOfContract(creator2, contract1));
-    assert.isFalse(await registry.isPartyMemberOfContract(rando1, contract1));
-    assert.equal((await registry.getRegisteredContracts(creator2)).length, 1);
-    assert.equal((await registry.getRegisteredContracts(creator2))[0], contract1);
+    assert.isTrue(await registry.methods.isPartyMemberOfContract(creator2, contract1).call());
+    assert.isFalse(await registry.methods.isPartyMemberOfContract(rando1, contract1).call());
+    assert.equal((await registry.methods.getRegisteredContracts(creator2).call()).length, 1);
+    assert.equal((await registry.methods.getRegisteredContracts(creator2).call())[0], contract1);
 
     // Cant add a member to a party more than once.
-    assert(await didContractThrow(registry.addPartyToContract(creator2, { from: contract1 })));
+    assert(await didContractThrow(registry.methods.addPartyToContract(creator2).send({ from: contract1 })));
 
     // Cant add a member to an invalid contract.
-    assert(await didContractThrow(registry.addPartyToContract(creator2, { from: rando1 })));
+    assert(await didContractThrow(registry.methods.addPartyToContract(creator2).send({ from: rando1 })));
 
     // Create a second contract and add it to the same user. Check that they are party of two.
-    await registry.registerContract([], contract2, { from: creator1 });
-    await registry.addPartyToContract(creator2, { from: contract2 });
+    await registry.methods.registerContract([], contract2).send({ from: creator1 });
+    await registry.methods.addPartyToContract(creator2).send({ from: contract2 });
 
     // Check that creator2 is part of two contracts.
-    assert.isTrue(await registry.isPartyMemberOfContract(creator2, contract2));
-    assert.isFalse(await registry.isPartyMemberOfContract(rando1, contract2));
-    assert.equal((await registry.getRegisteredContracts(creator2)).length, 2);
-    assert.equal((await registry.getRegisteredContracts(creator2))[0], contract1);
-    assert.equal((await registry.getRegisteredContracts(creator2))[1], contract2);
+    assert.isTrue(await registry.methods.isPartyMemberOfContract(creator2, contract2).call());
+    assert.isFalse(await registry.methods.isPartyMemberOfContract(rando1, contract2).call());
+    assert.equal((await registry.methods.getRegisteredContracts(creator2).call()).length, 2);
+    assert.equal((await registry.methods.getRegisteredContracts(creator2).call())[0], contract1);
+    assert.equal((await registry.methods.getRegisteredContracts(creator2).call())[1], contract2);
   });
 
   it("Removing parties from contracts", async function () {
     // Approve creator and register two contract.
-    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1, { from: owner });
-    await registry.registerContract([], contract1, { from: creator1 });
-    await registry.registerContract([], contract2, { from: creator1 });
+    await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1).send({ from: owner });
+    await registry.methods.registerContract([], contract1).send({ from: creator1 });
+    await registry.methods.registerContract([], contract2).send({ from: creator1 });
 
     // Adding party member to both contracts.
-    await registry.addPartyToContract(creator2, { from: contract1 });
-    await registry.addPartyToContract(creator2, { from: contract2 });
-    assert.equal((await registry.getRegisteredContracts(creator2)).length, 2);
+    await registry.methods.addPartyToContract(creator2).send({ from: contract1 });
+    await registry.methods.addPartyToContract(creator2).send({ from: contract2 });
+    assert.equal((await registry.methods.getRegisteredContracts(creator2).call()).length, 2);
 
     // Remove party member from the first contract and check they are part of only the second contract.
-    let result = await registry.removePartyFromContract(creator2, { from: contract1 });
+    let result = await registry.methods.removePartyFromContract(creator2).call({ from: contract1 });
 
     truffleAssert.eventEmitted(result, "PartyRemoved", (ev) => {
       return (
@@ -220,24 +233,24 @@ contract("Registry", function (accounts) {
     });
 
     // Check party member has been removed from state.
-    assert.isFalse(await registry.isPartyMemberOfContract(creator2, contract1));
-    assert.isTrue(await registry.isPartyMemberOfContract(creator2, contract2));
-    assert.equal((await registry.getRegisteredContracts(creator2)).length, 1);
-    assert.equal((await registry.getRegisteredContracts(creator2))[0], contract2);
+    assert.isFalse(await registry.methods.isPartyMemberOfContract(creator2, contract1).call());
+    assert.isTrue(await registry.methods.isPartyMemberOfContract(creator2, contract2).call());
+    assert.equal((await registry.methods.getRegisteredContracts(creator2).call()).length, 1);
+    assert.equal((await registry.methods.getRegisteredContracts(creator2).call())[0], contract2);
 
     // Cant remove a party from contract multiple times.
-    assert(await didContractThrow(registry.removePartyFromContract(creator2, { from: contract1 })));
+    assert(await didContractThrow(registry.methods.removePartyFromContract(creator2).send({ from: contract1 })));
 
     // Cant remove a member to an invalid contract.
-    assert(await didContractThrow(registry.removePartyFromContract(creator2, { from: rando1 })));
+    assert(await didContractThrow(registry.methods.removePartyFromContract(creator2).send({ from: rando1 })));
 
     // Remove party remember from second contract and check that they are part of none.
-    await registry.removePartyFromContract(creator2, { from: contract2 });
-    assert.equal((await registry.getRegisteredContracts(creator2)).length, 0);
-    assert.isFalse(await registry.isPartyMemberOfContract(creator2, contract1));
-    assert.isFalse(await registry.isPartyMemberOfContract(creator2, contract2));
+    await registry.methods.removePartyFromContract(creator2).send({ from: contract2 });
+    assert.equal((await registry.methods.getRegisteredContracts(creator2).call()).length, 0);
+    assert.isFalse(await registry.methods.isPartyMemberOfContract(creator2, contract1).call());
+    assert.isFalse(await registry.methods.isPartyMemberOfContract(creator2, contract2).call());
 
     // Cant remove a contract if there is none left for the party.
-    assert(await didContractThrow(registry.removePartyFromContract(creator2, { from: contract1 })));
+    assert(await didContractThrow(registry.methods.removePartyFromContract(creator2).send({ from: contract1 })));
   });
 });

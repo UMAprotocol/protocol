@@ -1,3 +1,6 @@
+const hre = require("hardhat");
+const { runDefaultFixture } = require("@uma/common");
+const { getContract } = hre;
 const {
   RegistryRolesEnum,
   VotePhasesEnum,
@@ -14,15 +17,15 @@ const {
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 const truffleAssert = require("truffle-assertions");
 
-const Finder = artifacts.require("Finder");
-const Registry = artifacts.require("Registry");
-const Voting = artifacts.require("Voting");
-const VotingInterfaceTesting = artifacts.require("VotingInterfaceTesting");
-const VotingAncillaryInterfaceTesting = artifacts.require("VotingAncillaryInterfaceTesting");
-const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const VotingToken = artifacts.require("VotingToken");
-const VotingTest = artifacts.require("VotingTest");
-const Timer = artifacts.require("Timer");
+const Finder = getContract("Finder");
+const Registry = getContract("Registry");
+const Voting = getContract("Voting");
+const VotingInterfaceTesting = getContract("VotingInterfaceTesting");
+const VotingAncillaryInterfaceTesting = getContract("VotingAncillaryInterfaceTesting");
+const IdentifierWhitelist = getContract("IdentifierWhitelist");
+const VotingToken = getContract("VotingToken");
+const VotingTest = getContract("VotingTest");
+const Timer = getContract("Timer");
 const snapshotMessage = "Sign For Snapshot";
 const { utf8ToHex, padRight } = web3.utils;
 
@@ -42,14 +45,15 @@ contract("Voting", function (accounts) {
   let signature;
 
   const setNewInflationRate = async (inflationRate) => {
-    await voting.setInflationRate({ rawValue: inflationRate.toString() });
+    await voting.methods.setInflationRate({ rawValue: inflationRate.toString() }).send({ from: accounts[0] });
   };
 
   const setNewGatPercentage = async (gatPercentage) => {
-    await voting.setGatPercentage({ rawValue: gatPercentage.toString() });
+    await voting.methods.setGatPercentage({ rawValue: gatPercentage.toString() }).send({ from: accounts[0] });
   };
 
   beforeEach(async function () {
+    await runDefaultFixture(hre);
     voting = await VotingInterfaceTesting.at((await Voting.deployed()).address);
 
     supportedIdentifiers = await IdentifierWhitelist.deployed();
@@ -58,7 +62,7 @@ contract("Voting", function (accounts) {
 
     // Allow account1 to mint tokens.
     const minterRole = 1;
-    await votingToken.addMember(minterRole, account1);
+    await votingToken.methods.addMember(minterRole, account1).send({ from: accounts[0] });
 
     // account1 starts with 100MM tokens, so divide up the tokens accordingly:
     // 1: 32MM
@@ -73,8 +77,8 @@ contract("Voting", function (accounts) {
     await setNewInflationRate("0");
 
     // Register contract with Registry.
-    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, account1);
-    await registry.registerContract([], registeredContract, { from: account1 });
+    await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, account1).send({ from: accounts[0] });
+    await registry.methods.registerContract([], registeredContract).send({ from: account1 });
     signature = await signMessage(web3, snapshotMessage, account1);
 
     // Reset the rounds.
@@ -91,7 +95,7 @@ contract("Voting", function (accounts) {
           invalidGat,
           { rawValue: web3.utils.toWei("1") },
           1,
-          votingToken.address,
+          votingToken.options.address,
           (await Finder.deployed()).address,
           (await Timer.deployed()).address
         )
@@ -105,23 +109,23 @@ contract("Voting", function (accounts) {
 
     // RoundId is a function of the voting time defined by floor(timestamp/phaseLength).
     // RoundId for Commit and Reveal phases should be the same.
-    const currentTime = (await voting.getCurrentTime()).toNumber();
-    const commitRoundId = await voting.getCurrentRoundId();
+    const currentTime = (await voting.methods.getCurrentTime().call()).toNumber();
+    const commitRoundId = await voting.methods.getCurrentRoundId().call();
     assert.equal(commitRoundId.toString(), Math.floor(currentTime / 172800));
 
     // Rounds should start with Commit.
-    assert.equal((await voting.getVotePhase()).toString(), VotePhasesEnum.COMMIT);
+    assert.equal((await voting.methods.getVotePhase().call()).toString(), VotePhasesEnum.COMMIT);
 
     // Shift of one phase should be Reveal.
     await moveToNextPhase(voting);
-    assert.equal((await voting.getVotePhase()).toString(), VotePhasesEnum.REVEAL);
+    assert.equal((await voting.methods.getVotePhase().call()).toString(), VotePhasesEnum.REVEAL);
 
     // Round ID between Commit and Reveal phases should be the same.
-    assert.equal(commitRoundId.toString(), (await voting.getCurrentRoundId()).toString());
+    assert.equal(commitRoundId.toString(), (await voting.methods.getCurrentRoundId().call()).toString());
 
     // A second shift should go back to commit.
     await moveToNextPhase(voting);
-    assert.equal((await voting.getVotePhase()).toString(), VotePhasesEnum.COMMIT);
+    assert.equal((await voting.methods.getVotePhase().call()).toString(), VotePhasesEnum.COMMIT);
   });
 
   it("Should snapshot only with valid EOA", async function () {
@@ -130,52 +134,45 @@ contract("Voting", function (accounts) {
     await moveToNextPhase(voting);
 
     // no sig passed should fail
-    assert(await didContractThrow(voting.snapshotCurrentRound()));
+    assert(await didContractThrow(voting.methods.snapshotCurrentRound().send({ from: accounts[0] })));
 
     // random bytes should fail
     assert(await didContractThrow(voting.snapshotCurrentRound(web3.utils.randomHex(65))));
 
     // wrong signer
     const badsig1 = await signMessage(web3, snapshotMessage, account2);
-    assert(await didContractThrow(voting.snapshotCurrentRound(badsig1)));
+    assert(await didContractThrow(voting.methods.snapshotCurrentRound(badsig1).send({ from: accounts[0] })));
 
     // right signer, wrong message
     const badsig2 = await signMessage(web3, snapshotMessage.toLowerCase(), account1);
-    assert(await didContractThrow(voting.snapshotCurrentRound(badsig2)));
+    assert(await didContractThrow(voting.methods.snapshotCurrentRound(badsig2).send({ from: accounts[0] })));
 
     // this should not throw
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
   });
 
   it("One voter, one request", async function () {
     const identifier = padRight(utf8ToHex("one-voter"), 64);
     const time = "1000";
     // Make the Oracle support this identifier.
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
 
     // Request a price and move to the next round where that will be voted on.
-    await voting.requestPrice(identifier, time, { from: registeredContract });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
     await moveToNextRound(voting);
     // RoundId is a function of the voting time defined by floor(timestamp/phaseLength).
     // RoundId for Commit and Reveal phases should be the same.
-    const currentRoundId = await voting.getCurrentRoundId();
+    const currentRoundId = await voting.methods.getCurrentRoundId().call();
 
     const price = getRandomSignedInt();
     const salt = getRandomSignedInt();
-    const hash = computeVoteHash({
-      price,
-      salt,
-      account: account1,
-      time: time,
-      roundId: currentRoundId,
-      identifier,
-    });
+    const hash = computeVoteHash({ price, salt, account: account1, time: time, roundId: currentRoundId, identifier });
 
     // Can't commit hash of 0.
-    assert(await didContractThrow(voting.commitVote(identifier, time, "0x0")));
+    assert(await didContractThrow(voting.methods.commitVote(identifier, time, "0x0").send({ from: accounts[0] })));
 
     // Can commit a new hash.
-    await voting.commitVote(identifier, time, hash);
+    await voting.methods.commitVote(identifier, time, hash).send({ from: accounts[0] });
 
     // Voters can alter their commits.
     const newPrice = getRandomSignedInt();
@@ -190,32 +187,44 @@ contract("Voting", function (accounts) {
     });
 
     // Can alter a committed hash.
-    await voting.commitVote(identifier, time, newHash);
+    await voting.methods.commitVote(identifier, time, newHash).send({ from: accounts[0] });
 
     // Can't reveal before during the commit phase.
-    assert(await didContractThrow(voting.revealVote(identifier, time, newPrice, newSalt)));
+    assert(
+      await didContractThrow(voting.methods.revealVote(identifier, time, newPrice, newSalt).send({ from: accounts[0] }))
+    );
 
     // Move to the reveal phase.
     await moveToNextPhase(voting);
 
     // Can't reveal if snapshot has not been taken yet, even if all data is correct
-    assert(await didContractThrow(voting.revealVote(identifier, time, newPrice, newSalt)));
+    assert(
+      await didContractThrow(voting.methods.revealVote(identifier, time, newPrice, newSalt).send({ from: accounts[0] }))
+    );
 
     // This is now required before reveal
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     // Can't commit during the reveal phase.
-    assert(await didContractThrow(voting.commitVote(identifier, time, newHash)));
+    assert(await didContractThrow(voting.methods.commitVote(identifier, time, newHash).send({ from: accounts[0] })));
 
     // Can't reveal the overwritten commit.
-    assert(await didContractThrow(voting.revealVote(identifier, time, price, salt)));
+    assert(
+      await didContractThrow(voting.methods.revealVote(identifier, time, price, salt).send({ from: accounts[0] }))
+    );
 
     // Can't reveal with the wrong price but right salt, and reverse.
-    assert(await didContractThrow(voting.revealVote(identifier, time, newPrice, salt)));
-    assert(await didContractThrow(voting.revealVote(identifier, time, price, newSalt)));
+    assert(
+      await didContractThrow(voting.methods.revealVote(identifier, time, newPrice, salt).send({ from: accounts[0] }))
+    );
+    assert(
+      await didContractThrow(voting.methods.revealVote(identifier, time, price, newSalt).send({ from: accounts[0] }))
+    );
 
     // Can't reveal with the incorrect address.
-    assert(await didContractThrow(voting.revealVote(identifier, time, newPrice, newSalt, { from: account2 })));
+    assert(
+      await didContractThrow(voting.methods.revealVote(identifier, time, newPrice, newSalt).send({ from: account2 }))
+    );
 
     // Can't reveal with incorrect timestamp.
     assert(await didContractThrow(voting.revealVote(identifier, (Number(time) + 1).toString(), newPrice, salt)));
@@ -228,10 +237,12 @@ contract("Voting", function (accounts) {
     );
 
     // Successfully reveal the latest commit.
-    await voting.revealVote(identifier, time, newPrice, newSalt);
+    await voting.methods.revealVote(identifier, time, newPrice, newSalt).send({ from: accounts[0] });
 
     // Can't reveal the same commit again.
-    assert(await didContractThrow(voting.revealVote(identifier, time, newPrice, newSalt)));
+    assert(
+      await didContractThrow(voting.methods.revealVote(identifier, time, newPrice, newSalt).send({ from: accounts[0] }))
+    );
   });
 
   it("Overlapping request keys", async function () {
@@ -243,16 +254,16 @@ contract("Voting", function (accounts) {
     const time2 = "2000";
 
     // Make the Oracle support these two identifiers.
-    await supportedIdentifiers.addSupportedIdentifier(identifier1);
-    await supportedIdentifiers.addSupportedIdentifier(identifier2);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier1).send({ from: accounts[0] });
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier2).send({ from: accounts[0] });
 
     // Send the requests.
-    await voting.requestPrice(identifier1, time2, { from: registeredContract });
-    await voting.requestPrice(identifier2, time1, { from: registeredContract });
+    await voting.methods.requestPrice(identifier1, time2).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier2, time1).send({ from: registeredContract });
 
     // Move to voting round.
     await moveToNextRound(voting);
-    const roundId = (await voting.getCurrentRoundId()).toString();
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     const price1 = getRandomSignedInt();
     const salt1 = getRandomSignedInt();
@@ -276,23 +287,31 @@ contract("Voting", function (accounts) {
       identifier: identifier2,
     });
 
-    await voting.commitVote(identifier1, time2, hash1);
-    await voting.commitVote(identifier2, time1, hash2);
+    await voting.methods.commitVote(identifier1, time2, hash1).send({ from: accounts[0] });
+    await voting.methods.commitVote(identifier2, time1, hash2).send({ from: accounts[0] });
 
     // Move to the reveal phase.
     await moveToNextPhase(voting);
 
     // Can't reveal the wrong combos.
-    assert(await didContractThrow(voting.revealVote(identifier1, time2, price2, salt2)));
-    assert(await didContractThrow(voting.revealVote(identifier2, time1, price1, salt1)));
-    assert(await didContractThrow(voting.revealVote(identifier1, time1, price1, salt1)));
-    assert(await didContractThrow(voting.revealVote(identifier1, time1, price2, salt2)));
+    assert(
+      await didContractThrow(voting.methods.revealVote(identifier1, time2, price2, salt2).send({ from: accounts[0] }))
+    );
+    assert(
+      await didContractThrow(voting.methods.revealVote(identifier2, time1, price1, salt1).send({ from: accounts[0] }))
+    );
+    assert(
+      await didContractThrow(voting.methods.revealVote(identifier1, time1, price1, salt1).send({ from: accounts[0] }))
+    );
+    assert(
+      await didContractThrow(voting.methods.revealVote(identifier1, time1, price2, salt2).send({ from: accounts[0] }))
+    );
 
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     // Can reveal the right combos.
-    await voting.revealVote(identifier1, time2, price1, salt1);
-    await voting.revealVote(identifier2, time1, price2, salt2);
+    await voting.methods.revealVote(identifier1, time2, price1, salt1).send({ from: accounts[0] });
+    await voting.methods.revealVote(identifier2, time1, price2, salt2).send({ from: accounts[0] });
   });
 
   it("Request and retrieval", async function () {
@@ -302,22 +321,22 @@ contract("Voting", function (accounts) {
     const time2 = "2000";
 
     // Make the Oracle support these two identifiers.
-    await supportedIdentifiers.addSupportedIdentifier(identifier1);
-    await supportedIdentifiers.addSupportedIdentifier(identifier2);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier1).send({ from: accounts[0] });
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier2).send({ from: accounts[0] });
 
     // Requests should not be added to the current voting round.
-    await voting.requestPrice(identifier1, time1, { from: registeredContract });
-    await voting.requestPrice(identifier2, time2, { from: registeredContract });
+    await voting.methods.requestPrice(identifier1, time1).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier2, time2).send({ from: registeredContract });
 
     // Since the round for these requests has not started, the price retrieval should fail.
-    assert.isFalse(await voting.hasPrice(identifier1, time1, { from: registeredContract }));
-    assert.isFalse(await voting.hasPrice(identifier2, time2, { from: registeredContract }));
-    assert(await didContractThrow(voting.getPrice(identifier1, time1, { from: registeredContract })));
-    assert(await didContractThrow(voting.getPrice(identifier2, time2, { from: registeredContract })));
+    assert.isFalse(await voting.methods.hasPrice(identifier1, time1).call({ from: registeredContract }));
+    assert.isFalse(await voting.methods.hasPrice(identifier2, time2).call({ from: registeredContract }));
+    assert(await didContractThrow(voting.methods.getPrice(identifier1, time1).send({ from: registeredContract })));
+    assert(await didContractThrow(voting.methods.getPrice(identifier2, time2).send({ from: registeredContract })));
 
     // Move to the voting round.
     await moveToNextRound(voting);
-    const roundId = (await voting.getCurrentRoundId()).toString();
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Commit vote 1.
     const price1 = getRandomSignedInt();
@@ -331,7 +350,7 @@ contract("Voting", function (accounts) {
       identifier: identifier1,
     });
 
-    await voting.commitVote(identifier1, time1, hash1);
+    await voting.methods.commitVote(identifier1, time1, hash1).send({ from: accounts[0] });
 
     // Commit vote 2.
     const price2 = getRandomSignedInt();
@@ -344,41 +363,41 @@ contract("Voting", function (accounts) {
       roundId,
       identifier: identifier2,
     });
-    await voting.commitVote(identifier2, time2, hash2);
+    await voting.methods.commitVote(identifier2, time2, hash2).send({ from: accounts[0] });
 
     // If the voting period is ongoing, prices cannot be returned since they are not finalized.
-    assert.isFalse(await voting.hasPrice(identifier1, time1, { from: registeredContract }));
-    assert.isFalse(await voting.hasPrice(identifier2, time2, { from: registeredContract }));
-    assert(await didContractThrow(voting.getPrice(identifier1, time1, { from: registeredContract })));
-    assert(await didContractThrow(voting.getPrice(identifier2, time2, { from: registeredContract })));
+    assert.isFalse(await voting.methods.hasPrice(identifier1, time1).call({ from: registeredContract }));
+    assert.isFalse(await voting.methods.hasPrice(identifier2, time2).call({ from: registeredContract }));
+    assert(await didContractThrow(voting.methods.getPrice(identifier1, time1).send({ from: registeredContract })));
+    assert(await didContractThrow(voting.methods.getPrice(identifier2, time2).send({ from: registeredContract })));
 
     // Move to the reveal phase of the voting period.
     await moveToNextPhase(voting);
 
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     // Reveal both votes.
-    await voting.revealVote(identifier1, time1, price1, salt1);
-    await voting.revealVote(identifier2, time2, price2, salt2);
+    await voting.methods.revealVote(identifier1, time1, price1, salt1).send({ from: accounts[0] });
+    await voting.methods.revealVote(identifier2, time2, price2, salt2).send({ from: accounts[0] });
 
     // Prices cannot be provided until both commit and reveal for the current round have finished.
-    assert.isFalse(await voting.hasPrice(identifier1, time1, { from: registeredContract }));
-    assert.isFalse(await voting.hasPrice(identifier2, time2, { from: registeredContract }));
-    assert(await didContractThrow(voting.getPrice(identifier1, time1, { from: registeredContract })));
-    assert(await didContractThrow(voting.getPrice(identifier2, time2, { from: registeredContract })));
+    assert.isFalse(await voting.methods.hasPrice(identifier1, time1).call({ from: registeredContract }));
+    assert.isFalse(await voting.methods.hasPrice(identifier2, time2).call({ from: registeredContract }));
+    assert(await didContractThrow(voting.methods.getPrice(identifier1, time1).send({ from: registeredContract })));
+    assert(await didContractThrow(voting.methods.getPrice(identifier2, time2).send({ from: registeredContract })));
 
     // Move past the voting round.
     await moveToNextRound(voting);
 
     // Note: all voting results are currently hardcoded to 1.
-    assert.isTrue(await voting.hasPrice(identifier1, time1, { from: registeredContract }));
-    assert.isTrue(await voting.hasPrice(identifier2, time2, { from: registeredContract }));
+    assert.isTrue(await voting.methods.hasPrice(identifier1, time1).call({ from: registeredContract }));
+    assert.isTrue(await voting.methods.hasPrice(identifier2, time2).call({ from: registeredContract }));
     assert.equal(
-      (await voting.getPrice(identifier1, time1, { from: registeredContract })).toString(),
+      (await voting.methods.getPrice(identifier1, time1).call({ from: registeredContract })).toString(),
       price1.toString()
     );
     assert.equal(
-      (await voting.getPrice(identifier2, time2, { from: registeredContract })).toString(),
+      (await voting.methods.getPrice(identifier2, time2).call({ from: registeredContract })).toString(),
       price2.toString()
     );
   });
@@ -386,11 +405,11 @@ contract("Voting", function (accounts) {
   it("Future price requests disallowed", async function () {
     await moveToNextRound(voting);
 
-    const startingTime = await voting.getCurrentTime();
+    const startingTime = await voting.methods.getCurrentTime().call();
     const identifier = padRight(utf8ToHex("future-request"), 64);
 
     // Make the Oracle support this identifier.
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
 
     // Time 1 is in the future and should fail.
     const timeFail = startingTime.addn(1).toString();
@@ -398,12 +417,14 @@ contract("Voting", function (accounts) {
     // Time 2 is in the past and should succeed.
     const timeSucceed = startingTime.subn(1).toString();
 
-    assert(await didContractThrow(voting.requestPrice(identifier, timeFail, { from: registeredContract })));
-    await voting.requestPrice(identifier, timeSucceed, { from: registeredContract });
+    assert(
+      await didContractThrow(voting.methods.requestPrice(identifier, timeFail).send({ from: registeredContract }))
+    );
+    await voting.methods.requestPrice(identifier, timeSucceed).send({ from: registeredContract });
 
     // Finalize this vote.
     await moveToNextRound(voting);
-    const roundId = (await voting.getCurrentRoundId()).toString();
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
     const price = getRandomSignedInt();
     const salt = getRandomSignedInt();
     const hash = computeVoteHash({
@@ -414,14 +435,14 @@ contract("Voting", function (accounts) {
       roundId,
       identifier,
     });
-    await voting.commitVote(identifier, timeSucceed, hash);
+    await voting.methods.commitVote(identifier, timeSucceed, hash).send({ from: accounts[0] });
 
     // Move to reveal phase and reveal vote.
     await moveToNextPhase(voting);
 
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
-    await voting.revealVote(identifier, timeSucceed, price, salt);
+    await voting.methods.revealVote(identifier, timeSucceed, price, salt).send({ from: accounts[0] });
   });
 
   it("Retrieval timing", async function () {
@@ -431,48 +452,44 @@ contract("Voting", function (accounts) {
     const time = "1000";
 
     // Make the Oracle support this identifier.
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
 
     // Two stage call is required to get the expected return value from the second call.
     // The expected resolution time should be the end of the *next* round.
-    await voting.requestPrice(identifier, time, { from: registeredContract });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
 
     // Cannot get the price before the voting round begins.
-    assert(await didContractThrow(voting.getPrice(identifier, time, { from: registeredContract })));
+    assert(await didContractThrow(voting.methods.getPrice(identifier, time).send({ from: registeredContract })));
 
     await moveToNextRound(voting);
-    const roundId = (await voting.getCurrentRoundId()).toString();
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Cannot get the price while the voting is ongoing.
-    assert(await didContractThrow(voting.getPrice(identifier, time, { from: registeredContract })));
+    assert(await didContractThrow(voting.methods.getPrice(identifier, time).send({ from: registeredContract })));
 
     // Commit vote.
     const price = getRandomSignedInt();
     const salt = getRandomSignedInt();
-    const hash = computeVoteHash({
-      price,
-      salt,
-      account: account1,
-      time,
-      roundId,
-      identifier,
-    });
-    await voting.commitVote(identifier, time, hash);
+    const hash = computeVoteHash({ price, salt, account: account1, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash).send({ from: accounts[0] });
 
     // Move to reveal phase and reveal vote.
     await moveToNextPhase(voting);
 
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
-    await voting.revealVote(identifier, time, price, salt);
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: accounts[0] });
 
     // Cannot get the price during the reveal phase.
-    assert(await didContractThrow(voting.getPrice(identifier, time, { from: registeredContract })));
+    assert(await didContractThrow(voting.methods.getPrice(identifier, time).send({ from: registeredContract })));
 
     await moveToNextRound(voting);
 
     // After the voting round is over, the price should be retrievable.
-    assert.equal((await voting.getPrice(identifier, time, { from: registeredContract })).toString(), price.toString());
+    assert.equal(
+      (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
+      price.toString()
+    );
   });
 
   it("Pending Requests", async function () {
@@ -484,36 +501,36 @@ contract("Voting", function (accounts) {
     const time2 = "1001";
 
     // Make the Oracle support these identifiers.
-    await supportedIdentifiers.addSupportedIdentifier(identifier1);
-    await supportedIdentifiers.addSupportedIdentifier(identifier2);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier1).send({ from: accounts[0] });
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier2).send({ from: accounts[0] });
 
     // Pending requests should be empty for this new round.
-    assert.equal((await voting.getPendingRequests()).length, 0);
+    assert.equal((await voting.methods.getPendingRequests().call()).length, 0);
 
     // Two stage call is required to get the expected return value from the second call.
     // The expected resolution time should be the end of the *next* round.
-    await voting.requestPrice(identifier1, time1, { from: registeredContract });
+    await voting.methods.requestPrice(identifier1, time1).send({ from: registeredContract });
 
     // Pending requests should be empty before the voting round begins.
-    assert.equal((await voting.getPendingRequests()).length, 0);
+    assert.equal((await voting.methods.getPendingRequests().call()).length, 0);
 
     // Pending requests should be have a single entry now that voting has started.
     await moveToNextRound(voting);
-    assert.equal((await voting.getPendingRequests()).length, 1);
+    assert.equal((await voting.methods.getPendingRequests().call()).length, 1);
 
     // Add a new request during the voting round.
-    await voting.requestPrice(identifier2, time2, { from: registeredContract });
+    await voting.methods.requestPrice(identifier2, time2).send({ from: registeredContract });
 
     // Pending requests should still be 1 because this request should not be voted on until next round.
-    assert.equal((await voting.getPendingRequests()).length, 1);
+    assert.equal((await voting.methods.getPendingRequests().call()).length, 1);
 
     // Move to next round and roll the first request over.
     await moveToNextRound(voting);
-    const roundId = (await voting.getCurrentRoundId()).toString();
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Pending requests should be 2 because one vote was rolled over and the second was dispatched after the previous
     // voting round started.
-    assert.equal((await voting.getPendingRequests()).length, 2);
+    assert.equal((await voting.methods.getPendingRequests().call()).length, 2);
 
     // Commit votes.
     const price1 = getRandomSignedInt();
@@ -526,7 +543,7 @@ contract("Voting", function (accounts) {
       roundId,
       identifier: identifier1,
     });
-    await voting.commitVote(identifier1, time1, hash1);
+    await voting.methods.commitVote(identifier1, time1, hash1).send({ from: accounts[0] });
 
     const price2 = getRandomSignedInt();
     const salt2 = getRandomSignedInt();
@@ -538,38 +555,38 @@ contract("Voting", function (accounts) {
       roundId,
       identifier: identifier2,
     });
-    await voting.commitVote(identifier2, time2, hash2);
+    await voting.methods.commitVote(identifier2, time2, hash2).send({ from: accounts[0] });
 
     // Pending requests should still have a single entry in the reveal phase.
     await moveToNextPhase(voting);
-    assert.equal((await voting.getPendingRequests()).length, 2);
+    assert.equal((await voting.methods.getPendingRequests().call()).length, 2);
 
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     // Reveal vote.
-    await voting.revealVote(identifier1, time1, price1, salt1);
-    await voting.revealVote(identifier2, time2, price2, salt2);
+    await voting.methods.revealVote(identifier1, time1, price1, salt1).send({ from: accounts[0] });
+    await voting.methods.revealVote(identifier2, time2, price2, salt2).send({ from: accounts[0] });
 
     // Pending requests should be empty after the voting round ends and the price is resolved.
     await moveToNextRound(voting);
-    assert.equal((await voting.getPendingRequests()).length, 0);
+    assert.equal((await voting.methods.getPendingRequests().call()).length, 0);
   });
 
   it("Supported identifiers", async function () {
     const supported = padRight(utf8ToHex("supported"), 64);
 
     // No identifiers are originally suppported.
-    assert.isFalse(await supportedIdentifiers.isIdentifierSupported(supported));
+    assert.isFalse(await supportedIdentifiers.methods.isIdentifierSupported(supported).call());
 
     // Verify that supported identifiers can be added.
-    await supportedIdentifiers.addSupportedIdentifier(supported);
-    assert.isTrue(await supportedIdentifiers.isIdentifierSupported(supported));
+    await supportedIdentifiers.methods.addSupportedIdentifier(supported).send({ from: accounts[0] });
+    assert.isTrue(await supportedIdentifiers.methods.isIdentifierSupported(supported).call());
 
     // Verify that supported identifiers can be removed.
-    await supportedIdentifiers.removeSupportedIdentifier(supported);
-    assert.isFalse(await supportedIdentifiers.isIdentifierSupported(supported));
+    await supportedIdentifiers.methods.removeSupportedIdentifier(supported).send({ from: accounts[0] });
+    assert.isFalse(await supportedIdentifiers.methods.isIdentifierSupported(supported).call());
 
     // Can't request prices for unsupported identifiers.
-    assert(await didContractThrow(voting.requestPrice(supported, "0", { from: registeredContract })));
+    assert(await didContractThrow(voting.methods.requestPrice(supported, "0").send({ from: registeredContract })));
   });
 
   it("Simple vote resolution", async function () {
@@ -577,10 +594,10 @@ contract("Voting", function (accounts) {
     const time = "1000";
 
     // Make the Oracle support this identifier.
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
 
     // Request a price and move to the next round where that will be voted on.
-    await voting.requestPrice(identifier, time, { from: registeredContract });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
 
     const price = 123;
     const salt = getRandomSignedInt();
@@ -589,37 +606,35 @@ contract("Voting", function (accounts) {
       salt,
       account: account1,
       time,
-      roundId: (await voting.getCurrentRoundId()).toString(),
+      roundId: (await voting.methods.getCurrentRoundId().call()).toString(),
       identifier,
     });
     // Can't commit without advancing the round forward.
-    assert(await didContractThrow(voting.commitVote(identifier, time, invalidHash)));
+    assert(
+      await didContractThrow(voting.methods.commitVote(identifier, time, invalidHash).send({ from: accounts[0] }))
+    );
 
     await moveToNextRound(voting);
-    const roundId = (await voting.getCurrentRoundId()).toString();
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Commit vote.
-    const hash = computeVoteHash({
-      price,
-      salt,
-      account: account1,
-      time,
-      roundId,
-      identifier,
-    });
-    await voting.commitVote(identifier, time, hash);
+    const hash = computeVoteHash({ price, salt, account: account1, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash).send({ from: accounts[0] });
 
     // Reveal the vote.
     await moveToNextPhase(voting);
 
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
-    await voting.revealVote(identifier, time, price, salt);
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: accounts[0] });
 
     // Should resolve to the selected price since there was only one voter (100% for the mode) and the voter had enough
     // tokens to exceed the GAT.
     await moveToNextRound(voting);
-    assert.equal((await voting.getPrice(identifier, time, { from: registeredContract })).toString(), price.toString());
+    assert.equal(
+      (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
+      price.toString()
+    );
   });
 
   it("Equally split vote", async function () {
@@ -627,66 +642,45 @@ contract("Voting", function (accounts) {
     const time = "1000";
 
     // Make the Oracle support this identifier.
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
 
     // Request a price and move to the next round where that will be voted on.
-    await voting.requestPrice(identifier, time, { from: registeredContract });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
     await moveToNextRound(voting);
-    let roundId = (await voting.getCurrentRoundId()).toString();
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Commit votes.
     const price1 = 123;
     const salt1 = getRandomSignedInt();
-    let hash1 = computeVoteHash({
-      price: price1,
-      salt: salt1,
-      account: account1,
-      time,
-      roundId,
-      identifier,
-    });
-    await voting.commitVote(identifier, time, hash1, { from: account1 });
+    let hash1 = computeVoteHash({ price: price1, salt: salt1, account: account1, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
 
     const price2 = 456;
     const salt2 = getRandomSignedInt();
-    const hash2 = computeVoteHash({
-      price: price2,
-      salt: salt2,
-      account: account2,
-      time,
-      roundId,
-      identifier,
-    });
-    await voting.commitVote(identifier, time, hash2, { from: account2 });
+    const hash2 = computeVoteHash({ price: price2, salt: salt2, account: account2, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash2).send({ from: account2 });
 
     // Reveal the votes.
     await moveToNextPhase(voting);
 
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
-    await voting.revealVote(identifier, time, price1, salt1, { from: account1 });
-    await voting.revealVote(identifier, time, price2, salt2, { from: account2 });
+    await voting.methods.revealVote(identifier, time, price1, salt1).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time, price2, salt2).send({ from: account2 });
 
     // Should not have the price since the vote was equally split.
     await moveToNextRound(voting);
-    roundId = (await voting.getCurrentRoundId()).toString();
-    assert.isFalse(await voting.hasPrice(identifier, time, { from: registeredContract }));
+    roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    assert.isFalse(await voting.methods.hasPrice(identifier, time).call({ from: registeredContract }));
 
     // Cleanup: resolve the vote this round.
-    hash1 = computeVoteHash({
-      price: price1,
-      salt: salt1,
-      account: account1,
-      time,
-      roundId,
-      identifier,
-    });
-    await voting.commitVote(identifier, time, hash1, { from: account1 });
+    hash1 = computeVoteHash({ price: price1, salt: salt1, account: account1, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
     await moveToNextPhase(voting);
 
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
-    await voting.revealVote(identifier, time, price1, salt1, { from: account1 });
+    await voting.methods.revealVote(identifier, time, price1, salt1).send({ from: account1 });
   });
 
   it("Two thirds majority", async function () {
@@ -694,64 +688,43 @@ contract("Voting", function (accounts) {
     const time = "1000";
 
     // Make the Oracle support this identifier.
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
 
     // Request a price and move to the next round where that will be voted on.
-    await voting.requestPrice(identifier, time, { from: registeredContract });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
     await moveToNextRound(voting);
-    const roundId = (await voting.getCurrentRoundId()).toString();
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Commit votes.
     const losingPrice = 123;
     const salt1 = getRandomSignedInt();
-    const hash1 = computeVoteHash({
-      price: losingPrice,
-      salt: salt1,
-      account: account1,
-      time,
-      roundId,
-      identifier,
-    });
-    await voting.commitVote(identifier, time, hash1, { from: account1 });
+    const hash1 = computeVoteHash({ price: losingPrice, salt: salt1, account: account1, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
 
     // Both account 2 and 3 vote for 456.
     const winningPrice = 456;
 
     const salt2 = getRandomSignedInt();
-    const hash2 = computeVoteHash({
-      price: winningPrice,
-      salt: salt2,
-      account: account2,
-      time,
-      roundId,
-      identifier,
-    });
-    await voting.commitVote(identifier, time, hash2, { from: account2 });
+    const hash2 = computeVoteHash({ price: winningPrice, salt: salt2, account: account2, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash2).send({ from: account2 });
 
     const salt3 = getRandomSignedInt();
-    const hash3 = computeVoteHash({
-      price: winningPrice,
-      salt: salt3,
-      account: account3,
-      time,
-      roundId,
-      identifier,
-    });
-    await voting.commitVote(identifier, time, hash3, { from: account3 });
+    const hash3 = computeVoteHash({ price: winningPrice, salt: salt3, account: account3, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash3).send({ from: account3 });
 
     // Reveal the votes.
     await moveToNextPhase(voting);
 
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
-    await voting.revealVote(identifier, time, losingPrice, salt1, { from: account1 });
-    await voting.revealVote(identifier, time, winningPrice, salt2, { from: account2 });
-    await voting.revealVote(identifier, time, winningPrice, salt3, { from: account3 });
+    await voting.methods.revealVote(identifier, time, losingPrice, salt1).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time, winningPrice, salt2).send({ from: account2 });
+    await voting.methods.revealVote(identifier, time, winningPrice, salt3).send({ from: account3 });
 
     // Price should resolve to the one that 2 and 3 voted for.
     await moveToNextRound(voting);
     assert.equal(
-      (await voting.getPrice(identifier, time, { from: registeredContract })).toString(),
+      (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
       winningPrice.toString()
     );
   });
@@ -761,51 +734,39 @@ contract("Voting", function (accounts) {
     let time = "1000";
 
     // Make the Oracle support this identifier.
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
 
     // Request a price and move to the next round where that will be voted on.
-    await voting.requestPrice(identifier, time, { from: registeredContract });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
     await moveToNextRound(voting);
-    let roundId = (await voting.getCurrentRoundId()).toString();
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Commit vote.
     const price = 123;
     const salt = getRandomSignedInt();
-    let hash1 = computeVoteHash({
-      price,
-      salt,
-      account: account1,
-      time,
-      roundId,
-      identifier,
-    });
-    await voting.commitVote(identifier, time, hash1, { from: account1 });
-    let hash4 = computeVoteHash({
-      price,
-      salt,
-      account: account4,
-      time,
-      roundId,
-      identifier,
-    });
-    await voting.commitVote(identifier, time, hash4, { from: account4 });
+    let hash1 = computeVoteHash({ price, salt, account: account1, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+    let hash4 = computeVoteHash({ price, salt, account: account4, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash4).send({ from: account4 });
 
     // Reveal the vote.
     await moveToNextPhase(voting);
 
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
-    await voting.revealVote(identifier, time, price, salt, { from: account4 });
-    const initialRoundId = await voting.getCurrentRoundId();
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account4 });
+    const initialRoundId = await voting.methods.getCurrentRoundId().call();
 
     // Since the GAT was not hit, the price should not resolve.
     await moveToNextRound(voting);
-    const newRoundId = await voting.getCurrentRoundId();
-    assert.isFalse(await voting.hasPrice(identifier, time, { from: registeredContract }));
+    const newRoundId = await voting.methods.getCurrentRoundId().call();
+    assert.isFalse(await voting.methods.hasPrice(identifier, time).call({ from: registeredContract }));
 
     // Can't claim rewards if the price wasn't resolved.
     const req = [{ identifier: identifier, time: time }];
-    assert(await didContractThrow(voting.retrieveRewards(account4, initialRoundId, req)));
+    assert(
+      await didContractThrow(voting.methods.retrieveRewards(account4, initialRoundId, req).send({ from: accounts[0] }))
+    );
 
     // Setting GAT should revert if larger than 100%
     assert(await didContractThrow(voting.setGatPercentage({ rawvalue: web3.utils.toWei("1.1", "ether") })));
@@ -814,30 +775,28 @@ contract("Voting", function (accounts) {
     await setNewGatPercentage(web3.utils.toWei("0.03", "ether"));
 
     // Create new vote hashes with the new round ID and commit votes.
-    roundId = (await voting.getCurrentRoundId()).toString();
-    hash4 = computeVoteHash({
-      price,
-      salt,
-      account: account4,
-      time,
-      roundId,
-      identifier,
-    });
-    await voting.commitVote(identifier, time, hash4, { from: account4 });
+    roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    hash4 = computeVoteHash({ price, salt, account: account4, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash4).send({ from: account4 });
 
     // Reveal votes.
     await moveToNextPhase(voting);
 
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
-    await voting.revealVote(identifier, time, price, salt, { from: account4 });
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account4 });
 
     await moveToNextRound(voting);
-    assert.equal((await voting.getPrice(identifier, time, { from: registeredContract })).toString(), price.toString());
+    assert.equal(
+      (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
+      price.toString()
+    );
 
     // Must specify the right roundId when retrieving rewards.
-    assert(await didContractThrow(voting.retrieveRewards(account4, initialRoundId, req)));
-    await voting.retrieveRewards(account4, newRoundId, req);
+    assert(
+      await didContractThrow(voting.methods.retrieveRewards(account4, initialRoundId, req).send({ from: accounts[0] }))
+    );
+    await voting.methods.retrieveRewards(account4, newRoundId, req).send({ from: accounts[0] });
 
     // Set GAT back to 5% and test a larger vote. With more votes the GAT should be hit
     // and the price should resolve.
@@ -846,44 +805,35 @@ contract("Voting", function (accounts) {
     // As the previous request has been filled, we need to progress time such that we
     // can vote on the same identifier and request a new price to vote on.
     time += 10;
-    await voting.requestPrice(identifier, time, { from: registeredContract });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
     await moveToNextRound(voting);
 
     // Commit votes.
-    roundId = (await voting.getCurrentRoundId()).toString();
-    hash4 = computeVoteHash({
-      price,
-      salt,
-      account: account4,
-      time,
-      roundId,
-      identifier,
-    });
-    hash1 = computeVoteHash({
-      price,
-      salt,
-      account: account1,
-      time,
-      roundId,
-      identifier,
-    });
-    await voting.commitVote(identifier, time, hash4, { from: account4 });
-    await voting.commitVote(identifier, time, hash1, { from: account1 });
+    roundId = (await voting.methods.getCurrentRoundId().call()).toString();
+    hash4 = computeVoteHash({ price, salt, account: account4, time, roundId, identifier });
+    hash1 = computeVoteHash({ price, salt, account: account1, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash4).send({ from: account4 });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
 
     // Reveal votes.
     await moveToNextPhase(voting);
 
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
-    await voting.revealVote(identifier, time, price, salt, { from: account4 });
-    await voting.revealVote(identifier, time, price, salt, { from: account1 });
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account4 });
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
 
     await moveToNextRound(voting);
-    assert.equal((await voting.getPrice(identifier, time, { from: registeredContract })).toString(), price.toString());
+    assert.equal(
+      (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
+      price.toString()
+    );
 
     // Must specify the right roundId when retrieving rewards.
-    assert(await didContractThrow(voting.retrieveRewards(account4, initialRoundId, req)));
-    await voting.retrieveRewards(account4, newRoundId, req);
+    assert(
+      await didContractThrow(voting.methods.retrieveRewards(account4, initialRoundId, req).send({ from: accounts[0] }))
+    );
+    await voting.methods.retrieveRewards(account4, newRoundId, req).send({ from: accounts[0] });
   });
 
   it("Basic Snapshotting", async function () {
@@ -891,52 +841,31 @@ contract("Voting", function (accounts) {
     const time = "1000";
 
     // Make the Oracle support this identifier.
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
 
     // Request a price and move to the next round where that will be voted on.
-    await voting.requestPrice(identifier, time, { from: registeredContract });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
     await moveToNextRound(voting);
-    const roundId = (await voting.getCurrentRoundId()).toString();
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Commit votes.
 
     // account3 starts with only 1/3 of the tokens, but votes for 123.
     const winningPrice = 123;
     const salt3 = getRandomSignedInt();
-    const hash3 = computeVoteHash({
-      price: winningPrice,
-      salt: salt3,
-      account: account3,
-      time,
-      roundId,
-      identifier,
-    });
-    await voting.commitVote(identifier, time, hash3, { from: account3 });
+    const hash3 = computeVoteHash({ price: winningPrice, salt: salt3, account: account3, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash3).send({ from: account3 });
 
     // Both account 2 and 3, who start with 2/3 of the tokens, vote for 456.
     const losingPrice = 456;
 
     const salt1 = getRandomSignedInt();
-    const hash1 = computeVoteHash({
-      price: losingPrice,
-      salt: salt1,
-      account: account1,
-      time,
-      roundId,
-      identifier,
-    });
-    await voting.commitVote(identifier, time, hash1, { from: account1 });
+    const hash1 = computeVoteHash({ price: losingPrice, salt: salt1, account: account1, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
 
     const salt2 = getRandomSignedInt();
-    const hash2 = computeVoteHash({
-      price: losingPrice,
-      salt: salt2,
-      account: account2,
-      time,
-      roundId,
-      identifier,
-    });
-    await voting.commitVote(identifier, time, hash2, { from: account2 });
+    const hash2 = computeVoteHash({ price: losingPrice, salt: salt2, account: account2, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash2).send({ from: account2 });
 
     // All 3 accounts should have equal balances to start, so for winningPrice to win, account1 or account2 must
     // transfer more than half of their balance to account3 before the snapshot.
@@ -946,16 +875,16 @@ contract("Voting", function (accounts) {
     await moveToNextPhase(voting);
 
     // The snapshotId of the current round should be zero before initiating the snapshot
-    assert.equal((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), "0");
+    assert.equal((await voting.rounds(await voting.methods.getCurrentRoundId().call())).snapshotId.toString(), "0");
 
     // Directly snapshot the current round to lock in token balances.
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     // The snapshotId of the current round should be non zero after the snapshot is taken
-    assert.notEqual((await voting.rounds(await voting.getCurrentRoundId())).snapshotId.toString(), "0");
+    assert.notEqual((await voting.rounds(await voting.methods.getCurrentRoundId().call())).snapshotId.toString(), "0");
 
     // Account2 can now reveal their vote.
-    await voting.revealVote(identifier, time, losingPrice, salt2, { from: account2 });
+    await voting.methods.revealVote(identifier, time, losingPrice, salt2).send({ from: account2 });
 
     // Transfer the tokens back. This should have no effect on the outcome since the snapshot has already been taken.
     await votingToken.transfer(account1, web3.utils.toWei("24000000", "ether"), { from: account3 });
@@ -964,13 +893,13 @@ contract("Voting", function (accounts) {
     await setNewGatPercentage(web3.utils.toWei("0.9", "ether"));
 
     // Do the final two reveals.
-    await voting.revealVote(identifier, time, losingPrice, salt1, { from: account1 });
-    await voting.revealVote(identifier, time, winningPrice, salt3, { from: account3 });
+    await voting.methods.revealVote(identifier, time, losingPrice, salt1).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time, winningPrice, salt3).send({ from: account3 });
 
     // The resulting price should be the winningPrice that account3 voted for.
     await moveToNextRound(voting);
     assert.equal(
-      (await voting.getPrice(identifier, time, { from: registeredContract })).toString(),
+      (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
       winningPrice.toString()
     );
 
@@ -983,40 +912,33 @@ contract("Voting", function (accounts) {
     const time = "1000";
 
     // Make the Oracle support this identifier.
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
 
     // Unregistered contracts can't request prices.
-    assert(await didContractThrow(voting.requestPrice(identifier, time, { from: unregisteredContract })));
+    assert(await didContractThrow(voting.methods.requestPrice(identifier, time).send({ from: unregisteredContract })));
 
     // Request the price and resolve the price.
     voting.requestPrice(identifier, time, { from: registeredContract });
     await moveToNextRound(voting);
-    const roundId = (await voting.getCurrentRoundId()).toString();
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
     const winningPrice = 123;
     const salt = getRandomSignedInt();
-    const hash = computeVoteHash({
-      price: winningPrice,
-      salt,
-      account: account1,
-      time,
-      roundId,
-      identifier,
-    });
-    await voting.commitVote(identifier, time, hash, { from: account1 });
+    const hash = computeVoteHash({ price: winningPrice, salt, account: account1, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash).send({ from: account1 });
     await moveToNextPhase(voting);
 
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
-    await voting.revealVote(identifier, time, winningPrice, salt, { from: account1 });
+    await voting.methods.revealVote(identifier, time, winningPrice, salt).send({ from: account1 });
     await moveToNextRound(voting);
 
     // Sanity check that registered contracts can retrieve prices.
-    assert.isTrue(await voting.hasPrice(identifier, time, { from: registeredContract }));
-    assert.equal(await voting.getPrice(identifier, time, { from: registeredContract }), winningPrice);
+    assert.isTrue(await voting.methods.hasPrice(identifier, time).call({ from: registeredContract }));
+    assert.equal(await voting.methods.getPrice(identifier, time).call({ from: registeredContract }), winningPrice);
 
     // Unregistered contracts can't retrieve prices.
-    assert(await didContractThrow(voting.hasPrice(identifier, time, { from: unregisteredContract })));
-    assert(await didContractThrow(voting.getPrice(identifier, time, { from: unregisteredContract })));
+    assert(await didContractThrow(voting.methods.hasPrice(identifier, time).send({ from: unregisteredContract })));
+    assert(await didContractThrow(voting.methods.getPrice(identifier, time).send({ from: unregisteredContract })));
   });
 
   it("View methods", async function () {
@@ -1024,73 +946,68 @@ contract("Voting", function (accounts) {
     const time = "1000";
 
     // Make the Oracle support this identifier.
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
 
     // Verify view methods `hasPrice`, `getPrice`, and `getPriceRequestStatuses`` for a price was that was never requested.
-    assert.isFalse(await voting.hasPrice(identifier, time, { from: registeredContract }));
-    assert(await didContractThrow(voting.getPrice(identifier, time, { from: registeredContract })));
-    let statuses = await voting.getPriceRequestStatuses([{ identifier, time: time }]);
+    assert.isFalse(await voting.methods.hasPrice(identifier, time).call({ from: registeredContract }));
+    assert(await didContractThrow(voting.methods.getPrice(identifier, time).send({ from: registeredContract })));
+    let statuses = await voting.methods.getPriceRequestStatuses([{ identifier, time: time }]).call();
     assert.equal(statuses[0].status.toString(), "0");
     assert.equal(statuses[0].lastVotingRound.toString(), "0");
 
     // Request a price and move to the next round where that will be voted on.
-    await voting.requestPrice(identifier, time, { from: registeredContract });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
 
     // Verify view methods `hasPrice`, `getPrice`, and `getPriceRequestStatuses` for a price scheduled for the next round.
-    assert.isFalse(await voting.hasPrice(identifier, time, { from: registeredContract }));
-    assert(await didContractThrow(voting.getPrice(identifier, time, { from: registeredContract })));
-    statuses = await voting.getPriceRequestStatuses([{ identifier, time: time }]);
+    assert.isFalse(await voting.methods.hasPrice(identifier, time).call({ from: registeredContract }));
+    assert(await didContractThrow(voting.methods.getPrice(identifier, time).send({ from: registeredContract })));
+    statuses = await voting.methods.getPriceRequestStatuses([{ identifier, time: time }]).call();
     assert.equal(statuses[0].status.toString(), "3");
-    assert.equal(statuses[0].lastVotingRound.toString(), (await voting.getCurrentRoundId()).addn(1).toString());
+    assert.equal(
+      statuses[0].lastVotingRound.toString(),
+      (await voting.methods.getCurrentRoundId().call()).addn(1).toString()
+    );
 
     await moveToNextRound(voting);
-    const roundId = (await voting.getCurrentRoundId()).toString();
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Verify `getPriceRequestStatuses` for a price request scheduled for this round.
-    statuses = await voting.getPriceRequestStatuses([{ identifier, time: time }]);
+    statuses = await voting.methods.getPriceRequestStatuses([{ identifier, time: time }]).call();
     assert.equal(statuses[0].status.toString(), "1");
-    assert.equal(statuses[0].lastVotingRound.toString(), (await voting.getCurrentRoundId()).toString());
+    assert.equal(statuses[0].lastVotingRound.toString(), (await voting.methods.getCurrentRoundId().call()).toString());
 
     const price = 123;
 
     // Accounts 1 and 2 commit votes.
     const salt1 = getRandomSignedInt();
-    const hash1 = computeVoteHash({
-      price,
-      salt: salt1,
-      account: account1,
-      time,
-      roundId,
-      identifier,
-    });
-    await voting.commitVote(identifier, time, hash1, { from: account1 });
+    const hash1 = computeVoteHash({ price, salt: salt1, account: account1, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
 
     const salt2 = getRandomSignedInt();
-    const hash2 = computeVoteHash({
-      price,
-      salt: salt2,
-      account: account2,
-      time,
-      roundId,
-      identifier,
-    });
-    await voting.commitVote(identifier, time, hash2, { from: account2 });
+    const hash2 = computeVoteHash({ price, salt: salt2, account: account2, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash2).send({ from: account2 });
 
     await moveToNextPhase(voting);
 
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
-    await voting.revealVote(identifier, time, price, salt1, { from: account1 });
-    await voting.revealVote(identifier, time, price, salt2, { from: account2 });
+    await voting.methods.revealVote(identifier, time, price, salt1).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time, price, salt2).send({ from: account2 });
 
     await moveToNextRound(voting);
 
     // Verify view methods `hasPrice`, `getPrice`, and `getPriceRequestStatuses` for a resolved price request.
-    assert.isTrue(await voting.hasPrice(identifier, time, { from: registeredContract }));
-    assert.equal((await voting.getPrice(identifier, time, { from: registeredContract })).toString(), price.toString());
-    statuses = await voting.getPriceRequestStatuses([{ identifier, time: time }]);
+    assert.isTrue(await voting.methods.hasPrice(identifier, time).call({ from: registeredContract }));
+    assert.equal(
+      (await voting.methods.getPrice(identifier, time).call({ from: registeredContract })).toString(),
+      price.toString()
+    );
+    statuses = await voting.methods.getPriceRequestStatuses([{ identifier, time: time }]).call();
     assert.equal(statuses[0].status.toString(), "2");
-    assert.equal(statuses[0].lastVotingRound.toString(), (await voting.getCurrentRoundId()).subn(1).toString());
+    assert.equal(
+      statuses[0].lastVotingRound.toString(),
+      (await voting.methods.getCurrentRoundId().call()).subn(1).toString()
+    );
   });
 
   it("Rewards expiration", async function () {
@@ -1100,42 +1017,35 @@ contract("Voting", function (accounts) {
     const identifier = padRight(utf8ToHex("rewards-expiration"), 64);
     const time = "1000";
 
-    const initialTotalSupply = await votingToken.totalSupply();
+    const initialTotalSupply = await votingToken.methods.totalSupply().call();
 
     // Make the Oracle support this identifier.
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
 
     // Request a price and move to the next round where that will be voted on.
-    await voting.requestPrice(identifier, time, { from: registeredContract });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
     await moveToNextRound(voting);
-    let roundId = (await voting.getCurrentRoundId()).toString();
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     const winningPrice = 456;
 
     const salt = getRandomSignedInt();
-    const hash = computeVoteHash({
-      price: winningPrice,
-      salt,
-      account: account1,
-      time,
-      roundId,
-      identifier,
-    });
-    await voting.commitVote(identifier, time, hash, { from: account1 });
+    const hash = computeVoteHash({ price: winningPrice, salt, account: account1, time, roundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash).send({ from: account1 });
 
     // Reveal the votes.
     await moveToNextPhase(voting);
 
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
-    await voting.revealVote(identifier, time, winningPrice, salt, { from: account1 });
+    await voting.methods.revealVote(identifier, time, winningPrice, salt).send({ from: account1 });
 
     // This should have no effect because the expiration has been captured.
-    await voting.setRewardsExpirationTimeout(1);
+    await voting.methods.setRewardsExpirationTimeout(1).send({ from: accounts[0] });
     // Only the owner should be able to call this method, however.
-    assert(await didContractThrow(voting.setRewardsExpirationTimeout(1, { from: account2 })));
+    assert(await didContractThrow(voting.methods.setRewardsExpirationTimeout(1).send({ from: account2 })));
 
-    roundId = await voting.getCurrentRoundId();
+    roundId = await voting.methods.getCurrentRoundId().call();
     const req = [{ identifier: identifier, time: time }];
 
     // Wait 7 rounds before retrieving rewards => still OK.
@@ -1153,7 +1063,7 @@ contract("Voting", function (accounts) {
     assert.equal(account1Rewards.toString(), "0");
 
     // The price is still resolved and the expected events are emitted.
-    const result = await voting.retrieveRewards(account1, roundId, req);
+    const result = await voting.methods.retrieveRewards(account1, roundId, req).call();
     truffleAssert.eventEmitted(result, "PriceResolved", (ev) => {
       return (
         ev.roundId.toString() == roundId.toString() &&
@@ -1175,16 +1085,16 @@ contract("Voting", function (accounts) {
     await voting.setRewardsExpirationTimeout(web3.utils.toBN(2).pow(web3.utils.toBN(256)).subn(10).toString());
     await moveToNextPhase(voting);
     const time2 = "1001";
-    await voting.requestPrice(identifier, time2, { from: registeredContract });
+    await voting.methods.requestPrice(identifier, time2).send({ from: registeredContract });
     await moveToNextRound(voting);
     const price = 456;
     const salt2 = getRandomSignedInt();
     const hash2 = web3.utils.soliditySha3(price, salt2);
-    await voting.commitVote(identifier, time2, hash2, { from: account1 });
+    await voting.methods.commitVote(identifier, time2, hash2).send({ from: account1 });
     await moveToNextPhase(voting);
 
-    assert(await didContractThrow(voting.snapshotCurrentRound(signature)));
-    assert(await didContractThrow(voting.revealVote(identifier, time2, price, salt2, { from: account1 })));
+    assert(await didContractThrow(voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] })));
+    assert(await didContractThrow(voting.methods.revealVote(identifier, time2, price, salt2).send({ from: account1 })));
 
     // Reset the inflation rate and rewards expiration time.
     await setNewInflationRate("0");
@@ -1199,19 +1109,19 @@ contract("Voting", function (accounts) {
     const time1 = "1000";
 
     // Cache balances for later comparison.
-    const initialAccount1Balance = await votingToken.balanceOf(account1);
-    const initialAccount2Balance = await votingToken.balanceOf(account2);
-    const initialAccount3Balance = await votingToken.balanceOf(account3);
-    const initialAccount4Balance = await votingToken.balanceOf(account4);
-    const initialTotalSupply = await votingToken.totalSupply();
+    const initialAccount1Balance = await votingToken.methods.balanceOf(account1).call();
+    const initialAccount2Balance = await votingToken.methods.balanceOf(account2).call();
+    const initialAccount3Balance = await votingToken.methods.balanceOf(account3).call();
+    const initialAccount4Balance = await votingToken.methods.balanceOf(account4).call();
+    const initialTotalSupply = await votingToken.methods.totalSupply().call();
 
     // Make the Oracle support this identifier.
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
 
     // Request a price and move to the next round where that will be voted on.
-    await voting.requestPrice(identifier, time1, { from: registeredContract });
+    await voting.methods.requestPrice(identifier, time1).send({ from: registeredContract });
     await moveToNextRound(voting);
-    let roundId = (await voting.getCurrentRoundId()).toString();
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Commit votes.
     const losingPrice = 123;
@@ -1224,7 +1134,7 @@ contract("Voting", function (accounts) {
       roundId,
       identifier,
     });
-    await voting.commitVote(identifier, time1, hash1, { from: account1 });
+    await voting.methods.commitVote(identifier, time1, hash1).send({ from: account1 });
 
     // Both account 2 and 3 vote for 456.
     const winningPrice = 456;
@@ -1238,7 +1148,7 @@ contract("Voting", function (accounts) {
       roundId,
       identifier,
     });
-    await voting.commitVote(identifier, time1, hash2, { from: account2 });
+    await voting.methods.commitVote(identifier, time1, hash2).send({ from: account2 });
 
     const salt3 = getRandomSignedInt();
     const hash3 = computeVoteHash({
@@ -1249,58 +1159,58 @@ contract("Voting", function (accounts) {
       roundId,
       identifier,
     });
-    await voting.commitVote(identifier, time1, hash3, { from: account3 });
+    await voting.methods.commitVote(identifier, time1, hash3).send({ from: account3 });
 
     // Reveal the votes.
     await moveToNextPhase(voting);
 
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
-    await voting.revealVote(identifier, time1, losingPrice, salt1, { from: account1 });
-    await voting.revealVote(identifier, time1, winningPrice, salt2, { from: account2 });
-    await voting.revealVote(identifier, time1, winningPrice, salt3, { from: account3 });
+    await voting.methods.revealVote(identifier, time1, losingPrice, salt1).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time1, winningPrice, salt2).send({ from: account2 });
+    await voting.methods.revealVote(identifier, time1, winningPrice, salt3).send({ from: account3 });
 
-    roundId = await voting.getCurrentRoundId();
+    roundId = await voting.methods.getCurrentRoundId().call();
 
     const req = [{ identifier: identifier, time: time1 }];
     // Can't claim rewards for current round (even if the request will definitely be resolved).
-    assert(await didContractThrow(voting.retrieveRewards(account1, roundId, req)));
+    assert(await didContractThrow(voting.methods.retrieveRewards(account1, roundId, req).send({ from: accounts[0] })));
 
     // Move to the next round to begin retrieving rewards.
     await moveToNextRound(voting);
 
     const account1Rewards = await voting.retrieveRewards.call(account1, roundId, req);
-    await voting.retrieveRewards(account1, roundId, req);
+    await voting.methods.retrieveRewards(account1, roundId, req).send({ from: accounts[0] });
     const account2Rewards = await voting.retrieveRewards.call(account2, roundId, req);
-    await voting.retrieveRewards(account2, roundId, req);
+    await voting.methods.retrieveRewards(account2, roundId, req).send({ from: accounts[0] });
 
     // Voters can wait until the next round to claim rewards.
     await moveToNextRound(voting);
     const account3Rewards = await voting.retrieveRewards.call(account3, roundId, req);
-    await voting.retrieveRewards(account3, roundId, req);
+    await voting.methods.retrieveRewards(account3, roundId, req).send({ from: accounts[0] });
     const account4Rewards = await voting.retrieveRewards.call(account4, roundId, req);
-    await voting.retrieveRewards(account4, roundId, req);
+    await voting.methods.retrieveRewards(account4, roundId, req).send({ from: accounts[0] });
 
     // account1 is not rewarded because account1 was wrong.
     assert.equal(account1Rewards.toString(), "0");
-    assert.equal((await votingToken.balanceOf(account1)).toString(), initialAccount1Balance.toString());
+    assert.equal((await votingToken.methods.balanceOf(account1).call()).toString(), initialAccount1Balance.toString());
 
     // Accounts 2 and 3 split the 100% token inflation since each contributed the same number of tokens to the correct
     // answer.
     assert.equal(account2Rewards.toString(), initialTotalSupply.divn(2).toString());
     assert.equal(
-      (await votingToken.balanceOf(account2)).toString(),
+      (await votingToken.methods.balanceOf(account2).call()).toString(),
       initialAccount2Balance.add(initialTotalSupply.divn(2)).toString()
     );
     assert.equal(account3Rewards.toString(), initialTotalSupply.divn(2).toString());
     assert.equal(
-      (await votingToken.balanceOf(account3)).toString(),
+      (await votingToken.methods.balanceOf(account3).call()).toString(),
       initialAccount3Balance.add(initialTotalSupply.divn(2)).toString()
     );
 
     // account4 is not rewarded because it did not participate.
     assert.equal(account4Rewards.toString(), "0");
-    assert.equal((await votingToken.balanceOf(account4)).toString(), initialAccount4Balance.toString());
+    assert.equal((await votingToken.methods.balanceOf(account4).call()).toString(), initialAccount4Balance.toString());
 
     // Reset the inflation rate to 0%.
     await setNewInflationRate("0");
@@ -1313,13 +1223,13 @@ contract("Voting", function (accounts) {
     const identifier = padRight(utf8ToHex("events"), 64);
     const time = "1000";
 
-    let result = await supportedIdentifiers.addSupportedIdentifier(identifier);
+    let result = await supportedIdentifiers.methods.addSupportedIdentifier(identifier).call();
 
     await moveToNextRound(voting);
-    let currentRoundId = await voting.getCurrentRoundId();
+    let currentRoundId = await voting.methods.getCurrentRoundId().call();
 
     // New price requests trigger events.
-    result = await voting.requestPrice(identifier, time, { from: registeredContract });
+    result = await voting.methods.requestPrice(identifier, time).call({ from: registeredContract });
     truffleAssert.eventEmitted(result, "PriceRequestAdded", (ev) => {
       return (
         // The vote is added to the next round, so we have to add 1 to the current round id.
@@ -1330,24 +1240,17 @@ contract("Voting", function (accounts) {
     });
 
     await moveToNextRound(voting);
-    currentRoundId = await voting.getCurrentRoundId();
+    currentRoundId = await voting.methods.getCurrentRoundId().call();
 
     // Repeated price requests don't trigger events.
-    result = await voting.requestPrice(identifier, time, { from: registeredContract });
+    result = await voting.methods.requestPrice(identifier, time).call({ from: registeredContract });
     truffleAssert.eventNotEmitted(result, "PriceRequestAdded");
 
     // Commit vote.
     const price = 123;
     const salt = getRandomSignedInt();
-    let hash4 = computeVoteHash({
-      price,
-      salt,
-      account: account4,
-      time,
-      roundId: currentRoundId,
-      identifier,
-    });
-    result = await voting.commitVote(identifier, time, hash4, { from: account4 });
+    let hash4 = computeVoteHash({ price, salt, account: account4, time, roundId: currentRoundId, identifier });
+    result = await voting.methods.commitVote(identifier, time, hash4).call({ from: account4 });
     truffleAssert.eventEmitted(result, "VoteCommitted", (ev) => {
       return (
         ev.voter.toString() == account4 &&
@@ -1359,11 +1262,11 @@ contract("Voting", function (accounts) {
 
     await moveToNextPhase(voting);
 
-    const account4Balance = await votingToken.balanceOf(account4);
+    const account4Balance = await votingToken.methods.balanceOf(account4).call();
 
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
-    result = await voting.revealVote(identifier, time, price, salt, { from: account4 });
+    result = await voting.methods.revealVote(identifier, time, price, salt).call({ from: account4 });
     truffleAssert.eventEmitted(result, "VoteRevealed", (ev) => {
       return (
         ev.voter.toString() == account4 &&
@@ -1376,40 +1279,26 @@ contract("Voting", function (accounts) {
     });
 
     await moveToNextRound(voting);
-    currentRoundId = await voting.getCurrentRoundId();
+    currentRoundId = await voting.methods.getCurrentRoundId().call();
     // Since none of the whales voted, the price couldn't be resolved.
 
     // Now the whale and account4 vote and the vote resolves.
-    const hash1 = computeVoteHash({
-      price,
-      salt,
-      account: account1,
-      time,
-      roundId: currentRoundId,
-      identifier,
-    });
+    const hash1 = computeVoteHash({ price, salt, account: account1, time, roundId: currentRoundId, identifier });
     const wrongPrice = 124;
-    hash4 = computeVoteHash({
-      price: wrongPrice,
-      salt,
-      account: account4,
-      time,
-      roundId: currentRoundId,
-      identifier,
-    });
-    await voting.commitVote(identifier, time, hash1, { from: account1 });
-    result = await voting.commitVote(identifier, time, hash4, { from: account4 });
+    hash4 = computeVoteHash({ price: wrongPrice, salt, account: account4, time, roundId: currentRoundId, identifier });
+    await voting.methods.commitVote(identifier, time, hash1).send({ from: account1 });
+    result = await voting.methods.commitVote(identifier, time, hash4).call({ from: account4 });
     await moveToNextPhase(voting);
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
-    await voting.revealVote(identifier, time, price, salt, { from: account1 });
-    await voting.revealVote(identifier, time, wrongPrice, salt, { from: account4 });
-    const initialTotalSupply = await votingToken.totalSupply();
-    const roundId = await voting.getCurrentRoundId();
+    await voting.methods.revealVote(identifier, time, price, salt).send({ from: account1 });
+    await voting.methods.revealVote(identifier, time, wrongPrice, salt).send({ from: account4 });
+    const initialTotalSupply = await votingToken.methods.totalSupply().call();
+    const roundId = await voting.methods.getCurrentRoundId().call();
     await moveToNextRound(voting);
 
     // When the round updates, the price request should be resolved.
-    result = await voting.retrieveRewards(account1, roundId, [{ identifier, time }]);
+    result = await voting.methods.retrieveRewards(account1, roundId, [{ identifier, time }]).call();
     truffleAssert.eventEmitted(result, "PriceResolved", (ev) => {
       return (
         ev.roundId.toString() == currentRoundId.toString() &&
@@ -1423,46 +1312,38 @@ contract("Voting", function (accounts) {
         ev.voter.toString() == account1.toString() &&
         ev.roundId.toString() == currentRoundId.toString() &&
         web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifier) &&
-        ev.time == time &&
-        // Inflation is 100% and there was only one voter.
+        ev.time == time && // Inflation is 100% and there was only one voter.
         ev.numTokens.toString() == initialTotalSupply.toString()
       );
     });
 
     // RewardsRetrieved event gets emitted for every reward retrieval that's attempted, even if no tokens are minted
     // because the vote was wrong.
-    result = await voting.retrieveRewards(account4, roundId, [{ identifier, time }]);
+    result = await voting.methods.retrieveRewards(account4, roundId, [{ identifier, time }]).call();
     truffleAssert.eventEmitted(result, "RewardsRetrieved");
 
     // No duplicate events if the same user tries to claim rewards again.
-    result = await voting.retrieveRewards(account1, roundId, [{ identifier, time }]);
+    result = await voting.methods.retrieveRewards(account1, roundId, [{ identifier, time }]).call();
     truffleAssert.eventNotEmitted(result, "RewardsRetrieved");
 
     // No RewardsRetrieved event if the user didn't vote at all.
-    result = await voting.retrieveRewards(account3, roundId, [{ identifier, time }]);
+    result = await voting.methods.retrieveRewards(account3, roundId, [{ identifier, time }]).call();
     truffleAssert.eventNotEmitted(result, "RewardsRetrieved");
   });
 
   it("Commit and persist the encrypted price", async function () {
     const identifier = padRight(utf8ToHex("commit-and-persist"), 64);
     const time = "1000";
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
 
-    await voting.requestPrice(identifier, time, { from: registeredContract });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
     await moveToNextRound(voting);
-    let roundId = (await voting.getCurrentRoundId()).toString();
+    let roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     const price = getRandomSignedInt();
     const salt = getRandomSignedInt();
-    const hash = computeVoteHash({
-      price,
-      salt,
-      account: account1,
-      time,
-      roundId,
-      identifier,
-    });
-    roundId = await voting.getCurrentRoundId();
+    const hash = computeVoteHash({ price, salt, account: account1, time, roundId, identifier });
+    roundId = await voting.methods.getCurrentRoundId().call();
 
     const { privateKey, publicKey } = await deriveKeyPairFromSignatureTruffle(
       web3,
@@ -1472,7 +1353,7 @@ contract("Voting", function (accounts) {
     const vote = { price: price.toString(), salt: salt.toString() };
     const encryptedMessage = await encryptMessage(publicKey, JSON.stringify(vote));
 
-    let result = await voting.commitAndEmitEncryptedVote(identifier, time, hash, encryptedMessage);
+    let result = await voting.methods.commitAndEmitEncryptedVote(identifier, time, hash, encryptedMessage).call();
     truffleAssert.eventEmitted(result, "EncryptedVote", (ev) => {
       return (
         ev.voter.toString() === account1 &&
@@ -1494,7 +1375,7 @@ contract("Voting", function (accounts) {
     const decryptedMessage = await decryptMessage(privateKey, retrievedEncryptedMessage);
     const retrievedVote = JSON.parse(decryptedMessage);
 
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     assert(await didContractThrow(voting.revealVote(identifier, time, getRandomSignedInt(), getRandomSignedInt())));
     await voting.revealVote(
@@ -1508,30 +1389,27 @@ contract("Voting", function (accounts) {
   it("Commit and persist the encrypted price against the same identifier/time pair multiple times", async function () {
     const identifier = padRight(utf8ToHex("commit-and-persist2"), 64);
     const time = "1000";
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
 
-    await voting.requestPrice(identifier, time, { from: registeredContract });
+    await voting.methods.requestPrice(identifier, time).send({ from: registeredContract });
     await moveToNextRound(voting);
-    const roundId = (await voting.getCurrentRoundId()).toString();
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     const price = getRandomSignedInt();
     const salt = getRandomSignedInt();
-    const hash = computeVoteHash({
-      price,
-      salt,
-      account: account1,
-      time,
-      roundId,
-      identifier,
-    });
+    const hash = computeVoteHash({ price, salt, account: account1, time, roundId, identifier });
 
     const { publicKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), account1);
     const vote = { price: price.toString(), salt: salt.toString() };
     const encryptedMessage = await encryptMessage(publicKey, JSON.stringify(vote));
-    await voting.commitAndEmitEncryptedVote(identifier, time, hash, encryptedMessage);
+    await voting.methods
+      .commitAndEmitEncryptedVote(identifier, time, hash, encryptedMessage)
+      .send({ from: accounts[0] });
 
     const secondEncryptedMessage = await encryptMessage(publicKey, getRandomSignedInt());
-    await voting.commitAndEmitEncryptedVote(identifier, time, hash, secondEncryptedMessage);
+    await voting.methods
+      .commitAndEmitEncryptedVote(identifier, time, hash, secondEncryptedMessage)
+      .send({ from: accounts[0] });
 
     const events = await voting.getPastEvents("EncryptedVote", { fromBlock: 0 });
     const secondRetrievedEncryptedMessage = events[events.length - 1].returnValues.encryptedVote;
@@ -1553,8 +1431,8 @@ contract("Voting", function (accounts) {
         encryptedVote: utf8ToHex(`some encrypted message ${i}`),
       });
 
-      await supportedIdentifiers.addSupportedIdentifier(identifier);
-      await voting.requestPrice(identifier, requestTime, { from: registeredContract });
+      await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+      await voting.methods.requestPrice(identifier, requestTime).send({ from: registeredContract });
     }
 
     await moveToNextRound(voting);
@@ -1571,7 +1449,7 @@ contract("Voting", function (accounts) {
     truffleAssert.eventNotEmitted(result, "EncryptedVote");
 
     // This time we commit while storing the encrypted messages
-    await voting.batchCommit(priceRequests);
+    await voting.methods.batchCommit(priceRequests).send({ from: accounts[0] });
 
     for (let i = 0; i < numRequests; i++) {
       let priceRequest = priceRequests[i];
@@ -1587,12 +1465,14 @@ contract("Voting", function (accounts) {
     const modifiedPriceRequest = priceRequests[0];
     modifiedPriceRequest.hash = web3.utils.soliditySha3(getRandomSignedInt());
     modifiedPriceRequest.encryptedVote = utf8ToHex("some other encrypted message");
-    await voting.commitAndEmitEncryptedVote(
-      modifiedPriceRequest.identifier,
-      modifiedPriceRequest.time,
-      modifiedPriceRequest.hash,
-      modifiedPriceRequest.encryptedVote
-    );
+    await voting.methods
+      .commitAndEmitEncryptedVote(
+        modifiedPriceRequest.identifier,
+        modifiedPriceRequest.time,
+        modifiedPriceRequest.hash,
+        modifiedPriceRequest.encryptedVote
+      )
+      .send({ from: accounts[0] });
 
     // Test that the encrypted messages are still correct
     for (let i = 0; i < numRequests; i++) {
@@ -1610,44 +1490,32 @@ contract("Voting", function (accounts) {
     const identifier = padRight(utf8ToHex("batch-reveal"), 64);
     const time1 = "1000";
     const time2 = "1001";
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
 
-    await voting.requestPrice(identifier, time1, { from: registeredContract });
-    await voting.requestPrice(identifier, time2, { from: registeredContract });
+    await voting.methods.requestPrice(identifier, time1).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier, time2).send({ from: registeredContract });
     await moveToNextRound(voting);
-    const roundId = (await voting.getCurrentRoundId()).toString();
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     const price1 = getRandomSignedInt();
     const price2 = getRandomSignedInt();
     const salt1 = getRandomSignedInt();
     const salt2 = getRandomSignedInt();
-    const hash1 = computeVoteHash({
-      price: price1,
-      salt: salt1,
-      account: account1,
-      time: time1,
-      roundId,
-      identifier,
-    });
-    const hash2 = computeVoteHash({
-      price: price2,
-      salt: salt2,
-      account: account1,
-      time: time2,
-      roundId,
-      identifier,
-    });
+    const hash1 = computeVoteHash({ price: price1, salt: salt1, account: account1, time: time1, roundId, identifier });
+    const hash2 = computeVoteHash({ price: price2, salt: salt2, account: account1, time: time2, roundId, identifier });
 
     const { publicKey } = await deriveKeyPairFromSignatureTruffle(web3, getKeyGenMessage(roundId), account1);
     const vote = { price: price1.toString(), salt: salt2.toString() };
     const encryptedMessage = await encryptMessage(publicKey, JSON.stringify(vote));
 
-    await voting.commitAndEmitEncryptedVote(identifier, time1, hash1, encryptedMessage);
-    await voting.commitVote(identifier, time2, hash2);
+    await voting.methods
+      .commitAndEmitEncryptedVote(identifier, time1, hash1, encryptedMessage)
+      .send({ from: accounts[0] });
+    await voting.methods.commitVote(identifier, time2, hash2).send({ from: accounts[0] });
 
     await moveToNextPhase(voting);
 
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     // NOTE: Signed integers inside structs must be supplied as a string rather than a BN.
     const result = await voting.batchReveal([
@@ -1697,48 +1565,41 @@ contract("Voting", function (accounts) {
           { rawValue: "0" },
           { rawValue: "0" },
           "86400",
-          votingToken.address,
+          votingToken.options.address,
           (await Finder.deployed()).address,
           (await Timer.deployed()).address
         )
       ).address
     );
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
 
-    await voting.requestPrice(identifier, time1, { from: registeredContract });
-    await voting.requestPrice(identifier, time2, { from: registeredContract });
+    await voting.methods.requestPrice(identifier, time1).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier, time2).send({ from: registeredContract });
     await moveToNextRound(voting);
-    const roundId = (await voting.getCurrentRoundId()).toString();
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
     const price = 123;
     const salt = getRandomSignedInt();
-    const hash = computeVoteHash({
-      price,
-      salt,
-      account: account1,
-      time: time1,
-      roundId,
-      identifier,
-    });
-    await voting.commitVote(identifier, time1, hash, { from: account1 });
+    const hash = computeVoteHash({ price, salt, account: account1, time: time1, roundId, identifier });
+    await voting.methods.commitVote(identifier, time1, hash).send({ from: account1 });
     await moveToNextPhase(voting);
 
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
-    await voting.revealVote(identifier, time1, price, salt, { from: account1 });
+    await voting.methods.revealVote(identifier, time1, price, salt).send({ from: account1 });
     await moveToNextRound(voting);
 
     // New voting can only call methods after the migration, not before.
-    assert(await voting.hasPrice(identifier, time1, { from: registeredContract }));
-    assert(await didContractThrow(voting.hasPrice(identifier, time1, { from: migratedVoting })));
+    assert(await voting.methods.hasPrice(identifier, time1).call({ from: registeredContract }));
+    assert(await didContractThrow(voting.methods.hasPrice(identifier, time1).send({ from: migratedVoting })));
 
     // Need permissions to migrate.
-    assert(await didContractThrow(voting.setMigrated(migratedVoting, { from: migratedVoting })));
-    await voting.setMigrated(migratedVoting);
+    assert(await didContractThrow(voting.methods.setMigrated(migratedVoting).send({ from: migratedVoting })));
+    await voting.methods.setMigrated(migratedVoting).send({ from: accounts[0] });
 
     // Now only new voting can call methods.
-    assert(await voting.hasPrice(identifier, time1, { from: migratedVoting }));
-    assert(await didContractThrow(voting.hasPrice(identifier, time1, { from: registeredContract })));
-    assert(await didContractThrow(voting.commitVote(identifier, time2, hash, { from: account1 })));
+    assert(await voting.methods.hasPrice(identifier, time1).call({ from: migratedVoting }));
+    assert(await didContractThrow(voting.methods.hasPrice(identifier, time1).send({ from: registeredContract })));
+    assert(await didContractThrow(voting.methods.commitVote(identifier, time2, hash).send({ from: account1 })));
   });
 
   it("pendingPriceRequests array length", async function () {
@@ -1750,7 +1611,7 @@ contract("Voting", function (accounts) {
           { rawValue: web3.utils.toWei("0.05") }, // 5% GAT
           { rawValue: "0" }, // No inflation
           "1209600", // 2 week reward expiration
-          votingToken.address,
+          votingToken.options.address,
           (await Finder.deployed()).address,
           (await Timer.deployed()).address
         )
@@ -1761,51 +1622,44 @@ contract("Voting", function (accounts) {
 
     const identifier = padRight(utf8ToHex("array-size"), 64);
     const time = "1000";
-    const startingLength = (await votingTest.getPendingPriceRequestsArray()).length;
+    const startingLength = (await votingTest.methods.getPendingPriceRequestsArray().call()).length;
 
     // pendingPriceRequests should start with no elements.
     assert.equal(startingLength, 0);
 
     // Make the Oracle support the identifier.
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
 
     // Request a price.
-    await votingTest.requestPrice(identifier, time, { from: registeredContract });
+    await votingTest.methods.requestPrice(identifier, time).send({ from: registeredContract });
 
     // There should be one element in the array after the fist price request.
-    assert.equal((await votingTest.getPendingPriceRequestsArray()).length, 1);
+    assert.equal((await votingTest.methods.getPendingPriceRequestsArray().call()).length, 1);
 
     // Move to voting round.
     await moveToNextRound(votingTest);
-    const votingRound = await votingTest.getCurrentRoundId();
+    const votingRound = await votingTest.methods.getCurrentRoundId().call();
 
     // Commit vote.
     const price = getRandomSignedInt();
     const salt = getRandomSignedInt();
-    const hash = computeVoteHash({
-      price,
-      salt,
-      account: account1,
-      time,
-      roundId: votingRound.toString(),
-      identifier,
-    });
-    await votingTest.commitVote(identifier, time, hash);
+    const hash = computeVoteHash({ price, salt, account: account1, time, roundId: votingRound.toString(), identifier });
+    await votingTest.methods.commitVote(identifier, time, hash).send({ from: accounts[0] });
 
     // Reveal phase.
     await moveToNextPhase(votingTest);
 
-    await votingTest.snapshotCurrentRound(signature);
+    await votingTest.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     // Reveal vote.
-    await votingTest.revealVote(identifier, time, price, salt);
+    await votingTest.methods.revealVote(identifier, time, price, salt).send({ from: accounts[0] });
 
     // Pending requests should be empty after the voting round ends and the price is resolved.
     await moveToNextRound(votingTest);
 
-    await votingTest.retrieveRewards(account1, votingRound, [{ identifier, time }]);
+    await votingTest.methods.retrieveRewards(account1, votingRound, [{ identifier, time }]).send({ from: accounts[0] });
 
     // After retrieval, the length should be decreased back to 0 since the element added in this test is now deleted.
-    assert.equal((await votingTest.getPendingPriceRequestsArray()).length, 0);
+    assert.equal((await votingTest.methods.getPendingPriceRequestsArray().call()).length, 0);
   });
   it("Votes can correctly handle arbitrary ancillary data", async function () {
     const identifier1 = padRight(utf8ToHex("request-retrieval"), 64);
@@ -1819,31 +1673,43 @@ contract("Voting", function (accounts) {
     const ancillaryData2 = utf8ToHex(`callerAddress:${account4}`);
 
     // Make the Oracle support these two identifiers.
-    await supportedIdentifiers.addSupportedIdentifier(identifier1);
-    await supportedIdentifiers.addSupportedIdentifier(identifier2);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier1).send({ from: accounts[0] });
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier2).send({ from: accounts[0] });
 
     // Instantiate a voting interface that supports ancillary data.
-    voting = await VotingAncillaryInterfaceTesting.at(voting.address);
+    voting = await VotingAncillaryInterfaceTesting.at(voting.options.address);
 
     // Store the number of price requests to verify the right number are enqued.
-    const priceRequestLengthBefore = (await voting.getPendingRequests()).length;
+    const priceRequestLengthBefore = (await voting.methods.getPendingRequests().call()).length;
 
     // Requests should not be added to the current voting round.
-    await voting.requestPrice(identifier1, time1, ancillaryData1, { from: registeredContract });
-    await voting.requestPrice(identifier2, time2, ancillaryData2, { from: registeredContract });
+    await voting.methods.requestPrice(identifier1, time1, ancillaryData1).send({ from: registeredContract });
+    await voting.methods.requestPrice(identifier2, time2, ancillaryData2).send({ from: registeredContract });
 
     // Since the round for these requests has not started, the price retrieval should fail.
-    assert.isFalse(await voting.hasPrice(identifier1, time1, ancillaryData1, { from: registeredContract }));
-    assert.isFalse(await voting.hasPrice(identifier2, time2, ancillaryData2, { from: registeredContract }));
-    assert(await didContractThrow(voting.getPrice(identifier1, time1, ancillaryData1, { from: registeredContract })));
-    assert(await didContractThrow(voting.getPrice(identifier2, time2, ancillaryData2, { from: registeredContract })));
+    assert.isFalse(
+      await voting.methods.hasPrice(identifier1, time1, ancillaryData1).call({ from: registeredContract })
+    );
+    assert.isFalse(
+      await voting.methods.hasPrice(identifier2, time2, ancillaryData2).call({ from: registeredContract })
+    );
+    assert(
+      await didContractThrow(
+        voting.methods.getPrice(identifier1, time1, ancillaryData1).send({ from: registeredContract })
+      )
+    );
+    assert(
+      await didContractThrow(
+        voting.methods.getPrice(identifier2, time2, ancillaryData2).send({ from: registeredContract })
+      )
+    );
 
     // Move to the voting round.
     await moveToNextRound(voting);
-    const roundId = (await voting.getCurrentRoundId()).toString();
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Ancillary data should be correctly preserved and accessible to voters.
-    const priceRequests = await voting.getPendingRequests();
+    const priceRequests = await voting.methods.getPendingRequests().call();
 
     assert.equal(priceRequests.length - priceRequestLengthBefore, 2);
     assert.equal(
@@ -1879,7 +1745,7 @@ contract("Voting", function (accounts) {
       identifier: identifier1,
     });
 
-    await voting.commitVote(identifier1, time1, ancillaryData1, hash1);
+    await voting.methods.commitVote(identifier1, time1, ancillaryData1, hash1).send({ from: accounts[0] });
 
     // Commit vote 2.
     const price2 = getRandomSignedInt();
@@ -1893,41 +1759,65 @@ contract("Voting", function (accounts) {
       roundId,
       identifier: identifier2,
     });
-    await voting.commitVote(identifier2, time2, ancillaryData2, hash2);
+    await voting.methods.commitVote(identifier2, time2, ancillaryData2, hash2).send({ from: accounts[0] });
 
     // If the voting period is ongoing, prices cannot be returned since they are not finalized.
-    assert.isFalse(await voting.hasPrice(identifier1, time1, ancillaryData1, { from: registeredContract }));
-    assert.isFalse(await voting.hasPrice(identifier2, time2, ancillaryData2, { from: registeredContract }));
-    assert(await didContractThrow(voting.getPrice(identifier1, time1, ancillaryData1, { from: registeredContract })));
-    assert(await didContractThrow(voting.getPrice(identifier2, time2, ancillaryData2, { from: registeredContract })));
+    assert.isFalse(
+      await voting.methods.hasPrice(identifier1, time1, ancillaryData1).call({ from: registeredContract })
+    );
+    assert.isFalse(
+      await voting.methods.hasPrice(identifier2, time2, ancillaryData2).call({ from: registeredContract })
+    );
+    assert(
+      await didContractThrow(
+        voting.methods.getPrice(identifier1, time1, ancillaryData1).send({ from: registeredContract })
+      )
+    );
+    assert(
+      await didContractThrow(
+        voting.methods.getPrice(identifier2, time2, ancillaryData2).send({ from: registeredContract })
+      )
+    );
 
     // Move to the reveal phase of the voting period.
     await moveToNextPhase(voting);
 
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     // Reveal both votes.
-    await voting.revealVote(identifier1, time1, price1, ancillaryData1, salt1);
-    await voting.revealVote(identifier2, time2, price2, ancillaryData2, salt2);
+    await voting.methods.revealVote(identifier1, time1, price1, ancillaryData1, salt1).send({ from: accounts[0] });
+    await voting.methods.revealVote(identifier2, time2, price2, ancillaryData2, salt2).send({ from: accounts[0] });
 
     // Prices cannot be provided until both commit and reveal for the current round have finished.
-    assert.isFalse(await voting.hasPrice(identifier1, time1, ancillaryData1, { from: registeredContract }));
-    assert.isFalse(await voting.hasPrice(identifier2, time2, ancillaryData2, { from: registeredContract }));
-    assert(await didContractThrow(voting.getPrice(identifier1, time1, ancillaryData1, { from: registeredContract })));
-    assert(await didContractThrow(voting.getPrice(identifier2, time2, ancillaryData2, { from: registeredContract })));
+    assert.isFalse(
+      await voting.methods.hasPrice(identifier1, time1, ancillaryData1).call({ from: registeredContract })
+    );
+    assert.isFalse(
+      await voting.methods.hasPrice(identifier2, time2, ancillaryData2).call({ from: registeredContract })
+    );
+    assert(
+      await didContractThrow(
+        voting.methods.getPrice(identifier1, time1, ancillaryData1).send({ from: registeredContract })
+      )
+    );
+    assert(
+      await didContractThrow(
+        voting.methods.getPrice(identifier2, time2, ancillaryData2).send({ from: registeredContract })
+      )
+    );
 
     // Move past the voting round.
     await moveToNextRound(voting);
 
     // Note: all voting results are currently hardcoded to 1.
-    assert.isTrue(await voting.hasPrice(identifier1, time1, ancillaryData1, { from: registeredContract }));
-    assert.isTrue(await voting.hasPrice(identifier2, time2, ancillaryData2, { from: registeredContract }));
+    assert.isTrue(await voting.methods.hasPrice(identifier1, time1, ancillaryData1).call({ from: registeredContract }));
+    assert.isTrue(await voting.methods.hasPrice(identifier2, time2, ancillaryData2).call({ from: registeredContract }));
     assert.equal(
-      (await voting.getPrice(identifier1, time1, ancillaryData1, { from: registeredContract })).toString(),
+      (await voting.methods.getPrice(identifier1, time1, ancillaryData1).call({ from: registeredContract })).toString(),
       price1.toString()
     );
     assert.equal(
-      (await voting.getPrice(identifier2, time2, ancillaryData2, { from: registeredContract })).toString(),
+      (await voting.methods.getPrice(identifier2, time2, ancillaryData2).call({ from: registeredContract })).toString(),
       price2.toString()
     );
   });
@@ -1937,30 +1827,34 @@ contract("Voting", function (accounts) {
     const DATA_LIMIT_BYTES = 8192;
     let ancillaryData = web3.utils.randomHex(DATA_LIMIT_BYTES);
 
-    await supportedIdentifiers.addSupportedIdentifier(identifier);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
 
     // Instantiate a voting interface that supports ancillary data.
-    voting = await VotingAncillaryInterfaceTesting.at(voting.address);
+    voting = await VotingAncillaryInterfaceTesting.at(voting.options.address);
 
     // Store the number of price requests to verify the right number are enqued.
-    const priceRequestLengthBefore = (await voting.getPendingRequests()).length;
+    const priceRequestLengthBefore = (await voting.methods.getPendingRequests().call()).length;
 
     // Requests should not be added to the current voting round.
-    await voting.requestPrice(identifier, time, ancillaryData, { from: registeredContract });
+    await voting.methods.requestPrice(identifier, time, ancillaryData).send({ from: registeredContract });
 
     // Ancillary data length must not be more than the limit.
     assert(await didContractThrow(voting.requestPrice(identifier, time, web3.utils.randomHex(DATA_LIMIT_BYTES + 1))));
 
     // Since the round for these requests has not started, the price retrieval should fail.
-    assert.isFalse(await voting.hasPrice(identifier, time, ancillaryData, { from: registeredContract }));
-    assert(await didContractThrow(voting.getPrice(identifier, time, ancillaryData, { from: registeredContract })));
+    assert.isFalse(await voting.methods.hasPrice(identifier, time, ancillaryData).call({ from: registeredContract }));
+    assert(
+      await didContractThrow(
+        voting.methods.getPrice(identifier, time, ancillaryData).send({ from: registeredContract })
+      )
+    );
 
     // Move to the voting round.
     await moveToNextRound(voting);
-    const roundId = (await voting.getCurrentRoundId()).toString();
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Ancillary data should be correctly preserved and accessible to voters.
-    const priceRequests = await voting.getPendingRequests();
+    const priceRequests = await voting.methods.getPendingRequests().call();
     assert.equal(priceRequests.length - priceRequestLengthBefore, 1);
     assert.equal(
       web3.utils.hexToUtf8(priceRequests[priceRequestLengthBefore].identifier),
@@ -1972,41 +1866,41 @@ contract("Voting", function (accounts) {
     // Commit vote.
     const price = getRandomSignedInt();
     const salt = getRandomSignedInt();
-    const hash = computeVoteHashAncillary({
-      price,
-      salt,
-      account: account1,
-      time,
-      ancillaryData,
-      roundId,
-      identifier,
-    });
+    const hash = computeVoteHashAncillary({ price, salt, account: account1, time, ancillaryData, roundId, identifier });
 
-    await voting.commitVote(identifier, time, ancillaryData, hash);
+    await voting.methods.commitVote(identifier, time, ancillaryData, hash).send({ from: accounts[0] });
 
     // If the voting period is ongoing, prices cannot be returned since they are not finalized.
-    assert.isFalse(await voting.hasPrice(identifier, time, ancillaryData, { from: registeredContract }));
-    assert(await didContractThrow(voting.getPrice(identifier, time, ancillaryData, { from: registeredContract })));
+    assert.isFalse(await voting.methods.hasPrice(identifier, time, ancillaryData).call({ from: registeredContract }));
+    assert(
+      await didContractThrow(
+        voting.methods.getPrice(identifier, time, ancillaryData).send({ from: registeredContract })
+      )
+    );
 
     // Move to the reveal phase of the voting period.
     await moveToNextPhase(voting);
 
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     // Reveal votes.
-    await voting.revealVote(identifier, time, price, ancillaryData, salt);
+    await voting.methods.revealVote(identifier, time, price, ancillaryData, salt).send({ from: accounts[0] });
 
     // Prices cannot be provided until both commit and reveal for the current round have finished.
-    assert.isFalse(await voting.hasPrice(identifier, time, ancillaryData, { from: registeredContract }));
-    assert(await didContractThrow(voting.getPrice(identifier, time, ancillaryData, { from: registeredContract })));
+    assert.isFalse(await voting.methods.hasPrice(identifier, time, ancillaryData).call({ from: registeredContract }));
+    assert(
+      await didContractThrow(
+        voting.methods.getPrice(identifier, time, ancillaryData).send({ from: registeredContract })
+      )
+    );
 
     // Move past the voting round.
     await moveToNextRound(voting);
 
     // Note: all voting results are currently hardcoded to 1.
-    assert.isTrue(await voting.hasPrice(identifier, time, ancillaryData, { from: registeredContract }));
+    assert.isTrue(await voting.methods.hasPrice(identifier, time, ancillaryData).call({ from: registeredContract }));
     assert.equal(
-      (await voting.getPrice(identifier, time, ancillaryData, { from: registeredContract })).toString(),
+      (await voting.methods.getPrice(identifier, time, ancillaryData).call({ from: registeredContract })).toString(),
       price.toString()
     );
   });
@@ -2023,22 +1917,20 @@ contract("Voting", function (accounts) {
     const time2 = "2000";
 
     // Make the Oracle support these two identifiers.
-    await supportedIdentifiers.addSupportedIdentifier(identifier1);
-    await supportedIdentifiers.addSupportedIdentifier(identifier2);
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier1).send({ from: accounts[0] });
+    await supportedIdentifiers.methods.addSupportedIdentifier(identifier2).send({ from: accounts[0] });
 
     // Instantiate a voting interface that supports ancillary data.
-    voting = await Voting.at(voting.address);
+    voting = await Voting.at(voting.options.address);
 
     // Store the number of price requests to verify the right number are enqued.
-    const priceRequestLengthBefore = (await voting.getPendingRequests()).length;
+    const priceRequestLengthBefore = (await voting.methods.getPendingRequests().call()).length;
 
     // Requests should not be added to the current voting round.
     await voting.methods["requestPrice(bytes32,uint256,bytes)"](identifier1, time1, ancillaryData1, {
       from: registeredContract,
     });
-    await voting.methods["requestPrice(bytes32,uint256)"](identifier2, time2, {
-      from: registeredContract,
-    });
+    await voting.methods["requestPrice(bytes32,uint256)"](identifier2, time2, { from: registeredContract });
 
     // Since the round for these requests has not started, the price retrieval should fail.
     assert.isFalse(
@@ -2062,10 +1954,10 @@ contract("Voting", function (accounts) {
 
     // Move to the voting round.
     await moveToNextRound(voting);
-    const roundId = (await voting.getCurrentRoundId()).toString();
+    const roundId = (await voting.methods.getCurrentRoundId().call()).toString();
 
     // Ancillary data should be correctly preserved and accessible to voters.
-    const priceRequests = await voting.getPendingRequests();
+    const priceRequests = await voting.methods.getPendingRequests().call();
 
     assert.equal(priceRequests.length, priceRequestLengthBefore + 2);
     assert.equal(
@@ -2108,7 +2000,6 @@ contract("Voting", function (accounts) {
       salt: salt2,
       account: account1,
       time: time2,
-
       roundId,
       identifier: identifier2,
     });
@@ -2137,11 +2028,11 @@ contract("Voting", function (accounts) {
     // Move to the reveal phase of the voting period.
     await moveToNextPhase(voting);
 
-    await voting.snapshotCurrentRound(signature);
+    await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     // Reveal both votes.
-    await voting.revealVote(identifier1, time1, price1, ancillaryData1, salt1);
-    await voting.revealVote(identifier2, time2, price2, salt2);
+    await voting.methods.revealVote(identifier1, time1, price1, ancillaryData1, salt1).send({ from: accounts[0] });
+    await voting.methods.revealVote(identifier2, time2, price2, salt2).send({ from: accounts[0] });
 
     // Prices cannot be provided until both commit and reveal for the current round have finished.
     assert.isFalse(

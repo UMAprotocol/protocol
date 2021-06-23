@@ -1,9 +1,12 @@
+const hre = require("hardhat");
+const { runDefaultFixture } = require("@uma/common");
+const { getContract } = hre;
 const TruffleAssert = require("truffle-assertions");
 const { assert } = require("chai");
 const { didContractThrow, interfaceName, RegistryRolesEnum } = require("@uma/common");
-const BeaconOracle = artifacts.require("BeaconOracleMock");
-const Finder = artifacts.require("Finder");
-const Registry = artifacts.require("Registry");
+const BeaconOracle = getContract("BeaconOracleMock");
+const Finder = getContract("Finder");
+const Registry = getContract("Registry");
 
 const { utf8ToHex, hexToUtf8, sha3, padRight } = web3.utils;
 
@@ -21,19 +24,22 @@ contract("BeaconOracle", async (accounts) => {
   const testPrice = "6";
 
   beforeEach(async function () {
+    await runDefaultFixture(hre);
     registry = await Registry.deployed();
-    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner);
+    await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner).send({ from: accounts[0] });
     // Register EOA as a contract creator that can access price information from BeaconOracle.
-    await registry.registerContract([], owner, { from: owner });
+    await registry.methods.registerContract([], owner).send({ from: owner });
     finder = await Finder.deployed();
-    beaconOracle = await BeaconOracle.new(finder.address, chainID);
+    beaconOracle = await BeaconOracle.new(finder.options.address, chainID).send({ from: accounts[0] });
   });
   it("construction", async function () {
-    assert.equal(await beaconOracle.finder(), finder.address, "finder address not set");
-    assert.equal(await beaconOracle.currentChainID(), chainID.toString(), "chain ID not set");
+    assert.equal(await beaconOracle.methods.finder().call(), finder.options.address, "finder address not set");
+    assert.equal(await beaconOracle.methods.currentChainID().call(), chainID.toString(), "chain ID not set");
   });
   it("requestPrice", async function () {
-    const txn = await beaconOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: owner });
+    const txn = await beaconOracle.methods
+      .requestPrice(testIdentifier, testRequestTime, testAncillary)
+      .call({ from: owner });
     TruffleAssert.eventEmitted(
       txn,
       "PriceRequestAdded",
@@ -45,10 +51,10 @@ contract("BeaconOracle", async (accounts) => {
     );
   });
   it("publishPrice", async function () {
-    await beaconOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: owner });
-    const txn = await beaconOracle.publishPrice(testIdentifier, testRequestTime, testAncillary, testPrice, {
-      from: owner,
-    });
+    await beaconOracle.methods.requestPrice(testIdentifier, testRequestTime, testAncillary).send({ from: owner });
+    const txn = await beaconOracle.methods
+      .publishPrice(testIdentifier, testRequestTime, testAncillary, testPrice)
+      .call({ from: owner });
     TruffleAssert.eventEmitted(
       txn,
       "PushedPrice",
@@ -60,12 +66,18 @@ contract("BeaconOracle", async (accounts) => {
         event.price.toString() === testPrice
     );
     assert(
-      await didContractThrow(beaconOracle.publishPrice(testIdentifier, testRequestTime, testAncillary, testPrice)),
+      await didContractThrow(
+        beaconOracle.methods
+          .publishPrice(testIdentifier, testRequestTime, testAncillary, testPrice)
+          .send({ from: accounts[0] })
+      ),
       "Cannot publish price more than once"
     );
   });
   it("encodePriceRequest", async function () {
-    const encodedPrice = await beaconOracle.encodePriceRequest(testIdentifier, testRequestTime, testAncillary);
+    const encodedPrice = await beaconOracle.methods
+      .encodePriceRequest(testIdentifier, testRequestTime, testAncillary)
+      .call();
     const encoded = web3.eth.abi.encodeParameters(
       ["uint8", "bytes32", "uint256", "bytes"],
       [chainID, padRight(testIdentifier, 64), testRequestTime, testAncillary]
@@ -75,10 +87,10 @@ contract("BeaconOracle", async (accounts) => {
   });
   it("getBridge", async function () {
     // Point Finder "Bridge" to arbitrary contract:
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), beaconOracle.address);
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), beaconOracle.options.address);
     assert.equal(
-      await beaconOracle.getBridge(),
-      beaconOracle.address,
+      await beaconOracle.methods.getBridge().send({ from: accounts[0] }),
+      beaconOracle.options.address,
       "getBridge doesn't point to correct Bridge set in Finder"
     );
   });

@@ -1,8 +1,4 @@
-/**
- * Copyright 2020 ChainSafe Systems
- * SPDX-License-Identifier: LGPL-3.0-only
- */
-
+/**  * Copyright 2020 ChainSafe Systems  * SPDX-License-Identifier: LGPL-3.0-only  */
 const Ethers = require("ethers");
 
 const blankFunctionSig = "0x00000000";

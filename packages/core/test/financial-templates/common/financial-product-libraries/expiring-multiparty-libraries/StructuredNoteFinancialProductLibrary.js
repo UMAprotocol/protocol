@@ -1,44 +1,50 @@
+const hre = require("hardhat");
+const { runDefaultFixture } = require("@uma/common");
+const { getContract } = hre;
 const { didContractThrow, ZERO_ADDRESS } = require("@uma/common");
 const { assert } = require("chai");
 
 // Tested Contract
-const StructuredNoteFinancialProductLibrary = artifacts.require("StructuredNoteFinancialProductLibrary");
+const StructuredNoteFinancialProductLibrary = getContract("StructuredNoteFinancialProductLibrary");
 
 // Helper contracts
-const Timer = artifacts.require("Timer");
-const ExpiringMultiPartyMock = artifacts.require("ExpiringMultiPartyMock");
+const Timer = getContract("Timer");
+const ExpiringMultiPartyMock = getContract("ExpiringMultiPartyMock");
 
 const { toWei, toBN, utf8ToHex } = web3.utils;
 const strikePrice = toBN(toWei("400"));
 const priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
 const collateralizationRatio = toWei("1.2");
 
-contract("StructuredNoteFinancialProductLibrary", function () {
+contract("StructuredNoteFinancialProductLibrary", function (accounts) {
   let structuredNoteFPL;
   let expiringMultiParty;
   let timer;
   let expirationTime;
 
   beforeEach(async () => {
+    await runDefaultFixture(hre);
     timer = await Timer.deployed();
 
-    expirationTime = (await timer.getCurrentTime()) + 100; // use 100 seconds in the future as the expiration time.
-    structuredNoteFPL = await StructuredNoteFinancialProductLibrary.new();
+    expirationTime = (await timer.methods.getCurrentTime().call()) + 100; // use 100 seconds in the future as the expiration time.
+    structuredNoteFPL = await StructuredNoteFinancialProductLibrary.new().send({ from: accounts[0] });
     expiringMultiParty = await ExpiringMultiPartyMock.new(
-      structuredNoteFPL.address,
+      structuredNoteFPL.options.address,
       expirationTime,
       { rawValue: collateralizationRatio.toString() },
       priceFeedIdentifier,
-      timer.address
-    );
+      timer.options.address
+    ).send({ from: accounts[0] });
 
-    await structuredNoteFPL.setFinancialProductStrike(expiringMultiParty.address, {
-      rawValue: strikePrice.toString(),
-    });
+    await structuredNoteFPL.methods
+      .setFinancialProductStrike(expiringMultiParty.options.address, { rawValue: strikePrice.toString() })
+      .send({ from: accounts[0] });
   });
   it("Strike correctly set", async () => {
     assert.equal(
-      (await structuredNoteFPL.getStrikeForFinancialProduct(expiringMultiParty.address)).toString(),
+      (
+        await structuredNoteFPL.methods.getStrikeForFinancialProduct(expiringMultiParty.options.address).call()
+      ).toString(),
       strikePrice.toString()
     );
   });
@@ -46,25 +52,25 @@ contract("StructuredNoteFinancialProductLibrary", function () {
     it("Can not re-set the strike for a given financial product", async () => {
       assert(
         await didContractThrow(
-          structuredNoteFPL.setFinancialProductStrike(expiringMultiParty.address, {
-            rawValue: strikePrice.toString(),
-          })
+          structuredNoteFPL.methods
+            .setFinancialProductStrike(expiringMultiParty.options.address, { rawValue: strikePrice.toString() })
+            .send({ from: accounts[0] })
         )
       );
     });
     it("Can not set strike price for invalid financial product", async () => {
       assert(
         await didContractThrow(
-          structuredNoteFPL.setFinancialProductStrike(ZERO_ADDRESS, {
-            rawValue: strikePrice.toString(),
-          })
+          structuredNoteFPL.methods
+            .setFinancialProductStrike(ZERO_ADDRESS, { rawValue: strikePrice.toString() })
+            .send({ from: accounts[0] })
         )
       );
       assert(
         await didContractThrow(
-          structuredNoteFPL.setFinancialProductStrike(timer.address, {
-            rawValue: strikePrice.toString(),
-          })
+          structuredNoteFPL.methods
+            .setFinancialProductStrike(timer.options.address, { rawValue: strikePrice.toString() })
+            .send({ from: accounts[0] })
         )
       );
     });
@@ -74,7 +80,7 @@ contract("StructuredNoteFinancialProductLibrary", function () {
         (
           await expiringMultiParty.transformPrice(
             { rawValue: toWei("350") },
-            (await expiringMultiParty.getCurrentTime()).toString()
+            (await expiringMultiParty.methods.getCurrentTime().call()).toString()
           )
         ).toString(),
         toWei("1")
@@ -85,8 +91,8 @@ contract("StructuredNoteFinancialProductLibrary", function () {
         (
           await expiringMultiParty.transformPrice.call(
             { rawValue: toWei("350") },
-            (await expiringMultiParty.getCurrentTime()).toString(),
-            { from: expiringMultiParty.address }
+            (await expiringMultiParty.methods.getCurrentTime().call()).toString(),
+            { from: expiringMultiParty.options.address }
           )
         ).toString(),
         toWei("1")
@@ -101,7 +107,7 @@ contract("StructuredNoteFinancialProductLibrary", function () {
         (
           await expiringMultiParty.transformPrice(
             { rawValue: toWei("350") },
-            (await expiringMultiParty.getCurrentTime()).toString()
+            (await expiringMultiParty.methods.getCurrentTime().call()).toString()
           )
         ).toString(),
         toWei("1")
@@ -113,7 +119,7 @@ contract("StructuredNoteFinancialProductLibrary", function () {
         (
           await expiringMultiParty.transformPrice(
             { rawValue: toWei("500") },
-            (await expiringMultiParty.getCurrentTime()).toString()
+            (await expiringMultiParty.methods.getCurrentTime().call()).toString()
           )
         ).toString(),
         toWei("0.8")

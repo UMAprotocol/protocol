@@ -1,11 +1,17 @@
+const hre = require("hardhat");
+const { runDefaultFixture } = require("@uma/common");
+const { getContract } = hre;
 const DecodeTransactionData = require("../../scripts/DecodeTransactionData");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("@uma/common");
 
-const Registry = artifacts.require("Registry");
-const Voting = artifacts.require("Voting");
-const VotingInterfaceTesting = artifacts.require("VotingInterfaceTesting");
+const Registry = getContract("Registry");
+const Voting = getContract("Voting");
+const VotingInterfaceTesting = getContract("VotingInterfaceTesting");
 
 contract("scripts/DecodeTransactionData.js", function () {
+  beforeEach(async function () {
+    await runDefaultFixture(hre);
+  });
   it("Decode registerContract", async function () {
     const contractAddress = web3.utils.randomHex(20);
 

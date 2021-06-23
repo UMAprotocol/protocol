@@ -1,20 +1,23 @@
+const hre = require("hardhat");
+const { runDefaultFixture } = require("@uma/common");
+const { getContract } = hre;
 const { toWei, hexToUtf8, padRight, utf8ToHex } = web3.utils;
 const { didContractThrow, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
 const truffleAssert = require("truffle-assertions");
 
 // Tested Contract
-const ExpiringMultiPartyCreator = artifacts.require("ExpiringMultiPartyCreator");
+const ExpiringMultiPartyCreator = getContract("ExpiringMultiPartyCreator");
 
 // Helper Contracts
-const BasicERC20 = artifacts.require("BasicERC20");
-const Token = artifacts.require("ExpandedERC20");
-const SyntheticToken = artifacts.require("SyntheticToken");
-const TokenFactory = artifacts.require("TokenFactory");
-const Registry = artifacts.require("Registry");
-const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
-const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const AddressWhitelist = artifacts.require("AddressWhitelist");
-const StructuredNoteFinancialProductLibrary = artifacts.require("StructuredNoteFinancialProductLibrary");
+const BasicERC20 = getContract("BasicERC20");
+const Token = getContract("ExpandedERC20");
+const SyntheticToken = getContract("SyntheticToken");
+const TokenFactory = getContract("TokenFactory");
+const Registry = getContract("Registry");
+const ExpiringMultiParty = getContract("ExpiringMultiParty");
+const IdentifierWhitelist = getContract("IdentifierWhitelist");
+const AddressWhitelist = getContract("AddressWhitelist");
+const StructuredNoteFinancialProductLibrary = getContract("StructuredNoteFinancialProductLibrary");
 
 contract("ExpiringMultiPartyCreator", function (accounts) {
   let contractCreator = accounts[0];
@@ -29,17 +32,22 @@ contract("ExpiringMultiPartyCreator", function (accounts) {
   let constructorParams;
 
   beforeEach(async () => {
-    collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
+    await runDefaultFixture(hre);
+    collateralToken = await Token.new("Wrapped Ether", "WETH", 18)
+      .send({ from: accounts[0] })
+      .send({ from: contractCreator });
     registry = await Registry.deployed();
     expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
 
     // Whitelist collateral currency
     collateralTokenWhitelist = await AddressWhitelist.deployed();
-    await collateralTokenWhitelist.addToWhitelist(collateralToken.address, { from: contractCreator });
+    await collateralTokenWhitelist.methods
+      .addToWhitelist(collateralToken.options.address)
+      .send({ from: contractCreator });
 
     constructorParams = {
       expirationTimestamp: "1898918401", // 2030-03-05T05:20:01.000Z
-      collateralAddress: collateralToken.address,
+      collateralAddress: collateralToken.options.address,
       priceFeedIdentifier: padRight(utf8ToHex("TEST_IDENTIFIER"), 64),
       syntheticName: "Test Synthetic Token",
       syntheticSymbol: "SYNTH",
@@ -54,14 +62,14 @@ contract("ExpiringMultiPartyCreator", function (accounts) {
     };
 
     const identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
-      from: contractCreator,
-    });
+    await identifierWhitelist.methods
+      .addSupportedIdentifier(constructorParams.priceFeedIdentifier)
+      .send({ from: contractCreator });
   });
 
   it("TokenFactory address should be set on construction", async function () {
     const tokenFactory = await TokenFactory.deployed();
-    assert.equal(await expiringMultiPartyCreator.tokenFactoryAddress(), tokenFactory.address);
+    assert.equal(await expiringMultiPartyCreator.methods.tokenFactoryAddress().call(), tokenFactory.options.address);
   });
 
   it("Expiration timestamp must be in future", async function () {
@@ -71,9 +79,9 @@ contract("ExpiringMultiPartyCreator", function (accounts) {
     constructorParams.expirationTimestamp = arbitraryExpiration.toString();
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
-          from: contractCreator,
-        })
+        expiringMultiPartyCreator.methods
+          .createExpiringMultiParty(constructorParams, { from: contractCreator })
+          .send({ from: accounts[0] })
       )
     );
   });
@@ -83,9 +91,9 @@ contract("ExpiringMultiPartyCreator", function (accounts) {
     constructorParams.syntheticSymbol = "";
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
-          from: contractCreator,
-        })
+        expiringMultiPartyCreator.methods
+          .createExpiringMultiParty(constructorParams, { from: contractCreator })
+          .send({ from: accounts[0] })
       )
     );
   });
@@ -95,23 +103,23 @@ contract("ExpiringMultiPartyCreator", function (accounts) {
     constructorParams.syntheticName = "";
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
-          from: contractCreator,
-        })
+        expiringMultiPartyCreator.methods
+          .createExpiringMultiParty(constructorParams, { from: contractCreator })
+          .send({ from: accounts[0] })
       )
     );
   });
 
   it("Collateral token must be whitelisted", async function () {
     // Change only the collateral token address
-    constructorParams.collateralAddress = await Token.new("Test Synthetic Token", "SYNTH", 18, {
-      from: contractCreator,
-    }).address;
+    constructorParams.collateralAddress = await Token.new("Test Synthetic Token", "SYNTH", 18)
+      .send({ from: accounts[0] })
+      .send({ from: contractCreator }).address;
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
-          from: contractCreator,
-        })
+        expiringMultiPartyCreator.methods
+          .createExpiringMultiParty(constructorParams, { from: contractCreator })
+          .send({ from: accounts[0] })
       )
     );
   });
@@ -121,9 +129,9 @@ contract("ExpiringMultiPartyCreator", function (accounts) {
     constructorParams.withdrawalLiveness = 0;
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
-          from: contractCreator,
-        })
+        expiringMultiPartyCreator.methods
+          .createExpiringMultiParty(constructorParams, { from: contractCreator })
+          .send({ from: accounts[0] })
       )
     );
   });
@@ -133,9 +141,9 @@ contract("ExpiringMultiPartyCreator", function (accounts) {
     constructorParams.withdrawalLiveness = MAX_UINT_VAL;
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
-          from: contractCreator,
-        })
+        expiringMultiPartyCreator.methods
+          .createExpiringMultiParty(constructorParams, { from: contractCreator })
+          .send({ from: accounts[0] })
       )
     );
   });
@@ -145,9 +153,9 @@ contract("ExpiringMultiPartyCreator", function (accounts) {
     constructorParams.liquidationLiveness = 0;
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
-          from: contractCreator,
-        })
+        expiringMultiPartyCreator.methods
+          .createExpiringMultiParty(constructorParams, { from: contractCreator })
+          .send({ from: accounts[0] })
       )
     );
   });
@@ -157,9 +165,9 @@ contract("ExpiringMultiPartyCreator", function (accounts) {
     constructorParams.liquidationLiveness = MAX_UINT_VAL;
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
-          from: contractCreator,
-        })
+        expiringMultiPartyCreator.methods
+          .createExpiringMultiParty(constructorParams, { from: contractCreator })
+          .send({ from: accounts[0] })
       )
     );
   });
@@ -171,9 +179,9 @@ contract("ExpiringMultiPartyCreator", function (accounts) {
     });
 
     // Execute without the `.call` to perform state change. catch the result to query the event.
-    let createdAddressResult = await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
-      from: contractCreator,
-    });
+    let createdAddressResult = await expiringMultiPartyCreator.methods
+      .createExpiringMultiParty(constructorParams)
+      .call({ from: contractCreator });
 
     // Catch the address of the new contract from the event. Ensure that the assigned party member is correct.
     let expiringMultiPartyAddress;
@@ -188,35 +196,48 @@ contract("ExpiringMultiPartyCreator", function (accounts) {
     // Instantiate an instance of the expiringMultiParty and check a few constants that should hold true.
     let expiringMultiParty = await ExpiringMultiParty.at(expiringMultiPartyAddress);
 
-    assert.equal(await expiringMultiParty.expirationTimestamp(), constructorParams.expirationTimestamp);
+    assert.equal(await expiringMultiParty.methods.expirationTimestamp().call(), constructorParams.expirationTimestamp);
     // Liquidation liveness should be the same value as set in the constructor params.
-    assert.equal(await expiringMultiParty.liquidationLiveness(), constructorParams.liquidationLiveness.toString());
-    // Withdrawal liveness should be the same value as set in the constructor params.
-    assert.equal(await expiringMultiParty.withdrawalLiveness(), constructorParams.withdrawalLiveness.toString());
     assert.equal(
-      hexToUtf8(await expiringMultiParty.priceIdentifier()),
+      await expiringMultiParty.methods.liquidationLiveness().call(),
+      constructorParams.liquidationLiveness.toString()
+    );
+    // Withdrawal liveness should be the same value as set in the constructor params.
+    assert.equal(
+      await expiringMultiParty.methods.withdrawalLiveness().call(),
+      constructorParams.withdrawalLiveness.toString()
+    );
+    assert.equal(
+      hexToUtf8(await expiringMultiParty.methods.priceIdentifier().call()),
       hexToUtf8(constructorParams.priceFeedIdentifier)
     );
 
     // Cumulative multipliers are set to default.
-    assert.equal((await expiringMultiParty.cumulativeFeeMultiplier()).toString(), toWei("1"));
+    assert.equal((await expiringMultiParty.methods.cumulativeFeeMultiplier().call()).toString(), toWei("1"));
 
     // Deployed EMP timer should be same as EMP creator.
-    assert.equal(await expiringMultiParty.timerAddress(), await expiringMultiPartyCreator.timerAddress());
+    assert.equal(
+      await expiringMultiParty.methods.timerAddress().call(),
+      await expiringMultiPartyCreator.methods.timerAddress().send({ from: accounts[0] })
+    );
   });
 
   it("Constructs new synthetic currency properly", async function () {
     // Use non-18 decimal precision for collateral currency to test that synthetic matches precision.
-    collateralToken = await Token.new("Wrapped Ether", "WETH", 8, { from: contractCreator });
-    constructorParams.collateralAddress = collateralToken.address;
+    collateralToken = await Token.new("Wrapped Ether", "WETH", 8)
+      .send({ from: accounts[0] })
+      .send({ from: contractCreator });
+    constructorParams.collateralAddress = collateralToken.options.address;
 
     // Whitelist collateral currency
-    await collateralTokenWhitelist.addToWhitelist(collateralToken.address, { from: contractCreator });
+    await collateralTokenWhitelist.methods
+      .addToWhitelist(collateralToken.options.address)
+      .send({ from: contractCreator });
 
     // Create new derivative contract.
-    let createdAddressResult = await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
-      from: contractCreator,
-    });
+    let createdAddressResult = await expiringMultiPartyCreator.methods
+      .createExpiringMultiParty(constructorParams)
+      .call({ from: contractCreator });
     let expiringMultiPartyAddress;
     truffleAssert.eventEmitted(createdAddressResult, "CreatedExpiringMultiParty", (ev) => {
       expiringMultiPartyAddress = ev.expiringMultiPartyAddress;
@@ -225,34 +246,39 @@ contract("ExpiringMultiPartyCreator", function (accounts) {
     let expiringMultiParty = await ExpiringMultiParty.at(expiringMultiPartyAddress);
 
     // New synthetic currency and collateral currency should have the same precision.
-    const tokenCurrency = await Token.at(await expiringMultiParty.tokenCurrency());
-    const collateralCurrency = await Token.at(await expiringMultiParty.collateralCurrency());
-    assert.equal((await tokenCurrency.decimals()).toString(), (await collateralCurrency.decimals()).toString());
+    const tokenCurrency = await Token.at(await expiringMultiParty.methods.tokenCurrency().call());
+    const collateralCurrency = await Token.at(await expiringMultiParty.methods.collateralCurrency().call());
+    assert.equal(
+      (await tokenCurrency.methods.decimals().call()).toString(),
+      (await collateralCurrency.methods.decimals().call()).toString()
+    );
 
     // New derivative contract holds correct permissions.
-    const tokenContract = await SyntheticToken.at(tokenCurrency.address);
-    assert.isTrue(await tokenContract.isMinter(expiringMultiPartyAddress));
-    assert.isTrue(await tokenContract.isBurner(expiringMultiPartyAddress));
-    assert.isTrue(await tokenContract.holdsRole(0, expiringMultiPartyAddress));
+    const tokenContract = await SyntheticToken.at(tokenCurrency.options.address);
+    assert.isTrue(await tokenContract.methods.isMinter(expiringMultiPartyAddress).call());
+    assert.isTrue(await tokenContract.methods.isBurner(expiringMultiPartyAddress).call());
+    assert.isTrue(await tokenContract.methods.holdsRole(0, expiringMultiPartyAddress).call());
   });
 
   it("If collateral currency does not implement the decimals() method then synthetic currency defaults to 18 decimals", async function () {
     // Collateral token does not implement decimals() so synthetic token should default to 18.
-    collateralToken = await BasicERC20.new(0, { from: contractCreator });
+    collateralToken = await BasicERC20.new(0).send({ from: accounts[0] }).send({ from: contractCreator });
     try {
-      await collateralToken.decimals();
+      await collateralToken.methods.decimals().send({ from: accounts[0] });
     } catch (err) {
       assert.equal(err.message, "collateralToken.decimals is not a function");
     }
-    constructorParams.collateralAddress = collateralToken.address;
+    constructorParams.collateralAddress = collateralToken.options.address;
 
     // Whitelist collateral currency.
-    await collateralTokenWhitelist.addToWhitelist(collateralToken.address, { from: contractCreator });
+    await collateralTokenWhitelist.methods
+      .addToWhitelist(collateralToken.options.address)
+      .send({ from: contractCreator });
 
     // Create new derivative contract.
-    let createdAddressResult = await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
-      from: contractCreator,
-    });
+    let createdAddressResult = await expiringMultiPartyCreator.methods
+      .createExpiringMultiParty(constructorParams)
+      .call({ from: contractCreator });
     let expiringMultiPartyAddress;
     truffleAssert.eventEmitted(createdAddressResult, "CreatedExpiringMultiParty", (ev) => {
       expiringMultiPartyAddress = ev.expiringMultiPartyAddress;
@@ -261,32 +287,32 @@ contract("ExpiringMultiPartyCreator", function (accounts) {
     let expiringMultiParty = await ExpiringMultiParty.at(expiringMultiPartyAddress);
 
     // New synthetic currency should have 18 precision.
-    const tokenCurrency = await Token.at(await expiringMultiParty.tokenCurrency());
-    assert.equal((await tokenCurrency.decimals()).toString(), "18");
+    const tokenCurrency = await Token.at(await expiringMultiParty.methods.tokenCurrency().call());
+    assert.equal((await tokenCurrency.methods.decimals().call()).toString(), "18");
   });
 
   it("Creation correctly registers ExpiringMultiParty within the registry", async function () {
-    let createdAddressResult = await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
-      from: contractCreator,
-    });
+    let createdAddressResult = await expiringMultiPartyCreator.methods
+      .createExpiringMultiParty(constructorParams)
+      .call({ from: contractCreator });
 
     let expiringMultiPartyAddress;
     truffleAssert.eventEmitted(createdAddressResult, "CreatedExpiringMultiParty", (ev) => {
       expiringMultiPartyAddress = ev.expiringMultiPartyAddress;
       return ev.expiringMultiPartyAddress != 0 && ev.deployerAddress == contractCreator;
     });
-    assert.isTrue(await registry.isContractRegistered(expiringMultiPartyAddress));
+    assert.isTrue(await registry.methods.isContractRegistered(expiringMultiPartyAddress).call());
   });
 
   it("Creator can specify a financial product library to transform contract state", async function () {
     // Create a new FPLib that can transform price and configure the factory to link it with a newly deployed EMP.
-    const structuredNoteFPL = await StructuredNoteFinancialProductLibrary.new();
-    constructorParams.financialProductLibraryAddress = structuredNoteFPL.address;
+    const structuredNoteFPL = await StructuredNoteFinancialProductLibrary.new().send({ from: accounts[0] });
+    constructorParams.financialProductLibraryAddress = structuredNoteFPL.options.address;
 
     // Create the new EMP and grab its saved FPLib.
-    let createdAddressResult = await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, {
-      from: contractCreator,
-    });
+    let createdAddressResult = await expiringMultiPartyCreator.methods
+      .createExpiringMultiParty(constructorParams)
+      .call({ from: contractCreator });
     let expiringMultiPartyAddress;
     truffleAssert.eventEmitted(createdAddressResult, "CreatedExpiringMultiParty", (ev) => {
       expiringMultiPartyAddress = ev.expiringMultiPartyAddress;
@@ -294,10 +320,10 @@ contract("ExpiringMultiPartyCreator", function (accounts) {
     });
     let expiringMultiParty = await ExpiringMultiParty.at(expiringMultiPartyAddress);
     let linkedFPLib = await StructuredNoteFinancialProductLibrary.at(
-      await expiringMultiParty.financialProductLibrary()
+      await expiringMultiParty.methods.financialProductLibrary().send({ from: accounts[0] })
     );
 
     // FPLib address is saved correctly.
-    assert.equal(linkedFPLib.address, structuredNoteFPL.address);
+    assert.equal(linkedFPLib.options.address, structuredNoteFPL.options.address);
   });
 });

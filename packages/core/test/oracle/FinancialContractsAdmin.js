@@ -1,7 +1,10 @@
+const hre = require("hardhat");
+const { runDefaultFixture } = require("@uma/common");
+const { getContract } = hre;
 const { didContractThrow } = require("@uma/common");
 
-const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
-const MockAdministratee = artifacts.require("MockAdministratee");
+const FinancialContractsAdmin = getContract("FinancialContractsAdmin");
+const MockAdministratee = getContract("MockAdministratee");
 
 contract("FinancialContractsAdmin", function (accounts) {
   let financialContractsAdmin;
@@ -11,43 +14,52 @@ contract("FinancialContractsAdmin", function (accounts) {
   const rando = accounts[1];
 
   beforeEach(async function () {
+    await runDefaultFixture(hre);
     financialContractsAdmin = await FinancialContractsAdmin.deployed();
-    mockAdministratee = await MockAdministratee.new();
+    mockAdministratee = await MockAdministratee.new().send({ from: accounts[0] });
   });
 
   it("pfc", async function () {
     // AdministrateeInterfaces must implement pfc().
-    assert.equal((await mockAdministratee.pfc()).toString(), "0");
+    assert.equal((await mockAdministratee.methods.pfc().call()).toString(), "0");
   });
   it("Remargin", async function () {
-    assert.equal(await mockAdministratee.timesRemargined(), "0");
+    assert.equal(await mockAdministratee.methods.timesRemargined().call(), "0");
 
     // Can't call remargin without being the owner.
-    assert(await didContractThrow(financialContractsAdmin.callRemargin(mockAdministratee.address, { from: rando })));
+    assert(
+      await didContractThrow(
+        financialContractsAdmin.methods.callRemargin(mockAdministratee.options.address).send({ from: rando })
+      )
+    );
 
     // Change the owner and verify that remargin can be called.
-    await financialContractsAdmin.transferOwnership(rando);
-    await financialContractsAdmin.callRemargin(mockAdministratee.address, { from: rando });
-    assert.equal(await mockAdministratee.timesRemargined(), "1");
+    await financialContractsAdmin.methods.transferOwnership(rando).send({ from: accounts[0] });
+    await financialContractsAdmin.methods.callRemargin(mockAdministratee.options.address).send({ from: rando });
+    assert.equal(await mockAdministratee.methods.timesRemargined().call(), "1");
 
     // Return ownership to owner.
-    await financialContractsAdmin.transferOwnership(owner, { from: rando });
+    await financialContractsAdmin.methods.transferOwnership(owner).send({ from: rando });
   });
 
   it("Emergency Shutdown", async function () {
-    assert.equal(await mockAdministratee.timesEmergencyShutdown(), "0");
+    assert.equal(await mockAdministratee.methods.timesEmergencyShutdown().call(), "0");
 
     // Can't call emergencyShutdown without being the owner.
     assert(
-      await didContractThrow(financialContractsAdmin.callEmergencyShutdown(mockAdministratee.address, { from: rando }))
+      await didContractThrow(
+        financialContractsAdmin.methods.callEmergencyShutdown(mockAdministratee.options.address).send({ from: rando })
+      )
     );
 
     // Change the owner and verify that emergencyShutdown can be called.
-    await financialContractsAdmin.transferOwnership(rando);
-    await financialContractsAdmin.callEmergencyShutdown(mockAdministratee.address, { from: rando });
-    assert.equal(await mockAdministratee.timesEmergencyShutdown(), "1");
+    await financialContractsAdmin.methods.transferOwnership(rando).send({ from: accounts[0] });
+    await financialContractsAdmin.methods
+      .callEmergencyShutdown(mockAdministratee.options.address)
+      .send({ from: rando });
+    assert.equal(await mockAdministratee.methods.timesEmergencyShutdown().call(), "1");
 
     // Return ownership to owner.
-    await financialContractsAdmin.transferOwnership(owner, { from: rando });
+    await financialContractsAdmin.methods.transferOwnership(owner).send({ from: rando });
   });
 });
