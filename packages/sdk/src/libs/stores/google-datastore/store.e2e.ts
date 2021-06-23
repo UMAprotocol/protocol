@@ -4,7 +4,7 @@ import Store from ".";
 import { Datastore } from "@google-cloud/datastore";
 
 // need access to google store
-describe.skip("google-store", function () {
+describe("google-store", function () {
   let store: any;
   let datastore: Datastore;
   test("init", function () {

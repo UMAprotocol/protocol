@@ -9,6 +9,7 @@ import Express from "../../services/express";
 import Actions from "../../services/actions";
 import { ProcessEnv, AppState } from "../..";
 import { empStats } from "../../tables";
+import { uniqueId } from "lodash";
 
 async function run(env: ProcessEnv) {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
@@ -98,25 +99,37 @@ async function run(env: ProcessEnv) {
   // expose calls through express
   await Express({ port: Number(env.EXPRESS_PORT) }, actions);
 
-  // main update loop, update every block
-  provider.on("block", (blockNumber: number) => {
+  // break all state updates by block events into a cleaner function
+  async function updateByBlock(blockNumber: number) {
+    await services.blocks.handleNewBlock(blockNumber);
     // dont do update if this number or blocks hasnt passed
-    services.blocks.handleNewBlock(blockNumber).catch(console.error);
     if (blockNumber - appState.lastBlockUpdate >= updateBlocks) {
-      services.registry(appState.lastBlock, blockNumber).catch(console.error);
-      services.emps(appState.lastBlock, blockNumber).catch(console.error);
+      // update everyting
+      await services.registry(appState.lastBlock, blockNumber);
+      await services.emps(appState.lastBlock, blockNumber);
+      await services.erc20s.update();
+      await services.empStats.update();
+
       appState.lastBlockUpdate = blockNumber;
-      services.erc20s.update().catch(console.error);
-      services.empStats.update().catch(console.error);
     }
     appState.lastBlock = blockNumber;
-    services.blocks.cleanBlocks(oldestBlock).catch(console.error);
+    await services.blocks.cleanBlocks(oldestBlock);
+  }
+
+  // main update loop, update every block
+  provider.on("block", (blockNumber: number) => {
+    updateByBlock(blockNumber).catch(console.error);
   });
+
+  // separate out price updates into a different loop to query every few minutes
+  async function updatePrices() {
+    await services.collateralPrices.update();
+    await services.syntheticPrices.update();
+  }
 
   // coingeckos prices don't update very fast, so set it on an interval every few minutes
   setInterval(() => {
-    services.collateralPrices.update().catch(console.error);
-    services.syntheticPrices.update().catch(console.error);
+    updatePrices().catch(console.error);
   }, 5 * 60 * 1000);
 }
 
