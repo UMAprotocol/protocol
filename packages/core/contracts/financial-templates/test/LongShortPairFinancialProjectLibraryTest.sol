@@ -12,7 +12,7 @@ contract LongShortPairFinancialProjectLibraryTest is LongShortPairFinancialProdu
         valueToReturn = value;
     }
 
-    function computeExpiryTokensForCollateral(
+    function percentageLongCollateralAtExpiry(
         int256 /*expiryPrice*/
     ) public view override returns (uint256) {
         return valueToReturn;

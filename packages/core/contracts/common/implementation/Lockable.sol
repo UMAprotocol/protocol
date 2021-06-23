@@ -10,21 +10,18 @@ contract Lockable {
     bool private _notEntered;
 
     constructor() {
-        // Storing an initial non-zero value makes deployment a bit more
-        // expensive, but in exchange the refund on every call to nonReentrant
-        // will be lower in amount. Since refunds are capped to a percetange of
-        // the total transaction's gas, it is best to keep them low in cases
-        // like this one, to increase the likelihood of the full refund coming
-        // into effect.
+        // Storing an initial non-zero value makes deployment a bit more expensive, but in exchange the refund on every
+        // call to nonReentrant will be lower in amount. Since refunds are capped to a percentage of the total
+        // transaction's gas, it is best to keep them low in cases like this one, to increase the likelihood of the full
+        // refund coming into effect.
         _notEntered = true;
     }
 
     /**
      * @dev Prevents a contract from calling itself, directly or indirectly.
-     * Calling a `nonReentrant` function from another `nonReentrant`
-     * function is not supported. It is possible to prevent this from happening
-     * by making the `nonReentrant` function external, and make it call a
-     * `private` function that does the actual work.
+     * Calling a `nonReentrant` function from another `nonReentrant` function is not supported. It is possible to
+     * prevent this from happening by making the `nonReentrant` function external, and making it call a `private`
+     * function that does the actual state modification.
      */
     modifier nonReentrant() {
         _preEntranceCheck();
@@ -42,8 +39,9 @@ contract Lockable {
     }
 
     // Internal methods are used to avoid copying the require statement's bytecode to every `nonReentrant()` method.
-    // On entry into a function, `_preEntranceCheck()` should always be called to check if the function is being re-entered.
-    // Then, if the function modifies state, it should call `_postEntranceSet()`, perform its logic, and then call `_postEntranceReset()`.
+    // On entry into a function, `_preEntranceCheck()` should always be called to check if the function is being
+    // re-entered. Then, if the function modifies state, it should call `_postEntranceSet()`, perform its logic, and
+    // then call `_postEntranceReset()`.
     // View-only methods can simply call `_preEntranceCheck()` to make sure that it is not being re-entered.
     function _preEntranceCheck() internal view {
         // On the first call to nonReentrant, _notEntered will be true

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -13,7 +12,6 @@ import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/FixedPoint.sol";
 
 import "../../common/interfaces/ExpandedIERC20.sol";
-import "../../common/interfaces/IERC20Standard.sol";
 
 import "../../oracle/interfaces/OracleInterface.sol";
 import "../../common/interfaces/AddressWhitelistInterface.sol";
@@ -72,12 +70,7 @@ contract LongShortPair is Testable, Lockable {
     event TokensCreated(address indexed sponsor, uint256 indexed collateralUsed, uint256 indexed tokensMinted);
     event TokensRedeemed(address indexed sponsor, uint256 indexed collateralReturned, uint256 indexed tokensRedeemed);
     event ContractExpired(address indexed caller);
-    event PositionSettled(
-        address indexed sponsor,
-        uint256 colllateralReturned,
-        uint256 longTokens,
-        uint256 shortTokens
-    );
+    event PositionSettled(address indexed sponsor, uint256 collateralReturned, uint256 longTokens, uint256 shortTokens);
 
     /****************************************
      *               MODIFIERS              *
@@ -103,7 +96,7 @@ contract LongShortPair is Testable, Lockable {
      * @param _expirationTimestamp unix timestamp of when the contract will expire.
      * @param _collateralPerPair how many units of collateral are required to mint one pair of synthetic tokens.
      * @param _priceIdentifier registered in the DVM for the synthetic.
-     * @param _longToken ERC20 token used as long in the LSP. Requires mint and burn needed by this contract.
+     * @param _longToken ERC20 token used as long in the LSP. Mint and burn rights needed by this contract.
      * @param _shortToken ERC20 token used as short in the LSP. Mint and burn rights needed by this contract.
      * @param _collateralToken ERC20 token used as collateral in the LSP.
      * @param _finder UMA protocol Finder used to discover other protocol contracts.
@@ -132,7 +125,7 @@ contract LongShortPair is Testable, Lockable {
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Identifier not registered");
         require(address(_getOptimisticOracle()) != address(0), "Invalid finder");
         require(address(_financialProductLibrary) != address(0), "Invalid FinancialProductLibrary");
-        require(_getAddressWhitelist().isOnWhitelist(address(_collateralToken)), "Collateral not whitelisted");
+        require(_getCollateralWhitelist().isOnWhitelist(address(_collateralToken)), "Collateral not whitelisted");
 
         expirationTimestamp = _expirationTimestamp;
         collateralPerPair = _collateralPerPair;
@@ -169,22 +162,22 @@ contract LongShortPair is Testable, Lockable {
 
         collateralToken.safeTransferFrom(msg.sender, address(this), collateralUsed);
 
-        longToken.mint(msg.sender, tokensToCreate);
-        shortToken.mint(msg.sender, tokensToCreate);
+        require(longToken.mint(msg.sender, tokensToCreate));
+        require(shortToken.mint(msg.sender, tokensToCreate));
 
         emit TokensCreated(msg.sender, collateralUsed, tokensToCreate);
     }
 
     /**
-     * @notice Return a pair of long and short tokens equal in number to tokensToCreate. Returns the commensurate amount
-     * of collateral to the caller for the pair of tokens, defined by the collateralPerPair value.
+     * @notice Redeems a pair of long and short tokens equal in number to tokensToRedeem. Returns the commensurate
+     * amount of collateral to the caller for the pair of tokens, defined by the collateralPerPair value.
      * @dev This contract must have the `Burner` role for the `longToken` and `shortToken` in order to call `burnFrom`.
      * @dev The caller does not need to approve this contract to transfer any amount of `tokensToRedeem` since long
      * and short tokens are burned, rather than transferred, from the caller.
      * @param tokensToRedeem number of long and short synthetic tokens to redeem.
      * @return collateralReturned total collateral returned in exchange for the pair of synthetics.
      */
-    function redeem(uint256 tokensToRedeem) public preExpiration() nonReentrant() returns (uint256 collateralReturned) {
+    function redeem(uint256 tokensToRedeem) public nonReentrant() returns (uint256 collateralReturned) {
         require(longToken.burnFrom(msg.sender, tokensToRedeem));
         require(shortToken.burnFrom(msg.sender, tokensToRedeem));
 
@@ -203,7 +196,6 @@ contract LongShortPair is Testable, Lockable {
      * and short tokens are burned, rather than transferred, from the caller.
      * @param longTokensToRedeem number of long tokens to settle.
      * @param shortTokensToRedeem number of short tokens to settle.
-     * @param collateralReturned number of collateral tokens returned in exchange for long and short tokens.
      * @return collateralReturned total collateral returned in exchange for the pair of synthetics.
      */
     function settle(uint256 longTokensToRedeem, uint256 shortTokensToRedeem)
@@ -220,17 +212,17 @@ contract LongShortPair is Testable, Lockable {
             expiryPrice = _getOraclePriceExpiration(expirationTimestamp);
             // Cap the return value at 1.
             expiryPercentLong = Math.min(
-                financialProductLibrary.computeExpiryTokensForCollateral(expiryPrice),
+                financialProductLibrary.percentageLongCollateralAtExpiry(expiryPrice),
                 FixedPoint.fromUnscaledUint(1).rawValue
             );
             contractState = ContractState.ExpiredPriceReceived;
         }
 
-        longToken.burnFrom(msg.sender, longTokensToRedeem);
-        shortToken.burnFrom(msg.sender, shortTokensToRedeem);
+        require(longToken.burnFrom(msg.sender, longTokensToRedeem));
+        require(shortToken.burnFrom(msg.sender, shortTokensToRedeem));
 
-        // expiryPercentLong is a number between 0 and 1e18. 0 means all collateral goes to short tokens and
-        // 1 means all collateral goes to the long token. Total collateral returned is the sum of payouts.
+        // expiryPercentLong is a number between 0 and 1e18. 0 means all collateral goes to short tokens and 1e18 means
+        // all collateral goes to the long token. Total collateral returned is the sum of payouts.
         uint256 longCollateralRedeemed =
             FixedPoint
                 .Unsigned(longTokensToRedeem)
@@ -304,7 +296,7 @@ contract LongShortPair is Testable, Lockable {
         return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
     }
 
-    function _getAddressWhitelist() internal view returns (AddressWhitelistInterface) {
+    function _getCollateralWhitelist() internal view returns (AddressWhitelistInterface) {
         return AddressWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
     }
 

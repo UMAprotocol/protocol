@@ -7,7 +7,7 @@ import "./Timer.sol";
  * @title Base class that provides time overrides, but only if being run in test mode.
  */
 abstract contract Testable {
-    // If the contract is being run on the test network, then `timerAddress` will be the 0x0 address.
+    // If the contract is being run in production, then `timerAddress` will be the 0x0 address.
     // Note: this variable should be set on construction and never modified.
     address public timerAddress;
 
