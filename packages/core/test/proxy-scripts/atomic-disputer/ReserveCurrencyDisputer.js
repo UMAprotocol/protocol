@@ -95,7 +95,7 @@ contract("ReserveTokenDisputer", function (accounts) {
       .send({ from: accounts[0] })
       .send({ from: deployer });
 
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address, {
+    await finder.methods.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address, {
       from: deployer,
     });
 

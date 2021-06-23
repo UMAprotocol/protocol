@@ -799,7 +799,7 @@ contract("Governor", function (accounts) {
     const identifierWhitelist = await IdentifierWhitelist.new().send({ from: accounts[0] });
     await identifierWhitelist.methods.transferOwnership(newGovernor.options.address).send({ from: accounts[0] });
 
-    await finder.changeImplementationAddress(
+    await finder.methods.changeImplementationAddress(
       utf8ToHex(interfaceName.IdentifierWhitelist),
       identifierWhitelist.options.address
     );
@@ -876,7 +876,7 @@ contract("Governor", function (accounts) {
     );
 
     // Reset IdentifierWhitelist implementation as to not interfere with other tests.
-    await finder.changeImplementationAddress(
+    await finder.methods.changeImplementationAddress(
       utf8ToHex(interfaceName.IdentifierWhitelist),
       supportedIdentifiers.options.address
     );

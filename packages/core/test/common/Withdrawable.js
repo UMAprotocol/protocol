@@ -17,30 +17,40 @@ contract("Withdrawable", function (accounts) {
   beforeEach(async function () {
     await runDefaultFixture(hre);
     // Create token contract and mint tokens for use by rando.
-    token = await Token.new("Test Synthetic Token", "SYNTH", 18).send({ from: accounts[0] }).send({ from: owner });
+    token = await Token.new("Test Synthetic Token", "SYNTH", 18).send({ from: owner });
     await token.methods.addMember(1, owner).send({ from: owner });
-    await token.mint(rando, web3.utils.toWei("100", "ether"), { from: owner });
+    await token.methods.mint(rando, web3.utils.toWei("100", "ether")).send({ from: owner });
   });
 
   it("Withdraw ERC20", async function () {
     const withdrawable = await WithdrawableTest.new().send({ from: accounts[0] });
 
     // Transfer tokens to the withdrawable address without notifying the contract.
-    await token.transfer(withdrawable.options.address, web3.utils.toWei("1.5", "ether"), { from: rando });
+    await token.methods.transfer(withdrawable.options.address, web3.utils.toWei("1.5", "ether")).send({ from: rando });
 
     // Attempted to withdraw more than the current balance.
-    assert(await didContractThrow(withdrawable.withdrawErc20(token.options.address, web3.utils.toWei("2", "ether"))));
+    assert(
+      await didContractThrow(
+        withdrawable.methods
+          .withdrawErc20(token.options.address, web3.utils.toWei("2", "ether"))
+          .send({ from: accounts[0] })
+      )
+    );
 
     // Non owner can't withdraw.
     assert(
       await didContractThrow(
-        withdrawable.withdrawErc20(token.options.address, web3.utils.toWei("0.5", "ether"), { from: rando })
+        withdrawable.methods
+          .withdrawErc20(token.options.address, web3.utils.toWei("0.5", "ether"))
+          .send({ from: rando })
       )
     );
 
     // Should only withdraw 0.5 tokens.
-    let startingBalance = await token.methods.balanceOf(owner).call();
-    await withdrawable.withdrawErc20(token.options.address, web3.utils.toWei("0.5", "ether"));
+    let startingBalance = web3.utils.toBN(await token.methods.balanceOf(owner).call());
+    await withdrawable.methods
+      .withdrawErc20(token.options.address, web3.utils.toWei("0.5", "ether"))
+      .send({ from: accounts[0] });
     let endingBalance = await token.methods.balanceOf(owner).call();
     assert.equal(
       startingBalance.add(web3.utils.toBN(web3.utils.toWei("0.5", "ether"))).toString(),
@@ -48,8 +58,10 @@ contract("Withdrawable", function (accounts) {
     );
 
     // Withdraw remaining balance.
-    startingBalance = await token.methods.balanceOf(owner).call();
-    await withdrawable.withdrawErc20(token.options.address, web3.utils.toWei("1", "ether"));
+    startingBalance = web3.utils.toBN(await token.methods.balanceOf(owner).call());
+    await withdrawable.methods
+      .withdrawErc20(token.options.address, web3.utils.toWei("1", "ether"))
+      .send({ from: accounts[0] });
     endingBalance = await token.methods.balanceOf(owner).call();
     assert.equal(
       startingBalance.add(web3.utils.toBN(web3.utils.toWei("1", "ether"))).toString(),
@@ -62,17 +74,19 @@ contract("Withdrawable", function (accounts) {
     const withdrawable = await WithdrawableTest.new().send({ from: accounts[0] });
 
     // Add 1.5 ETH to the contract.
-    await withdrawable.pay({ from: rando, value: web3.utils.toWei("1.5", "ether") });
+    await withdrawable.methods.pay().send({ from: rando, value: web3.utils.toWei("1.5", "ether") });
 
     // Attempted to withdraw more than the current balance.
-    assert(await didContractThrow(withdrawable.withdraw(web3.utils.toWei("2", "ether"))));
+    assert(
+      await didContractThrow(withdrawable.methods.withdraw(web3.utils.toWei("2", "ether")).send({ from: accounts[0] }))
+    );
 
     // Non owner can't withdraw.
-    assert(await didContractThrow(withdrawable.withdraw(web3.utils.toWei("2", "ether"), { from: rando })));
+    assert(await didContractThrow(withdrawable.methods.withdraw(web3.utils.toWei("2", "ether")).send({ from: rando })));
 
     // Should only withdraw 0.5 tokens.
     let startingBalance = web3.utils.toBN(await web3.eth.getBalance(withdrawable.options.address));
-    await withdrawable.withdraw(web3.utils.toWei("0.5", "ether"));
+    await withdrawable.methods.withdraw(web3.utils.toWei("0.5", "ether")).send({ from: accounts[0] });
     let endingBalance = web3.utils.toBN(await web3.eth.getBalance(withdrawable.options.address));
     assert.equal(
       startingBalance.sub(web3.utils.toBN(web3.utils.toWei("0.5", "ether"))).toString(),
@@ -80,7 +94,7 @@ contract("Withdrawable", function (accounts) {
     );
 
     // Withdraw remaining balance.
-    await withdrawable.withdraw(web3.utils.toWei("1", "ether"));
+    await withdrawable.methods.withdraw(web3.utils.toWei("1", "ether")).send({ from: accounts[0] });
     endingBalance = web3.utils.toBN(await web3.eth.getBalance(withdrawable.options.address));
     assert.equal(endingBalance.toString(), "0");
   });

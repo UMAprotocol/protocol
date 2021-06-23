@@ -1,9 +1,8 @@
 const hre = require("hardhat");
 const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
+const { getContract, assertEventNotEmitted, assertEventEmitted } = hre;
 const { interfaceName, didContractThrow } = require("@uma/common");
 const { assert } = require("chai");
-const truffleAssert = require("truffle-assertions");
 
 // Tested Contract
 const FundingRateApplier = getContract("FundingRateApplierTest");
@@ -85,16 +84,17 @@ contract("FundingRateApplier", function (accounts) {
 
     // Set up a fresh mock oracle in the finder.
     mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({ from: accounts[0] });
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address);
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address)
+      .send({ from: accounts[0] });
 
     // Set up a fresh optimistic oracle in the finder.
     optimisticOracle = await OptimisticOracle.new(liveness, finder.options.address, timer.options.address).send({
       from: accounts[0],
     });
-    await finder.changeImplementationAddress(
-      utf8ToHex(interfaceName.OptimisticOracle),
-      optimisticOracle.options.address
-    );
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
+      .send({ from: accounts[0] });
 
     // Set up a fresh collateral currency to use.
     collateral = await Token.new("Wrapped Ether", "WETH", 18).send({ from: accounts[0] });
@@ -115,7 +115,7 @@ contract("FundingRateApplier", function (accounts) {
         proposalTimePastLimit: proposalTimePastLimit, // 30 mins
       },
       timer.options.address
-    );
+    ).send({ from: accounts[0] });
 
     // Set up the funding rate applier.
     fundingRateApplier = await FundingRateApplier.new(
@@ -131,13 +131,13 @@ contract("FundingRateApplier", function (accounts) {
     await collateral.methods.mint(fundingRateApplier.options.address, initialUserBalance).send({ from: accounts[0] });
 
     // Approve the funding rate applier to spend the owner and other's funds.
-    await collateral.approve(fundingRateApplier.options.address, toWei("100000000"), { from: owner });
-    await collateral.approve(fundingRateApplier.options.address, toWei("100000000"), { from: other });
+    await collateral.methods.approve(fundingRateApplier.options.address, toWei("100000000")).send({ from: owner });
+    await collateral.methods.approve(fundingRateApplier.options.address, toWei("100000000")).send({ from: other });
 
     // Approve the optimistic oracle to spend the disputer's funds.
-    await collateral.approve(optimisticOracle.options.address, toWei("100000000"), { from: disputer });
+    await collateral.methods.approve(optimisticOracle.options.address, toWei("100000000")).send({ from: disputer });
 
-    startTime = (await fundingRateApplier.methods.getCurrentTime().call()).toNumber();
+    startTime = Number(await fundingRateApplier.methods.getCurrentTime().call());
     currentTime = startTime;
 
     // Expected ancillary data: "tokenAddress:<collateral-token-address>"
@@ -165,41 +165,33 @@ contract("FundingRateApplier", function (accounts) {
     // Funding rate of 0.15% charged over 20 seconds on a starting multiplier of 1:
     // Effective Rate: 0.0015 * 20 = 0.03, funding rate is positive so add 1 => 1.03
     // Cumulative Multiplier: 1 * 1.03 = 1.03
-    const test1 = await fundingRateApplier.calculateEffectiveFundingRate(
-      20,
-      { rawValue: toWei("0.0015") },
-      { rawValue: toWei("1") }
-    );
+    const test1 = await fundingRateApplier.methods
+      .calculateEffectiveFundingRate(20, { rawValue: toWei("0.0015") }, { rawValue: toWei("1") })
+      .call();
     assert.equal(test1.rawValue, toWei("1.03"));
 
     // Previous test but change the starting multiplier to 1.05:
     // Effective Rate: 0.0015 * 20 = 0.03, funding rate is positive so add 1 => 1.03
     // Cumulative Multiplier: 1.05 * 1.03 = 1.0815
-    const test2 = await fundingRateApplier.calculateEffectiveFundingRate(
-      20,
-      { rawValue: toWei("0.0015") },
-      { rawValue: toWei("1.05") }
-    );
+    const test2 = await fundingRateApplier.methods
+      .calculateEffectiveFundingRate(20, { rawValue: toWei("0.0015") }, { rawValue: toWei("1.05") })
+      .call();
     assert.equal(test2.rawValue, toWei("1.0815"));
 
     // Previous test but change the funding rate to -0.15%:
     // Effective Rate: -0.0015 * 20 = -0.03, funding rate is negative so subtract from 1 => 0.97
     // Cumulative Multiplier: 1.05 * 0.97 = 1.0185
-    const test3 = await fundingRateApplier.calculateEffectiveFundingRate(
-      20,
-      { rawValue: toWei("-0.0015") },
-      { rawValue: toWei("1.05") }
-    );
+    const test3 = await fundingRateApplier.methods
+      .calculateEffectiveFundingRate(20, { rawValue: toWei("-0.0015") }, { rawValue: toWei("1.05") })
+      .call();
     assert.equal(test3.rawValue, toWei("1.0185"));
 
     // Previous test but change the funding rate to 0% meaning that the multiplier shouldn't change:
     // Effective Rate: 0 * 20 = 0, funding rate is neutral so no change to the cumulative multiplier.
     // Cumulative Multiplier: 1.05 * 1 = 1.05
-    const test4 = await fundingRateApplier.calculateEffectiveFundingRate(
-      20,
-      { rawValue: toWei("0") },
-      { rawValue: toWei("1.05") }
-    );
+    const test4 = await fundingRateApplier.methods
+      .calculateEffectiveFundingRate(20, { rawValue: toWei("0") }, { rawValue: toWei("1.05") })
+      .call();
     assert.equal(test4.rawValue, toWei("1.05"));
   });
 
@@ -213,8 +205,8 @@ contract("FundingRateApplier", function (accounts) {
     assert.equal(fundingRate.proposalTime.toString(), "0");
   });
   it("Calling applyFundingRate without a pending proposal does not change multiplier", async () => {
-    await fundingRateApplier.setCurrentTime(startTime + 1000);
-    const receipt = await fundingRateApplier.methods.applyFundingRate().call();
+    await fundingRateApplier.methods.setCurrentTime(startTime + 1000).send({ from: accounts[0] });
+    const receipt = await fundingRateApplier.methods.applyFundingRate().send({ from: accounts[0] });
     assert.equal(
       (await fundingRateApplier.methods.fundingRate().call()).cumulativeMultiplier.rawValue.toString(),
       toWei("1")
@@ -222,14 +214,26 @@ contract("FundingRateApplier", function (accounts) {
     assert.equal((await fundingRateApplier.methods.fundingRate().call()).rate.rawValue.toString(), "0");
 
     // A NewFundingRateMultiplier is emitted.
-    truffleAssert.eventNotEmitted(receipt, "FundingRateUpdated");
+    await assertEventNotEmitted(receipt, fundingRateApplier, "FundingRateUpdated");
   });
 
   it("Funding rate proposal must be within limits", async function () {
     // Max/min funding rate per second is [< +1e-5, > -1e-5].
-    const currentTime = (await fundingRateApplier.methods.getCurrentTime().call()).toNumber();
-    assert(await didContractThrow(fundingRateApplier.proposeFundingRate({ rawValue: toWei("0.00002") }, currentTime)));
-    assert(await didContractThrow(fundingRateApplier.proposeFundingRate({ rawValue: toWei("-0.00002") }, currentTime)));
+    const currentTime = Number(await fundingRateApplier.methods.getCurrentTime().call());
+    assert(
+      await didContractThrow(
+        fundingRateApplier.methods
+          .proposeFundingRate({ rawValue: toWei("0.00002") }, currentTime)
+          .send({ from: accounts[0] })
+      )
+    );
+    assert(
+      await didContractThrow(
+        fundingRateApplier.methods
+          .proposeFundingRate({ rawValue: toWei("-0.00002") }, currentTime)
+          .send({ from: accounts[0] })
+      )
+    );
   });
 
   it("Proposal time checks", async () => {
@@ -248,10 +252,18 @@ contract("FundingRateApplier", function (accounts) {
 
     // Time must be within the past and future bounds around the current time.
     assert(
-      await didContractThrow(fundingRateApplier.proposeFundingRate(newRate, currentTime - proposalTimePastLimit - 1))
+      await didContractThrow(
+        fundingRateApplier.methods
+          .proposeFundingRate(newRate, currentTime - proposalTimePastLimit - 1)
+          .send({ from: accounts[0] })
+      )
     );
-    await fundingRateApplier.proposeFundingRate.call(newRate, currentTime - proposalTimePastLimit);
-    assert(await didContractThrow(fundingRateApplier.proposeFundingRate(newRate, currentTime + 1)));
+    await fundingRateApplier.methods.proposeFundingRate(newRate, currentTime - proposalTimePastLimit).call();
+    assert(
+      await didContractThrow(
+        fundingRateApplier.methods.proposeFundingRate(newRate, currentTime + 1).send({ from: accounts[0] })
+      )
+    );
     await fundingRateApplier.methods.proposeFundingRate(newRate, currentTime).send({ from: accounts[0] });
   });
 
@@ -291,8 +303,8 @@ contract("FundingRateApplier", function (accounts) {
       await fundingRateApplier.methods.setCurrentTime(currentTime).send({ from: accounts[0] });
 
       // Apply the newly expired rate.
-      const receipt = await fundingRateApplier.methods.applyFundingRate().call();
-      truffleAssert.eventEmitted(receipt, "FundingRateUpdated", (ev) => {
+      const receipt = await fundingRateApplier.methods.applyFundingRate().send({ from: accounts[0] });
+      await assertEventEmitted(receipt, fundingRateApplier, "FundingRateUpdated", (ev) => {
         return (
           ev.newFundingRate.toString() === defaultProposal &&
           ev.updateTime.toString() === (currentTime - delay).toString() && // Update time is equal to the proposal time.
@@ -365,7 +377,9 @@ contract("FundingRateApplier", function (accounts) {
       );
 
       // Propose a new rate of the negative of the previous proposal
-      await fundingRateApplier.proposeFundingRate({ rawValue: `-${defaultProposal}` }, currentTime);
+      await fundingRateApplier.methods
+        .proposeFundingRate({ rawValue: `-${defaultProposal}` }, currentTime)
+        .send({ from: accounts[0] });
 
       // Move time forward again.
       currentTime += delay;
@@ -386,7 +400,7 @@ contract("FundingRateApplier", function (accounts) {
         finder.options.address,
         timer.options.address
       ).send({ from: accounts[0] });
-      await finder.changeImplementationAddress(
+      await finder.methods.changeImplementationAddress(
         utf8ToHex(interfaceName.OptimisticOracle),
         optimisticOracleV2.options.address
       );

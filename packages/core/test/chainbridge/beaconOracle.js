@@ -1,7 +1,6 @@
 const hre = require("hardhat");
 const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
-const TruffleAssert = require("truffle-assertions");
+const { getContract, assertEventEmitted } = hre;
 const { assert } = require("chai");
 const { didContractThrow, interfaceName, RegistryRolesEnum } = require("@uma/common");
 const BeaconOracle = getContract("BeaconOracleMock");
@@ -39,9 +38,11 @@ contract("BeaconOracle", async (accounts) => {
   it("requestPrice", async function () {
     const txn = await beaconOracle.methods
       .requestPrice(testIdentifier, testRequestTime, testAncillary)
-      .call({ from: owner });
-    TruffleAssert.eventEmitted(
+      .send({ from: owner });
+
+    await assertEventEmitted(
       txn,
+      beaconOracle,
       "PriceRequestAdded",
       (event) =>
         event.chainID.toString() === chainID.toString() &&
@@ -54,9 +55,10 @@ contract("BeaconOracle", async (accounts) => {
     await beaconOracle.methods.requestPrice(testIdentifier, testRequestTime, testAncillary).send({ from: owner });
     const txn = await beaconOracle.methods
       .publishPrice(testIdentifier, testRequestTime, testAncillary, testPrice)
-      .call({ from: owner });
-    TruffleAssert.eventEmitted(
+      .send({ from: owner });
+    await assertEventEmitted(
       txn,
+      beaconOracle,
       "PushedPrice",
       (event) =>
         event.chainID.toString() === chainID.toString() &&
@@ -87,9 +89,11 @@ contract("BeaconOracle", async (accounts) => {
   });
   it("getBridge", async function () {
     // Point Finder "Bridge" to arbitrary contract:
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), beaconOracle.options.address);
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Bridge), beaconOracle.options.address)
+      .send({ from: accounts[0] });
     assert.equal(
-      await beaconOracle.methods.getBridge().send({ from: accounts[0] }),
+      await beaconOracle.methods.getBridge().call(),
       beaconOracle.options.address,
       "getBridge doesn't point to correct Bridge set in Finder"
     );

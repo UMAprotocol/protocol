@@ -44,9 +44,9 @@ contract("SinkGovernor", async (accounts) => {
     await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner).send({ from: accounts[0] });
     await registry.methods.registerContract([], owner).send({ from: owner });
     finder = await Finder.deployed();
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.options.address);
+    await finder.methods.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.options.address);
     bridge = await Bridge.new(chainID, [owner], 1, 0, 100).send({ from: accounts[0] });
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridge.options.address);
+    await finder.methods.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridge.options.address);
     sinkGovernor = await SinkGovernor.new(finder.options.address).send({ from: accounts[0] });
     sinkGovernorResourceId = getResourceId(chainID);
     handler = await GenericHandler.new(
@@ -56,15 +56,18 @@ contract("SinkGovernor", async (accounts) => {
       [blankFunctionSig],
       [blankFunctionSig]
     ).send({ from: accounts[0] });
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), handler.options.address);
-    await bridge.adminSetGenericResource(
-      handler.options.address,
-      sinkGovernorResourceId,
-      sinkGovernor.options.address,
-      blankFunctionSig,
-      getFunctionSignature(sinkGovernor, "executeGovernance"),
-      { from: owner }
-    );
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), handler.options.address)
+      .send({ from: accounts[0] });
+    await bridge.methods
+      .adminSetGenericResource(
+        handler.options.address,
+        sinkGovernorResourceId,
+        sinkGovernor.options.address,
+        blankFunctionSig,
+        getFunctionSignature(SinkGovernor, "executeGovernance")
+      )
+      .send({ from: owner });
 
     erc20 = await ERC20.new("Test Token", "TEST", 18).send({ from: accounts[0] });
     await erc20.methods.addMember(1, owner).send({ from: accounts[0] });
@@ -74,7 +77,7 @@ contract("SinkGovernor", async (accounts) => {
     assert.equal(await sinkGovernor.methods.finder().call(), finder.options.address, "finder not set");
   });
   it("executeGovernance", async function () {
-    const innerTransactionCalldata = erc20.contract.methods.transfer(rando, web3.utils.toWei("1")).encodeABI();
+    const innerTransactionCalldata = erc20.methods.transfer(rando, web3.utils.toWei("1")).encodeABI();
 
     assert(
       await didContractThrow(

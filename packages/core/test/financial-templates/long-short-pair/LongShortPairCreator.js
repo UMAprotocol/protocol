@@ -69,7 +69,7 @@ contract("LongShortPairCreator", function (accounts) {
       finder.options.address,
       timer.options.address
     ).send({ from: accounts[0] });
-    await finder.changeImplementationAddress(
+    await finder.methods.changeImplementationAddress(
       utf8ToHex(interfaceName.OptimisticOracle),
       optimisticOracle.options.address,
       { from: deployer }

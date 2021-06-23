@@ -1,6 +1,6 @@
 const hre = require("hardhat");
 const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
+const { getContract, assertEventEmitted } = hre;
 // Test integrations between GenericHandler and UMA voting contracts. The purpose of this test script and the contracts
 // found in the `chainbridge` directory is to make sure that the latest Voting interface is compatible with the
 // chainbridge GenericHandler contract. This file contains an End-to-End test. Unit tests for BeaconOracle
@@ -8,7 +8,6 @@ const { getContract } = hre;
 // Note: Inspired by tests from chainbridge-solidity repo's test folder:
 // https://github.com/ChainSafe/chainbridge-solidity/tree/master/test/handlers/generic
 
-const TruffleAssert = require("truffle-assertions");
 const Ethers = require("ethers");
 
 const Helpers = require("./helpers");
@@ -97,21 +96,27 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
     await registry.methods.registerContract([], depositerAddress).send({ from: depositerAddress });
     sourceFinder = await Finder.deployed();
     sinkFinder = await Finder.new().send({ from: accounts[0] });
-    await sinkFinder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.options.address);
+    await sinkFinder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.options.address)
+      .send({ from: accounts[0] });
     identifierWhitelist = await IdentifierWhitelist.deployed();
 
     // MockOracle is the test DVM for Mainnet.
     voting = await MockOracle.new(sourceFinder.options.address, ZERO_ADDRESS).send({ from: accounts[0] });
-    await sourceFinder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), voting.options.address);
+    await sourceFinder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), voting.options.address)
+      .send({ from: accounts[0] });
 
     // Mainnet bridge variables:
     bridgeMainnet = await BridgeContract.new(chainId, initialRelayers, relayerThreshold, 0, 100).send({
       from: accounts[0],
     });
-    await sourceFinder.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridgeMainnet.options.address);
+    await sourceFinder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridgeMainnet.options.address)
+      .send({ from: accounts[0] });
     sourceOracle = await SourceOracle.new(sourceFinder.options.address, chainId).send({ from: accounts[0] });
     votingResourceId = getResourceId(chainId, "Oracle");
-    assert.equal(votingResourceId, await sourceOracle.methods.getResourceId().send({ from: accounts[0] }));
+    assert.equal(votingResourceId, await sourceOracle.methods.getResourceId().call());
     sourceGovernor = await SourceGovernor.new(sourceFinder.options.address, chainId).send({ from: accounts[0] });
     governanceResourceId = getResourceId(chainId, "Governor");
 
@@ -119,11 +124,13 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
     bridgeSidechain = await BridgeContract.new(sidechainId, initialRelayers, relayerThreshold, 0, 100).send({
       from: accounts[0],
     });
-    await sinkFinder.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridgeSidechain.options.address);
+    await sinkFinder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridgeSidechain.options.address)
+      .send({ from: accounts[0] });
     sinkOracle = await SinkOracle.new(sinkFinder.options.address, sidechainId, chainId).send({ from: accounts[0] });
     assert.equal(
       votingResourceId,
-      await sinkOracle.methods.getResourceId().send({ from: accounts[0] }),
+      await sinkOracle.methods.getResourceId().call(),
       "Sink and Source oracles should have same resource ID"
     );
     sinkGovernor = await SinkGovernor.new(sinkFinder.options.address).send({ from: accounts[0] });
@@ -135,60 +142,66 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
     genericHandlerMainnet = await GenericHandlerContract.new(bridgeMainnet.options.address, [], [], [], []).send({
       from: accounts[0],
     });
-    await sourceFinder.changeImplementationAddress(
-      utf8ToHex(interfaceName.GenericHandler),
-      genericHandlerMainnet.options.address
-    );
+    await sourceFinder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), genericHandlerMainnet.options.address)
+      .send({ from: accounts[0] });
     genericHandlerSidechain = await GenericHandlerContract.new(bridgeSidechain.options.address, [], [], [], []).send({
       from: accounts[0],
     });
-    await sinkFinder.changeImplementationAddress(
-      utf8ToHex(interfaceName.GenericHandler),
-      genericHandlerSidechain.options.address
-    );
+    await sinkFinder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), genericHandlerSidechain.options.address)
+      .send({ from: accounts[0] });
 
     // Mainnet resource ID 1: Voting Contract
     // - Deposit: Should validate that price was resolved by DVM.
     // - ExecuteProposal: Should request price to DVM.
-    await bridgeMainnet.adminSetGenericResource(
-      genericHandlerMainnet.options.address,
-      votingResourceId,
-      sourceOracle.options.address,
-      Helpers.getFunctionSignature(sourceOracle, "validateDeposit"),
-      Helpers.getFunctionSignature(sourceOracle, "executeRequestPrice")
-    );
+    await bridgeMainnet.methods
+      .adminSetGenericResource(
+        genericHandlerMainnet.options.address,
+        votingResourceId,
+        sourceOracle.options.address,
+        Helpers.getFunctionSignature(SourceOracle, "validateDeposit"),
+        Helpers.getFunctionSignature(SourceOracle, "executeRequestPrice")
+      )
+      .send({ from: accounts[0] });
     // Sidechain resource ID 1: Voting Contract
     // - Deposit: Should validate that price was requested.
     // - ExecuteProposal: Should publish price resolved by DVM.
-    await bridgeSidechain.adminSetGenericResource(
-      genericHandlerSidechain.options.address,
-      votingResourceId,
-      sinkOracle.options.address,
-      Helpers.getFunctionSignature(sinkOracle, "validateDeposit"),
-      Helpers.getFunctionSignature(sinkOracle, "executePublishPrice")
-    );
+    await bridgeSidechain.methods
+      .adminSetGenericResource(
+        genericHandlerSidechain.options.address,
+        votingResourceId,
+        sinkOracle.options.address,
+        Helpers.getFunctionSignature(SinkOracle, "validateDeposit"),
+        Helpers.getFunctionSignature(SinkOracle, "executePublishPrice")
+      )
+      .send({ from: accounts[0] });
 
     // Mainnet resource ID 1: SourceGovernor Contract
     // - Deposit: Should validate that the request was actually sent by the source governor.
     // - ExecuteProposal: No need for an execution proposal because it does not receive messages from L2.
-    await bridgeMainnet.adminSetGenericResource(
-      genericHandlerMainnet.options.address,
-      governanceResourceId,
-      sourceGovernor.options.address,
-      Helpers.getFunctionSignature(sourceGovernor, "verifyRequest"),
-      Helpers.blankFunctionSig
-    );
+    await bridgeMainnet.methods
+      .adminSetGenericResource(
+        genericHandlerMainnet.options.address,
+        governanceResourceId,
+        sourceGovernor.options.address,
+        Helpers.getFunctionSignature(SourceGovernor, "verifyRequest"),
+        Helpers.blankFunctionSig
+      )
+      .send({ from: accounts[0] });
 
     // Sidechain resource ID 1: SinkGovernor Contract
     // - Deposit: No need for a deposit function -- does not send cross-chain messages.
     // - ExecuteProposal: executes an incoming governance proposal.
-    await bridgeSidechain.adminSetGenericResource(
-      genericHandlerSidechain.options.address,
-      governanceResourceId,
-      sinkGovernor.options.address,
-      Helpers.blankFunctionSig,
-      Helpers.getFunctionSignature(sinkGovernor, "executeGovernance")
-    );
+    await bridgeSidechain.methods
+      .adminSetGenericResource(
+        genericHandlerSidechain.options.address,
+        governanceResourceId,
+        sinkGovernor.options.address,
+        Helpers.blankFunctionSig,
+        Helpers.getFunctionSignature(SinkGovernor, "executeGovernance")
+      )
+      .send({ from: accounts[0] });
 
     // Deploy an ERC20 so the SinkGovernor contract has something to act on.
     erc20 = await ERC20.new("Test Token", "TEST", 18).send({ from: accounts[0] });
@@ -201,11 +214,12 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
     // Request price triggers cross-chain deposit:
     const depositTxn = await sinkOracle.methods
       .requestPrice(identifier, requestTime, ancillaryData)
-      .call({ from: depositerAddress });
+      .send({ from: depositerAddress });
 
     // Bridge emits a Deposit event and the SinkOracle emitted a PriceRequest event.
-    TruffleAssert.eventEmitted(
+    await assertEventEmitted(
       depositTxn,
+      sinkOracle,
       "PriceRequestAdded",
       (event) =>
         event.chainID.toString() === sidechainId.toString() &&
@@ -213,9 +227,10 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
         event.time.toString() === requestTime.toString() &&
         event.ancillaryData.toLowerCase() === ancillaryData.toLowerCase()
     );
-    const depositInternalTx = await TruffleAssert.createTransactionResult(bridgeSidechain, depositTxn.tx);
-    TruffleAssert.eventEmitted(
-      depositInternalTx,
+
+    await assertEventEmitted(
+      depositTxn,
+      bridgeSidechain,
       "Deposit",
       (event) =>
         event.destinationChainID.toString() === chainId.toString() &&
@@ -234,30 +249,22 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
     );
     const proposalData = Helpers.createGenericDepositData(depositRecord._metaData);
     const proposalDataHash = Ethers.utils.keccak256(genericHandlerMainnet.options.address + proposalData.substr(2));
-    TruffleAssert.passes(
-      await bridgeMainnet.methods
-        .voteProposal(sidechainId, expectedDepositNonce, votingResourceId, proposalDataHash)
-        .send({ from: relayer1Address })
-    );
-    TruffleAssert.passes(
-      await bridgeMainnet.methods
-        .voteProposal(sidechainId, expectedDepositNonce, votingResourceId, proposalDataHash)
-        .send({ from: relayer2Address })
-    );
+    await bridgeMainnet.methods
+      .voteProposal(sidechainId, expectedDepositNonce, votingResourceId, proposalDataHash)
+      .send({ from: relayer1Address });
+    await bridgeMainnet.methods
+      .voteProposal(sidechainId, expectedDepositNonce, votingResourceId, proposalDataHash)
+      .send({ from: relayer2Address });
 
     // This will call requestPrice on the SourceOracle, which will make a price request to the DVM.
-    const executeProposalTx = await bridgeMainnet.executeProposal(
-      sidechainId,
-      expectedDepositNonce,
-      proposalData,
-      votingResourceId,
-      { from: relayer1Address }
-    );
+    const executeProposalTx = await bridgeMainnet.methods
+      .executeProposal(sidechainId, expectedDepositNonce, proposalData, votingResourceId)
+      .send({ from: relayer1Address });
 
     // Verifying price was requested on mainnet DVM and source oracle.
-    let internalTx = await TruffleAssert.createTransactionResult(sourceOracle, executeProposalTx.tx);
-    TruffleAssert.eventEmitted(
-      internalTx,
+    await assertEventEmitted(
+      executeProposalTx,
+      sourceOracle,
       "PriceRequestAdded",
       (event) =>
         event.chainID.toString() === sidechainId.toString() &&
@@ -265,9 +272,10 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
         event.time.toString() === requestTime.toString() &&
         event.ancillaryData.toLowerCase() === ancillaryData.toLowerCase()
     );
-    internalTx = await TruffleAssert.createTransactionResult(voting, executeProposalTx.tx);
-    TruffleAssert.eventEmitted(
-      internalTx,
+
+    await assertEventEmitted(
+      executeProposalTx,
+      voting,
       "PriceRequestAdded",
       (event) =>
         hexToUtf8(event.identifier) === hexToUtf8(identifier) &&
@@ -287,7 +295,9 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
     // Deposit will fail because price has not been requested on the SourceOracle yet, so let's manually request one:
     // Note: Only GenericHandler can call requestPrice on sourceOracle, so we temporarily give this role to an EOA.
     // In production, the price would have been requested originally from a Deposit on the sidechain Bridge.
-    await sourceFinder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), depositerAddress);
+    await sourceFinder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), depositerAddress)
+      .send({ from: accounts[0] });
     await sourceOracle.methods
       .executeRequestPrice(sidechainId, identifier, requestTime, ancillaryData)
       .send({ from: depositerAddress });
@@ -296,10 +306,10 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
 
     const depositTxn = await sourceOracle.methods
       .publishPrice(sidechainId, identifier, requestTime, ancillaryData)
-      .call({ from: depositerAddress });
+      .send({ from: depositerAddress });
 
     // Bridge emits a Deposit event and the SinkOracle emitted a PushedPrice event.
-    TruffleAssert.eventEmitted(depositTxn, "PushedPrice", (event) => {
+    await assertEventEmitted(depositTxn, sourceOracle, "PushedPrice", (event) => {
       return (
         event.chainID.toString() === sidechainId.toString() &&
         hexToUtf8(event.identifier) === hexToUtf8(identifier) &&
@@ -308,9 +318,10 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
         event.price.toString() === requestPrice
       );
     });
-    const depositInternalTx = await TruffleAssert.createTransactionResult(bridgeMainnet, depositTxn.tx);
-    TruffleAssert.eventEmitted(
-      depositInternalTx,
+
+    await assertEventEmitted(
+      depositTxn,
+      bridgeMainnet,
       "Deposit",
       (event) =>
         event.destinationChainID.toString() === sidechainId.toString() &&
@@ -333,31 +344,22 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
     );
     const proposalData = Helpers.createGenericDepositData(depositRecord._metaData);
     const proposalDataHash = Ethers.utils.keccak256(genericHandlerSidechain.options.address + proposalData.substr(2));
-    TruffleAssert.passes(
-      await bridgeSidechain.methods
-        .voteProposal(chainId, expectedDepositNonce, votingResourceId, proposalDataHash)
-        .send({ from: relayer1Address })
-    );
-    TruffleAssert.passes(
-      await bridgeSidechain.methods
-        .voteProposal(chainId, expectedDepositNonce, votingResourceId, proposalDataHash)
-        .send({ from: relayer2Address })
-    );
+    await bridgeSidechain.methods
+      .voteProposal(chainId, expectedDepositNonce, votingResourceId, proposalDataHash)
+      .send({ from: relayer1Address });
+    await bridgeSidechain.methods
+      .voteProposal(chainId, expectedDepositNonce, votingResourceId, proposalDataHash)
+      .send({ from: relayer2Address });
 
     // This will call requestPrice on the SinkOracle, which will publish the price that the DVM resolved.
     // Note: This will fail unless a price has been requested on the sink oracle.
     await sinkOracle.methods.requestPrice(identifier, requestTime, ancillaryData).send({ from: depositerAddress });
-    const executeProposalTx = await bridgeSidechain.executeProposal(
-      chainId,
-      expectedDepositNonce,
-      proposalData,
-      votingResourceId,
-      { from: relayer1Address }
-    );
+    const executeProposalTx = await bridgeSidechain.methods
+      .executeProposal(chainId, expectedDepositNonce, proposalData, votingResourceId)
+      .send({ from: relayer1Address });
 
     // Verifying price was published on sidechain sink oracle.
-    const internalTx = await TruffleAssert.createTransactionResult(sinkOracle, executeProposalTx.tx);
-    TruffleAssert.eventEmitted(internalTx, "PushedPrice", (event) => {
+    await assertEventEmitted(executeProposalTx, sinkOracle, "PushedPrice", (event) => {
       return (
         event.chainID.toString() === sidechainId.toString() &&
         hexToUtf8(event.identifier) === hexToUtf8(identifier) &&
@@ -370,22 +372,22 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
 
   // Scenario: someone wants to send a governance proposal from mainnet to the sidechain.
   it("Mainnet deposit: Governance transaction sent to sidechain", async function () {
-    await sinkFinder.changeImplementationAddress(
-      utf8ToHex(interfaceName.GenericHandler),
-      genericHandlerSidechain.options.address
-    );
-    await sourceFinder.changeImplementationAddress(
-      utf8ToHex(interfaceName.GenericHandler),
-      genericHandlerMainnet.options.address
-    );
+    await sinkFinder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), genericHandlerSidechain.options.address)
+      .send({ from: accounts[0] });
+    await sourceFinder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), genericHandlerMainnet.options.address)
+      .send({ from: accounts[0] });
 
-    const innerTransactionCalldata = erc20.contract.methods.transfer(rando, web3.utils.toWei("1")).encodeABI();
+    const innerTransactionCalldata = erc20.methods.transfer(rando, web3.utils.toWei("1")).encodeABI();
 
     await sourceGovernor.methods
       .relayGovernance(sidechainId, erc20.options.address, innerTransactionCalldata)
       .send({ from: owner });
 
-    const { _resourceID, _metaData } = await genericHandlerMainnet._depositRecords(sidechainId, expectedDepositNonce);
+    const { _resourceID, _metaData } = await genericHandlerMainnet.methods
+      ._depositRecords(sidechainId, expectedDepositNonce)
+      .call();
 
     const data = Helpers.createGenericDepositData(_metaData);
 

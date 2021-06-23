@@ -1,7 +1,6 @@
 const hre = require("hardhat");
 const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
-const TruffleAssert = require("truffle-assertions");
+const { getContract, assertEventEmitted } = hre;
 const { assert } = require("chai");
 const { didContractThrow, interfaceName, RegistryRolesEnum, ZERO_ADDRESS } = require("@uma/common");
 const SourceOracle = getContract("SourceOracle");
@@ -46,9 +45,13 @@ contract("SourceOracle", async (accounts) => {
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.methods.addSupportedIdentifier(testIdentifier).send({ from: accounts[0] });
     finder = await Finder.deployed();
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.options.address);
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.options.address)
+      .send({ from: accounts[0] });
     bridge = await Bridge.new(chainID, [owner], 1, 0, 100).send({ from: accounts[0] });
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridge.options.address);
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridge.options.address)
+      .send({ from: accounts[0] });
     sourceOracle = await SourceOracle.new(finder.options.address, chainID).send({ from: accounts[0] });
     sourceOracleResourceId = await sourceOracle.methods.getResourceId().call();
     handler = await GenericHandler.new(
@@ -58,36 +61,45 @@ contract("SourceOracle", async (accounts) => {
       [blankFunctionSig],
       [blankFunctionSig]
     ).send({ from: accounts[0] });
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), handler.options.address);
-    await bridge.adminSetGenericResource(
-      handler.options.address,
-      sourceOracleResourceId,
-      sourceOracle.options.address,
-      blankFunctionSig,
-      blankFunctionSig,
-      { from: owner }
-    );
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), handler.options.address)
+      .send({ from: accounts[0] });
+    await bridge.methods
+      .adminSetGenericResource(
+        handler.options.address,
+        sourceOracleResourceId,
+        sourceOracle.options.address,
+        blankFunctionSig,
+        blankFunctionSig
+      )
+      .send({ from: owner });
 
     // Pre-publish price on MockOracle so we can publish prices on the SourceOracle:
     voting = await MockOracle.new(finder.options.address, ZERO_ADDRESS).send({ from: accounts[0] });
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), voting.options.address);
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), voting.options.address)
+      .send({ from: accounts[0] });
     await voting.methods.requestPrice(testIdentifier, testRequestTime, testAncillary).send({ from: accounts[0] });
   });
   describe("Requesting a price on Source Oracle", function () {
     beforeEach(async function () {
       // Need to request a price first on the source oracle before we can publish:
-      await finder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), rando);
+      await finder.methods
+        .changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), rando)
+        .send({ from: accounts[0] });
       await sourceOracle.methods
         .executeRequestPrice(destinationChainID, testIdentifier, testRequestTime, testAncillary)
         .send({ from: rando });
-      await finder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), handler.options.address);
+      await finder.methods
+        .changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), handler.options.address)
+        .send({ from: accounts[0] });
     });
     it("publishPrice: should call Bridge.deposit", async function () {
       assert(
         await didContractThrow(
           sourceOracle.methods
-            .publishPrice(destinationChainID, testIdentifier, testRequestTime, testAncillary, { from: owner })
-            .send({ from: accounts[0] })
+            .publishPrice(destinationChainID, testIdentifier, testRequestTime, testAncillary)
+            .send({ from: owner })
         ),
         "can only publish once price is resolved on mock oracle"
       );
@@ -98,9 +110,10 @@ contract("SourceOracle", async (accounts) => {
 
       const txn = await sourceOracle.methods
         .publishPrice(destinationChainID, testIdentifier, testRequestTime, testAncillary)
-        .call({ from: owner });
-      TruffleAssert.eventEmitted(
+        .send({ from: owner });
+      await assertEventEmitted(
         txn,
+        sourceOracle,
         "PushedPrice",
         (event) =>
           event.chainID.toString() === destinationChainID.toString() &&
@@ -112,9 +125,9 @@ contract("SourceOracle", async (accounts) => {
 
       // Deposit event will be emitted after successful Bridge.deposit() internal call if the resource ID is set up
       // properly.
-      const internalTxn = await TruffleAssert.createTransactionResult(bridge, txn.tx);
-      TruffleAssert.eventEmitted(
-        internalTxn,
+      await assertEventEmitted(
+        txn,
+        bridge,
         "Deposit",
         (event) =>
           event.destinationChainID.toString() === destinationChainID.toString() &&
@@ -125,8 +138,8 @@ contract("SourceOracle", async (accounts) => {
       assert(
         await didContractThrow(
           sourceOracle.methods
-            .publishPrice(destinationChainID, testIdentifier, testRequestTime, testAncillary, { from: owner })
-            .send({ from: accounts[0] })
+            .publishPrice(destinationChainID, testIdentifier, testRequestTime, testAncillary)
+            .send({ from: owner })
         ),
         "can only publish price once"
       );
@@ -152,7 +165,7 @@ contract("SourceOracle", async (accounts) => {
       assert(
         await didContractThrow(
           sourceOracle.methods
-            .validateDeposit(destinationChainID, testRequestTime, testAncillary, testPrice)
+            .validateDeposit(destinationChainID, testIdentifier, testRequestTime, testAncillary, testPrice)
             .send({ from: accounts[0] })
         ),
         "Should not be able to call validateDeposit again."
@@ -163,21 +176,20 @@ contract("SourceOracle", async (accounts) => {
     assert(
       await didContractThrow(
         sourceOracle.methods
-          .executeRequestPrice(destinationChainID, testIdentifier, testRequestTime, testAncillary, { from: rando })
-          .send({ from: accounts[0] })
+          .executeRequestPrice(destinationChainID, testIdentifier, testRequestTime, testAncillary)
+          .send({ from: rando })
       ),
       "Only callable by GenericHandler"
     );
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), rando);
-    const txn = await sourceOracle.executeRequestPrice(
-      destinationChainID,
-      testIdentifier,
-      testRequestTime,
-      testAncillary,
-      { from: rando }
-    );
-    TruffleAssert.eventEmitted(
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), rando)
+      .send({ from: accounts[0] });
+    const txn = await sourceOracle.methods
+      .executeRequestPrice(destinationChainID, testIdentifier, testRequestTime, testAncillary)
+      .send({ from: rando });
+    await assertEventEmitted(
       txn,
+      sourceOracle,
       "PriceRequestAdded",
       (event) =>
         event.chainID.toString() === destinationChainID.toString() &&
@@ -188,9 +200,8 @@ contract("SourceOracle", async (accounts) => {
     assert(
       await didContractThrow(
         sourceOracle.methods
-          .executeRequestPrice(destinationChainID, testRequestTime, testAncillary, testPrice)
-          .send({ from: accounts[0] }),
-        { from: rando }
+          .executeRequestPrice(destinationChainID, testIdentifier, testRequestTime, testAncillary)
+          .send({ from: accounts[0] })
       ),
       "Should not be able to call executeRequestPrice again."
     );

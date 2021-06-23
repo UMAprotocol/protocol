@@ -112,7 +112,10 @@ contract("OptimisticOracle", function (accounts) {
     });
 
     mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({ from: accounts[0] });
-    await finder.changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle), mockOracle.options.address);
+    await finder.methods.changeImplementationAddress(
+      web3.utils.utf8ToHex(interfaceName.Oracle),
+      mockOracle.options.address
+    );
 
     optimisticRequester = await OptimisticRequesterTest.new(optimisticOracle.options.address).send({
       from: accounts[0],

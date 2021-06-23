@@ -42,27 +42,34 @@ contract("SourceGovernor", async (accounts) => {
     await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner).send({ from: accounts[0] });
     await registry.methods.registerContract([], owner).send({ from: owner });
     finder = await Finder.deployed();
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.options.address);
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.options.address)
+      .send({ from: accounts[0] });
     bridge = await Bridge.new(chainID, [owner], 1, 0, 100).send({ from: accounts[0] });
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridge.options.address);
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridge.options.address)
+      .send({ from: accounts[0] });
     sourceGovernor = await SourceGovernor.new(finder.options.address, chainID).send({ from: accounts[0] });
     sourceGovernorResourceId = getResourceId(chainID);
     handler = await GenericHandler.new(
       bridge.options.address,
       [sourceGovernorResourceId],
       [sourceGovernor.options.address],
-      [getFunctionSignature(sourceGovernor, "verifyRequest")],
+      [getFunctionSignature(SourceGovernor, "verifyRequest")],
       [blankFunctionSig]
-    );
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), handler.options.address);
-    await bridge.adminSetGenericResource(
-      handler.options.address,
-      sourceGovernorResourceId,
-      sourceGovernor.options.address,
-      getFunctionSignature(sourceGovernor, "verifyRequest"),
-      blankFunctionSig,
-      { from: owner }
-    );
+    ).send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), handler.options.address)
+      .send({ from: accounts[0] });
+    await bridge.methods
+      .adminSetGenericResource(
+        handler.options.address,
+        sourceGovernorResourceId,
+        sourceGovernor.options.address,
+        getFunctionSignature(SourceGovernor, "verifyRequest"),
+        blankFunctionSig
+      )
+      .send({ from: owner });
 
     erc20 = await ERC20.new("Test Token", "TEST", 18).send({ from: accounts[0] });
     await erc20.methods.addMember(1, owner).send({ from: accounts[0] });
@@ -79,7 +86,7 @@ contract("SourceGovernor", async (accounts) => {
     );
   });
   it("unauthorized request", async function () {
-    const innerTransactionCalldata = erc20.contract.methods.transfer(rando, web3.utils.toWei("1")).encodeABI();
+    const innerTransactionCalldata = erc20.methods.transfer(rando, web3.utils.toWei("1")).encodeABI();
     const depositData = web3.eth.abi.encodeParameters(
       ["address", "bytes"],
       [erc20.options.address, innerTransactionCalldata]
@@ -87,12 +94,14 @@ contract("SourceGovernor", async (accounts) => {
 
     assert(
       await didContractThrow(
-        bridge.deposit(destinationChainID, sourceGovernorResourceId, createGenericDepositData(depositData))
+        bridge.methods
+          .deposit(destinationChainID, sourceGovernorResourceId, createGenericDepositData(depositData))
+          .send({ from: accounts[0] })
       )
     );
   });
   it("relayGovernance", async function () {
-    const innerTransactionCalldata = erc20.contract.methods.transfer(rando, web3.utils.toWei("1")).encodeABI();
+    const innerTransactionCalldata = erc20.methods.transfer(rando, web3.utils.toWei("1")).encodeABI();
     const depositData = web3.eth.abi.encodeParameters(
       ["address", "bytes"],
       [erc20.options.address, innerTransactionCalldata]
@@ -101,8 +110,8 @@ contract("SourceGovernor", async (accounts) => {
     assert(
       await didContractThrow(
         sourceGovernor.methods
-          .relayGovernance(destinationChainID, erc20.options.address, innerTransactionCalldata, { from: rando })
-          .send({ from: accounts[0] })
+          .relayGovernance(destinationChainID, erc20.options.address, innerTransactionCalldata)
+          .send({ from: rando })
       ),
       "Only callable by GenericHandler"
     );
@@ -111,10 +120,9 @@ contract("SourceGovernor", async (accounts) => {
       .relayGovernance(destinationChainID, erc20.options.address, innerTransactionCalldata)
       .send({ from: owner });
 
-    const { _destinationChainID, _depositer, _resourceID, _metaData } = await handler._depositRecords(
-      destinationChainID,
-      expectedDepositNonce
-    );
+    const { _destinationChainID, _depositer, _resourceID, _metaData } = await handler.methods
+      ._depositRecords(destinationChainID, expectedDepositNonce)
+      .call();
 
     assert.equal(_destinationChainID.toString(), destinationChainID.toString());
     assert.equal(_depositer, sourceGovernor.options.address);

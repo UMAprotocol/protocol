@@ -39,6 +39,35 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
         at,
       };
     };
+
+    hre.findEvent = async (txnResult, contract, eventName, fn = () => true) => {
+      // TODO: this can be improved by making sure the event falls in the correct transaction.
+      const events = await contract.getPastEvents(eventName, {
+        fromBlock: txnResult.blockNumber,
+        toBlock: txnResult.blockNumber,
+      });
+
+      return {
+        match: events.find((event) => fn(event.returnValues)),
+        allEvents: events.map((event) => event.returnValues),
+      };
+    };
+
+    hre.assertEventEmitted = async (txnResult, contract, eventName, fn) => {
+      const { match, allEvents } = await hre.findEvent(txnResult, contract, eventName, fn);
+
+      if (match === undefined) {
+        throw new Error(`No matching events found. Events found:\n\n${allEvents.map(JSON.stringify).join("\n\n")}`);
+      }
+    };
+
+    hre.assertEventNotEmitted = async (txnResult, contract, eventName, fn) => {
+      const { match } = await hre.findEvent(txnResult, contract, eventName, fn);
+
+      if (match !== undefined) {
+        throw new Error(`Matching event found:\n\n${JSON.stringify(match)}`);
+      }
+    };
   });
 
   // Solc version defined here so etherscan-verification has access to it

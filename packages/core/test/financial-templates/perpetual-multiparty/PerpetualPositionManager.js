@@ -127,7 +127,7 @@ contract("PerpetualPositionManager", function (accounts) {
       .changeImplementationAddress(mockOracleInterfaceName, mockOracle.options.address)
       .send({ from: contractDeployer });
 
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address, {
+    await finder.methods.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address, {
       from: contractDeployer,
     });
 

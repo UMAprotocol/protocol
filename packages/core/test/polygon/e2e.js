@@ -58,7 +58,7 @@ contract("Polygon <> Ethereum Tunnel: End-to-End Test", async (accounts) => {
     registry = await Registry.deployed();
     mockOracle = await MockOracle.new(finder.options.address, ZERO_ADDRESS).send({ from: accounts[0] });
 
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address);
+    await finder.methods.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address);
 
     await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner).send({ from: accounts[0] });
     await registry.methods.registerContract([], owner).send({ from: owner });

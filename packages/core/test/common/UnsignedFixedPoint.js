@@ -106,19 +106,23 @@ contract("UnsignedFixedPoint", function (accounts) {
     assert.equal(sum, "106");
 
     // Additions above 10**18.
-    sum = await fixedPoint.wrapAdd(web3.utils.toWei("99"), web3.utils.toWei("7"));
+    sum = await fixedPoint.methods.wrapAdd(web3.utils.toWei("99"), web3.utils.toWei("7")).call();
     assert.equal(sum, web3.utils.toWei("106"));
 
     // Reverts on overflow.
     // (uint_max-10) + 11 will overflow.
-    assert(await didContractThrow(fixedPoint.wrapAdd(uint_max.sub(web3.utils.toBN("10")), web3.utils.toBN("11"))));
+    assert(
+      await didContractThrow(
+        fixedPoint.methods.wrapAdd(uint_max.sub(web3.utils.toBN("10")), web3.utils.toBN("11")).call()
+      )
+    );
   });
 
   it("Mixed addition", async function () {
     const fixedPoint = await FixedPointTest.new().send({ from: accounts[0] });
 
     // Basic mixed addition.
-    const sum = await fixedPoint.wrapMixedAdd(web3.utils.toWei("1.5"), "4");
+    const sum = await fixedPoint.methods.wrapMixedAdd(web3.utils.toWei("1.5"), "4").call();
     assert.equal(sum.toString(), web3.utils.toWei("5.5"));
 
     // Reverts if uint (second argument) can't be represented as an Unsigned.
@@ -137,7 +141,7 @@ contract("UnsignedFixedPoint", function (accounts) {
     assert.equal(sum, "92");
 
     // Subtractions above 10**18.
-    sum = await fixedPoint.wrapSub(web3.utils.toWei("99"), web3.utils.toWei("7"));
+    sum = await fixedPoint.methods.wrapSub(web3.utils.toWei("99"), web3.utils.toWei("7")).call();
     assert.equal(sum, web3.utils.toWei("92"));
 
     // Reverts on underflow.
@@ -148,7 +152,7 @@ contract("UnsignedFixedPoint", function (accounts) {
     const fixedPoint = await FixedPointTest.new().send({ from: accounts[0] });
 
     // Basic mixed subtraction case.
-    const difference = await fixedPoint.wrapMixedSub(web3.utils.toWei("11.5"), "2");
+    const difference = await fixedPoint.methods.wrapMixedSub(web3.utils.toWei("11.5"), "2").call();
     assert.equal(difference, web3.utils.toWei("9.5"));
 
     // Reverts if uint (second argument) can't be represented as an Unsigned.
@@ -161,34 +165,34 @@ contract("UnsignedFixedPoint", function (accounts) {
     );
 
     // Reverts on underflow (i.e., second argument larger than first).
-    assert(await didContractThrow(fixedPoint.wrapMixedSub(web3.utils.toWei("1.5"), "2")));
+    assert(await didContractThrow(fixedPoint.methods.wrapMixedSub(web3.utils.toWei("1.5"), "2").call()));
   });
 
   it("Mixed subtraction opposite", async function () {
     const fixedPoint = await FixedPointTest.new().send({ from: accounts[0] });
 
     // Basic mixed subtraction case.
-    const difference = await fixedPoint.wrapMixedSubOpposite("10", web3.utils.toWei("5.5"));
+    const difference = await fixedPoint.methods.wrapMixedSubOpposite("10", web3.utils.toWei("5.5")).call();
     assert.equal(difference, web3.utils.toWei("4.5"));
 
     // Reverts on underflow (i.e., second argument larger than first).
-    assert(await didContractThrow(fixedPoint.wrapMixedSub("5", web3.utils.toWei("5.5"))));
+    assert(await didContractThrow(fixedPoint.methods.wrapMixedSub("5", web3.utils.toWei("5.5")).call()));
   });
 
   it("Multiplication", async function () {
     const fixedPoint = await FixedPointTest.new().send({ from: accounts[0] });
 
     // Whole numbers above 10**18.
-    let product = await fixedPoint.wrapMul(web3.utils.toWei("5"), web3.utils.toWei("17"));
+    let product = await fixedPoint.methods.wrapMul(web3.utils.toWei("5"), web3.utils.toWei("17")).call();
     assert.equal(product.toString(), web3.utils.toWei("85"));
 
     // Fractions, no precision loss.
-    product = await fixedPoint.wrapMul(web3.utils.toWei("0.0001"), web3.utils.toWei("5"));
+    product = await fixedPoint.methods.wrapMul(web3.utils.toWei("0.0001"), web3.utils.toWei("5")).call();
     assert.equal(product.toString(), web3.utils.toWei("0.0005"));
 
     // Fractions, precision loss, rounding down.
     // 1.2 * 2e-18 = 2.4e-18, which can't be represented and gets rounded down to 2.
-    product = await fixedPoint.wrapMul(web3.utils.toWei("1.2"), "2");
+    product = await fixedPoint.methods.wrapMul(web3.utils.toWei("1.2"), "2").call();
     assert.equal(product.toString(), "2");
     // 1e-18 * 1e-18 = 1e-36, which can't be represented and gets floor'd to 0.
     product = await fixedPoint.methods.wrapMul("1", "1").call();
@@ -196,23 +200,27 @@ contract("UnsignedFixedPoint", function (accounts) {
 
     // Reverts on overflow.
     // (uint_max - 1) * 2 overflows.
-    assert(await didContractThrow(fixedPoint.wrapMul(uint_max.sub(web3.utils.toBN("1")), web3.utils.toWei("2"))));
+    assert(
+      await didContractThrow(
+        fixedPoint.methods.wrapMul(uint_max.sub(web3.utils.toBN("1")), web3.utils.toWei("2")).call()
+      )
+    );
   });
 
   it("Multiplication, with ceil", async function () {
     const fixedPoint = await FixedPointTest.new().send({ from: accounts[0] });
 
     // Whole numbers above 10**18.
-    let product = await fixedPoint.wrapMulCeil(web3.utils.toWei("5"), web3.utils.toWei("17"));
+    let product = await fixedPoint.methods.wrapMulCeil(web3.utils.toWei("5"), web3.utils.toWei("17")).call();
     assert.equal(product.toString(), web3.utils.toWei("85"));
 
     // Fractions, no precision loss.
-    product = await fixedPoint.wrapMulCeil(web3.utils.toWei("0.0001"), web3.utils.toWei("5"));
+    product = await fixedPoint.methods.wrapMulCeil(web3.utils.toWei("0.0001"), web3.utils.toWei("5")).call();
     assert.equal(product.toString(), web3.utils.toWei("0.0005"));
 
     // Fractions, precision loss, ceiling.
     // 1.2 * 2e-18 = 2.4e-18, which can't be represented and gets ceil'd to 3.
-    product = await fixedPoint.wrapMulCeil(web3.utils.toWei("1.2"), "2");
+    product = await fixedPoint.methods.wrapMulCeil(web3.utils.toWei("1.2"), "2").call();
     assert.equal(product.toString(), "3");
     // 1e-18 * 1e-18 = 1e-36, which can't be represented and gets ceil'd to 1e-18.
     product = await fixedPoint.methods.wrapMulCeil("1", "1").call();
@@ -220,52 +228,56 @@ contract("UnsignedFixedPoint", function (accounts) {
 
     // Reverts on overflow.
     // (uint_max - 1) * 2 overflows.
-    assert(await didContractThrow(fixedPoint.wrapMulCeil(uint_max.sub(web3.utils.toBN("1")), web3.utils.toWei("2"))));
+    assert(
+      await didContractThrow(
+        fixedPoint.methods.wrapMulCeil(uint_max.sub(web3.utils.toBN("1")), web3.utils.toWei("2")).call()
+      )
+    );
   });
 
   it("Mixed multiplication", async function () {
     const fixedPoint = await FixedPointTest.new().send({ from: accounts[0] });
 
-    let product = await fixedPoint.wrapMixedMul(web3.utils.toWei("1.5"), "3");
+    let product = await fixedPoint.methods.wrapMixedMul(web3.utils.toWei("1.5"), "3").call();
     assert.equal(product, web3.utils.toWei("4.5"));
 
     // We can handle outputs up to 10^59.
     const tenToSixty = web3.utils.toBN("10").pow(web3.utils.toBN("60"));
     const tenToFiftyNine = web3.utils.toBN("10").pow(web3.utils.toBN("59"));
-    product = await fixedPoint.wrapMixedMul(web3.utils.toWei("0.1"), tenToSixty);
+    product = await fixedPoint.methods.wrapMixedMul(web3.utils.toWei("0.1"), tenToSixty).call();
     assert.equal(product.toString(), web3.utils.toWei(tenToFiftyNine.toString()));
 
     // Reverts on overflow.
     // (uint_max / 2) * 3 overflows.
-    assert(await didContractThrow(fixedPoint.wrapMixedMul(uint_max.div(web3.utils.toBN("2")), "3")));
+    assert(await didContractThrow(fixedPoint.methods.wrapMixedMul(uint_max.div(web3.utils.toBN("2")), "3").call()));
   });
 
   it("Mixed multiplication, with ceil", async function () {
     const fixedPoint = await FixedPointTest.new().send({ from: accounts[0] });
 
-    let product = await fixedPoint.wrapMixedMulCeil(web3.utils.toWei("1.5"), "3");
+    let product = await fixedPoint.methods.wrapMixedMulCeil(web3.utils.toWei("1.5"), "3").call();
     assert.equal(product, web3.utils.toWei("4.5"));
 
     // We can handle outputs up to 10^59.
     const tenToSixty = web3.utils.toBN("10").pow(web3.utils.toBN("60"));
     const tenToFiftyNine = web3.utils.toBN("10").pow(web3.utils.toBN("59"));
-    product = await fixedPoint.wrapMixedMulCeil(web3.utils.toWei("0.1"), tenToSixty);
+    product = await fixedPoint.methods.wrapMixedMulCeil(web3.utils.toWei("0.1"), tenToSixty).call();
     assert.equal(product.toString(), web3.utils.toWei(tenToFiftyNine.toString()));
 
     // Reverts on overflow.
     // (uint_max / 2) * 3 overflows.
-    assert(await didContractThrow(fixedPoint.wrapMixedMulCeil(uint_max.div(web3.utils.toBN("2")), "3")));
+    assert(await didContractThrow(fixedPoint.methods.wrapMixedMulCeil(uint_max.div(web3.utils.toBN("2")), "3").call()));
   });
 
   it("Division", async function () {
     const fixedPoint = await FixedPointTest.new().send({ from: accounts[0] });
 
     // Normal division case.
-    let quotient = await fixedPoint.wrapDiv(web3.utils.toWei("150.3"), web3.utils.toWei("3"));
+    let quotient = await fixedPoint.methods.wrapDiv(web3.utils.toWei("150.3"), web3.utils.toWei("3")).call();
     assert.equal(quotient.toString(), web3.utils.toWei("50.1"));
 
     // Divisor < 1.
-    quotient = await fixedPoint.wrapDiv(web3.utils.toWei("2"), web3.utils.toWei("0.01"));
+    quotient = await fixedPoint.methods.wrapDiv(web3.utils.toWei("2"), web3.utils.toWei("0.01")).call();
     assert.equal(quotient.toString(), web3.utils.toWei("200"));
 
     // Fractions, precision loss, rounding down.
@@ -273,7 +285,7 @@ contract("UnsignedFixedPoint", function (accounts) {
     quotient = await fixedPoint.methods.wrapDiv(web3.utils.toWei("1"), web3.utils.toWei("3")).call();
     assert.equal(quotient.toString(), "3".repeat(18));
     // 1e-18 / 1e19 = 1e-37, which can't be represented and gets floor'd to 0.
-    quotient = await fixedPoint.wrapDiv("1", web3.utils.toWei(web3.utils.toWei("10")));
+    quotient = await fixedPoint.methods.wrapDiv("1", web3.utils.toWei(web3.utils.toWei("10"))).call();
     assert.equal(quotient.toString(), "0");
 
     // Reverts on division by zero.
@@ -284,11 +296,11 @@ contract("UnsignedFixedPoint", function (accounts) {
     const fixedPoint = await FixedPointTest.new().send({ from: accounts[0] });
 
     // Normal division case.
-    let quotient = await fixedPoint.wrapDivCeil(web3.utils.toWei("150.3"), web3.utils.toWei("3"));
+    let quotient = await fixedPoint.methods.wrapDivCeil(web3.utils.toWei("150.3"), web3.utils.toWei("3")).call();
     assert.equal(quotient.toString(), web3.utils.toWei("50.1"));
 
     // Divisor < 1.
-    quotient = await fixedPoint.wrapDivCeil(web3.utils.toWei("2"), web3.utils.toWei("0.01"));
+    quotient = await fixedPoint.methods.wrapDivCeil(web3.utils.toWei("2"), web3.utils.toWei("0.01")).call();
     assert.equal(quotient.toString(), web3.utils.toWei("200"));
 
     // Fractions, precision loss, rounding down.
@@ -296,7 +308,7 @@ contract("UnsignedFixedPoint", function (accounts) {
     quotient = await fixedPoint.methods.wrapDivCeil(web3.utils.toWei("1"), web3.utils.toWei("3")).call();
     assert.equal(quotient.toString(), "3".repeat(17) + "4");
     // 1e-18 / 1e19 = 1e-37, which can't be represented and gets ceil'd to 1.
-    quotient = await fixedPoint.wrapDivCeil("1", web3.utils.toWei(web3.utils.toWei("10")));
+    quotient = await fixedPoint.methods.wrapDivCeil("1", web3.utils.toWei(web3.utils.toWei("10"))).call();
     assert.equal(quotient.toString(), "1");
 
     // Reverts on division by zero.
@@ -307,7 +319,7 @@ contract("UnsignedFixedPoint", function (accounts) {
     const fixedPoint = await FixedPointTest.new().send({ from: accounts[0] });
 
     // Normal mixed division case.
-    let quotient = await fixedPoint.wrapMixedDiv(web3.utils.toWei("150.3"), "3");
+    let quotient = await fixedPoint.methods.wrapMixedDiv(web3.utils.toWei("150.3"), "3").call();
     assert.equal(quotient.toString(), web3.utils.toWei("50.1"));
 
     // Reverts on division by zero.
@@ -323,7 +335,7 @@ contract("UnsignedFixedPoint", function (accounts) {
     const fixedPoint = await FixedPointTest.new().send({ from: accounts[0] });
 
     // Normal mixed division case.
-    let quotient = await fixedPoint.wrapMixedDivCeil(web3.utils.toWei("150.3"), "3");
+    let quotient = await fixedPoint.methods.wrapMixedDivCeil(web3.utils.toWei("150.3"), "3").call();
     assert.equal(quotient.toString(), web3.utils.toWei("50.1"));
 
     // Reverts on division by zero.
@@ -342,7 +354,7 @@ contract("UnsignedFixedPoint", function (accounts) {
     const fixedPoint = await FixedPointTest.new().send({ from: accounts[0] });
 
     // Normal mixed division case.
-    let quotient = await fixedPoint.wrapMixedDivOpposite("120", web3.utils.toWei("3.2"));
+    let quotient = await fixedPoint.methods.wrapMixedDivOpposite("120", web3.utils.toWei("3.2")).call();
     assert.equal(quotient.toString(), web3.utils.toWei("37.5"));
 
     // Reverts on division by zero.
@@ -353,18 +365,18 @@ contract("UnsignedFixedPoint", function (accounts) {
     const fixedPoint = await FixedPointTest.new().send({ from: accounts[0] });
 
     // 1.5^0 = 1
-    assert.equal(await fixedPoint.wrapPow(web3.utils.toWei("1.5"), "0"), web3.utils.toWei("1"));
+    assert.equal(await fixedPoint.methods.wrapPow(web3.utils.toWei("1.5"), "0").call(), web3.utils.toWei("1"));
 
     // 1.5^1 = 1.5
-    assert.equal(await fixedPoint.wrapPow(web3.utils.toWei("1.5"), "1"), web3.utils.toWei("1.5"));
+    assert.equal(await fixedPoint.methods.wrapPow(web3.utils.toWei("1.5"), "1").call(), web3.utils.toWei("1.5"));
 
     // 1.5^2 = 2.25.
-    assert.equal(await fixedPoint.wrapPow(web3.utils.toWei("1.5"), "2"), web3.utils.toWei("2.25"));
+    assert.equal(await fixedPoint.methods.wrapPow(web3.utils.toWei("1.5"), "2").call(), web3.utils.toWei("2.25"));
 
     // 1.5^3 = 3.375
-    assert.equal(await fixedPoint.wrapPow(web3.utils.toWei("1.5"), "3"), web3.utils.toWei("3.375"));
+    assert.equal(await fixedPoint.methods.wrapPow(web3.utils.toWei("1.5"), "3").call(), web3.utils.toWei("3.375"));
 
     // Reverts on overflow
-    assert(await didContractThrow(fixedPoint.wrapPow(web3.utils.toWei("10"), "60")));
+    assert(await didContractThrow(fixedPoint.methods.wrapPow(web3.utils.toWei("10"), "60").call()));
   });
 });

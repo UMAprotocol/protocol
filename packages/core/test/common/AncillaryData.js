@@ -36,7 +36,7 @@ contract("AncillaryData", function (accounts) {
     // Test 1: ancillary data is empty
     originalAncillaryData = "0x";
     assert.equal(
-      await ancillaryDataTest.methods.appendKey(originalAncillaryData, keyName).send({ from: accounts[0] }),
+      await ancillaryDataTest.methods.appendKey(originalAncillaryData, keyName).call(),
       utf8ToHex("key:"),
       "Should return key: with no leading comma"
     );
@@ -44,7 +44,7 @@ contract("AncillaryData", function (accounts) {
     // Test 2: ancillary data is not empty
     originalAncillaryData = "0xab";
     assert.equal(
-      await ancillaryDataTest.methods.appendKey(originalAncillaryData, keyName).send({ from: accounts[0] }),
+      await ancillaryDataTest.methods.appendKey(originalAncillaryData, keyName).call(),
       utf8ToHex(",key:"),
       "Should return key: with leading comma"
     );
@@ -59,9 +59,7 @@ contract("AncillaryData", function (accounts) {
     // Test 1: append AFTER ancillary data:
     originalAncillaryData = utf8ToHex("key:value");
     assert.equal(
-      await ancillaryDataTest.methods
-        .appendKeyValueAddress(originalAncillaryData, keyName, value)
-        .send({ from: accounts[0] }),
+      await ancillaryDataTest.methods.appendKeyValueAddress(originalAncillaryData, keyName, value).call(),
       utf8ToHex(`key:value,address:${value.substr(2).toLowerCase()}`),
       "Should append key:valueAddress to original ancillary data"
     );
@@ -80,9 +78,7 @@ contract("AncillaryData", function (accounts) {
     // Test 3: ancillary data is utf8 decodeable but not key:value syntax:
     originalAncillaryData = utf8ToHex("ignore this syntax");
     assert.equal(
-      await ancillaryDataTest.methods
-        .appendKeyValueAddress(originalAncillaryData, keyName, value)
-        .send({ from: accounts[0] }),
+      await ancillaryDataTest.methods.appendKeyValueAddress(originalAncillaryData, keyName, value).call(),
       utf8ToHex(`ignore this syntax,address:${value.substr(2).toLowerCase()}`),
       "Should be able to utf8-decode the entire ancillary data"
     );
@@ -96,9 +92,7 @@ contract("AncillaryData", function (accounts) {
 
     // Test 1: append AFTER ancillary data:
     assert.equal(
-      await ancillaryDataTest.methods
-        .appendKeyValueUint(originalAncillaryData, keyName, value)
-        .send({ from: accounts[0] }),
+      await ancillaryDataTest.methods.appendKeyValueUint(originalAncillaryData, keyName, value).call(),
       utf8ToHex("key:value,chainId:31337"),
       "Should append chainId:<chainId> to original ancillary data"
     );
@@ -117,9 +111,7 @@ contract("AncillaryData", function (accounts) {
     // Test 3: ancillary data is utf8 decodeable but not key:value syntax:
     originalAncillaryData = utf8ToHex("ignore this syntax");
     assert.equal(
-      await ancillaryDataTest.methods
-        .appendKeyValueUint(originalAncillaryData, keyName, value)
-        .send({ from: accounts[0] }),
+      await ancillaryDataTest.methods.appendKeyValueUint(originalAncillaryData, keyName, value).call(),
       utf8ToHex(`ignore this syntax,chainId:${value}`),
       "Should be able to utf8-decode the entire ancillary data"
     );
