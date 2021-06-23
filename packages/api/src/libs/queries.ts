@@ -1,13 +1,51 @@
+import assert from "assert";
 // allow for more complex queries, joins and shared queries between services
-import type { AppState, CurrencySymbol } from "..";
-import uma from "@uma/sdk";
+import type { AppState, CurrencySymbol, PriceSample } from "..";
+import * as uma from "@uma/sdk";
 import { calcGcr } from "./utils";
-import Promise from "bluebird";
+import bluebird from "bluebird";
 import { BigNumber } from "ethers";
 
-type Dependencies = Pick<AppState, "erc20s" | "emps" | "stats" | "registeredEmps">;
+const { exists } = uma.utils;
+type Dependencies = Pick<AppState, "erc20s" | "emps" | "stats" | "registeredEmps" | "prices">;
 
 export default (appState: Dependencies) => {
+  const { prices } = appState;
+
+  async function historicalPricesByTokenAddress(
+    address: string,
+    start = 0,
+    end: number = Date.now(),
+    currency: CurrencySymbol = "usd"
+  ): Promise<PriceSample[]> {
+    assert(start >= 0, "requires a start value >= 0");
+    assert(exists(prices[currency]), "invalid currency type: " + currency);
+    assert(exists(prices[currency].history[address]), "no prices for address" + address);
+    const results = await prices[currency].history[address].betweenByTimestamp(start, end);
+    // convert this to tuple to save bytes.
+    return results.map(({ price, timestamp }) => [timestamp, price]);
+  }
+
+  async function sliceHistoricalPricesByTokenAddress(
+    address: string,
+    start = 0,
+    length = 1,
+    currency: "usd" = "usd"
+  ): Promise<PriceSample[]> {
+    assert(start >= 0, "requires a start value >= 0");
+    assert(exists(prices[currency]), "invalid currency type: " + currency);
+    assert(exists(prices[currency].history[address]), "no prices for address" + address);
+    const results = await prices[currency].history[address].sliceByTimestamp(start, length);
+    // convert this to tuple to save bytes.
+    return results.map(({ price, timestamp }) => [timestamp, price]);
+  }
+  async function latestPriceByTokenAddress(address: string, currency: CurrencySymbol = "usd") {
+    assert(address, "requires an erc20 token address");
+    assert(exists(prices[currency]), "invalid currency type: " + currency);
+    const priceSample = prices[currency].latest[address];
+    assert(exists(priceSample), "No price for address: " + address);
+    return priceSample;
+  }
   async function getAnyEmp(empAddress: string) {
     if (await appState.emps.active.has(empAddress)) {
       return appState.emps.active.get(empAddress);
@@ -42,15 +80,15 @@ export default (appState: Dependencies) => {
 
   async function listActiveEmps() {
     const emps = appState.emps.active.values();
-    return Promise.map(emps, (emp) => getFullEmpState(emp).catch(() => emp));
+    return bluebird.map(emps, (emp) => getFullEmpState(emp).catch(() => emp));
   }
   async function listExpiredEmps() {
     const emps = appState.emps.expired.values();
-    return Promise.map(emps, (emp) => getFullEmpState(emp).catch(() => emp));
+    return bluebird.map(emps, (emp) => getFullEmpState(emp).catch(() => emp));
   }
 
   async function sumTvl(addresses: string[], currency: CurrencySymbol = "usd") {
-    const tvl = await Promise.reduce(
+    const tvl = await bluebird.reduce(
       addresses,
       async (sum, address) => {
         const stats = await appState.stats[currency].latest.getOrCreate(address);
@@ -72,5 +110,8 @@ export default (appState: Dependencies) => {
     listExpiredEmps,
     totalTvl,
     sumTvl,
+    latestPriceByTokenAddress,
+    historicalPricesByTokenAddress,
+    sliceHistoricalPricesByTokenAddress,
   };
 };

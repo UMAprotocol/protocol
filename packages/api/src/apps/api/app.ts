@@ -9,7 +9,6 @@ import Express from "../../services/express";
 import Actions from "../../services/actions";
 import { ProcessEnv, AppState } from "../..";
 import { empStats } from "../../tables";
-import { uniqueId } from "lodash";
 
 async function run(env: ProcessEnv) {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
@@ -69,7 +68,7 @@ async function run(env: ProcessEnv) {
     collateralPrices: Services.CollateralPrices({}, appState),
     syntheticPrices: Services.SyntheticPrices(
       {
-        cryptowatchApiKey: env.cryptwatchApiKey,
+        cryptowatchApiKey: env.cryptowatchApiKey,
         tradermadeApiKey: env.tradermadeApiKey,
         quandlApiKey: env.quandlApiKey,
         defipulseApiKey: env.defipulseApiKey,

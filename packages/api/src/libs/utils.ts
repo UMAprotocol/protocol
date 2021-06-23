@@ -5,6 +5,11 @@ import { utils, BigNumber } from "ethers";
 import assert from "assert";
 const { parseUnits } = utils;
 
+export const ETH = parseUnits("1");
+export type BigNumberish = number | string | BigNumber;
+
+export { parseUnits };
+
 // Takes an object with promises on its values and resolves them concurrently returning result.
 // Will pass through non promise values without a problem.
 export async function asyncValues<R extends Obj>(object: Obj): Promise<R> {
@@ -40,6 +45,7 @@ export function calcGcr(
 }
 
 export function calcTvl(
+  // price needs to be in wei
   price: string,
   emp: Pick<uma.tables.emps.Data, "totalPositionCollateral" | "collateralDecimals">
 ) {
@@ -47,7 +53,11 @@ export function calcTvl(
   assert(uma.utils.exists(totalPositionCollateral), "requires total position collateral");
   assert(uma.utils.exists(collateralDecimals), "requires collateralDecimals");
   const normalizedCollateral = uma.utils.ConvertDecimals(collateralDecimals, 18)(totalPositionCollateral);
-  return parseUnits(price).mul(normalizedCollateral).div(parseUnits("1"));
+  return BigNumber.from(price).mul(normalizedCollateral).div(ETH);
+}
+
+export function calcSyntheticPrice(syntheticPrice: BigNumberish, collateralPrice: BigNumberish) {
+  return BigNumber.from(syntheticPrice).mul(collateralPrice).div(ETH);
 }
 
 export function sToMs(s: number) {
