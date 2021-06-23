@@ -1,4 +1,5 @@
 const { didContractThrow } = require("@uma/common");
+const { assert } = require("chai");
 
 // Tested Contract
 const TokenFactory = artifacts.require("TokenFactory");
@@ -38,13 +39,12 @@ contract("TokenFactory", function (accounts) {
     });
     const token = await Token.at(tokenAddress);
 
-    // Creator should be only minter
+    // Creator should be only owner and no one should hold the mint or burn roles.
     assert.isFalse(await token.isMinter(contractDeployer));
-    assert.isTrue(await token.isMinter(tokenCreator));
-
-    // Creator should be only burner
+    assert.isFalse(await token.isMinter(tokenCreator));
     assert.isFalse(await token.isBurner(contractDeployer));
-    assert.isTrue(await token.isBurner(tokenCreator));
+    assert.isFalse(await token.isBurner(tokenCreator));
+    assert.equal(await token.getMember(0), tokenCreator); // roleId 0 = owner.
 
     // Contract deployer should no longer be capable of adding new roles
     assert(await didContractThrow(token.addMinter(rando, { from: contractDeployer })));
@@ -75,6 +75,10 @@ contract("TokenFactory", function (accounts) {
       from: tokenCreator,
     });
     const token = await Token.at(tokenAddress);
+
+    // Add the required roles to mint and burn.
+    await token.addMinter(tokenCreator, { from: tokenCreator });
+    await token.addBurner(tokenCreator, { from: tokenCreator });
 
     // Check ERC20Detailed methods
     assert.equal(await token.name(), tokenDetails.name);
