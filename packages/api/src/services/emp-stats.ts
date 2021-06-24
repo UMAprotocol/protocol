@@ -23,11 +23,9 @@ export default (config: Config, appState: Dependencies) => {
     return stats[currency].latest.getOrCreate(address);
   }
   function getOrCreateHistoryTable(address: string) {
-    let table = stats[currency].history[address];
-    if (table) return table;
-    table = empStatsHistory.SortedJsMap("Emp Stat History for " + address);
-    stats[currency].history[address] = table;
-    return table;
+    if (!stats[currency].history[address])
+      stats[currency].history[address] = empStatsHistory.SortedJsMap("Emp Stat History for " + address);
+    return stats[currency].history[address];
   }
   async function hasStatsHistory(address: string, timestamp: number) {
     return getOrCreateHistoryTable(address).has(timestamp);
