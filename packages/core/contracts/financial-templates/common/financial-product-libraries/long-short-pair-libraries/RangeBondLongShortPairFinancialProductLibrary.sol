@@ -99,7 +99,7 @@ contract RangeBondLongShortPairFinancialProductLibrary is LongShortPairFinancial
         // 2) Within the range, the long position is entitled to the bond notional value, which is equal to a fixed
         // fraction of the collateral. In this range it acts like a yield dollar.
         if (positiveExpiryPrice <= params.highPriceRange)
-            return FixedPoint.fromUnscaledUint(params.lowPriceRange).div(positiveExpiryPrice).rawValue;
+            return FixedPoint.Unsigned(params.lowPriceRange).div(FixedPoint.Unsigned(positiveExpiryPrice)).rawValue;
         // 3) above the range, the long position is entitled to a fixed number of tokens.
         else return FixedPoint.fromUnscaledUint(params.lowPriceRange).div(params.highPriceRange).rawValue;
     }
