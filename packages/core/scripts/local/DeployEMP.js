@@ -23,6 +23,8 @@
  */
 const { toWei, utf8ToHex, hexToUtf8, padRight } = web3.utils;
 const { interfaceName, ZERO_ADDRESS, parseFixed } = require("@uma/common");
+const { GasEstimator } = require("@uma/financial-templates-lib");
+const winston = require("winston");
 const { getAbi, getTruffleContract } = require("../../dist/index");
 const argv = require("minimist")(process.argv.slice(), {
   boolean: ["test"],
@@ -123,10 +125,17 @@ const deployEMP = async (callback) => {
       };
     }
 
-    if (!argv.gasprice) throw new Error("Specify --gasprice to deploy with");
+    const gasEstimator = new GasEstimator(
+      winston.createLogger({
+        silent: true,
+      }),
+      60, // Time between updates.
+      await web3.eth.net.getId()
+    );
+    await gasEstimator.update();
     const transactionParams = {
       gas: 12000000, // 12MM is very high. Set this lower if you only have < 2 ETH or so in your wallet.
-      gasPrice: argv.gasprice * 1000000000, // gasprice arg * 1 GWEI
+      gasPrice: gasEstimator.getCurrentFastPrice(),
       from: deployer,
       chainId: await web3.eth.getChainId(),
     };
