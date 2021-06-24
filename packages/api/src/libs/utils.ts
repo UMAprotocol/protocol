@@ -49,3 +49,15 @@ export function calcTvl(
   const normalizedCollateral = uma.utils.ConvertDecimals(collateralDecimals, 18)(totalPositionCollateral);
   return parseUnits(price).mul(normalizedCollateral).div(parseUnits("1"));
 }
+
+export function sToMs(s: number) {
+  return s * 1000;
+}
+
+export function msToS(ms: number) {
+  return Math.floor(ms / 1000);
+}
+
+export function nowS(): number {
+  return msToS(Date.now());
+}

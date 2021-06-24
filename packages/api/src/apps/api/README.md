@@ -85,9 +85,9 @@ Returns all known latest prices for collateral addresses. Synthetic prices not y
 
 Returns latest price for a particular collateral address.
 
-### historicalPricesByAddress(address:string,start:number=0,end:number=Date.now(),currency:"usd"="usd") => PriceSample[]
+### historicalPricesByAddress(address:string,start:number=0,end:number=Math.floor(Date.now() / 1000),currency:"usd"="usd") => PriceSample[]
 
-Get a range of historical prices between start and end in MS, sorted by timestamp ascending from an erc20 token address.
+Get a range of historical prices between start and end in seconds, sorted by timestamp ascending from an erc20 token address.
 This is useful for charting betwen two dates.
 
 ### sliceHistoricalPricesByAddress(address:string,start:number=0,length:number=1,currency:"usd"="usd") => PriceSample[]
@@ -121,17 +121,21 @@ Get only tvl (and other future statistics) for a single emp.
 
 Get all tvl (and other future statistics) for all known emps.
 
-### historicalSynthPricesByAddress(empAddress:string,start:number=0,end:number=Date.now()) => PriceSample[]
+### historicalSynthPricesByAddress(empAddress:string,start:number=0,end:number=Math.floor(Date.now() / 1000)) => PriceSample[]
 
-Get a range of historical prices synthetic prices by emp address between start and end in MS, sorted by timestamp
+Get a range of historical prices synthetic prices by emp address between start and end in unix seconds, sorted by timestamp
 ascending. This is useful for charting betwen two dates. Note non synth historical prices are specified by erc20 address.
 
 ### sliceHistoricalSynthPricesByAddress(address:string,start:number=0,length:number=1) => PriceSample[]
 
-Get a range of historical synthetic prices by emp address between start and count of price samples, sorted by timestamp
+Get a range of historical synthetic prices by emp address between start (in unix seconds) and count of price samples, sorted by timestamp
 ascending. This is useful for paginating data when you have X elements per page, and you know the last element seen.
 Note non synth historical prices are specified by erc20 address.
 
 ### tvl(addresses?: string[], currency: CurrencySymbol = "usd") => string
 
 Returns tvl of all supplied addresses in USD 18 decimals. If no addresses supplied, returns TVL of all known contracts.
+
+### getEmpStatsBetween(address: string, start = 0, end: number = Math.floor(Date.now() / 1000), currency: CurrencySymbol = "usd") => StatData[]
+
+Returns all stats between timestamps (in seconds) at the highest resolution for a particular emp address.

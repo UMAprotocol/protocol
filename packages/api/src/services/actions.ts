@@ -2,6 +2,7 @@ import assert from "assert";
 import * as uma from "@uma/sdk";
 import { Json, Actions, AppState, CurrencySymbol, PriceSample } from "..";
 import Queries from "../libs/queries";
+import { nowS } from "../libs/utils";
 
 const { exists } = uma.utils;
 
@@ -66,7 +67,7 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     async historicalPricesByAddress(
       address: string,
       start = 0,
-      end: number = Date.now(),
+      end: number = nowS(),
       currency: "usd" = "usd"
     ): Promise<PriceSample[]> {
       assert(start >= 0, "requires a start value >= 0");
@@ -100,11 +101,7 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       assert(stats[currency], "No stats for currency: " + currency);
       return stats[currency].latest.values();
     },
-    async historicalSynthPricesByAddress(
-      empAddress: string,
-      start = 0,
-      end: number = Date.now()
-    ): Promise<PriceSample[]> {
+    async historicalSynthPricesByAddress(empAddress: string, start = 0, end: number = nowS()): Promise<PriceSample[]> {
       assert(empAddress, "requires emp address");
       assert(start >= 0, "requires a start value >= 0");
       assert(exists(synthPrices.history[empAddress]), "No synthetic prices for emp address: " + empAddress);
@@ -123,6 +120,11 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     async tvl(addresses?: string[], currency: CurrencySymbol = "usd") {
       if (addresses == null || addresses.length == 0) return queries.totalTvl(currency);
       return queries.sumTvl(addresses, currency);
+    },
+    async getEmpStatsBetween(address: string, start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") {
+      assert(stats[currency], "Invalid currency type: " + currency);
+      assert(stats[currency].history[address], "Invalid emp address: " + address);
+      return stats[currency].history[address].between(start, end);
     },
   };
 
