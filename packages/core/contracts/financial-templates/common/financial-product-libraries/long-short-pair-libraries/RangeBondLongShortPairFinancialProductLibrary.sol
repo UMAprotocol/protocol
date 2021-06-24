@@ -101,6 +101,6 @@ contract RangeBondLongShortPairFinancialProductLibrary is LongShortPairFinancial
         if (positiveExpiryPrice <= params.highPriceRange)
             return FixedPoint.Unsigned(params.lowPriceRange).div(FixedPoint.Unsigned(positiveExpiryPrice)).rawValue;
         // 3) above the range, the long position is entitled to a fixed number of tokens.
-        else return FixedPoint.fromUnscaledUint(params.lowPriceRange).div(params.highPriceRange).rawValue;
+        else return FixedPoint.Unsigned(params.lowPriceRange).div(FixedPoint.Unsigned(params.highPriceRange)).rawValue;
     }
 }
