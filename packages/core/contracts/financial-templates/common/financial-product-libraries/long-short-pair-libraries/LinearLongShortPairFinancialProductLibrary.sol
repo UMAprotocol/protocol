@@ -73,7 +73,7 @@ contract LinearLongShortPairFinancialProductLibrary is LongShortPairFinancialPro
         returns (uint256)
     {
         LinearLongShortPairParameters memory params = longShortPairParameters[msg.sender];
-        require(params.upperBound != 0 && params.lowerBound != 0, "Params not set for calling LSP");
+        require(!(params.upperBound == 0 && params.lowerBound == 0), "Params not set for calling LSP");
 
         if (expiryPrice >= params.upperBound) return FixedPoint.fromUnscaledUint(1).rawValue;
 
