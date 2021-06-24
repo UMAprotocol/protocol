@@ -6,9 +6,11 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
   // get access to the plugins as well.
   require("@nomiclabs/hardhat-truffle5");
   require("hardhat-gas-reporter");
+  require("@nomiclabs/hardhat-ethers");
   require("@nomiclabs/hardhat-web3");
   require("hardhat-deploy");
   require("@nomiclabs/hardhat-etherscan");
+  require("@eth-optimism/hardhat-ovm");
   require("./gckms/KeyInjectorPlugin");
 
   // Custom tasks to interact conveniently with smart contracts.
@@ -26,6 +28,9 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
           runs: 199,
         },
       },
+    },
+    ovm: {
+      solcVersion: solcVersion,
     },
     networks: {
       hardhat: {
@@ -66,6 +71,15 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
         chainId: 1,
         url: getNodeUrl("mainnet", true),
         accounts: { mnemonic },
+      },
+      optimism: {
+        url: "http://127.0.0.1:8545",
+        accounts: { mnemonic },
+        // This sets the gas price to 0 for all transactions on L2. We do this because account balances are not yet
+        // automatically initiated with an ETH balance.
+        gasPrice: 0,
+        // This sets the network as using the ovm and ensure contract will be compiled against that.
+        ovm: true,
       },
     },
     mocha: {
