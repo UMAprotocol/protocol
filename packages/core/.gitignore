@@ -1,5 +1,7 @@
 cache/
+cache-ovm/
 artifacts/
+artifacts-ovm/
 flattened/
 types/
 contract-types/

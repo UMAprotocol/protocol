@@ -8,6 +8,7 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
   require("hardhat-gas-reporter");
   require("@nomiclabs/hardhat-ethers");
   require("@nomiclabs/hardhat-web3");
+  require("@nomiclabs/hardhat-waffle");
   require("hardhat-deploy");
   require("@nomiclabs/hardhat-etherscan");
   require("@eth-optimism/hardhat-ovm");
@@ -80,6 +81,19 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
         gasPrice: 0,
         // This sets the network as using the ovm and ensure contract will be compiled against that.
         ovm: true,
+        ignoreRxList: [
+          "@openzeppelin.",
+          "@uniswap.",
+          "chainbridge.",
+          "external.",
+          "merkle-distributor.",
+          "polygon.",
+          "proxy-scripts.",
+          "umips.",
+          "common.",
+          "oracle.",
+          "financial-templates",
+        ],
       },
     },
     mocha: {
