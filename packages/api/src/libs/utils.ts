@@ -5,7 +5,7 @@ import { utils, BigNumber } from "ethers";
 import assert from "assert";
 const { parseUnits } = utils;
 
-export const ETH = parseUnits("1");
+export const SCALING_MULTIPLIER = parseUnits("1");
 export type BigNumberish = number | string | BigNumber;
 
 export { parseUnits };
@@ -53,11 +53,11 @@ export function calcTvl(
   assert(uma.utils.exists(totalPositionCollateral), "requires total position collateral");
   assert(uma.utils.exists(collateralDecimals), "requires collateralDecimals");
   const normalizedCollateral = uma.utils.ConvertDecimals(collateralDecimals, 18)(totalPositionCollateral);
-  return BigNumber.from(price).mul(normalizedCollateral).div(ETH);
+  return BigNumber.from(price).mul(normalizedCollateral).div(SCALING_MULTIPLIER);
 }
 
 export function calcSyntheticPrice(syntheticPrice: BigNumberish, collateralPrice: BigNumberish) {
-  return BigNumber.from(syntheticPrice).mul(collateralPrice).div(ETH);
+  return BigNumber.from(syntheticPrice).mul(collateralPrice).div(SCALING_MULTIPLIER);
 }
 
 export function sToMs(s: number) {

@@ -30,7 +30,7 @@ export default (appState: Dependencies) => {
     address: string,
     start = 0,
     length = 1,
-    currency: "usd" = "usd"
+    currency: CurrencySymbol = "usd"
   ): Promise<PriceSample[]> {
     assert(start >= 0, "requires a start value >= 0");
     assert(exists(prices[currency]), "invalid currency type: " + currency);

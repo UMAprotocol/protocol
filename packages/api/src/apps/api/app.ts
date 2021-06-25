@@ -2,7 +2,7 @@ import assert from "assert";
 import Web3 from "web3";
 import { ethers } from "ethers";
 
-import { tables, Coingecko } from "@uma/sdk";
+import { tables, Coingecko, utils } from "@uma/sdk";
 
 import * as Services from "../../services";
 import Express from "../../services/express";
@@ -128,7 +128,7 @@ async function run(env: ProcessEnv) {
   }
 
   // coingeckos prices don't update very fast, so set it on an interval every few minutes
-  setInterval(() => {
+  utils.loop(async () => {
     updatePrices().catch(console.error);
   }, 5 * 60 * 1000);
 }
