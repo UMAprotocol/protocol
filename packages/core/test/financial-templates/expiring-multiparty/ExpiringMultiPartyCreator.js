@@ -234,6 +234,11 @@ contract("ExpiringMultiPartyCreator", function (accounts) {
     assert.isTrue(await tokenContract.isMinter(expiringMultiPartyAddress));
     assert.isTrue(await tokenContract.isBurner(expiringMultiPartyAddress));
     assert.isTrue(await tokenContract.holdsRole(0, expiringMultiPartyAddress));
+
+    // The creator contract should hold no roles.
+    assert.isFalse(await tokenContract.holdsRole(0, expiringMultiPartyCreator.address));
+    assert.isFalse(await tokenContract.holdsRole(1, expiringMultiPartyCreator.address));
+    assert.isFalse(await tokenContract.holdsRole(2, expiringMultiPartyCreator.address));
   });
 
   it("If collateral currency does not implement the decimals() method then synthetic currency defaults to 18 decimals", async function () {
