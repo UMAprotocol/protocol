@@ -142,9 +142,46 @@ export default (config: Config, appState: Dependencies) => {
     });
   }
 
+  async function backfillTvl(emp: uma.tables.emps.Data, priceSample: PriceSample) {
+    assert(emp.collateralCurrency, "Backfill TVL Requires collateral currency for emp: " + emp.address);
+    const value = await calcTvl(priceSample[1], emp).toString();
+    return getTvlHistoryTable().create({
+      address: emp.address,
+      timestamp: priceSample[0],
+      value,
+    });
+  }
+
+  async function backfillAllTvl(addresses: string[]) {
+    return Promise.allSettled(
+      addresses.map(async (address) => {
+        const emp = await getFullEmpState(address);
+        assert(uma.utils.exists(emp.collateralCurrency), "Emp has no collateral currency: " + emp.address);
+        const historicalPrices = await prices[currency].history[emp.collateralCurrency].values();
+        return Promise.all(
+          historicalPrices.map((priceSample) => {
+            return backfillTvl(emp, [priceSample.timestamp, priceSample.price]);
+          })
+        );
+      })
+    );
+  }
+
+  async function backfill() {
+    const addresses = Array.from(registeredEmps.values());
+    await backfillAllTvl(addresses).then((results) => {
+      results.forEach((result) => {
+        if (result.status === "rejected") console.error("Error updating tvl: " + result.reason.message);
+      });
+    });
+  }
+
   return {
     update,
+    backfill,
     utils: {
+      backfillAllTvl,
+      backfillTvl,
       updateAllTvl,
       updateAllTvm,
       updateTvl,

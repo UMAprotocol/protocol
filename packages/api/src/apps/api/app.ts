@@ -106,9 +106,14 @@ async function run(env: ProcessEnv) {
   await services.erc20s.update();
   console.log("Updated tokens");
 
-  // backfill price histories
-  await services.collateralPrices.backfill(moment().subtract(1, "month").valueOf());
-  console.log("Updated Collateral Prices Backfill");
+  // backfill price histories, disable if not specified in env
+  if (env.backfillDays) {
+    console.log(`Backfilling price history from ${env.backfillDays} days ago`);
+    await services.collateralPrices.backfill(moment().subtract(env.backfillDays, "days").valueOf());
+    console.log("Updated Collateral Prices Backfill");
+    await services.empStats.backfill();
+    console.log("Updated EMP Backfill");
+  }
 
   await services.collateralPrices.update();
   console.log("Updated Collateral Prices");
