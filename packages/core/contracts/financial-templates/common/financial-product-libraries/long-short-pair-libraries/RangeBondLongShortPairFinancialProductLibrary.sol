@@ -85,7 +85,7 @@ contract RangeBondLongShortPairFinancialProductLibrary is LongShortPairFinancial
         returns (uint256)
     {
         RangeBondLongShortPairParameters memory params = longShortPairParameters[msg.sender];
-        require(!(params.highPriceRange == 0 && params.lowPriceRange == 0), "Params not set for calling LSP");
+        require(params.highPriceRange != 0 || params.lowPriceRange != 0, "Params not set for calling LSP");
 
         // This function's returns a value between 0 and 1e18 to be used in conjunction with the LSP collateralPerPair
         // that allocates collateral between the short and long tokens on expiry. This can be simplified by considering
