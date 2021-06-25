@@ -139,7 +139,7 @@ function EmpBalances(handlers = {}, { collateral, tokens } = {}) {
     },
     Redeem(sponsor, collateralAmount, tokenAmount) {
       collateral.sub(sponsor, collateralAmount.toString());
-      tokens.sub(sponsor, tokenAmount).toString();
+      tokens.sub(sponsor, tokenAmount.toString());
     },
     ContractExpired(/* caller*/) {
       expired = true;
@@ -174,6 +174,9 @@ function EmpBalances(handlers = {}, { collateral, tokens } = {}) {
     },
     FinalFeesPaid() {
       // nothing
+    },
+    Repay(sender, numTokens) {
+      tokens.sub(sender, numTokens.toString());
     },
     // override defaults
     ...handlers,

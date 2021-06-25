@@ -156,6 +156,7 @@ async function Poll(callback) {
       at: "OptimisticOracle#index",
       message: "OO proposer execution error🚨",
       error: typeof error === "string" ? new Error(error) : error,
+      notificationPath: "infrastructure-error",
     });
     await waitForLogger(Logger);
     callback(error);

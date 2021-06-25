@@ -2,7 +2,7 @@ import assert from "assert";
 import Coingecko from ".";
 
 // this requires e2e testing, should only test manually for now
-describe.skip("coingecko", function () {
+describe("coingecko", function () {
   let cg: Coingecko;
   test("init", function () {
     cg = new Coingecko();

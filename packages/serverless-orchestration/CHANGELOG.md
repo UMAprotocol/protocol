@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.2.0...@uma/serverless-orchestration@2.3.0) (2021-06-21)
+
+### Bug Fixes
+
+- **serverlesshub:** reduce logging noise ([#3112](https://github.com/UMAprotocol/protocol/issues/3112)) ([f0ae3f8](https://github.com/UMAprotocol/protocol/commit/f0ae3f8d08bbcd4f4347480b2667058787985a89))
+
+### Features
+
+- **serverless-hub:** Update to enable generalize bot runner to work in production ([#3062](https://github.com/UMAprotocol/protocol/issues/3062)) ([85caf51](https://github.com/UMAprotocol/protocol/commit/85caf519164aced76b55ab9e65c36a49d1077bb4))
+- **serverlessHub:** Add notification path for fatal errors ([#3058](https://github.com/UMAprotocol/protocol/issues/3058)) ([52ce212](https://github.com/UMAprotocol/protocol/commit/52ce2122236eb2176e84b3b5dadfb217c862910b))
+- **Winston-logger:** add multiple escalation paths depending on message context ([#3042](https://github.com/UMAprotocol/protocol/issues/3042)) ([cd9412d](https://github.com/UMAprotocol/protocol/commit/cd9412d1bac4c0def413309423fe9ff8e487e4c1))
+
 # [2.2.0](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.1.0...@uma/serverless-orchestration@2.2.0) (2021-05-20)
 
 ### Bug Fixes

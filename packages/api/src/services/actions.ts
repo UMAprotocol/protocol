@@ -2,6 +2,7 @@ import assert from "assert";
 import * as uma from "@uma/sdk";
 import { Json, Actions, AppState, CurrencySymbol, PriceSample } from "..";
 import Queries from "../libs/queries";
+import { nowS } from "../libs/utils";
 
 const { exists } = uma.utils;
 
@@ -11,7 +12,7 @@ type Config = undefined;
 
 export function Handlers(config: Config, appState: Dependencies): Actions {
   const queries = Queries(appState);
-  const { registeredEmps, erc20s, collateralAddresses, syntheticAddresses, prices, synthPrices } = appState;
+  const { registeredEmps, erc20s, collateralAddresses, syntheticAddresses, prices, synthPrices, stats } = appState;
 
   const actions: Actions = {
     echo(...args: Json[]) {
@@ -66,7 +67,7 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     async historicalPricesByAddress(
       address: string,
       start = 0,
-      end: number = Date.now(),
+      end: number = nowS(),
       currency: "usd" = "usd"
     ): Promise<PriceSample[]> {
       assert(start >= 0, "requires a start value >= 0");
@@ -88,6 +89,42 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       const results = await prices[currency].history[address].sliceByTimestamp(start, length);
       // convert this to tuple to save bytes.
       return results.map(({ price, timestamp }) => [timestamp, price]);
+    },
+    async getEmpStats(address: string, currency: CurrencySymbol = "usd") {
+      assert(address, "requires address");
+      assert(currency, "requires currency");
+      assert(stats[currency], "No stats for currency: " + currency);
+      return stats[currency].latest.get(address);
+    },
+    async listEmpStats(currency: CurrencySymbol = "usd") {
+      assert(currency, "requires currency");
+      assert(stats[currency], "No stats for currency: " + currency);
+      return stats[currency].latest.values();
+    },
+    async historicalSynthPricesByAddress(empAddress: string, start = 0, end: number = nowS()): Promise<PriceSample[]> {
+      assert(empAddress, "requires emp address");
+      assert(start >= 0, "requires a start value >= 0");
+      assert(exists(synthPrices.history[empAddress]), "No synthetic prices for emp address: " + empAddress);
+      const results = await synthPrices.history[empAddress].betweenByTimestamp(start, end);
+      // convert this to tuple to save bytes.
+      return results.map(({ price, timestamp }) => [timestamp, price]);
+    },
+    async sliceHistoricalSynthPricesByAddress(empAddress: string, start = 0, length = 1): Promise<PriceSample[]> {
+      assert(empAddress, "requires emp address");
+      assert(start >= 0, "requires a start value >= 0");
+      assert(exists(synthPrices.history[empAddress]), "No synthetic prices for emp address: " + empAddress);
+      const results = await synthPrices.history[empAddress].sliceByTimestamp(start, length);
+      // convert this to tuple to save bytes.
+      return results.map(({ price, timestamp }) => [timestamp, price]);
+    },
+    async tvl(addresses?: string[], currency: CurrencySymbol = "usd") {
+      if (addresses == null || addresses.length == 0) return queries.totalTvl(currency);
+      return queries.sumTvl(addresses, currency);
+    },
+    async getEmpStatsBetween(address: string, start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") {
+      assert(stats[currency], "Invalid currency type: " + currency);
+      assert(stats[currency].history[address], "Invalid emp address: " + address);
+      return stats[currency].history[address].between(start, end);
     },
   };
 

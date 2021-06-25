@@ -8,6 +8,8 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
   require("hardhat-gas-reporter");
   require("@nomiclabs/hardhat-web3");
   require("hardhat-deploy");
+  require("@nomiclabs/hardhat-etherscan");
+  require("./gckms/KeyInjectorPlugin");
 
   // Custom tasks to interact conveniently with smart contracts.
   require("./hardhat/tasks");

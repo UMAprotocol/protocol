@@ -38,3 +38,26 @@ export function calcGcr(
   }
   return BigNumber.from(0);
 }
+
+export function calcTvl(
+  price: string,
+  emp: Pick<uma.tables.emps.Data, "totalPositionCollateral" | "collateralDecimals">
+) {
+  const { totalPositionCollateral, collateralDecimals } = emp;
+  assert(uma.utils.exists(totalPositionCollateral), "requires total position collateral");
+  assert(uma.utils.exists(collateralDecimals), "requires collateralDecimals");
+  const normalizedCollateral = uma.utils.ConvertDecimals(collateralDecimals, 18)(totalPositionCollateral);
+  return parseUnits(price).mul(normalizedCollateral).div(parseUnits("1"));
+}
+
+export function sToMs(s: number) {
+  return s * 1000;
+}
+
+export function msToS(ms: number) {
+  return Math.floor(ms / 1000);
+}
+
+export function nowS(): number {
+  return msToS(Date.now());
+}

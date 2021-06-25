@@ -126,6 +126,8 @@ export default (config: Config, appState: Dependencies) => {
         // delete it from active
         await emps.active.delete(address);
       } else {
+        // have to make sure we get static state if we have never seen this expired emp before
+        staticState = await readEmpStaticState(instance, address);
         // if it was never active, just create an expired emp
         await emps.expired.create({ ...staticState, ...dynamicState, sponsors: eventState.sponsors, expired: true });
       }
@@ -145,7 +147,7 @@ export default (config: Config, appState: Dependencies) => {
 
   // add a set of all collateral addresses
   async function updateTokenAddresses() {
-    const allEmps = await emps.active.values();
+    const allEmps = [...(await emps.active.values()), ...(await emps.expired.values())];
     allEmps.forEach((emp) => {
       if (emp.collateralCurrency) collateralAddresses.add(emp.collateralCurrency);
       if (emp.tokenCurrency) syntheticAddresses.add(emp.tokenCurrency);
@@ -153,9 +155,8 @@ export default (config: Config, appState: Dependencies) => {
   }
 
   async function update(startBlock?: number | "latest", endBlock?: number) {
-    await Promise.map(Array.from(await registeredEmps.values()), (address: string) =>
-      updateOne(address, startBlock, endBlock)
-    );
+    const addresses = Array.from(await registeredEmps.values());
+    await Promise.mapSeries(addresses, (address: string) => updateOne(address, startBlock, endBlock));
     await updateTokenAddresses();
   }
 

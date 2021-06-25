@@ -20,18 +20,19 @@ export default async (config: Config, actions: Actions) => {
   app.use(bodyParser.json({ limit: "1mb" }));
   app.use(bodyParser.urlencoded({ extended: true }));
 
-  app.options("*", cors());
-
   app.get("/", (req: Request, res: Response) => {
     return res.send("ok");
   });
 
   app.post("/:action", (req: Request, res: Response, next: NextFunction) => {
     const action = req?.params?.action;
+
     actions(action, ...lodash.castArray(req.body))
       .then(res.json.bind(res))
       .catch(next);
   });
+
+  app.use(cors());
 
   app.use(function (req: Request, res: Response, next: NextFunction) {
     next(new Error("Invalid Request"));

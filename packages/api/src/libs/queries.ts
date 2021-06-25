@@ -1,11 +1,11 @@
 // allow for more complex queries, joins and shared queries between services
-import type { AppState } from "..";
+import type { AppState, CurrencySymbol } from "..";
 import uma from "@uma/sdk";
 import { calcGcr } from "./utils";
-import assert from "assert";
-import bluebird from "bluebird";
+import Promise from "bluebird";
+import { BigNumber } from "ethers";
 
-type Dependencies = Pick<AppState, "erc20s" | "emps">;
+type Dependencies = Pick<AppState, "erc20s" | "emps" | "stats" | "registeredEmps">;
 
 export default (appState: Dependencies) => {
   async function getAnyEmp(empAddress: string) {
@@ -16,10 +16,10 @@ export default (appState: Dependencies) => {
   }
   // joins emp with token state and gcr
   async function getFullEmpState(empState: uma.tables.emps.Data) {
-    assert(empState.tokenCurrency, "requires tokenCurrency");
-    assert(empState.collateralCurrency, "requires collateralCurrency");
-    const token = await appState.erc20s.get(empState.tokenCurrency);
-    const collateral = await appState.erc20s.get(empState.collateralCurrency);
+    const token = empState.tokenCurrency ? await appState.erc20s.get(empState.tokenCurrency).catch(() => null) : null;
+    const collateral = empState.collateralCurrency
+      ? await appState.erc20s.get(empState.collateralCurrency).catch(() => null)
+      : null;
 
     const state = {
       ...empState,
@@ -28,7 +28,12 @@ export default (appState: Dependencies) => {
       tokenName: token?.name,
       collateralName: collateral?.name,
     };
-    const gcr = calcGcr(state).toString();
+    let gcr = "0";
+    try {
+      gcr = calcGcr(state).toString();
+    } catch (err) {
+      // nothing
+    }
     return {
       ...state,
       gcr,
@@ -37,11 +42,27 @@ export default (appState: Dependencies) => {
 
   async function listActiveEmps() {
     const emps = appState.emps.active.values();
-    return bluebird.map(emps, (emp) => getFullEmpState(emp).catch(() => emp));
+    return Promise.map(emps, (emp) => getFullEmpState(emp).catch(() => emp));
   }
   async function listExpiredEmps() {
     const emps = appState.emps.expired.values();
-    return bluebird.map(emps, (emp) => getFullEmpState(emp).catch(() => emp));
+    return Promise.map(emps, (emp) => getFullEmpState(emp).catch(() => emp));
+  }
+
+  async function sumTvl(addresses: string[], currency: CurrencySymbol = "usd") {
+    const tvl = await Promise.reduce(
+      addresses,
+      async (sum, address) => {
+        const stats = await appState.stats[currency].latest.getOrCreate(address);
+        return sum.add(stats.tvl || "0");
+      },
+      BigNumber.from("0")
+    );
+    return tvl.toString();
+  }
+  async function totalTvl(currency: CurrencySymbol = "usd") {
+    const addresses = Array.from(appState.registeredEmps.values());
+    return sumTvl(addresses, currency);
   }
 
   return {
@@ -49,5 +70,7 @@ export default (appState: Dependencies) => {
     getAnyEmp,
     listActiveEmps,
     listExpiredEmps,
+    totalTvl,
+    sumTvl,
   };
 };
