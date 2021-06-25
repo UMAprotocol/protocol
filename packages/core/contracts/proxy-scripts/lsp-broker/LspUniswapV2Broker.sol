@@ -196,7 +196,9 @@ contract LspUniswapV2Broker {
         TransferHelper.safeApprove(address(collateralToken), address(longShortPair), amountCollateral);
 
         // 1) Deposit collateral into LSP and mint long and short tokens.
-        longShortPair.create(amountCollateral);
+        uint256 tokensToCreate =
+            FixedPoint.fromUnscaledUint(amountCollateral).div(longShortPair.collateralPerPair()).rawValue;
+        longShortPair.create(tokensToCreate);
 
         // 2) Determine which token we are selling and convert it all into the other.
         IERC20 soldToken = IERC20(sellLong ? longShortPair.shortToken() : longShortPair.longToken());
