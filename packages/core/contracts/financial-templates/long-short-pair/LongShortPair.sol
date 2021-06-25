@@ -160,7 +160,7 @@ contract LongShortPair is Testable, Lockable {
     /**
      * @notice Creates a pair of long and short tokens equal in number to tokensToCreate. Pulls the required collateral
      * amount into this contract, defined by the collateralPerPair value.
-     * @dev The caller must approve this contract to transfer `tokensToCreate / collateralPerPair` amount of collateral.
+     * @dev The caller must approve this contract to transfer `tokensToCreate * collateralPerPair` amount of collateral.
      * @param tokensToCreate number of long and short synthetic tokens to create.
      * @return collateralUsed total collateral used to mint the synthetics.
      */

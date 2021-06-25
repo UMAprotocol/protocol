@@ -114,7 +114,7 @@ contract("LspUniswapV2Broker", function (accounts) {
 
     collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: deployer });
     await collateralToken.addMember(1, deployer, { from: deployer });
-    await collateralToken.mint(deployer, toWei("1000000"), { from: deployer });
+    await collateralToken.mint(deployer, toWei("10000000"), { from: deployer });
 
     await collateralWhitelist.addToWhitelist(collateralToken.address);
 
@@ -492,6 +492,8 @@ contract("LspUniswapV2Broker", function (accounts) {
     });
   });
   describe("atomicMintAddLiquidity: AMM contains Long against Short token in equal ratio", () => {
+    // Mint in exact ratios equal between long and short. There should not be any need for trading as the mint ratio
+    // is exactly equal to the pool ratio.
     beforeEach(async () => {
       await router.addLiquidity(
         longToken.address,
@@ -519,7 +521,6 @@ contract("LspUniswapV2Broker", function (accounts) {
     it("Can correctly mint and LP in one transaction", async function () {
       // Calculate how many LP tokens are expected to be minted per unit collateral. Trader added 100000 units of
       // to mint 100000 long and short tokens.
-      // so
       const lpTokensPerCollateral = (await lpToken.balanceOf(deployer))
         .mul(toBN(toWei("1"))) // scalding factor
         .div(toBN(toWei("100000"))) // number of collateral units used in minting
@@ -530,6 +531,7 @@ contract("LspUniswapV2Broker", function (accounts) {
         longShortPair.address, // longShortPair. address to mint tokens against.
         router.address, // router. uniswap v2 router to execute trades
         toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
+        MAX_UINT_VAL,
         { from: trader }
       );
 
@@ -551,9 +553,9 @@ contract("LspUniswapV2Broker", function (accounts) {
       // As the pool is at an exact 50/50 ratio there should be no slippage on entering the LP position.
       assert.equal(
         (await lpToken.balanceOf(trader)).toString(),
-        lpTokensPerCollateral
-          .mul(toBN(toWei("1000")))
-          .div(toBN(toWei("1")))
+        lpTokensPerCollateral // how many LP tokens should be issued per unit collateral
+          .mul(toBN(toWei("1000"))) // the number of collateral units used in minting
+          .div(toBN(toWei("1"))) // correct scalling factor
           .toString()
       );
 
@@ -579,12 +581,12 @@ contract("LspUniswapV2Broker", function (accounts) {
   });
   describe("atomicMintAddLiquidity: AMM contains Long against Short token in unequal ratio", () => {
     beforeEach(async () => {
-      // Add 100000 long and 10000 short. this makes the price 100000/10000 long/short. In other words every short is
-      // worth 10 long. When LPing we will be market selling longs for shorts to reach the appropriate ratio.
+      // Add 1000000 long and 10000 short. this makes the price 1000000/10000 long/short. In other words every short is
+      // worth 100 long. When LPing we will be market selling longs for shorts to reach the appropriate ratio.
       await router.addLiquidity(
         longToken.address,
         shortToken.address,
-        toWei("100000"),
+        toWei("1000000"),
         toWei("10000"),
         "0",
         "0",
@@ -594,9 +596,9 @@ contract("LspUniswapV2Broker", function (accounts) {
       );
       lpToken = await Token.at(pair.address);
 
-      assert.equal((await longToken.balanceOf(pair.address)).toString(), toWei("100000"));
+      assert.equal((await longToken.balanceOf(pair.address)).toString(), toWei("1000000"));
       assert.equal((await shortToken.balanceOf(pair.address)).toString(), toWei("10000"));
-      assert.equal(await getPoolSpotPrice(longToken, shortToken), "10.0000"); // price should be exactly 10 TokenA/TokenB
+      assert.equal(await getPoolSpotPrice(longToken, shortToken), "100.0000"); // price should be exactly 10 TokenA/TokenB
 
       // Mint EOA some collateral:
       await collateralToken.mint(trader, toWei("1000"), { from: deployer });
@@ -604,46 +606,32 @@ contract("LspUniswapV2Broker", function (accounts) {
       await collateralToken.approve(lspUniswapV2Broker.address, toWei("1000"), { from: trader });
     });
 
-    it.only("Can correctly mint and LP in one transaction", async function () {
-      // Calculate how many LP tokens are expected to be minted per unit collateral. Trader added 100000 units of
-      // to mint 100000 long and short tokens.
-
-      const lpTokensPerCollateral = (await lpToken.balanceOf(deployer))
-        .mul(toBN(toWei("1"))) // scalding factor
-        .div(toBN(toWei("100000"))) // number of collateral units used in minting
-        .addn(1); // offset to fix rounding error
-
+    it("Can correctly mint and LP in one transaction", async function () {
       await lspUniswapV2Broker.atomicMintAddLiquidity(
         true, // tradingAsEOA. true as calling from an EOA (not DSProxy).
         longShortPair.address, // longShortPair. address to mint tokens against.
         router.address, // router. uniswap v2 router to execute trades
         toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
+        MAX_UINT_VAL,
         { from: trader }
       );
+
+      const poolLongBalPostAdd = await longToken.balanceOf(pair.address);
+      const poolShortBalPostAdd = await shortToken.balanceOf(pair.address);
 
       // The trader should no collateral left (spent all 1000).
       assert.equal((await collateralToken.balanceOf(trader)).toString(), toWei("0"));
 
-      // The trader should have no short tokens as they were all sold when minting.
-      assert.equal((await shortToken.balanceOf(trader)).toString(), toWei("0"));
+      // The trader should have minimal short or long tokens in their wallet. This is the "dust" sent back to them after
+      // minting and LPing. validate that it's less than 50 wei.
+      assert.isTrue((await shortToken.balanceOf(trader)).lt(toBN("50")));
+      assert.isTrue((await longToken.balanceOf(trader)).lt(toBN("50")));
 
-      // The trader should have no short tokens as they were all sold when minting.
-      assert.equal((await longToken.balanceOf(trader)).toString(), toWei("0"));
-
-      // The broker should have 0 tokens (long,short and collateral) in it after the trade.
+      // The broker should have 0 tokens (long,short, collateral or LP tokens) in it after the trade.
       assert.equal((await longToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
       assert.equal((await shortToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
       assert.equal((await collateralToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
-
-      // The trader should get slightly less LP tokens for their minting action vs the lpTokensPerCollateral as the
-      // trader has to sell long tokens for short tokens. As a result of the sale, they loose out due to fees and the
-      // shape of the curve, resulting in a smaller balance of LP tokens than a direct tokensPerCollateral*collateral.
-      // Validate that they got within 0.1% of the expected amount (the losses are due to the slippage). Note that if the
-      // pool was shallower or the trader was adding in more liquidity relative to the pool size this loss would be higher.
-      assert.isTrue(
-        (await lpToken.balanceOf(trader)).lt(lpTokensPerCollateral.mul(toBN(toWei("1000.5"))).div(toBN(toWei("1")))) &&
-          (await lpToken.balanceOf(trader)).gt(lpTokensPerCollateral.mul(toBN(toWei("999.5"))).div(toBN(toWei("1"))))
-      );
+      assert.equal((await lpToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
 
       // calculate the longPerLp & shortPerLp. i.e for each LP token an address has, what is the redemption rate for
       // one long and one short token.
@@ -655,8 +643,6 @@ contract("LspUniswapV2Broker", function (accounts) {
       await lpToken.approve(router.address, MAX_UINT_VAL, { from: trader });
 
       const traderLpBalance = await lpToken.balanceOf(trader);
-      console.log("longPerLp", longPerLp.toString());
-      console.log("traderLpBalance", traderLpBalance.toString());
 
       await router.removeLiquidity(
         longToken.address,
@@ -670,23 +656,30 @@ contract("LspUniswapV2Broker", function (accounts) {
       );
 
       // Trader should get back tokens in the exact ratio that the pair has between long and short tokens. This should be
-      // approximately equal to a 10:1 ratio, as this is the rate the pool was seeded at (error introduced by single
-      // sided deposit that will make this not exactly 10:1) and should be exactly equal to the ratio from the previous calc.
-      // In these calculations we check that the output is within 500 units of the expected value.
-
+      // approximately equal to a 100:1 ratio, as this is the rate the pool was seeded at (error introduced by single
+      // sided deposit that will make this not exactly 100:1) and should be exactly equal to the ratio from the previous calc.
+      // In these calculations we check that the output is within 5000 wei of the expected value.
       assert.equal((await lpToken.balanceOf(trader)).toString(), toWei("0"));
 
-      console.log("LONG", (await longToken.balanceOf(trader)).toString());
-      console.log("SHORT", (await shortToken.balanceOf(trader)).toString());
+      const longTraderBalance = await longToken.balanceOf(trader);
+      const shortTraderBalance = await shortToken.balanceOf(trader);
 
       assert.isTrue(
-        (await longToken.balanceOf(trader)).addn(500).gt(longPerLp.mul(traderLpBalance).div(adjustment)) &&
-          (await longToken.balanceOf(trader)).subn(500).lt(longPerLp.mul(traderLpBalance).div(adjustment))
+        longTraderBalance.addn(5000).gt(longPerLp.mul(traderLpBalance).div(adjustment)) &&
+          longTraderBalance.subn(5000).lt(longPerLp.mul(traderLpBalance).div(adjustment))
       );
       assert.isTrue(
-        (await shortToken.balanceOf(trader)).addn(500).gt(shortPerLp.mul(traderLpBalance).div(adjustment)) &&
-          (await shortToken.balanceOf(trader)).subn(500).lt(shortPerLp.mul(traderLpBalance).div(adjustment))
+        shortTraderBalance.addn(5000).gt(shortPerLp.mul(traderLpBalance).div(adjustment)) &&
+          shortTraderBalance.subn(5000).lt(shortPerLp.mul(traderLpBalance).div(adjustment))
       );
+
+      // Finally, the ratio of long to short tokens that the trader gets back should be exactly equal to the ratio of
+      // long to short tokens in the pool post addition of tokens. Validate this is the case withing a 10 wei error on
+      // each side. This verifies that the number returned is correctly proportional to that deposited.
+      const walletRatio = longTraderBalance.mul(adjustment).div(shortTraderBalance);
+      const poolRatio = poolLongBalPostAdd.mul(adjustment).div(poolShortBalPostAdd);
+
+      assert.isTrue(walletRatio.addn(10).gte(poolRatio) && walletRatio.subn(10).lte(poolRatio));
     });
   });
   describe("atomicMintAddLiquidity: AMM contains Long against Short token in very unequal ratio (extreme slippage)", () => {
@@ -717,51 +710,33 @@ contract("LspUniswapV2Broker", function (accounts) {
     });
 
     it("Can correctly mint and LP in one transaction", async function () {
-      // Calculate how many LP tokens are expected to be minted per unit collateral. Trader added 100000 units of
-      // to mint 100000 long and short tokens.
-      // so
-      const lpTokensPerCollateral = (await lpToken.balanceOf(deployer))
-        .mul(toBN(toWei("1"))) // scalding factor
-        .div(toBN(toWei("100000"))) // number of collateral units used in minting
-        .addn(1); // offset to fix rounding error
-
       await lspUniswapV2Broker.atomicMintAddLiquidity(
         true, // tradingAsEOA. true as calling from an EOA (not DSProxy).
         longShortPair.address, // longShortPair. address to mint tokens against.
         router.address, // router. uniswap v2 router to execute trades
         toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
+        MAX_UINT_VAL,
         { from: trader }
       );
+
+      const poolLongBalPostAdd = await longToken.balanceOf(pair.address);
+      const poolShortBalPostAdd = await shortToken.balanceOf(pair.address);
 
       // The trader should no collateral left (spent all 1000).
       assert.equal((await collateralToken.balanceOf(trader)).toString(), toWei("0"));
 
-      // The trader should have no short tokens as they were all sold when minting.
-      assert.equal((await shortToken.balanceOf(trader)).toString(), toWei("0"));
+      // The trader should have minimal short or long tokens in their wallet. This is the "dust" sent back to them after
+      // minting and LPing. validate that it's less than 1500 wei.
+      console.log("bs", (await shortToken.balanceOf(trader)).toString());
+      console.log("bl", (await longToken.balanceOf(trader)).toString());
+      assert.isTrue((await shortToken.balanceOf(trader)).lt(toBN("1500")));
+      assert.isTrue((await longToken.balanceOf(trader)).lt(toBN("1500")));
 
-      // The trader should have no short tokens as they were all sold when minting.
-      assert.equal((await longToken.balanceOf(trader)).toString(), toWei("0"));
-
-      // The broker should have 0 tokens (long,short and collateral) in it after the trade.
+      // The broker should have 0 tokens (long,short, collateral or LP tokens) in it after the trade.
       assert.equal((await longToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
       assert.equal((await shortToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
       assert.equal((await collateralToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
-
-      // The trader should get slightly less LP tokens for their minting action vs the lpTokensPerCollateral as the
-      // trader has to sell long tokens for short tokens. As a result of the sale, they loose out due to fees and the
-      // shape of the curve, resulting in a smaller balance of LP tokens than a direct tokensPerCollateral*collateral.
-      // Validate that they got within 0.1% of the expected amount (the losses are due to the slippage). Note that if the
-      // pool was shallower or the trader was adding in more liquidity relative to the pool size this loss would be higher.
-      // assert.isTrue(
-      //   (await lpToken.balanceOf(trader)).lt(lpTokensPerCollateral.mul(toBN(toWei("1000"))).div(toBN(toWei("1"))))
-      // );
-
-      // assert.isTrue(
-      //   (await lpToken.balanceOf(trader)).gt(lpTokensPerCollateral.mul(toBN(toWei("999"))).div(toBN(toWei("1"))))
-      // );
-
-      console.log("pool long", (await longToken.balanceOf(pair.address)).toString());
-      console.log("pool short", (await shortToken.balanceOf(pair.address)).toString());
+      assert.equal((await lpToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
 
       // calculate the longPerLp & shortPerLp. i.e for each LP token an address has, what is the redemption rate for
       // one long and one short token.
@@ -773,8 +748,6 @@ contract("LspUniswapV2Broker", function (accounts) {
       await lpToken.approve(router.address, MAX_UINT_VAL, { from: trader });
 
       const traderLpBalance = await lpToken.balanceOf(trader);
-      console.log("longPerLp", longPerLp.toString());
-      console.log("traderLpBalance", traderLpBalance.toString());
 
       await router.removeLiquidity(
         longToken.address,
@@ -787,24 +760,38 @@ contract("LspUniswapV2Broker", function (accounts) {
         { from: trader }
       );
 
-      console.log("LP", (await longToken.balanceOf(trader)).toString());
-      console.log("SP", (await shortToken.balanceOf(trader)).toString());
-
       // Trader should get back tokens in the exact ratio that the pair has between long and short tokens. This should be
-      // approximately equal to a 10:1 ratio, as this is the rate the pool was seeded at (error introduced by single
-      // sided deposit that will make this not exactly 10:1) and should be exactly equal to the ratio from the previous calc.
-      // In these calculations we check that the output is within 500 units of the expected value.
-
+      // approximately equal to a 100:1 ratio, as this is the rate the pool was seeded at (error introduced by single
+      // sided deposit that will make this not exactly 100:1) and should be exactly equal to the ratio from the previous calc.
+      // In these calculations we check that the output is within 5000 wei of the expected value.
       assert.equal((await lpToken.balanceOf(trader)).toString(), toWei("0"));
 
+      const longTraderBalance = await longToken.balanceOf(trader);
+      console.log("longTraderBalance", longTraderBalance.toString());
+      const shortTraderBalance = await shortToken.balanceOf(trader);
+      console.log("shortTraderBalance", shortTraderBalance.toString());
+
+      console.log(
+        "longPerLp.mul(traderLpBalance).div(adjustment)",
+        longPerLp.mul(traderLpBalance).div(adjustment).toString()
+      );
+
       assert.isTrue(
-        (await longToken.balanceOf(trader)).addn(500).gt(longPerLp.mul(traderLpBalance).div(adjustment)) &&
-          (await longToken.balanceOf(trader)).subn(500).lt(longPerLp.mul(traderLpBalance).div(adjustment))
+        longTraderBalance.addn(10000).gt(longPerLp.mul(traderLpBalance).div(adjustment)) &&
+          longTraderBalance.subn(10000).lt(longPerLp.mul(traderLpBalance).div(adjustment))
       );
       assert.isTrue(
-        (await shortToken.balanceOf(trader)).addn(500).gt(shortPerLp.mul(traderLpBalance).div(adjustment)) &&
-          (await shortToken.balanceOf(trader)).subn(500).lt(shortPerLp.mul(traderLpBalance).div(adjustment))
+        shortTraderBalance.addn(10000).gt(shortPerLp.mul(traderLpBalance).div(adjustment)) &&
+          shortTraderBalance.subn(10000).lt(shortPerLp.mul(traderLpBalance).div(adjustment))
       );
+
+      // Finally, the ratio of long to short tokens that the trader gets back should be exactly equal to the ratio of
+      // long to short tokens in the pool post addition of tokens. Validate this is the case withing a 10 wei error on
+      // each side. This verifies that the number returned is correctly proportional to that deposited.
+      const walletRatio = longTraderBalance.mul(adjustment).div(shortTraderBalance);
+      const poolRatio = poolLongBalPostAdd.mul(adjustment).div(poolShortBalPostAdd);
+
+      assert.isTrue(walletRatio.addn(1000).gte(poolRatio) && walletRatio.subn(1000).lte(poolRatio));
     });
   });
 });
