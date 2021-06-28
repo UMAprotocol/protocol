@@ -18,7 +18,6 @@ import "../../financial-templates/long-short-pair/LongShortPair.sol";
  * @notice Helper contract to facilitate batched LSP and UniswapV2 transactions, including Mint+Sell and Mint+LP.
  */
 contract LspUniswapV2Broker {
-    // using FixedPoint for FixedPoint.Unsigned;
     using FixedPoint for FixedPoint.Signed;
     using FixedPoint for FixedPoint.Unsigned;
 
