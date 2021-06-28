@@ -4,6 +4,8 @@ import { AppState, CurrencySymbol } from "..";
 type Config = {
   currency?: CurrencySymbol;
 };
+import { parseUnits } from "../libs/utils";
+
 type Dependencies = Pick<AppState, "coingecko" | "prices" | "collateralAddresses">;
 
 export default function (config: Config, appState: Dependencies) {
@@ -47,7 +49,8 @@ export default function (config: Config, appState: Dependencies) {
   // does not do any queries, just a helper to mutate the latest price table
   function updateLatestPrice(params: { address: string; price: number; timestamp: number }) {
     const { address, timestamp, price } = params;
-    prices[currency].latest[address] = [timestamp, price.toString()];
+    // we need to store prices in wei, so use parse units on this price
+    prices[currency].latest[address] = [timestamp, parseUnits(price.toString()).toString()];
     return params;
   }
 
