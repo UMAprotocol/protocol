@@ -7,7 +7,7 @@ const { expect } = chai;
 
 chai.use(solidity);
 
-describe("FinderFlattened", () => {
+describe("Finder - Optimism", () => {
   const interfaceName1 = padRight(utf8ToHex("interface1"), 64);
   const interfaceName2 = padRight(utf8ToHex("interface2"), 64);
   const implementationAddress1 = toChecksumAddress(randomHex(20));
@@ -21,7 +21,8 @@ describe("FinderFlattened", () => {
 
   let Finder;
   beforeEach("deploy Finder contract", async () => {
-    const Factory__Finder = await ethers.getContractFactory("FinderFlattened");
+    // TODO: Replace ethers with web3 to be consistent with rest of repo.
+    const Factory__Finder = await ethers.getContractFactory("Finder");
     Finder = await Factory__Finder.connect(owner).deploy();
 
     await Finder.deployTransaction.wait();

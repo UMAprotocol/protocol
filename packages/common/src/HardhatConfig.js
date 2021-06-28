@@ -40,6 +40,18 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
         allowUnlimitedContractSize: false,
         timeout: 1800000,
       },
+      optimism: {
+        url: "http://127.0.0.1:8545",
+        accounts: { mnemonic: "test test test test test test test test test test test junk" },
+        // This sets the gas price to 0 for all transactions on L2. We do this because account balances are not yet
+        // automatically initiated with an ETH balance.
+        gasPrice: 0,
+        // This sets the network as using the ovm and ensure contract will be compiled against that.
+        ovm: true,
+        // We use custom logic to only compile contracts within the listed directories, as opposed to choosing which
+        // ones to ignore, because there are more contracts to ignore than to include.
+        compileWhitelist: ["optimism"],
+      },
       localhost: {
         url: "http://127.0.0.1:8545",
       },
@@ -72,28 +84,6 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
         chainId: 1,
         url: getNodeUrl("mainnet", true),
         accounts: { mnemonic },
-      },
-      optimism: {
-        url: "http://127.0.0.1:8545",
-        accounts: { mnemonic },
-        // This sets the gas price to 0 for all transactions on L2. We do this because account balances are not yet
-        // automatically initiated with an ETH balance.
-        gasPrice: 0,
-        // This sets the network as using the ovm and ensure contract will be compiled against that.
-        ovm: true,
-        ignoreRxList: [
-          "@openzeppelin.",
-          "@uniswap.",
-          "chainbridge.",
-          "external.",
-          "merkle-distributor.",
-          "polygon.",
-          "proxy-scripts.",
-          "umips.",
-          "common.",
-          "oracle.",
-          "financial-templates",
-        ],
       },
     },
     mocha: {
