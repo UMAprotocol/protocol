@@ -64,7 +64,7 @@ contract LongShortPairCreator is Testable, Lockable {
      *                             should be left as a 0-length bytes array.
      * @param prepaidProposerReward Proposal reward forwarded to the created LSP to incentivize price proposals.
      * @return lspAddress the deployed address of the new long short pair contract.
-     * @notice The created LSP is NOT registered within the registry as the LSP contract uses the DVM.
+     * @notice Created LSP is not registered within the registry as the LSP uses the Optimistic Oracle for settlement.
      * @notice The LSP constructor does a number of validations on input params. These are not repeated here.
      */
     function createLongShortPair(
