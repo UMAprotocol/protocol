@@ -11,11 +11,7 @@ const func = async function (hre) {
 
   await deploy("LongShortPairCreator", {
     from: deployer,
-    args: [
-      "0x40f941E48A552bF496B154Af6bf55725f18D77c3",
-      "0x55D8B8c54250f8B5BB192D42Aa746b4C2Ef2d55C",
-      "0x0000000000000000000000000000000000000000",
-    ],
+    args: [Finder.address, TokenFactory.address, Timer.address],
     log: true,
   });
 };
