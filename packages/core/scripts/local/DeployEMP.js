@@ -139,7 +139,7 @@ const deployEMP = async (callback) => {
       from: deployer,
       chainId: await web3.eth.getChainId(),
     };
-    let _emp = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, transactionParams);
+    const _emp = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams, transactionParams);
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams, transactionParams);
     const emp = await ExpiringMultiParty.at(_emp);
 
