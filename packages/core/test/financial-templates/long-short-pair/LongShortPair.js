@@ -240,7 +240,7 @@ contract("LongShortPair", function (accounts) {
       truffleAssert.eventEmitted(settleTx, "PositionSettled", (ev) => {
         return (
           ev.sponsor == sponsor &&
-          ev.colllateralReturned == toWei("75") &&
+          ev.collateralReturned == toWei("75") &&
           ev.longTokens == toWei("75") &&
           ev.shortTokens == toWei("75")
         );

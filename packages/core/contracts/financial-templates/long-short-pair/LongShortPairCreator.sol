@@ -4,12 +4,9 @@ pragma solidity ^0.8.0;
 import "../../common/interfaces/ExpandedIERC20.sol";
 import "../../common/interfaces/IERC20Standard.sol";
 import "../../oracle/interfaces/FinderInterface.sol";
-import "../../oracle/implementation/ContractCreator.sol";
 import "../../common/implementation/Testable.sol";
-import "../../common/implementation/AddressWhitelist.sol";
 import "../../common/implementation/Lockable.sol";
 import "../common/TokenFactory.sol";
-import "../common/SyntheticToken.sol";
 import "./LongShortPair.sol";
 import "../common/financial-product-libraries/long-short-pair-libraries/LongShortPairFinancialProductLibrary.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -29,7 +26,12 @@ contract LongShortPairCreator is Testable, Lockable {
 
     FinderInterface public finder;
 
-    event CreatedLongShortPair(address indexed longShortPair, address indexed deployerAddress);
+    event CreatedLongShortPair(
+        address indexed longShortPair,
+        address indexed deployerAddress,
+        address longToken,
+        address shortToken
+    );
 
     /**
      * @notice Constructs the LongShortPairCreator contract.
@@ -47,19 +49,21 @@ contract LongShortPairCreator is Testable, Lockable {
     }
 
     /**
+     * @notice Creates a longShortPair contract and associated long and short tokens.
+     * @dev The caller must approve this contract to transfer `prepaidProposerReward` amount of collateral.
      * @param expirationTimestamp unix timestamp of when the contract will expire.
      * @param collateralPerPair how many units of collateral are required to mint one pair of synthetic tokens.
      * @param priceIdentifier registered in the DVM for the synthetic.
      * @param syntheticName Name of the synthetic tokens to be created. The long tokens will have "Long Token" appended
      *     to the end and the short token will "Short Token" appended to the end to distinguish within the LSP's tokens.
-     * @param syntheticSymbol Symbol of the synthetic tokens to be created. The long tokens will have "l" appended
-     *     to the start and the short token will "s" appended to the start to distinguish within the LSP's tokens.
-     * @param collateralToken ERC20 token used as as collateral in the LSP.
+     * @param syntheticSymbol Symbol of the synthetic tokens to be created. The long tokens will have "l" prepended
+     *     to the start and the short token will "s" prepended to the start to distinguish within the LSP's tokens.
+     * @param collateralToken ERC20 token used as collateral in the LSP.
      * @param financialProductLibrary Contract providing settlement payout logic.
      * @param customAncillaryData Custom ancillary data to be passed along with the price request. If not needed, this
      *                             should be left as a 0-length bytes array.
-     * @param prepaidProposerReward Proposal reward to be forwarded to the created contract to be used to incentivize
-                                    price proposals.
+     * @param prepaidProposerReward Proposal reward forwarded to the created LSP to incentivize price proposals.
+     * @return lspAddress the deployed address of the new long short pair contract.
      * @notice The created LSP is NOT registered within the registry as the LSP contract uses the DVM.
      * @notice The LSP constructor does a number of validations on input params. These are not repeated here.
      */
@@ -123,7 +127,7 @@ contract LongShortPairCreator is Testable, Lockable {
         shortToken.addBurner(lspAddress);
         shortToken.resetOwner(lspAddress);
 
-        emit CreatedLongShortPair(lspAddress, msg.sender);
+        emit CreatedLongShortPair(lspAddress, msg.sender, address(longToken), address(shortToken));
 
         return lspAddress;
     }
@@ -131,7 +135,7 @@ contract LongShortPairCreator is Testable, Lockable {
     // IERC20Standard.decimals() will revert if the collateral contract has not implemented the decimals() method,
     // which is possible since the method is only an OPTIONAL method in the ERC20 standard:
     // https://eips.ethereum.org/EIPS/eip-20#methods.
-    function _getSyntheticDecimals(IERC20Standard _collateralToken) public view returns (uint8 decimals) {
+    function _getSyntheticDecimals(IERC20Standard _collateralToken) private view returns (uint8 decimals) {
         try _collateralToken.decimals() returns (uint8 _decimals) {
             return _decimals;
         } catch {

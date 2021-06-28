@@ -113,17 +113,25 @@ contract("LongShortPairCreator", function (accounts) {
     assert.equal(await longToken.name(), syntheticName + " Long Token");
     assert.equal(await longToken.symbol(), "l" + syntheticSymbol);
     assert.equal((await longToken.decimals()).toString(), (await collateralToken.decimals()).toString());
-    assert.isTrue(await longToken.holdsRole("0", lspAddress));
-    assert.isTrue(await longToken.holdsRole("1", lspAddress));
-    assert.isTrue(await longToken.holdsRole("2", lspAddress));
+    assert.isTrue(await longToken.holdsRole("0", lspAddress)); // owner
+    assert.isTrue(await longToken.holdsRole("1", lspAddress)); // minter
+    assert.isTrue(await longToken.holdsRole("2", lspAddress)); // burner
 
     const shortToken = await Token.at(await lsp.shortToken());
     assert.equal(await shortToken.name(), syntheticName + " Short Token");
     assert.equal(await shortToken.symbol(), "s" + syntheticSymbol);
     assert.equal((await shortToken.decimals()).toString(), (await collateralToken.decimals()).toString());
-    assert.isTrue(await shortToken.holdsRole("0", lspAddress));
-    assert.isTrue(await shortToken.holdsRole("1", lspAddress));
-    assert.isTrue(await shortToken.holdsRole("2", lspAddress));
+    assert.isTrue(await shortToken.holdsRole("0", lspAddress)); // owner
+    assert.isTrue(await shortToken.holdsRole("1", lspAddress)); // minter
+    assert.isTrue(await shortToken.holdsRole("2", lspAddress)); // burner
+
+    // The creator should not hold any roles on the LSP contract.
+    assert.isFalse(await longToken.holdsRole("0", longShortPairCreator.address)); // owner
+    assert.isFalse(await longToken.holdsRole("1", longShortPairCreator.address)); // minter
+    assert.isFalse(await longToken.holdsRole("2", longShortPairCreator.address)); // burner
+    assert.isFalse(await shortToken.holdsRole("0", longShortPairCreator.address)); // owner
+    assert.isFalse(await shortToken.holdsRole("1", longShortPairCreator.address)); // minter
+    assert.isFalse(await shortToken.holdsRole("2", longShortPairCreator.address)); // burner
   });
   it("Correctly respects non-18 decimal collateral currencies", async function () {
     const non18Collateral = await Token.new("USD Coin", "USDC", 6, { from: deployer });

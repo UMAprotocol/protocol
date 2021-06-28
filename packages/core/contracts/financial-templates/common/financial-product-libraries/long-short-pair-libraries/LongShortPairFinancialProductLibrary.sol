@@ -8,5 +8,5 @@ interface ExpiringContractInterface {
 }
 
 abstract contract LongShortPairFinancialProductLibrary {
-    function computeExpiryTokensForCollateral(int256 expiryPrice) public view virtual returns (uint256);
+    function percentageLongCollateralAtExpiry(int256 expiryPrice) public view virtual returns (uint256);
 }
