@@ -64,6 +64,9 @@ contract LspUniswapV2Broker {
         );
 
         {
+            // 2) Calculate if we need to sell the long token for the short or the short token for the long. Calculate
+            // the total trade size to bring the balance of long/short in this contract to equal the pool ratio after
+            // the trade. Note this computation must consider the impact of the trade with the resultant pool ratios.
             bool aToB;
             uint256 tradeSize;
             (uint256 reserveA, uint256 reserveB) =
@@ -74,6 +77,10 @@ contract LspUniswapV2Broker {
                 FixedPoint.Signed(int256(reserveB))
             );
             address[] memory path = new address[](2);
+
+            // 2.a) If the trade is token a to b then we are selling long tokens for short tokens. In this case, we
+            // know the exact output number of tokens we want (short tokens) and use the router's
+            // swapTokensForExactTokens with the exact output number of tokens specified.
             if (aToB && tradeSize > 0) {
                 path[0] = address(longToken);
                 path[1] = address(shortToken);
@@ -81,6 +88,9 @@ contract LspUniswapV2Broker {
                 router.swapTokensForExactTokens(tradeSize, type(uint256).max, path, address(this), deadline);
             }
             if (!aToB && tradeSize > 0) {
+                // Else, if the trade is b to a then we are selling short tokens for long tokens. In this case, we
+                // know the exact input number of tokens that we need to sell (short tokens) and can use the router's
+                // swapExactTokensForTokens with the exact input spesificed.
                 path[0] = address(shortToken);
                 path[1] = address(longToken);
                 TransferHelper.safeApprove(address(shortToken), address(router), tradeSize);
@@ -88,6 +98,8 @@ contract LspUniswapV2Broker {
             }
         }
 
+        // 3) Add lequidity to the pool via the router. Approve both long and short tokens with the full account balance
+        // in this contract (i.e the amount of tokens minted +- that traded in step 2.).
         TransferHelper.safeApprove(address(longToken), address(router), longToken.balanceOf(address(this)));
         TransferHelper.safeApprove(address(shortToken), address(router), shortToken.balanceOf(address(this)));
         router.addLiquidity(
@@ -101,6 +113,9 @@ contract LspUniswapV2Broker {
             deadline
         );
         {
+            // 4) Finally, if the caller is an EOA, send back the LP tokens from minting + any dust that was left over.
+            // The dust is in the long and short tokens and will be left over as a result of small rounding errors in
+            // the calculation on how many long/short should be bought/sold to meet the pool ratio before minting.
             if (callingAsEOA) {
                 // Send the LP tokens back to the minter.
                 IERC20 LPToken = IERC20(address(pairFor(router.factory(), address(longToken), address(shortToken))));
@@ -113,14 +128,24 @@ contract LspUniswapV2Broker {
         }
     }
 
-    // x = (sqrt(b (a + m) (a (b (λ^2 + 2 λ + 1) + 4 λ m) + b (λ^2 - 2 λ + 1) m)) + b (-λ - 1) (a + m))/(2 λ (a + m))
+    // For a given mint size (m) and pool balances (ra & rb), compute the trade size such that the resulting ratio
+    // of tokens, considering the mint and trade,is equal to the pool ratio after the trade. This is computed using the
+    // following logic: Assume m tokens are minted in equal proportion of long and short. This contract will therefore
+    // hold t_l=m+△l long tokens and t_s=m-△s after a trade of s for l tokens. The ratio t_l/t_s must equal the pool
+    // ratio after the trade. The pool ratio, considering the trade can be expressed as (R_a-△a)(R_b+△bλ)=k for a
+    // trade of △a for △b and a swap fee of λ=(1-swapFee). Using this, with a bit of algebra and simplification, we can
+    // solve for the resultant ratio to be (m+△a)/(m-△b)=(R_a-△a)/(R_b+△b). i.e the ratio of mint+trade must equal the
+    // ratio of token A and B in the pool after the trade has concluded. We also know that △a can be solved for as
+    // △a=(△bλR_a)/(R_b+△bλ) by manipulating a known uniswap equation. Using this equation and the expression of ratios
+    // we can solve simaltaniously for △b. I.e how many short tokens do we need to sell such that the ratio of long and
+    // short after the trade equal the pool ratios. Numerically, this works out to this form:
+    // △b=(sqrt(R_b(R_a+m)(R_a(R_b(λ^2+2λ+1)+4λm)+R_b(λ^2-2λ+1)m))+R_b(-λ-1)(R_a+m))/(2λ(R_a+m)). For how this was solved
+    // from the algebraic solution above see https://bit.ly/3jn7AF6 on wolfram alpha showing the derivation.
     function computeSwapToMintAtPoolRatio(
         FixedPoint.Signed memory m,
         FixedPoint.Signed memory ra,
         FixedPoint.Signed memory rb
-    ) public pure returns (bool, uint256) {
-        // FixedPoint.Signed memory one = FixedPoint.fromUnscaledInt(1);
-
+    ) private pure returns (bool, uint256) {
         FixedPoint.Signed memory numerator1 =
             sqrt(
                 rb.mul(ra.add(m)).mul(
@@ -136,30 +161,39 @@ contract LspUniswapV2Broker {
 
         FixedPoint.Signed memory denominator = num(2).mul(lambda()).mul(ra.add(m));
 
-        int256 tradeSize = numerator.div(denominator).rawValue;
+        FixedPoint.Signed memory tradeSize = numerator.div(denominator);
 
-        bool bToA = tradeSize > 0;
-
-        return (!bToA, uint256(bToA ? tradeSize : tradeSize * -1));
+        // If the trade size is negative then we are traversing the equation backwards. In this case the contract must
+        // swap between swapTokensForExactTokens and swapExactTokensForTokens methods as we are always solving for △b.
+        // In other words, we are always solving for how many short tokens are needed to be bought/sold. If the number
+        // is positive then we are buying them. if it is negative then we are selling them. In the case we are selling
+        // them (negative) then we swap the polarity and apply the swap fee to the trade.
+        bool aToB = tradeSize.isLessThan(0);
+        return (aToB, uint256(aToB ? applySwapFee(tradeSize.mul(-1)).rawValue : tradeSize.rawValue));
     }
 
-    function sqrt(FixedPoint.Signed memory num) public pure returns (FixedPoint.Signed memory) {
+    // Syntactical sugar to calculate square root of a number.
+    function sqrt(FixedPoint.Signed memory num) private pure returns (FixedPoint.Signed memory) {
         return FixedPoint.Signed(int256(Babylonian.sqrt(uint256(num.rawValue))));
     }
 
-    function num(int256 num) public pure returns (FixedPoint.Signed memory) {
+    // Syntactical sugar to convert a int256 to a Fixedpoint.Signed.
+    function num(int256 num) private pure returns (FixedPoint.Signed memory) {
         return FixedPoint.fromUnscaledInt(num);
     }
 
-    function applySwapFee(FixedPoint.Signed memory num) public pure returns (FixedPoint.Signed memory) {
+    // Takes an input fixedPoint.Signed num and returns the num scaled by 0.997. 0.3% swap fee as in uniswap.
+    function applySwapFee(FixedPoint.Signed memory num) private pure returns (FixedPoint.Signed memory) {
         return num.mul(997).div(1000);
     }
 
-    function lambda() public pure returns (FixedPoint.Signed memory) {
+    // 1 with 0.3% fees applied.
+    function lambda() private pure returns (FixedPoint.Signed memory) {
         return applySwapFee(FixedPoint.fromUnscaledInt(1));
     }
 
-    function lambda2() public pure returns (FixedPoint.Signed memory) {
+    // 1 with 0.3% fees applied twice.
+    function lambda2() private pure returns (FixedPoint.Signed memory) {
         return applySwapFee(lambda());
     }
 
