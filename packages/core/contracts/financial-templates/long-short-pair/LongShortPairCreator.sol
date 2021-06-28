@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title Long Short Pair Contract Creator.
- * @notice Factory contract to create and register new instances of long short pair contracts.
+ * @notice Factory contract to create new instances of long short pair contracts.
  * Responsible for constraining the parameters used to construct a new LSP. These constraints can evolve over time and
  * are initially constrained to conservative values in this first iteration.
  */
@@ -64,7 +64,7 @@ contract LongShortPairCreator is Testable, Lockable {
      *                             should be left as a 0-length bytes array.
      * @param prepaidProposerReward Proposal reward forwarded to the created LSP to incentivize price proposals.
      * @return lspAddress the deployed address of the new long short pair contract.
-     * @notice The created LSP is NOT registered within the registry as the LSP contract uses the DVM.
+     * @notice Created LSP is not registered within the registry as the LSP uses the Optimistic Oracle for settlement.
      * @notice The LSP constructor does a number of validations on input params. These are not repeated here.
      */
     function createLongShortPair(
