@@ -24,7 +24,7 @@ const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 async function runExport() {
   console.log("Running Upgrade🔥");
 
-  let netId = await web3.eth.net.getId();
+  const netId = await web3.eth.net.getId();
   console.log("Connected to network id", netId);
 
   const gasEstimator = new GasEstimator(
