@@ -155,7 +155,7 @@ async function claimRewards() {
       silent: true,
     }),
     60, // Time between updates.
-    100 // Default gas price.
+    networkId
   );
 
   // These nested calls just chunk up the above arrays into 30 transaction chunks, then organize them in groups for
