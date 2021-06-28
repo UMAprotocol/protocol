@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /**
  * @title Long Short Pair Contract Creator.
- * @notice Factory contract to create and register new instances of long short pair contracts.
+ * @notice Factory contract to create new instances of long short pair contracts.
  * Responsible for constraining the parameters used to construct a new LSP. These constraints can evolve over time and
  * are initially constrained to conservative values in this first iteration.
  */
