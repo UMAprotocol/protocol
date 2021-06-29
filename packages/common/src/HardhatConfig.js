@@ -13,7 +13,7 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
   require("./gckms/KeyInjectorPlugin");
 
   // Custom tasks to interact conveniently with smart contracts.
-  require("./hardhat/tasks");
+  require("./hardhat");
 
   // Solc version defined here so etherscan-verification has access to it
   const solcVersion = "0.8.4";
@@ -37,6 +37,7 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
         blockGasLimit: 11500000,
         allowUnlimitedContractSize: false,
         timeout: 1800000,
+        testBlacklist: ["ovm"],
       },
       optimism: {
         url: "http://127.0.0.1:8545",
