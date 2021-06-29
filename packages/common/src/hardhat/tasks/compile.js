@@ -20,18 +20,16 @@ internalTask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS, async (_, { config, network
 
   // Build absolute path for all directories on user-specified whitelist.
   const whitelist = config.networks[network.name].compileWhitelist;
-  const whitelistDirs = whitelist.map((x) => {
-    return path.resolve(CONTRACTS_DIR, x);
-  });
+  if (whitelist && Array.isArray(whitelist)) {
+    const whitelistDirs = whitelist.map((x) => {
+      return path.resolve(CONTRACTS_DIR, x);
+    });
 
-  if (Array.isArray(whitelist) && whitelist.length > 0) {
     filePaths = filePaths.filter((filePath) => {
       for (let whitelistedDir of whitelistDirs) {
         return filePath.startsWith(whitelistedDir);
       }
     });
-  } else {
-    throw new Error("'compileWhitelist' should be an array containing directories within core/contracts to compile");
   }
 
   return filePaths;
