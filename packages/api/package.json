@@ -35,9 +35,9 @@
   "scripts": {
     "build": "tsc",
     "build:watch": "tsc --watch",
-    "test": "ts-mocha --recursive ./src/**/*.test.ts",
-    "e2e": "ts-mocha --recursive ./src/**/*.e2e.ts",
-    "test:watch": "ts-mocha --recursive ./src/**/*.test.ts -w --watch--extensions ts",
+    "test": "ts-mocha --recursive=true ./src/libs/**/*.test.ts ./src/tables/**/*.test.ts", 
+    "e2e": "ts-mocha --recursive=true  ./src/**/*.e2e.ts",
+    "test:watch": "ts-mocha --recursive=true ./src/libs/**/*.test.ts ./src/tables/**/*.test.ts -w --watch--extensions ts",
     "e2e:watch": "ts-mocha --recursive ./src/**/*.e2e.ts -w --watch--extensions ts",
     "eslint": "eslint './src/**/*.ts'",
     "prettier": "prettier './**/*.md' './src/**/*.ts'",

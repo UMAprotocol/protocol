@@ -14,6 +14,7 @@
     "start": "tsdx watch",
     "build": "tsdx build",
     "test": "tsdx test",
+    "test:e2e": "tsdx test --config jest-e2e-config.json",
     "test:watch": "tsdx test --watch",
     "eslint": "eslint './src/**/*.ts'",
     "prettier": "prettier './**/*.md' './src/**/*.ts'",
