@@ -50,9 +50,7 @@ export default (config: Config, appState: Dependencies) => {
     // PriceSample is type [ timestamp:number, price:string]
     const priceSample: PriceSample = synthPrices.latest[empAddress];
     assert(uma.utils.exists(priceSample), "No latest synthetic price found for emp: " + empAddress);
-
-    const price = priceSample[1];
-    assert(uma.utils.exists(price), "Invalid latest sythetic price found on emp: " + empAddress);
+    const [, price] = priceSample;
     return price;
   }
 
@@ -61,7 +59,6 @@ export default (config: Config, appState: Dependencies) => {
     const priceSample: PriceSample = prices[currency].latest[currencyAddress];
     assert(uma.utils.exists(priceSample), "No latest price found for emp: " + empAddress);
     const [, price] = priceSample;
-    assert(uma.utils.exists(price), "Invalid latest price found on emp: " + empAddress);
     return price;
   }
 
@@ -77,16 +74,26 @@ export default (config: Config, appState: Dependencies) => {
     update.timestamp = nowS();
 
     if (uma.utils.exists(emp.collateralCurrency)) {
-      update.collateralPrice = await getPriceFromTable(empAddress, emp.collateralCurrency).catch(() => "0");
-      update.tvl = calcTvl(update.collateralPrice, emp).toString();
+      const collateralPrice = await getPriceFromTable(empAddress, emp.collateralCurrency).catch(() => undefined);
+      if (collateralPrice !== undefined) {
+        update.collateralPrice = collateralPrice;
+        update.tvl = calcTvl(update.collateralPrice, emp).toString();
+      }
     }
 
     if (uma.utils.exists(emp.tokenCurrency)) {
-      update.syntheticPrice = await getPriceFromTable(empAddress, emp.tokenCurrency).catch(() => "0");
-      update.tvm = calcTvm(update.syntheticPrice, emp).toString();
+      const syntheticPrice = await getPriceFromTable(empAddress, emp.tokenCurrency).catch(() => undefined);
+      if (syntheticPrice !== undefined) {
+        update.syntheticPrice = syntheticPrice;
+        update.tvm = calcTvm(update.syntheticPrice, emp).toString();
+      }
     }
-    // get the raw synth price for sanity check
-    update.rawSyntheticPrice = await getSyntheticPriceFromTable(empAddress).catch(() => "0");
+
+    const rawSyntheticPrice = await getSyntheticPriceFromTable(empAddress).catch(() => undefined);
+    if (rawSyntheticPrice !== undefined) {
+      // get the raw synth price for sanity check
+      update.rawSyntheticPrice = rawSyntheticPrice;
+    }
 
     return stats[currency].latest.upsert(empAddress, update);
   }
