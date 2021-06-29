@@ -10,4 +10,4 @@ Importing contracts like those from `@openzeppelin` or `@uniswap` does not work 
 
 # Whitelisted contracts
 
-The Hardhat compile task is modified in `common/src/hardhat/tasks/compile.js` to allow the user to specify a `compileWhitelist: [...]` array in the hardhat configuration for a specific network. We use this to make sure that `compile --network optimism` only compiles contracts in the `contracts/optimism` directory.
+The Hardhat compile task is modified in `common/src/hardhat/tasks/compile.js` to allow the user to specify a `compileWhitelist: [...]` array in the hardhat configuration for a specific network. We use this to make sure that `compile --network optimism` only compiles contracts in the `contracts/ovm` directory.

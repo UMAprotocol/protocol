@@ -5,6 +5,9 @@ const chai = require("chai");
 const { solidity } = require("ethereum-waffle");
 const { expect } = chai;
 
+// Note: This test breaks with the rest of the repository's unit tests and uses Waffle + Ethers.js instead of web3
+// (plus truffle-ish) data structures. This is only meant to demonstrate Waffle + Ethers.js and should probabkly be
+// changed to web3 style eventually.
 chai.use(solidity);
 
 describe("Finder - Optimism", () => {
@@ -21,7 +24,6 @@ describe("Finder - Optimism", () => {
 
   let Finder;
   beforeEach("deploy Finder contract", async () => {
-    // TODO: Replace ethers with web3 to be consistent with rest of repo.
     const Factory__Finder = await ethers.getContractFactory("Finder");
     Finder = await Factory__Finder.connect(owner).deploy();
 

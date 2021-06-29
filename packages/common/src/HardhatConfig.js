@@ -50,7 +50,7 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
         ovm: true,
         // We use custom logic to only compile contracts within the listed directories, as opposed to choosing which
         // ones to ignore, because there are more contracts to ignore than to include.
-        compileWhitelist: ["optimism"],
+        compileWhitelist: ["ovm"],
       },
       localhost: {
         url: "http://127.0.0.1:8545",
