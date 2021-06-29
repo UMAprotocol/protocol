@@ -54,10 +54,10 @@ contract LongShortPairCreator is Testable, Lockable {
      * @param expirationTimestamp unix timestamp of when the contract will expire.
      * @param collateralPerPair how many units of collateral are required to mint one pair of synthetic tokens.
      * @param priceIdentifier registered in the DVM for the synthetic.
-     * @param syntheticName Name of the synthetic tokens to be created. The long tokens will have "Long Token" appended
-     *     to the end and the short token will "Short Token" appended to the end to distinguish within the LSP's tokens.
-     * @param syntheticSymbol Symbol of the synthetic tokens to be created. The long tokens will have "l" prepended
-     *     to the start and the short token will "s" prepended to the start to distinguish within the LSP's tokens.
+     * @param longSynthName Name of the long synthetic tokens to be created.
+     * @param longSynthSymbol Symbol of the long synthetic tokens to be created.
+     * @param shortSynthName Name of the short synthetic tokens to be created.
+     * @param shortSynthSymbol Symbol of the short synthetic tokens to be created.
      * @param collateralToken ERC20 token used as collateral in the LSP.
      * @param financialProductLibrary Contract providing settlement payout logic.
      * @param customAncillaryData Custom ancillary data to be passed along with the price request. If not needed, this
@@ -71,32 +71,26 @@ contract LongShortPairCreator is Testable, Lockable {
         uint64 expirationTimestamp,
         uint256 collateralPerPair,
         bytes32 priceIdentifier,
-        string memory syntheticName,
-        string memory syntheticSymbol,
+        string memory longSynthName,
+        string memory longSynthSymbol,
+        string memory shortSynthName,
+        string memory shortSynthSymbol,
         IERC20Standard collateralToken,
         LongShortPairFinancialProductLibrary financialProductLibrary,
         bytes memory customAncillaryData,
         uint256 prepaidProposerReward
     ) public nonReentrant() returns (address) {
         // Create a new synthetic token using the params.
-        require(bytes(syntheticName).length != 0, "Missing synthetic name");
-        require(bytes(syntheticSymbol).length != 0, "Missing synthetic symbol");
+        require(bytes(longSynthName).length != 0, "Missing long synthetic name");
+        require(bytes(shortSynthName).length != 0, "Missing short synthetic name");
+        require(bytes(longSynthSymbol).length != 0, "Missing long synthetic symbol");
+        require(bytes(shortSynthSymbol).length != 0, "Missing short synthetic symbol");
 
         // If the collateral token does not have a `decimals()` method, then a default precision of 18 will be
         // applied to the newly created synthetic token.
         uint8 collateralDecimals = _getSyntheticDecimals(collateralToken);
-        ExpandedIERC20 longToken =
-            tokenFactory.createToken(
-                string(abi.encodePacked(syntheticName, " Long Token")),
-                string(abi.encodePacked("l", syntheticSymbol)),
-                collateralDecimals
-            );
-        ExpandedIERC20 shortToken =
-            tokenFactory.createToken(
-                string(abi.encodePacked(syntheticName, " Short Token")),
-                string(abi.encodePacked("s", syntheticSymbol)),
-                collateralDecimals
-            );
+        ExpandedIERC20 longToken = tokenFactory.createToken(longSynthName, longSynthSymbol, collateralDecimals);
+        ExpandedIERC20 shortToken = tokenFactory.createToken(shortSynthName, shortSynthSymbol, collateralDecimals);
         LongShortPair lsp =
             new LongShortPair(
                 expirationTimestamp,
