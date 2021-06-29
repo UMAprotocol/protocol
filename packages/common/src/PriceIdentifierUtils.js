@@ -36,6 +36,7 @@ const OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY = [
   "uSTONKS_APR21",
   "GASETH-TWAP-1Mx1M",
   "uSTONKS_JUN21",
+  "uTVL_KPI_UMA",
 ];
 
 // Any identifier on this list
