@@ -6,9 +6,7 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
   // get access to the plugins as well.
   require("@nomiclabs/hardhat-truffle5");
   require("hardhat-gas-reporter");
-  require("@nomiclabs/hardhat-ethers");
   require("@nomiclabs/hardhat-web3");
-  require("@nomiclabs/hardhat-waffle");
   require("hardhat-deploy");
   require("@nomiclabs/hardhat-etherscan");
   require("@eth-optimism/hardhat-ovm");

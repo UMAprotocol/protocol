@@ -9,7 +9,12 @@ const CONTRACTS_DIR = path.resolve(__dirname, "../../../../core/contracts");
 
 // This overrides a hardhat internal task, which is part of its compile task's lifecycle.
 // This allows us to filter on whitelisted, OVM-compatible contracts from the compilation list,
-// which are entries in extended `compileWhitelist` configuration.
+// which are entries in a hardhat network's `compileWhitelist` configuration. For example:
+// defaultConfig = {
+//     networks: {
+//         optimism: { ..., compileWhitelist: ["ovm"] }
+//     }
+// }
 internalTask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS, async (_, { config, network }, runSuper) => {
   let filePaths = await runSuper();
 

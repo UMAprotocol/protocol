@@ -45,7 +45,6 @@
     "eslint-plugin-prettier": "^3.4.0",
     "eslint-plugin-react": "^7.19.0",
     "eslint-plugin-react-hooks": "^3.0.0",
-    "ethereum-waffle": "^3.4.0",
     "ganache-cli": "^6.12.2",
     "hardhat": "^2.4.0",
     "husky": "^4.2.3",
