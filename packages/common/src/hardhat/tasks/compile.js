@@ -7,7 +7,7 @@ const { TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS } = require("hardhat/builtin-task
 
 const CONTRACTS_DIR = path.resolve(__dirname, "../../../../core/contracts");
 
-// This overrides a buidler internal task, which is part of its compile task's lifecycle.
+// This overrides a hardhat internal task, which is part of its compile task's lifecycle.
 // This allows us to filter on whitelisted, OVM-compatible contracts from the compilation list,
 // which are entries in extended `compileWhitelist` configuration.
 internalTask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS, async (_, { config, network }, runSuper) => {
