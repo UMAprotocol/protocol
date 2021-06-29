@@ -1,8 +1,8 @@
 /* External Imports */
-const { web3 } = require("hardhat");
+const { web3, artifacts } = require("hardhat");
 const { didContractThrow } = require("@uma/common");
 const { utf8ToHex, hexToUtf8, toChecksumAddress, randomHex, padRight } = web3.utils;
-const Finder = require("../../artifacts-ovm/contracts/ovm/oracle/implementation/Finder.sol/Finder.json");
+const Finder = artifacts.readArtifactSync("Finder");
 
 describe("Finder - Optimism", () => {
   const interfaceName1 = padRight(utf8ToHex("interface1"), 64);
