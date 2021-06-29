@@ -13,5 +13,5 @@ yarn add @uma/common
 
 ```js
 // One of many possible possible functions to import.
-const { getTruffleConfig } = require("@uma/common");
+const { getTruffleConfig } = require("@uma/common")
 ```
