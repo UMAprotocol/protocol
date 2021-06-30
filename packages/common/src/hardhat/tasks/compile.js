@@ -27,8 +27,10 @@ internalTask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS, async (_, { config, network
 
     filePaths = filePaths.filter((filePath) => {
       for (let whitelistedDir of whitelistDirs) {
-        return filePath.startsWith(whitelistedDir);
+        if (filePath.startsWith(whitelistedDir)) return true;
+        else continue;
       }
+      return false;
     });
   }
 
