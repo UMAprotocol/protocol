@@ -58,7 +58,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
   }
 
   get _historicalPricesUrl() {
-    return `https://live.domination.finance/api/v0/history/${this.pair}?tick=${this.tickPeriod}s&range=${this.lookback}s`;
+    return `https://api.domination.finance/api/v0/price/${this.pair}/history?tick=${this.tickPeriod}s&range=${this.lookback}s`;
   }
 
   getCurrentPrice() {
