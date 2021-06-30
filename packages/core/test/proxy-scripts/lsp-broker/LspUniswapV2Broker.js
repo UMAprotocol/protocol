@@ -468,6 +468,98 @@ contract("LspUniswapV2Broker", function (accounts) {
     });
   });
   describe("atomicMintAddLiquidity: AMM contains Long against Short token", () => {
+    it("Correctly rejects mints lower than minLPTokens", async function () {
+      await addLiquidityToPool(longToken, shortToken, toWei("1000000"), toWei("1000000"));
+
+      // Set the minLPTokens to MAX_UINT_VAL. This should revert as the contract will never send this many LP tokens.
+      assert(
+        await didContractThrow(
+          lspUniswapV2Broker.atomicMintAddLiquidity(
+            true, // tradingAsEOA. true as calling from an EOA (not DSProxy).
+            longShortPair.address, // longShortPair. address to mint tokens against.
+            router.address, // router. uniswap v2 router to execute trades
+            toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
+            MAX_UINT_VAL, // minLpTokens. Sets minimum number of LP tokens to get sent back. Set to 0 to ensure no revert on this param.
+            MAX_UINT_VAL, // deadline. Set far in the future to not hit this.
+            { from: trader }
+          )
+        )
+      );
+    });
+    it("Invalid params", async function () {
+      await addLiquidityToPool(longToken, shortToken, toWei("1000000"), toWei("1000000"));
+
+      // Invalid LSP contract
+      assert(
+        await didContractThrow(
+          lspUniswapV2Broker.atomicMintAddLiquidity(
+            true,
+            ZERO_ADDRESS, // Zero address
+            router.address,
+            toWei("1000"),
+            "0",
+            MAX_UINT_VAL,
+            { from: trader }
+          )
+        )
+      );
+      assert(
+        await didContractThrow(
+          lspUniswapV2Broker.atomicMintAddLiquidity(
+            true,
+            router.address, // Not an LSP contract
+            router.address,
+            toWei("1000"),
+            "0",
+            MAX_UINT_VAL,
+            { from: trader }
+          )
+        )
+      );
+
+      // Invalid router contract
+      assert(
+        await didContractThrow(
+          lspUniswapV2Broker.atomicMintAddLiquidity(
+            true,
+            longShortPair.address,
+            ZERO_ADDRESS, // Zero address
+            toWei("1000"),
+            "0",
+            MAX_UINT_VAL,
+            { from: trader }
+          )
+        )
+      );
+      assert(
+        await didContractThrow(
+          lspUniswapV2Broker.atomicMintAddLiquidity(
+            true,
+            longShortPair.address,
+            longShortPair.address, // Not a router contract
+            toWei("1000"),
+            "0",
+            MAX_UINT_VAL,
+            { from: trader }
+          )
+        )
+      );
+
+      // Cannot mint with 0 collateral
+      assert(
+        await didContractThrow(
+          lspUniswapV2Broker.atomicMintAddLiquidity(
+            true,
+            longShortPair.address,
+            router.address,
+            "0",
+            "0",
+            MAX_UINT_VAL,
+            { from: trader }
+          )
+        )
+      );
+    });
     it("Can correctly mint and LP in one transaction with pool in equal ratios", async function () {
       // Mint in exact ratios equal between long and short. There should not be any need for trading as the mint ratio
       // is exactly equal to the pool ratio.
@@ -484,7 +576,8 @@ contract("LspUniswapV2Broker", function (accounts) {
         longShortPair.address, // longShortPair. address to mint tokens against.
         router.address, // router. uniswap v2 router to execute trades
         toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
-        MAX_UINT_VAL,
+        "0", // minLpTokens. Sets minimum number of LP tokens to get sent back. Set to 0 to ensure no revert on this param.
+        MAX_UINT_VAL, // deadline. Set far in the future to not hit this.
         { from: trader }
       );
 
@@ -544,7 +637,8 @@ contract("LspUniswapV2Broker", function (accounts) {
         longShortPair.address, // longShortPair. address to mint tokens against.
         router.address, // router. uniswap v2 router to execute trades
         toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
-        MAX_UINT_VAL,
+        "0", // minLpTokens. Sets minimum number of LP tokens to get sent back. Set to 0 to ensure no revert on this param.
+        MAX_UINT_VAL, // deadline. Set far in the future to not hit this.
         { from: trader }
       );
 
@@ -623,7 +717,8 @@ contract("LspUniswapV2Broker", function (accounts) {
         longShortPair.address, // longShortPair. address to mint tokens against.
         router.address, // router. uniswap v2 router to execute trades
         toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
-        MAX_UINT_VAL,
+        "0", // minLpTokens. Sets minimum number of LP tokens to get sent back. Set to 0 to ensure no revert on this param.
+        MAX_UINT_VAL, // deadline. Set far in the future to not hit this.
         { from: trader }
       );
 
@@ -705,7 +800,8 @@ contract("LspUniswapV2Broker", function (accounts) {
         longShortPair.address, // longShortPair. address to mint tokens against.
         router.address, // router. uniswap v2 router to execute trades
         toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
-        MAX_UINT_VAL,
+        "0", // minLpTokens. Sets minimum number of LP tokens to get sent back. Set to 0 to ensure no revert on this param.
+        MAX_UINT_VAL, // deadline. Set far in the future to not hit this.
         { from: trader }
       );
 
@@ -785,7 +881,8 @@ contract("LspUniswapV2Broker", function (accounts) {
         longShortPair.address, // longShortPair. address to mint tokens against.
         router.address, // router. uniswap v2 router to execute trades
         toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
-        MAX_UINT_VAL,
+        "0", // minLpTokens. Sets minimum number of LP tokens to get sent back. Set to 0 to ensure no revert on this param.
+        MAX_UINT_VAL, // deadline. Set far in the future to not hit this.
         { from: trader }
       );
 
