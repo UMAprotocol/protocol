@@ -93,14 +93,14 @@ contract RangeBondLongShortPairFinancialProductLibrary is LongShortPairFinancial
         // and 3) above the high price range.
         uint256 positiveExpiryPrice = expiryPrice > 0 ? uint256(expiryPrice) : 0;
 
-        // 1.) (collateralTokens * lowPriceRange) is the notional value of the bond below the range. The collateral is
-        // worth less than this amount. The long position is entitled to the full position in this range.
+        // 1) The long position is entitled to the full position in this range. (collateralTokens * lowPriceRange) is
+        // the notional value of the bond below the range.
         if (positiveExpiryPrice <= params.lowPriceRange) return FixedPoint.fromUnscaledUint(1).rawValue;
         // 2) Within the range, the long position is entitled to the bond notional value, which is equal to a fixed
         // fraction of the collateral. In this range it acts like a yield dollar.
         if (positiveExpiryPrice <= params.highPriceRange)
             return FixedPoint.Unsigned(params.lowPriceRange).div(FixedPoint.Unsigned(positiveExpiryPrice)).rawValue;
-        // 3) above the range, the long position is entitled to a fixed number of tokens.
+        // 3) Above the range, the long position is entitled to a fixed number of tokens.
         return FixedPoint.Unsigned(params.lowPriceRange).div(FixedPoint.Unsigned(params.highPriceRange)).rawValue;
     }
 }
