@@ -39,7 +39,7 @@ const OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY = [
 ];
 
 // Any identifier on this list
-const OPTIMISTIC_ORACLE_IGNORE = ["SPACEXLAUNCH"];
+const OPTIMISTIC_ORACLE_IGNORE = ["SPACEXLAUNCH", "uTVL_KPI_UMA"];
 
 module.exports = {
   IDENTIFIER_BLACKLIST,
