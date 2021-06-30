@@ -1,3 +1,6 @@
+// TODO: the location of these scripts is a bit confusing. This script was put here to follow the Redeem and Withdraw
+// scripts but in future they should be moved somewhere more generic.
+
 // This script enables a DSProxy to settle expired positions from an EMP. This should be used after a DSProxy opens a
 // position due to liquidation and needs to settle the position at contract expiration. To execute the script, run:
 // truffle exec./ scripts/SettleExpiredPositionWithDSProxy.ts --financialContractAddress 0x123 --dsProxyAddress 0x456 --network mainnet_mnemonic
