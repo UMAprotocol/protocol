@@ -94,25 +94,6 @@ jobs:
       - store_artifacts:
           path: ~/protocol/packages/voter-dapp/build
           destination: voter-dapp-build
-  deploy_to_staging:
-    docker:
-      - image: circleci/node:lts
-    working_directory: ~/protocol
-    steps:
-      - restore_cache:
-          key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
-      - run:
-          name: Install Prereqs
-          command: sudo apt-get update && sudo apt-get install -y libudev-dev libusb-1.0-0-dev yarn
-      - run:
-          name: Install Pandoc
-          command: wget https://github.com/jgm/pandoc/releases/download/2.7.3/pandoc-2.7.3-linux.tar.gz
-      - run:
-          name: Untar Pandoc
-          command: sudo tar xvzf pandoc-2.7.3-linux.tar.gz --strip-components 1 -C /usr/local
-      - run:
-          name: Deploy Dapp
-          command: ./ci/deploy_to_staging.sh
   publish:
     docker:
       - image: circleci/node:lts
@@ -146,14 +127,6 @@ workflows:
       - dapp_build:
           requires:
             - build
-      - deploy_to_staging:
-          context: gcloud
-          requires:
-            - dapp_build
-            - test
-          filters:
-            branches:
-              only: master
       - publish:
           context: api_keys
           requires:
