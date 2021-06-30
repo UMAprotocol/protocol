@@ -34,10 +34,8 @@ const expirationTimestamp = startTimestamp + 10000;
 const optimisticOracleLiveness = 7200;
 const priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
 const collateralPerPair = toWei("1"); // each pair of long and short tokens need 1 unit of collateral to mint.
-const longSynthName = "Long Test LSP";
-const longSynthSymbol = "LtCFD";
-const shortSynthName = "Short Test LSP";
-const shortSynthSymbol = "StCFD";
+const syntheticName = "Test LSP";
+const syntheticSymbol = "tCFD";
 const ancillaryData = web3.utils.utf8ToHex("some-address-field:0x1234");
 const prepaidProposerReward = "0";
 
@@ -82,10 +80,8 @@ contract("LongShortPairCreator", function (accounts) {
       expirationTimestamp,
       collateralPerPair,
       priceFeedIdentifier,
-      longSynthName,
-      longSynthSymbol,
-      shortSynthName,
-      shortSynthSymbol,
+      syntheticName,
+      syntheticSymbol,
       collateralAddress: collateralToken.address,
       financialProductLibraryAddress: longShortPairLibrary.address,
       ancillaryData,
@@ -114,16 +110,16 @@ contract("LongShortPairCreator", function (accounts) {
 
     // Validate token information and permissions are set correctly.
     const longToken = await Token.at(await lsp.longToken());
-    assert.equal(await longToken.name(), longSynthName);
-    assert.equal(await longToken.symbol(), longSynthSymbol);
+    assert.equal(await longToken.name(), syntheticName + " Long Token");
+    assert.equal(await longToken.symbol(), "l" + syntheticSymbol);
     assert.equal((await longToken.decimals()).toString(), (await collateralToken.decimals()).toString());
     assert.isTrue(await longToken.holdsRole("0", lspAddress)); // owner
     assert.isTrue(await longToken.holdsRole("1", lspAddress)); // minter
     assert.isTrue(await longToken.holdsRole("2", lspAddress)); // burner
 
     const shortToken = await Token.at(await lsp.shortToken());
-    assert.equal(await shortToken.name(), shortSynthName);
-    assert.equal(await shortToken.symbol(), shortSynthSymbol);
+    assert.equal(await shortToken.name(), syntheticName + " Short Token");
+    assert.equal(await shortToken.symbol(), "s" + syntheticSymbol);
     assert.equal((await shortToken.decimals()).toString(), (await collateralToken.decimals()).toString());
     assert.isTrue(await shortToken.holdsRole("0", lspAddress)); // owner
     assert.isTrue(await shortToken.holdsRole("1", lspAddress)); // minter
