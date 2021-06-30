@@ -9,7 +9,7 @@ import * as Services from "../../services";
 import Express from "../../services/express";
 import Actions from "../../services/actions";
 import { ProcessEnv, AppState } from "../..";
-import { empStats } from "../../tables";
+import { empStats, empStatsHistory } from "../../tables";
 
 async function run(env: ProcessEnv) {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
@@ -50,8 +50,14 @@ async function run(env: ProcessEnv) {
     erc20s: tables.erc20s.JsMap(),
     stats: {
       usd: {
-        latest: empStats.JsMap(),
-        history: {},
+        latest: {
+          tvm: empStats.JsMap("Latest Tvm"),
+          tvl: empStats.JsMap("Latest Tvl"),
+        },
+        history: {
+          tvm: empStatsHistory.SortedJsMap("Tvm History"),
+          tvl: empStatsHistory.SortedJsMap("Tvl History"),
+        },
       },
     },
     lastBlock: 0,
@@ -95,6 +101,7 @@ async function run(env: ProcessEnv) {
 
   // backfill price histories
   await services.collateralPrices.backfill(moment().subtract(1, "month").valueOf());
+  console.log("Updated Collateral Prices Backfill");
 
   await services.collateralPrices.update();
   console.log("Updated Collateral Prices");

@@ -71,6 +71,18 @@ Returns all known active emps data. Conforms to the EMP type defined in the uma 
 
 Returns all known expired emps data. Conforms to the EMP type defined in the uma sdk: `uma.tables.emp.Data`.
 
+### getEmpState(address: string) => EmpState
+
+Get all known state of any emp by its address.
+
+### getErc20Info(address:string) => Erc20Data
+
+Get name, decimals of an erc20 by address.
+
+### getAllErc20Info() => Erc20Data[]
+
+List all known erc20s, collateral or synthetic and all known information about them
+
 ### collateralAddresses() => string[]
 
 ### syntheticAddresses() => string[]
@@ -85,9 +97,9 @@ Returns all known latest prices for synthetic or collateral addresses in wei.
 
 Returns latest price for a particular erc20 token address ( emp collateral or synthetic address) in wei.
 
-### latestCollateralPrice(empAddress: string, currency: CurrencySymbol = "usd") => [timestamp:number,price:string]
-
 ### latestSyntheticPrice(empAddress: string, currency: CurrencySymbol = "usd") => [timestamp:number,price:string]
+
+### latestCollateralPrice(empAddress: string, currency: CurrencySymbol = "usd") => [timestamp:number,price:string]
 
 Gets the latest collateral or synthetic price based on the emp contract address in wei.
 
@@ -115,41 +127,26 @@ This is useful for charting betwen two dates.
 Get a range of historical prices between start and count of price samples, sorted by timestamp ascending, from an emp contract address.
 This is useful for paginating data when you have X elements per page, and you know the last element seen.
 
-### getErc20Info(address:string) => Erc20Data
+### tvl(empAddresses?: string[], currency: CurrencySymbol = "usd") => string
 
-Get name, decimals of an erc20 by address.
+### tvm(empAddresses?: string[], currency: CurrencySymbol = "usd") => string
 
-### getAllErc20Info() => Erc20Data[]
+Returns TVL/TVM of all supplied addresses in USD 18 decimals. If no addresses supplied, returns TVL/TVM of all known contracts.
 
-List all known erc20s, collateral or synthetic and all known information about them
+### tvlHistoryBetween(empAddress: string, start = 0, end: number = Math.floor(Date.now() / 1000), currency: CurrencySymbol = "usd") => StatData[]
 
-### getEmpStats(address: string, currency: "usd" = "usd") => StatData
+### tvmHistoryBetween(empAddress: string, start = 0, end: number = Math.floor(Date.now() / 1000), currency: CurrencySymbol = "usd") => StatData[]
 
-Get only tvl (and other future statistics) for a single emp.
+Returns TVL/TVM between timestamps (in seconds) at the highest resolution for a particular emp address.
 
-### listEmpStats(currency: "usd" = "usd") => StatData[]
+### tvlHistorySlice(empAddress: string, start = 0, length = 1, currency:CurrencySymbol='usd') => StatData[]
 
-Get all tvl (and other future statistics) for all known emps.
+### tvmHistorySlice(empAddress: string, start = 0, length = 1, currency:CurrencySymbol='usd') => StatData[]
 
-### historicalSynthPricesByAddress(empAddress:string,start:number=0,end:number=Math.floor(Date.now() / 1000)) => PriceSample[]
+Returns TVL/TVM for emp starting at timestamp in seconds and a length number of samples after that ascending.
 
-Get a range of historical prices synthetic prices by emp address between start and end in unix seconds, sorted by timestamp
-ascending. This is useful for charting betwen two dates. Note non synth historical prices are specified by erc20 address.
+### listTvls(currency: CurrencySymbol = "usd") => Array<{value:string, timestamp:number}>
 
-### sliceHistoricalSynthPricesByAddress(address:string,start:number=0,length:number=1) => PriceSample[]
+### listTvms(currency: CurrencySymbol = "usd") => Array<{value:string, timestamp:number}>
 
-Get a range of historical synthetic prices by emp address between start (in unix seconds) and count of price samples, sorted by timestamp
-ascending. This is useful for paginating data when you have X elements per page, and you know the last element seen.
-Note non synth historical prices are specified by erc20 address.
-
-### tvl(addresses?: string[], currency: CurrencySymbol = "usd") => string
-
-Returns tvl of all supplied addresses in USD 18 decimals. If no addresses supplied, returns TVL of all known contracts.
-
-### getEmpStatsBetween(address: string, start = 0, end: number = Math.floor(Date.now() / 1000), currency: CurrencySymbol = "usd") => StatData[]
-
-Returns all stats between timestamps (in seconds) at the highest resolution for a particular emp address.
-
-### sliceHistoricalEmpStats(empAddress: string, start = 0, length = 1, currency:CurrencySymbol='usd') => StatData[]
-
-Returns all stats for emp starting at timestamp in seconds and a length number of samples after that ascending.
+List all tvls/tvms of known contracts.

@@ -99,8 +99,12 @@ export default (appState: Dependencies) => {
     const tvl = await bluebird.reduce(
       addresses,
       async (sum, address) => {
-        const stats = await appState.stats[currency].latest.getOrCreate(address);
-        return sum.add(stats.tvl || "0");
+        try {
+          const stats = await appState.stats[currency].latest.tvl.get(address);
+          return sum.add(stats.value || "0");
+        } catch (err) {
+          return sum;
+        }
       },
       BigNumber.from("0")
     );
@@ -110,6 +114,25 @@ export default (appState: Dependencies) => {
     const addresses = Array.from(appState.registeredEmps.values());
     return sumTvl(addresses, currency);
   }
+  async function sumTvm(addresses: string[], currency: CurrencySymbol = "usd") {
+    const tvm = await bluebird.reduce(
+      addresses,
+      async (sum, address) => {
+        try {
+          const stats = await appState.stats[currency].latest.tvm.get(address);
+          return sum.add(stats.value || "0");
+        } catch (err) {
+          return sum;
+        }
+      },
+      BigNumber.from("0")
+    );
+    return tvm.toString();
+  }
+  async function totalTvm(currency: CurrencySymbol = "usd") {
+    const addresses = Array.from(appState.registeredEmps.values());
+    return sumTvm(addresses, currency);
+  }
 
   return {
     getFullEmpState,
@@ -118,6 +141,8 @@ export default (appState: Dependencies) => {
     listExpiredEmps,
     totalTvl,
     sumTvl,
+    totalTvm,
+    sumTvm,
     latestPriceByTokenAddress,
     historicalPricesByTokenAddress,
     sliceHistoricalPricesByTokenAddress,

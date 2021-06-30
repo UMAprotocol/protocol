@@ -50,9 +50,13 @@ export type AppState = {
   erc20s: uma.tables.erc20s.JsMap;
   stats: {
     usd: {
-      latest: empStats.JsMap;
+      latest: {
+        tvl: empStats.JsMap;
+        tvm: empStats.JsMap;
+      };
       history: {
-        [address: string]: empStatsHistory.SortedJsMap;
+        tvl: empStatsHistory.SortedJsMap;
+        tvm: empStatsHistory.SortedJsMap;
       };
     };
   };

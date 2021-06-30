@@ -1,65 +1,70 @@
 import assert from "assert";
 import * as uma from "@uma/sdk";
+export { BigNumber, utils } from "ethers";
 import { Currencies, AppState, PriceSample } from "..";
-import { empStatsHistory, empStats } from "../tables";
-import { calcTvl, calcTvm, nowS } from "../libs/utils";
+import { calcTvl, calcTvm } from "../libs/utils";
 import Queries from "../libs/queries";
 
-type EmpHistoryStat = empStatsHistory.Data;
 type Config = {
   currency?: Currencies;
 };
-type Dependencies = Pick<AppState, "emps" | "stats" | "prices" | "erc20s" | "registeredEmps" | "synthPrices">;
+type Dependencies = Pick<AppState, "emps" | "stats" | "prices" | "erc20s" | "registeredEmps">;
 
 // this service is meant to calculate numbers derived from emp state, things like TVL, TVM and other things
 export default (config: Config, appState: Dependencies) => {
-  const { stats, prices, registeredEmps, synthPrices } = appState;
+  const { stats, prices, registeredEmps } = appState;
   const { currency = "usd" } = config;
 
   const queries = Queries(appState);
 
-  async function getLatestStats(address: string) {
-    return stats[currency].latest.getOrCreate(address);
+  function getTvmHistoryTable() {
+    return stats[currency].history.tvm;
   }
-  function getOrCreateHistoryTable(address: string) {
-    if (!stats[currency].history[address])
-      stats[currency].history[address] = empStatsHistory.SortedJsMap("Emp Stat History for " + address);
-    return stats[currency].history[address];
+  function getTvlHistoryTable() {
+    return stats[currency].history.tvl;
   }
-  async function hasStatsHistory(address: string, timestamp: number) {
-    return getOrCreateHistoryTable(address).has(timestamp);
+  function getLatestTvlTable() {
+    return stats[currency].latest.tvl;
   }
-  async function createStatHistory(address: string, data: EmpHistoryStat) {
-    return getOrCreateHistoryTable(address).create(data);
+  function getLatestTvmTable() {
+    return stats[currency].latest.tvm;
   }
-
-  async function updateHistory(empAddress: string) {
-    const stat = await getLatestStats(empAddress);
+  async function updateTvlHistory(empAddress: string) {
+    const stat = await getLatestTvlTable().get(empAddress);
     assert(uma.utils.exists(stat.timestamp), "stats require timestamp for emp: " + empAddress);
-    if (await hasStatsHistory(empAddress, stat.timestamp)) return stat;
-    // remove id from the latest stats, since this gets overriden with history stats by timestamp
-    const { id, ...historyStat } = stat;
-    return createStatHistory(empAddress, historyStat as EmpHistoryStat);
+    assert(uma.utils.exists(stat.value), "No tvl value for emp: " + empAddress);
+    if (await getTvlHistoryTable().hasByAddress(empAddress, stat.timestamp)) return stat;
+    return getTvlHistoryTable().create({
+      address: empAddress,
+      value: stat.value,
+      timestamp: stat.timestamp,
+    });
   }
-  async function updateHistories(addresses: string[]) {
-    return Promise.allSettled(addresses.map(updateHistory));
+  async function updateTvmHistory(empAddress: string) {
+    const stat = await getLatestTvmTable().get(empAddress);
+    assert(uma.utils.exists(stat.timestamp), "stats require timestamp for emp: " + empAddress);
+    assert(uma.utils.exists(stat.value), "No tvm value for emp: " + empAddress);
+    if (await getTvmHistoryTable().hasByAddress(empAddress, stat.timestamp)) return stat;
+    return getTvmHistoryTable().create({
+      address: empAddress,
+      value: stat.value,
+      timestamp: stat.timestamp,
+    });
   }
 
-  // synthetic prices return price in wei, due to the way the bot price feeds work
-  async function getSyntheticPriceFromTable(empAddress: string) {
-    // PriceSample is type [ timestamp:number, price:string]
-    const priceSample: PriceSample = synthPrices.latest[empAddress];
-    assert(uma.utils.exists(priceSample), "No latest synthetic price found for emp: " + empAddress);
-    const [, price] = priceSample;
-    return price;
+  async function updateTvmHistories(addresses: string[]) {
+    return Promise.allSettled(addresses.map(updateTvmHistory));
+  }
+
+  async function updateTvlHistories(addresses: string[]) {
+    return Promise.allSettled(addresses.map(updateTvlHistory));
   }
 
   async function getPriceFromTable(empAddress: string, currencyAddress: string) {
     // PriceSample is type [ timestamp:number, price:string]
     const priceSample: PriceSample = prices[currency].latest[currencyAddress];
     assert(uma.utils.exists(priceSample), "No latest price found for emp: " + empAddress);
-    const [, price] = priceSample;
-    return price;
+    return priceSample;
   }
 
   async function getFullEmpState(empAddress: string) {
@@ -67,54 +72,69 @@ export default (config: Config, appState: Dependencies) => {
     // the full state has collateral decimals, pulled from erc20 state
     return queries.getFullEmpState(emp);
   }
-  async function updateStats(empAddress: string) {
-    const update: empStats.Data = { address: empAddress };
 
-    const emp = await getFullEmpState(empAddress);
-    update.timestamp = nowS();
-
-    if (uma.utils.exists(emp.collateralCurrency)) {
-      const collateralPrice = await getPriceFromTable(empAddress, emp.collateralCurrency).catch(() => undefined);
-      if (collateralPrice !== undefined) {
-        update.collateralPrice = collateralPrice;
-        update.tvl = calcTvl(update.collateralPrice, emp).toString();
-      }
-    }
-
-    if (uma.utils.exists(emp.tokenCurrency)) {
-      const syntheticPrice = await getPriceFromTable(empAddress, emp.tokenCurrency).catch(() => undefined);
-      if (syntheticPrice !== undefined) {
-        update.syntheticPrice = syntheticPrice;
-        update.tvm = calcTvm(update.syntheticPrice, emp).toString();
-      }
-    }
-
-    const rawSyntheticPrice = await getSyntheticPriceFromTable(empAddress).catch(() => undefined);
-    if (rawSyntheticPrice !== undefined) {
-      // get the raw synth price for sanity check
-      update.rawSyntheticPrice = rawSyntheticPrice;
-    }
-
-    return stats[currency].latest.upsert(empAddress, update);
+  async function updateTvl(emp: uma.tables.emps.Data) {
+    assert(emp.collateralCurrency, "TVL Requires collateral currency for emp: " + emp.address);
+    const priceSample = await getPriceFromTable(emp.address, emp.collateralCurrency);
+    const value = await calcTvl(priceSample[1], emp).toString();
+    const update = {
+      value,
+      timestamp: priceSample[0],
+    };
+    return stats[currency].latest.tvl.upsert(emp.address, update);
   }
-
+  async function updateTvm(emp: uma.tables.emps.Data) {
+    assert(emp.tokenCurrency, "TVL Requires token currency for emp: " + emp.address);
+    const priceSample = await getPriceFromTable(emp.address, emp.tokenCurrency);
+    const value = await calcTvm(priceSample[1], emp).toString();
+    const update = {
+      value,
+      timestamp: priceSample[0],
+    };
+    return stats[currency].latest.tvm.upsert(emp.address, update);
+  }
   // update all stats based on array of emp addresses
-  async function updateAllStats(addresses: string[]) {
+  async function updateAllTvl(addresses: string[]) {
     // this call can easily error, but we dont want that to prevent all emps to resolve
     // also since this is just calling our db or cache we can use promise.allSettled for speed
-    return Promise.allSettled(addresses.map(updateStats));
+    return Promise.allSettled(
+      addresses.map(async (address) => {
+        const emp = await getFullEmpState(address);
+        return updateTvl(emp);
+      })
+    );
+  }
+  async function updateAllTvm(addresses: string[]) {
+    // this call can easily error, but we dont want that to prevent all emps to resolve
+    // also since this is just calling our db or cache we can use promise.allSettled for speed
+    return Promise.allSettled(
+      addresses.map(async (address) => {
+        const emp = await getFullEmpState(address);
+        return updateTvm(emp);
+      })
+    );
   }
 
   async function update() {
     const addresses = Array.from(registeredEmps.values());
-    await updateAllStats(addresses).then((results) => {
+    await updateAllTvl(addresses).then((results) => {
       results.forEach((result) => {
-        if (result.status === "rejected") console.error("Error updating stats: " + result.reason.message);
+        if (result.status === "rejected") console.error("Error updating tvl: " + result.reason.message);
       });
     });
-    await updateHistories(addresses).then((results) => {
+    await updateAllTvm(addresses).then((results) => {
       results.forEach((result) => {
-        if (result.status === "rejected") console.error("Error updating emp stat history: " + result.reason.message);
+        if (result.status === "rejected") console.error("Error updating tvm: " + result.reason.message);
+      });
+    });
+    await updateTvlHistories(addresses).then((results) => {
+      results.forEach((result) => {
+        if (result.status === "rejected") console.error("Error updating emp tvl history: " + result.reason.message);
+      });
+    });
+    await updateTvmHistories(addresses).then((results) => {
+      results.forEach((result) => {
+        if (result.status === "rejected") console.error("Error updating emp tvm history: " + result.reason.message);
       });
     });
   }
@@ -122,11 +142,14 @@ export default (config: Config, appState: Dependencies) => {
   return {
     update,
     utils: {
-      updateHistories,
-      updateHistory,
-      updateStats,
-      updateAllStats,
-      getPriceFromTable,
+      updateAllTvl,
+      updateAllTvm,
+      updateTvl,
+      updateTvm,
+      updateTvlHistory,
+      updateTvmHistory,
+      updateTvlHistories,
+      updateTvmHistories,
       getFullEmpState,
     },
   };
