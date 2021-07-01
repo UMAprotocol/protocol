@@ -1,5 +1,4 @@
 const { getNodeUrl, mnemonic } = require("./TruffleConfig");
-const { extendEnvironment } = require("hardhat/config");
 const path = require("path");
 
 function getHardhatConfig(configOverrides, workingDir = "./") {
@@ -15,60 +14,8 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
   // Custom tasks to interact conveniently with smart contracts.
   require("./hardhat/tasks");
 
-  // Add a getContract() method to the hre.
-  extendEnvironment((hre) => {
-    hre._artifactCache = {};
-    hre.getContract = (name) => {
-      if (!hre._artifactCache[name]) hre._artifactCache[name] = hre.artifacts.readArtifactSync(name);
-      const artifact = hre._artifactCache[name];
-
-      const deployed = async () => {
-        const deployment = await hre.deployments.get(name);
-        return new hre.web3.eth.Contract(artifact.abi, deployment.address);
-      };
-
-      const newProp = (...args) =>
-        new hre.web3.eth.Contract(artifact.abi, undefined).deploy({ data: artifact.bytecode, arguments: args });
-
-      const at = (address) => new hre.web3.eth.Contract(artifact.abi, address);
-
-      return {
-        ...artifact,
-        deployed,
-        new: newProp,
-        at,
-      };
-    };
-
-    hre.findEvent = async (txnResult, contract, eventName, fn = () => true) => {
-      // TODO: this can be improved by making sure the event falls in the correct transaction.
-      const events = await contract.getPastEvents(eventName, {
-        fromBlock: txnResult.blockNumber,
-        toBlock: txnResult.blockNumber,
-      });
-
-      return {
-        match: events.find((event) => fn(event.returnValues)),
-        allEvents: events.map((event) => event.returnValues),
-      };
-    };
-
-    hre.assertEventEmitted = async (txnResult, contract, eventName, fn) => {
-      const { match, allEvents } = await hre.findEvent(txnResult, contract, eventName, fn);
-
-      if (match === undefined) {
-        throw new Error(`No matching events found. Events found:\n\n${allEvents.map(JSON.stringify).join("\n\n")}`);
-      }
-    };
-
-    hre.assertEventNotEmitted = async (txnResult, contract, eventName, fn) => {
-      const { match } = await hre.findEvent(txnResult, contract, eventName, fn);
-
-      if (match !== undefined) {
-        throw new Error(`Matching event found:\n\n${JSON.stringify(match)}`);
-      }
-    };
-  });
+  // Custom plugin to enhance web3 functionality.
+  require("./hardhat/plugins/ExtendedWeb3");
 
   // Solc version defined here so etherscan-verification has access to it
   const solcVersion = "0.8.4";
