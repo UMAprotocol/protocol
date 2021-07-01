@@ -3,6 +3,7 @@ export * as stores from "./stores";
 export * as tables from "./tables";
 export * as utils from "./utils";
 export { default as Coingecko } from "./coingecko";
+export { default as Multicall } from "./multicall";
 
 // types
 import type { TypedEventFilter, TypedEvent } from "@uma/core/contract-types/ethers/commons";
