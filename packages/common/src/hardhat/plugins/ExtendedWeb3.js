@@ -1,6 +1,6 @@
 // Pluging notes:
 // The plugin adds 4 methods to the hre: getContract, findEvent, assertEventEmitted, assertEventNotEmitted.
-// It requires the web3 plugin to work. All contract instantiations are web3, not truffle.
+// It requires the web3 hardhat plugin to work. All contract instantiations are web3, not truffle.
 //
 // getContract usage:
 //   const { getContract } = hre;
