@@ -1006,6 +1006,12 @@ const defaultConfigs = {
       },
     },
   },
+  uSTONKS_0921: {
+    type: "uniswap",
+    uniswapAddress: "0xb9292B40cab08e5208b863ea9c4c4927a2308eEE",
+    twapLength: 7200,
+    invertPrice: true,
+  },
 };
 
 // Pull in the number of decimals for each identifier from the common getPrecisionForIdentifier. This is used within the
