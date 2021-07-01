@@ -78,10 +78,10 @@ contract("StructuredNoteFinancialProductLibrary", function (accounts) {
       // Calling the transformation function through the emp mock.
       assert.equal(
         (
-          await expiringMultiParty.transformPrice(
+          await expiringMultiParty.methods.transformPrice(
             { rawValue: toWei("350") },
             (await expiringMultiParty.methods.getCurrentTime().call()).toString()
-          )
+          ).call()
         ).toString(),
         toWei("1")
       );
@@ -89,9 +89,9 @@ contract("StructuredNoteFinancialProductLibrary", function (accounts) {
       // Calling the transformation function as a mocked emp caller should also work.
       assert.equal(
         (
-          await expiringMultiParty.transformPrice.call(
+          await expiringMultiParty.methods.transformPrice(
             { rawValue: toWei("350") },
-            (await expiringMultiParty.methods.getCurrentTime().call()).toString(),
+            (await expiringMultiParty.methods.getCurrentTime().call()).toString()).call(
             { from: expiringMultiParty.options.address }
           )
         ).toString(),
@@ -100,15 +100,15 @@ contract("StructuredNoteFinancialProductLibrary", function (accounts) {
     });
 
     it("Library returns correctly transformed price after expiration", async () => {
-      await timer.setCurrentTime(expirationTime + 1);
+      await timer.methods.setCurrentTime(expirationTime + 1).send({from:accounts[0]});
 
       // If the oracle price is less than the strike price then the library should return 1.
       assert.equal(
         (
-          await expiringMultiParty.transformPrice(
+          await expiringMultiParty.methods.transformPrice(
             { rawValue: toWei("350") },
             (await expiringMultiParty.methods.getCurrentTime().call()).toString()
-          )
+          ).call()
         ).toString(),
         toWei("1")
       );
@@ -117,10 +117,10 @@ contract("StructuredNoteFinancialProductLibrary", function (accounts) {
       // price of 500 each token is redeemable for 400/500 = 0.8 WETH.
       assert.equal(
         (
-          await expiringMultiParty.transformPrice(
+          await expiringMultiParty.methods.transformPrice(
             { rawValue: toWei("500") },
             (await expiringMultiParty.methods.getCurrentTime().call()).toString()
-          )
+          ).call()
         ).toString(),
         toWei("0.8")
       );
@@ -129,23 +129,23 @@ contract("StructuredNoteFinancialProductLibrary", function (accounts) {
   describe("Collateralization ratio transformation", () => {
     it("Library returns correctly transformed collateralization ratio", async () => {
       // Create a fictitious CR for the financial product. Based on the oracle price this required CR should be scalled accordingly.
-      await timer.setCurrentTime(expirationTime + 1);
+      await timer.methods.setCurrentTime(expirationTime + 1).send({from:accounts[0]});
 
       // If the oracle price is less than the strike price then the library should return the original CR.
       assert.equal(
-        (await expiringMultiParty.transformCollateralRequirement({ rawValue: toWei("350") })).toString(),
+        (await expiringMultiParty.methods.transformCollateralRequirement({ rawValue: toWei("350") }).call()).toString(),
         collateralizationRatio
       );
 
       // Else, if the oracle price is more than strike then the library should return the collateralization ratio scaled
       // by strike/oracle price. For a oracle price of 500  and a CR of 1.2 the library should return 400 / 500 * 1.2 = 0.96
       assert.equal(
-        (await expiringMultiParty.transformCollateralRequirement({ rawValue: toWei("500") })).toString(),
+        (await expiringMultiParty.methods.transformCollateralRequirement({ rawValue: toWei("500") }).call()).toString(),
         toWei("0.96")
       );
       // For a oracle price of 1000  and a CR of 1.2 the library should return 400 / 1000 * 1.2 = 0.48
       assert.equal(
-        (await expiringMultiParty.transformCollateralRequirement({ rawValue: toWei("1000") })).toString(),
+        (await expiringMultiParty.methods.transformCollateralRequirement({ rawValue: toWei("1000") }).call()).toString(),
         toWei("0.48")
       );
     });

@@ -5,7 +5,7 @@ const { didContractThrow, ZERO_ADDRESS } = require("@uma/common");
 const { assert } = require("chai");
 
 // Tested Contract
-const CoveredCallLongShortPairFinancialProductLibrary = artifacts.require(
+const CoveredCallLongShortPairFinancialProductLibrary = getContract(
   "CoveredCallLongShortPairFinancialProductLibrary"
 );
 
@@ -29,7 +29,7 @@ contract("CoveredCallLongShortPairFinancialProductLibrary", function (accounts) 
       { rawValue: toWei("1.5") }, // _collateralRequirement
       utf8ToHex("TEST_IDENTIFIER"), // _priceIdentifier
       ZERO_ADDRESS // _timerAddress
-    );
+    ).send({ from: accounts[0] });
   });
   describe("Long Short Pair Parameterization", () => {
     it("Can set and fetch valid strikes", async () => {
@@ -72,20 +72,20 @@ contract("CoveredCallLongShortPairFinancialProductLibrary", function (accounts) 
         .send({ from: accounts[0] });
     });
     it("Lower than strike should return 0", async () => {
-      const expiryTokensForCollateral = await callOptionLSPFPL.computeExpiryTokensForCollateral.call(toWei("300"), {
+      const expiryTokensForCollateral = await callOptionLSPFPL.methods.computeExpiryTokensForCollateral(toWei("300")).call({
         from: expiringContractMock.options.address,
       });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0"));
     });
     it("Higher than strike correct value", async () => {
-      const expiryTokensForCollateral = await callOptionLSPFPL.computeExpiryTokensForCollateral.call(toWei("500"), {
+      const expiryTokensForCollateral = await callOptionLSPFPL.methods.computeExpiryTokensForCollateral(toWei("500")).call({
         from: expiringContractMock.options.address,
       });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0.2"));
     });
     it("Arbitrary expiry price above strike should return correctly", async () => {
       for (const price of [toWei("500"), toWei("600"), toWei("1000"), toWei("1500"), toWei("2000")]) {
-        const expiryTokensForCollateral = await callOptionLSPFPL.computeExpiryTokensForCollateral.call(price, {
+        const expiryTokensForCollateral = await callOptionLSPFPL.methods.computeExpiryTokensForCollateral(price).call({
           from: expiringContractMock.options.address,
         });
         const expectedPrice = toBN(price)
@@ -97,10 +97,9 @@ contract("CoveredCallLongShortPairFinancialProductLibrary", function (accounts) 
     });
     it("Should never return a value greater than 1", async () => {
       // create a massive expiry price. 1e18*1e18. Under all conditions should return less than 1.
-      const expiryTokensForCollateral = await callOptionLSPFPL.computeExpiryTokensForCollateral.call(
-        toWei(toWei("1")),
-        { from: expiringContractMock.options.address }
-      );
+      const expiryTokensForCollateral = await callOptionLSPFPL.methods
+        .computeExpiryTokensForCollateral(toWei(toWei("1")))
+        .call({ from: expiringContractMock.options.address });
       assert.isTrue(toBN(expiryTokensForCollateral).lt(toBN(toWei("1"))));
     });
   });

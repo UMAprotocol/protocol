@@ -28,7 +28,7 @@ contract("LinearLongShortPairFinancialProductLibrary", function (accounts) {
       { rawValue: toWei("1.5") }, // _collateralRequirement
       utf8ToHex("TEST_IDENTIFIER"), // _priceIdentifier
       ZERO_ADDRESS // _timerAddress
-    );
+    ).send({ from: accounts[0] });
   });
   describe("Long Short Pair Parameterization", () => {
     it("Can set and fetch valid values", async () => {
@@ -82,19 +82,19 @@ contract("LinearLongShortPairFinancialProductLibrary", function (accounts) {
         .send({ from: accounts[0] });
     });
     it("Lower than lower bound should return 0", async () => {
-      const expiryTokensForCollateral = await linearLSPFPL.computeExpiryTokensForCollateral.call(toWei("900"), {
+      const expiryTokensForCollateral = await linearLSPFPL.methods.computeExpiryTokensForCollateral(toWei("900")).call({
         from: expiringContractMock.options.address,
       });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0"));
     });
     it("Higher than upper bound should return 1", async () => {
-      const expiryTokensForCollateral = await linearLSPFPL.computeExpiryTokensForCollateral.call(toWei("2100"), {
+      const expiryTokensForCollateral = await linearLSPFPL.methods.computeExpiryTokensForCollateral(toWei("2100")).call({
         from: expiringContractMock.options.address,
       });
       assert.equal(expiryTokensForCollateral.toString(), toWei("1"));
     });
     it("Midway between bounds should return 0.5", async () => {
-      const expiryTokensForCollateral = await linearLSPFPL.computeExpiryTokensForCollateral.call(toWei("1500"), {
+      const expiryTokensForCollateral = await linearLSPFPL.methods.computeExpiryTokensForCollateral(toWei("1500")).call({
         from: expiringContractMock.options.address,
       });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0.5"));
@@ -102,7 +102,7 @@ contract("LinearLongShortPairFinancialProductLibrary", function (accounts) {
 
     it("Arbitrary price between bounds should return correctly", async () => {
       for (const price of [toWei("1000"), toWei("1200"), toWei("1400"), toWei("1600"), toWei("1800"), toWei("2000")]) {
-        const expiryTokensForCollateral = await linearLSPFPL.computeExpiryTokensForCollateral.call(price, {
+        const expiryTokensForCollateral = await linearLSPFPL.methods.computeExpiryTokensForCollateral(price).call({
           from: expiringContractMock.options.address,
         });
         const numerator = toBN(price).sub(toBN(lowerBound));

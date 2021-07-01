@@ -29,14 +29,11 @@ contract("TokenFactory", function (accounts) {
     tokenFactory = await TokenFactory.deployed();
   });
   it("Can create new tokens and transfers roles successfully", async () => {
-    const tokenAddress = await tokenFactory.createToken.call(
-      tokenDetails.name,
-      tokenDetails.symbol,
-      tokenDetails.decimals,
-      {
+    const tokenAddress = await tokenFactory.methods
+      .createToken(tokenDetails.name, tokenDetails.symbol, tokenDetails.decimals)
+      .call({
         from: tokenCreator,
-      }
-    );
+      });
     await tokenFactory.methods
       .createToken(tokenDetails.name, tokenDetails.symbol, tokenDetails.decimals)
       .send({ from: tokenCreator });
@@ -67,14 +64,11 @@ contract("TokenFactory", function (accounts) {
     assert.isFalse(await token.methods.isBurner(rando).call());
   });
   it("Token can execute expected methods", async () => {
-    const tokenAddress = await tokenFactory.createToken.call(
-      tokenDetails.name,
-      tokenDetails.symbol,
-      tokenDetails.decimals,
-      {
+    const tokenAddress = await tokenFactory.methods
+      .createToken(tokenDetails.name, tokenDetails.symbol, tokenDetails.decimals)
+      .call({
         from: tokenCreator,
-      }
-    );
+      });
     await tokenFactory.methods
       .createToken(tokenDetails.name, tokenDetails.symbol, tokenDetails.decimals)
       .send({ from: tokenCreator });

@@ -76,10 +76,10 @@ contract("CoveredCallFinancialProductLibrary", function (accounts) {
       // Calling the transformation function through the emp mock.
       assert.equal(
         (
-          await expiringMultiParty.transformPrice(
+          await expiringMultiParty.methods.transformPrice(
             { rawValue: toWei("350") },
             (await expiringMultiParty.methods.getCurrentTime().call()).toString()
-          )
+          ).call()
         ).toString(),
         toWei("1")
       );
@@ -87,26 +87,25 @@ contract("CoveredCallFinancialProductLibrary", function (accounts) {
       // Calling the transformation function as a mocked emp caller should also work.
       assert.equal(
         (
-          await expiringMultiParty.transformPrice.call(
+          await expiringMultiParty.methods.transformPrice(
             { rawValue: toWei("350") },
-            (await expiringMultiParty.methods.getCurrentTime().call()).toString(),
-            { from: expiringMultiParty.options.address }
-          )
+            (await expiringMultiParty.methods.getCurrentTime().call()).toString()
+          ).call({ from: expiringMultiParty.options.address })
         ).toString(),
         toWei("1")
       );
     });
 
     it("Library returns correctly transformed price after expiration", async () => {
-      await timer.setCurrentTime(expirationTime + 1);
+      await timer.methods.setCurrentTime(expirationTime + 1).send({ from: accounts[0] });
 
       // If the oracle price is less than the strike price then the library should return 0 (the option is out the money).
       assert.equal(
         (
-          await expiringMultiParty.transformPrice(
+          await expiringMultiParty.methods.transformPrice(
             { rawValue: toWei("350") },
             (await expiringMultiParty.methods.getCurrentTime().call()).toString()
-          )
+          ).call()
         ).toString(),
         "0"
       );
@@ -115,10 +114,10 @@ contract("CoveredCallFinancialProductLibrary", function (accounts) {
       // strike is $400, token is redeemable for 100 / 500 = 0.2 WETH (worth $100).
       assert.equal(
         (
-          await expiringMultiParty.transformPrice(
+          await expiringMultiParty.methods.transformPrice(
             { rawValue: toWei("500") },
             (await expiringMultiParty.methods.getCurrentTime().call()).toString()
-          )
+          ).call()
         ).toString(),
         toWei("0.2")
       );
@@ -130,26 +129,26 @@ contract("CoveredCallFinancialProductLibrary", function (accounts) {
 
       // Check pre-expiration below strike
       assert.equal(
-        (await expiringMultiParty.transformCollateralRequirement({ rawValue: toWei("350") })).toString(),
+        (await expiringMultiParty.methods.transformCollateralRequirement({ rawValue: toWei("350") }).call()).toString(),
         toWei("1")
       );
       // Check pre-expiration above strike
       assert.equal(
-        (await expiringMultiParty.transformCollateralRequirement({ rawValue: toWei("450") })).toString(),
+        (await expiringMultiParty.methods.transformCollateralRequirement({ rawValue: toWei("450") }).call()).toString(),
         toWei("1")
       );
 
       // advance the timer after expiration and ensure the CR is still 1.
-      await timer.setCurrentTime(expirationTime + 1);
+      await timer.methods.setCurrentTime(expirationTime + 1).send({ from: accounts[0] });
 
       // Check post-expiration below strike
       assert.equal(
-        (await expiringMultiParty.transformCollateralRequirement({ rawValue: toWei("350") })).toString(),
+        (await expiringMultiParty.methods.transformCollateralRequirement({ rawValue: toWei("350") }).call()).toString(),
         toWei("1")
       );
       // Check post-expiration above strike
       assert.equal(
-        (await expiringMultiParty.transformCollateralRequirement({ rawValue: toWei("450") })).toString(),
+        (await expiringMultiParty.methods.transformCollateralRequirement({ rawValue: toWei("450") }).call()).toString(),
         toWei("1")
       );
     });

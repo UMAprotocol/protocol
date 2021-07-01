@@ -403,7 +403,7 @@ contract("FundingRateApplier", function (accounts) {
       await finder.methods.changeImplementationAddress(
         utf8ToHex(interfaceName.OptimisticOracle),
         optimisticOracleV2.options.address
-      );
+      ).send({from:accounts[0]});
 
       // propose() should reset the proposal time to 0 via the fees() modifier, and therefore it should be possible
       // to propose a new rate.

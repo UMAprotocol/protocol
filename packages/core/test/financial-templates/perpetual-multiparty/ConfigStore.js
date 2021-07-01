@@ -1,9 +1,8 @@
 const hre = require("hardhat");
 const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
+const { getContract, assertEventEmitted } = hre;
 // External libs
 const { toWei, toBN } = web3.utils;
-const truffleAssert = require("truffle-assertions");
 
 // Local libs
 const { didContractThrow } = require("@uma/common");
@@ -17,8 +16,8 @@ const Timer = getContract("Timer");
 
 // Helper functions.
 async function incrementTime(contract, amount) {
-  const currentTime = await contract.methods.getCurrentTime().call();
-  await contract.setCurrentTime(Number(currentTime) + amount);
+  const currentTime = parseInt(await contract.methods.getCurrentTime().call());
+  await contract.methods.setCurrentTime(currentTime + amount);
 }
 
 contract("ConfigStore", function (accounts) {
@@ -46,7 +45,7 @@ contract("ConfigStore", function (accounts) {
   };
 
   async function currentConfigMatchesInput(_store, _inputConfig) {
-    let currentConfig = await _store.updateAndGetCurrentConfig.call();
+    let currentConfig = await _store.methods.updateAndGetCurrentConfig().call();
     assert.equal(currentConfig.timelockLiveness.toString(), _inputConfig.timelockLiveness.toString());
     assert.equal(
       currentConfig.rewardRatePerSecond.rawValue.toString(),
@@ -62,7 +61,7 @@ contract("ConfigStore", function (accounts) {
   }
 
   async function pendingConfigMatchesInput(_store, _inputConfig) {
-    let pendingConfig = await _store.pendingConfig();
+    let pendingConfig = await _store.methods.pendingConfig().call();
     assert.equal(pendingConfig.timelockLiveness.toString(), _inputConfig.timelockLiveness.toString());
     assert.equal(
       pendingConfig.rewardRatePerSecond.rawValue.toString(),
@@ -78,7 +77,7 @@ contract("ConfigStore", function (accounts) {
   }
 
   async function storeHasNoPendingConfig(_store) {
-    assert.equal((await _store.pendingPassedTimestamp()).toString(), "0");
+    assert.equal((await _store.methods.pendingPassedTimestamp().call()).toString(), "0");
   }
 
   beforeEach(async () => {
@@ -89,7 +88,7 @@ contract("ConfigStore", function (accounts) {
   describe("Construction", function () {
     it("Default values get set", async function () {
       configStore = await ConfigStore.new(testConfig, timer.options.address).send({ from: accounts[0] });
-      let config = await configStore.updateAndGetCurrentConfig.call();
+      let config = await configStore.methods.updateAndGetCurrentConfig().call();
       assert.equal(config.timelockLiveness.toString(), testConfig.timelockLiveness.toString());
       assert.equal(config.rewardRatePerSecond.rawValue.toString(), testConfig.rewardRatePerSecond.rawValue);
       assert.equal(config.proposerBondPercentage.rawValue.toString(), testConfig.proposerBondPercentage.rawValue);
@@ -104,14 +103,14 @@ contract("ConfigStore", function (accounts) {
         ...testConfig,
         timelockLiveness: 0,
       };
-      assert(await didContractThrow(ConfigStore.new(invalidConfig, timer.options.address)));
+      assert(await didContractThrow(ConfigStore.new(invalidConfig, timer.options.address).send({ from: accounts[0] })));
 
       // Invalid reward rate
       invalidConfig = {
         ...testConfig,
         rewardRatePerSecond: { rawValue: toWei("0.00000331") },
       };
-      assert(await didContractThrow(ConfigStore.new(invalidConfig, timer.options.address)));
+      assert(await didContractThrow(ConfigStore.new(invalidConfig, timer.options.address).send({ from: accounts[0] })));
     });
   });
   describe("Proposing a new configuration", function () {
@@ -123,9 +122,9 @@ contract("ConfigStore", function (accounts) {
       assert(await didContractThrow(configStore.methods.proposeNewConfig(testConfig).send({ from: rando })));
 
       // Propose a config and check events
-      let proposeTime = await configStore.methods.getCurrentTime().call();
-      let proposeTxn = await configStore.methods.proposeNewConfig(testConfig).call();
-      truffleAssert.eventEmitted(proposeTxn, "ProposedNewConfigSettings", (ev) => {
+      let proposeTime = toBN(await configStore.methods.getCurrentTime().call());
+      let proposeTxn = await configStore.methods.proposeNewConfig(testConfig).send({from:accounts[0]});
+      await assertEventEmitted(proposeTxn, configStore, "ProposedNewConfigSettings", (ev) => {
         return (
           ev.proposer === owner &&
           ev.rewardRatePerSecond.toString() === testConfig.rewardRatePerSecond.rawValue &&
@@ -141,8 +140,8 @@ contract("ConfigStore", function (accounts) {
 
       // Pending config can be published with propose(). In the next test we'll test that publishPendingConfig
       // also updates pending configs.
-      proposeTxn = await configStore.methods.proposeNewConfig(testConfig).call();
-      truffleAssert.eventEmitted(proposeTxn, "ChangedConfigSettings", (ev) => {
+      proposeTxn = await configStore.methods.proposeNewConfig(testConfig).send({from:accounts[0]});
+      await assertEventEmitted(proposeTxn, configStore, "ChangedConfigSettings", (ev) => {
         return (
           ev.rewardRatePerSecond.toString() === testConfig.rewardRatePerSecond.rawValue &&
           ev.proposerBondPercentage.toString() === testConfig.proposerBondPercentage.rawValue &&
@@ -160,9 +159,9 @@ contract("ConfigStore", function (accounts) {
       configStore = await ConfigStore.new(defaultConfig, timer.options.address).send({ from: accounts[0] });
 
       // Propose new config.
-      const proposeTime = await configStore.methods.getCurrentTime().call();
-      let proposeTxn = await configStore.methods.proposeNewConfig(testConfig).call();
-      truffleAssert.eventEmitted(proposeTxn, "ProposedNewConfigSettings", (ev) => {
+      const proposeTime = toBN(await configStore.methods.getCurrentTime().call());
+      let proposeTxn = await configStore.methods.proposeNewConfig(testConfig).send({from:accounts[0]});
+      await assertEventEmitted(proposeTxn, configStore, "ProposedNewConfigSettings", (ev) => {
         return (
           ev.proposer === owner &&
           ev.rewardRatePerSecond.toString() === testConfig.rewardRatePerSecond.rawValue &&
@@ -201,8 +200,8 @@ contract("ConfigStore", function (accounts) {
         timelockLiveness: 86402,
       };
       const overwriteProposalTime = await configStore.methods.getCurrentTime().call();
-      proposeTxn = await configStore.methods.proposeNewConfig(test2Config).call();
-      truffleAssert.eventEmitted(proposeTxn, "ProposedNewConfigSettings", (ev) => {
+      proposeTxn = await configStore.methods.proposeNewConfig(test2Config).send({from:accounts[0]});
+      await assertEventEmitted(proposeTxn, configStore, "ProposedNewConfigSettings", (ev) => {
         return (
           ev.proposer === owner &&
           ev.rewardRatePerSecond.toString() === test2Config.rewardRatePerSecond.rawValue &&
@@ -237,8 +236,8 @@ contract("ConfigStore", function (accounts) {
       // Finally, advancing past liveness allows pending config to be returned as current config, {       // and the pending config can be published.
       await incrementTime(configStore, 1);
       await currentConfigMatchesInput(configStore, test2Config);
-      proposeTxn = await configStore.methods.publishPendingConfig().call();
-      truffleAssert.eventEmitted(proposeTxn, "ChangedConfigSettings", (ev) => {
+      proposeTxn = await configStore.methods.publishPendingConfig().send({from:accounts[0]});
+      await assertEventEmitted(proposeTxn, configStore, "ChangedConfigSettings", (ev) => {
         return (
           ev.rewardRatePerSecond.toString() === test2Config.rewardRatePerSecond.rawValue &&
           ev.proposerBondPercentage.toString() === test2Config.proposerBondPercentage.rawValue &&

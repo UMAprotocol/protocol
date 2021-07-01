@@ -23,13 +23,13 @@ contract("ExpiringMultiParty", function (accounts) {
   });
 
   it("Can deploy", async function () {
-    const collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: accounts[0] }).send({
+    const collateralToken = await Token.new("Wrapped Ether", "WETH", 18).send({
       from: accounts[0],
     });
-    const syntheticToken = await Token.new("Test Synthetic Token", "SYNTH", 18, { from: accounts[0] }).send({
+    const syntheticToken = await Token.new("Test Synthetic Token", "SYNTH", 18).send({
       from: accounts[0],
     });
-    const currentTime = (await timer.methods.getCurrentTime().call()).toNumber();
+    const currentTime = Number(await timer.methods.getCurrentTime().call());
 
     const constructorParams = {
       expirationTimestamp: (currentTime + 1000).toString(),
@@ -50,8 +50,7 @@ contract("ExpiringMultiParty", function (accounts) {
 
     const identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.methods
-      .addSupportedIdentifier(constructorParams.priceFeedIdentifier, { from: accounts[0] })
-      .send({ from: accounts[0] });
+      .addSupportedIdentifier(constructorParams.priceFeedIdentifier).send({ from: accounts[0] });
 
     await ExpiringMultiParty.new(constructorParams).send({ from: accounts[0] });
   });

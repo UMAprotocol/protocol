@@ -1,9 +1,8 @@
 const hre = require("hardhat");
 const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
+const { getContract, assertEventEmitted } = hre;
 const { toWei, hexToUtf8, toBN, padRight, utf8ToHex } = web3.utils;
 const { didContractThrow, MAX_UINT_VAL } = require("@uma/common");
-const truffleAssert = require("truffle-assertions");
 
 // Tested Contract
 const PerpetualCreator = getContract("PerpetualCreator");
@@ -42,7 +41,6 @@ contract("PerpetualCreator", function (accounts) {
   beforeEach(async () => {
     await runDefaultFixture(hre);
     collateralToken = await Token.new("Wrapped Ether", "WETH", 18)
-      .send({ from: accounts[0] })
       .send({ from: contractCreator });
     registry = await Registry.deployed();
     perpetualCreator = await PerpetualCreator.deployed();
@@ -86,8 +84,7 @@ contract("PerpetualCreator", function (accounts) {
     assert(
       await didContractThrow(
         perpetualCreator.methods
-          .createPerpetual(constructorParams, testConfig, { from: contractCreator })
-          .send({ from: accounts[0] })
+          .createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
       )
     );
   });
@@ -98,22 +95,22 @@ contract("PerpetualCreator", function (accounts) {
     assert(
       await didContractThrow(
         perpetualCreator.methods
-          .createPerpetual(constructorParams, testConfig, { from: contractCreator })
-          .send({ from: accounts[0] })
+          .createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
       )
     );
   });
 
   it("Collateral token must be whitelisted", async function () {
     // Change only the collateral token address
-    constructorParams.collateralAddress = await Token.new("Test Synthetic Token", "SYNTH", 18)
-      .send({ from: accounts[0] })
-      .send({ from: contractCreator }).address;
+    constructorParams.collateralAddress = (
+      await Token.new("Test Synthetic Token", "SYNTH", 18).send({
+        from: contractCreator,
+      })
+    ).options.address;
     assert(
       await didContractThrow(
         perpetualCreator.methods
-          .createPerpetual(constructorParams, testConfig, { from: contractCreator })
-          .send({ from: accounts[0] })
+          .createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
       )
     );
   });
@@ -124,8 +121,7 @@ contract("PerpetualCreator", function (accounts) {
     assert(
       await didContractThrow(
         perpetualCreator.methods
-          .createPerpetual(constructorParams, testConfig, { from: contractCreator })
-          .send({ from: accounts[0] })
+          .createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
       )
     );
   });
@@ -136,8 +132,7 @@ contract("PerpetualCreator", function (accounts) {
     assert(
       await didContractThrow(
         perpetualCreator.methods
-          .createPerpetual(constructorParams, testConfig, { from: contractCreator })
-          .send({ from: accounts[0] })
+          .createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
       )
     );
   });
@@ -148,8 +143,7 @@ contract("PerpetualCreator", function (accounts) {
     assert(
       await didContractThrow(
         perpetualCreator.methods
-          .createPerpetual(constructorParams, testConfig, { from: contractCreator })
-          .send({ from: accounts[0] })
+          .createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
       )
     );
   });
@@ -160,8 +154,7 @@ contract("PerpetualCreator", function (accounts) {
     assert(
       await didContractThrow(
         perpetualCreator.methods
-          .createPerpetual(constructorParams, testConfig, { from: contractCreator })
-          .send({ from: accounts[0] })
+          .createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
       )
     );
   });
@@ -175,8 +168,7 @@ contract("PerpetualCreator", function (accounts) {
     assert(
       await didContractThrow(
         perpetualCreator.methods
-          .createPerpetual(constructorParams, testConfig, { from: contractCreator })
-          .send({ from: accounts[0] })
+          .createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
       )
     );
   });
@@ -190,26 +182,25 @@ contract("PerpetualCreator", function (accounts) {
     assert(
       await didContractThrow(
         perpetualCreator.methods
-          .createPerpetual(constructorParams, testConfig, { from: contractCreator })
-          .send({ from: accounts[0] })
+          .createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
       )
     );
   });
 
   it("Can create new instances of Perpetual", async function () {
     // Use `.call` to get the returned value from the function.
-    let functionReturnedAddress = await perpetualCreator.createPerpetual.call(constructorParams, testConfig, {
+    let functionReturnedAddress = await perpetualCreator.methods.createPerpetual(constructorParams, testConfig).call({
       from: contractCreator,
     });
 
     // Execute without the `.call` to perform state change. catch the result to query the event.
     let createdAddressResult = await perpetualCreator.methods
       .createPerpetual(constructorParams, testConfig)
-      .call({ from: contractCreator });
+      .send({ from: contractCreator });
 
     // Catch the address of the new contract from the event. Ensure that the assigned party member is correct.
     let perpetualAddress;
-    truffleAssert.eventEmitted(createdAddressResult, "CreatedPerpetual", (ev) => {
+    await assertEventEmitted(createdAddressResult, perpetualCreator, "CreatedPerpetual", (ev) => {
       perpetualAddress = ev.perpetualAddress;
       return ev.perpetualAddress != 0 && ev.deployerAddress == contractCreator;
     });
@@ -250,7 +241,6 @@ contract("PerpetualCreator", function (accounts) {
   it("Constructs new synthetic currency properly", async function () {
     // Use non-18 decimal precision for collateral currency to test that synthetic matches precision.
     collateralToken = await Token.new("Wrapped Ether", "WETH", 8)
-      .send({ from: accounts[0] })
       .send({ from: contractCreator });
     constructorParams.collateralAddress = collateralToken.options.address;
 
@@ -262,9 +252,9 @@ contract("PerpetualCreator", function (accounts) {
     // Create new derivative contract.
     let createdAddressResult = await perpetualCreator.methods
       .createPerpetual(constructorParams, testConfig)
-      .call({ from: contractCreator });
+      .send({ from: contractCreator });
     let perpetualAddress;
-    truffleAssert.eventEmitted(createdAddressResult, "CreatedPerpetual", (ev) => {
+    await assertEventEmitted(createdAddressResult, perpetualCreator, "CreatedPerpetual", (ev) => {
       perpetualAddress = ev.perpetualAddress;
       return ev.perpetualAddress != 0 && ev.deployerAddress == contractCreator;
     });
@@ -287,11 +277,11 @@ contract("PerpetualCreator", function (accounts) {
 
   it("If collateral currency does not implement the decimals() method then synthetic currency defaults to 18 decimals", async function () {
     // Collateral token does not implement decimals() so synthetic token should default to 18.
-    collateralToken = await BasicERC20.new(0).send({ from: accounts[0] }).send({ from: contractCreator });
+    collateralToken = await BasicERC20.new(0).send({ from: contractCreator });
     try {
       await collateralToken.methods.decimals().send({ from: accounts[0] });
     } catch (err) {
-      assert.equal(err.message, "collateralToken.decimals is not a function");
+      assert.equal(err.message, "collateralToken.methods.decimals is not a function");
     }
     constructorParams.collateralAddress = collateralToken.options.address;
 
@@ -303,9 +293,9 @@ contract("PerpetualCreator", function (accounts) {
     // Create new derivative contract.
     let createdAddressResult = await perpetualCreator.methods
       .createPerpetual(constructorParams, testConfig)
-      .call({ from: contractCreator });
+      .send({ from: contractCreator });
     let perpetualAddress;
-    truffleAssert.eventEmitted(createdAddressResult, "CreatedPerpetual", (ev) => {
+    await assertEventEmitted(createdAddressResult, perpetualCreator, "CreatedPerpetual", (ev) => {
       perpetualAddress = ev.perpetualAddress;
       return ev.perpetualAddress != 0 && ev.deployerAddress == contractCreator;
     });
@@ -319,10 +309,10 @@ contract("PerpetualCreator", function (accounts) {
   it("Creation correctly registers Perpetual within the registry", async function () {
     let createdAddressResult = await perpetualCreator.methods
       .createPerpetual(constructorParams, testConfig)
-      .call({ from: contractCreator });
+      .send({ from: contractCreator });
 
     let perpetualAddress;
-    truffleAssert.eventEmitted(createdAddressResult, "CreatedPerpetual", (ev) => {
+    await assertEventEmitted(createdAddressResult, perpetualCreator, "CreatedPerpetual", (ev) => {
       perpetualAddress = ev.perpetualAddress;
       return ev.perpetualAddress != 0 && ev.deployerAddress == contractCreator;
     });
@@ -332,10 +322,10 @@ contract("PerpetualCreator", function (accounts) {
   it("Creation deploys a new ConfigStore and transfers ownership to the deployer", async function () {
     let createdAddressResult = await perpetualCreator.methods
       .createPerpetual(constructorParams, testConfig)
-      .call({ from: contractCreator });
+      .send({ from: contractCreator });
 
     let configStoreAddress;
-    truffleAssert.eventEmitted(createdAddressResult, "CreatedConfigStore", (ev) => {
+    await assertEventEmitted(createdAddressResult, perpetualCreator, "CreatedConfigStore", (ev) => {
       configStoreAddress = ev.configStoreAddress;
       return ev.configStoreAddress != 0 && ev.ownerAddress == contractCreator;
     });
@@ -346,19 +336,19 @@ contract("PerpetualCreator", function (accounts) {
   it("Funding rate bounds are set correctly", async function () {
     let createdAddressResult = await perpetualCreator.methods
       .createPerpetual(constructorParams, testConfig)
-      .call({ from: contractCreator });
+      .send({ from: contractCreator });
 
     let perpetualAddress;
-    truffleAssert.eventEmitted(createdAddressResult, "CreatedPerpetual", (ev) => {
+    await assertEventEmitted(createdAddressResult, perpetualCreator, "CreatedPerpetual", (ev) => {
       perpetualAddress = ev.perpetualAddress;
       return ev.perpetualAddress != 0 && ev.deployerAddress == contractCreator;
     });
     let perpetual = await Perpetual.at(perpetualAddress);
 
-    const currentTime = (await perpetual.methods.getCurrentTime().call()).toNumber();
+    const currentTime = parseInt(await perpetual.methods.getCurrentTime().call());
     assert(
       await didContractThrow(
-        perpetual.proposeFundingRate({ rawValue: toWei("0.00002") }, currentTime, { from: contractCreator })
+        perpetual.methods.proposeFundingRate({ rawValue: toWei("0.00002") }, currentTime).send({ from: contractCreator })
       )
     );
   });

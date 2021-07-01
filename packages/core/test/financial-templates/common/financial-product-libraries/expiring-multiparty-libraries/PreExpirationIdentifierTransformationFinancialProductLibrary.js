@@ -5,7 +5,7 @@ const { didContractThrow } = require("@uma/common");
 const { assert } = require("chai");
 
 // Tested Contract
-const PreExpirationIdentifierTransformationFinancialProductLibrary = artifacts.require(
+const PreExpirationIdentifierTransformationFinancialProductLibrary = getContract(
   "PreExpirationIdentifierTransformationFinancialProductLibrary"
 );
 
@@ -49,7 +49,7 @@ contract("PreExpirationIdentifierTransformationFinancialProductLibrary", functio
       hexToUtf8(
         await identifierTransformationFPL.methods
           .getTransformedIdentifierForFinancialProduct(expiringMultiParty.options.address)
-          .send({ from: accounts[0] })
+          .call()
       ),
       hexToUtf8(transformedPriceFeedIdentifier)
     );
@@ -67,9 +67,9 @@ contract("PreExpirationIdentifierTransformationFinancialProductLibrary", functio
     // Calling the transformation function through the emp mock.
     assert.equal(
       hexToUtf8(
-        await expiringMultiParty.transformPriceIdentifier(
+        await expiringMultiParty.methods.transformPriceIdentifier(
           (await expiringMultiParty.methods.getCurrentTime().call()).toString()
-        )
+        ).call()
       ),
       hexToUtf8(transformedPriceFeedIdentifier)
     );
@@ -77,8 +77,8 @@ contract("PreExpirationIdentifierTransformationFinancialProductLibrary", functio
     // Calling the transformation function as a mocked emp caller should also work.
     assert.equal(
       hexToUtf8(
-        await expiringMultiParty.transformPriceIdentifier.call(
-          (await expiringMultiParty.methods.getCurrentTime().call()).toString(),
+        await expiringMultiParty.methods.transformPriceIdentifier(
+          (await expiringMultiParty.methods.getCurrentTime().call()).toString()).call(
           { from: expiringMultiParty.options.address }
         )
       ),
@@ -86,14 +86,14 @@ contract("PreExpirationIdentifierTransformationFinancialProductLibrary", functio
     );
   });
   it("Preforms no transformation on the identifier post-expiration", async () => {
-    await timer.setCurrentTime(expirationTime + 1);
+    await timer.methods.setCurrentTime(expirationTime + 1).send({from:accounts[0]});
 
     // Calling the transformation function through the emp mock.
     assert.equal(
       hexToUtf8(
-        await expiringMultiParty.transformPriceIdentifier(
+        await expiringMultiParty.methods.transformPriceIdentifier(
           (await expiringMultiParty.methods.getCurrentTime().call()).toString()
-        )
+        ).call()
       ),
       hexToUtf8(priceFeedIdentifier)
     );
@@ -101,8 +101,8 @@ contract("PreExpirationIdentifierTransformationFinancialProductLibrary", functio
     // Calling the transformation function as a mocked emp caller should also work.
     assert.equal(
       hexToUtf8(
-        await expiringMultiParty.transformPriceIdentifier.call(
-          (await expiringMultiParty.methods.getCurrentTime().call()).toString(),
+        await expiringMultiParty.methods.transformPriceIdentifier(
+          (await expiringMultiParty.methods.getCurrentTime().call()).toString()).call(
           { from: expiringMultiParty.options.address }
         )
       ),

@@ -23,10 +23,10 @@ contract("Perpetual", function (accounts) {
   });
 
   it("Can deploy", async function () {
-    const collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: accounts[0] }).send({
+    const collateralToken = await Token.new("Wrapped Ether", "WETH", 18).send({
       from: accounts[0],
     });
-    const tokenCurrency = await Token.new("Test Synthetic Token", "SYNTH", 18, { from: accounts[0] }).send({
+    const tokenCurrency = await Token.new("Test Synthetic Token", "SYNTH", 18).send({
       from: accounts[0],
     });
     const configStore = await ConfigStore.new(
@@ -39,7 +39,7 @@ contract("Perpetual", function (accounts) {
         proposalTimePastLimit: 0,
       },
       timer.options.address
-    );
+    ).send({ from: accounts[0] });
 
     const constructorParams = {
       withdrawalLiveness: "1000",
@@ -61,7 +61,7 @@ contract("Perpetual", function (accounts) {
 
     const identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.methods
-      .addSupportedIdentifier(constructorParams.priceFeedIdentifier, { from: accounts[0] })
+      .addSupportedIdentifier(constructorParams.priceFeedIdentifier)
       .send({ from: accounts[0] });
 
     await Perpetual.new(constructorParams).send({ from: accounts[0] });
