@@ -73,6 +73,7 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     },
     async sliceHistoricalSynthPrices(empAddress: string, start = 0, length = 1): Promise<PriceSample[]> {
       assert(empAddress, "requires an empAddress");
+      assert(length < 1000, "length must be less than 1000 samples");
       const emp = await queries.getAnyEmp(empAddress);
       assert(exists(emp.tokenCurrency), "EMP does not have token currency address");
       return queries.sliceHistoricalPricesByTokenAddress(emp.tokenCurrency, start, length);
@@ -85,6 +86,7 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     },
     async sliceHistoricalCollateralPrices(empAddress: string, start = 0, length = 1): Promise<PriceSample[]> {
       assert(empAddress, "requires an empAddress");
+      assert(length < 1000, "length must be less than 1000 samples");
       const emp = await queries.getAnyEmp(empAddress);
       assert(exists(emp.collateralCurrency), "EMP does not have token currency address");
       return queries.sliceHistoricalPricesByTokenAddress(emp.collateralCurrency, start, length);
@@ -104,10 +106,16 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       if (addresses == null || addresses.length == 0) return queries.totalTvl(currency);
       return queries.sumTvl(addresses, currency);
     },
-    async getEmpStatsBetween(address: string, start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") {
+    async getEmpStatsBetween(empAddress: string, start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") {
       assert(stats[currency], "Invalid currency type: " + currency);
-      assert(stats[currency].history[address], "Invalid emp address: " + address);
-      return stats[currency].history[address].between(start, end);
+      assert(stats[currency].history[empAddress], "Invalid emp address: " + empAddress);
+      return stats[currency].history[empAddress].between(start, end);
+    },
+    async sliceHistoricalEmpStats(empAddress: string, start = 0, length = 1, currency: CurrencySymbol = "usd") {
+      assert(stats[currency], "Invalid currency type: " + currency);
+      assert(stats[currency].history[empAddress], "Invalid emp address: " + empAddress);
+      assert(length < 1000, "length must be less than 1000 samples");
+      return stats[currency].history[empAddress].slice(start, length);
     },
   };
 

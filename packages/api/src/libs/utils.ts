@@ -56,6 +56,18 @@ export function calcTvl(
   return BigNumber.from(price).mul(normalizedCollateral).div(SCALING_MULTIPLIER);
 }
 
+export function calcTvm(
+  // priced in wei because synthetic prices are returned in wei
+  price: string,
+  emp: Pick<uma.tables.emps.Data, "totalTokensOutstanding" | "tokenDecimals">
+) {
+  const { totalTokensOutstanding, tokenDecimals } = emp;
+  assert(uma.utils.exists(totalTokensOutstanding), "requires totalTokensOutstanding");
+  assert(uma.utils.exists(tokenDecimals), "requires tokenDecimals");
+  const normalizedTokens = uma.utils.ConvertDecimals(tokenDecimals, 18)(totalTokensOutstanding);
+  return BigNumber.from(price).mul(normalizedTokens).div(SCALING_MULTIPLIER);
+}
+
 export function calcSyntheticPrice(syntheticPrice: BigNumberish, collateralPrice: BigNumberish) {
   return BigNumber.from(syntheticPrice).mul(collateralPrice).div(SCALING_MULTIPLIER);
 }
