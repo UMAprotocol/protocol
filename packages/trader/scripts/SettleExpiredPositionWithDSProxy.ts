@@ -52,7 +52,7 @@ async function SettleExpiredPositionWithDSProxy() {
   // Create the callData as the encoded tx against the PositionSettler contract.
   const PositionSettler = getTruffleContract("PositionSettler", web3);
   const PositionSettlerInstance = new web3.eth.Contract(PositionSettler.abi);
-  const callData = PositionSettlerInstance.methods.redeem(argv.financialContractAddress).encodeABI();
+  const callData = PositionSettlerInstance.methods.settle(argv.financialContractAddress).encodeABI();
 
   // The library also needs the code of the contract to deploy.
   const callCode = PositionSettler.bytecode;

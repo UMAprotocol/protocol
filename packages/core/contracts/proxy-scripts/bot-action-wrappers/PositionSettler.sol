@@ -4,12 +4,12 @@ pragma solidity ^0.8.0;
 import "../../common/implementation/FixedPoint.sol";
 
 // Simple contract used to Settle expired positions using a DSProxy.
-contract LiquidationWithdrawer {
-    function settleExpired(address financialContractAddress) public returns (FixedPoint.Unsigned memory) {
-        return IFinancialContract(financialContractAddress).settleExpired();
+contract PositionSettler {
+    function settle(address financialContractAddress) public returns (FixedPoint.Unsigned memory) {
+        return IFinancialContract(financialContractAddress).settle();
     }
 }
 
 interface IFinancialContract {
-    function settleExpired() external returns (FixedPoint.Unsigned memory amountWithdrawn);
+    function settle() external returns (FixedPoint.Unsigned memory amountWithdrawn);
 }
