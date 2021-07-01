@@ -226,7 +226,7 @@ hub.post("/", async (req, res) => {
       logger.error({
         at: "ServerlessHub",
         message: "A fatal error occurred in the hub",
-        output: errorOutput.trace,
+        output: errorOutput.stack,
         notificationPath: "infrastructure-error",
       });
     } else {
