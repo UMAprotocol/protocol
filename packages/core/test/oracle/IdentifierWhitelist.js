@@ -1,11 +1,8 @@
-const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
 const { didContractThrow } = require("@uma/common");
 
 const truffleAssert = require("truffle-assertions");
 
-const IdentifierWhitelist = getContract("IdentifierWhitelist");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 
 contract("IdentifierWhitelist", function (accounts) {
   const owner = accounts[0];
@@ -15,89 +12,78 @@ contract("IdentifierWhitelist", function (accounts) {
   let randomIdentifierToAdd;
 
   beforeEach(async function () {
-    await runDefaultFixture(hre);
-    identifierWhitelist = await IdentifierWhitelist.new({ from: owner }).send({ from: accounts[0] });
+    identifierWhitelist = await IdentifierWhitelist.new({ from: owner });
     randomIdentifierToAdd = web3.utils.utf8ToHex("random-identifier");
   });
 
   it("Only Owner", async function () {
     // Rando cannot add to the whitelist.
-    assert(
-      await didContractThrow(
-        identifierWhitelist.methods.addSupportedIdentifier(randomIdentifierToAdd).send({ from: rando })
-      )
-    );
+    assert(await didContractThrow(identifierWhitelist.addSupportedIdentifier(randomIdentifierToAdd, { from: rando })));
 
     // Owner can add to the whitelist.
-    await identifierWhitelist.methods.addSupportedIdentifier(randomIdentifierToAdd).send({ from: owner });
+    await identifierWhitelist.addSupportedIdentifier(randomIdentifierToAdd, { from: owner });
 
     // Rando cannot remove from the whitelist.
     assert(
-      await didContractThrow(
-        identifierWhitelist.methods.removeSupportedIdentifier(randomIdentifierToAdd).send({ from: rando })
-      )
+      await didContractThrow(identifierWhitelist.removeSupportedIdentifier(randomIdentifierToAdd, { from: rando }))
     );
 
     // Owner can remove from the whitelist.
-    await identifierWhitelist.methods.removeSupportedIdentifier(randomIdentifierToAdd).send({ from: owner });
+    await identifierWhitelist.removeSupportedIdentifier(randomIdentifierToAdd, { from: owner });
   });
 
   it("Add to whitelist", async function () {
     // Owner can add to the whitelist.
-    const result = await identifierWhitelist.methods
-      .addSupportedIdentifier(randomIdentifierToAdd)
-      .call({ from: owner });
+    const result = await identifierWhitelist.addSupportedIdentifier(randomIdentifierToAdd, { from: owner });
 
     truffleAssert.eventEmitted(result, "SupportedIdentifierAdded", (ev) => {
       return web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(randomIdentifierToAdd);
     });
 
     // Verify that the addition is reflected in isOnWhitelist().
-    assert.isTrue(await identifierWhitelist.methods.isIdentifierSupported(randomIdentifierToAdd).call());
+    assert.isTrue(await identifierWhitelist.isIdentifierSupported(randomIdentifierToAdd));
 
     const incorrectIdentifier = web3.utils.utf8ToHex("wrong-identifier");
-    assert.isFalse(await identifierWhitelist.methods.isIdentifierSupported(incorrectIdentifier).call());
+    assert.isFalse(await identifierWhitelist.isIdentifierSupported(incorrectIdentifier));
   });
 
   it("Remove from whitelist", async function () {
     const identifierToRemove = web3.utils.utf8ToHex("remove-me");
 
     // Owner can add to the whitelist.
-    await identifierWhitelist.methods.addSupportedIdentifier(randomIdentifierToAdd).send({ from: owner });
-    await identifierWhitelist.methods.addSupportedIdentifier(identifierToRemove).send({ from: owner });
+    await identifierWhitelist.addSupportedIdentifier(randomIdentifierToAdd, { from: owner });
+    await identifierWhitelist.addSupportedIdentifier(identifierToRemove, { from: owner });
 
     // Remove identifierToRemove
-    let result = await identifierWhitelist.methods.removeSupportedIdentifier(identifierToRemove).call({ from: owner });
+    let result = await identifierWhitelist.removeSupportedIdentifier(identifierToRemove, { from: owner });
 
     truffleAssert.eventEmitted(result, "SupportedIdentifierRemoved", (ev) => {
       return web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifierToRemove);
     });
 
     // Verify that the additions and removal were applied correctly.
-    assert.isTrue(await identifierWhitelist.methods.isIdentifierSupported(randomIdentifierToAdd).call());
-    assert.isFalse(await identifierWhitelist.methods.isIdentifierSupported(identifierToRemove).call());
+    assert.isTrue(await identifierWhitelist.isIdentifierSupported(randomIdentifierToAdd));
+    assert.isFalse(await identifierWhitelist.isIdentifierSupported(identifierToRemove));
 
     // Double remove from whitelist. Shouldn't error, but shouldn't generate an event.
-    result = await identifierWhitelist.methods.removeSupportedIdentifier(identifierToRemove).call({ from: owner });
+    result = await identifierWhitelist.removeSupportedIdentifier(identifierToRemove, { from: owner });
     truffleAssert.eventNotEmitted(result, "SupportedIdentifierRemoved");
   });
 
   it("Add to whitelist twice", async function () {
-    await identifierWhitelist.methods.addSupportedIdentifier(randomIdentifierToAdd).send({ from: owner });
-    const result = await identifierWhitelist.methods
-      .addSupportedIdentifier(randomIdentifierToAdd)
-      .call({ from: owner });
+    await identifierWhitelist.addSupportedIdentifier(randomIdentifierToAdd, { from: owner });
+    const result = await identifierWhitelist.addSupportedIdentifier(randomIdentifierToAdd, { from: owner });
 
     truffleAssert.eventNotEmitted(result, "SupportedIdentifierAdded");
 
-    assert.isTrue(await identifierWhitelist.methods.isIdentifierSupported(randomIdentifierToAdd).call());
+    assert.isTrue(await identifierWhitelist.isIdentifierSupported(randomIdentifierToAdd));
   });
 
   it("Re-add to whitelist", async function () {
-    await identifierWhitelist.methods.addSupportedIdentifier(randomIdentifierToAdd).send({ from: owner });
-    await identifierWhitelist.methods.removeSupportedIdentifier(randomIdentifierToAdd).send({ from: owner });
-    await identifierWhitelist.methods.addSupportedIdentifier(randomIdentifierToAdd).send({ from: owner });
+    await identifierWhitelist.addSupportedIdentifier(randomIdentifierToAdd, { from: owner });
+    await identifierWhitelist.removeSupportedIdentifier(randomIdentifierToAdd, { from: owner });
+    await identifierWhitelist.addSupportedIdentifier(randomIdentifierToAdd, { from: owner });
 
-    assert.isTrue(await identifierWhitelist.methods.isIdentifierSupported(randomIdentifierToAdd).call());
+    assert.isTrue(await identifierWhitelist.isIdentifierSupported(randomIdentifierToAdd));
   });
 });

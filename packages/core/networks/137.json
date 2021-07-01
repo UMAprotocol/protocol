@@ -33,7 +33,7 @@
   },
   {
     "contractName": "TokenFactory",
-    "address": "0x73C6f823cba34a2AE5e67A46aBB7C6A9Fb815A00"
+    "address": "0xE20FCDA4981c8A58417C5A2EF6804b0835faA0eC"
   },
   {
     "contractName": "ExpiringMultiPartyLib",
@@ -50,5 +50,25 @@
   {
     "contractName": "MockOracleAncillary",
     "address": "0x0AD3176133d9C693217B8F8FF32e03C38CD8fA88"
+  },
+  {
+    "contractName": "LongShortPairCreator",
+    "address": "0x751190691A07acC3f43A7396AD87967bB685deEd"
+  },
+  {
+    "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
+    "address": "0xda768D869f1e89ea005cde7e1dBf630ff9307F33"
+  },
+  {
+    "contractName": "CoveredCallLongShortPairFinancialProductLibrary",
+    "address": "0x3F62D7F4Be7671cc93BCDFE7A3Dd900FEC4b5025"
+  },
+  {
+    "contractName": "LinearLongShortPairFinancialProductLibrary",
+    "address": "0xcFF28e9E83cEc1BCa8D8619dC7eA60244b433502"
+  },
+  {
+    "contractName": "RangeBondLongShortPairFinancialProductLibrary",
+    "address": "0x7A9Bbd278b40f90F1269cB3a9D94a63333febdD4"
   }
 ]

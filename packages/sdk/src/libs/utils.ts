@@ -56,3 +56,16 @@ export const ConvertDecimals = (fromDecimals: number, toDecimals: number) => {
     return amount.mul(BigNumber.from("10").pow(-1 * diff)).toString();
   };
 };
+
+// async sleep
+export const sleep = (delay = 0) => new Promise((res) => setTimeout(res, delay));
+
+// Loop forever but wait until execution is finished before starting next timer. Throw an error to break this
+// or add another utlity function if you need it to end on condition.
+export async function loop(fn: (...args: any[]) => any, delay: number, ...args: any[]) {
+  do {
+    await fn(...args);
+    await sleep(delay);
+    /* eslint-disable-next-line no-constant-condition */
+  } while (true);
+}

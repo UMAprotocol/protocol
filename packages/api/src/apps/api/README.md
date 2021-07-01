@@ -77,22 +77,42 @@ Returns all known expired emps data. Conforms to the EMP type defined in the uma
 
 Returns all known active collateral or synthetic addresses
 
-### allLatestPrices(currency='usd') => {[address:string]:[timestamp:number,price:string]}
+### allLatestPrices(currency='usd') => {[address:string]:[timestamp:number,price:string]
 
-Returns all known latest prices for collateral addresses. Synthetic prices not yet available.
+Returns all known latest prices for synthetic or collateral addresses in wei.
 
-### latestPriceByAddress(address:string,currency:'usd') => [timestamp:number,price:string]}
+### latestPriceByTokenAddress(tokenAddress:string,currency:'usd') => [timestamp:number,price:string]
 
-Returns latest price for a particular collateral address.
+Returns latest price for a particular erc20 token address ( emp collateral or synthetic address) in wei.
 
-### historicalPricesByAddress(address:string,start:number=0,end:number=Date.now(),currency:"usd"="usd") => PriceSample[]
+### latestCollateralPrice(empAddress: string, currency: CurrencySymbol = "usd") => [timestamp:number,price:string]
 
-Get a range of historical prices between start and end in MS, sorted by timestamp ascending from an erc20 token address.
+### latestSyntheticPrice(empAddress: string, currency: CurrencySymbol = "usd") => [timestamp:number,price:string]
+
+Gets the latest collateral or synthetic price based on the emp contract address in wei.
+
+### historicalPricesByTokenAddress(tokenAddress:string,start:number=0,end:number=Date.now(),currency:"usd"="usd") => PriceSample[]
+
+Get a range of historical prices between start and end in MS, sorted by timestamp ascending from an erc20 token address in wei.
 This is useful for charting betwen two dates.
 
-### sliceHistoricalPricesByAddress(address:string,start:number=0,length:number=1,currency:"usd"="usd") => PriceSample[]
+### sliceHistoricalPricesByTokenAddress(tokenAddress:string,start:number=0,length:number=1,currency:"usd"="usd") => PriceSample[]
 
 Get a range of historical prices between start and count of price samples, sorted by timestamp ascending, from an erc20 token address.
+This is useful for paginating data when you have X elements per page, and you know the last element seen.
+
+### async historicalSynthPrices( empAddress: string, start = 0, end: number = Date.now()) => PriceSample[]
+
+### async historicalCollateralPrices( empAddress: string, start = 0, end: number = Date.now()) => PriceSample[]
+
+Get a range of historical prices between start and end in MS, sorted by timestamp ascending from an emp contract address.
+This is useful for charting betwen two dates.
+
+### async sliceHistoricalSynthPrices(empAddress: string, start = 0, length = 1) => PriceSample[]
+
+### async sliceHistoricalCollateralPrices(empAddress: string, start = 0, length = 1) => PriceSample[]
+
+Get a range of historical prices between start and count of price samples, sorted by timestamp ascending, from an emp contract address.
 This is useful for paginating data when you have X elements per page, and you know the last element seen.
 
 ### getErc20Info(address:string) => Erc20Data
@@ -103,16 +123,6 @@ Get name, decimals of an erc20 by address.
 
 List all known erc20s, collateral or synthetic and all known information about them
 
-### allLatestSynthPrices => {[empAddress:string]:[timestamp:number,price:string]}
-
-Returns all known latest synthetic prices based on emp address. This differs from collateral price requests, as
-that call uses the collateral address, not the emp address.
-
-### latestSynthPriceByAddress(empAddress:string,currency:'usd') => [timestamp:number,price:string]}
-
-Returns latest synthetic price for an emp address. This differs from collateral price requests, as
-that call uses the collateral address, not the emp address.
-
 ### getEmpStats(address: string, currency: "usd" = "usd") => StatData
 
 Get only tvl (and other future statistics) for a single emp.
@@ -121,17 +131,21 @@ Get only tvl (and other future statistics) for a single emp.
 
 Get all tvl (and other future statistics) for all known emps.
 
-### historicalSynthPricesByAddress(empAddress:string,start:number=0,end:number=Date.now()) => PriceSample[]
+### historicalSynthPricesByAddress(empAddress:string,start:number=0,end:number=Math.floor(Date.now() / 1000)) => PriceSample[]
 
-Get a range of historical prices synthetic prices by emp address between start and end in MS, sorted by timestamp
+Get a range of historical prices synthetic prices by emp address between start and end in unix seconds, sorted by timestamp
 ascending. This is useful for charting betwen two dates. Note non synth historical prices are specified by erc20 address.
 
 ### sliceHistoricalSynthPricesByAddress(address:string,start:number=0,length:number=1) => PriceSample[]
 
-Get a range of historical synthetic prices by emp address between start and count of price samples, sorted by timestamp
+Get a range of historical synthetic prices by emp address between start (in unix seconds) and count of price samples, sorted by timestamp
 ascending. This is useful for paginating data when you have X elements per page, and you know the last element seen.
 Note non synth historical prices are specified by erc20 address.
 
 ### tvl(addresses?: string[], currency: CurrencySymbol = "usd") => string
 
 Returns tvl of all supplied addresses in USD 18 decimals. If no addresses supplied, returns TVL of all known contracts.
+
+### getEmpStatsBetween(address: string, start = 0, end: number = Math.floor(Date.now() / 1000), currency: CurrencySymbol = "usd") => StatData[]
+
+Returns all stats between timestamps (in seconds) at the highest resolution for a particular emp address.

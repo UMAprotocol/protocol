@@ -1,14 +1,11 @@
-const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
 const { assert } = require("chai");
 const { didContractThrow, interfaceName, RegistryRolesEnum } = require("@uma/common");
-const SinkGovernor = getContract("SinkGovernor");
-const Finder = getContract("Finder");
-const Registry = getContract("Registry");
-const Bridge = getContract("Bridge");
-const GenericHandler = getContract("GenericHandler");
-const ERC20 = getContract("ExpandedERC20");
+const SinkGovernor = artifacts.require("SinkGovernor");
+const Finder = artifacts.require("Finder");
+const Registry = artifacts.require("Registry");
+const Bridge = artifacts.require("Bridge");
+const GenericHandler = artifacts.require("GenericHandler");
+const ERC20 = artifacts.require("ExpandedERC20");
 
 const { utf8ToHex } = web3.utils;
 
@@ -38,72 +35,61 @@ contract("SinkGovernor", async (accounts) => {
     return web3.utils.soliditySha3(encodedParams);
   };
 
-  beforeEach(async function () {
-    await runDefaultFixture(hre);
+  before(async function () {
     registry = await Registry.deployed();
-    await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner).send({ from: accounts[0] });
-    await registry.methods.registerContract([], owner).send({ from: owner });
+    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner);
+    await registry.registerContract([], owner, { from: owner });
     finder = await Finder.deployed();
-    await finder.methods.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.options.address);
-    bridge = await Bridge.new(chainID, [owner], 1, 0, 100).send({ from: accounts[0] });
-    await finder.methods.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridge.options.address);
-    sinkGovernor = await SinkGovernor.new(finder.options.address).send({ from: accounts[0] });
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.address);
+  });
+  beforeEach(async function () {
+    bridge = await Bridge.new(chainID, [owner], 1, 0, 100);
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridge.address);
+    sinkGovernor = await SinkGovernor.new(finder.address);
     sinkGovernorResourceId = getResourceId(chainID);
     handler = await GenericHandler.new(
-      bridge.options.address,
+      bridge.address,
       [sinkGovernorResourceId],
-      [sinkGovernor.options.address],
+      [sinkGovernor.address],
       [blankFunctionSig],
       [blankFunctionSig]
-    ).send({ from: accounts[0] });
-    await finder.methods
-      .changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), handler.options.address)
-      .send({ from: accounts[0] });
-    await bridge.methods
-      .adminSetGenericResource(
-        handler.options.address,
-        sinkGovernorResourceId,
-        sinkGovernor.options.address,
-        blankFunctionSig,
-        getFunctionSignature(SinkGovernor, "executeGovernance")
-      )
-      .send({ from: owner });
+    );
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), handler.address);
+    await bridge.adminSetGenericResource(
+      handler.address,
+      sinkGovernorResourceId,
+      sinkGovernor.address,
+      blankFunctionSig,
+      getFunctionSignature(sinkGovernor, "executeGovernance"),
+      { from: owner }
+    );
 
-    erc20 = await ERC20.new("Test Token", "TEST", 18).send({ from: accounts[0] });
-    await erc20.methods.addMember(1, owner).send({ from: accounts[0] });
-    await erc20.methods.mint(sinkGovernor.options.address, web3.utils.toWei("1")).send({ from: accounts[0] });
+    erc20 = await ERC20.new("Test Token", "TEST", 18);
+    await erc20.addMember(1, owner);
+    await erc20.mint(sinkGovernor.address, web3.utils.toWei("1"));
   });
   it("construction", async function () {
-    assert.equal(await sinkGovernor.methods.finder().call(), finder.options.address, "finder not set");
+    assert.equal(await sinkGovernor.finder(), finder.address, "finder not set");
   });
   it("executeGovernance", async function () {
-    const innerTransactionCalldata = erc20.methods.transfer(rando, web3.utils.toWei("1")).encodeABI();
+    const innerTransactionCalldata = erc20.contract.methods.transfer(rando, web3.utils.toWei("1")).encodeABI();
 
     assert(
-      await didContractThrow(
-        sinkGovernor.methods.executeGovernance(erc20.options.address, innerTransactionCalldata).send({ from: rando })
-      ),
+      await didContractThrow(sinkGovernor.executeGovernance(erc20.address, innerTransactionCalldata, { from: rando })),
       "Only callable by GenericHandler"
     );
 
-    const depositData = web3.eth.abi.encodeParameters(
-      ["address", "bytes"],
-      [erc20.options.address, innerTransactionCalldata]
-    );
+    const depositData = web3.eth.abi.encodeParameters(["address", "bytes"], [erc20.address, innerTransactionCalldata]);
     const genericDepositData = createGenericDepositData(depositData);
     const dataHash = web3.utils.soliditySha3(
-      { t: "address", v: handler.options.address },
+      { t: "address", v: handler.address },
       { t: "bytes", v: genericDepositData }
     );
 
-    await bridge.methods
-      .voteProposal(chainID, expectedDepositNonce, sinkGovernorResourceId, dataHash)
-      .send({ from: accounts[0] });
-    await bridge.methods
-      .executeProposal(chainID, expectedDepositNonce, genericDepositData, sinkGovernorResourceId)
-      .send({ from: accounts[0] });
+    await bridge.voteProposal(chainID, expectedDepositNonce, sinkGovernorResourceId, dataHash);
+    await bridge.executeProposal(chainID, expectedDepositNonce, genericDepositData, sinkGovernorResourceId);
 
-    assert.equal((await erc20.methods.balanceOf(rando).call()).toString(), web3.utils.toWei("1"));
-    assert.equal((await erc20.methods.balanceOf(sinkGovernor.options.address).call()).toString(), "0");
+    assert.equal((await erc20.balanceOf(rando)).toString(), web3.utils.toWei("1"));
+    assert.equal((await erc20.balanceOf(sinkGovernor.address)).toString(), "0");
   });
 });

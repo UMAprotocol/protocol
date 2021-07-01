@@ -1,6 +1,3 @@
-const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
 const {
   MAX_UINT_VAL,
   MAX_SAFE_ALLOWANCE,
@@ -22,12 +19,12 @@ const UniswapV2Router02 = require("@uniswap/v2-periphery/build/UniswapV2Router02
 
 // Helpers and other contracts
 const Token = getTruffleContract("ExpandedERC20", web3);
-const ExpiringMultiParty = getContract("ExpiringMultiParty");
-const Store = getContract("Store");
-const Finder = getContract("Finder");
-const MockOracle = getContract("MockOracle");
-const IdentifierWhitelist = getContract("IdentifierWhitelist");
-const Timer = getContract("Timer");
+const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
+const Store = artifacts.require("Store");
+const Finder = artifacts.require("Finder");
+const MockOracle = artifacts.require("MockOracle");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
+const Timer = artifacts.require("Timer");
 const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);
 const DSProxy = getTruffleContract("DSProxy", web3);
 
@@ -56,8 +53,8 @@ const finalFeeAmount = toBN(toWei("0.5"));
 
 // Returns the current spot price of a uniswap pool, scaled to 4 decimal points.
 const getPoolSpotPrice = async () => {
-  const poolTokenABallance = await reserveToken.methods.balanceOf(pairAddress).call();
-  const poolTokenBBallance = await collateralToken.methods.balanceOf(pairAddress).call();
+  const poolTokenABallance = await reserveToken.balanceOf(pairAddress);
+  const poolTokenBBallance = await collateralToken.balanceOf(pairAddress);
   return Number(fromWei(poolTokenABallance.mul(toBN(toWei("1"))).div(poolTokenBBallance))).toFixed(4);
 };
 
@@ -71,9 +68,9 @@ contract("ReserveTokenDisputer", function (accounts) {
   const buildCallData = (liquidationId, sponsor) => {
     return reserveCurrencyDisputer.contract.methods
       .swapDispute(
-        router.options.address, // uniswapRouter
-        financialContract.options.address, // financialContract
-        reserveToken.options.address, // reserveCurrency
+        router.address, // uniswapRouter
+        financialContract.address, // financialContract
+        reserveToken.address, // reserveCurrency
         liquidationId,
         sponsor,
         MAX_SAFE_ALLOWANCE, // maxReserveTokenSpent.
@@ -82,42 +79,36 @@ contract("ReserveTokenDisputer", function (accounts) {
       .encodeABI();
   };
 
-  beforeEach(async () => {
-    await runDefaultFixture(hre);
-    dsProxyFactory = await DSProxyFactory.new().send({ from: accounts[0] });
+  before(async () => {
+    dsProxyFactory = await DSProxyFactory.new();
 
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
     finder = await Finder.deployed();
     store = await Store.deployed();
     timer = await Timer.deployed();
 
-    mockOracle = await MockOracle.new(finder.options.address, timer.options.address)
-      .send({ from: accounts[0] })
-      .send({ from: deployer });
+    mockOracle = await MockOracle.new(finder.address, timer.address, { from: deployer });
 
-    await finder.methods.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address, {
-      from: deployer,
-    });
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address, { from: deployer });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.methods.addSupportedIdentifier(priceFeedIdentifier).send({ from: deployer });
-
+    await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, { from: deployer });
+  });
+  beforeEach(async () => {
     // deploy the ReserveTokenLiquidator
-    reserveCurrencyDisputer = await ReserveCurrencyDisputer.new().send({ from: accounts[0] });
+    reserveCurrencyDisputer = await ReserveCurrencyDisputer.new();
 
     // deploy tokens
-    reserveToken = await Token.new("reserveToken", "DAI", 18).send({ from: accounts[0] });
-    collateralToken = await Token.new("collateralToken", "WETH", 18).send({ from: accounts[0] });
-    syntheticToken = await Token.new("Test Synthetic Token", "SYNTH", 18).send({ from: accounts[0] });
+    reserveToken = await Token.new("reserveToken", "DAI", 18);
+    collateralToken = await Token.new("collateralToken", "WETH", 18);
+    syntheticToken = await Token.new("Test Synthetic Token", "SYNTH", 18);
 
-    await store.methods
-      .setFinalFee(collateralToken.options.address, { rawValue: finalFeeAmount.toString() })
-      .send({ from: accounts[0] });
+    await store.setFinalFee(collateralToken.address, { rawValue: finalFeeAmount.toString() });
 
-    await reserveToken.methods.addMember(1, deployer).send({ from: deployer });
-    await collateralToken.methods.addMember(1, deployer).send({ from: deployer });
-    await syntheticToken.methods.addMember(1, deployer).send({ from: deployer });
+    await reserveToken.addMember(1, deployer, { from: deployer });
+    await collateralToken.addMember(1, deployer, { from: deployer });
+    await syntheticToken.addMember(1, deployer, { from: deployer });
 
     // Give the sponsors collateral Token to create positions.
     await collateralToken.mint(sponsor1, toWei("100000000000000"));
@@ -125,31 +116,27 @@ contract("ReserveTokenDisputer", function (accounts) {
 
     // deploy Uniswap V2 Factory & router.
     factory = await createContractObjectFromJson(UniswapV2Factory, web3).new(deployer, { from: deployer });
-    router = await createContractObjectFromJson(UniswapV2Router02, web3).new(
-      factory.options.address,
-      collateralToken.options.address,
-      { from: deployer }
-    );
+    router = await createContractObjectFromJson(UniswapV2Router02, web3).new(factory.address, collateralToken.address, {
+      from: deployer,
+    });
 
     // initialize the pair
-    await factory.methods
-      .createPair(reserveToken.options.address, collateralToken.options.address)
-      .send({ from: deployer });
-    pairAddress = await factory.methods.getPair(reserveToken.options.address, collateralToken.options.address).call();
+    await factory.createPair(reserveToken.address, collateralToken.address, { from: deployer });
+    pairAddress = await factory.getPair(reserveToken.address, collateralToken.address);
     pair = await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress);
 
     await reserveToken.mint(pairAddress, toBN(toWei("1000")).muln(10000000));
     await collateralToken.mint(pairAddress, toBN(toWei("1")).muln(10000000));
-    await pair.methods.sync({ from: deployer }).send({ from: accounts[0] });
+    await pair.sync({ from: deployer });
     assert.equal(await getPoolSpotPrice(), "1000.0000"); // price should be exactly 1000 reserveToken/collateralToken.
 
     // Create the EMP to mint positions.
     const constructorParams = {
       expirationTimestamp: unreachableDeadline,
       withdrawalLiveness: "100",
-      collateralAddress: collateralToken.options.address,
-      tokenAddress: syntheticToken.options.address,
-      finderAddress: finder.options.address,
+      collateralAddress: collateralToken.address,
+      tokenAddress: syntheticToken.address,
+      finderAddress: finder.address,
       priceFeedIdentifier: priceFeedIdentifier,
       liquidationLiveness: "100",
       collateralRequirement: { rawValue: toWei("1.5") },
@@ -157,31 +144,31 @@ contract("ReserveTokenDisputer", function (accounts) {
       sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
       disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: timer.options.address,
+      timerAddress: timer.address,
       financialProductLibraryAddress: ZERO_ADDRESS,
     };
 
-    await identifierWhitelist.methods.addSupportedIdentifier(priceFeedIdentifier).send({ from: deployer });
+    await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, { from: deployer });
 
-    financialContract = await ExpiringMultiParty.new(constructorParams).send({ from: accounts[0] });
-    await syntheticToken.methods.addMinter(financialContract.options.address).send({ from: accounts[0] });
-    await syntheticToken.methods.addBurner(financialContract.options.address).send({ from: accounts[0] });
+    financialContract = await ExpiringMultiParty.new(constructorParams);
+    await syntheticToken.addMinter(financialContract.address);
+    await syntheticToken.addBurner(financialContract.address);
 
     // Create two initial positions from the two sponsors. Say the test synthetic token is a stable coin, collateralized
     // in WETH. To start with, let's assume the collateral price is 1000 USD. Sponsor 1 creates an initial position of
     // 1000 synthetics collateralized by 2 WETH. This sets their CR to 2 and the GCR to 2.
-    await collateralToken.methods.approve(financialContract.options.address, MAX_UINT_VAL).send({ from: sponsor1 });
+    await collateralToken.approve(financialContract.address, MAX_UINT_VAL, { from: sponsor1 });
     await await financialContract.create({ rawValue: toWei("2") }, { rawValue: toWei("1000") }, { from: sponsor1 });
 
     // Next, the liquidator creates 10000 tokens, collateralized by 30 WETH.
-    await collateralToken.methods.approve(financialContract.options.address, MAX_UINT_VAL).send({ from: liquidator });
+    await collateralToken.approve(financialContract.address, MAX_UINT_VAL, { from: liquidator });
     await await financialContract.create({ rawValue: toWei("30") }, { rawValue: toWei("10000") }, { from: liquidator });
 
     // There should be no liquidations before the transaction call.
-    assert.equal((await financialContract.methods.getLiquidations(sponsor1).call()).length, 0);
+    assert.equal((await financialContract.getLiquidations(sponsor1)).length, 0);
 
     // Liquidate the sponsor from the liquidators account. Unit tests will assume there is a pending liquidation to dispute.
-    await syntheticToken.methods.approve(financialContract.options.address, MAX_UINT_VAL).send({ from: liquidator });
+    await syntheticToken.approve(financialContract.address, MAX_UINT_VAL, { from: liquidator });
     await financialContract.createLiquidation(
       sponsor1,
       { rawValue: 0 },
@@ -192,30 +179,30 @@ contract("ReserveTokenDisputer", function (accounts) {
     );
 
     // There should be one liquidation after the call and the properties on the liquidation should match what is expected.
-    const liquidations = await financialContract.methods.getLiquidations(sponsor1).call();
+    const liquidations = await financialContract.getLiquidations(sponsor1);
     assert.equal(liquidations.length, 1);
     assert.equal(liquidations[0].sponsor, sponsor1); // The selected sponsor should be liquidated.
     assert.equal(liquidations[0].state.toString(), "1"); // liquidation state should be `NotDisputed` (1)
 
     // Finally, create a DSProxy for the liquidator. This will be used to send the atomic liquidation transactions.
-    await dsProxyFactory.methods.build({ from: disputer }).send({ from: accounts[0] });
+    await dsProxyFactory.build({ from: disputer });
     dsProxy = await DSProxy.at((await dsProxyFactory.getPastEvents("Created"))[0].returnValues.proxy);
   });
 
   it("can correctly swap,dispute", async function () {
     // Send tokens from liquidator to DSProxy. This would be done by seeding the common DSProxy shared between multiple bots.
-    await reserveToken.mint(dsProxy.options.address, toWei("10000"));
+    await reserveToken.mint(dsProxy.address, toWei("10000"));
 
     // The DSProxy should not have any synthetics or collateral before the liquidation.
-    assert.equal(await collateralToken.methods.balanceOf(dsProxy.options.address).call(), "0");
-    assert.equal(await syntheticToken.methods.balanceOf(dsProxy.options.address).call(), "0");
+    assert.equal(await collateralToken.balanceOf(dsProxy.address), "0");
+    assert.equal(await syntheticToken.balanceOf(dsProxy.address), "0");
 
     const startingUniswapPrice = await getPoolSpotPrice();
 
     // Build the transaction call data.
     const callData = buildCallData(0, sponsor1);
 
-    await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyDisputer.options.address, callData).send({
+    await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyDisputer.address, callData).send({
       from: disputer,
     });
 
@@ -223,12 +210,12 @@ contract("ReserveTokenDisputer", function (accounts) {
     assert.equal(Number((await getPoolSpotPrice()) > Number(startingUniswapPrice)), 1);
 
     // The DSProxy should have no collateral left in it purchased the exact amount for the dispute.
-    assert.equal(await collateralToken.methods.balanceOf(dsProxy.options.address).call(), "0");
+    assert.equal(await collateralToken.balanceOf(dsProxy.address), "0");
 
     // The liquidation state should now be Disputed (2) and the dsProxy should be the disputer.
-    const liquidation = (await financialContract.methods.getLiquidations(sponsor1).call())[0];
+    const liquidation = (await financialContract.getLiquidations(sponsor1))[0];
     assert.equal(liquidation.state.toString(), "2");
-    assert.equal(liquidation.disputer.toString(), dsProxy.options.address);
+    assert.equal(liquidation.disputer.toString(), dsProxy.address);
 
     // In this test the DSProxy should have swapped and disputed. There should be events for both actions.
     assert.equal((await pair.getPastEvents("Swap")).length, 1);
@@ -236,26 +223,26 @@ contract("ReserveTokenDisputer", function (accounts) {
   });
   it("can use existing collateral to dispute without buying anything", async function () {
     // If the DSProxy already has any collateral, the contract should it before buying anything to fund the dispute.
-    await collateralToken.mint(dsProxy.options.address, toWei("10000")); // mint enough to do the full dispute
+    await collateralToken.mint(dsProxy.address, toWei("10000")); // mint enough to do the full dispute
 
     // There should be no reserve in the Proxy.
-    assert.equal(await reserveToken.methods.balanceOf(dsProxy.options.address).call(), "0");
+    assert.equal(await reserveToken.balanceOf(dsProxy.address), "0");
 
     const startingUniswapPrice = await getPoolSpotPrice();
 
     // Build the transaction call data.
     const callData = buildCallData(0, sponsor1);
 
-    await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyDisputer.options.address, callData).send({
+    await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyDisputer.address, callData).send({
       from: disputer,
     });
 
     assert.equal(Number(await getPoolSpotPrice()), Number(startingUniswapPrice));
 
     // The liquidation state should now be Disputed (2) and the dsProxy should be the disputer.
-    const liquidation = (await financialContract.methods.getLiquidations(sponsor1).call())[0];
+    const liquidation = (await financialContract.getLiquidations(sponsor1))[0];
     assert.equal(liquidation.state.toString(), "2");
-    assert.equal(liquidation.disputer.toString(), dsProxy.options.address);
+    assert.equal(liquidation.disputer.toString(), dsProxy.address);
 
     // In this test the DSProxy should have only disputed, no swaps. There should only be one event for the dispute action.
     assert.equal((await pair.getPastEvents("Swap")).length, 0);
@@ -263,24 +250,24 @@ contract("ReserveTokenDisputer", function (accounts) {
   });
   it("can use some existing collateral and some purchased collateral to dispute", async function () {
     // If the DSProxy already has any collateral, the contract should it before buying anything to fund the dispute.
-    await collateralToken.mint(dsProxy.options.address, toWei("0.5")); // mint enough to pay the final fee but not enough for the whole dispute.
-    await reserveToken.mint(dsProxy.options.address, toWei("10000")); // mint some reserve tokens to buy the shortfall
+    await collateralToken.mint(dsProxy.address, toWei("0.5")); // mint enough to pay the final fee but not enough for the whole dispute.
+    await reserveToken.mint(dsProxy.address, toWei("10000")); // mint some reserve tokens to buy the shortfall
 
     // Build the transaction call data.
     const callData = buildCallData(0, sponsor1);
     console.log("a");
-    await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyDisputer.options.address, callData).send({
+    await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyDisputer.address, callData).send({
       from: disputer,
     });
     console.log("b");
 
     // The DSProxy should have no collateral left in as it used what was remaining before buying the exact shortfall.
-    assert.equal(await collateralToken.methods.balanceOf(dsProxy.options.address).call(), "0");
+    assert.equal(await collateralToken.balanceOf(dsProxy.address), "0");
 
     // The liquidation state should now be Disputed (2) and the dsProxy should be the disputer.
-    const liquidation = (await financialContract.methods.getLiquidations(sponsor1).call())[0];
+    const liquidation = (await financialContract.getLiquidations(sponsor1))[0];
     assert.equal(liquidation.state.toString(), "2");
-    assert.equal(liquidation.disputer.toString(), dsProxy.options.address);
+    assert.equal(liquidation.disputer.toString(), dsProxy.address);
 
     // In this test the DSProxy should have swapped and disputed. There should be events for both actions.
     assert.equal((await pair.getPastEvents("Swap")).length, 1);

@@ -66,7 +66,8 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.invertPrice, // Not checked in config because this parameter just defaults to false.
       config.priceFeedDecimals, // Defaults to 18 unless supplied. Informs how the feed should be scaled to match a DVM response.
       config.ohlcPeriod, // Defaults to 60 unless supplied.
-      config.twapLength
+      config.twapLength,
+      config.historicalTimestampBuffer
     );
   } else if (config.type === "quandl") {
     const requiredFields = ["datasetCode", "databaseCode", "lookback", "quandlApiKey"];

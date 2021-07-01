@@ -1,14 +1,8 @@
-const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
 const { didContractThrow } = require("@uma/common");
 
-const VotingToken = getContract("VotingToken");
+const VotingToken = artifacts.require("VotingToken");
 
 contract("VotingToken", function (accounts) {
-  beforeEach(async function () {
-    await runDefaultFixture(hre);
-  });
   const governance = accounts[0];
   const votingContractAddress = accounts[1];
   const voter = accounts[2];
@@ -26,54 +20,44 @@ contract("VotingToken", function (accounts) {
     const initialTokenSupply = toWei("100000000");
 
     // Should start with 100MM tokens granted to the governance address.
-    assert.equal(await votingToken.methods.totalSupply().call(), initialTokenSupply);
-    assert.equal(await votingToken.methods.balanceOf(governance).call(), initialTokenSupply);
-    assert.equal(await votingToken.methods.balanceOf(voter).call(), "0");
+    assert.equal(await votingToken.totalSupply(), initialTokenSupply);
+    assert.equal(await votingToken.balanceOf(governance), initialTokenSupply);
+    assert.equal(await votingToken.balanceOf(voter), "0");
 
     // Contracts can't authorize themselves to mint tokens.
-    assert(
-      await didContractThrow(
-        votingToken.methods.resetMember(1, votingContractAddress).send({ from: votingContractAddress })
-      )
-    );
+    assert(await didContractThrow(votingToken.resetMember(1, votingContractAddress, { from: votingContractAddress })));
     // Set minter. In prod, this will be the address of the voting contract.
-    await votingToken.methods.addMember(minterRoleEnumValue, votingContractAddress).send({ from: governance });
+    await votingToken.addMember(minterRoleEnumValue, votingContractAddress, { from: governance });
     // Set burner.
-    await votingToken.methods.addMember(burnerRoleEnumValue, buybackUser).send({ from: governance });
+    await votingToken.addMember(burnerRoleEnumValue, buybackUser, { from: governance });
 
     const numTokens = toWei("100");
     // Voters can't mint themselves new tokens.
-    assert(await didContractThrow(votingToken.methods.mint(voter, numTokens).send({ from: voter })));
+    assert(await didContractThrow(votingToken.mint(voter, numTokens, { from: voter })));
     // The voting contract can mint new tokens to a voter.
-    await votingToken.methods.mint(voter, numTokens).send({ from: votingContractAddress });
+    await votingToken.mint(voter, numTokens, { from: votingContractAddress });
 
     // Verify updated balances.
-    assert.equal(
-      await votingToken.methods.totalSupply().call(),
-      toBN(numTokens).add(toBN(initialTokenSupply)).toString()
-    );
-    assert.equal(await votingToken.methods.balanceOf(voter).call(), numTokens);
+    assert.equal(await votingToken.totalSupply(), toBN(numTokens).add(toBN(initialTokenSupply)).toString());
+    assert.equal(await votingToken.balanceOf(voter), numTokens);
 
     const tokensToBurn = toWei("25");
     const tokensLeft = toBN(numTokens).sub(toBN(tokensToBurn)).toString();
     // Voters can't burn their own tokens.
-    assert(await didContractThrow(votingToken.methods.burn(tokensToBurn).send({ from: voter })));
+    assert(await didContractThrow(votingToken.burn(tokensToBurn, { from: voter })));
     // Can't burn tokens if you don't own any, not even the governance role.
-    assert(await didContractThrow(votingToken.methods.burn(tokensToBurn).send({ from: governance })));
+    assert(await didContractThrow(votingToken.burn(tokensToBurn, { from: governance })));
 
     // Transfer to the buyback user.
-    await votingToken.methods.transfer(buybackUser, tokensToBurn).send({ from: voter });
-    assert.equal(await votingToken.methods.balanceOf(voter).call(), tokensLeft);
-    assert.equal(await votingToken.methods.balanceOf(buybackUser).call(), tokensToBurn);
+    await votingToken.transfer(buybackUser, tokensToBurn, { from: voter });
+    assert.equal(await votingToken.balanceOf(voter), tokensLeft);
+    assert.equal(await votingToken.balanceOf(buybackUser), tokensToBurn);
 
     // Buyback user can burn tokens.
-    await votingToken.methods.burn(tokensToBurn).send({ from: buybackUser });
+    await votingToken.burn(tokensToBurn, { from: buybackUser });
 
     // Check updated balances.
-    assert.equal(
-      await votingToken.methods.totalSupply().call(),
-      toBN(tokensLeft).add(toBN(initialTokenSupply)).toString()
-    );
-    assert.equal(await votingToken.methods.balanceOf(buybackUser).call(), "0");
+    assert.equal(await votingToken.totalSupply(), toBN(tokensLeft).add(toBN(initialTokenSupply)).toString());
+    assert.equal(await votingToken.balanceOf(buybackUser), "0");
   });
 });

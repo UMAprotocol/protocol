@@ -1,5 +1,3 @@
-const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
 const { toWei } = web3.utils;
 const { getTruffleContract } = require("@uma/core");
 
@@ -56,20 +54,19 @@ contract("UniswapV3Broker", function (accounts) {
   const trader = accounts[1];
 
   async function addLiquidityToPool(amount0Desired, amount1Desired, tickLower, tickUpper) {
-    if (tokenA.options.address.toLowerCase() > tokenB.options.address.toLowerCase())
-      [tokenA, tokenB] = [tokenB, tokenA];
+    if (tokenA.address.toLowerCase() > tokenB.address.toLowerCase()) [tokenA, tokenB] = [tokenB, tokenA];
 
     await positionManager.createAndInitializePoolIfNecessary(
-      tokenA.options.address,
-      tokenB.options.address,
+      tokenA.address,
+      tokenB.address,
       fee,
       encodePriceSqrt(amount0Desired, amount1Desired), // start the pool price at 10 tokenA/tokenB
       { from: trader }
     );
 
     const liquidityParams = {
-      token0: tokenA.options.address,
-      token1: tokenB.options.address,
+      token0: tokenA.address,
+      token1: tokenB.address,
       fee,
       tickLower, // Lower tick bound price = 1.0001^tickLower
       tickUpper, // Upper tick bound price = 1.0001^tickUpper
@@ -81,19 +78,18 @@ contract("UniswapV3Broker", function (accounts) {
       deadline: 15798990420, // some number far in the future
     };
 
-    await positionManager.methods.mint(liquidityParams).send({ from: trader });
-    poolAddress = computePoolAddress(factory.options.address, tokenA.options.address, tokenB.options.address, fee);
+    await positionManager.mint(liquidityParams, { from: trader });
+    poolAddress = computePoolAddress(factory.address, tokenA.address, tokenB.address, fee);
   }
 
-  beforeEach(async () => {
-    await runDefaultFixture(hre);
+  before(async () => {
     // deploy an instance of the broker
-    uniswapV3Broker = await UniswapV3Broker.new().send({ from: accounts[0] });
+    uniswapV3Broker = await UniswapV3Broker.new();
 
-    weth = await WETH9.new().send({ from: accounts[0] });
+    weth = await WETH9.new();
     // deploy Uniswap V3 Factory, router, position manager, position descriptor and tickLens.
     factory = await createContractObjectFromJson(UniswapV3Factory, web3).new({ from: deployer });
-    router = await createContractObjectFromJson(SwapRouter, web3).new(factory.options.address, weth.options.address, {
+    router = await createContractObjectFromJson(SwapRouter, web3).new(factory.address, weth.address, {
       from: deployer,
     });
 
@@ -101,29 +97,29 @@ contract("UniswapV3Broker", function (accounts) {
     await PositionDescriptor.detectNetwork();
 
     PositionDescriptor.link(await createContractObjectFromJson(NFTDescriptor, web3).new({ from: deployer }));
-    positionDescriptor = await PositionDescriptor.new(weth.options.address)
-      .send({ from: accounts[0] })
-      .send({ from: deployer });
+    positionDescriptor = await PositionDescriptor.new(weth.address, { from: deployer });
 
     positionManager = await createContractObjectFromJson(NonfungiblePositionManager, web3).new(
-      factory.options.address,
-      weth.options.address,
-      positionDescriptor.options.address,
+      factory.address,
+      weth.address,
+      positionDescriptor.address,
       { from: deployer }
     );
 
     tickLens = await createContractObjectFromJson(TickLens, web3).new({ from: deployer });
+  });
+  beforeEach(async () => {
     // deploy tokens
-    tokenA = await Token.new("Token0", "T0", 18).send({ from: accounts[0] });
-    tokenB = await Token.new("Token1", "T1", 18).send({ from: accounts[0] });
+    tokenA = await Token.new("Token0", "T0", 18);
+    tokenB = await Token.new("Token1", "T1", 18);
 
-    await tokenA.methods.addMember(1, deployer).send({ from: deployer });
-    await tokenB.methods.addMember(1, deployer).send({ from: deployer });
+    await tokenA.addMember(1, deployer, { from: deployer });
+    await tokenB.addMember(1, deployer, { from: deployer });
 
     await tokenA.mint(trader, toWei("100000000000000"));
     await tokenB.mint(trader, toWei("100000000000000"));
 
-    for (const address of [positionManager.options.address, router.options.address, uniswapV3Broker.options.address]) {
+    for (const address of [positionManager.address, router.address, uniswapV3Broker.address]) {
       await tokenA.approve(address, toWei("100000000000000"), { from: trader });
       await tokenB.approve(address, toWei("100000000000000"), { from: trader });
     }
@@ -148,7 +144,7 @@ contract("UniswapV3Broker", function (accounts) {
 
       // Next, execute a swap and ensure that token balances change as expected. we will trade tokenA for tokenB to increase
       // the price of the tokens. define the trade params according to the uniswap spec.
-      const tokens = [tokenA.options.address, tokenB.options.address];
+      const tokens = [tokenA.address, tokenB.address];
       const params = {
         path: encodePath(tokens, new Array(tokens.length - 1).fill(fee)),
         recipient: trader,
@@ -158,13 +154,13 @@ contract("UniswapV3Broker", function (accounts) {
       };
 
       // Store the token balances before the trade
-      const tokenABefore = await tokenA.methods.balanceOf(trader).call();
-      const tokenBBefore = await tokenB.methods.balanceOf(trader).call();
+      const tokenABefore = await tokenA.balanceOf(trader);
+      const tokenBBefore = await tokenB.balanceOf(trader);
 
-      await router.methods.exactInput(params).send({ from: trader });
+      await router.exactInput(params, { from: trader });
 
-      const deltaTokenA = tokenABefore.sub(await tokenA.methods.balanceOf(trader).call());
-      const deltaTokenB = tokenBBefore.sub(await tokenB.methods.balanceOf(trader).call());
+      const deltaTokenA = tokenABefore.sub(await tokenA.balanceOf(trader));
+      const deltaTokenB = tokenBBefore.sub(await tokenB.balanceOf(trader));
 
       // Token A should have increased by exactly 1 wei. This is the exact amount traded in the exactInput
       assert.equal(deltaTokenA, toWei("1"));
@@ -188,7 +184,7 @@ contract("UniswapV3Broker", function (accounts) {
       await uniswapV3Broker.swapToPrice(
         true, // Set Trading as EOA to true. This will pull tokens from the EOA and sent the output back to the EOA.
         poolAddress, // Pool address for compting trade size.
-        router.options.address, // Router for executing the trade.
+        router.address, // Router for executing the trade.
         encodePriceSqrt(13, 1), // encoded target price of 13 defined as an X96 square root.
         trader, // recipient of the trade.
         MAX_UINT_VAL, // max deadline.
@@ -206,7 +202,7 @@ contract("UniswapV3Broker", function (accounts) {
       await uniswapV3Broker.swapToPrice(
         true, // Set Trading as EOA to true. This will pull tokens from the EOA and sent the output back to the EOA.
         poolAddress, // Pool address for compting trade size.
-        router.options.address, // Router for executing the trade.
+        router.address, // Router for executing the trade.
         encodePriceSqrt(8.5, 1), // encoded target price defined as an X96 square root.
         trader, // recipient of the trade.
         MAX_UINT_VAL, // max deadline.
@@ -239,7 +235,7 @@ contract("UniswapV3Broker", function (accounts) {
       await uniswapV3Broker.swapToPrice(
         true, // Set Trading as EOA to true. This will pull tokens from the EOA and sent the output back to the EOA.
         poolAddress, // Pool address for compting trade size.
-        router.options.address, // Router for executing the trade.
+        router.address, // Router for executing the trade.
         encodePriceSqrt(13, 1), // encoded target price of 13 defined as an X96 square root.
         trader, // recipient of the trade.
         MAX_UINT_VAL, // max deadline.
@@ -257,7 +253,7 @@ contract("UniswapV3Broker", function (accounts) {
       await uniswapV3Broker.swapToPrice(
         true, // Set Trading as EOA to true. This will pull tokens from the EOA and sent the output back to the EOA.
         poolAddress, // Pool address for compting trade size.
-        router.options.address, // Router for executing the trade.
+        router.address, // Router for executing the trade.
         encodePriceSqrt(8.5, 1), // encoded target price defined as an X96 square root.
         trader, // recipient of the trade.
         MAX_UINT_VAL, // max deadline.

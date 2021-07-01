@@ -2,8 +2,11 @@ import assert from "assert";
 import * as uma from "@uma/sdk";
 export { BigNumber, utils } from "ethers";
 import { Currencies, AppState, PriceSample } from "..";
+import { empStatsHistory } from "../tables";
 import { calcTvl } from "../libs/utils";
 import Queries from "../libs/queries";
+
+type EmpHistoryStat = empStatsHistory.Data;
 type Config = {
   currency?: Currencies;
 };
@@ -15,7 +18,40 @@ export default (config: Config, appState: Dependencies) => {
   const { currency = "usd" } = config;
 
   const queries = Queries(appState);
-  async function updateTvl(address: string) {
+
+  async function getLatestStats(address: string) {
+    return stats[currency].latest.getOrCreate(address);
+  }
+  function getOrCreateHistoryTable(address: string) {
+    if (!stats[currency].history[address])
+      stats[currency].history[address] = empStatsHistory.SortedJsMap("Emp Stat History for " + address);
+    return stats[currency].history[address];
+  }
+  async function hasStatsHistory(address: string, timestamp: number) {
+    return getOrCreateHistoryTable(address).has(timestamp);
+  }
+  async function createStatHistory(address: string, data: EmpHistoryStat) {
+    return getOrCreateHistoryTable(address).create(data);
+  }
+
+  async function updateHistory(address: string) {
+    const stat = await getLatestStats(address);
+    assert(uma.utils.exists(stat.timestamp), "stats require timestamp");
+    if (await hasStatsHistory(address, stat.timestamp)) return stat;
+    const update = {
+      address: stat.address,
+      tvl: stat.tvl,
+      tvm: stat.tvm,
+      timestamp: stat.timestamp,
+    };
+    return createStatHistory(address, update);
+  }
+
+  async function updateHistories(addresses: string[]) {
+    return Promise.allSettled(addresses.map(updateHistory));
+  }
+
+  async function updateLatestTvl(address: string) {
     const emp = await queries.getAnyEmp(address);
     // the full state has collateral decimals, pulled from erc20 state
     const fullState = await queries.getFullEmpState(emp);
@@ -25,26 +61,29 @@ export default (config: Config, appState: Dependencies) => {
     // PriceSample is type [ timestamp:number, price:string]
     const priceSample: PriceSample = prices[currency].latest[fullState.collateralCurrency];
     assert(uma.utils.exists(priceSample), "No latest price found for emp: " + address);
-
-    const price = priceSample[1];
+    const [timestamp, price] = priceSample;
     assert(uma.utils.exists(price), "Invalid latest price found on emp: " + address);
 
     const tvl = calcTvl(price, fullState).toString();
-    return stats[currency].latest.upsert(address, { tvl });
+    return stats[currency].latest.upsert(address, { tvl, timestamp });
   }
 
-  // update all tvl but do not let errors block other addresses from updating
-  async function updateTvls(addresses: string[]) {
+  async function updateLatestTvls(addresses: string[]) {
     // this call can easily error, but we dont want that to prevent all emps to resolve
     // also since this is just calling our db or cache we can use promise.allSettled for speed
-    return Promise.allSettled(addresses.map(updateTvl));
+    return Promise.allSettled(addresses.map(updateLatestTvl));
   }
 
   async function update() {
     const addresses = Array.from(registeredEmps.values());
-    await updateTvls(addresses).then((results) => {
+    await updateLatestTvls(addresses).then((results) => {
       results.forEach((result) => {
         if (result.status === "rejected") console.error("Error updating TVL: " + result.reason.message);
+      });
+    });
+    await updateHistories(addresses).then((results) => {
+      results.forEach((result) => {
+        if (result.status === "rejected") console.error("Error updating emp stat history: " + result.reason.message);
       });
     });
   }
@@ -52,8 +91,10 @@ export default (config: Config, appState: Dependencies) => {
   return {
     update,
     utils: {
-      updateTvl,
-      updateTvls,
+      updateLatestTvl,
+      updateLatestTvls,
+      updateHistories,
+      updateHistory,
     },
   };
 };

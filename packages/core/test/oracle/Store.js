@@ -1,12 +1,9 @@
-const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
 const { didContractThrow } = require("@uma/common");
 const truffleAssert = require("truffle-assertions");
 
-const Token = getContract("ExpandedERC20");
-const Store = getContract("Store");
-const Timer = getContract("Timer");
+const Token = artifacts.require("ExpandedERC20");
+const Store = artifacts.require("Store");
+const Timer = artifacts.require("Timer");
 
 contract("Store", function (accounts) {
   // A deployed instance of the Store contract, ready for testing.
@@ -23,7 +20,6 @@ contract("Store", function (accounts) {
   // TODO Add test final fee for test identifier
 
   beforeEach(async function () {
-    await runDefaultFixture(hre);
     store = await Store.deployed();
     timer = await Timer.deployed();
   });
@@ -31,42 +27,42 @@ contract("Store", function (accounts) {
   it("Compute fees basic check", async function () {
     // Set fee to 10%
     let newFee = { rawValue: web3.utils.toWei("0.1", "ether") };
-    await store.methods.setFixedOracleFeePerSecondPerPfc(newFee).send({ from: owner });
+    await store.setFixedOracleFeePerSecondPerPfc(newFee, { from: owner });
 
     let pfc = { rawValue: web3.utils.toWei("2", "ether") };
 
     // Wait one second, then check fees are correct
-    let fees = await store.methods.computeRegularFee(100, 101, pfc).call();
+    let fees = await store.computeRegularFee(100, 101, pfc);
     assert.equal(fees.regularFee.toString(), web3.utils.toWei("0.2", "ether"));
     assert.equal(fees.latePenalty.toString(), "0");
 
     // Wait 10 seconds, then check fees are correct
-    fees = await store.methods.computeRegularFee(100, 110, pfc).call();
+    fees = await store.computeRegularFee(100, 110, pfc);
     assert.equal(fees.regularFee.toString(), web3.utils.toWei("2", "ether"));
   });
 
   it("Compute fees at 20%", async function () {
     // Change fee to 20%
     let newFee = { rawValue: web3.utils.toWei("0.2", "ether") };
-    await store.methods.setFixedOracleFeePerSecondPerPfc(newFee).send({ from: owner });
+    await store.setFixedOracleFeePerSecondPerPfc(newFee, { from: owner });
 
     let pfc = { rawValue: web3.utils.toWei("2", "ether") };
 
     // Run time tests again
-    let fees = await store.methods.computeRegularFee(100, 101, pfc).call();
+    let fees = await store.computeRegularFee(100, 101, pfc);
     assert.equal(fees.regularFee.toString(), web3.utils.toWei("0.4", "ether"));
 
-    fees = await store.methods.computeRegularFee(100, 110, pfc).call();
+    fees = await store.computeRegularFee(100, 110, pfc);
     assert.equal(fees.regularFee.toString(), web3.utils.toWei("4", "ether"));
   });
 
   it("Check for illegal params", async function () {
     // Disallow endTime < startTime.
-    assert(await didContractThrow(store.methods.computeRegularFee(2, 1, 10).send({ from: accounts[0] })));
+    assert(await didContractThrow(store.computeRegularFee(2, 1, 10)));
 
     // Disallow setting fees higher than 100%.
     let highFee = { rawValue: web3.utils.toWei("1", "ether") };
-    assert(await didContractThrow(store.methods.setFixedOracleFeePerSecondPerPfc(highFee).send({ from: owner })));
+    assert(await didContractThrow(store.setFixedOracleFeePerSecondPerPfc(highFee, { from: owner })));
 
     // Can set weekly late fees to less than 100%.
     await store.setWeeklyDelayFeePerSecondPerPfc({ rawValue: web3.utils.toWei("0.99", "ether") }, { from: owner });
@@ -92,7 +88,7 @@ contract("Store", function (accounts) {
     truffleAssert.eventEmitted(result, "NewFinalFee", (ev) => {
       return ev.newFinalFee.rawValue === web3.utils.toWei("5", "ether");
     });
-    const fee = await store.methods.computeFinalFee(arbitraryTokenAddr).call();
+    const fee = await store.computeFinalFee(arbitraryTokenAddr);
     assert.equal(fee.rawValue, web3.utils.toWei("5", "ether"));
   });
 
@@ -110,7 +106,7 @@ contract("Store", function (accounts) {
 
   it("Pay fees in Ether", async function () {
     // Verify the starting balance is 0.
-    let balance = await web3.eth.getBalance(store.options.address);
+    let balance = await web3.eth.getBalance(store.address);
     assert.equal(balance.toString(), "0");
 
     // Can't pay a fee of 0 ether.
@@ -118,12 +114,12 @@ contract("Store", function (accounts) {
 
     // Send 1 ether to the contract and verify balance.
     await store.payOracleFees({ from: derivative, value: web3.utils.toWei("1", "ether") });
-    balance = await web3.eth.getBalance(store.options.address);
+    balance = await web3.eth.getBalance(store.address);
     assert.equal(balance.toString(), web3.utils.toWei("1", "ether"));
 
     // Send a further 2 ether to the contract and verify balance.
     await store.payOracleFees({ from: derivative, value: web3.utils.toWei("2", "ether") });
-    balance = await web3.eth.getBalance(store.options.address);
+    balance = await web3.eth.getBalance(store.address);
     assert.equal(balance.toString(), web3.utils.toWei("3", "ether"));
 
     // Only the owner can withdraw.
@@ -131,7 +127,7 @@ contract("Store", function (accounts) {
 
     // Withdraw 0.5 ether and verify the  balance.
     await store.withdraw(web3.utils.toWei("0.5", "ether"));
-    balance = await web3.eth.getBalance(store.options.address);
+    balance = await web3.eth.getBalance(store.address);
     assert.equal(balance.toString(), web3.utils.toWei("2.5", "ether"));
 
     // Can't withdraw more than the balance.
@@ -139,87 +135,79 @@ contract("Store", function (accounts) {
 
     // Withdraw remaining balance.
     await store.withdraw(web3.utils.toWei("2.5", "ether"));
-    balance = await web3.eth.getBalance(store.options.address);
+    balance = await web3.eth.getBalance(store.address);
     assert.equal(balance.toString(), web3.utils.toWei("0", "ether"));
   });
 
   it("Pay fees in ERC20 token", async function () {
-    const firstMarginToken = await Token.new("Wrapped Ether", "WETH", 18)
-      .send({ from: accounts[0] })
-      .send({ from: erc20TokenOwner });
-    const secondMarginToken = await Token.new("Wrapped Ether2", "WETH2", 18)
-      .send({ from: accounts[0] })
-      .send({ from: erc20TokenOwner });
+    const firstMarginToken = await Token.new("Wrapped Ether", "WETH", 18, { from: erc20TokenOwner });
+    const secondMarginToken = await Token.new("Wrapped Ether2", "WETH2", 18, { from: erc20TokenOwner });
 
     // Mint 100 tokens of each to the contract and verify balances.
-    await firstMarginToken.methods.addMember(1, erc20TokenOwner).send({ from: erc20TokenOwner });
+    await firstMarginToken.addMember(1, erc20TokenOwner, { from: erc20TokenOwner });
     await firstMarginToken.mint(derivative, web3.utils.toWei("100", "ether"), { from: erc20TokenOwner });
-    let firstTokenBalanceInStore = await firstMarginToken.methods.balanceOf(store.options.address).call();
-    let firstTokenBalanceInDerivative = await firstMarginToken.methods.balanceOf(derivative).call();
+    let firstTokenBalanceInStore = await firstMarginToken.balanceOf(store.address);
+    let firstTokenBalanceInDerivative = await firstMarginToken.balanceOf(derivative);
     assert.equal(firstTokenBalanceInStore, 0);
     assert.equal(firstTokenBalanceInDerivative, web3.utils.toWei("100", "ether"));
 
-    await secondMarginToken.methods.addMember(1, erc20TokenOwner).send({ from: erc20TokenOwner });
+    await secondMarginToken.addMember(1, erc20TokenOwner, { from: erc20TokenOwner });
     await secondMarginToken.mint(derivative, web3.utils.toWei("100", "ether"), { from: erc20TokenOwner });
-    let secondTokenBalanceInStore = await secondMarginToken.methods.balanceOf(store.options.address).call();
-    let secondTokenBalanceInDerivative = await secondMarginToken.methods.balanceOf(derivative).call();
+    let secondTokenBalanceInStore = await secondMarginToken.balanceOf(store.address);
+    let secondTokenBalanceInDerivative = await secondMarginToken.balanceOf(derivative);
     assert.equal(secondTokenBalanceInStore, 0);
     assert.equal(secondTokenBalanceInDerivative, web3.utils.toWei("100", "ether"));
 
     // Pay 10 of the first margin token to the store and verify balances.
     let feeAmount = web3.utils.toWei("10", "ether");
-    await firstMarginToken.methods.approve(store.options.address, feeAmount).send({ from: derivative });
-    await store.methods
-      .payOracleFeesErc20(firstMarginToken.options.address, { rawValue: feeAmount })
-      .send({ from: derivative });
-    firstTokenBalanceInStore = await firstMarginToken.methods.balanceOf(store.options.address).call();
-    firstTokenBalanceInDerivative = await firstMarginToken.methods.balanceOf(derivative).call();
+    await firstMarginToken.approve(store.address, feeAmount, { from: derivative });
+    await store.payOracleFeesErc20(firstMarginToken.address, { rawValue: feeAmount }, { from: derivative });
+    firstTokenBalanceInStore = await firstMarginToken.balanceOf(store.address);
+    firstTokenBalanceInDerivative = await firstMarginToken.balanceOf(derivative);
     assert.equal(firstTokenBalanceInStore.toString(), web3.utils.toWei("10", "ether"));
     assert.equal(firstTokenBalanceInDerivative.toString(), web3.utils.toWei("90", "ether"));
 
     // Pay 20 of the second margin token to the store and verify balances.
     feeAmount = web3.utils.toWei("20", "ether");
-    await secondMarginToken.methods.approve(store.options.address, feeAmount).send({ from: derivative });
-    await store.methods
-      .payOracleFeesErc20(secondMarginToken.options.address, { rawValue: feeAmount })
-      .send({ from: derivative });
-    secondTokenBalanceInStore = await secondMarginToken.methods.balanceOf(store.options.address).call();
-    secondTokenBalanceInDerivative = await secondMarginToken.methods.balanceOf(derivative).call();
+    await secondMarginToken.approve(store.address, feeAmount, { from: derivative });
+    await store.payOracleFeesErc20(secondMarginToken.address, { rawValue: feeAmount }, { from: derivative });
+    secondTokenBalanceInStore = await secondMarginToken.balanceOf(store.address);
+    secondTokenBalanceInDerivative = await secondMarginToken.balanceOf(derivative);
     assert.equal(secondTokenBalanceInStore.toString(), web3.utils.toWei("20", "ether"));
     assert.equal(secondTokenBalanceInDerivative.toString(), web3.utils.toWei("80", "ether"));
 
     // Withdraw 15 (out of 20) of the second margin token and verify balances.
-    await store.withdrawErc20(secondMarginToken.options.address, web3.utils.toWei("15", "ether"), { from: owner });
-    let secondTokenBalanceInOwner = await secondMarginToken.methods.balanceOf(owner).call();
-    secondTokenBalanceInStore = await secondMarginToken.methods.balanceOf(store.options.address).call();
+    await store.withdrawErc20(secondMarginToken.address, web3.utils.toWei("15", "ether"), { from: owner });
+    let secondTokenBalanceInOwner = await secondMarginToken.balanceOf(owner);
+    secondTokenBalanceInStore = await secondMarginToken.balanceOf(store.address);
     assert.equal(secondTokenBalanceInOwner.toString(), web3.utils.toWei("15", "ether"));
     assert.equal(secondTokenBalanceInStore.toString(), web3.utils.toWei("5", "ether"));
 
     // Only owner can withdraw.
     assert(
       await didContractThrow(
-        store.withdrawErc20(secondMarginToken.options.address, web3.utils.toWei("5", "ether"), { from: derivative })
+        store.withdrawErc20(secondMarginToken.address, web3.utils.toWei("5", "ether"), { from: derivative })
       )
     );
 
     // Can't withdraw more than the balance.
     assert(
       await didContractThrow(
-        store.withdrawErc20(secondMarginToken.options.address, web3.utils.toWei("100", "ether"), { from: owner })
+        store.withdrawErc20(secondMarginToken.address, web3.utils.toWei("100", "ether"), { from: owner })
       )
     );
 
     // Withdraw remaining amounts and verify balancse.
-    await store.withdrawErc20(firstMarginToken.options.address, web3.utils.toWei("10", "ether"), { from: owner });
-    await store.withdrawErc20(secondMarginToken.options.address, web3.utils.toWei("5", "ether"), { from: owner });
+    await store.withdrawErc20(firstMarginToken.address, web3.utils.toWei("10", "ether"), { from: owner });
+    await store.withdrawErc20(secondMarginToken.address, web3.utils.toWei("5", "ether"), { from: owner });
 
-    let firstTokenBalanceInOwner = await firstMarginToken.methods.balanceOf(owner).call();
-    firstTokenBalanceInStore = await firstMarginToken.methods.balanceOf(store.options.address).call();
+    let firstTokenBalanceInOwner = await firstMarginToken.balanceOf(owner);
+    firstTokenBalanceInStore = await firstMarginToken.balanceOf(store.address);
     assert.equal(firstTokenBalanceInOwner.toString(), web3.utils.toWei("10", "ether"));
     assert.equal(firstTokenBalanceInStore.toString(), web3.utils.toWei("0", "ether"));
 
-    secondTokenBalanceInOwner = await secondMarginToken.methods.balanceOf(owner).call();
-    secondTokenBalanceInStore = await secondMarginToken.methods.balanceOf(store.options.address).call();
+    secondTokenBalanceInOwner = await secondMarginToken.balanceOf(owner);
+    secondTokenBalanceInStore = await secondMarginToken.balanceOf(store.address);
     assert.equal(secondTokenBalanceInOwner.toString(), web3.utils.toWei("20", "ether"));
     assert.equal(secondTokenBalanceInStore.toString(), web3.utils.toWei("0", "ether"));
   });
@@ -232,23 +220,23 @@ contract("Store", function (accounts) {
     assert(await didContractThrow(store.withdraw(web3.utils.toWei("0.5", "ether"), { from: rando })));
 
     // Owner can delegate the withdraw permissions to rando, allowing them to withdraw.
-    await store.methods.resetMember(withdrawRole, rando).send({ from: owner });
+    await store.resetMember(withdrawRole, rando, { from: owner });
     await store.withdraw(web3.utils.toWei("0.5", "ether"), { from: rando });
 
     // Owner can no longer withdraw since that permission has been moved to rando.
     assert(await didContractThrow(store.withdraw(web3.utils.toWei("0.5", "ether"), { from: owner })));
 
     // Change withdraw back to owner.
-    await store.methods.resetMember(withdrawRole, owner).send({ from: owner });
+    await store.resetMember(withdrawRole, owner, { from: owner });
   });
 
   it("Basic late penalty", async function () {
     const lateFeeRate = web3.utils.toWei("0.0001");
     const regularFeeRate = web3.utils.toWei("0.0002");
-    await store.methods.setWeeklyDelayFeePerSecondPerPfc({ rawValue: lateFeeRate }).send({ from: owner });
-    await store.methods.setFixedOracleFeePerSecondPerPfc({ rawValue: regularFeeRate }).send({ from: owner });
+    await store.setWeeklyDelayFeePerSecondPerPfc({ rawValue: lateFeeRate }, { from: owner });
+    await store.setFixedOracleFeePerSecondPerPfc({ rawValue: regularFeeRate }, { from: owner });
 
-    const startTime = await store.methods.getCurrentTime().call();
+    const startTime = await store.getCurrentTime();
 
     const secondsPerWeek = 604800;
 
@@ -280,12 +268,12 @@ contract("Store", function (accounts) {
   it("Late penalty based on current time", async function () {
     await store.setWeeklyDelayFeePerSecondPerPfc({ rawValue: web3.utils.toWei("0.1", "ether") }, { from: owner });
 
-    const startTime = await store.methods.getCurrentTime().call();
+    const startTime = await store.getCurrentTime();
 
     const secondsPerWeek = 604800;
 
     // Set current time to 1 week in the future to ensure the fee gets charged.
-    await store.setCurrentTime((await store.methods.getCurrentTime().call()).addn(secondsPerWeek));
+    await store.setCurrentTime((await store.getCurrentTime()).addn(secondsPerWeek));
 
     // Pay for a short period a week ago. Even though the endTime is < 1 week past the start time, the currentTime
     // should cause the late fee to be charged.
@@ -293,7 +281,8 @@ contract("Store", function (accounts) {
       rawValue: web3.utils.toWei("1"),
     });
 
-    // Payment is 1 week late, but the penalty is 10% per second of the period. Since the period is only 1 second, {     // we should see a 10% late fee.
+    // Payment is 1 week late, but the penalty is 10% per second of the period. Since the period is only 1 second,
+    // we should see a 10% late fee.
     assert.equal(latePenalty.rawValue, web3.utils.toWei("0.1"));
   });
 
@@ -302,32 +291,24 @@ contract("Store", function (accounts) {
     const normalFee = { rawValue: web3.utils.toWei("0.1", "ether") };
 
     // Regular fee cannot be set above 1.
-    assert(await didContractThrow(Store.new(highFee, normalFee, timer.options.address, { from: rando })));
+    assert(await didContractThrow(Store.new(highFee, normalFee, timer.address, { from: rando })));
 
     // Late fee cannot be set above 1.
-    assert(await didContractThrow(Store.new(normalFee, highFee, timer.options.address, { from: rando })));
+    assert(await didContractThrow(Store.new(normalFee, highFee, timer.address, { from: rando })));
   });
 
   it("Initialization", async function () {
     const regularFee = { rawValue: web3.utils.toWei("0.2", "ether") };
     const lateFee = { rawValue: web3.utils.toWei("0.1", "ether") };
 
-    const newStore = await Store.new(regularFee, lateFee, timer.options.address)
-      .send({ from: accounts[0] })
-      .send({ from: rando });
+    const newStore = await Store.new(regularFee, lateFee, timer.address, { from: rando });
 
     // Fees should be set as they were initialized.
-    assert.equal(
-      (await newStore.methods.fixedOracleFeePerSecondPerPfc().call()).toString(),
-      regularFee.rawValue.toString()
-    );
-    assert.equal(
-      (await newStore.methods.weeklyDelayFeePerSecondPerPfc().call()).toString(),
-      lateFee.rawValue.toString()
-    );
+    assert.equal((await newStore.fixedOracleFeePerSecondPerPfc()).toString(), regularFee.rawValue.toString());
+    assert.equal((await newStore.weeklyDelayFeePerSecondPerPfc()).toString(), lateFee.rawValue.toString());
 
     // rando should hold both the owner and withdrawer roles.
-    assert.equal(await newStore.methods.getMember(0).call(), rando);
-    assert.equal(await newStore.methods.getMember(1).call(), rando);
+    assert.equal(await newStore.getMember(0), rando);
+    assert.equal(await newStore.getMember(1), rando);
   });
 });

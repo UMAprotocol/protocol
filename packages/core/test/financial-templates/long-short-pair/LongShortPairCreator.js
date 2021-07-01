@@ -1,6 +1,3 @@
-const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
 const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
 const truffleAssert = require("truffle-assertions");
 const { assert } = require("chai");
@@ -9,18 +6,18 @@ const { assert } = require("chai");
 const { interfaceName, didContractThrow, ZERO_ADDRESS } = require("@uma/common");
 
 // Tested Contract
-const LongShortPair = getContract("LongShortPair");
-const LongShortPairCreator = getContract("LongShortPairCreator");
-const LongShortPairFinancialProjectLibraryTest = getContract("LongShortPairFinancialProjectLibraryTest");
+const LongShortPair = artifacts.require("LongShortPair");
+const LongShortPairCreator = artifacts.require("LongShortPairCreator");
+const LongShortPairFinancialProjectLibraryTest = artifacts.require("LongShortPairFinancialProjectLibraryTest");
 
 // Helper contracts
-const AddressWhitelist = getContract("AddressWhitelist");
-const IdentifierWhitelist = getContract("IdentifierWhitelist");
-const Finder = getContract("Finder");
-const Timer = getContract("Timer");
-const OptimisticOracle = getContract("OptimisticOracle");
-const Token = getContract("ExpandedERC20");
-const TokenFactory = getContract("TokenFactory");
+const AddressWhitelist = artifacts.require("AddressWhitelist");
+const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
+const Finder = artifacts.require("Finder");
+const Timer = artifacts.require("Timer");
+const OptimisticOracle = artifacts.require("OptimisticOracle");
+const Token = artifacts.require("ExpandedERC20");
+const TokenFactory = artifacts.require("TokenFactory");
 
 let collateralToken;
 let longShortPairLibrary;
@@ -37,8 +34,10 @@ const expirationTimestamp = startTimestamp + 10000;
 const optimisticOracleLiveness = 7200;
 const priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
 const collateralPerPair = toWei("1"); // each pair of long and short tokens need 1 unit of collateral to mint.
-const syntheticName = "Test LSP";
-const syntheticSymbol = "tCFD";
+const longSynthName = "Long Test LSP";
+const longSynthSymbol = "LtCFD";
+const shortSynthName = "Short Test LSP";
+const shortSynthSymbol = "StCFD";
 const ancillaryData = web3.utils.utf8ToHex("some-address-field:0x1234");
 const prepaidProposerReward = "0";
 
@@ -46,52 +45,49 @@ contract("LongShortPairCreator", function (accounts) {
   const deployer = accounts[0];
   const sponsor = accounts[1];
 
-  beforeEach(async function () {
-    await runDefaultFixture(hre);
+  before(async () => {
     finder = await Finder.deployed();
     timer = await Timer.deployed();
     collateralWhitelist = await AddressWhitelist.deployed();
 
     identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.methods.addSupportedIdentifier(priceFeedIdentifier).send({ from: deployer });
+    await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, { from: deployer });
+  });
 
+  beforeEach(async function () {
     // Force each test to start with a simulated time that's synced to the startTimestamp.
-    await timer.methods.setCurrentTime(startTimestamp).send({ from: accounts[0] });
+    await timer.setCurrentTime(startTimestamp);
 
-    collateralToken = await Token.new("Wrapped Ether", "WETH", 18).send({ from: accounts[0] }).send({ from: deployer });
-    await collateralToken.methods.addMember(1, deployer).send({ from: deployer });
+    collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: deployer });
+    await collateralToken.addMember(1, deployer, { from: deployer });
     await collateralToken.mint(sponsor, toWei("1000"), { from: deployer });
 
-    await collateralWhitelist.methods.addToWhitelist(collateralToken.options.address).send({ from: accounts[0] });
+    await collateralWhitelist.addToWhitelist(collateralToken.address);
 
-    optimisticOracle = await OptimisticOracle.new(
-      optimisticOracleLiveness,
-      finder.options.address,
-      timer.options.address
-    ).send({ from: accounts[0] });
-    await finder.methods.changeImplementationAddress(
-      utf8ToHex(interfaceName.OptimisticOracle),
-      optimisticOracle.options.address,
-      { from: deployer }
-    );
+    optimisticOracle = await OptimisticOracle.new(optimisticOracleLiveness, finder.address, timer.address);
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.address, {
+      from: deployer,
+    });
 
     longShortPairCreator = await LongShortPairCreator.new(
-      finder.options.address,
+      finder.address,
       (await TokenFactory.deployed()).address,
-      timer.options.address
+      timer.address
     );
 
-    longShortPairLibrary = await LongShortPairFinancialProjectLibraryTest.new().send({ from: accounts[0] });
+    longShortPairLibrary = await LongShortPairFinancialProjectLibraryTest.new();
 
     // Define an object to easily re-use constructor params
     constructorParams = {
       expirationTimestamp,
       collateralPerPair,
       priceFeedIdentifier,
-      syntheticName,
-      syntheticSymbol,
-      collateralAddress: collateralToken.options.address,
-      financialProductLibraryAddress: longShortPairLibrary.options.address,
+      longSynthName,
+      longSynthSymbol,
+      shortSynthName,
+      shortSynthSymbol,
+      collateralAddress: collateralToken.address,
+      financialProductLibraryAddress: longShortPairLibrary.address,
       ancillaryData,
       prepaidProposerReward,
     };
@@ -110,73 +106,70 @@ contract("LongShortPairCreator", function (accounts) {
 
     // Validate LSP parameters are set correctly.
     const lsp = await LongShortPair.at(lspAddress);
-    assert.equal(await lsp.methods.expirationTimestamp().call(), expirationTimestamp);
-    assert.equal((await lsp.methods.collateralPerPair().call()).toString(), collateralPerPair.toString());
-    assert.equal(hexToUtf8(await lsp.methods.priceIdentifier().call()), hexToUtf8(priceFeedIdentifier));
-    assert.equal(await lsp.methods.collateralToken().call(), collateralToken.options.address);
-    assert.equal(await lsp.methods.customAncillaryData().call(), ancillaryData);
+    assert.equal(await lsp.expirationTimestamp(), expirationTimestamp);
+    assert.equal((await lsp.collateralPerPair()).toString(), collateralPerPair.toString());
+    assert.equal(hexToUtf8(await lsp.priceIdentifier()), hexToUtf8(priceFeedIdentifier));
+    assert.equal(await lsp.collateralToken(), collateralToken.address);
+    assert.equal(await lsp.customAncillaryData(), ancillaryData);
 
     // Validate token information and permissions are set correctly.
-    const longToken = await Token.at(await lsp.methods.longToken().call());
-    assert.equal(await longToken.methods.name().call(), syntheticName + " Long Token");
-    assert.equal(await longToken.methods.symbol().call(), "l" + syntheticSymbol);
-    assert.equal(
-      (await longToken.methods.decimals().call()).toString(),
-      (await collateralToken.methods.decimals().call()).toString()
-    );
-    assert.isTrue(await longToken.methods.holdsRole("0", lspAddress).call());
-    assert.isTrue(await longToken.methods.holdsRole("1", lspAddress).call());
-    assert.isTrue(await longToken.methods.holdsRole("2", lspAddress).call());
+    const longToken = await Token.at(await lsp.longToken());
+    assert.equal(await longToken.name(), longSynthName);
+    assert.equal(await longToken.symbol(), longSynthSymbol);
+    assert.equal((await longToken.decimals()).toString(), (await collateralToken.decimals()).toString());
+    assert.isTrue(await longToken.holdsRole("0", lspAddress)); // owner
+    assert.isTrue(await longToken.holdsRole("1", lspAddress)); // minter
+    assert.isTrue(await longToken.holdsRole("2", lspAddress)); // burner
 
-    const shortToken = await Token.at(await lsp.methods.shortToken().call());
-    assert.equal(await shortToken.methods.name().call(), syntheticName + " Short Token");
-    assert.equal(await shortToken.methods.symbol().call(), "s" + syntheticSymbol);
-    assert.equal(
-      (await shortToken.methods.decimals().call()).toString(),
-      (await collateralToken.methods.decimals().call()).toString()
-    );
-    assert.isTrue(await shortToken.methods.holdsRole("0", lspAddress).call());
-    assert.isTrue(await shortToken.methods.holdsRole("1", lspAddress).call());
-    assert.isTrue(await shortToken.methods.holdsRole("2", lspAddress).call());
+    const shortToken = await Token.at(await lsp.shortToken());
+    assert.equal(await shortToken.name(), shortSynthName);
+    assert.equal(await shortToken.symbol(), shortSynthSymbol);
+    assert.equal((await shortToken.decimals()).toString(), (await collateralToken.decimals()).toString());
+    assert.isTrue(await shortToken.holdsRole("0", lspAddress)); // owner
+    assert.isTrue(await shortToken.holdsRole("1", lspAddress)); // minter
+    assert.isTrue(await shortToken.holdsRole("2", lspAddress)); // burner
+
+    // The creator should not hold any roles on the LSP contract.
+    assert.isFalse(await longToken.holdsRole("0", longShortPairCreator.address)); // owner
+    assert.isFalse(await longToken.holdsRole("1", longShortPairCreator.address)); // minter
+    assert.isFalse(await longToken.holdsRole("2", longShortPairCreator.address)); // burner
+    assert.isFalse(await shortToken.holdsRole("0", longShortPairCreator.address)); // owner
+    assert.isFalse(await shortToken.holdsRole("1", longShortPairCreator.address)); // minter
+    assert.isFalse(await shortToken.holdsRole("2", longShortPairCreator.address)); // burner
   });
   it("Correctly respects non-18 decimal collateral currencies", async function () {
-    const non18Collateral = await Token.new("USD Coin", "USDC", 6).send({ from: accounts[0] }).send({ from: deployer });
-    await collateralWhitelist.methods.addToWhitelist(non18Collateral.options.address).send({ from: accounts[0] });
+    const non18Collateral = await Token.new("USD Coin", "USDC", 6, { from: deployer });
+    await collateralWhitelist.addToWhitelist(non18Collateral.address);
     await longShortPairCreator.createLongShortPair(
-      ...Object.values({ ...constructorParams, collateralAddress: non18Collateral.options.address })
+      ...Object.values({ ...constructorParams, collateralAddress: non18Collateral.address })
     );
 
     const lspAddress = (await longShortPairCreator.getPastEvents("CreatedLongShortPair"))[0].returnValues.longShortPair;
 
     const lsp = await LongShortPair.at(lspAddress);
 
-    assert.equal(await (await Token.at(await lsp.methods.longToken().call())).decimals(), "6");
-    assert.equal(await (await Token.at(await lsp.methods.shortToken().call())).decimals(), "6");
+    assert.equal(await (await Token.at(await lsp.longToken())).decimals(), "6");
+    assert.equal(await (await Token.at(await lsp.shortToken())).decimals(), "6");
   });
 
   it("Transfers prepaidProposerReward", async function () {
     const customPrepaidProposerReward = toWei("100");
-    await collateralToken.methods.mint(deployer, customPrepaidProposerReward).send({ from: accounts[0] });
-    await collateralToken.methods
-      .approve(longShortPairCreator.options.address, customPrepaidProposerReward)
-      .send({ from: accounts[0] });
+    await collateralToken.mint(deployer, customPrepaidProposerReward);
+    await collateralToken.approve(longShortPairCreator.address, customPrepaidProposerReward);
     await longShortPairCreator.createLongShortPair(
       ...Object.values({ ...constructorParams, prepaidProposerReward: customPrepaidProposerReward })
     );
 
     const lspAddress = (await longShortPairCreator.getPastEvents("CreatedLongShortPair"))[0].returnValues.longShortPair;
 
-    assert.equal((await collateralToken.methods.balanceOf(lspAddress).call()).toString(), customPrepaidProposerReward);
+    assert.equal((await collateralToken.balanceOf(lspAddress)).toString(), customPrepaidProposerReward);
   });
 
   it("Rejects on past expirationTimestamp", async function () {
     assert(
       await didContractThrow(
         longShortPairCreator.createLongShortPair(
-          ...Object.values({
-            ...constructorParams,
-            expirationTimestamp: (await timer.methods.getCurrentTime().call()) - 100,
-          })
+          ...Object.values({ ...constructorParams, expirationTimestamp: (await timer.getCurrentTime()) - 100 })
         )
       )
     );

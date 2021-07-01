@@ -27,27 +27,27 @@ contract CoveredCallLongShortPairFinancialProductLibrary is LongShortPairFinanci
 
     /**
      * @notice Enables any address to set the strike price for an associated LSP.
-     * @param LongShortPair address of the LSP.
+     * @param longShortPair address of the LSP.
      * @param strikePrice the strike price for the covered call for the associated LSP.
      * @dev Note: a) Any address can set the initial strike price b) A strike price cannot be 0.
      * c) A strike price can only be set once to prevent the deployer from changing the strike after the fact.
      * d) For safety, a strike price should be set before depositing any synthetic tokens in a liquidity pool.
-     * e) financialProduct must expose an expirationTimestamp method to validate it is correctly deployed.
+     * e) longShortPair must expose an expirationTimestamp method to validate it is correctly deployed.
      */
-    function setLongShortPairParameters(address LongShortPair, uint256 strikePrice) public nonReentrant() {
-        require(ExpiringContractInterface(LongShortPair).expirationTimestamp() != 0, "Invalid LSP address");
-        require(longShortPairStrikePrices[LongShortPair] == 0, "Parameters already set");
+    function setLongShortPairParameters(address longShortPair, uint256 strikePrice) public nonReentrant() {
+        require(ExpiringContractInterface(longShortPair).expirationTimestamp() != 0, "Invalid LSP address");
+        require(longShortPairStrikePrices[longShortPair] == 0, "Parameters already set");
 
-        longShortPairStrikePrices[LongShortPair] = strikePrice;
+        longShortPairStrikePrices[longShortPair] = strikePrice;
     }
 
     /**
-     * @notice Returns a number between 0 and 1 to indicate how much collateral each long and short token are entitled
+     * @notice Returns a number between 0 and 1e18 to indicate how much collateral each long and short token are entitled
      * to per collateralPerPair.
      * @param expiryPrice price from the optimistic oracle for the LSP price identifier.
      * @return expiryPercentLong to indicate how much collateral should be sent between long and short tokens.
      */
-    function computeExpiryTokensForCollateral(int256 expiryPrice)
+    function percentageLongCollateralAtExpiry(int256 expiryPrice)
         public
         view
         override
@@ -55,6 +55,7 @@ contract CoveredCallLongShortPairFinancialProductLibrary is LongShortPairFinanci
         returns (uint256)
     {
         uint256 contractStrikePrice = longShortPairStrikePrices[msg.sender];
+        require(contractStrikePrice != 0, "Params not set for calling LSP");
 
         // If the expiry price is less than the strike price then the long options expire worthless (out of the money).
         // Note we do not consider negative expiry prices in this call option implementation.

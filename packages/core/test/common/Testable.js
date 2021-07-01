@@ -1,44 +1,40 @@
-const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
 const { didContractThrow } = require("@uma/common");
 
-const TestableTest = getContract("TestableTest");
-const Timer = getContract("Timer");
+const TestableTest = artifacts.require("TestableTest");
+const Timer = artifacts.require("Timer");
 
-contract("Testable", function (accounts) {
+contract("Testable", function () {
   let timer;
 
-  beforeEach(async () => {
-    await runDefaultFixture(hre);
+  before(async () => {
     timer = await Timer.deployed();
   });
 
   it("isTest on", async function () {
-    const testable = await TestableTest.new(timer.options.address).send({ from: accounts[0] });
+    const testable = await TestableTest.new(timer.address);
 
-    await testable.methods.setCurrentTime(0).send({ from: accounts[0] });
-    assert.equal(await testable.methods.getCurrentTime().call(), 0);
+    await testable.setCurrentTime(0);
+    assert.equal(await testable.getCurrentTime(), 0);
   });
 
   it("isTest off", async function () {
-    const testable = await TestableTest.new("0x0000000000000000000000000000000000000000").send({ from: accounts[0] });
+    const testable = await TestableTest.new("0x0000000000000000000000000000000000000000");
 
     // Assert that the latest block's timestamp equals the testable contract's current time.
-    const { testableTime, blockTime } = await testable.methods.getTestableTimeAndBlockTime().call();
+    const { testableTime, blockTime } = await testable.getTestableTimeAndBlockTime();
     assert.equal(testableTime.toString(), blockTime.toString());
 
     // Assert that setCurrentTime fails
-    assert(await didContractThrow(testable.methods.setCurrentTime(0).send({ from: accounts[0] })));
+    assert(await didContractThrow(testable.setCurrentTime(0)));
   });
 
   it("In test environment, different Testable contracts reference the same Timer", async function () {
-    const testable1 = await TestableTest.new(timer.options.address).send({ from: accounts[0] });
-    const testable2 = await TestableTest.new(timer.options.address).send({ from: accounts[0] });
+    const testable1 = await TestableTest.new(timer.address);
+    const testable2 = await TestableTest.new(timer.address);
 
     // Set time on testable1, should be the same on testable2.
-    await testable1.methods.setCurrentTime(0).send({ from: accounts[0] });
-    assert.equal(await testable1.methods.getCurrentTime().call(), 0);
-    assert.equal(await testable2.methods.getCurrentTime().call(), 0);
+    await testable1.setCurrentTime(0);
+    assert.equal(await testable1.getCurrentTime(), 0);
+    assert.equal(await testable2.getCurrentTime(), 0);
   });
 });

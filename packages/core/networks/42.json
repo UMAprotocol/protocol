@@ -78,5 +78,25 @@
   {
     "contractName": "DSProxyFactory",
     "address": "0xFB8da0B386F2Ab00B04c7f01f9faC19E21ECC405"
+  },
+  {
+    "contractName": "LongShortPairCreator",
+    "address": "0x4C68829DBD07FEbB250B90f5624d4a5C30BBeC2c"
+  },
+  {
+    "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
+    "address": "0xB1d60d41246B6d679cF89A1e57c46B1387538009"
+  },
+  {
+    "contractName": "CoveredCallLongShortPairFinancialProductLibrary",
+    "address": "0x2CcA11DbbDC3E028D6c293eA5d386eE887071C59"
+  },
+  {
+    "contractName": "LinearLongShortPairFinancialProductLibrary",
+    "address": "0x46b541E0fE2E817340A1A88740607329fF5ED279"
+  },
+  {
+    "contractName": "RangeBondLongShortPairFinancialProductLibrary",
+    "address": "0xb8f4f21c9d276fddcece80e7a3e4c5d9f6addd63"
   }
 ]

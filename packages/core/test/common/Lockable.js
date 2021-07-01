@@ -1,37 +1,25 @@
-const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
 const { didContractThrow } = require("@uma/common");
 
-const ReentrancyMock = getContract("ReentrancyMock");
-const ReentrancyAttack = getContract("ReentrancyAttack");
+const ReentrancyMock = artifacts.require("ReentrancyMock");
+const ReentrancyAttack = artifacts.require("ReentrancyAttack");
 
 // Extends https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.0.1/test/utils/ReentrancyGuard.test.js.
-contract("Lockable", function (accounts) {
+contract("Lockable", function () {
   let reentrancyMock;
   describe("nonReentrant and nonReentrant modifiers", function () {
     beforeEach(async function () {
-      await runDefaultFixture(hre);
-      reentrancyMock = await ReentrancyMock.new().send({ from: accounts[0] });
-      assert.equal((await reentrancyMock.methods.counter().call()).toString(), "0");
+      reentrancyMock = await ReentrancyMock.new();
+      assert.equal((await reentrancyMock.counter()).toString(), "0");
     });
 
     it("should not allow remote callback to a state-changing function", async function () {
-      const attacker = await ReentrancyAttack.new().send({ from: accounts[0] });
-      assert(
-        await didContractThrow(
-          reentrancyMock.methods.countAndSend(attacker.options.address).send({ from: accounts[0] })
-        )
-      );
+      const attacker = await ReentrancyAttack.new();
+      assert(await didContractThrow(reentrancyMock.countAndSend(attacker.address)));
     });
 
     it("should not allow remote callback to a view-only function", async function () {
-      const attacker = await ReentrancyAttack.new().send({ from: accounts[0] });
-      assert(
-        await didContractThrow(
-          reentrancyMock.methods.countAndCall(attacker.options.address).send({ from: accounts[0] })
-        )
-      );
+      const attacker = await ReentrancyAttack.new();
+      assert(await didContractThrow(reentrancyMock.countAndCall(attacker.address)));
     });
 
     // The following are more side-effects than intended behavior:
@@ -39,19 +27,19 @@ contract("Lockable", function (accounts) {
     // in the side-effects.
 
     it("should not allow local recursion", async function () {
-      assert(await didContractThrow(reentrancyMock.methods.countLocalRecursive(10).send({ from: accounts[0] })));
+      assert(await didContractThrow(reentrancyMock.countLocalRecursive(10)));
     });
 
     it("should not allow indirect local recursion", async function () {
-      assert(await didContractThrow(reentrancyMock.methods.countThisRecursive(10).send({ from: accounts[0] })));
+      assert(await didContractThrow(reentrancyMock.countThisRecursive(10)));
     });
 
     it("should not allow local calls to view-only functions", async function () {
-      assert(await didContractThrow(reentrancyMock.methods.countLocalCall().send({ from: accounts[0] })));
+      assert(await didContractThrow(reentrancyMock.countLocalCall()));
     });
 
     it("should not allow indirect local calls to view-only functions", async function () {
-      assert(await didContractThrow(reentrancyMock.methods.countThisCall().send({ from: accounts[0] })));
+      assert(await didContractThrow(reentrancyMock.countThisCall()));
     });
   });
 });
