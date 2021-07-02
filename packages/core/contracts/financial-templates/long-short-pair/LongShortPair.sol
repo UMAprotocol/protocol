@@ -130,6 +130,7 @@ contract LongShortPair is Testable, Lockable {
         require(address(params.financialProductLibrary) != address(0), "Invalid FinancialProductLibrary");
         require(_getCollateralWhitelist().isOnWhitelist(address(params.collateralToken)), "Collateral not whitelisted");
         require(params.optimisticOracleLivenessTime > 0, "OO liveness cannot be 0");
+        require(params.optimisticOracleLivenessTime < 5200 weeks, "OO liveness too large");
 
         pairName = params.pairName;
         expirationTimestamp = params.expirationTimestamp;
