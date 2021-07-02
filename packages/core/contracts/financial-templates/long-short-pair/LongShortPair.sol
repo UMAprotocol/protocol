@@ -34,8 +34,26 @@ contract LongShortPair is Testable, Lockable {
      *  LONG SHORT PAIR DATA STRUCTURES  *
      *********************************************/
 
+    // Define the contract's constructor parameters as a struct to enable more variables to be specified.
+    struct ConstructorParams {
+        string pairName; // Name of the long short pair contract.
+        uint64 expirationTimestamp; // Unix timestamp of when the contract will expire.
+        uint256 collateralPerPair; // How many units of collateral are required to mint one pair of synthetic tokens.
+        bytes32 priceIdentifier; // Price identifier, registered in the DVM for the long short pair.
+        ExpandedIERC20 longToken; // Token used as long in the LSP. Mint and burn rights needed by this contract.
+        ExpandedIERC20 shortToken; // Token used as short in the LSP. Mint and burn rights needed by this contract.
+        IERC20 collateralToken;
+        LongShortPairFinancialProductLibrary financialProductLibrary;
+        bytes customAncillaryData;
+        uint256 prepaidProposerReward;
+        uint256 optimisticOracleLivenessTime;
+        uint256 optimisticOracleProposerBond;
+    }
+
     enum ContractState { Open, ExpiredPriceRequested, ExpiredPriceReceived }
     ContractState public contractState;
+
+    string public pairName;
 
     uint64 public expirationTimestamp;
 
@@ -59,9 +77,11 @@ contract LongShortPair is Testable, Lockable {
 
     LongShortPairFinancialProductLibrary public financialProductLibrary;
 
+    // Optimistic oracle customization parameters.
     bytes public customAncillaryData;
-
     uint256 public prepaidProposerReward;
+    uint256 public optimisticOracleLivenessTime;
+    uint256 public optimisticOracleProposerBond;
 
     /****************************************
      *                EVENTS                *
@@ -93,57 +113,45 @@ contract LongShortPair is Testable, Lockable {
 
     /**
      * @notice Construct the LongShortPair
-     * @param _expirationTimestamp unix timestamp of when the contract will expire.
-     * @param _collateralPerPair how many units of collateral are required to mint one pair of synthetic tokens.
-     * @param _priceIdentifier registered in the DVM for the synthetic.
-     * @param _longToken ERC20 token used as long in the LSP. Mint and burn rights needed by this contract.
-     * @param _shortToken ERC20 token used as short in the LSP. Mint and burn rights needed by this contract.
-     * @param _collateralToken ERC20 token used as collateral in the LSP.
+     * @param params struct to define input parameters to construct the long short pair contract.
      * @param _finder UMA protocol Finder used to discover other protocol contracts.
-     * @param _financialProductLibrary Contract providing settlement payout logic.
-     * @param _customAncillaryData Custom ancillary data to be passed along with the price request. If not needed, this
-     *                             should be left as a 0-length bytes array.
-     * @param _prepaidProposerReward Preloaded reward to incentivize settlement price proposals.
      * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 in production.
      */
     constructor(
-        uint64 _expirationTimestamp,
-        uint256 _collateralPerPair,
-        bytes32 _priceIdentifier,
-        ExpandedIERC20 _longToken,
-        ExpandedIERC20 _shortToken,
-        IERC20 _collateralToken,
+        ConstructorParams memory params,
         FinderInterface _finder,
-        LongShortPairFinancialProductLibrary _financialProductLibrary,
-        bytes memory _customAncillaryData,
-        uint256 _prepaidProposerReward,
         address _timerAddress
     ) Testable(_timerAddress) {
         finder = _finder;
-        require(_expirationTimestamp > getCurrentTime(), "Expiration timestamp in past");
-        require(_collateralPerPair > 0, "Collateral per pair cannot be 0");
-        require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier), "Identifier not registered");
+        require(params.expirationTimestamp > getCurrentTime(), "Expiration timestamp in past");
+        require(params.collateralPerPair > 0, "Collateral per pair cannot be 0");
+        require(_getIdentifierWhitelist().isIdentifierSupported(params.priceIdentifier), "Identifier not registered");
         require(address(_getOptimisticOracle()) != address(0), "Invalid finder");
-        require(address(_financialProductLibrary) != address(0), "Invalid FinancialProductLibrary");
-        require(_getCollateralWhitelist().isOnWhitelist(address(_collateralToken)), "Collateral not whitelisted");
+        require(address(params.financialProductLibrary) != address(0), "Invalid FinancialProductLibrary");
+        require(_getCollateralWhitelist().isOnWhitelist(address(params.collateralToken)), "Collateral not whitelisted");
+        require(params.optimisticOracleLivenessTime > 0, "OO liveness cannot be 0");
 
-        expirationTimestamp = _expirationTimestamp;
-        collateralPerPair = _collateralPerPair;
-        priceIdentifier = _priceIdentifier;
+        pairName = params.pairName;
+        expirationTimestamp = params.expirationTimestamp;
+        collateralPerPair = params.collateralPerPair;
+        priceIdentifier = params.priceIdentifier;
 
-        longToken = _longToken;
-        shortToken = _shortToken;
-        collateralToken = _collateralToken;
+        longToken = params.longToken;
+        shortToken = params.shortToken;
+        collateralToken = params.collateralToken;
 
-        financialProductLibrary = _financialProductLibrary;
+        financialProductLibrary = params.financialProductLibrary;
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
         require(
-            optimisticOracle.stampAncillaryData(_customAncillaryData, address(this)).length <=
+            optimisticOracle.stampAncillaryData(params.customAncillaryData, address(this)).length <=
                 optimisticOracle.ancillaryBytesLimit(),
             "Ancillary Data too long"
         );
-        customAncillaryData = _customAncillaryData;
-        prepaidProposerReward = _prepaidProposerReward;
+
+        customAncillaryData = params.customAncillaryData;
+        prepaidProposerReward = params.prepaidProposerReward;
+        optimisticOracleLivenessTime = params.optimisticOracleLivenessTime;
+        optimisticOracleProposerBond = params.optimisticOracleProposerBond;
     }
 
     /****************************************
@@ -289,6 +297,22 @@ contract LongShortPair is Testable, Lockable {
             customAncillaryData,
             collateralToken,
             prepaidProposerReward
+        );
+
+        // Set the Optimistic oracle liveness for the price request.
+        optimisticOracle.setCustomLiveness(
+            priceIdentifier,
+            expirationTimestamp,
+            customAncillaryData,
+            optimisticOracleLivenessTime
+        );
+
+        // Set the Optimistic oracle proposer bond for the price request.
+        optimisticOracle.setBond(
+            priceIdentifier,
+            expirationTimestamp,
+            customAncillaryData,
+            optimisticOracleProposerBond
         );
     }
 
