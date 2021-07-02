@@ -21,6 +21,23 @@ contract LongShortPairCreator is Testable, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20Standard;
 
+    struct CreatorParams {
+        string pairName;
+        uint64 expirationTimestamp;
+        uint256 collateralPerPair;
+        bytes32 priceIdentifier;
+        string longSynthName;
+        string longSynthSymbol;
+        string shortSynthName;
+        string shortSynthSymbol;
+        IERC20Standard collateralToken;
+        LongShortPairFinancialProductLibrary financialProductLibrary;
+        bytes customAncillaryData;
+        uint256 prepaidProposerReward;
+        uint256 optimisticOracleLivenessTime;
+        uint256 optimisticOracleProposerBond;
+    }
+
     // Address of TokenFactory used to create a new synthetic token.
     TokenFactory public tokenFactory;
 
@@ -51,64 +68,46 @@ contract LongShortPairCreator is Testable, Lockable {
     /**
      * @notice Creates a longShortPair contract and associated long and short tokens.
      * @dev The caller must approve this contract to transfer `prepaidProposerReward` amount of collateral.
-     * @param expirationTimestamp unix timestamp of when the contract will expire.
-     * @param collateralPerPair how many units of collateral are required to mint one pair of synthetic tokens.
-     * @param priceIdentifier registered in the DVM for the synthetic.
-     * @param longSynthName Name of the long synthetic tokens to be created.
-     * @param longSynthSymbol Symbol of the long synthetic tokens to be created.
-     * @param shortSynthName Name of the short synthetic tokens to be created.
-     * @param shortSynthSymbol Symbol of the short synthetic tokens to be created.
-     * @param collateralToken ERC20 token used as collateral in the LSP.
-     * @param financialProductLibrary Contract providing settlement payout logic.
-     * @param customAncillaryData Custom ancillary data to be passed along with the price request. If not needed, this
+     * @param params Constructor params used to initialize the LSP. Key-valued object with the following structure:
+     *     expirationTimestamp: unix timestamp of when the contract will expire.
+     *     collateralPerPair: how many units of collateral are required to mint one pair of synthetic tokens.
+     *     priceIdentifier: registered in the DVM for the synthetic.
+     *     longSynthName: Name of the long synthetic tokens to be created.
+     *     longSynthSymbol: Symbol of the long synthetic tokens to be created.
+     *     shortSynthName: Name of the short synthetic tokens to be created.
+     *     shortSynthSymbol: Symbol of the short synthetic tokens to be created.
+     *     collateralToken: ERC20 token used as collateral in the LSP.
+     *     financialProductLibrary: Contract providing settlement payout logic.
+     *     customAncillaryData: Custom ancillary data to be passed along with the price request. If not needed, this
      *                             should be left as a 0-length bytes array.
-     * @param prepaidProposerReward Proposal reward forwarded to the created LSP to incentivize price proposals.
+     *     prepaidProposerReward: Proposal reward forwarded to the created LSP to incentivize price proposals.
+     *     optimisticOracleLivenessTime: Optimistic oracle liveness timer for price requests.
+           optimisticOracleProposerBond: optimistic oracle proposer bond for price requests.
      * @return lspAddress the deployed address of the new long short pair contract.
      * @notice Created LSP is not registered within the registry as the LSP uses the Optimistic Oracle for settlement.
      * @notice The LSP constructor does a number of validations on input params. These are not repeated here.
      */
-    function createLongShortPair(
-        uint64 expirationTimestamp,
-        uint256 collateralPerPair,
-        bytes32 priceIdentifier,
-        string memory longSynthName,
-        string memory longSynthSymbol,
-        string memory shortSynthName,
-        string memory shortSynthSymbol,
-        IERC20Standard collateralToken,
-        LongShortPairFinancialProductLibrary financialProductLibrary,
-        bytes memory customAncillaryData,
-        uint256 prepaidProposerReward
-    ) public nonReentrant() returns (address) {
+    function createLongShortPair(CreatorParams memory params) public nonReentrant() returns (address) {
         // Create a new synthetic token using the params.
-        require(bytes(longSynthName).length != 0, "Missing long synthetic name");
-        require(bytes(shortSynthName).length != 0, "Missing short synthetic name");
-        require(bytes(longSynthSymbol).length != 0, "Missing long synthetic symbol");
-        require(bytes(shortSynthSymbol).length != 0, "Missing short synthetic symbol");
+        require(bytes(params.longSynthName).length != 0, "Missing long synthetic name");
+        require(bytes(params.shortSynthName).length != 0, "Missing short synthetic name");
+        require(bytes(params.longSynthSymbol).length != 0, "Missing long synthetic symbol");
+        require(bytes(params.shortSynthSymbol).length != 0, "Missing short synthetic symbol");
 
         // If the collateral token does not have a `decimals()` method, then a default precision of 18 will be
         // applied to the newly created synthetic token.
-        uint8 collateralDecimals = _getSyntheticDecimals(collateralToken);
-        ExpandedIERC20 longToken = tokenFactory.createToken(longSynthName, longSynthSymbol, collateralDecimals);
-        ExpandedIERC20 shortToken = tokenFactory.createToken(shortSynthName, shortSynthSymbol, collateralDecimals);
-        LongShortPair lsp =
-            new LongShortPair(
-                expirationTimestamp,
-                collateralPerPair,
-                priceIdentifier,
-                longToken,
-                shortToken,
-                collateralToken,
-                finder,
-                financialProductLibrary,
-                customAncillaryData,
-                prepaidProposerReward,
-                timerAddress
-            );
+        uint8 collateralDecimals = _getSyntheticDecimals(params.collateralToken);
+        ExpandedIERC20 longToken =
+            tokenFactory.createToken(params.longSynthName, params.longSynthSymbol, collateralDecimals);
+        ExpandedIERC20 shortToken =
+            tokenFactory.createToken(params.shortSynthName, params.shortSynthSymbol, collateralDecimals);
+
+        // Deploy the LPS contract.
+        LongShortPair lsp = new LongShortPair(_convertParams(params, longToken, shortToken));
 
         // Move prepaid proposer reward from the deployer to the newly deployed contract.
-        if (prepaidProposerReward > 0)
-            collateralToken.safeTransferFrom(msg.sender, address(lsp), prepaidProposerReward);
+        if (params.prepaidProposerReward > 0)
+            params.collateralToken.safeTransferFrom(msg.sender, address(lsp), params.prepaidProposerReward);
 
         address lspAddress = address(lsp);
 
@@ -124,6 +123,33 @@ contract LongShortPairCreator is Testable, Lockable {
         emit CreatedLongShortPair(lspAddress, msg.sender, address(longToken), address(shortToken));
 
         return lspAddress;
+    }
+
+    // Converts createLongShortPair creator params to LongShortPair constructor params.
+    function _convertParams(
+        CreatorParams memory creatorParams,
+        ExpandedIERC20 longToken,
+        ExpandedIERC20 shortToken
+    ) private view returns (LongShortPair.ConstructorParams memory constructorParams) {
+        // Input from function call.
+        constructorParams.pairName = creatorParams.pairName;
+        constructorParams.expirationTimestamp = creatorParams.expirationTimestamp;
+        constructorParams.collateralPerPair = creatorParams.collateralPerPair;
+        constructorParams.priceIdentifier = creatorParams.priceIdentifier;
+        constructorParams.collateralToken = creatorParams.collateralToken;
+        constructorParams.financialProductLibrary = creatorParams.financialProductLibrary;
+        constructorParams.customAncillaryData = creatorParams.customAncillaryData;
+        constructorParams.prepaidProposerReward = creatorParams.prepaidProposerReward;
+        constructorParams.optimisticOracleLivenessTime = creatorParams.optimisticOracleLivenessTime;
+        constructorParams.optimisticOracleProposerBond = creatorParams.optimisticOracleProposerBond;
+
+        // Constructed long & short synthetic tokens.
+        constructorParams.longToken = longToken;
+        constructorParams.shortToken = shortToken;
+
+        // Finder and timer. Should be the same as that used in this factory contract.
+        constructorParams.finder = finder;
+        constructorParams.timerAddress = timerAddress;
     }
 
     // IERC20Standard.decimals() will revert if the collateral contract has not implemented the decimals() method,

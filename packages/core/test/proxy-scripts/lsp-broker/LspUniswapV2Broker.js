@@ -6,7 +6,7 @@ const {
   ZERO_ADDRESS,
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
-const { toWei, toBN, utf8ToHex, fromWei } = web3.utils;
+const { toWei, toBN, utf8ToHex, fromWei, padRight } = web3.utils;
 
 // Tested Contract
 const LspUniswapV2Broker = artifacts.require("LspUniswapV2Broker");
@@ -59,9 +59,10 @@ const ancillaryData = web3.utils.utf8ToHex("some-address-field:0x1234");
 const startTimestamp = Math.floor(Date.now() / 1000);
 const expirationTimestamp = startTimestamp + 10000;
 const optimisticOracleLiveness = 7200;
-const priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
+const priceIdentifier = padRight(utf8ToHex("TEST_IDENTIFIER"), 64);
 const collateralPerPair = toWei("1"); // each pair of long and short tokens need 1 unit of collateral to mint.
 const prepaidProposerReward = toWei("0");
+const pairName = "Long Short Pair Test";
 
 // Returns the current spot price of a uniswap pool, scaled to `precision` # decimal points.
 const getPoolSpotPrice = async (tokenA, tokenB, _pairAddress = pairAddress, precision = 4) => {
@@ -103,7 +104,7 @@ contract("LspUniswapV2Broker", function (accounts) {
     collateralWhitelist = await AddressWhitelist.deployed();
 
     identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier, { from: deployer });
+    await identifierWhitelist.addSupportedIdentifier(priceIdentifier, { from: deployer });
   });
   beforeEach(async () => {
     // Force each test to start with a simulated time that's synced to the startTimestamp.
@@ -128,19 +129,22 @@ contract("LspUniswapV2Broker", function (accounts) {
     // Create LSP library and LSP contract.
     longShortPairLibrary = await LongShortPairFinancialProjectLibraryTest.new();
 
-    longShortPair = await LongShortPair.new(
+    longShortPair = await LongShortPair.new({
+      pairName,
       expirationTimestamp,
       collateralPerPair,
-      priceFeedIdentifier,
-      longToken.address,
-      shortToken.address,
-      collateralToken.address,
-      finder.address,
-      longShortPairLibrary.address,
-      ancillaryData,
+      priceIdentifier,
+      longToken: longToken.address,
+      shortToken: shortToken.address,
+      collateralToken: collateralToken.address,
+      financialProductLibrary: longShortPairLibrary.address,
+      customAncillaryData: ancillaryData,
       prepaidProposerReward,
-      timer.address
-    );
+      optimisticOracleLivenessTime: 7200,
+      optimisticOracleProposerBond: toWei("0"),
+      finder: finder.address,
+      timerAddress: timer.address,
+    });
 
     // Add mint and burn roles for the long and short tokens to the long short pair.
     await longToken.addMember(1, longShortPair.address, { from: deployer });
