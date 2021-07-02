@@ -103,7 +103,7 @@ contract LongShortPairCreator is Testable, Lockable {
             tokenFactory.createToken(params.shortSynthName, params.shortSynthSymbol, collateralDecimals);
 
         // Deploy the LPS contract.
-        LongShortPair lsp = new LongShortPair(_convertParams(params, longToken, shortToken), finder, timerAddress);
+        LongShortPair lsp = new LongShortPair(_convertParams(params, longToken, shortToken));
 
         // Move prepaid proposer reward from the deployer to the newly deployed contract.
         if (params.prepaidProposerReward > 0)
@@ -130,7 +130,7 @@ contract LongShortPairCreator is Testable, Lockable {
         CreatorParams memory creatorParams,
         ExpandedIERC20 longToken,
         ExpandedIERC20 shortToken
-    ) private pure returns (LongShortPair.ConstructorParams memory constructorParams) {
+    ) private view returns (LongShortPair.ConstructorParams memory constructorParams) {
         // Input from function call.
         constructorParams.pairName = creatorParams.pairName;
         constructorParams.expirationTimestamp = creatorParams.expirationTimestamp;
@@ -146,6 +146,10 @@ contract LongShortPairCreator is Testable, Lockable {
         // Constructed long & short synthetic tokens.
         constructorParams.longToken = longToken;
         constructorParams.shortToken = shortToken;
+
+        // Finder and timer. Should be the same as that used in this factory contract.
+        constructorParams.finder = finder;
+        constructorParams.timerAddress = timerAddress;
     }
 
     // IERC20Standard.decimals() will revert if the collateral contract has not implemented the decimals() method,

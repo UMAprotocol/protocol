@@ -48,6 +48,8 @@ contract LongShortPair is Testable, Lockable {
         uint256 prepaidProposerReward; // Preloaded reward to incentivize settlement price proposals.
         uint256 optimisticOracleLivenessTime; // OO liveness timer for price requests.
         uint256 optimisticOracleProposerBond; // OO proposer bond for price requests.
+        FinderInterface finder; // DVM finder to find other UMA ecosystem contracts.
+        address timerAddress; // Timer used to synchronize contract time in testing. Set to 0x000... in production.
     }
 
     enum ContractState { Open, ExpiredPriceRequested, ExpiredPriceReceived }
@@ -113,16 +115,24 @@ contract LongShortPair is Testable, Lockable {
 
     /**
      * @notice Construct the LongShortPair
-     * @param params struct to define input parameters to construct the long short pair contract.
-     * @param _finder UMA protocol Finder used to discover other protocol contracts.
-     * @param _timerAddress Contract that stores the current time in a testing environment. Set to 0x0 in production.
+     * @param params Constructor params used to initialize the LSP. Key-valued object with the following structure:
+     *    pairName: Name of the long short pair contract.
+     *    expirationTimestamp: Unix timestamp of when the contract will expire.
+     *    collateralPerPair: How many units of collateral are required to mint one pair of synthetic tokens.
+     *    priceIdentifier: Price identifier, registered in the DVM for the long short pair.
+     *    longToken: Token used as long in the LSP. Mint and burn rights needed by this contract.
+     *    shortToken: Token used as short in the LSP. Mint and burn rights needed by this contract.
+     *    collateralToken: Collateral token used to back LSP synthetics.
+     *    financialProductLibrary: Contract providing settlement payout logic.
+     *    customAncillaryData: Custom ancillary data to be passed along with the price request to the OO.
+     *    prepaidProposerReward: Preloaded reward to incentivize settlement price proposals.
+     *    optimisticOracleLivenessTime: OO liveness timer for price requests.
+     *    optimisticOracleProposerBond: OO proposer bond for price requests.
+     *    finder: DVM finder to find other UMA ecosystem contracts.
+     *    timerAddress: Timer used to synchronize contract time in testing. Set to 0x000... in production.
      */
-    constructor(
-        ConstructorParams memory params,
-        FinderInterface _finder,
-        address _timerAddress
-    ) Testable(_timerAddress) {
-        finder = _finder;
+    constructor(ConstructorParams memory params) Testable(params.timerAddress) {
+        finder = params.finder;
         require(params.expirationTimestamp > getCurrentTime(), "Expiration timestamp in past");
         require(params.collateralPerPair > 0, "Collateral per pair cannot be 0");
         require(_getIdentifierWhitelist().isIdentifierSupported(params.priceIdentifier), "Identifier not registered");

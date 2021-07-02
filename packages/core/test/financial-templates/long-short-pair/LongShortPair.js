@@ -95,9 +95,11 @@ contract("LongShortPair", function (accounts) {
       prepaidProposerReward,
       optimisticOracleLivenessTime,
       optimisticOracleProposerBond,
+      finder: finder.address,
+      timerAddress: timer.address,
     };
 
-    longShortPair = await LongShortPair.new(constructorParams, finder.address, timer.address);
+    longShortPair = await LongShortPair.new(constructorParams);
     await collateralToken.mint(longShortPair.address, toWei("100"));
 
     // Add mint and burn roles for the long and short tokens to the long short pair.
@@ -126,40 +128,22 @@ contract("LongShortPair", function (accounts) {
       // Invalid expiration time.
       assert(
         await didContractThrow(
-          LongShortPair.new(
-            { ...constructorParams, expirationTimestamp: (await timer.getCurrentTime()) - 1 },
-            finder.address,
-            timer.address
-          )
+          LongShortPair.new({ ...constructorParams, expirationTimestamp: (await timer.getCurrentTime()) - 1 })
         )
       );
 
       // Invalid collateral per pair.
-      assert(
-        await didContractThrow(
-          LongShortPair.new({ ...constructorParams, collateralPerPair: "0" }, finder.address, timer.address)
-        )
-      );
+      assert(await didContractThrow(LongShortPair.new({ ...constructorParams, collateralPerPair: "0" })));
 
       // Invalid price identifier time.
-      assert(
-        await didContractThrow(
-          LongShortPair.new({ ...constructorParams, priceIdentifier: "BAD-IDENTIFIER" }, finder.address, timer.address)
-        )
-      );
+      assert(await didContractThrow(LongShortPair.new({ ...constructorParams, priceIdentifier: "BAD-IDENTIFIER" })));
       // Invalid LSP library address.
       assert(
-        await didContractThrow(
-          LongShortPair.new(
-            { ...constructorParams, financialProductLibrary: ZERO_ADDRESS },
-            finder.address,
-            timer.address
-          )
-        )
+        await didContractThrow(LongShortPair.new({ ...constructorParams, financialProductLibrary: ZERO_ADDRESS }))
       );
 
       // Invalid Finder address.
-      assert(await didContractThrow(LongShortPair.new(constructorParams, ZERO_ADDRESS, timer.address)));
+      assert(await didContractThrow(LongShortPair.new({ ...constructorParams, finder: ZERO_ADDRESS })));
 
       // Test ancillary data limits.
       // Get max length from contract.
@@ -170,11 +154,7 @@ contract("LongShortPair", function (accounts) {
       const remainingLength = maxLength - (ooAncillary.length - 2) / 2; // Remove the 0x and divide by 2 to get bytes.
       assert(
         await didContractThrow(
-          LongShortPair.new(
-            { ...constructorParams, customAncillaryData: web3.utils.randomHex(remainingLength + 1) },
-            finder.address,
-            timer.address
-          )
+          LongShortPair.new({ ...constructorParams, customAncillaryData: web3.utils.randomHex(remainingLength + 1) })
         )
       );
     });
@@ -425,7 +405,7 @@ contract("LongShortPair", function (accounts) {
         prepaidProposerReward: convertDecimals("100").toString(),
       };
 
-      longShortPair = await LongShortPair.new(constructorParams, finder.address, timer.address);
+      longShortPair = await LongShortPair.new(constructorParams);
       await collateralToken.mint(longShortPair.address, convertDecimals("100"));
 
       // Add mint and burn roles for the long and short tokens to the long short pair.
@@ -499,7 +479,7 @@ contract("LongShortPair", function (accounts) {
 
       constructorParams = { ...constructorParams, optimisticOracleLivenessTime, optimisticOracleProposerBond };
 
-      longShortPair = await LongShortPair.new(constructorParams, finder.address, timer.address);
+      longShortPair = await LongShortPair.new(constructorParams);
       await collateralToken.mint(longShortPair.address, toWei("100"));
 
       // Add mint and burn roles for the long and short tokens to the long short pair.
