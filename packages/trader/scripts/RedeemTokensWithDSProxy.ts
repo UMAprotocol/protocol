@@ -1,6 +1,6 @@
 // This script enables a DSProxy to redeem tokens from a contract. This should be used after a swap/mint/liquidate transaction
 // to close out a bots position. To execute the script, run:
-// truffle exec ./scripts /RedeemTokensWithDSProxy.ts--financialContractAddress 0x123 --numTokens 100000000000000000000 --dsProxyFactoryAddress 0x123 --network mainnet_mnemonic
+// truffle exec ./scripts/RedeemTokensWithDSProxy.ts--financialContractAddress 0x123 --numTokens 100000000000000000000 --dsProxyFactoryAddress 0x123 --network mainnet_mnemonic
 // Note if you do not provide the dsProxyAddress the script will try find one deployed at the unlocked wallet account.
 
 async function RedeemTokensWithDSProxy() {
