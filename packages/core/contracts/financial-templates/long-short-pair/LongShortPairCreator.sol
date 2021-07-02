@@ -22,10 +22,10 @@ contract LongShortPairCreator is Testable, Lockable {
     using SafeERC20 for IERC20Standard;
 
     struct CreatorParams {
-        string pairName; // Name of the long short pair contract.
-        uint64 expirationTimestamp; // Unix timestamp of when the contract will expire.
-        uint256 collateralPerPair; // How many units of collateral are required to mint one pair of synthetic tokens.
-        bytes32 priceIdentifier; // Price identifier, registered in the DVM for the long short pair.
+        string pairName;
+        uint64 expirationTimestamp;
+        uint256 collateralPerPair;
+        bytes32 priceIdentifier;
         string longSynthName;
         string longSynthSymbol;
         string shortSynthName;

@@ -42,12 +42,12 @@ contract LongShortPair is Testable, Lockable {
         bytes32 priceIdentifier; // Price identifier, registered in the DVM for the long short pair.
         ExpandedIERC20 longToken; // Token used as long in the LSP. Mint and burn rights needed by this contract.
         ExpandedIERC20 shortToken; // Token used as short in the LSP. Mint and burn rights needed by this contract.
-        IERC20 collateralToken;
-        LongShortPairFinancialProductLibrary financialProductLibrary;
-        bytes customAncillaryData;
-        uint256 prepaidProposerReward;
-        uint256 optimisticOracleLivenessTime;
-        uint256 optimisticOracleProposerBond;
+        IERC20 collateralToken; // Collateral token used to back LSP synthetics.
+        LongShortPairFinancialProductLibrary financialProductLibrary; // Contract providing settlement payout logic.
+        bytes customAncillaryData; // Custom ancillary data to be passed along with the price request to the OO.
+        uint256 prepaidProposerReward; // Preloaded reward to incentivize settlement price proposals.
+        uint256 optimisticOracleLivenessTime; // OO liveness timer for price requests.
+        uint256 optimisticOracleProposerBond; // OO proposer bond for price requests.
     }
 
     enum ContractState { Open, ExpiredPriceRequested, ExpiredPriceReceived }
