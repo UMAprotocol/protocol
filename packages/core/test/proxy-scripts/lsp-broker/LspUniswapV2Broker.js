@@ -129,24 +129,22 @@ contract("LspUniswapV2Broker", function (accounts) {
     // Create LSP library and LSP contract.
     longShortPairLibrary = await LongShortPairFinancialProjectLibraryTest.new();
 
-    longShortPair = await LongShortPair.new(
-      {
-        pairName,
-        expirationTimestamp,
-        collateralPerPair,
-        priceIdentifier,
-        longToken: longToken.address,
-        shortToken: shortToken.address,
-        collateralToken: collateralToken.address,
-        financialProductLibrary: longShortPairLibrary.address,
-        customAncillaryData: ancillaryData,
-        prepaidProposerReward,
-        optimisticOracleLivenessTime: 7200,
-        optimisticOracleProposerBond: toWei("0"),
-      },
-      finder.address,
-      timer.address
-    );
+    longShortPair = await LongShortPair.new({
+      pairName,
+      expirationTimestamp,
+      collateralPerPair,
+      priceIdentifier,
+      longToken: longToken.address,
+      shortToken: shortToken.address,
+      collateralToken: collateralToken.address,
+      financialProductLibrary: longShortPairLibrary.address,
+      customAncillaryData: ancillaryData,
+      prepaidProposerReward,
+      optimisticOracleLivenessTime: 7200,
+      optimisticOracleProposerBond: toWei("0"),
+      finder: finder.address,
+      timerAddress: timer.address,
+    });
 
     // Add mint and burn roles for the long and short tokens to the long short pair.
     await longToken.addMember(1, longShortPair.address, { from: deployer });
