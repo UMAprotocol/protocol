@@ -87,17 +87,16 @@ contract RangeBondLongShortPairFinancialProductLibrary is LongShortPairFinancial
         RangeBondLongShortPairParameters memory params = longShortPairParameters[msg.sender];
         require(params.highPriceRange != 0 || params.lowPriceRange != 0, "Params not set for calling LSP");
 
-        // This function's returns a value between 0 and 1e18 to be used in conjunction with the LSP collateralPerPair
+        // This function returns a value between 0 and 1e18 to be used in conjunction with the LSP collateralPerPair
         // that allocates collateral between the short and long tokens on expiry. This can be simplified by considering
-        // the price in three discreet ranges: 1) below the low price range, 2) between low and high range
-        // and 3) above the high price range.
+        // the price in three discrete ranges: 1) below the low price range, 2) between low and high range and 3) above
+        // the high price range.
         uint256 positiveExpiryPrice = expiryPrice > 0 ? uint256(expiryPrice) : 0;
 
-        // 1) The long position is entitled to the full position in this range. (collateralTokens * lowPriceRange) is
-        // the notional value of the bond below the range.
+        // 1) The long position is entitled to the full position in this range. The short token is worth 0.
         if (positiveExpiryPrice <= params.lowPriceRange) return FixedPoint.fromUnscaledUint(1).rawValue;
-        // 2) Within the range, the long position is entitled to the bond notional value, which is equal to a fixed
-        // fraction of the collateral. In this range it acts like a yield dollar.
+        // 2) Within the range, the long position is entitled to the bond notional value which is equal to
+        // (collateral tokens * lowPriceRange).
         if (positiveExpiryPrice <= params.highPriceRange)
             return FixedPoint.Unsigned(params.lowPriceRange).div(FixedPoint.Unsigned(positiveExpiryPrice)).rawValue;
         // 3) Above the range, the long position is entitled to a fixed number of tokens.
