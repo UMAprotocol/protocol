@@ -1,6 +1,7 @@
 import assert from "assert";
 import Web3 from "web3";
 import { ethers } from "ethers";
+import moment from "moment";
 
 import { tables, Coingecko, utils } from "@uma/sdk";
 
@@ -89,10 +90,14 @@ async function run(env: ProcessEnv) {
   console.log("Updated emp state");
   await services.erc20s.update();
   console.log("Updated tokens");
-  await services.collateralPrices.update();
-  console.log("Updated Collateral Prices");
   await services.syntheticPrices.update();
   console.log("Updated Synthetic Prices");
+
+  // backfill price histories
+  await services.collateralPrices.backfill(moment().subtract(1, "month").valueOf());
+
+  await services.collateralPrices.update();
+  console.log("Updated Collateral Prices");
   await services.empStats.update();
   console.log("Updated EMP Stats");
 

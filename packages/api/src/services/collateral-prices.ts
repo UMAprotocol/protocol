@@ -1,10 +1,11 @@
 import * as uma from "@uma/sdk";
+import bluebird from "bluebird";
 import assert from "assert";
 import { AppState, CurrencySymbol } from "..";
 type Config = {
   currency?: CurrencySymbol;
 };
-import { parseUnits } from "../libs/utils";
+import { parseUnits, msToS } from "../libs/utils";
 
 type Dependencies = Pick<AppState, "coingecko" | "prices" | "collateralAddresses">;
 
@@ -72,8 +73,46 @@ export default function (config: Config, appState: Dependencies) {
     });
   }
 
+  async function backfillHistory(tokenAddress: string, startMs: number, endMs: number = Date.now()) {
+    const table = getOrCreateHistoryTable(tokenAddress);
+    const priceHistory = await coingecko.getHistoricContractPrices(tokenAddress, startMs, endMs, currency);
+    await bluebird.map(priceHistory, async ([timestamp, price]: [number, string]) => {
+      if (await table.hasByTimestamp(timestamp)) return;
+      // timestamp is returned as ms, even though other calls return in S, we must convert
+      // price returned in decimals, we want in in wei internally
+      return table.create({ timestamp: msToS(timestamp), price: parseUnits(price.toString()).toString() });
+    });
+    return priceHistory;
+  }
+
+  async function backfillHistories(tokenAddresses: string[], startMs: number, endMs: number = Date.now()) {
+    return bluebird.map(tokenAddresses, async (address) => {
+      try {
+        return {
+          status: "fullfilled",
+          value: await backfillHistory(address, startMs, endMs),
+        };
+      } catch (err) {
+        return {
+          status: "rejected",
+          reason: err,
+        };
+      }
+    });
+  }
+
+  async function backfill(startMs: number) {
+    const addresses = Array.from(collateralAddresses.values());
+    await backfillHistories(addresses, startMs).then((results) => {
+      results.forEach((result) => {
+        if (result.status === "rejected") console.error("Error backfilling prices: " + result.reason.message);
+      });
+    });
+  }
+
   return {
     update,
+    backfill,
     // internal functions meant to support updating
     utils: {
       getOrCreateHistoryTable,
@@ -82,6 +121,8 @@ export default function (config: Config, appState: Dependencies) {
       updatePriceHistory,
       updateLatestPrice,
       updateLatestPrices,
+      backfillHistory,
+      backfillHistories,
     },
   };
 }
