@@ -37,7 +37,7 @@ abstract contract OptimisticOracleInterface {
 
     // This value must be <= the Voting contract's `ancillaryBytesLimit` value otherwise it is possible
     // that a price can be requested to this contract successfully, but cannot be disputed because the DVM refuses
-    // to accept a price request made with ancillary data length of a certain size.
+    // to accept a price request made with ancillary data length over a certain size.
     uint256 public constant ancillaryBytesLimit = 8192;
 
     /**
