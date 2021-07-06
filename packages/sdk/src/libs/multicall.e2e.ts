@@ -19,19 +19,49 @@ describe("multicall", function () {
     assert.ok(multicall);
     assert.ok(empClient);
   });
-  test("multicall add read", async function () {
-    multicall.add(empClient, "priceIdentifier");
-    multicall.add(empClient, "tokenCurrency");
-    multicall.add(empClient, "collateralCurrency");
-    const result = await multicall.read();
+  test("multicall add read chain", async function () {
+    const result = await multicall
+      .add(empClient, { method: "priceIdentifier" })
+      .add(empClient, { method: "tokenCurrency" })
+      .add(empClient, { method: "collateralCurrency" })
+      .read();
+
     assert.equal(result.length, 3);
+
+    // ensure that chained calls did not affect parent state
+    const parentResult = await multicall.read();
+    assert.equal(parentResult.length, 0);
+  });
+  test("multicall add read replace", async function () {
+    let multicallchild = multicall.add(empClient, { method: "priceIdentifier" });
+
+    multicallchild = multicallchild.add(empClient, { method: "tokenCurrency" });
+    multicallchild = multicallchild.add(empClient, { method: "collateralCurrency" });
+
+    const result = await multicallchild.read();
+
+    assert.equal(result.length, 3);
+
+    // ensure that chained calls did not affect parent state
+    const parentResult = await multicall.read();
+    assert.equal(parentResult.length, 0);
   });
   test("multicall add read", async function () {
     const calls: [string][] = [["priceIdentifier"], ["tokenCurrency"], ["collateralCurrency"]];
     // reset multicall
     multicall = new Multicall(address, provider);
-    multicall.batch(empClient, calls);
-    const result = await multicall.read();
+    const result = await multicall
+      .batch(
+        empClient,
+        calls.map(([method]) => {
+          return { method };
+        })
+      )
+      .read();
     assert.equal(result.length, calls.length);
+
+    // ensure that chained calls did not affect parent state
+    const parentResult = await multicall.read();
+    assert.equal(parentResult.length, 0);
   });
 });
