@@ -482,7 +482,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) public view override returns (Request memory) {
+    ) public view override nonReentrantView() returns (Request memory) {
         return _getRequest(requester, identifier, timestamp, ancillaryData);
     }
 
@@ -499,7 +499,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) public view override returns (State) {
+    ) public view override nonReentrantView() returns (State) {
         Request storage request = _getRequest(requester, identifier, timestamp, ancillaryData);
 
         if (address(request.currency) == address(0)) {
@@ -537,7 +537,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) public view override returns (bool) {
+    ) public view override nonReentrantView() returns (bool) {
         State state = getState(requester, identifier, timestamp, ancillaryData);
         return state == State.Settled || state == State.Resolved || state == State.Expired;
     }
