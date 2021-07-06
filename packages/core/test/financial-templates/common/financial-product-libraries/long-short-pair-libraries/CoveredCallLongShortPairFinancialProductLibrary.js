@@ -52,20 +52,20 @@ contract("CoveredCallLongShortPairFinancialProductLibrary", function () {
       await callOptionLSPFPL.setLongShortPairParameters(expiringContractMock.address, strikePrice);
     });
     it("Lower than strike should return 0", async () => {
-      const expiryTokensForCollateral = await callOptionLSPFPL.computeExpiryTokensForCollateral.call(toWei("300"), {
+      const expiryTokensForCollateral = await callOptionLSPFPL.percentageLongCollateralAtExpiry.call(toWei("300"), {
         from: expiringContractMock.address,
       });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0"));
     });
     it("Higher than strike correct value", async () => {
-      const expiryTokensForCollateral = await callOptionLSPFPL.computeExpiryTokensForCollateral.call(toWei("500"), {
+      const expiryTokensForCollateral = await callOptionLSPFPL.percentageLongCollateralAtExpiry.call(toWei("500"), {
         from: expiringContractMock.address,
       });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0.2"));
     });
     it("Arbitrary expiry price above strike should return correctly", async () => {
       for (const price of [toWei("500"), toWei("600"), toWei("1000"), toWei("1500"), toWei("2000")]) {
-        const expiryTokensForCollateral = await callOptionLSPFPL.computeExpiryTokensForCollateral.call(price, {
+        const expiryTokensForCollateral = await callOptionLSPFPL.percentageLongCollateralAtExpiry.call(price, {
           from: expiringContractMock.address,
         });
         const expectedPrice = toBN(price)
@@ -77,7 +77,7 @@ contract("CoveredCallLongShortPairFinancialProductLibrary", function () {
     });
     it("Should never return a value greater than 1", async () => {
       // create a massive expiry price. 1e18*1e18. Under all conditions should return less than 1.
-      const expiryTokensForCollateral = await callOptionLSPFPL.computeExpiryTokensForCollateral.call(
+      const expiryTokensForCollateral = await callOptionLSPFPL.percentageLongCollateralAtExpiry.call(
         toWei(toWei("1")),
         { from: expiringContractMock.address }
       );

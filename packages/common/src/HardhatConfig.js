@@ -15,6 +15,9 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
   // Custom tasks to interact conveniently with smart contracts.
   require("./hardhat");
 
+  // Custom plugin to enhance web3 functionality.
+  require("./hardhat/plugins/ExtendedWeb3");
+
   // Solc version defined here so etherscan-verification has access to it
   const solcVersion = "0.8.4";
 

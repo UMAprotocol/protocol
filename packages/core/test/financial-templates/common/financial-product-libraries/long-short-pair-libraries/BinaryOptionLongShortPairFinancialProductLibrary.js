@@ -52,19 +52,19 @@ contract("BinaryOptionLongShortPairFinancialProductLibrary", function () {
       await binaryLSPFPL.setLongShortPairParameters(expiringContractMock.address, strikePrice);
     });
     it("Lower than lower bound should return 0", async () => {
-      const expiraryTokensForCollateral = await binaryLSPFPL.computeExpiryTokensForCollateral.call(toWei("2500"), {
+      const expiraryTokensForCollateral = await binaryLSPFPL.percentageLongCollateralAtExpiry.call(toWei("2500"), {
         from: expiringContractMock.address,
       });
       assert.equal(expiraryTokensForCollateral.toString(), toWei("0"));
     });
     it("equal to upper bound should return 1", async () => {
-      const expiraryTokensForCollateral = await binaryLSPFPL.computeExpiryTokensForCollateral.call(toWei("3000"), {
+      const expiraryTokensForCollateral = await binaryLSPFPL.percentageLongCollateralAtExpiry.call(toWei("3000"), {
         from: expiringContractMock.address,
       });
       assert.equal(expiraryTokensForCollateral.toString(), toWei("1"));
     });
     it("Higher than upper bound should return 1", async () => {
-      const expiraryTokensForCollateral = await binaryLSPFPL.computeExpiryTokensForCollateral.call(toWei("3500"), {
+      const expiraryTokensForCollateral = await binaryLSPFPL.percentageLongCollateralAtExpiry.call(toWei("3500"), {
         from: expiringContractMock.address,
       });
       assert.equal(expiraryTokensForCollateral.toString(), toWei("1"));
@@ -72,7 +72,7 @@ contract("BinaryOptionLongShortPairFinancialProductLibrary", function () {
 
     it("Arbitrary price between bounds should return correctly", async () => {
       for (const price of [toWei("1000"), toWei("2000"), toWei("3000"), toWei("4000"), toWei("5000"), toWei("10000")]) {
-        const expiraryTokensForCollateral = await binaryLSPFPL.computeExpiryTokensForCollateral.call(price, {
+        const expiraryTokensForCollateral = await binaryLSPFPL.percentageLongCollateralAtExpiry.call(price, {
           from: expiringContractMock.address,
         });
         const expectedPrice = toBN(price).gte(toBN(strikePrice)) ? toWei("1") : toWei("0");

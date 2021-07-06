@@ -21,7 +21,7 @@ async function execute(callback) {
         silent: true,
       }),
       60, // Time between updates.
-      100 // Default gas price.
+      await web3.eth.net.getId()
     );
 
     for (let j = start; j <= end; j++) {

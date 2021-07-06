@@ -259,6 +259,11 @@ contract("PerpetualCreator", function (accounts) {
     assert.isTrue(await tokenContract.isMinter(perpetualAddress));
     assert.isTrue(await tokenContract.isBurner(perpetualAddress));
     assert.isTrue(await tokenContract.holdsRole(0, perpetualAddress));
+
+    // The creator contract should hold no roles.
+    assert.isFalse(await tokenContract.holdsRole(0, perpetualCreator.address));
+    assert.isFalse(await tokenContract.holdsRole(1, perpetualCreator.address));
+    assert.isFalse(await tokenContract.holdsRole(2, perpetualCreator.address));
   });
 
   it("If collateral currency does not implement the decimals() method then synthetic currency defaults to 18 decimals", async function () {

@@ -2,14 +2,13 @@ import assert from "assert";
 import Web3 from "web3";
 import { ethers } from "ethers";
 
-import { tables, Coingecko } from "@uma/sdk";
+import { tables, Coingecko, utils } from "@uma/sdk";
 
 import * as Services from "../../services";
 import Express from "../../services/express";
 import Actions from "../../services/actions";
 import { ProcessEnv, AppState } from "../..";
 import { empStats } from "../../tables";
-import { uniqueId } from "lodash";
 
 async function run(env: ProcessEnv) {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
@@ -69,7 +68,7 @@ async function run(env: ProcessEnv) {
     collateralPrices: Services.CollateralPrices({}, appState),
     syntheticPrices: Services.SyntheticPrices(
       {
-        cryptowatchApiKey: env.cryptwatchApiKey,
+        cryptowatchApiKey: env.cryptowatchApiKey,
         tradermadeApiKey: env.tradermadeApiKey,
         quandlApiKey: env.quandlApiKey,
         defipulseApiKey: env.defipulseApiKey,
@@ -129,7 +128,7 @@ async function run(env: ProcessEnv) {
   }
 
   // coingeckos prices don't update very fast, so set it on an interval every few minutes
-  setInterval(() => {
+  utils.loop(async () => {
     updatePrices().catch(console.error);
   }, 5 * 60 * 1000);
 }

@@ -45,7 +45,7 @@
   },
   {
     "contractName": "TokenFactory",
-    "address": "0x7c96d6235CfaaCcAc5d80fCe74E6032B25dd1F03"
+    "address": "0x55D8B8c54250f8B5BB192D42Aa746b4C2Ef2d55C"
   },
   {
     "contractName": "AddressWhitelist",
@@ -90,5 +90,25 @@
   {
     "contractName": "GovernorRootTunnel",
     "address": "0xe24914adb2dbb106e97e1c1025f4edb27cdbeca0"
+  },
+  {
+    "contractName": "LongShortPairCreator",
+    "address": "0x5a8d408B7908E4F00A2f5460B621dbF2DDce8042"
+  },
+  {
+    "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
+    "address": "0x072819Bb43B50E7A251c64411e7aA362ce82803B"
+  },
+  {
+    "contractName": "CoveredCallLongShortPairFinancialProductLibrary",
+    "address": "0x37780b718c19F7f06D41f3c68C3A78ECB2Ca191f"
+  },
+  {
+    "contractName": "LinearLongShortPairFinancialProductLibrary",
+    "address": "0x488211B646b909C490d942f456481BeAE52fde27"
+  },
+  {
+    "contractName": "RangeBondLongShortPairFinancialProductLibrary",
+    "address": "0x9214454Ff30410a1558b8749Ab3FB0fD6F942539"
   }
 ]

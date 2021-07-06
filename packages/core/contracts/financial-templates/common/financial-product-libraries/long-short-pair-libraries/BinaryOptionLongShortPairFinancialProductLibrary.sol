@@ -28,30 +28,30 @@ contract BinaryOptionLongShortPairFinancialProductLibrary is LongShortPairFinanc
 
     /**
      * @notice Enables any address to set the strike price for an associated binary option.
-     * @param LongShortPair address of the LSP.
+     * @param longShortPair address of the LSP.
      * @param strikePrice the strike price for the binary option.
      * @dev Note: a) Any address can set the initial strike price b) A strike can be 0.
      * c) A strike price can only be set once to prevent the deployer from changing the strike after the fact.
      * d) For safety, a strike price should be set before depositing any synthetic tokens in a liquidity pool.
-     * e) financialProduct must expose an expirationTimestamp method to validate it is correctly deployed.
+     * e) longShortPair must expose an expirationTimestamp method to validate it is correctly deployed.
      */
-    function setLongShortPairParameters(address LongShortPair, int256 strikePrice) public nonReentrant() {
-        require(ExpiringContractInterface(LongShortPair).expirationTimestamp() != 0, "Invalid LSP address");
-        require(!longShortPairParameters[LongShortPair].isSet, "Parameters already set");
+    function setLongShortPairParameters(address longShortPair, int256 strikePrice) public nonReentrant() {
+        require(ExpiringContractInterface(longShortPair).expirationTimestamp() != 0, "Invalid LSP address");
+        require(!longShortPairParameters[longShortPair].isSet, "Parameters already set");
 
-        longShortPairParameters[LongShortPair] = BinaryLongShortPairParameters({
+        longShortPairParameters[longShortPair] = BinaryLongShortPairParameters({
             isSet: true,
             strikePrice: strikePrice
         });
     }
 
     /**
-     * @notice Returns a number between 0 and 1 to indicate how much collateral each long and short token are entitled
+     * @notice Returns a number between 0 and 1e18 to indicate how much collateral each long and short token are entitled
      * to per collateralPerPair.
      * @param expiryPrice price from the optimistic oracle for the LSP price identifier.
      * @return expiryPercentLong to indicate how much collateral should be sent between long and short tokens.
      */
-    function computeExpiryTokensForCollateral(int256 expiryPrice)
+    function percentageLongCollateralAtExpiry(int256 expiryPrice)
         public
         view
         override

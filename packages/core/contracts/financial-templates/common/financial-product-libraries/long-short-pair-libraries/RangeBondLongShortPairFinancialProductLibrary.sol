@@ -42,7 +42,7 @@ contract RangeBondLongShortPairFinancialProductLibrary is LongShortPairFinancial
 
     /**
      * @notice Enables any address to set the parameters price for an associated financial product.
-     * @param LongShortPair address of the LSP contract.
+     * @param longShortPair address of the LSP contract.
      * @param highPriceRange high price range after which the payout transforms from a yield dollar to a call option.
      * @param lowPriceRange low price range below which the payout transforms from a yield dollar to a short put option.
      * @dev between highPriceRange and lowPriceRange the contract will payout a fixed amount of
@@ -51,33 +51,33 @@ contract RangeBondLongShortPairFinancialProductLibrary is LongShortPairFinancial
      * c) highPriceRange > lowPriceRange.
      * d) parameters price can only be set once to prevent the deployer from changing the parameters after the fact.
      * e) For safety, a parameters should be set before depositing any synthetic tokens in a liquidity pool.
-     * f) financialProduct must expose an expirationTimestamp method to validate it is correctly deployed.
+     * f) longShortPair must expose an expirationTimestamp method to validate it is correctly deployed.
      */
     function setLongShortPairParameters(
-        address LongShortPair,
+        address longShortPair,
         uint256 highPriceRange,
         uint256 lowPriceRange
     ) public nonReentrant() {
-        require(ExpiringContractInterface(LongShortPair).expirationTimestamp() != 0, "Invalid LSP address");
+        require(ExpiringContractInterface(longShortPair).expirationTimestamp() != 0, "Invalid LSP address");
 
         require(highPriceRange > lowPriceRange, "Invalid bounds");
 
-        RangeBondLongShortPairParameters memory params = longShortPairParameters[LongShortPair];
+        RangeBondLongShortPairParameters memory params = longShortPairParameters[longShortPair];
         require(params.highPriceRange == 0 && params.lowPriceRange == 0, "Parameters already set");
 
-        longShortPairParameters[LongShortPair] = RangeBondLongShortPairParameters({
+        longShortPairParameters[longShortPair] = RangeBondLongShortPairParameters({
             highPriceRange: highPriceRange,
             lowPriceRange: lowPriceRange
         });
     }
 
     /**
-     * @notice Returns a number between 0 and 1 to indicate how much collateral each long and short token are entitled
+     * @notice Returns a number between 0 and 1e18 to indicate how much collateral each long and short token are entitled
      * to per collateralPerPair.
      * @param expiryPrice price from the optimistic oracle for the LSP price identifier.
      * @return expiryPercentLong to indicate how much collateral should be sent between long and short tokens.
      */
-    function computeExpiryTokensForCollateral(int256 expiryPrice)
+    function percentageLongCollateralAtExpiry(int256 expiryPrice)
         public
         view
         override
@@ -85,25 +85,22 @@ contract RangeBondLongShortPairFinancialProductLibrary is LongShortPairFinancial
         returns (uint256)
     {
         RangeBondLongShortPairParameters memory params = longShortPairParameters[msg.sender];
+        require(params.highPriceRange != 0 || params.lowPriceRange != 0, "Params not set for calling LSP");
 
-        // expiryPercentLong=[min(max(1/R2,1/P),1/R1)]/(1/R1)
-        // This function's method must return a value between 0 and 1 to be used in conjunction with the LSP
-        // collateralPerPair that allocates collateral between the short and long tokens on expiry.
-
+        // This function's returns a value between 0 and 1e18 to be used in conjunction with the LSP collateralPerPair
+        // that allocates collateral between the short and long tokens on expiry. This can be simplified by considering
+        // the price in three discreet ranges: 1) below the low price range, 2) between low and high range
+        // and 3) above the high price range.
         uint256 positiveExpiryPrice = expiryPrice > 0 ? uint256(expiryPrice) : 0;
 
-        FixedPoint.Unsigned memory expiryPriceInverted =
-            FixedPoint.fromUnscaledUint(1).div(FixedPoint.Unsigned(positiveExpiryPrice));
-
-        FixedPoint.Unsigned memory maxPriceInverted =
-            FixedPoint.fromUnscaledUint(1).div(FixedPoint.Unsigned(params.highPriceRange));
-
-        FixedPoint.Unsigned memory minPriceInverted =
-            FixedPoint.fromUnscaledUint(1).div(FixedPoint.Unsigned(params.lowPriceRange));
-
-        return
-            (FixedPoint.min(FixedPoint.max(maxPriceInverted, expiryPriceInverted), minPriceInverted))
-                .div(minPriceInverted)
-                .rawValue;
+        // 1) The long position is entitled to the full position in this range. (collateralTokens * lowPriceRange) is
+        // the notional value of the bond below the range.
+        if (positiveExpiryPrice <= params.lowPriceRange) return FixedPoint.fromUnscaledUint(1).rawValue;
+        // 2) Within the range, the long position is entitled to the bond notional value, which is equal to a fixed
+        // fraction of the collateral. In this range it acts like a yield dollar.
+        if (positiveExpiryPrice <= params.highPriceRange)
+            return FixedPoint.Unsigned(params.lowPriceRange).div(FixedPoint.Unsigned(positiveExpiryPrice)).rawValue;
+        // 3) Above the range, the long position is entitled to a fixed number of tokens.
+        return FixedPoint.Unsigned(params.lowPriceRange).div(FixedPoint.Unsigned(params.highPriceRange)).rawValue;
     }
 }

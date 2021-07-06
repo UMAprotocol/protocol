@@ -62,19 +62,19 @@ contract("LinearLongShortPairFinancialProductLibrary", function () {
       await linearLSPFPL.setLongShortPairParameters(expiringContractMock.address, upperBound, lowerBound);
     });
     it("Lower than lower bound should return 0", async () => {
-      const expiryTokensForCollateral = await linearLSPFPL.computeExpiryTokensForCollateral.call(toWei("900"), {
+      const expiryTokensForCollateral = await linearLSPFPL.percentageLongCollateralAtExpiry.call(toWei("900"), {
         from: expiringContractMock.address,
       });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0"));
     });
     it("Higher than upper bound should return 1", async () => {
-      const expiryTokensForCollateral = await linearLSPFPL.computeExpiryTokensForCollateral.call(toWei("2100"), {
+      const expiryTokensForCollateral = await linearLSPFPL.percentageLongCollateralAtExpiry.call(toWei("2100"), {
         from: expiringContractMock.address,
       });
       assert.equal(expiryTokensForCollateral.toString(), toWei("1"));
     });
     it("Midway between bounds should return 0.5", async () => {
-      const expiryTokensForCollateral = await linearLSPFPL.computeExpiryTokensForCollateral.call(toWei("1500"), {
+      const expiryTokensForCollateral = await linearLSPFPL.percentageLongCollateralAtExpiry.call(toWei("1500"), {
         from: expiringContractMock.address,
       });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0.5"));
@@ -82,7 +82,7 @@ contract("LinearLongShortPairFinancialProductLibrary", function () {
 
     it("Arbitrary price between bounds should return correctly", async () => {
       for (const price of [toWei("1000"), toWei("1200"), toWei("1400"), toWei("1600"), toWei("1800"), toWei("2000")]) {
-        const expiryTokensForCollateral = await linearLSPFPL.computeExpiryTokensForCollateral.call(price, {
+        const expiryTokensForCollateral = await linearLSPFPL.percentageLongCollateralAtExpiry.call(price, {
           from: expiringContractMock.address,
         });
         const numerator = toBN(price).sub(toBN(lowerBound));
