@@ -12,13 +12,13 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
   require("@eth-optimism/hardhat-ovm");
   require("./gckms/KeyInjectorPlugin");
 
-  // Custom tasks to interact conveniently with smart contracts.
+  // Custom tasks.
   require("./hardhat");
 
   // Custom plugin to enhance web3 functionality.
   require("./hardhat/plugins/ExtendedWeb3");
 
-  // Solc version defined here so etherscan-verification has access to it
+  // Solc version defined here so etherscan-verification has access to it.
   const solcVersion = "0.8.4";
 
   const defaultConfig = {
@@ -39,8 +39,7 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
         gas: 11500000,
         blockGasLimit: 11500000,
         allowUnlimitedContractSize: false,
-        timeout: 1800000,
-        testBlacklist: ["ovm"],
+        timeout: 1800000
       },
       optimism: {
         url: "http://127.0.0.1:8545",
@@ -57,6 +56,7 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
           "oracle/implementation/IdentifierWhitelist.sol",
           "common/implementation/AddressWhitelist.sol",
         ],
+        testBlacklist: ["chainbridge", "financial-templates", "merkle-distributor", "oracle", "polygon", "proxy-scripts", "scripts"],
       },
       localhost: {
         url: "http://127.0.0.1:8545",
