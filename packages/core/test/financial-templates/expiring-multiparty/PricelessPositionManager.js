@@ -1,6 +1,6 @@
 const hre = require("hardhat");
 const { runDefaultFixture } = require("@uma/common");
-const { getContract, assertEventEmitted } = hre;
+const { getContract, assertEventEmitted, assertEventNotEmitted } = hre;
 // Libraries and helpers
 const { PositionStatesEnum, didContractThrow, OptimisticOracleRequestStatesEnum } = require("@uma/common");
 const { interfaceName, ZERO_ADDRESS } = require("@uma/common");
@@ -98,7 +98,7 @@ contract("PricelessPositionManager", function (accounts) {
         from: proposer,
       }
     );
-    await optimisticOracle.setCurrentTime(proposalTime + optimisticOracleLiveness).send({ from:accounts[0] });
+    await optimisticOracle.methods.setCurrentTime(proposalTime + optimisticOracleLiveness).send({ from:accounts[0] });
     await optimisticOracle.methods
       .settle(pricelessPositionManager.options.address, priceFeedIdentifier, requestTime, ancillaryData)
       .send({ from: accounts[0] });
@@ -441,7 +441,7 @@ contract("PricelessPositionManager", function (accounts) {
     await tokenCurrency.methods
       .approve(pricelessPositionManager.options.address, redeemRemainingTokens)
       .send({ from: sponsor });
-    sponsorInitialBalance = await collateral.methods.balanceOf(sponsor).call();
+    sponsorInitialBalance = toBN(await collateral.methods.balanceOf(sponsor).call());
     redemptionResult = await pricelessPositionManager.methods
       .redeem({ rawValue: redeemRemainingTokens })
       .send({ from: sponsor });
@@ -456,7 +456,7 @@ contract("PricelessPositionManager", function (accounts) {
       return ev.sponsor == sponsor;
     });
 
-    sponsorFinalBalance = await collateral.methods.balanceOf(sponsor).call();
+    sponsorFinalBalance = toBN(await collateral.methods.balanceOf(sponsor).call());
     assert.equal(sponsorFinalBalance.sub(sponsorInitialBalance).toString(), expectedSponsorCollateral);
     await checkBalances(toBN("0"), toBN("0"));
 
@@ -593,7 +593,7 @@ contract("PricelessPositionManager", function (accounts) {
     // After time is up, execute the withdrawal request. Check event is emitted and return value is correct.
     await pricelessPositionManager.methods.setCurrentTime(
       parseInt(await pricelessPositionManager.methods.getCurrentTime().call()) + withdrawalLiveness
-    );
+    ).send({from:accounts[0]});
     const sponsorInitialBalance = toBN(await collateral.methods.balanceOf(sponsor).call());
     const expectedSponsorFinalBalance = sponsorInitialBalance.add(toBN(withdrawalAmount));
     const withdrawPassedRequest = pricelessPositionManager.methods.withdrawPassedRequest();
@@ -645,10 +645,10 @@ contract("PricelessPositionManager", function (accounts) {
       { from: sponsor }
     );
     // Setting fees to 0.00001 per second will charge (0.00001 * 1000) = 0.01 or 1 % of the collateral.
-    await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.00001") });
+    await store.methods.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.00001") }).send({from:accounts[0]});
     await pricelessPositionManager.methods.setCurrentTime(
       parseInt(await pricelessPositionManager.methods.getCurrentTime().call()) + withdrawalLiveness
-    );
+    ).send({from:accounts[0]});
     resultWithdrawPassedRequest = await pricelessPositionManager.methods
       .withdrawPassedRequest()
       .send({ from: sponsor });
@@ -977,7 +977,7 @@ contract("PricelessPositionManager", function (accounts) {
 
     // From the token holders, they are entitled to the value of their tokens, notated in the underlying.
     // They have 50 tokens settled at a price of 1.2 should yield 60 units of underling (or 60 USD as underlying is WETH).
-    const tokenHolderInitialCollateral = await collateral.methods.balanceOf(tokenHolder).call();
+    const tokenHolderInitialCollateral = toBN(await collateral.methods.balanceOf(tokenHolder).call());
     const tokenHolderInitialSynthetic = await tokenCurrency.methods.balanceOf(tokenHolder).call();
     assert.equal(tokenHolderInitialSynthetic, tokenHolderTokens);
 
@@ -990,7 +990,7 @@ contract("PricelessPositionManager", function (accounts) {
       await pricelessPositionManager.methods.contractState().call(),
       PositionStatesEnum.EXPIRED_PRICE_RECEIVED
     );
-    const tokenHolderFinalCollateral = await collateral.methods.balanceOf(tokenHolder).call();
+    const tokenHolderFinalCollateral = toBN(await collateral.methods.balanceOf(tokenHolder).call());
     const tokenHolderFinalSynthetic = await tokenCurrency.methods.balanceOf(tokenHolder).call();
 
     // The token holder should gain the value of their synthetic tokens in underlying.
@@ -1015,7 +1015,7 @@ contract("PricelessPositionManager", function (accounts) {
     // in their position at time of settlement. The sponsor had 150 units of collateral in their position and the final TRV
     // of their synthetics they sold is 120. Their redeemed amount for this excess collateral is the difference between the two.
     // The sponsor also has 50 synthetic tokens that they did not sell. This makes their expected redemption = 150 - 120 + 50 * 1.2 = 90
-    const sponsorInitialCollateral = await collateral.methods.balanceOf(sponsor).call();
+    const sponsorInitialCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
     const sponsorInitialSynthetic = await tokenCurrency.methods.balanceOf(sponsor).call();
 
     // Approve tokens to be moved by the contract and execute the settlement.
@@ -1037,7 +1037,7 @@ contract("PricelessPositionManager", function (accounts) {
     const settleExpired = pricelessPositionManager.methods.settleExpired();
 
     // Get the amount as if we only settleExpired.
-    const settleExpiredOnlyAmount = await settleExpired.methods.call({ from: sponsor });
+    const settleExpiredOnlyAmount = await settleExpired.call({ from: sponsor });
 
     // Partially redeem and partially settleExpired.
     const partialRedemptionAmount = await pricelessPositionManager.methods.redeem(
@@ -1058,7 +1058,7 @@ contract("PricelessPositionManager", function (accounts) {
     assert.equal(settleExpiredOnlyAmount.toString(), expectedTotalSponsorCollateralReturned.toString());
 
     // Check balances.
-    const sponsorFinalCollateral = await collateral.methods.balanceOf(sponsor).call();
+    const sponsorFinalCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
     const sponsorFinalSynthetic = await tokenCurrency.methods.balanceOf(sponsor).call();
     assert.equal(
       sponsorFinalCollateral.sub(sponsorInitialCollateral).toString(),
@@ -1152,7 +1152,7 @@ contract("PricelessPositionManager", function (accounts) {
 
       // From the token holders, they are entitled to the value of their tokens, notated in the underlying.
       // They have 50 tokens settled at a price of 1.2 should yield 60 units of underling (or 60 USD as underlying is Dai).
-      const tokenHolderInitialCollateral = await collateral.methods.balanceOf(tokenHolder).call();
+      const tokenHolderInitialCollateral = toBN(await collateral.methods.balanceOf(tokenHolder).call());
       const tokenHolderInitialSynthetic = await tokenCurrency.methods.balanceOf(tokenHolder).call();
       assert.equal(tokenHolderInitialSynthetic, tokenHolderTokens);
 
@@ -1165,7 +1165,7 @@ contract("PricelessPositionManager", function (accounts) {
         await pricelessPositionManager.methods.contractState().call(),
         PositionStatesEnum.EXPIRED_PRICE_RECEIVED
       );
-      const tokenHolderFinalCollateral = await collateral.methods.balanceOf(tokenHolder).call();
+      const tokenHolderFinalCollateral = toBN(await collateral.methods.balanceOf(tokenHolder).call());
       const tokenHolderFinalSynthetic = await tokenCurrency.methods.balanceOf(tokenHolder).call();
 
       // The token holder should gain the value of their synthetic tokens in underlying.
@@ -1190,7 +1190,7 @@ contract("PricelessPositionManager", function (accounts) {
       // in their position at time of settlement. The sponsor had 150 units of collateral in their position and the final TRV
       // of their synthetics they sold is 120. Their redeemed amount for this excess collateral is the difference between the two.
       // The sponsor also has 50 synthetic tokens that they did not sell. This makes their expected redemption = 150 - 120 + 50 * 0.6 * 2 = 90
-      const sponsorInitialCollateral = await collateral.methods.balanceOf(sponsor).call();
+      const sponsorInitialCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
       const sponsorInitialSynthetic = await tokenCurrency.methods.balanceOf(sponsor).call();
 
       // Approve tokens to be moved by the contract and execute the settlement.
@@ -1215,8 +1215,8 @@ contract("PricelessPositionManager", function (accounts) {
       const settleExpiredOnlyAmount = await settleExpired.call({ from: sponsor });
 
       // Partially redeem and partially settleExpired.
-      const partialRedemptionAmount = await pricelessPositionManager.methods.redeem.call(
-        { rawValue: toWei("1") }).send(
+      const partialRedemptionAmount = await pricelessPositionManager.methods.redeem(
+        { rawValue: toWei("1") }).call(
         { from: sponsor }
       );
       await pricelessPositionManager.methods.redeem({ rawValue: toWei("1") }).send({ from: sponsor });
@@ -1233,7 +1233,7 @@ contract("PricelessPositionManager", function (accounts) {
       assert.equal(settleExpiredOnlyAmount.toString(), expectedTotalSponsorCollateralReturned.toString());
 
       // Check balances.
-      const sponsorFinalCollateral = await collateral.methods.balanceOf(sponsor).call();
+      const sponsorFinalCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
       const sponsorFinalSynthetic = await tokenCurrency.methods.balanceOf(sponsor).call();
       assert.equal(
         sponsorFinalCollateral.sub(sponsorInitialCollateral).toString(),
@@ -1373,7 +1373,7 @@ contract("PricelessPositionManager", function (accounts) {
               expirationTime,
               ancillaryData
             )
-            .send({ from: accounts[0] })
+            .call()
         ).toString(),
         OptimisticOracleRequestStatesEnum.REQUESTED
       );
@@ -1402,7 +1402,7 @@ contract("PricelessPositionManager", function (accounts) {
 
       // From the token holders, they are entitled to the value of their tokens, notated in the underlying.
       // They have 50 tokens settled at a price of 1.2 should yield 60 units of underling.
-      const tokenHolderInitialCollateral = await collateral.methods.balanceOf(tokenHolder).call();
+      const tokenHolderInitialCollateral = toBN(await collateral.methods.balanceOf(tokenHolder).call());
       const tokenHolderInitialSynthetic = await tokenCurrency.methods.balanceOf(tokenHolder).call();
       assert.equal(tokenHolderInitialSynthetic, tokenHolderTokens);
 
@@ -1415,7 +1415,7 @@ contract("PricelessPositionManager", function (accounts) {
         await pricelessPositionManager.methods.contractState().call(),
         PositionStatesEnum.EXPIRED_PRICE_RECEIVED
       );
-      const tokenHolderFinalCollateral = await collateral.methods.balanceOf(tokenHolder).call();
+      const tokenHolderFinalCollateral = toBN(await collateral.methods.balanceOf(tokenHolder).call());
       const tokenHolderFinalSynthetic = await tokenCurrency.methods.balanceOf(tokenHolder).call();
 
       // The token holder should gain the value of their synthetic tokens in underlying.
@@ -1440,7 +1440,7 @@ contract("PricelessPositionManager", function (accounts) {
       // in their position at time of settlement. The sponsor had 150 units of collateral in their position and the final TRV
       // of their synthetics they sold is 120. Their redeemed amount for this excess collateral is the difference between the two.
       // The sponsor also has 50 synthetic tokens that they did not sell. This makes their expected redemption = 150 - 120 + 50 * 1.2 = 90
-      const sponsorInitialCollateral = await collateral.methods.balanceOf(sponsor).call();
+      const sponsorInitialCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
       const sponsorInitialSynthetic = await tokenCurrency.methods.balanceOf(sponsor).call();
 
       // Approve tokens to be moved by the contract and execute the settlement.
@@ -1466,11 +1466,11 @@ contract("PricelessPositionManager", function (accounts) {
 
       // Partially redeem and partially settleExpired.
       const partialRedemptionAmount = await pricelessPositionManager.methods.redeem(
-        { rawValue: toWei("1") }).send(
+        { rawValue: toWei("1") }).call(
         { from: sponsor }
       );
       await pricelessPositionManager.methods.redeem({ rawValue: toWei("1") }).send({ from: sponsor });
-      const partialSettleExpiredAmount = await settleExpired.call({ from: sponsor }).call();
+      const partialSettleExpiredAmount = await settleExpired.call({ from: sponsor });
       settleExpiredResult = await settleExpired.send({ from: sponsor });
 
       // Compare the two paths' results.
@@ -1483,7 +1483,7 @@ contract("PricelessPositionManager", function (accounts) {
       assert.equal(settleExpiredOnlyAmount.toString(), expectedTotalSponsorCollateralReturned.toString());
 
       // Check balances.
-      const sponsorFinalCollateral = await collateral.methods.balanceOf(sponsor).call();
+      const sponsorFinalCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
       const sponsorFinalSynthetic = await tokenCurrency.methods.balanceOf(sponsor).call();
       assert.equal(
         sponsorFinalCollateral.sub(sponsorInitialCollateral).toString(),
@@ -1573,7 +1573,7 @@ contract("PricelessPositionManager", function (accounts) {
 
       // From the token holders, they are entitled to the value of their tokens, notated in the underlying.
       // They have 50 tokens settled at a price of 1.2 should yield 60 units of underling.
-      const tokenHolderInitialCollateral = await collateral.methods.balanceOf(tokenHolder).call();
+      const tokenHolderInitialCollateral = toBN(await collateral.methods.balanceOf(tokenHolder).call());
       const tokenHolderInitialSynthetic = await tokenCurrency.methods.balanceOf(tokenHolder).call();
       assert.equal(tokenHolderInitialSynthetic, tokenHolderTokens);
 
@@ -1586,7 +1586,7 @@ contract("PricelessPositionManager", function (accounts) {
         await pricelessPositionManager.methods.contractState().call(),
         PositionStatesEnum.EXPIRED_PRICE_RECEIVED
       );
-      const tokenHolderFinalCollateral = await collateral.methods.balanceOf(tokenHolder).call();
+      const tokenHolderFinalCollateral = toBN(await collateral.methods.balanceOf(tokenHolder).call());
       const tokenHolderFinalSynthetic = await tokenCurrency.methods.balanceOf(tokenHolder).call();
 
       // The token holder should gain the value of their synthetic tokens in underlying.
@@ -1611,7 +1611,7 @@ contract("PricelessPositionManager", function (accounts) {
       // in their position at time of settlement. The sponsor had 150 units of collateral in their position and the final TRV
       // of their synthetics they sold is 120. Their redeemed amount for this excess collateral is the difference between the two.
       // The sponsor also has 50 synthetic tokens that they did not sell. This makes their expected redemption = 150 - 120 + 50 * 1.2 = 90
-      const sponsorInitialCollateral = await collateral.methods.balanceOf(sponsor).call();
+      const sponsorInitialCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
       const sponsorInitialSynthetic = await tokenCurrency.methods.balanceOf(sponsor).call();
 
       // Approve tokens to be moved by the contract and execute the settlement.
@@ -1630,19 +1630,19 @@ contract("PricelessPositionManager", function (accounts) {
       );
 
       // Redeem and settleExpired should give the same result as just settleExpired.
-      const settleExpired = pricelessPositionManager.methods.settleExpired;
+      const settleExpired = pricelessPositionManager.methods.settleExpired();
 
       // Get the amount as if we only settleExpired.
-      const settleExpiredOnlyAmount = await settleExpired.methods.call({ from: sponsor }).call();
+      const settleExpiredOnlyAmount = await settleExpired.call({ from: sponsor });
 
       // Partially redeem and partially settleExpired.
-      const partialRedemptionAmount = await pricelessPositionManager.methods.redeem.call(
-        { rawValue: toWei("1") }).send(
+      const partialRedemptionAmount = await pricelessPositionManager.methods.redeem(
+        { rawValue: toWei("1") }).call(
         { from: sponsor }
       );
       await pricelessPositionManager.methods.redeem({ rawValue: toWei("1") }).send({ from: sponsor });
-      const partialSettleExpiredAmount = await settleExpired.methods.call({ from: sponsor }).call();
-      settleExpiredResult = await settleExpired({ from: sponsor });
+      const partialSettleExpiredAmount = await settleExpired.call({ from: sponsor });
+      settleExpiredResult = await settleExpired.send({ from: sponsor });
 
       // Compare the two paths' results.
       assert.equal(
@@ -1654,7 +1654,7 @@ contract("PricelessPositionManager", function (accounts) {
       assert.equal(settleExpiredOnlyAmount.toString(), expectedTotalSponsorCollateralReturned.toString());
 
       // Check balances.
-      const sponsorFinalCollateral = await collateral.methods.balanceOf(sponsor).call();
+      const sponsorFinalCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
       const sponsorFinalSynthetic = await tokenCurrency.methods.balanceOf(sponsor).call();
       assert.equal(
         sponsorFinalCollateral.sub(sponsorInitialCollateral).toString(),
@@ -1971,7 +1971,7 @@ contract("PricelessPositionManager", function (accounts) {
 
     // Determine the expected store balance by adding 1% of the sponsor balance to the starting store balance.
     // Multiply by 2 because there are two active positions
-    const expectedStoreBalance = (await collateral.methods.balanceOf(store.options.address).call()).add(
+    const expectedStoreBalance = toBN(await collateral.methods.balanceOf(store.options.address).call()).add(
       toBN(toWei("0.02"))
     );
 
@@ -1991,10 +1991,10 @@ contract("PricelessPositionManager", function (accounts) {
     );
 
     // Calling `payRegularFees()` more than once in the same block does not emit a RegularFeesPaid event.
-    const feesPaidRepeat = await payRegularFees.methods.call();
+    const feesPaidRepeat = await payRegularFees.call();
     assert.equal(feesPaidRepeat.toString(), "0");
-    const payFeesRepeatResult = await payRegularFees();
-    truffleAssert.eventNotEmitted(payFeesRepeatResult, "RegularFeesPaid");
+    const payFeesRepeatResult = await payRegularFees.send({from:accounts[0]});
+    await assertEventNotEmitted(payFeesRepeatResult, pricelessPositionManager, "RegularFeesPaid");
 
     // Ensure that fees are not applied to new collateral.
     // TODO: value chosen specifically to avoid rounding errors -- see #873.
@@ -2003,7 +2003,7 @@ contract("PricelessPositionManager", function (accounts) {
     assert.equal(collateralAmount.rawValue.toString(), toWei("99.99"));
 
     // Ensure that the conversion works correctly for withdrawals.
-    const expectedSponsorBalance = (await collateral.methods.balanceOf(sponsor).call()).add(toBN(toWei("1")));
+    const expectedSponsorBalance = toBN(await collateral.methods.balanceOf(sponsor).call()).add(toBN(toWei("1")));
     await pricelessPositionManager.methods.withdraw({ rawValue: toWei("1") }).send({ from: sponsor });
     assert.equal((await collateral.methods.balanceOf(sponsor).call()).toString(), expectedSponsorBalance.toString());
     assert.equal((await pricelessPositionManager.methods.getCollateral(sponsor).call()).toString(), toWei("98.99"));
@@ -2017,11 +2017,11 @@ contract("PricelessPositionManager", function (accounts) {
     // pay > 100% fees on the PfC. This should pay a maximum of 100% of the PfC without reverting.
     const pfc = await pricelessPositionManager.methods.pfc().call();
     const feesOwed = (
-      await store.computeRegularFee(startTime.addn(1), startTime.addn(102), { rawValue: pfc.toString() })
+      await store.methods.computeRegularFee(startTime + 1, startTime + 102, { rawValue: pfc.toString() }).call()
     ).regularFee;
     assert.isTrue(Number(pfc.toString()) < Number(feesOwed.toString()));
     const farIntoTheFutureSeconds = 502;
-    await pricelessPositionManager.methods.setCurrentTime(startTime.addn(farIntoTheFutureSeconds)).send({ from:accounts[0] });
+    await pricelessPositionManager.methods.setCurrentTime(startTime + farIntoTheFutureSeconds).send({ from:accounts[0] });
     const payTooManyFeesResult = await pricelessPositionManager.methods.payRegularFees().send({from:accounts[0]});
     await assertEventEmitted(payTooManyFeesResult, pricelessPositionManager, "RegularFeesPaid", (ev) => {
       // There should be 98.99 + 0.99 = 99.98 collateral remaining in the contract.
@@ -2035,9 +2035,9 @@ contract("PricelessPositionManager", function (accounts) {
     await store.methods.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" }).send({ from: accounts[0] });
 
     // Check that no event is fired if the fees owed are 0.
-    await pricelessPositionManager.methods.setCurrentTime(startTime.addn(farIntoTheFutureSeconds + 1)).send({ from:accounts[0] });
-    const payZeroFeesResult = await payRegularFees();
-    truffleAssert.eventNotEmitted(payZeroFeesResult, "RegularFeesPaid");
+    await pricelessPositionManager.methods.setCurrentTime(startTime + farIntoTheFutureSeconds + 1).send({ from:accounts[0] });
+    const payZeroFeesResult = await payRegularFees.send({from:accounts[0]});
+    await assertEventNotEmitted(payZeroFeesResult, pricelessPositionManager, "RegularFeesPaid");
   });
 
   it("Gulps non-PfC collateral into PfC", async function () {
@@ -2100,10 +2100,10 @@ contract("PricelessPositionManager", function (accounts) {
     ).add(toBN(finalFeePaid));
 
     // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
-    const expirationResult = await pricelessPositionManager.methods.expire({ from: other }).call();
+    const expirationResult = await pricelessPositionManager.methods.expire().send({ from: other });
 
     // Final fees should not be paid. Instead, a reward should have been sent to the optimistic oracle.
-    truffleAssert.eventNotEmitted(expirationResult, "FinalFeesPaid");
+    await assertEventNotEmitted(expirationResult, pricelessPositionManager, "FinalFeesPaid");
     let collateralAmount = await pricelessPositionManager.methods.getCollateral(sponsor).call();
     assert.equal(collateralAmount.rawValue.toString(), toWei("99"));
     assert.equal(
@@ -2119,7 +2119,7 @@ contract("PricelessPositionManager", function (accounts) {
 
     // From the token holders, they are entitled to the value of their tokens, notated in the underlying.
     // They have 25 tokens settled at a price of 1.2 should yield 30 units of underling (or 60 USD as underlying is WETH).
-    const tokenHolderInitialCollateral = await collateral.methods.balanceOf(tokenHolder).call();
+    const tokenHolderInitialCollateral = toBN(await collateral.methods.balanceOf(tokenHolder).call());
     const tokenHolderInitialSynthetic = await tokenCurrency.methods.balanceOf(tokenHolder).call();
 
     // Approve the tokens to be moved by the contract and execute the settlement for the token holder.
@@ -2127,7 +2127,7 @@ contract("PricelessPositionManager", function (accounts) {
       .approve(pricelessPositionManager.options.address, tokenHolderInitialSynthetic)
       .send({ from: tokenHolder });
     let settleExpiredResult = await pricelessPositionManager.methods.settleExpired().send({ from: tokenHolder });
-    const tokenHolderFinalCollateral = await collateral.methods.balanceOf(tokenHolder).call();
+    const tokenHolderFinalCollateral = toBN(await collateral.methods.balanceOf(tokenHolder).call());
     const tokenHolderFinalSynthetic = await tokenCurrency.methods.balanceOf(tokenHolder).call();
 
     // The token holder should gain the value of their synthetic tokens in underlying.
@@ -2152,7 +2152,7 @@ contract("PricelessPositionManager", function (accounts) {
     // in their position at time of settlement - final fees. The sponsor had 100 units of collateral in their position and the final TRV
     // of their synthetics they sold is 60. Their redeemed amount for this excess collateral is the difference between the two.
     // The sponsor also has 25 synthetic tokens that they did not sell. This makes their expected redemption = 100 - 60 + 25 * 1.2 - 1 = 69
-    const sponsorInitialCollateral = await collateral.methods.balanceOf(sponsor).call();
+    const sponsorInitialCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
     const sponsorInitialSynthetic = await tokenCurrency.methods.balanceOf(sponsor).call();
 
     // Approve tokens to be moved by the contract and execute the settlement.
@@ -2160,7 +2160,7 @@ contract("PricelessPositionManager", function (accounts) {
       .approve(pricelessPositionManager.options.address, sponsorInitialSynthetic)
       .send({ from: sponsor });
     await pricelessPositionManager.methods.settleExpired().send({ from: sponsor });
-    const sponsorFinalCollateral = await collateral.methods.balanceOf(sponsor).call();
+    const sponsorFinalCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
     const sponsorFinalSynthetic = await tokenCurrency.methods.balanceOf(sponsor).call();
 
     // The token Sponsor should gain the value of their synthetics in underlying
@@ -2273,9 +2273,9 @@ contract("PricelessPositionManager", function (accounts) {
       // After `settleExpired`, `rawCollateral -= 12`, so the new `totalPositionCollateral = `(30-12) * 0.966666666666666666 = 17.4` which is truncated to 17.
       // So, due to precision loss, `totalPositionCollateral` is only decreased by 11, but it should be 12 without errors.
       // From the user's POV, they will see their balance decrease by 11, so we should send them 11 collateral not 12.
-      const tokenHolderInitialCollateral = await collateral.methods.balanceOf(tokenHolder).call();
+      const tokenHolderInitialCollateral = toBN(await collateral.methods.balanceOf(tokenHolder).call());
       await pricelessPositionManager.methods.settleExpired().send({ from: tokenHolder });
-      const tokenHolderFinalCollateral = await collateral.methods.balanceOf(tokenHolder).call();
+      const tokenHolderFinalCollateral = toBN(await collateral.methods.balanceOf(tokenHolder).call());
       const tokenHolderFinalSynthetic = await tokenCurrency.methods.balanceOf(tokenHolder).call();
 
       // The token holder should gain the value of their synthetic tokens in underlying.
@@ -2294,9 +2294,9 @@ contract("PricelessPositionManager", function (accounts) {
       // The sponsor is entitled to the underlying value of their remaining synthetic tokens + the excess collateral
       // in their position at time of settlement - final fees. But we'll see that the "excess" collateral displays error
       // due to precision loss.
-      const sponsorInitialCollateral = await collateral.methods.balanceOf(sponsor).call();
+      const sponsorInitialCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
       await pricelessPositionManager.methods.settleExpired().send({ from: sponsor });
-      const sponsorFinalCollateral = await collateral.methods.balanceOf(sponsor).call();
+      const sponsorFinalCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
       const sponsorFinalSynthetic = await tokenCurrency.methods.balanceOf(sponsor).call();
 
       // The token Sponsor should gain the value of their synthetics in underlying
@@ -2350,12 +2350,12 @@ contract("PricelessPositionManager", function (accounts) {
       // After `settleExpired`, `rawCollateral -= 12`, so the new `totalPositionCollateral = `(30-12) * 0.966666666666666666 = 17.4` which is truncated to 17.
       // So, due to precision loss, `totalPositionCollateral` is only decreased by 11, but it should be 12 without errors.
       // From the user's POV, they will see their balance decrease by 11, so we should send them 11 collateral not 12.
-      const initialCollateral = await collateral.methods.balanceOf(sponsor).call();
+      const initialCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
       await pricelessPositionManager.methods.requestWithdrawal({ rawValue: "12" }).send({ from: sponsor });
       let startTime = parseInt(await pricelessPositionManager.methods.getCurrentTime().call());
       await pricelessPositionManager.methods.setCurrentTime(startTime + withdrawalLiveness).send({ from:accounts[0] });
       await pricelessPositionManager.methods.withdrawPassedRequest().send({ from: sponsor });
-      const finalCollateral = await collateral.methods.balanceOf(sponsor).call();
+      const finalCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
 
       // The sponsor should gain their requested amount minus precision loss.
       const expectedFinalCollateral = "11";
@@ -2454,9 +2454,9 @@ contract("PricelessPositionManager", function (accounts) {
     await proposeAndSettleOptimisticOraclePrice(priceFeedIdentifier, parseInt(expirationTime), toWei("1.2"));
 
     // Token holder should receive 120 collateral tokens for their 100 synthetic tokens.
-    let initialCollateral = await collateral.methods.balanceOf(tokenHolder).call();
+    let initialCollateral = toBN(await collateral.methods.balanceOf(tokenHolder).call());
     await pricelessPositionManager.methods.settleExpired().send({ from: tokenHolder });
-    let collateralPaid = (await collateral.methods.balanceOf(tokenHolder).call()).sub(initialCollateral);
+    let collateralPaid = toBN(await collateral.methods.balanceOf(tokenHolder).call()).sub(initialCollateral);
     assert.equal(collateralPaid, toWei("120"));
 
     // Create new optimistic oracle, replace it in the finder, and push a different price to it.
@@ -2472,9 +2472,9 @@ contract("PricelessPositionManager", function (accounts) {
     );
 
     // Settle expired should still work even if the new oracle has no price.
-    initialCollateral = await collateral.methods.balanceOf(sponsor).call();
+    initialCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
     await pricelessPositionManager.methods.settleExpired().send({ from: sponsor });
-    collateralPaid = (await collateral.methods.balanceOf(sponsor).call()).sub(initialCollateral);
+    collateralPaid = toBN(await collateral.methods.balanceOf(sponsor).call()).sub(initialCollateral);
 
     // Sponsor should have received 300 - 240 = 60 collateral tokens.
     assert.equal(collateralPaid, toWei("60"));
@@ -2485,25 +2485,25 @@ contract("PricelessPositionManager", function (accounts) {
       .send({ from: proposer });
     await collateral.methods.approve(newOptimisticOracle.options.address, toWei("1000000")).send({ from: proposer });
     const proposalTime = await newOptimisticOracle.methods.getCurrentTime().call();
-    await newOptimisticOracle.proposePrice(
+    await newOptimisticOracle.methods.proposePrice(
       proposer, // requestor address
       priceFeedIdentifier,
       expirationTime,
       ancillaryData,
-      toWei("0.6"), // a difference price to previously in the test.
-      {
+      toWei("0.6") // a difference price to previously in the test.
+    ).send({
         from: proposer,
       }
     );
-    await newOptimisticOracle.setCurrentTime(proposalTime + optimisticOracleLiveness).send({ from:accounts[0] });
+    await newOptimisticOracle.methods.setCurrentTime(proposalTime + optimisticOracleLiveness).send({ from:accounts[0] });
     await newOptimisticOracle.methods
       .settle(proposer, priceFeedIdentifier, expirationTime, ancillaryData)
       .send({ from: proposer });
 
     // Second token holder should receive the same payout as the first despite the oracle price being changed.
-    initialCollateral = await collateral.methods.balanceOf(other).call();
+    initialCollateral = toBN(await collateral.methods.balanceOf(other).call());
     await pricelessPositionManager.methods.settleExpired().send({ from: other });
-    collateralPaid = (await collateral.methods.balanceOf(other).call()).sub(initialCollateral);
+    collateralPaid = toBN(await collateral.methods.balanceOf(other).call()).sub(initialCollateral);
     assert.equal(collateralPaid, toWei("120"));
   });
 
@@ -2532,7 +2532,7 @@ contract("PricelessPositionManager", function (accounts) {
 
     // Token holder is the first to settle -- they should receive the entire value of their tokens (100) because they
     // were first.
-    let startingBalance = await collateral.methods.balanceOf(tokenHolder).call();
+    let startingBalance = toBN(await collateral.methods.balanceOf(tokenHolder).call());
     await pricelessPositionManager.methods.settleExpired().send({ from: tokenHolder });
     assert.equal(
       (await collateral.methods.balanceOf(tokenHolder).call()).toString(),
@@ -2542,12 +2542,12 @@ contract("PricelessPositionManager", function (accounts) {
     // The overcollateralized sponsor should see a haircut because they settled later.
     // The overcollateralized sponsor is owed 75 because of the 50 in excess collateral and the 25 in tokens.
     // But there's only 50 left in the contract, so we should see only 50 paid out.
-    startingBalance = await collateral.methods.balanceOf(other).call();
+    startingBalance = toBN(await collateral.methods.balanceOf(other).call());
     await pricelessPositionManager.methods.settleExpired().send({ from: other });
     assert.equal((await collateral.methods.balanceOf(other).call()).toString(), startingBalance.add(toBN(toWei("50"))));
 
     // The undercapitalized sponsor should get nothing even though they have tokens because the contract has no more collateral.
-    startingBalance = await collateral.methods.balanceOf(sponsor).call();
+    startingBalance = toBN(await collateral.methods.balanceOf(sponsor).call());
     await pricelessPositionManager.methods.settleExpired().send({ from: sponsor });
     assert.equal((await collateral.methods.balanceOf(sponsor).call()).toString(), startingBalance.add(toBN("0")));
   });
@@ -2636,7 +2636,7 @@ contract("PricelessPositionManager", function (accounts) {
     // Token holders (`sponsor` and `tokenHolder`) should now be able to withdraw post emergency shutdown.
     // From the token holder's perspective, they are entitled to the value of their tokens, notated in the underlying.
     // They have 50 tokens settled at a price of 1.1 should yield 55 units of underling (or 55 USD as underlying is WETH).
-    const tokenHolderInitialCollateral = await collateral.methods.balanceOf(tokenHolder).call();
+    const tokenHolderInitialCollateral = toBN(await collateral.methods.balanceOf(tokenHolder).call());
     const tokenHolderInitialSynthetic = await tokenCurrency.methods.balanceOf(tokenHolder).call();
     assert.equal(tokenHolderInitialSynthetic, tokenHolderTokens);
 
@@ -2657,7 +2657,7 @@ contract("PricelessPositionManager", function (accounts) {
       await pricelessPositionManager.methods.contractState().call(),
       PositionStatesEnum.EXPIRED_PRICE_RECEIVED
     );
-    const tokenHolderFinalCollateral = await collateral.methods.balanceOf(tokenHolder).call();
+    const tokenHolderFinalCollateral = toBN(await collateral.methods.balanceOf(tokenHolder).call());
     const tokenHolderFinalSynthetic = await tokenCurrency.methods.balanceOf(tokenHolder).call();
     const expectedTokenHolderFinalCollateral = toWei("55");
     assert.equal(tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral), expectedTokenHolderFinalCollateral);
@@ -2689,7 +2689,7 @@ contract("PricelessPositionManager", function (accounts) {
     // of their synthetics they sold is 110. Their redeemed amount for this excess collateral is the difference between the two.
     // The sponsor also has 50 synthetic tokens that they did not sell.
     // This makes their expected redemption = 150 - 110 + 50 * 1.1 = 95
-    const sponsorInitialCollateral = await collateral.methods.balanceOf(sponsor).call();
+    const sponsorInitialCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
     const sponsorInitialSynthetic = await tokenCurrency.methods.balanceOf(sponsor).call();
 
     // Approve tokens to be moved by the contract and execute the settlement.
@@ -2697,7 +2697,7 @@ contract("PricelessPositionManager", function (accounts) {
       .approve(pricelessPositionManager.options.address, sponsorInitialSynthetic)
       .send({ from: sponsor });
     await pricelessPositionManager.methods.settleExpired().send({ from: sponsor });
-    const sponsorFinalCollateral = await collateral.methods.balanceOf(sponsor).call();
+    const sponsorFinalCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
     const sponsorFinalSynthetic = await tokenCurrency.methods.balanceOf(sponsor).call();
 
     // The token Sponsor should gain the value of their synthetics in underlying
@@ -2834,7 +2834,7 @@ contract("PricelessPositionManager", function (accounts) {
     let expectedContractCollateral = toBN(createCollateral);
 
     await USDCToken.methods.approve(customPricelessPositionManager.options.address, createCollateral).send({ from: sponsor });
-    await customPricelessPositionManager.create(
+    await customPricelessPositionManager.methods.create(
       { rawValue: createCollateral },
       { rawValue: createTokens }).send(
       { from: sponsor }
@@ -2842,7 +2842,7 @@ contract("PricelessPositionManager", function (accounts) {
 
     // The balances minted should equal that expected from the create function.
     assert.equal(
-      (await USDCToken.balanceOf(customPricelessPositionManager.options.address)).toString(),
+      (await USDCToken.methods.balanceOf(customPricelessPositionManager.options.address).call()).toString(),
       expectedContractCollateral.toString()
     );
     assert.equal((await tokenCurrency.methods.balanceOf(sponsor).call()).toString(), expectedSponsorTokens.toString());
@@ -2855,7 +2855,7 @@ contract("PricelessPositionManager", function (accounts) {
 
     // The balances should reflect the additional collateral added.
     assert.equal(
-      (await USDCToken.balanceOf(customPricelessPositionManager.options.address)).toString(),
+      (await USDCToken.methods.balanceOf(customPricelessPositionManager.options.address).call()).toString(),
       expectedContractCollateral.toString()
     );
     assert.equal((await tokenCurrency.methods.balanceOf(sponsor).call()).toString(), expectedSponsorTokens.toString());
@@ -2887,7 +2887,7 @@ contract("PricelessPositionManager", function (accounts) {
 
     // Advance time until expiration. Token holders and sponsors should now be able to settle.
     const expirationTime = await customPricelessPositionManager.methods.expirationTimestamp().call();
-    await customPricelessPositionManager.setCurrentTime(parseInt(expirationTime)).send({ from:accounts[0] });
+    await customPricelessPositionManager.methods.setCurrentTime(parseInt(expirationTime)).send({ from:accounts[0] });
 
     // To settle positions the DVM needs to be to be queried to get the price at the settlement time.
     await customPricelessPositionManager.methods.expire().send({ from: other });
@@ -2896,22 +2896,22 @@ contract("PricelessPositionManager", function (accounts) {
     // feed. With 100 units of outstanding tokens this results in a token redemption value of: TRV = 100 * 1.2 = 120 USD.
     await collateral.methods.approve(customPricelessPositionManager.options.address, toWei("1000000")).send({ from: proposer });
     const proposalTime = await optimisticOracle.methods.getCurrentTime().call();
-    await optimisticOracle.proposePrice(
+    await optimisticOracle.methods.proposePrice(
       customPricelessPositionManager.options.address,
       priceFeedIdentifier,
       expirationTime,
       ancillaryData,
-      toWei("1.2"),
+      toWei("1.2")).send(
       {
         from: proposer,
       }
     );
-    await optimisticOracle.setCurrentTime(proposalTime + optimisticOracleLiveness).send({ from:accounts[0] });
-    await optimisticOracle.settle(
+    await optimisticOracle.methods.setCurrentTime(proposalTime + optimisticOracleLiveness).send({ from:accounts[0] });
+    await optimisticOracle.methods.settle(
       customPricelessPositionManager.options.address,
       priceFeedIdentifier,
       expirationTime,
-      ancillaryData,
+      ancillaryData).send(
       {
         from: proposer,
       }
@@ -2919,7 +2919,7 @@ contract("PricelessPositionManager", function (accounts) {
 
     // From the token holders, they are entitled to the value of their tokens, notated in the underlying.
     // They have 50 tokens settled at a price of 1.2 should yield 60 units of underling (or 60 USD as underlying is WETH).
-    const tokenHolderInitialCollateral = await USDCToken.balanceOf(tokenHolder);
+    const tokenHolderInitialCollateral = toBN(await USDCToken.methods.balanceOf(tokenHolder).call());
     const tokenHolderInitialSynthetic = await tokenCurrency.methods.balanceOf(tokenHolder).call();
     assert.equal(tokenHolderInitialSynthetic, tokenHolderTokens);
 
@@ -2928,7 +2928,7 @@ contract("PricelessPositionManager", function (accounts) {
       .approve(customPricelessPositionManager.options.address, tokenHolderInitialSynthetic)
       .send({ from: tokenHolder });
     let settleExpiredResult = await customPricelessPositionManager.methods.settleExpired().send({ from: tokenHolder });
-    const tokenHolderFinalCollateral = await USDCToken.balanceOf(tokenHolder);
+    const tokenHolderFinalCollateral = toBN(await USDCToken.methods.balanceOf(tokenHolder).call());
     const tokenHolderFinalSynthetic = await tokenCurrency.methods.balanceOf(tokenHolder).call();
 
     // The token holder should gain the value of their synthetic tokens in underlying.
@@ -2945,7 +2945,7 @@ contract("PricelessPositionManager", function (accounts) {
     assert.equal(tokenHolderFinalSynthetic, 0);
 
     // Check the event returned the correct values
-    await assertEventEmitted(settleExpiredResult, pricelessPositionManager, "SettleExpiredPosition", (ev) => {
+    await assertEventEmitted(settleExpiredResult, customPricelessPositionManager, "SettleExpiredPosition", (ev) => {
       return (
         ev.caller == tokenHolder &&
         ev.collateralReturned == tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral).toString() &&
@@ -2958,7 +2958,7 @@ contract("PricelessPositionManager", function (accounts) {
     // of their synthetics they drew is 120 (100*1.2). Their redeemed amount for this excess collateral is the difference between the two.
     // The sponsor also has 50 synthetic tokens that they did not sell valued at 1.2 per token.
     // This makes their expected redemption = 200 (collat) - 100 * 1.2 (debt) + 50 * 1.2 (synth returned) = 140 in e16 USDC
-    const sponsorInitialCollateral = await USDCToken.balanceOf(sponsor);
+    const sponsorInitialCollateral = toBN(await USDCToken.methods.balanceOf(sponsor).call());
     const sponsorInitialSynthetic = await tokenCurrency.methods.balanceOf(sponsor).call();
 
     // Approve tokens to be moved by the contract and execute the settlement.
@@ -2966,7 +2966,7 @@ contract("PricelessPositionManager", function (accounts) {
       .approve(customPricelessPositionManager.options.address, sponsorInitialSynthetic)
       .send({ from: sponsor });
     await customPricelessPositionManager.methods.settleExpired().send({ from: sponsor });
-    const sponsorFinalCollateral = await USDCToken.balanceOf(sponsor);
+    const sponsorFinalCollateral = toBN(await USDCToken.methods.balanceOf(sponsor).call());
     const sponsorFinalSynthetic = await tokenCurrency.methods.balanceOf(sponsor).call();
 
     // The token Sponsor should gain the value of their synthetics in underlying
@@ -3028,19 +3028,19 @@ contract("PricelessPositionManager", function (accounts) {
     // works as expected in the dispute case.
     const redemptionPrice = 1.2;
     const redemptionPriceWei = toWei(redemptionPrice.toString());
-    await optimisticOracle.proposePrice(
+    await optimisticOracle.methods.proposePrice(
       pricelessPositionManager.options.address,
       priceFeedIdentifier,
       expirationTime,
       ancillaryData,
-      toWei("1"), // input price that will get disputed.
-      {
+      toWei("1") // input price that will get disputed.
+    ).send({
         from: proposer,
       }
     );
 
     // dispute the price.
-    await optimisticOracle.disputePrice(
+    await optimisticOracle.methods.disputePrice(
       pricelessPositionManager.options.address,
       priceFeedIdentifier,
       expirationTime,
@@ -3051,14 +3051,14 @@ contract("PricelessPositionManager", function (accounts) {
     await verifyState(priceFeedIdentifier, parseInt(expirationTime), OptimisticOracleRequestStatesEnum.DISPUTED);
 
     // push a price into the mockOracle
-    await mockOracle.pushPrice(
+    await mockOracle.methods.pushPrice(
       priceFeedIdentifier,
       expirationTime,
       await optimisticOracle.methods
         .stampAncillaryData(ancillaryData, pricelessPositionManager.options.address)
-        .send({ from: accounts[0] }),
+        .call(),
       redemptionPriceWei
-    );
+    ).send({from:accounts[0]});
 
     await optimisticOracle.methods
       .settle(pricelessPositionManager.options.address, priceFeedIdentifier, expirationTime, ancillaryData)
@@ -3067,7 +3067,7 @@ contract("PricelessPositionManager", function (accounts) {
 
     // From the token holders, they are entitled to the value of their tokens, notated in the underlying.
     // They have 50 tokens settled at a price of 1.2 should yield 60 units of underling.
-    const tokenHolderInitialCollateral = await collateral.methods.balanceOf(tokenHolder).call();
+    const tokenHolderInitialCollateral = toBN(await collateral.methods.balanceOf(tokenHolder).call());
     const tokenHolderInitialSynthetic = await tokenCurrency.methods.balanceOf(tokenHolder).call();
     assert.equal(tokenHolderInitialSynthetic, tokenHolderTokens);
 
@@ -3080,7 +3080,7 @@ contract("PricelessPositionManager", function (accounts) {
       await pricelessPositionManager.methods.contractState().call(),
       PositionStatesEnum.EXPIRED_PRICE_RECEIVED
     );
-    const tokenHolderFinalCollateral = await collateral.methods.balanceOf(tokenHolder).call();
+    const tokenHolderFinalCollateral = toBN(await collateral.methods.balanceOf(tokenHolder).call());
     const tokenHolderFinalSynthetic = await tokenCurrency.methods.balanceOf(tokenHolder).call();
 
     // The token holder should gain the value of their synthetic tokens in underlying.
@@ -3105,7 +3105,7 @@ contract("PricelessPositionManager", function (accounts) {
     // in their position at time of settlement. The sponsor had 150 units of collateral in their position and the final TRV
     // of their synthetics they sold is 120. Their redeemed amount for this excess collateral is the difference between the two.
     // The sponsor also has 50 synthetic tokens that they did not sell. This makes their expected redemption = 150 - 120 + 50 * 1.2 = 90
-    const sponsorInitialCollateral = await collateral.methods.balanceOf(sponsor).call();
+    const sponsorInitialCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
     const sponsorInitialSynthetic = await tokenCurrency.methods.balanceOf(sponsor).call();
 
     // Approve tokens to be moved by the contract and execute the settlement.
@@ -3130,8 +3130,8 @@ contract("PricelessPositionManager", function (accounts) {
     const settleExpiredOnlyAmount = await settleExpired.call({ from: sponsor });
 
     // Partially redeem and partially settleExpired.
-    const partialRedemptionAmount = await pricelessPositionManager.methods.redeem.call(
-      { rawValue: toWei("1") }).send(
+    const partialRedemptionAmount = await pricelessPositionManager.methods.redeem(
+      { rawValue: toWei("1") }).call(
       { from: sponsor }
     );
     await pricelessPositionManager.methods.redeem({ rawValue: toWei("1") }).send({ from: sponsor });
@@ -3148,7 +3148,7 @@ contract("PricelessPositionManager", function (accounts) {
     assert.equal(settleExpiredOnlyAmount.toString(), expectedTotalSponsorCollateralReturned.toString());
 
     // Check balances.
-    const sponsorFinalCollateral = await collateral.methods.balanceOf(sponsor).call();
+    const sponsorFinalCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
     const sponsorFinalSynthetic = await tokenCurrency.methods.balanceOf(sponsor).call();
     assert.equal(
       sponsorFinalCollateral.sub(sponsorInitialCollateral).toString(),

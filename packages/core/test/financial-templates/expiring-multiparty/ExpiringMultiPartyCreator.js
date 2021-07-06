@@ -18,11 +18,13 @@ const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
 const StructuredNoteFinancialProductLibrary = getContract("StructuredNoteFinancialProductLibrary");
 
-contract("ExpiringMultiPartyCreator", function (accounts) {
-  let contractCreator = accounts[0];
+describe("ExpiringMultiPartyCreator", function () {
+  let contractCreator;
+  let accounts;
 
   // Contract variables
   let collateralToken;
+  let initialCollateralToken;
   let expiringMultiPartyCreator;
   let registry;
   let collateralTokenWhitelist;
@@ -30,9 +32,13 @@ contract("ExpiringMultiPartyCreator", function (accounts) {
   // Re-used variables
   let constructorParams;
 
+  const identifier = padRight(utf8ToHex("TEST_IDENTIFIER"), 64);
+
   beforeEach(async () => {
+    accounts = await web3.eth.getAccounts();
+    [contractCreator] = accounts;
     await runDefaultFixture(hre);
-    collateralToken = await Token.new("Wrapped Ether", "WETH", 18).send({ from: contractCreator });
+    initialCollateralToken = await Token.new("Wrapped Ether", "WETH", 18).send({ from: contractCreator });
     registry = await Registry.deployed();
     expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
 
@@ -42,10 +48,18 @@ contract("ExpiringMultiPartyCreator", function (accounts) {
       .addToWhitelist(collateralToken.options.address)
       .send({ from: contractCreator });
 
+    const identifierWhitelist = await IdentifierWhitelist.deployed();
+    await identifierWhitelist.methods
+      .addSupportedIdentifier(identifier)
+      .send({ from: contractCreator });
+  });
+
+  beforeEach(async () => {
+    collateralToken = initialCollateralToken;
     constructorParams = {
       expirationTimestamp: "1898918401", // 2030-03-05T05:20:01.000Z
       collateralAddress: collateralToken.options.address,
-      priceFeedIdentifier: padRight(utf8ToHex("TEST_IDENTIFIER"), 64),
+      priceFeedIdentifier: identifier,
       syntheticName: "Test Synthetic Token",
       syntheticSymbol: "SYNTH",
       collateralRequirement: { rawValue: toWei("1.5") },
@@ -57,11 +71,6 @@ contract("ExpiringMultiPartyCreator", function (accounts) {
       withdrawalLiveness: 7200,
       financialProductLibraryAddress: ZERO_ADDRESS,
     };
-
-    const identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.methods
-      .addSupportedIdentifier(constructorParams.priceFeedIdentifier)
-      .send({ from: contractCreator });
   });
 
   it("TokenFactory address should be set on construction", async function () {

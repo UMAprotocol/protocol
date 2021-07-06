@@ -1,10 +1,10 @@
 const hre = require("hardhat");
 const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
+const { getContract, assertEventEmitted, assertEventNotEmitted } = hre;
 const { toWei, utf8ToHex, hexToUtf8, toBN } = web3.utils;
 const { RegistryRolesEnum, didContractThrow } = require("@uma/common");
-const truffleAssert = require("truffle-assertions");
 const { interfaceName } = require("@uma/common");
+const { assert } = require("chai");
 
 // Tested Contract
 const DepositBox = getContract("DepositBox");
@@ -18,10 +18,11 @@ const Finder = getContract("Finder");
 const MockOracle = getContract("MockOracle");
 const Store = getContract("Store");
 
-contract("DepositBox", function (accounts) {
-  let contractCreator = accounts[0];
-  let user = accounts[1];
-  let otherUser = accounts[2];
+describe("DepositBox", function () {
+  let accounts;
+  let contractCreator;
+  let user;
+  let otherUser;
 
   // Contract variables
   let collateralToken;
@@ -35,10 +36,12 @@ contract("DepositBox", function (accounts) {
   // Constants
   const priceFeedIdentifier = utf8ToHex("ETH/USD");
 
-  beforeEach(async function () {
+  before(async function () {
+    // Accounts.
+    accounts = await web3.eth.getAccounts();
+    [contractCreator, user, otherUser] = accounts;
+
     await runDefaultFixture(hre);
-    // Collateral token to be deposited in DepositBox.
-    collateralToken = await Token.new("ETH", "ETH", 18).send({ from: contractCreator });
 
     // Whitelist price feed identifier.
     const identifierWhitelist = await IdentifierWhitelist.deployed();
@@ -59,6 +62,13 @@ contract("DepositBox", function (accounts) {
 
     // Deploy a new DepositBox contract that will connect to the mockOracle for price requests.
     registry = await Registry.deployed();
+
+  });
+
+  beforeEach(async function() {
+    // Collateral token to be deposited in DepositBox.
+    collateralToken = await Token.new("ETH", "ETH", 18).send({ from: contractCreator });
+
     depositBox = await DepositBox.new(
       collateralToken.options.address,
       finder.options.address,
@@ -74,7 +84,7 @@ contract("DepositBox", function (accounts) {
 
     // Mint the user some ERC20 to begin the test.
     await collateralToken.methods.addMember(1, contractCreator).send({ from: contractCreator });
-    await collateralToken.methods.mint(user, toWei("1000").send({ from: contractCreator });
+    await collateralToken.methods.mint(user, toWei("1000")).send({ from: contractCreator });
     await collateralToken.methods.approve(depositBox.options.address, toWei("1000")).send({ from: user });
   });
 
@@ -106,11 +116,11 @@ contract("DepositBox", function (accounts) {
       const userStartingBalance = await collateralToken.methods.balanceOf(user).call();
 
       // Submit the deposit.
-      let txn = await depositBox.methods.deposit({ rawValue: amountToDeposit }).call({ from: user });
-      truffleAssert.eventEmitted(txn, "Deposit", (ev) => {
+      let txn = await depositBox.methods.deposit({ rawValue: amountToDeposit }).send({ from: user });
+      await assertEventEmitted(txn, depositBox, "Deposit", (ev) => {
         return ev.user == user && ev.collateralAmount == amountToDeposit.toString();
       });
-      truffleAssert.eventEmitted(txn, "NewDepositBox", (ev) => {
+      await assertEventEmitted(txn, depositBox, "NewDepositBox", (ev) => {
         return ev.user == user;
       });
 
@@ -129,8 +139,8 @@ contract("DepositBox", function (accounts) {
       assert(await didContractThrow(depositBox.methods.deposit({ rawValue: "0" }).send({ from: user })));
 
       // Can submit a subsequent deposit.
-      txn = await depositBox.methods.deposit({ rawValue: amountToDeposit }).call({ from: user });
-      truffleAssert.eventNotEmitted(txn, "NewDepositBox");
+      txn = await depositBox.methods.deposit({ rawValue: amountToDeposit }).send({ from: user });
+      await assertEventNotEmitted(txn, depositBox, "NewDepositBox");
       assert.equal(
         (await depositBox.methods.getCollateral(user).call()).toString(),
         toBN(amountToDeposit).mul(toBN(2)).toString()
@@ -146,20 +156,20 @@ contract("DepositBox", function (accounts) {
       await depositBox.methods.deposit({ rawValue: amountToDeposit }).send({ from: user });
 
       // Submit the withdrawal request.
-      const requestTimestamp = await depositBox.methods.getCurrentTime().call();
-      let txn = await depositBox.methods.requestWithdrawal({ rawValue: amountToWithdraw }).call({ from: user });
-      truffleAssert.eventEmitted(txn, "RequestWithdrawal", (ev) => {
+      const requestTimestamp = parseInt(await depositBox.methods.getCurrentTime().call());
+      let txn = await depositBox.methods.requestWithdrawal({ rawValue: amountToWithdraw }).send({ from: user });
+      await assertEventEmitted(txn, depositBox, "RequestWithdrawal", (ev) => {
         return (
           ev.user == user &&
           ev.collateralAmount == amountToWithdraw.toString() &&
-          ev.requestPassTimestamp == requestTimestamp.toNumber()
+          ev.requestPassTimestamp == requestTimestamp
         );
       });
 
       // Oracle should have an enqueued price after calling dispute.
       const pendingRequests = await mockOracle.methods.getPendingQueries().call();
       assert.equal(hexToUtf8(pendingRequests[0]["identifier"]), hexToUtf8(priceFeedIdentifier));
-      assert.equal(pendingRequests[0].time, requestTimestamp.toNumber());
+      assert.equal(pendingRequests[0].time, requestTimestamp);
 
       // A final fee should have been charged on the collateral which should get deducted from the user balances.
       assert.equal(
@@ -196,12 +206,12 @@ contract("DepositBox", function (accounts) {
       assert(
         await didContractThrow(depositBox.methods.cancelWithdrawal().send({from: otherUser}))
       );
-      txn = await depositBox.methods.cancelWithdrawal().call({ from: user });
-      truffleAssert.eventEmitted(txn, "RequestWithdrawalCanceled", (ev) => {
+      txn = await depositBox.methods.cancelWithdrawal().send({ from: user });
+      await assertEventEmitted(txn, depositBox, "RequestWithdrawalCanceled", (ev) => {
         return (
           ev.user == user &&
           ev.collateralAmount == amountToWithdraw.toString() &&
-          ev.requestPassTimestamp == requestTimestamp.toNumber()
+          ev.requestPassTimestamp == requestTimestamp
         );
       });
       assert(await didContractThrow(depositBox.methods.cancelWithdrawal().send({ from: user })));
@@ -216,7 +226,7 @@ contract("DepositBox", function (accounts) {
     it("Execute withdrawal after price resolves for less than full balance", async function () {
       // Deposit funds and submit withdrawal request.
       await depositBox.methods.deposit({ rawValue: amountToDeposit }).send({ from: user });
-      const requestTimestamp = await depositBox.methods.getCurrentTime().call();
+      const requestTimestamp = parseInt(await depositBox.methods.getCurrentTime().call());
       await depositBox.methods.requestWithdrawal({ rawValue: amountToWithdraw }).send({ from: user });
       const userStartingBalance = await collateralToken.methods.balanceOf(user).call();
 
@@ -224,10 +234,10 @@ contract("DepositBox", function (accounts) {
       assert(await didContractThrow(depositBox.methods.executeWithdrawal().send({ from: user })));
 
       // Manually push a price to the DVM.
-      await mockOracle.pushPrice(priceFeedIdentifier, requestTimestamp.toNumber(), exchangeRate);
+      await mockOracle.methods.pushPrice(priceFeedIdentifier, requestTimestamp, exchangeRate).send({from:accounts[0]});
 
       // Advance time forward by one second to simulate regular fees being charged.
-      await depositBox.setCurrentTime(requestTimestamp.addn(1));
+      await depositBox.methods.setCurrentTime(requestTimestamp + 1).send({from:accounts[0]});
 
       // Cannot execute the withdrawal if there is no pending withdrawal for the user.
       assert(
@@ -235,12 +245,12 @@ contract("DepositBox", function (accounts) {
       );
 
       // Execute the withdrawal request, which should withdraw (150/200 = 0.75) tokens.
-      let txn = await depositBox.methods.executeWithdrawal().call({ from: user });
-      truffleAssert.eventEmitted(txn, "RequestWithdrawalExecuted", (ev) => {
+      let txn = await depositBox.methods.executeWithdrawal().send({ from: user });
+      await assertEventEmitted(txn, depositBox, "RequestWithdrawalExecuted", (ev) => {
         return (
           ev.user == user &&
           ev.collateralAmount == toWei("0.75").toString() &&
-          ev.requestPassTimestamp == requestTimestamp.toNumber() &&
+          ev.requestPassTimestamp == requestTimestamp &&
           ev.exchangeRate == exchangeRate.toString()
         );
       });
@@ -267,25 +277,26 @@ contract("DepositBox", function (accounts) {
     it("Execute withdrawal after price resolves for more than full balance", async function () {
       // Deposit funds and submit withdrawal request.
       await depositBox.methods.deposit({ rawValue: amountToDeposit }).send({ from: user });
-      const requestTimestamp = await depositBox.methods.getCurrentTime().call();
+      const requestTimestamp = parseInt(await depositBox.methods.getCurrentTime().call());
+      await depositBox.methods.setCurrentTime(requestTimestamp).send({from:accounts[0]});
       await depositBox.methods.requestWithdrawal({ rawValue: amountToOverdraw }).send({ from: user });
       const userStartingBalance = await collateralToken.methods.balanceOf(user).call();
 
       // Manually push a price to the DVM.
-      await mockOracle.pushPrice(priceFeedIdentifier, requestTimestamp.toNumber(), exchangeRate);
+      await mockOracle.methods.pushPrice(priceFeedIdentifier, requestTimestamp, exchangeRate).send({from:accounts[0]});
 
       // Execute the withdrawal request, which should withdraw the user's full balance and delete the deposit box.
       // The user has 4 collateral remaining after the final fee.
-      let txn = await depositBox.methods.executeWithdrawal().call({ from: user });
-      truffleAssert.eventEmitted(txn, "RequestWithdrawalExecuted", (ev) => {
+      let txn = await depositBox.methods.executeWithdrawal().send({ from: user });
+      await assertEventEmitted(txn, depositBox, "RequestWithdrawalExecuted", (ev) => {
         return (
           ev.user == user &&
           ev.collateralAmount == toWei("4").toString() &&
-          ev.requestPassTimestamp == requestTimestamp.toNumber() &&
+          ev.requestPassTimestamp == requestTimestamp &&
           ev.exchangeRate == exchangeRate.toString()
         );
       });
-      truffleAssert.eventEmitted(txn, "EndedDepositBox", (ev) => {
+      await assertEventEmitted(txn, depositBox, "EndedDepositBox", (ev) => {
         return ev.user == user;
       });
 
@@ -304,8 +315,8 @@ contract("DepositBox", function (accounts) {
       );
 
       // When user deposits again, they will begin a new deposit box.
-      txn = await depositBox.methods.deposit({ rawValue: amountToDeposit }).call({ from: user });
-      truffleAssert.eventEmitted(txn, "NewDepositBox", (ev) => {
+      txn = await depositBox.methods.deposit({ rawValue: amountToDeposit }).send({ from: user });
+      await assertEventEmitted(txn, depositBox, "NewDepositBox", (ev) => {
         return ev.user == user;
       });
     });

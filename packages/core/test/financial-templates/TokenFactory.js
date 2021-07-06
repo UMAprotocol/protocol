@@ -112,7 +112,7 @@ contract("TokenFactory", function (accounts) {
     // Burn remaining tokens
     await token.methods.burn(amountToTransfer).send({ from: tokenCreator });
     await token.methods.addBurner(rando).send({ from: tokenCreator });
-    await token.burn(toWei("8.5".toString()), { from: rando });
+    await token.methods.burn(toWei("8.5".toString())).send({ from: rando });
     assert.equal((await token.methods.balanceOf(rando).call()).toString(), "0");
     assert.equal((await token.methods.totalSupply().call()).toString(), "0");
   });

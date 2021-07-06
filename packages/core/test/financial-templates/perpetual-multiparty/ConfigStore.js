@@ -14,12 +14,6 @@ const ConfigStore = getContract("ConfigStore");
 // Helper Contracts
 const Timer = getContract("Timer");
 
-// Helper functions.
-async function incrementTime(contract, amount) {
-  const currentTime = parseInt(await contract.methods.getCurrentTime().call());
-  await contract.methods.setCurrentTime(currentTime + amount);
-}
-
 contract("ConfigStore", function (accounts) {
   let timer;
   let configStore;
@@ -43,6 +37,12 @@ contract("ConfigStore", function (accounts) {
     minFundingRate: { rawValue: toWei("0") },
     proposalTimePastLimit: 0,
   };
+
+  // Helper functions.
+  async function incrementTime(contract, amount) {
+    const currentTime = parseInt(await contract.methods.getCurrentTime().call());
+    await contract.methods.setCurrentTime(currentTime + amount).send({from:accounts[0]});
+  }
 
   async function currentConfigMatchesInput(_store, _inputConfig) {
     let currentConfig = await _store.methods.updateAndGetCurrentConfig().call();
@@ -199,7 +199,7 @@ contract("ConfigStore", function (accounts) {
         ...testConfig,
         timelockLiveness: 86402,
       };
-      const overwriteProposalTime = await configStore.methods.getCurrentTime().call();
+      const overwriteProposalTime = toBN(await configStore.methods.getCurrentTime().call());
       proposeTxn = await configStore.methods.proposeNewConfig(test2Config).send({from:accounts[0]});
       await assertEventEmitted(proposeTxn, configStore, "ProposedNewConfigSettings", (ev) => {
         return (

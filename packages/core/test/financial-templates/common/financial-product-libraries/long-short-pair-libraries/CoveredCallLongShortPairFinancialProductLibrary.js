@@ -16,12 +16,17 @@ const ExpiringContractMock = getContract("ExpiringMultiPartyMock");
 const { toWei, toBN, utf8ToHex } = web3.utils;
 const strikePrice = toWei("400");
 
-contract("CoveredCallLongShortPairFinancialProductLibrary", function (accounts) {
+describe("CoveredCallLongShortPairFinancialProductLibrary", function () {
   let callOptionLSPFPL;
   let expiringContractMock;
+  let accounts;
+
+  before(async () => {
+    await runDefaultFixture(hre);
+    accounts = await hre.web3.eth.getAccounts();
+  });
 
   beforeEach(async () => {
-    await runDefaultFixture(hre);
     callOptionLSPFPL = await CoveredCallLongShortPairFinancialProductLibrary.new().send({ from: accounts[0] });
     expiringContractMock = await ExpiringContractMock.new(
       ZERO_ADDRESS, // _financialProductLibraryAddress

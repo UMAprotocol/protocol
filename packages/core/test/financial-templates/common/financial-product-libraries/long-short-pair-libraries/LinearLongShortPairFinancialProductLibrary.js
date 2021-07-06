@@ -15,12 +15,17 @@ const { toWei, toBN, utf8ToHex } = web3.utils;
 const upperBound = toBN(toWei("2000"));
 const lowerBound = toBN(toWei("1000"));
 
-contract("LinearLongShortPairFinancialProductLibrary", function (accounts) {
+describe("LinearLongShortPairFinancialProductLibrary", function () {
   let linearLSPFPL;
   let expiringContractMock;
+  let accounts;
+
+  before(async () => {
+    await runDefaultFixture(hre);
+    accounts = await hre.web3.eth.getAccounts();
+  });
 
   beforeEach(async () => {
-    await runDefaultFixture(hre);
     linearLSPFPL = await LinearLongShortPairFinancialProductLibrary.new().send({ from: accounts[0] });
     expiringContractMock = await ExpiringContractMock.new(
       ZERO_ADDRESS, // _financialProductLibraryAddress

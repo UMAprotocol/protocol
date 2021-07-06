@@ -14,14 +14,16 @@ const { toWei, toBN, utf8ToHex } = web3.utils;
 const priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
 const collateralizationRatio = toBN(toWei("1")).addn(1);
 
-contract("KpiOptionsFinancialProductLibrary", function (accounts) {
+describe("KpiOptionsFinancialProductLibrary", function () {
   let kpiFPL;
   let expiringMultiParty;
   let timer;
   let expirationTime;
+  let accounts;
 
-  beforeEach(async () => {
+  before(async () => {
     await runDefaultFixture(hre);
+    accounts = await hre.web3.eth.getAccounts();
     timer = await Timer.deployed();
 
     expirationTime = (await timer.methods.getCurrentTime().call()) + 100; // use 100 seconds in the future as the expiration time.

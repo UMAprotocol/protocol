@@ -19,7 +19,12 @@ const ConfigStore = getContract("ConfigStore");
 
 const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
 
-contract("FundingRateApplier", function (accounts) {
+describe("FundingRateApplier", function () {
+  let accounts;
+  let owner;
+  let other;
+  let disputer;
+
   // Single-deploy contracts.
   let finder;
   let timer;
@@ -48,11 +53,6 @@ contract("FundingRateApplier", function (accounts) {
   let currentTime;
   let ancillaryData;
 
-  // Accounts.
-  const owner = accounts[0];
-  const other = accounts[1];
-  const disputer = accounts[2];
-
   const pushPrice = async (price) => {
     const [lastQuery] = (await mockOracle.methods.getPendingQueries().call()).slice(-1);
 
@@ -71,17 +71,23 @@ contract("FundingRateApplier", function (accounts) {
       .send({ from: accounts[0] });
   };
 
-  beforeEach(async () => {
+  before(async () => {
+    // Accounts.
+    accounts = await web3.eth.getAccounts();
+    [owner, other, disputer] = accounts;
+
     await runDefaultFixture(hre);
+
     finder = await Finder.deployed();
     timer = await Timer.deployed();
-
     collateralWhitelist = await AddressWhitelist.deployed();
 
     // Approve identifier.
     const identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+  });
 
+  beforeEach(async () => {
     // Set up a fresh mock oracle in the finder.
     mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({ from: accounts[0] });
     await finder.methods
@@ -89,6 +95,7 @@ contract("FundingRateApplier", function (accounts) {
       .send({ from: accounts[0] });
 
     // Set up a fresh optimistic oracle in the finder.
+    optimisticOracle = await OptimisticOracle.deployed();
     optimisticOracle = await OptimisticOracle.new(liveness, finder.options.address, timer.options.address).send({
       from: accounts[0],
     });

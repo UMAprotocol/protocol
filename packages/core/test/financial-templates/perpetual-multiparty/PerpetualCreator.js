@@ -234,7 +234,7 @@ contract("PerpetualCreator", function (accounts) {
     // Deployed Perpetual timer should be same as Perpetual creator.
     assert.equal(
       await perpetual.methods.timerAddress().call(),
-      await perpetualCreator.methods.timerAddress().send({ from: accounts[0] })
+      await perpetualCreator.methods.timerAddress().call()
     );
   });
 

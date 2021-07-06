@@ -13,10 +13,13 @@ const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const Token = getContract("ExpandedERC20");
 const Timer = getContract("Timer");
 
-contract("ExpiringMultiParty", function (accounts) {
+describe("ExpiringMultiParty", function () {
   let finder, timer;
+  let accounts;
 
-  beforeEach(async () => {
+  before(async () => {
+    // Accounts.
+    accounts = await web3.eth.getAccounts();
     await runDefaultFixture(hre);
     timer = await Timer.deployed();
     finder = await Finder.deployed();

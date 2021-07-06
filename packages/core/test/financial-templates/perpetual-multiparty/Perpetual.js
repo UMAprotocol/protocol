@@ -13,11 +13,12 @@ const Token = getContract("SyntheticToken");
 const Timer = getContract("Timer");
 const ConfigStore = getContract("ConfigStore");
 
-contract("Perpetual", function (accounts) {
-  let finder, timer;
-
-  beforeEach(async () => {
+describe("Perpetual", function () {
+  let finder, timer, accounts;
+  
+  before(async () => {
     await runDefaultFixture(hre);
+    accounts = await web3.eth.getAccounts();
     timer = await Timer.deployed();
     finder = await Finder.deployed();
   });

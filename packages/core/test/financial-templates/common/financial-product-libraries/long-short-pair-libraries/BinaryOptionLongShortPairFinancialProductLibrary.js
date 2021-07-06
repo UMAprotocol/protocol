@@ -15,12 +15,17 @@ const ExpiringContractMock = getContract("ExpiringMultiPartyMock");
 const { toWei, toBN, utf8ToHex } = web3.utils;
 const strikePrice = toBN(toWei("3000"));
 
-contract("BinaryOptionLongShortPairFinancialProductLibrary", function (accounts) {
+describe("BinaryOptionLongShortPairFinancialProductLibrary", function () {
   let binaryLSPFPL;
   let expiringContractMock;
+  let accounts;
 
-  beforeEach(async () => {
+  before(async () => {
     await runDefaultFixture(hre);
+    accounts = await hre.web3.eth.getAccounts();
+  });
+  
+  beforeEach(async () => {
     binaryLSPFPL = await BinaryOptionLongShortPairFinancialProductLibrary.new().send({ from: accounts[0] });
     expiringContractMock = await ExpiringContractMock.new(
       ZERO_ADDRESS, // _financialProductLibraryAddress

@@ -16,14 +16,16 @@ const strikePrice = toBN(toWei("400"));
 const priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
 const collateralizationRatio = toWei("1.2");
 
-contract("StructuredNoteFinancialProductLibrary", function (accounts) {
+describe("StructuredNoteFinancialProductLibrary", function () {
   let structuredNoteFPL;
   let expiringMultiParty;
   let timer;
   let expirationTime;
+  let accounts;
 
-  beforeEach(async () => {
+  before(async () => {
     await runDefaultFixture(hre);
+    accounts = await hre.web3.eth.getAccounts();
     timer = await Timer.deployed();
 
     expirationTime = (await timer.methods.getCurrentTime().call()) + 100; // use 100 seconds in the future as the expiration time.

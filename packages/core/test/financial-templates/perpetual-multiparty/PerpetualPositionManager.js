@@ -366,7 +366,7 @@ contract("PerpetualPositionManager", function (accounts) {
     // Fails without approving token.
     assert(await didContractThrow(positionManager.methods.redeem({ rawValue: redeemTokens }).send({ from: sponsor })));
     await tokenCurrency.methods.approve(positionManager.options.address, redeemTokens).send({ from: sponsor });
-    sponsorInitialBalance = await collateral.methods.balanceOf(sponsor).call();
+    sponsorInitialBalance = toBN(await collateral.methods.balanceOf(sponsor).call());
 
     // Check redeem return value and event.
     const redeem = positionManager.methods.redeem;
@@ -385,7 +385,7 @@ contract("PerpetualPositionManager", function (accounts) {
       );
     });
 
-    sponsorFinalBalance = await collateral.methods.balanceOf(sponsor).call();
+    sponsorFinalBalance = toBN(await collateral.methods.balanceOf(sponsor).call());
     assert.equal(sponsorFinalBalance.sub(sponsorInitialBalance).toString(), expectedSponsorCollateral);
     await checkBalances(expectedSponsorTokens, expectedSponsorCollateral);
 
@@ -551,7 +551,7 @@ contract("PerpetualPositionManager", function (accounts) {
     await positionManager.methods.setCurrentTime(
       parseInt(await positionManager.methods.getCurrentTime().call()) + withdrawalLiveness
     );
-    const sponsorInitialBalance = await collateral.methods.balanceOf(sponsor).call();
+    const sponsorInitialBalance = toBN(await collateral.methods.balanceOf(sponsor).call());
     const expectedSponsorFinalBalance = sponsorInitialBalance.add(toBN(withdrawalAmount));
     const withdrawPassedRequest = positionManager.methods.withdrawPassedRequest;
     let amountWithdrawn = await withdrawPassedRequest.methods.call({ from: sponsor }).call();
@@ -777,7 +777,7 @@ contract("PerpetualPositionManager", function (accounts) {
     const initialSponsorTokenDebt = toBN(
       (await positionManager.methods.positions(sponsor).call()).tokensOutstanding.rawValue
     );
-    const initialTotalTokensOutstanding = await positionManager.methods.totalTokensOutstanding().call();
+    const initialTotalTokensOutstanding = toBN(await positionManager.methods.totalTokensOutstanding().call());
 
     // Check that repay fails if missing Burner role.
     await tokenCurrency.methods.removeBurner(positionManager.options.address).send({ from: accounts[0] });
@@ -799,7 +799,7 @@ contract("PerpetualPositionManager", function (accounts) {
       toBN((await positionManager.methods.positions(sponsor).call()).tokensOutstanding.rawValue)
     );
     const totalTokensOutstandingDecreased = initialTotalTokensOutstanding.sub(
-      await positionManager.methods.totalTokensOutstanding().send({ from: accounts[0] })
+      await positionManager.methods.totalTokensOutstanding().call()
     );
 
     // Tokens paid back to contract,the token debt decrease and decrease in outstanding should all equal 40 tokens.
@@ -924,7 +924,7 @@ contract("PerpetualPositionManager", function (accounts) {
 
     // Pay the fees, check the return value, and then check the collateral and the store balance.
     const payRegularFees = positionManager.methods.payRegularFees();
-    const feesPaid = await payRegularFees.methods.call();
+    const feesPaid = toBN(await payRegularFees.methods.call());
     assert.equal(feesPaid.toString(), toWei("0.02"));
     const payFeesResult = await payRegularFees.send({from:accounts[0]});
     await assertEventEmitted(payFeesResult, positionManager, "RegularFeesPaid", (ev) => {
@@ -1097,7 +1097,7 @@ contract("PerpetualPositionManager", function (accounts) {
     // Token holders (`sponsor` and `tokenHolder`) should now be able to withdraw post emergency shutdown.
     // From the token holder's perspective, they are entitled to the value of their tokens, notated in the underlying.
     // They have 50 tokens settled at a price of 1.1 should yield 55 units of underling (or 55 USD as underlying is WETH).
-    const tokenHolderInitialCollateral = await collateral.methods.balanceOf(tokenHolder).call();
+    const tokenHolderInitialCollateral = toBN(await collateral.methods.balanceOf(tokenHolder).call());
     const tokenHolderInitialSynthetic = await tokenCurrency.methods.balanceOf(tokenHolder).call();
     assert.equal(tokenHolderInitialSynthetic, tokenHolderTokens);
 
@@ -1115,7 +1115,7 @@ contract("PerpetualPositionManager", function (accounts) {
     await tokenCurrency.methods.addBurner(positionManager.options.address).send({ from: accounts[0] });
     await positionManager.methods.settleEmergencyShutdown().send({ from: tokenHolder });
     assert.equal((await positionManager.methods.emergencyShutdownPrice().call()).toString(), toWei("1.1"));
-    const tokenHolderFinalCollateral = await collateral.methods.balanceOf(tokenHolder).call();
+    const tokenHolderFinalCollateral = toBN(await collateral.methods.balanceOf(tokenHolder).call());
     const tokenHolderFinalSynthetic = await tokenCurrency.methods.balanceOf(tokenHolder).call();
     const expectedTokenHolderFinalCollateral = toWei("55");
     assert.equal(tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral), expectedTokenHolderFinalCollateral);
@@ -1237,7 +1237,7 @@ contract("PerpetualPositionManager", function (accounts) {
 
     // cancelWithdrawal
     await positionManager.methods.requestWithdrawal({ rawValue: toWei("1") }).send({ from: other });
-    await timer.setCurrentTime((await timer.methods.getCurrentTime().call()).add(toBN(10000)).toString());
+    await timer.methods.setCurrentTime((await timer.methods.getCurrentTime().call()).add(toBN(10000)).toString()).send({from:accounts[0]});
     await positionManager.methods.cancelWithdrawal().send({ from: other });
     assert.equal(
       (await positionManager.methods.fundingRate().call()).cumulativeMultiplier.toString(),
@@ -1377,7 +1377,7 @@ contract("PerpetualPositionManager", function (accounts) {
     // Their redeemed amount for this excess collateral is the difference between the two. The sponsor also has 50 synthetic
     // tokens that they did not sell which will be redeemed.This makes their expected redemption:
     // = 200 - (100 - 50) * 1.1 * 1.05 = 142.25
-    const sponsorInitialCollateral = await collateral.methods.balanceOf(sponsor).call();
+    const sponsorInitialCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
     const sponsorInitialSynthetic = await tokenCurrency.methods.balanceOf(sponsor).call();
 
     // Approve tokens to be moved by the contract and execute the settlement.
@@ -1385,7 +1385,7 @@ contract("PerpetualPositionManager", function (accounts) {
       .approve(positionManager.options.address, sponsorInitialSynthetic)
       .send({ from: sponsor });
     await positionManager.methods.settleEmergencyShutdown().send({ from: sponsor });
-    const sponsorFinalCollateral = await collateral.methods.balanceOf(sponsor).call();
+    const sponsorFinalCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
     const sponsorFinalSynthetic = await tokenCurrency.methods.balanceOf(sponsor).call();
 
     // The token Sponsor should gain the value of their synthetics in underlying
@@ -1636,7 +1636,7 @@ contract("PerpetualPositionManager", function (accounts) {
       );
 
       // Advance by another second and check precision loss (i.e. the lower decimals don't affect the outcome).
-      await timer.setCurrentTime((await timer.methods.getCurrentTime().call()).add(toBN(1)).toString());
+      await timer.methods.setCurrentTime((await timer.methods.getCurrentTime().call()).add(toBN(1)).toString()).send({from:accounts[0]});
       await positionManager.methods.applyFundingRate().send({ from: accounts[0] });
       assert.equal(
         (await positionManager.methods.fundingRate().call()).cumulativeMultiplier.toString(),
@@ -1722,7 +1722,7 @@ contract("PerpetualPositionManager", function (accounts) {
     // Settle emergency shutdown should still work even if the new oracle has no price.
     initialCollateral = await collateral.methods.balanceOf(sponsor).call();
     await positionManager.methods.settleEmergencyShutdown().send({ from: sponsor });
-    collateralPaid = (await collateral.methods.balanceOf(sponsor).call()).sub(initialCollateral);
+    collateralPaid = toBN(await collateral.methods.balanceOf(sponsor).call()).sub(initialCollateral);
 
     // Sponsor should have received 300 - 240 = 60 collateral tokens.
     assert.equal(collateralPaid, toWei("60"));
@@ -2018,7 +2018,7 @@ contract("PerpetualPositionManager", function (accounts) {
     // of their synthetics they drew is 120 (100*1.2). Their redeemed amount for this excess collateral is the difference between the two.
     // The sponsor also has 50 synthetic tokens that they did not sell valued at 1.2 per token.
     // This makes their expected redemption = 200 (collat) - 100 * 1.2 (debt) + 50 * 1.2 (synth returned) = 140 in e16 USDC
-    const sponsorInitialCollateral = await USDCToken.methods.balanceOf(sponsor);
+    const sponsorInitialCollateral = toBN(await USDCToken.methods.balanceOf(sponsor).call());
     const sponsorInitialSynthetic = await tokenCurrency.methods.balanceOf(sponsor).call();
 
     // Approve tokens to be moved by the contract and execute the settlement.
@@ -2026,7 +2026,7 @@ contract("PerpetualPositionManager", function (accounts) {
       .approve(custompositionManager.options.address, sponsorInitialSynthetic)
       .send({ from: sponsor });
     await custompositionManager.methods.settleEmergencyShutdown().send({ from: sponsor });
-    const sponsorFinalCollateral = await USDCToken.methods.balanceOf(sponsor);
+    const sponsorFinalCollateral = toBN(await USDCToken.methods.balanceOf(sponsor).call());
     const sponsorFinalSynthetic = await tokenCurrency.methods.balanceOf(sponsor).call();
 
     // The token Sponsor should gain the value of their synthetics in underlying

@@ -591,7 +591,7 @@ contract("Liquidatable", function (accounts) {
       );
 
       // Create a subsequent liquidation partial and check that it also advances the withdrawal request timer
-      await liquidationContract.methods.setCurrentTime(liquidation1Time.add(withdrawalLiveness.divn(2)).toString()).send({from:accounts[0]});
+      await liquidationContract.methods.setCurrentTime(liquidation1Time + (withdrawalLiveness.toNumber() / 2)).send({from:accounts[0]});
 
       await liquidationContract.methods.createLiquidation(
         sponsor,
@@ -603,8 +603,8 @@ contract("Liquidatable", function (accounts) {
       );
 
       // Again, verify this is offset correctly.
-      const liquidation2Time = await liquidationContract.methods.getCurrentTime().call();
-      const expectedWithdrawalRequestPassTimestamp = liquidation2Time.add(withdrawalLiveness).toString();
+      const liquidation2Time = parseInt(await liquidationContract.methods.getCurrentTime().call());
+      const expectedWithdrawalRequestPassTimestamp = (liquidation2Time + withdrawalLiveness.toNumber()).toString();
       assert.equal(
         expectedWithdrawalRequestPassTimestamp,
         (await liquidationContract.methods.positions(sponsor).call()).withdrawalRequestPassTimestamp.toString()
@@ -612,7 +612,7 @@ contract("Liquidatable", function (accounts) {
 
       // Submitting a liquidation less than the minimum sponsor size should not advance the timer. Start by advancing
       // time by half of the liquidation liveness.
-      await liquidationContract.methods.setCurrentTime(liquidation2Time.add(withdrawalLiveness.divn(2)).toString()).send({from:accounts[0]});
+      await liquidationContract.methods.setCurrentTime(liquidation2Time + (withdrawalLiveness.toNumber() / 2)).send({from:accounts[0]});
       await liquidationContract.methods.createLiquidation(
         sponsor,
         { rawValue: "0" },
@@ -631,7 +631,7 @@ contract("Liquidatable", function (accounts) {
       );
 
       // Advance timer again to place time after liquidation liveness.
-      await liquidationContract.methods.setCurrentTime(liquidation2Time.add(withdrawalLiveness).toString());
+      await liquidationContract.methods.setCurrentTime(liquidation2Time + withdrawalLiveness.toNumber()).send({from:accounts[0]});
 
       // Now, submitting a withdrawal request should NOT reset liveness (sponsor has passed liveness duration).
       await liquidationContract.methods.createLiquidation(
@@ -1126,7 +1126,7 @@ contract("Liquidatable", function (accounts) {
           { rawValue: "0" },
           { rawValue: pricePerToken.toString() },
           { rawValue: amountOfSynthetic.toString() },
-          unreachableDeadline).send(
+          unreachableDeadline).call(
           { from: liquidator }
         );
         await liquidationContract.methods.createLiquidation(
@@ -1230,9 +1230,9 @@ contract("Liquidatable", function (accounts) {
           let currentTime = parseInt(await liquidationContract.methods.getCurrentTime().call());
           await liquidationContract.methods.setCurrentTime(currentTime + 1).send({from:accounts[0]});
 
-          let startBalanceSponsor = await collateralToken.methods.balanceOf(sponsor).call();
-          let startBalanceLiquidator = await collateralToken.methods.balanceOf(liquidator).call();
-          let startBalanceDisputer = await collateralToken.methods.balanceOf(disputer).call();
+          let startBalanceSponsor = toBN(await collateralToken.methods.balanceOf(sponsor).call());
+          let startBalanceLiquidator = toBN(await collateralToken.methods.balanceOf(liquidator).call());
+          let startBalanceDisputer = toBN(await collateralToken.methods.balanceOf(disputer).call());
 
           const sponsorAmount = toWei("49.5");
           // (TOT_COL  - TRV + TS_REWARD   ) * (1 - FEE_PERCENTAGE) = TS_WITHDRAW
@@ -1744,11 +1744,11 @@ contract("Liquidatable", function (accounts) {
 
         // Advance time to charge fee.
         let currentTime = parseInt(await USDCLiquidationContract.methods.getCurrentTime().call());
-        await USDCLiquidationContract.methods.setCurrentTime(currentTime + 1);
+        await USDCLiquidationContract.methods.setCurrentTime(currentTime + 1).send({from:accounts[0]});
 
-        let startBalanceSponsor = await collateralToken.methods.balanceOf(sponsor).call();
-        let startBalanceLiquidator = await collateralToken.methods.balanceOf(liquidator).call();
-        let startBalanceDisputer = await collateralToken.methods.balanceOf(disputer).call();
+        let startBalanceSponsor = toBN(await collateralToken.methods.balanceOf(sponsor).call());
+        let startBalanceLiquidator = toBN(await collateralToken.methods.balanceOf(liquidator).call());
+        let startBalanceDisputer = toBN(await collateralToken.methods.balanceOf(disputer).call());
 
         // The logic in the assertions that follows is identical to previous tests except the output
         // is scaled to be represented in USDC.
@@ -1769,7 +1769,7 @@ contract("Liquidatable", function (accounts) {
           .withdrawLiquidation(liquidationParams.liquidationId, sponsor)
           .send({ from: accounts[0] });
 
-        await assertEventEmitted(withdrawTxn, liquidationContract, "LiquidationWithdrawn", (ev) => {
+        await assertEventEmitted(withdrawTxn, USDCLiquidationContract, "LiquidationWithdrawn", (ev) => {
           return (
             ev.paidToLiquidator.toString() === liquidatorAmount.toString() &&
             ev.paidToSponsor.toString() === sponsorAmount.toString() &&
@@ -1896,7 +1896,7 @@ contract("Liquidatable", function (accounts) {
       it("Call to financial product library directly", async () => {
         // Test calling the library directly.
         const financialProductLibrary = await FinancialProductLibraryTest.at(
-          await fclLiquidationContract.methods.financialProductLibrary().send({ from: accounts[0] })
+          await fclLiquidationContract.methods.financialProductLibrary().call()
         );
         assert.equal(
           (
@@ -1931,11 +1931,11 @@ contract("Liquidatable", function (accounts) {
           );
 
           // Verify the dispute succeeded from the event.
-          await assertEventEmitted(withdrawResult, liquidationContract, "DisputeSettled", (ev) => {
+          await assertEventEmitted(withdrawResult, fclLiquidationContract, "DisputeSettled", (ev) => {
             return ev.disputeSucceeded; // disputeSuccess should be true.
           });
 
-          await assertEventEmitted(withdrawResult, liquidationContract, "LiquidationWithdrawn", (ev) => {
+          await assertEventEmitted(withdrawResult, fclLiquidationContract, "LiquidationWithdrawn", (ev) => {
             return (
               ev.liquidationStatus.toString() == LiquidationStatesEnum.DISPUTE_SUCCEEDED && // liquidationStatus should be DISPUTE_SUCCEEDED.
               ev.settlementPrice.toString() == toBN(toWei("0.62")).toString() // Correct settlement price
@@ -1959,11 +1959,11 @@ contract("Liquidatable", function (accounts) {
           );
 
           // Verify the dispute failed from the event.
-          await assertEventEmitted(withdrawResult, liquidationContract, "DisputeSettled", (ev) => {
+          await assertEventEmitted(withdrawResult, fclLiquidationContract, "DisputeSettled", (ev) => {
             return !ev.disputeSucceeded; // disputeSuccess should be false.
           });
 
-          await assertEventEmitted(withdrawResult, liquidationContract, "LiquidationWithdrawn", (ev) => {
+          await assertEventEmitted(withdrawResult, fclLiquidationContract, "LiquidationWithdrawn", (ev) => {
             return (
               ev.liquidationStatus.toString() == LiquidationStatesEnum.DISPUTE_FAILED && // liquidationStatus should be DISPUTE_FAILED.
               ev.settlementPrice.toString() == toBN(toWei("0.63")).toString() // Correct settlement price
@@ -1979,10 +1979,10 @@ contract("Liquidatable", function (accounts) {
           assert.isTrue(await financialProductLibraryTest.methods.shouldRevert().call());
           assert(
             await didContractThrow(
-              financialProductLibraryTest.transformCollateralRequirement(
+              financialProductLibraryTest.methods.transformCollateralRequirement(
                 { rawValue: toWei("10") },
                 { rawValue: collateralRequirement.toString() }
-              )
+              ).send({from:accounts[0]})
             )
           );
         });
@@ -2102,11 +2102,11 @@ contract("Liquidatable", function (accounts) {
           );
 
           // Verify the dispute succeeded from the event.
-          await assertEventEmitted(withdrawResult, liquidationContract, "DisputeSettled", (ev) => {
+          await assertEventEmitted(withdrawResult, fclLiquidationContract, "DisputeSettled", (ev) => {
             return ev.disputeSucceeded; // disputeSuccess should be true.
           });
 
-          await assertEventEmitted(withdrawResult, liquidationContract, "LiquidationWithdrawn", (ev) => {
+          await assertEventEmitted(withdrawResult, fclLiquidationContract, "LiquidationWithdrawn", (ev) => {
             return (
               ev.liquidationStatus.toString() == LiquidationStatesEnum.DISPUTE_SUCCEEDED && // liquidationStatus should be DISPUTE_SUCCEEDED.
               ev.settlementPrice.toString() == toBN(toWei("1.24")).toString() // Correct settlement price
@@ -2130,11 +2130,11 @@ contract("Liquidatable", function (accounts) {
           );
 
           // Verify the dispute failed from the event.
-          await assertEventEmitted(withdrawResult, liquidationContract, "DisputeSettled", (ev) => {
+          await assertEventEmitted(withdrawResult, fclLiquidationContract, "DisputeSettled", (ev) => {
             return !ev.disputeSucceeded; // disputeSuccess should be false.
           });
 
-          await assertEventEmitted(withdrawResult, liquidationContract, "LiquidationWithdrawn", (ev) => {
+          await assertEventEmitted(withdrawResult, fclLiquidationContract, "LiquidationWithdrawn", (ev) => {
             return (
               ev.liquidationStatus.toString() == LiquidationStatesEnum.DISPUTE_FAILED && // liquidationStatus should be DISPUTE_FAILED.
               ev.settlementPrice.toString() == toBN(toWei("1.26")).toString() // Correct settlement price

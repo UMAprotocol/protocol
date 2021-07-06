@@ -15,12 +15,17 @@ const lowPriceRange = toBN(toWei("10"));
 const highPriceRange = toBN(toWei("50"));
 const collateralPerPair = toBN(toWei("10"));
 
-contract("RangeBondLongShortPairFinancialProductLibrary", function (accounts) {
+describe("RangeBondLongShortPairFinancialProductLibrary", function () {
   let rangeBondLSPFPL;
   let lspMock;
+  let accounts;
+
+  before(async () => {
+    await runDefaultFixture(hre);
+    accounts = await hre.web3.eth.getAccounts();
+  });
 
   beforeEach(async () => {
-    await runDefaultFixture(hre);
     rangeBondLSPFPL = await RangeBondLongShortPairFinancialProductLibrary.new().send({ from: accounts[0] });
     lspMock = await LongShortPairMock.new(
       "1000000", // _expirationTimestamp

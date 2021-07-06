@@ -10,7 +10,7 @@ const Registry = getContract("Registry");
 const { utf8ToHex, hexToUtf8, sha3, padRight } = web3.utils;
 
 contract("BeaconOracle", async (accounts) => {
-  const owner = accounts[0];
+  let owner;
 
   let beaconOracle;
   let finder;

@@ -1192,7 +1192,7 @@ contract("PerpetualLiquidatable", function (accounts) {
 
         const withdrawTxn = await liquidationContract.methods
           .withdrawLiquidation(liquidationParams.liquidationId, sponsor)
-          .call();
+          .send({from:accounts[0]});
         assert.equal(
           (await collateralToken.methods.balanceOf(liquidator).call()).toString(),
           amountOfCollateral.add(finalFeeAmount).toString()
@@ -1345,9 +1345,9 @@ contract("PerpetualLiquidatable", function (accounts) {
           let currentTime = parseInt(await liquidationContract.methods.getCurrentTime().call());
           await liquidationContract.methods.setCurrentTime(currentTime + 1).send({from:accounts[0]});
 
-          let startBalanceSponsor = await collateralToken.methods.balanceOf(sponsor).call();
-          let startBalanceLiquidator = await collateralToken.methods.balanceOf(liquidator).call();
-          let startBalanceDisputer = await collateralToken.methods.balanceOf(disputer).call();
+          let startBalanceSponsor = toBN(await collateralToken.methods.balanceOf(sponsor).call());
+          let startBalanceLiquidator = toBN(await collateralToken.methods.balanceOf(liquidator).call());
+          let startBalanceDisputer = toBN(await collateralToken.methods.balanceOf(disputer).call());
 
           const sponsorAmount = toWei("49.5");
           // (TOT_COL  - TRV + TS_REWARD   ) * (1 - FEE_PERCENTAGE) = TS_WITHDRAW
@@ -1364,7 +1364,7 @@ contract("PerpetualLiquidatable", function (accounts) {
           // Withdraw liquidation
           const withdrawTxn = await liquidationContract.methods
             .withdrawLiquidation(liquidationParams.liquidationId, sponsor)
-            .call();
+            .send({from:accounts[0]});
           await assertEventEmitted(withdrawTxn, liquidationContract, "LiquidationWithdrawn", (ev) => {
             return (
               ev.paidToLiquidator.toString() === liquidatorAmount &&
@@ -2003,7 +2003,7 @@ contract("PerpetualLiquidatable", function (accounts) {
       // a value of 100e18.
       await USDCLiquidationContract.methods.create(
         { rawValue: USDCAmountOfCollateral.toString() },
-        { rawValue: USDCAmountOfSynthetic.toString() },
+        { rawValue: USDCAmountOfSynthetic.toString() }).send(
         { from: sponsor }
       );
       // Transfer USDCSynthetic tokens to a liquidator
@@ -2020,7 +2020,7 @@ contract("PerpetualLiquidatable", function (accounts) {
       );
 
       // Finally, dispute the liquidation.
-      await USDCLiquidationContract.methods.dispute(liquidationParams.liquidationId, sponsor, { from: disputer });
+      await USDCLiquidationContract.methods.dispute(liquidationParams.liquidationId, sponsor).send({ from: disputer });
     });
     describe("Dispute succeeded", () => {
       beforeEach(async () => {
@@ -2266,7 +2266,7 @@ contract("PerpetualLiquidatable", function (accounts) {
 
       // First, expire the liquidation
       let startTime = await liquidationContract.methods.getCurrentTime().call();
-      await liquidationContract.methods.setCurrentTime(toBN(startTime).add(liquidationLiveness).toString());
+      await liquidationContract.methods.setCurrentTime(toBN(startTime).add(liquidationLiveness).toString()).send({from:accounts[0]});
 
       // The liquidator is owed (0.999999999999999999 * 28 = 27.9999...) which gets truncated to 27.
       // The contract should have 29 - 27 = 2 collateral remaining, and the liquidation should be deleted.
