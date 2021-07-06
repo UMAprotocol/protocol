@@ -3,12 +3,13 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../external/polygon/tunnel/FxBaseRootTunnel.sol";
+import "../common/implementation/Lockable.sol";
 
 /**
  * @title Governance relayer contract to be deployed on Ethereum that receives messages from the owner (Governor) and
  * sends them to sidechain.
  */
-contract GovernorRootTunnel is Ownable, FxBaseRootTunnel {
+contract GovernorRootTunnel is Ownable, FxBaseRootTunnel, Lockable {
     event RelayedGovernanceRequest(address indexed to, bytes data);
 
     constructor(address _checkpointManager, address _fxRoot) FxBaseRootTunnel(_checkpointManager, _fxRoot) {}
@@ -20,7 +21,7 @@ contract GovernorRootTunnel is Ownable, FxBaseRootTunnel {
      * @dev The transaction submitted to `to` on the sidechain with the calldata `data` is assumed to have 0 `value`
      * in order to avoid the added complexity of sending cross-chain transactions with positive value.
      */
-    function relayGovernance(address to, bytes memory data) external onlyOwner {
+    function relayGovernance(address to, bytes memory data) external nonReentrant() onlyOwner {
         _sendMessageToChild(abi.encode(to, data));
         emit RelayedGovernanceRequest(to, data);
     }
