@@ -72,8 +72,8 @@ contract RangeBondLongShortPairFinancialProductLibrary is LongShortPairFinancial
     }
 
     /**
-     * @notice Returns a number between 0 and 1e18 to indicate how much collateral each long and short token are entitled
-     * to per collateralPerPair.
+     * @notice Returns a number between 0 and 1e18 to indicate how much collateral each long and short token are
+     * entitled to per collateralPerPair.
      * @param expiryPrice price from the optimistic oracle for the LSP price identifier.
      * @return expiryPercentLong to indicate how much collateral should be sent between long and short tokens.
      */
