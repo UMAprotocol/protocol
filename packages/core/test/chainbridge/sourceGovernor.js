@@ -41,9 +41,6 @@ describe("SourceGovernor", async () => {
     accounts = await web3.eth.getAccounts();
     [owner, rando] = accounts;
     await runDefaultFixture(hre);
-  });
-
-  beforeEach(async function () {
     registry = await Registry.deployed();
     await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner).send({ from: accounts[0] });
     await registry.methods.registerContract([], owner).send({ from: owner });
@@ -51,6 +48,9 @@ describe("SourceGovernor", async () => {
     await finder.methods
       .changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.options.address)
       .send({ from: accounts[0] });
+  });
+
+  beforeEach(async function () {
     bridge = await Bridge.new(chainID, [owner], 1, 0, 100).send({ from: accounts[0] });
     await finder.methods
       .changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridge.options.address)

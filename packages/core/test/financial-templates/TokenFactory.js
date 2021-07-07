@@ -78,8 +78,8 @@ describe("TokenFactory", function () {
     const token = await Token.at(tokenAddress);
 
     // Add the required roles to mint and burn.
-    await token.addMinter(tokenCreator, { from: tokenCreator });
-    await token.addBurner(tokenCreator, { from: tokenCreator });
+    await token.methods.addMinter(tokenCreator).send({ from: tokenCreator });
+    await token.methods.addBurner(tokenCreator).send({ from: tokenCreator });
 
     // Check ERC20Detailed methods
     assert.equal(await token.methods.name().call(), tokenDetails.name);

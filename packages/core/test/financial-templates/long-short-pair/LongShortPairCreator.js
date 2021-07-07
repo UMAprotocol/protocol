@@ -167,7 +167,7 @@ describe("LongShortPairCreator", function () {
     const non18Collateral = await Token.new("USD Coin", "USDC", 6).send({ from: deployer });
     await collateralWhitelist.methods.addToWhitelist(non18Collateral.options.address).send({ from: accounts[0] });
     await longShortPairCreator.methods
-      .createLongShortPair({ ...constructorParams, collateralAddress: non18Collateral.options.address })
+      .createLongShortPair({ ...constructorParams, collateralToken: non18Collateral.options.address })
       .send({ from: accounts[0] });
 
     const lspAddress = (await longShortPairCreator.getPastEvents("CreatedLongShortPair"))[0].returnValues.longShortPair;
@@ -209,7 +209,10 @@ describe("LongShortPairCreator", function () {
     assert(
       await didContractThrow(
         longShortPairCreator.methods
-          .createLongShortPair({ ...constructorParams, priceFeedIdentifier: utf8ToHex("UNREGISTERED_IDENTIFIER") })
+          .createLongShortPair({
+            ...constructorParams,
+            priceIdentifier: padRight(utf8ToHex("UNREGISTERED_IDENTIFIER"), 64),
+          })
           .send({ from: accounts[0] })
       )
     );
@@ -218,7 +221,7 @@ describe("LongShortPairCreator", function () {
     assert(
       await didContractThrow(
         longShortPairCreator.methods
-          .createLongShortPair({ ...constructorParams, collateralAddress: ZERO_ADDRESS })
+          .createLongShortPair({ ...constructorParams, collateralToken: ZERO_ADDRESS })
           .send({ from: accounts[0] })
       )
     );
@@ -227,7 +230,7 @@ describe("LongShortPairCreator", function () {
     assert(
       await didContractThrow(
         longShortPairCreator.methods
-          .createLongShortPair({ ...constructorParams, financialProductLibraryAddress: ZERO_ADDRESS })
+          .createLongShortPair({ ...constructorParams, financialProductLibrary: ZERO_ADDRESS })
           .send({ from: accounts[0] })
       )
     );

@@ -106,8 +106,8 @@ describe("LspUniswapV2Broker", function () {
       .send({ from: deployer });
     lpToken = await Token.at(_pair.options.address);
 
-    assert.equal((await tokenA.methods.balanceOf(_pair.address).call()).toString(), longAmount);
-    assert.equal((await tokenB.methods.balanceOf(_pair.address).call()).toString(), shortAmount);
+    assert.equal((await tokenA.methods.balanceOf(_pair.options.address).call()).toString(), longAmount);
+    assert.equal((await tokenB.methods.balanceOf(_pair.options.address).call()).toString(), shortAmount);
   };
 
   before(async () => {
@@ -144,7 +144,7 @@ describe("LspUniswapV2Broker", function () {
 
     collateralToken = await Token.new("Wrapped Ether", "WETH", 18).send({ from: deployer });
     await collateralToken.methods.addMember(1, deployer).send({ from: deployer });
-    await collateralToken.methods.mint(deployer, toWei("1000000")).send({ from: deployer });
+    await collateralToken.methods.mint(deployer, toWei("10000000")).send({ from: deployer });
 
     await collateralWhitelist.methods.addToWhitelist(collateralToken.options.address).send({ from: accounts[0] });
 
@@ -187,22 +187,22 @@ describe("LspUniswapV2Broker", function () {
     await shortToken.methods.addMember(2, longShortPair.options.address).send({ from: deployer });
 
     // Initialize the UniV2 pool. For this set of tests the long and short tokens are tokenA and tokenB in the pool.
-    await factory.methods.createPair(shortToken.address, longToken.address).send({ from: deployer });
-    pairAddress = await factory.methods.getPair(shortToken.address, longToken.address).call();
+    await factory.methods.createPair(shortToken.options.address, longToken.options.address).send({ from: deployer });
+    pairAddress = await factory.methods.getPair(shortToken.options.address, longToken.options.address).call();
     pair = (await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress)).contract;
     lpToken = await Token.at(pair.options.address);
 
     // Next, mint some tokens from the LSP and add liquidity to the AMM. Add 1000000 long and short tokens. From
     // this the starting price will be 1 long/short.
-    await collateralToken.methods.approve(longShortPair.address, toWei("1000000")).send({ from: accounts[0] });
+    await collateralToken.methods.approve(longShortPair.options.address, toWei("1000000")).send({ from: accounts[0] });
     await longShortPair.methods.create(toWei("1000000")).send({ from: accounts[0] });
 
-    await longToken.methods.approve(router.address, toWei("1000000")).send({ from: accounts[0] });
-    await shortToken.methods.approve(router.address, toWei("1000000")).send({ from: accounts[0] });
+    await longToken.methods.approve(router.options.address, toWei("1000000")).send({ from: accounts[0] });
+    await shortToken.methods.approve(router.options.address, toWei("1000000")).send({ from: accounts[0] });
 
     // Mint EOA some collateral to the trader
     await collateralToken.methods.mint(trader, toWei("1000")).send({ from: deployer });
-    await collateralToken.methods.approve(lspUniswapV2Broker.address, toWei("1000")).send({ from: trader });
+    await collateralToken.methods.approve(lspUniswapV2Broker.options.address, toWei("1000")).send({ from: trader });
   });
 
   describe("atomicMintSellOneSide: AMM contains Long against Short token", () => {
@@ -453,7 +453,7 @@ describe("LspUniswapV2Broker", function () {
       pair1 = (await createContractObjectFromJson(IUniswapV2Pair, web3).at(pair1Address)).contract;
       pair2 = (await createContractObjectFromJson(IUniswapV2Pair, web3).at(pair2Address)).contract;
 
-      await collateralToken.methods.approve(router.address, toWei("200000")).send({ from: accounts[0] });
+      await collateralToken.methods.approve(router.options.address, toWei("200000")).send({ from: accounts[0] });
       await addLiquidityToPool(longToken, collateralToken, toWei("100000"), toWei("100000"), pair1);
       await addLiquidityToPool(shortToken, collateralToken, toWei("100000"), toWei("100000"), pair2);
 
@@ -556,15 +556,16 @@ describe("LspUniswapV2Broker", function () {
       // Set the minLPTokens to MAX_UINT_VAL. This should revert as the contract will never send this many LP tokens.
       assert(
         await didContractThrow(
-          lspUniswapV2Broker.atomicMintAddLiquidity(
-            true, // tradingAsEOA. true as calling from an EOA (not DSProxy).
-            longShortPair.address, // longShortPair. address to mint tokens against.
-            router.address, // router. uniswap v2 router to execute trades
-            toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
-            MAX_UINT_VAL, // minLpTokens. Sets minimum number of LP tokens to get sent back. Set to 0 to ensure no revert on this param.
-            MAX_UINT_VAL, // deadline. Set far in the future to not hit this.
-            { from: trader }
-          )
+          lspUniswapV2Broker.methods
+            .atomicMintAddLiquidity(
+              true, // tradingAsEOA. true as calling from an EOA (not DSProxy).
+              longShortPair.options.address, // longShortPair. address to mint tokens against.
+              router.options.address, // router. uniswap v2 router to execute trades
+              toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
+              MAX_UINT_VAL, // minLpTokens. Sets minimum number of LP tokens to get sent back. Set to 0 to ensure no revert on this param.
+              MAX_UINT_VAL // deadline. Set far in the future to not hit this.
+            )
+            .send({ from: trader })
         )
       );
     });
@@ -574,71 +575,69 @@ describe("LspUniswapV2Broker", function () {
       // Invalid LSP contract
       assert(
         await didContractThrow(
-          lspUniswapV2Broker.atomicMintAddLiquidity(
-            true,
-            ZERO_ADDRESS, // Zero address
-            router.address,
-            toWei("1000"),
-            "0",
-            MAX_UINT_VAL,
-            { from: trader }
-          )
+          lspUniswapV2Broker.methods
+            .atomicMintAddLiquidity(
+              true,
+              ZERO_ADDRESS, // Zero address
+              router.options.address,
+              toWei("1000"),
+              "0",
+              MAX_UINT_VAL
+            )
+            .send({ from: trader })
         )
       );
       assert(
         await didContractThrow(
-          lspUniswapV2Broker.atomicMintAddLiquidity(
-            true,
-            router.address, // Not an LSP contract
-            router.address,
-            toWei("1000"),
-            "0",
-            MAX_UINT_VAL,
-            { from: trader }
-          )
+          lspUniswapV2Broker.methods
+            .atomicMintAddLiquidity(
+              true,
+              router.options.address, // Not an LSP contract
+              router.options.address,
+              toWei("1000"),
+              "0",
+              MAX_UINT_VAL
+            )
+            .send({ from: trader })
         )
       );
 
       // Invalid router contract
       assert(
         await didContractThrow(
-          lspUniswapV2Broker.atomicMintAddLiquidity(
-            true,
-            longShortPair.address,
-            ZERO_ADDRESS, // Zero address
-            toWei("1000"),
-            "0",
-            MAX_UINT_VAL,
-            { from: trader }
-          )
+          lspUniswapV2Broker.methods
+            .atomicMintAddLiquidity(
+              true,
+              longShortPair.options.address,
+              ZERO_ADDRESS, // Zero address
+              toWei("1000"),
+              "0",
+              MAX_UINT_VAL
+            )
+            .send({ from: trader })
         )
       );
       assert(
         await didContractThrow(
-          lspUniswapV2Broker.atomicMintAddLiquidity(
-            true,
-            longShortPair.address,
-            longShortPair.address, // Not a router contract
-            toWei("1000"),
-            "0",
-            MAX_UINT_VAL,
-            { from: trader }
-          )
+          lspUniswapV2Broker.methods
+            .atomicMintAddLiquidity(
+              true,
+              longShortPair.options.address,
+              longShortPair.options.address, // Not a router contract
+              toWei("1000"),
+              "0",
+              MAX_UINT_VAL
+            )
+            .send({ from: trader })
         )
       );
 
       // Cannot mint with 0 collateral
       assert(
         await didContractThrow(
-          lspUniswapV2Broker.atomicMintAddLiquidity(
-            true,
-            longShortPair.address,
-            router.address,
-            "0",
-            "0",
-            MAX_UINT_VAL,
-            { from: trader }
-          )
+          lspUniswapV2Broker.methods
+            .atomicMintAddLiquidity(true, longShortPair.options.address, router.options.address, "0", "0", MAX_UINT_VAL)
+            .send({ from: trader })
         )
       );
     });
@@ -648,39 +647,49 @@ describe("LspUniswapV2Broker", function () {
       await addLiquidityToPool(longToken, shortToken, toWei("100000"), toWei("100000"));
       // Calculate how many LP tokens are expected to be minted per unit collateral. Trader added 100000 units of
       // to mint 100000 long and short tokens.
-      const lpTokensPerCollateral = (await lpToken.balanceOf(deployer))
+      const lpTokensPerCollateral = toBN(await lpToken.methods.balanceOf(deployer).call())
         .mul(toBN(toWei("1"))) // scalding factor
         .div(toBN(toWei("100000"))) // number of collateral units used in minting
         .addn(1); // offset to fix rounding error
 
-      await lspUniswapV2Broker.atomicMintAddLiquidity(
-        true, // tradingAsEOA. true as calling from an EOA (not DSProxy).
-        longShortPair.address, // longShortPair. address to mint tokens against.
-        router.address, // router. uniswap v2 router to execute trades
-        toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
-        "0", // minLpTokens. Sets minimum number of LP tokens to get sent back. Set to 0 to ensure no revert on this param.
-        MAX_UINT_VAL, // deadline. Set far in the future to not hit this.
-        { from: trader }
-      );
+      await lspUniswapV2Broker.methods
+        .atomicMintAddLiquidity(
+          true, // tradingAsEOA. true as calling from an EOA (not DSProxy).
+          longShortPair.options.address, // longShortPair. address to mint tokens against.
+          router.options.address, // router. uniswap v2 router to execute trades
+          toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
+          "0", // minLpTokens. Sets minimum number of LP tokens to get sent back. Set to 0 to ensure no revert on this param.
+          MAX_UINT_VAL // deadline. Set far in the future to not hit this.
+        )
+        .send({ from: trader });
 
       // The trader should no collateral left (spent all 1000).
-      assert.equal((await collateralToken.balanceOf(trader)).toString(), toWei("0"));
+      assert.equal(toBN(await collateralToken.methods.balanceOf(trader).call()).toString(), toWei("0"));
 
       // The trader should have no short tokens as they were all sold when minting.
-      assert.equal((await shortToken.balanceOf(trader)).toString(), toWei("0"));
+      assert.equal(toBN(await shortToken.methods.balanceOf(trader).call()).toString(), toWei("0"));
 
       // The trader should have no short tokens as they were all sold when minting.
-      assert.equal((await longToken.balanceOf(trader)).toString(), toWei("0"));
+      assert.equal(toBN(await longToken.methods.balanceOf(trader).call()).toString(), toWei("0"));
 
       // The broker should have 0 tokens (long,short and collateral) in it after the trade.
-      assert.equal((await longToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
-      assert.equal((await shortToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
-      assert.equal((await collateralToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
+      assert.equal(
+        toBN(await longToken.methods.balanceOf(lspUniswapV2Broker.options.address).call()).toString(),
+        toWei("0")
+      );
+      assert.equal(
+        toBN(await shortToken.methods.balanceOf(lspUniswapV2Broker.options.address).call()).toString(),
+        toWei("0")
+      );
+      assert.equal(
+        toBN(await collateralToken.methods.balanceOf(lspUniswapV2Broker.options.address).call()).toString(),
+        toWei("0")
+      );
 
       // The trader should have the expected number of LP tokens expected as the lpTokensPerCollateral*collateral used.
       // As the pool is at an exact 50/50 ratio there should be no slippage on entering the LP position.
       assert.equal(
-        (await lpToken.balanceOf(trader)).toString(),
+        (await lpToken.methods.balanceOf(trader).call()).toString(),
         lpTokensPerCollateral // how many LP tokens should be issued per unit collateral
           .mul(toBN(toWei("1000"))) // the number of collateral units used in minting
           .div(toBN(toWei("1"))) // correct scalling factor
@@ -688,23 +697,24 @@ describe("LspUniswapV2Broker", function () {
       );
 
       // Next, the trader removes their liquidity to validate they get back the right number of long/short tokens.
-      await lpToken.approve(router.address, MAX_UINT_VAL, { from: trader });
+      await lpToken.methods.approve(router.options.address, MAX_UINT_VAL).send({ from: trader });
 
-      await router.removeLiquidity(
-        longToken.address,
-        shortToken.address,
-        (await lpToken.balanceOf(trader)).toString(),
-        "0",
-        "0",
-        trader,
-        MAX_UINT_VAL,
-        { from: trader }
-      );
+      await router.methods
+        .removeLiquidity(
+          longToken.options.address,
+          shortToken.options.address,
+          (await lpToken.methods.balanceOf(trader).call()).toString(),
+          "0",
+          "0",
+          trader,
+          MAX_UINT_VAL
+        )
+        .send({ from: trader });
 
       // Trader should get back the exact number of long and short tokens with no slippage on either side.
-      assert.equal((await lpToken.balanceOf(trader)).toString(), toWei("0"));
-      assert.equal((await longToken.balanceOf(trader)).toString(), toWei("1000"));
-      assert.equal((await shortToken.balanceOf(trader)).toString(), toWei("1000"));
+      assert.equal(toBN(await lpToken.methods.balanceOf(trader).call()).toString(), toWei("0"));
+      assert.equal(toBN(await longToken.methods.balanceOf(trader).call()).toString(), toWei("1000"));
+      assert.equal(toBN(await shortToken.methods.balanceOf(trader).call()).toString(), toWei("1000"));
 
       // There should be no swap events as the pools are in perfect ratio with the minted tokens.
       assert.equal((await pair.getPastEvents("Swap")).length, 0);
@@ -714,63 +724,81 @@ describe("LspUniswapV2Broker", function () {
       // worth 10 long. When LPing we will be market selling longs for shorts to reach the appropriate ratio.
       await addLiquidityToPool(longToken, shortToken, toWei("1000000"), toWei("100000"));
 
-      await lspUniswapV2Broker.atomicMintAddLiquidity(
-        true, // tradingAsEOA. true as calling from an EOA (not DSProxy).
-        longShortPair.address, // longShortPair. address to mint tokens against.
-        router.address, // router. uniswap v2 router to execute trades
-        toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
-        "0", // minLpTokens. Sets minimum number of LP tokens to get sent back. Set to 0 to ensure no revert on this param.
-        MAX_UINT_VAL, // deadline. Set far in the future to not hit this.
-        { from: trader }
-      );
+      await lspUniswapV2Broker.methods
+        .atomicMintAddLiquidity(
+          true, // tradingAsEOA. true as calling from an EOA (not DSProxy).
+          longShortPair.options.address, // longShortPair. address to mint tokens against.
+          router.options.address, // router. uniswap v2 router to execute trades
+          toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
+          "0", // minLpTokens. Sets minimum number of LP tokens to get sent back. Set to 0 to ensure no revert on this param.
+          MAX_UINT_VAL // deadline. Set far in the future to not hit this.
+        )
+        .send({ from: trader });
 
-      const poolLongBalPostAdd = await longToken.balanceOf(pair.address);
-      const poolShortBalPostAdd = await shortToken.balanceOf(pair.address);
+      const poolLongBalPostAdd = toBN(await longToken.methods.balanceOf(pair.options.address).call());
+      const poolShortBalPostAdd = toBN(await shortToken.methods.balanceOf(pair.options.address).call());
 
       // The trader should no collateral left (spent all 1000).
-      assert.equal((await collateralToken.balanceOf(trader)).toString(), toWei("0"));
+      assert.equal((await collateralToken.methods.balanceOf(trader).call()).toString(), toWei("0"));
 
       // The trader should have minimal short or long tokens in their wallet. This is the "dust" sent back to them after
       // minting and LPing. validate that it's less than 500 wei.
-      assert.isTrue((await shortToken.balanceOf(trader)).lt(toBN("500")));
-      assert.isTrue((await longToken.balanceOf(trader)).lt(toBN("500")));
+      assert.isTrue(toBN(await shortToken.methods.balanceOf(trader).call()).lt(toBN("500")));
+      assert.isTrue(toBN(await longToken.methods.balanceOf(trader).call()).lt(toBN("500")));
 
       // The broker should have 0 tokens (long,short, collateral or LP tokens) in it after the trade.
-      assert.equal((await longToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
-      assert.equal((await shortToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
-      assert.equal((await collateralToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
-      assert.equal((await lpToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
+      assert.equal(
+        toBN(await longToken.methods.balanceOf(lspUniswapV2Broker.options.address).call()).toString(),
+        toWei("0")
+      );
+      assert.equal(
+        toBN(await shortToken.methods.balanceOf(lspUniswapV2Broker.options.address).call()).toString(),
+        toWei("0")
+      );
+      assert.equal(
+        toBN(await collateralToken.methods.balanceOf(lspUniswapV2Broker.options.address).call()).toString(),
+        toWei("0")
+      );
+      assert.equal(
+        toBN(await lpToken.methods.balanceOf(lspUniswapV2Broker.options.address).call()).toString(),
+        toWei("0")
+      );
 
       // calculate the longPerLp & shortPerLp. i.e for each LP token an address has, what is the redemption rate for
       // one long and one short token.
       const adjustment = toWei(toBN("1"));
-      const longPerLp = (await longToken.balanceOf(pair.address)).mul(adjustment).div(await lpToken.totalSupply());
-      const shortPerLp = (await shortToken.balanceOf(pair.address)).mul(adjustment).div(await lpToken.totalSupply());
+      const longPerLp = toBN(await longToken.methods.balanceOf(pair.options.address).call())
+        .mul(adjustment)
+        .div(toBN(await lpToken.methods.totalSupply().call()));
+      const shortPerLp = toBN(await shortToken.methods.balanceOf(pair.options.address).call())
+        .mul(adjustment)
+        .div(toBN(await lpToken.methods.totalSupply().call()));
 
       // Next, the trader removes their liquidity to validate they get back the right number of long/short tokens.
-      await lpToken.approve(router.address, MAX_UINT_VAL, { from: trader });
+      await lpToken.methods.approve(router.options.address, MAX_UINT_VAL).send({ from: trader });
 
-      const traderLpBalance = await lpToken.balanceOf(trader);
+      const traderLpBalance = toBN(await lpToken.methods.balanceOf(trader).call());
 
-      await router.removeLiquidity(
-        longToken.address,
-        shortToken.address,
-        traderLpBalance.toString(),
-        "0",
-        "0",
-        trader,
-        MAX_UINT_VAL,
-        { from: trader }
-      );
+      await router.methods
+        .removeLiquidity(
+          longToken.options.address,
+          shortToken.options.address,
+          traderLpBalance.toString(),
+          "0",
+          "0",
+          trader,
+          MAX_UINT_VAL
+        )
+        .send({ from: trader });
 
       // Trader should get back tokens in the exact ratio that the pair has between long and short tokens. This should be
       // approximately equal to a 100:1 ratio, as this is the rate the pool was seeded at (error introduced by single
       // sided deposit that will make this not exactly 100:1) and should be exactly equal to the ratio from the previous calc.
       // In these calculations we check that the output is within 0.01 wei of the expected value.
-      assert.equal((await lpToken.balanceOf(trader)).toString(), toWei("0"));
+      assert.equal((await lpToken.methods.balanceOf(trader).call()).toString(), toWei("0"));
 
-      const longTraderBalance = await longToken.balanceOf(trader);
-      const shortTraderBalance = await shortToken.balanceOf(trader);
+      const longTraderBalance = toBN(await longToken.methods.balanceOf(trader).call());
+      const shortTraderBalance = toBN(await shortToken.methods.balanceOf(trader).call());
 
       assert.isTrue(
         longTraderBalance.add(toBN(toWei("0.01"))).gt(longPerLp.mul(traderLpBalance).div(adjustment)) &&
@@ -794,64 +822,82 @@ describe("LspUniswapV2Broker", function () {
       // worth 0.01 long. When LPing we will be market selling longs for shorts to reach the appropriate ratio.
       await addLiquidityToPool(longToken, shortToken, toWei("100000"), toWei("1000000"));
 
-      await lspUniswapV2Broker.atomicMintAddLiquidity(
-        true, // tradingAsEOA. true as calling from an EOA (not DSProxy).
-        longShortPair.address, // longShortPair. address to mint tokens against.
-        router.address, // router. uniswap v2 router to execute trades
-        toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
-        "0", // minLpTokens. Sets minimum number of LP tokens to get sent back. Set to 0 to ensure no revert on this param.
-        MAX_UINT_VAL, // deadline. Set far in the future to not hit this.
-        { from: trader }
-      );
+      await lspUniswapV2Broker.methods
+        .atomicMintAddLiquidity(
+          true, // tradingAsEOA. true as calling from an EOA (not DSProxy).
+          longShortPair.options.address, // longShortPair. address to mint tokens against.
+          router.options.address, // router. uniswap v2 router to execute trades
+          toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
+          "0", // minLpTokens. Sets minimum number of LP tokens to get sent back. Set to 0 to ensure no revert on this param.
+          MAX_UINT_VAL // deadline. Set far in the future to not hit this.
+        )
+        .send({ from: trader });
 
-      const poolLongBalPostAdd = await longToken.balanceOf(pair.address);
-      const poolShortBalPostAdd = await shortToken.balanceOf(pair.address);
+      const poolLongBalPostAdd = toBN(await longToken.methods.balanceOf(pair.options.address).call());
+      const poolShortBalPostAdd = toBN(await shortToken.methods.balanceOf(pair.options.address).call());
 
       // The trader should no collateral left (spent all 1000).
-      assert.equal((await collateralToken.balanceOf(trader)).toString(), toWei("0"));
+      assert.equal((await collateralToken.methods.balanceOf(trader).call()).toString(), toWei("0"));
 
       // The trader should have minimal short or long tokens in their wallet. This is the "dust" sent back to them after
       // minting and LPing. validate that it's less than 50 wei.
-      assert.isTrue((await shortToken.balanceOf(trader)).lt(toBN(toWei("0.1"))));
-      assert.isTrue((await longToken.balanceOf(trader)).lt(toBN(toWei("0.1"))));
+      assert.isTrue(toBN(await shortToken.methods.balanceOf(trader).call()).lt(toBN(toWei("0.1"))));
+      assert.isTrue(toBN(await longToken.methods.balanceOf(trader).call()).lt(toBN(toWei("0.1"))));
 
       // The broker should have 0 tokens (long,short, collateral or LP tokens) in it after the trade.
-      assert.equal((await longToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
-      assert.equal((await shortToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
-      assert.equal((await collateralToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
-      assert.equal((await lpToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
+      assert.equal(
+        toBN(await longToken.methods.balanceOf(lspUniswapV2Broker.options.address).call()).toString(),
+        toWei("0")
+      );
+      assert.equal(
+        toBN(await shortToken.methods.balanceOf(lspUniswapV2Broker.options.address).call()).toString(),
+        toWei("0")
+      );
+      assert.equal(
+        toBN(await collateralToken.methods.balanceOf(lspUniswapV2Broker.options.address).call()).toString(),
+        toWei("0")
+      );
+      assert.equal(
+        toBN(await lpToken.methods.balanceOf(lspUniswapV2Broker.options.address).call()).toString(),
+        toWei("0")
+      );
 
       // calculate the longPerLp & shortPerLp. i.e for each LP token an address has, what is the redemption rate for
       // one long and one short token.
       const adjustment = toWei(toBN("1"));
-      const longPerLp = (await longToken.balanceOf(pair.address)).mul(adjustment).div(await lpToken.totalSupply());
-      const shortPerLp = (await shortToken.balanceOf(pair.address)).mul(adjustment).div(await lpToken.totalSupply());
+      const longPerLp = toBN(await longToken.methods.balanceOf(pair.options.address).call())
+        .mul(adjustment)
+        .div(toBN(await lpToken.methods.totalSupply().call()));
+      const shortPerLp = toBN(await shortToken.methods.balanceOf(pair.options.address).call())
+        .mul(adjustment)
+        .div(toBN(await lpToken.methods.totalSupply().call()));
 
       // Next, the trader removes their liquidity to validate they get back the right number of long/short tokens.
-      await lpToken.approve(router.address, MAX_UINT_VAL, { from: trader });
+      await lpToken.methods.approve(router.options.address, MAX_UINT_VAL).send({ from: trader });
 
-      const traderLpBalance = await lpToken.balanceOf(trader);
+      const traderLpBalance = toBN(await lpToken.methods.balanceOf(trader).call());
 
-      await router.removeLiquidity(
-        longToken.address,
-        shortToken.address,
-        traderLpBalance.toString(),
-        "0",
-        "0",
-        trader,
-        MAX_UINT_VAL,
-        { from: trader }
-      );
+      await router.methods
+        .removeLiquidity(
+          longToken.options.address,
+          shortToken.options.address,
+          traderLpBalance.toString(),
+          "0",
+          "0",
+          trader,
+          MAX_UINT_VAL
+        )
+        .send({ from: trader });
 
       // Trader should get back tokens in the exact ratio that the pair has between long and short tokens. This should be
       // approximately equal to a 100:1 ratio, as this is the rate the pool was seeded at (error introduced by single
       // sided deposit that will make this not exactly 100:1) and should be exactly equal to the ratio from the previous calc.
       // In these calculations we check that the output is within 0.01 of the expected value.
-      assert.equal((await lpToken.balanceOf(trader)).toString(), toWei("0"));
+      assert.equal((await lpToken.methods.balanceOf(trader).call()).toString(), toWei("0"));
 
-      const longTraderBalance = await longToken.balanceOf(trader);
+      const longTraderBalance = toBN(await longToken.methods.balanceOf(trader).call());
 
-      const shortTraderBalance = await shortToken.balanceOf(trader);
+      const shortTraderBalance = toBN(await shortToken.methods.balanceOf(trader).call());
 
       assert.isTrue(
         longTraderBalance.add(toBN(toWei("0.01"))).gt(longPerLp.mul(traderLpBalance).div(adjustment)) &&
@@ -877,64 +923,79 @@ describe("LspUniswapV2Broker", function () {
       // worth 1000 long. When LPing we will be market selling longs for shorts to reach the appropriate ratio.
       await addLiquidityToPool(longToken, shortToken, toWei("1000000"), toWei("1000"));
 
-      await lspUniswapV2Broker.atomicMintAddLiquidity(
-        true, // tradingAsEOA. true as calling from an EOA (not DSProxy).
-        longShortPair.address, // longShortPair. address to mint tokens against.
-        router.address, // router. uniswap v2 router to execute trades
-        toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
-        "0", // minLpTokens. Sets minimum number of LP tokens to get sent back. Set to 0 to ensure no revert on this param.
-        MAX_UINT_VAL, // deadline. Set far in the future to not hit this.
-        { from: trader }
-      );
+      await lspUniswapV2Broker.methods
+        .atomicMintAddLiquidity(
+          true, // tradingAsEOA. true as calling from an EOA (not DSProxy).
+          longShortPair.options.address, // longShortPair. address to mint tokens against.
+          router.options.address, // router. uniswap v2 router to execute trades
+          toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
+          "0", // minLpTokens. Sets minimum number of LP tokens to get sent back. Set to 0 to ensure no revert on this param.
+          MAX_UINT_VAL // deadline. Set far in the future to not hit this.
+        )
+        .send({ from: trader });
 
-      const poolLongBalPostAdd = await longToken.balanceOf(pair.address);
-      const poolShortBalPostAdd = await shortToken.balanceOf(pair.address);
+      const poolLongBalPostAdd = toBN(await longToken.methods.balanceOf(pair.options.address).call());
+      const poolShortBalPostAdd = toBN(await shortToken.methods.balanceOf(pair.options.address).call());
 
       // The trader should no collateral left (spent all 1000).
-      assert.equal((await collateralToken.balanceOf(trader)).toString(), toWei("0"));
+      assert.equal((await collateralToken.methods.balanceOf(trader).call()).toString(), toWei("0"));
 
       // The trader should have minimal short or long tokens in their wallet. This is the "dust" sent back to them after
       // minting and LPing. validate that it's less than 1500 wei.
 
-      assert.isTrue((await shortToken.balanceOf(trader)).lt(toBN("1500")));
-      assert.isTrue((await longToken.balanceOf(trader)).lt(toBN("1500")));
+      assert.isTrue(toBN(await shortToken.methods.balanceOf(trader).call()).lt(toBN("1500")));
+      assert.isTrue(toBN(await longToken.methods.balanceOf(trader).call()).lt(toBN("1500")));
 
       // The broker should have 0 tokens (long,short, collateral or LP tokens) in it after the trade.
-      assert.equal((await longToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
-      assert.equal((await shortToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
-      assert.equal((await collateralToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
-      assert.equal((await lpToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
+      assert.equal(
+        (await longToken.methods.balanceOf(lspUniswapV2Broker.options.address).call()).toString(),
+        toWei("0")
+      );
+      assert.equal(
+        (await shortToken.methods.balanceOf(lspUniswapV2Broker.options.address).call()).toString(),
+        toWei("0")
+      );
+      assert.equal(
+        (await collateralToken.methods.balanceOf(lspUniswapV2Broker.options.address).call()).toString(),
+        toWei("0")
+      );
+      assert.equal((await lpToken.methods.balanceOf(lspUniswapV2Broker.options.address).call()).toString(), toWei("0"));
 
       // calculate the longPerLp & shortPerLp. i.e for each LP token an address has, what is the redemption rate for
       // one long and one short token.
       const adjustment = toWei(toBN("1"));
-      const longPerLp = (await longToken.balanceOf(pair.address)).mul(adjustment).div(await lpToken.totalSupply());
-      const shortPerLp = (await shortToken.balanceOf(pair.address)).mul(adjustment).div(await lpToken.totalSupply());
+      const longPerLp = toBN(await longToken.methods.balanceOf(pair.options.address).call())
+        .mul(adjustment)
+        .div(toBN(await lpToken.methods.totalSupply().call()));
+      const shortPerLp = toBN(await shortToken.methods.balanceOf(pair.options.address).call())
+        .mul(adjustment)
+        .div(toBN(await lpToken.methods.totalSupply().call()));
 
       // Next, the trader removes their liquidity to validate they get back the right number of long/short tokens.
-      await lpToken.approve(router.address, MAX_UINT_VAL, { from: trader });
+      await lpToken.methods.approve(router.options.address, MAX_UINT_VAL).send({ from: trader });
 
-      const traderLpBalance = await lpToken.balanceOf(trader);
+      const traderLpBalance = toBN(await lpToken.methods.balanceOf(trader).call());
 
-      await router.removeLiquidity(
-        longToken.address,
-        shortToken.address,
-        traderLpBalance.toString(),
-        "0",
-        "0",
-        trader,
-        MAX_UINT_VAL,
-        { from: trader }
-      );
+      await router.methods
+        .removeLiquidity(
+          longToken.options.address,
+          shortToken.options.address,
+          traderLpBalance.toString(),
+          "0",
+          "0",
+          trader,
+          MAX_UINT_VAL
+        )
+        .send({ from: trader });
 
       // Trader should get back tokens in the exact ratio that the pair has between long and short tokens. This should be
       // approximately equal to a 100:1 ratio, as this is the rate the pool was seeded at (error introduced by single
       // sided deposit that will make this not exactly 100:1) and should be exactly equal to the ratio from the previous calc.
       // In these calculations we check that the output is within 5000 wei of the expected value.
-      assert.equal((await lpToken.balanceOf(trader)).toString(), toWei("0"));
+      assert.equal((await lpToken.methods.balanceOf(trader).call()).toString(), toWei("0"));
 
-      const longTraderBalance = await longToken.balanceOf(trader);
-      const shortTraderBalance = await shortToken.balanceOf(trader);
+      const longTraderBalance = toBN(await longToken.methods.balanceOf(trader).call());
+      const shortTraderBalance = toBN(await shortToken.methods.balanceOf(trader).call());
 
       assert.isTrue(
         longTraderBalance.addn(10000).gt(longPerLp.mul(traderLpBalance).div(adjustment)) &&
@@ -958,64 +1019,79 @@ describe("LspUniswapV2Broker", function () {
       // worth 0.001 long. When LPing we will be market selling longs for shorts to reach the appropriate ratio.
       await addLiquidityToPool(longToken, shortToken, toWei("1000"), toWei("1000000"));
 
-      await lspUniswapV2Broker.atomicMintAddLiquidity(
-        true, // tradingAsEOA. true as calling from an EOA (not DSProxy).
-        longShortPair.address, // longShortPair. address to mint tokens against.
-        router.address, // router. uniswap v2 router to execute trades
-        toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
-        "0", // minLpTokens. Sets minimum number of LP tokens to get sent back. Set to 0 to ensure no revert on this param.
-        MAX_UINT_VAL, // deadline. Set far in the future to not hit this.
-        { from: trader }
-      );
+      await lspUniswapV2Broker.methods
+        .atomicMintAddLiquidity(
+          true, // tradingAsEOA. true as calling from an EOA (not DSProxy).
+          longShortPair.options.address, // longShortPair. address to mint tokens against.
+          router.options.address, // router. uniswap v2 router to execute trades
+          toWei("1000"), // collateralToMintWith. we will use 1000 units of collateral to mint 1000 long and 1000 short tokens.
+          "0", // minLpTokens. Sets minimum number of LP tokens to get sent back. Set to 0 to ensure no revert on this param.
+          MAX_UINT_VAL // deadline. Set far in the future to not hit this.
+        )
+        .send({ from: trader });
 
-      const poolLongBalPostAdd = await longToken.balanceOf(pair.address);
-      const poolShortBalPostAdd = await shortToken.balanceOf(pair.address);
+      const poolLongBalPostAdd = toBN(await longToken.methods.balanceOf(pair.options.address).call());
+      const poolShortBalPostAdd = toBN(await shortToken.methods.balanceOf(pair.options.address).call());
 
       // The trader should no collateral left (spent all 1000).
-      assert.equal((await collateralToken.balanceOf(trader)).toString(), toWei("0"));
+      assert.equal((await collateralToken.methods.balanceOf(trader).call()).toString(), toWei("0"));
 
       // The trader should have minimal short or long tokens in their wallet. This is the "dust" sent back to them after
       // minting and LPing. validate that it's less than 1.
 
-      assert.isTrue((await shortToken.balanceOf(trader)).lt(toBN(toWei("1"))));
-      assert.isTrue((await longToken.balanceOf(trader)).lt(toBN(toWei("1"))));
+      assert.isTrue(toBN(await shortToken.methods.balanceOf(trader).call()).lt(toBN(toWei("1"))));
+      assert.isTrue(toBN(await longToken.methods.balanceOf(trader).call()).lt(toBN(toWei("1"))));
 
       // The broker should have 0 tokens (long,short, collateral or LP tokens) in it after the trade.
-      assert.equal((await longToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
-      assert.equal((await shortToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
-      assert.equal((await collateralToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
-      assert.equal((await lpToken.balanceOf(lspUniswapV2Broker.address)).toString(), toWei("0"));
+      assert.equal(
+        (await longToken.methods.balanceOf(lspUniswapV2Broker.options.address).call()).toString(),
+        toWei("0")
+      );
+      assert.equal(
+        (await shortToken.methods.balanceOf(lspUniswapV2Broker.options.address).call()).toString(),
+        toWei("0")
+      );
+      assert.equal(
+        (await collateralToken.methods.balanceOf(lspUniswapV2Broker.options.address).call()).toString(),
+        toWei("0")
+      );
+      assert.equal((await lpToken.methods.balanceOf(lspUniswapV2Broker.options.address).call()).toString(), toWei("0"));
 
       // calculate the longPerLp & shortPerLp. i.e for each LP token an address has, what is the redemption rate for
       // one long and one short token.
       const adjustment = toWei(toBN("1"));
-      const longPerLp = (await longToken.balanceOf(pair.address)).mul(adjustment).div(await lpToken.totalSupply());
-      const shortPerLp = (await shortToken.balanceOf(pair.address)).mul(adjustment).div(await lpToken.totalSupply());
+      const longPerLp = toBN(await longToken.methods.balanceOf(pair.options.address).call())
+        .mul(adjustment)
+        .div(toBN(await lpToken.methods.totalSupply().call()));
+      const shortPerLp = toBN(await shortToken.methods.balanceOf(pair.options.address).call())
+        .mul(adjustment)
+        .div(toBN(await lpToken.methods.totalSupply().call()));
 
       // Next, the trader removes their liquidity to validate they get back the right number of long/short tokens.
-      await lpToken.approve(router.address, MAX_UINT_VAL, { from: trader });
+      await lpToken.methods.approve(router.options.address, MAX_UINT_VAL).send({ from: trader });
 
-      const traderLpBalance = await lpToken.balanceOf(trader);
+      const traderLpBalance = toBN(await lpToken.methods.balanceOf(trader).call());
 
-      await router.removeLiquidity(
-        longToken.address,
-        shortToken.address,
-        traderLpBalance.toString(),
-        "0",
-        "0",
-        trader,
-        MAX_UINT_VAL,
-        { from: trader }
-      );
+      await router.methods
+        .removeLiquidity(
+          longToken.options.address,
+          shortToken.options.address,
+          traderLpBalance.toString(),
+          "0",
+          "0",
+          trader,
+          MAX_UINT_VAL
+        )
+        .send({ from: trader });
 
       // Trader should get back tokens in the exact ratio that the pair has between long and short tokens. This should be
       // approximately equal to a 100:1 ratio, as this is the rate the pool was seeded at (error introduced by single
       // sided deposit that will make this not exactly 100:1) and should be exactly equal to the ratio from the previous calc.
       // In these calculations we check that the output is within a margin of error of the expected value.
-      assert.equal((await lpToken.balanceOf(trader)).toString(), toWei("0"));
+      assert.equal((await lpToken.methods.balanceOf(trader).call()).toString(), toWei("0"));
 
-      const longTraderBalance = await longToken.balanceOf(trader);
-      const shortTraderBalance = await shortToken.balanceOf(trader);
+      const longTraderBalance = toBN(await longToken.methods.balanceOf(trader).call());
+      const shortTraderBalance = toBN(await shortToken.methods.balanceOf(trader).call());
 
       assert.isTrue(
         longTraderBalance.add(toBN(toWei("1"))).gt(longPerLp.mul(traderLpBalance).div(adjustment)) &&

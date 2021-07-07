@@ -55,8 +55,7 @@ describe("GenericHandler - [UMA Cross-chain Communication]", async () => {
   let relayer1Address;
   let relayer2Address;
   let rando;
-
-  const initialRelayers = [relayer1Address, relayer2Address];
+  let initialRelayers;
 
   // Chainbridge contracts:
   let bridgeMainnet;
@@ -92,10 +91,8 @@ describe("GenericHandler - [UMA Cross-chain Communication]", async () => {
   before(async () => {
     accounts = await web3.eth.getAccounts();
     [owner, depositerAddress, relayer1Address, relayer2Address, rando] = accounts;
+    initialRelayers = [relayer1Address, relayer2Address];
     await runDefaultFixture(hre);
-  });
-
-  beforeEach(async () => {
     registry = await Registry.deployed();
     await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, depositerAddress).send({ from: accounts[0] });
     // Register EOA as a contract creator that can make price requests directly to the SinkOracle
@@ -106,7 +103,9 @@ describe("GenericHandler - [UMA Cross-chain Communication]", async () => {
       .changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.options.address)
       .send({ from: accounts[0] });
     identifierWhitelist = await IdentifierWhitelist.deployed();
+  });
 
+  beforeEach(async () => {
     // MockOracle is the test DVM for Mainnet.
     voting = await MockOracle.new(sourceFinder.options.address, ZERO_ADDRESS).send({ from: accounts[0] });
     await sourceFinder.methods

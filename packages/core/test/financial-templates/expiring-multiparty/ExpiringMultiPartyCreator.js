@@ -243,15 +243,15 @@ describe("ExpiringMultiPartyCreator", function () {
     );
 
     // New derivative contract holds correct permissions.
-    const tokenContract = await SyntheticToken.at(tokenCurrency.address);
+    const tokenContract = await SyntheticToken.at(tokenCurrency.options.address);
     assert.isTrue(await tokenContract.methods.isMinter(expiringMultiPartyAddress).call());
     assert.isTrue(await tokenContract.methods.isBurner(expiringMultiPartyAddress).call());
     assert.isTrue(await tokenContract.methods.holdsRole(0, expiringMultiPartyAddress).call());
 
     // The creator contract should hold no roles.
-    assert.isFalse(await tokenContract.methods.holdsRole(0, expiringMultiPartyCreator.address).call());
-    assert.isFalse(await tokenContract.methods.holdsRole(1, expiringMultiPartyCreator.address).call());
-    assert.isFalse(await tokenContract.methods.holdsRole(2, expiringMultiPartyCreator.address).call());
+    assert.isFalse(await tokenContract.methods.holdsRole(0, expiringMultiPartyCreator.options.address).call());
+    assert.isFalse(await tokenContract.methods.holdsRole(1, expiringMultiPartyCreator.options.address).call());
+    assert.isFalse(await tokenContract.methods.holdsRole(2, expiringMultiPartyCreator.options.address).call());
   });
 
   it("If collateral currency does not implement the decimals() method then synthetic currency defaults to 18 decimals", async function () {
