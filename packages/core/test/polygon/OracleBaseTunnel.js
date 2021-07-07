@@ -1,15 +1,15 @@
 const hre = require("hardhat");
 const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
-const TruffleAssert = require("truffle-assertions");
+const { getContract, assertEventEmitted, assertEventNotEmitted } = hre;
 const { assert } = require("chai");
 const OracleBaseTunnel = getContract("OracleBaseTunnelMock");
 const Finder = getContract("Finder");
 
 const { utf8ToHex, hexToUtf8, sha3, padRight } = web3.utils;
 
-contract("OracleBaseTunnel", async (accounts) => {
-  const owner = accounts[0];
+describe("OracleBaseTunnel", async () => {
+  let accounts;
+  let owner;
 
   let tunnel;
   let finder;
@@ -19,18 +19,23 @@ contract("OracleBaseTunnel", async (accounts) => {
   const testRequestTime = 123;
   const testPrice = "6";
 
-  beforeEach(async function () {
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+    [owner] = accounts;
     await runDefaultFixture(hre);
     finder = await Finder.deployed();
+  });
+  beforeEach(async function () {
     tunnel = await OracleBaseTunnel.new(finder.options.address).send({ from: accounts[0] });
   });
   it("construction", async function () {
     assert.equal(await tunnel.methods.finder().call(), finder.options.address, "finder address not set");
   });
   it("requestPrice", async function () {
-    let txn = await tunnel.methods.requestPrice(testIdentifier, testRequestTime, testAncillary).call({ from: owner });
-    TruffleAssert.eventEmitted(
+    let txn = await tunnel.methods.requestPrice(testIdentifier, testRequestTime, testAncillary).send({ from: owner });
+    await assertEventEmitted(
       txn,
+      tunnel,
       "PriceRequestAdded",
       (event) =>
         hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
@@ -38,16 +43,17 @@ contract("OracleBaseTunnel", async (accounts) => {
         event.ancillaryData.toLowerCase() === testAncillary.toLowerCase()
     );
     // Duplicate call does not emit an event.
-    txn = await tunnel.methods.requestPrice(testIdentifier, testRequestTime, testAncillary).call({ from: owner });
-    TruffleAssert.eventNotEmitted(txn, "PriceRequestAdded");
+    txn = await tunnel.methods.requestPrice(testIdentifier, testRequestTime, testAncillary).send({ from: owner });
+    await assertEventNotEmitted(txn, tunnel, "PriceRequestAdded");
   });
   it("publishPrice", async function () {
     await tunnel.methods.requestPrice(testIdentifier, testRequestTime, testAncillary).send({ from: owner });
     let txn = await tunnel.methods
       .publishPrice(testIdentifier, testRequestTime, testAncillary, testPrice)
-      .call({ from: owner });
-    TruffleAssert.eventEmitted(
+      .send({ from: owner });
+    await assertEventEmitted(
       txn,
+      tunnel,
       "PushedPrice",
       (event) =>
         hexToUtf8(event.identifier) === hexToUtf8(testIdentifier) &&
@@ -58,8 +64,8 @@ contract("OracleBaseTunnel", async (accounts) => {
     // Duplicate call does not emit an event.
     txn = await tunnel.methods
       .publishPrice(testIdentifier, testRequestTime, testAncillary, testPrice)
-      .call({ from: owner });
-    TruffleAssert.eventNotEmitted(txn, "PushedPrice");
+      .send({ from: owner });
+    await assertEventNotEmitted(txn, tunnel, "PushedPrice");
   });
   it("encodePriceRequest", async function () {
     const encodedPrice = await tunnel.methods.encodePriceRequest(testIdentifier, testRequestTime, testAncillary).call();

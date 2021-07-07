@@ -1,6 +1,6 @@
 const hre = require("hardhat");
 const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
+const { getContract, assertEventEmitted } = hre;
 const {
   RegistryRolesEnum,
   didContractThrow,
@@ -10,7 +10,7 @@ const {
 } = require("@uma/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 const { interfaceName } = require("@uma/common");
-const truffleAssert = require("truffle-assertions");
+const { assert } = require("chai");
 
 const Governor = getContract("Governor");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
@@ -28,7 +28,7 @@ const Finder = getContract("Finder");
 const { toBN, toWei, hexToUtf8, utf8ToHex, padRight } = web3.utils;
 const snapshotMessage = "Sign For Snapshot";
 
-contract("Governor", function (accounts) {
+describe("Governor", function () {
   let voting;
   let governor;
   let testToken;
@@ -37,23 +37,26 @@ contract("Governor", function (accounts) {
   let timer;
   let signature;
 
-  const proposer = accounts[0];
-  const account2 = accounts[1];
+  let accounts;
+  let proposer;
+  let account2;
 
   const setNewInflationRate = async (inflationRate) => {
     await voting.methods.setInflationRate({ rawValue: inflationRate.toString() }).send({ from: accounts[0] });
   };
 
   const constructTransferTransaction = (destination, amount) => {
-    return testToken.contract.methods.transfer(destination, amount).encodeABI();
+    return testToken.methods.transfer(destination, amount).encodeABI();
   };
 
-  beforeEach(async function () {
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+    [proposer, account2] = accounts;
     await runDefaultFixture(hre);
-    voting = await VotingInterfaceTesting.at((await Voting.deployed()).address);
+    voting = await VotingInterfaceTesting.at((await Voting.deployed()).options.address);
     supportedIdentifiers = await IdentifierWhitelist.deployed();
     governor = await Governor.deployed();
-    testToken = await TestnetERC20.deployed();
+    testToken = await TestnetERC20.new("Test", "TEST", 18).send({ from: accounts[0] });
     let votingToken = await VotingToken.deployed();
 
     // Allow proposer to mint tokens.
@@ -61,10 +64,10 @@ contract("Governor", function (accounts) {
     await votingToken.methods.addMember(minterRole, proposer).send({ from: accounts[0] });
 
     // Mint 99 tokens to this account so it has 99% of the tokens.
-    await votingToken.mint(proposer, toWei("99", "ether"));
+    await votingToken.methods.mint(proposer, toWei("99", "ether")).send({ from: accounts[0] });
 
     // Mint 1 token to this account so it has 1% of the tokens (not enough to reach the GAT).
-    await votingToken.mint(account2, toWei("1", "ether"));
+    await votingToken.methods.mint(account2, toWei("1", "ether")).send({ from: accounts[0] });
 
     // Set the inflation rate to 0 by default, so the balances stay fixed.
     await setNewInflationRate("0");
@@ -74,7 +77,9 @@ contract("Governor", function (accounts) {
     await supportedIdentifiers.methods.transferOwnership(governor.options.address).send({ from: accounts[0] });
 
     signature = await signMessage(web3, snapshotMessage, proposer);
+  });
 
+  beforeEach(async () => {
     // Make sure the governor time and voting time are aligned before each test case.
     let currentTime = await voting.methods.getCurrentTime().call();
     await governor.methods.setCurrentTime(currentTime).send({ from: accounts[0] });
@@ -87,16 +92,15 @@ contract("Governor", function (accounts) {
     const txnData = constructTransferTransaction(proposer, "0");
     assert(
       await didContractThrow(
-        governor.propose(
-          [
+        governor.methods
+          .propose([
             {
               to: testToken.options.address,
               value: 0,
               data: txnData,
             },
-          ],
-          { from: account2 }
-        )
+          ])
+          .send({ from: account2 })
       )
     );
   });
@@ -107,30 +111,34 @@ contract("Governor", function (accounts) {
     const zeroAddress = "0x0000000000000000000000000000000000000000";
     assert(
       await didContractThrow(
-        governor.propose([
-          {
-            to: zeroAddress,
-            value: 0,
-            data: txnData,
-          },
-        ])
+        governor.methods
+          .propose([
+            {
+              to: zeroAddress,
+              value: 0,
+              data: txnData,
+            },
+          ])
+          .send({ from: accounts[0] })
       )
     );
 
     assert(
       await didContractThrow(
-        governor.propose([
-          {
-            to: testToken.options.address,
-            value: 0,
-            data: txnData,
-          },
-          {
-            to: zeroAddress,
-            value: 0,
-            data: txnData,
-          },
-        ])
+        governor.methods
+          .propose([
+            {
+              to: testToken.options.address,
+              value: 0,
+              data: txnData,
+            },
+            {
+              to: zeroAddress,
+              value: 0,
+              data: txnData,
+            },
+          ])
+          .send({ from: accounts[0] })
       )
     );
   });
@@ -140,13 +148,15 @@ contract("Governor", function (accounts) {
     // A proposal with data should not be able to be sent to an EOA as only a contract can process data in a tx.
     assert(
       await didContractThrow(
-        governor.propose([
-          {
-            to: account2,
-            value: 0,
-            data: txnData,
-          },
-        ])
+        governor.methods
+          .propose([
+            {
+              to: account2,
+              value: 0,
+              data: txnData,
+            },
+          ])
+          .send({ from: accounts[0] })
       )
     );
   });
@@ -159,26 +169,30 @@ contract("Governor", function (accounts) {
     const id1 = await governor.methods.numProposals().call();
 
     // Send the proposal.
-    await governor.propose([
-      {
-        to: testToken.options.address,
-        value: 0,
-        data: txnData,
-      },
-    ]);
+    await governor.methods
+      .propose([
+        {
+          to: testToken.options.address,
+          value: 0,
+          data: txnData,
+        },
+      ])
+      .send({ from: accounts[0] });
 
     // Send a second proposal. Note: a second proposal is necessary to ensure we test at least one nonzero id.
     const id2 = await governor.methods.numProposals().call();
-    await governor.propose([
-      {
-        to: testToken.options.address,
-        value: 0,
-        data: txnData,
-      },
-    ]);
+    await governor.methods
+      .propose([
+        {
+          to: testToken.options.address,
+          value: 0,
+          data: txnData,
+        },
+      ])
+      .send({ from: accounts[0] });
 
     // The proposals should show up in the pending requests in the *next* round.
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
 
@@ -216,11 +230,11 @@ contract("Governor", function (accounts) {
     });
     await voting.methods.commitVote(request1.identifier, request1.time, hash1).send({ from: accounts[0] });
     await voting.methods.commitVote(request2.identifier, request2.time, hash2).send({ from: accounts[0] });
-    await moveToNextPhase(voting);
+    await moveToNextPhase(voting, accounts[0]);
     await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods.revealVote(request1.identifier, request1.time, vote, salt).send({ from: accounts[0] });
     await voting.methods.revealVote(request2.identifier, request2.time, vote, salt).send({ from: accounts[0] });
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
     await governor.methods.executeProposal(id1, 0).send({ from: accounts[0] });
     await governor.methods.executeProposal(id2, 0).send({ from: accounts[0] });
   });
@@ -234,14 +248,16 @@ contract("Governor", function (accounts) {
 
     // Send the proposal.
     const id = await governor.methods.numProposals().call();
-    await governor.propose([
-      {
-        to: testToken.options.address,
-        value: 0,
-        data: txnData,
-      },
-    ]);
-    await moveToNextRound(voting);
+    await governor.methods
+      .propose([
+        {
+          to: testToken.options.address,
+          value: 0,
+          data: txnData,
+        },
+      ])
+      .send({ from: accounts[0] });
+    await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
     const request = {
@@ -261,18 +277,18 @@ contract("Governor", function (accounts) {
       identifier: request.identifier,
     });
     await voting.methods.commitVote(request.identifier, request.time, hash).send({ from: accounts[0] });
-    await moveToNextPhase(voting);
+    await moveToNextPhase(voting, accounts[0]);
     await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
 
     // Cannot send ETH to execute a transaction that requires 0 ETH.
     assert(
-      await didContractThrow(governor.methods.executeProposal(id, 0, { value: toWei("1") }).send({ from: accounts[0] }))
+      await didContractThrow(governor.methods.executeProposal(id, 0).send({ from: accounts[0], value: toWei("1") }))
     );
 
     // Check to make sure that the tokens get transferred at the time of execution.
-    const startingBalance = await testToken.methods.balanceOf(proposer).call();
+    const startingBalance = toBN(await testToken.methods.balanceOf(proposer).call());
     await governor.methods.executeProposal(id, 0).send({ from: accounts[0] });
     assert.equal(
       (await testToken.methods.balanceOf(proposer).call()).toString(),
@@ -285,15 +301,17 @@ contract("Governor", function (accounts) {
 
     // Send the proposal to send ETH to account2.
     const id = await governor.methods.numProposals().call();
-    await governor.propose([
-      {
-        to: account2,
-        value: amountToDeposit,
-        data: web3.utils.hexToBytes("0x"), // "0x" is an empty bytes array to indicate no data tx.
-      },
-    ]);
+    await governor.methods
+      .propose([
+        {
+          to: account2,
+          value: amountToDeposit,
+          data: web3.utils.hexToBytes("0x"), // "0x" is an empty bytes array to indicate no data tx.
+        },
+      ])
+      .send({ from: accounts[0] });
 
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
     const request = {
@@ -313,15 +331,15 @@ contract("Governor", function (accounts) {
       identifier: request.identifier,
     });
     await voting.methods.commitVote(request.identifier, request.time, hash).send({ from: accounts[0] });
-    await moveToNextPhase(voting);
+    await moveToNextPhase(voting, accounts[0]);
     await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
 
     // Execute the proposal and simultaneously deposit ETH to pay for the transaction.
     // Check to make sure that the ETH gets transferred at the time of execution.
     const startingBalance = await web3.eth.getBalance(account2);
-    await governor.methods.executeProposal(id, 0, { value: amountToDeposit }).send({ from: accounts[0] });
+    await governor.methods.executeProposal(id, 0).send({ from: accounts[0], value: amountToDeposit });
     assert.equal(await web3.eth.getBalance(account2), toBN(startingBalance).add(toBN(amountToDeposit)).toString());
   });
 
@@ -330,15 +348,17 @@ contract("Governor", function (accounts) {
 
     // Send the proposal to send ETH to account2.
     const id = await governor.methods.numProposals().call();
-    await governor.propose([
-      {
-        to: account2,
-        value: amountToDeposit,
-        data: web3.utils.hexToBytes("0x"),
-      },
-    ]);
+    await governor.methods
+      .propose([
+        {
+          to: account2,
+          value: amountToDeposit,
+          data: web3.utils.hexToBytes("0x"),
+        },
+      ])
+      .send({ from: accounts[0] });
 
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
     const request = {
@@ -358,16 +378,20 @@ contract("Governor", function (accounts) {
       identifier: request.identifier,
     });
     await voting.methods.commitVote(request.identifier, request.time, hash).send({ from: accounts[0] });
-    await moveToNextPhase(voting);
+    await moveToNextPhase(voting, accounts[0]);
     await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
 
     const startingBalance = await web3.eth.getBalance(account2);
     // Sent too little ETH.
-    assert(await didContractThrow(governor.executeProposal(id, 0, { value: toWei("0.9") })));
+    assert(
+      await didContractThrow(governor.methods.executeProposal(id, 0).send({ from: accounts[0], value: toWei("0.9") }))
+    );
     // Sent too much ETH.
-    assert(await didContractThrow(governor.executeProposal(id, 0, { value: toWei("1.1") })));
+    assert(
+      await didContractThrow(governor.methods.executeProposal(id, 0).send({ from: accounts[0], value: toWei("1.1") }))
+    );
     assert.equal(await web3.eth.getBalance(account2), startingBalance);
   });
 
@@ -381,20 +405,22 @@ contract("Governor", function (accounts) {
 
     // Send the proposal with multiple transactions.
     const id = await governor.methods.numProposals().call();
-    await governor.propose([
-      {
-        to: testToken.options.address,
-        value: 0,
-        data: txnData1,
-      },
-      {
-        to: testToken.options.address,
-        value: 0,
-        data: txnData2,
-      },
-    ]);
+    await governor.methods
+      .propose([
+        {
+          to: testToken.options.address,
+          value: 0,
+          data: txnData1,
+        },
+        {
+          to: testToken.options.address,
+          value: 0,
+          data: txnData2,
+        },
+      ])
+      .send({ from: accounts[0] });
 
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
     const request = {
@@ -414,20 +440,20 @@ contract("Governor", function (accounts) {
       identifier: request.identifier,
     });
     await voting.methods.commitVote(request.identifier, request.time, hash).send({ from: accounts[0] });
-    await moveToNextPhase(voting);
+    await moveToNextPhase(voting, accounts[0]);
     await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
 
     // Check to make sure that the tokens get transferred at the time of each successive execution.
-    const startingBalance1 = await testToken.methods.balanceOf(proposer).call();
+    const startingBalance1 = toBN(await testToken.methods.balanceOf(proposer).call());
     await governor.methods.executeProposal(id, 0).send({ from: accounts[0] });
     assert.equal(
       (await testToken.methods.balanceOf(proposer).call()).toString(),
       startingBalance1.add(toBN(toWei("1"))).toString()
     );
 
-    const startingBalance2 = await testToken.methods.balanceOf(account2).call();
+    const startingBalance2 = toBN(await testToken.methods.balanceOf(account2).call());
     await governor.methods.executeProposal(id, 1).send({ from: accounts[0] });
     assert.equal(
       (await testToken.methods.balanceOf(account2).call()).toString(),
@@ -439,14 +465,16 @@ contract("Governor", function (accounts) {
     // Setup
     const txnData = constructTransferTransaction(proposer, "0");
     const id = await governor.methods.numProposals().call();
-    await governor.propose([
-      {
-        to: testToken.options.address,
-        value: 0,
-        data: txnData,
-      },
-    ]);
-    await moveToNextRound(voting);
+    await governor.methods
+      .propose([
+        {
+          to: testToken.options.address,
+          value: 0,
+          data: txnData,
+        },
+      ])
+      .send({ from: accounts[0] });
+    await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
     const request = {
@@ -466,10 +494,10 @@ contract("Governor", function (accounts) {
       identifier: request.identifier,
     });
     await voting.methods.commitVote(request.identifier, request.time, hash).send({ from: accounts[0] });
-    await moveToNextPhase(voting);
+    await moveToNextPhase(voting, accounts[0]);
     await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
 
     // First execution should succeed.
     await governor.methods.executeProposal(id, 0).send({ from: accounts[0] });
@@ -482,19 +510,21 @@ contract("Governor", function (accounts) {
     // Setup
     const txnData = constructTransferTransaction(proposer, "0");
     const id = await governor.methods.numProposals().call();
-    await governor.propose([
-      {
-        to: testToken.options.address,
-        value: 0,
-        data: txnData,
-      },
-      {
-        to: testToken.options.address,
-        value: 0,
-        data: txnData,
-      },
-    ]);
-    await moveToNextRound(voting);
+    await governor.methods
+      .propose([
+        {
+          to: testToken.options.address,
+          value: 0,
+          data: txnData,
+        },
+        {
+          to: testToken.options.address,
+          value: 0,
+          data: txnData,
+        },
+      ])
+      .send({ from: accounts[0] });
+    await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
     const request = {
@@ -514,10 +544,10 @@ contract("Governor", function (accounts) {
       identifier: request.identifier,
     });
     await voting.methods.commitVote(request.identifier, request.time, hash).send({ from: accounts[0] });
-    await moveToNextPhase(voting);
+    await moveToNextPhase(voting, accounts[0]);
     await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
 
     // Index 1 cannot be executed before index 0.
     assert(await didContractThrow(governor.methods.executeProposal(id, 1).send({ from: accounts[0] })));
@@ -536,14 +566,16 @@ contract("Governor", function (accounts) {
 
     // Send the proposal.
     const id = await governor.methods.numProposals().call();
-    await governor.propose([
-      {
-        to: testToken.options.address,
-        value: 0,
-        data: txnData,
-      },
-    ]);
-    await moveToNextRound(voting);
+    await governor.methods
+      .propose([
+        {
+          to: testToken.options.address,
+          value: 0,
+          data: txnData,
+        },
+      ])
+      .send({ from: accounts[0] });
+    await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
     const request = {
@@ -563,10 +595,10 @@ contract("Governor", function (accounts) {
       identifier: request.identifier,
     });
     await voting.methods.commitVote(request.identifier, request.time, hash).send({ from: accounts[0] });
-    await moveToNextPhase(voting);
+    await moveToNextPhase(voting, accounts[0]);
     await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
 
     // Check to make sure that the execution fails and no tokens get transferred.
     const startingBalance = await testToken.methods.balanceOf(proposer).call();
@@ -583,14 +615,16 @@ contract("Governor", function (accounts) {
 
     // Send the proposal.
     const id = await governor.methods.numProposals().call();
-    await governor.propose([
-      {
-        to: testToken.options.address,
-        value: 0,
-        data: txnData,
-      },
-    ]);
-    await moveToNextRound(voting);
+    await governor.methods
+      .propose([
+        {
+          to: testToken.options.address,
+          value: 0,
+          data: txnData,
+        },
+      ])
+      .send({ from: accounts[0] });
+    await moveToNextRound(voting, accounts[0]);
     let roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
     const request = {
@@ -610,10 +644,10 @@ contract("Governor", function (accounts) {
       identifier: request.identifier,
     });
     await voting.methods.commitVote(request.identifier, request.time, hash2).send({ from: account2 });
-    await moveToNextPhase(voting);
+    await moveToNextPhase(voting, accounts[0]);
     await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: account2 });
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
 
     // Check to make sure that the execution fails and no tokens get transferred.
     const startingBalance = await testToken.methods.balanceOf(proposer).call();
@@ -631,10 +665,10 @@ contract("Governor", function (accounts) {
       identifier: request.identifier,
     });
     await voting.methods.commitVote(request.identifier, request.time, hash1).send({ from: accounts[0] });
-    await moveToNextPhase(voting);
+    await moveToNextPhase(voting, accounts[0]);
     await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
   });
 
   it("Failed transaction", async function () {
@@ -643,14 +677,16 @@ contract("Governor", function (accounts) {
 
     // Send the proposal.
     const id = await governor.methods.numProposals().call();
-    await governor.propose([
-      {
-        to: testToken.options.address,
-        value: 0,
-        data: txnData,
-      },
-    ]);
-    await moveToNextRound(voting);
+    await governor.methods
+      .propose([
+        {
+          to: testToken.options.address,
+          value: 0,
+          data: txnData,
+        },
+      ])
+      .send({ from: accounts[0] });
+    await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
     const request = {
@@ -670,10 +706,10 @@ contract("Governor", function (accounts) {
       identifier: request.identifier,
     });
     await voting.methods.commitVote(request.identifier, request.time, hash).send({ from: accounts[0] });
-    await moveToNextPhase(voting);
+    await moveToNextPhase(voting, accounts[0]);
     await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
 
     // Check to make sure that the execution fails and no tokens get transferred.
     const startingBalance = await testToken.methods.balanceOf(proposer).call();
@@ -687,14 +723,16 @@ contract("Governor", function (accounts) {
 
     // Send the proposal and verify that an event is produced.
     const id = await governor.methods.numProposals().call();
-    let receipt = await governor.propose([
-      {
-        to: testToken.options.address,
-        value: 0,
-        data: txnData,
-      },
-    ]);
-    truffleAssert.eventEmitted(receipt, "NewProposal", (ev) => {
+    let receipt = await governor.methods
+      .propose([
+        {
+          to: testToken.options.address,
+          value: 0,
+          data: txnData,
+        },
+      ])
+      .send({ from: accounts[0] });
+    await assertEventEmitted(receipt, governor, "NewProposal", (ev) => {
       return (
         ev.id.toString() === id.toString() &&
         ev.transactions.length === 1 &&
@@ -705,7 +743,7 @@ contract("Governor", function (accounts) {
     });
 
     // Vote the proposal through.
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
     const request = {
@@ -723,14 +761,14 @@ contract("Governor", function (accounts) {
       identifier: request.identifier,
     });
     await voting.methods.commitVote(request.identifier, request.time, hash).send({ from: accounts[0] });
-    await moveToNextPhase(voting);
+    await moveToNextPhase(voting, accounts[0]);
     await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
 
     // Verify execute event.
-    receipt = await governor.methods.executeProposal(id, 0).call();
-    truffleAssert.eventEmitted(receipt, "ProposalExecuted", (ev) => {
+    receipt = await governor.methods.executeProposal(id, 0).send({ from: accounts[0] });
+    await assertEventEmitted(receipt, governor, "ProposalExecuted", (ev) => {
       return ev.id.toString() === id.toString() && ev.transactionIndex.toString() === "0";
     });
   });
@@ -740,21 +778,23 @@ contract("Governor", function (accounts) {
     const id = await governor.methods.numProposals().call();
 
     // Construct the transaction that we want to re-enter and pass the txn data to the ReentrancyChecker.
-    const txnData = governor.contract.methods.executeProposal(id.toString(), "0").encodeABI();
+    const txnData = governor.methods.executeProposal(id.toString(), "0").encodeABI();
     const reentrancyChecker = await ReentrancyChecker.new().send({ from: accounts[0] });
     await reentrancyChecker.methods.setTransactionData(txnData).send({ from: accounts[0] });
 
     // Propose the reentrant transaction.
-    await governor.propose([
-      {
-        to: reentrancyChecker.options.address,
-        value: 0,
-        data: constructTransferTransaction(account2, toWei("0")), // Data doesn't since it will hit the fallback regardless.
-      },
-    ]);
+    await governor.methods
+      .propose([
+        {
+          to: reentrancyChecker.options.address,
+          value: 0,
+          data: constructTransferTransaction(account2, toWei("0")), // Data doesn't since it will hit the fallback regardless.
+        },
+      ])
+      .send({ from: accounts[0] });
 
     // Vote the proposal through.
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
     const request = {
@@ -772,10 +812,10 @@ contract("Governor", function (accounts) {
       identifier: request.identifier,
     });
     await voting.methods.commitVote(request.identifier, request.time, hash).send({ from: accounts[0] });
-    await moveToNextPhase(voting);
+    await moveToNextPhase(voting, accounts[0]);
     await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
 
     // Since we're using the reentrancy checker, this transaction should FAIL if the reentrancy is successful.
     await governor.methods.executeProposal(id, 0).send({ from: accounts[0] });
@@ -787,9 +827,9 @@ contract("Governor", function (accounts) {
 
     // Create new governor contract.
     finder = await Finder.deployed();
-    const newGovernor = await Governor.new(finder.options.address, startingId, timer.options.address)
-      .send({ from: accounts[0] })
-      .send({ from: proposer });
+    const newGovernor = await Governor.new(finder.options.address, startingId, timer.options.address).send({
+      from: proposer,
+    });
 
     // Approve the new governor in the Registry.
     const registry = await Registry.deployed();
@@ -799,17 +839,16 @@ contract("Governor", function (accounts) {
     const identifierWhitelist = await IdentifierWhitelist.new().send({ from: accounts[0] });
     await identifierWhitelist.methods.transferOwnership(newGovernor.options.address).send({ from: accounts[0] });
 
-    await finder.methods.changeImplementationAddress(
-      utf8ToHex(interfaceName.IdentifierWhitelist),
-      identifierWhitelist.options.address
-    );
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.options.address)
+      .send({ from: accounts[0] });
 
     // The number of proposals should be equal to the starting id.
     assert.equal((await newGovernor.methods.numProposals().call()).toString(), startingId.toString());
 
     const proposal0 = await newGovernor.methods.getProposal(0).call();
     const proposalRandom = await newGovernor.methods.getProposal(123456).call();
-    const proposalLast = await newGovernor.getProposal(startingId - 1);
+    const proposalLast = await newGovernor.methods.getProposal(startingId - 1).call();
 
     // Ensure that all previous proposals have no transaction data.
     assert.equal(proposal0.transactions.length, 0);
@@ -826,13 +865,15 @@ contract("Governor", function (accounts) {
     // Construct the transaction data to send the newly minted tokens to proposer.
     const txnData = constructTransferTransaction(proposer, toWei("1"));
 
-    await newGovernor.propose([
-      {
-        to: testToken.options.address,
-        value: 0,
-        data: txnData,
-      },
-    ]);
+    await newGovernor.methods
+      .propose([
+        {
+          to: testToken.options.address,
+          value: 0,
+          data: txnData,
+        },
+      ])
+      .send({ from: accounts[0] });
 
     // Check that the proposal is correct.
     const proposal = await newGovernor.methods.getProposal(startingId).call();
@@ -842,7 +883,7 @@ contract("Governor", function (accounts) {
     assert.equal(proposal.transactions[0].data, txnData);
     assert.equal(proposal.requestTime.toString(), (await newGovernor.methods.getCurrentTime().call()).toString());
 
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
     const request = {
@@ -862,13 +903,13 @@ contract("Governor", function (accounts) {
       identifier: request.identifier,
     });
     await voting.methods.commitVote(request.identifier, request.time, hash).send({ from: accounts[0] });
-    await moveToNextPhase(voting);
+    await moveToNextPhase(voting, accounts[0]);
     await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
     await voting.methods.revealVote(request.identifier, request.time, vote, salt).send({ from: accounts[0] });
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
 
     // Check to make sure that the tokens get transferred at the time of execution.
-    const startingBalance = await testToken.methods.balanceOf(proposer).call();
+    const startingBalance = toBN(await testToken.methods.balanceOf(proposer).call());
     await newGovernor.methods.executeProposal(startingId, 0).send({ from: accounts[0] });
     assert.equal(
       (await testToken.methods.balanceOf(proposer).call()).toString(),
@@ -876,22 +917,19 @@ contract("Governor", function (accounts) {
     );
 
     // Reset IdentifierWhitelist implementation as to not interfere with other tests.
-    await finder.methods.changeImplementationAddress(
-      utf8ToHex(interfaceName.IdentifierWhitelist),
-      supportedIdentifiers.options.address
-    );
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), supportedIdentifiers.options.address)
+      .send({ from: accounts[0] });
   });
 
   it("startingId size", async function () {
     // Starting id of 10^18 is the upper limit -- that should be the largest that will work.
-    await Governor.new(finder.options.address, toWei("1"), timer.options.address)
-      .send({ from: accounts[0] })
-      .send({ from: proposer });
+    await Governor.new(finder.options.address, toWei("1"), timer.options.address).send({ from: proposer });
 
     // Anything above 10^18 is rejected.
     assert(
       await didContractThrow(
-        Governor.new(finder.options.address, toWei("1.1"), timer.options.address, { from: proposer })
+        Governor.new(finder.options.address, toWei("1.1"), timer.options.address).send({ from: proposer })
       )
     );
   });

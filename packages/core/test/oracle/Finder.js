@@ -1,19 +1,22 @@
 const hre = require("hardhat");
 const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
+const { getContract, assertEventEmitted } = hre;
 const { didContractThrow } = require("@uma/common");
 const { utf8ToHex } = web3.utils;
+const { assert } = require("chai");
 
 const Finder = getContract("Finder");
 
-const truffleAssert = require("truffle-assertions");
+describe("Finder", function () {
+  let accounts;
+  let owner;
+  let user;
 
-contract("Finder", function (accounts) {
-  beforeEach(async function () {
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+    [owner, user] = accounts;
     await runDefaultFixture(hre);
   });
-  const owner = accounts[0];
-  const user = accounts[1];
 
   it("General methods", async function () {
     const finder = await Finder.deployed();
@@ -49,8 +52,8 @@ contract("Finder", function (accounts) {
     // Can reset and then find an interface.
     const result = await finder.methods
       .changeImplementationAddress(interfaceName1, implementationAddress3)
-      .call({ from: owner });
-    truffleAssert.eventEmitted(result, "InterfaceImplementationChanged", (ev) => {
+      .send({ from: owner });
+    assertEventEmitted(result, result, "InterfaceImplementationChanged", (ev) => {
       return (
         web3.utils.hexToUtf8(ev.interfaceName) === web3.utils.hexToUtf8(interfaceName1) &&
         ev.newImplementationAddress === implementationAddress3

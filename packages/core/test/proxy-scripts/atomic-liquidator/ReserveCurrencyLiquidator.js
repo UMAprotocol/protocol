@@ -10,11 +10,10 @@ const {
   createContractObjectFromJson,
 } = require("@uma/common");
 const { toWei, toBN, fromWei, padRight, utf8ToHex } = web3.utils;
-const { getTruffleContract } = require("@uma/core");
 const { assert } = require("chai");
 
 // Tested Contract
-const ReserveCurrencyLiquidator = getTruffleContract("ReserveCurrencyLiquidator", web3);
+const ReserveCurrencyLiquidator = getContract("ReserveCurrencyLiquidator");
 
 // Uniswap related contracts
 const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json");
@@ -22,14 +21,14 @@ const IUniswapV2Pair = require("@uniswap/v2-core/build/IUniswapV2Pair.json");
 const UniswapV2Router02 = require("@uniswap/v2-periphery/build/UniswapV2Router02.json");
 
 // Helpers and other contracts
-const Token = getTruffleContract("ExpandedERC20", web3);
+const Token = getContract("ExpandedERC20");
 const ExpiringMultiParty = getContract("ExpiringMultiParty");
 const Store = getContract("Store");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const Timer = getContract("Timer");
-const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);
-const DSProxy = getTruffleContract("DSProxy", web3);
+const DSProxyFactory = getContract("DSProxyFactory");
+const DSProxy = getContract("DSProxy");
 
 // Tested contract
 let reserveCurrencyLiquidator;
@@ -60,8 +59,8 @@ const fixedPointAdjustment = toBN(toWei("1"));
 
 // Returns the current spot price of a uniswap pool, scaled to 4 decimal points.
 const getPoolSpotPrice = async () => {
-  const poolTokenABallance = await reserveToken.methods.balanceOf(pairAddress).call();
-  const poolTokenBBallance = await collateralToken.methods.balanceOf(pairAddress).call();
+  const poolTokenABallance = toBN(await reserveToken.methods.balanceOf(pairAddress).call());
+  const poolTokenBBallance = toBN(await collateralToken.methods.balanceOf(pairAddress).call());
   return Number(fromWei(poolTokenABallance.mul(fixedPointAdjustment).div(poolTokenBBallance))).toFixed(4);
 };
 
@@ -74,11 +73,12 @@ const computeExpectedTokenBuy = async (tokensToLiquidate) => {
   return tokensToLiquidate.mul(contractGcr).div(fixedPointAdjustment).add(finalFeeAmount);
 };
 
-contract("ReserveTokenLiquidator", function (accounts) {
-  const deployer = accounts[0];
-  const sponsor1 = accounts[1];
-  const sponsor2 = accounts[2];
-  const liquidator = accounts[2];
+describe("ReserveTokenLiquidator", function () {
+  let accounts;
+  let deployer;
+  let sponsor1;
+  let sponsor2;
+  let liquidator;
 
   // Common liquidation sanity checks. repeated in the different unit tests.
   const validateLiquidationOutput = async (liquidations) => {
@@ -99,7 +99,7 @@ contract("ReserveTokenLiquidator", function (accounts) {
     maxSlippage = toWei("0.5"),
     maxTokensToLiquidate = toWei("1000")
   ) => {
-    return reserveCurrencyLiquidator.contract.methods
+    return reserveCurrencyLiquidator.methods
       .swapMintLiquidate(
         router.options.address, // uniswapRouter
         financialContract.options.address, // financialContract
@@ -114,7 +114,9 @@ contract("ReserveTokenLiquidator", function (accounts) {
       .encodeABI();
   };
 
-  beforeEach(async () => {
+  before(async () => {
+    accounts = await web3.eth.getAccounts();
+    [deployer, sponsor1, sponsor2, liquidator] = accounts;
     await runDefaultFixture(hre);
     dsProxyFactory = await DSProxyFactory.new().send({ from: accounts[0] });
 
@@ -125,7 +127,9 @@ contract("ReserveTokenLiquidator", function (accounts) {
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.methods.addSupportedIdentifier(priceFeedIdentifier).send({ from: deployer });
+  });
 
+  beforeEach(async () => {
     // deploy the ReserveTokenLiquidator
     reserveCurrencyLiquidator = await ReserveCurrencyLiquidator.new().send({ from: accounts[0] });
 
@@ -143,27 +147,29 @@ contract("ReserveTokenLiquidator", function (accounts) {
     await syntheticToken.methods.addMember(1, deployer).send({ from: deployer });
 
     // Give the sponsors collateral Token to create positions.
-    await collateralToken.mint(sponsor1, toWei("100000000000000"));
-    await collateralToken.mint(sponsor2, toWei("100000000000000"));
+    await collateralToken.methods.mint(sponsor1, toWei("100000000000000")).send({ from: accounts[0] });
+    await collateralToken.methods.mint(sponsor2, toWei("100000000000000")).send({ from: accounts[0] });
 
     // deploy Uniswap V2 Factory & router.
-    factory = await createContractObjectFromJson(UniswapV2Factory, web3).new(deployer, { from: deployer });
-    router = await createContractObjectFromJson(UniswapV2Router02, web3).new(
-      factory.options.address,
-      collateralToken.options.address,
-      { from: deployer }
-    );
+    factory = (await createContractObjectFromJson(UniswapV2Factory, web3).new(deployer, { from: deployer })).contract;
+    router = (
+      await createContractObjectFromJson(UniswapV2Router02, web3).new(
+        factory.options.address,
+        collateralToken.options.address,
+        { from: deployer }
+      )
+    ).contract;
 
     // initialize the pair
     await factory.methods
       .createPair(reserveToken.options.address, collateralToken.options.address)
       .send({ from: deployer });
     pairAddress = await factory.methods.getPair(reserveToken.options.address, collateralToken.options.address).call();
-    pair = await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress);
+    pair = (await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress)).contract;
 
     await reserveToken.methods.mint(pairAddress, startingReservePoolAmount).send({ from: accounts[0] });
     await collateralToken.methods.mint(pairAddress, startingCollateralPoolAmount).send({ from: accounts[0] });
-    await pair.methods.sync({ from: deployer }).send({ from: accounts[0] });
+    await pair.methods.sync().send({ from: deployer });
     assert.equal(await getPoolSpotPrice(), "1000.0000"); // price should be exactly 1000 reserveToken/collateralToken.
 
     // Create the EMP to mint positions.
@@ -194,20 +200,24 @@ contract("ReserveTokenLiquidator", function (accounts) {
     // in WETH. To start with, let's assume the collateral price is 1000 USD. Sponsor 1 creates an initial position of
     // 1000 synthetics collateralized by 2 WETH. This sets their CR to 2 and the GCR to 2.
     await collateralToken.methods.approve(financialContract.options.address, MAX_UINT_VAL).send({ from: sponsor1 });
-    await await financialContract.create({ rawValue: toWei("2") }, { rawValue: toWei("1000") }, { from: sponsor1 });
+    await await financialContract.methods
+      .create({ rawValue: toWei("2") }, { rawValue: toWei("1000") })
+      .send({ from: sponsor1 });
 
     // Next, the second sponsor creates 1000 tokens, collateralized by 3 WETH. This sets the GCR to (5 * 1000)/(2 * 1000)=2.5
     await collateralToken.methods.approve(financialContract.options.address, MAX_UINT_VAL).send({ from: sponsor2 });
-    await await financialContract.create({ rawValue: toWei("3") }, { rawValue: toWei("1000") }, { from: sponsor2 });
+    await await financialContract.methods
+      .create({ rawValue: toWei("3") }, { rawValue: toWei("1000") })
+      .send({ from: sponsor2 });
 
     // Finally, create a DSProxy for the liquidator. This will be used to send the atomic liquidation transactions.
-    await dsProxyFactory.methods.build({ from: liquidator }).send({ from: accounts[0] });
+    await dsProxyFactory.methods.build().send({ from: liquidator });
     dsProxy = await DSProxy.at((await dsProxyFactory.getPastEvents("Created"))[0].returnValues.proxy);
   });
 
   it("can correctly swap,mint,liquidate", async function () {
     // Send tokens from liquidator to DSProxy. This would be done by seeding the common DSProxy shared between multiple bots.
-    await reserveToken.mint(dsProxy.options.address, toWei("10000"));
+    await reserveToken.methods.mint(dsProxy.options.address, toWei("10000")).send({ from: accounts[0] });
 
     // The DSProxy should not have any synthetics or collateral before the liquidation.
     assert.equal(await collateralToken.methods.balanceOf(dsProxy.options.address).call(), "0");
@@ -221,7 +231,7 @@ contract("ReserveTokenLiquidator", function (accounts) {
     // Build the transaction call data.
     const callData = buildCallData();
 
-    await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
+    await dsProxy.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
       from: liquidator,
     });
 
@@ -243,14 +253,14 @@ contract("ReserveTokenLiquidator", function (accounts) {
   });
   it("should use existing token and synthetic balances", async function () {
     // If the DSProxy already has any synthetics or collateral, the contract should use them all within the liquidation.
-    await reserveToken.mint(dsProxy.options.address, toWei("10000")); // mint some reserve tokens.
-    await collateralToken.mint(dsProxy.options.address, toWei("0.5")); // send half of 1 eth to the DSProxy
-    await syntheticToken.mint(dsProxy.options.address, toWei("200")); // send 200 synthetics to the DSProxy
+    await reserveToken.methods.mint(dsProxy.options.address, toWei("10000")).send({ from: accounts[0] }); // mint some reserve tokens.
+    await collateralToken.methods.mint(dsProxy.options.address, toWei("0.5")).send({ from: accounts[0] }); // send half of 1 eth to the DSProxy
+    await syntheticToken.methods.mint(dsProxy.options.address, toWei("200")).send({ from: accounts[0] }); // send 200 synthetics to the DSProxy
 
     // Build the transaction call data.
     const callData = buildCallData();
 
-    await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
+    await dsProxy.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
       from: liquidator,
     });
 
@@ -272,13 +282,13 @@ contract("ReserveTokenLiquidator", function (accounts) {
     // If the DSProxy's synthetic balance is larger than that to be liquidated, then it does not need to preform any
     // extra buys OR mints. Send the synthetic reserve token, of which it should use only enough to buy the final fee.
     // Send synthetics larger than the position liquidated.
-    await reserveToken.mint(dsProxy.options.address, toWei("10000")); // mint some reserve tokens.
-    await syntheticToken.mint(dsProxy.options.address, toWei("2000")); // send 200 synthetics to the DSProxy
+    await reserveToken.methods.mint(dsProxy.options.address, toWei("10000")).send({ from: accounts[0] }); // mint some reserve tokens.
+    await syntheticToken.methods.mint(dsProxy.options.address, toWei("2000")).send({ from: accounts[0] }); // send 200 synthetics to the DSProxy
 
     // Build the transaction call data.
     const callData = buildCallData();
 
-    await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
+    await dsProxy.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
       from: liquidator,
     });
 
@@ -300,13 +310,13 @@ contract("ReserveTokenLiquidator", function (accounts) {
     // If the DSProxy's balance collateral balance is larger than then that to be minted, then it does not need to preform
     // any extra buys. However, the DSProxy still needs to mint synthetics to preform the liquidation. Send the synthetic
     // reserve token, of which it should use none. Send collateral larger than needed to mint positions.
-    await reserveToken.mint(dsProxy.options.address, toWei("10000")); // mint some reserve tokens.
-    await collateralToken.mint(dsProxy.options.address, toWei("10")); // send 10 collateral to the DSProxy.
+    await reserveToken.methods.mint(dsProxy.options.address, toWei("10000")).send({ from: accounts[0] }); // mint some reserve tokens.
+    await collateralToken.methods.mint(dsProxy.options.address, toWei("10")).send({ from: accounts[0] }); // send 10 collateral to the DSProxy.
 
     // Build the transaction call data.
     const callData = buildCallData();
 
-    await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
+    await dsProxy.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
       from: liquidator,
     });
 
@@ -329,7 +339,7 @@ contract("ReserveTokenLiquidator", function (accounts) {
   });
   it("can correctly deal with collateral and reserve being the same token", async function () {
     // Send tokens from liquidator to DSProxy. This would be done by seeding the common DSProxy shared between multiple bots.
-    await collateralToken.mint(dsProxy.options.address, toWei("10000"));
+    await collateralToken.methods.mint(dsProxy.options.address, toWei("10000")).send({ from: accounts[0] });
 
     // The DSProxy should not have any synthetics or collateral before the liquidation.
     assert.equal((await collateralToken.methods.balanceOf(dsProxy.options.address).call()).toString(), toWei("10000"));
@@ -344,7 +354,7 @@ contract("ReserveTokenLiquidator", function (accounts) {
     // Build the transaction call data. This differs from the previous tests in that it uses the collateral as reserve token.
     const callData = buildCallData(collateralToken.options.address);
 
-    await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
+    await dsProxy.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
       from: liquidator,
     });
 
@@ -381,7 +391,7 @@ contract("ReserveTokenLiquidator", function (accounts) {
     // Also, note that the maxTokensToLiquidate is more than the bot could do with just 1 wei of collateral.
     let callData = buildCallData(collateralToken.options.address, toWei("0.5")); // maxSlippage above any achievable slippage given the pool sizes (50%)
 
-    await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
+    await dsProxy.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
       from: liquidator,
     });
 
@@ -410,7 +420,7 @@ contract("ReserveTokenLiquidator", function (accounts) {
     assert.equal((await financialContract.getPastEvents("LiquidationCreated")).length, 1);
   });
   it("correctly respects max slippage tolerance", async function () {
-    await reserveToken.mint(dsProxy.options.address, toWei("10000"));
+    await reserveToken.methods.mint(dsProxy.options.address, toWei("10000")).send({ from: accounts[0] });
 
     // To test the slippage tolerances of the smart contract we can compute how much the price will move for a given trade
     // and then ensure that the contract will revert if the slippage is large than the tolerance. The position size being
@@ -426,8 +436,8 @@ contract("ReserveTokenLiquidator", function (accounts) {
 
     // compute the resultant price by considering how much the pools will mode due to the amounts in/out. This is
     // (50000+2750.86)/(50-2.6)=1112.8875
-    const numerator = startingReservePoolAmount.add(amountsIn[0]);
-    const denominator = startingCollateralPoolAmount.sub(amountsIn[1]);
+    const numerator = startingReservePoolAmount.add(toBN(amountsIn[0]));
+    const denominator = startingCollateralPoolAmount.sub(toBN(amountsIn[1]));
     const expectedResultantPrice = numerator.mul(fixedPointAdjustment).div(denominator);
 
     // The expected slippage is the resultant price (post trade) divided by the original price, minus 1. This is
@@ -444,7 +454,7 @@ contract("ReserveTokenLiquidator", function (accounts) {
 
     assert(
       await didContractThrow(
-        dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
+        dsProxy.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
           from: liquidator,
         })
       )
@@ -453,7 +463,7 @@ contract("ReserveTokenLiquidator", function (accounts) {
     // Build call data with a slippage tolerance of 12%, right above the expected slippage of 12.28%. This should not revert.
     callData = buildCallData(reserveToken.options.address, toWei("0.12"));
 
-    await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
+    await dsProxy.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
       from: liquidator,
     });
 
@@ -487,21 +497,23 @@ contract("ReserveTokenLiquidator", function (accounts) {
     const convertSynthetic = Convert(9);
 
     // create a new router and pair to re-initalize from fresh.
-    factory = await createContractObjectFromJson(UniswapV2Factory, web3).new(deployer, { from: deployer });
-    router = await createContractObjectFromJson(UniswapV2Router02, web3).new(
-      factory.options.address,
-      collateralToken.options.address
-    );
+    factory = (await createContractObjectFromJson(UniswapV2Factory, web3).new(deployer, { from: deployer })).contract;
+    router = (
+      await createContractObjectFromJson(UniswapV2Router02, web3).new(
+        factory.options.address,
+        collateralToken.options.address
+      )
+    ).contract;
     await factory.methods
       .createPair(reserveToken.options.address, collateralToken.options.address)
       .send({ from: deployer });
     pairAddress = await factory.methods.getPair(reserveToken.options.address, collateralToken.options.address).call();
-    pair = await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress);
+    pair = (await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress)).contract;
 
     // Add in the exact reserves as seen on the live pools. At these reserve ratios the starting price is 0.0797.
     await reserveToken.methods.mint(pairAddress, "10881694425").send({ from: accounts[0] });
     await collateralToken.methods.mint(pairAddress, "136567052391").send({ from: accounts[0] });
-    await pair.methods.sync({ from: deployer }).send({ from: accounts[0] });
+    await pair.methods.sync().send({ from: deployer });
 
     // Create the EMP to mint positions.
     constructorParams = {
@@ -516,16 +528,14 @@ contract("ReserveTokenLiquidator", function (accounts) {
     await syntheticToken.methods.addBurner(financialContract.options.address).send({ from: accounts[0] });
 
     // Create one sponsor that we will attempt to liquidate and validate slippage.
-    await collateralToken.mint(sponsor1, toWei("100000000000000"));
+    await collateralToken.methods.mint(sponsor1, toWei("100000000000000")).send({ from: accounts[0] });
     await collateralToken.methods.approve(financialContract.options.address, MAX_UINT_VAL).send({ from: sponsor1 });
-    await await financialContract.create(
-      { rawValue: convertCollateral("20") },
-      { rawValue: convertSynthetic("10000") },
-      { from: sponsor1 }
-    );
+    await await financialContract.methods
+      .create({ rawValue: convertCollateral("20") }, { rawValue: convertSynthetic("10000") })
+      .send({ from: sponsor1 });
 
     // mint some reserve to the dsproxy.
-    await reserveToken.mint(dsProxy.options.address, convertReserve("1000000")); // mint some reserve tokens.
+    await reserveToken.methods.mint(dsProxy.options.address, convertReserve("1000000")).send({ from: accounts[0] }); // mint some reserve tokens.
 
     // We know the exact number of tokens in the pool and the number of tokens required to mint at the GCR. The GCR is
     // 2e9 / 1000e9=0.0002. To liquidate 1000 units of debt, while minting at the GCR the dsProxy will also need 2e9 units
@@ -540,7 +550,7 @@ contract("ReserveTokenLiquidator", function (accounts) {
 
     assert(
       await didContractThrow(
-        dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
+        dsProxy.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
           from: liquidator,
         })
       )
@@ -549,7 +559,7 @@ contract("ReserveTokenLiquidator", function (accounts) {
     // maxSlippage set to 40% is above the expected slippage of 37% for this liquidation. should not revert.
     callData = buildCallData(reserveToken.options.address, toWei("0.40"), convertSynthetic("10000"));
 
-    await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
+    await dsProxy.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
       from: liquidator,
     });
 
@@ -581,21 +591,23 @@ contract("ReserveTokenLiquidator", function (accounts) {
     const convertSynthetic = Convert(6);
 
     // create a new router and pair to re-initalize from fresh.
-    factory = await createContractObjectFromJson(UniswapV2Factory, web3).new(deployer, { from: deployer });
-    router = await createContractObjectFromJson(UniswapV2Router02, web3).new(
-      factory.options.address,
-      collateralToken.options.address
-    );
+    factory = (await createContractObjectFromJson(UniswapV2Factory, web3).new(deployer, { from: deployer })).contract;
+    router = (
+      await createContractObjectFromJson(UniswapV2Router02, web3).new(
+        factory.options.address,
+        collateralToken.options.address
+      )
+    ).contract;
     await factory.methods
       .createPair(reserveToken.options.address, collateralToken.options.address)
       .send({ from: deployer });
     pairAddress = await factory.methods.getPair(reserveToken.options.address, collateralToken.options.address).call();
-    pair = await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress);
+    pair = (await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress)).contract;
 
     // Add liquidity to the pool such that the price is 1000 ETH/USDC.
-    await reserveToken.mint(pairAddress, toWei("1000")); // 1000 Weth.
-    await collateralToken.mint(pairAddress, convertCollateral("1000000")); // 1000x1000 USDC to make a price of 1000 ETH/USD
-    await pair.methods.sync({ from: deployer }).send({ from: accounts[0] });
+    await reserveToken.methods.mint(pairAddress, toWei("1000")).send({ from: accounts[0] }); // 1000 Weth.
+    await collateralToken.methods.mint(pairAddress, convertCollateral("1000000")).send({ from: accounts[0] }); // 1000x1000 USDC to make a price of 1000 ETH/USD
+    await pair.methods.sync().send({ from: deployer });
 
     // Create the EMP to mint positions.
     constructorParams = {
@@ -610,16 +622,17 @@ contract("ReserveTokenLiquidator", function (accounts) {
     await syntheticToken.methods.addBurner(financialContract.options.address).send({ from: accounts[0] });
 
     // Create one sponsor that we will attempt to liquidate and validate slippage.
-    await collateralToken.mint(sponsor1, toWei("100000000000000"));
+    await collateralToken.methods.mint(sponsor1, toWei("100000000000000")).send({ from: accounts[0] });
     await collateralToken.methods.approve(financialContract.options.address, MAX_UINT_VAL).send({ from: sponsor1 });
-    await await financialContract.create(
-      { rawValue: convertCollateral("20000") }, // put in 2000 USDC
-      { rawValue: convertSynthetic("10000") }, // mint 1000 synthetics. CR at 2.
-      { from: sponsor1 }
-    );
+    await await financialContract.methods
+      .create(
+        { rawValue: convertCollateral("20000") }, // put in 2000 USDC
+        { rawValue: convertSynthetic("10000") } // mint 1000 synthetics. CR at 2.
+      )
+      .send({ from: sponsor1 });
 
     // mint some reserve to the dsproxy.
-    await reserveToken.mint(dsProxy.options.address, toWei("100000")); // mint some reserve tokens.
+    await reserveToken.methods.mint(dsProxy.options.address, toWei("100000")).send({ from: accounts[0] }); // mint some reserve tokens.
 
     // With reserves of 1000e18 weth and 1000000e6 USDC, the starting price is 1000 ETH/USD. To liquidate 10000 tokens
     // we will need 20000 units of collateral. The expected amount in for a given buy of 20000e6 price after this trade
@@ -632,7 +645,7 @@ contract("ReserveTokenLiquidator", function (accounts) {
 
     assert(
       await didContractThrow(
-        dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
+        dsProxy.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
           from: liquidator,
         })
       )
@@ -641,7 +654,7 @@ contract("ReserveTokenLiquidator", function (accounts) {
     // maxSlippage set to 5% is above the expected slippage of 4.12% for this liquidation. should not revert.
     callData = buildCallData(reserveToken.options.address, toWei("0.05"), convertSynthetic("10000"));
 
-    await dsProxy.contract.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
+    await dsProxy.methods["execute(address,bytes)"](reserveCurrencyLiquidator.options.address, callData).send({
       from: liquidator,
     });
 

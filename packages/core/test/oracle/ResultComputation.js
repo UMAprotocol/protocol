@@ -1,11 +1,12 @@
 const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
 const { getContract } = hre;
+const { assert } = require("chai");
 const ResultComputationTest = getContract("ResultComputationTest");
 
-contract("ResultComputation", function (accounts) {
-  beforeEach(async function () {
-    await runDefaultFixture(hre);
+describe("ResultComputation", function () {
+  let accounts;
+  before(async () => {
+    accounts = await web3.eth.getAccounts();
   });
   it("Basic", async function () {
     const resultComputation = await ResultComputationTest.new().send({ from: accounts[0] });
@@ -23,8 +24,8 @@ contract("ResultComputation", function (accounts) {
     let resolved = await resultComputation.methods.wrapGetResolvedPrice(minVoteThreshold).call();
     assert.isTrue(resolved.isResolved);
     assert.equal(resolved.price, priceOne);
-    assert.isTrue(await resultComputation.wrapWasVoteCorrect(web3.utils.soliditySha3(priceOne)));
-    assert.isFalse(await resultComputation.wrapWasVoteCorrect(web3.utils.soliditySha3(priceTwo)));
+    assert.isTrue(await resultComputation.methods.wrapWasVoteCorrect(web3.utils.soliditySha3(priceOne)).call());
+    assert.isFalse(await resultComputation.methods.wrapWasVoteCorrect(web3.utils.soliditySha3(priceTwo)).call());
     assert.equal(await resultComputation.methods.wrapGetTotalCorrectlyVotedTokens().call(), web3.utils.toWei("5"));
 
     await resultComputation.methods.wrapAddVote(priceTwo, web3.utils.toWei("4")).send({ from: accounts[0] });
@@ -32,8 +33,8 @@ contract("ResultComputation", function (accounts) {
     resolved = await resultComputation.methods.wrapGetResolvedPrice(minVoteThreshold).call();
     assert.isTrue(resolved.isResolved);
     assert.equal(resolved.price, priceOne);
-    assert.isTrue(await resultComputation.wrapWasVoteCorrect(web3.utils.soliditySha3(priceOne)));
-    assert.isFalse(await resultComputation.wrapWasVoteCorrect(web3.utils.soliditySha3(priceTwo)));
+    assert.isTrue(await resultComputation.methods.wrapWasVoteCorrect(web3.utils.soliditySha3(priceOne)).call());
+    assert.isFalse(await resultComputation.methods.wrapWasVoteCorrect(web3.utils.soliditySha3(priceTwo)).call());
     assert.equal(await resultComputation.methods.wrapGetTotalCorrectlyVotedTokens().call(), web3.utils.toWei("5"));
 
     await resultComputation.methods.wrapAddVote(priceThree, web3.utils.toWei("4")).send({ from: accounts[0] });
@@ -48,13 +49,13 @@ contract("ResultComputation", function (accounts) {
     resolved = await resultComputation.methods.wrapGetResolvedPrice(minVoteThreshold).call();
     assert.isFalse(resolved.isResolved);
 
-    await resultComputation.wrapAddVote(priceTwo, web3.utils.toWei("1.1"));
+    await resultComputation.methods.wrapAddVote(priceTwo, web3.utils.toWei("1.1")).send({ from: accounts[0] });
     // Frequency table: priceOne->5, priceTwo->9.1, priceThree->4. Cutoff: 9.05.
     resolved = await resultComputation.methods.wrapGetResolvedPrice(minVoteThreshold).call();
     assert.isTrue(resolved.isResolved);
     assert.equal(resolved.price, priceTwo);
-    assert.isFalse(await resultComputation.wrapWasVoteCorrect(web3.utils.soliditySha3(priceOne)));
-    assert.isTrue(await resultComputation.wrapWasVoteCorrect(web3.utils.soliditySha3(priceTwo)));
+    assert.isFalse(await resultComputation.methods.wrapWasVoteCorrect(web3.utils.soliditySha3(priceOne)).call());
+    assert.isTrue(await resultComputation.methods.wrapWasVoteCorrect(web3.utils.soliditySha3(priceTwo)).call());
     assert.equal(
       (await resultComputation.methods.wrapGetTotalCorrectlyVotedTokens().call()).toString(),
       web3.utils.toWei("9.1")
@@ -77,8 +78,10 @@ contract("ResultComputation", function (accounts) {
     resolved = await resultComputation.methods.wrapGetResolvedPrice(minVoteThreshold).call();
     assert.isTrue(resolved.isResolved);
     assert.equal(resolved.price, zeroPrice);
-    assert.isTrue(await resultComputation.wrapWasVoteCorrect(web3.utils.soliditySha3(zeroPrice)));
-    assert.isFalse(await resultComputation.wrapWasVoteCorrect(web3.utils.soliditySha3(web3.utils.toWei("1"))));
+    assert.isTrue(await resultComputation.methods.wrapWasVoteCorrect(web3.utils.soliditySha3(zeroPrice)).call());
+    assert.isFalse(
+      await resultComputation.methods.wrapWasVoteCorrect(web3.utils.soliditySha3(web3.utils.toWei("1"))).call()
+    );
     assert.equal(
       (await resultComputation.methods.wrapGetTotalCorrectlyVotedTokens().call()).toString(),
       web3.utils.toWei("5")
@@ -110,8 +113,8 @@ contract("ResultComputation", function (accounts) {
     resolved = await resultComputation.methods.wrapGetResolvedPrice(minVotes).call();
     assert.isTrue(resolved.isResolved);
     assert.equal(resolved.price, priceOne);
-    assert.isTrue(await resultComputation.wrapWasVoteCorrect(web3.utils.soliditySha3(priceOne)));
-    assert.isFalse(await resultComputation.wrapWasVoteCorrect(web3.utils.soliditySha3(priceTwo)));
+    assert.isTrue(await resultComputation.methods.wrapWasVoteCorrect(web3.utils.soliditySha3(priceOne)).call());
+    assert.isFalse(await resultComputation.methods.wrapWasVoteCorrect(web3.utils.soliditySha3(priceTwo)).call());
     assert.equal(
       (await resultComputation.methods.wrapGetTotalCorrectlyVotedTokens().call()).toString(),
       web3.utils.toWei("10")

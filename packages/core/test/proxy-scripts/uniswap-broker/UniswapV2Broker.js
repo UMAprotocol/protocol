@@ -1,13 +1,14 @@
 const hre = require("hardhat");
+const { getContract } = hre;
 const { runDefaultFixture } = require("@uma/common");
 const { MAX_UINT_VAL, createContractObjectFromJson } = require("@uma/common");
 const { toWei, toBN, fromWei } = web3.utils;
-const { getTruffleContract } = require("@uma/core");
+const { assert } = require("chai");
 
 // Tested Contract
-const UniswapV2Broker = getTruffleContract("UniswapV2Broker", web3);
-const Token = getTruffleContract("ExpandedERC20", web3);
-const WETH9 = getTruffleContract("WETH9", web3);
+const UniswapV2Broker = getContract("UniswapV2Broker");
+const Token = getContract("ExpandedERC20");
+const WETH9 = getContract("WETH9");
 
 // Helper Contracts
 const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json");
@@ -24,8 +25,8 @@ let pairAddress;
 
 // Returns the current spot price of a uniswap pool, scaled to 4 decimal points.
 const getPoolSpotPrice = async () => {
-  const poolTokenABallance = await tokenA.methods.balanceOf(pairAddress).call();
-  const poolTokenBBallance = await tokenB.methods.balanceOf(pairAddress).call();
+  const poolTokenABallance = toBN(await tokenA.methods.balanceOf(pairAddress).call());
+  const poolTokenBBallance = toBN(await tokenB.methods.balanceOf(pairAddress).call());
   return Number(fromWei(poolTokenABallance.mul(toBN(toWei("1"))).div(poolTokenBBallance))).toFixed(4);
 };
 
@@ -33,29 +34,36 @@ const getPoolSpotPrice = async () => {
 // is true then the trader is exchanging token a for token b. Else, exchanging token b for token a.
 const getAmountOut = async (amountIn, aToB) => {
   const [reserveIn, reserveOut] = aToB
-    ? await Promise.all([tokenA.balanceOf(pairAddress), tokenB.balanceOf(pairAddress)])
-    : await Promise.all([tokenB.balanceOf(pairAddress), tokenA.balanceOf(pairAddress)]);
-  const amountInWithFee = amountIn.muln(997);
-  const numerator = amountInWithFee.mul(reserveOut);
-  const denominator = reserveIn.muln(1000).add(amountInWithFee);
+    ? await Promise.all([tokenA.methods.balanceOf(pairAddress).call(), tokenB.methods.balanceOf(pairAddress).call()])
+    : await Promise.all([tokenB.methods.balanceOf(pairAddress).call(), tokenA.methods.balanceOf(pairAddress).call()]);
+  const amountInWithFee = toBN(amountIn).muln(997);
+  const numerator = amountInWithFee.mul(toBN(reserveOut));
+  const denominator = toBN(reserveIn).muln(1000).add(amountInWithFee);
   return numerator.div(denominator);
 };
 
-contract("UniswapV2Broker", function (accounts) {
-  const deployer = accounts[0];
-  const trader = accounts[1];
-  beforeEach(async () => {
+describe("UniswapV2Broker", function () {
+  let accounts;
+  let deployer;
+  let trader;
+  before(async () => {
+    accounts = await web3.eth.getAccounts();
+    [deployer, trader] = accounts;
     await runDefaultFixture(hre);
     const WETH = await WETH9.new().send({ from: accounts[0] });
     // deploy Uniswap V2 Factory & router.
-    factory = await createContractObjectFromJson(UniswapV2Factory, web3).new(deployer, { from: deployer });
-    router = await createContractObjectFromJson(UniswapV2Router02, web3).new(factory.options.address, WETH.address, {
-      from: deployer,
-    });
+    factory = (await createContractObjectFromJson(UniswapV2Factory, web3).new(deployer, { from: deployer })).contract;
+    router = (
+      await createContractObjectFromJson(UniswapV2Router02, web3).new(factory.options.address, WETH.options.address, {
+        from: deployer,
+      })
+    ).contract;
 
     // create a uniswapV2Broker
     uniswapV2Broker = await UniswapV2Broker.new().send({ from: accounts[0] });
+  });
 
+  beforeEach(async () => {
     // deploy tokens
     tokenA = await Token.new("TokenA", "TA", 18).send({ from: accounts[0] });
     tokenB = await Token.new("TokenB", "TB", 18).send({ from: accounts[0] });
@@ -63,24 +71,24 @@ contract("UniswapV2Broker", function (accounts) {
     await tokenA.methods.addMember(1, deployer).send({ from: deployer });
     await tokenB.methods.addMember(1, deployer).send({ from: deployer });
 
-    await tokenA.mint(trader, toWei("100000000000000"));
-    await tokenB.mint(trader, toWei("100000000000000"));
+    await tokenA.methods.mint(trader, toWei("100000000000000")).send({ from: accounts[0] });
+    await tokenB.methods.mint(trader, toWei("100000000000000")).send({ from: accounts[0] });
 
-    await tokenA.approve(router.options.address, toWei("100000000000000"), { from: trader });
-    await tokenB.approve(router.options.address, toWei("100000000000000"), { from: trader });
+    await tokenA.methods.approve(router.options.address, toWei("100000000000000")).send({ from: trader });
+    await tokenB.methods.approve(router.options.address, toWei("100000000000000")).send({ from: trader });
     await tokenA.methods.approve(uniswapV2Broker.options.address, MAX_UINT_VAL).send({ from: trader });
     await tokenB.methods.approve(uniswapV2Broker.options.address, MAX_UINT_VAL).send({ from: trader });
 
     // initialize the pair
     await factory.methods.createPair(tokenA.options.address, tokenB.options.address).send({ from: deployer });
     pairAddress = await factory.methods.getPair(tokenA.options.address, tokenB.options.address).call();
-    pair = await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress);
+    pair = (await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress)).contract;
 
     // For these test, say the synthetic starts trading at uniswap at 1000 TokenA/TokenB. To set this up we will seed the
     // pair with 1000x units of TokenA, relative to TokenB.
-    await tokenA.mint(pairAddress, toBN(toWei("1000")).muln(10000000));
-    await tokenB.mint(pairAddress, toBN(toWei("1")).muln(10000000));
-    await pair.methods.sync({ from: deployer }).send({ from: accounts[0] });
+    await tokenA.methods.mint(pairAddress, toBN(toWei("1000")).muln(10000000)).send({ from: accounts[0] });
+    await tokenB.methods.mint(pairAddress, toBN(toWei("1")).muln(10000000)).send({ from: accounts[0] });
+    await pair.methods.sync().send({ from: deployer });
     assert.equal(await getPoolSpotPrice(), "1000.0000"); // price should be exactly 1000 TokenA/TokenB.
   });
 
@@ -95,32 +103,35 @@ contract("UniswapV2Broker", function (accounts) {
 
     // Find the modified versions of the token reservers. As we are trading token B for token A the A reservers should be
     // decreased by the amountOut and the token B reservers should be increased by the trade size in token B.
-    const tokenAReserve = (await tokenA.methods.balanceOf(pairAddress).call()).sub(amountOut);
-    const tokenBReserve = (await tokenB.methods.balanceOf(pairAddress).call()).add(tradeSizeInTokenB);
+    const tokenAReserve = toBN(await tokenA.methods.balanceOf(pairAddress).call()).sub(amountOut);
+    const tokenBReserve = toBN(await tokenB.methods.balanceOf(pairAddress).call()).add(tradeSizeInTokenB);
 
     // Compute the expected spot price from the two token reserves.
     const expectedSpotPrice = Number(fromWei(tokenAReserve.mul(toBN(toWei("1"))).div(tokenBReserve))).toFixed(4);
 
     // Execute the swap.
-    await router.swapExactTokensForTokens(
-      tradeSizeInTokenB, // amountIn. We are selling tokenB for tokenA, therefore tokenB is "in" and tokenB is "out"
-      0, // amountOutMin
-      [tokenB.options.address, tokenA.options.address], // path. We are trading from tokenB to tokenA (selling B for A)
-      trader, // recipient of the trade
-      (await web3.eth.getBlock("latest")).timestamp + 10, // deadline
-      { from: trader }
-    );
+    await router.methods
+      .swapExactTokensForTokens(
+        tradeSizeInTokenB, // amountIn. We are selling tokenB for tokenA, therefore tokenB is "in" and tokenB is "out"
+        0, // amountOutMin
+        [tokenB.options.address, tokenA.options.address], // path. We are trading from tokenB to tokenA (selling B for A)
+        trader, // recipient of the trade
+        (await web3.eth.getBlock("latest")).timestamp + 10 // deadline
+      )
+      .send({ from: trader });
     assert.equal(await getPoolSpotPrice(), expectedSpotPrice);
     assert.equal(await getPoolSpotPrice(), "980.3252");
 
     // Now that the token is trading out off peg we can test that the broker can correctly trade it back to parity.
     // First, lets double check the bot calculates the correct trade size with the computeTradeToMoveMarket method.
-    const tradeToMoveMarket = await uniswapV2Broker.computeTradeToMoveMarket(
-      "1000", // the true price is represented as truePriceTokenA/truePriceTokenB.
-      "1",
-      await tokenA.methods.balanceOf(pairAddress).send({ from: accounts[0] }),
-      await tokenB.methods.balanceOf(pairAddress).send({ from: accounts[0] })
-    );
+    const tradeToMoveMarket = await uniswapV2Broker.methods
+      .computeTradeToMoveMarket(
+        "1000", // the true price is represented as truePriceTokenA/truePriceTokenB.
+        "1",
+        await tokenA.methods.balanceOf(pairAddress).call(),
+        await tokenB.methods.balanceOf(pairAddress).call()
+      )
+      .call();
 
     // For starters, to move the price UP we need to trade token A into the pool for token B. Therefore the aToB should
     // be true as the token flow should be A for token B to increase the price.
@@ -131,25 +142,28 @@ contract("UniswapV2Broker", function (accounts) {
 
     // Find the modified versions of the token reservers. As we are trading token A for token B the B reservers should be
     // decreased by the amountOut and the token A reservers should be increased by the trade size in token A.
-    const tokenAReserveArb = (await tokenA.methods.balanceOf(pairAddress).call()).add(tradeToMoveMarket.amountIn);
-    const tokenBReserveArb = (await tokenB.methods.balanceOf(pairAddress).call()).sub(amountOutArb);
+    const tokenAReserveArb = toBN(await tokenA.methods.balanceOf(pairAddress).call()).add(
+      toBN(tradeToMoveMarket.amountIn)
+    );
+    const tokenBReserveArb = toBN(await tokenB.methods.balanceOf(pairAddress).call()).sub(amountOutArb);
 
     // Compute the expected spot price from the two token reserves. This should equal 1000, the desired "true" price.
     const postArbSpotPrice = Number(fromWei(tokenAReserveArb.mul(toBN(toWei("1"))).div(tokenBReserveArb))).toFixed(0);
     assert.equal(postArbSpotPrice, "1000");
 
     // Now we can actually execute the swapToPrice method to ensure that the contract correctly modifies the spot price.
-    await uniswapV2Broker.swapToPrice(
-      true, // The swap is being executed as an EOA. This ensures that the correct token transfers are done.
-      router.options.address,
-      factory.options.address,
-      [tokenA.options.address, tokenB.options.address],
-      ["1000", "1"], // The "true" price of the pair is expressed as the ratio of token A to token B. A price of 1000 is simply 1000/1.
-      [MAX_UINT_VAL, MAX_UINT_VAL], // Set to the max posable value as we want to let the broker trade as much as needed in this example.
-      trader,
-      (await web3.eth.getBlock("latest")).timestamp + 10,
-      { from: trader }
-    );
+    await uniswapV2Broker.methods
+      .swapToPrice(
+        true, // The swap is being executed as an EOA. This ensures that the correct token transfers are done.
+        router.options.address,
+        factory.options.address,
+        [tokenA.options.address, tokenB.options.address],
+        ["1000", "1"], // The "true" price of the pair is expressed as the ratio of token A to token B. A price of 1000 is simply 1000/1.
+        [MAX_UINT_VAL, MAX_UINT_VAL], // Set to the max posable value as we want to let the broker trade as much as needed in this example.
+        trader,
+        (await web3.eth.getBlock("latest")).timestamp + 10
+      )
+      .send({ from: trader });
     // The spot price should be within a fraction of a % of the desired price of 1000 TokenA/TokenB price. Some small
     // error may have been introduced due to how the babylonian method computes square roots in solidity.
     assert.equal(Number((await getPoolSpotPrice()).toString()).toFixed(0), "1000");
@@ -166,32 +180,35 @@ contract("UniswapV2Broker", function (accounts) {
 
     // Find the modified versions of the token reservers. As we are trading token A for token B the B reservers should be
     // decreased by the amountOut and the token A reservers should be increased by the trade size in token A.
-    const tokenAReserve = (await tokenA.methods.balanceOf(pairAddress).call()).add(tradeSizeInTokenA);
-    const tokenBReserve = (await tokenB.methods.balanceOf(pairAddress).call()).sub(amountOut);
+    const tokenAReserve = toBN(await tokenA.methods.balanceOf(pairAddress).call()).add(tradeSizeInTokenA);
+    const tokenBReserve = toBN(await tokenB.methods.balanceOf(pairAddress).call()).sub(amountOut);
 
     // Compute the expected spot price from the two token reserves.
     const expectedSpotPrice = Number(fromWei(tokenAReserve.mul(toBN(toWei("1"))).div(tokenBReserve))).toFixed(4);
 
     // Execute the swap.
-    await router.swapExactTokensForTokens(
-      tradeSizeInTokenA, // amountIn. We are selling tokenA for tokenB, therefore tokenA is "in" and tokenB is "out"
-      0, // amountOutMin
-      [tokenA.options.address, tokenB.options.address], // path. We are trading from tokenA to tokenB (selling A for B)
-      trader, // recipient of the trade
-      (await web3.eth.getBlock("latest")).timestamp + 10, // deadline
-      { from: trader }
-    );
+    await router.methods
+      .swapExactTokensForTokens(
+        tradeSizeInTokenA, // amountIn. We are selling tokenA for tokenB, therefore tokenA is "in" and tokenB is "out"
+        0, // amountOutMin
+        [tokenA.options.address, tokenB.options.address], // path. We are trading from tokenA to tokenB (selling A for B)
+        trader, // recipient of the trade
+        (await web3.eth.getBlock("latest")).timestamp + 10 // deadline
+      )
+      .send({ from: trader });
     assert.equal(await getPoolSpotPrice(), expectedSpotPrice);
     assert.equal(await getPoolSpotPrice(), "1209.6700");
 
     // Now that the token is trading out off peg we can test that the broker can correctly trade it back to parity.
     // First, lets double check the bot calculates the correct trade size with the computeTradeToMoveMarket method.
-    const tradeToMoveMarket = await uniswapV2Broker.computeTradeToMoveMarket(
-      "1000", // the true price is represented as truePriceTokenA/truePriceTokenB.
-      "1",
-      await tokenA.methods.balanceOf(pairAddress).send({ from: accounts[0] }),
-      await tokenB.methods.balanceOf(pairAddress).send({ from: accounts[0] })
-    );
+    const tradeToMoveMarket = await uniswapV2Broker.methods
+      .computeTradeToMoveMarket(
+        "1000", // the true price is represented as truePriceTokenA/truePriceTokenB.
+        "1",
+        await tokenA.methods.balanceOf(pairAddress).call(),
+        await tokenB.methods.balanceOf(pairAddress).call()
+      )
+      .call();
 
     // For starters, to move the price DOWN we need to trade token B into the pool for token A. Therefore the aToB should
     // be false as the token flow should be B for token A to increase the decrease.
@@ -202,25 +219,28 @@ contract("UniswapV2Broker", function (accounts) {
 
     // Find the modified versions of the token reservers. As we are trading token B for token A the A reservers should be
     // decreased by the amountOut and the token B reservers should be increased by the trade size in token B.
-    const tokenAReserveArb = (await tokenA.methods.balanceOf(pairAddress).call()).sub(amountOutArb);
-    const tokenBReserveArb = (await tokenB.methods.balanceOf(pairAddress).call()).add(tradeToMoveMarket.amountIn);
+    const tokenAReserveArb = toBN(await tokenA.methods.balanceOf(pairAddress).call()).sub(amountOutArb);
+    const tokenBReserveArb = toBN(await tokenB.methods.balanceOf(pairAddress).call()).add(
+      toBN(tradeToMoveMarket.amountIn)
+    );
 
     // Compute the expected spot price from the two token reserves. This should equal 1000, the desired "true" price.
     const postArbSpotPrice = Number(fromWei(tokenAReserveArb.mul(toBN(toWei("1"))).div(tokenBReserveArb))).toFixed(0);
     assert.equal(postArbSpotPrice, "1000");
 
     // Now we can actually execute the swapToPrice method to ensure that the contract correctly modifies the spot price.
-    await uniswapV2Broker.swapToPrice(
-      true, // The swap is being executed as an EOA. This ensures that the correct token transfers are done.
-      router.options.address,
-      factory.options.address,
-      [tokenA.options.address, tokenB.options.address],
-      ["1000", "1"], // The "true" price of the pair is expressed as the ratio of token A to token B. A price of 1000 is simply 1000/1.
-      [MAX_UINT_VAL, MAX_UINT_VAL], // Set to the max posable value as we want to let the broker trade as much as needed in this example.
-      trader,
-      (await web3.eth.getBlock("latest")).timestamp + 10,
-      { from: trader }
-    );
+    await uniswapV2Broker.methods
+      .swapToPrice(
+        true, // The swap is being executed as an EOA. This ensures that the correct token transfers are done.
+        router.options.address,
+        factory.options.address,
+        [tokenA.options.address, tokenB.options.address],
+        ["1000", "1"], // The "true" price of the pair is expressed as the ratio of token A to token B. A price of 1000 is simply 1000/1.
+        [MAX_UINT_VAL, MAX_UINT_VAL], // Set to the max posable value as we want to let the broker trade as much as needed in this example.
+        trader,
+        (await web3.eth.getBlock("latest")).timestamp + 10
+      )
+      .send({ from: trader });
     // The spot price should be within a fraction of a % of the desired price of 1000 TokenA/TokenB price. Some small
     // error may have been introduced due to how the babylonian method computes square roots in solidity.
     assert.equal(Number((await getPoolSpotPrice()).toString()).toFixed(0), "1000");

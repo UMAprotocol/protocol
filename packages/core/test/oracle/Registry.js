@@ -1,29 +1,32 @@
 const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
+const { getContract, assertEventEmitted } = hre;
 const { RegistryRolesEnum, didContractThrow } = require("@uma/common");
-
-const truffleAssert = require("truffle-assertions");
+const { assert } = require("chai");
 
 const Registry = getContract("Registry");
 
-contract("Registry", function (accounts) {
+describe("Registry", function () {
   // A deployed instance of the Registry contract, ready for testing.
   let registry;
 
-  const owner = accounts[0];
-  const creator1 = accounts[1];
-  const creator2 = accounts[2];
-  const rando1 = accounts[3];
+  let accounts;
+  let owner;
+  let creator1;
+  let creator2;
+  let rando1;
 
   // The addition and removal of parties after a contract is created can only be done
   // by the contract itself. These two addresses act to simulate calls from a
   // registered contract to tests these post creation addition and removal actions.
-  const contract1 = accounts[4];
-  const contract2 = accounts[5];
+  let contract1;
+  let contract2;
+
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+    [owner, creator1, creator2, rando1, contract1, contract2] = accounts;
+  });
 
   beforeEach(async function () {
-    await runDefaultFixture(hre);
     registry = await Registry.new().send({ from: accounts[0] });
   });
 
@@ -43,12 +46,12 @@ contract("Registry", function (accounts) {
     );
 
     // Register creator1, but not creator2.
-    let result = await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1).call({ from: owner });
+    let result = await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1).send({ from: owner });
     assert.isTrue(await registry.methods.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, creator1).call());
     assert.isFalse(await registry.methods.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, creator2).call());
 
     // Add it a second time.
-    result = await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1).call({ from: owner });
+    result = await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1).send({ from: owner });
 
     // Try to register an arbitrary contract.
     const arbitraryContract = web3.utils.randomHex(20);
@@ -60,11 +63,11 @@ contract("Registry", function (accounts) {
     );
 
     // creator1 should be able to register a new contract.
-    result = await registry.methods.registerContract(parties, arbitraryContract).call({ from: creator1 });
+    result = await registry.methods.registerContract(parties, arbitraryContract).send({ from: creator1 });
     assert.isTrue(await registry.methods.isContractRegistered(arbitraryContract).call());
 
     // Make sure a PartyAdded event is emitted on initial contract registration.
-    truffleAssert.eventEmitted(result, "PartyAdded", (ev) => {
+    await assertEventEmitted(result, registry, "PartyAdded", (ev) => {
       return (
         web3.utils.toChecksumAddress(ev.contractAddress) === web3.utils.toChecksumAddress(arbitraryContract) && // Check that the party is a member of the parties array used in registration above
         parties.map((party) => web3.utils.toChecksumAddress(party).indexOf(web3.utils.toChecksumAddress(ev.party)))
@@ -72,7 +75,7 @@ contract("Registry", function (accounts) {
     });
 
     // Make sure a NewContractRegistered event is emitted.
-    truffleAssert.eventEmitted(result, "NewContractRegistered", (ev) => {
+    await assertEventEmitted(result, registry, "NewContractRegistered", (ev) => {
       return (
         web3.utils.toChecksumAddress(ev.contractAddress) === web3.utils.toChecksumAddress(arbitraryContract) &&
         web3.utils.toChecksumAddress(ev.creator) === web3.utils.toChecksumAddress(creator1)
@@ -80,7 +83,7 @@ contract("Registry", function (accounts) {
     });
 
     // Remove the contract creator.
-    result = await registry.methods.removeMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1).call({ from: owner });
+    result = await registry.methods.removeMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1).send({ from: owner });
     assert.isFalse(await registry.methods.holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, creator1).call());
 
     // Creation should fail since creator1 is no longer approved.
@@ -88,7 +91,7 @@ contract("Registry", function (accounts) {
     assert(await didContractThrow(registry.methods.registerContract(parties, secondContract).send({ from: creator1 })));
 
     // A second removal should still work.
-    result = await registry.methods.removeMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1).call({ from: owner });
+    result = await registry.methods.removeMember(RegistryRolesEnum.CONTRACT_CREATOR, creator1).send({ from: owner });
 
     // Remove the owner.
     await registry.methods.resetMember(RegistryRolesEnum.OWNER, rando1).send({ from: owner });
@@ -140,8 +143,8 @@ contract("Registry", function (accounts) {
 
     // Check contract information.
     const financialContractStruct = await registry.methods.contractMap(fc1).call();
-    assert.equal(financialContractStruct.valid.toNumber(), 1);
-    assert.equal(financialContractStruct.index.toNumber(), 0);
+    assert.equal(parseInt(financialContractStruct.valid), 1);
+    assert.equal(parseInt(financialContractStruct.index), 0);
 
     // Check party is correctly added to contract.
     assert.isTrue(await registry.methods.isPartyMemberOfContract(party2, fc1).call());
@@ -177,10 +180,10 @@ contract("Registry", function (accounts) {
     await registry.methods.registerContract([], contract1).send({ from: creator1 });
 
     // Adding party member.
-    let result = await registry.methods.addPartyToContract(creator2).call({ from: contract1 });
+    let result = await registry.methods.addPartyToContract(creator2).send({ from: contract1 });
 
     // Make sure a PartyMemberAdded event is emitted.
-    truffleAssert.eventEmitted(result, "PartyAdded", (ev) => {
+    await assertEventEmitted(result, registry, "PartyAdded", (ev) => {
       return (
         web3.utils.toChecksumAddress(ev.contractAddress) === web3.utils.toChecksumAddress(contract1) &&
         web3.utils.toChecksumAddress(ev.party) === web3.utils.toChecksumAddress(creator2)
@@ -223,9 +226,9 @@ contract("Registry", function (accounts) {
     assert.equal((await registry.methods.getRegisteredContracts(creator2).call()).length, 2);
 
     // Remove party member from the first contract and check they are part of only the second contract.
-    let result = await registry.methods.removePartyFromContract(creator2).call({ from: contract1 });
+    let result = await registry.methods.removePartyFromContract(creator2).send({ from: contract1 });
 
-    truffleAssert.eventEmitted(result, "PartyRemoved", (ev) => {
+    await assertEventEmitted(result, registry, "PartyRemoved", (ev) => {
       return (
         web3.utils.toChecksumAddress(ev.contractAddress) === web3.utils.toChecksumAddress(contract1) &&
         web3.utils.toChecksumAddress(ev.party) === web3.utils.toChecksumAddress(creator2)

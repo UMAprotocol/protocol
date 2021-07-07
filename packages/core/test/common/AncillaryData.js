@@ -1,15 +1,16 @@
 const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
 const { getContract } = hre;
 const { assert } = require("chai");
 
 const AncillaryDataTest = getContract("AncillaryDataTest");
 const { utf8ToHex } = web3.utils;
 
-contract("AncillaryData", function (accounts) {
+describe("AncillaryData", function () {
   let ancillaryDataTest;
-  beforeEach(async function () {
-    await runDefaultFixture(hre);
+  let accounts;
+
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
     ancillaryDataTest = await AncillaryDataTest.new().send({ from: accounts[0] });
   });
 

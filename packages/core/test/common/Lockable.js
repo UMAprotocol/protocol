@@ -1,17 +1,19 @@
 const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
 const { getContract } = hre;
 const { didContractThrow } = require("@uma/common");
+const { assert } = require("chai");
 
 const ReentrancyMock = getContract("ReentrancyMock");
 const ReentrancyAttack = getContract("ReentrancyAttack");
 
 // Extends https://github.com/OpenZeppelin/openzeppelin-contracts/blob/v3.0.1/test/utils/ReentrancyGuard.test.js.
-contract("Lockable", function (accounts) {
+describe("Lockable", function () {
   let reentrancyMock;
+  let accounts;
+
   describe("nonReentrant and nonReentrant modifiers", function () {
-    beforeEach(async function () {
-      await runDefaultFixture(hre);
+    before(async function () {
+      accounts = await web3.eth.getAccounts();
       reentrancyMock = await ReentrancyMock.new().send({ from: accounts[0] });
       assert.equal((await reentrancyMock.methods.counter().call()).toString(), "0");
     });

@@ -1,17 +1,18 @@
 const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
 const { getContract } = hre;
 const { didContractThrow } = require("@uma/common");
+const { assert } = require("chai");
 
 const TestableTest = getContract("TestableTest");
 const Timer = getContract("Timer");
 
-contract("Testable", function (accounts) {
+describe("Testable", function () {
+  let accounts;
   let timer;
 
-  beforeEach(async () => {
-    await runDefaultFixture(hre);
-    timer = await Timer.deployed();
+  before(async () => {
+    accounts = await web3.eth.getAccounts();
+    timer = await Timer.new().send({ from: accounts[0] });
   });
 
   it("isTest on", async function () {

@@ -1,19 +1,22 @@
 const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;
 const { didContractThrow } = require("@uma/common");
+const { assert } = require("chai");
 
 const MultiRoleTest = getContract("MultiRoleTest");
 
-contract("MultiRole", function (accounts) {
-  beforeEach(async function () {
-    await runDefaultFixture(hre);
-  });
-  const account1 = accounts[0];
-  const account2 = accounts[1];
-  const account3 = accounts[2];
-  const account4 = accounts[3];
+describe("MultiRole", function () {
+  let accounts;
+  let account1;
+  let account2;
+  let account3;
+  let account4;
   const zeroAddress = "0x0000000000000000000000000000000000000000";
+
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+    [account1, account2, account3, account4] = accounts;
+  });
 
   it("Exclusive Self-managed role", async function () {
     const multiRole = await MultiRoleTest.new().send({ from: accounts[0] });

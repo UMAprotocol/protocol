@@ -1,5 +1,4 @@
 const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
 const { getContract } = hre;
 const { didContractThrow } = require("@uma/common");
 const { assert } = require("chai");
@@ -8,9 +7,10 @@ const SignedFixedPointTest = getContract("SignedFixedPointTest");
 
 const { toWei, fromWei, toBN } = web3.utils;
 
-contract("SignedFixedPoint", function (accounts) {
-  beforeEach(async function () {
-    await runDefaultFixture(hre);
+describe("SignedFixedPoint", function () {
+  let accounts;
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
   });
   const int_max = toBN("57896044618658097711785492504343953926634992332820282019728792003956564819967");
   const int_min = toBN("-57896044618658097711785492504343953926634992332820282019728792003956564819968");

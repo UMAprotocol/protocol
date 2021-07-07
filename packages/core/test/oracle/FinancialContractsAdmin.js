@@ -2,20 +2,26 @@ const hre = require("hardhat");
 const { runDefaultFixture } = require("@uma/common");
 const { getContract } = hre;
 const { didContractThrow } = require("@uma/common");
+const { assert } = require("chai");
 
 const FinancialContractsAdmin = getContract("FinancialContractsAdmin");
 const MockAdministratee = getContract("MockAdministratee");
 
-contract("FinancialContractsAdmin", function (accounts) {
+describe("FinancialContractsAdmin", function () {
   let financialContractsAdmin;
   let mockAdministratee;
 
-  const owner = accounts[0];
-  const rando = accounts[1];
+  let accounts;
+  let owner;
+  let rando;
 
-  beforeEach(async function () {
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+    [owner, rando] = accounts;
     await runDefaultFixture(hre);
     financialContractsAdmin = await FinancialContractsAdmin.deployed();
+  });
+  beforeEach(async function () {
     mockAdministratee = await MockAdministratee.new().send({ from: accounts[0] });
   });
 

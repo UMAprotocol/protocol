@@ -1,21 +1,26 @@
 const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
 const { getContract } = hre;
 const { didContractThrow } = require("@uma/common");
+const { assert } = require("chai");
 
 const WithdrawableTest = getContract("WithdrawableTest");
 
 // Pull in contracts from dependencies.
 const Token = getContract("ExpandedERC20");
 
-contract("Withdrawable", function (accounts) {
+describe("Withdrawable", function () {
   let token;
+  let accounts;
 
-  const owner = accounts[0];
-  const rando = accounts[1];
+  let owner;
+  let rando;
+
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+    [owner, rando] = accounts;
+  });
 
   beforeEach(async function () {
-    await runDefaultFixture(hre);
     // Create token contract and mint tokens for use by rando.
     token = await Token.new("Test Synthetic Token", "SYNTH", 18).send({ from: owner });
     await token.methods.addMember(1, owner).send({ from: owner });

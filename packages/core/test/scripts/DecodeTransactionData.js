@@ -3,20 +3,21 @@ const { runDefaultFixture } = require("@uma/common");
 const { getContract } = hre;
 const DecodeTransactionData = require("../../scripts/DecodeTransactionData");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("@uma/common");
+const { assert } = require("chai");
 
 const Registry = getContract("Registry");
 const Voting = getContract("Voting");
 const VotingInterfaceTesting = getContract("VotingInterfaceTesting");
 
-contract("scripts/DecodeTransactionData.js", function () {
-  beforeEach(async function () {
+describe("scripts/DecodeTransactionData.js", function () {
+  before(async function () {
     await runDefaultFixture(hre);
   });
   it("Decode registerContract", async function () {
     const contractAddress = web3.utils.randomHex(20);
 
     const registry = await Registry.deployed();
-    const txnData = registry.contract.methods.registerContract([], contractAddress).encodeABI();
+    const txnData = registry.methods.registerContract([], contractAddress).encodeABI();
 
     const expectedObject = {
       name: "registerContract",
@@ -33,7 +34,7 @@ contract("scripts/DecodeTransactionData.js", function () {
   });
 
   it("Decode batchReveal", async function () {
-    const voting = await VotingInterfaceTesting.at((await Voting.deployed()).address);
+    const voting = await VotingInterfaceTesting.at((await Voting.deployed()).options.address);
 
     // Generate 5 random reveals to test.
     const revealArray = [];
@@ -46,7 +47,7 @@ contract("scripts/DecodeTransactionData.js", function () {
       });
     }
 
-    const txnData = voting.contract.methods.batchReveal(revealArray).encodeABI();
+    const txnData = voting.methods.batchReveal(revealArray).encodeABI();
     const expectedObject = {
       name: "batchReveal",
       params: {

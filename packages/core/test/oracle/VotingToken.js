@@ -2,17 +2,22 @@ const hre = require("hardhat");
 const { runDefaultFixture } = require("@uma/common");
 const { getContract } = hre;
 const { didContractThrow } = require("@uma/common");
+const { assert } = require("chai");
 
 const VotingToken = getContract("VotingToken");
 
-contract("VotingToken", function (accounts) {
-  beforeEach(async function () {
+describe("VotingToken", function () {
+  let accounts;
+  let governance;
+  let votingContractAddress;
+  let voter;
+  let buybackUser;
+
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+    [governance, votingContractAddress, voter, buybackUser] = accounts;
     await runDefaultFixture(hre);
   });
-  const governance = accounts[0];
-  const votingContractAddress = accounts[1];
-  const voter = accounts[2];
-  const buybackUser = accounts[3];
 
   // Corresponds to VotingToken.Roles enum.
   const minterRoleEnumValue = 1;

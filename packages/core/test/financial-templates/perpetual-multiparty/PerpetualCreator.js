@@ -3,6 +3,7 @@ const { runDefaultFixture } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;
 const { toWei, hexToUtf8, toBN, padRight, utf8ToHex } = web3.utils;
 const { didContractThrow, MAX_UINT_VAL } = require("@uma/common");
+const { assert } = require("chai");
 
 // Tested Contract
 const PerpetualCreator = getContract("PerpetualCreator");
@@ -18,14 +19,16 @@ const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
 const ConfigStore = getContract("ConfigStore");
 
-contract("PerpetualCreator", function (accounts) {
-  let contractCreator = accounts[0];
+describe("PerpetualCreator", function () {
+  let accounts;
+  let contractCreator;
 
   // Contract variables
   let collateralToken;
   let perpetualCreator;
   let registry;
   let collateralTokenWhitelist;
+  let identifierWhitelist;
   // Re-used variables
   let constructorParams;
 
@@ -38,15 +41,24 @@ contract("PerpetualCreator", function (accounts) {
     proposalTimePastLimit: 1800,
   };
 
-  beforeEach(async () => {
+  const priceFeedIdentifier = padRight(utf8ToHex("TEST_IDENTIFIER"), 64);
+
+  before(async () => {
+    accounts = await web3.eth.getAccounts();
+    [contractCreator] = accounts;
     await runDefaultFixture(hre);
-    collateralToken = await Token.new("Wrapped Ether", "WETH", 18)
-      .send({ from: contractCreator });
     registry = await Registry.deployed();
     perpetualCreator = await PerpetualCreator.deployed();
+    collateralTokenWhitelist = await AddressWhitelist.deployed();
+    identifierWhitelist = await IdentifierWhitelist.deployed();
+
+    await identifierWhitelist.methods.addSupportedIdentifier(priceFeedIdentifier).send({ from: contractCreator });
+  });
+
+  beforeEach(async () => {
+    collateralToken = await Token.new("Wrapped Ether", "WETH", 18).send({ from: contractCreator });
 
     // Whitelist collateral currency
-    collateralTokenWhitelist = await AddressWhitelist.deployed();
     await collateralTokenWhitelist.methods
       .addToWhitelist(collateralToken.options.address)
       .send({ from: contractCreator });
@@ -66,11 +78,6 @@ contract("PerpetualCreator", function (accounts) {
       withdrawalLiveness: 7200,
       tokenScaling: { rawValue: toWei("1") },
     };
-
-    const identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.methods
-      .addSupportedIdentifier(constructorParams.priceFeedIdentifier)
-      .send({ from: contractCreator });
   });
 
   it("TokenFactory address should be set on construction", async function () {
@@ -83,8 +90,7 @@ contract("PerpetualCreator", function (accounts) {
     constructorParams.syntheticSymbol = "";
     assert(
       await didContractThrow(
-        perpetualCreator.methods
-          .createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
+        perpetualCreator.methods.createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
       )
     );
   });
@@ -94,8 +100,7 @@ contract("PerpetualCreator", function (accounts) {
     constructorParams.syntheticName = "";
     assert(
       await didContractThrow(
-        perpetualCreator.methods
-          .createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
+        perpetualCreator.methods.createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
       )
     );
   });
@@ -109,8 +114,7 @@ contract("PerpetualCreator", function (accounts) {
     ).options.address;
     assert(
       await didContractThrow(
-        perpetualCreator.methods
-          .createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
+        perpetualCreator.methods.createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
       )
     );
   });
@@ -120,8 +124,7 @@ contract("PerpetualCreator", function (accounts) {
     constructorParams.withdrawalLiveness = 0;
     assert(
       await didContractThrow(
-        perpetualCreator.methods
-          .createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
+        perpetualCreator.methods.createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
       )
     );
   });
@@ -131,8 +134,7 @@ contract("PerpetualCreator", function (accounts) {
     constructorParams.withdrawalLiveness = MAX_UINT_VAL;
     assert(
       await didContractThrow(
-        perpetualCreator.methods
-          .createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
+        perpetualCreator.methods.createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
       )
     );
   });
@@ -142,8 +144,7 @@ contract("PerpetualCreator", function (accounts) {
     constructorParams.liquidationLiveness = 0;
     assert(
       await didContractThrow(
-        perpetualCreator.methods
-          .createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
+        perpetualCreator.methods.createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
       )
     );
   });
@@ -153,8 +154,7 @@ contract("PerpetualCreator", function (accounts) {
     constructorParams.liquidationLiveness = MAX_UINT_VAL;
     assert(
       await didContractThrow(
-        perpetualCreator.methods
-          .createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
+        perpetualCreator.methods.createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
       )
     );
   });
@@ -167,8 +167,7 @@ contract("PerpetualCreator", function (accounts) {
     };
     assert(
       await didContractThrow(
-        perpetualCreator.methods
-          .createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
+        perpetualCreator.methods.createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
       )
     );
   });
@@ -181,8 +180,7 @@ contract("PerpetualCreator", function (accounts) {
     };
     assert(
       await didContractThrow(
-        perpetualCreator.methods
-          .createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
+        perpetualCreator.methods.createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
       )
     );
   });
@@ -232,16 +230,12 @@ contract("PerpetualCreator", function (accounts) {
     assert.equal((await perpetual.methods.fundingRate().call()).cumulativeMultiplier.toString(), toWei("1"));
 
     // Deployed Perpetual timer should be same as Perpetual creator.
-    assert.equal(
-      await perpetual.methods.timerAddress().call(),
-      await perpetualCreator.methods.timerAddress().call()
-    );
+    assert.equal(await perpetual.methods.timerAddress().call(), await perpetualCreator.methods.timerAddress().call());
   });
 
   it("Constructs new synthetic currency properly", async function () {
     // Use non-18 decimal precision for collateral currency to test that synthetic matches precision.
-    collateralToken = await Token.new("Wrapped Ether", "WETH", 8)
-      .send({ from: contractCreator });
+    collateralToken = await Token.new("Wrapped Ether", "WETH", 8).send({ from: contractCreator });
     constructorParams.collateralAddress = collateralToken.options.address;
 
     // Whitelist collateral currency
@@ -348,7 +342,9 @@ contract("PerpetualCreator", function (accounts) {
     const currentTime = parseInt(await perpetual.methods.getCurrentTime().call());
     assert(
       await didContractThrow(
-        perpetual.methods.proposeFundingRate({ rawValue: toWei("0.00002") }, currentTime).send({ from: contractCreator })
+        perpetual.methods
+          .proposeFundingRate({ rawValue: toWei("0.00002") }, currentTime)
+          .send({ from: contractCreator })
       )
     );
   });

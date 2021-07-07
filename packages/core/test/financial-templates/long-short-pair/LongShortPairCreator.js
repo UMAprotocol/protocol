@@ -1,8 +1,7 @@
 const hre = require("hardhat");
 const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
+const { getContract, assertEventEmitted } = hre;
 const { toWei, utf8ToHex, hexToUtf8 } = web3.utils;
-const truffleAssert = require("truffle-assertions");
 const { assert } = require("chai");
 
 // Libraries and helpers
@@ -42,25 +41,29 @@ const syntheticSymbol = "tCFD";
 const ancillaryData = web3.utils.utf8ToHex("some-address-field:0x1234");
 const prepaidProposerReward = "0";
 
-contract("LongShortPairCreator", function (accounts) {
-  const deployer = accounts[0];
-  const sponsor = accounts[1];
+describe("LongShortPairCreator", function () {
+  let accounts;
+  let deployer;
+  let sponsor;
 
-  beforeEach(async function () {
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+    [deployer, sponsor] = accounts;
     await runDefaultFixture(hre);
     finder = await Finder.deployed();
     timer = await Timer.deployed();
     collateralWhitelist = await AddressWhitelist.deployed();
-
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.methods.addSupportedIdentifier(priceFeedIdentifier).send({ from: deployer });
+  });
 
+  beforeEach(async function () {
     // Force each test to start with a simulated time that's synced to the startTimestamp.
     await timer.methods.setCurrentTime(startTimestamp).send({ from: accounts[0] });
 
-    collateralToken = await Token.new("Wrapped Ether", "WETH", 18).send({ from: accounts[0] }).send({ from: deployer });
+    collateralToken = await Token.new("Wrapped Ether", "WETH", 18).send({ from: deployer });
     await collateralToken.methods.addMember(1, deployer).send({ from: deployer });
-    await collateralToken.mint(sponsor, toWei("1000"), { from: deployer });
+    await collateralToken.methods.mint(sponsor, toWei("1000")).send({ from: deployer });
 
     await collateralWhitelist.methods.addToWhitelist(collateralToken.options.address).send({ from: accounts[0] });
 
@@ -69,17 +72,15 @@ contract("LongShortPairCreator", function (accounts) {
       finder.options.address,
       timer.options.address
     ).send({ from: accounts[0] });
-    await finder.methods.changeImplementationAddress(
-      utf8ToHex(interfaceName.OptimisticOracle),
-      optimisticOracle.options.address,
-      { from: deployer }
-    );
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
+      .send({ from: deployer });
 
     longShortPairCreator = await LongShortPairCreator.new(
       finder.options.address,
-      (await TokenFactory.deployed()).address,
+      (await TokenFactory.deployed()).options.address,
       timer.options.address
-    );
+    ).send({ from: accounts[0] });
 
     longShortPairLibrary = await LongShortPairFinancialProjectLibraryTest.new().send({ from: accounts[0] });
 
@@ -99,12 +100,16 @@ contract("LongShortPairCreator", function (accounts) {
 
   it("Can correctly create a LSP with valid params", async function () {
     // Can create a new LSP with the creator.
-    const lspAddress = await longShortPairCreator.createLongShortPair.call(...Object.values(constructorParams));
+    const lspAddress = await longShortPairCreator.methods
+      .createLongShortPair(...Object.values(constructorParams))
+      .call();
 
-    const lspCreateTx = await longShortPairCreator.createLongShortPair(...Object.values(constructorParams));
+    const lspCreateTx = await longShortPairCreator.methods
+      .createLongShortPair(...Object.values(constructorParams))
+      .send({ from: accounts[0] });
 
     // Event should be emitted correctly.
-    truffleAssert.eventEmitted(lspCreateTx, "CreatedLongShortPair", (ev) => {
+    await assertEventEmitted(lspCreateTx, longShortPairCreator, "CreatedLongShortPair", (ev) => {
       return ev.longShortPair == lspAddress && ev.deployerAddress == deployer;
     });
 
@@ -140,18 +145,20 @@ contract("LongShortPairCreator", function (accounts) {
     assert.isTrue(await shortToken.methods.holdsRole("2", lspAddress).call());
   });
   it("Correctly respects non-18 decimal collateral currencies", async function () {
-    const non18Collateral = await Token.new("USD Coin", "USDC", 6).send({ from: accounts[0] }).send({ from: deployer });
+    const non18Collateral = await Token.new("USD Coin", "USDC", 6).send({ from: deployer });
     await collateralWhitelist.methods.addToWhitelist(non18Collateral.options.address).send({ from: accounts[0] });
-    await longShortPairCreator.createLongShortPair(
-      ...Object.values({ ...constructorParams, collateralAddress: non18Collateral.options.address })
-    );
+    await longShortPairCreator.methods
+      .createLongShortPair(
+        ...Object.values({ ...constructorParams, collateralAddress: non18Collateral.options.address })
+      )
+      .send({ from: accounts[0] });
 
     const lspAddress = (await longShortPairCreator.getPastEvents("CreatedLongShortPair"))[0].returnValues.longShortPair;
 
     const lsp = await LongShortPair.at(lspAddress);
 
-    assert.equal(await (await Token.at(await lsp.methods.longToken().call())).decimals(), "6");
-    assert.equal(await (await Token.at(await lsp.methods.shortToken().call())).decimals(), "6");
+    assert.equal(await (await Token.at(await lsp.methods.longToken().call())).methods.decimals().call(), "6");
+    assert.equal(await (await Token.at(await lsp.methods.shortToken().call())).methods.decimals().call(), "6");
   });
 
   it("Transfers prepaidProposerReward", async function () {
@@ -160,9 +167,11 @@ contract("LongShortPairCreator", function (accounts) {
     await collateralToken.methods
       .approve(longShortPairCreator.options.address, customPrepaidProposerReward)
       .send({ from: accounts[0] });
-    await longShortPairCreator.createLongShortPair(
-      ...Object.values({ ...constructorParams, prepaidProposerReward: customPrepaidProposerReward })
-    );
+    await longShortPairCreator.methods
+      .createLongShortPair(
+        ...Object.values({ ...constructorParams, prepaidProposerReward: customPrepaidProposerReward })
+      )
+      .send({ from: accounts[0] });
 
     const lspAddress = (await longShortPairCreator.getPastEvents("CreatedLongShortPair"))[0].returnValues.longShortPair;
 
@@ -172,51 +181,59 @@ contract("LongShortPairCreator", function (accounts) {
   it("Rejects on past expirationTimestamp", async function () {
     assert(
       await didContractThrow(
-        longShortPairCreator.createLongShortPair(
-          ...Object.values({
-            ...constructorParams,
-            expirationTimestamp: (await timer.methods.getCurrentTime().call()) - 100,
-          })
-        )
+        longShortPairCreator.methods
+          .createLongShortPair(
+            ...Object.values({
+              ...constructorParams,
+              expirationTimestamp: (await timer.methods.getCurrentTime().call()) - 100,
+            })
+          )
+          .send({ from: accounts[0] })
       )
     );
   });
   it("Rejects on unregistered priceIdentifier", async function () {
     assert(
       await didContractThrow(
-        longShortPairCreator.createLongShortPair(
-          ...Object.values({ ...constructorParams, priceFeedIdentifier: utf8ToHex("UNREGISTERED_IDENTIFIER") })
-        )
+        longShortPairCreator.methods
+          .createLongShortPair(
+            ...Object.values({ ...constructorParams, priceFeedIdentifier: utf8ToHex("UNREGISTERED_IDENTIFIER") })
+          )
+          .send({ from: accounts[0] })
       )
     );
   });
   it("Rejects on unregistered collateralToken", async function () {
     assert(
       await didContractThrow(
-        longShortPairCreator.createLongShortPair(
-          ...Object.values({ ...constructorParams, collateralAddress: ZERO_ADDRESS })
-        )
+        longShortPairCreator.methods
+          .createLongShortPair(...Object.values({ ...constructorParams, collateralAddress: ZERO_ADDRESS }))
+          .send({ from: accounts[0] })
       )
     );
   });
   it("Rejects on invalid financialProductLibrary", async function () {
     assert(
       await didContractThrow(
-        longShortPairCreator.createLongShortPair(
-          ...Object.values({ ...constructorParams, financialProductLibraryAddress: ZERO_ADDRESS })
-        )
+        longShortPairCreator.methods
+          .createLongShortPair(...Object.values({ ...constructorParams, financialProductLibraryAddress: ZERO_ADDRESS }))
+          .send({ from: accounts[0] })
       )
     );
   });
   it("Rejects on invalid synthetic token details", async function () {
     assert(
       await didContractThrow(
-        longShortPairCreator.createLongShortPair(...Object.values({ ...constructorParams, syntheticName: "" }))
+        longShortPairCreator.methods
+          .createLongShortPair(...Object.values({ ...constructorParams, syntheticName: "" }))
+          .send({ from: accounts[0] })
       )
     );
     assert(
       await didContractThrow(
-        longShortPairCreator.createLongShortPair(...Object.values({ ...constructorParams, syntheticSymbol: "" }))
+        longShortPairCreator.methods
+          .createLongShortPair(...Object.values({ ...constructorParams, syntheticSymbol: "" }))
+          .send({ from: accounts[0] })
       )
     );
   });

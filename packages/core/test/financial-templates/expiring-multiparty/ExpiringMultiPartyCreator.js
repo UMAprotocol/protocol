@@ -3,6 +3,7 @@ const { runDefaultFixture } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;
 const { toWei, hexToUtf8, padRight, utf8ToHex } = web3.utils;
 const { didContractThrow, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
+const { assert } = require("chai");
 
 // Tested Contract
 const ExpiringMultiPartyCreator = getContract("ExpiringMultiPartyCreator");
@@ -45,13 +46,11 @@ describe("ExpiringMultiPartyCreator", function () {
     // Whitelist collateral currency
     collateralTokenWhitelist = await AddressWhitelist.deployed();
     await collateralTokenWhitelist.methods
-      .addToWhitelist(collateralToken.options.address)
+      .addToWhitelist(initialCollateralToken.options.address)
       .send({ from: contractCreator });
 
     const identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.methods
-      .addSupportedIdentifier(identifier)
-      .send({ from: contractCreator });
+    await identifierWhitelist.methods.addSupportedIdentifier(identifier).send({ from: contractCreator });
   });
 
   beforeEach(async () => {
@@ -85,9 +84,7 @@ describe("ExpiringMultiPartyCreator", function () {
     constructorParams.expirationTimestamp = arbitraryExpiration.toString();
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.methods
-          .createExpiringMultiParty(constructorParams)
-          .send({ from: contractCreator })
+        expiringMultiPartyCreator.methods.createExpiringMultiParty(constructorParams).send({ from: contractCreator })
       )
     );
   });
@@ -97,8 +94,7 @@ describe("ExpiringMultiPartyCreator", function () {
     constructorParams.syntheticSymbol = "";
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.methods
-          .createExpiringMultiParty(constructorParams).send({ from: contractCreator })
+        expiringMultiPartyCreator.methods.createExpiringMultiParty(constructorParams).send({ from: contractCreator })
       )
     );
   });
@@ -108,8 +104,7 @@ describe("ExpiringMultiPartyCreator", function () {
     constructorParams.syntheticName = "";
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.methods
-          .createExpiringMultiParty(constructorParams).send({ from: contractCreator })
+        expiringMultiPartyCreator.methods.createExpiringMultiParty(constructorParams).send({ from: contractCreator })
       )
     );
   });
@@ -121,8 +116,7 @@ describe("ExpiringMultiPartyCreator", function () {
     ).options.address;
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.methods
-          .createExpiringMultiParty(constructorParams).send({ from: contractCreator })
+        expiringMultiPartyCreator.methods.createExpiringMultiParty(constructorParams).send({ from: contractCreator })
       )
     );
   });
@@ -132,8 +126,7 @@ describe("ExpiringMultiPartyCreator", function () {
     constructorParams.withdrawalLiveness = 0;
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.methods
-          .createExpiringMultiParty(constructorParams).send({ from: contractCreator })
+        expiringMultiPartyCreator.methods.createExpiringMultiParty(constructorParams).send({ from: contractCreator })
       )
     );
   });
@@ -143,8 +136,7 @@ describe("ExpiringMultiPartyCreator", function () {
     constructorParams.withdrawalLiveness = MAX_UINT_VAL;
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.methods
-          .createExpiringMultiParty(constructorParams).send({ from: contractCreator })
+        expiringMultiPartyCreator.methods.createExpiringMultiParty(constructorParams).send({ from: contractCreator })
       )
     );
   });
@@ -154,8 +146,7 @@ describe("ExpiringMultiPartyCreator", function () {
     constructorParams.liquidationLiveness = 0;
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.methods
-          .createExpiringMultiParty(constructorParams).send({ from: contractCreator })
+        expiringMultiPartyCreator.methods.createExpiringMultiParty(constructorParams).send({ from: contractCreator })
       )
     );
   });
@@ -165,17 +156,18 @@ describe("ExpiringMultiPartyCreator", function () {
     constructorParams.liquidationLiveness = MAX_UINT_VAL;
     assert(
       await didContractThrow(
-        expiringMultiPartyCreator.methods
-          .createExpiringMultiParty(constructorParams).send({ from: contractCreator })
+        expiringMultiPartyCreator.methods.createExpiringMultiParty(constructorParams).send({ from: contractCreator })
       )
     );
   });
 
   it("Can create new instances of ExpiringMultiParty", async function () {
     // Use `.call` to get the returned value from the function.
-    let functionReturnedAddress = await expiringMultiPartyCreator.methods.createExpiringMultiParty(constructorParams).call({
-      from: contractCreator,
-    });
+    let functionReturnedAddress = await expiringMultiPartyCreator.methods
+      .createExpiringMultiParty(constructorParams)
+      .call({
+        from: contractCreator,
+      });
 
     // Execute without the `.call` to perform state change. catch the result to query the event.
     let createdAddressResult = await expiringMultiPartyCreator.methods

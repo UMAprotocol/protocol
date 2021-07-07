@@ -2,6 +2,7 @@ const hre = require("hardhat");
 const { runDefaultFixture } = require("@uma/common");
 const { getContract } = hre;
 const { didContractThrow } = require("@uma/common");
+const { assert } = require("chai");
 
 // Tested Contract
 const TokenFactory = getContract("TokenFactory");
@@ -11,10 +12,11 @@ const Token = getContract("SyntheticToken");
 
 const { toWei, toBN } = web3.utils;
 
-contract("TokenFactory", function (accounts) {
-  const contractDeployer = accounts[0];
-  const tokenCreator = accounts[1];
-  const rando = accounts[2];
+describe("TokenFactory", function () {
+  let accounts;
+  let contractDeployer;
+  let tokenCreator;
+  let rando;
 
   let tokenFactory;
 
@@ -24,7 +26,9 @@ contract("TokenFactory", function (accounts) {
     decimals: "18",
   };
 
-  beforeEach(async () => {
+  before(async () => {
+    accounts = await web3.eth.getAccounts();
+    [contractDeployer, tokenCreator, rando] = accounts;
     await runDefaultFixture(hre);
     tokenFactory = await TokenFactory.deployed();
   });

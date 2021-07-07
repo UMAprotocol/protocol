@@ -14,12 +14,13 @@ const ConfigStore = getContract("ConfigStore");
 // Helper Contracts
 const Timer = getContract("Timer");
 
-contract("ConfigStore", function (accounts) {
+describe("ConfigStore", function () {
   let timer;
   let configStore;
 
-  let owner = accounts[0];
-  let rando = accounts[1];
+  let accounts;
+  let owner;
+  let rando;
 
   let testConfig = {
     timelockLiveness: 86401, // 1 day + 1 second
@@ -41,7 +42,7 @@ contract("ConfigStore", function (accounts) {
   // Helper functions.
   async function incrementTime(contract, amount) {
     const currentTime = parseInt(await contract.methods.getCurrentTime().call());
-    await contract.methods.setCurrentTime(currentTime + amount).send({from:accounts[0]});
+    await contract.methods.setCurrentTime(currentTime + amount).send({ from: accounts[0] });
   }
 
   async function currentConfigMatchesInput(_store, _inputConfig) {
@@ -80,7 +81,9 @@ contract("ConfigStore", function (accounts) {
     assert.equal((await _store.methods.pendingPassedTimestamp().call()).toString(), "0");
   }
 
-  beforeEach(async () => {
+  before(async () => {
+    accounts = await web3.eth.getAccounts();
+    [owner, rando] = accounts;
     await runDefaultFixture(hre);
     timer = await Timer.deployed();
   });
@@ -123,7 +126,7 @@ contract("ConfigStore", function (accounts) {
 
       // Propose a config and check events
       let proposeTime = toBN(await configStore.methods.getCurrentTime().call());
-      let proposeTxn = await configStore.methods.proposeNewConfig(testConfig).send({from:accounts[0]});
+      let proposeTxn = await configStore.methods.proposeNewConfig(testConfig).send({ from: accounts[0] });
       await assertEventEmitted(proposeTxn, configStore, "ProposedNewConfigSettings", (ev) => {
         return (
           ev.proposer === owner &&
@@ -140,7 +143,7 @@ contract("ConfigStore", function (accounts) {
 
       // Pending config can be published with propose(). In the next test we'll test that publishPendingConfig
       // also updates pending configs.
-      proposeTxn = await configStore.methods.proposeNewConfig(testConfig).send({from:accounts[0]});
+      proposeTxn = await configStore.methods.proposeNewConfig(testConfig).send({ from: accounts[0] });
       await assertEventEmitted(proposeTxn, configStore, "ChangedConfigSettings", (ev) => {
         return (
           ev.rewardRatePerSecond.toString() === testConfig.rewardRatePerSecond.rawValue &&
@@ -160,7 +163,7 @@ contract("ConfigStore", function (accounts) {
 
       // Propose new config.
       const proposeTime = toBN(await configStore.methods.getCurrentTime().call());
-      let proposeTxn = await configStore.methods.proposeNewConfig(testConfig).send({from:accounts[0]});
+      let proposeTxn = await configStore.methods.proposeNewConfig(testConfig).send({ from: accounts[0] });
       await assertEventEmitted(proposeTxn, configStore, "ProposedNewConfigSettings", (ev) => {
         return (
           ev.proposer === owner &&
@@ -200,7 +203,7 @@ contract("ConfigStore", function (accounts) {
         timelockLiveness: 86402,
       };
       const overwriteProposalTime = toBN(await configStore.methods.getCurrentTime().call());
-      proposeTxn = await configStore.methods.proposeNewConfig(test2Config).send({from:accounts[0]});
+      proposeTxn = await configStore.methods.proposeNewConfig(test2Config).send({ from: accounts[0] });
       await assertEventEmitted(proposeTxn, configStore, "ProposedNewConfigSettings", (ev) => {
         return (
           ev.proposer === owner &&
@@ -236,7 +239,7 @@ contract("ConfigStore", function (accounts) {
       // Finally, advancing past liveness allows pending config to be returned as current config, {       // and the pending config can be published.
       await incrementTime(configStore, 1);
       await currentConfigMatchesInput(configStore, test2Config);
-      proposeTxn = await configStore.methods.publishPendingConfig().send({from:accounts[0]});
+      proposeTxn = await configStore.methods.publishPendingConfig().send({ from: accounts[0] });
       await assertEventEmitted(proposeTxn, configStore, "ChangedConfigSettings", (ev) => {
         return (
           ev.rewardRatePerSecond.toString() === test2Config.rewardRatePerSecond.rawValue &&

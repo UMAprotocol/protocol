@@ -1,6 +1,6 @@
 const hre = require("hardhat");
 const { runDefaultFixture } = require("@uma/common");
-const { getContract, assertEventEmitted } = hre;
+const { getContract, assertEventEmitted, assertEventNotEmitted } = hre;
 // Libraries and helpers
 const { didContractThrow, interfaceName } = require("@uma/common");
 const { assert } = require("chai");
@@ -21,14 +21,15 @@ const Timer = getContract("Timer");
 const ConfigStore = getContract("ConfigStore");
 const AddressWhitelist = getContract("AddressWhitelist");
 
-contract("PerpetualPositionManager", function (accounts) {
+describe("PerpetualPositionManager", function () {
   const { toWei, hexToUtf8, toBN, utf8ToHex } = web3.utils;
-  const contractDeployer = accounts[0];
-  const sponsor = accounts[1];
-  const tokenHolder = accounts[2];
-  const other = accounts[3];
-  const collateralOwner = accounts[4];
-  const proposer = accounts[5];
+  let accounts;
+  let contractDeployer;
+  let sponsor;
+  let tokenHolder;
+  let other;
+  let collateralOwner;
+  let proposer;
 
   // Contracts
   let collateral;
@@ -41,6 +42,7 @@ contract("PerpetualPositionManager", function (accounts) {
   let finder;
   let store;
   let configStore;
+  let collateralWhitelist;
 
   // Initial constant values
   const initialPositionTokens = toBN(toWei("1000"));
@@ -84,40 +86,42 @@ contract("PerpetualPositionManager", function (accounts) {
     );
   };
 
-  beforeEach(async function () {
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+    [contractDeployer, sponsor, tokenHolder, other, collateralOwner, proposer] = accounts;
     await runDefaultFixture(hre);
     store = await Store.deployed();
+    timer = await Timer.deployed();
+    identifierWhitelist = await IdentifierWhitelist.deployed();
+    collateralWhitelist = await AddressWhitelist.deployed();
+    finder = await Finder.deployed();
+    financialContractsAdmin = await FinancialContractsAdmin.deployed();
+  });
 
+  beforeEach(async function () {
     // Represents WETH or some other token that the sponsor and contracts don't control.
-    collateral = await MarginToken.new("Wrapped Ether", "WETH", 18)
-      .send({ from: collateralOwner });
+    collateral = await MarginToken.new("Wrapped Ether", "WETH", 18).send({ from: collateralOwner });
     await collateral.methods.addMember(1, collateralOwner).send({ from: collateralOwner });
     await collateral.methods.mint(sponsor, toWei("1000000")).send({ from: collateralOwner });
     await collateral.methods.mint(other, toWei("1000000")).send({ from: collateralOwner });
 
-    tokenCurrency = await SyntheticToken.new(syntheticName, syntheticSymbol, 18)
-      .send({ from: contractDeployer });
+    tokenCurrency = await SyntheticToken.new(syntheticName, syntheticSymbol, 18).send({ from: contractDeployer });
 
     // Force each test to start with a simulated time that's synced to the startTimestamp - 1 (to give the initial
     // funding rate proposal a delay after launch so it won't fail).
-    timer = await Timer.deployed();
-    await timer.methods.setCurrentTime(startTimestamp - 1).send({from:accounts[0]});
+    await timer.methods.setCurrentTime(startTimestamp - 1).send({ from: accounts[0] });
 
-    // Get identifier whitelist and register the price tracking tickers with it.
-    identifierWhitelist = await IdentifierWhitelist.deployed();
+    // Register the price tracking tickers.
     await identifierWhitelist.methods.addSupportedIdentifier(priceFeedIdentifier).send({ from: contractDeployer });
     await identifierWhitelist.methods
       .addSupportedIdentifier(fundingRateFeedIdentifier)
       .send({ from: contractDeployer });
 
     // Add support for the collateral currency.
-    const collateralWhitelist = await AddressWhitelist.deployed();
     await collateralWhitelist.methods.addToWhitelist(collateral.options.address).send({ from: accounts[0] });
 
-    // Create a mockOracle and finder. Register the mockMoracle with the finder.
-    finder = await Finder.deployed();
-    mockOracle = await MockOracle.new(finder.options.address, timer.options.address)
-      .send({ from: contractDeployer });
+    // Create a mockOracle. Register the mockMoracle with the finder.
+    mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({ from: contractDeployer });
     const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
     await finder.methods
       .changeImplementationAddress(mockOracleInterfaceName, mockOracle.options.address)
@@ -126,8 +130,6 @@ contract("PerpetualPositionManager", function (accounts) {
     await finder.methods.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address).send({
       from: contractDeployer,
     });
-
-    financialContractsAdmin = await FinancialContractsAdmin.deployed();
 
     configStore = await ConfigStore.new(
       {
@@ -139,7 +141,7 @@ contract("PerpetualPositionManager", function (accounts) {
         proposalTimePastLimit: 0,
       },
       timer.options.address
-    ).send({from:accounts[0]});
+    ).send({ from: accounts[0] });
 
     // Create the instance of the positionManager to test against.
     positionManager = await PerpetualPositionManager.new(
@@ -153,9 +155,7 @@ contract("PerpetualPositionManager", function (accounts) {
       configStore.options.address, // _configStoreAddress
       { rawValue: toWei("1") }, // _tokenScaling
       timer.options.address // _timerAddress
-    ).send(
-      { from: contractDeployer }
-    );
+    ).send({ from: contractDeployer });
 
     // Update time to the start timestamp after launch so the first funding rate proposal call succeeds.
     await timer.methods.setCurrentTime(startTimestamp).send({ from: accounts[0] });
@@ -164,6 +164,8 @@ contract("PerpetualPositionManager", function (accounts) {
     // Give contract owner permissions.
     await tokenCurrency.methods.addMinter(positionManager.options.address).send({ from: accounts[0] });
     await tokenCurrency.methods.addBurner(positionManager.options.address).send({ from: accounts[0] });
+
+    await store.methods.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" }).send({ from: accounts[0] });
   });
 
   // Advances time by 10k seconds.
@@ -199,7 +201,7 @@ contract("PerpetualPositionManager", function (accounts) {
     // The total time elapsed to publish the proposal is 5 seconds, so let's set the regular fee to 20%/second.
     // This will charge a 100% regular fee tax on the contract's PfC. This will prevent the funding rate store from
     // withdrawing any collateral from the perpetual contract, but it should not revert.
-    await store.methods.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.2") }).send({from:accounts[0]});
+    await store.methods.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.2") }).send({ from: accounts[0] });
 
     // Propose rate and move time forward.
     await setFundingRateAndAdvanceTime("0");
@@ -244,17 +246,14 @@ contract("PerpetualPositionManager", function (accounts) {
           configStore.options.address, // _configStoreAddress
           { rawValue: toWei("1") }, // _tokenScaling
           timer.options.address // _timerAddress
-        ).send({ from: contractDeployer }
-        )
+        ).send({ from: contractDeployer })
       )
     );
   });
 
   it("Withdrawal liveness overflow", async function () {
     // Create a contract with a very large withdrawal liveness, i.e., withdrawal requests will never pass.
-    tokenCurrency = await SyntheticToken.new(syntheticName, syntheticSymbol, 18)
-      .send({ from: accounts[0] })
-      ;
+    tokenCurrency = await SyntheticToken.new(syntheticName, syntheticSymbol, 18).send({ from: accounts[0] });
 
     const largeLiveness = toBN(2).pow(toBN(256)).subn(10).toString();
     positionManager = await PerpetualPositionManager.new(
@@ -268,26 +267,20 @@ contract("PerpetualPositionManager", function (accounts) {
       configStore.options.address, // _configStoreAddress
       { rawValue: toWei("1") }, // _tokenScaling
       timer.options.address // _timerAddress
-    ).send({ from: contractDeployer }
-    );
+    ).send({ from: contractDeployer });
     await tokenCurrency.methods.addMinter(positionManager.options.address).send({ from: accounts[0] });
     await tokenCurrency.methods.addBurner(positionManager.options.address).send({ from: accounts[0] });
 
     const initialSponsorTokens = toWei("100");
     const initialSponsorCollateral = toWei("150");
     await collateral.methods.approve(positionManager.options.address, initialSponsorCollateral).send({ from: sponsor });
-    await positionManager.methods.create(
-      { rawValue: initialSponsorCollateral },
-      { rawValue: initialSponsorTokens }).send(
-      { from: sponsor }
-    );
+    await positionManager.methods
+      .create({ rawValue: initialSponsorCollateral }, { rawValue: initialSponsorTokens })
+      .send({ from: sponsor });
     // Withdrawal requests should fail due to overflow.
     assert(
       await didContractThrow(
-        positionManager.methods
-          .requestWithdrawal({ rawValue: initialSponsorCollateral })
-          .send({ from: sponsor })
-          
+        positionManager.methods.requestWithdrawal({ rawValue: initialSponsorCollateral }).send({ from: sponsor })
       )
     );
   });
@@ -295,11 +288,9 @@ contract("PerpetualPositionManager", function (accounts) {
   it("Lifecycle", async function () {
     // Create an initial large and lowly collateralized positionManager.
     await collateral.methods.approve(positionManager.options.address, initialPositionCollateral).send({ from: other });
-    await positionManager.methods.create(
-      { rawValue: initialPositionCollateral.toString() },
-      { rawValue: initialPositionTokens.toString() }).send(
-      { from: other }
-    );
+    await positionManager.methods
+      .create({ rawValue: initialPositionCollateral.toString() }, { rawValue: initialPositionTokens.toString() })
+      .send({ from: other });
 
     // Create the initial positionManager.
     const createTokens = toWei("100");
@@ -310,16 +301,14 @@ contract("PerpetualPositionManager", function (accounts) {
     assert(
       await didContractThrow(
         positionManager.methods
-          .create({ rawValue: createCollateral }, { rawValue: createTokens }).send({ from: sponsor })
-          
+          .create({ rawValue: createCollateral }, { rawValue: createTokens })
+          .send({ from: sponsor })
       )
     );
     await collateral.methods.approve(positionManager.options.address, createCollateral).send({ from: sponsor });
-    const createResult = await positionManager.methods.create(
-      { rawValue: createCollateral },
-      { rawValue: createTokens }).send(
-      { from: sponsor }
-    );
+    const createResult = await positionManager.methods
+      .create({ rawValue: createCollateral }, { rawValue: createTokens })
+      .send({ from: sponsor });
     await assertEventEmitted(createResult, positionManager, "PositionCreated", (ev) => {
       return (
         ev.sponsor == sponsor &&
@@ -353,7 +342,9 @@ contract("PerpetualPositionManager", function (accounts) {
     // Cannot withdraw 0 collateral.
     assert(await didContractThrow(positionManager.methods.withdraw({ rawValue: "0" }).send({ from: sponsor })));
     // Cannot withdraw more than balance. (The position currently has 150 + 50 collateral).
-    assert(await didContractThrow(positionManager.methods.withdraw({ rawValue: toWei("201") }).send({ from: sponsor })));
+    assert(
+      await didContractThrow(positionManager.methods.withdraw({ rawValue: toWei("201") }).send({ from: sponsor }))
+    );
     await positionManager.methods.withdraw({ rawValue: withdrawCollateral }).send({ from: sponsor });
     let sponsorFinalBalance = toBN(await collateral.methods.balanceOf(sponsor).call());
     assert.equal(sponsorFinalBalance.sub(sponsorInitialBalance).toString(), withdrawCollateral);
@@ -401,28 +392,24 @@ contract("PerpetualPositionManager", function (accounts) {
     await tokenCurrency.methods.removeMinter(positionManager.options.address).send({ from: accounts[0] });
     assert(
       await didContractThrow(
-        positionManager.methods.create(
-          { rawValue: createAdditionalCollateral },
-          { rawValue: createAdditionalTokens }).send(
-          { from: sponsor }
-        )
+        positionManager.methods
+          .create({ rawValue: createAdditionalCollateral }, { rawValue: createAdditionalTokens })
+          .send({ from: sponsor })
       )
     );
     await tokenCurrency.methods.addMinter(positionManager.options.address).send({ from: accounts[0] });
-    await positionManager.methods.create(
-      { rawValue: createAdditionalCollateral },
-      { rawValue: createAdditionalTokens }).send(
-      { from: sponsor }
-    );
+    await positionManager.methods
+      .create({ rawValue: createAdditionalCollateral }, { rawValue: createAdditionalTokens })
+      .send({ from: sponsor });
     await checkBalances(expectedSponsorTokens, expectedSponsorCollateral);
 
     // Redeem full.
     const redeemRemainingTokens = toWei("60");
     await tokenCurrency.methods.approve(positionManager.options.address, redeemRemainingTokens).send({ from: sponsor });
-    sponsorInitialBalance = await collateral.methods.balanceOf(sponsor).call();
+    sponsorInitialBalance = toBN(await collateral.methods.balanceOf(sponsor).call());
     redemptionResult = await positionManager.methods
       .redeem({ rawValue: redeemRemainingTokens })
-      .call({ from: sponsor });
+      .send({ from: sponsor });
     await assertEventEmitted(redemptionResult, positionManager, "Redeem", (ev) => {
       return (
         ev.sponsor == sponsor &&
@@ -434,7 +421,7 @@ contract("PerpetualPositionManager", function (accounts) {
       return ev.sponsor == sponsor;
     });
 
-    sponsorFinalBalance = await collateral.methods.balanceOf(sponsor).call();
+    sponsorFinalBalance = toBN(await collateral.methods.balanceOf(sponsor).call());
     assert.equal(sponsorFinalBalance.sub(sponsorInitialBalance).toString(), expectedSponsorCollateral);
     await checkBalances(toBN("0"), toBN("0"));
 
@@ -446,11 +433,9 @@ contract("PerpetualPositionManager", function (accounts) {
   it("Cannot instantly withdraw all of the collateral in the position", async function () {
     // Create an initial large and lowly collateralized positionManager so that we can call `withdraw()`.
     await collateral.methods.approve(positionManager.options.address, initialPositionCollateral).send({ from: other });
-    await positionManager.methods.create(
-      { rawValue: initialPositionCollateral.toString() },
-      { rawValue: initialPositionTokens.toString() }).send(
-      { from: other }
-    );
+    await positionManager.methods
+      .create({ rawValue: initialPositionCollateral.toString() }, { rawValue: initialPositionTokens.toString() })
+      .send({ from: other });
 
     // Create the initial positionManager.
     const createTokens = toWei("100");
@@ -469,11 +454,9 @@ contract("PerpetualPositionManager", function (accounts) {
   it("Withdrawal request", async function () {
     // Create an initial large and lowly collateralized positionManager.
     await collateral.methods.approve(positionManager.options.address, initialPositionCollateral).send({ from: other });
-    await positionManager.methods.create(
-      { rawValue: initialPositionCollateral.toString() },
-      { rawValue: initialPositionTokens.toString() }).send(
-      { from: other }
-    );
+    await positionManager.methods
+      .create({ rawValue: initialPositionCollateral.toString() }, { rawValue: initialPositionTokens.toString() })
+      .send({ from: other });
 
     const startTime = await positionManager.methods.getCurrentTime().call();
     // Approve large amounts of token and collateral currencies: this test case isn't checking for that.
@@ -483,30 +466,27 @@ contract("PerpetualPositionManager", function (accounts) {
     // Create the initial positionManager.
     const initialSponsorTokens = toWei("100");
     const initialSponsorCollateral = toWei("150");
-    await positionManager.methods.create(
-      { rawValue: initialSponsorCollateral },
-      { rawValue: initialSponsorTokens }).send(
-      { from: sponsor }
-    );
+    await positionManager.methods
+      .create({ rawValue: initialSponsorCollateral }, { rawValue: initialSponsorTokens })
+      .send({ from: sponsor });
 
     // Must request greater than 0 and less than full position's collateral.
     assert(
       await didContractThrow(positionManager.methods.requestWithdrawal({ rawValue: "0" }).send({ from: sponsor }))
     );
-    assert(await didContractThrow(positionManager.methods.requestWithdrawal({ rawValue: toWei("151") }).send({ from: sponsor })));
-
-    // Cannot execute withdrawal request before a request is made.
     assert(
       await didContractThrow(
-        positionManager.methods.withdrawPassedRequest().send({ from: sponsor })
+        positionManager.methods.requestWithdrawal({ rawValue: toWei("151") }).send({ from: sponsor })
       )
     );
 
+    // Cannot execute withdrawal request before a request is made.
+    assert(await didContractThrow(positionManager.methods.withdrawPassedRequest().send({ from: sponsor })));
+
     // Request withdrawal. Check event is emitted
-    const resultRequestWithdrawal = await positionManager.methods.requestWithdrawal(
-      { rawValue: toWei("100") }).send(
-      { from: sponsor }
-    );
+    const resultRequestWithdrawal = await positionManager.methods
+      .requestWithdrawal({ rawValue: toWei("100") })
+      .send({ from: sponsor });
     await assertEventEmitted(resultRequestWithdrawal, positionManager, "RequestWithdrawal", (ev) => {
       return ev.sponsor == sponsor && ev.collateralAmount == toWei("100").toString();
     });
@@ -516,9 +496,7 @@ contract("PerpetualPositionManager", function (accounts) {
     assert(await didContractThrow(positionManager.methods.withdraw({ rawValue: toWei("1") }).send({ from: sponsor })));
     assert(
       await didContractThrow(
-        positionManager.methods
-          .create({ rawValue: toWei("1") }, { rawValue: toWei("1") }).send({ from: sponsor })
-          
+        positionManager.methods.create({ rawValue: toWei("1") }, { rawValue: toWei("1") }).send({ from: sponsor })
       )
     );
     assert(await didContractThrow(positionManager.methods.redeem({ rawValue: toWei("1") }).send({ from: sponsor })));
@@ -530,11 +508,7 @@ contract("PerpetualPositionManager", function (accounts) {
 
     // Can't withdraw before time is up.
     await positionManager.methods.setCurrentTime(parseInt(startTime) + withdrawalLiveness - 1);
-    assert(
-      await didContractThrow(
-        positionManager.methods.withdrawPassedRequest().send({ from: sponsor })
-      )
-    );
+    assert(await didContractThrow(positionManager.methods.withdrawPassedRequest().send({ from: sponsor })));
 
     // The price moved against the sponsor, and they need to cancel. Ensure event is emitted.
     const resultCancelWithdrawal = await positionManager.methods.cancelWithdrawal().send({ from: sponsor });
@@ -548,15 +522,15 @@ contract("PerpetualPositionManager", function (accounts) {
     await positionManager.methods.requestWithdrawal({ rawValue: withdrawalAmount }).send({ from: sponsor });
 
     // After time is up, execute the withdrawal request. Check event is emitted and return value is correct.
-    await positionManager.methods.setCurrentTime(
-      parseInt(await positionManager.methods.getCurrentTime().call()) + withdrawalLiveness
-    );
+    await positionManager.methods
+      .setCurrentTime(parseInt(await positionManager.methods.getCurrentTime().call()) + withdrawalLiveness)
+      .send({ from: accounts[0] });
     const sponsorInitialBalance = toBN(await collateral.methods.balanceOf(sponsor).call());
     const expectedSponsorFinalBalance = sponsorInitialBalance.add(toBN(withdrawalAmount));
-    const withdrawPassedRequest = positionManager.methods.withdrawPassedRequest;
-    let amountWithdrawn = await withdrawPassedRequest.methods.call({ from: sponsor }).call();
+    const withdrawPassedRequest = positionManager.methods.withdrawPassedRequest();
+    let amountWithdrawn = await withdrawPassedRequest.call({ from: sponsor });
     assert.equal(amountWithdrawn.toString(), withdrawalAmount.toString());
-    let resultWithdrawPassedRequest = await withdrawPassedRequest({ from: sponsor });
+    let resultWithdrawPassedRequest = await withdrawPassedRequest.send({ from: sponsor });
     await assertEventEmitted(resultWithdrawPassedRequest, positionManager, "RequestWithdrawalExecuted", (ev) => {
       return ev.sponsor == sponsor && ev.collateralAmount == withdrawalAmount.toString();
     });
@@ -568,7 +542,7 @@ contract("PerpetualPositionManager", function (accounts) {
 
     // Verify state of positionManager post-withdrawal.
     await checkBalances(toBN(initialSponsorTokens), expectedSponsorCollateral);
-    const sponsorFinalBalance = await collateral.methods.balanceOf(sponsor).call();
+    const sponsorFinalBalance = toBN(await collateral.methods.balanceOf(sponsor).call());
     assert.equal(sponsorFinalBalance.toString(), expectedSponsorFinalBalance.toString());
 
     // Methods are now unlocked again.
@@ -576,35 +550,34 @@ contract("PerpetualPositionManager", function (accounts) {
 
     // First withdrawal that should pass. Ensure event is emitted and return value is correct.
     const withdraw = positionManager.methods.withdraw;
-    amountWithdrawn = await withdraw.methods.call({ rawValue: toWei("1") }).call({ from: sponsor });
+    amountWithdrawn = await withdraw({ rawValue: toWei("1") }).call({ from: sponsor });
     assert.equal(amountWithdrawn.toString(), toWei("1"));
     const resultWithdraw = await withdraw({ rawValue: toWei("1") }).send({ from: sponsor });
     await assertEventEmitted(resultWithdraw, positionManager, "Withdrawal", (ev) => {
       return ev.sponsor == sponsor && ev.collateralAmount.toString() == toWei("1");
     });
 
-    await positionManager.methods.create({ rawValue: toWei("125") }, { rawValue: toWei("100") }).send({ from: sponsor });
+    await positionManager.methods
+      .create({ rawValue: toWei("125") }, { rawValue: toWei("100") })
+      .send({ from: sponsor });
     await positionManager.methods.redeem({ rawValue: toWei("100") }).send({ from: sponsor });
     await checkBalances(toBN(initialSponsorTokens), expectedSponsorCollateral);
 
     // Can't cancel if no withdrawals pending.
-    assert(
-      await didContractThrow(positionManager.methods.cancelWithdrawal().send({ from: sponsor }))
-    );
+    assert(await didContractThrow(positionManager.methods.cancelWithdrawal().send({ from: sponsor })));
 
     // Request to withdraw remaining collateral. Post-fees, this amount should get reduced to the remaining collateral.
-    await positionManager.methods.requestWithdrawal(
-      {
+    await positionManager.methods
+      .requestWithdrawal({
         rawValue: toWei("125"),
-      }).send(
-      { from: sponsor }
-    );
+      })
+      .send({ from: sponsor });
     // Setting fees to 0.00001 per second will charge (0.00001 * 1000) = 0.01 or 1 % of the collateral.
-    await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.00001") });
-    await positionManager.methods.setCurrentTime(
-      parseInt(await positionManager.methods.getCurrentTime().call()) + withdrawalLiveness
-    );
-    resultWithdrawPassedRequest = await positionManager.methods.withdrawPassedRequest({ from: sponsor }).call();
+    await store.methods.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.00001") }).send({ from: accounts[0] });
+    await positionManager.methods
+      .setCurrentTime(parseInt(await positionManager.methods.getCurrentTime().call()) + withdrawalLiveness)
+      .send({ from: accounts[0] });
+    resultWithdrawPassedRequest = await positionManager.methods.withdrawPassedRequest().send({ from: sponsor });
     await assertEventEmitted(resultWithdrawPassedRequest, positionManager, "RequestWithdrawalExecuted", (ev) => {
       return ev.sponsor == sponsor && ev.collateralAmount == toWei("123.75").toString();
     });
@@ -624,7 +597,9 @@ contract("PerpetualPositionManager", function (accounts) {
     await collateral.methods.approve(positionManager.options.address, toWei("100000")).send({ from: other });
 
     // Create the initial positionManager, with a 150% collateralization ratio.
-    await positionManager.methods.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }).send({ from: sponsor });
+    await positionManager.methods
+      .create({ rawValue: toWei("150") }, { rawValue: toWei("100") })
+      .send({ from: sponsor });
 
     // Any withdrawal requests should fail, because withdrawals would reduce the global collateralization ratio.
     assert(await didContractThrow(positionManager.methods.withdraw({ rawValue: toWei("1") }).send({ from: sponsor })));
@@ -653,9 +628,7 @@ contract("PerpetualPositionManager", function (accounts) {
     // resultant CR would be 25/10+6 = 156.3%.
     assert(
       await didContractThrow(
-        positionManager.methods
-          .create({ rawValue: toWei("0") }, { rawValue: toWei("6") }).send({ from: other })
-          
+        positionManager.methods.create({ rawValue: toWei("0") }, { rawValue: toWei("6") }).send({ from: other })
       )
     );
     await positionManager.methods.create({ rawValue: toWei("0") }, { rawValue: toWei("5") }).send({ from: other });
@@ -672,7 +645,9 @@ contract("PerpetualPositionManager", function (accounts) {
         positionManager.methods.create({ rawValue: toWei("0.151") }, { rawValue: toWei("0.1") }).send({ from: sponsor })
       )
     );
-    await positionManager.methods.create({ rawValue: toWei("0.152") }, { rawValue: toWei("0.1") }).send({ from: sponsor });
+    await positionManager.methods
+      .create({ rawValue: toWei("0.152") }, { rawValue: toWei("0.1") })
+      .send({ from: sponsor });
 
     // For the "other" Position:
     // global collateralization ratio = (190.152) / (125.1) = 1.52
@@ -698,11 +673,9 @@ contract("PerpetualPositionManager", function (accounts) {
   it("Non sponsor can't deposit, redeem, or withdraw", async function () {
     // Create an initial large and lowly collateralized positionManager.
     await collateral.methods.approve(positionManager.options.address, initialPositionCollateral).send({ from: other });
-    await positionManager.methods.create(
-      { rawValue: initialPositionCollateral.toString() },
-      { rawValue: initialPositionTokens.toString() }).send(
-      { from: other }
-    );
+    await positionManager.methods
+      .create({ rawValue: initialPositionCollateral.toString() }, { rawValue: initialPositionTokens.toString() })
+      .send({ from: other });
 
     await tokenCurrency.methods.approve(positionManager.options.address, toWei("100000")).send({ from: sponsor });
     await collateral.methods.approve(positionManager.options.address, toWei("100000")).send({ from: sponsor });
@@ -799,7 +772,7 @@ contract("PerpetualPositionManager", function (accounts) {
       toBN((await positionManager.methods.positions(sponsor).call()).tokensOutstanding.rawValue)
     );
     const totalTokensOutstandingDecreased = initialTotalTokensOutstanding.sub(
-      await positionManager.methods.totalTokensOutstanding().call()
+      toBN(await positionManager.methods.totalTokensOutstanding().call())
     );
 
     // Tokens paid back to contract,the token debt decrease and decrease in outstanding should all equal 40 tokens.
@@ -815,12 +788,11 @@ contract("PerpetualPositionManager", function (accounts) {
     // would leave the position at a size of 2 wei, which is less than acceptable minimum.
     assert(
       await didContractThrow(
-        positionManager.methods.repay(
-          {
+        positionManager.methods
+          .repay({
             rawValue: toBN(toWei("60")).subn(3).toString(),
-          }).send(
-          { from: sponsor }
-        )
+          })
+          .send({ from: sponsor })
       )
     );
 
@@ -828,23 +800,21 @@ contract("PerpetualPositionManager", function (accounts) {
     await tokenCurrency.methods.approve(positionManager.options.address, "0").send({ from: sponsor });
     assert(
       await didContractThrow(
-        positionManager.methods.repay(
-          {
+        positionManager.methods
+          .repay({
             rawValue: toBN(toWei("60")).sub(toBN(minSponsorTokens)).toString(),
-          }).send(
-          { from: sponsor }
-        )
+          })
+          .send({ from: sponsor })
       )
     );
     await tokenCurrency.methods.approve(positionManager.options.address, toWei("60")).send({ from: sponsor });
 
     // Can repay up to the minimum sponsor size
-    await positionManager.methods.repay(
-      {
+    await positionManager.methods
+      .repay({
         rawValue: toBN(toWei("60")).sub(toBN(minSponsorTokens)).toString(),
-      }).send(
-      { from: sponsor }
-    );
+      })
+      .send({ from: sponsor });
 
     assert.equal(
       (await positionManager.methods.positions(sponsor).call()).tokensOutstanding.rawValue,
@@ -901,11 +871,11 @@ contract("PerpetualPositionManager", function (accounts) {
     await positionManager.methods.create({ rawValue: toWei("1") }, { rawValue: toWei("1") }).send({ from: sponsor });
 
     // Set store fees to 1% per second.
-    await store.methods.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.01") }).send({from:accounts[0]});
+    await store.methods.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.01") }).send({ from: accounts[0] });
 
     // Move time in the contract forward by 1 second to capture a 1% fee.
     const startTime = toBN(await positionManager.methods.getCurrentTime().call());
-    await positionManager.methods.setCurrentTime(startTime.addn(1)).send({from:accounts[0]});
+    await positionManager.methods.setCurrentTime(startTime.addn(1)).send({ from: accounts[0] });
 
     // getCollateral for a given sponsor should correctly reflect the pending regular fee that has not yet been paid.
     // As no function calls have been made after incrementing time, the fees are still in a "pending" state.
@@ -924,9 +894,9 @@ contract("PerpetualPositionManager", function (accounts) {
 
     // Pay the fees, check the return value, and then check the collateral and the store balance.
     const payRegularFees = positionManager.methods.payRegularFees();
-    const feesPaid = toBN(await payRegularFees.methods.call());
+    const feesPaid = await payRegularFees.call();
     assert.equal(feesPaid.toString(), toWei("0.02"));
-    const payFeesResult = await payRegularFees.send({from:accounts[0]});
+    const payFeesResult = await payRegularFees.send({ from: accounts[0] });
     await assertEventEmitted(payFeesResult, positionManager, "RegularFeesPaid", (ev) => {
       return ev.regularFee.toString() === toWei("0.02") && ev.lateFee.toString() === "0";
     });
@@ -940,8 +910,8 @@ contract("PerpetualPositionManager", function (accounts) {
     // Calling `payRegularFees()` more than once in the same block does not emit a RegularFeesPaid event.
     const feesPaidRepeat = await payRegularFees.call();
     assert.equal(feesPaidRepeat.toString(), "0");
-    const payFeesRepeatResult = await payRegularFees.send({from:accounts[0]});
-    truffleAssert.eventNotEmitted(payFeesRepeatResult, "RegularFeesPaid");
+    const payFeesRepeatResult = await payRegularFees.send({ from: accounts[0] });
+    await assertEventNotEmitted(payFeesRepeatResult, positionManager, "RegularFeesPaid");
 
     // Ensure that fees are not applied to new collateral.
     // TODO: value chosen specifically to avoid rounding errors -- see #873.
@@ -950,7 +920,7 @@ contract("PerpetualPositionManager", function (accounts) {
     assert.equal(collateralAmount.rawValue.toString(), toWei("99.99"));
 
     // Ensure that the conversion works correctly for withdrawals.
-    const expectedSponsorBalance = (await collateral.methods.balanceOf(sponsor).call()).add(toBN(toWei("1")));
+    const expectedSponsorBalance = toBN(await collateral.methods.balanceOf(sponsor).call()).add(toBN(toWei("1")));
     await positionManager.methods.withdraw({ rawValue: toWei("1") }).send({ from: sponsor });
     assert.equal((await collateral.methods.balanceOf(sponsor).call()).toString(), expectedSponsorBalance.toString());
     assert.equal((await positionManager.methods.getCollateral(sponsor).call()).toString(), toWei("98.99"));
@@ -964,12 +934,12 @@ contract("PerpetualPositionManager", function (accounts) {
     // pay > 100% fees on the PfC. This should pay a maximum of 100% of the PfC without reverting.
     const pfc = await positionManager.methods.pfc().call();
     const feesOwed = (
-      await store.computeRegularFee(startTime.addn(1), startTime.addn(102), { rawValue: pfc.toString() })
+      await store.methods.computeRegularFee(startTime.addn(1), startTime.addn(102), { rawValue: pfc.toString() }).call()
     ).regularFee;
     assert.isTrue(Number(pfc.toString()) < Number(feesOwed.toString()));
     const farIntoTheFutureSeconds = 502;
-    await positionManager.methods.setCurrentTime(startTime.addn(farIntoTheFutureSeconds)).send({from:accounts[0]});
-    const payTooManyFeesResult = await positionManager.methods.payRegularFees().call();
+    await positionManager.methods.setCurrentTime(startTime.addn(farIntoTheFutureSeconds)).send({ from: accounts[0] });
+    const payTooManyFeesResult = await positionManager.methods.payRegularFees().send({ from: accounts[0] });
     await assertEventEmitted(payTooManyFeesResult, positionManager, "RegularFeesPaid", (ev) => {
       // There should be 98.99 + 0.99 = 99.98 collateral remaining in the contract.
       return ev.regularFee.toString() === toWei("99.98") && ev.lateFee.toString() === "0";
@@ -982,9 +952,11 @@ contract("PerpetualPositionManager", function (accounts) {
     await store.methods.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" }).send({ from: accounts[0] });
 
     // Check that no event is fired if the fees owed are 0.
-    await positionManager.methods.setCurrentTime(startTime.addn(farIntoTheFutureSeconds + 1)).send({from:accounts[0]});
-    const payZeroFeesResult = await payRegularFees();
-    truffleAssert.eventNotEmitted(payZeroFeesResult, "RegularFeesPaid");
+    await positionManager.methods
+      .setCurrentTime(startTime.addn(farIntoTheFutureSeconds + 1))
+      .send({ from: accounts[0] });
+    const payZeroFeesResult = await payRegularFees.send({ from: accounts[0] });
+    await assertEventNotEmitted(payZeroFeesResult, positionManager, "RegularFeesPaid");
   });
 
   it("Gulps non-PfC collateral into PfC", async function () {
@@ -1034,9 +1006,7 @@ contract("PerpetualPositionManager", function (accounts) {
     await positionManager.methods.setCurrentTime(shutdownTimestamp).send({ from: accounts[0] });
 
     // Should revert if emergency shutdown initialized by non-FinancialContractsAdmin (governor).
-    assert(
-      await didContractThrow(positionManager.methods.emergencyShutdown().send({ from: other }))
-    );
+    assert(await didContractThrow(positionManager.methods.emergencyShutdown().send({ from: other })));
 
     // FinancialContractAdmin can initiate emergency shutdown.
     await financialContractsAdmin.methods
@@ -1062,18 +1032,12 @@ contract("PerpetualPositionManager", function (accounts) {
     );
 
     // Before the DVM has resolved a price withdrawals should be disabled (as with settlement at maturity).
-    assert(
-      await didContractThrow(
-        positionManager.methods.settleEmergencyShutdown().send({ from: sponsor })
-      )
-    );
+    assert(await didContractThrow(positionManager.methods.settleEmergencyShutdown().send({ from: sponsor })));
 
     // All contract functions should also blocked as emergency shutdown.
     assert(
       await didContractThrow(
-        positionManager.methods
-          .create({ rawValue: toWei("1") }, { rawValue: toWei("1") }).send({ from: sponsor })
-          
+        positionManager.methods.create({ rawValue: toWei("1") }, { rawValue: toWei("1") }).send({ from: sponsor })
       )
     );
     assert(await didContractThrow(positionManager.methods.deposit({ rawValue: toWei("1") }).send({ from: sponsor })));
@@ -1084,21 +1048,19 @@ contract("PerpetualPositionManager", function (accounts) {
         positionManager.methods.requestWithdrawal({ rawValue: toWei("1") }).send({ from: sponsor })
       )
     );
-    assert(
-      await didContractThrow(
-        positionManager.methods.withdrawPassedRequest().send({ from: sponsor })
-      )
-    );
+    assert(await didContractThrow(positionManager.methods.withdrawPassedRequest().send({ from: sponsor })));
 
     // UMA token holders now vote to resolve of the price request to enable the emergency shutdown to continue.
     // Say they resolve to a price of 1.1 USD per synthetic token.
-    await mockOracle.methods.pushPrice(priceFeedIdentifier, shutdownTimestamp, toWei("1.1")).send({from:accounts[0]});
+    await mockOracle.methods
+      .pushPrice(priceFeedIdentifier, shutdownTimestamp, toWei("1.1"))
+      .send({ from: accounts[0] });
 
     // Token holders (`sponsor` and `tokenHolder`) should now be able to withdraw post emergency shutdown.
     // From the token holder's perspective, they are entitled to the value of their tokens, notated in the underlying.
     // They have 50 tokens settled at a price of 1.1 should yield 55 units of underling (or 55 USD as underlying is WETH).
     const tokenHolderInitialCollateral = toBN(await collateral.methods.balanceOf(tokenHolder).call());
-    const tokenHolderInitialSynthetic = await tokenCurrency.methods.balanceOf(tokenHolder).call();
+    const tokenHolderInitialSynthetic = toBN(await tokenCurrency.methods.balanceOf(tokenHolder).call());
     assert.equal(tokenHolderInitialSynthetic, tokenHolderTokens);
 
     // Approve the tokens to be moved by the contract and execute the settlement.
@@ -1107,16 +1069,12 @@ contract("PerpetualPositionManager", function (accounts) {
       .send({ from: tokenHolder });
     // Check that settlement fails if missing Burner role.
     await tokenCurrency.methods.removeBurner(positionManager.options.address).send({ from: accounts[0] });
-    assert(
-      await didContractThrow(
-        positionManager.methods.settleEmergencyShutdown().send({ from: tokenHolder })
-      )
-    );
+    assert(await didContractThrow(positionManager.methods.settleEmergencyShutdown().send({ from: tokenHolder })));
     await tokenCurrency.methods.addBurner(positionManager.options.address).send({ from: accounts[0] });
     await positionManager.methods.settleEmergencyShutdown().send({ from: tokenHolder });
     assert.equal((await positionManager.methods.emergencyShutdownPrice().call()).toString(), toWei("1.1"));
     const tokenHolderFinalCollateral = toBN(await collateral.methods.balanceOf(tokenHolder).call());
-    const tokenHolderFinalSynthetic = await tokenCurrency.methods.balanceOf(tokenHolder).call();
+    const tokenHolderFinalSynthetic = toBN(await tokenCurrency.methods.balanceOf(tokenHolder).call());
     const expectedTokenHolderFinalCollateral = toWei("55");
     assert.equal(tokenHolderFinalCollateral.sub(tokenHolderInitialCollateral), expectedTokenHolderFinalCollateral);
 
@@ -1124,15 +1082,17 @@ contract("PerpetualPositionManager", function (accounts) {
     assert.equal(tokenHolderFinalSynthetic, 0);
 
     // If the tokenHolder tries to withdraw again they should get no additional tokens; all have been withdrawn (same as normal expiratory).
-    const tokenHolderInitialCollateral_secondWithdrawal = await collateral.methods.balanceOf(tokenHolder).call();
-    const tokenHolderInitialSynthetic_secondWithdrawal = await tokenCurrency.methods.balanceOf(tokenHolder).call();
+    const tokenHolderInitialCollateral_secondWithdrawal = toBN(await collateral.methods.balanceOf(tokenHolder).call());
+    const tokenHolderInitialSynthetic_secondWithdrawal = toBN(
+      await tokenCurrency.methods.balanceOf(tokenHolder).call()
+    );
     assert.equal(tokenHolderInitialSynthetic, tokenHolderTokens);
     await tokenCurrency.methods
       .approve(positionManager.options.address, tokenHolderInitialSynthetic)
       .send({ from: tokenHolder });
     await positionManager.methods.settleEmergencyShutdown().send({ from: tokenHolder });
-    const tokenHolderFinalCollateral_secondWithdrawal = await collateral.methods.balanceOf(tokenHolder).call();
-    const tokenHolderFinalSynthetic_secondWithdrawal = await tokenCurrency.methods.balanceOf(tokenHolder).call();
+    const tokenHolderFinalCollateral_secondWithdrawal = toBN(await collateral.methods.balanceOf(tokenHolder).call());
+    const tokenHolderFinalSynthetic_secondWithdrawal = toBN(await tokenCurrency.methods.balanceOf(tokenHolder).call());
     assert.equal(
       tokenHolderInitialCollateral_secondWithdrawal.toString(),
       tokenHolderFinalCollateral_secondWithdrawal.toString()
@@ -1147,16 +1107,16 @@ contract("PerpetualPositionManager", function (accounts) {
     // of their synthetics they sold is 110. Their redeemed amount for this excess collateral is the difference between the two.
     // The sponsor also has 50 synthetic tokens that they did not sell.
     // This makes their expected redemption = 150 - 110 + 50 * 1.1 = 95
-    const sponsorInitialCollateral = await collateral.methods.balanceOf(sponsor).call();
-    const sponsorInitialSynthetic = await tokenCurrency.methods.balanceOf(sponsor).call();
+    const sponsorInitialCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
+    const sponsorInitialSynthetic = toBN(await tokenCurrency.methods.balanceOf(sponsor).call());
 
     // Approve tokens to be moved by the contract and execute the settlement.
     await tokenCurrency.methods
       .approve(positionManager.options.address, sponsorInitialSynthetic)
       .send({ from: sponsor });
     await positionManager.methods.settleEmergencyShutdown().send({ from: sponsor });
-    const sponsorFinalCollateral = await collateral.methods.balanceOf(sponsor).call();
-    const sponsorFinalSynthetic = await tokenCurrency.methods.balanceOf(sponsor).call();
+    const sponsorFinalCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
+    const sponsorFinalSynthetic = toBN(await tokenCurrency.methods.balanceOf(sponsor).call());
 
     // The token Sponsor should gain the value of their synthetics in underlying
     // + their excess collateral from the over collateralization in their position
@@ -1189,7 +1149,9 @@ contract("PerpetualPositionManager", function (accounts) {
     await collateral.methods.approve(positionManager.options.address, toWei("100000")).send({ from: other });
     await tokenCurrency.methods.approve(positionManager.options.address, toWei("100000")).send({ from: sponsor });
     await tokenCurrency.methods.approve(positionManager.options.address, toWei("100000")).send({ from: other });
-    await positionManager.methods.create({ rawValue: toWei("150") }, { rawValue: toWei("100") }).send({ from: sponsor });
+    await positionManager.methods
+      .create({ rawValue: toWei("150") }, { rawValue: toWei("100") })
+      .send({ from: sponsor });
 
     assert.equal((await positionManager.methods.fundingRate().call()).cumulativeMultiplier.toString(), toWei("1.05"));
 
@@ -1219,7 +1181,13 @@ contract("PerpetualPositionManager", function (accounts) {
     ); // 1.0395 * 1.01 = 1.049895
 
     // deposit
-    await timer.methods.setCurrentTime(toBN(await timer.methods.getCurrentTime().call()).add(toBN(10000)).toString()).send({from:accounts[0]});
+    await timer.methods
+      .setCurrentTime(
+        toBN(await timer.methods.getCurrentTime().call())
+          .add(toBN(10000))
+          .toString()
+      )
+      .send({ from: accounts[0] });
     await positionManager.methods.deposit({ rawValue: toWei("1") }).send({ from: sponsor });
     assert.equal(
       (await positionManager.methods.fundingRate().call()).cumulativeMultiplier.toString(),
@@ -1228,7 +1196,13 @@ contract("PerpetualPositionManager", function (accounts) {
 
     // withdraw. To do a "fast" withdraw need to have the position above the GCR.
     await positionManager.methods.create({ rawValue: toWei("200") }, { rawValue: toWei("100") }).send({ from: other }); // position above GCR
-    await timer.methods.setCurrentTime(toBN(await timer.methods.getCurrentTime().call()).add(toBN(10000)).toString()).send({from:accounts[0]});
+    await timer.methods
+      .setCurrentTime(
+        toBN(await timer.methods.getCurrentTime().call())
+          .add(toBN(10000))
+          .toString()
+      )
+      .send({ from: accounts[0] });
     await positionManager.methods.withdraw({ rawValue: toWei("1") }).send({ from: other });
     assert.equal(
       (await positionManager.methods.fundingRate().call()).cumulativeMultiplier.toString(),
@@ -1237,7 +1211,13 @@ contract("PerpetualPositionManager", function (accounts) {
 
     // cancelWithdrawal
     await positionManager.methods.requestWithdrawal({ rawValue: toWei("1") }).send({ from: other });
-    await timer.methods.setCurrentTime((await timer.methods.getCurrentTime().call()).add(toBN(10000)).toString()).send({from:accounts[0]});
+    await timer.methods
+      .setCurrentTime(
+        toBN(await timer.methods.getCurrentTime().call())
+          .add(toBN(10000))
+          .toString()
+      )
+      .send({ from: accounts[0] });
     await positionManager.methods.cancelWithdrawal().send({ from: other });
     assert.equal(
       (await positionManager.methods.fundingRate().call()).cumulativeMultiplier.toString(),
@@ -1252,7 +1232,13 @@ contract("PerpetualPositionManager", function (accounts) {
     ); // 1.0709978895 * 1.01 = 1.081707868395
 
     // redeem
-    await timer.setCurrentTime((await timer.methods.getCurrentTime().call()).add(toBN(10000)).toString());
+    await timer.methods
+      .setCurrentTime(
+        toBN(await timer.methods.getCurrentTime().call())
+          .add(toBN(10000))
+          .toString()
+      )
+      .send({ from: accounts[0] });
     await positionManager.methods.redeem({ rawValue: toWei("1") }).send({ from: sponsor });
     assert.equal(
       (await positionManager.methods.fundingRate().call()).cumulativeMultiplier.toString(),
@@ -1260,7 +1246,13 @@ contract("PerpetualPositionManager", function (accounts) {
     ); // 1.081707868395 * 1.01 = 1.09252494707895
 
     // repay
-    await timer.setCurrentTime((await timer.methods.getCurrentTime().call()).add(toBN(10000)).toString());
+    await timer.methods
+      .setCurrentTime(
+        toBN(await timer.methods.getCurrentTime().call())
+          .add(toBN(10000))
+          .toString()
+      )
+      .send({ from: accounts[0] });
     await positionManager.methods.repay({ rawValue: toWei("1") }).send({ from: sponsor });
     assert.equal(
       (await positionManager.methods.fundingRate().call()).cumulativeMultiplier.toString(),
@@ -1268,7 +1260,13 @@ contract("PerpetualPositionManager", function (accounts) {
     ); // 1.09252494707895 * 1.01 = 1.1034501965497395
 
     // can directly call applyFundingRate
-    await timer.setCurrentTime((await timer.methods.getCurrentTime().call()).add(toBN(10000)).toString());
+    await timer.methods
+      .setCurrentTime(
+        toBN(await timer.methods.getCurrentTime().call())
+          .add(toBN(10000))
+          .toString()
+      )
+      .send({ from: accounts[0] });
     await positionManager.methods.applyFundingRate().send({ from: other });
     assert.equal(
       (await positionManager.methods.fundingRate().call()).cumulativeMultiplier.toString(),
@@ -1276,7 +1274,13 @@ contract("PerpetualPositionManager", function (accounts) {
     ); // 1.1034501965497395 * 1.01 = 1.114484698515236895
 
     // emergencyShutdown
-    await timer.setCurrentTime((await timer.methods.getCurrentTime().call()).add(toBN(10000)).toString());
+    await timer.methods
+      .setCurrentTime(
+        toBN(await timer.methods.getCurrentTime().call())
+          .add(toBN(10000))
+          .toString()
+      )
+      .send({ from: accounts[0] });
     await financialContractsAdmin.methods
       .callEmergencyShutdown(positionManager.options.address)
       .send({ from: accounts[0] });
@@ -1287,8 +1291,16 @@ contract("PerpetualPositionManager", function (accounts) {
 
     // settleEmergencyShutdown SHOULD NOT update the cumulativeFundingRateMultiplier as emergency shutdown locks all state variables.
     const shutdownTimestamp = Number(await positionManager.methods.getCurrentTime().call());
-    await timer.setCurrentTime((await timer.methods.getCurrentTime().call()).add(toBN(10000)).toString());
-    await mockOracle.pushPrice(priceFeedIdentifier, shutdownTimestamp, toWei("1.1"));
+    await timer.methods
+      .setCurrentTime(
+        toBN(await timer.methods.getCurrentTime().call())
+          .add(toBN(10000))
+          .toString()
+      )
+      .send({ from: accounts[0] });
+    await mockOracle.methods
+      .pushPrice(priceFeedIdentifier, shutdownTimestamp, toWei("1.1"))
+      .send({ from: accounts[0] });
     await positionManager.methods.settleEmergencyShutdown().send({ from: tokenHolder });
     assert.equal(
       (await positionManager.methods.fundingRate().call()).cumulativeMultiplier.toString(),
@@ -1301,7 +1313,9 @@ contract("PerpetualPositionManager", function (accounts) {
     // collateral is WETH with a value of 1USD and the synthetic is some fictional stock or commodity.
     await collateral.methods.approve(positionManager.options.address, toWei("100000")).send({ from: sponsor });
 
-    await positionManager.methods.create({ rawValue: toWei("200") }, { rawValue: toWei("100") }).send({ from: sponsor });
+    await positionManager.methods
+      .create({ rawValue: toWei("200") }, { rawValue: toWei("100") })
+      .send({ from: sponsor });
 
     // Transfer half the tokens from the sponsor to a tokenHolder. IRL this happens through the sponsor selling tokens.
     const tokenHolderTokens = toWei("50");
@@ -1324,7 +1338,9 @@ contract("PerpetualPositionManager", function (accounts) {
 
     // UMA token holders now vote to resolve of the price request to enable the emergency shutdown to continue.
     // Say they resolve to a price of 1.1 USD per synthetic token.
-    await mockOracle.methods.pushPrice(priceFeedIdentifier, shutdownTimestamp, toWei("1.1")).send({from:accounts[0]});
+    await mockOracle.methods
+      .pushPrice(priceFeedIdentifier, shutdownTimestamp, toWei("1.1"))
+      .send({ from: accounts[0] });
 
     // Token holders (`sponsor` and `tokenHolder`) should now be able to withdraw post emergency shutdown.
     // From the token holder's perspective, they are entitled to the value of their tokens, notated in the underlying.
@@ -1428,7 +1444,7 @@ contract("PerpetualPositionManager", function (accounts) {
 
       // Advance the contract one second and make the contract pay its regular fees
       let startTime = parseInt(await positionManager.methods.getCurrentTime().call());
-      await positionManager.methods.setCurrentTime(startTime + 1).send({from:accounts[0]});
+      await positionManager.methods.setCurrentTime(startTime + 1).send({ from: accounts[0] });
       await positionManager.methods.payRegularFees().send({ from: accounts[0] });
 
       // Set the store fees back to 0 to prevent fee multiplier from changing for remainder of the test.
@@ -1466,7 +1482,9 @@ contract("PerpetualPositionManager", function (accounts) {
       // feed. With 20 units of outstanding tokens this results in a token redemption value of: TRV = 20 * 1.2 = 24 USD.
       const redemptionPrice = 1.2;
       const redemptionPriceWei = toWei(redemptionPrice.toString());
-      await mockOracle.methods.pushPrice(priceFeedIdentifier, parseInt(emergencyShutdownTime), redemptionPriceWei).send({from:accounts[0]});
+      await mockOracle.methods
+        .pushPrice(priceFeedIdentifier, parseInt(emergencyShutdownTime), redemptionPriceWei)
+        .send({ from: accounts[0] });
 
       // Transfer half the tokens from the sponsor to a tokenHolder. IRL this happens through the sponsor selling tokens.
       const tokenHolderTokens = "10";
@@ -1555,7 +1573,7 @@ contract("PerpetualPositionManager", function (accounts) {
       const initialCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
       await positionManager.methods.requestWithdrawal({ rawValue: "12" }).send({ from: sponsor });
       let startTime = parseInt(await positionManager.methods.getCurrentTime().call());
-      await positionManager.methods.setCurrentTime(startTime + withdrawalLiveness).send({from:accounts[0]});
+      await positionManager.methods.setCurrentTime(startTime + withdrawalLiveness).send({ from: accounts[0] });
       await positionManager.methods.withdrawPassedRequest().send({ from: sponsor });
       const finalCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
 
@@ -1613,7 +1631,13 @@ contract("PerpetualPositionManager", function (accounts) {
       );
 
       // Advance by 1 second and check precision loss.
-      await timer.methods.setCurrentTime(toBN(await timer.methods.getCurrentTime().call()).add(toBN(1)).toString()).send({from:accounts[0]});
+      await timer.methods
+        .setCurrentTime(
+          toBN(await timer.methods.getCurrentTime().call())
+            .add(toBN(1))
+            .toString()
+        )
+        .send({ from: accounts[0] });
       await positionManager.methods.applyFundingRate().send({ from: accounts[0] });
       assert.equal(
         (await positionManager.methods.fundingRate().call()).cumulativeMultiplier.toString(),
@@ -1628,7 +1652,13 @@ contract("PerpetualPositionManager", function (accounts) {
       assert.equal((await positionManager.methods.fundingRate().call()).cumulativeMultiplier.toString(), toWei("1"));
 
       // Advance by 1 second and check precision loss.
-      await timer.methods.setCurrentTime(toBN(await timer.methods.getCurrentTime().call()).add(toBN(1)).toString()).send({from:accounts[0]});
+      await timer.methods
+        .setCurrentTime(
+          toBN(await timer.methods.getCurrentTime().call())
+            .add(toBN(1))
+            .toString()
+        )
+        .send({ from: accounts[0] });
       await positionManager.methods.applyFundingRate().send({ from: accounts[0] });
       assert.equal(
         (await positionManager.methods.fundingRate().call()).cumulativeMultiplier.toString(),
@@ -1636,7 +1666,9 @@ contract("PerpetualPositionManager", function (accounts) {
       );
 
       // Advance by another second and check precision loss (i.e. the lower decimals don't affect the outcome).
-      await timer.methods.setCurrentTime((await timer.methods.getCurrentTime().call()).add(toBN(1)).toString()).send({from:accounts[0]});
+      await timer.methods
+        .setCurrentTime(parseInt(await timer.methods.getCurrentTime().call()) + 1)
+        .send({ from: accounts[0] });
       await positionManager.methods.applyFundingRate().send({ from: accounts[0] });
       assert.equal(
         (await positionManager.methods.fundingRate().call()).cumulativeMultiplier.toString(),
@@ -1702,7 +1734,9 @@ contract("PerpetualPositionManager", function (accounts) {
 
     // Push a settlement price into the mock oracle to simulate a DVM vote. Say settlement occurs at 1.2 Stock/USD for the price
     // feed. With 200 units of outstanding tokens this results in a token redemption value of: TRV = 200 * 1.2 = 240 USD.
-    await mockOracle.methods.pushPrice(priceFeedIdentifier, emergencyShutdownTime, toWei("1.2")).send({from:accounts[0]});
+    await mockOracle.methods
+      .pushPrice(priceFeedIdentifier, emergencyShutdownTime, toWei("1.2"))
+      .send({ from: accounts[0] });
 
     // Token holder should receive 120 collateral tokens for their 100 synthetic tokens.
     let initialCollateral = toBN(await collateral.methods.balanceOf(tokenHolder).call());
@@ -1720,7 +1754,7 @@ contract("PerpetualPositionManager", function (accounts) {
       .send({ from: contractDeployer });
 
     // Settle emergency shutdown should still work even if the new oracle has no price.
-    initialCollateral = await collateral.methods.balanceOf(sponsor).call();
+    initialCollateral = toBN(await collateral.methods.balanceOf(sponsor).call());
     await positionManager.methods.settleEmergencyShutdown().send({ from: sponsor });
     collateralPaid = toBN(await collateral.methods.balanceOf(sponsor).call()).sub(initialCollateral);
 
@@ -1729,12 +1763,14 @@ contract("PerpetualPositionManager", function (accounts) {
 
     // Push a different price to the new oracle to ensure the contract still uses the old price.
     await newMockOracle.methods.requestPrice(priceFeedIdentifier, emergencyShutdownTime).send({ from: accounts[0] });
-    await newMockOracle.pushPrice(priceFeedIdentifier, emergencyShutdownTime, toWei("0.8"));
+    await newMockOracle.methods
+      .pushPrice(priceFeedIdentifier, emergencyShutdownTime, toWei("0.8"))
+      .send({ from: accounts[0] });
 
     // Second token holder should receive the same payout as the first despite the oracle price being changed.
-    initialCollateral = await collateral.methods.balanceOf(other).call();
+    initialCollateral = toBN(await collateral.methods.balanceOf(other).call());
     await positionManager.methods.settleEmergencyShutdown().send({ from: other });
-    collateralPaid = (await collateral.methods.balanceOf(other).call()).sub(initialCollateral);
+    collateralPaid = toBN(await collateral.methods.balanceOf(other).call()).sub(initialCollateral);
     assert.equal(collateralPaid, toWei("120"));
   });
 
@@ -1744,7 +1780,9 @@ contract("PerpetualPositionManager", function (accounts) {
     await tokenCurrency.methods.approve(positionManager.options.address, toWei("100000")).send({ from: tokenHolder });
 
     // For the price to resolve to 0 the outcome is likely a binary event (1 for true, 0 for false.)
-    await positionManager.methods.create({ rawValue: toWei("300") }, { rawValue: toWei("200") }).send({ from: sponsor });
+    await positionManager.methods
+      .create({ rawValue: toWei("300") }, { rawValue: toWei("200") })
+      .send({ from: sponsor });
     await tokenCurrency.methods.transfer(tokenHolder, toWei("100")).send({ from: sponsor });
 
     // Emergency shutdown contract to enable settlement.
@@ -1882,7 +1920,7 @@ contract("PerpetualPositionManager", function (accounts) {
 
     // Create a test net token with non-standard delimitation like USDC (6 decimals) and mint tokens.
     const USDCToken = await TestnetERC20.new("USDC", "USDC", 6).send({ from: accounts[0] });
-    await USDCToken.methods.allocateTo(sponsor, toWei("100")).send({from: accounts[0]});
+    await USDCToken.methods.allocateTo(sponsor, toWei("100")).send({ from: accounts[0] });
 
     const nonStandardToken = await SyntheticToken.new(syntheticName, syntheticSymbol, 6).send({ from: accounts[0] });
     let custompositionManager = await PerpetualPositionManager.new(
@@ -1896,8 +1934,7 @@ contract("PerpetualPositionManager", function (accounts) {
       configStore.options.address, // _configStoreAddress
       { rawValue: toWei("1") }, // _tokenScaling
       timer.options.address // _timerAddress
-    ).send({ from: contractDeployer }
-    );
+    ).send({ from: contractDeployer });
     tokenCurrency = await SyntheticToken.at(await custompositionManager.methods.tokenCurrency().call());
     await tokenCurrency.methods.addMinter(custompositionManager.options.address).send({ from: accounts[0] });
     await tokenCurrency.methods.addBurner(custompositionManager.options.address).send({ from: accounts[0] });

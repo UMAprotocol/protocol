@@ -1,23 +1,25 @@
 const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
+const { getContract, assertEventEmitted, assertEventNotEmitted } = hre;
 const { didContractThrow } = require("@uma/common");
-
-const truffleAssert = require("truffle-assertions");
+const { assert } = require("chai");
 
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 
-contract("IdentifierWhitelist", function (accounts) {
-  const owner = accounts[0];
-  const rando = accounts[1];
+describe("IdentifierWhitelist", function () {
+  let accounts;
+  let owner;
+  let rando;
 
   let identifierWhitelist;
-  let randomIdentifierToAdd;
+  const randomIdentifierToAdd = web3.utils.utf8ToHex("random-identifier");
+
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+    [owner, rando] = accounts;
+  });
 
   beforeEach(async function () {
-    await runDefaultFixture(hre);
     identifierWhitelist = await IdentifierWhitelist.new({ from: owner }).send({ from: accounts[0] });
-    randomIdentifierToAdd = web3.utils.utf8ToHex("random-identifier");
   });
 
   it("Only Owner", async function () {
@@ -46,9 +48,9 @@ contract("IdentifierWhitelist", function (accounts) {
     // Owner can add to the whitelist.
     const result = await identifierWhitelist.methods
       .addSupportedIdentifier(randomIdentifierToAdd)
-      .call({ from: owner });
+      .send({ from: owner });
 
-    truffleAssert.eventEmitted(result, "SupportedIdentifierAdded", (ev) => {
+    await assertEventEmitted(result, identifierWhitelist, "SupportedIdentifierAdded", (ev) => {
       return web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(randomIdentifierToAdd);
     });
 
@@ -67,9 +69,9 @@ contract("IdentifierWhitelist", function (accounts) {
     await identifierWhitelist.methods.addSupportedIdentifier(identifierToRemove).send({ from: owner });
 
     // Remove identifierToRemove
-    let result = await identifierWhitelist.methods.removeSupportedIdentifier(identifierToRemove).call({ from: owner });
+    let result = await identifierWhitelist.methods.removeSupportedIdentifier(identifierToRemove).send({ from: owner });
 
-    truffleAssert.eventEmitted(result, "SupportedIdentifierRemoved", (ev) => {
+    await assertEventEmitted(result, identifierWhitelist, "SupportedIdentifierRemoved", (ev) => {
       return web3.utils.hexToUtf8(ev.identifier) == web3.utils.hexToUtf8(identifierToRemove);
     });
 
@@ -78,17 +80,17 @@ contract("IdentifierWhitelist", function (accounts) {
     assert.isFalse(await identifierWhitelist.methods.isIdentifierSupported(identifierToRemove).call());
 
     // Double remove from whitelist. Shouldn't error, but shouldn't generate an event.
-    result = await identifierWhitelist.methods.removeSupportedIdentifier(identifierToRemove).call({ from: owner });
-    truffleAssert.eventNotEmitted(result, "SupportedIdentifierRemoved");
+    result = await identifierWhitelist.methods.removeSupportedIdentifier(identifierToRemove).send({ from: owner });
+    await assertEventNotEmitted(result, identifierWhitelist, "SupportedIdentifierRemoved");
   });
 
   it("Add to whitelist twice", async function () {
     await identifierWhitelist.methods.addSupportedIdentifier(randomIdentifierToAdd).send({ from: owner });
     const result = await identifierWhitelist.methods
       .addSupportedIdentifier(randomIdentifierToAdd)
-      .call({ from: owner });
+      .send({ from: owner });
 
-    truffleAssert.eventNotEmitted(result, "SupportedIdentifierAdded");
+    await assertEventNotEmitted(result, identifierWhitelist, "SupportedIdentifierAdded");
 
     assert.isTrue(await identifierWhitelist.methods.isIdentifierSupported(randomIdentifierToAdd).call());
   });

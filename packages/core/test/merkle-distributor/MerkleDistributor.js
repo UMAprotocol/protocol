@@ -1,9 +1,7 @@
 const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
+const { getContract, assertEventEmitted } = hre;
 const { MerkleTree } = require("@uma/merkle-distributor");
 const SamplePayouts = require("./SamplePayout.json");
-const truffleAssert = require("truffle-assertions");
 const { toBN, toWei, utf8ToHex, padRight } = web3.utils;
 const { MAX_UINT_VAL, didContractThrow } = require("@uma/common");
 const { assert } = require("chai");
@@ -63,15 +61,20 @@ const assertApproximate = (expectedVal, testVal, errorPercent = 0.01) => {
   assert.isTrue(testVal <= expectedVal * (1 + errorPercent) && testVal >= expectedVal * (1 - errorPercent));
 };
 
-contract("MerkleDistributor.js", function (accounts) {
-  let contractCreator = accounts[0];
-  let rando = accounts[1];
+describe("MerkleDistributor.js", function () {
+  let accounts;
+  let contractCreator;
+  let rando;
+
+  before(async () => {
+    accounts = await web3.eth.getAccounts();
+    [contractCreator, rando] = accounts;
+  });
 
   beforeEach(async () => {
-    await runDefaultFixture(hre);
     merkleDistributor = await MerkleDistributor.new().send({ from: accounts[0] });
 
-    rewardToken = await Token.new("UMA KPI Options July 2021", "uKIP-JUL", 18, { from: contractCreator });
+    rewardToken = await Token.new("UMA KPI Options July 2021", "uKIP-JUL", 18).send({ from: contractCreator });
     await rewardToken.methods.addMember(1, contractCreator).send({ from: contractCreator });
     await rewardToken.methods.mint(contractCreator, MAX_UINT_VAL).send({ from: contractCreator });
     await rewardToken.methods.approve(merkleDistributor.options.address, MAX_UINT_VAL).send({ from: contractCreator });
@@ -105,18 +108,14 @@ contract("MerkleDistributor.js", function (accounts) {
 
       // Seed the merkleDistributor with the root of the tree and additional information.
 
-      const seedTxn = await merkleDistributor.setWindow(
-        totalRewardAmount,
-        rewardToken.options.address,
-        merkleTree.getRoot(),
-        sampleIpfsHash,
-        {
+      const seedTxn = await merkleDistributor.methods
+        .setWindow(totalRewardAmount, rewardToken.options.address, merkleTree.getRoot(), sampleIpfsHash)
+        .send({
           from: contractCreator,
-        }
-      );
+        });
 
       // Check event logs.
-      truffleAssert.eventEmitted(seedTxn, "CreatedWindow", (ev) => {
+      await assertEventEmitted(seedTxn, merkleDistributor, "CreatedWindow", (ev) => {
         return (
           ev.windowIndex.toString() === windowIndex.toString() &&
           ev.rewardsDeposited.toString() === totalRewardAmount.toString() &&
@@ -142,23 +141,24 @@ contract("MerkleDistributor.js", function (accounts) {
       for (let i = 0; i < rewardLeafs.length; i++) {
         leaf = rewardLeafs[i];
         claimerProof = merkleTree.getProof(leaf.leaf);
-        const claimerBalanceBefore = await rewardToken.methods.balanceOf(leaf.account).call();
-        const contractBalanceBefore = await rewardToken.methods.balanceOf(merkleDistributor.options.address).call();
+        const claimerBalanceBefore = toBN(await rewardToken.methods.balanceOf(leaf.account).call());
+        const contractBalanceBefore = toBN(
+          await rewardToken.methods.balanceOf(merkleDistributor.options.address).call()
+        );
 
         // Claim the rewards, providing the information needed to re-build the tree & verify the proof.
         // Note: Anyone can claim on behalf of anyone else.
-        const claimTxn = await merkleDistributor.claim(
-          {
+        const claimTxn = await merkleDistributor.methods
+          .claim({
             windowIndex: windowIndex,
             account: leaf.account,
             accountIndex: leaf.accountIndex,
             amount: leaf.amount,
             merkleProof: claimerProof,
-          },
-          { from: contractCreator }
-        );
+          })
+          .send({ from: contractCreator });
         // Check event logs.
-        truffleAssert.eventEmitted(claimTxn, "Claimed", (ev) => {
+        await assertEventEmitted(claimTxn, merkleDistributor, "Claimed", (ev) => {
           return (
             ev.caller === contractCreator &&
             ev.account === leaf.account &&
@@ -182,10 +182,17 @@ contract("MerkleDistributor.js", function (accounts) {
         assert.isTrue(await merkleDistributor.methods.isClaimed(windowIndex, leaf.accountIndex).call());
         assert(
           await didContractThrow(
-            merkleDistributor.claim(
-              { windowIndex: windowIndex, account: leaf.account, amount: leaf.amount, merkleProof: claimerProof }, // Should fail for same account and window index, even if caller is another account.
-              { from: rando }
-            )
+            merkleDistributor.methods
+              .claim(
+                {
+                  windowIndex: windowIndex,
+                  account: leaf.account,
+                  accountIndex: leaf.accountIndex,
+                  amount: leaf.amount,
+                  merkleProof: claimerProof,
+                } // Should fail for same account and window index, even if caller is another account.
+              )
+              .send({ from: rando })
           )
         );
       }
@@ -205,12 +212,14 @@ contract("MerkleDistributor.js", function (accounts) {
         merkleTree = new MerkleTree(rewardLeafs.map((item) => item.leaf));
 
         // Seed the merkleDistributor with the root of the tree and additional information.
-        await merkleDistributor.setWindow(
-          SamplePayouts.totalRewardsDistributed,
-          rewardToken.options.address,
-          merkleTree.getRoot(),
-          sampleIpfsHash
-        );
+        await merkleDistributor.methods
+          .setWindow(
+            SamplePayouts.totalRewardsDistributed,
+            rewardToken.options.address,
+            merkleTree.getRoot(),
+            sampleIpfsHash
+          )
+          .send({ from: accounts[0] });
 
         leaf = rewardLeafs[0];
         claimerProof = merkleTree.getProof(leaf.leaf);
@@ -238,47 +247,47 @@ contract("MerkleDistributor.js", function (accounts) {
       it("Cannot claim for invalid window index", async function () {
         assert(
           await didContractThrow(
-            merkleDistributor.claim({
-              windowIndex: windowIndex + 1,
-              account: leaf.account,
-              accountIndex: leaf.accountIndex,
-              amount: leaf.amount,
-              merkleProof: claimerProof,
-            })
+            merkleDistributor.methods
+              .claim({
+                windowIndex: windowIndex + 1,
+                account: leaf.account,
+                accountIndex: leaf.accountIndex,
+                amount: leaf.amount,
+                merkleProof: claimerProof,
+              })
+              .send({ from: accounts[0] })
           )
         );
       });
       it("gas", async function () {
-        const claimTx = await merkleDistributor.claim(
-          {
+        const claimTx = await merkleDistributor.methods
+          .claim({
             windowIndex: windowIndex,
             account: leaf.account,
             accountIndex: leaf.accountIndex,
             amount: leaf.amount,
             merkleProof: claimerProof,
-          },
-          { from: rando }
-        );
-        assertApproximate(92049, claimTx.receipt.gasUsed);
+          })
+          .send({ from: rando });
+        assertApproximate(87749, claimTx.gasUsed);
       });
       it("Can claim on another account's behalf", async function () {
-        const claimerBalanceBefore = await rewardToken.methods.balanceOf(leaf.account).call();
-        const claimTx = await merkleDistributor.claim(
-          {
+        const claimerBalanceBefore = toBN(await rewardToken.methods.balanceOf(leaf.account).call());
+        const claimTx = await merkleDistributor.methods
+          .claim({
             windowIndex: windowIndex,
             account: leaf.account,
             accountIndex: leaf.accountIndex,
             amount: leaf.amount,
             merkleProof: claimerProof,
-          },
-          { from: rando }
-        );
+          })
+          .send({ from: rando });
         assert.equal(
           (await rewardToken.methods.balanceOf(leaf.account).call()).toString(),
           claimerBalanceBefore.add(toBN(leaf.amount)).toString()
         );
 
-        truffleAssert.eventEmitted(claimTx, "Claimed", (ev) => {
+        await assertEventEmitted(claimTx, merkleDistributor, "Claimed", (ev) => {
           return (
             ev.caller.toLowerCase() === rando.toLowerCase() &&
             ev.account.toLowerCase() === leaf.account.toLowerCase() &&
@@ -319,17 +328,19 @@ contract("MerkleDistributor.js", function (accounts) {
         rewardRecipients = createRewardRecipientsFromSampleData(SamplePayouts);
         let otherRewardLeafs = rewardRecipients.map((item) => ({ ...item, leaf: createLeaf(item) }));
         let otherMerkleTree = new MerkleTree(rewardLeafs.map((item) => item.leaf));
-        await merkleDistributor.setWindow(
-          SamplePayouts.totalRewardsDistributed,
-          rewardToken.options.address,
-          merkleTree.getRoot(),
-          sampleIpfsHash
-        );
+        await merkleDistributor.methods
+          .setWindow(
+            SamplePayouts.totalRewardsDistributed,
+            rewardToken.options.address,
+            merkleTree.getRoot(),
+            sampleIpfsHash
+          )
+          .send({ from: accounts[0] });
 
         // Assumption: otherLeaf and leaf are claims for the same account.
         let otherLeaf = otherRewardLeafs[0];
         let otherClaimerProof = otherMerkleTree.getProof(leaf.leaf);
-        const startingBalance = await rewardToken.methods.balanceOf(otherLeaf.account).call();
+        const startingBalance = toBN(await rewardToken.methods.balanceOf(otherLeaf.account).call());
 
         // Create a claim for original tree and show that it does not affect the claim for the same
         // proof for this tree. This effectively tests that the `claimed` mapping correctly
@@ -345,13 +356,15 @@ contract("MerkleDistributor.js", function (accounts) {
           .send({ from: accounts[0] });
 
         // Can claim for other window index.
-        await merkleDistributor.claim({
-          windowIndex: windowIndex + 1,
-          account: otherLeaf.account,
-          accountIndex: otherLeaf.accountIndex,
-          amount: otherLeaf.amount,
-          merkleProof: otherClaimerProof,
-        });
+        await merkleDistributor.methods
+          .claim({
+            windowIndex: windowIndex + 1,
+            account: otherLeaf.account,
+            accountIndex: otherLeaf.accountIndex,
+            amount: otherLeaf.amount,
+            merkleProof: otherClaimerProof,
+          })
+          .send({ from: accounts[0] });
 
         // Balance should have increased by both claimed amounts:
         assert.equal(
@@ -458,21 +471,25 @@ contract("MerkleDistributor.js", function (accounts) {
         });
 
         // Seed the merkleDistributor with the root of the tree and additional information.
-        await merkleDistributor.setWindow(
-          SamplePayouts.totalRewardsDistributed,
-          rewardToken.options.address,
-          merkleTrees[0].getRoot(),
-          sampleIpfsHash
-        );
-        await merkleDistributor.setWindow(
-          String(Number(SamplePayouts.totalRewardsDistributed) * 2),
-          rewardToken.options.address,
-          merkleTrees[1].getRoot(),
-          sampleIpfsHash
-        );
+        await merkleDistributor.methods
+          .setWindow(
+            SamplePayouts.totalRewardsDistributed,
+            rewardToken.options.address,
+            merkleTrees[0].getRoot(),
+            sampleIpfsHash
+          )
+          .send({ from: accounts[0] });
+        await merkleDistributor.methods
+          .setWindow(
+            String(Number(SamplePayouts.totalRewardsDistributed) * 2),
+            rewardToken.options.address,
+            merkleTrees[1].getRoot(),
+            sampleIpfsHash
+          )
+          .send({ from: accounts[0] });
 
         // Third Merkle tree uses different currency:
-        alternateRewardToken = await Token.new("UMA KPI Options October 2021", "uKIP-OCT", 18, {
+        alternateRewardToken = await Token.new("UMA KPI Options October 2021", "uKIP-OCT", 18).send({
           from: contractCreator,
         });
         await alternateRewardToken.methods.addMember(1, contractCreator).send({ from: contractCreator });
@@ -480,12 +497,14 @@ contract("MerkleDistributor.js", function (accounts) {
         await alternateRewardToken.methods
           .approve(merkleDistributor.options.address, MAX_UINT_VAL)
           .send({ from: contractCreator });
-        await merkleDistributor.setWindow(
-          String(Number(SamplePayouts.totalRewardsDistributed) * 4),
-          alternateRewardToken.options.address,
-          merkleTrees[2].getRoot(),
-          sampleIpfsHash
-        );
+        await merkleDistributor.methods
+          .setWindow(
+            String(Number(SamplePayouts.totalRewardsDistributed) * 4),
+            alternateRewardToken.options.address,
+            merkleTrees[2].getRoot(),
+            sampleIpfsHash
+          )
+          .send({ from: accounts[0] });
 
         // Construct claims for all trees assuming that each tree index is equal to its window index.
         for (let i = 0; i < rewardLeafs.length; i++) {
@@ -508,8 +527,8 @@ contract("MerkleDistributor.js", function (accounts) {
         const balancesAltRewardToken = [];
         for (let recipient of allRecipients) {
           const account = recipient.account;
-          balancesRewardToken.push(await rewardToken.methods.balanceOf(account).call());
-          balancesAltRewardToken.push(await alternateRewardToken.methods.balanceOf(account).call());
+          balancesRewardToken.push(toBN(await rewardToken.methods.balanceOf(account).call()));
+          balancesAltRewardToken.push(toBN(await alternateRewardToken.methods.balanceOf(account).call()));
         }
 
         // Batch claim and check balances.
@@ -536,20 +555,20 @@ contract("MerkleDistributor.js", function (accounts) {
         assert.equal(claimedEvents.length, allRecipients.length * 3);
       });
       it("gas", async function () {
-        const txn = await merkleDistributor.methods.claimMulti(batchedClaims).call();
+        const txn = await merkleDistributor.methods.claimMulti(batchedClaims).send({ from: accounts[0] });
         assertApproximate(
-          32096,
-          Math.floor(txn.receipt.gasUsed / (rewardLeafs.length * Object.keys(SamplePayouts.exampleRecipients).length))
+          37666,
+          Math.floor(txn.gasUsed / (rewardLeafs.length * Object.keys(SamplePayouts.exampleRecipients).length))
         );
       });
       it("gas for making each claim individually", async function () {
         let totalGas = toBN(0);
         for (let claim of batchedClaims) {
-          const txn = await merkleDistributor.methods.claim(claim).call();
-          totalGas = totalGas.addn(txn.receipt.gasUsed);
+          const txn = await merkleDistributor.methods.claim(claim).send({ from: accounts[0] });
+          totalGas = totalGas.addn(txn.gasUsed);
         }
         assertApproximate(
-          67881,
+          66031,
           Math.floor(totalGas.divn(rewardLeafs.length * Object.keys(SamplePayouts.exampleRecipients).length).toNumber())
         );
       });
@@ -596,12 +615,9 @@ contract("MerkleDistributor.js", function (accounts) {
       merkleTree = new MerkleTree(rewardLeafs.map((item) => item.leaf));
 
       // Seed the merkleDistributor with the root of the tree and additional information.
-      await merkleDistributor.setWindow(
-        totalRewardsDistributed,
-        rewardToken.options.address,
-        merkleTree.getRoot(),
-        sampleIpfsHash
-      );
+      await merkleDistributor.methods
+        .setWindow(totalRewardsDistributed, rewardToken.options.address, merkleTree.getRoot(), sampleIpfsHash)
+        .send({ from: accounts[0] });
     });
     describe("(claim)", function () {
       it("gas middle node", async function () {
@@ -616,8 +632,8 @@ contract("MerkleDistributor.js", function (accounts) {
             amount: leaf.amount,
             merkleProof: proof,
           })
-          .call();
-        assertApproximate(104582, tx.receipt.gasUsed);
+          .send({ from: accounts[0] });
+        assertApproximate(100282, tx.gasUsed);
       });
       it("gas deeper node", async function () {
         const leafIndex = 90000;
@@ -631,8 +647,8 @@ contract("MerkleDistributor.js", function (accounts) {
             amount: leaf.amount,
             merkleProof: proof,
           })
-          .call();
-        assertApproximate(104584, tx.receipt.gasUsed);
+          .send({ from: accounts[0] });
+        assertApproximate(100284, tx.gasUsed);
       });
       it("gas average random distribution", async function () {
         let total = toBN(0);
@@ -648,12 +664,12 @@ contract("MerkleDistributor.js", function (accounts) {
               amount: leaf.amount,
               merkleProof: proof,
             })
-            .call();
-          total = total.addn(tx.receipt.gasUsed);
+            .send({ from: accounts[0] });
+          total = total.addn(tx.gasUsed);
           count++;
         }
         const average = total.divn(count);
-        assertApproximate(88178, Math.floor(average.toNumber()));
+        assertApproximate(85894, Math.floor(average.toNumber()));
       });
       // Claiming consecutive leaves should result in average gas savings
       // because of using single bits in the bitmap to track claims instead
@@ -672,12 +688,12 @@ contract("MerkleDistributor.js", function (accounts) {
               amount: leaf.amount,
               merkleProof: proof,
             })
-            .call();
-          total = total.addn(tx.receipt.gasUsed);
+            .send({ from: accounts[0] });
+          total = total.addn(tx.gasUsed);
           count++;
         }
         const average = total.divn(count);
-        assertApproximate(77064, Math.floor(average.toNumber()));
+        assertApproximate(76124, Math.floor(average.toNumber()));
       });
       it("no double claims in random distribution", async () => {
         for (let i = 0; i < 25; i += Math.floor(Math.random() * (NUM_LEAVES / SAMPLE_SIZE))) {
@@ -717,7 +733,7 @@ contract("MerkleDistributor.js", function (accounts) {
         return (
           await Promise.map(claimsArray, (_claim) => {
             // Returns window data for each claim:
-            return merkleDistributor.merkleWindows(_claim.windowIndex);
+            return merkleDistributor.methods.merkleWindows(_claim.windowIndex).call();
           })
         )
           .map((windowData, i) => {
@@ -747,8 +763,8 @@ contract("MerkleDistributor.js", function (accounts) {
           });
         }
         const sortedClaims = await sortClaimsByAccountAndToken(batchedClaims);
-        const tx = await merkleDistributor.methods.claimMulti(sortedClaims).call();
-        assertApproximate(48897, Math.floor(tx.receipt.gasUsed / sortedClaims.length));
+        const tx = await merkleDistributor.methods.claimMulti(sortedClaims).send({ from: accounts[0] });
+        assertApproximate(50837, Math.floor(tx.gasUsed / sortedClaims.length));
       });
       it("one tree: gas amortized first 25", async function () {
         for (let i = 0; i < 25; i++) {
@@ -763,8 +779,8 @@ contract("MerkleDistributor.js", function (accounts) {
           });
         }
         const sortedClaims = await sortClaimsByAccountAndToken(batchedClaims);
-        const tx = await merkleDistributor.methods.claimMulti(sortedClaims).call();
-        assertApproximate(36560, Math.floor(tx.receipt.gasUsed / sortedClaims.length));
+        const tx = await merkleDistributor.methods.claimMulti(sortedClaims).send({ from: accounts[0] });
+        assertApproximate(41392, Math.floor(tx.gasUsed / sortedClaims.length));
       });
       it("many trees, many reward tokens, many accounts: gas amortized", async function () {
         // This is a realistic scenario where the caller is making their claims for various
@@ -779,7 +795,7 @@ contract("MerkleDistributor.js", function (accounts) {
         rewardTokens.push(rewardToken.options.address);
         // Note: we start index `i=1` because we've already created a merkle tree window.
         for (let i = 1; i < NUM_REWARD_TOKENS; i++) {
-          const newRewardToken = await Token.new(`UMA KPI Option #${i}`, `uKPI${i}`, 18);
+          const newRewardToken = await Token.new(`UMA KPI Option #${i}`, `uKPI${i}`, 18).send({ from: accounts[0] });
           await newRewardToken.methods.addMember(1, contractCreator).send({ from: accounts[0] });
           await newRewardToken.methods.mint(contractCreator, MAX_UINT_VAL).send({ from: accounts[0] });
           await newRewardToken.methods
@@ -792,12 +808,14 @@ contract("MerkleDistributor.js", function (accounts) {
         const NUM_WINDOWS = 10;
         // Note: we start index `i=1` because we've already created a merkle tree window.
         for (let i = 1; i < NUM_WINDOWS; i++) {
-          await merkleDistributor.setWindow(
-            totalRewardsDistributed,
-            rewardTokens[i % NUM_REWARD_TOKENS],
-            merkleTree.getRoot(),
-            sampleIpfsHash // Note re-use the same merkle tree since the claim amounts and recipients are the same
-          );
+          await merkleDistributor.methods
+            .setWindow(
+              totalRewardsDistributed,
+              rewardTokens[i % NUM_REWARD_TOKENS],
+              merkleTree.getRoot(),
+              sampleIpfsHash // Note re-use the same merkle tree since the claim amounts and recipients are the same
+            )
+            .send({ from: accounts[0] });
         }
 
         // Construct batched claims across windows for the specified number of accounts.
@@ -817,13 +835,13 @@ contract("MerkleDistributor.js", function (accounts) {
         }
 
         // Check estimated gas for batch claiming unsorted array of claims:
-        const gasUnsorted = await merkleDistributor.claimMulti.estimateGas(batchedClaims);
-        assertApproximate(53247, Math.floor(gasUnsorted / batchedClaims.length));
+        const gasUnsorted = await merkleDistributor.methods.claimMulti(batchedClaims).estimateGas();
+        assertApproximate(56973, Math.floor(gasUnsorted / batchedClaims.length));
 
         // Sort the claims such that windows with the same reward currency end up next to each other.
         const sortedClaims = await sortClaimsByAccountAndToken(batchedClaims);
-        const tx = await merkleDistributor.methods.claimMulti(sortedClaims).call();
-        assertApproximate(51546, Math.floor(tx.receipt.gasUsed / sortedClaims.length));
+        const tx = await merkleDistributor.methods.claimMulti(sortedClaims).send({ from: accounts[0] });
+        assertApproximate(54302, Math.floor(tx.gasUsed / sortedClaims.length));
       });
       it("batch cannot include double claims", async function () {
         for (let i = 0; i < NUM_LEAVES; i += NUM_LEAVES / SAMPLE_SIZE) {
@@ -842,7 +860,11 @@ contract("MerkleDistributor.js", function (accounts) {
         // Making batch claims that include ANY of the already executed claims will fail:
         for (let i = 0; i < batchedClaims.length; i++) {
           assert(
-            await didContractThrow(merkleDistributor.claimMulti(batchedClaims.slice(0, batchedClaims.length - i)))
+            await didContractThrow(
+              merkleDistributor.methods
+                .claimMulti(batchedClaims.slice(0, batchedClaims.length - i))
+                .send({ from: accounts[0] })
+            )
           );
         }
       });
@@ -859,26 +881,28 @@ contract("MerkleDistributor.js", function (accounts) {
     it("Only owner can call", async function () {
       assert(
         await didContractThrow(
-          merkleDistributor.setWindow(
-            SamplePayouts.totalRewardsDistributed,
-            rewardToken.options.address,
-            merkleTree.getRoot(),
-            sampleIpfsHash,
-            { from: rando }
-          )
+          merkleDistributor.methods
+            .setWindow(
+              SamplePayouts.totalRewardsDistributed,
+              rewardToken.options.address,
+              merkleTree.getRoot(),
+              sampleIpfsHash
+            )
+            .send({ from: rando })
         )
       );
     });
     it("Owner's balance is transferred to contract", async function () {
-      let ownerBalanceBefore = await rewardToken.methods.balanceOf(contractCreator).call();
+      let ownerBalanceBefore = toBN(await rewardToken.methods.balanceOf(contractCreator).call());
 
-      await merkleDistributor.setWindow(
-        SamplePayouts.totalRewardsDistributed,
-        rewardToken.options.address,
-        merkleTree.getRoot(),
-        sampleIpfsHash,
-        { from: contractCreator }
-      );
+      await merkleDistributor.methods
+        .setWindow(
+          SamplePayouts.totalRewardsDistributed,
+          rewardToken.options.address,
+          merkleTree.getRoot(),
+          sampleIpfsHash
+        )
+        .send({ from: contractCreator });
 
       assert.equal(
         ownerBalanceBefore.sub(toBN(SamplePayouts.totalRewardsDistributed)).toString(),
@@ -888,13 +912,14 @@ contract("MerkleDistributor.js", function (accounts) {
     it("(nextCreatedIndex): starts at 0 and increments on each seed", async function () {
       assert.equal((await merkleDistributor.methods.nextCreatedIndex().call()).toString(), "0");
 
-      await merkleDistributor.setWindow(
-        SamplePayouts.totalRewardsDistributed,
-        rewardToken.options.address,
-        merkleTree.getRoot(),
-        sampleIpfsHash,
-        { from: contractCreator }
-      );
+      await merkleDistributor.methods
+        .setWindow(
+          SamplePayouts.totalRewardsDistributed,
+          rewardToken.options.address,
+          merkleTree.getRoot(),
+          sampleIpfsHash
+        )
+        .send({ from: contractCreator });
 
       assert.equal((await merkleDistributor.methods.nextCreatedIndex().call()).toString(), "1");
     });
@@ -909,12 +934,14 @@ contract("MerkleDistributor.js", function (accounts) {
 
       merkleTree = new MerkleTree(rewardLeafs.map((item) => item.leaf));
 
-      await merkleDistributor.setWindow(
-        SamplePayouts.totalRewardsDistributed,
-        rewardToken.options.address,
-        merkleTree.getRoot(),
-        sampleIpfsHash
-      );
+      await merkleDistributor.methods
+        .setWindow(
+          SamplePayouts.totalRewardsDistributed,
+          rewardToken.options.address,
+          merkleTree.getRoot(),
+          sampleIpfsHash
+        )
+        .send({ from: accounts[0] });
 
       leaf = rewardLeafs[0];
       claimerProof = merkleTree.getProof(leaf.leaf);
@@ -928,14 +955,14 @@ contract("MerkleDistributor.js", function (accounts) {
         );
       });
       it("Sends rewards to owner", async function () {
-        let ownerBalanceBefore = await rewardToken.methods.balanceOf(contractCreator).call();
-        let contractBalanceBefore = await rewardToken.methods.balanceOf(merkleDistributor.options.address).call();
+        let ownerBalanceBefore = toBN(await rewardToken.methods.balanceOf(contractCreator).call());
+        let contractBalanceBefore = toBN(await rewardToken.methods.balanceOf(merkleDistributor.options.address).call());
 
         const withdrawAmount = toWei("1");
         const txn = await merkleDistributor.methods
           .withdrawRewards(rewardToken.options.address, withdrawAmount)
-          .call({ from: contractCreator });
-        truffleAssert.eventEmitted(txn, "WithdrawRewards", (ev) => {
+          .send({ from: contractCreator });
+        await assertEventEmitted(txn, merkleDistributor, "WithdrawRewards", (ev) => {
           return (
             ev.owner === contractCreator &&
             ev.amount.toString() === withdrawAmount &&
@@ -958,9 +985,9 @@ contract("MerkleDistributor.js", function (accounts) {
         assert(await didContractThrow(merkleDistributor.methods.deleteWindow(windowIndex).send({ from: rando })));
       });
       it("Deletes merkle root and all claims for the window index revert", async function () {
-        const txn = await merkleDistributor.methods.deleteWindow(windowIndex).call({ from: contractCreator });
+        const txn = await merkleDistributor.methods.deleteWindow(windowIndex).send({ from: contractCreator });
 
-        truffleAssert.eventEmitted(txn, "DeleteWindow", (ev) => {
+        await assertEventEmitted(txn, merkleDistributor, "DeleteWindow", (ev) => {
           return ev.windowIndex.toString() === windowIndex.toString() && ev.owner === contractCreator;
         });
 

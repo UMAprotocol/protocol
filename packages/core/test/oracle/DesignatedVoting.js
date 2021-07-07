@@ -8,6 +8,7 @@ const {
   computeVoteHashAncillary,
   signMessage,
 } = require("@uma/common");
+const { assert } = require("chai");
 
 const DesignatedVoting = getContract("DesignatedVoting");
 const Finder = getContract("Finder");
@@ -20,11 +21,12 @@ const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 const snapshotMessage = "Sign For Snapshot";
 const { utf8ToHex, padRight } = web3.utils;
 
-contract("DesignatedVoting", function (accounts) {
-  const umaAdmin = accounts[0];
-  const tokenOwner = accounts[1];
-  const voter = accounts[2];
-  const registeredContract = accounts[3];
+describe("DesignatedVoting", function () {
+  let accounts;
+  let umaAdmin;
+  let tokenOwner;
+  let voter;
+  let registeredContract;
 
   let voting;
   let votingToken;
@@ -37,9 +39,11 @@ contract("DesignatedVoting", function (accounts) {
   // Corresponds to DesignatedVoting.Roles.Voter.
   const voterRole = "1";
 
-  beforeEach(async function () {
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+    [umaAdmin, tokenOwner, voter, registeredContract] = accounts;
     await runDefaultFixture(hre);
-    voting = await VotingAncillaryInterfaceTesting.at((await Voting.deployed()).address);
+    voting = await VotingAncillaryInterfaceTesting.at((await Voting.deployed()).options.address);
     supportedIdentifiers = await IdentifierWhitelist.deployed();
     votingToken = await VotingToken.deployed();
     const finder = await Finder.deployed();
@@ -89,12 +93,16 @@ contract("DesignatedVoting", function (accounts) {
     // Verify that there are no silent failures, and reverts get bubbled up.
     assert(
       await didContractThrow(
-        designatedVoting.commitVote(padRight(utf8ToHex("bad"), 64), "100", "0x0", "0x123456", { from: voter })
+        designatedVoting.methods
+          .commitVote(padRight(utf8ToHex("bad"), 64), "100", "0x0", "0x123456")
+          .send({ from: voter })
       )
     );
     assert(
       await didContractThrow(
-        designatedVoting.revealVote(padRight(utf8ToHex("bad"), 64), "100", "200", "0x123456", "300", { from: voter })
+        designatedVoting.methods
+          .revealVote(padRight(utf8ToHex("bad"), 64), "100", "200", "0x123456", "300")
+          .send({ from: voter })
       )
     );
   });
@@ -112,7 +120,7 @@ contract("DesignatedVoting", function (accounts) {
     const ancillaryData = "0x123456";
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
     await voting.methods.requestPrice(identifier, time, ancillaryData).send({ from: registeredContract });
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
     let roundId = await voting.methods.getCurrentRoundId().call();
 
     const price = getRandomSignedInt();
@@ -146,29 +154,25 @@ contract("DesignatedVoting", function (accounts) {
     assert(await didContractThrow(designatedVoting.methods.resetMember(voterRole, umaAdmin).send({ from: umaAdmin })));
 
     // Move to the reveal phase.
-    await moveToNextPhase(voting);
+    await moveToNextPhase(voting, accounts[0]);
     await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     // Only the voter can reveal a vote.
     assert(
       await didContractThrow(
-        designatedVoting.methods
-          .revealVote(identifier, time, price, ancillaryData, salt, { from: tokenOwner })
-          .send({ from: accounts[0] })
+        designatedVoting.methods.revealVote(identifier, time, price, ancillaryData, salt).send({ from: tokenOwner })
       )
     );
     assert(
       await didContractThrow(
-        designatedVoting.methods
-          .revealVote(identifier, time, price, ancillaryData, salt, { from: umaAdmin })
-          .send({ from: accounts[0] })
+        designatedVoting.methods.revealVote(identifier, time, price, ancillaryData, salt).send({ from: umaAdmin })
       )
     );
     await designatedVoting.methods.revealVote(identifier, time, price, ancillaryData, salt).send({ from: voter });
 
     // Check the resolved price.
     roundId = await voting.methods.getCurrentRoundId().call();
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
     assert.equal(
       (await voting.methods.getPrice(identifier, time, ancillaryData).call({ from: registeredContract })).toString(),
       price
@@ -178,15 +182,15 @@ contract("DesignatedVoting", function (accounts) {
     assert(
       await didContractThrow(
         designatedVoting.methods
-          .retrieveRewards(roundId, [{ identifier, time, ancillaryData }], { from: tokenOwner })
-          .send({ from: accounts[0] })
+          .retrieveRewards(roundId, [{ identifier, time, ancillaryData }])
+          .send({ from: tokenOwner })
       )
     );
     assert(
       await didContractThrow(
         designatedVoting.methods
-          .retrieveRewards(roundId, [{ identifier, time, ancillaryData }], { from: umaAdmin })
-          .send({ from: accounts[0] })
+          .retrieveRewards(roundId, [{ identifier, time, ancillaryData }])
+          .send({ from: umaAdmin })
       )
     );
     await designatedVoting.methods
@@ -224,7 +228,7 @@ contract("DesignatedVoting", function (accounts) {
     await supportedIdentifiers.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
     await voting.methods.requestPrice(identifier, time1, ancillaryData1).send({ from: registeredContract });
     await voting.methods.requestPrice(identifier, time2, ancillaryData2).send({ from: registeredContract });
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
 
     const roundId = await voting.methods.getCurrentRoundId().call();
 
@@ -263,7 +267,7 @@ contract("DesignatedVoting", function (accounts) {
     await designatedVoting.methods.batchCommit(commits).send({ from: voter });
 
     // Move to the reveal phase.
-    await moveToNextPhase(voting);
+    await moveToNextPhase(voting, accounts[0]);
     await voting.methods.snapshotCurrentRound(signature).send({ from: accounts[0] });
 
     // Check messages in emitted events.
@@ -280,7 +284,7 @@ contract("DesignatedVoting", function (accounts) {
     await designatedVoting.methods.batchReveal(reveals).send({ from: voter });
 
     // Check the resolved price.
-    await moveToNextRound(voting);
+    await moveToNextRound(voting, accounts[0]);
     assert.equal(
       (await voting.methods.getPrice(identifier, time1, ancillaryData1).call({ from: registeredContract })).toString(),
       price1
