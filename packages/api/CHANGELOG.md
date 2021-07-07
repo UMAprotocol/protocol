@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.2.0...@uma/api@0.3.0) (2021-07-07)
+
+### Features
+
+- **api:** 1405 add tvm calculations per emp ([#3122](https://github.com/UMAprotocol/protocol/issues/3122)) ([0d234d3](https://github.com/UMAprotocol/protocol/commit/0d234d3090efa9a663e204c797dc18bc537dae5f))
+- **api:** 1531 add backfill collateral prices 1 month before app start ([#3170](https://github.com/UMAprotocol/protocol/issues/3170)) ([d246861](https://github.com/UMAprotocol/protocol/commit/d24686113222570a652a70179e091e332547ad26))
+- **api:** add ability to obtain a time series of tvl ([#3091](https://github.com/UMAprotocol/protocol/issues/3091)) ([6698e63](https://github.com/UMAprotocol/protocol/commit/6698e636d9589756770ac13f142cc45c883f43cc))
+- **api:** add total and partial tvl calls ([#3090](https://github.com/UMAprotocol/protocol/issues/3090)) ([6267a9e](https://github.com/UMAprotocol/protocol/commit/6267a9e70f1f285787f4203769687fd10c70598d))
+- **api:** add usd price conversions to synthetic prices ([#3153](https://github.com/UMAprotocol/protocol/issues/3153)) ([cb4abe3](https://github.com/UMAprotocol/protocol/commit/cb4abe363bb77f831767e45783d567f37dbc7992))
+
 # [0.2.0](https://github.com/UMAprotocol/protocol/compare/api@0.1.0...api@0.2.0) (2021-06-21)
 
 ### Features

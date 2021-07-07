@@ -3,6 +3,18 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.4.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.3.0...@uma/common@2.4.0) (2021-07-07)
+
+### Bug Fixes
+
+- common README ([#3149](https://github.com/UMAprotocol/protocol/issues/3149)) ([6aa9288](https://github.com/UMAprotocol/protocol/commit/6aa9288e8a1d008ee21672bce8c58d41c86028bd))
+
+### Features
+
+- **common:** add hardhat plugin to enhance web3 ease of use ([#3180](https://github.com/UMAprotocol/protocol/issues/3180)) ([5aa0335](https://github.com/UMAprotocol/protocol/commit/5aa0335aa8fd4d9ca31b7835a3ada1030e3fb0c3))
+- **pf-configs:** Add default pf config for uSTONKS_0921 and add to OO ignore list ([#3183](https://github.com/UMAprotocol/protocol/issues/3183)) ([e1c4c24](https://github.com/UMAprotocol/protocol/commit/e1c4c2472e81c5911bbba13e4e06d4757b6f5ee6))
+- **price-id-utils:** Ignore uTVL_KPI_UMA for OO proposals ([#3162](https://github.com/UMAprotocol/protocol/issues/3162)) ([bb07296](https://github.com/UMAprotocol/protocol/commit/bb07296ed00c46149762b059913076ad1587d219))
+
 # [2.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.2.0...@uma/common@2.3.0) (2021-06-21)
 
 ### Bug Fixes

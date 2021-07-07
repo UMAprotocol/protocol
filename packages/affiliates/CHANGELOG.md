@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.4.1](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.4.0...@uma/affiliates@1.4.1) (2021-07-07)
+
+### Bug Fixes
+
+- **affiliates:** add handler for repay event ([#3138](https://github.com/UMAprotocol/protocol/issues/3138)) ([bce982a](https://github.com/UMAprotocol/protocol/commit/bce982a7f8bb83c09994a93d0109a2160f3724dc))
+
 # [1.4.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.3.0...@uma/affiliates@1.4.0) (2021-06-21)
 
 ### Features

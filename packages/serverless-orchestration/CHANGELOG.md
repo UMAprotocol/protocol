@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.3.1](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.3.0...@uma/serverless-orchestration@2.3.1) (2021-07-07)
+
+### Bug Fixes
+
+- add trace to fatal hub errors ([#3181](https://github.com/UMAprotocol/protocol/issues/3181)) ([5bfe676](https://github.com/UMAprotocol/protocol/commit/5bfe6765bb727e2d7fd9c5ac300a1636cc3bcec3))
+
 # [2.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.2.0...@uma/serverless-orchestration@2.3.0) (2021-06-21)
 
 ### Bug Fixes
