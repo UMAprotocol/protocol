@@ -12,10 +12,6 @@ contract SinkGovernor {
 
     event ExecutedGovernanceTransaction(address indexed to, bytes indexed data);
 
-    /**
-     * @notice Constructor.
-     * @param _finder Address of Finder that this contract uses to locate GenericHandler.
-     */
     constructor(FinderInterface _finder) {
         finder = _finder;
     }
@@ -25,8 +21,6 @@ contract SinkGovernor {
      * to this network via an off-chain relayer. The relayer will call `Bridge.executeProposal` on this local network,
      * which call `GenericHandler.executeProposal()` and ultimately this method.
      * @dev This method should send the arbitrary transaction emitted by the L1 governor on this chain.
-     * @param to Contract on this network to send governance transaction to.
-     * @param data Calldata to include in governance transaction.
      */
     function executeGovernance(address to, bytes memory data) external {
         require(
