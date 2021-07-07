@@ -18,19 +18,25 @@ export type EncodedRequest = {
   callData: string;
 };
 
-interface CoreState {
+interface State {
   requests: Request[];
   multicallClient: multicall.Instance;
 }
 
-// Core multicall functionality, not meant for use outside this file
-class Core implements CoreState {
+// Multicall class that exposes public functions to the user and recursively chains itself.  Acts immutable
+// if you store reference to the parent intsance. Children will contain mutated state.
+class Multicall implements State {
   public requests: Request[];
   public multicallClient: multicall.Instance;
-  constructor(state: CoreState) {
+  constructor(state: State) {
     // make a copy of this so we dont mutate the original
     this.requests = [...state.requests];
     this.multicallClient = state.multicallClient;
+  }
+
+  // internally add requests to queue. Only called by parent for chaining.
+  private push(contractInstance: Contract, call: Call) {
+    this.requests.push({ contractInstance, call });
   }
 
   // encode requests to multicall contract
@@ -48,15 +54,22 @@ class Core implements CoreState {
     return contractInstance.interface.decodeFunctionResult(call.method, response);
   }
 
+  // adds a new request to the queue, to be executed when read is called. Returns an instance of this class so you can chain.
   public add(contractInstance: Contract, call: Call) {
-    this.requests.push({ contractInstance, call });
+    const child = new Multicall(this);
+    child.push(contractInstance, call);
+    return child;
   }
+
+  // adds a list of requests to the queue, to be executed when read is called. Returns an instance of this class so you can chain.
   public batch(contractInstance: Contract, calls: Call[]) {
+    const child = new Multicall(this);
     calls.forEach((call: Call) => {
-      this.add(contractInstance, call);
+      child.push(contractInstance, call);
     });
+    return child;
   }
-  // these requests only read contract state
+  // reads from the contract, returns the read results in order that requests were queued.
   public async read(_requests: Request[] = this.requests) {
     const encodedRequests = _requests.map((request) => this.encodeRequest(request));
     const { returnData } = await this.multicallClient.callStatic.aggregate(encodedRequests);
@@ -68,32 +81,7 @@ class Core implements CoreState {
   }
 }
 
-// Multicall class that exposes public functions to the user and recursively chains itself.  Acts immutable
-// if you store reference to the parent intsance. Children will contain mutated state.
-export class Multicall {
-  private state: CoreState;
-  constructor(state: CoreState) {
-    this.state = state;
-  }
-  // adds a new request to the queue, to be executed when read is called. Returns an instance of this class so you can chain.
-  public add(contractInstance: Contract, call: Call) {
-    const core = new Core(this.state);
-    core.add(contractInstance, call);
-    return new Multicall(core);
-  }
-  // adds a list of requests to the queue, to be executed when read is called. Returns an instance of this class so you can chain.
-  public batch(contractInstance: Contract, calls: Call[]) {
-    const core = new Core(this.state);
-    core.batch(contractInstance, calls);
-    return new Multicall(core);
-  }
-  // reads from the contract, returns the read results in order that requests were queued.
-  public async read(requests?: Request[]) {
-    const core = new Core(this.state);
-    return core.read(requests);
-  }
-}
-
+// Factory that alters construction of multicall to be more friendly for end user
 export default class Factory extends Multicall {
   constructor(address: string, provider: SignerOrProvider) {
     const multicallClient = multicall.connect(address, provider);
