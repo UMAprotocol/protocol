@@ -599,10 +599,7 @@ describe("MerkleDistributor.js", function () {
     const claimData = { amount: 100 };
     const totalRewardsDistributed = claimData.amount * NUM_LEAVES;
 
-    beforeEach(async function () {
-      batchedClaims = [];
-      windowIndex = 0;
-
+    before(async function () {
       // Construct leaves and give each a unique accountIndex:
       rewardLeafs = [];
       for (let i = 0; i < NUM_LEAVES; i++) {
@@ -613,7 +610,11 @@ describe("MerkleDistributor.js", function () {
         rewardLeafs.push({ ..._claimData, leaf: createLeaf(_claimData) });
       }
       merkleTree = new MerkleTree(rewardLeafs.map((item) => item.leaf));
+    });
 
+    beforeEach(async function () {
+      batchedClaims = [];
+      windowIndex = 0;
       // Seed the merkleDistributor with the root of the tree and additional information.
       await merkleDistributor.methods
         .setWindow(totalRewardsDistributed, rewardToken.options.address, merkleTree.getRoot(), sampleIpfsHash)
