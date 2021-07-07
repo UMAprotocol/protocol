@@ -155,9 +155,8 @@ export default (config: Config, appState: Dependencies) => {
   }
 
   async function update(startBlock?: number | "latest", endBlock?: number) {
-    await Promise.map(Array.from(await registeredEmps.values()), (address: string) =>
-      updateOne(address, startBlock, endBlock)
-    );
+    const addresses = Array.from(await registeredEmps.values());
+    await Promise.mapSeries(addresses, (address: string) => updateOne(address, startBlock, endBlock));
     await updateTokenAddresses();
   }
 

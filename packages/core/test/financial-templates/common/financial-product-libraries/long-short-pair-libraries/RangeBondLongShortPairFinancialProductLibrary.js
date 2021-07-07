@@ -87,7 +87,7 @@ describe("RangeBondLongShortPairFinancialProductLibrary", function () {
       // If the price is lower than the low price range then the max payout per each long token is hit at the full
       // collateralPerPair. i.e each short token is worth 0*collateralPerPair and each long token is worth 1*collateralPerPair.
       const expiryTokensForCollateral = await rangeBondLSPFPL.methods
-        .computeExpiryTokensForCollateral(toWei("9"))
+        .percentageLongCollateralAtExpiry(toWei("9"))
         .call({
           from: lspMock.options.address,
         });
@@ -98,7 +98,7 @@ describe("RangeBondLongShortPairFinancialProductLibrary", function () {
       // Considering the long token to compute the expiryPercentLong (notional/highPriceRange)/collateralPerPair=(100/50)/10=0.2.
       // i.e each short token is worth 0.8* collateralPerPair = 8 tokens and each long token is worth 0.2*collateralPerPair=2.
       const expiryTokensForCollateral = await rangeBondLSPFPL.methods
-        .computeExpiryTokensForCollateral(toWei("60"))
+        .percentageLongCollateralAtExpiry(toWei("60"))
         .call({
           from: lspMock.options.address,
         });
@@ -110,7 +110,7 @@ describe("RangeBondLongShortPairFinancialProductLibrary", function () {
       // 100 so there should be 100/20=5 UMA per long token. As each collateralPerPair is worth 10, expiryPercentLong should
       // be 10/5=0.5, thereby allocating half to the long and half to the short.
       const expiryTokensForCollateral1 = await rangeBondLSPFPL.methods
-        .computeExpiryTokensForCollateral(toWei("20"))
+        .percentageLongCollateralAtExpiry(toWei("20"))
         .call({
           from: lspMock.options.address,
         });
@@ -119,7 +119,7 @@ describe("RangeBondLongShortPairFinancialProductLibrary", function () {
       // Equally, at a price of 40 each long should still be worth 100 so there should be 100/40=2.5 UMA per long. As
       // each collateralPerPair=10 expiryPercentLong should be 10/2.5=0.25, thereby allocating 25% to long and the remaining to short.
       const expiryTokensForCollateral2 = await rangeBondLSPFPL.methods
-        .computeExpiryTokensForCollateral(toWei("20"))
+        .percentageLongCollateralAtExpiry(toWei("20"))
         .call({
           from: lspMock.options.address,
         });
@@ -137,7 +137,7 @@ describe("RangeBondLongShortPairFinancialProductLibrary", function () {
       // form of the range bond equation where as the library uses an algebraic simplification of this equation. This
       // test validates the correct mapping between these two forms.
       for (const price of [toWei("5.555"), toWei("11"), toWei("33"), toWei("55"), toWei("66"), toWei("111")]) {
-        const expiryTokensForCollateral = await rangeBondLSPFPL.methods.computeExpiryTokensForCollateral(price).call({
+        const expiryTokensForCollateral = await rangeBondLSPFPL.methods.percentageLongCollateralAtExpiry(price).call({
           from: lspMock.options.address,
         });
         //

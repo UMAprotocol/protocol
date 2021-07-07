@@ -51,4 +51,12 @@ describe("coingecko", function () {
       assert.ok(addresses.includes(result.address));
     });
   });
+  test("getHistoricContractPrices", async function () {
+    const address = "0x04fa0d235c4abf4bcf4787af4cf447de572ef828";
+    // 4 weeks
+    const from = Date.now() - 28 * 24 * 1000 * 60 * 60;
+    const to = Date.now();
+    const result = await cg.getHistoricContractPrices(address, from, to);
+    assert.ok(result && result.length);
+  });
 });

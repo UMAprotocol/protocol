@@ -30,14 +30,14 @@ describe("AncillaryData", function () {
     assert.equal(utf8EncodedUint, utf8ToHex("31337"));
   });
 
-  it("_appendKey", async function () {
+  it("constructPrefix", async function () {
     const keyName = utf8ToHex("key");
     let originalAncillaryData;
 
     // Test 1: ancillary data is empty
     originalAncillaryData = "0x";
     assert.equal(
-      await ancillaryDataTest.methods.appendKey(originalAncillaryData, keyName).call(),
+      await ancillaryDataTest.methods.constructPrefix(originalAncillaryData, keyName).call(),
       utf8ToHex("key:"),
       "Should return key: with no leading comma"
     );
@@ -45,7 +45,7 @@ describe("AncillaryData", function () {
     // Test 2: ancillary data is not empty
     originalAncillaryData = "0xab";
     assert.equal(
-      await ancillaryDataTest.methods.appendKey(originalAncillaryData, keyName).call(),
+      await ancillaryDataTest.methods.constructPrefix(originalAncillaryData, keyName).call(),
       utf8ToHex(",key:"),
       "Should return key: with leading comma"
     );

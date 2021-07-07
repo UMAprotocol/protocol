@@ -43,13 +43,12 @@ describe("TokenFactory", function () {
       .send({ from: tokenCreator });
     const token = await Token.at(tokenAddress);
 
-    // Creator should be only minter
+    // Creator should be only owner and no one should hold the mint or burn roles.
     assert.isFalse(await token.methods.isMinter(contractDeployer).call());
-    assert.isTrue(await token.methods.isMinter(tokenCreator).call());
-
-    // Creator should be only burner
+    assert.isFalse(await token.methods.isMinter(tokenCreator).call());
     assert.isFalse(await token.methods.isBurner(contractDeployer).call());
-    assert.isTrue(await token.methods.isBurner(tokenCreator).call());
+    assert.isFalse(await token.methods.isBurner(tokenCreator).call());
+    assert.equal(await token.methods.getMember(0).call(), tokenCreator); // roleId 0 = owner.
 
     // Contract deployer should no longer be capable of adding new roles
     assert(await didContractThrow(token.methods.addMinter(rando).send({ from: contractDeployer })));
@@ -77,6 +76,10 @@ describe("TokenFactory", function () {
       .createToken(tokenDetails.name, tokenDetails.symbol, tokenDetails.decimals)
       .send({ from: tokenCreator });
     const token = await Token.at(tokenAddress);
+
+    // Add the required roles to mint and burn.
+    await token.addMinter(tokenCreator, { from: tokenCreator });
+    await token.addBurner(tokenCreator, { from: tokenCreator });
 
     // Check ERC20Detailed methods
     assert.equal(await token.methods.name().call(), tokenDetails.name);

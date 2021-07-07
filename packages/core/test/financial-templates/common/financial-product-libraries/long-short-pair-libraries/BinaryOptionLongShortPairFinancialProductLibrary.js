@@ -76,7 +76,7 @@ describe("BinaryOptionLongShortPairFinancialProductLibrary", function () {
     });
     it("Lower than lower bound should return 0", async () => {
       const expiraryTokensForCollateral = await binaryLSPFPL.methods
-        .computeExpiryTokensForCollateral(toWei("2500"))
+        .percentageLongCollateralAtExpiry(toWei("2500"))
         .call({
           from: expiringContractMock.options.address,
         });
@@ -84,7 +84,7 @@ describe("BinaryOptionLongShortPairFinancialProductLibrary", function () {
     });
     it("equal to upper bound should return 1", async () => {
       const expiraryTokensForCollateral = await binaryLSPFPL.methods
-        .computeExpiryTokensForCollateral(toWei("3000"))
+        .percentageLongCollateralAtExpiry(toWei("3000"))
         .call({
           from: expiringContractMock.options.address,
         });
@@ -92,7 +92,7 @@ describe("BinaryOptionLongShortPairFinancialProductLibrary", function () {
     });
     it("Higher than upper bound should return 1", async () => {
       const expiraryTokensForCollateral = await binaryLSPFPL.methods
-        .computeExpiryTokensForCollateral(toWei("3500"))
+        .percentageLongCollateralAtExpiry(toWei("3500"))
         .call({
           from: expiringContractMock.options.address,
         });
@@ -101,7 +101,7 @@ describe("BinaryOptionLongShortPairFinancialProductLibrary", function () {
 
     it("Arbitrary price between bounds should return correctly", async () => {
       for (const price of [toWei("1000"), toWei("2000"), toWei("3000"), toWei("4000"), toWei("5000"), toWei("10000")]) {
-        const expiraryTokensForCollateral = await binaryLSPFPL.methods.computeExpiryTokensForCollateral(price).call({
+        const expiraryTokensForCollateral = await binaryLSPFPL.methods.percentageLongCollateralAtExpiry(price).call({
           from: expiringContractMock.options.address,
         });
         const expectedPrice = toBN(price).gte(toBN(strikePrice)) ? toWei("1") : toWei("0");

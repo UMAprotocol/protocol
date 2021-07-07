@@ -1,15 +1,15 @@
 import assert from "assert";
 import Web3 from "web3";
 import { ethers } from "ethers";
+import moment from "moment";
 
-import { tables, Coingecko } from "@uma/sdk";
+import { tables, Coingecko, utils } from "@uma/sdk";
 
 import * as Services from "../../services";
 import Express from "../../services/express";
 import Actions from "../../services/actions";
 import { ProcessEnv, AppState } from "../..";
 import { empStats } from "../../tables";
-import { uniqueId } from "lodash";
 
 async function run(env: ProcessEnv) {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
@@ -51,6 +51,7 @@ async function run(env: ProcessEnv) {
     stats: {
       usd: {
         latest: empStats.JsMap(),
+        history: {},
       },
     },
     lastBlock: 0,
@@ -68,7 +69,7 @@ async function run(env: ProcessEnv) {
     collateralPrices: Services.CollateralPrices({}, appState),
     syntheticPrices: Services.SyntheticPrices(
       {
-        cryptowatchApiKey: env.cryptwatchApiKey,
+        cryptowatchApiKey: env.cryptowatchApiKey,
         tradermadeApiKey: env.tradermadeApiKey,
         quandlApiKey: env.quandlApiKey,
         defipulseApiKey: env.defipulseApiKey,
@@ -89,10 +90,14 @@ async function run(env: ProcessEnv) {
   console.log("Updated emp state");
   await services.erc20s.update();
   console.log("Updated tokens");
-  await services.collateralPrices.update();
-  console.log("Updated Collateral Prices");
   await services.syntheticPrices.update();
   console.log("Updated Synthetic Prices");
+
+  // backfill price histories
+  await services.collateralPrices.backfill(moment().subtract(1, "month").valueOf());
+
+  await services.collateralPrices.update();
+  console.log("Updated Collateral Prices");
   await services.empStats.update();
   console.log("Updated EMP Stats");
 
@@ -128,7 +133,7 @@ async function run(env: ProcessEnv) {
   }
 
   // coingeckos prices don't update very fast, so set it on an interval every few minutes
-  setInterval(() => {
+  utils.loop(async () => {
     updatePrices().catch(console.error);
   }, 5 * 60 * 1000);
 }

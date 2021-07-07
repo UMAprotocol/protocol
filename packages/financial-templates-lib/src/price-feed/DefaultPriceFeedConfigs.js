@@ -750,6 +750,7 @@ const defaultConfigs = {
     type: "medianizer",
     invertPrice: true,
     minTimeBetweenUpdates: 60,
+    historicalTimestampBuffer: 60,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "binance", pair: "oceanusdt" },
       { type: "cryptowatch", exchange: "kraken", pair: "oceanusd" },
@@ -759,6 +760,7 @@ const defaultConfigs = {
   OCEANUSD: {
     type: "medianizer",
     minTimeBetweenUpdates: 60,
+    historicalTimestampBuffer: 60,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "binance", pair: "oceanusdt" },
       { type: "cryptowatch", exchange: "kraken", pair: "oceanusd" },
@@ -1003,6 +1005,12 @@ const defaultConfigs = {
         invertPrice: true,
       },
     },
+  },
+  uSTONKS_0921: {
+    type: "uniswap",
+    uniswapAddress: "0xb9292B40cab08e5208b863ea9c4c4927a2308eEE",
+    twapLength: 7200,
+    invertPrice: true,
   },
 };
 

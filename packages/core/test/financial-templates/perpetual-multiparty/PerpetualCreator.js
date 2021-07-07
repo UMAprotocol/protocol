@@ -263,10 +263,15 @@ describe("PerpetualCreator", function () {
     );
 
     // New derivative contract holds correct permissions.
-    const tokenContract = await SyntheticToken.at(tokenCurrency.options.address);
+    const tokenContract = await SyntheticToken.at(tokenCurrency.address);
     assert.isTrue(await tokenContract.methods.isMinter(perpetualAddress).call());
     assert.isTrue(await tokenContract.methods.isBurner(perpetualAddress).call());
     assert.isTrue(await tokenContract.methods.holdsRole(0, perpetualAddress).call());
+
+    // The creator contract should hold no roles.
+    assert.isFalse(await tokenContract.methods.holdsRole(0, perpetualCreator.address).call());
+    assert.isFalse(await tokenContract.methods.holdsRole(1, perpetualCreator.address).call());
+    assert.isFalse(await tokenContract.methods.holdsRole(2, perpetualCreator.address).call());
   });
 
   it("If collateral currency does not implement the decimals() method then synthetic currency defaults to 18 decimals", async function () {

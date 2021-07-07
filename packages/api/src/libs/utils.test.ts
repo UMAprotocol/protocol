@@ -1,5 +1,8 @@
 import * as utils from "./utils";
 import assert from "assert";
+import { ethers } from "ethers";
+
+const { parseUnits } = ethers.utils;
 
 describe("utils", function () {
   it("asyncValues", async function () {
@@ -60,11 +63,28 @@ describe("utils", function () {
   });
   it("calculateTvl", function () {
     const emp = {
-      totalPositionCollateral: "1000000000",
+      totalPositionCollateral: parseUnits("100", 8).toString(),
       collateralDecimals: 8,
     };
-    const price = "0.25";
+    const price = parseUnits("0.25").toString();
     const result = utils.calcTvl(price, emp).toString();
-    assert.equal(result, "2500000000000000000");
+    assert.equal(result, parseUnits("25").toString());
+  });
+  it("calculateTvm", function () {
+    const emp = {
+      totalTokensOutstanding: parseUnits("100", 8).toString(),
+      tokenDecimals: 8,
+    };
+    const price = parseUnits("0.25").toString();
+    const result = utils.calcTvm(price, emp).toString();
+    assert.equal(result, parseUnits("25").toString());
+  });
+  it("calcSyntheticPrice", function () {
+    // stablecoin emp, minted 100k usd with eth collateral
+    const collateralPrice = parseUnits("2000");
+    const syntheticPrice = parseUnits(".0005");
+
+    const result = utils.calcSyntheticPrice(syntheticPrice, collateralPrice);
+    assert.equal(result.toString(), parseUnits("1").toString());
   });
 });

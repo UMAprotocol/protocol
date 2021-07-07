@@ -76,7 +76,7 @@ describe("CoveredCallLongShortPairFinancialProductLibrary", function () {
     });
     it("Lower than strike should return 0", async () => {
       const expiryTokensForCollateral = await callOptionLSPFPL.methods
-        .computeExpiryTokensForCollateral(toWei("300"))
+        .percentageLongCollateralAtExpiry(toWei("300"))
         .call({
           from: expiringContractMock.options.address,
         });
@@ -84,7 +84,7 @@ describe("CoveredCallLongShortPairFinancialProductLibrary", function () {
     });
     it("Higher than strike correct value", async () => {
       const expiryTokensForCollateral = await callOptionLSPFPL.methods
-        .computeExpiryTokensForCollateral(toWei("500"))
+        .percentageLongCollateralAtExpiry(toWei("500"))
         .call({
           from: expiringContractMock.options.address,
         });
@@ -92,7 +92,7 @@ describe("CoveredCallLongShortPairFinancialProductLibrary", function () {
     });
     it("Arbitrary expiry price above strike should return correctly", async () => {
       for (const price of [toWei("500"), toWei("600"), toWei("1000"), toWei("1500"), toWei("2000")]) {
-        const expiryTokensForCollateral = await callOptionLSPFPL.methods.computeExpiryTokensForCollateral(price).call({
+        const expiryTokensForCollateral = await callOptionLSPFPL.methods.percentageLongCollateralAtExpiry(price).call({
           from: expiringContractMock.options.address,
         });
         const expectedPrice = toBN(price)
@@ -105,7 +105,7 @@ describe("CoveredCallLongShortPairFinancialProductLibrary", function () {
     it("Should never return a value greater than 1", async () => {
       // create a massive expiry price. 1e18*1e18. Under all conditions should return less than 1.
       const expiryTokensForCollateral = await callOptionLSPFPL.methods
-        .computeExpiryTokensForCollateral(toWei(toWei("1")))
+        .percentageLongCollateralAtExpiry(toWei(toWei("1")))
         .call({ from: expiringContractMock.options.address });
       assert.isTrue(toBN(expiryTokensForCollateral).lt(toBN(toWei("1"))));
     });

@@ -46,5 +46,25 @@
   {
     "contractName": "GovernorChildTunnel",
     "address": "0x6B95974539eBc874595d3B2A08D5509263346D5d"
+  },
+  {
+    "contractName": "LongShortPairCreator",
+    "address": "0xe1fC1EB80db9AD0160AEF6998673625bc2a09d14"
+  },
+  {
+    "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
+    "address": "0x2158C256b2d9B2b58D90D3ddA1b6a90d64498F7d"
+  },
+  {
+    "contractName": "CoveredCallLongShortPairFinancialProductLibrary",
+    "address": "0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0"
+  },
+  {
+    "contractName": "LinearLongShortPairFinancialProductLibrary",
+    "address": "0x2aBf1Bd76655de80eDB3086114315Eec75AF500c"
+  },
+  {
+    "contractName": "RangeBondLongShortPairFinancialProductLibrary",
+    "address": "0xb53A60f595EE2418be9F6057121EE77f0249AC28"
   }
 ]

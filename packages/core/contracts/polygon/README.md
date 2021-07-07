@@ -37,6 +37,6 @@ Any message can be relayed between Polygon and Ethereum provided that they are s
 
 # Security Considerations
 
-This system relies on the [Polygon consensus mechanism](https://docs.matic.network/docs/home/architecture/security-models#proof-of-stake-security) secured by validators in a Proof of Stake system. The validator set enforces the integrity of data passed between networks (i.e. downstream users need to trust that the validators are not modifying the arbitrary messages that are beign sent between networks).
+This system relies on the [Polygon consensus mechanism](https://docs.matic.network/docs/home/architecture/security-models#proof-of-stake-security) secured by validators in a Proof of Stake system. The validator set enforces the integrity of data passed between networks (i.e. downstream users need to trust that the validators are not modifying the arbitrary messages that are being sent between networks).
 
-Moreover, downstream users also rely on off-chain actors to relay messages in a timeley fashion. Historically messages are sent once per hour.
+Moreover, downstream users also rely on off-chain actors to relay messages in a timely fashion. Historically messages are sent once per hour.

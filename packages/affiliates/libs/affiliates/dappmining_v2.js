@@ -175,6 +175,8 @@ module.exports = ({ queries, empAbi, web3 }) => {
       return (
         stream
           .reduce({ lastBlock: startBlock, balancesSum }, ({ lastBlock, balancesSum }, event) => {
+            // stop processing expired emps
+            if (balances.isExpired()) return { lastBlock, balancesSum };
             if (event.blockNumber > lastBlock) {
               // maintains the weighed sum of all balances for every block
               balancesSum = sumBalances(balances.tokens, event.blockNumber - lastBlock, balancesSum);

@@ -4,12 +4,13 @@ pragma solidity ^0.8.0;
 import "../external/polygon/tunnel/FxBaseRootTunnel.sol";
 import "./OracleBaseTunnel.sol";
 import "../oracle/interfaces/OracleAncillaryInterface.sol";
+import "../common/implementation/Lockable.sol";
 
 /**
  * @title Adapter deployed on mainnet that validates and sends price requests from sidechain to the DVM on mainnet.
  * @dev This contract must be a registered financial contract in order to make DVM price requests.
  */
-contract OracleRootTunnel is OracleBaseTunnel, FxBaseRootTunnel {
+contract OracleRootTunnel is OracleBaseTunnel, FxBaseRootTunnel, Lockable {
     constructor(
         address _checkpointManager,
         address _fxRoot,
@@ -28,7 +29,7 @@ contract OracleRootTunnel is OracleBaseTunnel, FxBaseRootTunnel {
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public {
+    ) public nonReentrant() {
         // `getPrice` will revert if there is no price.
         int256 price = _getOracle().getPrice(identifier, time, ancillaryData);
         // This implementation allows duplicate MessageSent events via _sendMessageToRoot. The child tunnel on the
