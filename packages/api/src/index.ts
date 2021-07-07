@@ -1,6 +1,7 @@
 import uma from "@uma/sdk";
 import { ethers } from "ethers";
 import type { empStats, empStatsHistory } from "./tables";
+import type Zrx from "./libs/zrx";
 
 export type Currencies = "usd";
 export type { BigNumber } from "ethers";
@@ -25,6 +26,7 @@ export type PriceSample = [timestamp: number, price: string];
 export type AppState = {
   blocks: uma.tables.blocks.JsMap;
   coingecko: uma.Coingecko;
+  zrx: Zrx;
   emps: {
     active: uma.tables.emps.JsMap;
     expired: uma.tables.emps.JsMap;
@@ -45,6 +47,12 @@ export type AppState = {
     };
     history: {
       [empAddress: string]: uma.tables.historicalPrices.SortedJsMap;
+    };
+  };
+  marketPrices: {
+    // note this is in usdc since these are fetched from amms using usdc as the quote currency
+    usdc: {
+      latest: { [tokenAddress: string]: PriceSample };
     };
   };
   erc20s: uma.tables.erc20s.JsMap;

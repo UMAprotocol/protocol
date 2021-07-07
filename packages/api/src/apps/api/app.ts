@@ -10,10 +10,12 @@ import Express from "../../services/express";
 import Actions from "../../services/actions";
 import { ProcessEnv, AppState } from "../..";
 import { empStats, empStatsHistory } from "../../tables";
+import Zrx from "../../libs/zrx";
 
 async function run(env: ProcessEnv) {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
   assert(env.EXPRESS_PORT, "requires EXPRESS_PORT");
+  assert(env.zrxBaseUrl, "requires zrxBaseUrl");
 
   const provider = new ethers.providers.WebSocketProvider(env.CUSTOM_NODE_URL);
 
@@ -32,6 +34,7 @@ async function run(env: ProcessEnv) {
     provider,
     web3,
     coingecko: new Coingecko(),
+    zrx: new Zrx(env.zrxBaseUrl),
     blocks: tables.blocks.JsMap(),
     emps: {
       active: tables.emps.JsMap("Active Emp"),
@@ -46,6 +49,11 @@ async function run(env: ProcessEnv) {
     synthPrices: {
       latest: {},
       history: {},
+    },
+    marketPrices: {
+      usdc: {
+        latest: {},
+      },
     },
     erc20s: tables.erc20s.JsMap(),
     stats: {
@@ -84,6 +92,7 @@ async function run(env: ProcessEnv) {
     ),
     erc20s: Services.Erc20s(undefined, appState),
     empStats: Services.EmpStats({}, appState),
+    marketPrices: Services.MarketPrices(undefined, appState),
   };
 
   // services consuming data
@@ -109,6 +118,9 @@ async function run(env: ProcessEnv) {
 
   await services.empStats.update();
   console.log("Updated EMP Stats");
+
+  await services.marketPrices.update();
+  console.log("Updated Market Prices");
 
   // expose calls through express
   await Express({ port: Number(env.EXPRESS_PORT) }, actions);
@@ -139,6 +151,7 @@ async function run(env: ProcessEnv) {
   async function updatePrices() {
     await services.collateralPrices.update();
     await services.syntheticPrices.update();
+    await services.marketPrices.update();
   }
 
   // coingeckos prices don't update very fast, so set it on an interval every few minutes

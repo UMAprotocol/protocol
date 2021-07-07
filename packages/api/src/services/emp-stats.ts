@@ -8,7 +8,10 @@ import Queries from "../libs/queries";
 type Config = {
   currency?: Currencies;
 };
-type Dependencies = Pick<AppState, "emps" | "stats" | "prices" | "erc20s" | "registeredEmps" | "synthPrices">;
+type Dependencies = Pick<
+  AppState,
+  "emps" | "stats" | "prices" | "erc20s" | "registeredEmps" | "synthPrices" | "marketPrices"
+>;
 
 // this service is meant to calculate numbers derived from emp state, things like TVL, TVM and other things
 export default (config: Config, appState: Dependencies) => {
