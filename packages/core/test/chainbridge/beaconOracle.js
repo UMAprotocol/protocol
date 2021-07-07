@@ -9,7 +9,8 @@ const Registry = getContract("Registry");
 
 const { utf8ToHex, hexToUtf8, sha3, padRight } = web3.utils;
 
-contract("BeaconOracle", async (accounts) => {
+describe("BeaconOracle", async () => {
+  let accounts;
   let owner;
 
   let beaconOracle;
@@ -22,8 +23,13 @@ contract("BeaconOracle", async (accounts) => {
   const testRequestTime = 123;
   const testPrice = "6";
 
-  beforeEach(async function () {
+  before(async () => {
+    [owner] = accounts;
+    accounts = await web3.eth.getAccounts();
     await runDefaultFixture(hre);
+  });
+
+  beforeEach(async function () {
     registry = await Registry.deployed();
     await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner).send({ from: accounts[0] });
     // Register EOA as a contract creator that can access price information from BeaconOracle.

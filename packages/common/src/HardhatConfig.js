@@ -1,9 +1,10 @@
 const { getNodeUrl, mnemonic } = require("./TruffleConfig");
 const path = require("path");
 
-function getHardhatConfig(configOverrides, workingDir = "./") {
+function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = true) {
   // Hard hat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function
   // get access to the plugins as well.
+  if (includeTruffle) require("@nomiclabs/hardhat-truffle5");
   require("hardhat-gas-reporter");
   require("@nomiclabs/hardhat-web3");
   require("hardhat-deploy");

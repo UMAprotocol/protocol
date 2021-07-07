@@ -39,7 +39,7 @@ const getResourceId = (chainID, name) => {
   return hash;
 };
 
-contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) => {
+describe("GenericHandler - [UMA Cross-chain Communication]", async () => {
   // # of relayers who must vote on a proposal before it can be executed.
   const relayerThreshold = 2;
   // Source chain ID.
@@ -49,11 +49,12 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
   // We only expect to make 1 deposit per test.
   const expectedDepositNonce = 1;
 
-  const owner = accounts[0];
-  const depositerAddress = accounts[1];
-  const relayer1Address = accounts[2];
-  const relayer2Address = accounts[3];
-  const rando = accounts[4];
+  let accounts;
+  let owner;
+  let depositerAddress;
+  let relayer1Address;
+  let relayer2Address;
+  let rando;
 
   const initialRelayers = [relayer1Address, relayer2Address];
 
@@ -88,8 +89,13 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
   let votingResourceId;
   let governanceResourceId;
 
-  beforeEach(async () => {
+  before(async () => {
+    accounts = await web3.eth.getAccounts();
+    [owner, depositerAddress, relayer1Address, relayer2Address, rando] = accounts;
     await runDefaultFixture(hre);
+  });
+
+  beforeEach(async () => {
     registry = await Registry.deployed();
     await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, depositerAddress).send({ from: accounts[0] });
     // Register EOA as a contract creator that can make price requests directly to the SinkOracle

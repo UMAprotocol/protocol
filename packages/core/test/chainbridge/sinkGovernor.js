@@ -14,9 +14,10 @@ const { utf8ToHex } = web3.utils;
 
 const { blankFunctionSig, createGenericDepositData, getFunctionSignature } = require("./helpers");
 
-contract("SinkGovernor", async (accounts) => {
-  const owner = accounts[0];
-  const rando = accounts[1];
+describe("SinkGovernor", async () => {
+  let accounts;
+  let owner;
+  let rando;
 
   let sinkGovernor;
   let erc20;
@@ -38,8 +39,13 @@ contract("SinkGovernor", async (accounts) => {
     return web3.utils.soliditySha3(encodedParams);
   };
 
-  beforeEach(async function () {
+  before(async () => {
+    accounts = await web3.eth.getAccounts();
+    [owner, rando] = accounts;
     await runDefaultFixture(hre);
+  });
+
+  beforeEach(async function () {
     registry = await Registry.deployed();
     await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner).send({ from: accounts[0] });
     await registry.methods.registerContract([], owner).send({ from: owner });
