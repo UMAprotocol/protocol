@@ -15,7 +15,7 @@ const ConfigStore = getContract("ConfigStore");
 
 describe("Perpetual", function () {
   let finder, timer, accounts;
-  
+
   before(async () => {
     await runDefaultFixture(hre);
     accounts = await web3.eth.getAccounts();

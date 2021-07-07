@@ -41,10 +41,12 @@ describe("KpiOptionsFinancialProductLibrary", function () {
       // Calling the transformation function through the emp mock.
       assert.equal(
         (
-          await expiringMultiParty.methods.transformPrice(
-            { rawValue: toWei("1") },
-            (await expiringMultiParty.methods.getCurrentTime().call()).toString()
-          ).call()
+          await expiringMultiParty.methods
+            .transformPrice(
+              { rawValue: toWei("1") },
+              (await expiringMultiParty.methods.getCurrentTime().call()).toString()
+            )
+            .call()
         ).toString(),
         toWei("2")
       );
@@ -52,25 +54,29 @@ describe("KpiOptionsFinancialProductLibrary", function () {
       // Calling the transformation function as a mocked emp caller should also work.
       assert.equal(
         (
-          await expiringMultiParty.methods.transformPrice(
-            { rawValue: toWei("1") },
-            (await expiringMultiParty.methods.getCurrentTime().call()).toString()
-          ).call({ from: expiringMultiParty.options.address })
+          await expiringMultiParty.methods
+            .transformPrice(
+              { rawValue: toWei("1") },
+              (await expiringMultiParty.methods.getCurrentTime().call()).toString()
+            )
+            .call({ from: expiringMultiParty.options.address })
         ).toString(),
         toWei("2")
       );
     });
 
     it("Library returns correctly transformed price after expiration", async () => {
-      await timer.methods.setCurrentTime(expirationTime + 1).send({from:accounts[0]});
+      await timer.methods.setCurrentTime(expirationTime + 1).send({ from: accounts[0] });
 
       // If transformPrice is called after expiration, no transformation should occur.
       assert.equal(
         (
-          await expiringMultiParty.methods.transformPrice(
-            { rawValue: toWei("0.2") },
-            (await expiringMultiParty.methods.getCurrentTime().call()).toString()
-          ).call()
+          await expiringMultiParty.methods
+            .transformPrice(
+              { rawValue: toWei("0.2") },
+              (await expiringMultiParty.methods.getCurrentTime().call()).toString()
+            )
+            .call()
         ).toString(),
         toWei("0.2")
       );

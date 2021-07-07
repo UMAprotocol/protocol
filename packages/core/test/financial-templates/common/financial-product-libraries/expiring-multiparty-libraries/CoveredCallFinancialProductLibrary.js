@@ -78,10 +78,12 @@ describe("CoveredCallFinancialProductLibrary", function () {
       // Calling the transformation function through the emp mock.
       assert.equal(
         (
-          await expiringMultiParty.methods.transformPrice(
-            { rawValue: toWei("350") },
-            (await expiringMultiParty.methods.getCurrentTime().call()).toString()
-          ).call()
+          await expiringMultiParty.methods
+            .transformPrice(
+              { rawValue: toWei("350") },
+              (await expiringMultiParty.methods.getCurrentTime().call()).toString()
+            )
+            .call()
         ).toString(),
         toWei("1")
       );
@@ -89,10 +91,12 @@ describe("CoveredCallFinancialProductLibrary", function () {
       // Calling the transformation function as a mocked emp caller should also work.
       assert.equal(
         (
-          await expiringMultiParty.methods.transformPrice(
-            { rawValue: toWei("350") },
-            (await expiringMultiParty.methods.getCurrentTime().call()).toString()
-          ).call({ from: expiringMultiParty.options.address })
+          await expiringMultiParty.methods
+            .transformPrice(
+              { rawValue: toWei("350") },
+              (await expiringMultiParty.methods.getCurrentTime().call()).toString()
+            )
+            .call({ from: expiringMultiParty.options.address })
         ).toString(),
         toWei("1")
       );
@@ -104,10 +108,12 @@ describe("CoveredCallFinancialProductLibrary", function () {
       // If the oracle price is less than the strike price then the library should return 0 (the option is out the money).
       assert.equal(
         (
-          await expiringMultiParty.methods.transformPrice(
-            { rawValue: toWei("350") },
-            (await expiringMultiParty.methods.getCurrentTime().call()).toString()
-          ).call()
+          await expiringMultiParty.methods
+            .transformPrice(
+              { rawValue: toWei("350") },
+              (await expiringMultiParty.methods.getCurrentTime().call()).toString()
+            )
+            .call()
         ).toString(),
         "0"
       );
@@ -116,10 +122,12 @@ describe("CoveredCallFinancialProductLibrary", function () {
       // strike is $400, token is redeemable for 100 / 500 = 0.2 WETH (worth $100).
       assert.equal(
         (
-          await expiringMultiParty.methods.transformPrice(
-            { rawValue: toWei("500") },
-            (await expiringMultiParty.methods.getCurrentTime().call()).toString()
-          ).call()
+          await expiringMultiParty.methods
+            .transformPrice(
+              { rawValue: toWei("500") },
+              (await expiringMultiParty.methods.getCurrentTime().call()).toString()
+            )
+            .call()
         ).toString(),
         toWei("0.2")
       );

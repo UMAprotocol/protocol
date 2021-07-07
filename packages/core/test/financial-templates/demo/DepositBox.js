@@ -53,8 +53,7 @@ describe("DepositBox", function () {
     // Create a mockOracle and register it with the finder. We use the MockOracle so that we can manually
     // modify timestamps and push prices for demonstration purposes.
     finder = await Finder.deployed();
-    mockOracle = await MockOracle.new(finder.options.address, timer.options.address)
-      .send({ from: contractCreator });
+    mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({ from: contractCreator });
     const mockOracleInterfaceName = web3.utils.utf8ToHex(interfaceName.Oracle);
     await finder.methods
       .changeImplementationAddress(mockOracleInterfaceName, mockOracle.options.address)
@@ -62,10 +61,9 @@ describe("DepositBox", function () {
 
     // Deploy a new DepositBox contract that will connect to the mockOracle for price requests.
     registry = await Registry.deployed();
-
   });
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     // Collateral token to be deposited in DepositBox.
     collateralToken = await Token.new("ETH", "ETH", 18).send({ from: contractCreator });
 
@@ -103,7 +101,7 @@ describe("DepositBox", function () {
 
       // Regular fee is charged on % of collateral locked in deposit box per second.
       // Set regular fees to unrealistcally high (but convenient for testing) 1% per second.
-      await store.methods.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.01") }).send({from:accounts[0]});
+      await store.methods.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.01") }).send({ from: accounts[0] });
 
       // Final fees are fixed charges per price request.
       // Set this to 1 token per call.
@@ -203,9 +201,7 @@ describe("DepositBox", function () {
       );
 
       // A user with a pending withdrawal can cancel the withdrawal request.
-      assert(
-        await didContractThrow(depositBox.methods.cancelWithdrawal().send({from: otherUser}))
-      );
+      assert(await didContractThrow(depositBox.methods.cancelWithdrawal().send({ from: otherUser })));
       txn = await depositBox.methods.cancelWithdrawal().send({ from: user });
       await assertEventEmitted(txn, depositBox, "RequestWithdrawalCanceled", (ev) => {
         return (
@@ -234,15 +230,15 @@ describe("DepositBox", function () {
       assert(await didContractThrow(depositBox.methods.executeWithdrawal().send({ from: user })));
 
       // Manually push a price to the DVM.
-      await mockOracle.methods.pushPrice(priceFeedIdentifier, requestTimestamp, exchangeRate).send({from:accounts[0]});
+      await mockOracle.methods
+        .pushPrice(priceFeedIdentifier, requestTimestamp, exchangeRate)
+        .send({ from: accounts[0] });
 
       // Advance time forward by one second to simulate regular fees being charged.
-      await depositBox.methods.setCurrentTime(requestTimestamp + 1).send({from:accounts[0]});
+      await depositBox.methods.setCurrentTime(requestTimestamp + 1).send({ from: accounts[0] });
 
       // Cannot execute the withdrawal if there is no pending withdrawal for the user.
-      assert(
-        await didContractThrow(depositBox.methods.executeWithdrawal().send({ from: otherUser }))
-      );
+      assert(await didContractThrow(depositBox.methods.executeWithdrawal().send({ from: otherUser })));
 
       // Execute the withdrawal request, which should withdraw (150/200 = 0.75) tokens.
       let txn = await depositBox.methods.executeWithdrawal().send({ from: user });
@@ -278,12 +274,14 @@ describe("DepositBox", function () {
       // Deposit funds and submit withdrawal request.
       await depositBox.methods.deposit({ rawValue: amountToDeposit }).send({ from: user });
       const requestTimestamp = parseInt(await depositBox.methods.getCurrentTime().call());
-      await depositBox.methods.setCurrentTime(requestTimestamp).send({from:accounts[0]});
+      await depositBox.methods.setCurrentTime(requestTimestamp).send({ from: accounts[0] });
       await depositBox.methods.requestWithdrawal({ rawValue: amountToOverdraw }).send({ from: user });
       const userStartingBalance = await collateralToken.methods.balanceOf(user).call();
 
       // Manually push a price to the DVM.
-      await mockOracle.methods.pushPrice(priceFeedIdentifier, requestTimestamp, exchangeRate).send({from:accounts[0]});
+      await mockOracle.methods
+        .pushPrice(priceFeedIdentifier, requestTimestamp, exchangeRate)
+        .send({ from: accounts[0] });
 
       // Execute the withdrawal request, which should withdraw the user's full balance and delete the deposit box.
       // The user has 4 collateral remaining after the final fee.

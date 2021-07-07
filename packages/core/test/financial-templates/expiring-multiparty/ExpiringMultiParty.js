@@ -53,7 +53,8 @@ describe("ExpiringMultiParty", function () {
 
     const identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.methods
-      .addSupportedIdentifier(constructorParams.priceFeedIdentifier).send({ from: accounts[0] });
+      .addSupportedIdentifier(constructorParams.priceFeedIdentifier)
+      .send({ from: accounts[0] });
 
     await ExpiringMultiParty.new(constructorParams).send({ from: accounts[0] });
   });

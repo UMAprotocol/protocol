@@ -5,9 +5,7 @@ const { didContractThrow, ZERO_ADDRESS } = require("@uma/common");
 const { assert } = require("chai");
 
 // Tested Contract
-const CoveredCallLongShortPairFinancialProductLibrary = getContract(
-  "CoveredCallLongShortPairFinancialProductLibrary"
-);
+const CoveredCallLongShortPairFinancialProductLibrary = getContract("CoveredCallLongShortPairFinancialProductLibrary");
 
 // helper contracts. To test LSP libraries we simply need a financial contract with an `expirationTimestamp` method.
 
@@ -77,15 +75,19 @@ describe("CoveredCallLongShortPairFinancialProductLibrary", function () {
         .send({ from: accounts[0] });
     });
     it("Lower than strike should return 0", async () => {
-      const expiryTokensForCollateral = await callOptionLSPFPL.methods.computeExpiryTokensForCollateral(toWei("300")).call({
-        from: expiringContractMock.options.address,
-      });
+      const expiryTokensForCollateral = await callOptionLSPFPL.methods
+        .computeExpiryTokensForCollateral(toWei("300"))
+        .call({
+          from: expiringContractMock.options.address,
+        });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0"));
     });
     it("Higher than strike correct value", async () => {
-      const expiryTokensForCollateral = await callOptionLSPFPL.methods.computeExpiryTokensForCollateral(toWei("500")).call({
-        from: expiringContractMock.options.address,
-      });
+      const expiryTokensForCollateral = await callOptionLSPFPL.methods
+        .computeExpiryTokensForCollateral(toWei("500"))
+        .call({
+          from: expiringContractMock.options.address,
+        });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0.2"));
     });
     it("Arbitrary expiry price above strike should return correctly", async () => {

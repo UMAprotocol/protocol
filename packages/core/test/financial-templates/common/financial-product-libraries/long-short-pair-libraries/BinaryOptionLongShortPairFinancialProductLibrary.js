@@ -24,7 +24,7 @@ describe("BinaryOptionLongShortPairFinancialProductLibrary", function () {
     await runDefaultFixture(hre);
     accounts = await hre.web3.eth.getAccounts();
   });
-  
+
   beforeEach(async () => {
     binaryLSPFPL = await BinaryOptionLongShortPairFinancialProductLibrary.new().send({ from: accounts[0] });
     expiringContractMock = await ExpiringContractMock.new(
@@ -75,21 +75,27 @@ describe("BinaryOptionLongShortPairFinancialProductLibrary", function () {
         .send({ from: accounts[0] });
     });
     it("Lower than lower bound should return 0", async () => {
-      const expiraryTokensForCollateral = await binaryLSPFPL.methods.computeExpiryTokensForCollateral(toWei("2500")).call({
-        from: expiringContractMock.options.address,
-      });
+      const expiraryTokensForCollateral = await binaryLSPFPL.methods
+        .computeExpiryTokensForCollateral(toWei("2500"))
+        .call({
+          from: expiringContractMock.options.address,
+        });
       assert.equal(expiraryTokensForCollateral.toString(), toWei("0"));
     });
     it("equal to upper bound should return 1", async () => {
-      const expiraryTokensForCollateral = await binaryLSPFPL.methods.computeExpiryTokensForCollateral(toWei("3000")).call({
-        from: expiringContractMock.options.address,
-      });
+      const expiraryTokensForCollateral = await binaryLSPFPL.methods
+        .computeExpiryTokensForCollateral(toWei("3000"))
+        .call({
+          from: expiringContractMock.options.address,
+        });
       assert.equal(expiraryTokensForCollateral.toString(), toWei("1"));
     });
     it("Higher than upper bound should return 1", async () => {
-      const expiraryTokensForCollateral = await binaryLSPFPL.methods.computeExpiryTokensForCollateral(toWei("3500")).call({
-        from: expiringContractMock.options.address,
-      });
+      const expiraryTokensForCollateral = await binaryLSPFPL.methods
+        .computeExpiryTokensForCollateral(toWei("3500"))
+        .call({
+          from: expiringContractMock.options.address,
+        });
       assert.equal(expiraryTokensForCollateral.toString(), toWei("1"));
     });
 

@@ -93,15 +93,19 @@ describe("LinearLongShortPairFinancialProductLibrary", function () {
       assert.equal(expiryTokensForCollateral.toString(), toWei("0"));
     });
     it("Higher than upper bound should return 1", async () => {
-      const expiryTokensForCollateral = await linearLSPFPL.methods.computeExpiryTokensForCollateral(toWei("2100")).call({
-        from: expiringContractMock.options.address,
-      });
+      const expiryTokensForCollateral = await linearLSPFPL.methods
+        .computeExpiryTokensForCollateral(toWei("2100"))
+        .call({
+          from: expiringContractMock.options.address,
+        });
       assert.equal(expiryTokensForCollateral.toString(), toWei("1"));
     });
     it("Midway between bounds should return 0.5", async () => {
-      const expiryTokensForCollateral = await linearLSPFPL.methods.computeExpiryTokensForCollateral(toWei("1500")).call({
-        from: expiringContractMock.options.address,
-      });
+      const expiryTokensForCollateral = await linearLSPFPL.methods
+        .computeExpiryTokensForCollateral(toWei("1500"))
+        .call({
+          from: expiringContractMock.options.address,
+        });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0.5"));
     });
 

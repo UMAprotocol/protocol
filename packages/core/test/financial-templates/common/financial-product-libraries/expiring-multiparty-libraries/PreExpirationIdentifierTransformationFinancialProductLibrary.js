@@ -69,9 +69,9 @@ describe("PreExpirationIdentifierTransformationFinancialProductLibrary", functio
     // Calling the transformation function through the emp mock.
     assert.equal(
       hexToUtf8(
-        await expiringMultiParty.methods.transformPriceIdentifier(
-          (await expiringMultiParty.methods.getCurrentTime().call()).toString()
-        ).call()
+        await expiringMultiParty.methods
+          .transformPriceIdentifier((await expiringMultiParty.methods.getCurrentTime().call()).toString())
+          .call()
       ),
       hexToUtf8(transformedPriceFeedIdentifier)
     );
@@ -79,23 +79,22 @@ describe("PreExpirationIdentifierTransformationFinancialProductLibrary", functio
     // Calling the transformation function as a mocked emp caller should also work.
     assert.equal(
       hexToUtf8(
-        await expiringMultiParty.methods.transformPriceIdentifier(
-          (await expiringMultiParty.methods.getCurrentTime().call()).toString()).call(
-          { from: expiringMultiParty.options.address }
-        )
+        await expiringMultiParty.methods
+          .transformPriceIdentifier((await expiringMultiParty.methods.getCurrentTime().call()).toString())
+          .call({ from: expiringMultiParty.options.address })
       ),
       hexToUtf8(transformedPriceFeedIdentifier)
     );
   });
   it("Preforms no transformation on the identifier post-expiration", async () => {
-    await timer.methods.setCurrentTime(expirationTime + 1).send({from:accounts[0]});
+    await timer.methods.setCurrentTime(expirationTime + 1).send({ from: accounts[0] });
 
     // Calling the transformation function through the emp mock.
     assert.equal(
       hexToUtf8(
-        await expiringMultiParty.methods.transformPriceIdentifier(
-          (await expiringMultiParty.methods.getCurrentTime().call()).toString()
-        ).call()
+        await expiringMultiParty.methods
+          .transformPriceIdentifier((await expiringMultiParty.methods.getCurrentTime().call()).toString())
+          .call()
       ),
       hexToUtf8(priceFeedIdentifier)
     );
@@ -103,10 +102,9 @@ describe("PreExpirationIdentifierTransformationFinancialProductLibrary", functio
     // Calling the transformation function as a mocked emp caller should also work.
     assert.equal(
       hexToUtf8(
-        await expiringMultiParty.methods.transformPriceIdentifier(
-          (await expiringMultiParty.methods.getCurrentTime().call()).toString()).call(
-          { from: expiringMultiParty.options.address }
-        )
+        await expiringMultiParty.methods
+          .transformPriceIdentifier((await expiringMultiParty.methods.getCurrentTime().call()).toString())
+          .call({ from: expiringMultiParty.options.address })
       ),
       hexToUtf8(priceFeedIdentifier)
     );
