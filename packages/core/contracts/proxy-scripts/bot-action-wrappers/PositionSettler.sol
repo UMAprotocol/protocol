@@ -11,5 +11,5 @@ contract PositionSettler {
 }
 
 interface IFinancialContract {
-    function settle() external returns (FixedPoint.Unsigned memory amountWithdrawn);
+    function settleExpired() external returns (FixedPoint.Unsigned memory amountWithdrawn);
 }
