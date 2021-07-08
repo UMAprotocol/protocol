@@ -53,6 +53,7 @@ contract LongShortPair is Testable, Lockable {
     }
 
     enum ContractState { Open, ExpiredPriceRequested, ExpiredPriceReceived }
+    // @dev note contractState and expirationTimestamp are declared in this order so they use the same storage slot.
     ContractState public contractState;
 
     uint64 public expirationTimestamp;
