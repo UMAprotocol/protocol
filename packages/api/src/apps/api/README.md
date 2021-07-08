@@ -18,7 +18,7 @@ tradermadeApiKey=
 quandlApiKey=
 defipulseApiKey=
 
-# zrx price feed gets us market prices on tokens
+# 0x price feed gets us market prices on tokens
 zrxBaseUrl=https://api.0x.org
 ```
 
