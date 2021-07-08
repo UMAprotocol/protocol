@@ -2,13 +2,10 @@ const assert = require("assert");
 const path = require("path");
 const fs = require("fs");
 
-const hre = require("hardhat");
-
-const { web3, getContract } = hre;
-
 const { toWei, utf8ToHex, padRight, soliditySha3 } = web3.utils;
 
 const { createConstructorParamsForContractVersion, interfaceName } = require("@uma/common");
+const { getTruffleContract } = require("../dist/index.js");
 
 const buildVersion = "2.0.1"; // this is the version that will be built and appended to the FindContractVersion util.
 
@@ -17,64 +14,52 @@ async function buildHashes(contractType) {
 
   const contractCreator = (await web3.eth.getAccounts())[0];
 
-  const FinancialContract = getContract(contractType);
-  const Finder = getContract("Finder");
-  const IdentifierWhitelist = getContract("IdentifierWhitelist");
-  const AddressWhitelist = getContract("AddressWhitelist");
-  const MockOracle = getContract("MockOracle");
-  const Token = getContract("ExpandedERC20");
-  const SyntheticToken = getContract("SyntheticToken");
-  const Timer = getContract("Timer");
-  const Store = getContract("Store");
-  const ConfigStore = getContract("ConfigStore");
-  const OptimisticOracle = getContract("OptimisticOracle");
+  const FinancialContract = getTruffleContract(contractType, web3, buildVersion);
+  const Finder = getTruffleContract("Finder", web3, buildVersion);
+  const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, buildVersion);
+  const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, buildVersion);
+  const MockOracle = getTruffleContract("MockOracle", web3, buildVersion);
+  const Token = getTruffleContract("ExpandedERC20", web3, buildVersion);
+  const SyntheticToken = getTruffleContract("SyntheticToken", web3, buildVersion);
+  const Timer = getTruffleContract("Timer", web3, buildVersion);
+  const Store = getTruffleContract("Store", web3, buildVersion);
+  const ConfigStore = getTruffleContract("ConfigStore", web3, buildVersion);
+  const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, buildVersion);
 
   const identifier = "TEST_IDENTIFIER";
   const fundingRateIdentifier = "TEST_FUNDING_IDENTIFIER";
 
-  const finder = await Finder.new().send({ from: contractCreator });
+  const finder = await Finder.new({ from: contractCreator });
 
-  const identifierWhitelist = await IdentifierWhitelist.new().send({ from: contractCreator });
-  await identifierWhitelist.methods.addSupportedIdentifier(utf8ToHex(identifier)).send({ from: contractCreator });
+  const identifierWhitelist = await IdentifierWhitelist.new({ from: contractCreator });
+  await identifierWhitelist.addSupportedIdentifier(utf8ToHex(identifier), { from: contractCreator });
 
-  await finder.methods
-    .changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.options.address)
-    .send({
-      from: contractCreator,
-    });
-
-  const timer = await Timer.new().send({ from: contractCreator });
-
-  const mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({
-    from: contractCreator,
-  });
-  await finder.methods.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address).send({
+  await finder.changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address, {
     from: contractCreator,
   });
 
-  const store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.options.address).send({
+  const timer = await Timer.new({ from: contractCreator });
+
+  const mockOracle = await MockOracle.new(finder.address, timer.address, { from: contractCreator });
+  await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address, {
     from: contractCreator,
   });
-  await finder.methods
-    .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
-    .send({ from: contractCreator });
 
-  await finder.methods
-    .changeImplementationAddress(utf8ToHex(interfaceName.FinancialContractsAdmin), contractCreator)
-    .send({
-      from: contractCreator,
-    });
+  const store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address, { from: contractCreator });
+  await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address, { from: contractCreator });
 
-  const syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18).send({ from: contractCreator });
-  const collateralToken = await Token.new("Wrapped Ether", "WETH", 18).send({ from: contractCreator });
+  await finder.changeImplementationAddress(utf8ToHex(interfaceName.FinancialContractsAdmin), contractCreator, {
+    from: contractCreator,
+  });
 
-  const collateralWhitelist = await AddressWhitelist.new().send({ from: contractCreator });
-  await finder.methods
-    .changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.options.address)
-    .send({
-      from: contractCreator,
-    });
-  await collateralWhitelist.methods.addToWhitelist(collateralToken.options.address).send({ from: contractCreator });
+  const syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractCreator });
+  const collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
+
+  const collateralWhitelist = await AddressWhitelist.new({ from: contractCreator });
+  await finder.changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.address, {
+    from: contractCreator,
+  });
+  await collateralWhitelist.addToWhitelist(collateralToken.address, { from: contractCreator });
 
   let configStore, optimisticOracle;
   if (contractType == "Perpetual") {
@@ -87,20 +72,17 @@ async function buildHashes(contractType) {
         minFundingRate: { rawValue: toWei("-0.00001") },
         proposalTimePastLimit: 0,
       },
-      timer.options.address
-    ).send({ from: contractCreator });
+      timer.address,
+      { from: contractCreator }
+    );
 
-    await identifierWhitelist.methods.addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier))).send({
+    await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier)), {
       from: contractCreator,
     });
-    optimisticOracle = await OptimisticOracle.new(7200, finder.options.address, timer.options.address).send({
+    optimisticOracle = await OptimisticOracle.new(7200, finder.address, timer.address, { from: contractCreator });
+    await finder.changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.address, {
       from: contractCreator,
     });
-    await finder.methods
-      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
-      .send({
-        from: contractCreator,
-      });
   }
 
   const constructorParams = await createConstructorParamsForContractVersion(
@@ -116,11 +98,12 @@ async function buildHashes(contractType) {
       store,
       configStore: configStore || {},
     },
-    { expirationTimestamp: parseInt(await timer.methods.getCurrentTime().call()) + 100 } // config override expiration time.
+    { expirationTimestamp: (await timer.getCurrentTime()).toNumber() + 100 }, // config override expiration time.
+    { from: contractCreator }
   );
 
-  const financialContract = await FinancialContract.new(constructorParams).send({ from: contractCreator });
-  const contractCode = await web3.eth.getCode(financialContract.options.address);
+  const financialContract = await FinancialContract.new(constructorParams, { from: contractCreator });
+  const contractCode = await web3.eth.getCode(financialContract.address);
 
   return soliditySha3(contractCode);
 }
