@@ -17,6 +17,9 @@ cryptowatchApiKey=
 tradermadeApiKey=
 quandlApiKey=
 defipulseApiKey=
+
+# 0x price feed gets us market prices on tokens
+zrxBaseUrl=https://api.0x.org
 ```
 
 ## Starting
@@ -92,6 +95,10 @@ Returns all known active collateral or synthetic addresses
 ### allLatestPrices(currency='usd') => {[address:string]:[timestamp:number,price:string]
 
 Returns all known latest prices for synthetic or collateral addresses in wei.
+
+### allLatestMarketPrices() => {[address:string]:[timestamp:number,price:string]
+
+Returns all latest known market prices (based on matcha/0x routing) for synthetic or collateral addresses in wei.
 
 ### latestPriceByTokenAddress(tokenAddress:string,currency:'usd') => [timestamp:number,price:string]
 
