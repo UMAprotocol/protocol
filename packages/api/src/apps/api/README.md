@@ -9,14 +9,24 @@ Add these to a .env file in the root of the `protocol/packages/api` folder.
 ```
 CUSTOM_NODE_URL=wss://mainnet.infura.io/ws/v3/${your project key}
 EXPRESS_PORT=8282
-UPDATE_BLOCKS=1 // defaults to 1: represents the number of block elapsed before rechecking contract states
-OLDEST_BLOCK_MS=1 // defaults to 864,000,000 ( 10 days): represents the max age a block will stay cached
+
+# defaults to 1: represents the number of block elapsed before rechecking contract states
+UPDATE_BLOCKS=1
+
+# defaults to 864,000,000 ( 10 days): represents the max age a block will stay cached
+OLDEST_BLOCK_MS=1
 
 # these configure synthetic price feed. These price feeds may require paid api keys.
 cryptowatchApiKey=
 tradermadeApiKey=
 quandlApiKey=
 defipulseApiKey=
+
+# 0x price feed gets us market prices on tokens
+zrxBaseUrl=https://api.0x.org
+
+# how many days of price history we should query on startup, leave empty to disable, history will start at the time app is started
+backfillDays=
 ```
 
 ## Starting
@@ -92,6 +102,10 @@ Returns all known active collateral or synthetic addresses
 ### allLatestPrices(currency='usd') => {[address:string]:[timestamp:number,price:string]
 
 Returns all known latest prices for synthetic or collateral addresses in wei.
+
+### allLatestMarketPrices() => {[address:string]:[timestamp:number,price:string]
+
+Returns all latest known market prices (based on matcha/0x routing) for synthetic or collateral addresses in wei.
 
 ### latestPriceByTokenAddress(tokenAddress:string,currency:'usd') => [timestamp:number,price:string]
 
