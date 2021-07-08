@@ -23,11 +23,15 @@ export function getAddress(network: Network): string {
   return address;
 }
 
+export function getAbi() {
+  return Artifacts?.abi;
+}
+
 export function connect(address: string, provider: SignerOrProvider): Instance {
   return LongShortPairCreator__factory.connect(address, provider);
 }
 
-export function reduceEvents(state: EventState = {}, event: Event, index?: number): EventState {
+export function reduceEvents(state: EventState, event: Event, index?: number): EventState {
   switch (event.event) {
     case "CreatedLongShortPair": {
       const typedEvent = event as CreatedLongShortPair;
@@ -43,6 +47,6 @@ export function reduceEvents(state: EventState = {}, event: Event, index?: numbe
   }
   return state;
 }
-export function getEventState(events: Event[]): EventState {
-  return events.reduce(reduceEvents, {});
+export function getEventState(events: Event[], eventState: EventState = {}): EventState {
+  return events.reduce(reduceEvents, eventState);
 }
