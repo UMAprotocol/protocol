@@ -25,11 +25,11 @@
   },
   {
     "contractName": "OptimisticOracle",
-    "address": "0xAaF3F29521877d7a28C21E379Bf7A5401883A6B2"
+    "address": "0x9f31a04709b3714654a3be0ac109e3bb2341c9f8"
   },
   {
     "contractName": "OracleChildTunnel",
-    "address": "0x02B8733763dD76f73b8573e668ecA3343a7D65e7"
+    "address": "0x4093dC528c8A8371647e4E960c8Bb7Bc5e90e7C9"
   },
   {
     "contractName": "TokenFactory",
@@ -45,7 +45,7 @@
   },
   {
     "contractName": "GovernorChildTunnel",
-    "address": "0x1EC4F63E40631BeDfcf7Ef37D79Dd1c20A953965"
+    "address": "0x5E828cB22CEfa920E0f3fa18583269f6239818AD"
   },
   {
     "contractName": "MockOracleAncillary",

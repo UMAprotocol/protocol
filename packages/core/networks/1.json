@@ -61,7 +61,7 @@
   },
   {
     "contractName": "OptimisticOracle",
-    "address": "0x287a1bA52e030459F163f48b2Ae468a085003A07"
+    "address": "0x9f631aea633be790b45f2d8e91081efcded7d256"
   },
   {
     "contractName": "PerpetualLib",
@@ -85,11 +85,11 @@
   },
   {
     "contractName": "OracleRootTunnel",
-    "address": "0x57825D1bf50Ad918b39563a57070b0915464D1A8"
+    "address": "0x55a8ec3fe18f8074d090eea8abd56501a4ba098e"
   },
   {
     "contractName": "GovernorRootTunnel",
-    "address": "0xe24914adb2dbb106e97e1c1025f4edb27cdbeca0"
+    "address": "0xeA7Cf05c0bF907997Abd499395556df52F2a20bb"
   },
   {
     "contractName": "LongShortPairCreator",
