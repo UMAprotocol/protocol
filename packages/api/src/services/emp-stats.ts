@@ -8,7 +8,7 @@ import Queries from "../libs/queries";
 type Config = {
   currency?: Currencies;
 };
-type Dependencies = Pick<AppState, "emps" | "stats" | "prices" | "erc20s" | "registeredEmps">;
+type Dependencies = Pick<AppState, "emps" | "stats" | "prices" | "erc20s" | "registeredEmps" | "synthPrices">;
 
 // this service is meant to calculate numbers derived from emp state, things like TVL, TVM and other things
 export default (config: Config, appState: Dependencies) => {
@@ -84,7 +84,7 @@ export default (config: Config, appState: Dependencies) => {
     return stats[currency].latest.tvl.upsert(emp.address, update);
   }
   async function updateTvm(emp: uma.tables.emps.Data) {
-    assert(emp.tokenCurrency, "TVL Requires token currency for emp: " + emp.address);
+    assert(emp.tokenCurrency, "TVM Requires token currency for emp: " + emp.address);
     const priceSample = await getPriceFromTable(emp.address, emp.tokenCurrency);
     const value = await calcTvm(priceSample[1], emp).toString();
     const update = {

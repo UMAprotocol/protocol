@@ -96,18 +96,21 @@ export default (appState: Dependencies) => {
   }
 
   async function sumTvl(addresses: string[], currency: CurrencySymbol = "usd") {
-    const tvl = await bluebird.reduce(
-      addresses,
-      async (sum, address) => {
+    const tvls = await Promise.all(
+      addresses.map(async (address) => {
         try {
-          const stats = await appState.stats[currency].latest.tvl.get(address);
-          return sum.add(stats.value || "0");
+          const stat = await appState.stats[currency].latest.tvl.get(address);
+          return stat.value || "0";
         } catch (err) {
-          return sum;
+          return "0";
         }
-      },
-      BigNumber.from("0")
+      })
     );
+
+    const tvl = await tvls.reduce((sum, tvl) => {
+      return sum.add(tvl);
+    }, BigNumber.from("0"));
+
     return tvl.toString();
   }
   async function totalTvl(currency: CurrencySymbol = "usd") {
@@ -115,18 +118,21 @@ export default (appState: Dependencies) => {
     return sumTvl(addresses, currency);
   }
   async function sumTvm(addresses: string[], currency: CurrencySymbol = "usd") {
-    const tvm = await bluebird.reduce(
-      addresses,
-      async (sum, address) => {
+    const tvms = await Promise.all(
+      addresses.map(async (address) => {
         try {
-          const stats = await appState.stats[currency].latest.tvm.get(address);
-          return sum.add(stats.value || "0");
+          const stat = await appState.stats[currency].latest.tvm.get(address);
+          return stat.value || "0";
         } catch (err) {
-          return sum;
+          return "0";
         }
-      },
-      BigNumber.from("0")
+      })
     );
+
+    const tvm = await tvms.reduce((sum, tvm) => {
+      return sum.add(tvm);
+    }, BigNumber.from("0"));
+
     return tvm.toString();
   }
   async function totalTvm(currency: CurrencySymbol = "usd") {

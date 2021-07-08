@@ -13,7 +13,7 @@ type Config = undefined;
 
 export function Handlers(config: Config, appState: Dependencies): Actions {
   const queries = Queries(appState);
-  const { registeredEmps, erc20s, collateralAddresses, syntheticAddresses, prices, stats } = appState;
+  const { registeredEmps, erc20s, collateralAddresses, syntheticAddresses, prices, stats, synthPrices } = appState;
 
   const actions: Actions = {
     echo(...args: Json[]) {
@@ -47,6 +47,9 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     async allLatestPrices(currency: CurrencySymbol = "usd") {
       assert(exists(prices[currency]), "invalid currency type: " + currency);
       return prices[currency].latest;
+    },
+    async allIdentifierPrices() {
+      return synthPrices.latest;
     },
     // get prices by token address
     latestPriceByTokenAddress: queries.latestPriceByTokenAddress,
@@ -92,13 +95,13 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       assert(exists(emp.collateralCurrency), "EMP does not have token currency address");
       return queries.sliceHistoricalPricesByTokenAddress(emp.collateralCurrency, start, length);
     },
-    async tvl(addresses?: string[], currency: CurrencySymbol = "usd") {
-      addresses = lodash.castArray(addresses);
+    async tvl(addresses: string[] = [], currency: CurrencySymbol = "usd") {
+      addresses = addresses ? lodash.castArray(addresses) : [];
       if (addresses == null || addresses.length == 0) return queries.totalTvl(currency);
       return queries.sumTvl(addresses, currency);
     },
-    async tvm(addresses?: string[], currency: CurrencySymbol = "usd") {
-      addresses = lodash.castArray(addresses);
+    async tvm(addresses: string[] = [], currency: CurrencySymbol = "usd") {
+      addresses = addresses ? lodash.castArray(addresses) : [];
       if (addresses == null || addresses.length == 0) return queries.totalTvm(currency);
       return queries.sumTvm(addresses, currency);
     },

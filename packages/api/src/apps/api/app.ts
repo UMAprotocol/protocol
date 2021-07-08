@@ -96,8 +96,6 @@ async function run(env: ProcessEnv) {
   console.log("Updated emp state");
   await services.erc20s.update();
   console.log("Updated tokens");
-  await services.syntheticPrices.update();
-  console.log("Updated Synthetic Prices");
 
   // backfill price histories
   await services.collateralPrices.backfill(moment().subtract(1, "month").valueOf());
@@ -105,6 +103,10 @@ async function run(env: ProcessEnv) {
 
   await services.collateralPrices.update();
   console.log("Updated Collateral Prices");
+
+  await services.syntheticPrices.update();
+  console.log("Updated Synthetic Prices");
+
   await services.empStats.update();
   console.log("Updated EMP Stats");
 
@@ -142,7 +144,7 @@ async function run(env: ProcessEnv) {
   // coingeckos prices don't update very fast, so set it on an interval every few minutes
   utils.loop(async () => {
     updatePrices().catch(console.error);
-  }, 5 * 60 * 1000);
+  }, 10 * 60 * 1000);
 }
 
 export default run;
