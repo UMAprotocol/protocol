@@ -7,10 +7,10 @@ import bluebird from "bluebird";
 import { BigNumber } from "ethers";
 
 const { exists } = uma.utils;
-type Dependencies = Pick<AppState, "erc20s" | "emps" | "stats" | "registeredEmps" | "prices">;
+type Dependencies = Pick<AppState, "erc20s" | "emps" | "stats" | "registeredEmps" | "prices" | "synthPrices">;
 
 export default (appState: Dependencies) => {
-  const { prices } = appState;
+  const { prices, synthPrices } = appState;
 
   async function historicalPricesByTokenAddress(
     address: string,
@@ -46,6 +46,11 @@ export default (appState: Dependencies) => {
     assert(exists(priceSample), "No price for address: " + address);
     return priceSample;
   }
+  async function getLatestIdentifierPrice(empAddress: string) {
+    assert(synthPrices.latest[empAddress], "No identifier price for emp address: " + empAddress);
+    // [timestamp, price], returns just price
+    return synthPrices.latest[empAddress][1];
+  }
   async function getAnyEmp(empAddress: string) {
     if (await appState.emps.active.has(empAddress)) {
       return appState.emps.active.get(empAddress);
@@ -65,6 +70,9 @@ export default (appState: Dependencies) => {
       collateralDecimals: collateral?.decimals,
       tokenName: token?.name,
       collateralName: collateral?.name,
+      tokenSymbol: token?.symbol,
+      collateralSymbol: collateral?.symbol,
+      identifierPrice: await getLatestIdentifierPrice(empState.address).catch(() => null),
     };
     let gcr = "0";
     try {
