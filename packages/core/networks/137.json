@@ -53,7 +53,7 @@
   },
   {
     "contractName": "LongShortPairCreator",
-    "address": "0x751190691A07acC3f43A7396AD87967bB685deEd"
+    "address": "0x62410e96a2ceB4d66824346e3264d1D9107a0aBE"
   },
   {
     "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
@@ -69,6 +69,6 @@
   },
   {
     "contractName": "RangeBondLongShortPairFinancialProductLibrary",
-    "address": "0x7A9Bbd278b40f90F1269cB3a9D94a63333febdD4"
+    "address": "0x8245545845a664f25cE407ee2EFe73CE6b14a837"
   }
 ]
