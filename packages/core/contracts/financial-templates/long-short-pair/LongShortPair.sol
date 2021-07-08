@@ -46,7 +46,7 @@ contract LongShortPair is Testable, Lockable {
         LongShortPairFinancialProductLibrary financialProductLibrary; // Contract providing settlement payout logic.
         bytes customAncillaryData; // Custom ancillary data to be passed along with the price request to the OO.
         uint256 prepaidProposerReward; // Preloaded reward to incentivize settlement price proposals.
-        uint256 optimisticOracleLivenessTime; // OO liveness timer for price requests.
+        uint256 optimisticOracleLivenessTime; // OO liveness time for price requests.
         uint256 optimisticOracleProposerBond; // OO proposer bond for price requests.
         FinderInterface finder; // DVM finder to find other UMA ecosystem contracts.
         address timerAddress; // Timer used to synchronize contract time in testing. Set to 0x000... in production.
