@@ -65,8 +65,8 @@ contract LongShortPair is Testable, Lockable {
     // Price returned from the Optimistic oracle at settlement time.
     int256 public expiryPrice;
 
-    // number between 0 and 1e18 representing how much collateral long & short tokens are redeemable for. 0 makes each
-    // short token worth collateralPerPair and long tokens worth 0. 1 makes each long token worth collateralPerPair and short 0.
+    // Number between 0 and 1e18 to allocate collateral between long & short tokens at redemption. 0 entitles each short
+    // to collateralPerPair and long worth 0. 1e18 makes each long worth collateralPerPair and short 0.
     uint256 public expiryPercentLong;
 
     bytes32 public priceIdentifier;
@@ -280,7 +280,7 @@ contract LongShortPair is Testable, Lockable {
      * @param sponsor address of the sponsor to query.
      * @return [uint256, uint256]. First is long tokens held by sponsor and second is short tokens held by sponsor.
      */
-    function getPositionTokens(address sponsor) public view returns (uint256, uint256) {
+    function getPositionTokens(address sponsor) public view nonReentrantView() returns (uint256, uint256) {
         return (longToken.balanceOf(sponsor), shortToken.balanceOf(sponsor));
     }
 

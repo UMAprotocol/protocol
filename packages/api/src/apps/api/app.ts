@@ -9,11 +9,13 @@ import * as Services from "../../services";
 import Express from "../../services/express";
 import Actions from "../../services/actions";
 import { ProcessEnv, AppState } from "../..";
-import { empStats } from "../../tables";
+import { empStats, empStatsHistory } from "../../tables";
+import Zrx from "../../libs/zrx";
 
 async function run(env: ProcessEnv) {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
   assert(env.EXPRESS_PORT, "requires EXPRESS_PORT");
+  assert(env.zrxBaseUrl, "requires zrxBaseUrl");
 
   const provider = new ethers.providers.WebSocketProvider(env.CUSTOM_NODE_URL);
 
@@ -32,6 +34,7 @@ async function run(env: ProcessEnv) {
     provider,
     web3,
     coingecko: new Coingecko(),
+    zrx: new Zrx(env.zrxBaseUrl),
     blocks: tables.blocks.JsMap(),
     emps: {
       active: tables.emps.JsMap("Active Emp"),
@@ -47,11 +50,22 @@ async function run(env: ProcessEnv) {
       latest: {},
       history: {},
     },
+    marketPrices: {
+      usdc: {
+        latest: {},
+      },
+    },
     erc20s: tables.erc20s.JsMap(),
     stats: {
       usd: {
-        latest: empStats.JsMap(),
-        history: {},
+        latest: {
+          tvm: empStats.JsMap("Latest Tvm"),
+          tvl: empStats.JsMap("Latest Tvl"),
+        },
+        history: {
+          tvm: empStatsHistory.SortedJsMap("Tvm History"),
+          tvl: empStatsHistory.SortedJsMap("Tvl History"),
+        },
       },
     },
     lastBlock: 0,
@@ -78,6 +92,7 @@ async function run(env: ProcessEnv) {
     ),
     erc20s: Services.Erc20s(undefined, appState),
     empStats: Services.EmpStats({}, appState),
+    marketPrices: Services.MarketPrices(undefined, appState),
   };
 
   // services consuming data
@@ -90,16 +105,27 @@ async function run(env: ProcessEnv) {
   console.log("Updated emp state");
   await services.erc20s.update();
   console.log("Updated tokens");
-  await services.syntheticPrices.update();
-  console.log("Updated Synthetic Prices");
 
-  // backfill price histories
-  await services.collateralPrices.backfill(moment().subtract(1, "month").valueOf());
+  // backfill price histories, disable if not specified in env
+  if (env.backfillDays) {
+    console.log(`Backfilling price history from ${env.backfillDays} days ago`);
+    await services.collateralPrices.backfill(moment().subtract(env.backfillDays, "days").valueOf());
+    console.log("Updated Collateral Prices Backfill");
+    await services.empStats.backfill();
+    console.log("Updated EMP Backfill");
+  }
 
   await services.collateralPrices.update();
   console.log("Updated Collateral Prices");
+
+  await services.syntheticPrices.update();
+  console.log("Updated Synthetic Prices");
+
   await services.empStats.update();
   console.log("Updated EMP Stats");
+
+  await services.marketPrices.update();
+  console.log("Updated Market Prices");
 
   // expose calls through express
   await Express({ port: Number(env.EXPRESS_PORT) }, actions);
@@ -130,12 +156,13 @@ async function run(env: ProcessEnv) {
   async function updatePrices() {
     await services.collateralPrices.update();
     await services.syntheticPrices.update();
+    await services.marketPrices.update();
   }
 
   // coingeckos prices don't update very fast, so set it on an interval every few minutes
   utils.loop(async () => {
     updatePrices().catch(console.error);
-  }, 5 * 60 * 1000);
+  }, 10 * 60 * 1000);
 }
 
 export default run;

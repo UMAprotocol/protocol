@@ -2,6 +2,10 @@ import axios from "axios";
 import assert from "assert";
 import { get } from "lodash";
 
+export function msToS(ms: number) {
+  return Math.floor(ms / 1000);
+}
+
 class Coingecko {
   private host: string;
   constructor(host = "https://api.coingecko.com/api/v3") {

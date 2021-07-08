@@ -7,10 +7,13 @@ import bluebird from "bluebird";
 import { BigNumber } from "ethers";
 
 const { exists } = uma.utils;
-type Dependencies = Pick<AppState, "erc20s" | "emps" | "stats" | "registeredEmps" | "prices">;
+type Dependencies = Pick<
+  AppState,
+  "erc20s" | "emps" | "stats" | "registeredEmps" | "prices" | "synthPrices" | "marketPrices"
+>;
 
 export default (appState: Dependencies) => {
-  const { prices } = appState;
+  const { prices, synthPrices, marketPrices } = appState;
 
   async function historicalPricesByTokenAddress(
     address: string,
@@ -46,6 +49,18 @@ export default (appState: Dependencies) => {
     assert(exists(priceSample), "No price for address: " + address);
     return priceSample;
   }
+  async function getLatestIdentifierPrice(empAddress: string) {
+    assert(synthPrices.latest[empAddress], "No identifier price for emp address: " + empAddress);
+    // [timestamp, price], returns just price
+    return synthPrices.latest[empAddress][1];
+  }
+  async function getLatestMarketPrice(address: string, currency: "usdc" = "usdc") {
+    assert(address, "requires an erc20 token address");
+    assert(exists(marketPrices[currency]), "invalid currency type: " + currency);
+    const priceSample = marketPrices[currency].latest[address];
+    assert(exists(priceSample), "No price for address: " + address);
+    return priceSample[1];
+  }
   async function getAnyEmp(empAddress: string) {
     if (await appState.emps.active.has(empAddress)) {
       return appState.emps.active.get(empAddress);
@@ -59,12 +74,20 @@ export default (appState: Dependencies) => {
       ? await appState.erc20s.get(empState.collateralCurrency).catch(() => null)
       : null;
 
+    const tokenMarketPrice = empState.tokenCurrency
+      ? await getLatestMarketPrice(empState.tokenCurrency).catch(() => null)
+      : null;
+
     const state = {
       ...empState,
       tokenDecimals: token?.decimals,
       collateralDecimals: collateral?.decimals,
       tokenName: token?.name,
       collateralName: collateral?.name,
+      tokenSymbol: token?.symbol,
+      collateralSymbol: collateral?.symbol,
+      identifierPrice: await getLatestIdentifierPrice(empState.address).catch(() => null),
+      tokenMarketPrice,
     };
     let gcr = "0";
     try {
@@ -88,19 +111,48 @@ export default (appState: Dependencies) => {
   }
 
   async function sumTvl(addresses: string[], currency: CurrencySymbol = "usd") {
-    const tvl = await bluebird.reduce(
-      addresses,
-      async (sum, address) => {
-        const stats = await appState.stats[currency].latest.getOrCreate(address);
-        return sum.add(stats.tvl || "0");
-      },
-      BigNumber.from("0")
+    const tvls = await Promise.all(
+      addresses.map(async (address) => {
+        try {
+          const stat = await appState.stats[currency].latest.tvl.get(address);
+          return stat.value || "0";
+        } catch (err) {
+          return "0";
+        }
+      })
     );
+
+    const tvl = await tvls.reduce((sum, tvl) => {
+      return sum.add(tvl);
+    }, BigNumber.from("0"));
+
     return tvl.toString();
   }
   async function totalTvl(currency: CurrencySymbol = "usd") {
     const addresses = Array.from(appState.registeredEmps.values());
     return sumTvl(addresses, currency);
+  }
+  async function sumTvm(addresses: string[], currency: CurrencySymbol = "usd") {
+    const tvms = await Promise.all(
+      addresses.map(async (address) => {
+        try {
+          const stat = await appState.stats[currency].latest.tvm.get(address);
+          return stat.value || "0";
+        } catch (err) {
+          return "0";
+        }
+      })
+    );
+
+    const tvm = await tvms.reduce((sum, tvm) => {
+      return sum.add(tvm);
+    }, BigNumber.from("0"));
+
+    return tvm.toString();
+  }
+  async function totalTvm(currency: CurrencySymbol = "usd") {
+    const addresses = Array.from(appState.registeredEmps.values());
+    return sumTvm(addresses, currency);
   }
 
   return {
@@ -110,6 +162,8 @@ export default (appState: Dependencies) => {
     listExpiredEmps,
     totalTvl,
     sumTvl,
+    totalTvm,
+    sumTvm,
     latestPriceByTokenAddress,
     historicalPricesByTokenAddress,
     sliceHistoricalPricesByTokenAddress,
