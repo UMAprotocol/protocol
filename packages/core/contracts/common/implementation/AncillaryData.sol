@@ -98,7 +98,7 @@ library AncillaryData {
 
     /**
      * @notice Helper method that returns the left hand side of a "key:value" pair plus the colon ":" and a leading
-     * comma "," if the `currentAncillaryData` is not empty. The return value is intended to be appended as a prefix to
+     * comma "," if the `currentAncillaryData` is not empty. The return value is intended to be prepended as a prefix to
      * some utf8 value that is ultimately added to a comma-delimited, key-value dictionary.
      */
     function constructPrefix(bytes memory currentAncillaryData, bytes memory key) internal pure returns (bytes memory) {
