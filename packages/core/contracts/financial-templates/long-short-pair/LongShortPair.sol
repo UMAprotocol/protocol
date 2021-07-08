@@ -55,9 +55,9 @@ contract LongShortPair is Testable, Lockable {
     enum ContractState { Open, ExpiredPriceRequested, ExpiredPriceReceived }
     ContractState public contractState;
 
-    string public pairName;
-
     uint64 public expirationTimestamp;
+
+    string public pairName;
 
     // Amount of collateral a pair of tokens is always redeemable for.
     uint256 public collateralPerPair;
@@ -126,13 +126,14 @@ contract LongShortPair is Testable, Lockable {
      *    financialProductLibrary: Contract providing settlement payout logic.
      *    customAncillaryData: Custom ancillary data to be passed along with the price request to the OO.
      *    prepaidProposerReward: Preloaded reward to incentivize settlement price proposals.
-     *    optimisticOracleLivenessTime: OO liveness timer for price requests.
+     *    optimisticOracleLivenessTime: OO liveness time for price requests.
      *    optimisticOracleProposerBond: OO proposer bond for price requests.
      *    finder: DVM finder to find other UMA ecosystem contracts.
      *    timerAddress: Timer used to synchronize contract time in testing. Set to 0x000... in production.
      */
     constructor(ConstructorParams memory params) Testable(params.timerAddress) {
         finder = params.finder;
+        require(bytes(params.pairName).length > 0, "Pair name cant be empty");
         require(params.expirationTimestamp > getCurrentTime(), "Expiration timestamp in past");
         require(params.collateralPerPair > 0, "Collateral per pair cannot be 0");
         require(_getIdentifierWhitelist().isIdentifierSupported(params.priceIdentifier), "Identifier not registered");
