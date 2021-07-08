@@ -10,7 +10,7 @@ const { toWei, utf8ToHex, padRight, soliditySha3 } = web3.utils;
 
 const { createConstructorParamsForContractVersion, interfaceName } = require("@uma/common");
 
-const buildVersion = "2.5.0"; // this is the version that will be built and appended to the FindContractVersion util.
+const buildVersion = "2.0.1"; // this is the version that will be built and appended to the FindContractVersion util.
 
 async function buildHashes(contractType) {
   assert(contractType == "Perpetual" || contractType == "ExpiringMultiParty", "Invalid contract type defined!");
