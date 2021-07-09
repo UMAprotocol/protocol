@@ -20,15 +20,48 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
   // Solc version defined here so etherscan-verification has access to it
   const solcVersion = "0.8.4";
 
+  // This is a list of the contracts too large to compile at runs = 999999.
+  // Compilation settings are overridden for these to allow them to compile without going over the bytecode limit.
+  const bigContracts = [
+    "contracts/financial-templates/expiring-multiparty/ExpiringMultiParty.sol",
+    "contracts/financial-templates/expiring-multiparty/ExpiringMultiPartyLib.sol",
+    "contracts/financial-templates/perpetual-multiparty/Perpetual.sol",
+    "contracts/financial-templates/perpetual-multiparty/PerpetualLib.sol",
+    "contracts/financial-templates/perpetual-multiparty/PerpetualLiquidatable.sol",
+    "contracts/financial-templates/expiring-multiparty/Liquidatable.sol",
+  ];
+
+  const overrides = Object.fromEntries(
+    bigContracts.map((name) => {
+      return [
+        name,
+        {
+          version: solcVersion,
+          settings: {
+            optimizer: {
+              enabled: true,
+              runs: 199,
+            },
+          },
+        },
+      ];
+    })
+  );
+
   const defaultConfig = {
     solidity: {
-      version: solcVersion,
-      settings: {
-        optimizer: {
-          enabled: true,
-          runs: 199,
+      compilers: [
+        {
+          version: solcVersion,
+          settings: {
+            optimizer: {
+              enabled: true,
+              runs: 999999,
+            },
+          },
         },
-      },
+      ],
+      overrides,
     },
     networks: {
       hardhat: {
@@ -93,6 +126,8 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
       },
     },
   };
+
+  console.log(defaultConfig.solidity.overrides);
   return { ...defaultConfig, ...configOverrides };
 }
 
