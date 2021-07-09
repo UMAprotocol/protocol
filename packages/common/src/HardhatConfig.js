@@ -40,7 +40,7 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
           settings: {
             optimizer: {
               enabled: true,
-              runs: 999999,
+              runs: 1000000,
             },
           },
         },
