@@ -20,15 +20,12 @@ const {
 // Truffle artifacts
 const Token = artifacts.require("ExpandedERC20");
 
-// Run the tests against 3 diffrent price feed scaling combinations. Note these tests differ from the other monitor tests
-// as the Balance monitor is only dependent on token balances feeds. No need to test price feed scaling decimals.
-// 1) 18 decimal synthetic decimals with 18 decimal collateral decimals.
-// 1) 18 decimal synthetic decimals with 8 decimal collateral decimals.
-// 1) 8 decimal synthetic decimals with 18 decimal collateral decimals.
+// Run the tests against 2 different kinds of token/synth decimal combinations:
+// 1) matching 18 collateral & 18 synthetic decimals with 18 decimals for price feed.
+// 3) matching 8 collateral & 8 synthetic decimals with 18 decimals for price feed.
 const configs = [
-  { syntheticDecimals: 18, collateralDecimals: 18 },
-  { syntheticDecimals: 18, collateralDecimals: 8 },
-  { syntheticDecimals: 8, collateralDecimals: 18 },
+  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
+  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 },
 ];
 
 const Convert = (decimals) => (number) => parseFixed(number.toString(), decimals).toString();

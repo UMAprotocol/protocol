@@ -21,12 +21,13 @@ const {
 
 const PerpetualMock = getTruffleContract("PerpetualMock", web3);
 
-// Run the tests against 2 diffrent price feed scaling combinations. Note these tests differ from the other monitor tests
-// as the Synthetic peg monitor is only dependent on price feeds. No need to test different decimal or collateral combinations.
-// 1) 18 decimal price feed.
-// 2) 8 decimal price feed.
-// 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
-const configs = [{ priceFeedDecimals: 18 }, { priceFeedDecimals: 8 }];
+// Run the tests against 2 different kinds of token/synth decimal combinations:
+// 1) matching 18 collateral & 18 synthetic decimals with 18 decimals for price feed.
+// 3) matching 8 collateral & 8 synthetic decimals with 18 decimals for price feed.
+const configs = [
+  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
+  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 },
+];
 
 const Convert = (decimals) => (number) => toBN(parseFixed(number.toString(), decimals).toString());
 

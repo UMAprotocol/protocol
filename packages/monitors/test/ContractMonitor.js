@@ -22,13 +22,11 @@ const {
 // Script to test
 const { ContractMonitor } = require("../src/ContractMonitor");
 
-// Run the tests against 3 different kinds of token/synth decimal combinations:
-// 1) matching 18 & 18 for collateral for most token types with normal tokens.
-// 2) non-matching 8 collateral & 18 synthetic for legacy UMA synthetics.
-// 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
+// Run the tests against 2 different kinds of token/synth decimal combinations:
+// 1) matching 18 collateral & 18 synthetic decimals with 18 decimals for price feed.
+// 3) matching 8 collateral & 8 synthetic decimals with 18 decimals for price feed.
 const configs = [
   { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
-  { tokenSymbol: "Legacy BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
   { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 },
 ];
 const optimisticOracleLiveness = 7200;
