@@ -27,6 +27,9 @@ zrxBaseUrl=https://api.0x.org
 
 # how many days of price history we should query on startup, leave empty to disable, history will start at the time app is started
 backfillDays=
+
+# multicall maker proxy contract, for saving on calls to infura. shown is a valid mainnet contract.
+multicallAddress=0xeefBa1e63905eF1D7ACbA5a8513c70307C1cE441
 ```
 
 ## Starting

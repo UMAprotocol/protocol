@@ -1,94 +1,106 @@
 import * as uma from "@uma/sdk";
 import Promise from "bluebird";
 const { emp } = uma.clients;
-import { BigNumber, utils } from "ethers";
+import { utils } from "ethers";
 const { parseBytes32String } = utils;
-import { asyncValues } from "../libs/utils";
 import { AppState } from "..";
+import lodash from "lodash";
 
 type Instance = uma.clients.emp.Instance;
 type Config = undefined;
 type Dependencies = Pick<
   AppState,
-  "registeredEmps" | "provider" | "emps" | "collateralAddresses" | "syntheticAddresses"
+  "registeredEmps" | "provider" | "emps" | "collateralAddresses" | "syntheticAddresses" | "multicall"
 >;
 
+// utility to help convert multicall responses to string
+function toString(x: any) {
+  if (lodash.isArray(x)) {
+    return x[0].toString();
+  }
+  return x.toString();
+}
+// utility to help convert multicall responses to number
+function toNumber(x: any) {
+  if (lodash.isArray(x)) {
+    return Number(x[0]);
+  }
+  return Number(x);
+}
+// utility to help convert multicall responses of bytes32 to string
+function parseBytes(x: any) {
+  if (lodash.isArray(x)) {
+    return parseBytes32String(x[0]);
+  }
+  return parseBytes32String(x);
+}
 export default (config: Config, appState: Dependencies) => {
-  const { registeredEmps, provider, emps, collateralAddresses, syntheticAddresses } = appState;
+  const { registeredEmps, provider, emps, collateralAddresses, syntheticAddresses, multicall } = appState;
 
-  async function readEmpDynamicState(instance: Instance, address: string) {
-    return asyncValues<uma.tables.emps.Data>({
-      address,
-      updated: Date.now(),
-      totalTokensOutstanding: instance
-        .totalTokensOutstanding()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-      totalPositionCollateral: instance
-        .totalPositionCollateral()
-        .then((x) => x.rawValue.toString())
-        .catch(() => null),
-      rawTotalPositionCollateral: instance
-        .rawTotalPositionCollateral()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-      expiryPrice: instance
-        .expiryPrice()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-    });
+  // wrapper around multicall batched read to call contract methods and format responses
+  async function batchRead(calls: [string, (x: any) => any][], instance: Instance) {
+    // multical batch takes array of {method} objects
+    const results = await multicall
+      .batch(
+        instance,
+        calls.map(([method]) => ({ method }))
+      )
+      .read();
+
+    // convert results of multicall, an array of responses, into a key value, keyed by contract method
+    return Object.fromEntries(
+      lodash.zip(calls, results).map((zipped) => {
+        const [method, result] = zipped;
+        if (method == null) return [];
+        if (result == null) return [];
+        const [key, map] = method;
+        return [key, map(result)];
+      })
+    );
   }
 
-  async function readEmpStaticState(instance: Instance, address: string) {
-    const state = await asyncValues<uma.tables.emps.Data>({
+  // defines what we are calling dynamic state, which can change in the emp from block to block
+  async function readEmpDynamicState(instance: Instance, address: string) {
+    const calls: [string, (x: any) => any][] = [
+      ["totalTokensOutstanding", toString],
+      // for some reason this call returns an array of values, something to do with this being a function
+      ["totalPositionCollateral", toString],
+      ["rawTotalPositionCollateral", toString],
+      ["expiryPrice", toString],
+    ];
+    const result = await batchRead(calls, instance);
+
+    return {
       address,
-      // position manager
-      priceIdentifier: instance
-        .priceIdentifier()
-        .then(parseBytes32String)
-        .catch(() => null),
-      expirationTimestamp: instance
-        .expirationTimestamp()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-      withdrawLiveness: instance
-        .withdrawalLiveness()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-      tokenCurrency: instance.tokenCurrency().catch(() => null),
-      collateralCurrency: instance.collateralCurrency().catch(() => null),
-      finder: instance.finder().catch(() => null),
-      minSponsorTokens: instance
-        .minSponsorTokens()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-      // liquidatable
-      liquidationLiveness: instance
-        .liquidationLiveness()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-      collateralRequirement: instance
-        .collateralRequirement()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-      disputeBondPercentage: instance
-        .disputeBondPercentage()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-      sponsorDisputeRewardPercentage: instance
-        .sponsorDisputeRewardPercentage()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-      disputerDisputeRewardPercentage: instance
-        .disputerDisputeRewardPercentage()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-      cumulativeFeeMultiplier: instance
-        .cumulativeFeeMultiplier()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-    });
-    return state;
+      updated: Date.now(),
+      ...result,
+    };
+  }
+
+  // queries all static state, ie state which does not change in the emp once set
+  async function readEmpStaticState(instance: Instance, address: string) {
+    const calls: [string, (x: any) => any][] = [
+      ["priceIdentifier", parseBytes],
+      ["expirationTimestamp", toString],
+      ["withdrawalLiveness", toString],
+      ["tokenCurrency", toString],
+      ["collateralCurrency", toString],
+      ["finder", toString],
+      ["minSponsorTokens", toString],
+      ["liquidationLiveness", toNumber],
+      ["collateralRequirement", toString],
+      ["disputeBondPercentage", toString],
+      ["sponsorDisputeRewardPercentage", toString],
+      ["disputerDisputeRewardPercentage", toString],
+      ["cumulativeFeeMultiplier", toString],
+    ];
+    const result = await batchRead(calls, instance);
+
+    return {
+      address,
+      updated: Date.now(),
+      ...result,
+    };
   }
 
   async function updateOne(address: string, startBlock?: number | "latest", endBlock?: number) {
@@ -156,9 +168,23 @@ export default (config: Config, appState: Dependencies) => {
 
   async function update(startBlock?: number | "latest", endBlock?: number) {
     const addresses = Array.from(await registeredEmps.values());
-    await Promise.mapSeries(addresses, (address: string) => updateOne(address, startBlock, endBlock));
+    await Promise.mapSeries(addresses, async (address: string) => {
+      try {
+        await updateOne(address, startBlock, endBlock);
+        delete emps.errored[address];
+      } catch (err) {
+        emps.errored[address] = err;
+      }
+    });
     await updateTokenAddresses();
   }
 
-  return update;
+  return {
+    update,
+    utils: {
+      updateTokenAddresses,
+      readEmpDynamicState,
+      readEmpStaticState,
+    },
+  };
 };

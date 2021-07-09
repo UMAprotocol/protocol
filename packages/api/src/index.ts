@@ -27,9 +27,11 @@ export type AppState = {
   blocks: uma.tables.blocks.JsMap;
   coingecko: uma.Coingecko;
   zrx: Zrx;
+  multicall: uma.Multicall;
   emps: {
     active: uma.tables.emps.JsMap;
     expired: uma.tables.emps.JsMap;
+    errored: { [empAddress: string]: Error };
   };
   prices: {
     usd: {

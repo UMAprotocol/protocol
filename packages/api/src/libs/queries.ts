@@ -65,7 +65,10 @@ export default (appState: Dependencies) => {
     if (await appState.emps.active.has(empAddress)) {
       return appState.emps.active.get(empAddress);
     }
-    return appState.emps.expired.get(empAddress);
+    if (await appState.emps.expired.has(empAddress)) {
+      return appState.emps.expired.get(empAddress);
+    }
+    throw new Error("Unable to find EMP with address: " + empAddress);
   }
   // joins emp with token state and gcr
   async function getFullEmpState(empState: uma.tables.emps.Data) {

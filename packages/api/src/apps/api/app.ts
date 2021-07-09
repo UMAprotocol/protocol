@@ -3,7 +3,7 @@ import Web3 from "web3";
 import { ethers } from "ethers";
 import moment from "moment";
 
-import { tables, Coingecko, utils } from "@uma/sdk";
+import { tables, Coingecko, utils, Multicall } from "@uma/sdk";
 
 import * as Services from "../../services";
 import Express from "../../services/express";
@@ -16,6 +16,7 @@ async function run(env: ProcessEnv) {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
   assert(env.EXPRESS_PORT, "requires EXPRESS_PORT");
   assert(env.zrxBaseUrl, "requires zrxBaseUrl");
+  assert(env.multicallAddress, "requires multicallAddress");
 
   const provider = new ethers.providers.WebSocketProvider(env.CUSTOM_NODE_URL);
 
@@ -36,9 +37,11 @@ async function run(env: ProcessEnv) {
     coingecko: new Coingecko(),
     zrx: new Zrx(env.zrxBaseUrl),
     blocks: tables.blocks.JsMap(),
+    multicall: new Multicall(env.multicallAddress, provider),
     emps: {
       active: tables.emps.JsMap("Active Emp"),
       expired: tables.emps.JsMap("Expired Emp"),
+      errored: {},
     },
     prices: {
       usd: {
@@ -101,7 +104,7 @@ async function run(env: ProcessEnv) {
   // warm caches
   await services.registry();
   console.log("Got all emp addresses");
-  await services.emps();
+  await services.emps.update();
   console.log("Updated emp state");
   await services.erc20s.update();
   console.log("Updated tokens");
@@ -137,7 +140,7 @@ async function run(env: ProcessEnv) {
     if (blockNumber - appState.lastBlockUpdate >= updateBlocks) {
       // update everyting
       await services.registry(appState.lastBlock, blockNumber);
-      await services.emps(appState.lastBlock, blockNumber);
+      await services.emps.update(appState.lastBlock, blockNumber);
       await services.erc20s.update();
       await services.empStats.update();
 
