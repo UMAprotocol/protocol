@@ -20,33 +20,17 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
   // Solc version defined here so etherscan-verification has access to it
   const solcVersion = "0.8.4";
 
-  // This is a list of the contracts too large to compile at runs = 999999.
-  // Compilation settings are overridden for these to allow them to compile without going over the bytecode limit.
-  const bigContracts = [
-    "contracts/financial-templates/expiring-multiparty/ExpiringMultiParty.sol",
-    "contracts/financial-templates/expiring-multiparty/ExpiringMultiPartyLib.sol",
-    "contracts/financial-templates/perpetual-multiparty/Perpetual.sol",
-    "contracts/financial-templates/perpetual-multiparty/PerpetualLib.sol",
-    "contracts/financial-templates/perpetual-multiparty/PerpetualLiquidatable.sol",
-    "contracts/financial-templates/expiring-multiparty/Liquidatable.sol",
-  ];
-
-  const overrides = Object.fromEntries(
-    bigContracts.map((name) => {
-      return [
-        name,
-        {
-          version: solcVersion,
-          settings: {
-            optimizer: {
-              enabled: true,
-              runs: 199,
-            },
-          },
-        },
-      ];
-    })
-  );
+  // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
+  // limit.
+  const LARGE_CONTRACT_COMPILER_SETTINGS = {
+    version: solcVersion,
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 199,
+      },
+    },
+  };
 
   const defaultConfig = {
     solidity: {
@@ -61,7 +45,14 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
           },
         },
       ],
-      overrides,
+      overrides: {
+        "contracts/financial-templates/expiring-multiparty/ExpiringMultiParty.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/financial-templates/expiring-multiparty/ExpiringMultiPartyLib.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/financial-templates/perpetual-multiparty/Perpetual.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/financial-templates/perpetual-multiparty/PerpetualLib.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/financial-templates/perpetual-multiparty/PerpetualLiquidatable.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/financial-templates/expiring-multiparty/Liquidatable.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+      },
     },
     networks: {
       hardhat: {
