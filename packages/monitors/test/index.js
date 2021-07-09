@@ -327,7 +327,11 @@ contract("index.js", function (accounts) {
         // Need to give an unknown identifier to get past the `createReferencePriceFeedForFinancialContract` & `createUniswapPriceFeedForFinancialContract`
         await identifierWhitelist.addSupportedIdentifier(utf8ToHex("UNKNOWN"));
 
-        const PricelessPositionManager = getTruffleContract("PricelessPositionManager", web3, "1.2.2");
+        const PricelessPositionManager = getTruffleContract(
+          "PricelessPositionManager",
+          web3,
+          contractVersion.contractVersion
+        );
         const invalidFinancialContract = await PricelessPositionManager.new(
           constructorParams.expirationTimestamp,
           constructorParams.withdrawalLiveness,

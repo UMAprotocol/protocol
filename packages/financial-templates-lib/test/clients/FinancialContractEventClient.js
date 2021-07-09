@@ -15,13 +15,11 @@ const { getTruffleContract } = require("@uma/core");
 // Script to test
 const { FinancialContractEventClient } = require("../../src/clients/FinancialContractEventClient");
 
-// Run the tests against 3 different kinds of token/synth decimal combinations:
-// 1) matching 18 & 18 for collateral for most token types with normal tokens.
-// 2) non-matching 8 collateral & 18 synthetic for legacy UMA synthetics.
-// 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
+// Run the tests against 2 different kinds of token/synth decimal combinations:
+// 1) matching 18 collateral & 18 synthetic decimals with 18 decimals for price feed.
+// 3) matching 8 collateral & 8 synthetic decimals with 18 decimals for price feed.
 const configs = [
   { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
   { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 },
 ];
 
@@ -602,60 +600,6 @@ contract("FinancialContractEventClient.js", function (accounts) {
               }
             );
 
-            versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "1.2.2" }])(
-              "Return FinalFee Events",
-              async function () {
-                // Update the client and check it has the new sponsor event stored correctly
-                await client.clearState();
-
-                // State is empty before update()
-                assert.deepStrictEqual([], client.getAllFinalFeeEvents());
-
-                await store.setFinalFee(collateralToken.address, { rawValue: convertCollateral("1") });
-                await financialContract.createLiquidation(
-                  sponsor1,
-                  { rawValue: "0" },
-                  { rawValue: convertPrice("99999") },
-                  { rawValue: convertSynthetic("1") },
-                  unreachableDeadline,
-                  { from: liquidator }
-                );
-
-                // Compare with expected processed event objects.
-                const finalFeeTxObj1 = await financialContract.dispute("0", sponsor1, { from: sponsor2 });
-                await client.update();
-                assert.deepStrictEqual(
-                  [
-                    {
-                      transactionHash: finalFeeTxObj1.tx,
-                      blockNumber: finalFeeTxObj1.receipt.blockNumber,
-                      amount: convertCollateral("1"),
-                    },
-                  ],
-                  client.getAllFinalFeeEvents()
-                );
-
-                // Correctly adds only new events after last query.
-                await timer.setCurrentTime(await financialContract.expirationTimestamp());
-                const finalFeeTxObj2 = await financialContract.expire();
-                await client.clearState();
-                await client.update();
-                assert.deepStrictEqual(
-                  [
-                    {
-                      transactionHash: finalFeeTxObj2.tx,
-                      blockNumber: finalFeeTxObj2.receipt.blockNumber,
-                      amount: convertCollateral("1"),
-                    },
-                  ],
-                  client.getAllFinalFeeEvents()
-                );
-
-                // Reset fees
-                await store.setFinalFee(collateralToken.address, { rawValue: "0" });
-              }
-            );
-
             versionedIt([{ contractType: "any", contractVersion: "any" }])(
               "Return Liquidation Events",
               async function () {
@@ -868,61 +812,6 @@ contract("FinancialContractEventClient.js", function (accounts) {
                     },
                   ],
                   client.getAllLiquidationWithdrawnEvents()
-                );
-              }
-            );
-
-            versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "1.2.2" }])(
-              "Return SettleExpiredPosition Events",
-              async function () {
-                await client.clearState();
-
-                // State is empty before update()
-                assert.deepStrictEqual([], client.getAllSettleExpiredPositionEvents());
-
-                // Expire contract at settlement price of 0.2.
-                await timer.setCurrentTime(expirationTime.toString());
-                // Make the contract creator the admin to enable emergencyshutdown in tests.
-                await finder.changeImplementationAddress(
-                  utf8ToHex(interfaceName.FinancialContractsAdmin),
-                  tokenSponsor
-                );
-
-                await financialContract.expire();
-                await mockOracle.pushPrice(utf8ToHex(identifier), expirationTime.toString(), convertPrice("0.2"));
-                const txObject = await financialContract.settleExpired({ from: sponsor1 });
-
-                await client.update();
-
-                // Compare with expected processed event objects.
-                assert.deepStrictEqual(
-                  [
-                    {
-                      transactionHash: txObject.tx,
-                      blockNumber: txObject.receipt.blockNumber,
-                      caller: sponsor1,
-                      collateralReturned: convertCollateral("10"), // Sponsor should get back all collateral in position because they still hold all tokens
-                      tokensBurned: convertSynthetic("50"),
-                    },
-                  ],
-                  client.getAllSettleExpiredPositionEvents()
-                );
-
-                // Correctly adds only new events after last query.
-                const txObject2 = await financialContract.settleExpired({ from: sponsor2 });
-                await client.clearState();
-                await client.update();
-                assert.deepStrictEqual(
-                  [
-                    {
-                      transactionHash: txObject2.tx,
-                      blockNumber: txObject2.receipt.blockNumber,
-                      caller: sponsor2,
-                      collateralReturned: convertCollateral("100"), // Sponsor should get back all collateral in position because they still hold all tokens
-                      tokensBurned: convertSynthetic("45"),
-                    },
-                  ],
-                  client.getAllSettleExpiredPositionEvents()
                 );
               }
             );
