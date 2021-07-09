@@ -3,7 +3,7 @@ const { toWei, toBN } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 
-const { parseFixed } = require("@uma/common");
+const { parseFixed, POSSIBLE_TEST_DECIMAL_COMBOS } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
 // Tested module
@@ -21,18 +21,10 @@ const {
 
 const PerpetualMock = getTruffleContract("PerpetualMock", web3);
 
-// Run the tests against 2 different kinds of token/synth decimal combinations:
-// 1) matching 18 collateral & 18 synthetic decimals with 18 decimals for price feed.
-// 3) matching 8 collateral & 8 synthetic decimals with 18 decimals for price feed.
-const configs = [
-  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 },
-];
-
 const Convert = (decimals) => (number) => toBN(parseFixed(number.toString(), decimals).toString());
 
 contract("SyntheticPegMonitor", function () {
-  for (let testConfig of configs) {
+  for (let testConfig of POSSIBLE_TEST_DECIMAL_COMBOS) {
     describe(`${testConfig.priceFeedDecimals} pricefeed decimals`, function () {
       let uniswapPriceFeedMock;
       let medianizerPriceFeedMock;

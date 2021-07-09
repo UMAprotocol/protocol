@@ -8,6 +8,7 @@ const {
   runTestForVersion,
   createConstructorParamsForContractVersion,
   TESTED_CONTRACT_VERSIONS,
+  POSSIBLE_TEST_DECIMAL_COMBOS,
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
@@ -22,13 +23,6 @@ const {
 // Script to test
 const { ContractMonitor } = require("../src/ContractMonitor");
 
-// Run the tests against 2 different kinds of token/synth decimal combinations:
-// 1) matching 18 collateral & 18 synthetic decimals with 18 decimals for price feed.
-// 3) matching 8 collateral & 8 synthetic decimals with 18 decimals for price feed.
-const configs = [
-  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 },
-];
 const optimisticOracleLiveness = 7200;
 
 let iterationTestVersion; // store the test version between tests that is currently being tested.
@@ -110,7 +104,7 @@ contract("ContractMonitor.js", function (accounts) {
     const ConfigStore = getTruffleContract("ConfigStore", web3);
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
 
-    for (let testConfig of configs) {
+    for (let testConfig of POSSIBLE_TEST_DECIMAL_COMBOS) {
       describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
         before(async function () {
           identifier = `${testConfig.tokenSymbol}TEST`;

@@ -9,19 +9,12 @@ const {
   runTestForVersion,
   createConstructorParamsForContractVersion,
   TESTED_CONTRACT_VERSIONS,
+  POSSIBLE_TEST_DECIMAL_COMBOS,
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
 // Script to test
 const { FinancialContractEventClient } = require("../../src/clients/FinancialContractEventClient");
-
-// Run the tests against 2 different kinds of token/synth decimal combinations:
-// 1) matching 18 collateral & 18 synthetic decimals with 18 decimals for price feed.
-// 3) matching 8 collateral & 8 synthetic decimals with 18 decimals for price feed.
-const configs = [
-  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 },
-];
 
 const startTime = "15798990420";
 const unreachableDeadline = MAX_UINT_VAL;
@@ -73,7 +66,7 @@ const versionedIt = function (supportedVersions, shouldBeItOnly = false) {
 };
 
 contract("FinancialContractEventClient.js", function (accounts) {
-  for (let tokenConfig of configs) {
+  for (let tokenConfig of POSSIBLE_TEST_DECIMAL_COMBOS) {
     describe(`${tokenConfig.collateralDecimals} decimals`, function () {
       const tokenSponsor = accounts[0];
       const liquidator = accounts[1];
@@ -103,7 +96,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
         const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
         const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
 
-        for (let testConfig of configs) {
+        for (let testConfig of POSSIBLE_TEST_DECIMAL_COMBOS) {
           describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
             before(async function () {
               identifier = `${testConfig.tokenName}TEST`;
