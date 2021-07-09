@@ -1,48 +1,62 @@
+const hre = require("hardhat");
+const { runDefaultFixture } = require("@uma/common");
+const { getContract } = hre;
 const { ZERO_ADDRESS } = require("@uma/common");
+const { assert } = require("chai");
 
-const DesignatedVoting = artifacts.require("DesignatedVoting");
-const DesignatedVotingFactory = artifacts.require("DesignatedVotingFactory");
+const DesignatedVoting = getContract("DesignatedVoting");
+const DesignatedVotingFactory = getContract("DesignatedVotingFactory");
 
-contract("DesignatedVotingFactory", function (accounts) {
-  const owner = accounts[1];
-  const voter = accounts[2];
-  const voter2 = accounts[3];
-  const voter3 = accounts[4];
+describe("DesignatedVotingFactory", function () {
+  let accounts;
+  let owner;
+  let voter;
+  let voter2;
+  let voter3;
 
   let factory;
 
   before(async function () {
+    accounts = await web3.eth.getAccounts();
+    [owner, voter, voter2, voter3] = accounts;
+    await runDefaultFixture(hre);
     factory = await DesignatedVotingFactory.deployed();
   });
 
   it("Deploy new", async function () {
-    const designatedVotingAddress = await factory.newDesignatedVoting.call(owner, { from: voter });
-    await factory.newDesignatedVoting(owner, { from: voter });
+    const designatedVotingAddress = await factory.methods.newDesignatedVoting(owner).call({ from: voter });
+    await factory.methods.newDesignatedVoting(owner).send({ from: voter });
 
-    assert.equal(designatedVotingAddress.toString(), (await factory.designatedVotingContracts(voter)).toString());
+    assert.equal(
+      designatedVotingAddress.toString(),
+      (await factory.methods.designatedVotingContracts(voter).call()).toString()
+    );
     const designatedVoting = await DesignatedVoting.at(designatedVotingAddress);
     const ownerRole = "0";
-    assert(await designatedVoting.holdsRole(ownerRole, owner));
+    assert(await designatedVoting.methods.holdsRole(ownerRole, owner).call());
     const voterRole = "1";
-    assert(await designatedVoting.holdsRole(voterRole, voter));
+    assert(await designatedVoting.methods.holdsRole(voterRole, voter).call());
 
     // Reassign.
-    await designatedVoting.resetMember(voterRole, voter2, { from: owner });
-    await factory.setDesignatedVoting(ZERO_ADDRESS, { from: voter });
-    await factory.setDesignatedVoting(designatedVotingAddress, { from: voter2 });
-    assert.equal(designatedVotingAddress.toString(), (await factory.designatedVotingContracts(voter2)).toString());
-    assert.equal(ZERO_ADDRESS, (await factory.designatedVotingContracts(voter)).toString());
+    await designatedVoting.methods.resetMember(voterRole, voter2).send({ from: owner });
+    await factory.methods.setDesignatedVoting(ZERO_ADDRESS).send({ from: voter });
+    await factory.methods.setDesignatedVoting(designatedVotingAddress).send({ from: voter2 });
+    assert.equal(
+      designatedVotingAddress.toString(),
+      (await factory.methods.designatedVotingContracts(voter2).call()).toString()
+    );
+    assert.equal(ZERO_ADDRESS, (await factory.methods.designatedVotingContracts(voter).call()).toString());
   });
 
   it("Multiple Deployments", async function () {
-    const designatedVoting1Address = await factory.newDesignatedVoting.call(owner, { from: voter3 });
-    await factory.newDesignatedVoting(owner, { from: voter3 });
+    const designatedVoting1Address = await factory.methods.newDesignatedVoting(owner).call({ from: voter3 });
+    await factory.methods.newDesignatedVoting(owner).send({ from: voter3 });
 
-    assert.equal(designatedVoting1Address, (await factory.designatedVotingContracts(voter3)).toString());
+    assert.equal(designatedVoting1Address, (await factory.methods.designatedVotingContracts(voter3).call()).toString());
 
-    const designatedVoting2Address = await factory.newDesignatedVoting.call(owner, { from: voter3 });
-    await factory.newDesignatedVoting(owner, { from: voter3 });
+    const designatedVoting2Address = await factory.methods.newDesignatedVoting(owner).call({ from: voter3 });
+    await factory.methods.newDesignatedVoting(owner).send({ from: voter3 });
 
-    assert.equal(designatedVoting2Address, (await factory.designatedVotingContracts(voter3)).toString());
+    assert.equal(designatedVoting2Address, (await factory.methods.designatedVotingContracts(voter3).call()).toString());
   });
 });
