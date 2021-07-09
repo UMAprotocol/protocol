@@ -3,6 +3,22 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.4.1](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.4.0...@uma/optimistic-oracle@2.4.1) (2021-07-07)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+# [2.4.0](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.3.0...@uma/optimistic-oracle@2.4.0) (2021-06-21)
+
+### Bug Fixes
+
+- **disputer:** address wrong comments ([#3025](https://github.com/UMAprotocol/protocol/issues/3025)) ([4c5b70b](https://github.com/UMAprotocol/protocol/commit/4c5b70bf1b3df5c041fe107f200cfeedd08de7ce))
+- **OO:** Address wrong log pathing ([#3124](https://github.com/UMAprotocol/protocol/issues/3124)) ([dd7925d](https://github.com/UMAprotocol/protocol/commit/dd7925d2e9521a3a17235c729a9e15854363ba75))
+
+### Features
+
+- **optimistic-oracle:** Enable universal blacklist ([#3127](https://github.com/UMAprotocol/protocol/issues/3127)) ([ad84c86](https://github.com/UMAprotocol/protocol/commit/ad84c861b5081d6b9844d62bf2d8373b049faedb))
+- **run-transaction:** add multi EOA transaction runner to DSProxy bots ([#2961](https://github.com/UMAprotocol/protocol/issues/2961)) ([ab88497](https://github.com/UMAprotocol/protocol/commit/ab88497f180d72f1d9e8305fdeabf786f5883b7c))
+
 # [2.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.2.0...@uma/optimistic-oracle@2.3.0) (2021-05-20)
 
 ### Bug Fixes

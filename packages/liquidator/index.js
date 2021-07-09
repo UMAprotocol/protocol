@@ -203,7 +203,7 @@ async function run({
       liquidatorConfig.contractType
     );
 
-    const gasEstimator = new GasEstimator(logger);
+    const gasEstimator = new GasEstimator(logger, 60, networkId);
     await gasEstimator.update();
 
     let dsProxyManager;
@@ -398,9 +398,11 @@ async function Poll(callback) {
       // "liquidatorReserveCurrencyAddress": "0x123..." -> currency DSProxy will trade from when liquidating.
       // "uniswapRouterAddress": "0x123..." -> uniswap router address to enable reserve trading. Defaults to mainnet router.
       // "uniswapFactoryAddress": "0x123..." -> uniswap factory address. Defaults to mainnet factory.
-      // "maxReserverTokenSpent": "10000000000"} -> max amount to spend in reserve currency. scaled by reserve currency
+      // "maxReserverTokenSpent": "10000000000" -> max amount to spend in reserve currency. scaled by reserve currency
       //      decimals. defaults to MAX_UINT (no limit). Note that this is separate to the WDF, which behaves as per usual
       //      and considers the maximum amount of synthetics that could be minted, given the current reserve balance.
+      // "availableAccounts": "1"} -> the number of EOAs the bot should use when performing liquidations. This only works
+      // if you have configured your DSProxy with a DSGuard with permissions on your other EOAs unlocked from your account.
       proxyTransactionWrapperConfig: process.env.DSPROXY_CONFIG ? JSON.parse(process.env.DSPROXY_CONFIG) : {},
     };
 
@@ -410,6 +412,7 @@ async function Poll(callback) {
       at: "Liquidator#index",
       message: "Liquidator execution error🚨",
       error: typeof error === "string" ? new Error(error) : error,
+      notificationPath: "infrastructure-error",
     });
     await waitForLogger(Logger);
     callback(error);

@@ -1,6 +1,5 @@
 const truffleContract = require("@truffle/contract");
-import type { BN } from "./types";
-import Web3 from "web3";
+import type { BN, Web3 } from "./types";
 
 type CallResult = string | BN | { [key: string]: any };
 
@@ -34,11 +33,12 @@ export const revertWrapper = (result: CallResult): null | CallResult => {
 /**
  * create a truffle contract from a json object, usually read in from an artifact.
  * @param {*} contractJsonObject json object representing a contract.
+ * @param {Object} web3 instance. In unit tests this is globally accessable but when used in production needs injection.
  * @returns truffle contract instance
  */
-const createContractObjectFromJson = (contractJsonObject: { [key: string]: any }) => {
+const createContractObjectFromJson = (contractJsonObject: { [key: string]: any }, _web3 = (global as unknown as { web3: Web3 }).web3) => {
   const truffleContractCreator = truffleContract(contractJsonObject);
-  truffleContractCreator.setProvider(web3.currentProvider);
+  truffleContractCreator.setProvider(_web3.currentProvider);
   return truffleContractCreator;
 };
 /**

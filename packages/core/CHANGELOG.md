@@ -3,6 +3,69 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.5.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.4.0...@uma/core@2.5.0) (2021-07-07)
+
+### Bug Fixes
+
+- **comment:** correct comment about token approvals for lsp minting ([#3178](https://github.com/UMAprotocol/protocol/issues/3178)) ([c27f7ff](https://github.com/UMAprotocol/protocol/commit/c27f7ff2f530fec4dc18a09f7eca3f26579ea292))
+- **lsp:** Require collateralPerPair > 0 ([#3132](https://github.com/UMAprotocol/protocol/issues/3132)) ([fb91fcd](https://github.com/UMAprotocol/protocol/commit/fb91fcdcc417b168b1a6bb52cf89352307970771))
+- **LSP:** Add missing rentrancy modifiers ([#3131](https://github.com/UMAprotocol/protocol/issues/3131)) ([0efe56d](https://github.com/UMAprotocol/protocol/commit/0efe56d78aacf9165e130621f661e4318a04687a))
+- **LSP:** Audit nits and cleanup ([#3152](https://github.com/UMAprotocol/protocol/issues/3152)) ([b2de56c](https://github.com/UMAprotocol/protocol/commit/b2de56cdeddcd085711f13e77f49e312b000dca2))
+- **LSP:** Prevent parameter override on Range Bond Lib ([#3130](https://github.com/UMAprotocol/protocol/issues/3130)) ([e2284a5](https://github.com/UMAprotocol/protocol/commit/e2284a55f8ce35775ecb8361b06834609eb60a26))
+- **LSP-creator:** Add new factory addresses ([#3175](https://github.com/UMAprotocol/protocol/issues/3175)) ([1f8728a](https://github.com/UMAprotocol/protocol/commit/1f8728a62f4b5a9e450d981d51d71411bbdd7452))
+- **LSP-creator:** address incorrect comment in creator ([#3157](https://github.com/UMAprotocol/protocol/issues/3157)) ([03925a3](https://github.com/UMAprotocol/protocol/commit/03925a3b91466b468a36ee001be0e803289ba3a0))
+- **LSP-creator:** update create params to add more deployment options ([#3167](https://github.com/UMAprotocol/protocol/issues/3167)) ([d6dab2a](https://github.com/UMAprotocol/protocol/commit/d6dab2afb69e5df13583e2183000801e68ba4ac5))
+- **networks:** deploy and verify new LPS creator on testnets ([#3179](https://github.com/UMAprotocol/protocol/issues/3179)) ([908aabd](https://github.com/UMAprotocol/protocol/commit/908aabdc714e80f2bbd39dedc30270f6db3fc36e))
+- **polygon-tunnel:** Response to audit ([#3188](https://github.com/UMAprotocol/protocol/issues/3188)) ([dd211c4](https://github.com/UMAprotocol/protocol/commit/dd211c4e3825fe007d1161025a34e9901b26031a)), addresses comments to [#3061](https://github.com/UMAprotocol/protocol/issues/3061) [#3054](https://github.com/UMAprotocol/protocol/issues/3054) [#3082](https://github.com/UMAprotocol/protocol/issues/3082) [#3092](https://github.com/UMAprotocol/protocol/issues/3092)
+- **chainbridge:** Response to audit ([#3189](https://github.com/UMAprotocol/protocol/issues/3189)) ([97e91cc](https://github.com/UMAprotocol/protocol/commit/97e91cc50a3095fe52bd2bac4d2900ba60235d6a)), addresses comments to [#2969](https://github.com/UMAprotocol/protocol/issues/2969)
+- fix polygon deployment scripts for test/local environments ([#3136](https://github.com/UMAprotocol/protocol/issues/3136)) ([d11bb4f](https://github.com/UMAprotocol/protocol/commit/d11bb4ffd7faa19d16938ff702847d1b4fed6c0b))
+- **networks file:** fix broken LSP creator address ([#3201](https://github.com/UMAprotocol/protocol/issues/3201)) ([3acbbaa](https://github.com/UMAprotocol/protocol/commit/3acbbaad38f35e332e05d34effa695d4f37d6c3c))
+
+### Features
+
+- **common:** add hardhat plugin to enhance web3 ease of use ([#3180](https://github.com/UMAprotocol/protocol/issues/3180)) ([5aa0335](https://github.com/UMAprotocol/protocol/commit/5aa0335aa8fd4d9ca31b7835a3ada1030e3fb0c3))
+- **deployed-addresses:** add ethereum mainnet and polygon mainnet addresses ([#3156](https://github.com/UMAprotocol/protocol/issues/3156)) ([4cfc1ad](https://github.com/UMAprotocol/protocol/commit/4cfc1ad61f683f27d105c79f050938256a16b4ee))
+- **hardhat-deploy-scripts:** add hardhat deploy scripts for LSP on test nets ([#3120](https://github.com/UMAprotocol/protocol/issues/3120)) ([804925b](https://github.com/UMAprotocol/protocol/commit/804925b9057fa48cda69901a5c8e174d21b95404))
+- **lps-libs:** Update comment in range bond lib ([#3177](https://github.com/UMAprotocol/protocol/issues/3177)) ([5bb9da5](https://github.com/UMAprotocol/protocol/commit/5bb9da5b794c90e858cfd8d8219622ef5f375f81))
+- **LSP:** Add LSP pair name, OO liveness and OO bond settings ([#3184](https://github.com/UMAprotocol/protocol/issues/3184)) ([4eaa2e1](https://github.com/UMAprotocol/protocol/commit/4eaa2e1c23065503336e61bf16916cefbab046bc))
+- **LSP:** single tx mint-sell & single tx mint-lp ([#3125](https://github.com/UMAprotocol/protocol/issues/3125)) ([3607078](https://github.com/UMAprotocol/protocol/commit/36070783efed583a0db285406efd655c725baacc))
+- **LSP:** Validate all logic works as expected with non-18 decimal collateral ([#3129](https://github.com/UMAprotocol/protocol/issues/3129)) ([0d31c78](https://github.com/UMAprotocol/protocol/commit/0d31c78e924325925e40b12b984c14b3fca8ef13))
+- **LSP-Broker:** Add ability to mint and LP in one transaction ([#3141](https://github.com/UMAprotocol/protocol/issues/3141)) ([f44b0b8](https://github.com/UMAprotocol/protocol/commit/f44b0b89e1952ceb4a8fd37116f873c42ce5896b))
+
+# [2.4.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.3.0...@uma/core@2.4.0) (2021-06-21)
+
+### Bug Fixes
+
+- **common-ContractUtils:** Add web3 param injection to createContractObjectFromJson ([#3060](https://github.com/UMAprotocol/protocol/issues/3060)) ([805003a](https://github.com/UMAprotocol/protocol/commit/805003a94c01f2d8fb4556701382b0f4bbf26cd8))
+- **ContractForDiffrence:** general commenting and cleanup ([#3083](https://github.com/UMAprotocol/protocol/issues/3083)) ([422aac5](https://github.com/UMAprotocol/protocol/commit/422aac5832cd6a8518d622f9355bc69a848c1003))
+- **disputer:** address wrong comments ([#3025](https://github.com/UMAprotocol/protocol/issues/3025)) ([4c5b70b](https://github.com/UMAprotocol/protocol/commit/4c5b70bf1b3df5c041fe107f200cfeedd08de7ce))
+
+### Features
+
+- **core:** add custom fee set by deployer for LSP ([#3118](https://github.com/UMAprotocol/protocol/issues/3118)) ([b508f53](https://github.com/UMAprotocol/protocol/commit/b508f536ddfd94a79f93f633142bdc868b73461c))
+- **LSP:** rename all instances and variants of "contract for difference" to "long short pair" ([#3116](https://github.com/UMAprotocol/protocol/issues/3116)) ([8a68b0f](https://github.com/UMAprotocol/protocol/commit/8a68b0f9919e3ef28f0d031d1ffcc467f6bee860))
+- New Deployments ([#3102](https://github.com/UMAprotocol/protocol/issues/3102)) ([05e03ed](https://github.com/UMAprotocol/protocol/commit/05e03edb7b406b0e01e22775e3b544679b743315))
+- **CFD:** Add binary option CFD implementation and tests ([#3093](https://github.com/UMAprotocol/protocol/issues/3093)) ([1389537](https://github.com/UMAprotocol/protocol/commit/1389537ccf3767051e570b855963185c319a7a45))
+- Updated mainnet OO deployments ([#3096](https://github.com/UMAprotocol/protocol/issues/3096)) ([3c284ef](https://github.com/UMAprotocol/protocol/commit/3c284eff70682d3bea0104933ccc7f11ed4ec019))
+- **cfd:** initial CFD stub and tests ([#3016](https://github.com/UMAprotocol/protocol/issues/3016)) ([4595896](https://github.com/UMAprotocol/protocol/commit/45958964a4a32eb2298954b4d306c9647c21c8fc))
+- **cfd:** minor improvements to CFD suite ([#3030](https://github.com/UMAprotocol/protocol/issues/3030)) ([c9a9ef1](https://github.com/UMAprotocol/protocol/commit/c9a9ef15b929f70b83d68ca5916864d2a6d21901))
+- **CFD:** Add call options financial template library ([#3040](https://github.com/UMAprotocol/protocol/issues/3040)) ([8b9d9d9](https://github.com/UMAprotocol/protocol/commit/8b9d9d9b57eca2b4d2617006eccfd00918858f3d))
+- **CFD:** Add range bond financial template library ([#3053](https://github.com/UMAprotocol/protocol/issues/3053)) ([a819f5e](https://github.com/UMAprotocol/protocol/commit/a819f5e3eaaadf353d174fee4cb0006737938baa))
+- **Contract-ForDifference:** Add more unit tests and add LinearCFDLib tests ([#3036](https://github.com/UMAprotocol/protocol/issues/3036)) ([967ab13](https://github.com/UMAprotocol/protocol/commit/967ab13ca5ea15bcd0b78b0dee32f2546114f667))
+- **contractForDiffrence:** CFD creator contract and unit tests ([#3075](https://github.com/UMAprotocol/protocol/issues/3075)) ([4078bee](https://github.com/UMAprotocol/protocol/commit/4078bee513dbcbf1d8b952f869cb9f907e27302f))
+- **core:** add all truffle migrations to hardhat deploy ([#3068](https://github.com/UMAprotocol/protocol/issues/3068)) ([0004bd7](https://github.com/UMAprotocol/protocol/commit/0004bd7401211f628c80198be6ec99cff3156c36))
+- **core:** add custom ancillary data to CFD ([#3057](https://github.com/UMAprotocol/protocol/issues/3057)) ([6c8fd40](https://github.com/UMAprotocol/protocol/commit/6c8fd405bc156a8b8765c71f70092f2d0a9d7b0d))
+- **DSProxy:** add DSGuard contracts to enable multi-dsproxy ownership ([#3031](https://github.com/UMAprotocol/protocol/issues/3031)) ([b1e9f76](https://github.com/UMAprotocol/protocol/commit/b1e9f76ccf0c870b60a225c07873360d1a2ea0d8))
+- **liquidator:** add maxSlippage parameter to single reserve currency liquidator ([#3012](https://github.com/UMAprotocol/protocol/issues/3012)) ([461def6](https://github.com/UMAprotocol/protocol/commit/461def63ccfeeff691d9a4755b8f6cafaf2c1713))
+- **oo:** adds optimistic oracle integration tutorial script ([#3086](https://github.com/UMAprotocol/protocol/issues/3086)) ([a0833c9](https://github.com/UMAprotocol/protocol/commit/a0833c9474fe69f21f8c7a640498c4f97dae9714))
+- **polygon-amb:** Add Governor Tunnel contracts and unit tests ([#3089](https://github.com/UMAprotocol/protocol/issues/3089)) ([20a3866](https://github.com/UMAprotocol/protocol/commit/20a386693cc380827b3eedd7ff7382b15d7670f3))
+- **polygon-amb:** Add Unit Tests for Oracle Tunnel contracts ([#3082](https://github.com/UMAprotocol/protocol/issues/3082)) ([2f8eaf0](https://github.com/UMAprotocol/protocol/commit/2f8eaf0d4c0e9261424aa415cf675a4011849eb8))
+- **polygon-fx-tunnel:** Add Oracle tunnel integrating with Polygon hosted Arbitrary Message Bridge ([#3054](https://github.com/UMAprotocol/protocol/issues/3054)) ([a3bf462](https://github.com/UMAprotocol/protocol/commit/a3bf46270787cbaae4ed2218f064b1217c153a50))
+- Add hardhat task to migrate identifier whitelist to new contract ([#3046](https://github.com/UMAprotocol/protocol/issues/3046)) ([4e98402](https://github.com/UMAprotocol/protocol/commit/4e98402896fe50a5013c8decfaa0f261363ae33c))
+- **price-feed:** Add iFARM price feed configs and HarvestVault template ([#2996](https://github.com/UMAprotocol/protocol/issues/2996)) ([28613db](https://github.com/UMAprotocol/protocol/commit/28613dbfc9bf48f525abce9a403ee9f4d649b499))
+- **voting-script:** Update USDETH rounding specification to 8 decimals ([#3055](https://github.com/UMAprotocol/protocol/issues/3055)) ([43fe50c](https://github.com/UMAprotocol/protocol/commit/43fe50c94e0f032e14dc8d67011fcd168323d977))
+- Add new deployed Sink and Source Oracle addresses ([#3032](https://github.com/UMAprotocol/protocol/issues/3032)) ([9ed7843](https://github.com/UMAprotocol/protocol/commit/9ed7843eaa1fcab0a1631444cf8d5271c58fbfe8))
+
 # [2.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.2.0...@uma/core@2.3.0) (2021-05-20)
 
 ### Bug Fixes

@@ -8,9 +8,14 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
   require("hardhat-gas-reporter");
   require("@nomiclabs/hardhat-web3");
   require("hardhat-deploy");
+  require("@nomiclabs/hardhat-etherscan");
+  require("./gckms/KeyInjectorPlugin");
 
   // Custom tasks to interact conveniently with smart contracts.
   require("./hardhat/tasks");
+
+  // Custom plugin to enhance web3 functionality.
+  require("./hardhat/plugins/ExtendedWeb3");
 
   // Solc version defined here so etherscan-verification has access to it
   const solcVersion = "0.8.4";
@@ -38,6 +43,11 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
       rinkeby: {
         chainId: 4,
         url: getNodeUrl("rinkeby", true),
+        accounts: { mnemonic },
+      },
+      kovan: {
+        chainId: 42,
+        url: getNodeUrl("kovan", true),
         accounts: { mnemonic },
       },
       goerli: {
@@ -78,6 +88,8 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
         mumbai: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/mumbai")],
         matic: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/matic")],
         rinkeby: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/rinkeby")],
+        kovan: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/kovan")],
+        goerli: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/goerli")],
       },
     },
   };

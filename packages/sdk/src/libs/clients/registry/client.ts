@@ -4,7 +4,10 @@ import RegistryArtifacts from "@uma/core/build/contracts/Registry.json";
 import type { SignerOrProvider, GetEventType } from "../..";
 import { Event } from "ethers";
 
-type NewContractRegistered = GetEventType<Registry, "NewContractRegistered">;
+// exporting Registry type in case its needed
+export type Instance = Registry;
+
+export type NewContractRegistered = GetEventType<Instance, "NewContractRegistered">;
 
 export interface EventState {
   contracts?: { [key: string]: NewContractRegistered };
@@ -18,9 +21,7 @@ export function getAddress(network: Network): string {
   return address;
 }
 
-// exporting Registry type in case its needed
-export { Registry as Instance };
-export function connect(address: string, provider: SignerOrProvider): Registry {
+export function connect(address: string, provider: SignerOrProvider): Instance {
   return Registry__factory.connect(address, provider);
 }
 

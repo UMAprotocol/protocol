@@ -3,6 +3,20 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.4.1](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.4.0...@uma/monitors@2.4.1) (2021-07-07)
+
+**Note:** Version bump only for package @uma/monitors
+
+# [2.4.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.3.0...@uma/monitors@2.4.0) (2021-06-21)
+
+### Bug Fixes
+
+- **disputer:** address wrong comments ([#3025](https://github.com/UMAprotocol/protocol/issues/3025)) ([4c5b70b](https://github.com/UMAprotocol/protocol/commit/4c5b70bf1b3df5c041fe107f200cfeedd08de7ce))
+
+### Features
+
+- **Winston-logger:** add multiple escalation paths depending on message context ([#3042](https://github.com/UMAprotocol/protocol/issues/3042)) ([cd9412d](https://github.com/UMAprotocol/protocol/commit/cd9412d1bac4c0def413309423fe9ff8e487e4c1))
+
 # [2.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/monitors@2.2.0...@uma/monitors@2.3.0) (2021-05-20)
 
 ### Features

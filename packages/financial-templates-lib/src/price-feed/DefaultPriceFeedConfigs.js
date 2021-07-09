@@ -486,9 +486,9 @@ const defaultConfigs = {
       SPOT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
       SPOT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "ethusdt" },
       SPOT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusdt" },
-      FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "ethusd-quarterly-future-inverse-26mar21" },
+      FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "ethusd-quarterly-future-inverse-24sep21" },
       FUT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "ethusd-quarterly-future-inverse" },
-      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusd-quarterly-futures-26mar21" },
+      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "ethusd-quarterly-futures-24sep21" },
     },
   },
   "BTC-BASIS-6M/USDC": {
@@ -522,9 +522,9 @@ const defaultConfigs = {
       SPOT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "btcusdt" },
       SPOT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "btcusdt" },
       SPOT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusdt" },
-      FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "btcusd-quarterly-future-inverse-26mar21" },
+      FUT_BINANCE: { type: "cryptowatch", exchange: "binance", pair: "btcusd-quarterly-future-inverse-24sep21" },
       FUT_OKEX: { type: "cryptowatch", exchange: "okex", pair: "btcusd-quarterly-future-inverse" },
-      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusd-quarterly-futures-26mar21" },
+      FUT_FTX: { type: "cryptowatch", exchange: "ftx", pair: "btcusd-quarterly-futures-24sep21" },
     },
   },
   "USD/bBadger": {
@@ -750,6 +750,7 @@ const defaultConfigs = {
     type: "medianizer",
     invertPrice: true,
     minTimeBetweenUpdates: 60,
+    historicalTimestampBuffer: 60,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "binance", pair: "oceanusdt" },
       { type: "cryptowatch", exchange: "kraken", pair: "oceanusd" },
@@ -759,9 +760,10 @@ const defaultConfigs = {
   OCEANUSD: {
     type: "medianizer",
     minTimeBetweenUpdates: 60,
+    historicalTimestampBuffer: 60,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "binance", pair: "oceanusdt" },
-      { type: "cryptowatch", exchange: "bittrex", pair: "oceanusdt" },
+      { type: "cryptowatch", exchange: "kraken", pair: "oceanusd" },
       { type: "cryptowatch", exchange: "bitz", pair: "oceanusdt" },
     ],
   },
@@ -874,7 +876,7 @@ const defaultConfigs = {
       SPOT_BALANCER_ETH: {
         type: "balancer",
         twapLength: 2,
-        lookback: 3600,
+        lookback: 7200,
         balancerAddress: "0x59a19d8c652fa0284f44113d0ff9aba70bd46fb4",
         balancerTokenIn: "0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2",
         balancerTokenOut: "0xba100000625a3754423978a60c9317c58a424e3D",
@@ -1003,6 +1005,12 @@ const defaultConfigs = {
         invertPrice: true,
       },
     },
+  },
+  uSTONKS_0921: {
+    type: "uniswap",
+    uniswapAddress: "0xb9292B40cab08e5208b863ea9c4c4927a2308eEE",
+    twapLength: 7200,
+    invertPrice: true,
   },
 };
 

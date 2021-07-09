@@ -87,14 +87,6 @@ Deploys all production DVM contracts, which doesn't include the `MockOracle` or 
 
 `yarn hardhat deploy --tags dvm`
 
-Deploys minimum contracts necessary to set up Sink Oracle on L2 on the network, which would be used to deploy to Polygon for example.
-
-`yarn hardhat deploy --tags sink-oracle <NETWORK-NAME>`
-
-Deploys minimum contracts necessary to set up Source Oracle on L1 on the network, along with test-specific versions of contracts, like the MockOracle intead of Voting.
-
-`yarn hardhat deploy --tags source-oracle,test <NETWORK-NAME>`
-
 Verify contracts for selected network on Etherscan. Requires an `ETHERSCAN_API_KEY` to be set in environment. This script requires that the local `./core/deployments` has solc standard-input json files, which will be generated after running the `deploy` command.
 
 `yarn hardhat etherscan-verify --license AGPL-3.0 --force-license --network <NETWORK-NAME>`

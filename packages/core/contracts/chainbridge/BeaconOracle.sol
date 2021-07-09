@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "../oracle/interfaces/FinderInterface.sol";
-import "./IBridge.sol";
+import "../external/chainbridge/interfaces/IBridge.sol";
 import "../oracle/implementation/Constants.sol";
 
 /**

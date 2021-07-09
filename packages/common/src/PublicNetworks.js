@@ -3,6 +3,7 @@
 // ID as the network (i.e. Rinkeby will return 4 as the chainId), but some networks with chainID's > 255 need to
 // override the default behavior because their network ID is too high.
 const BRIDGE_CHAIN_ID = {
+  1337: 253,
   80001: 254,
   31337: 255,
 };
@@ -45,7 +46,7 @@ const PublicNetworks = {
   },
   137: {
     name: "polygon-matic",
-    etherscan: "https://explorer-mainnet.maticvigil.com/",
+    etherscan: "https://polygonscan.com/",
     customTruffleConfig: {
       confirmations: 2,
       timeoutBlocks: 200,

@@ -1,11 +1,13 @@
-const TruffleAssert = require("truffle-assertions");
+const hre = require("hardhat");
+const { runDefaultFixture } = require("@uma/common");
+const { getContract, assertEventEmitted, assertEventNotEmitted } = hre;
 const { assert } = require("chai");
 const { didContractThrow, interfaceName, RegistryRolesEnum } = require("@uma/common");
-const SinkOracle = artifacts.require("SinkOracle");
-const Finder = artifacts.require("Finder");
-const Registry = artifacts.require("Registry");
-const Bridge = artifacts.require("Bridge");
-const GenericHandler = artifacts.require("GenericHandler");
+const SinkOracle = getContract("SinkOracle");
+const Finder = getContract("Finder");
+const Registry = getContract("Registry");
+const Bridge = getContract("Bridge");
+const GenericHandler = getContract("GenericHandler");
 
 const { utf8ToHex, hexToUtf8, padRight } = web3.utils;
 
@@ -31,46 +33,61 @@ contract("SinkOracle", async (accounts) => {
 
   let sinkOracleResourceId;
 
-  before(async function () {
-    registry = await Registry.deployed();
-    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner);
-    await registry.registerContract([], owner, { from: owner });
-  });
   beforeEach(async function () {
+    await runDefaultFixture(hre);
+    registry = await Registry.deployed();
+    await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner).send({ from: accounts[0] });
+    await registry.methods.registerContract([], owner).send({ from: owner });
     finder = await Finder.deployed();
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.address);
-    bridge = await Bridge.new(chainID, [owner], 1, 0, 100);
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridge.address);
-    sinkOracle = await SinkOracle.new(finder.address, chainID, destinationChainID);
-    sinkOracleResourceId = await sinkOracle.getResourceId();
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.options.address)
+      .send({ from: accounts[0] });
+    bridge = await Bridge.new(chainID, [owner], 1, 0, 100).send({ from: accounts[0] });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridge.options.address)
+      .send({ from: accounts[0] });
+    sinkOracle = await SinkOracle.new(finder.options.address, chainID, destinationChainID).send({ from: accounts[0] });
+    sinkOracleResourceId = await sinkOracle.methods.getResourceId().call();
     handler = await GenericHandler.new(
-      bridge.address,
+      bridge.options.address,
       [sinkOracleResourceId],
-      [sinkOracle.address],
+      [sinkOracle.options.address],
       [blankFunctionSig],
       [blankFunctionSig]
-    );
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), handler.address);
-    await bridge.adminSetGenericResource(
-      handler.address,
-      sinkOracleResourceId,
-      sinkOracle.address,
-      blankFunctionSig,
-      blankFunctionSig,
-      { from: owner }
-    );
+    ).send({ from: accounts[0] });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), handler.options.address)
+      .send({ from: accounts[0] });
+    await bridge.methods
+      .adminSetGenericResource(
+        handler.options.address,
+        sinkOracleResourceId,
+        sinkOracle.options.address,
+        blankFunctionSig,
+        blankFunctionSig
+      )
+      .send({ from: owner });
   });
   it("construction", async function () {
-    assert.equal(await sinkOracle.destinationChainID(), destinationChainID.toString(), "destination chain ID not set");
+    assert.equal(
+      await sinkOracle.methods.destinationChainID().call(),
+      destinationChainID.toString(),
+      "destination chain ID not set"
+    );
   });
   it("requestPrice: should call Bridge.deposit", async function () {
     assert(
-      await didContractThrow(sinkOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: rando })),
+      await didContractThrow(
+        sinkOracle.methods.requestPrice(testIdentifier, testRequestTime, testAncillary).send({ from: rando })
+      ),
       "Only callable by registered contract"
     );
-    const txn = await sinkOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: owner });
-    TruffleAssert.eventEmitted(
+    const txn = await sinkOracle.methods
+      .requestPrice(testIdentifier, testRequestTime, testAncillary)
+      .send({ from: owner });
+    await assertEventEmitted(
       txn,
+      sinkOracle,
       "PriceRequestAdded",
       (event) =>
         event.chainID.toString() === chainID.toString() &&
@@ -79,18 +96,20 @@ contract("SinkOracle", async (accounts) => {
         event.ancillaryData.toLowerCase() === testAncillary.toLowerCase()
     );
     assert.isFalse(
-      await sinkOracle.hasPrice(testIdentifier, testRequestTime, testAncillary, { from: owner }),
+      await sinkOracle.methods.hasPrice(testIdentifier, testRequestTime, testAncillary).call({ from: owner }),
       "should not have price after request"
     );
     assert(
-      await didContractThrow(sinkOracle.getPrice(testIdentifier, testRequestTime, testAncillary, { from: owner })),
+      await didContractThrow(
+        sinkOracle.methods.getPrice(testIdentifier, testRequestTime, testAncillary).send({ from: owner })
+      ),
       "should revert after request price"
     );
     // Deposit event will be emitted after successful Bridge.deposit() internal call if the resource ID is set up
     // properly.
-    const internalTxn = await TruffleAssert.createTransactionResult(bridge, txn.tx);
-    TruffleAssert.eventEmitted(
-      internalTxn,
+    await assertEventEmitted(
+      txn,
+      bridge,
       "Deposit",
       (event) =>
         event.destinationChainID.toString() === destinationChainID.toString() &&
@@ -98,64 +117,90 @@ contract("SinkOracle", async (accounts) => {
         event.depositNonce.toString() === expectedDepositNonce.toString()
     );
     // Calling requestPrice again should succeed but not call Bridge.deposit.
-    const dupeTxn = await sinkOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: owner });
-    TruffleAssert.eventNotEmitted(dupeTxn, "PriceRequestAdded");
-    const internalDupeTxn = await TruffleAssert.createTransactionResult(bridge, dupeTxn.tx);
-    TruffleAssert.eventNotEmitted(internalDupeTxn, "Deposit");
+    const dupeTxn = await sinkOracle.methods
+      .requestPrice(testIdentifier, testRequestTime, testAncillary)
+      .send({ from: owner });
+    await assertEventNotEmitted(dupeTxn, sinkOracle, "PriceRequestAdded");
+    await assertEventNotEmitted(dupeTxn, bridge, "Deposit");
   });
   it("validateDeposit", async function () {
     assert(
-      await didContractThrow(sinkOracle.validateDeposit(chainID, testIdentifier, testRequestTime, testAncillary)),
+      await didContractThrow(
+        sinkOracle.methods
+          .validateDeposit(chainID, testIdentifier, testRequestTime, testAncillary)
+          .send({ from: accounts[0] })
+      ),
       "Reverts if price not requested yet"
     );
-    await sinkOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: owner });
-    await sinkOracle.validateDeposit(chainID, testIdentifier, testRequestTime, testAncillary);
+    await sinkOracle.methods.requestPrice(testIdentifier, testRequestTime, testAncillary).send({ from: owner });
+    await sinkOracle.methods
+      .validateDeposit(chainID, testIdentifier, testRequestTime, testAncillary)
+      .send({ from: accounts[0] });
     assert(
-      await didContractThrow(sinkOracle.validateDeposit(chainID, testIdentifier, testRequestTime, testAncillary)),
+      await didContractThrow(
+        sinkOracle.methods
+          .validateDeposit(chainID, testIdentifier, testRequestTime, testAncillary)
+          .send({ from: accounts[0] })
+      ),
       "Should not be able to call validateDeposit again."
     );
   });
   it("executePublishPrice", async function () {
-    await sinkOracle.requestPrice(testIdentifier, testRequestTime, testAncillary, { from: owner });
-    await sinkOracle.validateDeposit(chainID, testIdentifier, testRequestTime, testAncillary);
+    await sinkOracle.methods.requestPrice(testIdentifier, testRequestTime, testAncillary).send({ from: owner });
+    await sinkOracle.methods
+      .validateDeposit(chainID, testIdentifier, testRequestTime, testAncillary)
+      .send({ from: accounts[0] });
+
     assert(
       await didContractThrow(
-        sinkOracle.executePublishPrice(chainID, testIdentifier, testRequestTime, testAncillary, { from: rando })
+        sinkOracle.methods
+          .executePublishPrice(chainID, testIdentifier, testRequestTime, testAncillary, "100")
+          .send({ from: rando })
       ),
       "Only callable by GenericHandler"
     );
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), rando);
-    await sinkOracle.executePublishPrice(chainID, testIdentifier, testRequestTime, testAncillary, testPrice, {
-      from: rando,
-    });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.GenericHandler), rando)
+      .send({ from: accounts[0] });
+    await sinkOracle.methods
+      .executePublishPrice(chainID, testIdentifier, testRequestTime, testAncillary, testPrice)
+      .send({ from: rando });
     assert(
-      await didContractThrow(sinkOracle.hasPrice(testIdentifier, testRequestTime, testAncillary, { from: rando })),
+      await didContractThrow(
+        sinkOracle.methods.hasPrice(testIdentifier, testRequestTime, testAncillary).send({ from: rando })
+      ),
       "should revert if not called by registered contract"
     );
     assert(
-      await didContractThrow(sinkOracle.getPrice(testIdentifier, testRequestTime, testAncillary, { from: rando })),
+      await didContractThrow(
+        sinkOracle.methods.getPrice(testIdentifier, testRequestTime, testAncillary).send({ from: rando })
+      ),
       "should revert if not called by registered contract"
     );
     assert.isTrue(
-      await sinkOracle.hasPrice(testIdentifier, testRequestTime, testAncillary, { from: owner }),
+      await sinkOracle.methods.hasPrice(testIdentifier, testRequestTime, testAncillary).call({ from: owner }),
       "should have price after publish"
     );
     assert.equal(
-      (await sinkOracle.getPrice(testIdentifier, testRequestTime, testAncillary, { from: owner })).toString(),
+      (
+        await sinkOracle.methods.getPrice(testIdentifier, testRequestTime, testAncillary).call({ from: owner })
+      ).toString(),
       testPrice,
       "should not revert after publish"
     );
     assert(
       await didContractThrow(
-        sinkOracle.executePublishPrice(chainID, testIdentifier, testRequestTime, testAncillary, testPrice, {
-          from: rando,
-        })
+        sinkOracle.methods
+          .executePublishPrice(chainID, testIdentifier, testRequestTime, testAncillary, testPrice)
+          .send({ from: rando })
       ),
       "Should not be able to call executePublishPrice again."
     );
   });
   it("formatMetadata", async function () {
-    const metadata = await sinkOracle.formatMetadata(chainID, testIdentifier, testRequestTime, testAncillary);
+    const metadata = await sinkOracle.methods
+      .formatMetadata(chainID, testIdentifier, testRequestTime, testAncillary)
+      .call();
     const encoded = web3.eth.abi.encodeParameters(
       ["uint8", "bytes32", "uint256", "bytes"],
       [chainID, padRight(testIdentifier, 64), testRequestTime, testAncillary]

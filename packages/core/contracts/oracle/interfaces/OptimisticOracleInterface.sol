@@ -37,7 +37,7 @@ abstract contract OptimisticOracleInterface {
 
     // This value must be <= the Voting contract's `ancillaryBytesLimit` value otherwise it is possible
     // that a price can be requested to this contract successfully, but cannot be disputed because the DVM refuses
-    // to accept a price request made with ancillary data length of a certain size.
+    // to accept a price request made with ancillary data length over a certain size.
     uint256 public constant ancillaryBytesLimit = 8192;
 
     /**
@@ -225,6 +225,14 @@ abstract contract OptimisticOracleInterface {
         bytes memory ancillaryData
     ) public view virtual returns (Request memory);
 
+    /**
+     * @notice Returns the state of a price request.
+     * @param requester sender of the initial price request.
+     * @param identifier price identifier to identify the existing request.
+     * @param timestamp timestamp to identify the existing request.
+     * @param ancillaryData ancillary data of the price being requested.
+     * @return the State enum value.
+     */
     function getState(
         address requester,
         bytes32 identifier,
@@ -238,7 +246,7 @@ abstract contract OptimisticOracleInterface {
      * @param identifier price identifier to identify the existing request.
      * @param timestamp timestamp to identify the existing request.
      * @param ancillaryData ancillary data of the price being requested.
-     * @return the State.
+     * @return true if price has resolved or settled, false otherwise.
      */
     function hasPrice(
         address requester,
@@ -246,4 +254,10 @@ abstract contract OptimisticOracleInterface {
         uint256 timestamp,
         bytes memory ancillaryData
     ) public view virtual returns (bool);
+
+    function stampAncillaryData(bytes memory ancillaryData, address requester)
+        public
+        view
+        virtual
+        returns (bytes memory);
 }

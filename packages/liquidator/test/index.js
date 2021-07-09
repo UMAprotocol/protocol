@@ -1,5 +1,4 @@
 const { toBN, toWei, utf8ToHex, padRight } = web3.utils;
-const truffleContract = require("@truffle/contract");
 const { assert } = require("chai");
 
 const {
@@ -8,6 +7,7 @@ const {
   addGlobalHardhatTestingAddress,
   createConstructorParamsForContractVersion,
   TESTED_CONTRACT_VERSIONS,
+  createContractObjectFromJson,
 } = require("@uma/common");
 
 const { getTruffleContract } = require("@uma/core");
@@ -21,12 +21,6 @@ const { SpyTransport, spyLogLevel, spyLogIncludes, FinancialContractClient } = r
 const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json");
 const IUniswapV2Pair = require("@uniswap/v2-core/build/IUniswapV2Pair.json");
 const UniswapV2Router02 = require("@uniswap/v2-periphery/build/UniswapV2Router02.json");
-
-const createContractObjectFromJson = (contractJsonObject) => {
-  let truffleContractCreator = truffleContract(contractJsonObject);
-  truffleContractCreator.setProvider(web3.currentProvider);
-  return truffleContractCreator;
-};
 
 // Script to test
 const Poll = require("../index.js");
@@ -50,7 +44,7 @@ let dsProxyFactory;
 
 let pollingDelay = 0; // 0 polling delay creates a serverless bot that yields after one full execution.
 let errorRetries = 1;
-let errorRetriesTimeout = 0.1; // 100 milliseconds between preforming retries
+let errorRetriesTimeout = 0.1; // 100 milliseconds between performing retries
 let identifier = "TEST_IDENTIFIER";
 let fundingRateIdentifier = "TEST_FUNDiNG_IDENTIFIER";
 
@@ -456,8 +450,8 @@ contract("index.js", function (accounts) {
         const reserveToken = await Token.new("Reserve Token", "RTKN", 18);
         await reserveToken.addMember(1, contractCreator);
         // deploy Uniswap V2 Factory & router.
-        const factory = await createContractObjectFromJson(UniswapV2Factory).new(contractCreator);
-        const router = await createContractObjectFromJson(UniswapV2Router02).new(
+        const factory = await createContractObjectFromJson(UniswapV2Factory, web3).new(contractCreator);
+        const router = await createContractObjectFromJson(UniswapV2Router02, web3).new(
           factory.address,
           collateralToken.address
         );
@@ -465,7 +459,7 @@ contract("index.js", function (accounts) {
         // initialize the pair
         await factory.createPair(reserveToken.address, collateralToken.address);
         const pairAddress = await factory.getPair(reserveToken.address, collateralToken.address);
-        const pair = await createContractObjectFromJson(IUniswapV2Pair).at(pairAddress);
+        const pair = await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress);
 
         await reserveToken.mint(pairAddress, toBN(toWei("1000")).muln(10000000));
         await collateralToken.mint(pairAddress, toBN(toWei("1")).muln(10000000));

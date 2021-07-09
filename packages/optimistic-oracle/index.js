@@ -60,7 +60,7 @@ async function run({
       optimisticOracleAddress,
       getAddress(oracleType, networkId)
     );
-    const gasEstimator = new GasEstimator(logger);
+    const gasEstimator = new GasEstimator(logger, 60, networkId);
 
     // Construct default price feed config passed to all pricefeeds constructed by the proposer.
     // The proposer needs to query prices for any identifier approved to use the Optimistic Oracle,
@@ -145,7 +145,8 @@ async function Poll(callback) {
       optimisticOracleProposerConfig: process.env.OPTIMISTIC_ORACLE_PROPOSER_CONFIG
         ? JSON.parse(process.env.OPTIMISTIC_ORACLE_PROPOSER_CONFIG)
         : {},
-      // Type of "Oracle" set for this network's Finder, default is "Voting". Other possible types include "SinkOracle".
+      // Type of "Oracle" set for this network's Finder, default is "Voting". Other possible types include "SinkOracle",
+      //  "OracleChildTunnel", and "MockOracleAncillary"
       oracleType: process.env.ORACLE_TYPE ? process.env.ORACLE_TYPE : "Voting",
     };
 
@@ -155,6 +156,7 @@ async function Poll(callback) {
       at: "OptimisticOracle#index",
       message: "OO proposer execution error🚨",
       error: typeof error === "string" ? new Error(error) : error,
+      notificationPath: "infrastructure-error",
     });
     await waitForLogger(Logger);
     callback(error);

@@ -20,7 +20,13 @@ contract SourceOracle is BeaconOracle {
     /**
      * @notice Constructor.
      * @param _finderAddress Address of Finder that this contract uses to locate Bridge.
-     * @param _chainID Chain ID for this contract.
+     * @param _chainID Chain ID for this contract. This is configurable by the deployer, rather than
+     * automatically detected via `block.chainid` because the type of `currentChainId` should match any
+     * `sinkChainId`'s submitted as input to `publishPrice()`. `publishPrice()` calls `Bridge.deposit()`
+     * which expects a uint8 chainID passed as the first param, but `block.chainid` returns a uint256 value. Due to
+     * the possibility that a uint256 --> uint28 conversion leads to data loss and the complexity of mapping safely
+     * from uint256 --> uint8 on-chain, we opt to allow the user to specify a unique uint8 ID for this chain. It
+     * follows that the `_chainID` may not match with `block.chainid`.
      */
     constructor(address _finderAddress, uint8 _chainID) BeaconOracle(_finderAddress, _chainID) {}
 
@@ -130,7 +136,7 @@ contract SourceOracle is BeaconOracle {
      * ultimately be used to publish a price on the SinkOracle.
      * @dev GenericHandler.deposit() expects data to be formatted as:
      *     len(data)                              uint256     bytes  0  - 32
-     *     data                                   bytes       bytes  64 - END
+     *     data                                   bytes       bytes  32 - END
      * @param chainID Chain ID of SinkOracle to publish price to.
      * @param identifier Identifier of price request to publish.
      * @param time Timestamp of price request to publish.

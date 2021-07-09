@@ -1,8 +1,8 @@
-import type { Store } from "..";
+import type { SortedStore } from "..";
 import type { Datastore, Key } from "@google-cloud/datastore";
 
 // TODO: this is a work in progress which will be completed during datastore integration.
-export default function <D>(kind: string, store: Datastore): Store<string, D> {
+export default function <D>(kind: string, store: Datastore): SortedStore<string, D> {
   function makeKey(id: string): Key {
     return store.key([kind, id]);
   }
@@ -41,6 +41,19 @@ export default function <D>(kind: string, store: Datastore): Store<string, D> {
   async function keys() {
     return [];
   }
+  async function size() {
+    return 0;
+  }
+  // TODO: implement these functions
+  async function clear() {
+    throw new Error("clear is not implemented");
+  }
+  async function slice() {
+    return [];
+  }
+  async function between() {
+    return [];
+  }
 
   return {
     get,
@@ -50,5 +63,9 @@ export default function <D>(kind: string, store: Datastore): Store<string, D> {
     entries,
     values,
     keys,
+    size,
+    clear,
+    between,
+    slice,
   };
 }

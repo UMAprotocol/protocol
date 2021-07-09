@@ -1662,7 +1662,7 @@ contract("Liquidatable", function (accounts) {
   describe("Custom Financial Contract Library", () => {
     // All tests up until now have not used a custom financial contract library to preform any kind of transformations
     // against the contract collateralization ratio. In this set of tests we will verify that a financial contract
-    // library can apply transformation logic to a contracts collateral requirement & price identifie when preforming
+    // library can apply transformation logic to a contracts collateral requirement & price identifie when performing
     // liquidations/disputed.
 
     let fclLiquidationContract;

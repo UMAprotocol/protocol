@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "../../common/implementation/Lockable.sol";
 import "../../common/implementation/FixedPoint.sol";
 import "../../common/implementation/Testable.sol";
+import "../../common/implementation/AncillaryData.sol";
 
 import "../../oracle/implementation/Constants.sol";
 import "../../oracle/interfaces/OptimisticOracleInterface.sol";
@@ -134,16 +135,13 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
         nonReentrant()
         returns (FixedPoint.Unsigned memory totalBond)
     {
-        require(fundingRate.proposalTime == 0, "Proposal in progress");
+        require(fundingRate.proposalTime == 0);
         _validateFundingRate(rate);
 
         // Timestamp must be after the last funding rate update time, within the last 30 minutes.
         uint256 currentTime = getCurrentTime();
         uint256 updateTime = fundingRate.updateTime;
-        require(
-            timestamp > updateTime && timestamp >= currentTime.sub(_getConfig().proposalTimePastLimit),
-            "Invalid proposal time"
-        );
+        require(timestamp > updateTime && timestamp >= currentTime.sub(_getConfig().proposalTimePastLimit));
 
         // Set the proposal time in order to allow this contract to track this request.
         fundingRate.proposalTime = timestamp;
@@ -320,10 +318,15 @@ abstract contract FundingRateApplier is EmergencyShutdownable, FeePayer {
         newCumulativeFundingRateMultiplier = currentCumulativeFundingRateMultiplier.mul(unsignedPeriodMultiplier);
     }
 
+    /**
+     * @dev We do not need to check that the ancillary data length is less than the hardcoded max length in the
+     * OptimisticOracle because the length of the ancillary data is fixed in this function.
+     */
     function _getAncillaryData() internal view returns (bytes memory) {
-        // Note: when ancillary data is passed to the optimistic oracle, it should be tagged with the token address
-        // whose funding rate it's trying to get.
-        return abi.encodePacked(_getTokenAddress());
+        // When ancillary data is passed to the optimistic oracle, it should be tagged with the token address
+        // whose funding rate it's trying to get so that financial contracts can re-use the same identifier for
+        // multiple funding rate products.
+        return AncillaryData.appendKeyValueAddress("", "tokenAddress", _getTokenAddress());
     }
 
     function _getTokenAddress() internal view virtual returns (address);

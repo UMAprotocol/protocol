@@ -10,8 +10,12 @@ import "../oracle/implementation/Constants.sol";
 contract SinkGovernor {
     FinderInterface public finder;
 
-    event ExecutedGovernanceTransaction(address indexed to, uint256 value, bytes indexed data);
+    event ExecutedGovernanceTransaction(address indexed to, bytes indexed data);
 
+    /**
+     * @notice Constructor.
+     * @param _finder Address of Finder that this contract uses to locate GenericHandler.
+     */
     constructor(FinderInterface _finder) {
         finder = _finder;
     }
@@ -21,12 +25,10 @@ contract SinkGovernor {
      * to this network via an off-chain relayer. The relayer will call `Bridge.executeProposal` on this local network,
      * which call `GenericHandler.executeProposal()` and ultimately this method.
      * @dev This method should send the arbitrary transaction emitted by the L1 governor on this chain.
+     * @param to Contract on this network to send governance transaction to.
+     * @param data Calldata to include in governance transaction.
      */
-    function executeGovernance(
-        address to,
-        uint256 value,
-        bytes memory data
-    ) external {
+    function executeGovernance(address to, bytes memory data) external {
         require(
             msg.sender == finder.getImplementationAddress(OracleInterfaces.GenericHandler),
             "Generic handler must call"
@@ -41,10 +43,12 @@ contract SinkGovernor {
         assembly {
             let inputData := add(data, 0x20)
             let inputDataSize := mload(data)
-            success := call(gas(), to, value, inputData, inputDataSize, 0, 0)
+            // Hardcode value to be 0 for relayed governance calls in order to avoid addressing complexity of bridging
+            // value cross-chain.
+            success := call(gas(), to, 0, inputData, inputDataSize, 0, 0)
         }
         require(success, "Governance call failed");
 
-        emit ExecutedGovernanceTransaction(to, value, data);
+        emit ExecutedGovernanceTransaction(to, data);
     }
 }

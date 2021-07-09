@@ -17,6 +17,7 @@ const {
   getPrecisionForIdentifier,
   OptimisticOracleRequestStatesEnum,
   OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY,
+  OPTIMISTIC_ORACLE_IGNORE,
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
@@ -552,7 +553,7 @@ contract("OptimisticOracle: proposer.js", function (accounts) {
     assert.isTrue(spyLogIncludes(spy, -1, "sendDisputes"));
   });
 
-  it("Skips expiry price requests for blacklisted identifiers", async function () {
+  it("Skips expiry price requests for expiry-blacklisted identifiers", async function () {
     // Set requester's expiration timestamp to be equal to the price request timestamp to simulate expiry:
     await optimisticRequester.setExpirationTimestamp(requestTime);
 
@@ -636,5 +637,57 @@ contract("OptimisticOracle: proposer.js", function (accounts) {
     await proposer.update();
     await proposer.sendDisputes();
     assert.isTrue(spyLogIncludes(spy, -1, "Skipping dispute because proposal price is within allowed margin of error"));
+  });
+
+  it("Skips all price requests for master-blacklisted identifiers", async function () {
+    const collateralCurrency = collateralCurrenciesForIdentifier[0];
+    const ancillaryData = collateralCurrency.address.toLowerCase();
+    const ancillaryDataAddress = ancillaryData;
+
+    const identifierToIgnore = padRight(utf8ToHex(OPTIMISTIC_ORACLE_IGNORE[0]), 64);
+    await identifierWhitelist.addSupportedIdentifier(identifierToIgnore);
+
+    await optimisticRequester.requestPrice(
+      identifierToIgnore,
+      requestTime,
+      ancillaryData,
+      collateralCurrency.address,
+      0
+    );
+
+    // Use debug spy to catch "skip" log.
+    spyLogger = winston.createLogger({
+      level: "debug",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
+    });
+    proposer = new OptimisticOracleProposer({
+      logger: spyLogger,
+      optimisticOracleClient: client,
+      gasEstimator,
+      account: botRunner,
+      commonPriceFeedConfig: { currentPrice: "1", historicalPrice: "2" },
+    });
+
+    // Update the bot to read the new OO state.
+    await proposer.update();
+
+    // Client should still see the unproposed price request:
+    assert.deepStrictEqual(client.getUnproposedPriceRequests(), [
+      {
+        requester: optimisticRequester.address,
+        identifier: hexToUtf8(identifierToIgnore),
+        ancillaryData: ancillaryDataAddress,
+        timestamp: requestTime.toString(),
+        currency: collateralCurrency.address,
+        reward: "0",
+        finalFee,
+      },
+    ]);
+
+    // Running the bot's sendProposals method should skip the price request:
+    await proposer.sendProposals();
+    assert.equal(lastSpyLogLevel(spy), "debug");
+    assert.isTrue(spyLogIncludes(spy, -1, "Identifier is blacklisted"));
+    await verifyState(OptimisticOracleRequestStatesEnum.REQUESTED, identifierToIgnore, ancillaryDataAddress);
   });
 });

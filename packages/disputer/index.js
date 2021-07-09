@@ -32,9 +32,13 @@ const { getWeb3, PublicNetworks } = require("@uma/common");
  * @param {String} address Contract address of the Financial Contract.
  * @param {Number} pollingDelay The amount of seconds to wait between iterations. If set to 0 then running in serverless
  *     mode which will exit after the loop.
+ * @param {Number} errorRetries The number of times the execution loop will re-try before throwing if an error occurs.
+ * @param {Number} errorRetriesTimeout The amount of milliseconds to wait between re-try iterations on failed loops.
  * @param {Object} priceFeedConfig Configuration to construct the price feed object.
  * @param {Object} [disputerConfig] Configuration to construct the disputer.
  * @param {String} [disputerOverridePrice] Optional String representing a Wei number to override the disputer price feed.
+ * @param {Object} [proxyTransactionWrapperConfig] Configuration to construct the proxy transaction wrapper to enable DSProxy
+ *     disputes. This facilitates atomic swap, and disputes transactions against a reserve currency.
  * @return None or throws an Error.
  */
 async function run({
@@ -64,6 +68,7 @@ async function run({
       priceFeedConfig,
       disputerConfig,
       disputerOverridePrice,
+      proxyTransactionWrapperConfig,
     });
 
     // Load unlocked web3 accounts and get the networkId.
@@ -145,7 +150,7 @@ async function run({
       disputerConfig.contractType
     );
 
-    const gasEstimator = new GasEstimator(logger);
+    const gasEstimator = new GasEstimator(logger, 60, networkId);
     await gasEstimator.update();
 
     let dsProxyManager;
@@ -196,7 +201,7 @@ async function run({
       disputerConfig,
     });
 
-    if (proxyTransactionWrapperConfig == {} || !proxyTransactionWrapperConfig?.useDsProxyToLiquidate) {
+    if (proxyTransactionWrapperConfig == {} || !proxyTransactionWrapperConfig?.useDsProxyToDispute) {
       // The Financial Contract requires approval to transfer the disputer's collateral tokens in order to dispute a liquidation.
       // We'll set this once to the max value and top up whenever the bot's allowance drops below MAX_INT / 2.
       const collateralApproval = await setAllowance(
@@ -298,8 +303,10 @@ async function Poll(callback) {
       //  "dsProxyFactoryAddress": "0x123..." -> Will default to an UMA deployed version if non provided.
       // "disputerReserveCurrencyAddress": "0x123..." -> currency DSProxy will trade from when disputing.
       // "uniswapRouterAddress": "0x123..." -> uniswap router address to enable reserve trading. Defaults to mainnet router.
-      // "maxReserverTokenSpent": "10000000000"} -> max amount to spend in reserve currency. Scaled by reserve currency
+      // "maxReserverTokenSpent": "10000000000" -> max amount to spend in reserve currency. Scaled by reserve currency
       //      decimals. defaults to MAX_UINT (no limit).
+      // "availableAccounts": "1"} -> the number of EOAs the bot should use when performing liquidations. This only works
+      // if you have configured your DSProxy with a DSGuard with permissions on your other EOAs unlocked from your account.
       proxyTransactionWrapperConfig: process.env.DSPROXY_CONFIG ? JSON.parse(process.env.DSPROXY_CONFIG) : {},
     };
 
@@ -309,6 +316,7 @@ async function Poll(callback) {
       at: "Disputer#index",
       message: "Disputer execution error🚨",
       error: typeof error === "string" ? new Error(error) : error,
+      notificationPath: "infrastructure-error",
     });
     await waitForLogger(Logger);
     callback(error);

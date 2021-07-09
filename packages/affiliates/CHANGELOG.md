@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.4.1](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.4.0...@uma/affiliates@1.4.1) (2021-07-07)
+
+### Bug Fixes
+
+- **affiliates:** add handler for repay event ([#3138](https://github.com/UMAprotocol/protocol/issues/3138)) ([bce982a](https://github.com/UMAprotocol/protocol/commit/bce982a7f8bb83c09994a93d0109a2160f3724dc))
+- **affiliates:** stop processing events for expired emps in dapp mining ([#3199](https://github.com/UMAprotocol/protocol/issues/3199)) ([1490945](https://github.com/UMAprotocol/protocol/commit/1490945eca3faa111f6c8a987e7225bdbfe247a5))
+
+# [1.4.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.3.0...@uma/affiliates@1.4.0) (2021-06-21)
+
+### Features
+
+- **affiliates:** Update dev mining whitelist ([#3117](https://github.com/UMAprotocol/protocol/issues/3117)) ([ad298d6](https://github.com/UMAprotocol/protocol/commit/ad298d6fb9c5369550db8401ba42addfa501913e))
+- **bot-strategy-runner:** add unit tests to package ([#2983](https://github.com/UMAprotocol/protocol/issues/2983)) ([186c994](https://github.com/UMAprotocol/protocol/commit/186c994ba12714c13a701c31f49571362748b45f))
+- **gas-rebate:** Rebate 10 ([#3081](https://github.com/UMAprotocol/protocol/issues/3081)) ([06f6190](https://github.com/UMAprotocol/protocol/commit/06f61902a38039ad33ca390f51c4e3a84632d8a0))
+
 # [1.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.2.0...@uma/affiliates@1.3.0) (2021-05-20)
 
 ### Bug Fixes

@@ -202,7 +202,7 @@ class Liquidator {
   async liquidatePositions(maxTokensToLiquidateWei, liquidatorOverridePrice) {
     this.logger.debug({
       at: "Liquidator",
-      message: "Checking for liquidatable positions and preforming liquidations",
+      message: "Checking for liquidatable positions and performing liquidations",
       maxTokensToLiquidateWei,
       liquidatorOverridePrice,
     });
@@ -266,6 +266,21 @@ class Liquidator {
         position: position,
       });
 
+      if (
+        position.sponsor ==
+        (this.proxyTransactionWrapper.useDsProxyToLiquidate
+          ? this.proxyTransactionWrapper.dsProxyManager.getDSProxyAddress()
+          : this.account)
+      ) {
+        this.logger.warn({
+          at: "Liquidator",
+          message: "The liquidator has an open position that is liquidatable! Bot will not liquidate itself! 😟",
+          scaledPrice: scaledPrice.toString(),
+          maxCollateralPerToken: maxCollateralPerToken.toString(),
+          position: position,
+        });
+        continue;
+      }
       // Note: query the time again during each iteration to ensure the deadline is set reasonably.
       const currentBlockTime = this.financialContractClient.getLastUpdateTime();
 

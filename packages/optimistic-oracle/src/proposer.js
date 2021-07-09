@@ -4,7 +4,12 @@ const {
   setAllowance,
   isDeviationOutsideErrorMargin,
 } = require("@uma/financial-templates-lib");
-const { createObjectFromDefaultProps, runTransaction, OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY } = require("@uma/common");
+const {
+  createObjectFromDefaultProps,
+  runTransaction,
+  OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY,
+  OPTIMISTIC_ORACLE_IGNORE,
+} = require("@uma/common");
 const { getAbi } = require("@uma/core");
 
 class OptimisticOracleProposer {
@@ -125,6 +130,16 @@ class OptimisticOracleProposer {
 
   // Returns true if the price request should be ignored by the OO proposer + disputer for any reason, False otherwise.
   async _shouldIgnorePriceRequest(priceRequest) {
+    // Ignore any identifier on the blacklist:
+    if (OPTIMISTIC_ORACLE_IGNORE.includes(priceRequest.identifier)) {
+      this.logger.debug({
+        at: "OptimisticOracleProposer#Proposer",
+        message: "Identifier is blacklisted",
+        identifier: priceRequest.identifier,
+      });
+      return true;
+    }
+
     // If the price request is an expiry price request for a specific type of EMP
     // whose price resolution is self-referential pre-expiry and diferent post-expiry,
     // then skip the price request:
@@ -208,7 +223,7 @@ class OptimisticOracleProposer {
         requester: receipt.events.ProposePrice.returnValues.requester,
         proposer: receipt.events.ProposePrice.returnValues.proposer,
         identifier: this.hexToUtf8(receipt.events.ProposePrice.returnValues.identifier),
-        ancillaryData: receipt.events.ProposePrice.returnValues.ancillaryData,
+        ancillaryData: receipt.events.ProposePrice.returnValues.ancillaryData || "0x",
         timestamp: receipt.events.ProposePrice.returnValues.timestamp,
         proposedPrice: receipt.events.ProposePrice.returnValues.proposedPrice,
         expirationTimestamp: receipt.events.ProposePrice.returnValues.expirationTimestamp,
@@ -308,7 +323,7 @@ class OptimisticOracleProposer {
           proposer: receipt.events.DisputePrice.returnValues.proposer,
           disputer: receipt.events.DisputePrice.returnValues.disputer,
           identifier: this.hexToUtf8(receipt.events.DisputePrice.returnValues.identifier),
-          ancillaryData: receipt.events.DisputePrice.returnValues.ancillaryData,
+          ancillaryData: receipt.events.DisputePrice.returnValues.ancillaryData || "0x",
           timestamp: receipt.events.DisputePrice.returnValues.timestamp,
           proposedPrice: receipt.events.DisputePrice.returnValues.proposedPrice,
         };
@@ -373,7 +388,7 @@ class OptimisticOracleProposer {
         proposer: receipt.events.Settle.returnValues.proposer,
         disputer: receipt.events.Settle.returnValues.disputer,
         identifier: this.hexToUtf8(receipt.events.Settle.returnValues.identifier),
-        ancillaryData: receipt.events.Settle.returnValues.ancillaryData,
+        ancillaryData: receipt.events.Settle.returnValues.ancillaryData || "0x",
         timestamp: receipt.events.Settle.returnValues.timestamp,
         price: receipt.events.Settle.returnValues.price,
         payout: receipt.events.Settle.returnValues.payout,

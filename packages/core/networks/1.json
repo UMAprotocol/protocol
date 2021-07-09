@@ -45,7 +45,7 @@
   },
   {
     "contractName": "TokenFactory",
-    "address": "0x7c96d6235CfaaCcAc5d80fCe74E6032B25dd1F03"
+    "address": "0x55D8B8c54250f8B5BB192D42Aa746b4C2Ef2d55C"
   },
   {
     "contractName": "AddressWhitelist",
@@ -76,19 +76,39 @@
     "address": "0xAB75727d4e89A7f7F04f57C00234a35950527115"
   },
   {
-    "contractName": "Bridge",
-    "address": "0xBA26bC014c4c889431826C123492861e886408b9"
+    "contractName": "DSGuardFactory",
+    "address": "0x63200E25db9Af015d1e3240D30269d29D80830F6"
   },
   {
-    "contractName": "GenericHandler",
-    "address": "0x60E6140330F8FE31e785190F39C1B5e5e833c2a9"
+    "contractName": "MockOracleAncillary",
+    "address": "0x514Ae88aB0d24088C0a9d8E76E66457DF200fEe3"
   },
   {
-    "contractName": "SourceOracle",
-    "address": "0x3811A29571c9912f15fEFF0747d2F34Aa48f6721"
+    "contractName": "OracleRootTunnel",
+    "address": "0x57825D1bf50Ad918b39563a57070b0915464D1A8"
   },
   {
-    "contractName": "SourceGovernor",
-    "address": "0x1ccC90F5dd09c747fe46e176f5b5F7762a13Ba8F"
+    "contractName": "GovernorRootTunnel",
+    "address": "0xe24914adb2dbb106e97e1c1025f4edb27cdbeca0"
+  },
+  {
+    "contractName": "LongShortPairCreator",
+    "address": "0x0b8de441B26E36f461b2748919ed71f50593A67b"
+  },
+  {
+    "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
+    "address": "0x072819Bb43B50E7A251c64411e7aA362ce82803B"
+  },
+  {
+    "contractName": "CoveredCallLongShortPairFinancialProductLibrary",
+    "address": "0x37780b718c19F7f06D41f3c68C3A78ECB2Ca191f"
+  },
+  {
+    "contractName": "LinearLongShortPairFinancialProductLibrary",
+    "address": "0x488211B646b909C490d942f456481BeAE52fde27"
+  },
+  {
+    "contractName": "RangeBondLongShortPairFinancialProductLibrary",
+    "address": "0x9214454Ff30410a1558b8749Ab3FB0fD6F942539"
   }
 ]

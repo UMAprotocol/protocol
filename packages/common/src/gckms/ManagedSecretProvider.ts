@@ -1,6 +1,7 @@
 import HDWalletProvider from "@truffle/hdwallet-provider";
 import kms from "@google-cloud/kms";
 import { Storage } from "@google-cloud/storage";
+const { retrieveGckmsKeys } = require("./utils");
 
 interface CloudKmsConfig {
   projectId: string;
@@ -44,12 +45,6 @@ class ManagedSecretProvider {
     this.wrappedProviderPromise = this.getOrConstructWrappedProvider();
   }
 
-  // Kicks off the construction of the wrapper provider. Call (and await on) this method before invoking any other
-  // methods.
-  async constructWrappedProvider() {
-    return this.wrappedProviderPromise;
-  }
-
   // Passes the call through, by attaching a callback to the wrapper provider promise.
   sendAsync(...all: Parameters<HDWalletProvider["sendAsync"]>) {
     this.wrappedProviderPromise.then((wrappedProvider) => {
@@ -57,15 +52,25 @@ class ManagedSecretProvider {
     });
   }
 
+<<<<<<< HEAD:packages/common/src/gckms/ManagedSecretProvider.ts
   // Passes the call through. Requires that the wrapped provider has been created via, e.g., `constructWrappedProvider`.
   send(...all: Parameters<HDWalletProvider["send"]>) {
+=======
+  // Passes the call through. Requires that the wrapped provider has been created via, e.g., `getOrConstructWrappedProvider`.
+  send(...all) {
+>>>>>>> master:packages/common/src/gckms/ManagedSecretProvider.js
     this.wrappedProviderPromise.then((wrappedProvider) => {
       wrappedProvider.send(...all);
     });
   }
 
+<<<<<<< HEAD:packages/common/src/gckms/ManagedSecretProvider.ts
   // Passes the call through. Requires that the wrapped provider has been created via, e.g., `constructWrappedProvider`.
   getAddress(...all: Parameters<HDWalletProvider["getAddress"]>) {
+=======
+  // Passes the call through. Requires that the wrapped provider has been created via, e.g., `getOrConstructWrappedProvider`.
+  getAddress(...all) {
+>>>>>>> master:packages/common/src/gckms/ManagedSecretProvider.js
     return this.getWrappedProviderOrThrow().getAddress(...all);
   }
 
@@ -74,56 +79,53 @@ class ManagedSecretProvider {
     if (this.wrappedProvider) {
       return this.wrappedProvider;
     } else {
-      throw "Must init provider first, can't get value synchronously";
+      throw new Error("Must init provider first, can't get value synchronously");
     }
   }
 
   // Returns a Promise that resolves to the wrapped provider.
-  getOrConstructWrappedProvider() {
+  async getOrConstructWrappedProvider() {
     if (this.wrappedProvider) {
-      return Promise.resolve(this.wrappedProvider);
+      return this.wrappedProvider;
     }
 
-    const fetchKeys = this.cloudKmsSecretConfigs.map((config) => {
-      const storage = new Storage();
-      const keyMaterialBucket = storage.bucket(config.ciphertextBucket);
-      const ciphertextFile = keyMaterialBucket.file(config.ciphertextFilename);
+    // const fetchKeys = this.cloudKmsSecretConfigs.map((config) => {
+    //   const storage = new Storage();
+    //   const keyMaterialBucket = storage.bucket(config.ciphertextBucket);
+    //   const ciphertextFile = keyMaterialBucket.file(config.ciphertextFilename);
 
-      return ciphertextFile.download().then((data) => {
-        // Send the request to decrypt the downloaded file.
-        const contentsBuffer = data[0];
-        const ciphertext = contentsBuffer.toString("base64");
+    //   return ciphertextFile.download().then((data) => {
+    //     // Send the request to decrypt the downloaded file.
+    //     const contentsBuffer = data[0];
+    //     const ciphertext = contentsBuffer.toString("base64");
 
-        const client = new kms.KeyManagementServiceClient();
-        const name = client.cryptoKeyPath(config.projectId, config.locationId, config.keyRingId, config.cryptoKeyId);
-        return client.decrypt({ name, ciphertext });
-      });
-    });
+    //     const client = new kms.KeyManagementServiceClient();
+    //     const name = client.cryptoKeyPath(config.projectId, config.locationId, config.keyRingId, config.cryptoKeyId);
+    //     return client.decrypt({ name, ciphertext });
+    //   });
+    // });
 
-    return Promise.all(fetchKeys).then(
-      (results) => {
-        let keys: string[] | string = results.map(([result]) => {
-          if (result.plaintext !== typeof Uint8Array) {
-            throw new Error("Result formatted incorrectly");
-          }
-          return Buffer.from(result.plaintext, "base64").toString().trim();
-        });
+    // return Promise.all(fetchKeys).then(
+    //   (results) => {
+    //     let keys: string[] | string = results.map(([result]) => {
+    //       if (result.plaintext !== typeof Uint8Array) {
+    //         throw new Error("Result formatted incorrectly");
+    //       }
+    //       return Buffer.from(result.plaintext, "base64").toString().trim();
+    //     });
 
-        // If there is only 1 key, convert into a single element before constructing `HDWalletProvider`
-        // This is important, as a single mnemonic will fail if passed in as an array.
-        if (keys.length == 1) {
-          keys = keys[0];
-        }
+    //     // If there is only 1 key, convert into a single element before constructing `HDWalletProvider`
+    //     // This is important, as a single mnemonic will fail if passed in as an array.
+    //     if (keys.length == 1) {
+    //       keys = keys[0];
+    //     }
 
-        this.wrappedProvider = new HDWalletProvider(keys, this.providerOrUrl, ...this.remainingArgs);
+    //     this.wrappedProvider = new HDWalletProvider(keys, this.providerOrUrl, ...this.remainingArgs);
 
-        return this.wrappedProvider;
-      },
-      (reason) => {
-        console.error(reason);
-        throw reason;
-      }
-    );
+    const keys = await retrieveGckmsKeys(this.cloudKmsSecretConfigs);
+    this.wrappedProvider = new HDWalletProvider(keys, ...this.remainingArgs);
+
+    return this.wrappedProvider;
   }
 }
 

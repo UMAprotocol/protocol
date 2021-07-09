@@ -7,7 +7,6 @@ export const interfaceName = {
   IdentifierWhitelist: "IdentifierWhitelist",
   CollateralWhitelist: "CollateralWhitelist",
   AddressWhitelist: "CollateralWhitelist",
-  FundingRateStore: "FundingRateStore",
   OptimisticOracle: "OptimisticOracle",
   Bridge: "Bridge",
   GenericHandler: "GenericHandler",

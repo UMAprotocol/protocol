@@ -5,7 +5,7 @@
   },
   {
     "contractName": "Registry",
-    "address": "0x3baD7AD0728f9917d1Bf08af5782dCbD516cDd96"
+    "address": "0xB0C6Ed64a77A3D8F61b21922B13F39525Fbf5fC0"
   },
   {
     "contractName": "IdentifierWhitelist",
@@ -21,38 +21,54 @@
   },
   {
     "contractName": "Store",
-    "address": "0x2d4710F04Da90184255782d3715224A6C776955D"
+    "address": "0xE58480CA74f1A819faFd777BEDED4E2D5629943d"
   },
   {
     "contractName": "OptimisticOracle",
-    "address": "0x8A481F28C23c72CB01452ca570ba165DB5F55D24"
+    "address": "0xAaF3F29521877d7a28C21E379Bf7A5401883A6B2"
+  },
+  {
+    "contractName": "OracleChildTunnel",
+    "address": "0x02B8733763dD76f73b8573e668ecA3343a7D65e7"
   },
   {
     "contractName": "TokenFactory",
-    "address": "0x82B564983aE7274c86695917BBf8C99ECb6F0F8F"
+    "address": "0xE20FCDA4981c8A58417C5A2EF6804b0835faA0eC"
   },
   {
     "contractName": "ExpiringMultiPartyLib",
-    "address": "0x00526C1ede46255b752D280620318ab50B24c20e"
+    "address": "0x35b7b0b2A7c545e6E8b944AaD07fD0F4dee8B4e1"
   },
   {
     "contractName": "ExpiringMultiPartyCreator",
-    "address": "0xcdf08CB3d3436c3c21F277b6AD45E3D7aB1Ce12F"
+    "address": "0xe3254a3aFce425fC7114B231b39C97ABa6a919D7"
   },
   {
-    "contractName": "Bridge",
-    "address": "0xEF8b46765ae805537053C59f826C3aD61924Db45"
+    "contractName": "GovernorChildTunnel",
+    "address": "0x1EC4F63E40631BeDfcf7Ef37D79Dd1c20A953965"
   },
   {
-    "contractName": "GenericHandler",
-    "address": "0x09AFD24Acc170c16f4fF64BDf2A4818C515440e8"
+    "contractName": "MockOracleAncillary",
+    "address": "0x0AD3176133d9C693217B8F8FF32e03C38CD8fA88"
   },
   {
-    "contractName": "SinkOracle",
-    "address": "0x35E63eA3eb0fb7A3bc543C71FB66412e1F6B0E04"
+    "contractName": "LongShortPairCreator",
+    "address": "0x751190691A07acC3f43A7396AD87967bB685deEd"
   },
   {
-    "contractName": "SinkGovernor",
-    "address": "0xbEAbC2300271986c672b24732f295baFb21d5316"
+    "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
+    "address": "0xda768D869f1e89ea005cde7e1dBf630ff9307F33"
+  },
+  {
+    "contractName": "CoveredCallLongShortPairFinancialProductLibrary",
+    "address": "0x3F62D7F4Be7671cc93BCDFE7A3Dd900FEC4b5025"
+  },
+  {
+    "contractName": "LinearLongShortPairFinancialProductLibrary",
+    "address": "0xcFF28e9E83cEc1BCa8D8619dC7eA60244b433502"
+  },
+  {
+    "contractName": "RangeBondLongShortPairFinancialProductLibrary",
+    "address": "0x7A9Bbd278b40f90F1269cB3a9D94a63333febdD4"
   }
 ]

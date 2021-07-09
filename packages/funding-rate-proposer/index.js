@@ -72,7 +72,7 @@ async function run({
       0 // Force startingBlock=0 so we can get ALL deployed contracts.
       // Leave endingBlock=null so that we can get all events up to latest block.
     );
-    const gasEstimator = new GasEstimator(logger);
+    const gasEstimator = new GasEstimator(logger, 60, networkId);
 
     // The proposer needs to query prices for any identifier approved to use the Optimistic Oracle,
     // so a new pricefeed is constructed for each identifier. This `commonPriceFeedConfig` contains
