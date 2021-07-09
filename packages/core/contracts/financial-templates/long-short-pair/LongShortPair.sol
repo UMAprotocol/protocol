@@ -179,7 +179,7 @@ contract LongShortPair is Testable, Lockable {
      * @return collateralUsed total collateral used to mint the synthetics.
      */
     function create(uint256 tokensToCreate) public preExpiration() nonReentrant() returns (uint256 collateralUsed) {
-        collateralUsed = FixedPoint.Unsigned(tokensToCreate).mul(FixedPoint.Unsigned(collateralPerPair)).rawValue;
+        collateralUsed = FixedPoint.Unsigned(tokensToCreate).mulCeil(FixedPoint.Unsigned(collateralPerPair)).rawValue;
 
         collateralToken.safeTransferFrom(msg.sender, address(this), collateralUsed);
 

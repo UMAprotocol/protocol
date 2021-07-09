@@ -51,6 +51,7 @@ contract("LongShortPair", function (accounts) {
   const deployer = accounts[0];
   const sponsor = accounts[1];
   const holder = accounts[2];
+  const rando = accounts[3];
 
   before(async () => {
     finder = await Finder.deployed();
@@ -580,6 +581,89 @@ contract("LongShortPair", function (accounts) {
         (await collateralToken.balanceOf(deployer)).sub(deployerBalanceBeforeSettlement).toString(),
         toBN(optimisticOracleProposerBond).add(toBN(prepaidProposerReward)).toString()
       );
+    });
+  });
+  describe("Dust and rounding is dealt with correctly", () => {
+    beforeEach(async () => {
+      // Set the collateral per pair to some small number to try induce rounding on mint/redeem settings.
+      constructorParams = {
+        ...constructorParams,
+        optimisticOracleProposerBond: 0,
+        collateralPerPair: toWei("0.0000001"),
+      };
+
+      longShortPair = await LongShortPair.new(constructorParams);
+      await collateralToken.mint(longShortPair.address, toWei("100"));
+
+      // Add mint and burn roles for the long and short tokens to the long short pair.
+      await longToken.addMember(1, longShortPair.address, { from: deployer });
+      await shortToken.addMember(1, longShortPair.address, { from: deployer });
+      await longToken.addMember(2, longShortPair.address, { from: deployer });
+      await shortToken.addMember(2, longShortPair.address, { from: deployer });
+    });
+    it("Should not be able to mint dust tokens for free", async function () {
+      // Try mint a tiny amount of tokens (1 wei worth) from an account that has 0 balance of collateral and 0 approval.
+      assert.equal((await collateralToken.balanceOf(rando)).toString(), "0");
+      assert(await didContractThrow(longShortPair.create("1", { from: rando })));
+      assert.equal((await longToken.balanceOf(rando)).toString(), "0");
+      assert.equal((await shortToken.balanceOf(rando)).toString(), "0");
+    });
+    it("Should not be able to redeem dust for free collateral", async function () {
+      // Try redeem a tiny amount of tokens (1 wei worth) from an account that never minted any.
+      assert.equal((await longToken.balanceOf(rando)).toString(), "0");
+      assert.equal((await shortToken.balanceOf(rando)).toString(), "0");
+      assert(await didContractThrow(longShortPair.redeem("1", { from: rando })));
+      assert.equal((await collateralToken.balanceOf(rando)).toString(), "0");
+    });
+
+    it("Redeeming dust should round to 0 collateral returned", async function () {
+      // In the case the caller actually has some synthetic tokens and they redeem dust they should get back nothing.
+      await collateralToken.approve(longShortPair.address, MAX_UINT_VAL, { from: sponsor });
+      await longShortPair.create(toWei("100"), { from: sponsor });
+
+      const sponsorCollateralBefore = await collateralToken.balanceOf(sponsor);
+      await longShortPair.redeem("1", { from: sponsor });
+      assert.equal((await collateralToken.balanceOf(sponsor)).toString(), sponsorCollateralBefore.toString());
+    });
+
+    // approve collateral, mint tokens, expire LSP contract and set the library expiryPercentLong to return.
+    const approveCreateExpireLsp = async (tokensToCreate, expiryPercentLong) => {
+      await collateralToken.approve(longShortPair.address, MAX_UINT_VAL, { from: sponsor });
+      await longShortPair.create(tokensToCreate, { from: sponsor });
+
+      await timer.setCurrentTime(expirationTimestamp + 1);
+      await longShortPair.expire();
+      await proposeAndSettleOptimisticOraclePrice(priceIdentifier, expirationTimestamp, toWei("0.5"));
+
+      await longShortPairTestLibrary.setValueToReturn(expiryPercentLong);
+    };
+    it("Settling dust long tokens should round to 0 with collateral 0 expiryPercentLong", async function () {
+      await approveCreateExpireLsp(toWei("100"), toWei("0"));
+      const sponsorCollateralBefore = await collateralToken.balanceOf(sponsor);
+      await longShortPair.settle("1", "0", { from: sponsor }); // holder redeem their 50 long tokens.
+      assert.equal((await collateralToken.balanceOf(sponsor)).toString(), sponsorCollateralBefore.toString());
+    });
+    it("Settling dust short tokens should round to 0 with collateral 0 expiryPercentLong", async function () {
+      await approveCreateExpireLsp(toWei("100"), toWei("0"));
+      const sponsorCollateralBefore = await collateralToken.balanceOf(sponsor);
+      await longShortPair.settle("0", "1", { from: sponsor }); // holder redeem their 50 long tokens.
+      assert.equal((await collateralToken.balanceOf(sponsor)).toString(), sponsorCollateralBefore.toString());
+    });
+    it("Settling dust long tokens should round to 0 with collateral 1 expiryPercentLong", async function () {
+      await collateralToken.approve(longShortPair.address, MAX_UINT_VAL, { from: sponsor });
+      await approveCreateExpireLsp(toWei("100"), toWei("1"));
+
+      const sponsorCollateralBefore = await collateralToken.balanceOf(sponsor);
+      await longShortPair.settle("1", "0", { from: sponsor }); // holder redeem their 50 long tokens.
+      assert.equal((await collateralToken.balanceOf(sponsor)).toString(), sponsorCollateralBefore.toString());
+    });
+    it("Settling dust short tokens should round to 0 with collateral 1 expiryPercentLong", async function () {
+      await collateralToken.approve(longShortPair.address, MAX_UINT_VAL, { from: sponsor });
+      await approveCreateExpireLsp(toWei("100"), toWei("1"));
+
+      const sponsorCollateralBefore = await collateralToken.balanceOf(sponsor);
+      await longShortPair.settle("0", "1", { from: sponsor }); // holder redeem their 50 long tokens.
+      assert.equal((await collateralToken.balanceOf(sponsor)).toString(), sponsorCollateralBefore.toString());
     });
   });
 });
