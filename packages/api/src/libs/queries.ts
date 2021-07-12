@@ -7,10 +7,13 @@ import bluebird from "bluebird";
 import { BigNumber } from "ethers";
 
 const { exists } = uma.utils;
-type Dependencies = Pick<AppState, "erc20s" | "emps" | "stats" | "registeredEmps" | "prices" | "synthPrices">;
+type Dependencies = Pick<
+  AppState,
+  "erc20s" | "emps" | "stats" | "registeredEmps" | "prices" | "synthPrices" | "marketPrices"
+>;
 
 export default (appState: Dependencies) => {
-  const { prices, synthPrices } = appState;
+  const { prices, synthPrices, marketPrices } = appState;
 
   async function historicalPricesByTokenAddress(
     address: string,
@@ -51,6 +54,13 @@ export default (appState: Dependencies) => {
     // [timestamp, price], returns just price
     return synthPrices.latest[empAddress][1];
   }
+  async function getLatestMarketPrice(address: string, currency: "usdc" = "usdc") {
+    assert(address, "requires an erc20 token address");
+    assert(exists(marketPrices[currency]), "invalid currency type: " + currency);
+    const priceSample = marketPrices[currency].latest[address];
+    assert(exists(priceSample), "No price for address: " + address);
+    return priceSample[1];
+  }
   async function getAnyEmp(empAddress: string) {
     if (await appState.emps.active.has(empAddress)) {
       return appState.emps.active.get(empAddress);
@@ -64,6 +74,10 @@ export default (appState: Dependencies) => {
       ? await appState.erc20s.get(empState.collateralCurrency).catch(() => null)
       : null;
 
+    const tokenMarketPrice = empState.tokenCurrency
+      ? await getLatestMarketPrice(empState.tokenCurrency).catch(() => null)
+      : null;
+
     const state = {
       ...empState,
       tokenDecimals: token?.decimals,
@@ -73,6 +87,7 @@ export default (appState: Dependencies) => {
       tokenSymbol: token?.symbol,
       collateralSymbol: collateral?.symbol,
       identifierPrice: await getLatestIdentifierPrice(empState.address).catch(() => null),
+      tokenMarketPrice,
     };
     let gcr = "0";
     try {

@@ -26,7 +26,7 @@ type AxiosConfig = {
 // 0x api client, maintains raw responses when possible, parses errors to be human readable.
 export default class Client {
   private axios: AxiosInstance;
-  constructor(baseURL: string) {
+  constructor(baseURL = "https://api.0x.org") {
     this.axios = Axios.create({ baseURL });
   }
   // this api returns schema validation errors which are nice, but not readable in an error message

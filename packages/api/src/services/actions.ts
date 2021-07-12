@@ -13,7 +13,16 @@ type Config = undefined;
 
 export function Handlers(config: Config, appState: Dependencies): Actions {
   const queries = Queries(appState);
-  const { registeredEmps, erc20s, collateralAddresses, syntheticAddresses, prices, stats, synthPrices } = appState;
+  const {
+    registeredEmps,
+    erc20s,
+    collateralAddresses,
+    syntheticAddresses,
+    prices,
+    stats,
+    synthPrices,
+    marketPrices,
+  } = appState;
 
   const actions: Actions = {
     echo(...args: Json[]) {
@@ -50,6 +59,9 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     },
     async allIdentifierPrices() {
       return synthPrices.latest;
+    },
+    async allLatestMarketPrices() {
+      return marketPrices.usdc.latest;
     },
     // get prices by token address
     latestPriceByTokenAddress: queries.latestPriceByTokenAddress,
