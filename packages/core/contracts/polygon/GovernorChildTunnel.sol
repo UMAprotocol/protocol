@@ -16,7 +16,7 @@ contract GovernorChildTunnel is FxBaseChildTunnel {
      * @dev The data will be received automatically from the state receiver when the state is synced between Ethereum
      * and Polygon. This will revert if the Root chain sender is not the `fxRootTunnel` contract.
      * @param sender The sender of `data` from the Root chain.
-     * @param data ABI encoded params with which to call `_publishPrice`.
+     * @param data ABI encoded params to include in delegated transaction.
      */
     function _processMessageFromRoot(
         uint256, /* stateId */
