@@ -164,3 +164,13 @@ Returns TVL/TVM for emp starting at timestamp in seconds and a length number of 
 ### listTvms(currency: CurrencySymbol = "usd") => Array<{value:string, timestamp:number}>
 
 List all tvls/tvms of known contracts.
+
+### historicalMarketPricesBetween(tokenAddress: string, start = 0, end: number = nowS()) StatData[]
+
+Returns historical market prices (based on 0x api) for a token address. Get samples between a start time and end time ( in seconds).
+Currently only usdc prices are supported.
+
+### sliceHistoricalMarketPrices(tokenAddress: string, start = 0, length = 1) StatData[]
+
+Returns historical market prices (based on 0x api) for a token address. Slices from a starting timestamp (in seconds) and a count of samples newer than that.
+Currently only usdc prices are supported.
