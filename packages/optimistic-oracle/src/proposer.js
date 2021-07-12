@@ -10,7 +10,8 @@ const {
   OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY,
   OPTIMISTIC_ORACLE_IGNORE,
 } = require("@uma/common");
-const { getAbi } = require("@uma/core");
+const hre = require("hardhat");
+const { getContract } = hre;
 
 class OptimisticOracleProposer {
   /**
@@ -40,7 +41,7 @@ class OptimisticOracleProposer {
     this.gasEstimator = gasEstimator;
 
     this.createEmpContract = (empAddress) => {
-      return new this.web3.eth.Contract(getAbi("ExpiringMultiParty"), empAddress);
+      return new this.web3.eth.Contract(getContract("ExpiringMultiParty").abi, empAddress);
     };
 
     this.optimisticOracleContract = this.optimisticOracleClient.oracle;

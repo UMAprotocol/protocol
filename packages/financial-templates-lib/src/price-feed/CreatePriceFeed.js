@@ -1,7 +1,8 @@
 const assert = require("assert");
 const { ChainId, Token, Pair, TokenAmount } = require("@uniswap/sdk");
 const { defaultConfigs } = require("./DefaultPriceFeedConfigs");
-const { getTruffleContract } = require("@uma/core");
+const hre = require("hardhat");
+const { getContract } = hre;
 const { BlockFinder } = require("./utils");
 const { getPrecisionForIdentifier, PublicNetworks } = require("@uma/common");
 const { multicallAddressMap } = require("../helpers/multicall");
@@ -32,13 +33,13 @@ const { VaultPriceFeed, HarvestVaultPriceFeed } = require("./VaultPriceFeed");
 const uniswapBlockCache = {};
 
 async function createPriceFeed(logger, web3, networker, getTime, config) {
-  const UniswapV2 = getTruffleContract("UniswapV2", web3);
-  const UniswapV3 = getTruffleContract("UniswapV3", web3);
-  const ERC20 = getTruffleContract("ExpandedERC20", web3);
-  const Balancer = getTruffleContract("Balancer", web3);
-  const VaultInterface = getTruffleContract("VaultInterface", web3);
-  const HarvestVaultInterface = getTruffleContract("HarvestVaultInterface", web3);
-  const Perpetual = getTruffleContract("Perpetual", web3);
+  const UniswapV2 = getContract("UniswapV2");
+  const UniswapV3 = getContract("UniswapV3");
+  const ERC20 = getContract("ExpandedERC20");
+  const Balancer = getContract("Balancer");
+  const VaultInterface = getContract("VaultInterface");
+  const HarvestVaultInterface = getContract("HarvestVaultInterface");
+  const Perpetual = getContract("Perpetual");
 
   if (config.type === "cryptowatch") {
     const requiredFields = ["exchange", "pair", "lookback", "minTimeBetweenUpdates"];
@@ -895,7 +896,7 @@ async function createReferencePriceFeedForFinancialContract(
 
 function getFinancialContractIdentifierAtAddress(web3, financialContractAddress) {
   try {
-    const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, "1.2.0");
+    const ExpiringMultiParty = getContract("ExpiringMultiParty");
     return new web3.eth.Contract(ExpiringMultiParty.abi, financialContractAddress);
   } catch (error) {
     throw new Error({ message: "Something went wrong in fetching the financial contract identifier", error });
