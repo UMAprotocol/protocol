@@ -59,9 +59,7 @@ let contractMonitor;
 // Keep track of new sponsor transactions for testing `checkForNewSponsors` method.
 let newSponsorTxn;
 
-let convertCollateral;
-let convertSynthetic;
-let convertPrice;
+let convertDecimals;
 
 const unreachableDeadline = MAX_UINT_VAL;
 
@@ -109,9 +107,7 @@ contract("ContractMonitor.js", function (accounts) {
         before(async function () {
           identifier = `${testConfig.tokenSymbol}TEST`;
           fundingRateIdentifier = `${testConfig.tokenName}_FUNDING_IDENTIFIER`;
-          convertCollateral = Convert(testConfig.collateralDecimals);
-          convertSynthetic = Convert(testConfig.syntheticDecimals);
-          convertPrice = Convert(testConfig.priceFeedDecimals);
+          convertDecimals = Convert(testConfig.collateralDecimals);
           collateralToken = await Token.new(
             testConfig.tokenSymbol + " Token",
             testConfig.tokenSymbol,
@@ -183,7 +179,7 @@ contract("ContractMonitor.js", function (accounts) {
           const constructorParams = await createConstructorParamsForContractVersion(
             contractVersion,
             {
-              convertSynthetic,
+              convertDecimals,
               finder,
               collateralToken,
               syntheticToken,
@@ -193,7 +189,7 @@ contract("ContractMonitor.js", function (accounts) {
               store,
               configStore: configStore || {}, // if the contract type is not a perp this will be null.
             },
-            { minSponsorTokens: { rawValue: convertSynthetic("1") }, collateralRequirement: { rawValue: toWei("1.5") } }
+            { minSponsorTokens: { rawValue: convertDecimals("1") }, collateralRequirement: { rawValue: toWei("1.5") } }
           );
 
           // Deploy a new expiring multi party OR perpetual, depending on the test version.
@@ -254,31 +250,31 @@ contract("ContractMonitor.js", function (accounts) {
 
           //   Bulk mint and approve for all wallets
           for (let i = 1; i < 6; i++) {
-            await collateralToken.mint(accounts[i], convertCollateral("100000000"), {
+            await collateralToken.mint(accounts[i], convertDecimals("100000000"), {
               from: tokenSponsor,
             });
-            await collateralToken.approve(financialContract.address, convertSynthetic("100000000"), {
+            await collateralToken.approve(financialContract.address, convertDecimals("100000000"), {
               from: accounts[i],
             });
-            await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), {
+            await syntheticToken.approve(financialContract.address, convertDecimals("100000000"), {
               from: accounts[i],
             });
           }
 
           // Create positions for the sponsors, liquidator and disputer
           await financialContract.create(
-            { rawValue: convertCollateral("150") },
-            { rawValue: convertSynthetic("50") },
+            { rawValue: convertDecimals("150") },
+            { rawValue: convertDecimals("50") },
             { from: sponsor1 }
           );
           await financialContract.create(
-            { rawValue: convertCollateral("175") },
-            { rawValue: convertSynthetic("45") },
+            { rawValue: convertDecimals("175") },
+            { rawValue: convertDecimals("45") },
             { from: sponsor2 }
           );
           newSponsorTxn = await financialContract.create(
-            { rawValue: convertCollateral("1500") },
-            { rawValue: convertSynthetic("400") },
+            { rawValue: convertDecimals("1500") },
+            { rawValue: convertDecimals("400") },
             { from: liquidator }
           );
         });
@@ -304,8 +300,8 @@ contract("ContractMonitor.js", function (accounts) {
 
             // Create another position
             const txObject1 = await financialContract.create(
-              { rawValue: convertCollateral("10") },
-              { rawValue: convertSynthetic("1.5") },
+              { rawValue: convertDecimals("10") },
+              { rawValue: convertDecimals("1.5") },
               { from: sponsor3 } // not a monitored address
             );
 
@@ -324,21 +320,21 @@ contract("ContractMonitor.js", function (accounts) {
           "Winston correctly emits liquidation message",
           async function () {
             // Request a withdrawal from sponsor1 to check if monitor correctly differentiates between liquidated and locked collateral
-            await financialContract.requestWithdrawal({ rawValue: convertCollateral("10") }, { from: sponsor1 });
+            await financialContract.requestWithdrawal({ rawValue: convertDecimals("10") }, { from: sponsor1 });
 
             // Create liquidation to liquidate sponsor2 from sponsor1
             const txObject1 = await financialContract.createLiquidation(
               sponsor1,
               { rawValue: "0" },
-              { rawValue: convertPrice("99999") },
-              { rawValue: convertSynthetic("100") },
+              { rawValue: toWei("99999") },
+              { rawValue: convertDecimals("100") },
               unreachableDeadline,
               { from: liquidator }
             );
 
             // Update the eventClient and check it has the liquidation event stored correctly
             await eventClient.update();
-            priceFeedMock.setHistoricalPrice(convertPrice("1"));
+            priceFeedMock.setHistoricalPrice(toWei("1"));
 
             // Liquidations before pricefeed's lookback window (lastUpdateTime - lookback) are not considered:
             const earliestLiquidationTime = Number(
@@ -379,8 +375,8 @@ contract("ContractMonitor.js", function (accounts) {
             const txObject2 = await financialContract.createLiquidation(
               sponsor2,
               { rawValue: "0" },
-              { rawValue: convertPrice("99999") },
-              { rawValue: convertSynthetic("100") },
+              { rawValue: toWei("99999") },
+              { rawValue: convertDecimals("100") },
               unreachableDeadline,
               { from: sponsor1 } // not the monitored liquidator address
             );
@@ -409,8 +405,8 @@ contract("ContractMonitor.js", function (accounts) {
             await financialContract.createLiquidation(
               sponsor1,
               { rawValue: "0" },
-              { rawValue: convertPrice("99999") },
-              { rawValue: convertSynthetic("100") },
+              { rawValue: toWei("99999") },
+              { rawValue: convertDecimals("100") },
               unreachableDeadline,
               { from: liquidator }
             );
@@ -422,7 +418,7 @@ contract("ContractMonitor.js", function (accounts) {
             // Update the eventClient and check it has the dispute event stored correctly
             await eventClient.clearState();
             await eventClient.update();
-            priceFeedMock.setHistoricalPrice(convertPrice("1"));
+            priceFeedMock.setHistoricalPrice(toWei("1"));
 
             await contractMonitor.checkForNewDisputeEvents();
 
@@ -437,8 +433,8 @@ contract("ContractMonitor.js", function (accounts) {
             await financialContract.createLiquidation(
               sponsor2,
               { rawValue: "0" },
-              { rawValue: convertPrice("99999") },
-              { rawValue: convertSynthetic("100") },
+              { rawValue: toWei("99999") },
+              { rawValue: convertDecimals("100") },
               unreachableDeadline,
               { from: sponsor1 }
             );
@@ -470,8 +466,8 @@ contract("ContractMonitor.js", function (accounts) {
             await financialContract.createLiquidation(
               sponsor1,
               { rawValue: "0" },
-              { rawValue: convertPrice("99999") },
-              { rawValue: convertSynthetic("100") },
+              { rawValue: toWei("99999") },
+              { rawValue: convertDecimals("100") },
               unreachableDeadline,
               { from: liquidator }
             );
@@ -483,7 +479,7 @@ contract("ContractMonitor.js", function (accounts) {
 
             // Push a price such that the dispute fails and ensure the resolution reports correctly. Sponsor1 has 50 units of
             // debt and 150 units of collateral. price of 2.5: 150 / (50 * 2.5) = 120% => undercollateralized
-            let disputePrice = convertPrice("2.5");
+            let disputePrice = toWei("2.5");
             await mockOracle.pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice);
 
             // Withdraw from liquidation to settle the dispute event.
@@ -498,7 +494,7 @@ contract("ContractMonitor.js", function (accounts) {
 
             // Update the eventClient and check it has the dispute event stored correctly
             await eventClient.update();
-            priceFeedMock.setHistoricalPrice(convertPrice("1"));
+            priceFeedMock.setHistoricalPrice(toWei("1"));
 
             await contractMonitor.checkForNewDisputeSettlementEvents();
 
@@ -518,8 +514,8 @@ contract("ContractMonitor.js", function (accounts) {
             await financialContract.createLiquidation(
               sponsor2,
               { rawValue: "0" },
-              { rawValue: convertPrice("99999") },
-              { rawValue: convertSynthetic("100") },
+              { rawValue: toWei("99999") },
+              { rawValue: convertDecimals("100") },
               unreachableDeadline,
               { from: sponsor1 }
             );
@@ -531,7 +527,7 @@ contract("ContractMonitor.js", function (accounts) {
 
             // Push a price such that the dispute succeeds and ensure the resolution reports correctly. Sponsor2 has 45 units of
             // debt and 175 units of collateral. price of 2.0: 175 / (45 * 2) = 194% => sufficiently collateralized
-            disputePrice = convertCollateral("2.0");
+            disputePrice = convertDecimals("2.0");
             await mockOracle.pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice);
 
             // Withdraw from liquidation to settle the dispute event.

@@ -56,9 +56,7 @@ let financialContractProps;
 let disputerConfig;
 let identifier;
 let fundingRateIdentifier;
-let convertCollateral;
-let convertSynthetic;
-let convertPrice;
+let convertDecimals;
 let gasEstimator;
 let financialContractClient;
 let disputer;
@@ -118,9 +116,7 @@ contract("Disputer.js", function (accounts) {
         before(async function () {
           identifier = `${testConfig.tokenName}TEST`;
           fundingRateIdentifier = `${testConfig.tokenName}_FUNDING_IDENTIFIER`;
-          convertCollateral = Convert(testConfig.collateralDecimals);
-          convertSynthetic = Convert(testConfig.syntheticDecimals);
-          convertPrice = Convert(testConfig.priceFeedDecimals);
+          convertDecimals = Convert(testConfig.collateralDecimals);
 
           collateralToken = await Token.new(
             testConfig.tokenSymbol + " Token", // Construct the token name.
@@ -136,11 +132,11 @@ contract("Disputer.js", function (accounts) {
           });
 
           // Seed the accounts.
-          await collateralToken.mint(sponsor1, convertCollateral("100000"), { from: contractCreator });
-          await collateralToken.mint(sponsor2, convertCollateral("100000"), { from: contractCreator });
-          await collateralToken.mint(sponsor3, convertCollateral("100000"), { from: contractCreator });
-          await collateralToken.mint(liquidator, convertCollateral("100000"), { from: contractCreator });
-          await collateralToken.mint(disputeBot, convertCollateral("100000"), { from: contractCreator });
+          await collateralToken.mint(sponsor1, convertDecimals("100000"), { from: contractCreator });
+          await collateralToken.mint(sponsor2, convertDecimals("100000"), { from: contractCreator });
+          await collateralToken.mint(sponsor3, convertDecimals("100000"), { from: contractCreator });
+          await collateralToken.mint(liquidator, convertDecimals("100000"), { from: contractCreator });
+          await collateralToken.mint(disputeBot, convertDecimals("100000"), { from: contractCreator });
 
           // Create identifier whitelist and register the price tracking ticker with it.
           identifierWhitelist = await IdentifierWhitelist.new();
@@ -198,7 +194,7 @@ contract("Disputer.js", function (accounts) {
           constructorParams = await createConstructorParamsForContractVersion(
             contractVersion,
             {
-              convertSynthetic,
+              convertDecimals,
               finder,
               collateralToken,
               syntheticToken,
@@ -208,7 +204,7 @@ contract("Disputer.js", function (accounts) {
               store,
               configStore: configStore || {}, // if the contract type is not a perp this will be null.
             },
-            { minSponsorTokens: { rawValue: convertSynthetic("1") } } // these tests assume a min sponsor size of 1, not 5 as default
+            { minSponsorTokens: { rawValue: convertDecimals("1") } } // these tests assume a min sponsor size of 1, not 5 as default
           );
 
           await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
@@ -227,22 +223,22 @@ contract("Disputer.js", function (accounts) {
             priceIdentifier: await financialContract.priceIdentifier(),
           };
 
-          await collateralToken.approve(financialContract.address, convertCollateral("100000000"), { from: sponsor1 });
-          await collateralToken.approve(financialContract.address, convertCollateral("100000000"), { from: sponsor2 });
-          await collateralToken.approve(financialContract.address, convertCollateral("100000000"), { from: sponsor3 });
-          await collateralToken.approve(financialContract.address, convertCollateral("100000000"), {
+          await collateralToken.approve(financialContract.address, convertDecimals("100000000"), { from: sponsor1 });
+          await collateralToken.approve(financialContract.address, convertDecimals("100000000"), { from: sponsor2 });
+          await collateralToken.approve(financialContract.address, convertDecimals("100000000"), { from: sponsor3 });
+          await collateralToken.approve(financialContract.address, convertDecimals("100000000"), {
             from: liquidator,
           });
-          await collateralToken.approve(financialContract.address, convertCollateral("100000000"), {
+          await collateralToken.approve(financialContract.address, convertDecimals("100000000"), {
             from: disputeBot,
           });
 
           syntheticToken = await Token.at(await financialContract.tokenCurrency());
-          await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), { from: sponsor1 });
-          await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), { from: sponsor2 });
-          await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), { from: sponsor3 });
-          await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), { from: liquidator });
-          await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), { from: disputeBot });
+          await syntheticToken.approve(financialContract.address, convertDecimals("100000000"), { from: sponsor1 });
+          await syntheticToken.approve(financialContract.address, convertDecimals("100000000"), { from: sponsor2 });
+          await syntheticToken.approve(financialContract.address, convertDecimals("100000000"), { from: sponsor3 });
+          await syntheticToken.approve(financialContract.address, convertDecimals("100000000"), { from: liquidator });
+          await syntheticToken.approve(financialContract.address, convertDecimals("100000000"), { from: disputeBot });
 
           spy = sinon.spy();
 
@@ -304,53 +300,53 @@ contract("Disputer.js", function (accounts) {
           async function () {
             // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
             await financialContract.create(
-              { rawValue: convertCollateral("125") },
-              { rawValue: convertSynthetic("100") },
+              { rawValue: convertDecimals("125") },
+              { rawValue: convertDecimals("100") },
               { from: sponsor1 }
             );
 
             // sponsor2 creates a position with 150 units of collateral, creating 100 synthetic tokens.
             await financialContract.create(
-              { rawValue: convertCollateral("150") },
-              { rawValue: convertSynthetic("100") },
+              { rawValue: convertDecimals("150") },
+              { rawValue: convertDecimals("100") },
               { from: sponsor2 }
             );
 
             // sponsor3 creates a position with 175 units of collateral, creating 100 synthetic tokens.
             await financialContract.create(
-              { rawValue: convertCollateral("175") },
-              { rawValue: convertSynthetic("100") },
+              { rawValue: convertDecimals("175") },
+              { rawValue: convertDecimals("100") },
               { from: sponsor3 }
             );
 
             // The liquidator creates a position to have synthetic tokens.
             await financialContract.create(
-              { rawValue: convertCollateral("1000") },
-              { rawValue: convertSynthetic("500") },
+              { rawValue: convertDecimals("1000") },
+              { rawValue: convertDecimals("500") },
               { from: liquidator }
             );
 
             await financialContract.createLiquidation(
               sponsor1,
               { rawValue: "0" },
-              { rawValue: convertPrice("1.75") },
-              { rawValue: convertSynthetic("100") },
+              { rawValue: toWei("1.75") },
+              { rawValue: convertDecimals("100") },
               unreachableDeadline,
               { from: liquidator }
             );
             await financialContract.createLiquidation(
               sponsor2,
               { rawValue: "0" },
-              { rawValue: convertPrice("1.75") },
-              { rawValue: convertSynthetic("100") },
+              { rawValue: toWei("1.75") },
+              { rawValue: convertDecimals("100") },
               unreachableDeadline,
               { from: liquidator }
             );
             await financialContract.createLiquidation(
               sponsor3,
               { rawValue: "0" },
-              { rawValue: convertPrice("1.75") },
-              { rawValue: convertSynthetic("100") },
+              { rawValue: toWei("1.75") },
+              { rawValue: convertDecimals("100") },
               unreachableDeadline,
               { from: liquidator }
             );
@@ -367,7 +363,7 @@ contract("Disputer.js", function (accounts) {
 
             // Start with a mocked price of 1.75 usd per token.
             // This makes all sponsors undercollateralized, meaning no disputes are issued.
-            priceFeedMock.setHistoricalPrice(convertPrice("1.75"));
+            priceFeedMock.setHistoricalPrice(toWei("1.75"));
             await disputer.update();
             await disputer.dispute();
 
@@ -387,7 +383,7 @@ contract("Disputer.js", function (accounts) {
             assert.equal(spy.callCount, 3); // No info level logs should be sent.
 
             // With a price of 1.1, two sponsors should be correctly collateralized, so disputes should be issued against sponsor2 and sponsor3's liquidations.
-            priceFeedMock.setHistoricalPrice(convertPrice("1.1"));
+            priceFeedMock.setHistoricalPrice(toWei("1.1"));
 
             // Disputing a timestamp that is before the pricefeed's lookback window will do nothing and print no warnings:
             // Set earliest timestamp to AFTER the liquidation:
@@ -440,35 +436,35 @@ contract("Disputer.js", function (accounts) {
           async function () {
             // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
             await financialContract.create(
-              { rawValue: convertCollateral("125") },
-              { rawValue: convertSynthetic("100") },
+              { rawValue: convertDecimals("125") },
+              { rawValue: convertDecimals("100") },
               { from: sponsor1 }
             );
 
             // The liquidator creates a position to have synthetic tokens.
             await financialContract.create(
-              { rawValue: convertCollateral("1000") },
-              { rawValue: convertSynthetic("500") },
+              { rawValue: convertDecimals("1000") },
+              { rawValue: convertDecimals("500") },
               { from: liquidator }
             );
 
             // The sponsor1 submits a valid withdrawal request of withdrawing exactly 5e18 collateral. This places their
             // position at collateral of 120 and debt of 100. At a price of 1 unit per token they are exactly collateralized.
 
-            await financialContract.requestWithdrawal({ rawValue: convertCollateral("5") }, { from: sponsor1 });
+            await financialContract.requestWithdrawal({ rawValue: convertDecimals("5") }, { from: sponsor1 });
 
             await financialContract.createLiquidation(
               sponsor1,
               { rawValue: "0" },
-              { rawValue: convertPrice("1.75") }, // Price high enough to initiate the liquidation
-              { rawValue: convertSynthetic("100") },
+              { rawValue: toWei("1.75") }, // Price high enough to initiate the liquidation
+              { rawValue: convertDecimals("100") },
               unreachableDeadline,
               { from: liquidator }
             );
 
             // With a price of 1 usd per token this withdrawal was actually valid, even though it's very close to liquidation.
             // This makes all sponsors undercollateralized, meaning no disputes are issued.
-            priceFeedMock.setHistoricalPrice(convertPrice("1"));
+            priceFeedMock.setHistoricalPrice(toWei("1"));
             await disputer.update();
             await disputer.dispute();
             assert.equal(spy.callCount, 1); // 1 info level logs should be sent at the conclusion of the disputes.
@@ -485,7 +481,7 @@ contract("Disputer.js", function (accounts) {
             // Push a price of 1, which should cause sponsor1's dispute to succeed as the position is correctly collateralized
             // at a price of 1.
             const liquidationTime = await financialContract.getCurrentTime();
-            await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidationTime, convertPrice("1"));
+            await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidationTime, toWei("1"));
 
             await disputer.update();
             await disputer.withdrawRewards();
@@ -505,30 +501,30 @@ contract("Disputer.js", function (accounts) {
           async function () {
             // sponsor1 creates a position with 150 units of collateral, creating 100 synthetic tokens.
             await financialContract.create(
-              { rawValue: convertCollateral("150") },
-              { rawValue: convertSynthetic("100") },
+              { rawValue: convertDecimals("150") },
+              { rawValue: convertDecimals("100") },
               { from: sponsor1 }
             );
 
             // sponsor2 creates a position with 175 units of collateral, creating 100 synthetic tokens.
             await financialContract.create(
-              { rawValue: convertCollateral("175") },
-              { rawValue: convertSynthetic("100") },
+              { rawValue: convertDecimals("175") },
+              { rawValue: convertDecimals("100") },
               { from: sponsor2 }
             );
 
             // The liquidator creates a position to have synthetic tokens.
             await financialContract.create(
-              { rawValue: convertCollateral("1000") },
-              { rawValue: convertSynthetic("500") },
+              { rawValue: convertDecimals("1000") },
+              { rawValue: convertDecimals("500") },
               { from: liquidator }
             );
 
             await financialContract.createLiquidation(
               sponsor1,
               { rawValue: "0" },
-              { rawValue: convertPrice("1.75") },
-              { rawValue: convertSynthetic("100") },
+              { rawValue: toWei("1.75") },
+              { rawValue: convertDecimals("100") },
               unreachableDeadline,
               { from: liquidator }
             );
@@ -536,14 +532,14 @@ contract("Disputer.js", function (accounts) {
             await financialContract.createLiquidation(
               sponsor2,
               { rawValue: "0" },
-              { rawValue: convertPrice("1.75") },
-              { rawValue: convertSynthetic("100") },
+              { rawValue: toWei("1.75") },
+              { rawValue: convertDecimals("100") },
               unreachableDeadline,
               { from: liquidator }
             );
 
             // With a price of 1.1, the sponsors should be correctly collateralized, so disputes should be issued against sponsor1 and sponsor2's liquidations.
-            priceFeedMock.setHistoricalPrice(convertPrice("1.1"));
+            priceFeedMock.setHistoricalPrice(toWei("1.1"));
             await disputer.update();
             await disputer.dispute();
             assert.equal(spy.callCount, 2); // Two info level events for the two disputes.
@@ -558,7 +554,7 @@ contract("Disputer.js", function (accounts) {
 
             // Push a price of 1.3, which should cause sponsor1's dispute to fail and sponsor2's dispute to succeed.
             const liquidationTime = await financialContract.getCurrentTime();
-            await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidationTime, convertPrice("1.3"));
+            await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidationTime, toWei("1.3"));
 
             await disputer.update();
             await disputer.withdrawRewards();
@@ -585,7 +581,7 @@ contract("Disputer.js", function (accounts) {
               spy.getCall(-1).lastArg.liquidationResult.liquidationStatus,
               PostWithdrawLiquidationRewardsStatusTranslations[LiquidationStatesEnum.DISPUTE_SUCCEEDED]
             );
-            assert.equal(spy.getCall(-1).lastArg.liquidationResult.settlementPrice, convertPrice("1.3"));
+            assert.equal(spy.getCall(-1).lastArg.liquidationResult.settlementPrice, toWei("1.3"));
 
             // Check that the log contains the dispute rewards:
             if (disputer.isLegacyEmpVersion) {
@@ -606,30 +602,30 @@ contract("Disputer.js", function (accounts) {
         versionedIt([{ contractType: "any", contractVersion: "any" }])("Too little collateral", async function () {
           // sponsor1 creates a position with 150 units of collateral, creating 100 synthetic tokens.
           await financialContract.create(
-            { rawValue: convertCollateral("150") },
-            { rawValue: convertSynthetic("100") },
+            { rawValue: convertDecimals("150") },
+            { rawValue: convertDecimals("100") },
             { from: sponsor1 }
           );
 
           // sponsor2 creates a position with 1.75 units of collateral, creating 1 synthetic tokens.
           await financialContract.create(
-            { rawValue: convertCollateral("1.75") },
-            { rawValue: convertSynthetic("1") },
+            { rawValue: convertDecimals("1.75") },
+            { rawValue: convertDecimals("1") },
             { from: sponsor2 }
           );
 
           // The liquidator creates a position to have synthetic tokens.
           await financialContract.create(
-            { rawValue: convertCollateral("1000") },
-            { rawValue: convertSynthetic("500") },
+            { rawValue: convertDecimals("1000") },
+            { rawValue: convertDecimals("500") },
             { from: liquidator }
           );
 
           await financialContract.createLiquidation(
             sponsor1,
             { rawValue: "0" },
-            { rawValue: convertPrice("1.75") },
-            { rawValue: convertSynthetic("100") },
+            { rawValue: toWei("1.75") },
+            { rawValue: convertDecimals("100") },
             unreachableDeadline,
             { from: liquidator }
           );
@@ -637,18 +633,18 @@ contract("Disputer.js", function (accounts) {
           await financialContract.createLiquidation(
             sponsor2,
             { rawValue: "0" },
-            { rawValue: convertPrice("1.75") },
-            { rawValue: convertSynthetic("1") },
+            { rawValue: toWei("1.75") },
+            { rawValue: convertDecimals("1") },
             unreachableDeadline,
             { from: liquidator }
           );
 
           // Send most of the user's balance elsewhere leaving only enough to dispute sponsor1's position.
-          const transferAmount = (await collateralToken.balanceOf(disputeBot)).sub(toBN(convertCollateral("1")));
+          const transferAmount = (await collateralToken.balanceOf(disputeBot)).sub(toBN(convertDecimals("1")));
           await collateralToken.transfer(rando, transferAmount, { from: disputeBot });
 
           // Both positions should be disputed with a presumed price of 1.1, but will only have enough collateral for the smaller one.
-          priceFeedMock.setHistoricalPrice(convertPrice("1.1"));
+          priceFeedMock.setHistoricalPrice(toWei("1.1"));
           await disputer.update();
           await disputer.dispute();
           assert.equal(spy.callCount, 2); // Two info events for the the 1 successful dispute and one for the failed dispute.
@@ -662,7 +658,7 @@ contract("Disputer.js", function (accounts) {
 
           // Transfer balance back, and the dispute should go through.
           await collateralToken.transfer(disputeBot, transferAmount, { from: rando });
-          priceFeedMock.setHistoricalPrice(convertPrice("1.1"));
+          priceFeedMock.setHistoricalPrice(toWei("1.1"));
           await disputer.update();
           await disputer.dispute();
           assert.equal(spy.callCount, 3); // Info level event for the correctly processed dispute.
@@ -738,22 +734,22 @@ contract("Disputer.js", function (accounts) {
 
             // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
             await financialContract.create(
-              { rawValue: convertCollateral("115") },
-              { rawValue: convertSynthetic("100") },
+              { rawValue: convertDecimals("115") },
+              { rawValue: convertDecimals("100") },
               { from: sponsor1 }
             );
 
             // sponsor2 creates a position with 118 units of collateral, creating 100 synthetic tokens.
             await financialContract.create(
-              { rawValue: convertCollateral("118") },
-              { rawValue: convertSynthetic("100") },
+              { rawValue: convertDecimals("118") },
+              { rawValue: convertDecimals("100") },
               { from: sponsor2 }
             );
 
             // liquidator creates a position to have synthetic tokens to pay off debt upon liquidation.
             await financialContract.create(
-              { rawValue: convertCollateral("1000") },
-              { rawValue: convertSynthetic("500") },
+              { rawValue: convertDecimals("1000") },
+              { rawValue: convertDecimals("500") },
               { from: liquidator }
             );
 
@@ -771,21 +767,21 @@ contract("Disputer.js", function (accounts) {
             await financialContract.createLiquidation(
               sponsor1,
               { rawValue: "0" },
-              { rawValue: convertPrice("1.15") },
-              { rawValue: convertSynthetic("100") },
+              { rawValue: toWei("1.15") },
+              { rawValue: convertDecimals("100") },
               unreachableDeadline,
               { from: liquidator }
             );
             await financialContract.createLiquidation(
               sponsor2,
               { rawValue: "0" },
-              { rawValue: convertPrice("1.18") },
-              { rawValue: convertSynthetic("100") },
+              { rawValue: toWei("1.18") },
+              { rawValue: convertDecimals("100") },
               unreachableDeadline,
               { from: liquidator }
             );
 
-            priceFeedMock.setHistoricalPrice(convertPrice("0.95"));
+            priceFeedMock.setHistoricalPrice(toWei("0.95"));
             await disputer.update();
             await disputer.dispute();
 
@@ -841,23 +837,23 @@ contract("Disputer.js", function (accounts) {
 
               // sponsor1 creates a position with 150 units of collateral, creating 100 synthetic tokens.
               await financialContract.create(
-                { rawValue: convertCollateral("150") },
-                { rawValue: convertSynthetic("100") },
+                { rawValue: convertDecimals("150") },
+                { rawValue: convertDecimals("100") },
                 { from: sponsor1 }
               );
 
               // The liquidator creates a position to have synthetic tokens.
               await financialContract.create(
-                { rawValue: convertCollateral("1000") },
-                { rawValue: convertSynthetic("500") },
+                { rawValue: convertDecimals("1000") },
+                { rawValue: convertDecimals("500") },
                 { from: liquidator }
               );
 
               await financialContract.createLiquidation(
                 sponsor1,
                 { rawValue: "0" },
-                { rawValue: convertPrice("1.75") },
-                { rawValue: convertSynthetic("100") },
+                { rawValue: toWei("1.75") },
+                { rawValue: convertDecimals("100") },
                 unreachableDeadline,
                 { from: liquidator }
               );
@@ -867,7 +863,7 @@ contract("Disputer.js", function (accounts) {
               // not enough time has passed since the liquidation timestamp, so we'll delay disputing for now. The
               // `disputeDelay` configuration enforces that we must wait `disputeDelay` seconds after the liquidation
               // timestamp before disputing.
-              priceFeedMock.setHistoricalPrice(convertPrice("1.1"));
+              priceFeedMock.setHistoricalPrice(toWei("1.1"));
               await disputer.update();
               await disputer.dispute();
               assert.equal(spy.callCount, 0);
@@ -881,7 +877,7 @@ contract("Disputer.js", function (accounts) {
               // Advance contract time and attempt to dispute again.
               await financialContract.setCurrentTime(Number(liquidationTime) + disputerConfig.disputeDelay);
 
-              priceFeedMock.setHistoricalPrice(convertPrice("1.1"));
+              priceFeedMock.setHistoricalPrice(toWei("1.1"));
               await disputer.update();
               await disputer.dispute();
               assert.equal(spy.callCount, 1);
@@ -900,35 +896,35 @@ contract("Disputer.js", function (accounts) {
             async function () {
               // sponsor1 creates a position with 130 units of collateral, creating 100 synthetic tokens.
               await financialContract.create(
-                { rawValue: convertCollateral("130") },
-                { rawValue: convertSynthetic("100") },
+                { rawValue: convertDecimals("130") },
+                { rawValue: convertDecimals("100") },
                 { from: sponsor1 }
               );
 
               // The liquidator creates a position to have synthetic tokens.
               await financialContract.create(
-                { rawValue: convertCollateral("1000") },
-                { rawValue: convertSynthetic("500") },
+                { rawValue: convertDecimals("1000") },
+                { rawValue: convertDecimals("500") },
                 { from: liquidator }
               );
 
               // The sponsor1 submits a valid withdrawal request of withdrawing 5e18 collateral. This places their
               // position at collateral of 125 and debt of 100.
-              await financialContract.requestWithdrawal({ rawValue: convertCollateral("5") }, { from: sponsor1 });
+              await financialContract.requestWithdrawal({ rawValue: convertDecimals("5") }, { from: sponsor1 });
 
               // Next, we will create an invalid liquidation to liquidate the whole position.
               await financialContract.createLiquidation(
                 sponsor1,
                 { rawValue: "0" },
-                { rawValue: convertPrice("1.75") }, // Price high enough to initiate the liquidation
-                { rawValue: convertSynthetic("100") },
+                { rawValue: toWei("1.75") }, // Price high enough to initiate the liquidation
+                { rawValue: convertDecimals("100") },
                 unreachableDeadline,
                 { from: liquidator }
               );
 
               // Say the price feed reports a price of 1 USD per token. This makes the liquidation invalid and the disputer should
               // dispute the liquidation: 125/(100*1.0)=1.25 CR -> Position was collateralized and invalid liquidation.
-              priceFeedMock.setHistoricalPrice(convertPrice("1"));
+              priceFeedMock.setHistoricalPrice(toWei("1"));
 
               // However, say disputer operator has provided an override price of 1.2 USD per token. This makes the liquidation
               // valid and the disputer should do nothing: 125/(100*1.2)=1.0
@@ -937,7 +933,7 @@ contract("Disputer.js", function (accounts) {
                 financialContractClient.getUndisputedLiquidations()[0].liquidationTime
               );
               priceFeedMock.setLastUpdateTime(earliestLiquidationTime);
-              await disputer.dispute(convertPrice("1.2"));
+              await disputer.dispute(toWei("1.2"));
               assert.equal(spy.callCount, 0); // 0 info level logs should be sent as no dispute.
               assert.equal(
                 (await financialContract.getLiquidations(sponsor1))[0].state,
@@ -950,7 +946,7 @@ contract("Disputer.js", function (accounts) {
               priceFeedMock.setLastUpdateTime(earliestLiquidationTime + 2);
               priceFeedMock.setLookback(1);
               await disputer.update();
-              await disputer.dispute(convertPrice("1.0"));
+              await disputer.dispute(toWei("1.0"));
               assert.equal(spy.callCount, 1); // 1 info level logs should be sent for the dispute
               assert.equal(
                 (await financialContract.getLiquidations(sponsor1))[0].state,
@@ -967,30 +963,30 @@ contract("Disputer.js", function (accounts) {
               async function () {
                 // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
                 await financialContract.create(
-                  { rawValue: convertCollateral("125") },
-                  { rawValue: convertSynthetic("100") },
+                  { rawValue: convertDecimals("125") },
+                  { rawValue: convertDecimals("100") },
                   { from: sponsor1 }
                 );
 
                 // sponsor2 creates a position with 150 units of collateral, creating 100 synthetic tokens.
                 await financialContract.create(
-                  { rawValue: convertCollateral("150") },
-                  { rawValue: convertSynthetic("100") },
+                  { rawValue: convertDecimals("150") },
+                  { rawValue: convertDecimals("100") },
                   { from: sponsor2 }
                 );
 
                 // sponsor3 creates a position with 175 units of collateral, creating 100 synthetic tokens.
                 await financialContract.create(
-                  { rawValue: convertCollateral("175") },
-                  { rawValue: convertSynthetic("100") },
+                  { rawValue: convertDecimals("175") },
+                  { rawValue: convertDecimals("100") },
                   { from: sponsor3 }
                 );
 
                 // liquidator creates a position with 2000 units of collateral, creating 1000 synthetic tokens for creating
                 // liquidations.
                 await financialContract.create(
-                  { rawValue: convertCollateral("2000") },
-                  { rawValue: convertSynthetic("1000") },
+                  { rawValue: convertDecimals("2000") },
+                  { rawValue: convertDecimals("1000") },
                   { from: liquidator }
                 );
 
@@ -1002,13 +998,13 @@ contract("Disputer.js", function (accounts) {
                 await financialContract.createLiquidation(
                   sponsor1,
                   { rawValue: "0" },
-                  { rawValue: convertPrice("1.5") },
-                  { rawValue: convertSynthetic("100") },
+                  { rawValue: toWei("1.5") },
+                  { rawValue: convertDecimals("100") },
                   unreachableDeadline,
                   { from: liquidator }
                 );
 
-                priceFeedMock.setHistoricalPrice(convertPrice("1.1"));
+                priceFeedMock.setHistoricalPrice(toWei("1.1"));
                 await disputer.update();
                 await disputer.dispute();
                 assert.equal(spy.callCount, 0); // No info level logs should be sent as no dispute.
@@ -1018,8 +1014,8 @@ contract("Disputer.js", function (accounts) {
                 assert.equal(liquidationObject.sponsor, sponsor1);
                 assert.equal(liquidationObject.liquidator, liquidator);
                 assert.equal(liquidationObject.state, LiquidationStatesEnum.PRE_DISPUTE);
-                assert.equal(liquidationObject.liquidatedCollateral.rawValue, convertCollateral("125"));
-                assert.equal(liquidationObject.lockedCollateral.rawValue, convertCollateral("125"));
+                assert.equal(liquidationObject.liquidatedCollateral.rawValue, convertDecimals("125"));
+                assert.equal(liquidationObject.lockedCollateral.rawValue, convertDecimals("125"));
 
                 // The liquidation should NOT be disputed
                 assert.equal(
@@ -1045,14 +1041,14 @@ contract("Disputer.js", function (accounts) {
                 await financialContract.createLiquidation(
                   sponsor2,
                   { rawValue: "0" },
-                  { rawValue: convertPrice("1.5") },
-                  { rawValue: convertSynthetic("100") },
+                  { rawValue: toWei("1.5") },
+                  { rawValue: convertDecimals("100") },
                   unreachableDeadline,
                   { from: liquidator }
                 );
                 const liquidation2Time = await financialContract.getCurrentTime();
 
-                priceFeedMock.setHistoricalPrice(convertPrice("1.1"));
+                priceFeedMock.setHistoricalPrice(toWei("1.1"));
                 await disputer.update();
                 await disputer.dispute();
                 assert.equal(spy.callCount, 1); // 1 info level logs should be sent for the dispute.
@@ -1067,8 +1063,8 @@ contract("Disputer.js", function (accounts) {
                 assert.equal(liquidationObject.liquidator, liquidator);
                 assert.equal(liquidationObject.disputer, disputeBot);
                 assert.equal(liquidationObject.state, LiquidationStatesEnum.PENDING_DISPUTE);
-                assert.equal(liquidationObject.liquidatedCollateral.rawValue, convertCollateral("150"));
-                assert.equal(liquidationObject.lockedCollateral.rawValue, convertCollateral("150"));
+                assert.equal(liquidationObject.liquidatedCollateral.rawValue, convertDecimals("150"));
+                assert.equal(liquidationObject.lockedCollateral.rawValue, convertDecimals("150"));
                 assert.deepStrictEqual(await financialContract.getLiquidations(sponsor3), []);
 
                 // Next, we can test applying a large negative funding rate. Say we shift the funding rate by -0.1 two times.
@@ -1089,14 +1085,14 @@ contract("Disputer.js", function (accounts) {
                 await financialContract.createLiquidation(
                   sponsor3,
                   { rawValue: "0" },
-                  { rawValue: convertPrice("2") },
-                  { rawValue: convertSynthetic("100") },
+                  { rawValue: toWei("2") },
+                  { rawValue: convertDecimals("100") },
                   unreachableDeadline,
                   { from: liquidator }
                 );
                 const liquidation3Time = await financialContract.getCurrentTime();
 
-                priceFeedMock.setHistoricalPrice(convertPrice("1.5"));
+                priceFeedMock.setHistoricalPrice(toWei("1.5"));
                 await disputer.update();
                 await disputer.dispute();
                 assert.equal(spy.callCount, 2); // 1 additional info log for the new dispute.
@@ -1106,12 +1102,12 @@ contract("Disputer.js", function (accounts) {
                 assert.equal(liquidationObject.liquidator, liquidator);
                 assert.equal(liquidationObject.disputer, disputeBot);
                 assert.equal(liquidationObject.state, LiquidationStatesEnum.PENDING_DISPUTE);
-                assert.equal(liquidationObject.liquidatedCollateral.rawValue, convertCollateral("175"));
-                assert.equal(liquidationObject.lockedCollateral.rawValue, convertCollateral("175"));
+                assert.equal(liquidationObject.liquidatedCollateral.rawValue, convertDecimals("175"));
+                assert.equal(liquidationObject.lockedCollateral.rawValue, convertDecimals("175"));
 
                 // Finally, Push prices into the mock oracle to enable the disputes to settle.
-                await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidation2Time, convertPrice("1.1"));
-                await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidation3Time, convertPrice("1.5"));
+                await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidation2Time, toWei("1.1"));
+                await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidation3Time, toWei("1.5"));
 
                 // Now that the liquidation has expired, the disputer can withdraw rewards.
                 const collateralPreWithdraw = await collateralToken.balanceOf(disputeBot);
@@ -1185,7 +1181,7 @@ contract("Disputer.js", function (accounts) {
             await reserveToken.mint(pairAddress, toBN(toWei("1000")).muln(10000000), {
               from: contractCreator,
             });
-            await collateralToken.mint(pairAddress, toBN(convertCollateral("1000")).muln(10000000), {
+            await collateralToken.mint(pairAddress, toBN(convertDecimals("1000")).muln(10000000), {
               from: contractCreator,
             });
             await pair.sync({ from: contractCreator });
@@ -1328,57 +1324,57 @@ contract("Disputer.js", function (accounts) {
 
               // Create three positions for each sponsor and one for the liquidator. Liquidate all positions.
               await financialContract.create(
-                { rawValue: convertCollateral("125") },
-                { rawValue: convertSynthetic("100") },
+                { rawValue: convertDecimals("125") },
+                { rawValue: convertDecimals("100") },
                 { from: sponsor1 }
               );
 
               await financialContract.create(
-                { rawValue: convertCollateral("150") },
-                { rawValue: convertSynthetic("100") },
+                { rawValue: convertDecimals("150") },
+                { rawValue: convertDecimals("100") },
                 { from: sponsor2 }
               );
 
               await financialContract.create(
-                { rawValue: convertCollateral("175") },
-                { rawValue: convertSynthetic("100") },
+                { rawValue: convertDecimals("175") },
+                { rawValue: convertDecimals("100") },
                 { from: sponsor3 }
               );
 
               await financialContract.create(
-                { rawValue: convertCollateral("1000") },
-                { rawValue: convertSynthetic("500") },
+                { rawValue: convertDecimals("1000") },
+                { rawValue: convertDecimals("500") },
                 { from: liquidator }
               );
 
               await financialContract.createLiquidation(
                 sponsor1,
                 { rawValue: "0" },
-                { rawValue: convertPrice("1.75") },
-                { rawValue: convertSynthetic("100") },
+                { rawValue: toWei("1.75") },
+                { rawValue: convertDecimals("100") },
                 unreachableDeadline,
                 { from: liquidator }
               );
               await financialContract.createLiquidation(
                 sponsor2,
                 { rawValue: "0" },
-                { rawValue: convertPrice("1.75") },
-                { rawValue: convertSynthetic("100") },
+                { rawValue: toWei("1.75") },
+                { rawValue: convertDecimals("100") },
                 unreachableDeadline,
                 { from: liquidator }
               );
               await financialContract.createLiquidation(
                 sponsor3,
                 { rawValue: "0" },
-                { rawValue: convertPrice("1.75") },
-                { rawValue: convertSynthetic("100") },
+                { rawValue: toWei("1.75") },
+                { rawValue: convertDecimals("100") },
                 unreachableDeadline,
                 { from: liquidator }
               );
 
               // Start with a mocked price of 1.75 usd per token.
               // This makes all sponsors undercollateralized, meaning no disputes are issued.
-              priceFeedMock.setHistoricalPrice(convertPrice("1.75"));
+              priceFeedMock.setHistoricalPrice(toWei("1.75"));
               await disputer.update();
               await disputer.dispute();
 
@@ -1398,7 +1394,7 @@ contract("Disputer.js", function (accounts) {
               assert.equal(spy.callCount, 1); // No info level logs should be sent.
 
               // With a price of 1.1, two sponsors should be correctly collateralized, so disputes should be issued against sponsor2 and sponsor3's liquidations.
-              priceFeedMock.setHistoricalPrice(convertPrice("1.1"));
+              priceFeedMock.setHistoricalPrice(toWei("1.1"));
 
               // Set lookback such that the liquidation timestamp is captured and the dispute should go through.
               priceFeedMock.setLookback(2);
@@ -1426,7 +1422,7 @@ contract("Disputer.js", function (accounts) {
 
               // Push a price of 1.1, which should cause the two disputes to be correct (invalid liquidations)
               const liquidationTime = await financialContract.getCurrentTime();
-              await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidationTime, convertPrice("1.1"));
+              await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidationTime, toWei("1.1"));
 
               // rewards should be withdrawn and the DSProxy collateral ballance should increase.
 
@@ -1489,28 +1485,28 @@ contract("Disputer.js", function (accounts) {
 
               // Create 1 positions for the first sponsor sponsor and one for the liquidator. Liquidate the position.
               await financialContract.create(
-                { rawValue: convertCollateral("150") },
-                { rawValue: convertSynthetic("100") },
+                { rawValue: convertDecimals("150") },
+                { rawValue: convertDecimals("100") },
                 { from: sponsor1 }
               );
 
               await financialContract.create(
-                { rawValue: convertCollateral("1000") },
-                { rawValue: convertSynthetic("500") },
+                { rawValue: convertDecimals("1000") },
+                { rawValue: convertDecimals("500") },
                 { from: liquidator }
               );
 
               await financialContract.createLiquidation(
                 sponsor1,
                 { rawValue: "0" },
-                { rawValue: convertPrice("1.75") },
-                { rawValue: convertSynthetic("100") },
+                { rawValue: toWei("1.75") },
+                { rawValue: convertDecimals("100") },
                 unreachableDeadline,
                 { from: liquidator }
               );
 
               // With a price of 1.1, the sponsors should be correctly collateralized, so a dispute should be issued against sponsor1.
-              priceFeedMock.setHistoricalPrice(convertPrice("1.1"));
+              priceFeedMock.setHistoricalPrice(toWei("1.1"));
 
               // Seed the dsProxy with some reserve tokens so it can buy collateral to execute the dispute.
               await reserveToken.mint(dsProxy.address, toWei("10000"), { from: contractCreator });
@@ -1538,36 +1534,36 @@ contract("Disputer.js", function (accounts) {
             async function () {
               // Seed the dsProxy with a few collateral but not enough to finish the dispute. All collateral available
               // should be spent and the shortfall should be purchased.
-              await collateralToken.mint(dsProxy.address, convertCollateral("0.5"), { from: contractCreator });
+              await collateralToken.mint(dsProxy.address, convertDecimals("0.5"), { from: contractCreator });
               await reserveToken.mint(dsProxy.address, toWei("10000"), { from: contractCreator });
 
               // Set the final fee to 1 unit collateral. The total collateral needed for the dispute will be final fee + dispute bond.
-              await store.setFinalFee(collateralToken.address, { rawValue: convertCollateral("1") });
+              await store.setFinalFee(collateralToken.address, { rawValue: convertDecimals("1") });
 
               // Create 1 positions for the first sponsor sponsor and one for the liquidator. Liquidate the position.
               await financialContract.create(
-                { rawValue: convertCollateral("150") },
-                { rawValue: convertSynthetic("100") },
+                { rawValue: convertDecimals("150") },
+                { rawValue: convertDecimals("100") },
                 { from: sponsor1 }
               );
 
               await financialContract.create(
-                { rawValue: convertCollateral("1000") },
-                { rawValue: convertSynthetic("500") },
+                { rawValue: convertDecimals("1000") },
+                { rawValue: convertDecimals("500") },
                 { from: liquidator }
               );
 
               await financialContract.createLiquidation(
                 sponsor1,
                 { rawValue: "0" },
-                { rawValue: convertPrice("1.75") },
-                { rawValue: convertSynthetic("100") },
+                { rawValue: toWei("1.75") },
+                { rawValue: convertDecimals("100") },
                 unreachableDeadline,
                 { from: liquidator }
               );
 
               // With a price of 1.1, the sponsors should be correctly collateralized, so a dispute should be issued against sponsor1.
-              priceFeedMock.setHistoricalPrice(convertPrice("1.1"));
+              priceFeedMock.setHistoricalPrice(toWei("1.1"));
 
               // Set lookback such that the liquidation timestamp is captured and the dispute should go through.
               priceFeedMock.setLookback(2);
