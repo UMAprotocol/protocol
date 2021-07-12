@@ -71,7 +71,7 @@ async function createConstructorParamsForContractVersion(
     "contractVersion must be provided, containing both a contract version and type"
   );
   const requiredContextObjects = [
-    "convertSynthetic",
+    "convertDecimals",
     "finder",
     "collateralToken",
     "syntheticToken",
@@ -102,7 +102,7 @@ async function createConstructorParamsForContractVersion(
     disputeBondPercentage: { rawValue: toWei("0.1") },
     sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
     disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
-    minSponsorTokens: { rawValue: contextObjects.convertSynthetic("5") },
+    minSponsorTokens: { rawValue: contextObjects.convertDecimals("5") },
     timerAddress: contextObjects.timer.address,
     excessTokenBeneficiary: contextObjects.store.address,
     financialProductLibraryAddress: ZERO_ADDRESS,
