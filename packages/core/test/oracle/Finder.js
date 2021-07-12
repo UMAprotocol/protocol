@@ -19,7 +19,7 @@ describe("Finder", function () {
   });
 
   it("General methods", async function () {
-    const finder = await Finder.new().send({ from: owner });
+    const finder = await Finder.deployed();
 
     const interfaceName1 = utf8ToHex("interface1");
     const interfaceName2 = utf8ToHex("interface2");
