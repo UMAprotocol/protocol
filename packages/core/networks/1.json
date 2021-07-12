@@ -45,7 +45,7 @@
   },
   {
     "contractName": "TokenFactory",
-    "address": "0x55D8B8c54250f8B5BB192D42Aa746b4C2Ef2d55C"
+    "address": "0x52E60e859fe0e1a36F3d4cbaE1e2d6953f4b83B3"
   },
   {
     "contractName": "AddressWhitelist",
@@ -93,7 +93,7 @@
   },
   {
     "contractName": "LongShortPairCreator",
-    "address": "0x31C893843685f1255A26502eaB5379A3518Aa5a9"
+    "address": "0x9504b4ab8cd743b06074757d3B1bE3a3aF9cea10"
   },
   {
     "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
