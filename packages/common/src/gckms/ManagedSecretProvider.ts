@@ -52,25 +52,15 @@ class ManagedSecretProvider {
     });
   }
 
-<<<<<<< HEAD:packages/common/src/gckms/ManagedSecretProvider.ts
   // Passes the call through. Requires that the wrapped provider has been created via, e.g., `constructWrappedProvider`.
   send(...all: Parameters<HDWalletProvider["send"]>) {
-=======
-  // Passes the call through. Requires that the wrapped provider has been created via, e.g., `getOrConstructWrappedProvider`.
-  send(...all) {
->>>>>>> master:packages/common/src/gckms/ManagedSecretProvider.js
     this.wrappedProviderPromise.then((wrappedProvider) => {
       wrappedProvider.send(...all);
     });
   }
 
-<<<<<<< HEAD:packages/common/src/gckms/ManagedSecretProvider.ts
   // Passes the call through. Requires that the wrapped provider has been created via, e.g., `constructWrappedProvider`.
   getAddress(...all: Parameters<HDWalletProvider["getAddress"]>) {
-=======
-  // Passes the call through. Requires that the wrapped provider has been created via, e.g., `getOrConstructWrappedProvider`.
-  getAddress(...all) {
->>>>>>> master:packages/common/src/gckms/ManagedSecretProvider.js
     return this.getWrappedProviderOrThrow().getAddress(...all);
   }
 
