@@ -88,7 +88,7 @@ async function buildHashes(contractType) {
   const constructorParams = await createConstructorParamsForContractVersion(
     { contractVersion: "latest", contractType },
     {
-      convertSynthetic: toWei,
+      convertDecimals: toWei,
       finder,
       collateralToken,
       syntheticToken,
