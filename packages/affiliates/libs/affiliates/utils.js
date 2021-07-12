@@ -228,7 +228,7 @@ function fallbackFromDetails(details) {
 
 // Generates a dev mining config consumable by the dev mining app. It assumes you are passing in various
 // parameters here, and will auto generate the week and period if not provided, based on current date.
-function generateDevMiningConfig({ whitelist, week, period, totalRewards = 50000 }) {
+function generateDevMiningConfig({ whitelist, week, period, totalRewards = 35000 }) {
   const empWhitelist = whitelistFromDetails(whitelist);
   const fallbackPrices = fallbackFromDetails(whitelist);
   week = week || getLastDevMiningWeek();
