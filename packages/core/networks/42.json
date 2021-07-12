@@ -81,7 +81,7 @@
   },
   {
     "contractName": "LongShortPairCreator",
-    "address": "0x26bAb091A2A8ce69B0C380656584040e2A5b3827"
+    "address": "0x25E2b2068567397f2d4118DAE436780822F66b48"
   },
   {
     "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
@@ -99,4 +99,19 @@
     "contractName": "RangeBondLongShortPairFinancialProductLibrary",
     "address": "0x09381C827438605B5ea3e760A27666Be3497602C"
   }
+][
+  ("testPair",
+  "1627743600",
+  "1000000000000000000",
+  "0x425443444f4d0000000000000000000000000000000000000000000000000000",
+  "LongSynthName",
+  "LongSyntSymbol",
+  "ShortSynthName",
+  "ShortSynthSymbol",
+  "0xe22da380ee6B445bb8273C81944ADEB6E8450422",
+  "0x3EE1EA84ad75913E02B341FE09630bAedca0658D",
+  "0x0000000000000000000000000000000000000000000000000000000000000000",
+  "0",
+  "7200",
+  "0")
 ]

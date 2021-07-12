@@ -93,7 +93,7 @@
   },
   {
     "contractName": "LongShortPairCreator",
-    "address": "0x60F3f5DDE708D097B7F092EFaB2E085AC0a82F42"
+    "address": "0x31C893843685f1255A26502eaB5379A3518Aa5a9"
   },
   {
     "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
