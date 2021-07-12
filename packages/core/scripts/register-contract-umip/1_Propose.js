@@ -1,20 +1,18 @@
-// This script generates and submits an upgrade transaction to add/upgrade the optimistic oracle in the DVM. It can be
+// This script generates and submits a transaction that registers a new price requester for the DVM. It can be
 // run on a local ganache fork of the main net or can be run directly on the main net to execute the upgrade
 // transactions. To run this on the localhost first fork main net into Ganache with the proposerWallet unlocked as follows from core:
 // ganache-cli --fork https://mainnet.infura.io/v3/5f56f0a4c8844c96a430fbd3d7993e39 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25 --unlock 0x7a3a1c2de64f20eb5e916f40d11b01c441b2a8dc --port 9545
 // Then execute the script from core:
-// yarn truffle exec ./scripts/optimistic-oracle-umip/1_Propose.js --network mainnet-fork --deployedAddress 0xOPTIMISTIC_ORACLE_ADDRESS
+// yarn truffle exec ./scripts/register-contract-umip/1_Propose.js --network mainnet-fork --contract 0xCONTRACT_ADDRESS
 
 // Use the same ABI's as deployed contracts:
 const { getTruffleContract } = require("../../dist/index");
 const Governor = getTruffleContract("Governor", web3, "1.1.0");
-const Finder = getTruffleContract("Finder", web3, "1.1.0");
 const Registry = getTruffleContract("Registry", web3, "1.1.0");
-const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, "latest");
 
-const { RegistryRolesEnum, ZERO_ADDRESS, interfaceName } = require("@uma/common");
+const { RegistryRolesEnum } = require("@uma/common");
 
-const argv = require("minimist")(process.argv.slice(), { string: ["deployedAddress"] });
+const argv = require("minimist")(process.argv.slice(), { string: ["contract"] });
 
 const proposerWallet = "0x2bAaA41d155ad8a4126184950B31F50A1513cE25";
 
@@ -22,19 +20,13 @@ async function runExport() {
   console.log("Running Upgrade🔥");
   console.log("Connected to network id", await web3.eth.net.getId());
 
-  const finder = await Finder.deployed();
-  const governor = await Governor.deployed();
-
-  let optimisticOracle;
-  if (!argv.deployedAddress) {
-    const account = (await web3.eth.getAccounts())[0];
-    console.log("--deployedAddress not provided. Deploying OptimisticOracle...");
-    optimisticOracle = await OptimisticOracle.new("7200", finder.address, ZERO_ADDRESS, { from: account });
-    console.log("OptimisticOracle Deployed at", optimisticOracle.address);
-  } else {
-    console.log("Using provided OptimisticOracle at", argv.deployedAddress);
-    optimisticOracle = await OptimisticOracle.at(argv.deployedAddress);
+  const contractAddress = argv.contract;
+  if (!contractAddress) {
+    throw new Error("Must specify --contract");
   }
+  console.log(`Registering contract at ${contractAddress}`);
+
+  const governor = await Governor.deployed();
 
   // The proposal will add this new contract creator to the Registry.
   const registry = await Registry.deployed();
@@ -46,12 +38,10 @@ async function runExport() {
 
   console.log("addGovernorToRegistryTx", addGovernorToRegistryTx);
 
-  // 2. Register the OptimisticOracle as a verified contract.
-  const registerOptimisticOracleTx = registry.contract.methods
-    .registerContract([], optimisticOracle.address)
-    .encodeABI();
+  // 2. Register the contract as a verified contract.
+  const registerContractTx = registry.contract.methods.registerContract([], contractAddress).encodeABI();
 
-  console.log("registerOptimisticOracleTx", registerOptimisticOracleTx);
+  console.log("registerContractTx", registerContractTx);
 
   // 3. Remove the Governor from being a contract creator.
   const removeGovernorFromRegistryTx = registry.contract.methods
@@ -59,13 +49,6 @@ async function runExport() {
     .encodeABI();
 
   console.log("removeGovernorFromRegistryTx", removeGovernorFromRegistryTx);
-
-  // 4. Add the OptimisticOracle to the Finder.
-  const addOptimisticOracleToFinderTx = finder.contract.methods
-    .changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.address)
-    .encodeABI();
-
-  console.log("addOptimisticOracleToFinderTx", addOptimisticOracleToFinderTx);
 
   console.log("Proposing...");
 
@@ -80,17 +63,12 @@ async function runExport() {
       {
         to: registry.address,
         value: 0,
-        data: registerOptimisticOracleTx,
+        data: registerContractTx,
       },
       {
         to: registry.address,
         value: 0,
         data: removeGovernorFromRegistryTx,
-      },
-      {
-        to: finder.address,
-        value: 0,
-        data: addOptimisticOracleToFinderTx,
       },
     ],
     { from: proposerWallet, gas: 2000000 }
