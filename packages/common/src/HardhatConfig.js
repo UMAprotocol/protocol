@@ -1,10 +1,10 @@
 const { getNodeUrl, mnemonic } = require("./TruffleConfig");
 const path = require("path");
 
-function getHardhatConfig(configOverrides, workingDir = "./") {
-  // Hard hat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function
+function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = true) {
+  // Hardhat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function
   // get access to the plugins as well.
-  require("@nomiclabs/hardhat-truffle5");
+  if (includeTruffle) require("@nomiclabs/hardhat-truffle5");
   require("hardhat-gas-reporter");
   require("@nomiclabs/hardhat-web3");
   require("hardhat-deploy");
@@ -39,7 +39,7 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
         gas: 11500000,
         blockGasLimit: 11500000,
         allowUnlimitedContractSize: false,
-        timeout: 1800000
+        timeout: 1800000,
       },
       optimism: {
         url: "http://127.0.0.1:8545",
@@ -56,7 +56,15 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
           "oracle/implementation/IdentifierWhitelist.sol",
           "common/implementation/AddressWhitelist.sol",
         ],
-        testBlacklist: ["chainbridge", "financial-templates", "merkle-distributor", "oracle", "polygon", "proxy-scripts", "scripts"],
+        testBlacklist: [
+          "chainbridge",
+          "financial-templates",
+          "merkle-distributor",
+          "oracle",
+          "polygon",
+          "proxy-scripts",
+          "scripts",
+        ],
       },
       localhost: {
         url: "http://127.0.0.1:8545",

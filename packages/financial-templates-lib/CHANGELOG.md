@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.5.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.4.0...@uma/financial-templates-lib@2.5.0) (2021-07-07)
+
+### Bug Fixes
+
+- **api:** use api.domination.finance endpoint ([#3160](https://github.com/UMAprotocol/protocol/issues/3160)) ([#3161](https://github.com/UMAprotocol/protocol/issues/3161)) ([f8d3f0d](https://github.com/UMAprotocol/protocol/commit/f8d3f0d3563aa27b7376f1d48ec56609a926332f))
+
+### Features
+
+- **cryptowatch:** Add historical timestamp buffer ([#3147](https://github.com/UMAprotocol/protocol/issues/3147)) ([424d7d9](https://github.com/UMAprotocol/protocol/commit/424d7d975029678a786712b658a34a680a75156f))
+- **pf-configs:** Add default pf config for uSTONKS_0921 and add to OO ignore list ([#3183](https://github.com/UMAprotocol/protocol/issues/3183)) ([e1c4c24](https://github.com/UMAprotocol/protocol/commit/e1c4c2472e81c5911bbba13e4e06d4757b6f5ee6))
+
 # [2.4.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.3.0...@uma/financial-templates-lib@2.4.0) (2021-06-21)
 
 ### Bug Fixes

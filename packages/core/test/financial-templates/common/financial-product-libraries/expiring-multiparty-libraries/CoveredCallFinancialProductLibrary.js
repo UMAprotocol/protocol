@@ -1,44 +1,50 @@
+const hre = require("hardhat");
+const { runDefaultFixture } = require("@uma/common");
+const { getContract } = hre;
 const { didContractThrow, ZERO_ADDRESS } = require("@uma/common");
 const { assert } = require("chai");
 
 // Tested Contract
-const CoveredCallFinancialProductLibrary = artifacts.require("CoveredCallFinancialProductLibrary");
+const CoveredCallFinancialProductLibrary = getContract("CoveredCallFinancialProductLibrary");
 
 // Helper contracts
-const Timer = artifacts.require("Timer");
-const ExpiringMultiPartyMock = artifacts.require("ExpiringMultiPartyMock");
+const Timer = getContract("Timer");
+const ExpiringMultiPartyMock = getContract("ExpiringMultiPartyMock");
 
 const { toWei, toBN, utf8ToHex } = web3.utils;
 const strikePrice = toBN(toWei("400"));
 const priceFeedIdentifier = utf8ToHex("TEST_IDENTIFIER");
 const collateralizationRatio = toBN(toWei("1")).addn(1);
 
-contract("CoveredCallFinancialProductLibrary", function () {
+describe("CoveredCallFinancialProductLibrary", function () {
   let coveredCallFPL;
   let expiringMultiParty;
   let timer;
   let expirationTime;
+  let accounts;
 
-  beforeEach(async () => {
+  before(async () => {
+    await runDefaultFixture(hre);
+    accounts = await hre.web3.eth.getAccounts();
     timer = await Timer.deployed();
 
-    expirationTime = (await timer.getCurrentTime()) + 100; // use 100 seconds in the future as the expiration time.
-    coveredCallFPL = await CoveredCallFinancialProductLibrary.new();
+    expirationTime = (await timer.methods.getCurrentTime().call()) + 100; // use 100 seconds in the future as the expiration time.
+    coveredCallFPL = await CoveredCallFinancialProductLibrary.new().send({ from: accounts[0] });
     expiringMultiParty = await ExpiringMultiPartyMock.new(
-      coveredCallFPL.address,
+      coveredCallFPL.options.address,
       expirationTime,
       { rawValue: collateralizationRatio.toString() },
       priceFeedIdentifier,
-      timer.address
-    );
+      timer.options.address
+    ).send({ from: accounts[0] });
 
-    await coveredCallFPL.setFinancialProductStrike(expiringMultiParty.address, {
-      rawValue: strikePrice.toString(),
-    });
+    await coveredCallFPL.methods
+      .setFinancialProductStrike(expiringMultiParty.options.address, { rawValue: strikePrice.toString() })
+      .send({ from: accounts[0] });
   });
   it("Strike correctly set", async () => {
     assert.equal(
-      (await coveredCallFPL.getStrikeForFinancialProduct(expiringMultiParty.address)).toString(),
+      (await coveredCallFPL.methods.getStrikeForFinancialProduct(expiringMultiParty.options.address).call()).toString(),
       strikePrice.toString()
     );
   });
@@ -46,25 +52,25 @@ contract("CoveredCallFinancialProductLibrary", function () {
     it("Can not re-set the strike for a given financial product", async () => {
       assert(
         await didContractThrow(
-          coveredCallFPL.setFinancialProductStrike(expiringMultiParty.address, {
-            rawValue: strikePrice.toString(),
-          })
+          coveredCallFPL.methods
+            .setFinancialProductStrike(expiringMultiParty.options.address, { rawValue: strikePrice.toString() })
+            .send({ from: accounts[0] })
         )
       );
     });
     it("Can not set strike price for invalid financial product", async () => {
       assert(
         await didContractThrow(
-          coveredCallFPL.setFinancialProductStrike(ZERO_ADDRESS, {
-            rawValue: strikePrice.toString(),
-          })
+          coveredCallFPL.methods
+            .setFinancialProductStrike(ZERO_ADDRESS, { rawValue: strikePrice.toString() })
+            .send({ from: accounts[0] })
         )
       );
       assert(
         await didContractThrow(
-          coveredCallFPL.setFinancialProductStrike(timer.address, {
-            rawValue: strikePrice.toString(),
-          })
+          coveredCallFPL.methods
+            .setFinancialProductStrike(timer.options.address, { rawValue: strikePrice.toString() })
+            .send({ from: accounts[0] })
         )
       );
     });
@@ -72,10 +78,12 @@ contract("CoveredCallFinancialProductLibrary", function () {
       // Calling the transformation function through the emp mock.
       assert.equal(
         (
-          await expiringMultiParty.transformPrice(
-            { rawValue: toWei("350") },
-            (await expiringMultiParty.getCurrentTime()).toString()
-          )
+          await expiringMultiParty.methods
+            .transformPrice(
+              { rawValue: toWei("350") },
+              (await expiringMultiParty.methods.getCurrentTime().call()).toString()
+            )
+            .call()
         ).toString(),
         toWei("1")
       );
@@ -83,26 +91,29 @@ contract("CoveredCallFinancialProductLibrary", function () {
       // Calling the transformation function as a mocked emp caller should also work.
       assert.equal(
         (
-          await expiringMultiParty.transformPrice.call(
-            { rawValue: toWei("350") },
-            (await expiringMultiParty.getCurrentTime()).toString(),
-            { from: expiringMultiParty.address }
-          )
+          await expiringMultiParty.methods
+            .transformPrice(
+              { rawValue: toWei("350") },
+              (await expiringMultiParty.methods.getCurrentTime().call()).toString()
+            )
+            .call({ from: expiringMultiParty.options.address })
         ).toString(),
         toWei("1")
       );
     });
 
     it("Library returns correctly transformed price after expiration", async () => {
-      await timer.setCurrentTime(expirationTime + 1);
+      await timer.methods.setCurrentTime(expirationTime + 1).send({ from: accounts[0] });
 
       // If the oracle price is less than the strike price then the library should return 0 (the option is out the money).
       assert.equal(
         (
-          await expiringMultiParty.transformPrice(
-            { rawValue: toWei("350") },
-            (await expiringMultiParty.getCurrentTime()).toString()
-          )
+          await expiringMultiParty.methods
+            .transformPrice(
+              { rawValue: toWei("350") },
+              (await expiringMultiParty.methods.getCurrentTime().call()).toString()
+            )
+            .call()
         ).toString(),
         "0"
       );
@@ -111,10 +122,12 @@ contract("CoveredCallFinancialProductLibrary", function () {
       // strike is $400, token is redeemable for 100 / 500 = 0.2 WETH (worth $100).
       assert.equal(
         (
-          await expiringMultiParty.transformPrice(
-            { rawValue: toWei("500") },
-            (await expiringMultiParty.getCurrentTime()).toString()
-          )
+          await expiringMultiParty.methods
+            .transformPrice(
+              { rawValue: toWei("500") },
+              (await expiringMultiParty.methods.getCurrentTime().call()).toString()
+            )
+            .call()
         ).toString(),
         toWei("0.2")
       );
@@ -126,26 +139,26 @@ contract("CoveredCallFinancialProductLibrary", function () {
 
       // Check pre-expiration below strike
       assert.equal(
-        (await expiringMultiParty.transformCollateralRequirement({ rawValue: toWei("350") })).toString(),
+        (await expiringMultiParty.methods.transformCollateralRequirement({ rawValue: toWei("350") }).call()).toString(),
         toWei("1")
       );
       // Check pre-expiration above strike
       assert.equal(
-        (await expiringMultiParty.transformCollateralRequirement({ rawValue: toWei("450") })).toString(),
+        (await expiringMultiParty.methods.transformCollateralRequirement({ rawValue: toWei("450") }).call()).toString(),
         toWei("1")
       );
 
       // advance the timer after expiration and ensure the CR is still 1.
-      await timer.setCurrentTime(expirationTime + 1);
+      await timer.methods.setCurrentTime(expirationTime + 1).send({ from: accounts[0] });
 
       // Check post-expiration below strike
       assert.equal(
-        (await expiringMultiParty.transformCollateralRequirement({ rawValue: toWei("350") })).toString(),
+        (await expiringMultiParty.methods.transformCollateralRequirement({ rawValue: toWei("350") }).call()).toString(),
         toWei("1")
       );
       // Check post-expiration above strike
       assert.equal(
-        (await expiringMultiParty.transformCollateralRequirement({ rawValue: toWei("450") })).toString(),
+        (await expiringMultiParty.methods.transformCollateralRequirement({ rawValue: toWei("450") }).call()).toString(),
         toWei("1")
       );
     });
