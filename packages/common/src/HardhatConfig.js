@@ -27,7 +27,7 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 199,
+        runs: 200,
       },
     },
   };
@@ -40,7 +40,7 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
           settings: {
             optimizer: {
               enabled: true,
-              runs: 1000000,
+              runs: 1_000_000,
             },
           },
         },
@@ -52,6 +52,7 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
         "contracts/financial-templates/perpetual-multiparty/PerpetualLib.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
         "contracts/financial-templates/perpetual-multiparty/PerpetualLiquidatable.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
         "contracts/financial-templates/expiring-multiparty/Liquidatable.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/oracle/implementation/Voting.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       },
     },
     networks: {
@@ -118,7 +119,6 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
     },
   };
 
-  console.log(defaultConfig.solidity.overrides);
   return { ...defaultConfig, ...configOverrides };
 }
 
