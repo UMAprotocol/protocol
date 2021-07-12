@@ -5,8 +5,7 @@ import "../oracle/interfaces/FinderInterface.sol";
 import "../oracle/implementation/Constants.sol";
 
 /**
- * @notice Enforces lifecyle of price requests for deriving contract. Ensures that price request data is not duplicated
- * and that only submitted price requests can be resolved.
+ * @notice Enforces lifecycle of price requests for deriving contract.
  */
 abstract contract OracleBaseTunnel {
     enum RequestState { NeverRequested, Requested, Resolved }
@@ -16,14 +15,25 @@ abstract contract OracleBaseTunnel {
         int256 price;
     }
 
+    // This value must be <= the Voting contract's `ancillaryBytesLimit` value otherwise it is possible
+    // that a price can be requested to this contract successfully, but cannot be resolved by the DVM which refuses
+    // to accept a price request made with ancillary data length over a certain size.
+    uint256 public constant ancillaryBytesLimit = 8192;
+
     // Mapping of encoded price requests {identifier, time, ancillaryData} to Price objects.
     mapping(bytes32 => Price) internal prices;
 
     // Finder to provide addresses for DVM system contracts.
     FinderInterface public finder;
 
-    event PriceRequestAdded(bytes32 indexed identifier, uint256 time, bytes ancillaryData, bytes32 requestHash);
-    event PushedPrice(bytes32 indexed identifier, uint256 time, bytes ancillaryData, int256 price, bytes32 requestHash);
+    event PriceRequestAdded(bytes32 indexed identifier, uint256 time, bytes ancillaryData, bytes32 indexed requestHash);
+    event PushedPrice(
+        bytes32 indexed identifier,
+        uint256 time,
+        bytes ancillaryData,
+        int256 price,
+        bytes32 indexed requestHash
+    );
 
     /**
      * @notice Constructor.
@@ -42,6 +52,7 @@ abstract contract OracleBaseTunnel {
         uint256 time,
         bytes memory ancillaryData
     ) internal {
+        require(ancillaryData.length <= ancillaryBytesLimit, "Invalid ancillary data");
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, ancillaryData);
         Price storage lookup = prices[priceRequestId];
         if (lookup.state == RequestState.NeverRequested) {
@@ -69,7 +80,7 @@ abstract contract OracleBaseTunnel {
     }
 
     /**
-     * @notice Returns the convenient way to store price requests, uniquely identified by {dentifier, time,
+     * @notice Returns the convenient way to store price requests, uniquely identified by {identifier, time,
      * ancillaryData }.
      */
     function _encodePriceRequest(

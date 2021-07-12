@@ -46,18 +46,19 @@ contract LongShortPair is Testable, Lockable {
         LongShortPairFinancialProductLibrary financialProductLibrary; // Contract providing settlement payout logic.
         bytes customAncillaryData; // Custom ancillary data to be passed along with the price request to the OO.
         uint256 prepaidProposerReward; // Preloaded reward to incentivize settlement price proposals.
-        uint256 optimisticOracleLivenessTime; // OO liveness timer for price requests.
+        uint256 optimisticOracleLivenessTime; // OO liveness time for price requests.
         uint256 optimisticOracleProposerBond; // OO proposer bond for price requests.
         FinderInterface finder; // DVM finder to find other UMA ecosystem contracts.
         address timerAddress; // Timer used to synchronize contract time in testing. Set to 0x000... in production.
     }
 
     enum ContractState { Open, ExpiredPriceRequested, ExpiredPriceReceived }
+    // @dev note contractState and expirationTimestamp are declared in this order so they use the same storage slot.
     ContractState public contractState;
 
-    string public pairName;
-
     uint64 public expirationTimestamp;
+
+    string public pairName;
 
     // Amount of collateral a pair of tokens is always redeemable for.
     uint256 public collateralPerPair;
@@ -65,8 +66,8 @@ contract LongShortPair is Testable, Lockable {
     // Price returned from the Optimistic oracle at settlement time.
     int256 public expiryPrice;
 
-    // number between 0 and 1e18 representing how much collateral long & short tokens are redeemable for. 0 makes each
-    // short token worth collateralPerPair and long tokens worth 0. 1 makes each long token worth collateralPerPair and short 0.
+    // Number between 0 and 1e18 to allocate collateral between long & short tokens at redemption. 0 entitles each short
+    // to collateralPerPair and long worth 0. 1e18 makes each long worth collateralPerPair and short 0.
     uint256 public expiryPercentLong;
 
     bytes32 public priceIdentifier;
@@ -126,13 +127,14 @@ contract LongShortPair is Testable, Lockable {
      *    financialProductLibrary: Contract providing settlement payout logic.
      *    customAncillaryData: Custom ancillary data to be passed along with the price request to the OO.
      *    prepaidProposerReward: Preloaded reward to incentivize settlement price proposals.
-     *    optimisticOracleLivenessTime: OO liveness timer for price requests.
+     *    optimisticOracleLivenessTime: OO liveness time for price requests.
      *    optimisticOracleProposerBond: OO proposer bond for price requests.
      *    finder: DVM finder to find other UMA ecosystem contracts.
      *    timerAddress: Timer used to synchronize contract time in testing. Set to 0x000... in production.
      */
     constructor(ConstructorParams memory params) Testable(params.timerAddress) {
         finder = params.finder;
+        require(bytes(params.pairName).length > 0, "Pair name cant be empty");
         require(params.expirationTimestamp > getCurrentTime(), "Expiration timestamp in past");
         require(params.collateralPerPair > 0, "Collateral per pair cannot be 0");
         require(_getIdentifierWhitelist().isIdentifierSupported(params.priceIdentifier), "Identifier not registered");
@@ -177,7 +179,9 @@ contract LongShortPair is Testable, Lockable {
      * @return collateralUsed total collateral used to mint the synthetics.
      */
     function create(uint256 tokensToCreate) public preExpiration() nonReentrant() returns (uint256 collateralUsed) {
-        collateralUsed = FixedPoint.Unsigned(tokensToCreate).mul(FixedPoint.Unsigned(collateralPerPair)).rawValue;
+        // Note the use of mulCeil to prevent small collateralPerPair causing rounding of collateralUsed to 0 enabling
+        // callers to mint dust LSP tokens without paying any collateral.
+        collateralUsed = FixedPoint.Unsigned(tokensToCreate).mulCeil(FixedPoint.Unsigned(collateralPerPair)).rawValue;
 
         collateralToken.safeTransferFrom(msg.sender, address(this), collateralUsed);
 
@@ -280,7 +284,7 @@ contract LongShortPair is Testable, Lockable {
      * @param sponsor address of the sponsor to query.
      * @return [uint256, uint256]. First is long tokens held by sponsor and second is short tokens held by sponsor.
      */
-    function getPositionTokens(address sponsor) public view returns (uint256, uint256) {
+    function getPositionTokens(address sponsor) public view nonReentrantView() returns (uint256, uint256) {
         return (longToken.balanceOf(sponsor), shortToken.balanceOf(sponsor));
     }
 

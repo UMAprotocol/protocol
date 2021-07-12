@@ -2,6 +2,10 @@ import axios from "axios";
 import assert from "assert";
 import { get } from "lodash";
 
+export function msToS(ms: number) {
+  return Math.floor(ms / 1000);
+}
+
 class Coingecko {
   private host: string;
   constructor(host = "https://api.coingecko.com/api/v3") {
@@ -19,8 +23,9 @@ class Coingecko {
     const result = await this.call(
       `coins/ethereum/contract/${contract.toLowerCase()}/market_chart/range/?vs_currency=${currency}&from=${from}&to=${to}`
     );
+    // fyi timestamps are returned in ms in contrast to the current price endpoint
     if (result.prices) return result.prices;
-    else throw new Error("Something went wrong fetching coingecko prices!");
+    throw new Error("Something went wrong fetching coingecko prices!");
   }
   async getContractDetails(contract_address: string, id = "ethereum") {
     return this.call(`coins/${id}/contract/${contract_address.toLowerCase()}`);

@@ -6,6 +6,7 @@ import "../oracle/interfaces/OracleAncillaryInterface.sol";
 import "../oracle/interfaces/RegistryInterface.sol";
 import "./OracleBaseTunnel.sol";
 import "../common/implementation/AncillaryData.sol";
+import "../common/implementation/Lockable.sol";
 
 /**
  * @title Adapter deployed on sidechain to give financial contracts the ability to trigger cross-chain price requests to
@@ -15,7 +16,7 @@ import "../common/implementation/AncillaryData.sol";
  * @dev The intended client of this contract is an OptimisticOracle on sidechain that needs price
  * resolution secured by the DVM on mainnet.
  */
-contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBaseChildTunnel {
+contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBaseChildTunnel, Lockable {
     constructor(address _fxChild, address _finderAddress)
         OracleBaseTunnel(_finderAddress)
         FxBaseChildTunnel(_fxChild)
@@ -41,7 +42,7 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public override onlyRegisteredContract() {
+    ) public override nonReentrant() onlyRegisteredContract() {
         // This implementation allows duplicate price requests to emit duplicate MessageSent events via
         // _sendMessageToRoot. The DVM will not have a problem handling duplicate requests (it will just ignore them).
         // This is potentially a fallback in case the checkpointing to mainnet is missing the `requestPrice` transaction
@@ -79,7 +80,7 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public view override onlyRegisteredContract() returns (bool) {
+    ) public view override nonReentrantView() onlyRegisteredContract() returns (bool) {
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(ancillaryData, msg.sender));
         return prices[priceRequestId].state == RequestState.Resolved;
     }
@@ -96,7 +97,7 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
         bytes32 identifier,
         uint256 time,
         bytes memory ancillaryData
-    ) public view override onlyRegisteredContract() returns (int256) {
+    ) public view override nonReentrantView() onlyRegisteredContract() returns (int256) {
         bytes32 priceRequestId = _encodePriceRequest(identifier, time, _stampAncillaryData(ancillaryData, msg.sender));
         Price storage lookup = prices[priceRequestId];
         require(lookup.state == RequestState.Resolved, "Price has not been resolved");
@@ -109,13 +110,18 @@ contract OracleChildTunnel is OracleBaseTunnel, OracleAncillaryInterface, FxBase
      * @param requester sender of the initial price request.
      * @return the stamped ancillary bytes.
      */
-    function stampAncillaryData(bytes memory ancillaryData, address requester) public view returns (bytes memory) {
+    function stampAncillaryData(bytes memory ancillaryData, address requester)
+        public
+        view
+        nonReentrantView()
+        returns (bytes memory)
+    {
         return _stampAncillaryData(ancillaryData, requester);
     }
 
     /**
-     * @dev We don't handle specifically the case where `ancillaryData` is not already readily translateable in utf8.
-     * For those cases, we assume that the client will be able to strip out the utf8-translateable part of the
+     * @dev We don't handle specifically the case where `ancillaryData` is not already readily translatable in utf8.
+     * For those cases, we assume that the client will be able to strip out the utf8-translatable part of the
      * ancillary data that this contract stamps.
      */
     function _stampAncillaryData(bytes memory ancillaryData, address requester) internal view returns (bytes memory) {

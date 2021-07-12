@@ -15,7 +15,10 @@ type Config = {
   currency?: Currencies;
 };
 
-type Dependencies = Pick<AppState, "web3" | "emps" | "synthPrices" | "erc20s" | "prices" | "stats" | "registeredEmps">;
+type Dependencies = Pick<
+  AppState,
+  "web3" | "emps" | "synthPrices" | "erc20s" | "prices" | "stats" | "registeredEmps" | "marketPrices"
+>;
 
 export default function (config: Config, appState: Dependencies) {
   const { currency = "usd" } = config;

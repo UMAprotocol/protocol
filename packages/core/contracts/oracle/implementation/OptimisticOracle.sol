@@ -159,11 +159,14 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         IERC20 currency,
         uint256 reward
     ) external override nonReentrant() returns (uint256 totalBond) {
-        require(getState(msg.sender, identifier, timestamp, ancillaryData) == State.Invalid, "requestPrice: Invalid");
+        require(_getState(msg.sender, identifier, timestamp, ancillaryData) == State.Invalid, "requestPrice: Invalid");
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
         require(timestamp <= getCurrentTime(), "Timestamp in future");
-        require(stampAncillaryData(ancillaryData, msg.sender).length <= ancillaryBytesLimit, "Ancillary Data too long");
+        require(
+            _stampAncillaryData(ancillaryData, msg.sender).length <= ancillaryBytesLimit,
+            "Ancillary Data too long"
+        );
         uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
         requests[_getId(msg.sender, identifier, timestamp, ancillaryData)] = Request({
             proposer: address(0),
@@ -206,7 +209,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         bytes memory ancillaryData,
         uint256 bond
     ) external override nonReentrant() returns (uint256 totalBond) {
-        require(getState(msg.sender, identifier, timestamp, ancillaryData) == State.Requested, "setBond: Requested");
+        require(_getState(msg.sender, identifier, timestamp, ancillaryData) == State.Requested, "setBond: Requested");
         Request storage request = _getRequest(msg.sender, identifier, timestamp, ancillaryData);
         request.bond = bond;
 
@@ -228,7 +231,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         bytes memory ancillaryData
     ) external override nonReentrant() {
         require(
-            getState(msg.sender, identifier, timestamp, ancillaryData) == State.Requested,
+            _getState(msg.sender, identifier, timestamp, ancillaryData) == State.Requested,
             "setRefundOnDispute: Requested"
         );
         _getRequest(msg.sender, identifier, timestamp, ancillaryData).refundOnDispute = true;
@@ -249,7 +252,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         uint256 customLiveness
     ) external override nonReentrant() {
         require(
-            getState(msg.sender, identifier, timestamp, ancillaryData) == State.Requested,
+            _getState(msg.sender, identifier, timestamp, ancillaryData) == State.Requested,
             "setCustomLiveness: Requested"
         );
         _validateLiveness(customLiveness);
@@ -278,7 +281,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     ) public override nonReentrant() returns (uint256 totalBond) {
         require(proposer != address(0), "proposer address must be non 0");
         require(
-            getState(requester, identifier, timestamp, ancillaryData) == State.Requested,
+            _getState(requester, identifier, timestamp, ancillaryData) == State.Requested,
             "proposePriceFor: Requested"
         );
         Request storage request = _getRequest(requester, identifier, timestamp, ancillaryData);
@@ -352,7 +355,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     ) public override nonReentrant() returns (uint256 totalBond) {
         require(disputer != address(0), "disputer address must be non 0");
         require(
-            getState(requester, identifier, timestamp, ancillaryData) == State.Proposed,
+            _getState(requester, identifier, timestamp, ancillaryData) == State.Proposed,
             "disputePriceFor: Proposed"
         );
         Request storage request = _getRequest(requester, identifier, timestamp, ancillaryData);
@@ -441,7 +444,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         uint256 timestamp,
         bytes memory ancillaryData
     ) external override nonReentrant() returns (int256) {
-        if (getState(msg.sender, identifier, timestamp, ancillaryData) != State.Settled) {
+        if (_getState(msg.sender, identifier, timestamp, ancillaryData) != State.Settled) {
             _settle(msg.sender, identifier, timestamp, ancillaryData);
         }
 
@@ -479,7 +482,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) public view override returns (Request memory) {
+    ) public view override nonReentrantView() returns (Request memory) {
         return _getRequest(requester, identifier, timestamp, ancillaryData);
     }
 
@@ -496,29 +499,8 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) public view override returns (State) {
-        Request storage request = _getRequest(requester, identifier, timestamp, ancillaryData);
-
-        if (address(request.currency) == address(0)) {
-            return State.Invalid;
-        }
-
-        if (request.proposer == address(0)) {
-            return State.Requested;
-        }
-
-        if (request.settled) {
-            return State.Settled;
-        }
-
-        if (request.disputer == address(0)) {
-            return request.expirationTime <= getCurrentTime() ? State.Expired : State.Proposed;
-        }
-
-        return
-            _getOracle().hasPrice(identifier, timestamp, _stampAncillaryData(ancillaryData, requester))
-                ? State.Resolved
-                : State.Disputed;
+    ) public view override nonReentrantView() returns (State) {
+        return _getState(requester, identifier, timestamp, ancillaryData);
     }
 
     /**
@@ -534,8 +516,8 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData
-    ) public view override returns (bool) {
-        State state = getState(requester, identifier, timestamp, ancillaryData);
+    ) public view override nonReentrantView() returns (bool) {
+        State state = _getState(requester, identifier, timestamp, ancillaryData);
         return state == State.Settled || state == State.Resolved || state == State.Expired;
     }
 
@@ -569,7 +551,7 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         uint256 timestamp,
         bytes memory ancillaryData
     ) private returns (uint256 payout) {
-        State state = getState(requester, identifier, timestamp, ancillaryData);
+        State state = _getState(requester, identifier, timestamp, ancillaryData);
 
         // Set it to settled so this function can never be entered again.
         Request storage request = _getRequest(requester, identifier, timestamp, ancillaryData);
@@ -639,6 +621,36 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
     function _validateLiveness(uint256 _liveness) private pure {
         require(_liveness < 5200 weeks, "Liveness too large");
         require(_liveness > 0, "Liveness cannot be 0");
+    }
+
+    function _getState(
+        address requester,
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData
+    ) internal view returns (State) {
+        Request storage request = _getRequest(requester, identifier, timestamp, ancillaryData);
+
+        if (address(request.currency) == address(0)) {
+            return State.Invalid;
+        }
+
+        if (request.proposer == address(0)) {
+            return State.Requested;
+        }
+
+        if (request.settled) {
+            return State.Settled;
+        }
+
+        if (request.disputer == address(0)) {
+            return request.expirationTime <= getCurrentTime() ? State.Expired : State.Proposed;
+        }
+
+        return
+            _getOracle().hasPrice(identifier, timestamp, _stampAncillaryData(ancillaryData, requester))
+                ? State.Resolved
+                : State.Disputed;
     }
 
     function _getOracle() internal view returns (OracleAncillaryInterface) {
