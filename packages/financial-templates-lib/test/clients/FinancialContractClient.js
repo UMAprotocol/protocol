@@ -8,7 +8,7 @@ const {
   runTestForVersion,
   createConstructorParamsForContractVersion,
   TESTED_CONTRACT_VERSIONS,
-  POSSIBLE_TEST_DECIMAL_COMBOS,
+  TEST_DECIMAL_COMBOS,
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
@@ -94,7 +94,7 @@ contract("FinancialContractClient.js", function (accounts) {
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
     const MulticallMock = getTruffleContract("MulticallMock", web3);
 
-    for (let testConfig of POSSIBLE_TEST_DECIMAL_COMBOS) {
+    for (let testConfig of TEST_DECIMAL_COMBOS) {
       describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
         before(async function () {
           identifier = `${testConfig.tokenName}TEST`;
