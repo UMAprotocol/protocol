@@ -3,7 +3,7 @@ const { toWei, toBN } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 
-const { parseFixed, POSSIBLE_TEST_DECIMAL_COMBOS } = require("@uma/common");
+const { parseFixed, TEST_DECIMAL_COMBOS } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
 // Tested module
@@ -24,7 +24,7 @@ const PerpetualMock = getTruffleContract("PerpetualMock", web3);
 const Convert = (decimals) => (number) => toBN(parseFixed(number.toString(), decimals).toString());
 
 contract("SyntheticPegMonitor", function () {
-  for (let testConfig of POSSIBLE_TEST_DECIMAL_COMBOS) {
+  for (let testConfig of TEST_DECIMAL_COMBOS) {
     describe(`${testConfig.priceFeedDecimals} pricefeed decimals`, function () {
       let uniswapPriceFeedMock;
       let medianizerPriceFeedMock;

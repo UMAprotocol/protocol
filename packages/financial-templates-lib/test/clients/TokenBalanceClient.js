@@ -1,7 +1,7 @@
 const { toWei } = web3.utils;
 const winston = require("winston");
 
-const { parseFixed, POSSIBLE_TEST_DECIMAL_COMBOS } = require("@uma/common");
+const { parseFixed, TEST_DECIMAL_COMBOS } = require("@uma/common");
 
 // Script to test
 const { TokenBalanceClient } = require("../../src/clients/TokenBalanceClient");
@@ -13,7 +13,7 @@ const Token = getTruffleContract("ExpandedERC20", web3);
 const Convert = (decimals) => (number) => parseFixed(number.toString(), decimals).toString();
 
 contract("TokenBalanceClient.js", function (accounts) {
-  for (let tokenConfig of POSSIBLE_TEST_DECIMAL_COMBOS) {
+  for (let tokenConfig of TEST_DECIMAL_COMBOS) {
     describe(`${tokenConfig.collateralDecimals} decimals`, function () {
       const tokenCreator = accounts[0];
       const sponsor1 = accounts[1];

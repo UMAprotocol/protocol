@@ -1,7 +1,7 @@
 // Run the tests against 2 different kinds of token/synth decimal combinations:
 // 1) matching 18 collateral & 18 synthetic decimals with 18 decimals for price feed.
 // 3) matching 8 collateral & 8 synthetic decimals with 18 decimals for price feed.
-const POSSIBLE_TEST_DECIMAL_COMBOS = [
+const TEST_DECIMAL_COMBOS = [
   {
     tokenSymbol: "WETH",
     tokenName: "Wrapped Ether",
@@ -18,4 +18,4 @@ const POSSIBLE_TEST_DECIMAL_COMBOS = [
   },
 ];
 
-module.exports = { POSSIBLE_TEST_DECIMAL_COMBOS };
+module.exports = { TEST_DECIMAL_COMBOS };
