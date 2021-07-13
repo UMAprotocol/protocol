@@ -33,7 +33,7 @@
   },
   {
     "contractName": "TokenFactory",
-    "address": "0xe7e87f89e3D15617261Fd52188Ca64803165f8Af"
+    "address": "0x29aBe06dB681c0effB6C8892E0028cfe24baAfdf"
   },
   {
     "contractName": "WETH9",
@@ -81,22 +81,22 @@
   },
   {
     "contractName": "LongShortPairCreator",
-    "address": "0x2344Fe41e66b4DCAD1166b51d4dAD973271D1144"
+    "address": "0x25E2b2068567397f2d4118DAE436780822F66b48"
   },
   {
     "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
-    "address": "0xB1d60d41246B6d679cF89A1e57c46B1387538009"
+    "address": "0x78DA11E049f21563824784126DfbF7B80d9A4B0d"
   },
   {
     "contractName": "CoveredCallLongShortPairFinancialProductLibrary",
-    "address": "0x2CcA11DbbDC3E028D6c293eA5d386eE887071C59"
+    "address": "0x914F9acDfB2231912AA43d30509A5Db27fdeD3CE"
   },
   {
     "contractName": "LinearLongShortPairFinancialProductLibrary",
-    "address": "0x46b541E0fE2E817340A1A88740607329fF5ED279"
+    "address": "0x3EE1EA84ad75913E02B341FE09630bAedca0658D"
   },
   {
     "contractName": "RangeBondLongShortPairFinancialProductLibrary",
-    "address": "0xb8f4f21c9d276fddcece80e7a3e4c5d9f6addd63"
+    "address": "0x09381C827438605B5ea3e760A27666Be3497602C"
   }
 ]
