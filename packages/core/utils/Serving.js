@@ -18,6 +18,4 @@ async function triggerOnRequest(fn) {
   });
 }
 
-module.exports = {
-  triggerOnRequest,
-};
+module.exports = { triggerOnRequest };

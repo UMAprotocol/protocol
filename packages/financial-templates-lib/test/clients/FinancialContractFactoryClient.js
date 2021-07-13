@@ -100,14 +100,8 @@ contract("FinancialContractFactoryClient.js", function (accounts) {
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.address);
 
     // Add collateral to default param
-    defaultCreationParams = {
-      ...defaultCreationParams,
-      collateralAddress: collateral.address,
-    };
-    defaultEmpCreationParams = {
-      ...defaultCreationParams,
-      financialProductLibraryAddress: ZERO_ADDRESS,
-    };
+    defaultCreationParams = { ...defaultCreationParams, collateralAddress: collateral.address };
+    defaultEmpCreationParams = { ...defaultCreationParams, financialProductLibraryAddress: ZERO_ADDRESS };
     defaultPerpCreationParams = {
       ...defaultCreationParams,
       fundingRateIdentifier: padRight(utf8ToHex("Test Funding Rate Identifier"), 64),
@@ -126,10 +120,7 @@ contract("FinancialContractFactoryClient.js", function (accounts) {
 
     // The Event client does not emit any info `level` events.  Therefore no need to test Winston outputs.
     // DummyLogger will not print anything to console as only capture `info` level events.
-    dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+    dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
   });
   it("createdExpiringMultiParty", async function () {
     empClient = new FinancialContractFactoryClient(

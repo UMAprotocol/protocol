@@ -52,10 +52,7 @@ contract("TokenBalanceClient.js", function (accounts) {
       beforeEach(async function () {
         // The BalanceMonitor does not emit any info `level` events.  Therefore no need to test Winston outputs.
         // DummyLogger will not print anything to console as only capture `info` level events.
-        const dummyLogger = winston.createLogger({
-          level: "info",
-          transports: [new winston.transports.Console()],
-        });
+        const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
         client = new TokenBalanceClient(dummyLogger, Token.abi, web3, collateralToken.address, syntheticToken.address);
       });
 

@@ -28,9 +28,7 @@ async function runExport() {
   console.log("Connected to network id", netId);
 
   const gasEstimator = new GasEstimator(
-    winston.createLogger({
-      silent: true,
-    }),
+    winston.createLogger({ silent: true }),
     60, // Time between updates.
     netId
   );
@@ -56,11 +54,7 @@ async function runExport() {
     const identifierBytes = web3.utils.utf8ToHex(identifier);
     const addIdentifierTx = identifierWhitelist.contract.methods.addSupportedIdentifier(identifierBytes).encodeABI();
     console.log("addIdentifierTx", addIdentifierTx);
-    return {
-      to: identifierWhitelist.address,
-      value: 0,
-      data: addIdentifierTx,
-    };
+    return { to: identifierWhitelist.address, value: 0, data: addIdentifierTx };
   });
 
   await gasEstimator.update();
@@ -70,10 +64,7 @@ async function runExport() {
   });
 
   const identifierTable = identifiers.map((identifier) => {
-    return {
-      identifier,
-      hex: web3.utils.utf8ToHex(identifier),
-    };
+    return { identifier, hex: web3.utils.utf8ToHex(identifier) };
   });
 
   console.log(`

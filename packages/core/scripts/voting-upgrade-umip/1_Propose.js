@@ -80,9 +80,7 @@ async function runExport() {
     newVoting.address,
     finder.address,
     proposerWallet, // Pass proposer wallet as the "migrated" address.
-    {
-      from: proposerWallet,
-    }
+    { from: proposerWallet }
   );
 
   console.log("Deployed VotingUpgrader\t", votingUpgrader.address);
@@ -118,26 +116,10 @@ async function runExport() {
   // Send the proposal to governor
   await governor.propose(
     [
-      {
-        to: votingToken.address,
-        value: 0,
-        data: addVotingAsTokenMinterTx,
-      },
-      {
-        to: finder.address,
-        value: 0,
-        data: transferFinderOwnershipTx,
-      },
-      {
-        to: existingVoting.address,
-        value: 0,
-        data: transferExistingVotingOwnershipTx,
-      },
-      {
-        to: votingUpgrader.address,
-        value: 0,
-        data: upgraderExecuteUpgradeTx,
-      },
+      { to: votingToken.address, value: 0, data: addVotingAsTokenMinterTx },
+      { to: finder.address, value: 0, data: transferFinderOwnershipTx },
+      { to: existingVoting.address, value: 0, data: transferExistingVotingOwnershipTx },
+      { to: votingUpgrader.address, value: 0, data: upgraderExecuteUpgradeTx },
     ],
     { from: proposerWallet, gas: 2000000 }
   );

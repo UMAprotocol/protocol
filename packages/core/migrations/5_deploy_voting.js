@@ -55,9 +55,7 @@ module.exports = async function (deployer, network, accounts) {
   await finder.changeImplementationAddress(
     web3.utils.utf8ToHex(interfaceName.IdentifierWhitelist),
     identifierWhitelist.address,
-    {
-      from: keys.deployer,
-    }
+    { from: keys.deployer }
   );
 
   // Corresponds to VotingToken.Roles.Minter.

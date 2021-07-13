@@ -152,6 +152,4 @@ class CoinGeckoPriceFeed extends PriceFeedInterface {
   }
 }
 
-module.exports = {
-  CoinGeckoPriceFeed,
-};
+module.exports = { CoinGeckoPriceFeed };

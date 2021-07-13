@@ -1,6 +1,4 @@
-const browserSafe = {
-  ...require("./browser.js"),
-};
+const browserSafe = { ...require("./browser.js") };
 
 const browserUnsafe = {
   ...require("./src/gckms/ManagedSecretProvider"),
@@ -13,7 +11,4 @@ const browserUnsafe = {
   ...require("./src/UniswapV3Helpers"),
 };
 
-module.exports = {
-  ...browserSafe,
-  ...browserUnsafe,
-};
+module.exports = { ...browserSafe, ...browserUnsafe };

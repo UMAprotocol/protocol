@@ -62,10 +62,7 @@ contract("QuandlPriceFeed.js", function () {
     spy = sinon.spy();
     networker = new NetworkerMock();
     quandlPriceFeed = new QuandlPriceFeed(
-      winston.createLogger({
-        level: "info",
-        transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
-      }),
+      winston.createLogger({ level: "info", transports: [new SpyTransport({ level: "debug" }, { spy: spy })] }),
       web3,
       apiKey,
       datasetCode,
@@ -170,9 +167,7 @@ contract("QuandlPriceFeed.js", function () {
           // Missing data array
         },
       },
-      {
-        error: "test",
-      },
+      { error: "test" },
     ];
 
     // Update should throw errors in all cases.

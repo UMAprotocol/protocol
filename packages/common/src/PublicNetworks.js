@@ -2,11 +2,7 @@
 // stores chainId as a uint8, whose max value is 2^8-1=255. By default, the chainId will simply return the same
 // ID as the network (i.e. Rinkeby will return 4 as the chainId), but some networks with chainID's > 255 need to
 // override the default behavior because their network ID is too high.
-const BRIDGE_CHAIN_ID = {
-  1337: 253,
-  80001: 254,
-  31337: 255,
-};
+const BRIDGE_CHAIN_ID = { 1337: 253, 80001: 254, 31337: 255 };
 const getBridgeChainId = (netId) => {
   return BRIDGE_CHAIN_ID[netId] || netId;
 };
@@ -33,10 +29,7 @@ const PublicNetworks = {
     daiAddress: "0x5592EC0cfb4dbc12D3aB100b257153436a1f0FEa",
     wethAddress: "0xc778417E063141139Fce010982780140Aa0cD5Ab",
   },
-  5: {
-    name: "goerli",
-    etherscan: "https://goerli.etherscan.io/",
-  },
+  5: { name: "goerli", etherscan: "https://goerli.etherscan.io/" },
   42: {
     name: "kovan",
     ethFaucet: "https://faucet.kovan.network/",
@@ -47,18 +40,12 @@ const PublicNetworks = {
   137: {
     name: "polygon-matic",
     etherscan: "https://polygonscan.com/",
-    customTruffleConfig: {
-      confirmations: 2,
-      timeoutBlocks: 200,
-    },
+    customTruffleConfig: { confirmations: 2, timeoutBlocks: 200 },
   },
   80001: {
     name: "polygon-mumbai",
     etherscan: "https://explorer-mumbai.maticvigil.com/",
-    customTruffleConfig: {
-      confirmations: 2,
-      timeoutBlocks: 200,
-    },
+    customTruffleConfig: { confirmations: 2, timeoutBlocks: 200 },
   },
 };
 

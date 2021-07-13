@@ -1,4 +1,1 @@
-module.exports = {
-  ...require("./src/ServerlessHub"),
-  ...require("./src/ServerlessSpoke"),
-};
+module.exports = { ...require("./src/ServerlessHub"), ...require("./src/ServerlessSpoke") };

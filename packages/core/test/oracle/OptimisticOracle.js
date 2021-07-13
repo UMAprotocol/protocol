@@ -679,9 +679,7 @@ describe("OptimisticOracle", function () {
           requestTime,
           "0x"
         )
-        .send({
-          from: disputer,
-        });
+        .send({ from: disputer });
       assert(await didContractThrow(request));
     });
 
@@ -739,9 +737,7 @@ describe("OptimisticOracle", function () {
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
       await optimisticOracle.methods
         .proposePrice(optimisticRequester.options.address, identifier, requestTime, ancillaryData, incorrectPrice)
-        .send({
-          from: proposer,
-        });
+        .send({ from: proposer });
       await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED, ancillaryData);
       assert.equal(await optimisticRequester.methods.ancillaryData().call(), ancillaryData);
       await optimisticRequester.methods.clearState().send({ from: accounts[0] });
@@ -787,9 +783,7 @@ describe("OptimisticOracle", function () {
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
       await optimisticOracle.methods
         .proposePrice(optimisticRequester.options.address, identifier, requestTime, ancillaryData, incorrectPrice)
-        .send({
-          from: proposer,
-        });
+        .send({ from: proposer });
 
       // Disputed.
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: disputer });
@@ -822,9 +816,7 @@ describe("OptimisticOracle", function () {
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
       await optimisticOracle.methods
         .proposePrice(optimisticRequester.options.address, identifier, requestTime, ancillaryData, incorrectPrice)
-        .send({
-          from: proposer,
-        });
+        .send({ from: proposer });
 
       // Disputed.
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: disputer });

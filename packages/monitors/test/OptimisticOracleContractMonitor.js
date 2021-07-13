@@ -112,10 +112,7 @@ contract("OptimisticOracleContractMonitor.js", function (accounts) {
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston
     // logs the correct text based on interactions with the OptimisticOracle contract. Note that only `info` level messages are captured.
     spy = sinon.spy();
-    spyLogger = winston.createLogger({
-      level: "info",
-      transports: [new SpyTransport({ level: "info" }, { spy })],
-    });
+    spyLogger = winston.createLogger({ level: "info", transports: [new SpyTransport({ level: "info" }, { spy })] });
 
     eventClient = new OptimisticOracleEventClient(
       spyLogger,
@@ -127,9 +124,7 @@ contract("OptimisticOracleContractMonitor.js", function (accounts) {
     );
 
     monitorConfig = {};
-    contractProps = {
-      networkId: await web3.eth.net.getId(),
-    };
+    contractProps = { networkId: await web3.eth.net.getId() };
 
     contractMonitor = new OptimisticOracleContractMonitor({
       logger: spyLogger,
@@ -156,9 +151,7 @@ contract("OptimisticOracleContractMonitor.js", function (accounts) {
       requestTime,
       defaultAncillaryData,
       correctPrice,
-      {
-        from: proposer,
-      }
+      { from: proposer }
     );
 
     // Make disputes and resolve them
@@ -168,9 +161,7 @@ contract("OptimisticOracleContractMonitor.js", function (accounts) {
       identifier,
       requestTime,
       defaultAncillaryData,
-      {
-        from: disputer,
-      }
+      { from: disputer }
     );
     await pushPrice(correctPrice);
 
@@ -252,9 +243,7 @@ contract("OptimisticOracleContractMonitor.js", function (accounts) {
       requestTime,
       alternativeAncillaryData,
       correctPrice,
-      {
-        from: proposer,
-      }
+      { from: proposer }
     );
     await eventClient.update();
     await contractMonitor.checkForProposals();
@@ -297,18 +286,14 @@ contract("OptimisticOracleContractMonitor.js", function (accounts) {
       requestTime,
       alternativeAncillaryData,
       correctPrice,
-      {
-        from: proposer,
-      }
+      { from: proposer }
     );
     const newTxn = await optimisticOracle.disputePrice(
       optimisticRequester.address,
       identifier,
       requestTime,
       alternativeAncillaryData,
-      {
-        from: disputer,
-      }
+      { from: disputer }
     );
     await eventClient.update();
     await contractMonitor.checkForDisputes();
@@ -356,9 +341,7 @@ contract("OptimisticOracleContractMonitor.js", function (accounts) {
       requestTime,
       alternativeAncillaryData,
       correctPrice,
-      {
-        from: proposer,
-      }
+      { from: proposer }
     );
     await optimisticOracle.setCurrentTime((Number(newProposalTime) + liveness).toString());
     const newTxn = await optimisticOracle.settle(

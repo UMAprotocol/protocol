@@ -366,9 +366,7 @@ class ContractMonitor {
           await this.votingContract.getPrice(
             this.utf8ToHex(this.financialContractProps.priceIdentifier),
             liquidationTimestamp,
-            {
-              from: this.financialContract.options.address,
-            }
+            { from: this.financialContract.options.address }
           )
         );
       } catch (error) {
@@ -480,6 +478,4 @@ class ContractMonitor {
   }
 }
 
-module.exports = {
-  ContractMonitor,
-};
+module.exports = { ContractMonitor };

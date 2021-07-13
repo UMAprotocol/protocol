@@ -1,9 +1,5 @@
 module.exports = {
-  env: {
-    node: true,
-    mocha: true,
-    es2020: true,
-  },
+  env: { node: true, mocha: true, es2020: true },
   extends: ["plugin:prettier/recommended", "eslint:recommended"],
   plugins: ["prettier", "mocha"],
   rules: {
@@ -15,6 +11,7 @@ module.exports = {
     "spaced-comment": ["error", "always", { exceptions: ["-", "+"] }],
     "mocha/no-exclusive-tests": "error",
     "no-console": 0,
+    "object-curly-newline": ["off", "never"],
   },
   overrides: [
     {
@@ -26,18 +23,9 @@ module.exports = {
         "plugin:@typescript-eslint/eslint-recommended",
         "plugin:@typescript-eslint/recommended",
       ],
-      rules: {
-        "@typescript-eslint/no-var-requires": 0,
-      },
+      rules: { "@typescript-eslint/no-var-requires": 0 },
     },
   ],
-  settings: {
-    "mocha/additionalTestFunctions": ["describeModule"],
-  },
-  globals: {
-    web3: "readonly",
-    artifacts: "readonly",
-    assert: "readonly",
-    contract: "readonly",
-  },
+  settings: { "mocha/additionalTestFunctions": ["describeModule"] },
+  globals: { web3: "readonly", artifacts: "readonly", assert: "readonly", contract: "readonly" },
 };

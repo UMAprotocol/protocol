@@ -74,10 +74,7 @@ contract("UniswapV3PriceFeed", function (accounts) {
 
     // The UniswapV3PriceFeed does not emit any info `level` events.  Therefore no need to test Winston outputs.
     // DummyLogger will not print anything to console as only capture `info` level events.
-    dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+    dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
     uniswapPriceFeed = new UniswapV3PriceFeed(
       dummyLogger,

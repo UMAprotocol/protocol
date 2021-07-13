@@ -269,9 +269,7 @@ contract("CRMonitor.js", function (accounts) {
             financialContractProps,
           });
 
-          await collateralToken.addMember(1, tokenSponsor, {
-            from: tokenSponsor,
-          });
+          await collateralToken.addMember(1, tokenSponsor, { from: tokenSponsor });
 
           //   Bulk mint and approve for all wallets
           for (let i = 1; i < 3; i++) {
@@ -444,12 +442,7 @@ contract("CRMonitor.js", function (accounts) {
             // and `crAlert`.
             const invalidMonitorConfig1 = {
               // Config missing `crAlert`.
-              walletsToMonitor: [
-                {
-                  name: "Sponsor wallet",
-                  address: tokenSponsor,
-                },
-              ],
+              walletsToMonitor: [{ name: "Sponsor wallet", address: tokenSponsor }],
             };
 
             crMonitor = new CRMonitor({
@@ -471,13 +464,7 @@ contract("CRMonitor.js", function (accounts) {
             // `collateralThreshold`, `etherThreshold`. The value of `address` must be of type address.
             const invalidMonitorConfig2 = {
               // Config has an invalid address for the monitored bot.
-              walletsToMonitor: [
-                {
-                  name: "Sponsor wallet",
-                  address: "INVALID_ADDRESS",
-                  crAlert: 1.5,
-                },
-              ],
+              walletsToMonitor: [{ name: "Sponsor wallet", address: "INVALID_ADDRESS", crAlert: 1.5 }],
             };
 
             crMonitor = new CRMonitor({

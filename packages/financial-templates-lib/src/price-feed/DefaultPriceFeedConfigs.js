@@ -78,11 +78,7 @@ const defaultConfigs = {
         computeMean: true,
         medianizedFeeds: [
           { type: "cryptowatch", exchange: "bittrex", pair: "ustusdt" },
-          {
-            type: "uniswap",
-            uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38",
-            twapLength: 2,
-          },
+          { type: "uniswap", uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38", twapLength: 2 },
         ],
       },
       {
@@ -90,11 +86,7 @@ const defaultConfigs = {
         computeMean: true,
         medianizedFeeds: [
           { type: "cryptowatch", exchange: "binance", pair: "busdusdt" },
-          {
-            type: "uniswap",
-            uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd",
-            twapLength: 2,
-          },
+          { type: "uniswap", uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd", twapLength: 2 },
         ],
       },
       {
@@ -149,11 +141,7 @@ const defaultConfigs = {
         computeMean: true,
         medianizedFeeds: [
           { type: "cryptowatch", exchange: "bittrex", pair: "ustusdt" },
-          {
-            type: "uniswap",
-            uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38",
-            twapLength: 2,
-          },
+          { type: "uniswap", uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38", twapLength: 2 },
         ],
       },
       {
@@ -161,11 +149,7 @@ const defaultConfigs = {
         computeMean: true,
         medianizedFeeds: [
           { type: "cryptowatch", exchange: "binance", pair: "busdusdt" },
-          {
-            type: "uniswap",
-            uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd",
-            twapLength: 2,
-          },
+          { type: "uniswap", uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd", twapLength: 2 },
         ],
       },
       {
@@ -213,11 +197,7 @@ const defaultConfigs = {
         computeMean: true,
         medianizedFeeds: [
           { type: "cryptowatch", exchange: "bittrex", pair: "ustusdt" },
-          {
-            type: "uniswap",
-            uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38",
-            twapLength: 2,
-          },
+          { type: "uniswap", uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38", twapLength: 2 },
         ],
       },
       {
@@ -225,11 +205,7 @@ const defaultConfigs = {
         computeMean: true,
         medianizedFeeds: [
           { type: "cryptowatch", exchange: "binance", pair: "busdusdt" },
-          {
-            type: "uniswap",
-            uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd",
-            twapLength: 2,
-          },
+          { type: "uniswap", uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd", twapLength: 2 },
         ],
       },
       {
@@ -283,22 +259,14 @@ const defaultConfigs = {
         type: "medianizer",
         medianizedFeeds: [
           // FRAX/USDC:
-          {
-            type: "uniswap",
-            uniswapAddress: "0x97c4adc5d28a86f9470c70dd91dc6cc2f20d2d4d",
-            twapLength: 2,
-          },
+          { type: "uniswap", uniswapAddress: "0x97c4adc5d28a86f9470c70dd91dc6cc2f20d2d4d", twapLength: 2 },
         ],
       },
       {
         type: "medianizer",
         medianizedFeeds: [
           // ESD/USDC:
-          {
-            type: "uniswap",
-            uniswapAddress: "0x88ff79eb2bc5850f27315415da8685282c7610f9",
-            twapLength: 2,
-          },
+          { type: "uniswap", uniswapAddress: "0x88ff79eb2bc5850f27315415da8685282c7610f9", twapLength: 2 },
         ],
       },
       {
@@ -338,34 +306,16 @@ const defaultConfigs = {
     uniswapAddress: "0x2b5dfb7874f685bea30b7d8426c9643a4bcf5873",
     twapLength: 7200,
   },
-  "GASETH-FEB21": {
-    type: "uniswap",
-    uniswapAddress: "0x4a8a2ea3718964ed0551a3191c30e49ea38a5ade",
-    twapLength: 7200,
-  },
-  "GASETH-MAR21": {
-    type: "uniswap",
-    uniswapAddress: "0x683ea972ffa19b7bad6d6be0440e0a8465dba71c",
-    twapLength: 7200,
-  },
+  "GASETH-FEB21": { type: "uniswap", uniswapAddress: "0x4a8a2ea3718964ed0551a3191c30e49ea38a5ade", twapLength: 7200 },
+  "GASETH-MAR21": { type: "uniswap", uniswapAddress: "0x683ea972ffa19b7bad6d6be0440e0a8465dba71c", twapLength: 7200 },
   "COMPUSDC-APR-MAR28/USDC": {
     type: "uniswap",
     uniswapAddress: "0xd8ecab1d50c3335d01885c17b1ce498105238f24",
     twapLength: 7200,
     poolDecimals: 6,
   },
-  BTCDOM: {
-    type: "domfi",
-    pair: "BTCDOM",
-    minTimeBetweenUpdates: 60,
-    lookback: 7200,
-  },
-  ALTDOM: {
-    type: "domfi",
-    pair: "ALTDOM",
-    minTimeBetweenUpdates: 60,
-    lookback: 7200,
-  },
+  BTCDOM: { type: "domfi", pair: "BTCDOM", minTimeBetweenUpdates: 60, lookback: 7200 },
+  ALTDOM: { type: "domfi", pair: "ALTDOM", minTimeBetweenUpdates: 60, lookback: 7200 },
   AMPLUSD: {
     type: "medianizer",
     lookback: 7200,
@@ -376,28 +326,10 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "bitfinex", pair: "amplusd" },
     ],
   },
-  DEFI_PULSE_TOTAL_TVL: {
-    type: "defipulse",
-    lookback: 604800,
-    minTimeBetweenUpdates: 600,
-    project: "all",
-  },
-  DEFI_PULSE_SUSHI_TVL: {
-    type: "defipulse",
-    lookback: 604800,
-    minTimeBetweenUpdates: 600,
-    project: "SushiSwap",
-  },
-  DEFI_PULSE_UNISWAP_TVL: {
-    type: "defipulse",
-    lookback: 604800,
-    minTimeBetweenUpdates: 600,
-    project: "Uniswap",
-  },
-  SUSHIUNI: {
-    type: "expression",
-    expression: "10 * DEFI_PULSE_SUSHI_TVL / DEFI_PULSE_UNISWAP_TVL",
-  },
+  DEFI_PULSE_TOTAL_TVL: { type: "defipulse", lookback: 604800, minTimeBetweenUpdates: 600, project: "all" },
+  DEFI_PULSE_SUSHI_TVL: { type: "defipulse", lookback: 604800, minTimeBetweenUpdates: 600, project: "SushiSwap" },
+  DEFI_PULSE_UNISWAP_TVL: { type: "defipulse", lookback: 604800, minTimeBetweenUpdates: 600, project: "Uniswap" },
+  SUSHIUNI: { type: "expression", expression: "10 * DEFI_PULSE_SUSHI_TVL / DEFI_PULSE_UNISWAP_TVL" },
   CNYUSD: {
     type: "fallback",
     orderedFeeds: [
@@ -409,30 +341,14 @@ const defaultConfigs = {
         hourlyLookback: 259200,
         ohlcPeriod: 10, // CNYUSD only available at 10 minute granularity
       },
-      {
-        type: "forexdaily",
-        base: "CNY",
-        symbol: "USD",
-        lookback: 259200,
-      },
+      { type: "forexdaily", base: "CNY", symbol: "USD", lookback: 259200 },
     ],
   },
   EURUSD: {
     type: "fallback",
     orderedFeeds: [
-      {
-        type: "tradermade",
-        pair: "EURUSD",
-        minTimeBetweenUpdates: 60,
-        minuteLookback: 7200,
-        hourlyLookback: 259200,
-      },
-      {
-        type: "forexdaily",
-        base: "EUR",
-        symbol: "USD",
-        lookback: 259200,
-      },
+      { type: "tradermade", pair: "EURUSD", minTimeBetweenUpdates: 60, minuteLookback: 7200, hourlyLookback: 259200 },
+      { type: "forexdaily", base: "EUR", symbol: "USD", lookback: 259200 },
     ],
   },
   PHPDAI: {
@@ -441,12 +357,7 @@ const defaultConfigs = {
     lookback: 7200,
     minTimeBetweenUpdates: 60,
     medianizedFeeds: [
-      {
-        type: "coinmarketcap",
-        symbol: "DAI",
-        quoteCurrency: "PHP",
-        invertPrice: true,
-      },
+      { type: "coinmarketcap", symbol: "DAI", quoteCurrency: "PHP", invertPrice: true },
       {
         type: "coingecko",
         contractAddress: "0x6b175474e89094c44da98b954eedeac495271d0f",
@@ -586,20 +497,11 @@ const defaultConfigs = {
       BLP_LP: { type: "vault", address: "0x758A43EE2BFf8230eeb784879CdcFF4828F2544D" },
     },
   },
-  XAUPERL: {
-    type: "expression",
-    expression: "XAUUSD * USDPERL",
-  },
+  XAUPERL: { type: "expression", expression: "XAUUSD * USDPERL" },
   XAUUSD: {
     type: "fallback",
     orderedFeeds: [
-      {
-        type: "tradermade",
-        pair: "XAUUSD",
-        minuteLookback: 7200,
-        hourlyLookback: 259200,
-        minTimeBetweenUpdates: 60,
-      },
+      { type: "tradermade", pair: "XAUUSD", minuteLookback: 7200, hourlyLookback: 259200, minTimeBetweenUpdates: 60 },
     ],
   },
   uSTONKS_APR21: {
@@ -787,11 +689,7 @@ const defaultConfigs = {
         computeMean: true,
         medianizedFeeds: [
           { type: "cryptowatch", exchange: "bittrex", pair: "ustusdt" },
-          {
-            type: "uniswap",
-            uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38",
-            twapLength: 2,
-          },
+          { type: "uniswap", uniswapAddress: "0xc50ef7861153c51d383d9a7d48e6c9467fb90c38", twapLength: 2 },
         ],
       },
       {
@@ -799,11 +697,7 @@ const defaultConfigs = {
         computeMean: true,
         medianizedFeeds: [
           { type: "cryptowatch", exchange: "binance", pair: "busdusdt" },
-          {
-            type: "uniswap",
-            uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd",
-            twapLength: 2,
-          },
+          { type: "uniswap", uniswapAddress: "0xa0abda1f980e03d7eadb78aed8fc1f2dd0fe83dd", twapLength: 2 },
         ],
       },
       {
@@ -947,11 +841,7 @@ const defaultConfigs = {
     minTimeBetweenUpdates: 60,
     twapLength: 3600,
     customFeeds: {
-      ETHXIO: {
-        type: "uniswap",
-        uniswapAddress: "0xe0cc5afc0ff2c76183416fb8d1a29f6799fb2cdf",
-        invertPrice: true,
-      },
+      ETHXIO: { type: "uniswap", uniswapAddress: "0xe0cc5afc0ff2c76183416fb8d1a29f6799fb2cdf", invertPrice: true },
     },
   },
   iFARMUSD: {
@@ -968,16 +858,10 @@ const defaultConfigs = {
         uniswapAddress: "0x56feAccb7f750B997B36A68625C7C596F0B41A58",
         twapLength: 900,
       },
-      FARM_PER_SHARE: {
-        type: "harvestvault",
-        address: "0x1571eD0bed4D987fe2b498DdBaE7DFA19519F651",
-      },
+      FARM_PER_SHARE: { type: "harvestvault", address: "0x1571eD0bed4D987fe2b498DdBaE7DFA19519F651" },
     },
   },
-  USDiFARM: {
-    type: "expression",
-    expression: "1 / iFARMUSD",
-  },
+  USDiFARM: { type: "expression", expression: "1 / iFARMUSD" },
   USDDEXTF: {
     type: "expression",
     expression: "ETHDEXTF * USDETH",
@@ -985,11 +869,7 @@ const defaultConfigs = {
     minTimeBetweenUpdates: 60,
     twapLength: 300,
     customFeeds: {
-      ETHDEXTF: {
-        type: "uniswap",
-        uniswapAddress: "0xa1444ac5b8ac4f20f748558fe4e848087f528e00",
-        invertPrice: true,
-      },
+      ETHDEXTF: { type: "uniswap", uniswapAddress: "0xa1444ac5b8ac4f20f748558fe4e848087f528e00", invertPrice: true },
     },
   },
   DEXTFUSD: {
@@ -999,11 +879,7 @@ const defaultConfigs = {
     minTimeBetweenUpdates: 60,
     twapLength: 300,
     customFeeds: {
-      ETHDEXTF: {
-        type: "uniswap",
-        uniswapAddress: "0xa1444ac5b8ac4f20f748558fe4e848087f528e00",
-        invertPrice: true,
-      },
+      ETHDEXTF: { type: "uniswap", uniswapAddress: "0xa1444ac5b8ac4f20f748558fe4e848087f528e00", invertPrice: true },
     },
   },
   uSTONKS_0921: {

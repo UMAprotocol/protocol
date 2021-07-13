@@ -141,9 +141,7 @@ async function _calculatePayoutsBetweenBlocks(
 
   // create new progress bar to show the status of blocks traversed.
   const progressBar = new cliProgress.SingleBar(
-    {
-      format: "[{bar}] {percentage}% | snapshots traversed: {value}/{total}",
-    },
+    { format: "[{bar}] {percentage}% | snapshots traversed: {value}/{total}" },
     cliProgress.Presets.shades_classic
   );
   progressBar.start(Math.ceil((toBlock - fromBlock) / blocksPerSnapshot), 0);

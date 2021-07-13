@@ -21,67 +21,24 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
   const solcVersion = "0.8.4";
 
   const defaultConfig = {
-    solidity: {
-      version: solcVersion,
-      settings: {
-        optimizer: {
-          enabled: true,
-          runs: 199,
-        },
-      },
-    },
+    solidity: { version: solcVersion, settings: { optimizer: { enabled: true, runs: 199 } } },
     networks: {
-      hardhat: {
-        gas: 11500000,
-        blockGasLimit: 11500000,
-        allowUnlimitedContractSize: false,
-        timeout: 1800000,
-      },
-      localhost: {
-        url: "http://127.0.0.1:8545",
-      },
-      rinkeby: {
-        chainId: 4,
-        url: getNodeUrl("rinkeby", true),
-        accounts: { mnemonic },
-      },
-      kovan: {
-        chainId: 42,
-        url: getNodeUrl("kovan", true),
-        accounts: { mnemonic },
-      },
-      goerli: {
-        chainId: 5,
-        url: getNodeUrl("goerli", true),
-        accounts: { mnemonic },
-      },
-      mumbai: {
-        chainId: 80001,
-        url: getNodeUrl("polygon-mumbai", true),
-        accounts: { mnemonic },
-      },
-      matic: {
-        chainId: 137,
-        url: getNodeUrl("polygon-matic", true),
-        accounts: { mnemonic },
-      },
-      mainnet: {
-        chainId: 1,
-        url: getNodeUrl("mainnet", true),
-        accounts: { mnemonic },
-      },
+      hardhat: { gas: 11500000, blockGasLimit: 11500000, allowUnlimitedContractSize: false, timeout: 1800000 },
+      localhost: { url: "http://127.0.0.1:8545" },
+      rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true), accounts: { mnemonic } },
+      kovan: { chainId: 42, url: getNodeUrl("kovan", true), accounts: { mnemonic } },
+      goerli: { chainId: 5, url: getNodeUrl("goerli", true), accounts: { mnemonic } },
+      mumbai: { chainId: 80001, url: getNodeUrl("polygon-mumbai", true), accounts: { mnemonic } },
+      matic: { chainId: 137, url: getNodeUrl("polygon-matic", true), accounts: { mnemonic } },
+      mainnet: { chainId: 1, url: getNodeUrl("mainnet", true), accounts: { mnemonic } },
     },
-    mocha: {
-      timeout: 1800000,
-    },
+    mocha: { timeout: 1800000 },
     etherscan: {
       // Your API key for Etherscan
       // Obtain one at https://etherscan.io/
       apiKey: process.env.ETHERSCAN_API_KEY,
     },
-    namedAccounts: {
-      deployer: 0,
-    },
+    namedAccounts: { deployer: 0 },
     external: {
       deployments: {
         mainnet: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/mainnet")],

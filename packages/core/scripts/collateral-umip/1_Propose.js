@@ -35,9 +35,7 @@ async function runExport() {
   console.log("Connected to network id", netId);
 
   const gasEstimator = new GasEstimator(
-    winston.createLogger({
-      silent: true,
-    }),
+    winston.createLogger({ silent: true }),
     60, // Time between updates.
     netId
   );
@@ -72,11 +70,7 @@ async function runExport() {
       .setFinalFee(collateral, { rawValue: convertedFeeAmount })
       .encodeABI();
     console.log("addFinalFeeToStoreTx", addFinalFeeToStoreTx);
-    txns.push({
-      to: store.address,
-      value: 0,
-      data: addFinalFeeToStoreTx,
-    });
+    txns.push({ to: store.address, value: 0, data: addFinalFeeToStoreTx });
 
     // The proposal will then add the currency to the whitelist if it isn't already there.
     const whitelist = await AddressWhitelist.deployed();
@@ -84,11 +78,7 @@ async function runExport() {
       console.log("Collateral", collateral, "is not on the whitelist. Adding it.");
       const addCollateralToWhitelistTx = whitelist.contract.methods.addToWhitelist(collateral).encodeABI();
       console.log("addCollateralToWhitelistTx", addCollateralToWhitelistTx);
-      txns.push({
-        to: whitelist.address,
-        value: 0,
-        data: addCollateralToWhitelistTx,
-      });
+      txns.push({ to: whitelist.address, value: 0, data: addCollateralToWhitelistTx });
 
       console.log(`
 
