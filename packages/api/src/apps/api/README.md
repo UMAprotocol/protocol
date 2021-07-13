@@ -174,3 +174,11 @@ Currently only usdc prices are supported.
 
 Returns historical market prices (based on 0x api) for a token address. Slices from a starting timestamp (in seconds) and a count of samples newer than that.
 Currently only usdc prices are supported.
+
+### globalTvlHistoryBetween(start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") => StatData[]
+
+Gets the history of global tvl, the sum of all known EMP total value locked, between start and end timestamps in seconds.
+
+### globalTvlSlice(start = 0, length = 1, currency: CurrencySymbol = "usd") => StatData[]
+
+Gets the history of global tvl, the sum of all known EMP tottal value locked, starting at start in timestamp seconds and counting length samples after that.

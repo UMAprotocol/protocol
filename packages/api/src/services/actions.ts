@@ -125,9 +125,17 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       assert(stats[currency], "Invalid currency type: " + currency);
       return stats[currency].history.tvm.betweenByAddress(empAddress, start, end);
     },
+    async globalTvlHistoryBetween(start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") {
+      assert(stats[currency], "Invalid currency type: " + currency);
+      return stats[currency].history.tvl.betweenByGlobal(start, end);
+    },
     async tvlHistorySlice(empAddress: string, start = 0, length = 1, currency: CurrencySymbol = "usd") {
       assert(stats[currency], "Invalid currency type: " + currency);
       return stats[currency].history.tvl.sliceByAddress(empAddress, start, length);
+    },
+    async globalTvlSlice(start = 0, length = 1, currency: CurrencySymbol = "usd") {
+      assert(stats[currency], "Invalid currency type: " + currency);
+      return stats[currency].history.tvl.sliceByGlobal(start, length);
     },
     async tvmHistorySlice(empAddress: string, start = 0, length = 1, currency: CurrencySymbol = "usd") {
       assert(stats[currency], "Invalid currency type: " + currency);

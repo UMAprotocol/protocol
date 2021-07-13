@@ -140,7 +140,6 @@ async function run(env: ProcessEnv) {
       await services.registry(appState.lastBlock, blockNumber);
       await services.emps(appState.lastBlock, blockNumber);
       await services.erc20s.update();
-      await services.empStats.update();
 
       appState.lastBlockUpdate = blockNumber;
     }
@@ -158,6 +157,7 @@ async function run(env: ProcessEnv) {
     await services.collateralPrices.update();
     await services.syntheticPrices.update();
     await services.marketPrices.update();
+    await services.empStats.update();
   }
 
   // coingeckos prices don't update very fast, so set it on an interval every few minutes
