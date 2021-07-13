@@ -1,6 +1,6 @@
 import assert from "assert";
 import * as uma from "@uma/sdk";
-export { BigNumber, utils } from "ethers";
+import { BigNumber, utils } from "ethers";
 import { Currencies, AppState, PriceSample } from "..";
 import { calcTvl, calcTvm } from "../libs/utils";
 import Queries from "../libs/queries";
@@ -88,6 +88,12 @@ export default (config: Config, appState: Dependencies) => {
   }
   async function updateTvm(emp: uma.tables.emps.Data) {
     assert(emp.tokenCurrency, "TVM Requires token currency for emp: " + emp.address);
+    // collateral amount must be above 1 wei. This was chosen based on looking at contracts with extreme amounts minted, but 1 or less collateral.
+    // example bad contracts: 0xa1005DB6516A097E562ad7506CF90ebb511f5604, 0x39450EB4f7DE57f2a25EeE548Ff392532cFB8759
+    assert(
+      BigNumber.from(emp.totalPositionCollateral || "0").gt("1"),
+      "Skipping tvm calculation, too little collateral in EMP: " + emp.address
+    );
     const priceSample = await getPriceFromTable(emp.address, emp.tokenCurrency);
     const value = await calcTvm(priceSample[1], emp).toString();
     const update = {
