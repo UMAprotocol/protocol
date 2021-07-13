@@ -143,7 +143,7 @@ contract("index.js", function (accounts) {
         constructorParams = await createConstructorParamsForContractVersion(
           contractVersion,
           {
-            convertSynthetic: toWei, // These tests do not use convertSynthetic. Override this with toWei
+            convertDecimals: toWei, // These tests do not use convertSynthetic. Override this with toWei
             finder,
             collateralToken,
             syntheticToken,
