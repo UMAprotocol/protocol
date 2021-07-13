@@ -109,7 +109,7 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     },
     async tvl(addresses: string[] = [], currency: CurrencySymbol = "usd") {
       addresses = addresses ? lodash.castArray(addresses) : [];
-      if (addresses == null || addresses.length == 0) return queries.totalTvl(currency);
+      if (addresses == null || addresses.length == 0) queries.getGlobalTvl(currency);
       return queries.sumTvl(addresses, currency);
     },
     async tvm(addresses: string[] = [], currency: CurrencySymbol = "usd") {
