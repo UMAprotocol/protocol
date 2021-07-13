@@ -15,6 +15,10 @@ const {
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
+const hre = require("hardhat");
+const { getContract } = hre;
+const { assert } = require("chai");
+
 // Helper clients and custom winston transport module to monitor winston log outputs
 const {
   FinancialContractClient,
@@ -99,12 +103,12 @@ const Convert = (decimals) => (number) => (number ? parseFixed(number.toString()
 
 contract("Liquidator.js", function (accounts) {
   // Implementation uses the 0th address by default as the bot runs using the default truffle wallet accounts[0]
-  const liquidatorBot = accounts[0];
-  const sponsor1 = accounts[1];
-  const sponsor2 = accounts[2];
-  const sponsor3 = accounts[3];
-  const contractCreator = accounts[4];
-  const liquidityProvider = accounts[5];
+  let liquidatorBot;
+  let sponsor1;
+  let sponsor2;
+  let sponsor3;
+  let contractCreator;
+  let liquidityProvider;
 
   TESTED_CONTRACT_VERSIONS.forEach(function (contractVersion) {
     // Store the contractVersion.contractVersion, type and version being tested
@@ -112,22 +116,30 @@ contract("Liquidator.js", function (accounts) {
 
     // Import the tested versions of contracts. note that financialContract is either an ExpiringMultiParty or a
     // Perpetual depending on the current iteration version.
-    const FinancialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
-    const Finder = getTruffleContract("Finder", web3, contractVersion.contractVersion);
-    const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, contractVersion.contractVersion);
-    const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, contractVersion.contractVersion);
-    const MockOracle = getTruffleContract("MockOracle", web3, contractVersion.contractVersion);
-    const Token = getTruffleContract("ExpandedERC20", web3, contractVersion.contractVersion);
-    const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
-    const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
-    const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
-    const ConfigStore = getTruffleContract("ConfigStore", web3);
-    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
-    const MulticallMock = getTruffleContract("MulticallMock", web3);
+    const FinancialContract = getContract(contractVersion.contractType, web3, contractVersion.contractVersion);
+    const Finder = getContract("Finder", web3, contractVersion.contractVersion);
+    const IdentifierWhitelist = getContract("IdentifierWhitelist", web3, contractVersion.contractVersion);
+    const AddressWhitelist = getContract("AddressWhitelist", web3, contractVersion.contractVersion);
+    const MockOracle = getContract("MockOracle", web3, contractVersion.contractVersion);
+    const Token = getContract("ExpandedERC20", web3, contractVersion.contractVersion);
+    const SyntheticToken = getContract("SyntheticToken", web3, contractVersion.contractVersion);
+    const Timer = getContract("Timer", web3, contractVersion.contractVersion);
+    const Store = getContract("Store", web3, contractVersion.contractVersion);
+    const ConfigStore = getContract("ConfigStore", web3);
+    const OptimisticOracle = getContract("OptimisticOracle", web3);
+    const MulticallMock = getContract("MulticallMock", web3);
 
     for (let testConfig of configs) {
       describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
         before(async function () {
+          const accounts = await web3.eth.getAccounts();
+          let liquidatorBot = accounts[0];
+          let sponsor1 = accounts[1];
+          let sponsor2 = accounts[2];
+          let sponsor3 = accounts[3];
+          let contractCreator = accounts[4];
+          let liquidityProvider = accounts[5];
+
           identifier = `${testConfig.tokenName}TEST`;
           fundingRateIdentifier = `${testConfig.tokenName}_FUNDING_IDENTIFIER`;
           convertCollateral = Convert(testConfig.collateralDecimals);
@@ -136,14 +148,9 @@ contract("Liquidator.js", function (accounts) {
           collateralToken = await Token.new(
             testConfig.tokenSymbol + " Token", // Construct the token name.
             testConfig.tokenSymbol,
-            testConfig.collateralDecimals,
-            {
-              from: contractCreator,
-            }
-          );
-          await collateralToken.addMember(1, contractCreator, {
-            from: contractCreator,
-          });
+            testConfig.collateralDecimals
+          ).send({ from: contractCreator });
+          await collateralToken.addMember(1, contractCreator, { from: contractCreator });
 
           // Seed the sponsors accounts.
           await collateralToken.mint(sponsor1, convertCollateral("100000"), { from: contractCreator });
@@ -155,12 +162,12 @@ contract("Liquidator.js", function (accounts) {
           await collateralToken.mint(liquidatorBot, convertCollateral("100000"), { from: contractCreator });
 
           // Create identifier whitelist and register the price tracking ticker with it.
-          identifierWhitelist = await IdentifierWhitelist.new();
+          identifierWhitelist = await IdentifierWhitelist.new().send({ from: contractCreator });
           await identifierWhitelist.addSupportedIdentifier(utf8ToHex(identifier));
 
-          finder = await Finder.new();
-          timer = await Timer.new();
-          store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
+          finder = await Finder.new().send({ from: contractCreator });
+          timer = await Timer.new().send({ from: contractCreator });
+          store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address).send({ from: contractCreator });
           await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
 
           await finder.changeImplementationAddress(
@@ -168,25 +175,27 @@ contract("Liquidator.js", function (accounts) {
             identifierWhitelist.address
           );
 
-          collateralWhitelist = await AddressWhitelist.new();
+          collateralWhitelist = await AddressWhitelist.new().send({ from: contractCreator });
           await finder.changeImplementationAddress(
             utf8ToHex(interfaceName.CollateralWhitelist),
             collateralWhitelist.address
           );
           await collateralWhitelist.addToWhitelist(collateralToken.address);
 
-          multicall = await MulticallMock.new();
+          multicall = await MulticallMock.new().send({ from: contractCreator });
         });
 
         beforeEach(async function () {
           await timer.setCurrentTime(startTime - 1);
-          mockOracle = await MockOracle.new(finder.address, timer.address, {
-            from: contractCreator,
-          });
+          mockOracle = await MockOracle.new(finder.address, timer.address).send({ from: contractCreator });
           await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
 
           // Create a new synthetic token
-          syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", testConfig.syntheticDecimals);
+          syntheticToken = await SyntheticToken.new(
+            "Test Synthetic Token",
+            "SYNTH",
+            testConfig.syntheticDecimals
+          ).send({ from: contractCreator });
 
           // If we are testing a perpetual then we need to also deploy a config store, an optimistic oracle and set the funding rate identifier.
           if (contractVersion.contractType == "Perpetual") {
@@ -200,10 +209,12 @@ contract("Liquidator.js", function (accounts) {
                 proposalTimePastLimit: 0,
               },
               timer.address
-            );
+            ).send({ from: contractCreator });
 
             await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier)));
-            optimisticOracle = await OptimisticOracle.new(7200, finder.address, timer.address);
+            optimisticOracle = await OptimisticOracle.new(7200, finder.address, timer.address).send({
+              from: contractCreator,
+            });
             await finder.changeImplementationAddress(
               utf8ToHex(interfaceName.OptimisticOracle),
               optimisticOracle.address
@@ -223,7 +234,7 @@ contract("Liquidator.js", function (accounts) {
           });
 
           // Deploy a new expiring multi party OR perpetual, depending on the test version.
-          financialContract = await FinancialContract.new(constructorParams);
+          financialContract = await FinancialContract.new(constructorParams).send({ from: contractCreator });
           await syntheticToken.addMinter(financialContract.address);
           await syntheticToken.addBurner(financialContract.address);
 
