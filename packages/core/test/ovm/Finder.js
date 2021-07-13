@@ -1,5 +1,6 @@
 /* External Imports */
 const { web3, artifacts } = require("hardhat");
+const { assert } = require("chai");
 const { didContractThrow } = require("@uma/common");
 const { utf8ToHex, hexToUtf8, toChecksumAddress, randomHex, padRight } = web3.utils;
 const Finder = artifacts.readArtifactSync("Finder");
