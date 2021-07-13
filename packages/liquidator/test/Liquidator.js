@@ -347,7 +347,7 @@ contract("Liquidator.js", function (accounts) {
             assert.equal((await financialContract.getCollateral(sponsor2)).rawValue, convertDecimals("150"));
 
             // Liquidator throws an error if the price feed returns an invalid value.
-            priceFeedMock.setCurrentPrice(toWei(null));
+            priceFeedMock.setCurrentPrice(null);
             await liquidator.update();
             let errorThrown = false;
             try {
@@ -619,7 +619,7 @@ contract("Liquidator.js", function (accounts) {
             assert.equal(spy.getCall(-1).lastArg.liquidationResult.settlementPrice, toWei("1.3"));
 
             // Check that the log contains the dispute rewards:
-            if (liquidator.isLegacyEmpVersion) {
+            if (liquidator.EmpVersion) {
               assert.isTrue(toBN(spy.getCall(-1).lastArg.liquidationResult.withdrawalAmount).gt(0));
             } else {
               assert.isTrue(toBN(spy.getCall(-1).lastArg.liquidationResult.paidToLiquidator).gt(0));
