@@ -133,7 +133,7 @@ class Liquidator {
       contractVersion: {
         value: undefined,
         isValid: (x) => {
-          return x === "1.2.0" || x === "1.2.1" || x === "1.2.2" || x === "2.0.1";
+          return x === "2.0.1";
         },
       },
       // Start and end block define a window used to filter for contract events.
@@ -156,11 +156,6 @@ class Liquidator {
     // Validate and set config settings to class state.
     const configWithDefaults = createObjectFromDefaultProps(liquidatorConfig, defaultConfig);
     Object.assign(this, configWithDefaults);
-
-    // These EMP versions have different "LiquidationWithdrawn" event parameters that we need to handle.
-    this.isLegacyEmpVersion = Boolean(
-      this.contractVersion === "1.2.0" || this.contractVersion === "1.2.1" || this.contractVersion === "1.2.2"
-    );
 
     // generalize log emitter, use it to attach default data to all logs
     const log = (severity = "info", data = {}) => {
@@ -379,22 +374,6 @@ class Liquidator {
       return;
     }
 
-    // In legacy versions of the EMP, withdrawing needs to be done by a party involved in the liquidation (i.e liquidator,
-    // sponsor or disputer). As the liquidator is the DSProxy, we would require the ability to send the withdrawal tx
-    // directly from the DSProxy to facilitate this. This functionality is not implemented as almost all legacy EMPs expired.
-    if (
-      this.proxyTransactionWrapper?.useDsProxyToLiquidate &&
-      this.isLegacyEmpVersion &&
-      potentialWithdrawableLiquidations.length > 0
-    ) {
-      this.logger.warn({
-        at: "Liquidator",
-        message: "Attempting to withdraw liquidation from a legacy EMP🙈",
-        details: "This is not supported on legacy with a DSProxy! Please manually withdraw the liquidation",
-      });
-      return;
-    }
-
     for (const liquidation of potentialWithdrawableLiquidations) {
       this.logger.debug({
         at: "Liquidator",
@@ -425,14 +404,8 @@ class Liquidator {
         continue;
       }
 
-      // In contract version 1.2.2 and below this function returns one value: the amount withdrawn by the function caller.
-      // In later versions it returns an object containing all payouts.
-      const amountWithdrawn = this.isLegacyEmpVersion
-        ? withdrawalCallResponse.rawValue.toString()
-        : withdrawalCallResponse.payToLiquidator.rawValue.toString();
-
-      // In contract version 1.2.2 and below this function returns one value: the amount withdrawn by the function caller.
-      // In later versions it returns an object containing all payouts.
+      // Returns an object containing all payouts.
+      const amountWithdrawn = withdrawalCallResponse.payToLiquidator.rawValue.toString();
       this.logger.debug({
         at: "Liquidator",
         message: "Withdrawing liquidation",
@@ -460,15 +433,10 @@ class Liquidator {
             ],
         };
 
-        // In contract version 1.2.2 and below this event returns one value, `withdrawalAmount`: the amount withdrawn by
-        // the function caller. In later versions it returns an object containing all payouts.
-        if (this.isLegacyEmpVersion) {
-          logResult.withdrawalAmount = receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount;
-        } else {
-          logResult.paidToLiquidator = receipt.events.LiquidationWithdrawn.returnValues.paidToLiquidator;
-          logResult.paidToDisputer = receipt.events.LiquidationWithdrawn.returnValues.paidToDisputer;
-          logResult.paidToSponsor = receipt.events.LiquidationWithdrawn.returnValues.paidToSponsor;
-        }
+        // Returns an object containing all payouts.
+        logResult.paidToLiquidator = receipt.events.LiquidationWithdrawn.returnValues.paidToLiquidator;
+        logResult.paidToDisputer = receipt.events.LiquidationWithdrawn.returnValues.paidToDisputer;
+        logResult.paidToSponsor = receipt.events.LiquidationWithdrawn.returnValues.paidToSponsor;
 
         this.logger.info({
           at: "Liquidator",
