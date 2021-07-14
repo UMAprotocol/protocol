@@ -49,10 +49,7 @@ const DeserializeCsvStream = (props) => (stream) => {
 // each class may serialize differently
 // Blocks serialized as a csv to keep filesize small and short
 function Blocks() {
-  return {
-    serialize: SerializeCsvStream(["timestamp.value", "number"]),
-    deserialize: DeserializeCsvStream(),
-  };
+  return { serialize: SerializeCsvStream(["timestamp.value", "number"]), deserialize: DeserializeCsvStream() };
 }
 // These cant be serialized to csvs unfortunatley due to datastructure incompatibility
 function Logs() {
@@ -88,10 +85,7 @@ function Coingecko() {
       })
       .map(JSON.parse);
   }
-  return {
-    serialize,
-    deserialize,
-  };
+  return { serialize, deserialize };
 }
 function SynthPrices() {
   function serialize(charts) {
@@ -104,10 +98,7 @@ function SynthPrices() {
       })
       .map(JSON.parse);
   }
-  return {
-    serialize,
-    deserialize,
-  };
+  return { serialize, deserialize };
 }
 
 function Dataset(basePath, { queries, coingecko, synthPrices }) {
@@ -214,14 +205,7 @@ function Dataset(basePath, { queries, coingecko, synthPrices }) {
   return {
     saveDevMining,
     saveDappMining,
-    utils: {
-      blocks,
-      logs,
-      allLogs,
-      transactions,
-      saveCoingeckoPrices,
-      saveSynthPrices,
-    },
+    utils: { blocks, logs, allLogs, transactions, saveCoingeckoPrices, saveSynthPrices },
   };
 }
 
@@ -243,9 +227,7 @@ function MockSynthPrices(basePath) {
         });
       });
   }
-  return {
-    getHistoricSynthPrices,
-  };
+  return { getHistoricSynthPrices };
 }
 // Mock coingecko
 function MockCoingecko(basePath) {
@@ -263,9 +245,7 @@ function MockCoingecko(basePath) {
         });
       });
   }
-  return {
-    getHistoricContractPrices,
-  };
+  return { getHistoricContractPrices };
 }
 // Mock big query queries
 function MockQueries(basePath) {
@@ -325,22 +305,7 @@ function MockQueries(basePath) {
 
 module.exports = {
   Dataset,
-  mocks: {
-    Queries: MockQueries,
-    Coingecko: MockCoingecko,
-    SynthPrices: MockSynthPrices,
-  },
-  serializers: {
-    Blocks,
-    Transactions,
-    Logs,
-    Coingecko,
-    SynthPrices,
-  },
-  utils: {
-    SerializeCsvStream,
-    DeserializeCsvStream,
-    SerializeObject,
-    DeserializeRow,
-  },
+  mocks: { Queries: MockQueries, Coingecko: MockCoingecko, SynthPrices: MockSynthPrices },
+  serializers: { Blocks, Transactions, Logs, Coingecko, SynthPrices },
+  utils: { SerializeCsvStream, DeserializeCsvStream, SerializeObject, DeserializeRow },
 };

@@ -408,10 +408,7 @@ class TraderMadePriceFeed extends PriceFeedInterface {
           try {
             await this.updateHourly(lastUpdateTime);
           } catch (hourlyError) {
-            this.logger.debug({
-              at: "TraderMade_PriceFeed#update",
-              message: "fallback to updateHourly also failed",
-            });
+            this.logger.debug({ at: "TraderMade_PriceFeed#update", message: "fallback to updateHourly also failed" });
             throw [minuteError, hourlyError];
           }
         } else {
@@ -439,6 +436,4 @@ class TraderMadePriceFeed extends PriceFeedInterface {
   }
 }
 
-module.exports = {
-  TraderMadePriceFeed,
-};
+module.exports = { TraderMadePriceFeed };

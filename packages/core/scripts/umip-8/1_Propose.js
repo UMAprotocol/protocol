@@ -36,16 +36,7 @@ async function runExport() {
   console.log("addWhitelistToFinderTx", addWhitelistToFinderTx);
 
   // Send the proposal
-  await governor.propose(
-    [
-      {
-        to: finder.address,
-        value: 0,
-        data: addWhitelistToFinderTx,
-      },
-    ],
-    { from: proposerWallet }
-  );
+  await governor.propose([{ to: finder.address, value: 0, data: addWhitelistToFinderTx }], { from: proposerWallet });
 
   console.log(`
 

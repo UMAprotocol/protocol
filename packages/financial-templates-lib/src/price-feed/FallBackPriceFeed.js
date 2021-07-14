@@ -105,6 +105,4 @@ class FallBackPriceFeed extends PriceFeedInterface {
   }
 }
 
-module.exports = {
-  FallBackPriceFeed,
-};
+module.exports = { FallBackPriceFeed };

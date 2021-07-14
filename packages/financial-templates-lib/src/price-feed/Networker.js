@@ -23,6 +23,4 @@ class Networker {
   }
 }
 
-module.exports = {
-  Networker,
-};
+module.exports = { Networker };

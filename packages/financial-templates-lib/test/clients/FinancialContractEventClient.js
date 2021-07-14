@@ -104,9 +104,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 testConfig.tokenSymbol + " Token", // Construct the token name.,
                 testConfig.tokenSymbol,
                 tokenConfig.collateralDecimals,
-                {
-                  from: tokenSponsor,
-                }
+                { from: tokenSponsor }
               );
               await collateralToken.addMember(1, tokenSponsor, { from: tokenSponsor });
               await collateralToken.mint(liquidator, convertDecimals("100000"), { from: tokenSponsor });
@@ -149,9 +147,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 "Test Synthetic Token",
                 "SYNTH",
                 tokenConfig.syntheticDecimals,
-                {
-                  from: tokenSponsor,
-                }
+                { from: tokenSponsor }
               );
 
               // If we are testing a perpetual then we need to also deploy a config store, an optimistic oracle and set the funding rate identifier.
@@ -202,10 +198,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
               await syntheticToken.addBurner(financialContract.address);
 
               // The FinancialContractEventClient does not emit any info level events. Therefore no need to test Winston outputs.
-              dummyLogger = winston.createLogger({
-                level: "info",
-                transports: [new winston.transports.Console()],
-              });
+              dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
               // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.
               await financialContract.setCurrentTime(startTime);
@@ -221,23 +214,13 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 contractVersion.contractType,
                 contractVersion.contractVersion
               );
-              await collateralToken.approve(financialContract.address, convertDecimals("1000000"), {
-                from: sponsor1,
-              });
-              await collateralToken.approve(financialContract.address, convertDecimals("1000000"), {
-                from: sponsor2,
-              });
-              await collateralToken.approve(financialContract.address, convertDecimals("1000000"), {
-                from: sponsor3,
-              });
+              await collateralToken.approve(financialContract.address, convertDecimals("1000000"), { from: sponsor1 });
+              await collateralToken.approve(financialContract.address, convertDecimals("1000000"), { from: sponsor2 });
+              await collateralToken.approve(financialContract.address, convertDecimals("1000000"), { from: sponsor3 });
 
               syntheticToken = await Token.at(await financialContract.tokenCurrency());
-              await syntheticToken.approve(financialContract.address, convertDecimals("100000000"), {
-                from: sponsor1,
-              });
-              await syntheticToken.approve(financialContract.address, convertDecimals("100000000"), {
-                from: sponsor2,
-              });
+              await syntheticToken.approve(financialContract.address, convertDecimals("100000000"), { from: sponsor1 });
+              await syntheticToken.approve(financialContract.address, convertDecimals("100000000"), { from: sponsor2 });
 
               // Create two positions
               newSponsorTxObj1 = await financialContract.create(
@@ -709,9 +692,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 );
 
                 // Dispute the position from the second sponsor
-                await financialContract.dispute("0", sponsor1, {
-                  from: sponsor2,
-                });
+                await financialContract.dispute("0", sponsor1, { from: sponsor2 });
 
                 // Advance time and settle
                 const timeAfterLiquidationLiveness = liquidationTime + 10;
@@ -766,9 +747,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 );
 
                 // Dispute the position from the second sponsor
-                await financialContract.dispute("0", sponsor1, {
-                  from: sponsor2,
-                });
+                await financialContract.dispute("0", sponsor1, { from: sponsor2 });
 
                 // Advance time and settle
                 const timeAfterLiquidationLiveness = liquidationTime + 10;
@@ -824,10 +803,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                   // and publish it.
                   const proposalExpiry = proposalTime + optimisticOracleLiveness;
                   await timer.setCurrentTime(proposalExpiry);
-                  return {
-                    txObject: await financialContract.applyFundingRate(),
-                    proposalTime,
-                  };
+                  return { txObject: await financialContract.applyFundingRate(), proposalTime };
                 };
                 const { txObject, proposalTime } = await proposeAndPublishNewRate(toWei("-0.00001"));
 

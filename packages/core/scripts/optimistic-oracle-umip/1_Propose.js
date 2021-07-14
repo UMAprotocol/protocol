@@ -72,26 +72,10 @@ async function runExport() {
   // Send the proposal
   await governor.propose(
     [
-      {
-        to: registry.address,
-        value: 0,
-        data: addGovernorToRegistryTx,
-      },
-      {
-        to: registry.address,
-        value: 0,
-        data: registerOptimisticOracleTx,
-      },
-      {
-        to: registry.address,
-        value: 0,
-        data: removeGovernorFromRegistryTx,
-      },
-      {
-        to: finder.address,
-        value: 0,
-        data: addOptimisticOracleToFinderTx,
-      },
+      { to: registry.address, value: 0, data: addGovernorToRegistryTx },
+      { to: registry.address, value: 0, data: registerOptimisticOracleTx },
+      { to: registry.address, value: 0, data: removeGovernorFromRegistryTx },
+      { to: finder.address, value: 0, data: addOptimisticOracleToFinderTx },
     ],
     { from: proposerWallet, gas: 2000000 }
   );

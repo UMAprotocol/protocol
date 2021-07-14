@@ -15,14 +15,8 @@ const setAllowance = async (web3, gasEstimator, ownerAddress, spenderAddress, cu
       transaction: approveTransaction,
       transactionConfig: { gasPrice: gasEstimator.getCurrentFastPrice(), from: ownerAddress },
     });
-    return {
-      tx: receipt,
-      spenderAddress,
-      currencyAddress,
-    };
+    return { tx: receipt, spenderAddress, currencyAddress };
   }
 };
 
-module.exports = {
-  setAllowance,
-};
+module.exports = { setAllowance };

@@ -39,19 +39,12 @@ contract("CryptoWatchPriceFeed.js", function () {
         ],
       },
     },
-    {
-      result: {
-        price: 1.5,
-      },
-    },
+    { result: { price: 1.5 } },
   ];
 
   beforeEach(async function () {
     networker = new NetworkerMock();
-    dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+    dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
     cryptoWatchPriceFeed = new CryptoWatchPriceFeed(
       dummyLogger,
       web3,
@@ -212,11 +205,7 @@ contract("CryptoWatchPriceFeed.js", function () {
           ],
         },
       },
-      {
-        result: {
-          price: 1.5,
-        },
-      },
+      { result: { price: 1.5 } },
     ];
 
     await cryptoWatchPriceFeed.update();
@@ -419,11 +408,7 @@ contract("CryptoWatchPriceFeed.js", function () {
           60: [], // Valid response, just no data points.
         },
       },
-      {
-        result: {
-          error: "test",
-        },
-      },
+      { result: { error: "test" } },
     ];
 
     // Update should throw errors in both cases.
@@ -436,16 +421,7 @@ contract("CryptoWatchPriceFeed.js", function () {
     assert.isTrue(await invertedCryptoWatchPriceFeed.getHistoricalPrice(1588376515).catch(() => true));
 
     // Bad historical ohlc response.
-    networker.getJsonReturns = [
-      {
-        error: "test",
-      },
-      {
-        result: {
-          price: 15.1,
-        },
-      },
-    ];
+    networker.getJsonReturns = [{ error: "test" }, { result: { price: 15.1 } }];
 
     assert.isTrue(await cryptoWatchPriceFeed.update().catch(() => true), "Update didn't throw");
 
@@ -453,16 +429,7 @@ contract("CryptoWatchPriceFeed.js", function () {
     assert.isTrue(await cryptoWatchPriceFeed.getHistoricalPrice(1588376515).catch(() => true));
 
     // Inverted price feed returns undefined for prices equal to 0 since it cannot divide by 0
-    networker.getJsonReturns = [
-      {
-        error: "test",
-      },
-      {
-        result: {
-          price: 0,
-        },
-      },
-    ];
+    networker.getJsonReturns = [{ error: "test" }, { result: { price: 0 } }];
 
     assert.isTrue(await invertedCryptoWatchPriceFeed.update().catch(() => true), "Update didn't throw");
 

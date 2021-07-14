@@ -235,6 +235,4 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
   }
 }
 
-module.exports = {
-  BasketSpreadPriceFeed,
-};
+module.exports = { BasketSpreadPriceFeed };

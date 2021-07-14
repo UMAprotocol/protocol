@@ -109,9 +109,7 @@ async function _calculatePayoutsBetweenBlocks(
 
   // create new progress bar to show the status of blocks traversed.
   const progressBar = new cliProgress.SingleBar(
-    {
-      format: "[{bar}] {percentage}% | snapshots traversed: {value}/{total}",
-    },
+    { format: "[{bar}] {percentage}% | snapshots traversed: {value}/{total}" },
     cliProgress.Presets.shades_classic
   );
   progressBar.start(snapshotsToTake, 0);
@@ -198,10 +196,7 @@ async function _fetchBalancerPoolInfo(poolAddress) {
 
   const response = await fetch(SUBGRAPH_URL, {
     method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json",
-    },
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
     body: JSON.stringify({ query }),
   });
   const data = (await response.json()).data;

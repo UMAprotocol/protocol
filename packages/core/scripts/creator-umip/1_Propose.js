@@ -21,9 +21,7 @@ async function runExport() {
   console.log("Connected to network id", netId);
 
   const gasEstimator = new GasEstimator(
-    winston.createLogger({
-      silent: true,
-    }),
+    winston.createLogger({ silent: true }),
     60, // Time between updates.
     netId
   );
@@ -39,16 +37,10 @@ async function runExport() {
   // Send the proposal
   const governor = await Governor.deployed();
   await gasEstimator.update();
-  await governor.propose(
-    [
-      {
-        to: registry.address,
-        value: 0,
-        data: addCreatorToRegistryTx,
-      },
-    ],
-    { from: proposerWallet, gasPrice: gasEstimator.getCurrentFastPrice() }
-  );
+  await governor.propose([{ to: registry.address, value: 0, data: addCreatorToRegistryTx }], {
+    from: proposerWallet,
+    gasPrice: gasEstimator.getCurrentFastPrice(),
+  });
 
   console.log(`
 

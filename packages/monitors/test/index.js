@@ -83,9 +83,7 @@ contract("index.js", function (accounts) {
         );
         await identifierWhitelist.addSupportedIdentifier(utf8ToHex("TEST_IDENTIFIER"));
 
-        mockOracle = await MockOracle.new(finder.address, timer.address, {
-          from: contractCreator,
-        });
+        mockOracle = await MockOracle.new(finder.address, timer.address, { from: contractCreator });
         await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
         // Set the address in the global name space to enable disputer's index.js to access it.
         addGlobalHardhatTestingAddress("Voting", mockOracle.address);
@@ -148,11 +146,7 @@ contract("index.js", function (accounts) {
         await syntheticToken.addBurner(financialContract.address);
 
         defaultMonitorConfig = {};
-        defaultTokenPricefeedConfig = {
-          type: "test",
-          currentPrice: "1",
-          historicalPrice: "1",
-        };
+        defaultTokenPricefeedConfig = { type: "test", currentPrice: "1", historicalPrice: "1" };
         defaultMedianizerPricefeedConfig = {};
       });
 
@@ -374,9 +368,7 @@ contract("index.js", function (accounts) {
         }
         // Iterate over all log events and count the number of
         // execution loop errors.
-        let reTryCounts = {
-          executionLoopErrors: 0,
-        };
+        let reTryCounts = { executionLoopErrors: 0 };
         for (let i = 0; i < spy.callCount; i++) {
           if (spyLogIncludes(spy, i, "An error was thrown in the execution loop")) reTryCounts.executionLoopErrors += 1;
         }

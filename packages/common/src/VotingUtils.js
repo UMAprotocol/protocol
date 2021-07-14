@@ -23,17 +23,9 @@ const argv = require("minimist")(process.argv.slice());
  */
 const getVotingRoles = (account, voting, designatedVoting) => {
   if (designatedVoting) {
-    return {
-      votingContract: designatedVoting,
-      votingAccount: designatedVoting.address,
-      signingAddress: account,
-    };
+    return { votingContract: designatedVoting, votingAccount: designatedVoting.address, signingAddress: account };
   } else {
-    return {
-      votingContract: voting,
-      votingAccount: account,
-      signingAddress: account,
-    };
+    return { votingContract: voting, votingAccount: account, signingAddress: account };
   }
 };
 
@@ -69,14 +61,7 @@ const constructCommitment = async (request, roundId, web3, price, signingAccount
   }
   const encryptedVote = await encryptMessage(publicKey, JSON.stringify(vote));
 
-  return {
-    identifier: request.identifier,
-    time: request.time,
-    hash,
-    encryptedVote,
-    price: priceWei,
-    salt,
-  };
+  return { identifier: request.identifier, time: request.time, hash, encryptedVote, price: priceWei, salt };
 };
 
 /**
@@ -100,12 +85,7 @@ const constructReveal = async (request, roundId, web3, signingAccount, votingCon
   }
   const vote = JSON.parse(await decryptMessage(privateKey, encryptedCommit));
 
-  return {
-    identifier: request.identifier,
-    time: request.time,
-    price: vote.price.toString(),
-    salt: vote.salt,
-  };
+  return { identifier: request.identifier, time: request.time, price: vote.price.toString(), salt: vote.salt };
 };
 
 // Optimally batch together vote commits in the fewest batches possible,
@@ -140,10 +120,7 @@ const batchCommitVotes = async (newCommitments, votingContract, account) => {
     batches += 1;
   }
 
-  return {
-    successes,
-    batches,
-  };
+  return { successes, batches };
 };
 
 // Optimally batch together vote reveals in the fewest batches possible,
@@ -168,10 +145,7 @@ const batchRevealVotes = async (newReveals, votingContract, account) => {
     batches += 1;
   }
 
-  return {
-    successes,
-    batches,
-  };
+  return { successes, batches };
 };
 
 // Optimally batch together reward retrievals in the fewest batches possible,
@@ -184,10 +158,7 @@ const batchRetrieveRewards = async (requests, roundId, votingContract, votingAcc
     const maxBatchSize = requests.slice(i, Math.min(i + BATCH_MAX_RETRIEVALS, requests.length));
     const pendingRequests = [];
     for (let j = 0; j < maxBatchSize.length; j++) {
-      pendingRequests.push({
-        identifier: maxBatchSize[j].identifier,
-        time: maxBatchSize[j].time,
-      });
+      pendingRequests.push({ identifier: maxBatchSize[j].identifier, time: maxBatchSize[j].time });
     }
 
     // Always call `retrieveRewards`, even if there's only one reward. Difference in gas cost is negligible.
@@ -205,10 +176,7 @@ const batchRetrieveRewards = async (requests, roundId, votingContract, votingAcc
     batches += 1;
   }
 
-  return {
-    successes,
-    batches,
-  };
+  return { successes, batches };
 };
 
 // Get the latest event matching the provided parameters. Assumes that all events from Voting.sol have indexed

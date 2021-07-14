@@ -112,16 +112,7 @@ async function createTestEnvironment() {
   emp = await ExpiringMultiParty.new(constructorParams, { from: contractDeployer });
   synthetic = await SyntheticToken.at(await emp.tokenCurrency());
 
-  return {
-    collateral,
-    synthetic,
-    emp,
-    store,
-    mockOracle,
-    sponsor,
-    contractDeployer,
-    other,
-  };
+  return { collateral, synthetic, emp, store, mockOracle, sponsor, contractDeployer, other };
 }
 
 /**
@@ -728,11 +719,7 @@ async function runExport() {
   /**
    * @notice TEST PARAMETERS
    */
-  testConfig = {
-    tokensOutstanding: toWei("9"),
-    sponsorCollateralAmount: toWei("9"),
-    amountToRedeem: toWei("8"),
-  };
+  testConfig = { tokensOutstanding: toWei("9"), sponsorCollateralAmount: toWei("9"), amountToRedeem: toWei("8") };
 
   /**
    * @notice SETUP THE TEST

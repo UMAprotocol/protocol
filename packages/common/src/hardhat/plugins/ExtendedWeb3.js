@@ -45,12 +45,7 @@ extendEnvironment((hre) => {
 
     const at = (address) => new hre.web3.eth.Contract(artifact.abi, address);
 
-    return {
-      ...artifact,
-      deployed,
-      new: newProp,
-      at,
-    };
+    return { ...artifact, deployed, new: newProp, at };
   };
 
   hre.findEvent = async (txnResult, contract, eventName, fn = () => true) => {

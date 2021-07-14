@@ -24,11 +24,7 @@ class RetryProvider {
    */
   constructor(configs) {
     assert(configs.length > 0, "Must have at least one provider");
-    this.providerCaches = configs.map((config) => ({
-      retries: 1,
-      delay: 0,
-      ...config,
-    }));
+    this.providerCaches = configs.map((config) => ({ retries: 1, delay: 0, ...config }));
   }
 
   // Passes the send through, catches errors, and retries on error.

@@ -79,6 +79,4 @@ class PriceFeedMock extends PriceFeedInterface {
   }
 }
 
-module.exports = {
-  PriceFeedMock,
-};
+module.exports = { PriceFeedMock };

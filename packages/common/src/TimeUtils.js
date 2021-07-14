@@ -40,8 +40,4 @@ async function estimateBlocksElapsed(seconds, cushionPercentage = 0.0) {
   return Math.floor((seconds * cushionMultiplier) / averageBlockTime);
 }
 
-module.exports = {
-  averageBlockTimeSeconds,
-  getFromBlock,
-  estimateBlocksElapsed,
-};
+module.exports = { averageBlockTimeSeconds, getFromBlock, estimateBlocksElapsed };

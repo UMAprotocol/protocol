@@ -13,10 +13,7 @@ const { getWeb3 } = require("@uma/common");
 const web3 = getWeb3();
 const { toWei, toBN, fromWei } = web3.utils;
 
-const argv = require("minimist")(process.argv.slice(), {
-  integer: ["week", "rollNum"],
-  string: ["tokenName"],
-});
+const argv = require("minimist")(process.argv.slice(), { integer: ["week", "rollNum"], string: ["tokenName"] });
 
 async function JoinRolledPayouts(week, rollNum, tokenName) {
   if (!week || !rollNum || !tokenName) {

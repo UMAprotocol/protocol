@@ -42,9 +42,7 @@ contract("ServerlessSpoke.js", function (accounts) {
 
   before(async function () {
     collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractDeployer });
-    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, {
-      from: contractDeployer,
-    });
+    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractDeployer });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     const identifierWhitelist = await IdentifierWhitelist.deployed();
@@ -85,11 +83,7 @@ contract("ServerlessSpoke.js", function (accounts) {
 
     uniswap = await UniswapV2Mock.new();
 
-    defaultPricefeedConfig = {
-      type: "test",
-      currentPrice: "1",
-      historicalPrice: "1",
-    };
+    defaultPricefeedConfig = { type: "test", currentPrice: "1", historicalPrice: "1" };
 
     // Set two uniswap prices to give it a little history.
     await uniswap.setPrice(toWei("1"), toWei("1"));
