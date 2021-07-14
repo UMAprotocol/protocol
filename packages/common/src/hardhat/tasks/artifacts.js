@@ -113,7 +113,7 @@ task("generate-ts", "Admin can set generic resource ID on Bridge")
       )
     );
 
-    // Creates a switch statement for each deployment.
+    // Creates get[name]Address(chainId) for node and browser using switch statements.
     for (const [name, addressesByChain] of Object.entries(addresses)) {
       const declaration = `export function get${name}Address(chainId: number): string {\n  switch (chainId.toString()) {\n`;
       const cases = Object.entries(addressesByChain).map(([chainId, address]) => {
@@ -124,6 +124,7 @@ task("generate-ts", "Admin can set generic resource ID on Bridge")
       fs.appendFileSync(nodejsOutfile, declaration.concat(...cases, endStatement));
     }
 
+    // Stubs the getAddress(name, chainId) function in browser by throwing when called.
     fs.appendFileSync(
       browserOutfile,
       `export function getAddress(name: string, chainId: number): string {
@@ -131,9 +132,13 @@ task("generate-ts", "Admin can set generic resource ID on Bridge")
 }\n`
     );
 
+    // Constructs a mapping of name to address function for nodejs.
     fs.appendFileSync(nodejsOutfile, "const addressFunctions = {\n");
     Object.keys(addresses).forEach((name) => fs.appendFileSync(nodejsOutfile, `  ${name}: get${name}Address,\n`));
     fs.appendFileSync(nodejsOutfile, "};\n");
+
+    // Creates a getAddress(name, chainId) function in nodejs that routes to the right get[name]Address function using
+    // the above mapping.
     fs.appendFileSync(
       nodejsOutfile,
       `export function getAddress(name: string, chainId: number): string {
