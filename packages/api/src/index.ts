@@ -53,6 +53,7 @@ export type AppState = {
     // note this is in usdc since these are fetched from amms using usdc as the quote currency
     usdc: {
       latest: { [tokenAddress: string]: PriceSample };
+      history: empStatsHistory.SortedJsMap;
     };
   };
   erc20s: uma.tables.erc20s.JsMap;

@@ -140,6 +140,15 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     async listTvms(currency: CurrencySymbol = "usd") {
       return appState.stats[currency].latest.tvm.values();
     },
+    async historicalMarketPricesBetween(tokenAddress: string, start = 0, end: number = nowS()) {
+      assert(tokenAddress, "requires token address");
+      return marketPrices.usdc.history.betweenByAddress(tokenAddress, start, end);
+    },
+    async sliceHistoricalMarketPrices(tokenAddress: string, start = 0, length = 1) {
+      assert(tokenAddress, "requires token address");
+      assert(length < 1000, "length must be less than 1000 samples");
+      return marketPrices.usdc.history.sliceByAddress(tokenAddress, start, length);
+    },
   };
 
   // list all available actions

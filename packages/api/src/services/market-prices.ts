@@ -1,4 +1,5 @@
 import bluebird from "bluebird";
+import assert from "assert";
 import { AppState } from "..";
 import { parseUnits, nowS } from "../libs/utils";
 
@@ -40,6 +41,30 @@ export default function (config: Config, appState: Dependencies) {
       }
     });
   }
+
+  function getHistoryTable() {
+    return marketPrices.usdc.history;
+  }
+  function getLatestPrice(address: string) {
+    const result = marketPrices.usdc.latest[address];
+    assert(result, "No price found for token address: " + address);
+    return result;
+  }
+  // pulls price from latest and stuffs it into historical table.
+  async function updatePriceHistory(tokenAddress: string) {
+    const table = getHistoryTable();
+    const [timestamp, price] = getLatestPrice(tokenAddress);
+    if (await table.hasByAddress(tokenAddress, timestamp)) return;
+    return table.create({
+      address: tokenAddress,
+      value: price,
+      timestamp,
+    });
+  }
+
+  async function updatePriceHistories(addresses: string[]) {
+    return Promise.allSettled(addresses.map(updatePriceHistory));
+  }
   // we can try to price all known erc20 addresses. Some will fail. Also this endpoint does not return a timestamp
   // so we will just set one from our query time.
   async function update(timestampS = nowS()) {
@@ -47,9 +72,19 @@ export default function (config: Config, appState: Dependencies) {
     await updateLatestPrices(addresses, timestampS).catch((err) => {
       console.error("Error getting Market Price: " + err.message);
     });
+    await updatePriceHistories(addresses).then((results) => {
+      results.forEach((result) => {
+        if (result.status === "rejected")
+          console.error("Error Updating Market Price History: " + result.reason.message);
+      });
+    });
   }
 
   return {
     update,
+    utils: {
+      updatePriceHistories,
+      updatePriceHistory,
+    },
   };
 }

@@ -53,6 +53,7 @@ async function run(env: ProcessEnv) {
     marketPrices: {
       usdc: {
         latest: {},
+        history: empStatsHistory.SortedJsMap("Market Price"),
       },
     },
     erc20s: tables.erc20s.JsMap(),
