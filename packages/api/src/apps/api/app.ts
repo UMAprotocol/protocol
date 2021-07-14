@@ -3,19 +3,20 @@ import Web3 from "web3";
 import { ethers } from "ethers";
 import moment from "moment";
 
-import { tables, Coingecko, utils } from "@uma/sdk";
+import { tables, Coingecko, utils, Multicall } from "@uma/sdk";
 
 import * as Services from "../../services";
 import Express from "../../services/express";
 import Actions from "../../services/actions";
 import { ProcessEnv, AppState } from "../..";
-import { empStats, empStatsHistory } from "../../tables";
+import { empStats, empStatsHistory, lsps } from "../../tables";
 import Zrx from "../../libs/zrx";
 
 async function run(env: ProcessEnv) {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
   assert(env.EXPRESS_PORT, "requires EXPRESS_PORT");
   assert(env.zrxBaseUrl, "requires zrxBaseUrl");
+  assert(env.multicallAddress, "requires multicallAddress");
 
   const provider = new ethers.providers.WebSocketProvider(env.CUSTOM_NODE_URL);
 
@@ -72,9 +73,19 @@ async function run(env: ProcessEnv) {
     lastBlock: 0,
     lastBlockUpdate: 0,
     registeredEmps: new Set<string>(),
+    registeredLsps: new Set<string>(),
     collateralAddresses: new Set<string>(),
     syntheticAddresses: new Set<string>(),
+    // lsp related props. could be its own state object
+    longAddresses: new Set<string>(),
+    shortAddresses: new Set<string>(),
+    multicall: new Multicall(env.multicallAddress, provider),
+    lsps: {
+      active: lsps.JsMap("Active LSP"),
+      expired: lsps.JsMap("Expired LSP"),
+    },
   };
+
   // services for ingesting data
   const services = {
     // these services can optionally be configured with a config object, but currently they are undefined or have defaults
@@ -94,6 +105,8 @@ async function run(env: ProcessEnv) {
     erc20s: Services.Erc20s(undefined, appState),
     empStats: Services.EmpStats({}, appState),
     marketPrices: Services.MarketPrices(undefined, appState),
+    lspCreator: Services.LspCreator({}, appState),
+    lsps: Services.Lsps(undefined, appState),
   };
 
   // services consuming data
@@ -101,9 +114,17 @@ async function run(env: ProcessEnv) {
 
   // warm caches
   await services.registry();
-  console.log("Got all emp addresses");
+  console.log("Got all EMP addresses");
+
+  await services.lspCreator.update();
+  console.log("Got all LSP addresses");
+
   await services.emps();
-  console.log("Updated emp state");
+  console.log("Updated EMP state");
+
+  await services.lsps.update();
+  console.log("Updated LSP state");
+
   await services.erc20s.update();
   console.log("Updated tokens");
 
@@ -138,7 +159,9 @@ async function run(env: ProcessEnv) {
     if (blockNumber - appState.lastBlockUpdate >= updateBlocks) {
       // update everyting
       await services.registry(appState.lastBlock, blockNumber);
+      await services.lspCreator.update(appState.lastBlock, blockNumber);
       await services.emps(appState.lastBlock, blockNumber);
+      await services.lsps.update();
       await services.erc20s.update();
       await services.empStats.update();
 

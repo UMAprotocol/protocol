@@ -1,6 +1,6 @@
 import assert from "assert";
 import * as uma from "@uma/sdk";
-import { BigNumber, utils } from "ethers";
+import { BigNumber } from "ethers";
 import { Currencies, AppState, PriceSample } from "..";
 import { calcTvl, calcTvm, nowS } from "../libs/utils";
 import Queries from "../libs/queries";
@@ -10,7 +10,7 @@ type Config = {
 };
 type Dependencies = Pick<
   AppState,
-  "emps" | "stats" | "prices" | "erc20s" | "registeredEmps" | "synthPrices" | "marketPrices"
+  "emps" | "stats" | "prices" | "erc20s" | "registeredEmps" | "synthPrices" | "marketPrices" | "lsps"
 >;
 
 // this service is meant to calculate numbers derived from emp state, things like TVL, TVM and other things
