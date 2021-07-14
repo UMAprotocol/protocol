@@ -48,6 +48,7 @@
     "hardhat": "^2.4.0",
     "hardhat-deploy": "^0.8.6",
     "hardhat-gas-reporter": "^1.0.4",
+    "lodash.uniqby": "^4.7.0",
     "minimist": "^1.2.0",
     "moment": "^2.24.0",
     "node-metamask": "github:UMAprotocol/node-metamask",
