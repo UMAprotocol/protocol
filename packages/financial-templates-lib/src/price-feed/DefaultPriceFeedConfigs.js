@@ -42,9 +42,29 @@ const defaultConfigs = {
       { type: "cryptowatch", exchange: "kraken", pair: "ethusd" },
     ],
   },
+  ETHUSD: {
+    type: "medianizer",
+    invertPrice: false,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "ethusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "ethusdt" },
+      { type: "cryptowatch", exchange: "kraken", pair: "ethusd" },
+    ],
+  },
   USDBTC: {
     type: "medianizer",
     invertPrice: true,
+    minTimeBetweenUpdates: 60,
+    medianizedFeeds: [
+      { type: "cryptowatch", exchange: "coinbase-pro", pair: "btcusd" },
+      { type: "cryptowatch", exchange: "binance", pair: "btcusdt" },
+      { type: "cryptowatch", exchange: "bitstamp", pair: "btcusd" },
+    ],
+  },
+  BTCUSD: {
+    type: "medianizer",
+    invertPrice: false,
     minTimeBetweenUpdates: 60,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "btcusd" },
