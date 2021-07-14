@@ -1,5 +1,6 @@
 const web3 = require("web3");
 const lodash = require("lodash");
+const assert = require("assert");
 
 const { toWei, utf8ToHex, padRight } = web3.utils;
 const { ZERO_ADDRESS } = require("./Constants");
@@ -90,12 +91,17 @@ async function createConstructorParamsForContractVersion(
     );
   });
 
+  // Note: the ?s and ||s below allow this function to work with web3 or truffle object types.
+  const currentTime =
+    (await contextObjects.timer.getCurrentTime?.())?.toNumber() ||
+    parseInt(await contextObjects.timer.methods.getCurrentTime().call());
+
   let constructorParams = {
-    expirationTimestamp: (await contextObjects.timer.getCurrentTime()).toNumber() + 100000,
+    expirationTimestamp: currentTime + 100000,
     withdrawalLiveness: "1000",
-    collateralAddress: contextObjects.collateralToken.address,
-    tokenAddress: contextObjects.syntheticToken.address,
-    finderAddress: contextObjects.finder.address,
+    collateralAddress: contextObjects.collateralToken.address || contextObjects.collateralToken.options.address,
+    tokenAddress: contextObjects.syntheticToken.address || contextObjects.syntheticToken.options.address,
+    finderAddress: contextObjects.finder.address || contextObjects.finder.options.address,
     priceFeedIdentifier: padRight(utf8ToHex(contextObjects.identifier), 64),
     liquidationLiveness: "1000",
     collateralRequirement: { rawValue: toWei("1.2") },
@@ -103,8 +109,8 @@ async function createConstructorParamsForContractVersion(
     sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
     disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
     minSponsorTokens: { rawValue: contextObjects.convertSynthetic("5") },
-    timerAddress: contextObjects.timer.address,
-    excessTokenBeneficiary: contextObjects.store.address,
+    timerAddress: contextObjects.timer.address || contextObjects.timer.options.address,
+    excessTokenBeneficiary: contextObjects.store.address || contextObjects.store.options.address,
     financialProductLibraryAddress: ZERO_ADDRESS,
   };
 
@@ -116,7 +122,8 @@ async function createConstructorParamsForContractVersion(
 
   if (contractVersion.contractType == "Perpetual") {
     constructorParams.fundingRateIdentifier = padRight(utf8ToHex(contextObjects.fundingRateIdentifier), 64);
-    constructorParams.configStoreAddress = contextObjects.configStore.address;
+    constructorParams.configStoreAddress =
+      contextObjects.configStore.address || contextObjects.configStore.options.address;
     constructorParams.tokenScaling = { rawValue: toWei("1") };
   }
 

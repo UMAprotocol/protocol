@@ -1,5 +1,8 @@
-const { toWei } = web3.utils;
-const { getTruffleContract } = require("@uma/core");
+const hre = require("hardhat");
+const { getContract } = hre;
+const { runDefaultFixture } = require("@uma/common");
+const { toWei, toBN } = web3.utils;
+const { assert } = require("chai");
 
 const {
   MAX_UINT_VAL,
@@ -16,11 +19,11 @@ const {
 } = require("@uma/common");
 
 // Tested Contract
-const UniswapV3Broker = getTruffleContract("UniswapV3Broker", web3);
+const UniswapV3Broker = getContract("UniswapV3Broker");
 
 // Some helper contracts.
-const Token = getTruffleContract("ExpandedERC20", web3);
-const WETH9 = getTruffleContract("WETH9", web3);
+const Token = getContract("ExpandedERC20");
+const WETH9 = getContract("WETH9");
 
 // Import all the uniswap related contracts.
 const SwapRouter = require("@uniswap/v3-periphery/artifacts/contracts/SwapRouter.sol/SwapRouter.json");
@@ -49,24 +52,27 @@ let poolAddress;
 let tokenA;
 let tokenB;
 
-contract("UniswapV3Broker", function (accounts) {
-  const deployer = accounts[0];
-  const trader = accounts[1];
+describe("UniswapV3Broker", function () {
+  let accounts;
+  let deployer;
+  let trader;
 
   async function addLiquidityToPool(amount0Desired, amount1Desired, tickLower, tickUpper) {
-    if (tokenA.address.toLowerCase() > tokenB.address.toLowerCase()) [tokenA, tokenB] = [tokenB, tokenA];
+    if (tokenA.options.address.toLowerCase() > tokenB.options.address.toLowerCase())
+      [tokenA, tokenB] = [tokenB, tokenA];
 
-    await positionManager.createAndInitializePoolIfNecessary(
-      tokenA.address,
-      tokenB.address,
-      fee,
-      encodePriceSqrt(amount0Desired, amount1Desired), // start the pool price at 10 tokenA/tokenB
-      { from: trader }
-    );
+    await positionManager.methods
+      .createAndInitializePoolIfNecessary(
+        tokenA.options.address,
+        tokenB.options.address,
+        fee,
+        encodePriceSqrt(amount0Desired, amount1Desired) // start the pool price at 10 tokenA/tokenB
+      )
+      .send({ from: trader });
 
     const liquidityParams = {
-      token0: tokenA.address,
-      token1: tokenB.address,
+      token0: tokenA.options.address,
+      token1: tokenB.options.address,
       fee,
       tickLower, // Lower tick bound price = 1.0001^tickLower
       tickUpper, // Upper tick bound price = 1.0001^tickUpper
@@ -78,50 +84,58 @@ contract("UniswapV3Broker", function (accounts) {
       deadline: 15798990420, // some number far in the future
     };
 
-    await positionManager.mint(liquidityParams, { from: trader });
-    poolAddress = computePoolAddress(factory.address, tokenA.address, tokenB.address, fee);
+    await positionManager.methods.mint(liquidityParams).send({ from: trader });
+    poolAddress = computePoolAddress(factory.options.address, tokenA.options.address, tokenB.options.address, fee);
   }
 
   before(async () => {
+    accounts = await web3.eth.getAccounts();
+    [deployer, trader] = accounts;
+    await runDefaultFixture(hre);
     // deploy an instance of the broker
-    uniswapV3Broker = await UniswapV3Broker.new();
+    uniswapV3Broker = await UniswapV3Broker.new().send({ from: accounts[0] });
 
-    weth = await WETH9.new();
+    weth = await WETH9.new().send({ from: accounts[0] });
     // deploy Uniswap V3 Factory, router, position manager, position descriptor and tickLens.
-    factory = await createContractObjectFromJson(UniswapV3Factory, web3).new({ from: deployer });
-    router = await createContractObjectFromJson(SwapRouter, web3).new(factory.address, weth.address, {
-      from: deployer,
-    });
+    factory = (await createContractObjectFromJson(UniswapV3Factory, web3).new({ from: deployer })).contract;
+    router = (
+      await createContractObjectFromJson(SwapRouter, web3).new(factory.options.address, weth.options.address, {
+        from: deployer,
+      })
+    ).contract;
 
     const PositionDescriptor = createContractObjectFromJson(NonfungibleTokenPositionDescriptor, web3);
     await PositionDescriptor.detectNetwork();
 
     PositionDescriptor.link(await createContractObjectFromJson(NFTDescriptor, web3).new({ from: deployer }));
-    positionDescriptor = await PositionDescriptor.new(weth.address, { from: deployer });
+    positionDescriptor = (await PositionDescriptor.new(weth.options.address, { from: deployer })).contract;
 
-    positionManager = await createContractObjectFromJson(NonfungiblePositionManager, web3).new(
-      factory.address,
-      weth.address,
-      positionDescriptor.address,
-      { from: deployer }
-    );
+    positionManager = (
+      await createContractObjectFromJson(NonfungiblePositionManager, web3).new(
+        factory.options.address,
+        weth.options.address,
+        positionDescriptor.options.address,
+        { from: deployer }
+      )
+    ).contract;
 
-    tickLens = await createContractObjectFromJson(TickLens, web3).new({ from: deployer });
+    tickLens = (await createContractObjectFromJson(TickLens, web3).new({ from: deployer })).contract;
   });
+
   beforeEach(async () => {
     // deploy tokens
-    tokenA = await Token.new("Token0", "T0", 18);
-    tokenB = await Token.new("Token1", "T1", 18);
+    tokenA = await Token.new("Token0", "T0", 18).send({ from: accounts[0] });
+    tokenB = await Token.new("Token1", "T1", 18).send({ from: accounts[0] });
 
-    await tokenA.addMember(1, deployer, { from: deployer });
-    await tokenB.addMember(1, deployer, { from: deployer });
+    await tokenA.methods.addMember(1, deployer).send({ from: deployer });
+    await tokenB.methods.addMember(1, deployer).send({ from: deployer });
 
-    await tokenA.mint(trader, toWei("100000000000000"));
-    await tokenB.mint(trader, toWei("100000000000000"));
+    await tokenA.methods.mint(trader, toWei("100000000000000")).send({ from: accounts[0] });
+    await tokenB.methods.mint(trader, toWei("100000000000000")).send({ from: accounts[0] });
 
-    for (const address of [positionManager.address, router.address, uniswapV3Broker.address]) {
-      await tokenA.approve(address, toWei("100000000000000"), { from: trader });
-      await tokenB.approve(address, toWei("100000000000000"), { from: trader });
+    for (const address of [positionManager.options.address, router.options.address, uniswapV3Broker.options.address]) {
+      await tokenA.methods.approve(address, toWei("100000000000000")).send({ from: trader });
+      await tokenB.methods.approve(address, toWei("100000000000000")).send({ from: trader });
     }
   });
 
@@ -135,16 +149,15 @@ contract("UniswapV3Broker", function (accounts) {
       assert.equal((await getCurrentPrice(poolAddress, web3)).toNumber(), 10);
 
       // Validate the liquidity is within the range. There is one LP within the pool and their range is between 8 and 15.
-      const liquidityInRange = await tickLens.getPopulatedTicksInWord(
-        poolAddress,
-        getTickBitmapIndex(getTickFromPrice(10, fee), TICK_SPACINGS[fee])
-      );
+      const liquidityInRange = await tickLens.methods
+        .getPopulatedTicksInWord(poolAddress, getTickBitmapIndex(getTickFromPrice(10, fee), TICK_SPACINGS[fee]))
+        .call();
       assert.equal(liquidityInRange[0].tick, getTickFromPrice(15, fee)); // the ticks should match that of the price range.
       assert.equal(liquidityInRange[1].tick, getTickFromPrice(8, fee));
 
       // Next, execute a swap and ensure that token balances change as expected. we will trade tokenA for tokenB to increase
       // the price of the tokens. define the trade params according to the uniswap spec.
-      const tokens = [tokenA.address, tokenB.address];
+      const tokens = [tokenA.options.address, tokenB.options.address];
       const params = {
         path: encodePath(tokens, new Array(tokens.length - 1).fill(fee)),
         recipient: trader,
@@ -154,13 +167,13 @@ contract("UniswapV3Broker", function (accounts) {
       };
 
       // Store the token balances before the trade
-      const tokenABefore = await tokenA.balanceOf(trader);
-      const tokenBBefore = await tokenB.balanceOf(trader);
+      const tokenABefore = toBN(await tokenA.methods.balanceOf(trader).call());
+      const tokenBBefore = toBN(await tokenB.methods.balanceOf(trader).call());
 
-      await router.exactInput(params, { from: trader });
+      await router.methods.exactInput(params).send({ from: trader });
 
-      const deltaTokenA = tokenABefore.sub(await tokenA.balanceOf(trader));
-      const deltaTokenB = tokenBBefore.sub(await tokenB.balanceOf(trader));
+      const deltaTokenA = tokenABefore.sub(toBN(await tokenA.methods.balanceOf(trader).call()));
+      const deltaTokenB = tokenBBefore.sub(toBN(await tokenB.methods.balanceOf(trader).call()));
 
       // Token A should have increased by exactly 1 wei. This is the exact amount traded in the exactInput
       assert.equal(deltaTokenA, toWei("1"));
@@ -181,15 +194,16 @@ contract("UniswapV3Broker", function (accounts) {
     it("Broker can correctly move the price up with a single liquidity provider", async function () {
       // The broker should be able to trade up to a desired price. The starting price is 10. Try trade the market to 13.
 
-      await uniswapV3Broker.swapToPrice(
-        true, // Set Trading as EOA to true. This will pull tokens from the EOA and sent the output back to the EOA.
-        poolAddress, // Pool address for compting trade size.
-        router.address, // Router for executing the trade.
-        encodePriceSqrt(13, 1), // encoded target price of 13 defined as an X96 square root.
-        trader, // recipient of the trade.
-        MAX_UINT_VAL, // max deadline.
-        { from: trader }
-      );
+      await uniswapV3Broker.methods
+        .swapToPrice(
+          true, // Set Trading as EOA to true. This will pull tokens from the EOA and sent the output back to the EOA.
+          poolAddress, // Pool address for compting trade size.
+          router.options.address, // Router for executing the trade.
+          encodePriceSqrt(13, 1), // encoded target price of 13 defined as an X96 square root.
+          trader, // recipient of the trade.
+          MAX_UINT_VAL // max deadline.
+        )
+        .send({ from: trader });
 
       // check the price moved up to 13 correctly.
       const postTradePrice = (await getCurrentPrice(poolAddress, web3)).toNumber();
@@ -199,15 +213,16 @@ contract("UniswapV3Broker", function (accounts) {
     it("Broker can correctly move the price down with a single liquidity provider", async function () {
       // The broker should be able to trade down to a desired price. The starting price at 10. Try trade the market to 8.5.
 
-      await uniswapV3Broker.swapToPrice(
-        true, // Set Trading as EOA to true. This will pull tokens from the EOA and sent the output back to the EOA.
-        poolAddress, // Pool address for compting trade size.
-        router.address, // Router for executing the trade.
-        encodePriceSqrt(8.5, 1), // encoded target price defined as an X96 square root.
-        trader, // recipient of the trade.
-        MAX_UINT_VAL, // max deadline.
-        { from: trader }
-      );
+      await uniswapV3Broker.methods
+        .swapToPrice(
+          true, // Set Trading as EOA to true. This will pull tokens from the EOA and sent the output back to the EOA.
+          poolAddress, // Pool address for compting trade size.
+          router.options.address, // Router for executing the trade.
+          encodePriceSqrt(8.5, 1), // encoded target price defined as an X96 square root.
+          trader, // recipient of the trade.
+          MAX_UINT_VAL // max deadline.
+        )
+        .send({ from: trader });
 
       // check the price moved up to 12 correctly.
       const postTradePrice = (await getCurrentPrice(poolAddress, web3)).toNumber();
@@ -232,15 +247,16 @@ contract("UniswapV3Broker", function (accounts) {
     it("Broker can correctly move the price up with a set of liquidity provider", async function () {
       // The broker should be able to trade up to a desired price. The starting price is 10. Try trade the market to 13.
 
-      await uniswapV3Broker.swapToPrice(
-        true, // Set Trading as EOA to true. This will pull tokens from the EOA and sent the output back to the EOA.
-        poolAddress, // Pool address for compting trade size.
-        router.address, // Router for executing the trade.
-        encodePriceSqrt(13, 1), // encoded target price of 13 defined as an X96 square root.
-        trader, // recipient of the trade.
-        MAX_UINT_VAL, // max deadline.
-        { from: trader }
-      );
+      await uniswapV3Broker.methods
+        .swapToPrice(
+          true, // Set Trading as EOA to true. This will pull tokens from the EOA and sent the output back to the EOA.
+          poolAddress, // Pool address for compting trade size.
+          router.options.address, // Router for executing the trade.
+          encodePriceSqrt(13, 1), // encoded target price of 13 defined as an X96 square root.
+          trader, // recipient of the trade.
+          MAX_UINT_VAL // max deadline.
+        )
+        .send({ from: trader });
 
       // check the price moved up to 12 correctly.
       const postTradePrice = (await getCurrentPrice(poolAddress, web3)).toNumber();
@@ -250,15 +266,16 @@ contract("UniswapV3Broker", function (accounts) {
     it("Broker can correctly move the price down with a set of liquidity provider", async function () {
       // The broker should be able to trade down to a desired price. The starting price at 10. Try trade the market to 8.5.
 
-      await uniswapV3Broker.swapToPrice(
-        true, // Set Trading as EOA to true. This will pull tokens from the EOA and sent the output back to the EOA.
-        poolAddress, // Pool address for compting trade size.
-        router.address, // Router for executing the trade.
-        encodePriceSqrt(8.5, 1), // encoded target price defined as an X96 square root.
-        trader, // recipient of the trade.
-        MAX_UINT_VAL, // max deadline.
-        { from: trader }
-      );
+      await uniswapV3Broker.methods
+        .swapToPrice(
+          true, // Set Trading as EOA to true. This will pull tokens from the EOA and sent the output back to the EOA.
+          poolAddress, // Pool address for compting trade size.
+          router.options.address, // Router for executing the trade.
+          encodePriceSqrt(8.5, 1), // encoded target price defined as an X96 square root.
+          trader, // recipient of the trade.
+          MAX_UINT_VAL // max deadline.
+        )
+        .send({ from: trader });
 
       // check the price moved up to 8.5 correctly.
       const postTradePrice = (await getCurrentPrice(poolAddress, web3)).toNumber();

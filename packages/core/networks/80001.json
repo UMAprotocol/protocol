@@ -49,22 +49,22 @@
   },
   {
     "contractName": "LongShortPairCreator",
-    "address": "0xe1fC1EB80db9AD0160AEF6998673625bc2a09d14"
+    "address": "0xD732393f8eC57644675c104Ec8A4661db58CCE41"
   },
   {
     "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
-    "address": "0x2158C256b2d9B2b58D90D3ddA1b6a90d64498F7d"
+    "address": "0x9a5de999108042946F59848E083e12690ff018C6"
   },
   {
     "contractName": "CoveredCallLongShortPairFinancialProductLibrary",
-    "address": "0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0"
+    "address": "0xc6aFa90Ebf5F7eC9Ce0409a0B2bF7b0E6E81b5F6"
   },
   {
     "contractName": "LinearLongShortPairFinancialProductLibrary",
-    "address": "0x2aBf1Bd76655de80eDB3086114315Eec75AF500c"
+    "address": "0xC7B7029373f504949553106c9eb2dAfDd48eF086"
   },
   {
     "contractName": "RangeBondLongShortPairFinancialProductLibrary",
-    "address": "0xb53A60f595EE2418be9F6057121EE77f0249AC28"
+    "address": "0xbe96050668dECb6FA0ef5Af919f37221658cfbEf"
   }
 ]
