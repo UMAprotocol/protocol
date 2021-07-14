@@ -9,7 +9,13 @@ const TEST_DECIMAL_COMBOS = [
     syntheticDecimals: 18,
     priceFeedDecimals: 18,
   },
-  { tokenSymbol: "BTC", tokenName: "Wrapped BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 },
+  {
+    tokenSymbol: "BTC",
+    tokenName: "Wrapped Bitcoin",
+    collateralDecimals: 8,
+    syntheticDecimals: 8,
+    priceFeedDecimals: 18,
+  },
 ];
 
 module.exports = { TEST_DECIMAL_COMBOS };
