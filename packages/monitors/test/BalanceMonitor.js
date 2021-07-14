@@ -1,7 +1,7 @@
 const { toWei, toBN } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
-const { parseFixed } = require("@uma/common");
+const { parseFixed, TEST_DECIMAL_COMBOS } = require("@uma/common");
 
 // Script to test
 const { BalanceMonitor } = require("../src/BalanceMonitor");
@@ -20,21 +20,10 @@ const {
 // Truffle artifacts
 const Token = artifacts.require("ExpandedERC20");
 
-// Run the tests against 3 diffrent price feed scaling combinations. Note these tests differ from the other monitor tests
-// as the Balance monitor is only dependent on token balances feeds. No need to test price feed scaling decimals.
-// 1) 18 decimal synthetic decimals with 18 decimal collateral decimals.
-// 1) 18 decimal synthetic decimals with 8 decimal collateral decimals.
-// 1) 8 decimal synthetic decimals with 18 decimal collateral decimals.
-const configs = [
-  { syntheticDecimals: 18, collateralDecimals: 18 },
-  { syntheticDecimals: 18, collateralDecimals: 8 },
-  { syntheticDecimals: 8, collateralDecimals: 18 },
-];
-
 const Convert = (decimals) => (number) => parseFixed(number.toString(), decimals).toString();
 
 contract("BalanceMonitor.js", function (accounts) {
-  for (const [index, testConfig] of configs.entries()) {
+  for (const [index, testConfig] of TEST_DECIMAL_COMBOS.entries()) {
     describe(`${testConfig.collateralDecimals} collateral & ${testConfig.syntheticDecimals} synthetic decimals`, function () {
       // Note that we offset the accounts used in each test so they start with a full ether balance at the start.
       // This ensures the tests are decoupled.
