@@ -29,7 +29,7 @@
   },
   {
     "contractName": "TokenFactory",
-    "address": "0xa5eA165AfAc780807DE19aefa2B8a21079B8A627"
+    "address": "0x56f2c8353049270d3553773E680B0d6c632544b6"
   },
   {
     "contractName": "ExpiringMultiPartyLib",
@@ -49,7 +49,7 @@
   },
   {
     "contractName": "LongShortPairCreator",
-    "address": "0xD732393f8eC57644675c104Ec8A4661db58CCE41"
+    "address": "0x57EE47829369e2EF62fBb423648bec70d0366204"
   },
   {
     "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
