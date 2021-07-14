@@ -40,20 +40,20 @@ task("dump-artifacts", "Admin can set generic resource ID on Bridge")
       // Loop over the deployments in the file and save each one.
       for (const { contractName, address, deploymentName } of deployments) {
         // If deploymentName isn't specified, use contractName.
-        const saveName = deploymentName ? deploymentName : contractName;
-        if (!addresses[saveName]) {
-          addresses[saveName] = {};
+        const name = deploymentName ? deploymentName : contractName;
+        if (!addresses[name]) {
+          addresses[name] = {};
         }
-        addresses[saveName][chainId] = address;
+        addresses[name][chainId] = address;
       }
     }
 
-    for (const [deploymentName, addressesByChain] of Object.entries(addresses)) {
-      const declaration = `export function get${deploymentName}Address(chainId: number): string {\n  switch (chainId.toString()) {\n`;
+    for (const [name, addressesByChain] of Object.entries(addresses)) {
+      const declaration = `export function get${name}Address(chainId: number): string {\n  switch (chainId.toString()) {\n`;
       const cases = Object.entries(addressesByChain).map(([chainId, address]) => {
         return `    case "${chainId}":\n      return "${address}";\n`;
       });
-      const endStatement = `    default:\n      throw new Error(\`No address found for deployment ${deploymentName} on chainId \${chainId}\`)\n  }\n}\n`;
+      const endStatement = `    default:\n      throw new Error(\`No address found for deployment ${name} on chainId \${chainId}\`)\n  }\n}\n`;
       fs.appendFileSync(out, declaration.concat(...cases, endStatement));
     }
   });
