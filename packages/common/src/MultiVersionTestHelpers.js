@@ -7,9 +7,6 @@ const { ZERO_ADDRESS } = require("./Constants");
 
 // Versions that production bots support.
 const SUPPORTED_CONTRACT_VERSIONS = [
-  { contractType: "ExpiringMultiParty", contractVersion: "1.2.0" },
-  { contractType: "ExpiringMultiParty", contractVersion: "1.2.1" },
-  { contractType: "ExpiringMultiParty", contractVersion: "1.2.2" },
   { contractType: "ExpiringMultiParty", contractVersion: "2.0.1" },
   { contractType: "Perpetual", contractVersion: "2.0.1" },
 ];
