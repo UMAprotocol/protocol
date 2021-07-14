@@ -89,9 +89,7 @@ async function runExport() {
 
   console.log("Deploying new FinancialContractsAdmin contract.");
 
-  const financialContractsAdmin = await FinancialContractsAdmin.new({
-    from: proposerWallet,
-  });
+  const financialContractsAdmin = await FinancialContractsAdmin.new({ from: proposerWallet });
 
   /** *****************************************
    * 5) upgrade IdentifierWhitelist.sol *
@@ -99,9 +97,7 @@ async function runExport() {
 
   console.log("Deploying new IdentifierWhitelist contract.");
 
-  const identifierWhitelist = await IdentifierWhitelist.new({
-    from: proposerWallet,
-  });
+  const identifierWhitelist = await IdentifierWhitelist.new({ from: proposerWallet });
 
   /** *****************************************
    * 6) deploy Governor.sol *
@@ -206,31 +202,11 @@ async function runExport() {
 
   await governor.propose(
     [
-      {
-        to: votingToken.address,
-        value: 0,
-        data: addVotingAsTokenMinterTx,
-      },
-      {
-        to: votingToken.address,
-        value: 0,
-        data: changeVotingTokenOwnerTx,
-      },
-      {
-        to: finder.address,
-        value: 0,
-        data: setUmip3UpgraderFinderOwnerTx,
-      },
-      {
-        to: existingVoting.address,
-        value: 0,
-        data: setUmip3UpgraderVotingOwnerTx,
-      },
-      {
-        to: umip3Upgrader.address,
-        value: 0,
-        data: executeUmip3UpgraderTx,
-      },
+      { to: votingToken.address, value: 0, data: addVotingAsTokenMinterTx },
+      { to: votingToken.address, value: 0, data: changeVotingTokenOwnerTx },
+      { to: finder.address, value: 0, data: setUmip3UpgraderFinderOwnerTx },
+      { to: existingVoting.address, value: 0, data: setUmip3UpgraderVotingOwnerTx },
+      { to: umip3Upgrader.address, value: 0, data: executeUmip3UpgraderTx },
     ],
     { from: proposerWallet }
   );

@@ -13,7 +13,4 @@ function getRandomUnsignedInt() {
   return web3.utils.toBN(web3.utils.randomHex(32));
 }
 
-module.exports = {
-  getRandomSignedInt,
-  getRandomUnsignedInt,
-};
+module.exports = { getRandomSignedInt, getRandomUnsignedInt };

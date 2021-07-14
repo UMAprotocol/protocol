@@ -6,11 +6,7 @@ const func = async function (hre) {
 
   const Finder = await deployments.get("Finder");
 
-  await deploy("SinkGovernor", {
-    from: deployer,
-    args: [Finder.address],
-    log: true,
-  });
+  await deploy("SinkGovernor", { from: deployer, args: [Finder.address], log: true });
 };
 module.exports = func;
 func.tags = ["SinkGovernor", "l2-chainbridge"];

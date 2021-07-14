@@ -26,10 +26,7 @@ let mockOracle;
  * @notice Returns most recent LiquidationWithdrawn event.
  */
 const getWithdrawLiquidationEvent = async (emp, caller) => {
-  const events = await emp.getPastEvents("LiquidationWithdrawn", {
-    fromBlock: 0,
-    filter: { caller: caller },
-  });
+  const events = await emp.getPastEvents("LiquidationWithdrawn", { fromBlock: 0, filter: { caller: caller } });
   // Sort descending. Primary sort on block number. Secondary sort on transactionIndex. Tertiary sort on logIndex.
   // This sets most recent event at events[0].
   events.sort((a, b) => {

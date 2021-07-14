@@ -274,9 +274,7 @@ describe("Store", function () {
     // The period is 100 seconds long and the pfc is 100 units of collateral. This means that the fee amount should
     // effectively be scaled by 1000.
     let { latePenalty, regularFee } = await store.methods
-      .computeRegularFee(startTime, startTime.addn(100), {
-        rawValue: web3.utils.toWei("100"),
-      })
+      .computeRegularFee(startTime, startTime.addn(100), { rawValue: web3.utils.toWei("100") })
       .call();
 
     // Regular fee is double the per week late fee. So after 1 week, the late fee should be 1 and the regular should be 2.
@@ -287,9 +285,7 @@ describe("Store", function () {
     await store.methods.setCurrentTime(startTime.addn(secondsPerWeek * 3)).send({ from: accounts[0] });
 
     ({ latePenalty, regularFee } = await store.methods
-      .computeRegularFee(startTime, startTime.addn(100), {
-        rawValue: web3.utils.toWei("100"),
-      })
+      .computeRegularFee(startTime, startTime.addn(100), { rawValue: web3.utils.toWei("100") })
       .call());
 
     // Regular fee is double the per week late fee. So after 3 weeks, the late fee should be 3 and the regular should be 2.
@@ -314,9 +310,7 @@ describe("Store", function () {
     // Pay for a short period a week ago. Even though the endTime is < 1 week past the start time, the currentTime
     // should cause the late fee to be charged.
     const { latePenalty } = await store.methods
-      .computeRegularFee(startTime, startTime.addn(1), {
-        rawValue: web3.utils.toWei("1"),
-      })
+      .computeRegularFee(startTime, startTime.addn(1), { rawValue: web3.utils.toWei("1") })
       .call();
 
     // Payment is 1 week late, but the penalty is 10% per second of the period. Since the period is only 1 second, {     // we should see a 10% late fee.

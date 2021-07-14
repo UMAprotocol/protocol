@@ -121,10 +121,7 @@ class Disputer {
   // Queries disputable liquidations and disputes any that were incorrectly liquidated. If `disputerOverridePrice` is
   // provided then the disputer will ignore the price feed and use the override price instead for all undisputed liquidations.
   async dispute(disputerOverridePrice) {
-    this.logger.debug({
-      at: "Disputer",
-      message: "Checking for any disputable liquidations",
-    });
+    this.logger.debug({ at: "Disputer", message: "Checking for any disputable liquidations" });
 
     // Get the latest disputable liquidations from the client.
     const undisputedLiquidations = this.financialContractClient.getUndisputedLiquidations();
@@ -196,19 +193,12 @@ class Disputer {
     ).filter((liquidation) => liquidation !== null);
 
     if (disputableLiquidationsWithPrices.length === 0) {
-      this.logger.debug({
-        at: "Disputer",
-        message: "No disputable liquidations",
-      });
+      this.logger.debug({ at: "Disputer", message: "No disputable liquidations" });
       return;
     }
 
     for (const disputeableLiquidation of disputableLiquidationsWithPrices) {
-      this.logger.debug({
-        at: "Disputer",
-        message: "Disputing liquidation",
-        liquidation: disputeableLiquidation,
-      });
+      this.logger.debug({ at: "Disputer", message: "Disputing liquidation", liquidation: disputeableLiquidation });
 
       // Submit the dispute transaction. This will use the DSProxy if configured or will send the tx with the unlocked EOA.
       const logResult = await this.proxyTransactionWrapper.submitDisputeTransaction([
@@ -238,10 +228,7 @@ class Disputer {
 
   // Queries ongoing disputes and attempts to withdraw any pending rewards from them.
   async withdrawRewards() {
-    this.logger.debug({
-      at: "Disputer",
-      message: "Checking for disputed liquidations that may have resolved",
-    });
+    this.logger.debug({ at: "Disputer", message: "Checking for disputed liquidations that may have resolved" });
 
     // The disputer address is either the DSProxy (if using a DSProxy to dispute) or the unlocked account.
     const disputerAddress = this.proxyTransactionWrapper.useDsProxyToDispute
@@ -254,10 +241,7 @@ class Disputer {
       .filter((liquidation) => liquidation.disputer === disputerAddress);
 
     if (disputedLiquidations.length === 0) {
-      this.logger.debug({
-        at: "Disputer",
-        message: "No withdrawable disputes",
-      });
+      this.logger.debug({ at: "Disputer", message: "No withdrawable disputes" });
       return;
     }
 
@@ -287,11 +271,7 @@ class Disputer {
       // Construct transaction.
       const withdraw = this.financialContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 
-      this.logger.debug({
-        at: "Disputer",
-        message: "Withdrawing dispute",
-        liquidation: liquidation,
-      });
+      this.logger.debug({ at: "Disputer", message: "Withdrawing dispute", liquidation: liquidation });
       try {
         // Get successful transaction receipt and return value or error.
         const { receipt, transactionConfig } = await runTransaction({
@@ -328,20 +308,10 @@ class Disputer {
         // If the withdrawal simulation fails, then it is likely that the dispute has not resolved yet, and we don't
         // want to emit a high level log about this:
         if (error.type === "call") {
-          this.logger.debug({
-            at: "Disputer",
-            message: "No rewards to withdraw",
-            liquidation: liquidation,
-          });
+          this.logger.debug({ at: "Disputer", message: "No rewards to withdraw", liquidation: liquidation });
         } else {
           const message = "Failed to withdraw dispute rewards🚨";
-          this.logger.error({
-            at: "Disputer",
-            message,
-            disputer: this.account,
-            liquidation: liquidation,
-            error,
-          });
+          this.logger.error({ at: "Disputer", message, disputer: this.account, liquidation: liquidation, error });
         }
         continue;
       }
@@ -349,6 +319,4 @@ class Disputer {
   }
 }
 
-module.exports = {
-  Disputer,
-};
+module.exports = { Disputer };

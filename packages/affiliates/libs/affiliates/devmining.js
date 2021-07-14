@@ -107,10 +107,7 @@ module.exports = ({ queries, coingecko, synthPrices, firstEmpDate }) => {
   async function getBlocks(start, end) {
     const blocks = await queries.getBlocks(start, end, ["timestamp", "number"]);
     return blocks.map((block) => {
-      return {
-        ...block,
-        timestamp: moment(block.timestamp.value).valueOf(),
-      };
+      return { ...block, timestamp: moment(block.timestamp.value).valueOf() };
     });
   }
 
@@ -269,12 +266,7 @@ module.exports = ({ queries, coingecko, synthPrices, firstEmpDate }) => {
       finalPayouts.empPayouts[address] = fromWei(finalPayouts.empPayouts[address]);
     }
 
-    return {
-      startBlock,
-      endBlock,
-      empToDeployer,
-      ...finalPayouts,
-    };
+    return { startBlock, endBlock, empToDeployer, ...finalPayouts };
   }
 
   async function getRewards({

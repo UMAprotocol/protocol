@@ -100,10 +100,7 @@ contract("index.js", function (accounts) {
     collateral = await Token.new("Wrapped Ether", "WETH", "18");
     collateralWhitelist = await AddressWhitelist.new();
     await collateralWhitelist.addToWhitelist(collateral.address);
-    defaultCreationParams = {
-      ...defaultCreationParams,
-      collateralAddress: collateral.address,
-    };
+    defaultCreationParams = { ...defaultCreationParams, collateralAddress: collateral.address };
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.address);
 
     await PerpetualCreator.link(await PerpetualLib.new());

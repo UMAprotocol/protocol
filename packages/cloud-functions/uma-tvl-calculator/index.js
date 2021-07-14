@@ -9,13 +9,7 @@ exports.calculateCurrentTvl = async (req, res) => {
 
     const currentTime = Math.round(new Date().getTime() / 1000);
     const key = datastore.key(["UmaTvl", currentTime]);
-    const dataBlob = {
-      key: key,
-      data: {
-        tvl: tvl.currentTvl,
-        created: currentTime,
-      },
-    };
+    const dataBlob = { key: key, data: { tvl: tvl.currentTvl, created: currentTime } };
     await datastore.save(dataBlob);
 
     console.log(`Fetched and saved current TVL: ${JSON.stringify(tvl)}`);

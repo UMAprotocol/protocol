@@ -168,9 +168,7 @@ describe("Liquidatable", function () {
     // Set allowance for contract to pull dispute bond and final fee from disputer
     await collateralToken.methods
       .increaseAllowance(liquidationContract.options.address, disputeBond.add(finalFeeAmount))
-      .send({
-        from: disputer,
-      });
+      .send({ from: disputer });
 
     // Set allowance for contract to pull the final fee from the liquidator
     await collateralToken.methods
@@ -826,9 +824,9 @@ describe("Liquidatable", function () {
         await collateralToken.methods.mint(disputer, finalFeeAmount).send({ from: contractDeployer });
 
         // Returns correct total bond.
-        const totalPaid = await liquidationContract.methods.dispute(liquidationParams.liquidationId, sponsor).call({
-          from: disputer,
-        });
+        const totalPaid = await liquidationContract.methods
+          .dispute(liquidationParams.liquidationId, sponsor)
+          .call({ from: disputer });
         assert.equal(totalPaid.toString(), disputeBond.add(finalFeeAmount).toString());
 
         // Check that store's collateral balance increases
@@ -1954,9 +1952,7 @@ describe("Liquidatable", function () {
           // Withdraw as the liquidator to finailize the dispute.
           const withdrawResult = await fclLiquidationContract.methods
             .withdrawLiquidation(liquidationParams.liquidationId, sponsor)
-            .send({
-              from: liquidator,
-            });
+            .send({ from: liquidator });
 
           // Verify the dispute succeeded from the event.
           await assertEventEmitted(withdrawResult, fclLiquidationContract, "DisputeSettled", (ev) => {
@@ -1982,9 +1978,7 @@ describe("Liquidatable", function () {
           // Withdraw as the liquidator to finailize the dispute.
           const withdrawResult = await fclLiquidationContract.methods
             .withdrawLiquidation(liquidationParams.liquidationId, sponsor)
-            .send({
-              from: liquidator,
-            });
+            .send({ from: liquidator });
 
           // Verify the dispute failed from the event.
           await assertEventEmitted(withdrawResult, fclLiquidationContract, "DisputeSettled", (ev) => {
@@ -2130,9 +2124,7 @@ describe("Liquidatable", function () {
           // Withdraw as the liquidator to finailize the dispute.
           const withdrawResult = await fclLiquidationContract.methods
             .withdrawLiquidation(liquidationParams.liquidationId, sponsor)
-            .send({
-              from: liquidator,
-            });
+            .send({ from: liquidator });
 
           // Verify the dispute succeeded from the event.
           await assertEventEmitted(withdrawResult, fclLiquidationContract, "DisputeSettled", (ev) => {
@@ -2158,9 +2150,7 @@ describe("Liquidatable", function () {
           // Withdraw as the liquidator to finailize the dispute.
           const withdrawResult = await fclLiquidationContract.methods
             .withdrawLiquidation(liquidationParams.liquidationId, sponsor)
-            .send({
-              from: liquidator,
-            });
+            .send({ from: liquidator });
 
           // Verify the dispute failed from the event.
           await assertEventEmitted(withdrawResult, fclLiquidationContract, "DisputeSettled", (ev) => {

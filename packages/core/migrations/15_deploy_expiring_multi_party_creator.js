@@ -19,18 +19,14 @@ module.exports = async function (deployer, network, accounts) {
   const controllableTiming = enableControllableTiming(network);
 
   // Deploy CollateralWhitelist.
-  const { contract: collateralWhitelist } = await deploy(deployer, network, AddressWhitelist, {
-    from: keys.deployer,
-  });
+  const { contract: collateralWhitelist } = await deploy(deployer, network, AddressWhitelist, { from: keys.deployer });
 
   // Add CollateralWhitelist to finder.
   const finder = await Finder.deployed();
   await finder.changeImplementationAddress(
     web3.utils.utf8ToHex(interfaceName.CollateralWhitelist),
     collateralWhitelist.address,
-    {
-      from: keys.deployer,
-    }
+    { from: keys.deployer }
   );
 
   // Add the testnet ERC20 as the default collateral currency (this is the DAI address on mainnet).

@@ -16,6 +16,4 @@ function computeCollateralizationRatio(web3, tokenPrice, collateral, tokensOutst
   return collateral.mul(fixedPointScalingFactor).mul(fixedPointScalingFactor).div(tokensOutstanding).div(tokenPrice);
 }
 
-module.exports = {
-  computeCollateralizationRatio,
-};
+module.exports = { computeCollateralizationRatio };

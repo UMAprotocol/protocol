@@ -90,6 +90,4 @@ class PriceFeedMockScaled extends PriceFeedInterface {
   }
 }
 
-module.exports = {
-  PriceFeedMockScaled,
-};
+module.exports = { PriceFeedMockScaled };

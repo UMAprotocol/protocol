@@ -52,12 +52,7 @@ const defaultHubConfig = {
 
 hub.post("/", async (req, res) => {
   try {
-    logger.debug({
-      at: "ServerlessHub",
-      message: "Running Serverless hub query",
-      reqBody: req.body,
-      hubConfig,
-    });
+    logger.debug({ at: "ServerlessHub", message: "Running Serverless hub query", reqBody: req.body, hubConfig });
 
     // Validate the post request has both the `bucket` and `configFile` params.
     if (!req.body.bucket || !req.body.configFile) {
@@ -158,11 +153,7 @@ hub.post("/", async (req, res) => {
         ])
       );
     }
-    logger.debug({
-      at: "ServerlessHub",
-      message: "Executing Serverless spokes",
-      botConfigs,
-    });
+    logger.debug({ at: "ServerlessHub", message: "Executing Serverless spokes", botConfigs });
 
     // Loop through promise array and submit all in parallel. `allSettled` does not fail early if a promise is rejected.
     // This `results` object will contain all information sent back from the spokes. This contains the process exit code,
@@ -272,11 +263,7 @@ const _executeServerlessSpoke = async (url, body) => {
     const targetAudience = new URL(url).origin;
 
     const client = await auth.getIdTokenClient(targetAudience);
-    const res = await client.request({
-      url: url,
-      method: "post",
-      data: body,
-    });
+    const res = await client.request({ url: url, method: "post", data: body });
 
     return res.data;
   } else if (hubConfig.spokeRunner == "localStorage") {
@@ -351,10 +338,7 @@ async function _saveQueriedBlockNumber(configIdentifier, blockNumbersForChain) {
         Object.keys(blockNumbersForChain).forEach((chainId) => {
           latestBlockNumbersForChain[chainId] = blockNumbersForChain[chainId].latestBlockNumber;
         });
-        const dataBlob = {
-          key: key,
-          data: latestBlockNumbersForChain,
-        };
+        const dataBlob = { key: key, data: latestBlockNumbersForChain };
         await datastore.save(dataBlob); // Overwrites the entire entity
       } else if (hubConfig.saveQueriedBlock == "localStorage") {
         Object.keys(blockNumbersForChain).forEach((chainId) => {
@@ -432,11 +416,7 @@ async function _postJson(url, body) {
   const response = await fetch(url, {
     method: "POST",
     body: JSON.stringify(body),
-    headers: {
-      "Content-type": "application/json",
-      Accept: "application/json",
-      "Accept-Charset": "utf-8",
-    },
+    headers: { "Content-type": "application/json", Accept: "application/json", "Accept-Charset": "utf-8" },
   });
   return await response.json(); // extract JSON from the http response
 }
@@ -445,11 +425,7 @@ async function _postJson(url, body) {
 // append the error information to the errorOutputs. If there is no error, append to validOutputs.
 function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs) {
   if (spokeResponse.status == "rejected" && spokeResponse.reason.status == "timeout") {
-    errorOutputs[botKey] = {
-      status: "timeout",
-      message: spokeResponse.reason.message,
-      botIdentifier: botKey,
-    };
+    errorOutputs[botKey] = { status: "timeout", message: spokeResponse.reason.message, botIdentifier: botKey };
   } else if (
     spokeResponse.status == "rejected" ||
     (spokeResponse.value && spokeResponse.value.execResponse && spokeResponse.value.execResponse.error) ||

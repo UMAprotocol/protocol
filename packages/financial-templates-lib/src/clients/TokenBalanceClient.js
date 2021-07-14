@@ -71,10 +71,7 @@ class TokenBalanceClient {
       this.tokenBalances.etherBalances[account] = tokenBalancesObject.etherBalance;
     }
 
-    this.logger.debug({
-      at: "TokenBalanceClient",
-      message: "Token balance storage updated",
-    });
+    this.logger.debug({ at: "TokenBalanceClient", message: "Token balance storage updated" });
   }
 
   // Async function to get the three token balances directly. Does not store balances for later retrieval.
@@ -104,6 +101,4 @@ class TokenBalanceClient {
   }
 }
 
-module.exports = {
-  TokenBalanceClient,
-};
+module.exports = { TokenBalanceClient };

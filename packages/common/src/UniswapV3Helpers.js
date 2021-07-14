@@ -107,17 +107,9 @@ function computePoolAddress(factoryAddress, tokenA, tokenB, fee) {
   return ethers.utils.getAddress(`0x${ethers.utils.keccak256(sanitizedInputs).slice(-40)}`);
 }
 
-const FeeAmount = {
-  LOW: 500,
-  MEDIUM: 3000,
-  HIGH: 10000,
-};
+const FeeAmount = { LOW: 500, MEDIUM: 3000, HIGH: 10000 };
 
-const TICK_SPACINGS = {
-  [FeeAmount.LOW]: 10,
-  [FeeAmount.MEDIUM]: 60,
-  [FeeAmount.HIGH]: 200,
-};
+const TICK_SPACINGS = { [FeeAmount.LOW]: 10, [FeeAmount.MEDIUM]: 60, [FeeAmount.HIGH]: 200 };
 
 module.exports = {
   getTickFromPrice,

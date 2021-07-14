@@ -189,11 +189,7 @@ contract("BalanceMonitor.js", function (accounts) {
 
         // Transfer the liquidator bot's eth balance - 5Eth such that irrespective of the value it ends with ~5 Eth (excluding gas cost).
         const amountToTransfer = toBN(startLiquidatorBotETH).sub(toBN(toWei("5")));
-        await web3.eth.sendTransaction({
-          from: liquidatorBot,
-          to: tokenCreator,
-          value: amountToTransfer.toString(),
-        });
+        await web3.eth.sendTransaction({ from: liquidatorBot, to: tokenCreator, value: amountToTransfer.toString() });
 
         // After this transaction the liquidatorBot's ETH balance is below the threshold of 10Eth. The balance should be 5Eth,
         // minus the transaction fees. Thus strictly less than 5. This should emit an message.
@@ -212,11 +208,7 @@ contract("BalanceMonitor.js", function (accounts) {
         assert.equal(lastSpyLogLevel(spy), "warn");
 
         // At the end of the test transfer back the eth to the liquidatorBot to clean up
-        await web3.eth.sendTransaction({
-          from: tokenCreator,
-          to: liquidatorBot,
-          value: amountToTransfer.toString(),
-        });
+        await web3.eth.sendTransaction({ from: tokenCreator, to: liquidatorBot, value: amountToTransfer.toString() });
       });
       it("Correctly emit messages if balance moves above and below thresholds", async function () {
         // Update the client. No messages should be sent as above threshold values on all fronts.
@@ -395,11 +387,7 @@ contract("BalanceMonitor.js", function (accounts) {
         // Lower the liquidator bot's ETH balance.
         const startLiquidatorBotETH = await web3.eth.getBalance(liquidatorBot);
         const amountToTransfer = toBN(startLiquidatorBotETH).sub(toBN(toWei("5")));
-        await web3.eth.sendTransaction({
-          from: liquidatorBot,
-          to: tokenCreator,
-          value: amountToTransfer.toString(),
-        });
+        await web3.eth.sendTransaction({ from: liquidatorBot, to: tokenCreator, value: amountToTransfer.toString() });
         assert.isTrue(toBN(await web3.eth.getBalance(liquidatorBot)).lt(toBN(toWei("5"))));
 
         // Update monitors.
