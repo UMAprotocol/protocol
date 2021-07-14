@@ -2,7 +2,7 @@ import assert from "assert";
 import * as uma from "@uma/sdk";
 export { BigNumber, utils } from "ethers";
 import { Currencies, AppState, PriceSample } from "..";
-import { calcTvl, calcTvm } from "../libs/utils";
+import { calcTvl, calcTvm, nowS } from "../libs/utils";
 import Queries from "../libs/queries";
 
 type Config = {
@@ -117,6 +117,15 @@ export default (config: Config, appState: Dependencies) => {
       })
     );
   }
+  async function updateGlobalTvl() {
+    const value = await queries.totalTvl(currency);
+    const update = {
+      value,
+      timestamp: nowS(),
+    };
+    // normally you would upsert an emp address where "global" is, but we are going to use a custom value to represent tvl across all addresses
+    return stats[currency].latest.tvl.upsertGlobal(update);
+  }
 
   async function update() {
     const addresses = Array.from(registeredEmps.values());
@@ -124,6 +133,9 @@ export default (config: Config, appState: Dependencies) => {
       results.forEach((result) => {
         if (result.status === "rejected") console.error("Error updating tvl: " + result.reason.message);
       });
+    });
+    await updateGlobalTvl().catch((err) => {
+      console.error("Error updating global TVL: " + err.message);
     });
     await updateAllTvm(addresses).then((results) => {
       results.forEach((result) => {
