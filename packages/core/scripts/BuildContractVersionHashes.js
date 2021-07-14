@@ -124,6 +124,12 @@ async function main() {
   saveContractHashArtifacts(versionMap);
 }
 
-main().then(() => {
-  process.exit(0);
-});
+main().then(
+  () => {
+    process.exit(0);
+  },
+  (err) => {
+    console.error(err.stack);
+    process.exit(1);
+  }
+);

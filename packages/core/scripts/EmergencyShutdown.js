@@ -1,21 +1,19 @@
 const { interfaceName } = require("@uma/common");
 
-const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
-const Finder = artifacts.require("Finder");
-
 const argv = require("minimist")(process.argv.slice(), { string: ["derivative"] });
 
-async function run(account, derivative) {
+async function run(account, derivative, finder, adminAbi) {
   try {
     // Usage: `truffle exec scripts/EmergencyShutdown.js --derivative <derivative address> --keys <oracle key> --network <network>
     // Requires the contract to be live and for accounts[0] to be the owner of the oracle.
-    const deployedFinder = await Finder.deployed();
 
     // Emergency shutdown the contract using the admin.
-    const admin = await FinancialContractsAdmin.at(
-      await deployedFinder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.FinancialContractsAdmin))
-    );
-    await admin.callEmergencyShutdown(derivative);
+    const adminAddress = await finder.methods
+      .getImplementationAddress(web3.utils.utf8ToHex(interfaceName.FinancialContractsAdmin))
+      .call();
+
+    const admin = new web3.eth.Contract(adminAbi, adminAddress);
+    await admin.methods.callEmergencyShutdown(derivative).send({ from: account });
 
     console.log("Emergency shutdown complete");
   } catch (e) {
@@ -25,7 +23,9 @@ async function run(account, derivative) {
 
 async function runScript(callback) {
   const account = (await web3.eth.getAccounts())[0];
-  await run(account, argv.derivative);
+  const adminAbi = artifacts.require("FinancialContractsAdmin").abi;
+  const finder = await artifacts.require("Finder").deployed();
+  await run(account, argv.derivative, finder, adminAbi);
   callback();
 }
 

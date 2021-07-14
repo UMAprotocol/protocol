@@ -15,9 +15,10 @@ const { utf8ToHex, hexToUtf8, padRight } = web3.utils;
 
 const { blankFunctionSig, createGenericDepositData } = require("./helpers");
 
-contract("SourceOracle", async (accounts) => {
-  const owner = accounts[0];
-  const rando = accounts[1];
+describe("SourceOracle", async () => {
+  let accounts;
+  let owner;
+  let rando;
 
   let voting;
   let sourceOracle;
@@ -37,7 +38,9 @@ contract("SourceOracle", async (accounts) => {
 
   let sourceOracleResourceId;
 
-  beforeEach(async function () {
+  before(async () => {
+    accounts = await web3.eth.getAccounts();
+    [owner, rando] = accounts;
     await runDefaultFixture(hre);
     registry = await Registry.deployed();
     await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner).send({ from: accounts[0] });
@@ -48,6 +51,9 @@ contract("SourceOracle", async (accounts) => {
     await finder.methods
       .changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.options.address)
       .send({ from: accounts[0] });
+  });
+
+  beforeEach(async function () {
     bridge = await Bridge.new(chainID, [owner], 1, 0, 100).send({ from: accounts[0] });
     await finder.methods
       .changeImplementationAddress(utf8ToHex(interfaceName.Bridge), bridge.options.address)

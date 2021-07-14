@@ -39,7 +39,7 @@ const getResourceId = (chainID, name) => {
   return hash;
 };
 
-contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) => {
+describe("GenericHandler - [UMA Cross-chain Communication]", async () => {
   // # of relayers who must vote on a proposal before it can be executed.
   const relayerThreshold = 2;
   // Source chain ID.
@@ -49,13 +49,13 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
   // We only expect to make 1 deposit per test.
   const expectedDepositNonce = 1;
 
-  const owner = accounts[0];
-  const depositerAddress = accounts[1];
-  const relayer1Address = accounts[2];
-  const relayer2Address = accounts[3];
-  const rando = accounts[4];
-
-  const initialRelayers = [relayer1Address, relayer2Address];
+  let accounts;
+  let owner;
+  let depositerAddress;
+  let relayer1Address;
+  let relayer2Address;
+  let rando;
+  let initialRelayers;
 
   // Chainbridge contracts:
   let bridgeMainnet;
@@ -88,7 +88,10 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
   let votingResourceId;
   let governanceResourceId;
 
-  beforeEach(async () => {
+  before(async () => {
+    accounts = await web3.eth.getAccounts();
+    [owner, depositerAddress, relayer1Address, relayer2Address, rando] = accounts;
+    initialRelayers = [relayer1Address, relayer2Address];
     await runDefaultFixture(hre);
     registry = await Registry.deployed();
     await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, depositerAddress).send({ from: accounts[0] });
@@ -100,7 +103,9 @@ contract("GenericHandler - [UMA Cross-chain Communication]", async (accounts) =>
       .changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.options.address)
       .send({ from: accounts[0] });
     identifierWhitelist = await IdentifierWhitelist.deployed();
+  });
 
+  beforeEach(async () => {
     // MockOracle is the test DVM for Mainnet.
     voting = await MockOracle.new(sourceFinder.options.address, ZERO_ADDRESS).send({ from: accounts[0] });
     await sourceFinder.methods

@@ -1,10 +1,10 @@
 const { getNodeUrl, mnemonic } = require("./TruffleConfig");
 const path = require("path");
 
-function getHardhatConfig(configOverrides, workingDir = "./") {
-  // Hard hat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function
+function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = true) {
+  // Hardhat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function
   // get access to the plugins as well.
-  require("@nomiclabs/hardhat-truffle5");
+  if (includeTruffle) require("@nomiclabs/hardhat-truffle5");
   require("hardhat-gas-reporter");
   require("@nomiclabs/hardhat-web3");
   require("hardhat-deploy");
@@ -20,14 +20,40 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
   // Solc version defined here so etherscan-verification has access to it
   const solcVersion = "0.8.4";
 
+  // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
+  // limit.
+  const LARGE_CONTRACT_COMPILER_SETTINGS = {
+    version: solcVersion,
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
+    },
+  };
+
   const defaultConfig = {
     solidity: {
-      version: solcVersion,
-      settings: {
-        optimizer: {
-          enabled: true,
-          runs: 199,
+      compilers: [
+        {
+          version: solcVersion,
+          settings: {
+            optimizer: {
+              enabled: true,
+              runs: 1_000_000,
+            },
+          },
         },
+      ],
+      overrides: {
+        "contracts/financial-templates/expiring-multiparty/ExpiringMultiParty.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/financial-templates/expiring-multiparty/ExpiringMultiPartyLib.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/financial-templates/perpetual-multiparty/Perpetual.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/financial-templates/perpetual-multiparty/PerpetualLib.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/financial-templates/perpetual-multiparty/PerpetualLiquidatable.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/financial-templates/expiring-multiparty/Liquidatable.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/oracle/implementation/Voting.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/oracle/implementation/test/VotingTest.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       },
     },
     networks: {
@@ -93,6 +119,7 @@ function getHardhatConfig(configOverrides, workingDir = "./") {
       },
     },
   };
+
   return { ...defaultConfig, ...configOverrides };
 }
 
