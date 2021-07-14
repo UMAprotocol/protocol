@@ -33,19 +33,6 @@ task("generate-ts", "Admin can set generic resource ID on Bridge")
       })),
       "contractName"
     );
-    // for (const artifactPath of artifactPaths) {
-    //   const contractName = path.basename(artifactPath).split(".")[0];
-
-    //   paths[contractName] = {
-    //     browserRelativePath: `./${path.relative(path.dirname(browserOutfile), artifactPath)}`,
-    //     nodejsRelativePath: `./${path.relative(path.dirname(nodejsOutfile), artifactPath)}`,
-    //   };
-    //   // imports[contractName] = {
-    //   //   importLine: `import ${contractName} from "${relativeArtifactPath}";\n`,
-    //   //   abiLine: `export function get${contractName}Abi(): string { return ${contractName}.abi; }\n`,
-    //   //   bytecodeLine: `export function get${contractName}Bytecode(): string { return ${contractName}.bytecode; }\n`,
-    //   // };
-    // }
 
     // Generate a map of name => chain id => address.
     const dirs = fs.readdirSync("./networks");
