@@ -1,13 +1,9 @@
 module.exports = {
-  env: {
-    node: true,
-    mocha: true,
-    es2021: true,
-  },
+  env: { node: true, mocha: true, es2021: true },
   extends: ["plugin:prettier/recommended", "eslint:recommended"],
   plugins: ["prettier", "mocha"],
   rules: {
-    "prettier/prettier": ["error"],
+    "prettier/prettier": ["warn"],
     indent: 0, // avoid conflict with prettier's indent system
     "linebreak-style": ["error", "unix"],
     quotes: ["error", "double", { avoidEscape: true }],
@@ -15,7 +11,7 @@ module.exports = {
     "spaced-comment": ["error", "always", { exceptions: ["-", "+"] }],
     "mocha/no-exclusive-tests": "error",
     "no-console": 0,
-    "object-curly-newline": ["off", "never"],
+    "object-curly-newline": ["warn", "never"],
   },
   overrides: [
     {
