@@ -9,12 +9,18 @@ const assert = require("assert").strict;
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Store = artifacts.require("Store");
 const ERC20 = artifacts.require("ERC20");
+// const GovernorRootTunnel = artifacts.require("GovernorRootTunnel");
+
+// const POLYGON_ADDRESSES = require("../../networks/137.json");
+// const getContractAddressByName = (contractName) => {
+//   return POLYGON_ADDRESSES.find(x =>  x.contractName === contractName).address;
+// };
 
 const { parseUnits } = require("@ethersproject/units");
 const _ = require("lodash");
 const { getDecimals } = require("./utils");
 
-const argv = require("minimist")(process.argv.slice(), { string: ["collateral", "fee"] });
+const argv = require("minimist")(process.argv.slice(), { string: ["collateral", "fee", "polygonCollateral"] });
 
 async function runExport() {
   console.log("Running Upgrade Verifier🔥");
@@ -25,13 +31,20 @@ async function runExport() {
 
   const collaterals = _.castArray(argv.collateral);
   const fees = _.castArray(argv.fee);
-  const decimals = argv.decimals && _.castArray(argv.decimals);
+  const decimals = _.castArray(argv.decimals);
+  const polygonCollaterals = _.castArray(argv.polygonCollateral);
 
-  const argObjects = _.zipWith(collaterals, fees, decimals, (collateral, fee, numDecimalsArg) => {
-    return { collateral, fee, numDecimalsArg };
-  });
+  const argObjects = _.zipWith(
+    collaterals,
+    fees,
+    decimals,
+    polygonCollaterals,
+    (collateral, fee, numDecimalsArg, polygonCollateral) => {
+      return { collateral, fee, numDecimalsArg, polygonCollateral };
+    }
+  );
 
-  for (const { collateral, fee, numDecimalsArg } of argObjects) {
+  for (const { collateral, fee, numDecimalsArg, polygonCollateral } of argObjects) {
     const decimal = await getDecimals(collateral, numDecimalsArg, ERC20);
 
     const store = await Store.deployed();
@@ -39,6 +52,40 @@ async function runExport() {
 
     const whitelist = await AddressWhitelist.deployed();
     assert(await whitelist.isOnWhitelist(collateral));
+
+    // Next, if caller expects to whitelist a polygon instance of the `collateral`, then check for relevant events emitted.
+    if (polygonCollateral) {
+      // const polygonStoreAddress = getContractAddressByName("Store");
+      // const polygonCollateralWhitelistAddress = getContractAddressByName("AddressWhitelist");
+      // const governorRootTunnel = await GovernorRootTunnel.deployed();
+      // const relayedGovernanceEvents = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest");
+      // console.log(relayedGovernanceEvents)
+      // console.group("Relaying equivalent Polygon transactions:");
+      // console.log(`- Setting final fee to ${convertedFeeAmount} in Store @ ${polygonStoreAddress}`);
+      // console.log(
+      //   `- Whitelisting collateral ${polygonCollateral} in AddressWhitelist @ ${polygonCollateralWhitelistAddress}`
+      // );
+      // console.log(`- Relaying message through GovernorRootTunnel @ ${governorRootTunnel.address}`);
+      // console.groupEnd();
+      // // TODO: Create another web3 instance pointing to Polygon node to check whether collateral is already whitelisted.
+      // // We assume that the Store on Polygon has the same ABI as the store on Mainnet.
+      // const polygonFinalFeeData = store.contract.methods
+      //   .setFinalFee(polygonCollateral, { rawValue: convertedFeeAmount })
+      //   .encodeABI();
+      // console.log("polygonFinalFeeData", polygonFinalFeeData);
+      // const polygonCollateralWhitelistData = whitelist.contract.methods.addToWhitelist(polygonCollateral).encodeABI();
+      // console.log("polygonCollateralWhitelistData", polygonCollateralWhitelistData);
+      // const relayFinalFeeTx = governorRootTunnel.contract.methods
+      //   .relayGovernance(polygonStoreAddress, polygonFinalFeeData)
+      //   .encodeABI();
+      // console.log("relayFinalFeeTx", relayFinalFeeTx);
+      // txns.push({ to: governorRootTunnel.address, value: 0, data: relayFinalFeeTx });
+      // const relayCollateralWhitelistTx = governorRootTunnel.contract.methods
+      //   .relayGovernance(polygonCollateralWhitelistAddress, polygonCollateralWhitelistData)
+      //   .encodeABI();
+      // console.log("relayCollateralWhitelistTx", relayCollateralWhitelistTx);
+      // txns.push({ to: governorRootTunnel.address, value: 0, data: relayCollateralWhitelistTx });
+    }
   }
 
   console.log("Upgrade Verified!");
