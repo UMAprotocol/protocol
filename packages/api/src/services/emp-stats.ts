@@ -1,13 +1,13 @@
 import assert from "assert";
 import * as uma from "@uma/sdk";
 import { BigNumber } from "ethers";
-import { Currencies, AppState, PriceSample } from "..";
+import { Currencies, AppState, PriceSample, BaseConfig } from "..";
 import { calcTvl, calcTvm, nowS } from "../libs/utils";
 import Queries from "../libs/queries";
 
-type Config = {
+interface Config extends BaseConfig {
   currency?: Currencies;
-};
+}
 type Dependencies = Pick<
   AppState,
   "emps" | "stats" | "prices" | "erc20s" | "registeredEmps" | "synthPrices" | "marketPrices" | "lsps"

@@ -129,3 +129,15 @@ export const BatchRead = (multicall: uma.Multicall) => async (
     })
   );
 };
+
+export const Profile = (enabled: boolean | undefined) => {
+  return (msg: string) => {
+    // if not enabled, dont do anything
+    if (!enabled) return lodash.noop;
+
+    const id = lodash.uniqueId(msg + "_");
+    console.log(msg);
+    console.time(id);
+    return () => console.timeEnd(id);
+  };
+};

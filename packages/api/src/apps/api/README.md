@@ -27,6 +27,12 @@ zrxBaseUrl=https://api.0x.org
 
 # how many days of price history we should query on startup, leave empty to disable, history will start at the time app is started
 backfillDays=
+
+# required for lsp state updates. this is a valid multicall address on mainnet.
+MULTI_CALL_ADDRESS=0xeefBa1e63905eF1D7ACbA5a8513c70307C1cE441
+
+# any non null value will turn on debugging. This adds additional logs and time profiles for key calls.
+debug=1
 ```
 
 ## Starting

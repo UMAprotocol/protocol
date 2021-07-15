@@ -37,12 +37,12 @@ describe("lsp-state service", function () {
     };
   });
   it("init", async function () {
-    const service = Service(undefined, appState);
+    const service = Service({}, appState);
     assert.ok(service);
   });
   it("readDynamicState", async function () {
     const [address] = registeredContracts;
-    const service = Service(undefined, appState);
+    const service = Service({}, appState);
     const instance = await uma.clients.lsp.connect(address, appState.provider);
     const result = await service.utils.batchRead(service.utils.dynamicProps, instance, address);
     assert.equal(result.address, address);
@@ -53,7 +53,7 @@ describe("lsp-state service", function () {
   });
   it("readStaticState", async function () {
     const [address] = registeredContracts;
-    const service = Service(undefined, appState);
+    const service = Service({}, appState);
     const instance = await uma.clients.lsp.connect(address, appState.provider);
     const result = await service.utils.batchRead(service.utils.staticProps, instance, address);
     assert.equal(result.address, address);
@@ -70,7 +70,7 @@ describe("lsp-state service", function () {
   });
   it("update", async function () {
     this.timeout(60000);
-    const service = Service(undefined, appState);
+    const service = Service({}, appState);
     await service.update();
 
     assert.ok((await appState.lsps.active.values()).length || (await appState.lsps.expired.values()).length);
