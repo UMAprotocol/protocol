@@ -26,7 +26,7 @@ export default (config: Config, appState: Dependencies) => {
         .catch(() => null),
       totalPositionCollateral: instance
         .totalPositionCollateral()
-        .then((x) => x.rawValue.toString())
+        .then((x: any) => x.rawValue.toString())
         .catch(() => null),
       rawTotalPositionCollateral: instance
         .rawTotalPositionCollateral()

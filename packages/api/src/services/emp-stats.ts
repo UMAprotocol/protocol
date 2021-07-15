@@ -10,7 +10,7 @@ type Config = {
 };
 type Dependencies = Pick<
   AppState,
-  "emps" | "stats" | "prices" | "erc20s" | "registeredEmps" | "synthPrices" | "marketPrices"
+  "emps" | "stats" | "prices" | "erc20s" | "registeredEmps" | "synthPrices" | "marketPrices" | "lsps"
 >;
 
 // this service is meant to calculate numbers derived from emp state, things like TVL, TVM and other things

@@ -17,7 +17,7 @@ type Config = {
 
 type Dependencies = Pick<
   AppState,
-  "web3" | "emps" | "synthPrices" | "erc20s" | "prices" | "stats" | "registeredEmps" | "marketPrices"
+  "web3" | "emps" | "synthPrices" | "erc20s" | "prices" | "stats" | "registeredEmps" | "marketPrices" | "lsps"
 >;
 
 export default function (config: Config, appState: Dependencies) {

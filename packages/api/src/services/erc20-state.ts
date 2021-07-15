@@ -4,10 +4,13 @@ import { asyncValues } from "../libs/utils";
 
 type Config = undefined;
 // break out this services specific state dependencies
-type Dependencies = Pick<AppState, "provider" | "erc20s" | "collateralAddresses" | "syntheticAddresses">;
+type Dependencies = Pick<
+  AppState,
+  "provider" | "erc20s" | "collateralAddresses" | "syntheticAddresses" | "longAddresses" | "shortAddresses"
+>;
 
 export default function (config: Config, appState: Dependencies) {
-  const { provider, erc20s, collateralAddresses, syntheticAddresses } = appState;
+  const { provider, erc20s, collateralAddresses, syntheticAddresses, longAddresses, shortAddresses } = appState;
 
   // get token state based on contract
   async function getTokenStateFromContract(address: string) {
@@ -33,8 +36,13 @@ export default function (config: Config, appState: Dependencies) {
   }
 
   async function update() {
-    const addresses = [...collateralAddresses.values(), ...syntheticAddresses.values()];
-    await updateTokens(addresses).then((results) => {
+    const addresses = new Set([
+      ...collateralAddresses.values(),
+      ...syntheticAddresses.values(),
+      ...longAddresses.values(),
+      ...shortAddresses.values(),
+    ]);
+    await updateTokens(Array.from(addresses)).then((results) => {
       results.forEach((result) => {
         if (result.status === "rejected") console.error("Error getting token info: " + result.reason.message);
       });
