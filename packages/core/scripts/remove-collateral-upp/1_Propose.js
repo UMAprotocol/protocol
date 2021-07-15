@@ -1,6 +1,6 @@
 // This script generates and submits a collateral removal transaction to the DVM. It can be run on a local ganache
 // fork of the mainnet or can be run directly on the mainnet to execute the upgrade transactions.
-// To run this on the localhost first fork main net into Ganache with the proposerWallet unlocked as follows:
+// To run this on the localhost first fork mainnet into Ganache with the proposerWallet unlocked as follows:
 // ganache-cli --fork https://mainnet.infura.io/v3/5f56f0a4c8844c96a430fbd3d7993e39 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25 --unlock 0x7a3a1c2de64f20eb5e916f40d11b01c441b2a8dc --port 9545
 // Then execute the script as: yarn truffle exec ./scripts/remove-collateral-upp/1_Propose.js --network mainnet-fork --collateral 0x84810bcf08744d5862b8181f12d17bfd57d3b078 from core
 
