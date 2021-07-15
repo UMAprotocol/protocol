@@ -25,7 +25,7 @@ async function runExport() {
 
   const collaterals = _.castArray(argv.collateral);
   const fees = _.castArray(argv.fee);
-  const decimals = _.castArray(argv.decimals);
+  const decimals = argv.decimals && _.castArray(argv.decimals);
 
   const argObjects = _.zipWith(collaterals, fees, decimals, (collateral, fee, numDecimalsArg) => {
     return { collateral, fee, numDecimalsArg };
