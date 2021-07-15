@@ -16,7 +16,7 @@ export default (config: Config, appState: Dependencies) => {
   // default props we want to query on contract
   const staticProps: [string, (x: any) => any][] = [
     // TODO: deal with this when early contracts dont have pairName
-    // ["pairName", (x:any)=>an],
+    // ["pairName", parseBytes],
     ["collateralPerPair", toString],
     ["priceIdentifier", parseBytes],
     ["collateralToken", toString],
@@ -26,12 +26,12 @@ export default (config: Config, appState: Dependencies) => {
     ["financialProductLibrary", toString],
     ["customAncillaryData", toString],
     ["prepaidProposerReward", toString],
+    ["expirationTimestamp", toNumber],
   ];
 
   const dynamicProps: [string, (x: any) => any][] = [
     ["expiryPrice", toString],
     ["expiryPercentLong", toString],
-    ["expirationTimestamp", toNumber],
     ["contractState", toNumber],
   ];
 

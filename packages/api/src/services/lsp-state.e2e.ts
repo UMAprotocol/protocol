@@ -14,6 +14,7 @@ type Dependencies = Pick<
   "lsps" | "registeredLsps" | "provider" | "collateralAddresses" | "shortAddresses" | "longAddresses" | "multicall"
 >;
 
+// first contract launched, does not have pairName property
 const registeredContracts = ["0x372802d8A2D69bB43872a1AABe2bd403a0FafA1F"];
 
 describe("lsp-state service", function () {
@@ -44,11 +45,10 @@ describe("lsp-state service", function () {
     const service = Service(undefined, appState);
     const instance = await uma.clients.lsp.connect(address, appState.provider);
     const result = await service.utils.batchRead(service.utils.dynamicProps, instance, address);
-    assert.ok(result.address);
-    assert.ok(result.updated);
+    assert.equal(result.address, address);
+    assert.ok(result.updated > 0);
     assert.ok(result.expiryPrice);
     assert.ok(result.expiryPercentLong);
-    assert.ok(result.expirationTimestamp);
     assert.ok(result.contractState >= 0);
   });
   it("readStaticState", async function () {
@@ -56,17 +56,17 @@ describe("lsp-state service", function () {
     const service = Service(undefined, appState);
     const instance = await uma.clients.lsp.connect(address, appState.provider);
     const result = await service.utils.batchRead(service.utils.staticProps, instance, address);
-    assert.ok(result.address);
-    assert.ok(result.updated);
-    assert.ok(result.collateralPerPair);
-    assert.ok(result.priceIdentifier);
-    assert.ok(result.collateralToken);
-    assert.ok(result.longToken);
-    assert.ok(result.shortToken);
-    assert.ok(result.finder);
-    assert.ok(result.financialProductLibrary);
-    assert.ok(result.customAncillaryData);
-    assert.ok(result.prepaidProposerReward);
+    assert.equal(result.address, address);
+    assert.ok(result.updated > 0);
+    assert.equal(result.collateralPerPair, "250000000000000000");
+    assert.equal(result.priceIdentifier, "UMAUSD");
+    assert.equal(result.collateralToken, "0x04Fa0d235C4abf4BcF4787aF4CF447DE572eF828");
+    assert.equal(result.longToken, "0xa1b777a18333A9EC31b4D81f5d08371b6AE1FEb9");
+    assert.equal(result.shortToken, "0xeFA3356e054A035dD91fA25b3F2A61484Bc2CD54");
+    assert.equal(result.finder, "0x40f941E48A552bF496B154Af6bf55725f18D77c3");
+    assert.equal(result.financialProductLibrary, "0x9214454Ff30410a1558b8749Ab3FB0fD6F942539");
+    assert.equal(result.customAncillaryData, "0x747761704c656e6774683a33363030");
+    assert.equal(result.prepaidProposerReward, "0");
   });
   it("update", async function () {
     this.timeout(60000);
