@@ -31,17 +31,16 @@ async function runExport() {
 
   const collaterals = _.castArray(argv.collateral);
   const fees = _.castArray(argv.fee);
-  const decimals = _.castArray(argv.decimals);
   const polygonCollaterals = _.castArray(argv.polygonCollateral);
 
-  const argObjects = _.zipWith(collaterals, fees, decimals, (collateral, fee, numDecimalsArg) => {
-    return { collateral, fee, numDecimalsArg };
+  const argObjects = _.zipWith(collaterals, fees, (collateral, fee) => {
+    return { collateral, fee };
   });
 
   const whitelist = await AddressWhitelist.deployed();
 
-  for (const { collateral, fee, numDecimalsArg } of argObjects) {
-    const decimal = await getDecimals(collateral, numDecimalsArg, ERC20);
+  for (const { collateral, fee } of argObjects) {
+    const decimal = await getDecimals(collateral, null, ERC20);
 
     const store = await Store.deployed();
     assert.equal((await store.computeFinalFee(collateral)).rawValue, parseUnits(fee, decimal).toString());
