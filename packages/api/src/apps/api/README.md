@@ -181,4 +181,4 @@ Gets the history of global tvl, the sum of all known EMP total value locked, bet
 
 ### globalTvlSlice(start = 0, length = 1, currency: CurrencySymbol = "usd") => StatData[]
 
-Gets the history of global tvl, the sum of all known EMP tottal value locked, starting at start in timestamp seconds and counting length samples after that.
+Gets the history of global tvl, the sum of all known EMP total value locked, starting at start in timestamp seconds and counting length samples after that.
