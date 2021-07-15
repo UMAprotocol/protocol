@@ -16,7 +16,7 @@ async function run(env: ProcessEnv) {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
   assert(env.EXPRESS_PORT, "requires EXPRESS_PORT");
   assert(env.zrxBaseUrl, "requires zrxBaseUrl");
-  assert(env.multicallAddress, "requires multicallAddress");
+  assert(env.MULTI_CALL_ADDRESS, "requires MULTI_CALL_ADDRESS");
 
   const provider = new ethers.providers.WebSocketProvider(env.CUSTOM_NODE_URL);
 
@@ -79,7 +79,7 @@ async function run(env: ProcessEnv) {
     // lsp related props. could be its own state object
     longAddresses: new Set<string>(),
     shortAddresses: new Set<string>(),
-    multicall: new Multicall(env.multicallAddress, provider),
+    multicall: new Multicall(env.MULTI_CALL_ADDRESS, provider),
     lsps: {
       active: lsps.JsMap("Active LSP"),
       expired: lsps.JsMap("Expired LSP"),
