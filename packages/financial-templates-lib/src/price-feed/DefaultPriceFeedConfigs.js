@@ -541,8 +541,16 @@ const defaultConfigs = {
     twapLength: 86400,
     priceFeedDecimals: 8,
     customFeeds: {
-      DIGG_WBTC_SUSHI: { type: "uniswap", uniswapAddress: "0x9a13867048e01c663ce8ce2fe0cdae69ff9f35e3" },
-      DIGG_WBTC_UNI: { type: "uniswap", uniswapAddress: "0xe86204c4eddd2f70ee00ead6805f917671f56c52" },
+      DIGG_WBTC_SUSHI: {
+        type: "uniswap",
+        uniswapAddress: "0x9a13867048e01c663ce8ce2fe0cdae69ff9f35e3",
+        invertPrice: true,
+      },
+      DIGG_WBTC_UNI: {
+        type: "uniswap",
+        uniswapAddress: "0xe86204c4eddd2f70ee00ead6805f917671f56c52",
+        invertPrice: true,
+      },
     },
   },
   DIGGETH: {
@@ -559,6 +567,29 @@ const defaultConfigs = {
     customFeeds: {
       WBTC_ETH_SUSHI: { type: "uniswap", uniswapAddress: "0xCEfF51756c56CeFFCA006cD410B03FFC46dd3a58" },
       WBTC_ETH_UNI: { type: "uniswap", uniswapAddress: "0xBb2b8038a1640196FbE3e38816F3e67Cba72D940" },
+      DIGGBTC: {
+        type: "expression",
+        // Note: lower-case variables are intermediate, upper-case are configured feeds.
+        expression: `
+          mean(DIGG_WBTC_SUSHI, DIGG_WBTC_UNI)
+        `,
+        lookback: 7200,
+        minTimeBetweenUpdates: 60,
+        twapLength: 1800,
+        priceFeedDecimals: 8,
+        customFeeds: {
+          DIGG_WBTC_SUSHI: {
+            type: "uniswap",
+            uniswapAddress: "0x9a13867048e01c663ce8ce2fe0cdae69ff9f35e3",
+            invertPrice: true,
+          },
+          DIGG_WBTC_UNI: {
+            type: "uniswap",
+            uniswapAddress: "0xe86204c4eddd2f70ee00ead6805f917671f56c52",
+            invertPrice: true,
+          },
+        },
+      },
     },
   },
   DIGGUSD: {
@@ -643,6 +674,7 @@ const defaultConfigs = {
   UMAUSD: {
     type: "medianizer",
     minTimeBetweenUpdates: 60,
+    twapLength: 3600,
     medianizedFeeds: [
       { type: "cryptowatch", exchange: "coinbase-pro", pair: "umausd" },
       { type: "cryptowatch", exchange: "binance", pair: "umausdt" },
