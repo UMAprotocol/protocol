@@ -89,13 +89,19 @@ async function runExport() {
 
     const txns = [];
 
-    // The proposal will first add a final fee for the currency.
+    // The proposal will first add a final fee for the currency if the current final fee is different from the
+    // proposed new one.
     const store = await Store.deployed();
-    const addFinalFeeToStoreTx = store.contract.methods
-      .setFinalFee(collateral, { rawValue: convertedFeeAmount })
-      .encodeABI();
-    console.log("addFinalFeeToStoreTx", addFinalFeeToStoreTx);
-    txns.push({ to: store.address, value: 0, data: addFinalFeeToStoreTx });
+    const currentFinalFee = await store.computeFinalFee(collateral);
+    if (currentFinalFee.toString() !== convertedFeeAmount) {
+      const addFinalFeeToStoreTx = store.contract.methods
+        .setFinalFee(collateral, { rawValue: convertedFeeAmount })
+        .encodeABI();
+      console.log("addFinalFeeToStoreTx", addFinalFeeToStoreTx);
+      txns.push({ to: store.address, value: 0, data: addFinalFeeToStoreTx });
+    } else {
+      console.log("Final fee for ", collateral, `is already equal to ${convertedFeeAmount}. Nothing to do.`);
+    }
 
     // The proposal will then add the currency to the whitelist if it isn't already there.
     const whitelist = await AddressWhitelist.deployed();
@@ -169,6 +175,7 @@ async function runExport() {
 
   // Send the proposal
   await gasEstimator.update();
+  console.log(`Admin proposal contains ${transactionList.length} transactions`);
   const txn = await governor.propose(transactionList, {
     from: proposerWallet,
     gasPrice: gasEstimator.getCurrentFastPrice(),
