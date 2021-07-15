@@ -1,8 +1,8 @@
 import { clients } from "@uma/sdk";
-import { AppState } from "..";
+import { AppState, BaseConfig } from "..";
 import { asyncValues } from "../libs/utils";
 
-type Config = undefined;
+type Config = BaseConfig;
 // break out this services specific state dependencies
 type Dependencies = Pick<
   AppState,

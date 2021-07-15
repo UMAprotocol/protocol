@@ -1,12 +1,12 @@
 import { clients } from "@uma/sdk";
 import Promise from "bluebird";
-import { AppState } from "..";
+import { AppState, BaseConfig } from "..";
 
 const { lspCreator } = clients;
 
-type Config = {
+interface Config extends BaseConfig {
   network?: number;
-};
+}
 type Dependencies = Pick<AppState, "registeredLsps" | "provider">;
 
 export default (config: Config, appState: Dependencies) => {

@@ -3,6 +3,9 @@ import { ethers } from "ethers";
 import type { empStats, empStatsHistory, lsps } from "./tables";
 import type Zrx from "./libs/zrx";
 
+export interface BaseConfig {
+  debug?: boolean;
+}
 export type Currencies = "usd";
 export type { BigNumber } from "ethers";
 export type Provider = ethers.providers.Provider;

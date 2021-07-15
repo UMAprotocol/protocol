@@ -3,11 +3,11 @@ import Promise from "bluebird";
 const { emp } = uma.clients;
 import { BigNumber, utils } from "ethers";
 const { parseBytes32String } = utils;
-import { asyncValues } from "../libs/utils";
-import { AppState } from "..";
+import { asyncValues, Profile } from "../libs/utils";
+import { AppState, BaseConfig } from "..";
 
 type Instance = uma.clients.emp.Instance;
-type Config = undefined;
+type Config = BaseConfig;
 type Dependencies = Pick<
   AppState,
   "registeredEmps" | "provider" | "emps" | "collateralAddresses" | "syntheticAddresses"
@@ -15,6 +15,7 @@ type Dependencies = Pick<
 
 export default (config: Config, appState: Dependencies) => {
   const { registeredEmps, provider, emps, collateralAddresses, syntheticAddresses } = appState;
+  const profile = Profile(config.debug);
 
   async function readEmpDynamicState(instance: Instance, address: string) {
     return asyncValues<uma.tables.emps.Data>({
@@ -154,9 +155,22 @@ export default (config: Config, appState: Dependencies) => {
     });
   }
 
+  async function updateAll(addresses: string[], startBlock?: number | "latest", endBlock?: number) {
+    await Promise.mapSeries(addresses, async (address: string) => {
+      const end = profile(`Emp state for ${address}`);
+      try {
+        return await updateOne(address, startBlock, endBlock);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        end();
+      }
+    });
+  }
+
   async function update(startBlock?: number | "latest", endBlock?: number) {
     const addresses = Array.from(await registeredEmps.values());
-    await Promise.mapSeries(addresses, (address: string) => updateOne(address, startBlock, endBlock));
+    await updateAll(addresses, startBlock, endBlock);
     await updateTokenAddresses();
   }
 

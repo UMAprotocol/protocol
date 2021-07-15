@@ -1,10 +1,10 @@
 import * as uma from "@uma/sdk";
 import { BatchRead, toString, toNumber, parseBytes, nowS } from "../libs/utils";
-import { AppState } from "..";
+import { AppState, BaseConfig } from "..";
 import { lsps } from "../tables";
 
 type Instance = uma.clients.lsp.Instance;
-type Config = undefined;
+type Config = BaseConfig;
 type Dependencies = Pick<
   AppState,
   "lsps" | "registeredLsps" | "provider" | "collateralAddresses" | "shortAddresses" | "longAddresses" | "multicall"
