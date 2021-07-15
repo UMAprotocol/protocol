@@ -536,9 +536,9 @@ const defaultConfigs = {
     expression: `
       mean(DIGG_WBTC_SUSHI, DIGG_WBTC_UNI)
     `,
-    lookback: 7200,
+    lookback: 93600,
     minTimeBetweenUpdates: 60,
-    twapLength: 1800,
+    twapLength: 86400,
     priceFeedDecimals: 8,
     customFeeds: {
       DIGG_WBTC_SUSHI: { type: "uniswap", uniswapAddress: "0x9a13867048e01c663ce8ce2fe0cdae69ff9f35e3" },
