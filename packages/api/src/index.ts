@@ -1,8 +1,11 @@
 import uma from "@uma/sdk";
 import { ethers } from "ethers";
-import type { empStats, empStatsHistory } from "./tables";
+import type { empStats, empStatsHistory, lsps } from "./tables";
 import type Zrx from "./libs/zrx";
 
+export interface BaseConfig {
+  debug?: boolean;
+}
 export type Currencies = "usd";
 export type { BigNumber } from "ethers";
 export type Provider = ethers.providers.Provider;
@@ -30,6 +33,10 @@ export type AppState = {
   emps: {
     active: uma.tables.emps.JsMap;
     expired: uma.tables.emps.JsMap;
+  };
+  lsps: {
+    active: lsps.JsMap;
+    expired: lsps.JsMap;
   };
   prices: {
     usd: {
@@ -70,10 +77,14 @@ export type AppState = {
     };
   };
   registeredEmps: Set<string>;
+  registeredLsps: Set<string>;
   provider: Provider;
   web3: Web3;
   lastBlock: number;
   lastBlockUpdate: number;
   collateralAddresses: Set<string>;
   syntheticAddresses: Set<string>;
+  longAddresses: Set<string>;
+  shortAddresses: Set<string>;
+  multicall: uma.Multicall;
 };
