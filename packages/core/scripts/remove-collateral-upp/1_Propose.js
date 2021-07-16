@@ -27,11 +27,7 @@ async function runExport() {
   const netId = await web3.eth.net.getId();
   console.log("Connected to network id", netId);
 
-  const gasEstimator = new GasEstimator(
-    winston.createLogger({ silent: true }),
-    60, // Time between updates.
-    netId
-  );
+  const gasEstimator = new GasEstimator(winston.createLogger({ silent: true }), 60, netId);
 
   if (!argv.collateral) {
     throw new Error("Must provide --collateral");
@@ -58,11 +54,7 @@ async function runExport() {
       console.log("removeCollateralFromWhitelistTx", removeCollateralFromWhitelistTx);
       txns.push({ to: whitelist.address, value: 0, data: removeCollateralFromWhitelistTx });
 
-      console.log(`
-
-      Collateral currency to remove: ${collateral}
-
-      `);
+      console.log("Collateral currency to remove:", collateral);
     }
 
     return txns;
@@ -90,7 +82,7 @@ async function runExport() {
   console.log(`Governor submitting admin request to Voting @ ${oracleAddress}`);
 
   const oracle = await Voting.deployed();
-  const priceRequests = await oracle.getPastEvents("PriceRequestAdded");
+  const priceRequests = await oracle.getPastEvents("PriceRequestAdded", { fromBlock: txn.block });
 
   const newAdminRequest = priceRequests[priceRequests.length - 1];
   console.log(
