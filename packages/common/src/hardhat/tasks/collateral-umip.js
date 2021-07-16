@@ -30,6 +30,14 @@ const REQUIRED_SIGNER_ADDRESSES = { deployer: "0x2bAaA41d155ad8a4126184950B31F50
 // - If --verify flag is set, script is assumed to be running after a Vote Simulation and updated contract state is
 // verified.
 
+// Examples:
+// - Whitelist collateral on Ethereum only:
+//    - `yarn hardhat collateral-umip --collateral 0xabc,0x123 --network localhost`
+// - Whitelist collateral on Polygon only:
+//    - `yarn hardhat collateral-umip --polygon 0xabc,0x123 --network localhost`
+// - Whitelist collateral on both (some on Ethereum, some on Polygon):
+//    - `yarn hardhat collateral-umip --collateral 0xabc,0x123 --polygon 0xdef, --network localhost`
+
 task("collateral-umip", "Propose or verify Admin Proposal whitelisting new collateral types to Ethereum and/or Polygon")
   .addOptionalParam(
     "collateral",

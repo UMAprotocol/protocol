@@ -1,6 +1,5 @@
 const { getNodeUrl, mnemonic } = require("./TruffleConfig");
 const path = require("path");
-require("dotenv").config();
 
 function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = true) {
   // Hardhat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function

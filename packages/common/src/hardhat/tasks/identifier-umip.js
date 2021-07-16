@@ -29,6 +29,14 @@ const REQUIRED_SIGNER_ADDRESSES = { deployer: "0x2bAaA41d155ad8a4126184950B31F50
 // - If --verify flag is set, script is assumed to be running after a Vote Simulation and updated contract state is
 // verified.
 
+// Examples:
+// - Whitelist identifiers on Ethereum only:
+//    - `yarn hardhat identifier-umip --identifier "POOL/USD","USD/POOL" --network localhost`
+// - Whitelist identifiers on Polygon only:
+//    - `yarn hardhat identifier-umip --polygon "POOL/USD","USD/POOL" --network localhost`
+// - Whitelist identifiers on both (some on Ethereum, some on Polygon):
+//    - `yarn hardhat identifier-umip --identifier "POOL/USD","USD/POOL" --polygon "POOL/USD", --network localhost`
+
 task("identifier-umip", "Propose or verify Admin Proposal whitelisting new identifiers to Ethereum and/or Polygon")
   .addOptionalParam(
     "identifier",
