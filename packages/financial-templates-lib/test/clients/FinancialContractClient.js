@@ -509,13 +509,7 @@ contract("FinancialContractClient.js", function (accounts) {
               { rawValue: convertDecimals("100") },
               { from: sponsor1 }
             );
-<<<<<<< HEAD
-            await syntheticToken.transfer(liquidator, convertDecimals("100"), {
-              from: sponsor1,
-            });
-=======
-            await syntheticToken.transfer(liquidator, convertSynthetic("100"), { from: sponsor1 });
->>>>>>> master
+            await syntheticToken.transfer(liquidator, convertDecimals("100"), { from: sponsor1 });
 
             // Create a new liquidation for account[0]'s position.
             const { liquidationId } = await financialContract.createLiquidation.call(
@@ -563,22 +557,8 @@ contract("FinancialContractClient.js", function (accounts) {
               { rawValue: convertDecimals("100") },
               { from: sponsor1 }
             );
-<<<<<<< HEAD
-            await syntheticToken.transfer(liquidator, convertDecimals("100"), {
-              from: sponsor1,
-            });
-            await financialContract.requestWithdrawal(
-              {
-                rawValue: convertDecimals("10"),
-              },
-              {
-                from: sponsor1,
-              }
-            );
-=======
-            await syntheticToken.transfer(liquidator, convertSynthetic("100"), { from: sponsor1 });
-            await financialContract.requestWithdrawal({ rawValue: convertCollateral("10") }, { from: sponsor1 });
->>>>>>> master
+            await syntheticToken.transfer(liquidator, convertDecimals("100"), { from: sponsor1 });
+            await financialContract.requestWithdrawal({ rawValue: convertDecimals("10") }, { from: sponsor1 });
 
             // Create a new liquidation for account[0]'s position.
             await financialContract.createLiquidation.call(
@@ -658,23 +638,11 @@ contract("FinancialContractClient.js", function (accounts) {
             const liquidator = sponsor2;
 
             await financialContract.create(
-<<<<<<< HEAD
               { rawValue: convertDecimals("150") },
               { rawValue: convertDecimals("100") },
-              {
-                from: sponsor1,
-              }
-            );
-            await syntheticToken.transfer(liquidator, convertDecimals("100"), {
-              from: sponsor1,
-            });
-=======
-              { rawValue: convertCollateral("150") },
-              { rawValue: convertSynthetic("100") },
               { from: sponsor1 }
             );
-            await syntheticToken.transfer(liquidator, convertSynthetic("100"), { from: sponsor1 });
->>>>>>> master
+            await syntheticToken.transfer(liquidator, convertDecimals("100"), { from: sponsor1 });
 
             // Create a new liquidation for account[0]'s position.
             const { liquidationId } = await financialContract.createLiquidation.call(
