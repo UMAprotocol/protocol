@@ -16712,10 +16712,10 @@ hard-rejection@^2.1.0:
   resolved "https://registry.yarnpkg.com/hard-rejection/-/hard-rejection-2.1.0.tgz#1c6eda5c1685c63942766d79bb40ae773cecd883"
   integrity sha512-VIZB+ibDhx7ObhAe7OVtoEbuP4h/MuOTHJ+J8h/eBXotJYl0fBgR72xDFCKgIh22OJZIOVNxBMWuhAr10r8HdA==
 
-hardhat-deploy@^0.8.6:
-  version "0.8.6"
-  resolved "https://registry.yarnpkg.com/hardhat-deploy/-/hardhat-deploy-0.8.6.tgz#6f0e8684a66f0a130670e448bbd072bc512255be"
-  integrity sha512-lw4k1SPVc3kG2jCSbxfnSqVxqh0E7xK9rB6HeJoWIvmy5Y6+Uuw0C3Lk0TObX02ewsTRF/5sWin7JHxbt6K8Mg==
+hardhat-deploy@^0.8.11:
+  version "0.8.11"
+  resolved "https://registry.yarnpkg.com/hardhat-deploy/-/hardhat-deploy-0.8.11.tgz#faa20def76f031101db81c5b71d7388e0475b794"
+  integrity sha512-PJIYckR9lYvGMHxaIb8esvZw9k+gW2xPCUYf4XJTQ3f1fLTXhA86AOhPQsfyBr+MY11/D+UUerIP88tl+PW2+g==
   dependencies:
     "@ethersproject/abi" "^5.3.1"
     "@ethersproject/abstract-signer" "^5.3.0"
