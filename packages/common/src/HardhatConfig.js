@@ -1,5 +1,6 @@
 const { getNodeUrl, mnemonic } = require("./TruffleConfig");
 const path = require("path");
+require("dotenv").config();
 
 function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = true) {
   // Hardhat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function
@@ -43,6 +44,7 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
     },
     networks: {
       hardhat: { gas: 11500000, blockGasLimit: 11500000, allowUnlimitedContractSize: false, timeout: 1800000 },
+      "custom-node-fork": { url: process.env.CUSTOM_NODE_URL },
       localhost: { url: "http://127.0.0.1:8545" },
       rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true), accounts: { mnemonic } },
       kovan: { chainId: 42, url: getNodeUrl("kovan", true), accounts: { mnemonic } },
