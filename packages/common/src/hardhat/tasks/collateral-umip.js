@@ -18,28 +18,30 @@ const REQUIRED_SIGNER_ADDRESSES = { deployer: "0x2bAaA41d155ad8a4126184950B31F50
 // - (optional, or required if --polygon is not undefined) set CROSS_CHAIN_NODE_URL to a Polygon mainnet node. This will
 // be used to query contract data from Polygon when relaying proposals through the GovernorRootTunnel.
 // - Propose: yarn hardhat collateral-umip --network localhost --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456
-// - Vote Simulate: yarn hardhat vote-simulate --network localhost
+// - Vote Simulate: yarn hardhat vote-simulate-umip --network localhost
 // - Verify: yarn hardhat collateral-umip --network localhost --verify --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456
 // - For production, set the CUSTOM_NODE_URL environment and run the script with `--network mainnet`.
 
 // Customizations:
-// - --polygon flag can be omitted, in which case transactions will only take place on Ethereum.
+// - --polygon param can be omitted, in which case transactions will only take place on Ethereum.
 // - --collateral flag can also be omitted, in which case transactions will only be relayed to Polygon
-// - --fee, ---collateral, --polygon flags all must be comma delimited strings resulting in equal length arrays
-// - If --verify flag is passed, script is assumed to be running after a Vote Simulation and updated contract state is
+// - --fee, ---collateral, --polygon param all must be comma delimited strings resulting in equal length arrays
+// - Specific collateral or polygon addresses can be skipped to conform with the above constraint like so: --collateral ,, --polygonCollateral 0xab,,
+// - If --verify flag is set, script is assumed to be running after a Vote Simulation and updated contract state is
 // verified.
+
 task("collateral-umip", "Propose or verify Admin Proposal whitelisting new collateral types to Ethereum and/or Polygon")
   .addOptionalParam(
     "collateral",
-    "comma-delimited list of collateral addresses to whitelist. Required if --ethereumOnly flag is True",
+    "comma-delimited list of collateral addresses to whitelist. Required if --polygon is omitted.",
     undefined,
     types.string
   )
-  .addParam("fee", "comma-delimited list of final fees to set for whitelisted collateral", undefined, types.string)
-  .addOptionalParam("verify", "False if verifying, True for proposing. Default False.", false, types.boolean)
+  .addParam("fee", "comma-delimited list of final fees to set for whitelisted collateral.", undefined, types.string)
+  .addFlag("verify", "set if verifying, skip for proposing.")
   .addOptionalParam(
     "polygon",
-    "comma-delimited list of Polygon collateral addresses to whitelist",
+    "comma-delimited list of Polygon collateral addresses to whitelist. Required if --collateral is omitted",
     undefined,
     types.string
   )
@@ -115,6 +117,13 @@ task("collateral-umip", "Propose or verify Admin Proposal whitelisting new colla
       60, // Time between updates.
       netId
     );
+    await gasEstimator.update();
+    console.log(
+      `⛽️ Current fast gas price for Ethereum: ${web3.utils.fromWei(
+        gasEstimator.getCurrentFastPrice().toString(),
+        "gwei"
+      )} gwei`
+    );
     const governor = new web3.eth.Contract(Governor.abi, _getContractAddressByName("Governor", netId));
     const finder = new web3.eth.Contract(Finder.abi, _getContractAddressByName("Finder", netId));
     const oracleAddress = await finder.methods
@@ -125,11 +134,13 @@ task("collateral-umip", "Propose or verify Admin Proposal whitelisting new colla
       GovernorRootTunnel.abi,
       _getContractAddressByName("GovernorRootTunnel", netId)
     );
-    console.group("\nℹ️  Relayer infrastructure for Polygon transactions:");
-    console.log(`- Store @ ${polygon_store.options.address}`);
-    console.log(`- AddressWhitelist @ ${polygon_whitelist.options.address}`);
-    console.log(`- GovernorRootTunnel @ ${governorRootTunnel.options.address}`);
-    console.groupEnd();
+    if (polygonCollaterals) {
+      console.group("\nℹ️  Relayer infrastructure for Polygon transactions:");
+      console.log(`- Store @ ${polygon_store.options.address}`);
+      console.log(`- AddressWhitelist @ ${polygon_whitelist.options.address}`);
+      console.log(`- GovernorRootTunnel @ ${governorRootTunnel.options.address}`);
+      console.groupEnd();
+    }
     console.group("\nℹ️  DVM infrastructure for Ethereum transactions:");
     console.log(`- Store @ ${store.options.address}`);
     console.log(`- AddressWhitelist @ ${whitelist.options.address}`);
@@ -235,7 +246,6 @@ task("collateral-umip", "Propose or verify Admin Proposal whitelisting new colla
 
       // Send the proposal
       console.group(`\n📨 Sending to governor @ ${governor.options.address}`);
-      await gasEstimator.update();
       console.log(`- Admin proposal contains ${adminProposalTransactions.length} transactions`);
       const txn = await governor.methods
         .propose(adminProposalTransactions)
@@ -252,9 +262,49 @@ task("collateral-umip", "Propose or verify Admin Proposal whitelisting new colla
       );
       console.groupEnd();
     } else {
-      console.group("Verifying execution of Admin Proposal");
+      console.group("\n🔎 Verifying execution of Admin Proposal");
+      for (let i = 0; i < fees.length; i++) {
+        if (collaterals && collaterals[i]) {
+          const collateralDecimals = await _getDecimals(web3, collaterals[i], ERC20);
+          const convertedFeeAmount = parseUnits(fees[i], collateralDecimals).toString();
+          const currentFinalFee = await store.methods.computeFinalFee(collaterals[i]).call();
+          assert.equal(currentFinalFee.toString(), convertedFeeAmount, "Final fee was not set correctly");
+          assert(await whitelist.methods.isOnWhitelist(collaterals[i]).call(), "Collateral is not on AddressWhitelist");
+          console.log(`- Collateral @ ${collaterals[i]} has correct final fee and is whitelisted on Ethereum`);
+        }
+        if (polygonCollaterals && polygonCollaterals[i]) {
+          // Construct expected data to be relayed to Polygon contracts
+          const collateralDecimals = await _getDecimals(crossChainWeb3, polygonCollaterals[i], ERC20);
+          const convertedFeeAmount = parseUnits(fees[i], collateralDecimals).toString();
+          const setFinalFeeData = polygon_store.methods
+            .setFinalFee(polygonCollaterals[i], { rawValue: convertedFeeAmount })
+            .encodeABI();
+          const addToWhitelistData = polygon_whitelist.methods.addToWhitelist(polygonCollaterals[i]).encodeABI();
+          const relayedStoreTransaction = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
+            filter: { to: polygon_store.options.address },
+            fromBlock: 0,
+          });
+          assert(
+            relayedStoreTransaction.find((e) => e.returnValues.data === setFinalFeeData),
+            "Could not find RelayedGovernanceRequest matching expected relayed setFinalFee transaction"
+          );
+          const relayedWhitelistTransaction = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
+            filter: { to: polygon_whitelist.options.address },
+            fromBlock: 0,
+          });
+          assert(
+            relayedWhitelistTransaction.find((e) => e.returnValues.data === addToWhitelistData),
+            "Could not find RelayedGovernanceRequest matching expected relayed addToWhitelist transaction"
+          );
+          console.log(
+            `- GovernorRootTunnel correctly emitted events to whitelist collateral ${polygonCollaterals[i]} with final fee set to ${convertedFeeAmount}`
+          );
+        }
+      }
     }
     console.groupEnd();
+
+    console.log("\n😇 Success!");
   });
 
 // This function resolves the decimals for a collateral token. A decimals override is optionally passed in to override
