@@ -5,4 +5,5 @@ module.exports = {
   ...require("./bridge.js"),
   ...require("./fxTunnel.js"),
   ...require("./oracle.js"),
+  ...require("./collateral-umip.js"),
 };
