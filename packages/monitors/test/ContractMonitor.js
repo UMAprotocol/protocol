@@ -248,7 +248,7 @@ contract("ContractMonitor.js", function (accounts) {
 
           //   Bulk mint and approve for all wallets
           for (let i = 1; i < 6; i++) {
-            await collateralToken.mint(accounts[i], convertCollateral("100000000"), { from: tokenSponsor });
+            await collateralToken.mint(accounts[i], convertDecimals("100000000"), { from: tokenSponsor });
             await collateralToken.approve(financialContract.address, convertDecimals("100000000"), {
               from: accounts[i],
             });
