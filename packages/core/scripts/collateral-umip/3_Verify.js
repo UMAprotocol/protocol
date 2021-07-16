@@ -9,18 +9,12 @@ const assert = require("assert").strict;
 const AddressWhitelist = artifacts.require("AddressWhitelist");
 const Store = artifacts.require("Store");
 const ERC20 = artifacts.require("ERC20");
-const GovernorRootTunnel = artifacts.require("GovernorRootTunnel");
-
-const POLYGON_ADDRESSES = require("../../networks/137.json");
-const getContractAddressByName = (contractName) => {
-  return POLYGON_ADDRESSES.find((x) => x.contractName === contractName).address;
-};
 
 const { parseUnits } = require("@ethersproject/units");
 const _ = require("lodash");
 const { getDecimals } = require("./utils");
 
-const argv = require("minimist")(process.argv.slice(), { string: ["collateral", "fee", "polygonCollateral"] });
+const argv = require("minimist")(process.argv.slice(), { string: ["collateral", "fee"] });
 
 async function runExport() {
   console.log("Running Upgrade Verifier🔥");
@@ -31,36 +25,21 @@ async function runExport() {
 
   const collaterals = _.castArray(argv.collateral);
   const fees = _.castArray(argv.fee);
-  const polygonCollaterals = _.castArray(argv.polygonCollateral);
+  const decimals = argv.decimals && _.castArray(argv.decimals);
 
-  const argObjects = _.zipWith(collaterals, fees, (collateral, fee) => {
-    return { collateral, fee };
+  const argObjects = _.zipWith(collaterals, fees, decimals, (collateral, fee, numDecimalsArg) => {
+    return { collateral, fee, numDecimalsArg };
   });
 
-  const whitelist = await AddressWhitelist.deployed();
-
-  for (const { collateral, fee } of argObjects) {
-    const decimal = await getDecimals(collateral, null, ERC20);
+  for (const { collateral, fee, numDecimalsArg } of argObjects) {
+    const decimal = await getDecimals(collateral, numDecimalsArg, ERC20);
 
     const store = await Store.deployed();
     assert.equal((await store.computeFinalFee(collateral)).rawValue, parseUnits(fee, decimal).toString());
 
+    const whitelist = await AddressWhitelist.deployed();
     assert(await whitelist.isOnWhitelist(collateral));
   }
-
-  // Check for latest event RelayedGovernanceRequest event emitted by GovernorRootTunnel. We can't query for more events
-  // easily when using a ganache fork, so we'll just verify that the latest one was emitted properly.
-  const governorTunnel = await GovernorRootTunnel.deployed();
-  const relayedGovernanceRequest = await governorTunnel.getPastEvents("RelayedGovernanceRequest", {
-    filter: { to: getContractAddressByName("AddressWhitelist") },
-  });
-  // This event should correspond to the last AddressWhitelist transaction, which is pushed last into the transaction array
-  // in the 1_Propose.js script.
-  const polygonCollateralWhitelistData = whitelist.contract.methods
-    .addToWhitelist(polygonCollaterals[polygonCollaterals.length - 1])
-    .encodeABI();
-  assert.equal(relayedGovernanceRequest[0].returnValues.data, polygonCollateralWhitelistData);
-  console.log("Last RelayedGovernanceRequest event contains correct AddressWhitelist ABI data");
 
   console.log("Upgrade Verified!");
 }
