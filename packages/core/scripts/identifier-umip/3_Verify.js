@@ -9,12 +9,6 @@ const assert = require("assert").strict;
 // Use the same ABI's as deployed contracts:
 const { getTruffleContract } = require("../../dist/index");
 const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, "1.1.0");
-const GovernorRootTunnel = getTruffleContract("GovernorRootTunnel", web3, "latest");
-
-const POLYGON_ADDRESSES = require("../../networks/137.json");
-const getContractAddressByName = (contractName) => {
-  return POLYGON_ADDRESSES.find((x) => x.contractName === contractName).address;
-};
 
 const argv = require("minimist")(process.argv.slice(), { string: ["identifier"] });
 
@@ -41,18 +35,6 @@ async function runExport() {
     assert.equal(await identifierWhitelist.isIdentifierSupported(web3.utils.utf8ToHex(identifier)), true);
     console.log(identifier, "verified.");
   }
-
-  // Check for latest event RelayedGovernanceRequest event emitted by GovernorRootTunnel. We can't query for more events
-  // easily when using a ganache fork, so we'll just verify that the latest one was emitted properly.
-  const governorTunnel = await GovernorRootTunnel.deployed();
-  const relayedGovernanceRequest = await governorTunnel.getPastEvents("RelayedGovernanceRequest", {
-    filter: { to: getContractAddressByName("IdentifierWhitelist") },
-  });
-  // This event should correspond to the last identifier in the array.
-  const identifierBytes = web3.utils.utf8ToHex(identifiers[identifiers.length - 1]);
-  const addIdentifierTx = identifierWhitelist.contract.methods.addSupportedIdentifier(identifierBytes).encodeABI();
-  assert.equal(relayedGovernanceRequest[0].returnValues.data, addIdentifierTx);
-  console.log("Last RelayedGovernanceRequest event contains correct IdentifierWhitelist ABI data");
 
   console.log("Upgrade Verified!");
 }
