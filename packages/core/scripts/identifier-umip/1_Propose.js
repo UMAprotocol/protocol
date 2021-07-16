@@ -2,9 +2,7 @@
 // fork of the mainnet or can be run directly on the mainnet to execute the upgrade transactions.
 // To run this on the localhost first fork mainnet into Ganache with the proposerWallet unlocked as follows:
 // ganache-cli --fork https://mainnet.infura.io/v3/5f56f0a4c8844c96a430fbd3d7993e39 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25 --unlock 0x7a3a1c2de64f20eb5e916f40d11b01c441b2a8dc --port 9545
-// Then execute the script as:
-// yarn truffle exec ./scripts/identifier-umip/1_Propose.js --network mainnet-fork --identifier USDETH --identifier ETHBTC from core
-// Note 1: This script will also attempt to whitelist the identifier on Polygon via the GovernorRootTunnel.
+// Then execute the script as: yarn truffle exec ./scripts/identifier-umip/1_Propose.js --network mainnet-fork --identifier USDETH --identifier ETHBTC from core
 
 const { getTruffleContract } = require("../../dist/index");
 
@@ -13,12 +11,6 @@ const Governor = getTruffleContract("Governor", web3, "latest");
 const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, "latest");
 const Finder = getTruffleContract("Finder", web3, "latest");
 const Voting = getTruffleContract("Voting", web3, "latest");
-const GovernorRootTunnel = getTruffleContract("GovernorRootTunnel", web3, "latest");
-
-const POLYGON_ADDRESSES = require("../../networks/137.json");
-const getContractAddressByName = (contractName) => {
-  return POLYGON_ADDRESSES.find((x) => x.contractName === contractName).address;
-};
 
 const { interfaceName } = require("@uma/common");
 const { GasEstimator } = require("@uma/financial-templates-lib");
@@ -57,29 +49,15 @@ async function runExport() {
   const identifierWhitelist = await IdentifierWhitelist.deployed();
   const governor = await Governor.deployed();
 
-  const governorRootTunnel = await GovernorRootTunnel.deployed();
-  const polygonIdentifierWhitelistAddress = getContractAddressByName("IdentifierWhitelist");
-  console.group("Relaying equivalent Polygon transactions:");
-  console.log(`- Whitelisting identifers in IdentifierWhitelist @ ${polygonIdentifierWhitelistAddress}`);
-
   // Generate the list of transactions from the list of identifiers.
-  const transactions = [];
-  for (let identifier of identifiers) {
+  const transactions = identifiers.map((identifier) => {
     const identifierBytes = web3.utils.utf8ToHex(identifier);
-    // We assume that the IdentifierWhitelist on Polygon has the same ABI as the one on Mainnet.
     const addIdentifierTx = identifierWhitelist.contract.methods.addSupportedIdentifier(identifierBytes).encodeABI();
     console.log("addIdentifierTx", addIdentifierTx);
-    transactions.push({ to: identifierWhitelist.address, value: 0, data: addIdentifierTx });
-
-    const relayIdentifierWhitelistTx = governorRootTunnel.contract.methods
-      .relayGovernance(polygonIdentifierWhitelistAddress, addIdentifierTx)
-      .encodeABI();
-    console.log("relayIdentifierWhitelistTx", relayIdentifierWhitelistTx);
-    transactions.push({ to: governorRootTunnel.address, value: 0, data: relayIdentifierWhitelistTx });
-  }
+    return { to: identifierWhitelist.address, value: 0, data: addIdentifierTx };
+  });
 
   await gasEstimator.update();
-  console.log(`Admin proposal contains ${transactions.length} transactions`);
   const txn = await governor.propose(transactions, {
     from: proposerWallet,
     gasPrice: gasEstimator.getCurrentFastPrice(),
