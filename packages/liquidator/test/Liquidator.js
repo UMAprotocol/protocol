@@ -128,13 +128,9 @@ contract("Liquidator.js", function (accounts) {
             testConfig.tokenSymbol + " Token", // Construct the token name.
             testConfig.tokenSymbol,
             testConfig.collateralDecimals,
-            {
-              from: contractCreator,
-            }
+            { from: contractCreator }
           );
-          await collateralToken.addMember(1, contractCreator, {
-            from: contractCreator,
-          });
+          await collateralToken.addMember(1, contractCreator, { from: contractCreator });
 
           // Seed the sponsors accounts.
           await collateralToken.mint(sponsor1, convertCollateral("100000"), { from: contractCreator });
@@ -171,9 +167,7 @@ contract("Liquidator.js", function (accounts) {
 
         beforeEach(async function () {
           await timer.setCurrentTime(startTime - 1);
-          mockOracle = await MockOracle.new(finder.address, timer.address, {
-            from: contractCreator,
-          });
+          mockOracle = await MockOracle.new(finder.address, timer.address, { from: contractCreator });
           await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
 
           // Create a new synthetic token
@@ -1510,10 +1504,7 @@ contract("Liquidator.js", function (accounts) {
             async () => {
               // If there is no withdrawal liveness that can be extended, either because its absent or it has expired
               // already, then liquidate using as many funds as the bot owns.
-              liquidatorConfig = {
-                ...liquidatorConfig,
-                defenseActivationPercent: 50,
-              };
+              liquidatorConfig = { ...liquidatorConfig, defenseActivationPercent: 50 };
               const liquidator = new Liquidator({
                 logger: spyLogger,
                 financialContractClient,

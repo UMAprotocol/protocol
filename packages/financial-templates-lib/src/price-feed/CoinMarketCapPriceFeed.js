@@ -167,6 +167,4 @@ class CoinMarketCapPriceFeed extends PriceFeedInterface {
   }
 }
 
-module.exports = {
-  CoinMarketCapPriceFeed,
-};
+module.exports = { CoinMarketCapPriceFeed };

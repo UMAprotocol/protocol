@@ -126,7 +126,4 @@ class HarvestVaultPriceFeed extends VaultPriceFeedBase {
   }
 }
 
-module.exports = {
-  VaultPriceFeed,
-  HarvestVaultPriceFeed,
-};
+module.exports = { VaultPriceFeed, HarvestVaultPriceFeed };

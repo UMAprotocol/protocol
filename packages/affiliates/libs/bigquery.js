@@ -211,9 +211,6 @@ module.exports = ({ client } = {}) => {
     getBlocksDescending,
     streamTracesByContract,
     // exposed for testing or as utilities
-    utils: {
-      queries,
-      client,
-    },
+    utils: { queries, client },
   };
 };

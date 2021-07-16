@@ -126,14 +126,10 @@ contract("Disputer.js", function (accounts) {
             testConfig.tokenSymbol + " Token", // Construct the token name.
             testConfig.tokenSymbol,
             testConfig.collateralDecimals,
-            {
-              from: contractCreator,
-            }
+            { from: contractCreator }
           );
 
-          await collateralToken.addMember(1, contractCreator, {
-            from: contractCreator,
-          });
+          await collateralToken.addMember(1, contractCreator, { from: contractCreator });
 
           // Seed the accounts.
           await collateralToken.mint(sponsor1, convertCollateral("100000"), { from: contractCreator });
@@ -165,9 +161,7 @@ contract("Disputer.js", function (accounts) {
         });
         beforeEach(async function () {
           await timer.setCurrentTime(startTime - 1);
-          mockOracle = await MockOracle.new(finder.address, timer.address, {
-            from: contractCreator,
-          });
+          mockOracle = await MockOracle.new(finder.address, timer.address, { from: contractCreator });
           await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
 
           // Create a new synthetic token
@@ -223,9 +217,7 @@ contract("Disputer.js", function (accounts) {
           await syntheticToken.addBurner(financialContract.address);
 
           // Generate Financial Contract properties to inform bot of important on-chain state values that we only want to query once.
-          financialContractProps = {
-            priceIdentifier: await financialContract.priceIdentifier(),
-          };
+          financialContractProps = { priceIdentifier: await financialContract.priceIdentifier() };
 
           await collateralToken.approve(financialContract.address, convertCollateral("100000000"), { from: sponsor1 });
           await collateralToken.approve(financialContract.address, convertCollateral("100000000"), { from: sponsor2 });
@@ -1173,18 +1165,14 @@ contract("Disputer.js", function (accounts) {
             );
 
             // initialize the pair between the reserve and collateral token.
-            await uniswapFactory.createPair(reserveToken.address, collateralToken.address, {
-              from: contractCreator,
-            });
+            await uniswapFactory.createPair(reserveToken.address, collateralToken.address, { from: contractCreator });
             pairAddress = await uniswapFactory.getPair(reserveToken.address, collateralToken.address);
             pair = await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress);
 
             // Seed the market. This sets up the initial price to be 1/1 reserve to collateral token. As the collateral
             // token is Dai this starts off the uniswap market at 1 reserve/collateral. Note the amount of collateral
             // is scaled according to the collateral decimals.
-            await reserveToken.mint(pairAddress, toBN(toWei("1000")).muln(10000000), {
-              from: contractCreator,
-            });
+            await reserveToken.mint(pairAddress, toBN(toWei("1000")).muln(10000000), { from: contractCreator });
             await collateralToken.mint(pairAddress, toBN(convertCollateral("1000")).muln(10000000), {
               from: contractCreator,
             });

@@ -15,9 +15,7 @@ const { MetaMaskTruffleProvider } = require("./MetaMaskTruffleProvider.js");
 const { isPublicNetwork } = require("./MigrationUtils");
 const Web3 = require("web3");
 require("dotenv").config();
-const argv = require("minimist")(process.argv.slice(), {
-  string: ["gasPrice"],
-});
+const argv = require("minimist")(process.argv.slice(), { string: ["gasPrice"] });
 
 // Fallback to a public mnemonic to prevent exceptions.
 const mnemonic = process.env.MNEMONIC
@@ -101,17 +99,10 @@ function addPublicNetwork(networks, name, networkId, customTruffleConfig) {
     },
   };
 
-  const legacyLedgerOptions = {
-    networkId: networkId,
-    accountsLength: numKeys,
-    accountsOffset: keyOffset,
-  };
+  const legacyLedgerOptions = { networkId: networkId, accountsLength: numKeys, accountsOffset: keyOffset };
 
   // Ledger has changed their standard derivation path since this library was created, so we must override the default one.
-  const ledgerOptions = {
-    ...legacyLedgerOptions,
-    path: "44'/60'/0'/0/0",
-  };
+  const ledgerOptions = { ...legacyLedgerOptions, path: "44'/60'/0'/0/0" };
 
   // Normal ledger wallet network.
   networks[name + "_ledger"] = {
@@ -159,10 +150,7 @@ function addLocalNetwork(networks, name, customOptions) {
     },
   };
 
-  networks[name] = {
-    ...defaultOptions,
-    ...customOptions,
-  };
+  networks[name] = { ...defaultOptions, ...customOptions };
 }
 
 let networks = {};
@@ -197,21 +185,8 @@ function getTruffleConfig(truffleContextDir = "./") {
     // for more about customizing your Truffle configuration!
     networks: networks,
     plugins: ["solidity-coverage"],
-    mocha: {
-      enableTimeouts: false,
-      before_timeout: 1800000,
-    },
-    compilers: {
-      solc: {
-        version: "0.8.4",
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 199,
-          },
-        },
-      },
-    },
+    mocha: { enableTimeouts: false, before_timeout: 1800000 },
+    compilers: { solc: { version: "0.8.4", settings: { optimizer: { enabled: true, runs: 199 } } } },
     migrations_directory: path.join(truffleContextDir, "migrations"),
     contracts_directory: path.join(truffleContextDir, "contracts"),
     contracts_build_directory: path.join(truffleContextDir, "build/contracts"),

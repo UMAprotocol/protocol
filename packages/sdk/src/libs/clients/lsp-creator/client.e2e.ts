@@ -9,7 +9,6 @@ describe("lsp creator", function () {
   test("inits", function () {
     const provider = ethers.providers.getDefaultProvider(process.env.CUSTOM_NODE_URL);
     const address = Client.getAddress("1");
-    console.log(address);
     client = Client.connect(address, provider);
     assert.ok(client);
   });

@@ -24,9 +24,7 @@ contract("contracts", function (accounts) {
       collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
       token = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18);
       const finder = await Finder.deployed();
-      const mockOracle = await MockOracle.new(finder.address, Timer.address, {
-        from: contractCreator,
-      });
+      const mockOracle = await MockOracle.new(finder.address, Timer.address, { from: contractCreator });
       const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
       await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
       const store = await Store.deployed();

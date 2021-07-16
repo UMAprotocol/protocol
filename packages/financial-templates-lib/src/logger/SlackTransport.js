@@ -49,10 +49,7 @@ function slackFormatter(info) {
       blocks: [
         {
           type: "section",
-          text: {
-            type: "mrkdwn",
-            text: `[${info.level}] *${info["bot-identifier"]}* (${info.at})⭢${info.message}\n`,
-          },
+          text: { type: "mrkdwn", text: `[${info.level}] *${info["bot-identifier"]}* (${info.at})⭢${info.message}\n` },
         },
       ],
     };
@@ -67,23 +64,11 @@ function slackFormatter(info) {
       // If the key is `mrkdwn` then simply return only the markdown as the txt object. This assumes all formatting has
       // been applied in the bot itself. For example the monitor bots which conform to strict formatting rules.
       if (key == "mrkdwn") {
-        formattedResponse.blocks.push({
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: ` ${info[key]}`,
-          },
-        });
+        formattedResponse.blocks.push({ type: "section", text: { type: "mrkdwn", text: ` ${info[key]}` } });
       }
       // If the value in the message is an object then spread each key value pair within the object.
       else if (typeof info[key] === "object" && info[key] !== null) {
-        formattedResponse.blocks.push({
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: ` • _${key}_:\n`,
-          },
-        });
+        formattedResponse.blocks.push({ type: "section", text: { type: "mrkdwn", text: ` • _${key}_:\n` } });
         // For each key value pair within the object, spread the object out for formatting.
         for (const subKey in info[key]) {
           // If the length of the value is 66 then we know this is a transaction hash. Format accordingly.
@@ -103,19 +88,13 @@ function slackFormatter(info) {
           else if (typeof info[key][subKey] === "object" && info[key][subKey] !== null) {
             formattedResponse.blocks.push({
               type: "section",
-              text: {
-                type: "mrkdwn",
-                text: `    - _${subKey}_: ${JSON.stringify(info[key][subKey])}\n`,
-              },
+              text: { type: "mrkdwn", text: `    - _${subKey}_: ${JSON.stringify(info[key][subKey])}\n` },
             });
             // Else if not a address, transaction or object then print as ` - key: value`
           } else {
             formattedResponse.blocks.push({
               type: "section",
-              text: {
-                type: "mrkdwn",
-                text: `    - _${subKey}_: ${info[key][subKey]}\n`,
-              },
+              text: { type: "mrkdwn", text: `    - _${subKey}_: ${info[key][subKey]}\n` },
             });
           }
         }
@@ -135,28 +114,17 @@ function slackFormatter(info) {
         } else {
           formattedResponse.blocks.push({
             type: "section",
-            text: {
-              type: "mrkdwn",
-              text: ` • _${key}_: ${info[key]}\n`,
-            },
+            text: { type: "mrkdwn", text: ` • _${key}_: ${info[key]}\n` },
           });
         }
         // Else, if the value from the key value pair is null still show the key in the log. For example if a param is
         // logged but empty we still want to see the key.
       } else if (info[key] == null) {
-        formattedResponse.blocks.push({
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: ` • _${key}_: null`,
-          },
-        });
+        formattedResponse.blocks.push({ type: "section", text: { type: "mrkdwn", text: ` • _${key}_: null` } });
       }
     }
     // Add a divider to the end of the message to help distinguish messages in long lists.
-    formattedResponse.blocks.push({
-      type: "divider",
-    });
+    formattedResponse.blocks.push({ type: "divider" });
     return formattedResponse;
   } catch (error) {
     return {
@@ -194,9 +162,7 @@ class SlackHook extends Transport {
     // diffrent slack channels depending on the context of the log.
     const webhookUrl = this.escalationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
 
-    let payload = {
-      mrkdwn: this.mrkdwn,
-    };
+    let payload = { mrkdwn: this.mrkdwn };
     let layout = this.formatter(info);
     payload.text = layout.text || undefined;
     payload.attachments = layout.attachments || undefined;

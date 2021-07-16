@@ -250,10 +250,7 @@ class Liquidator {
     const underCollateralizedPositions = this.financialContractClient.getUnderCollateralizedPositions(scaledPrice);
 
     if (underCollateralizedPositions.length === 0) {
-      this.logger.debug({
-        at: "Liquidator",
-        message: "No undercollateralized position",
-      });
+      this.logger.debug({ at: "Liquidator", message: "No undercollateralized position" });
       return;
     }
 
@@ -335,11 +332,7 @@ class Liquidator {
       const logResult = await this.proxyTransactionWrapper.submitLiquidationTransaction(liquidationArgs);
 
       if (logResult instanceof Error || !logResult)
-        this.logger.error({
-          at: "Liquidator",
-          message: "Failed to liquidate position🚨",
-          logResult,
-        });
+        this.logger.error({ at: "Liquidator", message: "Failed to liquidate position🚨", logResult });
       else
         this.logger[this.logOverrides.positionLiquidated || "info"]({
           at: "Liquidator",
@@ -372,10 +365,7 @@ class Liquidator {
       .filter((liquidation) => liquidation.liquidator === liquidatorAddress);
 
     if (potentialWithdrawableLiquidations.length === 0) {
-      this.logger.debug({
-        at: "Liquidator",
-        message: "No withdrawable liquidations",
-      });
+      this.logger.debug({ at: "Liquidator", message: "No withdrawable liquidations" });
       return;
     }
 
@@ -416,12 +406,7 @@ class Liquidator {
           throw new Error("Simulated reward withdrawal failed");
         }
       } catch (error) {
-        this.logger.debug({
-          at: "Liquidator",
-          message: "No rewards to withdraw",
-          liquidation: liquidation,
-          error,
-        });
+        this.logger.debug({ at: "Liquidator", message: "No rewards to withdraw", liquidation: liquidation, error });
         continue;
       }
 
@@ -478,17 +463,11 @@ class Liquidator {
           transactionConfig,
         });
       } catch (error) {
-        this.logger.error({
-          at: "Liquidator",
-          message: "Failed to withdraw liquidation rewards🚨",
-          error,
-        });
+        this.logger.error({ at: "Liquidator", message: "Failed to withdraw liquidation rewards🚨", error });
         continue;
       }
     }
   }
 }
 
-module.exports = {
-  Liquidator,
-};
+module.exports = { Liquidator };

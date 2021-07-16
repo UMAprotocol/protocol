@@ -201,9 +201,7 @@ describe("PerpetualLiquidatable", function () {
     // Set allowance for contract to pull dispute bond and final fee from disputer
     await collateralToken.methods
       .increaseAllowance(liquidationContract.options.address, disputeBond.add(finalFeeAmount))
-      .send({
-        from: disputer,
-      });
+      .send({ from: disputer });
 
     // Set allowance for contract to pull the final fee from the liquidator
     await collateralToken.methods

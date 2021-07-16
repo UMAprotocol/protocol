@@ -167,6 +167,4 @@ class DefiPulsePriceFeed extends PriceFeedInterface {
   }
 }
 
-module.exports = {
-  DefiPulsePriceFeed,
-};
+module.exports = { DefiPulsePriceFeed };

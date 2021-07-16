@@ -74,10 +74,7 @@ task("migrate-identifiers", "Adds all whitelisted identifiers on one IdentifierW
 
     // Create table with results to display to user:
     let resultsTable = identifiersToWhitelist.map((id) => {
-      return {
-        identifierToWhitelist: id,
-        utf8: web3.utils.hexToUtf8(id),
-      };
+      return { identifierToWhitelist: id, utf8: web3.utils.hexToUtf8(id) };
     });
 
     if (to) {
@@ -90,9 +87,9 @@ task("migrate-identifiers", "Adds all whitelisted identifiers on one IdentifierW
       // are a lot of transactions to send or the gas price to send with is too low.
       for (let i = 0; i < isIdentifierSupportedOnNewWhitelist.length; i++) {
         if (!isIdentifierSupportedOnNewWhitelist[i]) {
-          const receipt = await newWhitelist.methods.addSupportedIdentifier(identifiersToWhitelist[i]).send({
-            from: deployer,
-          });
+          const receipt = await newWhitelist.methods
+            .addSupportedIdentifier(identifiersToWhitelist[i])
+            .send({ from: deployer });
           console.log(
             `${i}: Added new identifier ${web3.utils.hexToUtf8(identifiersToWhitelist[i])} (${receipt.transactionHash})`
           );

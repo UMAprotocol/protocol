@@ -124,6 +124,4 @@ class ETHVIXPriceFeed extends PriceFeedInterface {
   }
 }
 
-module.exports = {
-  ETHVIXPriceFeed,
-};
+module.exports = { ETHVIXPriceFeed };

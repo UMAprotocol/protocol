@@ -15,11 +15,7 @@ const func = async function (hre) {
     0, // Deposit fee
     100, // # of blocks after which a proposal expires
   ];
-  await deploy("Bridge", {
-    from: deployer,
-    args,
-    log: true,
-  });
+  await deploy("Bridge", { from: deployer, args, log: true });
 };
 module.exports = func;
 func.tags = ["Bridge", "bridge-l2", "bridge-l1"];

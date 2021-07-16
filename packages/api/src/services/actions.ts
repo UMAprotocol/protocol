@@ -109,7 +109,7 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     },
     async tvl(addresses: string[] = [], currency: CurrencySymbol = "usd") {
       addresses = addresses ? lodash.castArray(addresses) : [];
-      if (addresses == null || addresses.length == 0) return queries.totalTvl(currency);
+      if (addresses == null || addresses.length == 0) queries.getGlobalTvl(currency);
       return queries.sumTvl(addresses, currency);
     },
     async tvm(addresses: string[] = [], currency: CurrencySymbol = "usd") {
@@ -125,9 +125,17 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       assert(stats[currency], "Invalid currency type: " + currency);
       return stats[currency].history.tvm.betweenByAddress(empAddress, start, end);
     },
+    async globalTvlHistoryBetween(start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") {
+      assert(stats[currency], "Invalid currency type: " + currency);
+      return stats[currency].history.tvl.betweenByGlobal(start, end);
+    },
     async tvlHistorySlice(empAddress: string, start = 0, length = 1, currency: CurrencySymbol = "usd") {
       assert(stats[currency], "Invalid currency type: " + currency);
       return stats[currency].history.tvl.sliceByAddress(empAddress, start, length);
+    },
+    async globalTvlSlice(start = 0, length = 1, currency: CurrencySymbol = "usd") {
+      assert(stats[currency], "Invalid currency type: " + currency);
+      return stats[currency].history.tvl.sliceByGlobal(start, length);
     },
     async tvmHistorySlice(empAddress: string, start = 0, length = 1, currency: CurrencySymbol = "usd") {
       assert(stats[currency], "Invalid currency type: " + currency);

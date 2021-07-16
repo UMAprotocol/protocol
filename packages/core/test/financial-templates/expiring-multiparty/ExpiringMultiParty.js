@@ -26,12 +26,8 @@ describe("ExpiringMultiParty", function () {
   });
 
   it("Can deploy", async function () {
-    const collateralToken = await Token.new("Wrapped Ether", "WETH", 18).send({
-      from: accounts[0],
-    });
-    const syntheticToken = await Token.new("Test Synthetic Token", "SYNTH", 18).send({
-      from: accounts[0],
-    });
+    const collateralToken = await Token.new("Wrapped Ether", "WETH", 18).send({ from: accounts[0] });
+    const syntheticToken = await Token.new("Test Synthetic Token", "SYNTH", 18).send({ from: accounts[0] });
     const currentTime = Number(await timer.methods.getCurrentTime().call());
 
     const constructorParams = {

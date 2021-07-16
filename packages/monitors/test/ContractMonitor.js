@@ -248,15 +248,11 @@ contract("ContractMonitor.js", function (accounts) {
             votingContract: mockOracle,
           });
 
-          await collateralToken.addMember(1, tokenSponsor, {
-            from: tokenSponsor,
-          });
+          await collateralToken.addMember(1, tokenSponsor, { from: tokenSponsor });
 
           //   Bulk mint and approve for all wallets
           for (let i = 1; i < 6; i++) {
-            await collateralToken.mint(accounts[i], convertCollateral("100000000"), {
-              from: tokenSponsor,
-            });
+            await collateralToken.mint(accounts[i], convertCollateral("100000000"), { from: tokenSponsor });
             await collateralToken.approve(financialContract.address, convertSynthetic("100000000"), {
               from: accounts[i],
             });
@@ -415,9 +411,7 @@ contract("ContractMonitor.js", function (accounts) {
               { from: liquidator }
             );
 
-            const txObject1 = await financialContract.dispute("0", sponsor1, {
-              from: disputer,
-            });
+            const txObject1 = await financialContract.dispute("0", sponsor1, { from: disputer });
 
             // Update the eventClient and check it has the dispute event stored correctly
             await eventClient.clearState();
@@ -444,9 +438,7 @@ contract("ContractMonitor.js", function (accounts) {
             );
 
             // the disputer is also not monitored
-            const txObject2 = await financialContract.dispute("0", sponsor2, {
-              from: sponsor2,
-            });
+            const txObject2 = await financialContract.dispute("0", sponsor2, { from: sponsor2 });
 
             // Update the eventClient and check it has the dispute event stored correctly
             await eventClient.clearState();
@@ -477,9 +469,7 @@ contract("ContractMonitor.js", function (accounts) {
             );
 
             // Dispute the position from the disputer
-            await financialContract.dispute("0", sponsor1, {
-              from: disputer,
-            });
+            await financialContract.dispute("0", sponsor1, { from: disputer });
 
             // Push a price such that the dispute fails and ensure the resolution reports correctly. Sponsor1 has 50 units of
             // debt and 150 units of collateral. price of 2.5: 150 / (50 * 2.5) = 120% => undercollateralized
@@ -525,9 +515,7 @@ contract("ContractMonitor.js", function (accounts) {
             );
 
             // Dispute the liquidator from a non-monitor address (sponsor2)
-            await financialContract.dispute("0", sponsor2, {
-              from: sponsor2,
-            });
+            await financialContract.dispute("0", sponsor2, { from: sponsor2 });
 
             // Push a price such that the dispute succeeds and ensure the resolution reports correctly. Sponsor2 has 45 units of
             // debt and 175 units of collateral. price of 2.0: 175 / (45 * 2) = 194% => sufficiently collateralized
@@ -565,10 +553,7 @@ contract("ContractMonitor.js", function (accounts) {
               // and publish it.
               const proposalExpiry = proposalTime + optimisticOracleLiveness;
               await timer.setCurrentTime(proposalExpiry);
-              return {
-                txObject: await financialContract.applyFundingRate(),
-                proposalTime,
-              };
+              return { txObject: await financialContract.applyFundingRate(), proposalTime };
             };
 
             await eventClient.clearState();

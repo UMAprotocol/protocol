@@ -13,9 +13,7 @@ const func = async function (hre) {
   await deploy("PerpetualCreator", {
     from: deployer,
     args: [Finder.address, TokenFactory.address, Timer.address],
-    libraries: {
-      PerpetualLib: PerpetualLib.address,
-    },
+    libraries: { PerpetualLib: PerpetualLib.address },
     log: true,
   });
 };

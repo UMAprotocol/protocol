@@ -12,9 +12,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Registry = artifacts.require("Registry");
 const Store = artifacts.require("Store");
 
-const collateral = {
-  "Kovan DAI": "0x08ae34860fbfe73e223596e65663683973c72dd3",
-};
+const collateral = { "Kovan DAI": "0x08ae34860fbfe73e223596e65663683973c72dd3" };
 
 const expiration = {
   "5/1/2020": "1588291200",
@@ -55,9 +53,7 @@ const parseLine = (line) => {
 };
 
 const percentToFixedPoint = (percent) => {
-  return {
-    rawValue: toBN(toWei(percent)).divn(100).toString(),
-  };
+  return { rawValue: toBN(toWei(percent)).divn(100).toString() };
 };
 
 const actualDeploy = async (inputCsv) => {

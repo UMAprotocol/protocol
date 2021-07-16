@@ -41,6 +41,4 @@ const createObjectFromDefaultProps = (overrideProps, defaultProps) => {
   return newObject;
 };
 
-module.exports = {
-  createObjectFromDefaultProps,
-};
+module.exports = { createObjectFromDefaultProps };
