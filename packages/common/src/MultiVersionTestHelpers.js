@@ -111,12 +111,6 @@ async function createConstructorParamsForContractVersion(
     financialProductLibraryAddress: ZERO_ADDRESS,
   };
 
-  if (contractVersion.contractVersion == "1.2.2") {
-    constructorParams.disputerDisputeRewardPct = constructorParams.disputerDisputeRewardPercentage;
-    constructorParams.sponsorDisputeRewardPct = constructorParams.sponsorDisputeRewardPercentage;
-    constructorParams.disputeBondPct = constructorParams.disputeBondPercentage;
-  }
-
   if (contractVersion.contractType == "Perpetual") {
     constructorParams.fundingRateIdentifier = padRight(utf8ToHex(contextObjects.fundingRateIdentifier), 64);
     constructorParams.configStoreAddress =

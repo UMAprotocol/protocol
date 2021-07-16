@@ -220,7 +220,8 @@ contract("ContractMonitor.js", function (accounts) {
             financialContract.address,
             0, // startingBlockNumber
             null, // endingBlockNumber
-            contractVersion.contractType
+            contractVersion.contractType,
+            contractVersion.contractVersion
           );
           priceFeedMock = new PriceFeedMock();
 
