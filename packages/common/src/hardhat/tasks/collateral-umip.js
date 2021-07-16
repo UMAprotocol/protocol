@@ -11,9 +11,7 @@ const HARDHAT_NET_ID = 31337;
 // Net ID that this script should simulate with.
 const PROD_NET_ID = 1;
 // Wallets we need to use to sign transactions.
-const REQUIRED_SIGNER_ADDRESSES = [
-  "0x2bAaA41d155ad8a4126184950B31F50A1513cE25", // UMA Deployer
-];
+const REQUIRED_SIGNER_ADDRESSES = { deployer: "0x2bAaA41d155ad8a4126184950B31F50A1513cE25" };
 
 // Run:
 // - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL>`
@@ -26,6 +24,7 @@ const REQUIRED_SIGNER_ADDRESSES = [
 
 // Customizations:
 // - --polygon flag can be omitted, in which case transactions will only take place on Ethereum.
+// - --collateral flag can also be omitted, in which case transactions will only be relayed to Polygon
 // - --fee, ---collateral, --polygon flags all must be comma delimited strings resulting in equal length arrays
 // - If --verify flag is passed, script is assumed to be running after a Vote Simulation and updated contract state is
 // verified.
@@ -52,13 +51,18 @@ task("collateral-umip", "Propose or verify Admin Proposal whitelisting new colla
     let netId = await web3.eth.net.getId();
     if (netId === HARDHAT_NET_ID) {
       console.log("🚸 Connected to a local node, attempting to impersonate accounts on forked network 🚸");
-      REQUIRED_SIGNER_ADDRESSES.map(async (address) => {
-        await network.provider.request({ method: "hardhat_impersonateAccount", params: [address] });
+      console.table(REQUIRED_SIGNER_ADDRESSES);
+      Object.keys(REQUIRED_SIGNER_ADDRESSES).map(async (signer) => {
+        await network.provider.request({
+          method: "hardhat_impersonateAccount",
+          params: [REQUIRED_SIGNER_ADDRESSES[signer]],
+        });
       });
     } else {
       console.log("📛 Connected to a production node 📛");
     }
 
+    // Contract ABI's
     const ERC20 = getContract("ERC20");
     const AddressWhitelist = getContract("AddressWhitelist");
     const Store = getContract("Store");
@@ -67,19 +71,32 @@ task("collateral-umip", "Propose or verify Admin Proposal whitelisting new colla
     const Finder = getContract("Finder");
     const Voting = getContract("Voting");
 
+    // Parse comma-delimited CLI params into arrays
     let collaterals;
     let fees = fee.split(",");
     let polygonCollaterals;
     let crossChainWeb3;
 
+    // If polygon collateral is specified, initialize Governance relay infrastructure contracts
+    let polygon_netId;
+    let polygon_whitelist;
+    let polygon_store;
     if (polygon) {
       if (collateral) collaterals = collateral.split(",");
       polygonCollaterals = polygon.split(",");
       if (!process.env.CROSS_CHAIN_NODE_URL)
         throw new Error("If --polygon is defined, you must set a CROSS_CHAIN_NODE_URL environment variable");
       crossChainWeb3 = new Web3(process.env.CROSS_CHAIN_NODE_URL);
-    } else {
+      polygon_netId = await crossChainWeb3.eth.net.getId();
+      polygon_whitelist = new crossChainWeb3.eth.Contract(
+        AddressWhitelist.abi,
+        _getContractAddressByName("AddressWhitelist", polygon_netId)
+      );
+      polygon_store = new crossChainWeb3.eth.Contract(Store.abi, _getContractAddressByName("Store", polygon_netId));
+    } else if (collateral) {
       collaterals = collateral.split(",");
+    } else {
+      throw new Error("Must specify either --polygon or --collateral or both");
     }
 
     if (
@@ -89,7 +106,7 @@ task("collateral-umip", "Propose or verify Admin Proposal whitelisting new colla
       throw new Error("all comma-delimited input strings should result in equal length arrays");
     }
 
-    // Eth contracts
+    // Initialize Eth contracts by grabbing deployed addresses from networks/1.json file.
     if (netId === HARDHAT_NET_ID) netId = PROD_NET_ID;
     const whitelist = new web3.eth.Contract(AddressWhitelist.abi, _getContractAddressByName("AddressWhitelist", netId));
     const store = new web3.eth.Contract(Store.abi, _getContractAddressByName("Store", netId));
@@ -98,46 +115,55 @@ task("collateral-umip", "Propose or verify Admin Proposal whitelisting new colla
       60, // Time between updates.
       netId
     );
+    const governor = new web3.eth.Contract(Governor.abi, _getContractAddressByName("Governor", netId));
+    const finder = new web3.eth.Contract(Finder.abi, _getContractAddressByName("Finder", netId));
+    const oracleAddress = await finder.methods
+      .getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
+      .call();
+    const oracle = new web3.eth.Contract(Voting.abi, oracleAddress);
     const governorRootTunnel = new web3.eth.Contract(
       GovernorRootTunnel.abi,
       _getContractAddressByName("GovernorRootTunnel", netId)
     );
-    const governor = new web3.eth.Contract(Governor.abi, _getContractAddressByName("Governor", netId));
-    const finder = new web3.eth.Contract(Finder.abi, _getContractAddressByName("Finder", netId));
-    const oracle = new web3.eth.Contract(Voting.abi, _getContractAddressByName("Voting", netId));
-
-    // Polygon contracts
-    let polygon_netId;
-    let polygon_whitelist;
-    let polygon_store;
-    if (crossChainWeb3) {
-      polygon_netId = await crossChainWeb3.eth.net.getId();
-      polygon_whitelist = new crossChainWeb3.eth.Contract(
-        AddressWhitelist.abi,
-        _getContractAddressByName("AddressWhitelist", polygon_netId)
-      );
-      polygon_store = new crossChainWeb3.eth.Contract(Store.abi, _getContractAddressByName("Store", polygon_netId));
-    }
+    console.group("\nℹ️  Relayer infrastructure for Polygon transactions:");
+    console.log(`- Store @ ${polygon_store.options.address}`);
+    console.log(`- AddressWhitelist @ ${polygon_whitelist.options.address}`);
+    console.log(`- GovernorRootTunnel @ ${governorRootTunnel.options.address}`);
+    console.groupEnd();
+    console.group("\nℹ️  DVM infrastructure for Ethereum transactions:");
+    console.log(`- Store @ ${store.options.address}`);
+    console.log(`- AddressWhitelist @ ${whitelist.options.address}`);
+    console.log(`- Finder @ ${finder.options.address}`);
+    console.log(`- Oracle @ ${oracle.options.address}`);
+    console.log(`- Governor @ ${governor.options.address}`);
+    console.groupEnd();
 
     if (!verify) {
-      console.group("Proposing new Admin Proposal");
+      console.group("\n🌠 Proposing new Admin Proposal");
 
       const adminProposalTransactions = [];
+      console.group("\n Key to understand the following logs:");
+      console.log(
+        "- 🟣 = Transactions to be submitted to the Polygon contracts are relayed via the GovernorRootTunnel on Etheruem. Look at this test for an example:"
+      );
+      console.log("    - https://github.com/UMAprotocol/protocol/blob/master/packages/core/test/polygon/e2e.js#L221");
+      console.log("- 🟢 = Transactions to be submitted directly to Ethereum contracts.");
+      console.groupEnd();
       for (let i = 0; i < fees.length; i++) {
-        if (collaterals) {
+        if (collaterals && collaterals[i]) {
           const collateralDecimals = await _getDecimals(web3, collaterals[i], ERC20);
           const convertedFeeAmount = parseUnits(fees[i], collateralDecimals).toString();
-          console.log(`- Updating Final Fee for collateral @ ${collaterals[i]} to: ${convertedFeeAmount}`);
+          console.group(`\n🟢 Updating final fee for collateral @ ${collaterals[i]} to: ${convertedFeeAmount}`);
 
           // The proposal will first add a final fee for the currency if the current final fee is different from the
           // proposed new one.
           const currentFinalFee = await store.methods.computeFinalFee(collaterals[i]).call();
           if (currentFinalFee.toString() !== convertedFeeAmount) {
-            const addFinalFeeToStoreTx = store.methods
+            const setFinalFeeData = store.methods
               .setFinalFee(collaterals[i], { rawValue: convertedFeeAmount })
               .encodeABI();
-            console.log("- addFinalFeeToStoreTx", addFinalFeeToStoreTx);
-            adminProposalTransactions.push({ to: store.options.address, value: 0, data: addFinalFeeToStoreTx });
+            console.log("- setFinalFeeData", setFinalFeeData);
+            adminProposalTransactions.push({ to: store.options.address, value: 0, data: setFinalFeeData });
           } else {
             console.log(
               "- Final fee for ",
@@ -148,42 +174,37 @@ task("collateral-umip", "Propose or verify Admin Proposal whitelisting new colla
 
           // The proposal will then add the currency to the whitelist if it isn't already there.
           if (!(await whitelist.methods.isOnWhitelist(collaterals[i]).call())) {
-            const addCollateralToWhitelistTx = whitelist.methods.addToWhitelist(collaterals[i]).encodeABI();
-            console.log("- addCollateralToWhitelistTx", addCollateralToWhitelistTx);
-            adminProposalTransactions.push({
-              to: whitelist.options.address,
-              value: 0,
-              data: addCollateralToWhitelistTx,
-            });
+            const addToWhitelistData = whitelist.methods.addToWhitelist(collaterals[i]).encodeABI();
+            console.log("- addToWhitelistData", addToWhitelistData);
+            adminProposalTransactions.push({ to: whitelist.options.address, value: 0, data: addToWhitelistData });
           } else {
             console.log("- Collateral", collateral, "is on the whitelist. Nothing to do.");
           }
+          console.groupEnd();
         }
 
-        if (polygonCollaterals) {
-          console.group("- Relaying equivalent Polygon transactions:");
-          console.log(`- Polygon Store @ ${polygon_store.options.address}`);
-          console.log(`- Polygon AddressWhitelist @ ${polygon_whitelist.options.address}`);
-          console.log(`- GovernorRootTunnel @ ${governorRootTunnel.options.address}`);
-          console.groupEnd();
-
+        if (polygonCollaterals && polygonCollaterals[i]) {
           const collateralDecimals = await _getDecimals(crossChainWeb3, polygonCollaterals[i], ERC20);
           const convertedFeeAmount = parseUnits(fees[i], collateralDecimals).toString();
-          console.log(
-            `- (Polygon) Updating Final Fee for collateral @ ${polygonCollaterals[i]} to: ${convertedFeeAmount}`
+          console.group(
+            `\n🟣 (Polygon) Updating Final Fee for collateral @ ${polygonCollaterals[i]} to: ${convertedFeeAmount}`
           );
 
           const currentFinalFee = await polygon_store.methods.computeFinalFee(polygonCollaterals[i]).call();
           if (currentFinalFee.toString() !== convertedFeeAmount) {
-            const polygonFinalFeeData = polygon_store.methods
+            const setFinalFeeData = polygon_store.methods
               .setFinalFee(polygonCollaterals[i], { rawValue: convertedFeeAmount })
               .encodeABI();
-            console.log("- (Polygon) finalFeeData", polygonFinalFeeData);
-            const relayFinalFeeTx = governorRootTunnel.methods
-              .relayGovernance(polygon_store.options.address, polygonFinalFeeData)
+            console.log("- setFinalFeeData", setFinalFeeData);
+            const relayGovernanceData = governorRootTunnel.methods
+              .relayGovernance(polygon_store.options.address, setFinalFeeData)
               .encodeABI();
-            console.log("- relayFinalFeeTx", relayFinalFeeTx);
-            adminProposalTransactions.push({ to: governorRootTunnel.options.address, value: 0, data: relayFinalFeeTx });
+            console.log("- relayGovernanceData", relayGovernanceData);
+            adminProposalTransactions.push({
+              to: governorRootTunnel.options.address,
+              value: 0,
+              data: relayGovernanceData,
+            });
           } else {
             console.log(
               "- Final fee for ",
@@ -194,37 +215,32 @@ task("collateral-umip", "Propose or verify Admin Proposal whitelisting new colla
 
           // The proposal will then add the currency to the whitelist if it isn't already there.
           if (!(await polygon_whitelist.methods.isOnWhitelist(polygonCollaterals[i]).call())) {
-            const polygonCollateralWhitelistData = polygon_whitelist.methods
-              .addToWhitelist(polygonCollaterals[i])
+            const addToWhitelistData = polygon_whitelist.methods.addToWhitelist(polygonCollaterals[i]).encodeABI();
+            console.log("- addToWhitelistData", addToWhitelistData);
+            const relayGovernanceData = governorRootTunnel.methods
+              .relayGovernance(polygon_whitelist.options.address, addToWhitelistData)
               .encodeABI();
-            console.log("- (Polygon) collateralWhitelistData", polygonCollateralWhitelistData);
-            const relayCollateralWhitelistTx = governorRootTunnel.methods
-              .relayGovernance(polygon_whitelist.options.address, polygonCollateralWhitelistData)
-              .encodeABI();
-            console.log("- relayCollateralWhitelistTx", relayCollateralWhitelistTx);
+            console.log("- relayGovernanceData", relayGovernanceData);
             adminProposalTransactions.push({
               to: governorRootTunnel.options.address,
               value: 0,
-              data: relayCollateralWhitelistTx,
+              data: relayGovernanceData,
             });
           } else {
             console.log("- Collateral", collateral, "is on the whitelist. Nothing to do.");
           }
+          console.groupEnd();
         }
       }
 
       // Send the proposal
-      console.log(`- Sending to governor @ ${governor.options.address}`);
+      console.group(`\n📨 Sending to governor @ ${governor.options.address}`);
       await gasEstimator.update();
       console.log(`- Admin proposal contains ${adminProposalTransactions.length} transactions`);
       const txn = await governor.methods
         .propose(adminProposalTransactions)
-        .send({ from: REQUIRED_SIGNER_ADDRESSES[0], gasPrice: gasEstimator.getCurrentFastPrice() });
+        .send({ from: REQUIRED_SIGNER_ADDRESSES["deployer"], gasPrice: gasEstimator.getCurrentFastPrice() });
       console.log("- Transaction: ", txn?.transactionHash);
-      const oracleAddress = await finder.methods
-        .getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
-        .call();
-      console.log(`- Governor submitting admin request to Voting @ ${oracleAddress}`);
 
       // Print out details about new Admin proposal
       const priceRequests = await oracle.getPastEvents("PriceRequestAdded");
@@ -234,6 +250,7 @@ task("collateral-umip", "Propose or verify Admin Proposal whitelisting new colla
           newAdminRequest.returnValues.identifier
         }, timestamp: ${newAdminRequest.returnValues.time.toString()}}`
       );
+      console.groupEnd();
     } else {
       console.group("Verifying execution of Admin Proposal");
     }
