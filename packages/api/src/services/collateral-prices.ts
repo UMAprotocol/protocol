@@ -1,10 +1,10 @@
 import * as uma from "@uma/sdk";
 import bluebird from "bluebird";
 import assert from "assert";
-import { AppState, CurrencySymbol } from "..";
-type Config = {
+import { AppState, CurrencySymbol, BaseConfig } from "..";
+interface Config extends BaseConfig {
   currency?: CurrencySymbol;
-};
+}
 import { parseUnits, msToS } from "../libs/utils";
 
 type Dependencies = Pick<AppState, "coingecko" | "prices" | "collateralAddresses">;

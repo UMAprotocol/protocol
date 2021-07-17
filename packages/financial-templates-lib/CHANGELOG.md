@@ -3,6 +3,14 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.6.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.5.0...@uma/financial-templates-lib@2.6.0) (2021-07-15)
+
+### Features
+
+- **linter:** proposal to minimize object sizing ([#3222](https://github.com/UMAprotocol/protocol/issues/3222)) ([c925524](https://github.com/UMAprotocol/protocol/commit/c925524e888f73e1f694c4f9bf4ad1fb31e456bc))
+- **liquidator,disputer,monitor:** deprecate legacy tests ([#3212](https://github.com/UMAprotocol/protocol/issues/3212)) ([498ecfc](https://github.com/UMAprotocol/protocol/commit/498ecfcfd3d767ceeb28e37f42ee5a1b7d4f0c83))
+- **price-feed:** Add default pf configs for ETHUSD and BTCUSD ([#3228](https://github.com/UMAprotocol/protocol/issues/3228)) ([e3f066c](https://github.com/UMAprotocol/protocol/commit/e3f066c214eb6091b0f16d3bca0a8edfdeba3dfc))
+
 # [2.5.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.4.0...@uma/financial-templates-lib@2.5.0) (2021-07-07)
 
 ### Bug Fixes

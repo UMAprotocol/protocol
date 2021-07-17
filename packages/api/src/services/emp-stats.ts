@@ -1,16 +1,16 @@
 import assert from "assert";
 import * as uma from "@uma/sdk";
-import { BigNumber, utils } from "ethers";
-import { Currencies, AppState, PriceSample } from "..";
+import { BigNumber } from "ethers";
+import { Currencies, AppState, PriceSample, BaseConfig } from "..";
 import { calcTvl, calcTvm, nowS } from "../libs/utils";
 import Queries from "../libs/queries";
 
-type Config = {
+interface Config extends BaseConfig {
   currency?: Currencies;
-};
+}
 type Dependencies = Pick<
   AppState,
-  "emps" | "stats" | "prices" | "erc20s" | "registeredEmps" | "synthPrices" | "marketPrices"
+  "emps" | "stats" | "prices" | "erc20s" | "registeredEmps" | "synthPrices" | "marketPrices" | "lsps"
 >;
 
 // this service is meant to calculate numbers derived from emp state, things like TVL, TVM and other things
@@ -123,6 +123,18 @@ export default (config: Config, appState: Dependencies) => {
       })
     );
   }
+  async function updateGlobalTvlHistory() {
+    const latest = getLatestTvlTable();
+    const history = getTvlHistoryTable();
+    const stat = await latest.getGlobal();
+    assert(uma.utils.exists(stat.timestamp), "stats require global TVL timestamp");
+    assert(uma.utils.exists(stat.value), "stats require TVL global TVL value");
+    if (await history.hasGlobal(stat.timestamp)) return stat;
+    return history.createGlobal({
+      value: stat.value,
+      timestamp: stat.timestamp,
+    });
+  }
   async function updateGlobalTvl() {
     const value = await queries.totalTvl(currency);
     const update = {
@@ -142,6 +154,9 @@ export default (config: Config, appState: Dependencies) => {
     });
     await updateGlobalTvl().catch((err) => {
       console.error("Error updating global TVL: " + err.message);
+    });
+    await updateGlobalTvlHistory().catch((err) => {
+      console.error("Error updating global TVL History: " + err.message);
     });
     await updateAllTvm(addresses).then((results) => {
       results.forEach((result) => {

@@ -6,6 +6,9 @@ import { calcGcr } from "./utils";
 import bluebird from "bluebird";
 import { BigNumber } from "ethers";
 
+type Config = {
+  globalKey?: string;
+};
 const { exists } = uma.utils;
 type Dependencies = Pick<
   AppState,

@@ -2,30 +2,32 @@ import { clients } from "@uma/sdk";
 import Promise from "bluebird";
 import { AppState, BaseConfig } from "..";
 
-const { registry } = clients;
+const { lspCreator } = clients;
 
 interface Config extends BaseConfig {
   network?: number;
 }
-type Dependencies = Pick<AppState, "registeredEmps" | "provider">;
+type Dependencies = Pick<AppState, "registeredLsps" | "provider">;
 
 export default (config: Config, appState: Dependencies) => {
   const { network = 1 } = config;
-  const { registeredEmps, provider } = appState;
-  const address = registry.getAddress(network);
-  const contract = registry.connect(address, provider);
+  const { registeredLsps, provider } = appState;
+  const address = lspCreator.getAddress(network);
+  const contract = lspCreator.connect(address, provider);
 
   async function update(startBlock?: number | "latest", endBlock?: number) {
     const events = await contract.queryFilter(
-      contract.filters.NewContractRegistered(null, null, null),
+      contract.filters.CreatedLongShortPair(null, null, null, null),
       startBlock,
       endBlock
     );
-    const { contracts } = registry.getEventState(events);
+    const { contracts } = lspCreator.getEventState(events);
     await Promise.map(Object.keys(contracts || {}), (x) => {
-      return registeredEmps.add(x);
+      return registeredLsps.add(x);
     });
   }
 
-  return update;
+  return {
+    update,
+  };
 };

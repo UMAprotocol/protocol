@@ -1,9 +1,9 @@
 import bluebird from "bluebird";
 import assert from "assert";
-import { AppState } from "..";
-import { parseUnits, nowS } from "../libs/utils";
+import { AppState, BaseConfig } from "..";
+import { parseUnits, nowS, Profile } from "../libs/utils";
 
-type Config = undefined;
+type Config = BaseConfig;
 
 type Dependencies = Pick<AppState, "zrx" | "marketPrices" | "collateralAddresses" | "syntheticAddresses">;
 
@@ -13,6 +13,7 @@ export default function (config: Config, appState: Dependencies) {
   const { zrx, marketPrices, collateralAddresses, syntheticAddresses } = appState;
   // this is hardcoded for now since it differs from the standard currency symbol usd
   const currency = "usdc";
+  const profile = Profile(config.debug);
 
   // does not do any queries, just a helper to mutate the latest price table
   async function updateLatestPrice(tokenAddress: string, timestampS: number) {
@@ -28,6 +29,7 @@ export default function (config: Config, appState: Dependencies) {
 
   async function updateLatestPrices(addresses: string[], timestampS: number = nowS()) {
     return bluebird.mapSeries(addresses, async (address) => {
+      const end = profile(`Latest market price for ${address}`);
       try {
         return {
           status: "fullfilled",
@@ -38,6 +40,8 @@ export default function (config: Config, appState: Dependencies) {
           status: "rejected",
           reason: err,
         };
+      } finally {
+        end();
       }
     });
   }
