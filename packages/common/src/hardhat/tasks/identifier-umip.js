@@ -44,13 +44,13 @@ task("identifier-umip", "Propose or verify Admin Proposal whitelisting new ident
     undefined,
     types.string
   )
-  .addFlag("verify", "set if verifying, skip for proposing")
   .addOptionalParam(
     "polygon",
     "comma-delimited list of identifiers to whitelist on Polygon. Required if --identifier is omitted.",
     undefined,
     types.string
   )
+  .addFlag("verify", "set if verifying, skip for proposing")
   .setAction(async function (taskArguments, hre) {
     const { identifier, polygon, verify } = taskArguments;
     const { web3, getContract, network } = hre;

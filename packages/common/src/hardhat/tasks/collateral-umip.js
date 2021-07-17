@@ -39,20 +39,20 @@ const REQUIRED_SIGNER_ADDRESSES = { deployer: "0x2bAaA41d155ad8a4126184950B31F50
 //    - `yarn hardhat collateral-umip --collateral 0xabc,0x123 --polygon 0xdef, --network localhost`
 
 task("collateral-umip", "Propose or verify Admin Proposal whitelisting new collateral types to Ethereum and/or Polygon")
+  .addParam("fee", "comma-delimited list of final fees to set for whitelisted collateral.", undefined, types.string)
   .addOptionalParam(
     "collateral",
     "comma-delimited list of collateral addresses to whitelist. Required if --polygon is omitted.",
     undefined,
     types.string
   )
-  .addParam("fee", "comma-delimited list of final fees to set for whitelisted collateral.", undefined, types.string)
-  .addFlag("verify", "set if verifying, skip for proposing.")
   .addOptionalParam(
     "polygon",
     "comma-delimited list of Polygon collateral addresses to whitelist. Required if --collateral is omitted",
     undefined,
     types.string
   )
+  .addFlag("verify", "set if verifying, skip for proposing.")
   .setAction(async function (taskArguments, hre) {
     const { collateral, fee, polygon, verify } = taskArguments;
     const { web3, getContract, network } = hre;
