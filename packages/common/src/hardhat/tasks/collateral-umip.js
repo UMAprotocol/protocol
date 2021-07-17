@@ -54,6 +54,13 @@ task("collateral-umip", "Propose or verify Admin Proposal whitelisting new colla
     types.string
   )
   .setAction(async function (taskArguments, hre) {
+    const _CONTRACT_ADDRESSES = {};
+    function _getContractAddressByName(contractName, networkId) {
+      if (!_CONTRACT_ADDRESSES[networkId])
+        _CONTRACT_ADDRESSES[networkId] = require(`../../../../core/networks/${networkId}.json`);
+      return _CONTRACT_ADDRESSES[networkId].find((x) => x.contractName === contractName).address;
+    }
+
     const { collateral, fee, polygon, verify } = taskArguments;
     const { web3, getContract, network } = hre;
 
@@ -324,11 +331,4 @@ async function _getDecimals(web3, collateralAddress, ERC20) {
   } catch (error) {
     throw new Error("Failed to query .decimals() for ERC20" + error.message);
   }
-}
-
-const _CONTRACT_ADDRESSES = {};
-function _getContractAddressByName(contractName, networkId) {
-  if (!_CONTRACT_ADDRESSES[networkId])
-    _CONTRACT_ADDRESSES[networkId] = require(`../../../../core/networks/${networkId}.json`);
-  return _CONTRACT_ADDRESSES[networkId].find((x) => x.contractName === contractName).address;
 }
