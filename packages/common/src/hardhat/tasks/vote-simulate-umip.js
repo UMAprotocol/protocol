@@ -24,7 +24,7 @@ const YES_VOTE = "1";
 const SNAPSHOT_MESSAGE = "Sign For Snapshot";
 
 // Run:
-// - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL>`
+// - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy`
 // - This script should be run after any Admin proposal UMIP script against a local Mainnet fork. It allows the tester
 // to simulate what would happen if the proposal were to pass and to verify that contract state changes as expected.
 // - Vote Simulate: yarn hardhat vote-simulate-umip --network localhost

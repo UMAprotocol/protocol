@@ -13,7 +13,7 @@ const PROD_NET_ID = 1;
 const REQUIRED_SIGNER_ADDRESSES = { deployer: "0x2bAaA41d155ad8a4126184950B31F50A1513cE25" };
 
 // Run:
-// - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL>`
+// - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy`
 // - (optional, or required if --polygon is not undefined) set CROSS_CHAIN_NODE_URL to a Polygon mainnet node. This will
 // be used to query contract data from Polygon when relaying proposals through the GovernorRootTunnel.
 // - Propose: yarn hardhat identifier-umip --network localhost --identifier 0xabc,0x123 --polygon 0xabc,0x123
