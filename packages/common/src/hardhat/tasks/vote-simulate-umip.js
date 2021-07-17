@@ -33,13 +33,6 @@ task("vote-simulate-umip", "Simulate voting affirmatively on any pending Admin P
   taskArguments,
   hre
 ) {
-  const _CONTRACT_ADDRESSES = {};
-  function _getContractAddressByName(contractName, networkId) {
-    if (!_CONTRACT_ADDRESSES[networkId])
-      _CONTRACT_ADDRESSES[networkId] = require(`../../../../core/networks/${networkId}.json`);
-    return _CONTRACT_ADDRESSES[networkId].find((x) => x.contractName === contractName).address;
-  }
-
   const { web3, getContract, network } = hre;
 
   // Set up provider so that we can sign from special wallets:
@@ -237,3 +230,10 @@ task("vote-simulate-umip", "Simulate voting affirmatively on any pending Admin P
 
   console.log("\n😇 Success!");
 });
+
+const _CONTRACT_ADDRESSES = {};
+function _getContractAddressByName(contractName, networkId) {
+  if (!_CONTRACT_ADDRESSES[networkId])
+    _CONTRACT_ADDRESSES[networkId] = require(`../../../../core/networks/${networkId}.json`);
+  return _CONTRACT_ADDRESSES[networkId].find((x) => x.contractName === contractName).address;
+}

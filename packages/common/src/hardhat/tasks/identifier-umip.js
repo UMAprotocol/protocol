@@ -52,13 +52,6 @@ task("identifier-umip", "Propose or verify Admin Proposal whitelisting new ident
     types.string
   )
   .setAction(async function (taskArguments, hre) {
-    const _CONTRACT_ADDRESSES = {};
-    function _getContractAddressByName(contractName, networkId) {
-      if (!_CONTRACT_ADDRESSES[networkId])
-        _CONTRACT_ADDRESSES[networkId] = require(`../../../../core/networks/${networkId}.json`);
-      return _CONTRACT_ADDRESSES[networkId].find((x) => x.contractName === contractName).address;
-    }
-
     const { identifier, polygon, verify } = taskArguments;
     const { web3, getContract, network } = hre;
 
@@ -271,3 +264,10 @@ task("identifier-umip", "Propose or verify Admin Proposal whitelisting new ident
 
     console.log("\n😇 Success!");
   });
+
+const _CONTRACT_ADDRESSES = {};
+function _getContractAddressByName(contractName, networkId) {
+  if (!_CONTRACT_ADDRESSES[networkId])
+    _CONTRACT_ADDRESSES[networkId] = require(`../../../../core/networks/${networkId}.json`);
+  return _CONTRACT_ADDRESSES[networkId].find((x) => x.contractName === contractName).address;
+}
