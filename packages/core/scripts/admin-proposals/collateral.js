@@ -4,11 +4,12 @@
 // Run:
 // - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy`
 // - (optional, or required if --polygon is not undefined) set CROSS_CHAIN_NODE_URL to a Polygon mainnet node. This will
-// be used to query contract data from Polygon when relaying proposals through the GovernorRootTunnel.
-// - Propose: node ./packages/core/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456
-// - Vote Simulate: node ./packages/core/scripts/admin-proposals/simulateVote.js
-// - Verify: node ./packages/core/scripts/admin-proposals/collateral.js --verify --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456
-// - For production, set the CUSTOM_NODE_URL environment and run the script with the `--production` flag.
+//   be used to query contract data from Polygon when relaying proposals through the GovernorRootTunnel.
+// - Propose: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456
+// - Vote Simulate: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/simulateVote.js
+// - Verify: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/collateral.js --verify --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456
+// - For production, set the CUSTOM_NODE_URL environment and run the script with a different `HARDHAT_NETWORK` value,
+//   for example: `HARDHAT_NETWORK=mainnet node ./packages/core/scripts/admin-proposals/collateral.js ...`
 
 // Customizations:
 // - --polygon param can be omitted, in which case transactions will only take place on Ethereum.
@@ -20,11 +21,11 @@
 
 // Examples:
 // - Whitelist collateral on Ethereum only:
-//    - `node ./packages/core/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123`
+//    - `HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123`
 // - Whitelist collateral on Polygon only:
-//    - `node ./packages/core/scripts/admin-proposals/collateral.js --polygon 0xabc,0x123`
+//    - `HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/collateral.js --polygon 0xabc,0x123`
 // - Whitelist collateral on both (some on Ethereum, some on Polygon):
-//    - `node ./packages/core/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123 --polygon 0xdef,`
+//    - `HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123 --polygon 0xdef,`
 
 const hre = require("hardhat");
 require("dotenv").config();
@@ -34,7 +35,6 @@ const winston = require("winston");
 const { parseUnits } = require("@ethersproject/units");
 const { interfaceName } = require("@uma/common");
 const { _getDecimals, _getContractAddressByName } = require("./utils");
-const assert = require("assert");
 const argv = require("minimist")(process.argv.slice(), {
   string: [
     // comma-delimited list of final fees to set for whitelisted collateral.
@@ -47,14 +47,10 @@ const argv = require("minimist")(process.argv.slice(), {
   boolean: [
     // set True if verifying, False for proposing.
     "verify",
-    // set True to connect to provider pointed to by CUSTOM_NODE_URL environment variable.
-    "production",
   ],
-  default: { verify: false, production: false },
+  default: { verify: false },
 });
 
-// By default, connect to localhost provider:
-const DEFAULT_PROVIDER = "http://127.0.0.1:8545";
 // Net ID returned by web3 when connected to a mainnet fork running on localhost.
 const HARDHAT_NET_ID = 31337;
 // Net ID that this script should simulate with.
@@ -63,15 +59,8 @@ const PROD_NET_ID = 1;
 const REQUIRED_SIGNER_ADDRESSES = { deployer: "0x2bAaA41d155ad8a4126184950B31F50A1513cE25" };
 
 async function run() {
-  const { collateral, fee, polygon, verify, production } = argv;
-  const { getContract, network, web3 } = hre;
-
-  if (production) {
-    if (!process.env.CUSTOM_NODE_URL) throw new Error("Must set CUSTOM_NODE_URL with --production flag");
-    web3.setProvider(process.env.CUSTOM_NODE_URL);
-  } else {
-    web3.setProvider(DEFAULT_PROVIDER);
-  }
+  const { collateral, fee, polygon, verify } = argv;
+  const { getContract, network, web3, assert } = hre;
 
   // Set up provider so that we can sign from special wallets:
   let netId = await web3.eth.net.getId();

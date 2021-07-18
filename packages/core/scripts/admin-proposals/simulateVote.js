@@ -5,7 +5,7 @@
 // - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy`
 // - This script should be run after any Admin proposal UMIP script against a local Mainnet fork. It allows the tester
 // to simulate what would happen if the proposal were to pass and to verify that contract state changes as expected.
-// - Vote Simulate: node ./packages/core/scripts/admin-proposals/simulateVote.js
+// - Vote Simulate: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/simulateVote.js
 
 const hre = require("hardhat");
 require("dotenv").config();
@@ -19,7 +19,6 @@ const {
   computeVoteHash,
   signMessage,
 } = require("@uma/common");
-const assert = require("assert");
 const { _getContractAddressByName } = require("./utils");
 
 // By default, connect to localhost provider:
@@ -36,7 +35,7 @@ const YES_VOTE = "1";
 const SNAPSHOT_MESSAGE = "Sign For Snapshot";
 
 async function run() {
-  const { getContract, network, web3 } = hre;
+  const { getContract, network, web3, assert } = hre;
 
   // This script should only be run against a local mainnet fork, as its not realistic to send transactions from the
   // foundation wallet in production.
