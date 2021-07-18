@@ -108,13 +108,13 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       return queries.sliceHistoricalPricesByTokenAddress(emp.collateralCurrency, start, length);
     },
     async tvl(addresses: string[] = [], currency: CurrencySymbol = "usd") {
+      if (addresses == null || addresses.length == 0) return queries.getGlobalTvl(currency);
       addresses = addresses ? lodash.castArray(addresses) : [];
-      if (addresses == null || addresses.length == 0) queries.getGlobalTvl(currency);
       return queries.sumTvl(addresses, currency);
     },
     async tvm(addresses: string[] = [], currency: CurrencySymbol = "usd") {
-      addresses = addresses ? lodash.castArray(addresses) : [];
       if (addresses == null || addresses.length == 0) return queries.totalTvm(currency);
+      addresses = addresses ? lodash.castArray(addresses) : [];
       return queries.sumTvm(addresses, currency);
     },
     async tvlHistoryBetween(empAddress: string, start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") {
