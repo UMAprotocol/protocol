@@ -7,19 +7,24 @@ import "./LongShortPairFinancialProductLibrary.sol";
 import "../../../../common/implementation/Lockable.sol";
 
 /**
- * @title Covered call Long Short Pair Financial Product Library.
- * @notice Adds settlement logic to create covered call LSPs. The contract will payout a scaled amount of collateral
- * depending on where the settlement price lands relative to the call's strike price. If the settlement is below the
- * strike price then longs expire worthless. If the settlement is above the strike then the payout is the fraction above
- * the strike defined by (expiryPrice - strikePrice) / expiryPrice. For example, consider a covered call option
- * collateralized in ETH, with a strike a price of 3000.
- * - If the price is less than 3000 then the each long is worth 0 and each short is worth collateralPerPair.
- * - If the price is more than 3000 then each long is worth the fraction of collateralPerPair that was in the money and
- * each short is worth the remaining collateralPerPair.
- * - Say settlement price is 3500.  Then expiryPercentLong = (3500 - 3000) / 3500 = 0.143. The value of this 0.143 ETH
- * is worth 0.143*3500=500 which is the percentage of the collateralPerPair that was above the strike price.
+ * @title Success Token Long Short Pair Financial Product Library.
+ * @notice Adds settlement logic to create success token LSPs. A success token pays out 50% of collateral as a 
+ * floor, with the remaining 50% functioning like an embedded covered call.
+ * If the settlement is below the strike price then longs are worth 50% of collateral.
+ * If the settlement is above the strike then the payout is equal to:
+ * 0.5 + (0.5 * (expiryPrice - strikePrice) / expiryPrice)
+ * For example, consider a covered call option collateralized in SUSHI, with a strike a price of $20, 
+ * and collateralPerPair of 2.
+ * - If the price is less than $20 then the each long is worth 0.5 collateralPerPair and each short is worth 0.5
+ * collateralPerPair.
+ * - If the price is more than $20 then each long is worth 0.5 collateralPerPair plus 0.5 times the fraction of
+ * collateralPerPair that was in the money, and each short is worth the remaining collateralPerPair.
+ * - Say settlement price is $30.  Then expiryPercentLong = 0.5 + (0.5 * (30 - 20) / 30) = 0.6667. 
+ * If the collateralPerPair is 2, that means the long payout is 0.6667*2 = 1.3333 $SUSHI, which at a settlement
+ * price of $30 is worth $40. This is equivalent to the value of 1 $SUSHI plus the value of the $20 strike
+ * embedded call.
  */
-contract CoveredCallLongShortPairFinancialProductLibrary is LongShortPairFinancialProductLibrary, Lockable {
+contract SuccessTokenLongShortPairFinancialProductLibrary is LongShortPairFinancialProductLibrary, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint256;
 
@@ -58,16 +63,23 @@ contract CoveredCallLongShortPairFinancialProductLibrary is LongShortPairFinanci
         require(contractStrikePrice != 0, "Params not set for calling LSP");
 
         // If the expiry price is less than the strike price then the long options expire worthless (out of the money).
+        // In this case, return of value of 50% (half of collateral goes to long)
         // Note we do not consider negative expiry prices in this call option implementation.
         if (expiryPrice < 0 || uint256(expiryPrice) < contractStrikePrice)
-            return FixedPoint.fromUnscaledUint(0).rawValue;
+            return FixedPoint.fromUnscaledUint(0.5).rawValue;
 
-        // Else, token expires to be worth the fraction of a collateral token that's in the money. eg if ETH is $3500
-        // and strike is $3000, long token is redeemable for (3500-3000)/3500 = 0.143 WETH which is worth $500 and the
-        // short token is worth the remaining 0.8. This is strictly < 1, tending to 1 as the expiry tends to infinity.
+        // Else, token expires to be worth the 0.5 of the collateral plus 0.5 * the fraction of a collateral token 
+        // that's in the money. 
+        // eg if SUSHI is $30 and strike is $20, long token is redeemable for 0.5 + 0.5*(30-20)/30 = 0.6667% which if the
+        // collateralPerPair is 2, is worth 1.3333 $SUSHI, which is worth $40 if 1 $SUSHI is worth $30.
+        // This return value is strictly < 1, tending to 1 as the expiryPrice tends to infinity.
         return
-            (FixedPoint.Unsigned(uint256(expiryPrice)).sub(FixedPoint.Unsigned(contractStrikePrice)))
-                .div(FixedPoint.Unsigned(uint256(expiryPrice)))
-                .rawValue;
+            (FixedPoint.fromUnscaledUint(0.5).add(
+                FixedPoint.fromUnscaledUint(0.5).mul(
+                    FixedPoint.Unsigned(uint256(expiryPrice)).sub(FixedPoint.Unsigned(contractStrikePrice)))
+                        .div(FixedPoint.Unsigned(uint256(expiryPrice))
+                    )
+                )
+            ).rawValue;
     }
 }
