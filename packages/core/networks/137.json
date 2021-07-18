@@ -5,7 +5,7 @@
   },
   {
     "contractName": "Registry",
-    "address": "0xB0C6Ed64a77A3D8F61b21922B13F39525Fbf5fC0"
+    "address": "0x5f25b1647fa8eaea0e15edd413c7afcbe613b6f4"
   },
   {
     "contractName": "IdentifierWhitelist",
@@ -25,11 +25,11 @@
   },
   {
     "contractName": "OptimisticOracle",
-    "address": "0xAaF3F29521877d7a28C21E379Bf7A5401883A6B2"
+    "address": "0xBb1A8db2D4350976a11cdfA60A1d43f97710Da49"
   },
   {
     "contractName": "OracleChildTunnel",
-    "address": "0x02B8733763dD76f73b8573e668ecA3343a7D65e7"
+    "address": "0x7f08B770E52e80ad418A90038FbcDf10DC7CD62F"
   },
   {
     "contractName": "TokenFactory",
@@ -45,7 +45,7 @@
   },
   {
     "contractName": "GovernorChildTunnel",
-    "address": "0x1EC4F63E40631BeDfcf7Ef37D79Dd1c20A953965"
+    "address": "0xb4AeaD497FCbEAA3C37919032d42C29682f46376"
   },
   {
     "contractName": "MockOracleAncillary",
