@@ -61,7 +61,7 @@ contract SmaugBondLongShortPairFinancialProductLibrary is LongShortPairFinancial
         nonReentrantView()
         returns (uint256)
     {
-        contractLowPriceRange = lowPriceRanges[msg.sender];
+        uint256 contractLowPriceRange = lowPriceRanges[msg.sender];
         require(contractLowPriceRange != 0, "Params not set for calling LSP");
 
         // This function returns a value between 0 and 1e18 to be used in conjunction with the LSP collateralPerPair
