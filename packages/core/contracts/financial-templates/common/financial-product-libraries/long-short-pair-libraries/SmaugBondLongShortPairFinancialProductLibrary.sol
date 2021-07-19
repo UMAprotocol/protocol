@@ -8,7 +8,7 @@ import "./LongShortPairFinancialProductLibrary.sol";
 import "../../../../common/implementation/Lockable.sol";
 
 /**
- * @title Smaug B0jd Long Short Pair Financial Product Library
+ * @title Smaug Bond Long Short Pair Financial Product Library
  * @notice Adds settlement logic to create Smaug Bond LSPs. A range bond is the combination of a Yield dollar and short
  * put option enabling the token sponsor to issue structured products to unlock DeFi treasuries. A Smaug Bond is like
  * a Range Bond, but with no embedded call option.
