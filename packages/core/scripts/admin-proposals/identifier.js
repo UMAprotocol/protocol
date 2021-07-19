@@ -157,7 +157,9 @@ async function run() {
     console.log(
       "- 🟣 = Transactions to be submitted to the Polygon contracts are relayed via the GovernorRootTunnel on Etheruem. Look at this test for an example:"
     );
-    console.log("    - https://github.com/UMAprotocol/protocol/blob/master/packages/core/test/polygon/e2e.js#L221");
+    console.log(
+      "    - https://github.com/UMAprotocol/protocol/blob/349401a869e89f9b5583d34c1f282407dca021ac/packages/core/test/polygon/e2e.js#L221"
+    );
     console.log("- 🟢 = Transactions to be submitted directly to Ethereum contracts.");
     console.groupEnd();
 
