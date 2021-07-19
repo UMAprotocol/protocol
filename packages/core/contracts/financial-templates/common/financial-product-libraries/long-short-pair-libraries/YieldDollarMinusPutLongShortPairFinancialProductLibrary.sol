@@ -8,11 +8,12 @@ import "./LongShortPairFinancialProductLibrary.sol";
 import "../../../../common/implementation/Lockable.sol";
 
 /**
- * @title Smaug Bond Long Short Pair Financial Product Library
- * @notice Adds settlement logic to create Smaug Bond LSPs. A range bond is the combination of a Yield dollar and short
- * put option enabling the token sponsor to issue structured products to unlock DeFi treasuries. A Smaug Bond is like
+ * @title Yield Dollar Minus Put Long Short Pair Financial Product Library
+ * @notice Adds settlement logic to create Yield Dollar LSPs. A range bond is the combination of a Yield dollar and short
+ * put option enabling the token sponsor to issue structured products to unlock DeFi treasuries. This library is like
  * a Range Bond, but with no embedded call option.
- * A Smaug Bond is defined as = Yield Dollar - Put Option. Numerically this is found using:
+ * A Yield Dollar Minus Put, as you might expect, is defined as = Yield Dollar - Put Option.
+ * Numerically this is found using:
  * N = Notional of bond
  * P = price of token
  * T = number of tokens
@@ -24,7 +25,7 @@ import "../../../../common/implementation/Lockable.sol";
  * With this equation, the contract deployer does not need to specify the bond notional N. The notional can be calculated
  * by taking R1*collateralPerPair from the LSP.
  */
-contract SmaugBondLongShortPairFinancialProductLibrary is LongShortPairFinancialProductLibrary, Lockable {
+contract YieldDollarMinusPutLongShortPairFinancialProductLibrary is LongShortPairFinancialProductLibrary, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
     using SignedSafeMath for int256;
 
