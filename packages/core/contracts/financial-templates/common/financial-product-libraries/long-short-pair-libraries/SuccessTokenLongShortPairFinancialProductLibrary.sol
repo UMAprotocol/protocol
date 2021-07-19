@@ -8,18 +8,18 @@ import "../../../../common/implementation/Lockable.sol";
 
 /**
  * @title Success Token Long Short Pair Financial Product Library.
- * @notice Adds settlement logic to create success token LSPs. A success token pays out 50% of collateral as a 
+ * @notice Adds settlement logic to create success token LSPs. A success token pays out 50% of collateral as a
  * floor, with the remaining 50% functioning like an embedded covered call.
  * If the settlement is below the strike price then longs are worth 50% of collateral.
  * If the settlement is above the strike then the payout is equal to:
  * 0.5 + (0.5 * (expiryPrice - strikePrice) / expiryPrice)
- * For example, consider a covered call option collateralized in SUSHI, with a strike a price of $20, 
+ * For example, consider a covered call option collateralized in SUSHI, with a strike a price of $20,
  * and collateralPerPair of 2.
  * - If the price is less than $20 then the each long is worth 0.5 collateralPerPair and each short is worth 0.5
  * collateralPerPair.
  * - If the price is more than $20 then each long is worth 0.5 collateralPerPair plus 0.5 times the fraction of
  * collateralPerPair that was in the money, and each short is worth the remaining collateralPerPair.
- * - Say settlement price is $30.  Then expiryPercentLong = 0.5 + (0.5 * (30 - 20) / 30) = 0.6667. 
+ * - Say settlement price is $30.  Then expiryPercentLong = 0.5 + (0.5 * (30 - 20) / 30) = 0.6667.
  * If the collateralPerPair is 2, that means the long payout is 0.6667*2 = 1.3333 $SUSHI, which at a settlement
  * price of $30 is worth $40. This is equivalent to the value of 1 $SUSHI plus the value of the $20 strike
  * embedded call.
@@ -29,6 +29,8 @@ contract SuccessTokenLongShortPairFinancialProductLibrary is LongShortPairFinanc
     using SafeMath for uint256;
 
     mapping(address => uint256) public longShortPairStrikePrices;
+    uint256 basePercentage = 500000000000000000; // 0.5 with 18 decimals
+    uint256 variablePercentage = uint256(1000000000000000000).sub(basePercentage);
 
     /**
      * @notice Enables any address to set the strike price for an associated LSP.
@@ -66,20 +68,22 @@ contract SuccessTokenLongShortPairFinancialProductLibrary is LongShortPairFinanc
         // In this case, return of value of 50% (half of collateral goes to long)
         // Note we do not consider negative expiry prices in this call option implementation.
         if (expiryPrice < 0 || uint256(expiryPrice) < contractStrikePrice)
-            return FixedPoint.fromUnscaledUint(0.5).rawValue;
+            return FixedPoint.fromUnscaledUint(basePercentage).rawValue;
 
-        // Else, token expires to be worth the 0.5 of the collateral plus 0.5 * the fraction of a collateral token 
-        // that's in the money. 
+        // Else, token expires to be worth the 0.5 of the collateral plus 0.5 * the fraction of a collateral token
+        // that's in the money.
         // eg if SUSHI is $30 and strike is $20, long token is redeemable for 0.5 + 0.5*(30-20)/30 = 0.6667% which if the
         // collateralPerPair is 2, is worth 1.3333 $SUSHI, which is worth $40 if 1 $SUSHI is worth $30.
         // This return value is strictly < 1, tending to 1 as the expiryPrice tends to infinity.
         return
-            (FixedPoint.fromUnscaledUint(0.5).add(
-                FixedPoint.fromUnscaledUint(0.5).mul(
-                    FixedPoint.Unsigned(uint256(expiryPrice)).sub(FixedPoint.Unsigned(contractStrikePrice)))
-                        .div(FixedPoint.Unsigned(uint256(expiryPrice))
-                    )
+            (
+                FixedPoint.fromUnscaledUint(basePercentage).add(
+                    FixedPoint
+                        .fromUnscaledUint(variablePercentage)
+                        .mul(FixedPoint.Unsigned(uint256(expiryPrice)).sub(FixedPoint.Unsigned(contractStrikePrice)))
+                        .div(FixedPoint.Unsigned(uint256(expiryPrice)))
                 )
-            ).rawValue;
+            )
+                .rawValue;
     }
 }
