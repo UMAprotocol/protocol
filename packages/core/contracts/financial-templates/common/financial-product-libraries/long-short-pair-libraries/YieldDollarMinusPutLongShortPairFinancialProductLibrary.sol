@@ -18,6 +18,7 @@ import "../../../../common/implementation/Lockable.sol";
  * P = price of token
  * T = number of tokens
  * R1 = low price range
+ * T = min(N/P,N/R1) + max((N/R2*(P-R2))/P,0)
  * - At any price below the low price range (R1) the long side effectively holds a fixed number of collateral equal to
  * collateralPerPair from the LSP with the value of expiryPercentLong = 1. This is the max payout in collateral.
  * - Any price equal to or above R1 gives a payout equivalent to a yield dollar (bond) of notional N. In this range the
