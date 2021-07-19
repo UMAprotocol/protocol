@@ -5,8 +5,8 @@ const { didContractThrow, ZERO_ADDRESS } = require("@uma/common");
 const { assert } = require("chai");
 
 // Tested Contract
-const YieldDollarMinusPutLongShortPairFinancialProductLibrary = getContract(
-  "YieldDollarMinusPutLongShortPairFinancialProductLibrary"
+const CappedYieldDollarLongShortPairFinancialProductLibrary = getContract(
+  "CappedYieldDollarLongShortPairFinancialProductLibrary"
 );
 
 const LongShortPairMock = getContract("LongShortPairMock");
@@ -16,8 +16,8 @@ const { toWei, toBN } = web3.utils;
 const lowPriceRange = toBN(toWei("10"));
 const collateralPerPair = toBN(toWei("10"));
 
-describe("YieldDollarMinusPutLongShortPairFinancialProductLibrary", function () {
-  let yieldDollarMinusPutLSPFPL;
+describe("CappedYieldDollarLongShortPairFinancialProductLibrary", function () {
+  let cappedYieldDollarLSPFPL;
   let lspMock;
   let accounts;
 
@@ -27,7 +27,7 @@ describe("YieldDollarMinusPutLongShortPairFinancialProductLibrary", function () 
   });
 
   beforeEach(async () => {
-    yieldDollarMinusPutLSPFPL = await YieldDollarMinusPutLongShortPairFinancialProductLibrary.new().send({
+    cappedYieldDollarLSPFPL = await CappedYieldDollarLongShortPairFinancialProductLibrary.new().send({
       from: accounts[0],
     });
     lspMock = await LongShortPairMock.new(
@@ -37,22 +37,22 @@ describe("YieldDollarMinusPutLongShortPairFinancialProductLibrary", function () 
   });
   describe("Long Short Pair Parameterization", () => {
     it("Can set and fetch valid values", async () => {
-      await yieldDollarMinusPutLSPFPL.methods
+      await cappedYieldDollarLSPFPL.methods
         .setLongShortPairParameters(lspMock.options.address, lowPriceRange)
         .send({ from: accounts[0] });
 
-      const setParams = await yieldDollarMinusPutLSPFPL.methods.longShortPairParameters(lspMock.options.address).call();
+      const setParams = await cappedYieldDollarLSPFPL.methods.longShortPairParameters(lspMock.options.address).call();
       assert.equal(setParams.lowPriceRange.toString(), lowPriceRange);
     });
     it("Can not re-use existing LSP contract address", async () => {
-      await yieldDollarMinusPutLSPFPL.methods
+      await cappedYieldDollarLSPFPL.methods
         .setLongShortPairParameters(lspMock.options.address, lowPriceRange)
         .send({ from: accounts[0] });
 
       // Second attempt should revert.
       assert(
         await didContractThrow(
-          yieldDollarMinusPutLSPFPL.methods
+          cappedYieldDollarLSPFPL.methods
             .setLongShortPairParameters(lspMock.options.address, lowPriceRange)
             .send({ from: accounts[0] })
         )
@@ -62,7 +62,7 @@ describe("YieldDollarMinusPutLongShortPairFinancialProductLibrary", function () 
       // upper bound larger than lower bound by swapping upper and lower
       assert(
         await didContractThrow(
-          yieldDollarMinusPutLSPFPL.methods
+          cappedYieldDollarLSPFPL.methods
             .setLongShortPairParameters(lspMock.options.address, lowPriceRange)
             .send({ from: accounts[0] })
         )
@@ -72,7 +72,7 @@ describe("YieldDollarMinusPutLongShortPairFinancialProductLibrary", function () 
       // LSP Address must implement the `expirationTimestamp method.
       assert(
         await didContractThrow(
-          yieldDollarMinusPutLSPFPL.methods
+          cappedYieldDollarLSPFPL.methods
             .setLongShortPairParameters(ZERO_ADDRESS, lowPriceRange)
             .send({ from: accounts[0] })
         )
@@ -81,14 +81,14 @@ describe("YieldDollarMinusPutLongShortPairFinancialProductLibrary", function () 
   });
   describe("Compute expiry tokens for collateral", () => {
     beforeEach(async () => {
-      await yieldDollarMinusPutLSPFPL.methods
+      await cappedYieldDollarLSPFPL.methods
         .setLongShortPairParameters(lspMock.options.address, lowPriceRange)
         .send({ from: accounts[0] });
     });
     it("Lower than low price range should return 1 (long side is short put option)", async () => {
       // If the price is lower than the low price range then the max payout per each long token is hit at the full
       // collateralPerPair. i.e each short token is worth 0*collateralPerPair and each long token is worth 1*collateralPerPair.
-      const expiryTokensForCollateral = await yieldDollarMinusPutLSPFPL.methods
+      const expiryTokensForCollateral = await cappedYieldDollarLSPFPL.methods
         .percentageLongCollateralAtExpiry(toWei("9"))
         .call({ from: lspMock.options.address });
       assert.equal(expiryTokensForCollateral.toString(), toWei("1"));
@@ -98,14 +98,14 @@ describe("YieldDollarMinusPutLongShortPairFinancialProductLibrary", function () 
       // long token is worth the bond notional of 100. At a price of 20 we are between the bounds. Each long should be worth
       // 100 so there should be 100/20=5 UMA per long token. As each collateralPerPair is worth 10, expiryPercentLong should
       // be 10/5=0.5, thereby allocating half to the long and half to the short.
-      const expiryTokensForCollateral1 = await yieldDollarMinusPutLSPFPL.methods
+      const expiryTokensForCollateral1 = await cappedYieldDollarLSPFPL.methods
         .percentageLongCollateralAtExpiry(toWei("20"))
         .call({ from: lspMock.options.address });
       assert.equal(expiryTokensForCollateral1.toString(), toWei("0.5"));
 
       // Equally, at a price of 40 each long should still be worth 100 so there should be 100/40=2.5 UMA per long. As
       // each collateralPerPair=10 expiryPercentLong should be 10/2.5=0.25, thereby allocating 25% to long and the remaining to short.
-      const expiryTokensForCollateral2 = await yieldDollarMinusPutLSPFPL.methods
+      const expiryTokensForCollateral2 = await cappedYieldDollarLSPFPL.methods
         .percentageLongCollateralAtExpiry(toWei("20"))
         .call({ from: lspMock.options.address });
       assert.equal(expiryTokensForCollateral2.toString(), toWei("0.5"));

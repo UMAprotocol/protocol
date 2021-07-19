@@ -8,17 +8,21 @@ import "./LongShortPairFinancialProductLibrary.sol";
 import "../../../../common/implementation/Lockable.sol";
 
 /**
- * @title Yield Dollar Minus Put Long Short Pair Financial Product Library
+ * @title Capped Yield Dollar Long Short Pair Financial Product Library
  * @notice Adds settlement logic to create Yield Dollar LSPs. A range bond is the combination of a Yield dollar and short
  * put option enabling the token sponsor to issue structured products to unlock DeFi treasuries. This library is like
  * a Range Bond, but with no embedded call option.
- * A Yield Dollar Minus Put, as you might expect, is defined as = Yield Dollar - Put Option.
+ * A Capped Yield Dollar is defined as = Yield Dollar - Put Option. In order for the Capped Yield Dollar to be fully
+ * collateralized and non-liquidatable, there is a low price for the collateral token below which the Capped Yield Dollar
+ * will be worth < $1.
  * Numerically this is found using:
  * N = Notional of bond
  * P = price of token
  * T = number of tokens
  * R1 = low price range
- * T = min(N/P,N/R1) + max((N/R2*(P-R2))/P,0)
+ * C = collateral per pair, should be N/R1
+ * T = min(1,(R1/P)*C)
+ * If you want a yield dollar denominated as N = $1, you should set C to 1/R1. In that case, T = min(1,1/P).
  * - At any price below the low price range (R1) the long side effectively holds a fixed number of collateral equal to
  * collateralPerPair from the LSP with the value of expiryPercentLong = 1. This is the max payout in collateral.
  * - Any price equal to or above R1 gives a payout equivalent to a yield dollar (bond) of notional N. In this range the
@@ -26,7 +30,7 @@ import "../../../../common/implementation/Lockable.sol";
  * With this equation, the contract deployer does not need to specify the bond notional N. The notional can be calculated
  * by taking R1*collateralPerPair from the LSP.
  */
-contract YieldDollarMinusPutLongShortPairFinancialProductLibrary is LongShortPairFinancialProductLibrary, Lockable {
+contract CappedYieldDollarLongShortPairFinancialProductLibrary is LongShortPairFinancialProductLibrary, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
     using SignedSafeMath for int256;
 
