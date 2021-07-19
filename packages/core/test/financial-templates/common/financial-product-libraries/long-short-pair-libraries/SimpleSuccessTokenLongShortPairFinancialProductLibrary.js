@@ -88,19 +88,6 @@ describe("SimpleSuccessTokenLongShortPairFinancialProductLibrary", function () {
         .call({ from: lspMock.options.address });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0.6"));
     });
-    it("Arbitrary expiry price above strike should return correctly", async () => {
-      for (const price of [toWei("500"), toWei("600"), toWei("1000"), toWei("1500"), toWei("2000")]) {
-        const expiryTokensForCollateral = await simpleSuccessTokenLSPFPL.methods
-          .percentageLongCollateralAtExpiry(price)
-          .call({ from: lspMock.options.address });
-        const expectedTokensForCollateral = toBN(price)
-          .sub(toBN(strikePrice))
-          .mul(toBN(toWei("1")))
-          .div(toBN(price))
-          .add(toBN(toWei("0.5")));
-        assert.equal(expiryTokensForCollateral.toString(), expectedTokensForCollateral.toString());
-      }
-    });
     it("Should never return a value greater than 1", async () => {
       // create a massive expiry price. 1e18*1e18. Under all conditions should return less than 1.
       const expiryTokensForCollateral = await simpleSuccessTokenLSPFPL.methods

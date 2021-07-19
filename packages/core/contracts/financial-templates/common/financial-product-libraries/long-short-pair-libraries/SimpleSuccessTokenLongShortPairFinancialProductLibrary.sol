@@ -68,7 +68,7 @@ contract SimpleSuccessTokenLongShortPairFinancialProductLibrary is LongShortPair
         // In this case, return of value of 50% (half of collateral goes to long)
         // Note we do not consider negative expiry prices in this call option implementation.
         if (expiryPrice < 0 || uint256(expiryPrice) < contractStrikePrice)
-            return FixedPoint.fromUnscaledUint(basePercentage).rawValue;
+            return FixedPoint.Unsigned(basePercentage).rawValue;
 
         // Else, token expires to be worth the 0.5 of the collateral plus 0.5 * the fraction of a collateral token
         // that's in the money.
@@ -77,9 +77,9 @@ contract SimpleSuccessTokenLongShortPairFinancialProductLibrary is LongShortPair
         // This return value is strictly < 1, tending to 1 as the expiryPrice tends to infinity.
         return
             (
-                FixedPoint.fromUnscaledUint(basePercentage).add(
+                FixedPoint.Unsigned(basePercentage).add(
                     FixedPoint
-                        .fromUnscaledUint(variablePercentage)
+                        .Unsigned(variablePercentage)
                         .mul(FixedPoint.Unsigned(uint256(expiryPrice)).sub(FixedPoint.Unsigned(contractStrikePrice)))
                         .div(FixedPoint.Unsigned(uint256(expiryPrice)))
                 )
