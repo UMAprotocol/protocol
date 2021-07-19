@@ -32,7 +32,7 @@ const { GasEstimator } = require("@uma/financial-templates-lib");
 const Web3 = require("web3");
 const winston = require("winston");
 const { interfaceName } = require("@uma/common");
-const { _getContractAddressByName } = require("./utils");
+const { _getContractAddressByName, _impersonateAccounts } = require("./utils");
 const argv = require("minimist")(process.argv.slice(), {
   string: [
     // comma-delimited list of identifiers to whitelist on Ethereum. Required if --polygon is omitted.
@@ -63,13 +63,7 @@ async function run() {
   if (netId === HARDHAT_NET_ID) {
     console.log("🚸 Connected to a local node, attempting to impersonate accounts on forked network 🚸");
     console.table(REQUIRED_SIGNER_ADDRESSES);
-    Object.keys(REQUIRED_SIGNER_ADDRESSES).map(async (signer) => {
-      const result = await network.provider.request({
-        method: "hardhat_impersonateAccount",
-        params: [REQUIRED_SIGNER_ADDRESSES[signer]],
-      });
-      if (!result) throw new Error(`Failed to impersonate account ${REQUIRED_SIGNER_ADDRESSES[signer]}`);
-    });
+    await _impersonateAccounts(network, REQUIRED_SIGNER_ADDRESSES);
     console.log("🔐 Successfully impersonated accounts");
   } else {
     console.log("📛 Connected to a production node 📛");

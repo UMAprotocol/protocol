@@ -16,4 +16,14 @@ function _getContractAddressByName(contractName, networkId) {
   return require(contractAddressPath).find((x) => x.contractName === contractName).address;
 }
 
-module.exports = { _getDecimals, _getContractAddressByName };
+// Add signers to provider so that we can sign from specific wallets.
+async function _impersonateAccounts(network, accountsToImpersonate) {
+  Object.keys(accountsToImpersonate).map(async (signer) => {
+    const result = await network.provider.request({
+      method: "hardhat_impersonateAccount",
+      params: [accountsToImpersonate[signer]],
+    });
+    if (!result) throw new Error(`Failed to impersonate account ${accountsToImpersonate[signer]}`);
+  });
+}
+module.exports = { _getDecimals, _getContractAddressByName, _impersonateAccounts };

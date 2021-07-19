@@ -19,7 +19,7 @@ const {
   computeVoteHash,
   signMessage,
 } = require("@uma/common");
-const { _getContractAddressByName } = require("./utils");
+const { _getContractAddressByName, _impersonateAccounts } = require("./utils");
 
 // By default, connect to localhost provider:
 const DEFAULT_PROVIDER = "http://127.0.0.1:8545";
@@ -46,13 +46,7 @@ async function run() {
   if (netId === HARDHAT_NET_ID) {
     console.log("🚸 Connected to a local node, attempting to impersonate accounts on forked network 🚸");
     console.table(REQUIRED_SIGNER_ADDRESSES);
-    Object.keys(REQUIRED_SIGNER_ADDRESSES).map(async (signer) => {
-      const result = await network.provider.request({
-        method: "hardhat_impersonateAccount",
-        params: [REQUIRED_SIGNER_ADDRESSES[signer]],
-      });
-      if (!result) throw new Error(`Failed to impersonate account ${REQUIRED_SIGNER_ADDRESSES[signer]}`);
-    });
+    await _impersonateAccounts(network, REQUIRED_SIGNER_ADDRESSES);
     console.log("🔐 Successfully impersonated accounts");
   } else {
     console.log("📛 Connected to a production node 📛");

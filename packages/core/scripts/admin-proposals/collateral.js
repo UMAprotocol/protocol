@@ -34,7 +34,7 @@ const Web3 = require("web3");
 const winston = require("winston");
 const { parseUnits } = require("@ethersproject/units");
 const { interfaceName } = require("@uma/common");
-const { _getDecimals, _getContractAddressByName } = require("./utils");
+const { _getDecimals, _getContractAddressByName, _impersonateAccounts } = require("./utils");
 const argv = require("minimist")(process.argv.slice(), {
   string: [
     // comma-delimited list of final fees to set for whitelisted collateral.
@@ -60,20 +60,13 @@ const REQUIRED_SIGNER_ADDRESSES = { deployer: "0x2bAaA41d155ad8a4126184950B31F50
 
 async function run() {
   const { collateral, fee, polygon, verify } = argv;
-  const { getContract, network, web3, assert } = hre;
+  const { getContract, web3, network, assert } = hre;
 
-  // Set up provider so that we can sign from special wallets:
   let netId = await web3.eth.net.getId();
   if (netId === HARDHAT_NET_ID) {
     console.log("🚸 Connected to a local node, attempting to impersonate accounts on forked network 🚸");
     console.table(REQUIRED_SIGNER_ADDRESSES);
-    Object.keys(REQUIRED_SIGNER_ADDRESSES).map(async (signer) => {
-      const result = await network.provider.request({
-        method: "hardhat_impersonateAccount",
-        params: [REQUIRED_SIGNER_ADDRESSES[signer]],
-      });
-      if (!result) throw new Error(`Failed to impersonate account ${REQUIRED_SIGNER_ADDRESSES[signer]}`);
-    });
+    await _impersonateAccounts(network, REQUIRED_SIGNER_ADDRESSES);
     console.log("🔐 Successfully impersonated accounts");
   } else {
     console.log("📛 Connected to a production node 📛");
