@@ -7,7 +7,7 @@ import "./LongShortPairFinancialProductLibrary.sol";
 import "../../../../common/implementation/Lockable.sol";
 
 /**
- * @title Success Token Long Short Pair Financial Product Library.
+ * @title Sushi Success Token Long Short Pair Financial Product Library.
  * @notice Adds settlement logic to create success token LSPs. A success token pays out 50% of collateral as a
  * floor, with the remaining 50% functioning like an embedded covered call.
  * If the settlement is below the strike price then longs are worth 50% of collateral.
@@ -24,7 +24,7 @@ import "../../../../common/implementation/Lockable.sol";
  * price of $30 is worth $40. This is equivalent to the value of 1 $SUSHI plus the value of the $20 strike
  * embedded call.
  */
-contract SuccessTokenLongShortPairFinancialProductLibrary is LongShortPairFinancialProductLibrary, Lockable {
+contract SushiSuccessTokenLongShortPairFinancialProductLibrary is LongShortPairFinancialProductLibrary, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint256;
 
