@@ -41,8 +41,8 @@ describe("CappedYieldDollarLongShortPairFinancialProductLibrary", function () {
         .setLongShortPairParameters(lspMock.options.address, lowPriceRange)
         .send({ from: accounts[0] });
 
-      const setParams = await cappedYieldDollarLSPFPL.methods.longShortPairParameters(lspMock.options.address).call();
-      assert.equal(setParams.lowPriceRange.toString(), lowPriceRange);
+      const setLowPriceRange = await cappedYieldDollarLSPFPL.methods.lowPriceRanges(lspMock.options.address).call();
+      assert.equal(setLowPriceRange.toString(), lowPriceRange);
     });
     it("Can not re-use existing LSP contract address", async () => {
       await cappedYieldDollarLSPFPL.methods
@@ -50,16 +50,6 @@ describe("CappedYieldDollarLongShortPairFinancialProductLibrary", function () {
         .send({ from: accounts[0] });
 
       // Second attempt should revert.
-      assert(
-        await didContractThrow(
-          cappedYieldDollarLSPFPL.methods
-            .setLongShortPairParameters(lspMock.options.address, lowPriceRange)
-            .send({ from: accounts[0] })
-        )
-      );
-    });
-    it("Can not set invalid bounds", async () => {
-      // upper bound larger than lower bound by swapping upper and lower
       assert(
         await didContractThrow(
           cappedYieldDollarLSPFPL.methods
