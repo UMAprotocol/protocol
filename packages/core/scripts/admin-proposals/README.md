@@ -15,3 +15,5 @@ These scripts use the `hardhat` [runtime environment](https://hardhat.org/advanc
 # How to run
 
 Scripts are designed to be run as `node` scripts. `node` scripts are preferred over `hardhat tasks` because there is more separation from other `hardhat` tasks such as `test`. For more details about `hardhat` tasks and scripts, go [here](https://ethereum.stackexchange.com/questions/83656/where-does-the-line-blur-between-a-task-and-a-script-in-hardhat).
+
+When running `node` scripts that import the `hardhat` runtime environment, its important to set the `HARDHAT_NETWORK` environment variable. For example, if you're running a Mainnet fork locally, then you can run a script like so: `HARDHAT_NETWORK=localhost node ...`. For production, simply set `HARDHAT_NETWORK=mainnet`.
