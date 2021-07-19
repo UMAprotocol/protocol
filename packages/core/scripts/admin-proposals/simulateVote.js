@@ -21,8 +21,6 @@ const {
 } = require("@uma/common");
 const { _getContractAddressByName, _impersonateAccounts } = require("./utils");
 
-// By default, connect to localhost provider:
-const DEFAULT_PROVIDER = "http://127.0.0.1:8545";
 // Net ID returned by web3 when connected to a mainnet fork running on localhost.
 const HARDHAT_NET_ID = 31337;
 // Net ID that this script should simulate with.
@@ -36,10 +34,6 @@ const SNAPSHOT_MESSAGE = "Sign For Snapshot";
 
 async function run() {
   const { getContract, network, web3, assert } = hre;
-
-  // This script should only be run against a local mainnet fork, as its not realistic to send transactions from the
-  // foundation wallet in production.
-  web3.setProvider(DEFAULT_PROVIDER);
 
   // Set up provider so that we can sign from special wallets:
   let netId = await web3.eth.net.getId();
