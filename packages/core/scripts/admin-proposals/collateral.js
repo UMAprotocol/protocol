@@ -247,19 +247,23 @@ async function run() {
     // Send the proposal
     console.group(`\n📨 Sending to governor @ ${governor.options.address}`);
     console.log(`- Admin proposal contains ${adminProposalTransactions.length} transactions`);
-    const txn = await governor.methods
-      .propose(adminProposalTransactions)
-      .send({ from: REQUIRED_SIGNER_ADDRESSES["deployer"], gasPrice: gasEstimator.getCurrentFastPrice() });
-    console.log("- Transaction: ", txn?.transactionHash);
+    if (adminProposalTransactions.length > 0) {
+      const txn = await governor.methods
+        .propose(adminProposalTransactions)
+        .send({ from: REQUIRED_SIGNER_ADDRESSES["deployer"], gasPrice: gasEstimator.getCurrentFastPrice() });
+      console.log("- Transaction: ", txn?.transactionHash);
 
-    // Print out details about new Admin proposal
-    const priceRequests = await oracle.getPastEvents("PriceRequestAdded");
-    const newAdminRequest = priceRequests[priceRequests.length - 1];
-    console.log(
-      `- New admin request {identifier: ${
-        newAdminRequest.returnValues.identifier
-      }, timestamp: ${newAdminRequest.returnValues.time.toString()}}`
-    );
+      // Print out details about new Admin proposal
+      const priceRequests = await oracle.getPastEvents("PriceRequestAdded");
+      const newAdminRequest = priceRequests[priceRequests.length - 1];
+      console.log(
+        `- New admin request {identifier: ${
+          newAdminRequest.returnValues.identifier
+        }, timestamp: ${newAdminRequest.returnValues.time.toString()}}`
+      );
+    } else {
+      console.log("- 0 Transactions in Admin proposal. Nothing to do");
+    }
     console.groupEnd();
   } else {
     console.group("\n🔎 Verifying execution of Admin Proposal");
@@ -280,20 +284,20 @@ async function run() {
           .setFinalFee(polygonCollaterals[i], { rawValue: convertedFeeAmount })
           .encodeABI();
         const addToWhitelistData = polygon_whitelist.methods.addToWhitelist(polygonCollaterals[i]).encodeABI();
-        const relayedStoreTransaction = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
+        const relayedStoreTransactions = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
           filter: { to: polygon_store.options.address },
           fromBlock: 0,
         });
         assert(
-          relayedStoreTransaction.find((e) => e.returnValues.data === setFinalFeeData),
+          relayedStoreTransactions.find((e) => e.returnValues.data === setFinalFeeData),
           "Could not find RelayedGovernanceRequest matching expected relayed setFinalFee transaction"
         );
-        const relayedWhitelistTransaction = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
+        const relayedWhitelistTransactions = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
           filter: { to: polygon_whitelist.options.address },
           fromBlock: 0,
         });
         assert(
-          relayedWhitelistTransaction.find((e) => e.returnValues.data === addToWhitelistData),
+          relayedWhitelistTransactions.find((e) => e.returnValues.data === addToWhitelistData),
           "Could not find RelayedGovernanceRequest matching expected relayed addToWhitelist transaction"
         );
         console.log(
