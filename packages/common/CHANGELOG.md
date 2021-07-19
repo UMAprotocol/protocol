@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.6.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.5.0...@uma/common@2.6.0) (2021-07-19)
+
+### Features
+
+- Update OptimisticOracle and Polygon Tunnel Addresses ([#3209](https://github.com/UMAprotocol/protocol/issues/3209)) ([6593fe5](https://github.com/UMAprotocol/protocol/commit/6593fe5aa1980c45ab570da049a9373e8f172c11))
+
 # [2.5.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.4.0...@uma/common@2.5.0) (2021-07-15)
 
 ### Features
