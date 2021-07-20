@@ -12,9 +12,9 @@ After the developer has tested against the local Mainnet fork, they can use the 
 
 Scripts are designed to be run as `node` scripts.
 
-For testing locally against a mainnet fork, the `HARDHAT_NETWORK=localhost` environment variable must be set so that we can [impersonate accounts](https://hardhat.org/guides/mainnet-forking.html#impersonating-accounts) on the local fork.
+For testing locally against a mainnet fork, the `HARDHAT_NETWORK=localhost` environment variable must be set so that we can [impersonate accounts](https://hardhat.org/guides/mainnet-forking.html#impersonating-accounts) on the local fork. For example: `HARDHAET_NETWORK=localhost node ...`.
 
-For running scripts in production, `HARDHAT_NETWORK` is not required to be set because `web3` is injected by the aformentioned `getWeb3` function. For this to work, the `CUSTOM_NODE_URL` environment variable needs to be set and the `--network` flag should be passed in to the `node` script.
+For running scripts in production, `HARDHAT_NETWORK` is not required to be set because `web3` is injected by the aformentioned `getWeb3` function. For this to work, the `CUSTOM_NODE_URL` environment variable needs to be set and the `--network` flag should be passed in to the `node` script. For example: `node ... --network mainnet_gckms --keys deployer`.
 
 # Relaying governance to Polygon
 
