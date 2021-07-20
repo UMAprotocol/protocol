@@ -32,7 +32,7 @@ const { GasEstimator } = require("@uma/financial-templates-lib");
 const Web3 = require("web3");
 const winston = require("winston");
 const { interfaceName } = require("@uma/common");
-const { _getContractAddressByName, _impersonateAccounts } = require("./utils");
+const { _getContractAddressByName, _setupWeb3 } = require("./utils");
 const argv = require("minimist")(process.argv.slice(), {
   string: [
     // comma-delimited list of identifiers to whitelist on Ethereum. Required if --polygon is omitted.
@@ -47,27 +47,14 @@ const argv = require("minimist")(process.argv.slice(), {
   default: { verify: false },
 });
 
-// Net ID returned by web3 when connected to a mainnet fork running on localhost.
-const HARDHAT_NET_ID = 31337;
-// Net ID that this script should simulate with.
-const PROD_NET_ID = 1;
 // Wallets we need to use to sign transactions.
 const REQUIRED_SIGNER_ADDRESSES = { deployer: "0x2bAaA41d155ad8a4126184950B31F50A1513cE25" };
 
 async function run() {
   const { identifier, polygon, verify } = argv;
-  const { getContract, network, web3, assert } = hre;
+  const { getContract, assert } = hre;
 
-  // Set up provider so that we can sign from special wallets:
-  let netId = await web3.eth.net.getId();
-  if (netId === HARDHAT_NET_ID) {
-    console.log("🚸 Connected to a local node, attempting to impersonate accounts on forked network 🚸");
-    console.table(REQUIRED_SIGNER_ADDRESSES);
-    await _impersonateAccounts(network, REQUIRED_SIGNER_ADDRESSES);
-    console.log("🔐 Successfully impersonated accounts");
-  } else {
-    console.log("📛 Connected to a production node 📛");
-  }
+  const { web3, netId } = await _setupWeb3(hre, REQUIRED_SIGNER_ADDRESSES);
 
   // Contract ABI's
   const IdentifierWhitelist = getContract("IdentifierWhitelist");
@@ -109,7 +96,6 @@ async function run() {
   }
 
   // Initialize Eth contracts by grabbing deployed addresses from networks/1.json file.
-  if (netId === HARDHAT_NET_ID) netId = PROD_NET_ID;
   const whitelist = new web3.eth.Contract(
     IdentifierWhitelist.abi,
     _getContractAddressByName("IdentifierWhitelist", netId)

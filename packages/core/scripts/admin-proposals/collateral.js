@@ -8,8 +8,10 @@
 // - Propose: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456
 // - Vote Simulate: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/simulateVote.js
 // - Verify: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/collateral.js --verify --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456
-// - For production, set the CUSTOM_NODE_URL environment and run the script with a different `HARDHAT_NETWORK` value,
-//   for example: `HARDHAT_NETWORK=mainnet node ./packages/core/scripts/admin-proposals/collateral.js ...`
+// - For production, set the CUSTOM_NODE_URL environment, run the script with a different `HARDHAT_NETWORK` value, and
+//   pass in the Truffle `--network` flag (along with other params like --keys) because production setting will try to
+//   set web3 equal to `getWeb3()` instead of `hre.web3`.
+//   for example: `HARDHAT_NETWORK=mainnet node ./packages/core/scripts/admin-proposals/collateral.js ... --network mainnet_gckms --keys deployer`
 
 // Customizations:
 // - --polygon param can be omitted, in which case transactions will only take place on Ethereum.
@@ -34,7 +36,7 @@ const Web3 = require("web3");
 const winston = require("winston");
 const { parseUnits } = require("@ethersproject/units");
 const { interfaceName } = require("@uma/common");
-const { _getDecimals, _getContractAddressByName, _impersonateAccounts } = require("./utils");
+const { _getDecimals, _getContractAddressByName, _setupWeb3 } = require("./utils");
 const argv = require("minimist")(process.argv.slice(), {
   string: [
     // comma-delimited list of final fees to set for whitelisted collateral.
@@ -51,26 +53,14 @@ const argv = require("minimist")(process.argv.slice(), {
   default: { verify: false },
 });
 
-// Net ID returned by web3 when connected to a mainnet fork running on localhost.
-const HARDHAT_NET_ID = 31337;
-// Net ID that this script should simulate with.
-const PROD_NET_ID = 1;
 // Wallets we need to use to sign transactions.
 const REQUIRED_SIGNER_ADDRESSES = { deployer: "0x2bAaA41d155ad8a4126184950B31F50A1513cE25" };
 
 async function run() {
   const { collateral, fee, polygon, verify } = argv;
-  const { getContract, web3, network, assert } = hre;
+  const { getContract, assert } = hre;
 
-  let netId = await web3.eth.net.getId();
-  if (netId === HARDHAT_NET_ID) {
-    console.log("🚸 Connected to a local node, attempting to impersonate accounts on forked network 🚸");
-    console.table(REQUIRED_SIGNER_ADDRESSES);
-    await _impersonateAccounts(network, REQUIRED_SIGNER_ADDRESSES);
-    console.log("🔐 Successfully impersonated accounts");
-  } else {
-    console.log("📛 Connected to a production node 📛");
-  }
+  const { web3, netId } = await _setupWeb3(hre, REQUIRED_SIGNER_ADDRESSES);
 
   // Contract ABI's
   const ERC20 = getContract("ERC20");
@@ -117,7 +107,6 @@ async function run() {
   }
 
   // Initialize Eth contracts by grabbing deployed addresses from networks/1.json file.
-  if (netId === HARDHAT_NET_ID) netId = PROD_NET_ID;
   const whitelist = new web3.eth.Contract(AddressWhitelist.abi, _getContractAddressByName("AddressWhitelist", netId));
   const store = new web3.eth.Contract(Store.abi, _getContractAddressByName("Store", netId));
   const gasEstimator = new GasEstimator(
