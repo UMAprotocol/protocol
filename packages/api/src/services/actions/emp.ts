@@ -1,8 +1,8 @@
 import assert from "assert";
 import * as uma from "@uma/sdk";
-import { Json, Actions, AppState, CurrencySymbol, PriceSample } from "..";
-import Queries from "../libs/queries";
-import { nowS } from "../libs/utils";
+import { Json, Actions, AppState, CurrencySymbol, PriceSample } from "../..";
+import Queries from "../../libs/queries";
+import { nowS } from "../../libs/utils";
 import lodash from "lodash";
 
 const { exists } = uma.utils;
