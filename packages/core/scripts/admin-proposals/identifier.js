@@ -1,14 +1,15 @@
 // Description:
 // - Propose or verify Admin Proposal whitelisting new identifiers to Ethereum and/or Polygon
 // Run:
-// - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy`
+// - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
 // - (optional, or required if --polygon is not undefined) set POLYGON_NODE_URL to a Polygon mainnet node. This will
 // be used to query contract data from Polygon when relaying proposals through the GovernorRootTunnel.
 // - Propose: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/identifier.js --identifier 0xabc,0x123 --polygon 0xabc,0x123
 // - Vote Simulate: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/simulateVote.js
 // - Verify: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/identifier.js --verify --polygon 0xabc,0x123 --identifier 0xabc,0x123
-// - For production, set the CUSTOM_NODE_URL environment and run the script with a different `HARDHAT_NETWORK` value,
-//   for example: `HARDHAT_NETWORK=mainnet node ./packages/core/scripts/admin-proposals/identifier.js ...`
+// - For production, set the CUSTOM_NODE_URL environment, run the script the Truffle `--network` flag (along with other
+//   params like --keys) because production setting will try to set web3 equal to `getWeb3()` instead of `hre.web3`.
+//   for example: `node ./packages/core/scripts/admin-proposals/identifier.js ... --network mainnet_gckms --keys deployer`
 
 // Customizations:
 // - --polygon param can be omitted, in which case transactions will only take place on Ethereum.
@@ -27,7 +28,9 @@
 //    - `HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/identifier.js --identifier "POOL/USD","USD/POOL" --polygon "POOL/USD",`
 
 const hre = require("hardhat");
+const { getContract } = hre;
 require("dotenv").config();
+const assert = require("assert");
 const { GasEstimator } = require("@uma/financial-templates-lib");
 const Web3 = require("web3");
 const winston = require("winston");
@@ -52,8 +55,6 @@ const REQUIRED_SIGNER_ADDRESSES = { deployer: "0x2bAaA41d155ad8a4126184950B31F50
 
 async function run() {
   const { identifier, polygon, verify } = argv;
-  const { getContract, assert } = hre;
-
   const { web3, netId } = await _setupWeb3(hre, REQUIRED_SIGNER_ADDRESSES);
 
   // Contract ABI's

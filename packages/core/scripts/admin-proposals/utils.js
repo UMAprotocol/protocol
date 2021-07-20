@@ -40,14 +40,16 @@ async function _impersonateAccounts(network, accountsToImpersonate) {
 // Set `allowProduction` to false to throw an error if the `hre.web3` netId is not equal to the HARDHAT_NET_ID.
 // Return the appropriate web3 instance and network ID to use for the script when reading contract artifacts.
 async function _setupWeb3(hre, signersToUnlock, allowProduction = true) {
-  let hreNetId = await hre.web3.eth.net.getId();
-  if (hreNetId === HARDHAT_NET_ID) {
-    console.log("🚸 Connected to a local node, attempting to impersonate accounts on forked network 🚸");
+  const web3 = getWeb3();
+  const netId = await web3.eth.net.getId();
+
+  if (netId === HARDHAT_NET_ID) {
+    console.log("🚸 Connected to a local hardhat node, attempting to impersonate accounts on forked network 🚸");
     console.table(signersToUnlock);
     await _impersonateAccounts(hre.network, signersToUnlock);
     console.log("🔐 Successfully impersonated accounts");
     return {
-      web3: hre.web3,
+      web3,
       // If detecting that we're connected to a local hardhat node, then assume that we're running the script against
       // a mainnet fork and manually override the script's network ID to the Mainnet ID.
       netId: PROD_NET_ID,
@@ -56,9 +58,8 @@ async function _setupWeb3(hre, signersToUnlock, allowProduction = true) {
     if (!allowProduction)
       throw new Error("This script must be run against a local hardhat node simulating a Mainnet fork");
     else {
-      const web3 = getWeb3();
-      console.log("📛 Connected to a production node 📛");
-      return { web3, netId: await web3.eth.net.getId() };
+      console.log("📛 Connected to a public node 📛");
+      return { web3, netId };
     }
   }
 }

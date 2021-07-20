@@ -2,13 +2,15 @@
 // - Simulate voting affirmatively on any pending Admin Proposals
 
 // Run:
-// - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy`
+// - Start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
 // - This script should be run after any Admin proposal UMIP script against a local Mainnet fork. It allows the tester
 // to simulate what would happen if the proposal were to pass and to verify that contract state changes as expected.
 // - Vote Simulate: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/simulateVote.js
 
 const hre = require("hardhat");
+const { getContract } = hre;
 require("dotenv").config();
+const assert = require("assert");
 const { GasEstimator } = require("@uma/financial-templates-lib");
 const winston = require("winston");
 const {
@@ -29,9 +31,8 @@ const YES_VOTE = "1";
 const SNAPSHOT_MESSAGE = "Sign For Snapshot";
 
 async function run() {
-  const { getContract, assert } = hre;
-
-  // Set up provider so that we can sign from special wallets:
+  // Set up provider so that we can sign from special wallets. This script is designed to only run against local mainnet
+  // forks.
   const { netId, web3 } = await _setupWeb3(hre, REQUIRED_SIGNER_ADDRESSES, false);
   const accounts = await web3.eth.getAccounts();
 
