@@ -5,12 +5,13 @@
 // - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
 // - (optional, or required if --polygon is not undefined) set POLYGON_NODE_URL to a Polygon mainnet node. This will
 //   be used to query contract data from Polygon when relaying proposals through the GovernorRootTunnel.
-// - Propose: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456
-// - Vote Simulate: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/simulateVote.js
-// - Verify: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/collateral.js --verify --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456
-// - For production, set the CUSTOM_NODE_URL environment, run the script the Truffle `--network` flag (along with other
-//   params like --keys) because production setting will try to set web3 equal to `getWeb3()` instead of `hre.web3`.
-//   for example: `node ./packages/core/scripts/admin-proposals/collateral.js ... --network mainnet_gckms --keys deployer`
+// - Next, open another terminal window and run `node ./packages/core/scripts/admin-proposals/setup.sh` to unlock
+//   accounts on the local node that we'll need to run this script.
+// - Propose: node ./packages/core/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456 --network mainnet-fork
+// - Vote Simulate: node ./packages/core/scripts/admin-proposals/simulateVote.js --network mainnet-fork
+// - Verify: node ./packages/core/scripts/admin-proposals/collateral.js --verify --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456 --network mainnet-fork
+// - For production, set the CUSTOM_NODE_URL environment, run the script with a production network passed to the
+//   `--network` flag (along with other params like --keys) like so: `node ... --network mainnet_gckms --keys deployer`
 
 // Customizations:
 // - --polygon param can be omitted, in which case transactions will only take place on Ethereum.
@@ -22,11 +23,11 @@
 
 // Examples:
 // - Whitelist collateral on Ethereum only:
-//    - `HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123`
+//    - `node ./packages/core/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123 --network mainnet-fork`
 // - Whitelist collateral on Polygon only:
-//    - `HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/collateral.js --polygon 0xabc,0x123`
+//    - `node ./packages/core/scripts/admin-proposals/collateral.js --polygon 0xabc,0x123 --network mainnet-fork`
 // - Whitelist collateral on both (some on Ethereum, some on Polygon):
-//    - `HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123 --polygon 0xdef,`
+//    - `node ./packages/core/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123 --polygon 0xdef, --network mainnet-fork`
 
 const hre = require("hardhat");
 const { getContract } = hre;
@@ -38,6 +39,7 @@ const winston = require("winston");
 const { parseUnits } = require("@ethersproject/units");
 const { interfaceName } = require("@uma/common");
 const { _getDecimals, _getContractAddressByName, _setupWeb3 } = require("./utils");
+const { REQUIRED_SIGNER_ADDRESSES } = require("./constants");
 const argv = require("minimist")(process.argv.slice(), {
   string: [
     // comma-delimited list of final fees to set for whitelisted collateral.
@@ -54,12 +56,9 @@ const argv = require("minimist")(process.argv.slice(), {
   default: { verify: false },
 });
 
-// Wallets we need to use to sign transactions.
-const REQUIRED_SIGNER_ADDRESSES = { deployer: "0x2bAaA41d155ad8a4126184950B31F50A1513cE25" };
-
 async function run() {
   const { collateral, fee, polygon, verify } = argv;
-  const { web3, netId } = await _setupWeb3(hre, REQUIRED_SIGNER_ADDRESSES);
+  const { web3, netId } = await _setupWeb3();
 
   // Contract ABI's
   const ERC20 = getContract("ERC20");
