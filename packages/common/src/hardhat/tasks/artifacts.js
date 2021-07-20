@@ -59,31 +59,42 @@ task("generate-contracts-frontend", "Generate typescipt for the contracts-fronte
     const { out } = taskArguments;
     removeFileIfExists(out);
 
-    const artifacts = await getArtifactPathList(hre, out);
+    const artifacts = await getArtifactPathList(hre, "./");
     const addresses = getAddressesMap(hre);
 
     // Write Ethers contract types/factories export.
-    fs.appendFileSync(out, 'export * as EthersContracts from "../typechain/ethers";\n');
+    fs.appendFileSync(out, "export type {\n");
+    artifacts.forEach(({ contractName }) => {
+      if (fs.existsSync(`typechain/ethers/${contractName}.d.ts`))
+        fs.appendFileSync(out, `  ${contractName} as ${contractName}Ethers,\n`);
+    });
+    fs.appendFileSync(out, '} from "../typechain/ethers";\n');
+
+    fs.appendFileSync(out, "export {\n");
+    artifacts.forEach(({ contractName }) => {
+      if (fs.existsSync(`typechain/ethers/factories/${contractName}__factory.ts`))
+        fs.appendFileSync(out, `  ${contractName}__factory as ${contractName}Ethers__factory,\n`);
+    });
+    fs.appendFileSync(out, '} from "../typechain/ethers";\n');
 
     // Write abi and bytecode for the browser file.
     // Note: the idea behind writing the functions this way is to make them as optimized as possible for tree-shaking
     // to remove any unused json files. In modern versions of webpack, this should allow absolutely _no_ artifact
     // information that isn't needed to be pulled in.
-    artifacts.forEach(({ contractName, relativePath }) =>
-      fs.appendFileSync(
-        out,
-        `import { abi as ${contractName}Abi, bytecode as ${contractName}Bytecode } from "${relativePath}";\n`
-      )
-    );
-    artifacts.forEach(({ contractName }) =>
-      fs.appendFileSync(out, `export function get${contractName}Abi(): any[] { return ${contractName}Abi; }\n`)
-    );
-    artifacts.forEach(({ contractName }) =>
-      fs.appendFileSync(
-        out,
-        `export function get${contractName}Bytecode(): string { return ${contractName}Bytecode; }\n`
-      )
-    );
+    // artifacts.forEach(({ contractName, relativePath }) =>
+    //   fs.appendFileSync(
+    //     out,
+    //     `import { abi as ${contractName}Abi, bytecode as ${contractName}Bytecode } from "${relativePath}";\n`
+    //   )
+    // );
+    artifacts.forEach(({ contractName, relativePath }) => {
+      const abi = JSON.stringify(JSON.parse(fs.readFileSync(relativePath)).abi);
+      fs.appendFileSync(out, `export function get${contractName}Abi(): any[] { return JSON.parse(\`${abi}\`); }\n`);
+    });
+    artifacts.forEach(({ contractName, relativePath }) => {
+      const bytecode = JSON.stringify(JSON.parse(fs.readFileSync(relativePath)).bytecode);
+      fs.appendFileSync(out, `export function get${contractName}Bytecode(): string { return \`${bytecode}\`; }\n`);
+    });
 
     // Creates get[name]Address(chainId) for using switch statements.
     for (const [name, addressesByChain] of Object.entries(addresses)) {

@@ -1,6 +1,6 @@
 {
   "name": "@uma/contracts-frontend",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "UMA smart contracts and unit tests",
   "devDependencies": {
     "@uma/core": "^2.5.0",
@@ -18,18 +18,19 @@
     "url": "git+https://github.com/UMAprotocol/protocol.git"
   },
   "files": [
-    "dist/**/*.js",
-    "types/**/*.d.ts"
+    "dist/**/*"
   ],
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/generated/index.js",
+  "types": "dist/generated/index.d.ts",
+  "module": "dist/generated/index.js",
+  "side-effects": false,
   "sideEffects": false,
   "type": "module",
   "scripts": {
     "test": "echo 'No tests configured'",
     "clean": "rm -rf dist generated typechain",
     "generate-ts": "yarn clean && mkdir generated typechain && cp -R ../core/contract-types/* typechain/ && yarn hardhat generate-contracts-frontend --out ./generated/index.ts",
-    "build": "yarn generate-ts && yarn tsc && rsync -R ./typechain/**/*.d.ts ./dist/contracts-frontend",
+    "build": "yarn generate-ts && yarn tsc && rsync -R ./typechain/**/*.d.ts ./dist",
     "prepublish": "yarn build"
   },
   "bugs": {

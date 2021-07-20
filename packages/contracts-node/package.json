@@ -1,6 +1,6 @@
 {
   "name": "@uma/contracts-node",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "UMA smart contracts and unit tests",
   "devDependencies": {
     "@uma/core": "^2.5.0",
@@ -19,12 +19,13 @@
     "url": "git+https://github.com/UMAprotocol/protocol.git"
   },
   "files": [
-    "dist/**/*.js",
-    "types/**/*.d.ts"
+    "dist/**/*"
   ],
-  "main": "dist/contracts-node/index.js",
-  "types": "dist/contracts-node/index.d.ts",
+  "main": "dist/contracts-node/generated/index.js",
+  "module": "dist/contracts-node/generated/index.js",
+  "types": "dist/contracts-node/generated/index.d.ts",
   "sideEffects": false,
+  "side-effects": false,
   "scripts": {
     "test": "echo 'No tests configured'",
     "clean": "rm -rf dist generated typechain",
