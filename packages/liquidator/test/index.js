@@ -72,7 +72,7 @@ contract("index.js", function (accounts) {
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
     const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);
 
-    describe(`Tests running on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
+    describe(`Tests running for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
       before(async function () {
         finder = await Finder.new();
         // Create identifier whitelist and register the price tracking ticker with it.

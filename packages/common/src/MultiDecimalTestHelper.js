@@ -4,18 +4,12 @@
 const TEST_DECIMAL_COMBOS = [
   {
     tokenSymbol: "WETH",
-    tokenName: "Wrapped Ether",
+    tokenName: "Wrapped ETH",
     collateralDecimals: 18,
     syntheticDecimals: 18,
     priceFeedDecimals: 18,
   },
-  {
-    tokenSymbol: "BTC",
-    tokenName: "Wrapped Bitcoin",
-    collateralDecimals: 8,
-    syntheticDecimals: 8,
-    priceFeedDecimals: 18,
-  },
+  { tokenSymbol: "BTC", tokenName: "Wrapped BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 },
 ];
 
 module.exports = { TEST_DECIMAL_COMBOS };
