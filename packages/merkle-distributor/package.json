@@ -10,7 +10,7 @@
     "ipfs-http-client": "^49.0.2",
     "mocha": "^8.3.0",
     "node-fetch": "^2.6.1",
-    "typescript": "^4.2.2"
+    "typescript": "^4.3.5"
   },
   "devDependencies": {
     "@types/commander": "^2.12.2",

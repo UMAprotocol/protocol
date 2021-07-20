@@ -16,6 +16,8 @@ ui
 antora.yml
 .eslintcache
 .idea
+generated
+typechain
 
 
 # GAE deployment files and directories for GAE deployments.

@@ -1,0 +1,13 @@
+{
+  "extends": "@tsconfig/node14/tsconfig.json",
+  "esModuleInterop": true,
+  "include": ["generated/index.ts"],
+  "compilerOptions": {
+    "outDir": "./dist",
+    "declaration": true,
+    "resolveJsonModule": true,
+    "target": "ES2020",
+    "module": "ES2020",
+    "moduleResolution": "node"
+  }
+}
