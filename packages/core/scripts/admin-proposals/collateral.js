@@ -3,7 +3,7 @@
 
 // Run:
 // - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy`
-// - (optional, or required if --polygon is not undefined) set CROSS_CHAIN_NODE_URL to a Polygon mainnet node. This will
+// - (optional, or required if --polygon is not undefined) set POLYGON_NODE_URL to a Polygon mainnet node. This will
 //   be used to query contract data from Polygon when relaying proposals through the GovernorRootTunnel.
 // - Propose: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456
 // - Vote Simulate: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/simulateVote.js
@@ -94,9 +94,9 @@ async function run() {
   if (polygon) {
     if (collateral) collaterals = collateral.split(",");
     polygonCollaterals = polygon.split(",");
-    if (!process.env.CROSS_CHAIN_NODE_URL)
-      throw new Error("If --polygon is defined, you must set a CROSS_CHAIN_NODE_URL environment variable");
-    crossChainWeb3 = new Web3(process.env.CROSS_CHAIN_NODE_URL);
+    if (!process.env.POLYGON_NODE_URL)
+      throw new Error("If --polygon is defined, you must set a POLYGON_NODE_URL environment variable");
+    crossChainWeb3 = new Web3(process.env.POLYGON_NODE_URL);
     polygon_netId = await crossChainWeb3.eth.net.getId();
     polygon_whitelist = new crossChainWeb3.eth.Contract(
       AddressWhitelist.abi,
