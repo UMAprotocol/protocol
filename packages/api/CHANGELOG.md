@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.4.1](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.4.0...@uma/api@0.4.1) (2021-07-19)
+
+### Bug Fixes
+
+- **api:** fix tvl showing 0 ([#3238](https://github.com/UMAprotocol/protocol/issues/3238)) ([e9c8286](https://github.com/UMAprotocol/protocol/commit/e9c82860146b2fac987ffffcd8f2f21a8deef114))
+
 # [0.4.0](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.3.0...@uma/api@0.4.0) (2021-07-15)
 
 ### Bug Fixes

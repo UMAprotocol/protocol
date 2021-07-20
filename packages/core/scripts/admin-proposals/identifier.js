@@ -1,14 +1,15 @@
 // Description:
 // - Propose or verify Admin Proposal whitelisting new identifiers to Ethereum and/or Polygon
 // Run:
-// - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy`
-// - (optional, or required if --polygon is not undefined) set CROSS_CHAIN_NODE_URL to a Polygon mainnet node. This will
+// - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
+// - (optional, or required if --polygon is not undefined) set POLYGON_NODE_URL to a Polygon mainnet node. This will
 // be used to query contract data from Polygon when relaying proposals through the GovernorRootTunnel.
 // - Propose: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/identifier.js --identifier 0xabc,0x123 --polygon 0xabc,0x123
 // - Vote Simulate: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/simulateVote.js
 // - Verify: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/identifier.js --verify --polygon 0xabc,0x123 --identifier 0xabc,0x123
-// - For production, set the CUSTOM_NODE_URL environment and run the script with a different `HARDHAT_NETWORK` value,
-//   for example: `HARDHAT_NETWORK=mainnet node ./packages/core/scripts/admin-proposals/identifier.js ...`
+// - For production, set the CUSTOM_NODE_URL environment, run the script the Truffle `--network` flag (along with other
+//   params like --keys) because production setting will try to set web3 equal to `getWeb3()` instead of `hre.web3`.
+//   for example: `node ./packages/core/scripts/admin-proposals/identifier.js ... --network mainnet_gckms --keys deployer`
 
 // Customizations:
 // - --polygon param can be omitted, in which case transactions will only take place on Ethereum.
@@ -27,12 +28,14 @@
 //    - `HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/identifier.js --identifier "POOL/USD","USD/POOL" --polygon "POOL/USD",`
 
 const hre = require("hardhat");
+const { getContract } = hre;
 require("dotenv").config();
+const assert = require("assert");
 const { GasEstimator } = require("@uma/financial-templates-lib");
 const Web3 = require("web3");
 const winston = require("winston");
 const { interfaceName } = require("@uma/common");
-const { _getContractAddressByName, _impersonateAccounts } = require("./utils");
+const { _getContractAddressByName, _setupWeb3 } = require("./utils");
 const argv = require("minimist")(process.argv.slice(), {
   string: [
     // comma-delimited list of identifiers to whitelist on Ethereum. Required if --polygon is omitted.
@@ -47,27 +50,12 @@ const argv = require("minimist")(process.argv.slice(), {
   default: { verify: false },
 });
 
-// Net ID returned by web3 when connected to a mainnet fork running on localhost.
-const HARDHAT_NET_ID = 31337;
-// Net ID that this script should simulate with.
-const PROD_NET_ID = 1;
 // Wallets we need to use to sign transactions.
 const REQUIRED_SIGNER_ADDRESSES = { deployer: "0x2bAaA41d155ad8a4126184950B31F50A1513cE25" };
 
 async function run() {
   const { identifier, polygon, verify } = argv;
-  const { getContract, network, web3, assert } = hre;
-
-  // Set up provider so that we can sign from special wallets:
-  let netId = await web3.eth.net.getId();
-  if (netId === HARDHAT_NET_ID) {
-    console.log("🚸 Connected to a local node, attempting to impersonate accounts on forked network 🚸");
-    console.table(REQUIRED_SIGNER_ADDRESSES);
-    await _impersonateAccounts(network, REQUIRED_SIGNER_ADDRESSES);
-    console.log("🔐 Successfully impersonated accounts");
-  } else {
-    console.log("📛 Connected to a production node 📛");
-  }
+  const { web3, netId } = await _setupWeb3(hre, REQUIRED_SIGNER_ADDRESSES);
 
   // Contract ABI's
   const IdentifierWhitelist = getContract("IdentifierWhitelist");
@@ -88,9 +76,9 @@ async function run() {
   if (polygon) {
     if (identifier) identifiers = identifier.split(",").map((id) => (id ? web3.utils.utf8ToHex(id) : null));
     polygonIdentifiers = polygon.split(",").map((id) => (id ? web3.utils.utf8ToHex(id) : null));
-    if (!process.env.CROSS_CHAIN_NODE_URL)
-      throw new Error("If --polygon is defined, you must set a CROSS_CHAIN_NODE_URL environment variable");
-    crossChainWeb3 = new Web3(process.env.CROSS_CHAIN_NODE_URL);
+    if (!process.env.POLYGON_NODE_URL)
+      throw new Error("If --polygon is defined, you must set a POLYGON_NODE_URL environment variable");
+    crossChainWeb3 = new Web3(process.env.POLYGON_NODE_URL);
     polygon_netId = await crossChainWeb3.eth.net.getId();
     polygon_whitelist = new crossChainWeb3.eth.Contract(
       IdentifierWhitelist.abi,
@@ -109,7 +97,6 @@ async function run() {
   }
 
   // Initialize Eth contracts by grabbing deployed addresses from networks/1.json file.
-  if (netId === HARDHAT_NET_ID) netId = PROD_NET_ID;
   const whitelist = new web3.eth.Contract(
     IdentifierWhitelist.abi,
     _getContractAddressByName("IdentifierWhitelist", netId)
@@ -157,7 +144,9 @@ async function run() {
     console.log(
       "- 🟣 = Transactions to be submitted to the Polygon contracts are relayed via the GovernorRootTunnel on Etheruem. Look at this test for an example:"
     );
-    console.log("    - https://github.com/UMAprotocol/protocol/blob/master/packages/core/test/polygon/e2e.js#L221");
+    console.log(
+      "    - https://github.com/UMAprotocol/protocol/blob/349401a869e89f9b5583d34c1f282407dca021ac/packages/core/test/polygon/e2e.js#L221"
+    );
     console.log("- 🟢 = Transactions to be submitted directly to Ethereum contracts.");
     console.groupEnd();
 

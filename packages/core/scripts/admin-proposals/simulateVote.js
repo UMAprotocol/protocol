@@ -2,13 +2,15 @@
 // - Simulate voting affirmatively on any pending Admin Proposals
 
 // Run:
-// - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy`
+// - Start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
 // - This script should be run after any Admin proposal UMIP script against a local Mainnet fork. It allows the tester
 // to simulate what would happen if the proposal were to pass and to verify that contract state changes as expected.
 // - Vote Simulate: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/simulateVote.js
 
 const hre = require("hardhat");
+const { getContract } = hre;
 require("dotenv").config();
+const assert = require("assert");
 const { GasEstimator } = require("@uma/financial-templates-lib");
 const winston = require("winston");
 const {
@@ -19,14 +21,8 @@ const {
   computeVoteHash,
   signMessage,
 } = require("@uma/common");
-const { _getContractAddressByName, _impersonateAccounts } = require("./utils");
+const { _getContractAddressByName, _setupWeb3 } = require("./utils");
 
-// By default, connect to localhost provider:
-const DEFAULT_PROVIDER = "http://127.0.0.1:8545";
-// Net ID returned by web3 when connected to a mainnet fork running on localhost.
-const HARDHAT_NET_ID = 31337;
-// Net ID that this script should simulate with.
-const PROD_NET_ID = 1;
 // Wallets we need to use to sign transactions.
 const REQUIRED_SIGNER_ADDRESSES = { foundation: "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc" };
 const SECONDS_PER_DAY = 86400;
@@ -35,22 +31,9 @@ const YES_VOTE = "1";
 const SNAPSHOT_MESSAGE = "Sign For Snapshot";
 
 async function run() {
-  const { getContract, network, web3, assert } = hre;
-
-  // This script should only be run against a local mainnet fork, as its not realistic to send transactions from the
-  // foundation wallet in production.
-  web3.setProvider(DEFAULT_PROVIDER);
-
-  // Set up provider so that we can sign from special wallets:
-  let netId = await web3.eth.net.getId();
-  if (netId === HARDHAT_NET_ID) {
-    console.log("🚸 Connected to a local node, attempting to impersonate accounts on forked network 🚸");
-    console.table(REQUIRED_SIGNER_ADDRESSES);
-    await _impersonateAccounts(network, REQUIRED_SIGNER_ADDRESSES);
-    console.log("🔐 Successfully impersonated accounts");
-  } else {
-    console.log("📛 Connected to a production node 📛");
-  }
+  // Set up provider so that we can sign from special wallets. This script is designed to only run against local mainnet
+  // forks.
+  const { netId, web3 } = await _setupWeb3(hre, REQUIRED_SIGNER_ADDRESSES, false);
   const accounts = await web3.eth.getAccounts();
 
   // Contract ABI's
@@ -60,7 +43,6 @@ async function run() {
   const VotingInterface = getContract("VotingInterface");
 
   // Initialize Eth contracts by grabbing deployed addresses from networks/1.json file.
-  if (netId === HARDHAT_NET_ID) netId = PROD_NET_ID;
   const gasEstimator = new GasEstimator(
     winston.createLogger({ silent: true }),
     60, // Time between updates.

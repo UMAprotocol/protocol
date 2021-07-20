@@ -1,12 +1,12 @@
 {
   "name": "@uma/trader",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "UMA Simple Trading Bot",
   "dependencies": {
     "@types/sinon": "^10.0.0",
-    "@uma/common": "^2.5.0",
-    "@uma/core": "^2.6.0",
-    "@uma/financial-templates-lib": "^2.6.0",
+    "@uma/common": "^2.6.0",
+    "@uma/core": "^2.7.0",
+    "@uma/financial-templates-lib": "^2.6.1",
     "@umaprotocol/ynatm": "^0.0.1",
     "async-retry": "^1.3.1",
     "dotenv": "^8.2.0"
