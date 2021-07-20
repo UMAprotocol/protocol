@@ -7,9 +7,6 @@ const { ZERO_ADDRESS } = require("./Constants");
 
 // Versions that production bots support.
 const SUPPORTED_CONTRACT_VERSIONS = [
-  { contractType: "ExpiringMultiParty", contractVersion: "1.2.0" },
-  { contractType: "ExpiringMultiParty", contractVersion: "1.2.1" },
-  { contractType: "ExpiringMultiParty", contractVersion: "1.2.2" },
   { contractType: "ExpiringMultiParty", contractVersion: "2.0.1" },
   { contractType: "Perpetual", contractVersion: "2.0.1" },
 ];
@@ -113,12 +110,6 @@ async function createConstructorParamsForContractVersion(
     excessTokenBeneficiary: contextObjects.store.address || contextObjects.store.options.address,
     financialProductLibraryAddress: ZERO_ADDRESS,
   };
-
-  if (contractVersion.contractVersion == "1.2.2") {
-    constructorParams.disputerDisputeRewardPct = constructorParams.disputerDisputeRewardPercentage;
-    constructorParams.sponsorDisputeRewardPct = constructorParams.sponsorDisputeRewardPercentage;
-    constructorParams.disputeBondPct = constructorParams.disputeBondPercentage;
-  }
 
   if (contractVersion.contractType == "Perpetual") {
     constructorParams.fundingRateIdentifier = padRight(utf8ToHex(contextObjects.fundingRateIdentifier), 64);
