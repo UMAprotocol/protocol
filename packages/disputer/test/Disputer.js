@@ -1,4 +1,4 @@
-const { toWei, toBN, utf8ToHex, padRight, isAddress } = web3.utils;
+const { toWei, toBN, utf8ToHex, isAddress } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 const {
@@ -177,7 +177,7 @@ contract("Disputer.js", function (accounts) {
               timer.address
             );
 
-            await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier)));
+            await identifierWhitelist.addSupportedIdentifier(utf8ToHex(fundingRateIdentifier));
             optimisticOracle = await OptimisticOracle.new(7200, finder.address, timer.address);
             await finder.changeImplementationAddress(
               utf8ToHex(interfaceName.OptimisticOracle),
