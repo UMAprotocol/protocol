@@ -42,7 +42,7 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
         "contracts/oracle/implementation/test/VotingTest.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       },
     },
-    ovm: { solcVersion: solcVersion },
+    ovm: { solcVersion: "0.8.4-broken_alpha" },
     networks: {
       hardhat: { gas: 11500000, blockGasLimit: 11500000, allowUnlimitedContractSize: false, timeout: 1800000 },
       localhost: { url: "http://127.0.0.1:8545" },
