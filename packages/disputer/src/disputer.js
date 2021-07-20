@@ -99,18 +99,13 @@ class Disputer {
       contractVersion: {
         value: undefined,
         isValid: (x) => {
-          return x === "1.2.0" || x === "1.2.1" || x === "1.2.2" || x === "2.0.1";
+          return x === "2.0.1";
         },
       },
     };
 
     // Validate and set config settings to class state.
     Object.assign(this, createObjectFromDefaultProps(disputerConfig, defaultConfig));
-
-    // These EMP versions have different "LiquidationWithdrawn" event parameters that we need to handle.
-    this.isLegacyEmpVersion = Boolean(
-      this.contractVersion === "1.2.0" || this.contractVersion === "1.2.1" || this.contractVersion === "1.2.2"
-    );
   }
 
   // Update the client and gasEstimator clients.
@@ -245,22 +240,6 @@ class Disputer {
       return;
     }
 
-    // In legacy versions of the EMP, withdrawing needs to be done by a party involved in the liquidation (i.e liquidator,
-    // sponsor or disputer). As the disputer is the DSProxy, we would require the ability to send the withdrawal tx
-    // directly from the DSProxy to facilitate this. This functionality is not implemented as almost all legacy EMPs expired.
-    if (
-      this.proxyTransactionWrapper?.useDsProxyToDispute &&
-      this.isLegacyEmpVersion &&
-      disputedLiquidations.length > 0
-    ) {
-      this.logger.warn({
-        at: "Disputer",
-        message: "Attempting to withdraw dispute from a legacy EMP🙈",
-        details: "This is not supported on legacy with a DSProxy! Please manually withdraw the dispute",
-      });
-      return;
-    }
-
     for (const liquidation of disputedLiquidations) {
       this.logger.debug({
         at: "Disputer",
@@ -288,15 +267,12 @@ class Disputer {
               receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
             ],
         };
-        // In contract version 1.2.2 and below this function returns one value: the amount withdrawn by the function caller.
-        // In later versions it returns an object containing all payouts.
-        if (this.isLegacyEmpVersion) {
-          logResult.withdrawalAmount = receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount;
-        } else {
-          logResult.paidToLiquidator = receipt.events.LiquidationWithdrawn.returnValues.paidToLiquidator;
-          logResult.paidToDisputer = receipt.events.LiquidationWithdrawn.returnValues.paidToDisputer;
-          logResult.paidToSponsor = receipt.events.LiquidationWithdrawn.returnValues.paidToSponsor;
-        }
+
+        // Returns an object containing all payouts.
+        logResult.paidToLiquidator = receipt.events.LiquidationWithdrawn.returnValues.paidToLiquidator;
+        logResult.paidToDisputer = receipt.events.LiquidationWithdrawn.returnValues.paidToDisputer;
+        logResult.paidToSponsor = receipt.events.LiquidationWithdrawn.returnValues.paidToSponsor;
+
         this.logger.info({
           at: "Disputer",
           message: "Dispute withdrawn🤑",

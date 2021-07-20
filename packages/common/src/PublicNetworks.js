@@ -44,7 +44,7 @@ const PublicNetworks = {
   },
   80001: {
     name: "polygon-mumbai",
-    etherscan: "https://explorer-mumbai.maticvigil.com/",
+    etherscan: "https://mumbai.polygonscan.com/",
     customTruffleConfig: { confirmations: 2, timeoutBlocks: 200 },
   },
 };
