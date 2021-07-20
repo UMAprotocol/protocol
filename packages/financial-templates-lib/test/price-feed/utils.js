@@ -14,10 +14,7 @@ contract("Price Feed Utils", async function () {
   // assumiung block number and block times are the same here
   async function getBlock(number) {
     number = number === undefined ? blockCount : number;
-    return {
-      timestamp: number,
-      number,
-    };
+    return { timestamp: number, number };
   }
 
   before(async function () {

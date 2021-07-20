@@ -87,33 +87,29 @@ describe("LinearLongShortPairFinancialProductLibrary", function () {
         .send({ from: accounts[0] });
     });
     it("Lower than lower bound should return 0", async () => {
-      const expiryTokensForCollateral = await linearLSPFPL.methods.percentageLongCollateralAtExpiry(toWei("900")).call({
-        from: expiringContractMock.options.address,
-      });
+      const expiryTokensForCollateral = await linearLSPFPL.methods
+        .percentageLongCollateralAtExpiry(toWei("900"))
+        .call({ from: expiringContractMock.options.address });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0"));
     });
     it("Higher than upper bound should return 1", async () => {
       const expiryTokensForCollateral = await linearLSPFPL.methods
         .percentageLongCollateralAtExpiry(toWei("2100"))
-        .call({
-          from: expiringContractMock.options.address,
-        });
+        .call({ from: expiringContractMock.options.address });
       assert.equal(expiryTokensForCollateral.toString(), toWei("1"));
     });
     it("Midway between bounds should return 0.5", async () => {
       const expiryTokensForCollateral = await linearLSPFPL.methods
         .percentageLongCollateralAtExpiry(toWei("1500"))
-        .call({
-          from: expiringContractMock.options.address,
-        });
+        .call({ from: expiringContractMock.options.address });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0.5"));
     });
 
     it("Arbitrary price between bounds should return correctly", async () => {
       for (const price of [toWei("1000"), toWei("1200"), toWei("1400"), toWei("1600"), toWei("1800"), toWei("2000")]) {
-        const expiryTokensForCollateral = await linearLSPFPL.methods.percentageLongCollateralAtExpiry(price).call({
-          from: expiringContractMock.options.address,
-        });
+        const expiryTokensForCollateral = await linearLSPFPL.methods
+          .percentageLongCollateralAtExpiry(price)
+          .call({ from: expiringContractMock.options.address });
         const numerator = toBN(price).sub(toBN(lowerBound));
         const denominator = toBN(upperBound).sub(toBN(lowerBound));
         const expectedPrice = numerator.mul(toBN(toWei("1"))).div(denominator);

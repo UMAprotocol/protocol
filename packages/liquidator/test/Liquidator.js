@@ -9,6 +9,7 @@ const {
   runTestForVersion,
   createConstructorParamsForContractVersion,
   TESTED_CONTRACT_VERSIONS,
+  TEST_DECIMAL_COMBOS,
   MAX_SAFE_ALLOWANCE,
   MAX_UINT_VAL,
   createContractObjectFromJson,
@@ -30,16 +31,6 @@ const {
 // Script to test
 const { Liquidator } = require("../src/liquidator.js");
 const { ProxyTransactionWrapper } = require("../src/proxyTransactionWrapper");
-
-// Run the tests against 3 different kinds of token/synth decimal combinations:
-// 1) matching 18 & 18 for collateral for most token types with normal tokens.
-// 2) non-matching 8 collateral & 18 synthetic for legacy UMA synthetics.
-// 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
-const configs = [
-  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 },
-];
 
 let iterationTestVersion; // store the test version between tests that is currently being tested.
 const startTime = "15798990420";
@@ -125,7 +116,7 @@ contract("Liquidator.js", function (accounts) {
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
     const MulticallMock = getTruffleContract("MulticallMock", web3);
 
-    for (let testConfig of configs) {
+    for (let testConfig of TEST_DECIMAL_COMBOS) {
       describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
         before(async function () {
           identifier = `${testConfig.tokenName}TEST`;
@@ -137,13 +128,9 @@ contract("Liquidator.js", function (accounts) {
             testConfig.tokenSymbol + " Token", // Construct the token name.
             testConfig.tokenSymbol,
             testConfig.collateralDecimals,
-            {
-              from: contractCreator,
-            }
+            { from: contractCreator }
           );
-          await collateralToken.addMember(1, contractCreator, {
-            from: contractCreator,
-          });
+          await collateralToken.addMember(1, contractCreator, { from: contractCreator });
 
           // Seed the sponsors accounts.
           await collateralToken.mint(sponsor1, convertCollateral("100000"), { from: contractCreator });
@@ -180,9 +167,7 @@ contract("Liquidator.js", function (accounts) {
 
         beforeEach(async function () {
           await timer.setCurrentTime(startTime - 1);
-          mockOracle = await MockOracle.new(finder.address, timer.address, {
-            from: contractCreator,
-          });
+          mockOracle = await MockOracle.new(finder.address, timer.address, { from: contractCreator });
           await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
 
           // Create a new synthetic token
@@ -627,11 +612,7 @@ contract("Liquidator.js", function (accounts) {
             // Note the check below has a bit of switching logic that is version specific to accommodate the change in withdrawal behaviour.
             assert.equal(
               spy.getCall(-1).lastArg.liquidationResult.liquidationStatus,
-              PostWithdrawLiquidationRewardsStatusTranslations[
-                contractVersion.contractVersion == "1.2.2"
-                  ? LiquidationStatesEnum.UNINITIALIZED
-                  : LiquidationStatesEnum.DISPUTE_FAILED
-              ]
+              PostWithdrawLiquidationRewardsStatusTranslations[LiquidationStatesEnum.DISPUTE_FAILED]
             );
             assert.equal(spy.getCall(-1).lastArg.liquidationResult.settlementPrice, convertPrice("1.3"));
 
@@ -1523,10 +1504,7 @@ contract("Liquidator.js", function (accounts) {
             async () => {
               // If there is no withdrawal liveness that can be extended, either because its absent or it has expired
               // already, then liquidate using as many funds as the bot owns.
-              liquidatorConfig = {
-                ...liquidatorConfig,
-                defenseActivationPercent: 50,
-              };
+              liquidatorConfig = { ...liquidatorConfig, defenseActivationPercent: 50 };
               const liquidator = new Liquidator({
                 logger: spyLogger,
                 financialContractClient,
@@ -2047,49 +2025,44 @@ contract("Liquidator.js", function (accounts) {
               await liquidator.liquidatePositions();
               assert.equal(spy.callCount, 5);
 
-              // Note we only test withdrawal logic on versions that are not 1.2.2 as withdrawing using a DSProxy is
-              // on legacy contracts is currently not supported. This is not a problem as almost all of these contracts
-              // are expired.
-              if (contractVersion.contractVersion != "1.2.2") {
-                // Finally, withdrawing liquidations should work without any issue. The bot should be able to do this
-                // directly from the EOA. Trying to withdraw before liveness should do nothing.
-                await liquidator.withdrawRewards();
-                assert.equal(spy.callCount, 5);
+              // Finally, withdrawing liquidations should work without any issue. The bot should be able to do this
+              // directly from the EOA. Trying to withdraw before liveness should do nothing.
+              await liquidator.withdrawRewards();
+              assert.equal(spy.callCount, 5);
 
-                // Advance after liveness and withdraw.
-                const liquidationTime = (await financialContract.getLiquidations(sponsor1))[0].liquidationTime;
-                const liquidationLiveness = 1000;
-                await financialContract.setCurrentTime(Number(liquidationTime) + liquidationLiveness);
+              // Advance after liveness and withdraw.
+              const liquidationTime = (await financialContract.getLiquidations(sponsor1))[0].liquidationTime;
+              const liquidationLiveness = 1000;
+              await financialContract.setCurrentTime(Number(liquidationTime) + liquidationLiveness);
 
-                // Now that the liquidation has expired, the liquidator can withdraw rewards.
-                const collateralPreWithdraw = await collateralToken.balanceOf(dsProxy.address);
-                await liquidator.update();
-                await liquidator.withdrawRewards();
-                assert.equal(spy.callCount, 7); // 7 new info level events should be sent at the conclusion of the 2 withdrawals
+              // Now that the liquidation has expired, the liquidator can withdraw rewards.
+              const collateralPreWithdraw = await collateralToken.balanceOf(dsProxy.address);
+              await liquidator.update();
+              await liquidator.withdrawRewards();
+              assert.equal(spy.callCount, 7); // 7 new info level events should be sent at the conclusion of the 2 withdrawals
 
-                // Liquidator should have their collateral increased by Sponsor1 + sponsor2 collateral.
-                const collateralPostWithdraw = await collateralToken.balanceOf(dsProxy.address);
-                assert.equal(
-                  toBN(collateralPreWithdraw)
-                    .add(toBN(convertCollateral("125")))
-                    .add(toBN(convertCollateral("150")))
-                    .toString(),
-                  collateralPostWithdraw.toString()
-                );
+              // Liquidator should have their collateral increased by Sponsor1 + sponsor2 collateral.
+              const collateralPostWithdraw = await collateralToken.balanceOf(dsProxy.address);
+              assert.equal(
+                toBN(collateralPreWithdraw)
+                  .add(toBN(convertCollateral("125")))
+                  .add(toBN(convertCollateral("150")))
+                  .toString(),
+                collateralPostWithdraw.toString()
+              );
 
-                // Liquidation data should have been deleted.
-                assert.deepStrictEqual(
-                  (await financialContract.getLiquidations(sponsor1))[0].state,
-                  LiquidationStatesEnum.UNINITIALIZED
-                );
-                assert.deepStrictEqual(
-                  (await financialContract.getLiquidations(sponsor2))[0].state,
-                  LiquidationStatesEnum.UNINITIALIZED
-                );
-              }
+              // Liquidation data should have been deleted.
+              assert.deepStrictEqual(
+                (await financialContract.getLiquidations(sponsor1))[0].state,
+                LiquidationStatesEnum.UNINITIALIZED
+              );
+              assert.deepStrictEqual(
+                (await financialContract.getLiquidations(sponsor2))[0].state,
+                LiquidationStatesEnum.UNINITIALIZED
+              );
             }
           );
-          versionedIt([{ contractType: "any", contractVersion: "any" }], true)(
+          versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Correctly deals with reserve being the same as collateral currency using DSProxy",
             async function () {
               // create a new liquidator and set the reserve currency to the collateral currency.
@@ -2225,7 +2198,7 @@ contract("Liquidator.js", function (accounts) {
               );
             }
           );
-          versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "1.2.2" }])(
+          versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "2.0.1" }])(
             "Correctly handles WDF with the DSProxy funds",
             async () => {
               liquidatorConfig = {

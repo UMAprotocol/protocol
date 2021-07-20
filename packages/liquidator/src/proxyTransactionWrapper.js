@@ -239,9 +239,7 @@ class ProxyTransactionWrapper {
     const liquidationEvent = (
       await this.financialContract.getPastEvents("LiquidationCreated", {
         fromBlock: blockAfterLiquidation - 1,
-        filter: {
-          liquidator: this.dsProxyManager.getDSProxyAddress(),
-        },
+        filter: { liquidator: this.dsProxyManager.getDSProxyAddress() },
       })
     )[0];
 
@@ -255,10 +253,7 @@ class ProxyTransactionWrapper {
       tokensOutstanding: liquidationEvent.returnValues.tokensOutstanding,
       lockedCollateral: liquidationEvent.returnValues.lockedCollateral,
       liquidatedCollateral: liquidationEvent.returnValues.liquidatedCollateral,
-      txnConfig: {
-        from: dsProxyCallReturn.from,
-        gas: dsProxyCallReturn.gasUsed,
-      },
+      txnConfig: { from: dsProxyCallReturn.from, gas: dsProxyCallReturn.gasUsed },
     };
   }
 }

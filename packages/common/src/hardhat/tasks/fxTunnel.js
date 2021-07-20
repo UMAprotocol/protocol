@@ -9,10 +9,14 @@ task("root-chain-manager-proof", "Generate proof needed to receive data from roo
   .addOptionalParam("chain", "'testnet' or 'mainnet'", "mainnet", types.string)
   .setAction(async function (taskArguments) {
     const { hash, chain } = taskArguments;
+    if (!process.env.INFURA_API_KEY) throw new Error("Missing INFURA_API_KEY in environment");
     const maticPOSClient = new MaticJs.MaticPOSClient({
       network: chain === "testnet" ? "testnet" : "mainnet",
       version: chain === "testnet" ? "mumbai" : "v1",
-      maticProvider: chain === "testnet" ? "https://rpc-mumbai.matic.today" : "https://rpc-mainnet.matic.network",
+      maticProvider:
+        chain === "testnet"
+          ? `https://polygon-mumbai.infura.io/v3/${process.env.INFURA_API_KEY}`
+          : `https://polygon-mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
       parentProvider:
         chain === "testnet"
           ? `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY}`

@@ -33,10 +33,7 @@ contract("FundingRateMultiplierPriceFeed.js", function () {
     perpetualMock = await PerpetualMock.new();
     multicallMock = await MulticallMock.new();
 
-    dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+    dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
     fundingRateMultiplierPriceFeed = new FundingRateMultiplierPriceFeed({
       logger: dummyLogger,

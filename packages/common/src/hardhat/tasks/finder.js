@@ -68,9 +68,9 @@ task("setup-finder", "Points Finder to DVM system contracts")
       const identifierHex = padRight(utf8ToHex(interfaceName[contractName]), 64);
       const currentlySetAddress = await finder.methods.interfacesImplemented(identifierHex).call();
       if (currentlySetAddress !== contract.options.address) {
-        const txn = await finder.methods.changeImplementationAddress(identifierHex, contract.options.address).send({
-          from: deployer,
-        });
+        const txn = await finder.methods
+          .changeImplementationAddress(identifierHex, contract.options.address)
+          .send({ from: deployer });
         console.log(
           `Set ${contractName} in Finder to "${interfaceName[contractName]}" @ ${contract.options.address}, tx: ${txn.transactionHash}`
         );

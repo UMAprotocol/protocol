@@ -92,9 +92,7 @@ describe("PricelessPositionManager", function () {
     const proposalTime = await optimisticOracle.methods.getCurrentTime().call();
     await optimisticOracle.methods
       .proposePrice(pricelessPositionManager.options.address, priceFeedIdentifier, requestTime, ancillaryData, price)
-      .send({
-        from: proposer,
-      });
+      .send({ from: proposer });
     await optimisticOracle.methods.setCurrentTime(proposalTime + optimisticOracleLiveness).send({ from: accounts[0] });
     await optimisticOracle.methods
       .settle(pricelessPositionManager.options.address, priceFeedIdentifier, requestTime, ancillaryData)
@@ -615,11 +613,7 @@ describe("PricelessPositionManager", function () {
     assert(await didContractThrow(pricelessPositionManager.methods.cancelWithdrawal().send({ from: sponsor })));
 
     // Request to withdraw remaining collateral. Post-fees, this amount should get reduced to the remaining collateral.
-    await pricelessPositionManager.methods
-      .requestWithdrawal({
-        rawValue: toWei("125"),
-      })
-      .send({ from: sponsor });
+    await pricelessPositionManager.methods.requestWithdrawal({ rawValue: toWei("125") }).send({ from: sponsor });
     // Setting fees to 0.00001 per second will charge (0.00001 * 1000) = 0.01 or 1 % of the collateral.
     await store.methods.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.00001") }).send({ from: accounts[0] });
     await pricelessPositionManager.methods
@@ -1880,9 +1874,7 @@ describe("PricelessPositionManager", function () {
     assert(
       await didContractThrow(
         pricelessPositionManager.methods
-          .repay({
-            rawValue: toBN(toWei("60")).subn(3).toString(),
-          })
+          .repay({ rawValue: toBN(toWei("60")).subn(3).toString() })
           .send({ from: sponsor })
       )
     );
@@ -1892,9 +1884,7 @@ describe("PricelessPositionManager", function () {
     assert(
       await didContractThrow(
         pricelessPositionManager.methods
-          .repay({
-            rawValue: toBN(toWei("60")).sub(toBN(minSponsorTokens)).toString(),
-          })
+          .repay({ rawValue: toBN(toWei("60")).sub(toBN(minSponsorTokens)).toString() })
           .send({ from: sponsor })
       )
     );
@@ -1902,9 +1892,7 @@ describe("PricelessPositionManager", function () {
 
     // Can repay up to the minimum sponsor size
     await pricelessPositionManager.methods
-      .repay({
-        rawValue: toBN(toWei("60")).sub(toBN(minSponsorTokens)).toString(),
-      })
+      .repay({ rawValue: toBN(toWei("60")).sub(toBN(minSponsorTokens)).toString() })
       .send({ from: sponsor });
 
     assert.equal(
@@ -2478,9 +2466,7 @@ describe("PricelessPositionManager", function () {
         ancillaryData,
         toWei("0.6") // a difference price to previously in the test.
       )
-      .send({
-        from: proposer,
-      });
+      .send({ from: proposer });
     await newOptimisticOracle.methods
       .setCurrentTime(proposalTime + optimisticOracleLiveness)
       .send({ from: accounts[0] });
@@ -2897,15 +2883,11 @@ describe("PricelessPositionManager", function () {
         ancillaryData,
         toWei("1.2")
       )
-      .send({
-        from: proposer,
-      });
+      .send({ from: proposer });
     await optimisticOracle.methods.setCurrentTime(proposalTime + optimisticOracleLiveness).send({ from: accounts[0] });
     await optimisticOracle.methods
       .settle(customPricelessPositionManager.options.address, priceFeedIdentifier, expirationTime, ancillaryData)
-      .send({
-        from: proposer,
-      });
+      .send({ from: proposer });
 
     // From the token holders, they are entitled to the value of their tokens, notated in the underlying.
     // They have 50 tokens settled at a price of 1.2 should yield 60 units of underling (or 60 USD as underlying is WETH).
@@ -3026,9 +3008,7 @@ describe("PricelessPositionManager", function () {
         ancillaryData,
         toWei("1") // input price that will get disputed.
       )
-      .send({
-        from: proposer,
-      });
+      .send({ from: proposer });
 
     // dispute the price.
     await optimisticOracle.methods

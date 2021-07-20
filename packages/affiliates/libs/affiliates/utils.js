@@ -44,10 +44,7 @@ And run with \`cat config.json | node apps/DappMiningRewards.js\`
 **Issue(s)**
 Fixes #${issueNumber}
 `;
-  return {
-    title,
-    body,
-  };
+  return { title, body };
 }
 
 // Generates the title and body for a dev mining PR.
@@ -159,41 +156,19 @@ If fallback prices are needed it will be shown below:
 // Rest = {body, title} which is required for opening an issue.
 async function createGithubIssue({ auth, owner = "UMAprotocol", repo = "protocol", ...rest } = {}) {
   assert(auth, "requires github auth credentials");
-  const octokit = new Octokit({
-    auth,
-  });
-  return octokit.issues.create({
-    owner,
-    repo,
-    ...rest,
-  });
+  const octokit = new Octokit({ auth });
+  return octokit.issues.create({ owner, repo, ...rest });
 }
 
 async function requestGithubReviewers({ auth, owner, repo, pull_number, reviewers, ...rest }) {
   assert(auth, "requires github auth credentials");
-  const octokit = new Octokit({
-    auth,
-  });
-  return octokit.pulls.requestReviewers({
-    owner,
-    repo,
-    pull_number,
-    reviewers,
-    ...rest,
-  });
+  const octokit = new Octokit({ auth });
+  return octokit.pulls.requestReviewers({ owner, repo, pull_number, reviewers, ...rest });
 }
 async function createGithubPr({ auth, owner, repo = "protocol", head, base, ...rest } = {}) {
   assert(auth, "requires github auth credentials");
-  const octokit = new Octokit({
-    auth,
-  });
-  return octokit.pulls.create({
-    head,
-    base,
-    owner,
-    repo,
-    ...rest,
-  });
+  const octokit = new Octokit({ auth });
+  return octokit.pulls.create({ head, base, owner, repo, ...rest });
 }
 
 // Takes an array of "details" which is simply an array of objects in this format:
@@ -228,17 +203,12 @@ function fallbackFromDetails(details) {
 
 // Generates a dev mining config consumable by the dev mining app. It assumes you are passing in various
 // parameters here, and will auto generate the week and period if not provided, based on current date.
-function generateDevMiningConfig({ whitelist, week, period, totalRewards = 50000 }) {
+function generateDevMiningConfig({ whitelist, week, period, totalRewards = 35000 }) {
   const empWhitelist = whitelistFromDetails(whitelist);
   const fallbackPrices = fallbackFromDetails(whitelist);
   week = week || getLastDevMiningWeek();
   period = period || devMiningPeriodByWeek(week);
-  return {
-    ...period,
-    empWhitelist,
-    fallbackPrices,
-    totalRewards,
-  };
+  return { ...period, empWhitelist, fallbackPrices, totalRewards };
 }
 
 // Generates dapp mining config consumable by dapp mining app. Wil auto generate start,end dates as well

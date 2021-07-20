@@ -79,10 +79,7 @@ class FinancialContractFactoryClient {
       : await this.web3.eth.getBlockNumber();
 
     // Define a config to bound the queries by.
-    const blockSearchConfig = {
-      fromBlock: this.firstBlockToSearch,
-      toBlock: lastBlockToSearch,
-    };
+    const blockSearchConfig = { fromBlock: this.firstBlockToSearch, toBlock: lastBlockToSearch };
 
     // Look for events on chain from the previous seen block number to the current block number.
     const eventToSearchFor =
@@ -119,6 +116,4 @@ class FinancialContractFactoryClient {
   }
 }
 
-module.exports = {
-  FinancialContractFactoryClient,
-};
+module.exports = { FinancialContractFactoryClient };

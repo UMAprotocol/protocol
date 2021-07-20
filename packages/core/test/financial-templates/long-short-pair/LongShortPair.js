@@ -157,9 +157,7 @@ describe("LongShortPair", function () {
       // Invalid collateral per pair.
       assert(
         await didContractThrow(
-          LongShortPair.new({ ...constructorParams, collateralPerPair: "0" }).send({
-            from: accounts[0],
-          })
+          LongShortPair.new({ ...constructorParams, collateralPerPair: "0" }).send({ from: accounts[0] })
         )
       );
 
@@ -174,18 +172,14 @@ describe("LongShortPair", function () {
       // Invalid LSP library address.
       assert(
         await didContractThrow(
-          LongShortPair.new({ ...constructorParams, financialProductLibrary: ZERO_ADDRESS }).send({
-            from: accounts[0],
-          })
+          LongShortPair.new({ ...constructorParams, financialProductLibrary: ZERO_ADDRESS }).send({ from: accounts[0] })
         )
       );
 
       // Invalid Finder address.
       assert(
         await didContractThrow(
-          LongShortPair.new({ ...constructorParams, finder: ZERO_ADDRESS }).send({
-            from: accounts[0],
-          })
+          LongShortPair.new({ ...constructorParams, finder: ZERO_ADDRESS }).send({ from: accounts[0] })
         )
       );
 
@@ -201,9 +195,7 @@ describe("LongShortPair", function () {
           LongShortPair.new({
             ...constructorParams,
             customAncillaryData: web3.utils.randomHex(remainingLength + 1),
-          }).send({
-            from: accounts[0],
-          })
+          }).send({ from: accounts[0] })
         )
       );
     });

@@ -62,6 +62,4 @@ async function runDefaultFixture({ deployments }) {
   await setup();
 }
 
-module.exports = {
-  runDefaultFixture,
-};
+module.exports = { runDefaultFixture };

@@ -21,10 +21,7 @@ let collateralToken;
  * @notice Return most recent LiquidationDisputed event.
  */
 const getDisputeLiquidationEvent = async (emp, disputer) => {
-  const events = await emp.getPastEvents("LiquidationDisputed", {
-    fromBlock: 0,
-    filter: { disputer: disputer },
-  });
+  const events = await emp.getPastEvents("LiquidationDisputed", { fromBlock: 0, filter: { disputer: disputer } });
   // Sort descending (highest block first). Primary sort on block number. Secondary sort on transactionIndex. Tertiary sort on logIndex.
   // This sets the most recent event at events[0].
   events.sort((a, b) => {

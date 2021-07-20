@@ -14,10 +14,7 @@ async function run() {
   const governor = await Governor.deployed();
 
   // There have been 2 DVM's deployed on Mainnet to receive price requests so we need to query events from both.
-  let priceRequests = await voting.contract.getPastEvents("PriceRequestAdded", {
-    fromBlock: 0,
-    toBlock: "latest",
-  });
+  let priceRequests = await voting.contract.getPastEvents("PriceRequestAdded", { fromBlock: 0, toBlock: "latest" });
   const legacyPriceRequests = await votingLegacy.contract.getPastEvents("PriceRequestAdded", {
     fromBlock: 0,
     toBlock: "latest",
@@ -33,10 +30,7 @@ async function run() {
     hasResolvedPromises.push(
       new Promise((resolve) => {
         hasPrice(voting, req).then((hasPrice) => {
-          resolve({
-            hasPrice,
-            req,
-          });
+          resolve({ hasPrice, req });
         });
       })
     );
@@ -46,10 +40,7 @@ async function run() {
     hasResolvedPromises.push(
       new Promise((resolve) => {
         hasPrice(votingLegacy, req).then((hasPrice) => {
-          resolve({
-            hasPrice,
-            req,
-          });
+          resolve({ hasPrice, req });
         });
       })
     );

@@ -253,6 +253,4 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
   }
 }
 
-module.exports = {
-  DominationFinancePriceFeed,
-};
+module.exports = { DominationFinancePriceFeed };

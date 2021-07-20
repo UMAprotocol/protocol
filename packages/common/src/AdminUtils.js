@@ -62,9 +62,4 @@ const translateAdminVote = (voteValue) => {
   }
 };
 
-module.exports = {
-  decodeTransaction,
-  isAdminRequest,
-  getAdminRequestId,
-  translateAdminVote,
-};
+module.exports = { decodeTransaction, isAdminRequest, getAdminRequestId, translateAdminVote };

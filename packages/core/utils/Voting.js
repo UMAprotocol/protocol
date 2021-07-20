@@ -39,7 +39,4 @@ async function moveToNextPhase(voting, fromAddress) {
     : await voting.setCurrentTime(currentTime.add(secondsPerDay));
 }
 
-module.exports = {
-  moveToNextRound,
-  moveToNextPhase,
-};
+module.exports = { moveToNextRound, moveToNextPhase };

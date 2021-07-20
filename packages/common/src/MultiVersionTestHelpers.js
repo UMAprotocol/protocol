@@ -7,17 +7,13 @@ const { ZERO_ADDRESS } = require("./Constants");
 
 // Versions that production bots support.
 const SUPPORTED_CONTRACT_VERSIONS = [
-  { contractType: "ExpiringMultiParty", contractVersion: "1.2.0" },
-  { contractType: "ExpiringMultiParty", contractVersion: "1.2.1" },
-  { contractType: "ExpiringMultiParty", contractVersion: "1.2.2" },
   { contractType: "ExpiringMultiParty", contractVersion: "2.0.1" },
   { contractType: "Perpetual", contractVersion: "2.0.1" },
 ];
 
-// Versions that unit tests will test against. Note that there is no need to re-test anything less than 1.2.2 as
-// functionally these versions are identical to 1.2.2.
+// Versions that unit tests will test against. Note we dont test anything less than 2.0.1 as all older contracts have
+// expired on mainnet.
 const TESTED_CONTRACT_VERSIONS = [
-  { contractType: "ExpiringMultiParty", contractVersion: "1.2.2" },
   { contractType: "ExpiringMultiParty", contractVersion: "2.0.1" },
   { contractType: "Perpetual", contractVersion: "2.0.1" },
 ];
@@ -114,12 +110,6 @@ async function createConstructorParamsForContractVersion(
     excessTokenBeneficiary: contextObjects.store.address || contextObjects.store.options.address,
     financialProductLibraryAddress: ZERO_ADDRESS,
   };
-
-  if (contractVersion.contractVersion == "1.2.2") {
-    constructorParams.disputerDisputeRewardPct = constructorParams.disputerDisputeRewardPercentage;
-    constructorParams.sponsorDisputeRewardPct = constructorParams.sponsorDisputeRewardPercentage;
-    constructorParams.disputeBondPct = constructorParams.disputeBondPercentage;
-  }
 
   if (contractVersion.contractType == "Perpetual") {
     constructorParams.fundingRateIdentifier = padRight(utf8ToHex(contextObjects.fundingRateIdentifier), 64);
