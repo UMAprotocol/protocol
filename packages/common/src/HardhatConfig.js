@@ -31,7 +31,10 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
 
   const defaultConfig = {
     solidity: {
-      compilers: [{ version: solcVersion, settings: { optimizer: { enabled: true, runs: 1000000 } } }],
+      compilers: [
+        { version: solcVersion, settings: { optimizer: { enabled: true, runs: 1000000 } } },
+        { version: "0.7.6", settings: { optimizer: { enabled: true, runs: 1000000 } } },
+      ],
       overrides: {
         "contracts/financial-templates/expiring-multiparty/ExpiringMultiParty.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
         "contracts/financial-templates/expiring-multiparty/ExpiringMultiPartyLib.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
