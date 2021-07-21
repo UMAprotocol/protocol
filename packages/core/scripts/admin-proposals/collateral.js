@@ -43,9 +43,9 @@ const { REQUIRED_SIGNER_ADDRESSES } = require("./constants");
 const argv = require("minimist")(process.argv.slice(), {
   string: [
     // comma-delimited list of final fees to set for whitelisted collateral.
-    "collateral",
+    "fees",
     // comma-delimited list of collateral addresses to whitelist. Required if --polygon is omitted.
-    "fee",
+    "collateral",
     // comma-delimited list of Polygon collateral addresses to whitelist. Required if --collateral is omitted
     "polygon",
   ],
