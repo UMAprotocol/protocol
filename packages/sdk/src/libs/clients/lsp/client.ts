@@ -1,18 +1,19 @@
-import { LongShortPair__factory, LongShortPair } from "@uma/core/contract-types/ethers";
+import { EthersContracts } from "@uma/core";
 import type { SignerOrProvider, GetEventType } from "../..";
 import { Event } from "ethers";
 import { Balances } from "../../utils";
 
-export type Instance = LongShortPair;
+export type Instance = EthersContracts.LongShortPair;
+const Factory = EthersContracts.LongShortPair__factory;
+
+export function connect(address: string, provider: SignerOrProvider): Instance {
+  return Factory.connect(address, provider);
+}
 
 export type TokensCreated = GetEventType<Instance, "TokensCreated">;
 export type TokensRedeemed = GetEventType<Instance, "TokensRedeemed">;
 export type ContractExpired = GetEventType<Instance, "ContractExpired">;
 export type PositionSettled = GetEventType<Instance, "PositionSettled">;
-
-export function connect(address: string, provider: SignerOrProvider): Instance {
-  return LongShortPair__factory.connect(address, provider);
-}
 
 export interface EventState {
   sponsors?: string[];

@@ -13,7 +13,7 @@ import { empStats, empStatsHistory, lsps } from "../../tables";
 import Zrx from "../../libs/zrx";
 import { Profile } from "../../libs/utils";
 
-async function run(env: ProcessEnv) {
+export default async (env: ProcessEnv) => {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
   assert(env.EXPRESS_PORT, "requires EXPRESS_PORT");
   assert(env.zrxBaseUrl, "requires zrxBaseUrl");
@@ -163,13 +163,15 @@ async function run(env: ProcessEnv) {
     await services.blocks.handleNewBlock(blockNumber);
     // dont do update if this number or blocks hasnt passed
     if (blockNumber - appState.lastBlockUpdate >= updateBlocks) {
+      const end = profile("Updating state from block event");
       // update everyting
       await services.registry(appState.lastBlock, blockNumber);
       await services.lspCreator.update(appState.lastBlock, blockNumber);
       await services.emps(appState.lastBlock, blockNumber);
-      await services.lsps.update();
+      await services.lsps.update(appState.lastBlock, blockNumber);
       await services.erc20s.update();
 
+      end();
       appState.lastBlockUpdate = blockNumber;
     }
     appState.lastBlock = blockNumber;
@@ -178,7 +180,7 @@ async function run(env: ProcessEnv) {
 
   // main update loop, update every block
   provider.on("block", (blockNumber: number) => {
-    const end = profile("Update state from block event");
+    const end = profile("Block event starting");
     updateByBlock(blockNumber).catch(console.error).finally(end);
   });
 
@@ -195,6 +197,4 @@ async function run(env: ProcessEnv) {
     const end = profile("Update all prices");
     updatePrices().catch(console.error).finally(end);
   }, 10 * 60 * 1000);
-}
-
-export default run;
+};
