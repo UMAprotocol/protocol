@@ -34,7 +34,7 @@ describe("index.js", function () {
   let originalEnv: any;
 
   const identifier = "TEST_IDENTIFIER";
-  const fundingRateIdentifier = "TEST_FUNDiNG_IDENTIFIER";
+  const fundingRateIdentifier = "TEST_FUNDING";
 
   const FinancialContract = getTruffleContract("Perpetual", web3 as any);
   const Finder = getTruffleContract("Finder", web3 as any);

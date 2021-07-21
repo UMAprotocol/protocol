@@ -115,7 +115,7 @@ contract("Disputer.js", function (accounts) {
       describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
         before(async function () {
           identifier = `${testConfig.tokenName}TEST`;
-          fundingRateIdentifier = `${testConfig.tokenName}_FUNDING_IDENTIFIER`;
+          fundingRateIdentifier = `${testConfig.tokenName}_FUNDING`;
           convertDecimals = Convert(testConfig.collateralDecimals);
 
           collateralToken = await Token.new(
@@ -177,7 +177,6 @@ contract("Disputer.js", function (accounts) {
               timer.address
             );
 
-            console.log("fundingRateIdentifier", fundingRateIdentifier);
             await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier)));
             optimisticOracle = await OptimisticOracle.new(7200, finder.address, timer.address);
             await finder.changeImplementationAddress(
