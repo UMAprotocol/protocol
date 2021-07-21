@@ -39,7 +39,7 @@ const { _getContractAddressByName, _setupWeb3 } = require("./utils");
 const { REQUIRED_SIGNER_ADDRESSES } = require("./constants");
 const argv = require("minimist")(process.argv.slice(), {
   string: [
-    // address to register on Ethereum
+    // address to register on Ethereum. Required if --polygon is omitted.
     "ethereum",
     // address to register on Polygon. Required if --ethereum is omitted
     "polygon",
