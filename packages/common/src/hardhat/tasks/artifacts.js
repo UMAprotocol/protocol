@@ -153,9 +153,11 @@ task("generate-contracts-node", "Generate typescipt for the contracts-node packa
     // the above mapping.
     fs.appendFileSync(
       out,
-      `export async function getAddress(name: DeploymentName | ContractName, chainId: number): Promise<string> {
-  if (hre) return (await deployments.get(name)).address;
-  if (!(name in addressFunctions)) throw new Error(\`No deployments for name: \${name}\`);
+      `function isDeploymentName(name: string): name is DeploymentName { return addressFunctions.hasOwnProperty(name); }
+export async function getAddress(name: DeploymentName | ContractName, chainId: number): Promise<string> {
+  const hre = (global as unknown as { hre: { deployments: { get: (name: string) => { address: string } } } | undefined }).hre;
+  if (hre) return (await hre.deployments.get(name)).address;
+  if (!isDeploymentName(name)) throw new Error(\`No deployments for name: \${name}\`);
   const fn = addressFunctions[name];
   return fn(chainId);
 }
