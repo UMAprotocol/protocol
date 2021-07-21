@@ -5,7 +5,7 @@
 // - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
 // - (optional, or required if --polygon is not undefined) set POLYGON_NODE_URL to a Polygon mainnet node. This will
 //   be used to query contract data from Polygon when relaying proposals through the GovernorRootTunnel.
-// - Next, open another terminal window and run `node ./packages/periphery/admin-proposals/setup.sh` to unlock
+// - Next, open another terminal window and run `node ./packages/periphery/admin-proposals/setupFork.sh` to unlock
 //   accounts on the local node that we'll need to run this script.
 // - Propose: node ./packages/periphery/admin-proposals/collateral.js --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456 --network mainnet-fork
 // - Vote Simulate: node ./packages/periphery/admin-proposals/simulateVote.js --network mainnet-fork
@@ -43,9 +43,9 @@ const { REQUIRED_SIGNER_ADDRESSES } = require("../utils/constants");
 const argv = require("minimist")(process.argv.slice(), {
   string: [
     // comma-delimited list of final fees to set for whitelisted collateral.
-    "collateral",
+    "fees",
     // comma-delimited list of collateral addresses to whitelist. Required if --polygon is omitted.
-    "fee",
+    "collateral",
     // comma-delimited list of Polygon collateral addresses to whitelist. Required if --collateral is omitted
     "polygon",
   ],

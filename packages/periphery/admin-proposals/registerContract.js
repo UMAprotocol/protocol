@@ -5,7 +5,7 @@
 // - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
 // - (optional, or required if --polygon is not undefined) set POLYGON_NODE_URL to a Polygon mainnet node. This will
 //   be used to query contract data from Polygon when relaying proposals through the GovernorRootTunnel.
-// - Next, open another terminal window and run `node ./packages/periphery/admin-proposals/setup.sh` to unlock
+// - Next, open another terminal window and run `node ./packages/periphery/admin-proposals/setupFork.sh` to unlock
 //   accounts on the local node that we'll need to run this script.
 // - Propose: node ./packages/periphery/admin-proposals/registerContract.js --ethereum 0xabc --polygon 0xdef --network mainnet-fork
 // - Vote Simulate: node ./packages/periphery/admin-proposals/simulateVote.js --network mainnet-fork
@@ -39,7 +39,7 @@ const { _getContractAddressByName, _setupWeb3 } = require("../utils");
 const { REQUIRED_SIGNER_ADDRESSES } = require("../utils/constants");
 const argv = require("minimist")(process.argv.slice(), {
   string: [
-    // address to register on Ethereum
+    // address to register on Ethereum. Required if --polygon is omitted.
     "ethereum",
     // address to register on Polygon. Required if --ethereum is omitted
     "polygon",

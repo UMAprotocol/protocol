@@ -21,7 +21,7 @@ yarn hardhat node --fork https://mainnet.infura.io/v3/YOUR-INFURA-KEY --no-deplo
 2. Request to impersonate accounts we'll need to propose and vote on admin proposals:
 
 ```sh
-./packages/periphery/setup.sh
+./packages/periphery/setupFork.sh
 ```
 
 3. Propose the admin proposal to whitelist 9 new collateral types on Ethereum and 2 on polygon:

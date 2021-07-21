@@ -3,7 +3,7 @@
 
 // Run:
 // - Start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
-// - Next, open another terminal window and run `node ./packages/periphery/admin-proposals/setup.sh` to unlock
+// - Next, open another terminal window and run `node ./packages/periphery/admin-proposals/setupFork.sh` to unlock
 //   accounts on the local node that we'll need to run this script.
 // - This script should be run after any Admin proposal UMIP script against a local Mainnet fork. It allows the tester
 //   to simulate what would happen if the proposal were to pass and to verify that contract state changes as expected.

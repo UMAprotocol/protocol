@@ -14,7 +14,7 @@ After the developer has tested against the local Mainnet fork, they can use the 
 
 All scripts are designed to be framework-agnostic (i.e. not wed to `hardhat` or `truffle`) and run as `node` scripts.
 
-For testing locally against a mainnet fork, we first might need to [impersonate accounts](https://hardhat.org/guides/mainnet-forking.html#impersonating-accounts) on the local fork. We can do so via the helper script `./setup.sh`.
+For testing locally against a mainnet fork, we first might need to [impersonate accounts](https://hardhat.org/guides/mainnet-forking.html#impersonating-accounts) on the local fork. We can do so via the helper script `./setupFork.sh`. `setupFork.sh` should also run other fork node pre-test setup.
 
 Test scripts can be run by passing in the `--network mainnet-fork` flag.
 
@@ -31,7 +31,7 @@ yarn hardhat node --fork https://mainnet.infura.io/v3/YOUR-INFURA-KEY --no-deplo
 2. Request to impersonate accounts we'll need to propose and vote on admin proposals:
 
 ```sh
-./packages/periphery/setup.sh
+./packages/periphery/setupFork.sh
 ```
 
 3. Run your script against the local mainnet fork
