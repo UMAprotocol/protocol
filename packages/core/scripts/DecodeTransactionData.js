@@ -18,7 +18,7 @@ const _printTransactionDataRecursive = function (txnObj) {
     txnObj.params.transactions.forEach((_txn) => {
       const decodedTxnData = _decodeData(_txn.data);
 
-      // If decodedTxnData itself has a `data` key, then recursively decode it:
+      // If decodedTxnData itself has a `data` key, then decode it:
       if (decodedTxnData.params.data) {
         const decodedParamData = _decodeData(decodedTxnData.params.data);
         decodedTxnData.params.data = decodedParamData;
