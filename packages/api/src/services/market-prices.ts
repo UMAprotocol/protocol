@@ -1,8 +1,9 @@
 import bluebird from "bluebird";
-import { AppState } from "..";
-import { parseUnits, nowS } from "../libs/utils";
+import assert from "assert";
+import { AppState, BaseConfig } from "..";
+import { parseUnits, nowS, Profile } from "../libs/utils";
 
-type Config = undefined;
+type Config = BaseConfig;
 
 type Dependencies = Pick<AppState, "zrx" | "marketPrices" | "collateralAddresses" | "syntheticAddresses">;
 
@@ -12,6 +13,7 @@ export default function (config: Config, appState: Dependencies) {
   const { zrx, marketPrices, collateralAddresses, syntheticAddresses } = appState;
   // this is hardcoded for now since it differs from the standard currency symbol usd
   const currency = "usdc";
+  const profile = Profile(config.debug);
 
   // does not do any queries, just a helper to mutate the latest price table
   async function updateLatestPrice(tokenAddress: string, timestampS: number) {
@@ -27,6 +29,7 @@ export default function (config: Config, appState: Dependencies) {
 
   async function updateLatestPrices(addresses: string[], timestampS: number = nowS()) {
     return bluebird.mapSeries(addresses, async (address) => {
+      const end = profile(`Latest market price for ${address}`);
       try {
         return {
           status: "fullfilled",
@@ -37,8 +40,34 @@ export default function (config: Config, appState: Dependencies) {
           status: "rejected",
           reason: err,
         };
+      } finally {
+        end();
       }
     });
+  }
+
+  function getHistoryTable() {
+    return marketPrices.usdc.history;
+  }
+  function getLatestPrice(address: string) {
+    const result = marketPrices.usdc.latest[address];
+    assert(result, "No price found for token address: " + address);
+    return result;
+  }
+  // pulls price from latest and stuffs it into historical table.
+  async function updatePriceHistory(tokenAddress: string) {
+    const table = getHistoryTable();
+    const [timestamp, price] = getLatestPrice(tokenAddress);
+    if (await table.hasByAddress(tokenAddress, timestamp)) return;
+    return table.create({
+      address: tokenAddress,
+      value: price,
+      timestamp,
+    });
+  }
+
+  async function updatePriceHistories(addresses: string[]) {
+    return Promise.allSettled(addresses.map(updatePriceHistory));
   }
   // we can try to price all known erc20 addresses. Some will fail. Also this endpoint does not return a timestamp
   // so we will just set one from our query time.
@@ -47,9 +76,19 @@ export default function (config: Config, appState: Dependencies) {
     await updateLatestPrices(addresses, timestampS).catch((err) => {
       console.error("Error getting Market Price: " + err.message);
     });
+    await updatePriceHistories(addresses).then((results) => {
+      results.forEach((result) => {
+        if (result.status === "rejected")
+          console.error("Error Updating Market Price History: " + result.reason.message);
+      });
+    });
   }
 
   return {
     update,
+    utils: {
+      updatePriceHistories,
+      updatePriceHistory,
+    },
   };
 }

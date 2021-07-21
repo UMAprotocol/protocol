@@ -28,10 +28,7 @@ contract("DefiPulsePriceFeed.js", function () {
 
   beforeEach(async function () {
     networker = new NetworkerMock();
-    const dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+    const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
     defiPulsePriceFeed = new DefiPulsePriceFeed(
       dummyLogger,
@@ -103,10 +100,7 @@ contract("DefiPulsePriceFeed.js", function () {
   });
 
   it("Bad project name", async function () {
-    const dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+    const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
     let errorThrown = false;
     try {

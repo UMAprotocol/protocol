@@ -26,10 +26,7 @@ function EmpAttributions(empAbi, defaultAddress, attributions) {
     attributions.attribute(user, attributionAddress, tokenAmount.toString());
   }
 
-  return {
-    handleTransaction,
-    attributions,
-  };
+  return { handleTransaction, attributions };
 }
 
 function EmpBalancesHistory() {
@@ -75,12 +72,7 @@ function EmpBalancesHistory() {
     });
   }
 
-  return {
-    finalize,
-    balances,
-    history,
-    handleEvent,
-  };
+  return { finalize, balances, history, handleEvent };
 }
 
 function EmpBalances(handlers = {}, { collateral, tokens } = {}) {
@@ -191,16 +183,7 @@ function EmpBalances(handlers = {}, { collateral, tokens } = {}) {
     }
   }
 
-  return {
-    handleEvent,
-    collateral,
-    tokens,
-    isExpired,
-  };
+  return { handleEvent, collateral, tokens, isExpired };
 }
 
-module.exports = {
-  EmpBalances,
-  EmpBalancesHistory,
-  EmpAttributions,
-};
+module.exports = { EmpBalances, EmpBalancesHistory, EmpAttributions };

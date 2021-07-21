@@ -185,9 +185,7 @@ contract("OptimisticOracle: proposer.js", function (accounts) {
       };
       // For this test, we'll dispute any proposals that are not equal to historical price up to a
       // 10% margin of error
-      let optimisticOracleProposerConfig = {
-        disputePriceErrorPercent: 0.1,
-      };
+      let optimisticOracleProposerConfig = { disputePriceErrorPercent: 0.1 };
       proposer = new OptimisticOracleProposer({
         logger: spyLogger,
         optimisticOracleClient: client,
@@ -313,9 +311,7 @@ contract("OptimisticOracle: proposer.js", function (accounts) {
           requestTime,
           ancillaryDataAddresses[i],
           disputablePrices[i],
-          {
-            from: randoProposer,
-          }
+          { from: randoProposer }
         );
         expectedProposals.push({
           requester: optimisticRequester.address,
@@ -393,9 +389,7 @@ contract("OptimisticOracle: proposer.js", function (accounts) {
         requestTime,
         ancillaryDataAddresses[0],
         "1", // Arbitrary price that bot will dispute
-        {
-          from: randoProposer,
-        }
+        { from: randoProposer }
       );
 
       // Now make the bot propose to the remaining requests.
@@ -540,9 +534,7 @@ contract("OptimisticOracle: proposer.js", function (accounts) {
       requestTime,
       "0x",
       "1",
-      {
-        from: randoProposer,
-      }
+      { from: randoProposer }
     );
 
     // `sendDisputes`: Should throw another error

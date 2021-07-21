@@ -47,11 +47,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       return null;
     }
 
-    logger.debug({
-      at: "createPriceFeed",
-      message: "Creating CryptoWatchPriceFeed",
-      config,
-    });
+    logger.debug({ at: "createPriceFeed", message: "Creating CryptoWatchPriceFeed", config });
 
     return new CryptoWatchPriceFeed(
       logger,
@@ -76,11 +72,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       return null;
     }
 
-    logger.debug({
-      at: "createPriceFeed",
-      message: "Creating QuandlPriceFeed",
-      config,
-    });
+    logger.debug({ at: "createPriceFeed", message: "Creating QuandlPriceFeed", config });
 
     return new QuandlPriceFeed(
       logger,
@@ -101,11 +93,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       return null;
     }
 
-    logger.debug({
-      at: "createPriceFeed",
-      message: "Creating DominationFinancePriceFeed",
-      config,
-    });
+    logger.debug({ at: "createPriceFeed", message: "Creating DominationFinancePriceFeed", config });
 
     return new DominationFinancePriceFeed(
       logger,
@@ -126,11 +114,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       return null;
     }
 
-    logger.debug({
-      at: "createPriceFeed",
-      message: "Creating UniswapPriceFeed",
-      config,
-    });
+    logger.debug({ at: "createPriceFeed", message: "Creating UniswapPriceFeed", config });
 
     if (config.version !== undefined && config.version !== "v2" && config.version !== "v3") return null;
 
@@ -157,11 +141,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       return null;
     }
 
-    logger.debug({
-      at: "createPriceFeed",
-      message: "Creating ForexDailyPriceFeed",
-      config,
-    });
+    logger.debug({ at: "createPriceFeed", message: "Creating ForexDailyPriceFeed", config });
 
     return new ForexDailyPriceFeed(
       logger,
@@ -181,11 +161,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       return null;
     }
 
-    logger.debug({
-      at: "createPriceFeed",
-      message: "Creating DefiPulsePriceFeed",
-      config,
-    });
+    logger.debug({ at: "createPriceFeed", message: "Creating DefiPulsePriceFeed", config });
 
     return new DefiPulsePriceFeed(
       logger,
@@ -206,18 +182,11 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     }
 
     if (config.medianizedFeeds.length === 0) {
-      logger.error({
-        at: "createPriceFeed",
-        message: "MedianizerPriceFeed configured with 0 feeds to medianize🚨",
-      });
+      logger.error({ at: "createPriceFeed", message: "MedianizerPriceFeed configured with 0 feeds to medianize🚨" });
       return null;
     }
 
-    logger.debug({
-      at: "createPriceFeed",
-      message: "Creating MedianizerPriceFeed",
-      config,
-    });
+    logger.debug({ at: "createPriceFeed", message: "Creating MedianizerPriceFeed", config });
 
     // Loop over all the price feeds to medianize.
     return await _createMedianizerPriceFeed(config);
@@ -229,18 +198,11 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     }
 
     if (config.orderedFeeds.length === 0) {
-      logger.error({
-        at: "createPriceFeed",
-        message: "FallBackPriceFeed configured with 0 feeds🚨",
-      });
+      logger.error({ at: "createPriceFeed", message: "FallBackPriceFeed configured with 0 feeds🚨" });
       return null;
     }
 
-    logger.debug({
-      at: "createPriceFeed",
-      message: "Creating FallBackPriceFeed",
-      config,
-    });
+    logger.debug({ at: "createPriceFeed", message: "Creating FallBackPriceFeed", config });
 
     return await _createFallBackPriceFeed(config);
   } else if (config.type === "balancer") {
@@ -250,11 +212,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       return null;
     }
 
-    logger.debug({
-      at: "balancerPriceFeed",
-      message: "Creating balancerPriceFeed",
-      config,
-    });
+    logger.debug({ at: "balancerPriceFeed", message: "Creating balancerPriceFeed", config });
 
     return new BalancerPriceFeed(
       logger,
@@ -276,11 +234,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       return null;
     }
 
-    logger.debug({
-      at: "createPriceFeed",
-      message: "Creating Baskets of MedianizedPriceFeeds",
-      config,
-    });
+    logger.debug({ at: "createPriceFeed", message: "Creating Baskets of MedianizedPriceFeeds", config });
 
     // Currently, this file assumes that the baskets are lists of medianizer price feeds, and that the
     // denominator is a medianizer pricefeed.
@@ -299,11 +253,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       return null;
     }
 
-    logger.debug({
-      at: "createPriceFeed",
-      message: "Creating CoingMarketCapPriceFeed",
-      config,
-    });
+    logger.debug({ at: "createPriceFeed", message: "Creating CoingMarketCapPriceFeed", config });
 
     return new CoinMarketCapPriceFeed(
       logger,
@@ -325,11 +275,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       return null;
     }
 
-    logger.debug({
-      at: "createPriceFeed",
-      message: "Creating CoinGeckoPriceFeed",
-      config,
-    });
+    logger.debug({ at: "createPriceFeed", message: "Creating CoinGeckoPriceFeed", config });
 
     return new CoinGeckoPriceFeed(
       logger,
@@ -350,11 +296,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       return null;
     }
 
-    logger.debug({
-      at: "createPriceFeed",
-      message: "Creating TraderMadePriceFeed",
-      config,
-    });
+    logger.debug({ at: "createPriceFeed", message: "Creating TraderMadePriceFeed", config });
 
     return new TraderMadePriceFeed(
       logger,
@@ -374,11 +316,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     if (isMissingField(config, requiredFields, logger)) {
       return null;
     }
-    logger.debug({
-      at: "createPriceFeed",
-      message: "Creating PriceFeedMockScaled",
-      config,
-    });
+    logger.debug({ at: "createPriceFeed", message: "Creating PriceFeedMockScaled", config });
 
     return new PriceFeedMockScaled(
       config.currentPrice,
@@ -388,11 +326,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.lookback
     );
   } else if (config.type === "ethvix") {
-    logger.debug({
-      at: "createPriceFeed",
-      message: "Creating EthVixPriceFeed",
-      config,
-    });
+    logger.debug({ at: "createPriceFeed", message: "Creating EthVixPriceFeed", config });
 
     return new ETHVIXPriceFeed(
       logger,
@@ -404,11 +338,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       config.priceFeedDecimals
     );
   } else if (config.type === "invalid") {
-    logger.debug({
-      at: "createPriceFeed",
-      message: "Creating InvalidPriceFeed",
-      config,
-    });
+    logger.debug({ at: "createPriceFeed", message: "Creating InvalidPriceFeed", config });
 
     return new InvalidPriceFeedMock();
   } else if (config.type === "expression") {
@@ -417,11 +347,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       return null;
     }
 
-    logger.debug({
-      at: "createPriceFeed",
-      message: "Creating ExpressionPriceFeed",
-      config,
-    });
+    logger.debug({ at: "createPriceFeed", message: "Creating ExpressionPriceFeed", config });
 
     return await _createExpressionPriceFeed(config);
   } else if (config.type === "vault") {
@@ -430,11 +356,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       return null;
     }
 
-    logger.debug({
-      at: "createPriceFeed",
-      message: "Creating VaultPriceFeed",
-      config,
-    });
+    logger.debug({ at: "createPriceFeed", message: "Creating VaultPriceFeed", config });
 
     return new VaultPriceFeed({
       ...config,
@@ -452,11 +374,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       return null;
     }
 
-    logger.debug({
-      at: "createPriceFeed",
-      message: "Creating HarvestVaultPriceFeed",
-      config,
-    });
+    logger.debug({ at: "createPriceFeed", message: "Creating HarvestVaultPriceFeed", config });
 
     return new HarvestVaultPriceFeed({
       ...config,
@@ -474,11 +392,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       return null;
     }
 
-    logger.debug({
-      at: "createPriceFeed",
-      message: "Creating LPPriceFeed",
-      config,
-    });
+    logger.debug({ at: "createPriceFeed", message: "Creating LPPriceFeed", config });
 
     return new LPPriceFeed({
       ...config,
@@ -494,11 +408,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       return null;
     }
 
-    logger.debug({
-      at: "createPriceFeed",
-      message: "Creating FundingRateMultiplierPriceFeed",
-      config,
-    });
+    logger.debug({ at: "createPriceFeed", message: "Creating FundingRateMultiplierPriceFeed", config });
 
     let multicallAddress = config.multicallAddress;
     if (!multicallAddress) {
@@ -526,11 +436,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     });
   }
 
-  logger.error({
-    at: "createPriceFeed",
-    message: "Invalid price feed type specified🚨",
-    config,
-  });
+  logger.error({ at: "createPriceFeed", message: "Invalid price feed type specified🚨", config });
 
   return null;
 

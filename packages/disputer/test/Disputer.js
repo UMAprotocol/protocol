@@ -10,6 +10,7 @@ const {
   runTestForVersion,
   createConstructorParamsForContractVersion,
   TESTED_CONTRACT_VERSIONS,
+  TEST_DECIMAL_COMBOS,
   parseFixed,
   createContractObjectFromJson,
 } = require("@uma/common");
@@ -27,16 +28,6 @@ const {
   SpyTransport,
   DSProxyManager,
 } = require("@uma/financial-templates-lib");
-
-// Run the tests against 3 different kinds of token/synth decimal combinations:
-// 1) matching 18 & 18 for collateral for most token types with normal tokens.
-// 2) non-matching 8 collateral & 18 synthetic for legacy UMA synthetics.
-// 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
-const configs = [
-  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 },
-];
 
 let iterationTestVersion; // store the test version between tests that is currently being tested.
 const startTime = "15798990420";
@@ -122,7 +113,7 @@ contract("Disputer.js", function (accounts) {
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
     const MulticallMock = getTruffleContract("MulticallMock", web3);
 
-    for (let testConfig of configs) {
+    for (let testConfig of TEST_DECIMAL_COMBOS) {
       describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
         before(async function () {
           identifier = `${testConfig.tokenName}TEST`;
@@ -135,14 +126,10 @@ contract("Disputer.js", function (accounts) {
             testConfig.tokenSymbol + " Token", // Construct the token name.
             testConfig.tokenSymbol,
             testConfig.collateralDecimals,
-            {
-              from: contractCreator,
-            }
+            { from: contractCreator }
           );
 
-          await collateralToken.addMember(1, contractCreator, {
-            from: contractCreator,
-          });
+          await collateralToken.addMember(1, contractCreator, { from: contractCreator });
 
           // Seed the accounts.
           await collateralToken.mint(sponsor1, convertCollateral("100000"), { from: contractCreator });
@@ -174,9 +161,7 @@ contract("Disputer.js", function (accounts) {
         });
         beforeEach(async function () {
           await timer.setCurrentTime(startTime - 1);
-          mockOracle = await MockOracle.new(finder.address, timer.address, {
-            from: contractCreator,
-          });
+          mockOracle = await MockOracle.new(finder.address, timer.address, { from: contractCreator });
           await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
 
           // Create a new synthetic token
@@ -232,9 +217,7 @@ contract("Disputer.js", function (accounts) {
           await syntheticToken.addBurner(financialContract.address);
 
           // Generate Financial Contract properties to inform bot of important on-chain state values that we only want to query once.
-          financialContractProps = {
-            priceIdentifier: await financialContract.priceIdentifier(),
-          };
+          financialContractProps = { priceIdentifier: await financialContract.priceIdentifier() };
 
           await collateralToken.approve(financialContract.address, convertCollateral("100000000"), { from: sponsor1 });
           await collateralToken.approve(financialContract.address, convertCollateral("100000000"), { from: sponsor2 });
@@ -504,9 +487,7 @@ contract("Disputer.js", function (accounts) {
             // Note the check below has a bit of switching logic that is version specific to accommodate the change in withdrawal behaviour.
             assert.equal(
               (await financialContract.getLiquidations(sponsor1))[0].state,
-              contractVersion.contractVersion == "1.2.2"
-                ? LiquidationStatesEnum.DISPUTE_SUCCEEDED
-                : LiquidationStatesEnum.UNINITIALIZED
+              LiquidationStatesEnum.UNINITIALIZED
             );
           }
         );
@@ -573,32 +554,22 @@ contract("Disputer.js", function (accounts) {
 
             await disputer.update();
             await disputer.withdrawRewards();
-            // If the EMP is a legacy EMP, then one of the withdrawals will fail to simulate because the disputer
-            // gets nothing. The bot will silently skip this withdrawal. So, if the EMP is legacy, there will be
-            // one additional info level event, otherwise 2.
-            assert.equal(spy.callCount, contractVersion.contractVersion == "1.2.2" ? 3 : 4);
 
-            // sponsor1's dispute was unsuccessful, and the disputeBot should have called the withdraw method if the
-            // EMP was not a legacy one, otherwise the dispute should still be seen as pending because the bot skipped
-            // the withdrawal.
-            assert.equal(
-              (await financialContract.getLiquidations(sponsor1))[0].disputer,
-              contractVersion.contractVersion == "1.2.2" ? disputeBot : ZERO_ADDRESS
-            );
+            assert.equal(spy.callCount, 4);
+
+            // sponsor1's dispute was unsuccessful, and the disputeBot should have called the withdraw method.The
+            // dispute should still be seen as pending because the bot skipped the withdrawal.
+            assert.equal((await financialContract.getLiquidations(sponsor1))[0].disputer, ZERO_ADDRESS);
             assert.equal(
               (await financialContract.getLiquidations(sponsor1))[0].state,
-              contractVersion.contractVersion == "1.2.2"
-                ? LiquidationStatesEnum.PENDING_DISPUTE
-                : LiquidationStatesEnum.UNINITIALIZED
+              LiquidationStatesEnum.UNINITIALIZED
             );
 
             // sponsor2's dispute was successful, and the disputeBot should've called the withdraw method.
             assert.equal((await financialContract.getLiquidations(sponsor2))[0].disputer, ZERO_ADDRESS);
             assert.equal(
               (await financialContract.getLiquidations(sponsor2))[0].state,
-              contractVersion.contractVersion == "1.2.2"
-                ? LiquidationStatesEnum.DISPUTE_SUCCEEDED
-                : LiquidationStatesEnum.UNINITIALIZED
+              LiquidationStatesEnum.UNINITIALIZED
             );
 
             // Check that the log includes a human readable translation of the liquidation status, and the dispute price.
@@ -620,7 +591,7 @@ contract("Disputer.js", function (accounts) {
             // After the dispute is resolved, the liquidation should still exist but the disputer should no longer be able to withdraw any rewards.
             await disputer.update();
             await disputer.withdrawRewards();
-            assert.equal(spy.callCount, contractVersion.contractVersion == "1.2.2" ? 3 : 4);
+            assert.equal(spy.callCount, 4);
           }
         );
 
@@ -1194,18 +1165,14 @@ contract("Disputer.js", function (accounts) {
             );
 
             // initialize the pair between the reserve and collateral token.
-            await uniswapFactory.createPair(reserveToken.address, collateralToken.address, {
-              from: contractCreator,
-            });
+            await uniswapFactory.createPair(reserveToken.address, collateralToken.address, { from: contractCreator });
             pairAddress = await uniswapFactory.getPair(reserveToken.address, collateralToken.address);
             pair = await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress);
 
             // Seed the market. This sets up the initial price to be 1/1 reserve to collateral token. As the collateral
             // token is Dai this starts off the uniswap market at 1 reserve/collateral. Note the amount of collateral
             // is scaled according to the collateral decimals.
-            await reserveToken.mint(pairAddress, toBN(toWei("1000")).muln(10000000), {
-              from: contractCreator,
-            });
+            await reserveToken.mint(pairAddress, toBN(toWei("1000")).muln(10000000), { from: contractCreator });
             await collateralToken.mint(pairAddress, toBN(convertCollateral("1000")).muln(10000000), {
               from: contractCreator,
             });
@@ -1445,41 +1412,36 @@ contract("Disputer.js", function (accounts) {
               assert.equal((await financialContract.getLiquidations(sponsor2))[0].disputer, dsProxy.address);
               assert.equal((await financialContract.getLiquidations(sponsor3))[0].disputer, dsProxy.address);
 
-              // Note we only test withdrawal logic on versions that are not 1.2.2 as withdrawing using a DSProxy is
-              // on legacy contracts is currently not supported. This is not a problem as almost all of these contracts
-              // are expired.
-              if (contractVersion.contractVersion != "1.2.2") {
-                // Push a price of 1.1, which should cause the two disputes to be correct (invalid liquidations)
-                const liquidationTime = await financialContract.getCurrentTime();
-                await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidationTime, convertPrice("1.1"));
+              // Push a price of 1.1, which should cause the two disputes to be correct (invalid liquidations)
+              const liquidationTime = await financialContract.getCurrentTime();
+              await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidationTime, convertPrice("1.1"));
 
-                // rewards should be withdrawn and the DSProxy collateral ballance should increase.
+              // rewards should be withdrawn and the DSProxy collateral ballance should increase.
 
-                const dsProxyCollateralBalanceBefore = await collateralToken.balanceOf(dsProxy.address);
+              const dsProxyCollateralBalanceBefore = await collateralToken.balanceOf(dsProxy.address);
 
-                await disputer.update();
-                await disputer.withdrawRewards();
-                assert.equal(spy.callCount, 7); // two new info after withdrawing the two disputes.
+              await disputer.update();
+              await disputer.withdrawRewards();
+              assert.equal(spy.callCount, 7); // two new info after withdrawing the two disputes.
 
-                const dsProxyCollateralBalanceAfter = await collateralToken.balanceOf(dsProxy.address);
-                assert.isTrue(dsProxyCollateralBalanceAfter.gt(dsProxyCollateralBalanceBefore));
+              const dsProxyCollateralBalanceAfter = await collateralToken.balanceOf(dsProxy.address);
+              assert.isTrue(dsProxyCollateralBalanceAfter.gt(dsProxyCollateralBalanceBefore));
 
-                // Pre-dispute as nothing should have change and rewards by liquidator are not withdrawn.
-                assert.equal(
-                  (await financialContract.getLiquidations(sponsor1))[0].state,
-                  LiquidationStatesEnum.PRE_DISPUTE
-                );
+              // Pre-dispute as nothing should have change and rewards by liquidator are not withdrawn.
+              assert.equal(
+                (await financialContract.getLiquidations(sponsor1))[0].state,
+                LiquidationStatesEnum.PRE_DISPUTE
+              );
 
-                // Uninitialized as reward withdrawal deletes the liquidation object.
-                assert.equal(
-                  (await financialContract.getLiquidations(sponsor2))[0].state,
-                  LiquidationStatesEnum.UNINITIALIZED
-                );
-                assert.equal(
-                  (await financialContract.getLiquidations(sponsor3))[0].state,
-                  LiquidationStatesEnum.UNINITIALIZED
-                );
-              }
+              // Uninitialized as reward withdrawal deletes the liquidation object.
+              assert.equal(
+                (await financialContract.getLiquidations(sponsor2))[0].state,
+                LiquidationStatesEnum.UNINITIALIZED
+              );
+              assert.equal(
+                (await financialContract.getLiquidations(sponsor3))[0].state,
+                LiquidationStatesEnum.UNINITIALIZED
+              );
             }
           );
           versionedIt([{ contractType: "any", contractVersion: "any" }])(

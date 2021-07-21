@@ -12,15 +12,19 @@ describe("Finder", function () {
   let owner;
   let user;
 
+  let runningOptimism;
   before(async function () {
     accounts = await web3.eth.getAccounts();
     [owner, user] = accounts;
-    await runDefaultFixture(hre);
+
+    // If connected to Optimism network, then we can't compile some of the other contracts required in the default
+    // test fixture, so we'll skip them for now.
+    runningOptimism = (await web3.eth.net.getId()) === 420;
+    if (!runningOptimism) await runDefaultFixture(hre);
   });
 
   it("General methods", async function () {
-    const finder = await Finder.deployed();
-
+    const finder = runningOptimism ? await Finder.new().send({ from: owner }) : await Finder.deployed();
     const interfaceName1 = utf8ToHex("interface1");
     const interfaceName2 = utf8ToHex("interface2");
     const implementationAddress1 = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
@@ -53,7 +57,7 @@ describe("Finder", function () {
     const result = await finder.methods
       .changeImplementationAddress(interfaceName1, implementationAddress3)
       .send({ from: owner });
-    assertEventEmitted(result, result, "InterfaceImplementationChanged", (ev) => {
+    assertEventEmitted(result, finder, "InterfaceImplementationChanged", (ev) => {
       return (
         web3.utils.hexToUtf8(ev.interfaceName) === web3.utils.hexToUtf8(interfaceName1) &&
         ev.newImplementationAddress === implementationAddress3

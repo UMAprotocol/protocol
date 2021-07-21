@@ -3,19 +3,25 @@ import Web3 from "web3";
 import { ethers } from "ethers";
 import moment from "moment";
 
-import { tables, Coingecko, utils } from "@uma/sdk";
+import { tables, Coingecko, utils, Multicall } from "@uma/sdk";
 
 import * as Services from "../../services";
 import Express from "../../services/express";
 import Actions from "../../services/actions";
 import { ProcessEnv, AppState } from "../..";
-import { empStats, empStatsHistory } from "../../tables";
+import { empStats, empStatsHistory, lsps } from "../../tables";
 import Zrx from "../../libs/zrx";
+import { Profile } from "../../libs/utils";
 
 async function run(env: ProcessEnv) {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
   assert(env.EXPRESS_PORT, "requires EXPRESS_PORT");
   assert(env.zrxBaseUrl, "requires zrxBaseUrl");
+  assert(env.MULTI_CALL_ADDRESS, "requires MULTI_CALL_ADDRESS");
+
+  // debug flag for more verbose logs
+  const debug = Boolean(env.debug);
+  const profile = Profile(debug);
 
   const provider = new ethers.providers.WebSocketProvider(env.CUSTOM_NODE_URL);
 
@@ -53,6 +59,7 @@ async function run(env: ProcessEnv) {
     marketPrices: {
       usdc: {
         latest: {},
+        history: empStatsHistory.SortedJsMap("Market Price"),
       },
     },
     erc20s: tables.erc20s.JsMap(),
@@ -71,18 +78,29 @@ async function run(env: ProcessEnv) {
     lastBlock: 0,
     lastBlockUpdate: 0,
     registeredEmps: new Set<string>(),
+    registeredLsps: new Set<string>(),
     collateralAddresses: new Set<string>(),
     syntheticAddresses: new Set<string>(),
+    // lsp related props. could be its own state object
+    longAddresses: new Set<string>(),
+    shortAddresses: new Set<string>(),
+    multicall: new Multicall(env.MULTI_CALL_ADDRESS, provider),
+    lsps: {
+      active: lsps.JsMap("Active LSP"),
+      expired: lsps.JsMap("Expired LSP"),
+    },
   };
+
   // services for ingesting data
   const services = {
     // these services can optionally be configured with a config object, but currently they are undefined or have defaults
     blocks: Services.Blocks(undefined, appState),
-    emps: Services.Emps(undefined, appState),
-    registry: Services.Registry({}, appState),
-    collateralPrices: Services.CollateralPrices({}, appState),
+    emps: Services.Emps({ debug }, appState),
+    registry: Services.Registry({ debug }, appState),
+    collateralPrices: Services.CollateralPrices({ debug }, appState),
     syntheticPrices: Services.SyntheticPrices(
       {
+        debug,
         cryptowatchApiKey: env.cryptowatchApiKey,
         tradermadeApiKey: env.tradermadeApiKey,
         quandlApiKey: env.quandlApiKey,
@@ -90,9 +108,11 @@ async function run(env: ProcessEnv) {
       },
       appState
     ),
-    erc20s: Services.Erc20s(undefined, appState),
-    empStats: Services.EmpStats({}, appState),
-    marketPrices: Services.MarketPrices(undefined, appState),
+    erc20s: Services.Erc20s({ debug }, appState),
+    empStats: Services.EmpStats({ debug }, appState),
+    marketPrices: Services.MarketPrices({ debug }, appState),
+    lspCreator: Services.LspCreator({ debug }, appState),
+    lsps: Services.Lsps({ debug }, appState),
   };
 
   // services consuming data
@@ -100,9 +120,17 @@ async function run(env: ProcessEnv) {
 
   // warm caches
   await services.registry();
-  console.log("Got all emp addresses");
+  console.log("Got all EMP addresses");
+
+  await services.lspCreator.update();
+  console.log("Got all LSP addresses");
+
   await services.emps();
-  console.log("Updated emp state");
+  console.log("Updated EMP state");
+
+  await services.lsps.update();
+  console.log("Updated LSP state");
+
   await services.erc20s.update();
   console.log("Updated tokens");
 
@@ -128,7 +156,7 @@ async function run(env: ProcessEnv) {
   console.log("Updated Market Prices");
 
   // expose calls through express
-  await Express({ port: Number(env.EXPRESS_PORT) }, actions);
+  await Express({ port: Number(env.EXPRESS_PORT), debug }, actions);
 
   // break all state updates by block events into a cleaner function
   async function updateByBlock(blockNumber: number) {
@@ -137,9 +165,10 @@ async function run(env: ProcessEnv) {
     if (blockNumber - appState.lastBlockUpdate >= updateBlocks) {
       // update everyting
       await services.registry(appState.lastBlock, blockNumber);
+      await services.lspCreator.update(appState.lastBlock, blockNumber);
       await services.emps(appState.lastBlock, blockNumber);
+      await services.lsps.update();
       await services.erc20s.update();
-      await services.empStats.update();
 
       appState.lastBlockUpdate = blockNumber;
     }
@@ -149,7 +178,8 @@ async function run(env: ProcessEnv) {
 
   // main update loop, update every block
   provider.on("block", (blockNumber: number) => {
-    updateByBlock(blockNumber).catch(console.error);
+    const end = profile("Update state from block event");
+    updateByBlock(blockNumber).catch(console.error).finally(end);
   });
 
   // separate out price updates into a different loop to query every few minutes
@@ -157,11 +187,13 @@ async function run(env: ProcessEnv) {
     await services.collateralPrices.update();
     await services.syntheticPrices.update();
     await services.marketPrices.update();
+    await services.empStats.update();
   }
 
   // coingeckos prices don't update very fast, so set it on an interval every few minutes
   utils.loop(async () => {
-    updatePrices().catch(console.error);
+    const end = profile("Update all prices");
+    updatePrices().catch(console.error).finally(end);
   }, 10 * 60 * 1000);
 }
 

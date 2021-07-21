@@ -21,26 +21,37 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
   // Solc version defined here so etherscan-verification has access to it.
   const solcVersion = "0.8.4";
 
+  // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
+  // limit.
+  const LARGE_CONTRACT_COMPILER_SETTINGS = {
+    version: solcVersion,
+    settings: { optimizer: { enabled: true, runs: 200 } },
+  };
+
   const defaultConfig = {
     solidity: {
-      version: solcVersion,
-      settings: {
-        optimizer: {
-          enabled: true,
-          runs: 199,
-        },
+      compilers: [{ version: solcVersion, settings: { optimizer: { enabled: true, runs: 1000000 } } }],
+      overrides: {
+        "contracts/financial-templates/expiring-multiparty/ExpiringMultiParty.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/financial-templates/expiring-multiparty/ExpiringMultiPartyLib.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/financial-templates/perpetual-multiparty/Perpetual.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/financial-templates/perpetual-multiparty/PerpetualLib.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/financial-templates/perpetual-multiparty/PerpetualLiquidatable.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/financial-templates/expiring-multiparty/Liquidatable.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/oracle/implementation/Voting.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/oracle/implementation/test/VotingTest.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       },
     },
-    ovm: {
-      solcVersion: solcVersion,
-    },
+    ovm: { solcVersion: "0.8.4-broken_alpha" },
     networks: {
-      hardhat: {
-        gas: 11500000,
-        blockGasLimit: 11500000,
-        allowUnlimitedContractSize: false,
-        timeout: 1800000,
-      },
+      hardhat: { gas: 11500000, blockGasLimit: 11500000, allowUnlimitedContractSize: false, timeout: 1800000 },
+      localhost: { url: "http://127.0.0.1:8545" },
+      rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true), accounts: { mnemonic } },
+      kovan: { chainId: 42, url: getNodeUrl("kovan", true), accounts: { mnemonic } },
+      goerli: { chainId: 5, url: getNodeUrl("goerli", true), accounts: { mnemonic } },
+      mumbai: { chainId: 80001, url: getNodeUrl("polygon-mumbai", true), accounts: { mnemonic } },
+      matic: { chainId: 137, url: getNodeUrl("polygon-matic", true), accounts: { mnemonic } },
+      mainnet: { chainId: 1, url: getNodeUrl("mainnet", true), accounts: { mnemonic } },
       optimism: {
         url: "http://127.0.0.1:8545",
         accounts: { mnemonic: "test test test test test test test test test test test junk" },
@@ -51,66 +62,17 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
         ovm: true,
         // We use custom logic to only compile contracts within the listed directories, as opposed to choosing which
         // ones to ignore, because there are more contracts to ignore than to include.
-        compileWhitelist: [
-          "oracle/implementation/Finder.sol",
-          "oracle/implementation/IdentifierWhitelist.sol",
-          "common/implementation/AddressWhitelist.sol",
-        ],
-        testBlacklist: [
-          "chainbridge",
-          "financial-templates",
-          "merkle-distributor",
-          "oracle",
-          "polygon",
-          "proxy-scripts",
-          "scripts",
-        ],
-      },
-      localhost: {
-        url: "http://127.0.0.1:8545",
-      },
-      rinkeby: {
-        chainId: 4,
-        url: getNodeUrl("rinkeby", true),
-        accounts: { mnemonic },
-      },
-      kovan: {
-        chainId: 42,
-        url: getNodeUrl("kovan", true),
-        accounts: { mnemonic },
-      },
-      goerli: {
-        chainId: 5,
-        url: getNodeUrl("goerli", true),
-        accounts: { mnemonic },
-      },
-      mumbai: {
-        chainId: 80001,
-        url: getNodeUrl("polygon-mumbai", true),
-        accounts: { mnemonic },
-      },
-      matic: {
-        chainId: 137,
-        url: getNodeUrl("polygon-matic", true),
-        accounts: { mnemonic },
-      },
-      mainnet: {
-        chainId: 1,
-        url: getNodeUrl("mainnet", true),
-        accounts: { mnemonic },
+        compileWhitelist: ["oracle/implementation/Finder.sol"],
+        testWhitelist: ["oracle/Finder"],
       },
     },
-    mocha: {
-      timeout: 1800000,
-    },
+    mocha: { timeout: 1800000 },
     etherscan: {
       // Your API key for Etherscan
       // Obtain one at https://etherscan.io/
       apiKey: process.env.ETHERSCAN_API_KEY,
     },
-    namedAccounts: {
-      deployer: 0,
-    },
+    namedAccounts: { deployer: 0 },
     external: {
       deployments: {
         mainnet: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/mainnet")],
@@ -122,6 +84,7 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
       },
     },
   };
+
   return { ...defaultConfig, ...configOverrides };
 }
 

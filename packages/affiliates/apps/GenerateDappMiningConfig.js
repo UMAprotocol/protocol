@@ -41,10 +41,7 @@ const App = (params) => (devMiningOutput) => {
   const empRewards = devMiningOutput.empPayouts[params.empAddress];
   assert(empRewards, "emp rewards not found in dev mining output for: " + params.empAddress);
   const config = generateDappMiningConfig({ ...params, empRewards });
-  return {
-    params,
-    config,
-  };
+  return { params, config };
 };
 
 const config = Config();

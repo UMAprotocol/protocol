@@ -5,10 +5,7 @@ const { generateDevMiningConfig, makeUnixPipe } = require("../libs/affiliates/ut
 async function App(whitelist) {
   assert(whitelist, "requires whitelist");
   const config = generateDevMiningConfig({ whitelist });
-  return {
-    config,
-    whitelist,
-  };
+  return { config, whitelist };
 }
 
 makeUnixPipe(App)

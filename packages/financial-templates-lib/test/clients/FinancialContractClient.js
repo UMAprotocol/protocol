@@ -8,21 +8,12 @@ const {
   runTestForVersion,
   createConstructorParamsForContractVersion,
   TESTED_CONTRACT_VERSIONS,
+  TEST_DECIMAL_COMBOS,
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
 // Script to test
 const { FinancialContractClient } = require("../../src/clients/FinancialContractClient");
-
-// Run the tests against 3 different kinds of token/synth decimal combinations:
-// 1) matching 18 & 18 for collateral for most token types with normal tokens.
-// 2) non-matching 8 collateral & 18 synthetic for legacy UMA synthetics.
-// 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
-const configs = [
-  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 },
-];
 
 const startTime = "15798990420";
 const zeroAddress = "0x0000000000000000000000000000000000000000";
@@ -105,7 +96,7 @@ contract("FinancialContractClient.js", function (accounts) {
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
     const MulticallMock = getTruffleContract("MulticallMock", web3);
 
-    for (let testConfig of configs) {
+    for (let testConfig of TEST_DECIMAL_COMBOS) {
       describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
         before(async function () {
           identifier = `${testConfig.tokenName}TEST`;
@@ -117,9 +108,7 @@ contract("FinancialContractClient.js", function (accounts) {
             testConfig.tokenSymbol + "Token", // Construct the token name.
             testConfig.tokenSymbol,
             testConfig.collateralDecimals,
-            {
-              from: sponsor1,
-            }
+            { from: sponsor1 }
           );
           syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", testConfig.syntheticDecimals, {
             from: sponsor1,
@@ -209,10 +198,7 @@ contract("FinancialContractClient.js", function (accounts) {
 
           // The FinancialContractClient does not emit any info `level` events.  Therefore no need to test Winston outputs.
           // DummyLogger will not print anything to console as only capture `info` level events.
-          dummyLogger = winston.createLogger({
-            level: "info",
-            transports: [new winston.transports.Console()],
-          });
+          dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
           client = new FinancialContractClient(
             dummyLogger,
@@ -351,14 +337,7 @@ contract("FinancialContractClient.js", function (accounts) {
           assert.deepStrictEqual(expectedLiquidations.sort(), client.getUndisputedLiquidations().sort());
 
           // Pending withdrawals state should be correctly identified.
-          await financialContract.requestWithdrawal(
-            {
-              rawValue: convertCollateral("10"),
-            },
-            {
-              from: sponsor1,
-            }
-          );
+          await financialContract.requestWithdrawal({ rawValue: convertCollateral("10") }, { from: sponsor1 });
           await client.update();
 
           await updateAndVerify(
@@ -380,9 +359,7 @@ contract("FinancialContractClient.js", function (accounts) {
           );
 
           // Remove the pending withdrawal and ensure it is removed from the client.
-          await financialContract.cancelWithdrawal({
-            from: sponsor1,
-          });
+          await financialContract.cancelWithdrawal({ from: sponsor1 });
           await client.update();
           await updateAndVerify(
             client,
@@ -536,9 +513,7 @@ contract("FinancialContractClient.js", function (accounts) {
               { rawValue: convertSynthetic("100") },
               { from: sponsor1 }
             );
-            await syntheticToken.transfer(liquidator, convertSynthetic("100"), {
-              from: sponsor1,
-            });
+            await syntheticToken.transfer(liquidator, convertSynthetic("100"), { from: sponsor1 });
 
             // Create a new liquidation for account[0]'s position.
             const { liquidationId } = await financialContract.createLiquidation.call(
@@ -547,9 +522,7 @@ contract("FinancialContractClient.js", function (accounts) {
               { rawValue: toWei("9999999") },
               { rawValue: toWei("100") },
               unreachableDeadline,
-              {
-                from: liquidator,
-              }
+              { from: liquidator }
             );
             await financialContract.createLiquidation(
               sponsor1,
@@ -570,9 +543,7 @@ contract("FinancialContractClient.js", function (accounts) {
             // Dispute the liquidation and make sure it no longer shows up in the list.
             // We need to advance the Oracle time forward to make `requestPrice` work.
             await mockOracle.setCurrentTime(Number(await financialContract.getCurrentTime()) + 1);
-            await financialContract.dispute(liquidationId.toString(), sponsor1, {
-              from: sponsor1,
-            });
+            await financialContract.dispute(liquidationId.toString(), sponsor1, { from: sponsor1 });
             await client.update();
 
             // The disputed liquidation should no longer show up as undisputed.
@@ -590,17 +561,8 @@ contract("FinancialContractClient.js", function (accounts) {
               { rawValue: convertSynthetic("100") },
               { from: sponsor1 }
             );
-            await syntheticToken.transfer(liquidator, convertSynthetic("100"), {
-              from: sponsor1,
-            });
-            await financialContract.requestWithdrawal(
-              {
-                rawValue: convertCollateral("10"),
-              },
-              {
-                from: sponsor1,
-              }
-            );
+            await syntheticToken.transfer(liquidator, convertSynthetic("100"), { from: sponsor1 });
+            await financialContract.requestWithdrawal({ rawValue: convertCollateral("10") }, { from: sponsor1 });
 
             // Create a new liquidation for account[0]'s position.
             await financialContract.createLiquidation.call(
@@ -609,9 +571,7 @@ contract("FinancialContractClient.js", function (accounts) {
               { rawValue: toWei("9999999") },
               { rawValue: toWei("100") },
               unreachableDeadline,
-              {
-                from: liquidator,
-              }
+              { from: liquidator }
             );
             await financialContract.createLiquidation(
               sponsor1,
@@ -619,9 +579,7 @@ contract("FinancialContractClient.js", function (accounts) {
               { rawValue: toWei("9999999") },
               { rawValue: toWei("100") },
               unreachableDeadline,
-              {
-                from: liquidator,
-              }
+              { from: liquidator }
             );
             await client.update();
 
@@ -672,9 +630,7 @@ contract("FinancialContractClient.js", function (accounts) {
             );
 
             // Withdraw from the expired liquidation and check that the liquidation is deleted.
-            await financialContract.withdrawLiquidation("0", sponsor1, {
-              from: liquidator,
-            });
+            await financialContract.withdrawLiquidation("0", sponsor1, { from: liquidator });
             await client.update();
             assert.deepStrictEqual([], client.getExpiredLiquidations().sort());
           }
@@ -688,21 +644,15 @@ contract("FinancialContractClient.js", function (accounts) {
             await financialContract.create(
               { rawValue: convertCollateral("150") },
               { rawValue: convertSynthetic("100") },
-              {
-                from: sponsor1,
-              }
+              { from: sponsor1 }
             );
-            await syntheticToken.transfer(liquidator, convertSynthetic("100"), {
-              from: sponsor1,
-            });
+            await syntheticToken.transfer(liquidator, convertSynthetic("100"), { from: sponsor1 });
 
             // Create a new liquidation for account[0]'s position.
             const { liquidationId } = await financialContract.createLiquidation.call(
               sponsor1,
               { rawValue: "0" },
-              {
-                rawValue: toWei("9999999"),
-              },
+              { rawValue: toWei("9999999") },
               { rawValue: toWei("100") },
               unreachableDeadline,
               { from: liquidator }
@@ -725,9 +675,7 @@ contract("FinancialContractClient.js", function (accounts) {
             // Dispute the liquidation and make sure it no longer shows up in the list.
             // We need to advance the Oracle time forward to make `requestPrice` work.
             await mockOracle.setCurrentTime(Number(await financialContract.getCurrentTime()) + 1);
-            await financialContract.dispute(liquidationId.toString(), sponsor1, {
-              from: sponsor1,
-            });
+            await financialContract.dispute(liquidationId.toString(), sponsor1, { from: sponsor1 });
             await client.update();
 
             // The disputed liquidation should no longer show up as undisputed.
@@ -753,9 +701,7 @@ contract("FinancialContractClient.js", function (accounts) {
             // withdraw from the unsuccessfully disputed liquidation and check that the liquidation is deleted.
             const disputePrice = convertPrice("1.6");
             await mockOracle.pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice);
-            await financialContract.withdrawLiquidation("0", sponsor1, {
-              from: liquidator,
-            });
+            await financialContract.withdrawLiquidation("0", sponsor1, { from: liquidator });
             await client.update();
             assert.deepStrictEqual([], client.getDisputedLiquidations().sort());
           }

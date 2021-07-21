@@ -175,9 +175,7 @@ class OptimisticOracleClient {
           let resolvedPrice = revertWrapper(
             await this.voting.methods
               .getPrice(disputeEvent.returnValues.identifier, disputeEvent.returnValues.timestamp, stampedAncillaryData)
-              .call({
-                from: this.oracle.options.address,
-              })
+              .call({ from: this.oracle.options.address })
           );
           if (resolvedPrice !== null) {
             return disputeEvent;
@@ -226,6 +224,4 @@ class OptimisticOracleClient {
   }
 }
 
-module.exports = {
-  OptimisticOracleClient,
-};
+module.exports = { OptimisticOracleClient };

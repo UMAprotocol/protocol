@@ -117,9 +117,7 @@ async function runExport() {
       { to: registry.address, value: 0, data: empCreatorRegistrationTx },
       { to: identifierWhitelist.address, value: 0, data: identiferRegistrationTx },
     ],
-    {
-      from: proposerWallet,
-    }
+    { from: proposerWallet }
   );
 
   console.log("Adding EMP factory to registry tx:", additionProposalTx.tx);
@@ -326,12 +324,8 @@ async function runExport() {
   // approve tokens and send dai from whale
   for (let i = 1; i < 4; i++) {
     console.log("collateral and synthetic approval and seeding account", accounts[i]);
-    await collateralToken.approve(expiringMultiParty.address, web3.utils.toWei("1000000"), {
-      from: accounts[i],
-    });
-    await syntheticToken.approve(expiringMultiParty.address, web3.utils.toWei("1000000"), {
-      from: accounts[i],
-    });
+    await collateralToken.approve(expiringMultiParty.address, web3.utils.toWei("1000000"), { from: accounts[i] });
+    await syntheticToken.approve(expiringMultiParty.address, web3.utils.toWei("1000000"), { from: accounts[i] });
     await collateralToken.transfer(accounts[i], web3.utils.toWei("1000000"), { from: largeDaiTokenHolder });
   }
 

@@ -4,9 +4,7 @@
 const Governor = artifacts.require("Governor");
 const { GasEstimator } = require("@uma/financial-templates-lib");
 const winston = require("winston");
-const argv = require("minimist")(process.argv.slice(), {
-  string: ["start", "end"],
-});
+const argv = require("minimist")(process.argv.slice(), { string: ["start", "end"] });
 
 async function execute(callback) {
   try {
@@ -17,9 +15,7 @@ async function execute(callback) {
     console.log(`Proposing Admin ${start} through Admin ${end}`);
 
     const gasEstimator = new GasEstimator(
-      winston.createLogger({
-        silent: true,
-      }),
+      winston.createLogger({ silent: true }),
       60, // Time between updates.
       await web3.eth.net.getId()
     );

@@ -19,13 +19,7 @@ describe("scripts/DecodeTransactionData.js", function () {
     const registry = await Registry.deployed();
     const txnData = registry.methods.registerContract([], contractAddress).encodeABI();
 
-    const expectedObject = {
-      name: "registerContract",
-      params: {
-        parties: [],
-        contractAddress: contractAddress,
-      },
-    };
+    const expectedObject = { name: "registerContract", params: { parties: [], contractAddress: contractAddress } };
 
     assert.equal(
       JSON.stringify(DecodeTransactionData.run(txnData)).toLowerCase(),
@@ -48,12 +42,7 @@ describe("scripts/DecodeTransactionData.js", function () {
     }
 
     const txnData = voting.methods.batchReveal(revealArray).encodeABI();
-    const expectedObject = {
-      name: "batchReveal",
-      params: {
-        reveals: revealArray,
-      },
-    };
+    const expectedObject = { name: "batchReveal", params: { reveals: revealArray } };
 
     assert.equal(
       JSON.stringify(DecodeTransactionData.run(txnData)).toLowerCase(),

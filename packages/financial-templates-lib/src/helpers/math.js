@@ -31,7 +31,4 @@ const isDeviationOutsideErrorMargin = (observedValueBN, expectedValueBN, scaling
   return deviationBN.abs().gt(errorMarginBN);
 };
 
-module.exports = {
-  calculateDeviationError,
-  isDeviationOutsideErrorMargin,
-};
+module.exports = { calculateDeviationError, isDeviationOutsideErrorMargin };

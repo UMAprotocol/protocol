@@ -95,9 +95,9 @@ describe("ReserveTokenDisputer", function () {
 
     mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({ from: deployer });
 
-    await finder.methods.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address).send({
-      from: deployer,
-    });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address)
+      .send({ from: deployer });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();

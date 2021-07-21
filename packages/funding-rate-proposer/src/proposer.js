@@ -260,12 +260,7 @@ class FundingRateProposer {
           error.type === "call"
             ? "Cannot propose funding rate: not enough collateral (or large enough approval)✋"
             : "Failed to propose funding rate🚨";
-        this.logger.error({
-          at: "PerpetualProposer#updateFundingRate",
-          message,
-          fundingRateIdentifier,
-          error,
-        });
+        this.logger.error({ at: "PerpetualProposer#updateFundingRate", message, fundingRateIdentifier, error });
         return;
       }
     } else {
@@ -356,10 +351,7 @@ class FundingRateProposer {
         // Fetch contract state that we won't need to refresh, such as collateral currency:
         const collateralAddress = await perpetualContract.methods.collateralCurrency().call();
 
-        this.contractCache[contractAddress] = {
-          contract: perpetualContract,
-          collateralAddress,
-        };
+        this.contractCache[contractAddress] = { contract: perpetualContract, collateralAddress };
       }
       // For this contract, load state.
       await this._getContractState(contractAddress);
@@ -376,10 +368,7 @@ class FundingRateProposer {
       target: contractAddress,
       callData: perpetualContract.methods.applyFundingRate().encodeABI(),
     };
-    const fundingRateCall = {
-      target: contractAddress,
-      callData: perpetualContract.methods.fundingRate().encodeABI(),
-    };
+    const fundingRateCall = { target: contractAddress, callData: perpetualContract.methods.fundingRate().encodeABI() };
     // `aggregateTransactionsAndCall` returns an array of decoded return data bytes corresponding to the transactions
     // passed to the multicall aggregate method. Therefore, `fundingRate()`'s return output is the second element.
     const [[, fundingRateData], configStoreAddress] = await Promise.all([
@@ -394,14 +383,9 @@ class FundingRateProposer {
     // Save contract state to cache:
     this.contractCache[contractAddress] = {
       ...this.contractCache[contractAddress],
-      state: {
-        currentFundingRateData: fundingRateData,
-        currentConfig,
-      },
+      state: { currentFundingRateData: fundingRateData, currentConfig },
     };
   }
 }
 
-module.exports = {
-  FundingRateProposer,
-};
+module.exports = { FundingRateProposer };

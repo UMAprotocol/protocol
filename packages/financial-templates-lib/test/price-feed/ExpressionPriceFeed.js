@@ -4,10 +4,7 @@ const { PriceFeedMock } = require("../../src/price-feed/PriceFeedMock");
 
 contract("ExpressionPriceFeed.js", function () {
   it("Update", async function () {
-    const priceFeedMap = {
-      ETHUSD: new PriceFeedMock(),
-      BTCUSD: new PriceFeedMock(),
-    };
+    const priceFeedMap = { ETHUSD: new PriceFeedMock(), BTCUSD: new PriceFeedMock() };
 
     const expressionPriceFeed = new ExpressionPriceFeed(priceFeedMap, "ETHUSD + BTCUSD");
     await expressionPriceFeed.update();

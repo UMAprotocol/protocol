@@ -3,6 +3,17 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.5.1](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.5.0...@uma/affiliates@1.5.1) (2021-07-19)
+
+**Note:** Version bump only for package @uma/affiliates
+
+# [1.5.0](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.4.1...@uma/affiliates@1.5.0) (2021-07-15)
+
+### Features
+
+- **affiliates:** change dev mining total rewards down to 35000 ([#3217](https://github.com/UMAprotocol/protocol/issues/3217)) ([1d18f22](https://github.com/UMAprotocol/protocol/commit/1d18f222d73fd441599da0a063724760a12ae540))
+- **linter:** proposal to minimize object sizing ([#3222](https://github.com/UMAprotocol/protocol/issues/3222)) ([c925524](https://github.com/UMAprotocol/protocol/commit/c925524e888f73e1f694c4f9bf4ad1fb31e456bc))
+
 ## [1.4.1](https://github.com/UMAprotocol/protocol/compare/@uma/affiliates@1.4.0...@uma/affiliates@1.4.1) (2021-07-07)
 
 ### Bug Fixes

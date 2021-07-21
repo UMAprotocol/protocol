@@ -31,6 +31,4 @@ async function retrieveGckmsKeys(gckmsConfigs) {
   );
 }
 
-module.exports = {
-  retrieveGckmsKeys,
-};
+module.exports = { retrieveGckmsKeys };
