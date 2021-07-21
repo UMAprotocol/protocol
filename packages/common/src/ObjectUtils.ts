@@ -13,7 +13,7 @@
  * the new Object and `isValid` will be called to validate each of `newObject`'s properties.
  * @return `newObject` a new Object with the same properties as `defaultProps`, or `defaultProps` if undefined `overrideProps`.
  */
-const createObjectFromDefaultProps = (overrideProps, defaultProps) => {
+export const createObjectFromDefaultProps = (overrideProps: any, defaultProps: any): any => {
   if (!defaultProps) {
     throw new Error("Undefined `defaultProps`");
   }
@@ -22,7 +22,7 @@ const createObjectFromDefaultProps = (overrideProps, defaultProps) => {
     overrideProps = {};
   }
 
-  const newObject = {};
+  const newObject: any = {};
 
   Object.keys(defaultProps).forEach((prop) => {
     // Set property value to that contained in `overrideProps` if it exists, else set to `defaultProps`.

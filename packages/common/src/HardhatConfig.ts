@@ -1,7 +1,13 @@
+import { HardhatConfig } from "hardhat/types";
+
 const { getNodeUrl, mnemonic } = require("./TruffleConfig");
 const path = require("path");
 
-function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = true) {
+export function getHardhatConfig(
+  configOverrides: any,
+  workingDir = "./",
+  includeTruffle = true
+): Partial<HardhatConfig> {
   // Hardhat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function
   // get access to the plugins as well.
   if (includeTruffle) require("@nomiclabs/hardhat-truffle5");
@@ -76,10 +82,12 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
 // Helper method to let the user of HardhatConfig assign a global address which is then accessible from the @uma/core
 // getAddressTest method. This enables hardhat to be used in tests like the main index.js entry tests in the liquidator
 // disputer and monitor bots. In future, this should be refactored to use https://github.com/wighawag/hardhat-deploy
-function addGlobalHardhatTestingAddress(contractName, address) {
-  if (!global.hardhatTestingAddresses) {
-    global.hardhatTestingAddresses = {};
+export function addGlobalHardhatTestingAddress(contractName: string, address: string): void {
+  const castedGlobal = (global as unknown) as {
+    hardhatTestingAddresses: undefined | { [contractName: string]: string };
+  };
+  if (!castedGlobal.hardhatTestingAddresses) {
+    castedGlobal.hardhatTestingAddresses = {};
   }
-  global.hardhatTestingAddresses[contractName] = address;
+  castedGlobal.hardhatTestingAddresses[contractName] = address;
 }
-module.exports = { getHardhatConfig, addGlobalHardhatTestingAddress };

@@ -1,9 +1,12 @@
-const { PublicNetworks: networkUtils } = require("./PublicNetworks");
+import { PublicNetworks as networkUtils } from "./PublicNetworks";
+import Web3 from "web3";
+import type { BN } from "./types";
 
-const BigNumber = require("bignumber.js");
-const moment = require("moment");
-const assert = require("assert");
-const { formatFixed, parseFixed } = require("@ethersproject/bignumber");
+import BigNumber from "bignumber.js";
+import moment from "moment";
+import assert from "assert";
+import { formatFixed, parseFixed } from "@ethersproject/bignumber";
+import { Net } from "web3/eth/types";
 
 // Apply settings to BigNumber.js library.
 // Note: ROUNDING_MODE is set to round ceiling so we send at least enough collateral to create the requested tokens.
@@ -13,47 +16,53 @@ const { formatFixed, parseFixed } = require("@ethersproject/bignumber");
 BigNumber.set({ ROUNDING_MODE: 2, RANGE: 500, EXPONENTIAL_AT: 500 });
 
 // Given a timestamp in seconds, returns the date in the format: "MM/DD/YYYY"
-const formatDateShort = (timestampInSeconds) => {
-  const date = moment.unix(parseInt(Number(timestampInSeconds)));
+export const formatDateShort = (timestampInSeconds: number): string => {
+  const date = moment.unix(Math.floor(timestampInSeconds));
   return date.format("MM/DD/YYYY");
 };
 
-const formatDate = (timestampInSeconds, web3) => {
-  return new Date(parseInt(web3.utils.toBN(timestampInSeconds).muln(1000).toString(), 10)).toString();
+export const formatDate = (timestampInSeconds: number): string => {
+  return new Date(Math.floor(timestampInSeconds * 1000)).toString();
 };
 
-const formatHours = (seconds, decimals = 2) => {
+export const formatHours = (seconds: number, decimals = 2) => {
   // 3600 seconds in an hour.
   return (seconds / 3600).toFixed(decimals);
 };
 
 // formatWei converts a string or BN instance from Wei to Ether, e.g., 1e19 -> 10.
-const formatWei = (num, web3) => {
+export const formatWei = (num: string | BN) => {
   // Web3's `fromWei` function doesn't work on BN objects in minified mode (e.g.,
   // `web3.utils.isBN(web3.utils.fromBN("5"))` is false), so we use a workaround where we always pass in strings.
   // See https://github.com/ethereum/web3.js/issues/1777.
-  return web3.utils.fromWei(num.toString());
+  return Web3.utils.fromWei(num.toString());
 };
 
 // Formats the input to round to decimalPlaces number of decimals if the number has a magnitude larger than 1 and fixes
 // precision to minPrecision if the number has a magnitude less than 1.
-const formatWithMaxDecimals = (num, decimalPlaces, minPrecision, roundUp, showSign) => {
+export const formatWithMaxDecimals = (
+  num: number | string,
+  decimalPlaces: number,
+  minPrecision: number,
+  roundUp: boolean,
+  showSign: boolean
+): string => {
   if (roundUp) {
     BigNumber.set({ ROUNDING_MODE: BigNumber.ROUND_UP });
   } else {
     BigNumber.set({ ROUNDING_MODE: BigNumber.ROUND_DOWN });
   }
 
-  const fullPrecisionFloat = BigNumber(num);
+  const fullPrecisionFloat = new BigNumber(num);
   const positiveSign = showSign && fullPrecisionFloat.gt(0) ? "+" : "";
   let fixedPrecisionFloat;
   // Convert back to BN to truncate any trailing 0s that the toFixed() output would print. If the number is equal to or larger than
   // 1 then truncate to `decimalPlaces` number of decimal places. EG 999.999 -> 999.99 with decimalPlaces=2 If the number
   // is less than 1 then truncate to minPrecision precision. EG: 0.0022183471 -> 0.002218 with minPrecision=4
-  if (fullPrecisionFloat.abs().gte(BigNumber(1))) {
-    fixedPrecisionFloat = BigNumber(fullPrecisionFloat).toFixed(decimalPlaces).toString();
+  if (fullPrecisionFloat.abs().gte(new BigNumber(1))) {
+    fixedPrecisionFloat = new BigNumber(fullPrecisionFloat).toFixed(decimalPlaces).toString();
   } else {
-    fixedPrecisionFloat = BigNumber(fullPrecisionFloat).toPrecision(minPrecision).toString();
+    fixedPrecisionFloat = new BigNumber(fullPrecisionFloat).toPrecision(minPrecision).toString();
   }
   // This puts commas in the thousands places, but only before the decimal point.
   const fixedPrecisionFloatParts = fixedPrecisionFloat.split(".");
@@ -61,10 +70,16 @@ const formatWithMaxDecimals = (num, decimalPlaces, minPrecision, roundUp, showSi
   return positiveSign + fixedPrecisionFloatParts.join(".");
 };
 
-const createFormatFunction = (web3, numDisplayedDecimals, minDisplayedPrecision, showSign = false, decimals = 18) => {
-  return (valInWei) =>
+export const createFormatFunction = (
+  _web3: Web3 | undefined, // unused
+  numDisplayedDecimals: number,
+  minDisplayedPrecision: number,
+  showSign = false,
+  decimals = 18
+) => {
+  return (valInWei: string | BN) =>
     formatWithMaxDecimals(
-      formatWei(ConvertDecimals(decimals, 18, web3)(valInWei), web3),
+      formatWei(ConvertDecimals(decimals, 18)(valInWei)),
       numDisplayedDecimals,
       minDisplayedPrecision,
       false,
@@ -72,8 +87,9 @@ const createFormatFunction = (web3, numDisplayedDecimals, minDisplayedPrecision,
     );
 };
 
+type NetworkId = keyof typeof networkUtils;
 // Generate an etherscan link prefix. If a networkId is provided then the URL will point to this network. Else, assume mainnet.
-function createEtherscanLinkFromtx(networkId) {
+export function createEtherscanLinkFromtx(networkId: NetworkId): string {
   // Construct etherscan link based on network
   let url;
   if (networkUtils[networkId]) {
@@ -88,22 +104,23 @@ function createEtherscanLinkFromtx(networkId) {
 
 // Convert either an address or transaction to a shorter version.
 // 0x772871a444c6e4e9903d8533a5a13101b74037158123e6709470f0afbf6e7d94 -> 0x7787...7d94
-function createShortHexString(hex) {
+export function createShortHexString(hex: string): string {
   return hex.substring(0, 5) + "..." + hex.substring(hex.length - 6, hex.length - 1);
 }
 
 // Take in either a transaction or an account and generate an etherscan link for the corresponding
 // network formatted in markdown.
-function createEtherscanLinkMarkdown(hex, networkId = 1) {
+export function createEtherscanLinkMarkdown(hex: string, networkId: NetworkId = 1): string | null {
   if (hex.substring(0, 2) != "0x") return null;
-  let shortURLString = createShortHexString(hex);
+  const shortURLString = createShortHexString(hex);
   // Transaction hash
   if (hex.length == 66) return `<${createEtherscanLinkFromtx(networkId)}tx/${hex}|${shortURLString}>`;
   // Account
   else if (hex.length == 42) return `<${createEtherscanLinkFromtx(networkId)}address/${hex}|${shortURLString}>`;
+  return null;
 }
 
-function addSign(number) {
+export function addSign(number: string): string {
   if (Number(number) > 0) {
     return `+${number}`;
   } else {
@@ -120,34 +137,17 @@ function addSign(number) {
 // toDecimals: number - decimal value to convert to
 // web3: web3 object to get a big number function.
 // return => (amount:string)=>BN
-const ConvertDecimals = (fromDecimals, toDecimals, web3) => {
+export const ConvertDecimals = (fromDecimals: number, toDecimals: number): ((amountIn: string) => BN) => {
   assert(fromDecimals >= 0, "requires fromDecimals as an integer >= 0");
   assert(toDecimals >= 0, "requires toDecimals as an integer >= 0");
-  assert(web3, "requires web3 instance");
   // amount: string, BN, number - integer amount in fromDecimals smallest unit that want to convert toDecimals
   // returns: BN with toDecimals in smallest unit
-  return (amount) => {
-    amount = web3.utils.toBN(amount);
+  return (amountIn: string | number) => {
+    const amount = Web3.utils.toBN(amountIn);
     if (amount.isZero()) return amount;
     const diff = fromDecimals - toDecimals;
     if (diff == 0) return amount;
-    if (diff > 0) return amount.div(web3.utils.toBN("10").pow(web3.utils.toBN(diff.toString())));
-    return amount.mul(web3.utils.toBN("10").pow(web3.utils.toBN((-1 * diff).toString())));
+    if (diff > 0) return amount.div(Web3.utils.toBN("10").pow(Web3.utils.toBN(diff.toString())));
+    return amount.mul(Web3.utils.toBN("10").pow(Web3.utils.toBN((-1 * diff).toString())));
   };
-};
-
-module.exports = {
-  formatDateShort,
-  formatDate,
-  formatHours,
-  formatWei,
-  formatWithMaxDecimals,
-  createFormatFunction,
-  createEtherscanLinkFromtx,
-  createShortHexString,
-  createEtherscanLinkMarkdown,
-  addSign,
-  formatFixed,
-  parseFixed,
-  ConvertDecimals,
 };

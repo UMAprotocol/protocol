@@ -3,11 +3,18 @@
 // ID as the network (i.e. Rinkeby will return 4 as the chainId), but some networks with chainID's > 255 need to
 // override the default behavior because their network ID is too high.
 const BRIDGE_CHAIN_ID = { 1337: 253, 80001: 254, 31337: 255 };
-const getBridgeChainId = (netId) => {
-  return BRIDGE_CHAIN_ID[netId] || netId;
+
+type ModifiedBridgeId = keyof typeof BRIDGE_CHAIN_ID;
+
+function isModifedChainId(netId: number): netId is ModifiedBridgeId {
+  return netId in BRIDGE_CHAIN_ID;
+}
+
+export const getBridgeChainId = (netId: number): number => {
+  return isModifedChainId(netId) ? BRIDGE_CHAIN_ID[netId] : netId;
 };
 
-const PublicNetworks = {
+export const PublicNetworks = {
   1: {
     name: "mainnet",
     ethFaucet: null,
@@ -48,5 +55,3 @@ const PublicNetworks = {
     customTruffleConfig: { confirmations: 2, timeoutBlocks: 200 },
   },
 };
-
-module.exports = { PublicNetworks, getBridgeChainId };

@@ -86,8 +86,8 @@ class RetryProvider {
       const { delay, retries } = this.providerCaches[providerIndex];
       // If out of retries, move to next provider.
       const shouldMoveToNextProvider = retries <= retryIndex + 1;
-      let nextRetryIndex = shouldMoveToNextProvider ? 0 : retryIndex + 1;
-      let nextProviderIndex = shouldMoveToNextProvider ? providerIndex + 1 : providerIndex;
+      const nextRetryIndex = shouldMoveToNextProvider ? 0 : retryIndex + 1;
+      const nextProviderIndex = shouldMoveToNextProvider ? providerIndex + 1 : providerIndex;
       if (nextProviderIndex >= this.providerCaches.length) throw error; // No more providers to try.
       if (!shouldMoveToNextProvider) await new Promise((resolve) => setTimeout(resolve, delay * 1000)); // Delay only if not moving to a new provider.
 

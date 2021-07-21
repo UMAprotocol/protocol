@@ -1,22 +1,27 @@
-const web3 = require("web3");
-const lodash = require("lodash");
-const assert = require("assert");
+import Web3 from "web3";
+import lodash from "lodash";
+import assert from "assert";
+import { ZERO_ADDRESS } from "./Constants";
 
-const { toWei, utf8ToHex, padRight } = web3.utils;
-const { ZERO_ADDRESS } = require("./Constants");
+const { toWei, utf8ToHex, padRight } = Web3.utils;
 
 // Versions that production bots support.
-const SUPPORTED_CONTRACT_VERSIONS = [
+export const SUPPORTED_CONTRACT_VERSIONS = [
   { contractType: "ExpiringMultiParty", contractVersion: "2.0.1" },
   { contractType: "Perpetual", contractVersion: "2.0.1" },
 ];
 
 // Versions that unit tests will test against. Note we dont test anything less than 2.0.1 as all older contracts have
 // expired on mainnet.
-const TESTED_CONTRACT_VERSIONS = [
+export const TESTED_CONTRACT_VERSIONS = [
   { contractType: "ExpiringMultiParty", contractVersion: "2.0.1" },
   { contractType: "Perpetual", contractVersion: "2.0.1" },
 ];
+
+interface Version {
+  contractType: string;
+  contractVersion: string;
+}
 
 /**
  * Used in conjunction with versionedIt within tests, this method will return true if the currentTestIterationVersion
@@ -27,7 +32,11 @@ const TESTED_CONTRACT_VERSIONS = [
  * @returns {bool} true of the current test iteration version is part of & supportedVersions & SUPPORTED_CONTRACT_VERSIONS
  * or any, false otherwise.
  */
-function runTestForVersion(supportedVersions, SUPPORTED_CONTRACT_VERSIONS, currentTestIterationVersion) {
+export function runTestForVersion(
+  supportedVersions: Version[],
+  SUPPORTED_CONTRACT_VERSIONS: Version[],
+  currentTestIterationVersion: Version
+): boolean {
   // Validate that the array of supportedVersions provided is in the SUPPORTED_CONTRACT_VERSIONS OR is `any`.
   const supportedVersionOverlap = lodash.intersectionBy(
     supportedVersions,
@@ -59,11 +68,11 @@ function runTestForVersion(supportedVersions, SUPPORTED_CONTRACT_VERSIONS, curre
  * @param {Object} overrideConstructorParams optional override for the constructor params generated.
  * @returns {Object} version compatible constructor parameters.
  */
-async function createConstructorParamsForContractVersion(
-  contractVersion,
-  contextObjects,
+export async function createConstructorParamsForContractVersion(
+  contractVersion: Version,
+  contextObjects: any,
   overrideConstructorParams = {}
-) {
+): Promise<any> {
   assert(
     contractVersion && contractVersion.contractVersion && contractVersion.contractType,
     "contractVersion must be provided, containing both a contract version and type"
@@ -93,7 +102,7 @@ async function createConstructorParamsForContractVersion(
     (await contextObjects.timer.getCurrentTime?.())?.toNumber() ||
     parseInt(await contextObjects.timer.methods.getCurrentTime().call());
 
-  let constructorParams = {
+  const constructorParams: any = {
     expirationTimestamp: currentTime + 100000,
     withdrawalLiveness: "1000",
     collateralAddress: contextObjects.collateralToken.address || contextObjects.collateralToken.options.address,
