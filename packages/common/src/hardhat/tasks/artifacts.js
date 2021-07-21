@@ -81,12 +81,6 @@ task("generate-contracts-frontend", "Generate typescipt for the contracts-fronte
     // Note: the idea behind writing the functions this way is to make them as optimized as possible for tree-shaking
     // to remove any unused json files. In modern versions of webpack, this should allow absolutely _no_ artifact
     // information that isn't needed to be pulled in.
-    // artifacts.forEach(({ contractName, relativePath }) =>
-    //   fs.appendFileSync(
-    //     out,
-    //     `import { abi as ${contractName}Abi, bytecode as ${contractName}Bytecode } from "${relativePath}";\n`
-    //   )
-    // );
     artifacts.forEach(({ contractName, relativePath }) => {
       const abi = JSON.stringify(JSON.parse(fs.readFileSync(relativePath)).abi);
       fs.appendFileSync(out, `export function get${contractName}Abi(): any[] { return JSON.parse(\`${abi}\`); }\n`);
