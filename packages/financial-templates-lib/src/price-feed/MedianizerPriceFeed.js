@@ -148,6 +148,4 @@ class MedianizerPriceFeed extends PriceFeedInterface {
   }
 }
 
-module.exports = {
-  MedianizerPriceFeed,
-};
+module.exports = { MedianizerPriceFeed };

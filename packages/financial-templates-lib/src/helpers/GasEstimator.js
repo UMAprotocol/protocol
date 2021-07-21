@@ -15,14 +15,8 @@ const GAS_ESTIMATOR_MAPPING_BY_NETWORK = {
     backupUrl: "https://api.etherscan.io/api?module=gastracker&action=gasoracle",
     defaultFastPriceGwei: 50,
   },
-  137: {
-    url: "https://gasstation-mainnet.matic.network",
-    defaultFastPriceGwei: 10,
-  },
-  80001: {
-    url: "https://gasstation-mumbai.matic.today",
-    defaultFastPriceGwei: 20,
-  },
+  137: { url: "https://gasstation-mainnet.matic.network", defaultFastPriceGwei: 10 },
+  80001: { url: "https://gasstation-mumbai.matic.today", defaultFastPriceGwei: 20 },
 };
 
 const DEFAULT_NETWORK_ID = 1; // Ethereum Mainnet.
@@ -154,7 +148,4 @@ class GasEstimator {
   }
 }
 
-module.exports = {
-  GasEstimator,
-  GAS_ESTIMATOR_MAPPING_BY_NETWORK,
-};
+module.exports = { GasEstimator, GAS_ESTIMATOR_MAPPING_BY_NETWORK };

@@ -27,6 +27,12 @@ zrxBaseUrl=https://api.0x.org
 
 # how many days of price history we should query on startup, leave empty to disable, history will start at the time app is started
 backfillDays=
+
+# required for lsp state updates. this is a valid multicall address on mainnet.
+MULTI_CALL_ADDRESS=0xeefBa1e63905eF1D7ACbA5a8513c70307C1cE441
+
+# any non null value will turn on debugging. This adds additional logs and time profiles for key calls.
+debug=1
 ```
 
 ## Starting
@@ -164,3 +170,21 @@ Returns TVL/TVM for emp starting at timestamp in seconds and a length number of 
 ### listTvms(currency: CurrencySymbol = "usd") => Array<{value:string, timestamp:number}>
 
 List all tvls/tvms of known contracts.
+
+### historicalMarketPricesBetween(tokenAddress: string, start = 0, end: number = nowS()) StatData[]
+
+Returns historical market prices (based on 0x api) for a token address. Get samples between a start time and end time ( in seconds).
+Currently only usdc prices are supported.
+
+### sliceHistoricalMarketPrices(tokenAddress: string, start = 0, length = 1) StatData[]
+
+Returns historical market prices (based on 0x api) for a token address. Slices from a starting timestamp (in seconds) and a count of samples newer than that.
+Currently only usdc prices are supported.
+
+### globalTvlHistoryBetween(start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") => StatData[]
+
+Gets the history of global tvl, the sum of all known EMP total value locked, between start and end timestamps in seconds.
+
+### globalTvlSlice(start = 0, length = 1, currency: CurrencySymbol = "usd") => StatData[]
+
+Gets the history of global tvl, the sum of all known EMP total value locked, starting at start in timestamp seconds and counting length samples after that.

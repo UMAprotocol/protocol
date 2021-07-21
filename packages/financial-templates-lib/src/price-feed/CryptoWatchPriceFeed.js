@@ -325,6 +325,4 @@ class CryptoWatchPriceFeed extends PriceFeedInterface {
   }
 }
 
-module.exports = {
-  CryptoWatchPriceFeed,
-};
+module.exports = { CryptoWatchPriceFeed };

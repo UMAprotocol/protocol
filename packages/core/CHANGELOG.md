@@ -3,6 +3,30 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.7.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.6.0...@uma/core@2.7.0) (2021-07-19)
+
+### Features
+
+- Update OptimisticOracle and Polygon Tunnel Addresses ([#3209](https://github.com/UMAprotocol/protocol/issues/3209)) ([6593fe5](https://github.com/UMAprotocol/protocol/commit/6593fe5aa1980c45ab570da049a9373e8f172c11))
+
+# [2.6.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.5.0...@uma/core@2.6.0) (2021-07-15)
+
+### Bug Fixes
+
+- **polygon:** Update typo in README ([#3216](https://github.com/UMAprotocol/protocol/issues/3216)) ([2c3d172](https://github.com/UMAprotocol/protocol/commit/2c3d172d4f3787ef6914788e2c0c8c7d3b1ff7fd))
+- Response to audit of [#3188](https://github.com/UMAprotocol/protocol/issues/3188) and [#3089](https://github.com/UMAprotocol/protocol/issues/3089) ([#3208](https://github.com/UMAprotocol/protocol/issues/3208)) ([b9039d8](https://github.com/UMAprotocol/protocol/commit/b9039d8d2938525decf463392221a09e4f49a919))
+- **LSP:** Address audit commenting issues ([#3185](https://github.com/UMAprotocol/protocol/issues/3185)) ([f5d6bd4](https://github.com/UMAprotocol/protocol/commit/f5d6bd45f4bdb7b67b16daae81065ed3876a35c2))
+- **LSP:** Continuous audit commenting and require modifications ([#3207](https://github.com/UMAprotocol/protocol/issues/3207)) ([54c7442](https://github.com/UMAprotocol/protocol/commit/54c7442b0035119392db9636acd6f03fbcc7c8ab))
+
+### Features
+
+- Add helper scripts to propose Admin transaction to register new contract ([#3219](https://github.com/UMAprotocol/protocol/issues/3219)) ([538612b](https://github.com/UMAprotocol/protocol/commit/538612bdd5a02ae7147888bb4cc13b686b0e1bd5))
+- **core:** refactor core tests to no longer use truffle ([#3202](https://github.com/UMAprotocol/protocol/issues/3202)) ([349401a](https://github.com/UMAprotocol/protocol/commit/349401a869e89f9b5583d34c1f282407dca021ac))
+- **linter:** proposal to minimize object sizing ([#3222](https://github.com/UMAprotocol/protocol/issues/3222)) ([c925524](https://github.com/UMAprotocol/protocol/commit/c925524e888f73e1f694c4f9bf4ad1fb31e456bc))
+- **liquidator,disputer,monitor:** deprecate legacy tests ([#3212](https://github.com/UMAprotocol/protocol/issues/3212)) ([498ecfc](https://github.com/UMAprotocol/protocol/commit/498ecfcfd3d767ceeb28e37f42ee5a1b7d4f0c83))
+- **LSP:** Add rounding protection and additional unit tests ([#3211](https://github.com/UMAprotocol/protocol/issues/3211)) ([a059ead](https://github.com/UMAprotocol/protocol/commit/a059eadf4e1fa8d6f8d02c74491b68cfc7f6ab7c))
+- **LSP:** Update deployment addresses across all networks ([#3210](https://github.com/UMAprotocol/protocol/issues/3210)) ([026b204](https://github.com/UMAprotocol/protocol/commit/026b20431bfc61399741f7d4e4076eb6c39740b4))
+
 # [2.5.0](https://github.com/UMAprotocol/protocol/compare/@uma/core@2.4.0...@uma/core@2.5.0) (2021-07-07)
 
 ### Bug Fixes

@@ -146,9 +146,4 @@ class ExpressionPriceFeed extends PriceFeedInterface {
   }
 }
 
-module.exports = {
-  ExpressionPriceFeed,
-  math,
-  allowedSpecialCharacters,
-  escapeSpecialCharacters,
-};
+module.exports = { ExpressionPriceFeed, math, allowedSpecialCharacters, escapeSpecialCharacters };

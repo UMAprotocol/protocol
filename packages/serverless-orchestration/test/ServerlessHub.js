@@ -73,9 +73,7 @@ contract("ServerlessHub.js", function (accounts) {
     defaultChainId = await web3.eth.getChainId();
 
     collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractDeployer });
-    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, {
-      from: contractDeployer,
-    });
+    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractDeployer });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
@@ -129,11 +127,7 @@ contract("ServerlessHub.js", function (accounts) {
 
     uniswap = await UniswapV2Mock.new();
 
-    defaultPricefeedConfig = {
-      type: "test",
-      currentPrice: "1",
-      historicalPrice: "1",
-    };
+    defaultPricefeedConfig = { type: "test", currentPrice: "1", historicalPrice: "1" };
 
     // Set two uniswap prices to give it a little history.
     await uniswap.setPrice(toWei("1"), toWei("1"));
@@ -229,10 +223,7 @@ contract("ServerlessHub.js", function (accounts) {
     setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
     setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
 
-    const validBody = {
-      bucket: testBucket,
-      configFile: testConfigFile,
-    };
+    const validBody = { bucket: testBucket, configFile: testConfigFile };
 
     const testHubPort = 8082; // create a separate port to run this specific test on.
     // Create a hub instance with invalid spoke port. This will force the spoke to reject
@@ -277,10 +268,7 @@ contract("ServerlessHub.js", function (accounts) {
     setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
     setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
 
-    const validBody = {
-      bucket: testBucket,
-      configFile: testConfigFile,
-    };
+    const validBody = { bucket: testBucket, configFile: testConfigFile };
 
     // start the timoutSpokemock on a new port. Set the timeout for the response to be 5 seconds.
     const timeoutSpokeInstance = await timeoutSpoke.Poll(8083, 5);
@@ -354,10 +342,7 @@ contract("ServerlessHub.js", function (accounts) {
     setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
     setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
 
-    const validBody = {
-      bucket: testBucket,
-      configFile: testConfigFile,
-    };
+    const validBody = { bucket: testBucket, configFile: testConfigFile };
 
     const validResponse = await sendHubRequest(validBody);
     assert.equal(validResponse.res.statusCode, 200); // no error code
@@ -517,10 +502,7 @@ contract("ServerlessHub.js", function (accounts) {
     setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
     setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
 
-    const body = {
-      bucket: testBucket,
-      configFile: testConfigFile,
-    };
+    const body = { bucket: testBucket, configFile: testConfigFile };
 
     await sendHubRequest(body);
 
@@ -606,10 +588,7 @@ contract("ServerlessHub.js", function (accounts) {
     setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
     setEnvironmentVariable(`lastQueriedBlockNumber-${666}-${testConfigFile}`, startingBlockNumber);
 
-    const validBody = {
-      bucket: testBucket,
-      configFile: testConfigFile,
-    };
+    const validBody = { bucket: testBucket, configFile: testConfigFile };
 
     const validResponse = await sendHubRequest(validBody);
     assert.equal(validResponse.res.statusCode, 200); // no error code

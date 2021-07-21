@@ -9,21 +9,12 @@ const {
   runTestForVersion,
   createConstructorParamsForContractVersion,
   TESTED_CONTRACT_VERSIONS,
+  TEST_DECIMAL_COMBOS,
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
 // Script to test
 const { FinancialContractEventClient } = require("../../src/clients/FinancialContractEventClient");
-
-// Run the tests against 3 different kinds of token/synth decimal combinations:
-// 1) matching 18 & 18 for collateral for most token types with normal tokens.
-// 2) non-matching 8 collateral & 18 synthetic for legacy UMA synthetics.
-// 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
-const configs = [
-  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 },
-];
 
 const startTime = "15798990420";
 const unreachableDeadline = MAX_UINT_VAL;
@@ -75,7 +66,7 @@ const versionedIt = function (supportedVersions, shouldBeItOnly = false) {
 };
 
 contract("FinancialContractEventClient.js", function (accounts) {
-  for (let tokenConfig of configs) {
+  for (let tokenConfig of TEST_DECIMAL_COMBOS) {
     describe(`${tokenConfig.collateralDecimals} decimals`, function () {
       const tokenSponsor = accounts[0];
       const liquidator = accounts[1];
@@ -105,7 +96,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
         const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
         const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
 
-        for (let testConfig of configs) {
+        for (let testConfig of TEST_DECIMAL_COMBOS) {
           describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
             before(async function () {
               identifier = `${testConfig.tokenName}TEST`;
@@ -117,9 +108,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 testConfig.tokenSymbol + " Token", // Construct the token name.,
                 testConfig.tokenSymbol,
                 tokenConfig.collateralDecimals,
-                {
-                  from: tokenSponsor,
-                }
+                { from: tokenSponsor }
               );
               await collateralToken.addMember(1, tokenSponsor, { from: tokenSponsor });
               await collateralToken.mint(liquidator, convertCollateral("100000"), { from: tokenSponsor });
@@ -162,9 +151,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 "Test Synthetic Token",
                 "SYNTH",
                 tokenConfig.syntheticDecimals,
-                {
-                  from: tokenSponsor,
-                }
+                { from: tokenSponsor }
               );
 
               // If we are testing a perpetual then we need to also deploy a config store, an optimistic oracle and set the funding rate identifier.
@@ -215,10 +202,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
               await syntheticToken.addBurner(financialContract.address);
 
               // The FinancialContractEventClient does not emit any info level events. Therefore no need to test Winston outputs.
-              dummyLogger = winston.createLogger({
-                level: "info",
-                transports: [new winston.transports.Console()],
-              });
+              dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
               // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.
               await financialContract.setCurrentTime(startTime);
@@ -602,60 +586,6 @@ contract("FinancialContractEventClient.js", function (accounts) {
               }
             );
 
-            versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "1.2.2" }])(
-              "Return FinalFee Events",
-              async function () {
-                // Update the client and check it has the new sponsor event stored correctly
-                await client.clearState();
-
-                // State is empty before update()
-                assert.deepStrictEqual([], client.getAllFinalFeeEvents());
-
-                await store.setFinalFee(collateralToken.address, { rawValue: convertCollateral("1") });
-                await financialContract.createLiquidation(
-                  sponsor1,
-                  { rawValue: "0" },
-                  { rawValue: convertPrice("99999") },
-                  { rawValue: convertSynthetic("1") },
-                  unreachableDeadline,
-                  { from: liquidator }
-                );
-
-                // Compare with expected processed event objects.
-                const finalFeeTxObj1 = await financialContract.dispute("0", sponsor1, { from: sponsor2 });
-                await client.update();
-                assert.deepStrictEqual(
-                  [
-                    {
-                      transactionHash: finalFeeTxObj1.tx,
-                      blockNumber: finalFeeTxObj1.receipt.blockNumber,
-                      amount: convertCollateral("1"),
-                    },
-                  ],
-                  client.getAllFinalFeeEvents()
-                );
-
-                // Correctly adds only new events after last query.
-                await timer.setCurrentTime(await financialContract.expirationTimestamp());
-                const finalFeeTxObj2 = await financialContract.expire();
-                await client.clearState();
-                await client.update();
-                assert.deepStrictEqual(
-                  [
-                    {
-                      transactionHash: finalFeeTxObj2.tx,
-                      blockNumber: finalFeeTxObj2.receipt.blockNumber,
-                      amount: convertCollateral("1"),
-                    },
-                  ],
-                  client.getAllFinalFeeEvents()
-                );
-
-                // Reset fees
-                await store.setFinalFee(collateralToken.address, { rawValue: "0" });
-              }
-            );
-
             versionedIt([{ contractType: "any", contractVersion: "any" }])(
               "Return Liquidation Events",
               async function () {
@@ -776,9 +706,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 );
 
                 // Dispute the position from the second sponsor
-                await financialContract.dispute("0", sponsor1, {
-                  from: sponsor2,
-                });
+                await financialContract.dispute("0", sponsor1, { from: sponsor2 });
 
                 // Advance time and settle
                 const timeAfterLiquidationLiveness = liquidationTime + 10;
@@ -833,9 +761,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 );
 
                 // Dispute the position from the second sponsor
-                await financialContract.dispute("0", sponsor1, {
-                  from: sponsor2,
-                });
+                await financialContract.dispute("0", sponsor1, { from: sponsor2 });
 
                 // Advance time and settle
                 const timeAfterLiquidationLiveness = liquidationTime + 10;
@@ -872,61 +798,6 @@ contract("FinancialContractEventClient.js", function (accounts) {
               }
             );
 
-            versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "1.2.2" }])(
-              "Return SettleExpiredPosition Events",
-              async function () {
-                await client.clearState();
-
-                // State is empty before update()
-                assert.deepStrictEqual([], client.getAllSettleExpiredPositionEvents());
-
-                // Expire contract at settlement price of 0.2.
-                await timer.setCurrentTime(expirationTime.toString());
-                // Make the contract creator the admin to enable emergencyshutdown in tests.
-                await finder.changeImplementationAddress(
-                  utf8ToHex(interfaceName.FinancialContractsAdmin),
-                  tokenSponsor
-                );
-
-                await financialContract.expire();
-                await mockOracle.pushPrice(utf8ToHex(identifier), expirationTime.toString(), convertPrice("0.2"));
-                const txObject = await financialContract.settleExpired({ from: sponsor1 });
-
-                await client.update();
-
-                // Compare with expected processed event objects.
-                assert.deepStrictEqual(
-                  [
-                    {
-                      transactionHash: txObject.tx,
-                      blockNumber: txObject.receipt.blockNumber,
-                      caller: sponsor1,
-                      collateralReturned: convertCollateral("10"), // Sponsor should get back all collateral in position because they still hold all tokens
-                      tokensBurned: convertSynthetic("50"),
-                    },
-                  ],
-                  client.getAllSettleExpiredPositionEvents()
-                );
-
-                // Correctly adds only new events after last query.
-                const txObject2 = await financialContract.settleExpired({ from: sponsor2 });
-                await client.clearState();
-                await client.update();
-                assert.deepStrictEqual(
-                  [
-                    {
-                      transactionHash: txObject2.tx,
-                      blockNumber: txObject2.receipt.blockNumber,
-                      caller: sponsor2,
-                      collateralReturned: convertCollateral("100"), // Sponsor should get back all collateral in position because they still hold all tokens
-                      tokensBurned: convertSynthetic("45"),
-                    },
-                  ],
-                  client.getAllSettleExpiredPositionEvents()
-                );
-              }
-            );
-
             versionedIt([{ contractType: "Perpetual", contractVersion: "2.0.1" }])(
               "Return FundingRateUpdated Events",
               async function () {
@@ -946,10 +817,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                   // and publish it.
                   const proposalExpiry = proposalTime + optimisticOracleLiveness;
                   await timer.setCurrentTime(proposalExpiry);
-                  return {
-                    txObject: await financialContract.applyFundingRate(),
-                    proposalTime,
-                  };
+                  return { txObject: await financialContract.applyFundingRate(), proposalTime };
                 };
                 const { txObject, proposalTime } = await proposeAndPublishNewRate(toWei("-0.00001"));
 

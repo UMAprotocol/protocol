@@ -175,20 +175,11 @@ describe("DappMining V1", function () {
     it("procesess simple event stream", async function () {
       // These events represent a stream of contract events. In this case
       // we only carre about position created as that will add to users token balance.
-      const events = [
-        {
-          name: "PositionCreated",
-          args: ["usera", 100, 100],
-          blockNumber: 0,
-        },
-      ];
+      const events = [{ name: "PositionCreated", args: ["usera", 100, 100], blockNumber: 0 }];
       const result = await highland(events)
         .through(
           // Similar to the attribution processor, this will weigh balances over N blocks.
-          utils.ProcessEventStream({
-            startBlock: 0,
-            endBlock: 1,
-          })
+          utils.ProcessEventStream({ startBlock: 0, endBlock: 1 })
         )
         .toPromise(Promise);
       assert.equal(result.get("usera"), "100");
@@ -215,12 +206,7 @@ describe("DappMining V1", function () {
         },
       ];
       const result = await highland(events)
-        .through(
-          utils.ProcessEventStream({
-            startBlock: 0,
-            endBlock: 3,
-          })
-        )
+        .through(utils.ProcessEventStream({ startBlock: 0, endBlock: 3 }))
         .toPromise(Promise);
       // The balances get weighed by number of blocks elapsed from deposit. A was earliest, then B then C.
       assert.equal(result.get("usera"), "300");
@@ -432,20 +418,11 @@ describe("DappMining V2", function () {
     it("procesess simple event stream", async function () {
       // These events represent a stream of contract events. In this case
       // we only carre about position created as that will add to users token balance.
-      const events = [
-        {
-          name: "PositionCreated",
-          args: ["usera", 100, 100],
-          blockNumber: 0,
-        },
-      ];
+      const events = [{ name: "PositionCreated", args: ["usera", 100, 100], blockNumber: 0 }];
       const result = await highland(events)
         .through(
           // Similar to the attribution processor, this will weigh balances over N blocks.
-          utils.ProcessEventStream({
-            startBlock: 0,
-            endBlock: 1,
-          })
+          utils.ProcessEventStream({ startBlock: 0, endBlock: 1 })
         )
         .toPromise(Promise);
       assert.equal(result.get("usera"), "100");
@@ -472,12 +449,7 @@ describe("DappMining V2", function () {
         },
       ];
       const result = await highland(events)
-        .through(
-          utils.ProcessEventStream({
-            startBlock: 0,
-            endBlock: 3,
-          })
-        )
+        .through(utils.ProcessEventStream({ startBlock: 0, endBlock: 3 }))
         .toPromise(Promise);
       // The balances get weighed by number of blocks elapsed from deposit. A was earliest, then B then C.
       assert.equal(result.get("usera"), "300");

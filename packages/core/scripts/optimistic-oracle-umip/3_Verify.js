@@ -37,8 +37,8 @@ async function runExport() {
 
   console.log("Verifying that the OptimisticOracle is registered with the Finder...");
   assert.equal(
-    await finder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.OptimisticOracle)),
-    argv.deployedAddress
+    (await finder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.OptimisticOracle))).toLowerCase(),
+    argv.deployedAddress.toLowerCase()
   );
   console.log("Verified!");
 

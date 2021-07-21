@@ -165,9 +165,7 @@ describe("ExpiringMultiPartyCreator", function () {
     // Use `.call` to get the returned value from the function.
     let functionReturnedAddress = await expiringMultiPartyCreator.methods
       .createExpiringMultiParty(constructorParams)
-      .call({
-        from: contractCreator,
-      });
+      .call({ from: contractCreator });
 
     // Execute without the `.call` to perform state change. catch the result to query the event.
     let createdAddressResult = await expiringMultiPartyCreator.methods

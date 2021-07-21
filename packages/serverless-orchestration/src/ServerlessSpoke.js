@@ -143,11 +143,7 @@ function _getChildProcessIdentifier(req) {
 async function Poll(injectedLogger = Logger, port = 8080) {
   logger = injectedLogger;
   return spoke.listen(port, () => {
-    logger.debug({
-      at: "ServerlessSpoke",
-      message: "serverless spoke initialized",
-      port,
-    });
+    logger.debug({ at: "ServerlessSpoke", message: "serverless spoke initialized", port });
   });
 }
 // If called directly by node, start the Poll process. If imported as a module then do nothing.

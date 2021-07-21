@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.5.1](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.5.0...@uma/optimistic-oracle@2.5.1) (2021-07-19)
+
+**Note:** Version bump only for package @uma/optimistic-oracle
+
+# [2.5.0](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.4.1...@uma/optimistic-oracle@2.5.0) (2021-07-15)
+
+### Features
+
+- **linter:** proposal to minimize object sizing ([#3222](https://github.com/UMAprotocol/protocol/issues/3222)) ([c925524](https://github.com/UMAprotocol/protocol/commit/c925524e888f73e1f694c4f9bf4ad1fb31e456bc))
+
 ## [2.4.1](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.4.0...@uma/optimistic-oracle@2.4.1) (2021-07-07)
 
 **Note:** Version bump only for package @uma/optimistic-oracle

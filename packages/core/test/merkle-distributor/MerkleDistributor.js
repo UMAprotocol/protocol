@@ -48,11 +48,7 @@ const createLeaf = (recipient) => {
 // Generate payouts to be used in tests using the SamplePayouts file. SamplePayouts is read in from a JsonFile.
 const createRewardRecipientsFromSampleData = (SamplePayouts) => {
   return Object.keys(SamplePayouts.exampleRecipients).map((recipientAddress, i) => {
-    return {
-      account: recipientAddress,
-      amount: SamplePayouts.exampleRecipients[recipientAddress],
-      accountIndex: i,
-    };
+    return { account: recipientAddress, amount: SamplePayouts.exampleRecipients[recipientAddress], accountIndex: i };
   });
 };
 
@@ -90,11 +86,7 @@ describe("MerkleDistributor.js", function () {
       let totalRewardAmount = toBN(0);
       rewardRecipients = _rewardRecipients.map((_rewardObj) => {
         totalRewardAmount = totalRewardAmount.add(_rewardObj[1]);
-        return {
-          account: _rewardObj[0],
-          amount: _rewardObj[1].toString(),
-          accountIndex: _rewardObj[2],
-        };
+        return { account: _rewardObj[0], amount: _rewardObj[1].toString(), accountIndex: _rewardObj[2] };
       });
 
       // Generate leafs for each recipient. This is simply the hash of each component of the payout from above.
@@ -110,9 +102,7 @@ describe("MerkleDistributor.js", function () {
 
       const seedTxn = await merkleDistributor.methods
         .setWindow(totalRewardAmount, rewardToken.options.address, merkleTree.getRoot(), sampleIpfsHash)
-        .send({
-          from: contractCreator,
-        });
+        .send({ from: contractCreator });
 
       // Check event logs.
       await assertEventEmitted(seedTxn, merkleDistributor, "CreatedWindow", (ev) => {
@@ -445,20 +435,14 @@ describe("MerkleDistributor.js", function () {
         // should never work for leaf 1 tree 1 or leaf 1 tree 3.
         rewardRecipients.push(
           rewardRecipients[0].map((recipient) => {
-            return {
-              ...recipient,
-              amount: toBN(recipient.amount).muln(2).toString(),
-            };
+            return { ...recipient, amount: toBN(recipient.amount).muln(2).toString() };
           })
         );
 
         // Third set of reward recipients has double the amount as second, and different currency.
         rewardRecipients.push(
           rewardRecipients[1].map((recipient) => {
-            return {
-              ...recipient,
-              amount: toBN(recipient.amount).muln(2).toString(),
-            };
+            return { ...recipient, amount: toBN(recipient.amount).muln(2).toString() };
           })
         );
 
@@ -740,10 +724,7 @@ describe("MerkleDistributor.js", function () {
           .map((windowData, i) => {
             // Gets the reward token for the window data for this claim
             // and injects it into the claim object.
-            return {
-              ...claimsArray[i],
-              rewardToken: windowData.rewardToken,
-            };
+            return { ...claimsArray[i], rewardToken: windowData.rewardToken };
           })
           .sort((a, b) => {
             // If a.account == b.account, then sorts by rewardToken

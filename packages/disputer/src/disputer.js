@@ -99,18 +99,13 @@ class Disputer {
       contractVersion: {
         value: undefined,
         isValid: (x) => {
-          return x === "1.2.0" || x === "1.2.1" || x === "1.2.2" || x === "2.0.1";
+          return x === "2.0.1";
         },
       },
     };
 
     // Validate and set config settings to class state.
     Object.assign(this, createObjectFromDefaultProps(disputerConfig, defaultConfig));
-
-    // These EMP versions have different "LiquidationWithdrawn" event parameters that we need to handle.
-    this.isLegacyEmpVersion = Boolean(
-      this.contractVersion === "1.2.0" || this.contractVersion === "1.2.1" || this.contractVersion === "1.2.2"
-    );
   }
 
   // Update the client and gasEstimator clients.
@@ -121,10 +116,7 @@ class Disputer {
   // Queries disputable liquidations and disputes any that were incorrectly liquidated. If `disputerOverridePrice` is
   // provided then the disputer will ignore the price feed and use the override price instead for all undisputed liquidations.
   async dispute(disputerOverridePrice) {
-    this.logger.debug({
-      at: "Disputer",
-      message: "Checking for any disputable liquidations",
-    });
+    this.logger.debug({ at: "Disputer", message: "Checking for any disputable liquidations" });
 
     // Get the latest disputable liquidations from the client.
     const undisputedLiquidations = this.financialContractClient.getUndisputedLiquidations();
@@ -196,19 +188,12 @@ class Disputer {
     ).filter((liquidation) => liquidation !== null);
 
     if (disputableLiquidationsWithPrices.length === 0) {
-      this.logger.debug({
-        at: "Disputer",
-        message: "No disputable liquidations",
-      });
+      this.logger.debug({ at: "Disputer", message: "No disputable liquidations" });
       return;
     }
 
     for (const disputeableLiquidation of disputableLiquidationsWithPrices) {
-      this.logger.debug({
-        at: "Disputer",
-        message: "Disputing liquidation",
-        liquidation: disputeableLiquidation,
-      });
+      this.logger.debug({ at: "Disputer", message: "Disputing liquidation", liquidation: disputeableLiquidation });
 
       // Submit the dispute transaction. This will use the DSProxy if configured or will send the tx with the unlocked EOA.
       const logResult = await this.proxyTransactionWrapper.submitDisputeTransaction([
@@ -238,10 +223,7 @@ class Disputer {
 
   // Queries ongoing disputes and attempts to withdraw any pending rewards from them.
   async withdrawRewards() {
-    this.logger.debug({
-      at: "Disputer",
-      message: "Checking for disputed liquidations that may have resolved",
-    });
+    this.logger.debug({ at: "Disputer", message: "Checking for disputed liquidations that may have resolved" });
 
     // The disputer address is either the DSProxy (if using a DSProxy to dispute) or the unlocked account.
     const disputerAddress = this.proxyTransactionWrapper.useDsProxyToDispute
@@ -254,26 +236,7 @@ class Disputer {
       .filter((liquidation) => liquidation.disputer === disputerAddress);
 
     if (disputedLiquidations.length === 0) {
-      this.logger.debug({
-        at: "Disputer",
-        message: "No withdrawable disputes",
-      });
-      return;
-    }
-
-    // In legacy versions of the EMP, withdrawing needs to be done by a party involved in the liquidation (i.e liquidator,
-    // sponsor or disputer). As the disputer is the DSProxy, we would require the ability to send the withdrawal tx
-    // directly from the DSProxy to facilitate this. This functionality is not implemented as almost all legacy EMPs expired.
-    if (
-      this.proxyTransactionWrapper?.useDsProxyToDispute &&
-      this.isLegacyEmpVersion &&
-      disputedLiquidations.length > 0
-    ) {
-      this.logger.warn({
-        at: "Disputer",
-        message: "Attempting to withdraw dispute from a legacy EMP🙈",
-        details: "This is not supported on legacy with a DSProxy! Please manually withdraw the dispute",
-      });
+      this.logger.debug({ at: "Disputer", message: "No withdrawable disputes" });
       return;
     }
 
@@ -287,11 +250,7 @@ class Disputer {
       // Construct transaction.
       const withdraw = this.financialContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 
-      this.logger.debug({
-        at: "Disputer",
-        message: "Withdrawing dispute",
-        liquidation: liquidation,
-      });
+      this.logger.debug({ at: "Disputer", message: "Withdrawing dispute", liquidation: liquidation });
       try {
         // Get successful transaction receipt and return value or error.
         const { receipt, transactionConfig } = await runTransaction({
@@ -308,15 +267,12 @@ class Disputer {
               receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
             ],
         };
-        // In contract version 1.2.2 and below this function returns one value: the amount withdrawn by the function caller.
-        // In later versions it returns an object containing all payouts.
-        if (this.isLegacyEmpVersion) {
-          logResult.withdrawalAmount = receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount;
-        } else {
-          logResult.paidToLiquidator = receipt.events.LiquidationWithdrawn.returnValues.paidToLiquidator;
-          logResult.paidToDisputer = receipt.events.LiquidationWithdrawn.returnValues.paidToDisputer;
-          logResult.paidToSponsor = receipt.events.LiquidationWithdrawn.returnValues.paidToSponsor;
-        }
+
+        // Returns an object containing all payouts.
+        logResult.paidToLiquidator = receipt.events.LiquidationWithdrawn.returnValues.paidToLiquidator;
+        logResult.paidToDisputer = receipt.events.LiquidationWithdrawn.returnValues.paidToDisputer;
+        logResult.paidToSponsor = receipt.events.LiquidationWithdrawn.returnValues.paidToSponsor;
+
         this.logger.info({
           at: "Disputer",
           message: "Dispute withdrawn🤑",
@@ -328,20 +284,10 @@ class Disputer {
         // If the withdrawal simulation fails, then it is likely that the dispute has not resolved yet, and we don't
         // want to emit a high level log about this:
         if (error.type === "call") {
-          this.logger.debug({
-            at: "Disputer",
-            message: "No rewards to withdraw",
-            liquidation: liquidation,
-          });
+          this.logger.debug({ at: "Disputer", message: "No rewards to withdraw", liquidation: liquidation });
         } else {
           const message = "Failed to withdraw dispute rewards🚨";
-          this.logger.error({
-            at: "Disputer",
-            message,
-            disputer: this.account,
-            liquidation: liquidation,
-            error,
-          });
+          this.logger.error({ at: "Disputer", message, disputer: this.account, liquidation: liquidation, error });
         }
         continue;
       }
@@ -349,6 +295,4 @@ class Disputer {
   }
 }
 
-module.exports = {
-  Disputer,
-};
+module.exports = { Disputer };

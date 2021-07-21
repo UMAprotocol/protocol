@@ -95,10 +95,7 @@ contract("OptimisticOracleClient.js", function (accounts) {
 
     // The OptimisticOracleClient does not emit any info `level` events.  Therefore no need to test Winston outputs.
     // DummyLogger will not print anything to console as only capture `info` level events.
-    dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+    dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
     client = new OptimisticOracleClient(
       dummyLogger,

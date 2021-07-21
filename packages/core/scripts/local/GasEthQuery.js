@@ -57,6 +57,4 @@ function createQuery(earlierTimeBound, laterTimeBound) {
   return query;
 }
 
-module.exports = {
-  createQuery,
-};
+module.exports = { createQuery };

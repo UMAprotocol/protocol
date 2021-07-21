@@ -20,11 +20,7 @@ describe("TokenFactory", function () {
 
   let tokenFactory;
 
-  const tokenDetails = {
-    name: "UMA Token",
-    symbol: "UMA",
-    decimals: "18",
-  };
+  const tokenDetails = { name: "UMA Token", symbol: "UMA", decimals: "18" };
 
   before(async () => {
     accounts = await web3.eth.getAccounts();
@@ -35,9 +31,7 @@ describe("TokenFactory", function () {
   it("Can create new tokens and transfers roles successfully", async () => {
     const tokenAddress = await tokenFactory.methods
       .createToken(tokenDetails.name, tokenDetails.symbol, tokenDetails.decimals)
-      .call({
-        from: tokenCreator,
-      });
+      .call({ from: tokenCreator });
     await tokenFactory.methods
       .createToken(tokenDetails.name, tokenDetails.symbol, tokenDetails.decimals)
       .send({ from: tokenCreator });
@@ -69,9 +63,7 @@ describe("TokenFactory", function () {
   it("Token can execute expected methods", async () => {
     const tokenAddress = await tokenFactory.methods
       .createToken(tokenDetails.name, tokenDetails.symbol, tokenDetails.decimals)
-      .call({
-        from: tokenCreator,
-      });
+      .call({ from: tokenCreator });
     await tokenFactory.methods
       .createToken(tokenDetails.name, tokenDetails.symbol, tokenDetails.decimals)
       .send({ from: tokenCreator });

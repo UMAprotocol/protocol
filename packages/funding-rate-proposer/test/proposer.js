@@ -147,10 +147,7 @@ contract("Perpetual: proposer.js", function (accounts) {
 
     // Set non-0 final fee to test that bot can stake proposer bond.
     await store.setFinalFee(collateral.address, { rawValue: finalFee });
-    let customCreationParams = {
-      ...defaultCreationParams,
-      collateralAddress: collateral.address,
-    };
+    let customCreationParams = { ...defaultCreationParams, collateralAddress: collateral.address };
 
     // Before creating new perps, save the current contract time because this gets initialized as the
     // "last update time" for the perps. This is important to track because new proposals can only
@@ -160,10 +157,7 @@ contract("Perpetual: proposer.js", function (accounts) {
     // Use a different funding rate identifier for each perpetual.
     perpsCreated = [];
     for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
-      customCreationParams = {
-        ...customCreationParams,
-        fundingRateIdentifier: fundingRateIdentifiersToTest[i],
-      };
+      customCreationParams = { ...customCreationParams, fundingRateIdentifier: fundingRateIdentifiersToTest[i] };
 
       // Deploy new Perp
       const perpAddress = await perpFactory.createPerpetual.call(customCreationParams, configStoreParams, {
@@ -212,9 +206,7 @@ contract("Perpetual: proposer.js", function (accounts) {
     await timer.setCurrentTime(latestProposalTime);
     // For this test, we'll dispute any proposals that are not equal to historical price up to a
     // 10% margin of error
-    let optimisticOracleProposerConfig = {
-      fundingRateErrorPercent: 0.1,
-    };
+    let optimisticOracleProposerConfig = { fundingRateErrorPercent: 0.1 };
     proposer = new FundingRateProposer({
       logger: spyLogger,
       perpetualFactoryClient: factoryClient,

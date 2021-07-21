@@ -61,9 +61,7 @@ contract("IntegrationTest", function (accounts) {
 
   beforeEach(async () => {
     collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
-    await collateralToken.addMember(1, contractCreator, {
-      from: contractCreator,
-    });
+    await collateralToken.addMember(1, contractCreator, { from: contractCreator });
     registry = await Registry.deployed();
     expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, expiringMultiPartyCreator.address, {
@@ -71,9 +69,7 @@ contract("IntegrationTest", function (accounts) {
     });
 
     collateralTokenWhitelist = await AddressWhitelist.at(await expiringMultiPartyCreator.collateralTokenWhitelist());
-    await collateralTokenWhitelist.addToWhitelist(collateralToken.address, {
-      from: contractCreator,
-    });
+    await collateralTokenWhitelist.addToWhitelist(collateralToken.address, { from: contractCreator });
 
     startingTime = await expiringMultiPartyCreator.getCurrentTime();
     expirationTime = startingTime.add(toBN(60 * 60 * 24 * 30 * 3)); // Three month in the future
@@ -97,16 +93,12 @@ contract("IntegrationTest", function (accounts) {
 
     // register the price identifer within the identifer whitelist
     const identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
-      from: contractCreator,
-    });
+    await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, { from: contractCreator });
 
     const finder = await Finder.deployed();
 
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
-    mockOracle = await MockOracle.new(finder.address, Timer.address, {
-      from: contractCreator,
-    });
+    mockOracle = await MockOracle.new(finder.address, Timer.address, { from: contractCreator });
 
     store = await Store.deployed();
 
@@ -120,12 +112,8 @@ contract("IntegrationTest", function (accounts) {
 
     for (const account of accounts) {
       // approve the tokens
-      await collateralToken.approve(expiringMultiParty.address, mintAndApprove, {
-        from: account,
-      });
-      await syntheticToken.approve(expiringMultiParty.address, mintAndApprove, {
-        from: account,
-      });
+      await collateralToken.approve(expiringMultiParty.address, mintAndApprove, { from: account });
+      await syntheticToken.approve(expiringMultiParty.address, mintAndApprove, { from: account });
 
       // mint collateral for all accounts
       await collateralToken.mint(account, mintAndApprove, { from: contractCreator });
@@ -213,9 +201,7 @@ contract("IntegrationTest", function (accounts) {
 
       // STEP 2: transferring tokens to the token holder
       if (i % 2 == 1) {
-        await syntheticToken.transfer(tokenHolder, baseNumTokens.toString(), {
-          from: sponsor,
-        });
+        await syntheticToken.transfer(tokenHolder, baseNumTokens.toString(), { from: sponsor });
         tokenTransfers++;
       }
 
@@ -418,9 +404,7 @@ contract("IntegrationTest", function (accounts) {
 
       // STEP 2: transferring tokens to the token holder
       if (i % 2 == 1) {
-        await syntheticToken.transfer(tokenHolder, baseNumTokens.toString(), {
-          from: sponsor,
-        });
+        await syntheticToken.transfer(tokenHolder, baseNumTokens.toString(), { from: sponsor });
         tokenTransfers++;
       }
 
@@ -629,9 +613,7 @@ contract("IntegrationTest", function (accounts) {
 
       // STEP 2: transferring tokens to the token holder
       if (i % 2 == 1) {
-        await syntheticToken.transfer(tokenHolder, baseNumTokens.toString(), {
-          from: sponsor,
-        });
+        await syntheticToken.transfer(tokenHolder, baseNumTokens.toString(), { from: sponsor });
         tokenTransfers++;
       }
 
@@ -652,9 +634,7 @@ contract("IntegrationTest", function (accounts) {
           .div(toBN(toWei("1")))
           .add(toBN("100000"));
         await expiringMultiParty.create(
-          {
-            rawValue: liquidatorSeedCollateral.toString(),
-          },
+          { rawValue: liquidatorSeedCollateral.toString() },
           { rawValue: positionTokensOutstanding.toString() },
           { from: liquidator }
         );

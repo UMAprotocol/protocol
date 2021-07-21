@@ -57,11 +57,7 @@ class DSProxyManager {
   // the user can provide a dsProxyAddress if they want to override the factory behaviour and load in a DSProxy directly.
   async initializeDSProxy(dsProxyAddress = null, shouldCreateProxy = true) {
     if (dsProxyAddress) {
-      this.logger.debug({
-        at: "DSProxyManager",
-        message: "Initalizing to a provided DSProxy Address",
-        dsProxyAddress,
-      });
+      this.logger.debug({ at: "DSProxyManager", message: "Initalizing to a provided DSProxy Address", dsProxyAddress });
       this.dsProxyAddress = dsProxyAddress;
       this.dsProxy = new this.web3.eth.Contract(this.dsProxyAbi, this.dsProxyAddress);
       return dsProxyAddress;
@@ -178,6 +174,4 @@ class DSProxyManager {
   }
 }
 
-module.exports = {
-  DSProxyManager,
-};
+module.exports = { DSProxyManager };

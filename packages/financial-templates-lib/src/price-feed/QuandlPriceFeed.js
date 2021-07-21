@@ -249,6 +249,4 @@ class QuandlPriceFeed extends PriceFeedInterface {
   }
 }
 
-module.exports = {
-  QuandlPriceFeed,
-};
+module.exports = { QuandlPriceFeed };
