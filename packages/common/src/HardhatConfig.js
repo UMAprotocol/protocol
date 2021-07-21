@@ -5,10 +5,11 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
   // Hardhat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function
   // get access to the plugins as well.
   if (includeTruffle) require("@nomiclabs/hardhat-truffle5");
-  require("hardhat-gas-reporter");
   require("@nomiclabs/hardhat-web3");
-  require("hardhat-deploy");
+  require("@nomiclabs/hardhat-ethers");
   require("@nomiclabs/hardhat-etherscan");
+  require("hardhat-gas-reporter");
+  require("hardhat-deploy");
   require("@eth-optimism/hardhat-ovm");
   require("./gckms/KeyInjectorPlugin");
 
@@ -23,17 +24,12 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
 
   const defaultConfig = {
     solidity: {
-      version: solcVersion,
-      settings: {
-        optimizer: {
-          enabled: true,
-          runs: 199,
-        },
-      },
+      compilers: [
+        { version: solcVersion, settings: { optimizer: { enabled: true, runs: 199 } } },
+        { version: "0.7.6", settings: { optimizer: { enabled: true, runs: 199 } } },
+      ],
     },
-    ovm: {
-      solcVersion: solcVersion,
-    },
+    ovm: { solcVersion: "0.7.6" },
     networks: {
       hardhat: {
         gas: 11500000,
@@ -55,6 +51,7 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
           "oracle/implementation/Finder.sol",
           "oracle/implementation/IdentifierWhitelist.sol",
           "common/implementation/AddressWhitelist.sol",
+          "insured-bridge/*",
         ],
         testBlacklist: [
           "chainbridge",
