@@ -36,7 +36,7 @@ describe("L2_DepositBox", () => {
     l2CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L2CrossDomainMessenger", {
       address: await l2MessengerImpersonator.getAddress(),
     });
-
+    console.log("l2CrossDomainMessengerMock", l2CrossDomainMessengerMock.address);
     depositBox = await deploy("BridgeDepositBox", [l2CrossDomainMessengerMock.address, await l1Owner.getAddress()]);
     console.log("depositBox", depositBox);
   });

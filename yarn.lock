@@ -7445,6 +7445,26 @@
     "@uniswap/v2-core" "1.0.0"
     "@uniswap/v2-periphery" "1.1.0-beta.0"
 
+"@uma/core@^2.7.0":
+  version "2.7.0"
+  resolved "https://registry.yarnpkg.com/@uma/core/-/core-2.7.0.tgz#6b67cec567e8eb7f60be6f4890925191e396be29"
+  integrity sha512-sN5GawBHXRlfKYLqo8V3O20FM3hPV0DSb/PUJvIYH8HvyVzQTE3cE0xbwALklnhuhqkNzqmXWL1V8NqD5XRHZg==
+  dependencies:
+    "@truffle/contract" "^4.3.15"
+    "@uma/common" "^2.6.0"
+    "@uma/core-1-1-0" "npm:@uma/core@1.1.0"
+    "@uma/core-1-2-0" "npm:@uma/core@1.2.0"
+    "@uma/core-1-2-1" "npm:@uma/core@1.2.1"
+    "@uma/core-1-2-2" "npm:@uma/core@1.2.2"
+    "@uma/core-2-0-0" "npm:@uma/core@2.0.0"
+    "@uma/core-2-0-1" "npm:@uma/core@2.0.1"
+    "@uniswap/lib" "4.0.1-alpha"
+    "@uniswap/v2-core" "1.0.0"
+    "@uniswap/v2-periphery" "1.1.0-beta.0"
+    "@uniswap/v3-core" "^1.0.0-rc.2"
+    "@uniswap/v3-periphery" "^1.0.0-beta.23"
+    decimal.js "^10.2.1"
+
 "@uma/merkle-distributor@npm:@uma/merkle-distributor@1.0.3":
   version "1.0.3"
   resolved "https://registry.yarnpkg.com/@uma/merkle-distributor/-/merkle-distributor-1.0.3.tgz#b062c73ae614894f26087d2d7e4d0cb6dbbfc681"
