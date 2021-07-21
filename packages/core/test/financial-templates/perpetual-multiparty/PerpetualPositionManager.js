@@ -53,7 +53,7 @@ describe("PerpetualPositionManager", function () {
   const startTimestamp = Math.floor(Date.now() / 1000);
   const priceFeedIdentifier = utf8ToHex("TEST_IDENTIIFER");
   const fundingRateRewardRate = toWei("0.000001");
-  const fundingRateFeedIdentifier = utf8ToHex("TEST_FUNDING_IDENTIFIER"); // example identifier for funding rate.
+  const fundingRateFeedIdentifier = utf8ToHex("TEST_FUNDING"); // example identifier for funding rate.
   const maxFundingRate = toWei("0.00001");
   const minFundingRate = toWei("-0.00001");
   const minSponsorTokens = "5";

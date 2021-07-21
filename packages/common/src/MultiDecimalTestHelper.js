@@ -10,8 +10,8 @@ const TEST_DECIMAL_COMBOS = [
     priceFeedDecimals: 18,
   },
   {
-    tokenSymbol: "BTC",
-    tokenName: "Wrapped BTC",
+    tokenSymbol: "WBTC",
+    tokenName: "Wrapped Bitcoin",
     collateralDecimals: 8,
     syntheticDecimals: 8,
     priceFeedDecimals: 18,

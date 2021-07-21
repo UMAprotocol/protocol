@@ -27,7 +27,7 @@ async function buildHashes(contractType) {
   const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, buildVersion);
 
   const identifier = "TEST_IDENTIFIER";
-  const fundingRateIdentifier = "TEST_FUNDING_IDENTIFIER";
+  const fundingRateIdentifier = "TEST_FUNDING";
 
   const finder = await Finder.new({ from: contractCreator });
 
@@ -88,7 +88,7 @@ async function buildHashes(contractType) {
   const constructorParams = await createConstructorParamsForContractVersion(
     { contractVersion: "latest", contractType },
     {
-      convertSynthetic: toWei,
+      convertDecimals: toWei,
       finder,
       collateralToken,
       syntheticToken,

@@ -128,7 +128,7 @@ describe("PerpetualLiquidatable", function () {
     // Register the price tracking tickers.
     priceFeedIdentifier = padRight(utf8ToHex("TEST_IDENTIFIER"), 64);
     await identifierWhitelist.methods.addSupportedIdentifier(priceFeedIdentifier).send({ from: contractDeployer });
-    fundingRateIdentifier = padRight(utf8ToHex("TEST_FUNDING_IDENTIFIER"), 64);
+    fundingRateIdentifier = padRight(utf8ToHex("TEST_FUNDING"), 64);
     await identifierWhitelist.methods.addSupportedIdentifier(fundingRateIdentifier).send({ from: contractDeployer });
 
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.

@@ -34,7 +34,7 @@ describe("index.js", function () {
   let originalEnv: any;
 
   const identifier = "TEST_IDENTIFIER";
-  const fundingRateIdentifier = "TEST_FUNDiNG_IDENTIFIER";
+  const fundingRateIdentifier = "TEST_FUNDING";
 
   const FinancialContract = getTruffleContract("Perpetual", web3 as any);
   const Finder = getTruffleContract("Finder", web3 as any);
@@ -123,7 +123,7 @@ describe("index.js", function () {
     constructorParams = await createConstructorParamsForContractVersion(
       { contractType: "Perpetual", contractVersion: "2.0.1" },
       {
-        convertSynthetic: toWei, // These tests do not use convertSynthetic. Override this with toWei
+        convertDecimals: toWei, // These tests do not use convertSynthetic. Override this with toWei
         finder,
         collateralToken,
         syntheticToken,

@@ -46,7 +46,7 @@ let pollingDelay = 0; // 0 polling delay creates a serverless bot that yields af
 let errorRetries = 1;
 let errorRetriesTimeout = 0.1; // 100 milliseconds between performing retries
 let identifier = "TEST_IDENTIFIER";
-let fundingRateIdentifier = "TEST_FUNDiNG_IDENTIFIER";
+let fundingRateIdentifier = "TEST_FUNDING";
 
 contract("index.js", function (accounts) {
   const contractCreator = accounts[0];
@@ -72,7 +72,7 @@ contract("index.js", function (accounts) {
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
     const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);
 
-    describe(`Tests running on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
+    describe(`Tests running for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
       before(async function () {
         finder = await Finder.new();
         // Create identifier whitelist and register the price tracking ticker with it.
@@ -141,7 +141,7 @@ contract("index.js", function (accounts) {
         constructorParams = await createConstructorParamsForContractVersion(
           contractVersion,
           {
-            convertSynthetic: toWei, // These tests do not use convertSynthetic. Override this with toWei
+            convertDecimals: toWei, // These tests do not use convertSynthetic. Override this with toWei
             finder,
             collateralToken,
             syntheticToken,
