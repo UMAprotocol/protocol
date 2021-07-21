@@ -42,7 +42,7 @@
     "chalk-pipe": "^3.0.0",
     "dotenv": "^6.2.0",
     "eth-crypto": "^1.7.0",
-    "hardhat": "^2.4.3",
+    "hardhat": "^2.5.0",
     "hardhat-deploy": "^0.8.11",
     "hardhat-gas-reporter": "^1.0.4",
     "minimist": "^1.2.0",
