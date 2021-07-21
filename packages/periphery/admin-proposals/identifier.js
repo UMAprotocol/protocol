@@ -4,11 +4,11 @@
 // - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
 // - (optional, or required if --polygon is not undefined) set POLYGON_NODE_URL to a Polygon mainnet node. This will
 // be used to query contract data from Polygon when relaying proposals through the GovernorRootTunnel.
-// - Next, open another terminal window and run `node ./packages/core/scripts/admin-proposals/setup.sh` to unlock
+// - Next, open another terminal window and run `node ./packages/periphery/admin-proposals/setup.sh` to unlock
 //   accounts on the local node that we'll need to run this script.
-// - Propose: node ./packages/core/scripts/admin-proposals/identifier.js --identifier 0xabc,0x123 --polygon 0xabc,0x123 --network mainnet-fork
-// - Vote Simulate: node ./packages/core/scripts/admin-proposals/simulateVote.js --network mainnet-fork
-// - Verify: node ./packages/core/scripts/admin-proposals/identifier.js --verify --polygon 0xabc,0x123 --identifier 0xabc,0x123 --network mainnet-fork
+// - Propose: node ./packages/periphery/admin-proposals/identifier.js --identifier 0xabc,0x123 --polygon 0xabc,0x123 --network mainnet-fork
+// - Vote Simulate: node ./packages/periphery/admin-proposals/simulateVote.js --network mainnet-fork
+// - Verify: node ./packages/periphery/admin-proposals/identifier.js --verify --polygon 0xabc,0x123 --identifier 0xabc,0x123 --network mainnet-fork
 // - For production, set the CUSTOM_NODE_URL environment, run the script with a production network passed to the
 //   `--network` flag (along with other params like --keys) like so: `node ... --network mainnet_gckms --keys deployer`
 
@@ -22,11 +22,11 @@
 
 // Examples:
 // - Whitelist identifiers on Ethereum only:
-//    - `node ./packages/core/scripts/admin-proposals/identifier.js --identifier "POOL/USD","USD/POOL" --network mainnet-fork`
+//    - `node ./packages/periphery/admin-proposals/identifier.js --identifier "POOL/USD","USD/POOL" --network mainnet-fork`
 // - Whitelist identifiers on Polygon only:
-//    - `node ./packages/core/scripts/admin-proposals/identifier.js --polygon "POOL/USD","USD/POOL" --network mainnet-fork`
+//    - `node ./packages/periphery/admin-proposals/identifier.js --polygon "POOL/USD","USD/POOL" --network mainnet-fork`
 // - Whitelist identifiers on both (some on Ethereum, some on Polygon):
-//    - `node ./packages/core/scripts/admin-proposals/identifier.js --identifier "POOL/USD","USD/POOL" --polygon "POOL/USD", --network mainnet-fork`
+//    - `node ./packages/periphery/admin-proposals/identifier.js --identifier "POOL/USD","USD/POOL" --polygon "POOL/USD", --network mainnet-fork`
 
 const hre = require("hardhat");
 const { getContract } = hre;
@@ -36,8 +36,8 @@ const { GasEstimator } = require("@uma/financial-templates-lib");
 const Web3 = require("web3");
 const winston = require("winston");
 const { interfaceName } = require("@uma/common");
-const { _getContractAddressByName, _setupWeb3 } = require("./utils");
-const { REQUIRED_SIGNER_ADDRESSES } = require("./constants");
+const { _getContractAddressByName, _setupWeb3 } = require("../utils");
+const { REQUIRED_SIGNER_ADDRESSES } = require("../utils/constants");
 const argv = require("minimist")(process.argv.slice(), {
   string: [
     // comma-delimited list of identifiers to whitelist on Ethereum. Required if --polygon is omitted.
