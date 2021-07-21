@@ -3,9 +3,11 @@
 
 // Run:
 // - Start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
+// - Next, open another terminal window and run `node ./packages/core/scripts/admin-proposals/setup.sh` to unlock
+//   accounts on the local node that we'll need to run this script.
 // - This script should be run after any Admin proposal UMIP script against a local Mainnet fork. It allows the tester
-// to simulate what would happen if the proposal were to pass and to verify that contract state changes as expected.
-// - Vote Simulate: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/simulateVote.js
+//   to simulate what would happen if the proposal were to pass and to verify that contract state changes as expected.
+// - Vote Simulate: node ./packages/core/scripts/admin-proposals/simulateVote.js --network mainnet-fork
 
 const hre = require("hardhat");
 const { getContract } = hre;
@@ -22,18 +24,12 @@ const {
   signMessage,
 } = require("@uma/common");
 const { _getContractAddressByName, _setupWeb3 } = require("./utils");
-
-// Wallets we need to use to sign transactions.
-const REQUIRED_SIGNER_ADDRESSES = { foundation: "0x7a3A1c2De64f20EB5e916F40D11B01C441b2A8Dc" };
-const SECONDS_PER_DAY = 86400;
-const YES_VOTE = "1";
-// Need to sign this message to take an UMA voting token snapshot before any votes can be revealed.
-const SNAPSHOT_MESSAGE = "Sign For Snapshot";
+const { REQUIRED_SIGNER_ADDRESSES, YES_VOTE, SECONDS_PER_DAY, SNAPSHOT_MESSAGE } = require("./constants");
 
 async function run() {
   // Set up provider so that we can sign from special wallets. This script is designed to only run against local mainnet
   // forks.
-  const { netId, web3 } = await _setupWeb3(hre, REQUIRED_SIGNER_ADDRESSES, false);
+  const { netId, web3 } = await _setupWeb3();
   const accounts = await web3.eth.getAccounts();
 
   // Contract ABI's

@@ -17,6 +17,12 @@ const _printTransactionDataRecursive = function (txnObj) {
     console.group(`Transaction is a proposal containing ${txnObj.params.transactions.length} transactions:`);
     txnObj.params.transactions.forEach((_txn) => {
       const decodedTxnData = _decodeData(_txn.data);
+
+      // If decodedTxnData itself has a `data` key, then decode it:
+      if (decodedTxnData.params.data) {
+        const decodedParamData = _decodeData(decodedTxnData.params.data);
+        decodedTxnData.params.data = decodedParamData;
+      }
       _printTransactionDataRecursive({ ...decodedTxnData, to: _txn.to, value: _txn.value });
     });
     console.groupEnd();

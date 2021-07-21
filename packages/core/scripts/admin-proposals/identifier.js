@@ -4,12 +4,13 @@
 // - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
 // - (optional, or required if --polygon is not undefined) set POLYGON_NODE_URL to a Polygon mainnet node. This will
 // be used to query contract data from Polygon when relaying proposals through the GovernorRootTunnel.
-// - Propose: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/identifier.js --identifier 0xabc,0x123 --polygon 0xabc,0x123
-// - Vote Simulate: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/simulateVote.js
-// - Verify: HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/identifier.js --verify --polygon 0xabc,0x123 --identifier 0xabc,0x123
-// - For production, set the CUSTOM_NODE_URL environment, run the script the Truffle `--network` flag (along with other
-//   params like --keys) because production setting will try to set web3 equal to `getWeb3()` instead of `hre.web3`.
-//   for example: `node ./packages/core/scripts/admin-proposals/identifier.js ... --network mainnet_gckms --keys deployer`
+// - Next, open another terminal window and run `node ./packages/core/scripts/admin-proposals/setup.sh` to unlock
+//   accounts on the local node that we'll need to run this script.
+// - Propose: node ./packages/core/scripts/admin-proposals/identifier.js --identifier 0xabc,0x123 --polygon 0xabc,0x123 --network mainnet-fork
+// - Vote Simulate: node ./packages/core/scripts/admin-proposals/simulateVote.js --network mainnet-fork
+// - Verify: node ./packages/core/scripts/admin-proposals/identifier.js --verify --polygon 0xabc,0x123 --identifier 0xabc,0x123 --network mainnet-fork
+// - For production, set the CUSTOM_NODE_URL environment, run the script with a production network passed to the
+//   `--network` flag (along with other params like --keys) like so: `node ... --network mainnet_gckms --keys deployer`
 
 // Customizations:
 // - --polygon param can be omitted, in which case transactions will only take place on Ethereum.
@@ -21,11 +22,11 @@
 
 // Examples:
 // - Whitelist identifiers on Ethereum only:
-//    - `HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/identifier.js --identifier "POOL/USD","USD/POOL"`
+//    - `node ./packages/core/scripts/admin-proposals/identifier.js --identifier "POOL/USD","USD/POOL" --network mainnet-fork`
 // - Whitelist identifiers on Polygon only:
-//    - `HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/identifier.js --polygon "POOL/USD","USD/POOL"`
+//    - `node ./packages/core/scripts/admin-proposals/identifier.js --polygon "POOL/USD","USD/POOL" --network mainnet-fork`
 // - Whitelist identifiers on both (some on Ethereum, some on Polygon):
-//    - `HARDHAT_NETWORK=localhost node ./packages/core/scripts/admin-proposals/identifier.js --identifier "POOL/USD","USD/POOL" --polygon "POOL/USD",`
+//    - `node ./packages/core/scripts/admin-proposals/identifier.js --identifier "POOL/USD","USD/POOL" --polygon "POOL/USD", --network mainnet-fork`
 
 const hre = require("hardhat");
 const { getContract } = hre;
@@ -36,6 +37,7 @@ const Web3 = require("web3");
 const winston = require("winston");
 const { interfaceName } = require("@uma/common");
 const { _getContractAddressByName, _setupWeb3 } = require("./utils");
+const { REQUIRED_SIGNER_ADDRESSES } = require("./constants");
 const argv = require("minimist")(process.argv.slice(), {
   string: [
     // comma-delimited list of identifiers to whitelist on Ethereum. Required if --polygon is omitted.
@@ -50,12 +52,9 @@ const argv = require("minimist")(process.argv.slice(), {
   default: { verify: false },
 });
 
-// Wallets we need to use to sign transactions.
-const REQUIRED_SIGNER_ADDRESSES = { deployer: "0x2bAaA41d155ad8a4126184950B31F50A1513cE25" };
-
 async function run() {
   const { identifier, polygon, verify } = argv;
-  const { web3, netId } = await _setupWeb3(hre, REQUIRED_SIGNER_ADDRESSES);
+  const { web3, netId } = await _setupWeb3();
 
   // Contract ABI's
   const IdentifierWhitelist = getContract("IdentifierWhitelist");
