@@ -18,7 +18,9 @@
     "qbuild": "yarn workspace @uma/common build && yarn workspace @uma/core build && yarn lerna run build --stream --ignore '*/*dapp*' --ignore '@uma/common' --ignore '@uma/core'",
     "build": "yarn workspace @uma/common build && yarn workspace @uma/core build && yarn lerna run build --stream --ignore '@uma/common' --ignore '@uma/core'",
     "clean": "yarn lerna run clean --stream",
-    "clean-packages": "yarn lerna clean --yes && rm -rf node_modules"
+    "clean-packages": "yarn lerna clean --yes && rm -rf node_modules",
+    "optimism-up": "./scripts/ovm/run-optimism.sh",
+    "optimism-down": "cd optimism/ops && docker-compose down -v"
   },
   "author": "UMA Team",
   "license": "AGPL-3.0",
