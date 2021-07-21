@@ -42,7 +42,7 @@ let toBlock = null; // setting the to block to 0 will query up to the latest blo
 let errorRetries = 1; // setting execution re-tried to 0 will exit as soon as the process encounters an error.
 let errorRetriesTimeout = 0.1; // 100 milliseconds between performing retries
 let identifier = "TEST_IDENTIFIER";
-let fundingRateIdentifier = "TEST_FUNDiNG_IDENTIFIER";
+let fundingRateIdentifier = "TEST_FUNDING";
 
 contract("index.js", function (accounts) {
   const contractCreator = accounts[0];
@@ -128,7 +128,7 @@ contract("index.js", function (accounts) {
         constructorParams = await createConstructorParamsForContractVersion(
           contractVersion,
           {
-            convertSynthetic: toWei, // These tests do not use convertSynthetic. Override this with toWei
+            convertDecimals: toWei, // These tests do not use convertSynthetic. Override this with toWei
             finder,
             collateralToken,
             syntheticToken,

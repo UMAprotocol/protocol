@@ -43,12 +43,11 @@ contract("BalanceMonitor.js", function (accounts) {
       let spyLogger;
       let financialContractProps;
 
-      let convertCollateral;
-      let convertSynthetic;
+      let convertDecimals;
 
       beforeEach(async function () {
-        convertCollateral = Convert(testConfig.collateralDecimals);
-        convertSynthetic = Convert(testConfig.syntheticDecimals);
+        convertDecimals = Convert(testConfig.collateralDecimals);
+
         // Create new tokens for every test to reset balances of all accounts
         collateralToken = await Token.new("Wrapped Ether", "WETH", testConfig.collateralDecimals, {
           from: tokenCreator,
@@ -80,15 +79,15 @@ contract("BalanceMonitor.js", function (accounts) {
             {
               name: "Liquidator bot",
               address: liquidatorBot,
-              collateralThreshold: convertCollateral("10000"), // 10,000.00 tokens of collateral threshold
-              syntheticThreshold: convertSynthetic("10000"), // 10,000.00 tokens of debt threshold
+              collateralThreshold: convertDecimals("10000"), // 10,000.00 tokens of collateral threshold
+              syntheticThreshold: convertDecimals("10000"), // 10,000.00 tokens of debt threshold
               etherThreshold: toWei("10"),
             },
             {
               name: "Disputer bot",
               address: disputerBot,
-              collateralThreshold: convertCollateral("500"), // 500.00 tokens of collateral threshold
-              syntheticThreshold: convertSynthetic("100"), // 100.00 tokens of debt threshold
+              collateralThreshold: convertDecimals("500"), // 500.00 tokens of collateral threshold
+              syntheticThreshold: convertDecimals("100"), // 100.00 tokens of debt threshold
               etherThreshold: toWei("1"),
             },
           ],
@@ -111,12 +110,12 @@ contract("BalanceMonitor.js", function (accounts) {
 
         // setup the positions to the initial happy state.
         // Liquidator threshold is 10000 for both collateral and synthetic so mint a bit more to start above this
-        await collateralToken.mint(liquidatorBot, convertCollateral("11000"), { from: tokenCreator });
-        await syntheticToken.mint(liquidatorBot, convertSynthetic("11000"), { from: tokenCreator });
+        await collateralToken.mint(liquidatorBot, convertDecimals("11000"), { from: tokenCreator });
+        await syntheticToken.mint(liquidatorBot, convertDecimals("11000"), { from: tokenCreator });
 
         // Disputer threshold is 500 and 100 for collateral and synthetics. mint collateral above this and synthetic at this
-        await collateralToken.mint(disputerBot, convertCollateral("600"), { from: tokenCreator });
-        await syntheticToken.mint(disputerBot, convertSynthetic("100"), { from: tokenCreator });
+        await collateralToken.mint(disputerBot, convertDecimals("600"), { from: tokenCreator });
+        await syntheticToken.mint(disputerBot, convertDecimals("100"), { from: tokenCreator });
       });
 
       it("Correctly emits messages on token balances threshold", async function () {
@@ -129,8 +128,8 @@ contract("BalanceMonitor.js", function (accounts) {
 
         // Transfer some tokens away from one of the monitored addresses and check that the bot correctly reports this.
         // Transferring 2000 tokens from the liquidatorBot brings its balance to 9000. this is below the 10000 threshold.
-        await collateralToken.transfer(tokenCreator, convertCollateral("2000"), { from: liquidatorBot });
-        assert.equal((await collateralToken.balanceOf(liquidatorBot)).toString(), convertCollateral("9000"));
+        await collateralToken.transfer(tokenCreator, convertDecimals("2000"), { from: liquidatorBot });
+        assert.equal((await collateralToken.balanceOf(liquidatorBot)).toString(), convertDecimals("9000"));
         await tokenBalanceClient.update();
         await balanceMonitor.checkBotBalances();
 
@@ -152,8 +151,8 @@ contract("BalanceMonitor.js", function (accounts) {
         assert.equal(spy.callCount, 2);
 
         // Likewise a further drop in collateral should emit a new message.
-        await collateralToken.transfer(tokenCreator, convertCollateral("2000"), { from: liquidatorBot });
-        assert.equal((await collateralToken.balanceOf(liquidatorBot)).toString(), convertCollateral("7000"));
+        await collateralToken.transfer(tokenCreator, convertDecimals("2000"), { from: liquidatorBot });
+        assert.equal((await collateralToken.balanceOf(liquidatorBot)).toString(), convertDecimals("7000"));
         await tokenBalanceClient.update();
         await balanceMonitor.checkBotBalances();
         assert.equal(spy.callCount, 3);
@@ -164,7 +163,7 @@ contract("BalanceMonitor.js", function (accounts) {
         await syntheticToken.transfer(tokenCreator, "1", { from: disputerBot });
         assert.equal(
           (await syntheticToken.balanceOf(disputerBot)).toString(),
-          toBN(convertSynthetic("100")).sub(toBN("1")).toString()
+          toBN(convertDecimals("100")).sub(toBN("1")).toString()
         );
 
         await tokenBalanceClient.update();
@@ -217,8 +216,8 @@ contract("BalanceMonitor.js", function (accounts) {
         assert.equal(spy.callCount, 0);
 
         // Transfer tokens away from the liquidator below the threshold should emit a message
-        await collateralToken.transfer(tokenCreator, convertCollateral("1001"), { from: liquidatorBot });
-        assert.equal((await collateralToken.balanceOf(liquidatorBot)).toString(), convertCollateral("9999"));
+        await collateralToken.transfer(tokenCreator, convertDecimals("1001"), { from: liquidatorBot });
+        assert.equal((await collateralToken.balanceOf(liquidatorBot)).toString(), convertDecimals("9999"));
         await tokenBalanceClient.update();
         await balanceMonitor.checkBotBalances();
         assert.equal(spy.callCount, 1);
@@ -237,14 +236,14 @@ contract("BalanceMonitor.js", function (accounts) {
 
         // Transferring tokens back to the bot such that it's balance is above the threshold, updating the client and
         // transferring tokens away again should initiate a new message.
-        await collateralToken.transfer(liquidatorBot, convertCollateral("11"), { from: tokenCreator });
-        assert.equal((await collateralToken.balanceOf(liquidatorBot)).toString(), convertCollateral("10010")); // balance above threshold
+        await collateralToken.transfer(liquidatorBot, convertDecimals("11"), { from: tokenCreator });
+        assert.equal((await collateralToken.balanceOf(liquidatorBot)).toString(), convertDecimals("10010")); // balance above threshold
         await tokenBalanceClient.update();
         await balanceMonitor.checkBotBalances();
         assert.equal(spy.callCount, 2); // No new event as balance above threshold
 
-        await collateralToken.transfer(tokenCreator, convertCollateral("15"), { from: liquidatorBot });
-        assert.equal((await collateralToken.balanceOf(liquidatorBot)).toString(), convertCollateral("9995")); // balance below threshold
+        await collateralToken.transfer(tokenCreator, convertDecimals("15"), { from: liquidatorBot });
+        assert.equal((await collateralToken.balanceOf(liquidatorBot)).toString(), convertDecimals("9995")); // balance below threshold
 
         await tokenBalanceClient.update();
         await balanceMonitor.checkBotBalances();
@@ -267,8 +266,8 @@ contract("BalanceMonitor.js", function (accounts) {
             botsToMonitor: [
               {
                 address: liquidatorBot,
-                collateralThreshold: convertCollateral("10000"), // 10,000.00 tokens of collateral threshold
-                etherThreconvertSynthetic: toWei("10"),
+                collateralThreshold: convertDecimals("10000"), // 10,000.00 tokens of collateral threshold
+                etherThreconvertDecimals: toWei("10"),
               },
             ],
           };
@@ -295,8 +294,8 @@ contract("BalanceMonitor.js", function (accounts) {
               {
                 name: "Monitored liquidator bot",
                 address: "INVALID_ADDRESS",
-                collateralThreshold: convertCollateral("10000"), // 10,000.00 tokens of collateral threshold
-                syntheticThreshold: convertSynthetic("10000"), // 10,000.00 tokens of debt threshold
+                collateralThreshold: convertDecimals("10000"), // 10,000.00 tokens of collateral threshold
+                syntheticThreshold: convertDecimals("10000"), // 10,000.00 tokens of debt threshold
                 etherThreshold: toWei("10"),
               },
             ],
@@ -341,8 +340,8 @@ contract("BalanceMonitor.js", function (accounts) {
         });
 
         // Lower the liquidator bot's synthetic balance.
-        await syntheticToken.transfer(tokenCreator, convertSynthetic("1001"), { from: liquidatorBot });
-        assert.equal((await syntheticToken.balanceOf(liquidatorBot)).toString(), convertSynthetic("9999").toString());
+        await syntheticToken.transfer(tokenCreator, convertDecimals("1001"), { from: liquidatorBot });
+        assert.equal((await syntheticToken.balanceOf(liquidatorBot)).toString(), convertDecimals("9999").toString());
 
         // Update monitors.
         await tokenBalanceClient.update();
@@ -363,8 +362,8 @@ contract("BalanceMonitor.js", function (accounts) {
         });
 
         // Lower the liquidator bot's collateral balance.
-        await collateralToken.transfer(tokenCreator, convertCollateral("1001"), { from: liquidatorBot });
-        assert.equal((await collateralToken.balanceOf(liquidatorBot)).toString(), convertCollateral("9999").toString());
+        await collateralToken.transfer(tokenCreator, convertDecimals("1001"), { from: liquidatorBot });
+        assert.equal((await collateralToken.balanceOf(liquidatorBot)).toString(), convertDecimals("9999").toString());
 
         // Update monitors.
         await tokenBalanceClient.update();
