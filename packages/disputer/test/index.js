@@ -44,7 +44,7 @@ let pollingDelay = 0; // 0 polling delay creates a serverless bot that yields af
 let errorRetries = 1;
 let errorRetriesTimeout = 0.1; // 100 milliseconds between performing retries
 let identifier = "TEST_IDENTIFIER";
-let fundingRateIdentifier = "TEST_FUNDING_IDENTIFIER";
+let fundingRateIdentifier = "TEST_FUNDING";
 
 contract("index.js", function (accounts) {
   const contractCreator = accounts[0];
@@ -132,7 +132,7 @@ contract("index.js", function (accounts) {
         constructorParams = await createConstructorParamsForContractVersion(
           contractVersion,
           {
-            convertSynthetic: toWei, // These tests do not use convertSynthetic. Override this with toWei
+            convertDecimals: toWei, // These tests do not use convertSynthetic. Override this with toWei
             finder,
             collateralToken,
             syntheticToken,
