@@ -9,21 +9,12 @@ const {
   runTestForVersion,
   createConstructorParamsForContractVersion,
   TESTED_CONTRACT_VERSIONS,
+  TEST_DECIMAL_COMBOS,
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
 // Script to test
 const { FinancialContractEventClient } = require("../../src/clients/FinancialContractEventClient");
-
-// Run the tests against 3 different kinds of token/synth decimal combinations:
-// 1) matching 18 & 18 for collateral for most token types with normal tokens.
-// 2) non-matching 8 collateral & 18 synthetic for legacy UMA synthetics.
-// 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
-const configs = [
-  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 },
-];
 
 const startTime = "15798990420";
 const unreachableDeadline = MAX_UINT_VAL;
@@ -45,9 +36,7 @@ let iterationTestVersion;
 
 // Js Objects, clients and helpers
 let client;
-let convertCollateral;
-let convertSynthetic;
-let convertPrice;
+let convertDecimals;
 let dummyLogger;
 let expirationTime;
 
@@ -75,7 +64,7 @@ const versionedIt = function (supportedVersions, shouldBeItOnly = false) {
 };
 
 contract("FinancialContractEventClient.js", function (accounts) {
-  for (let tokenConfig of configs) {
+  for (let tokenConfig of TEST_DECIMAL_COMBOS) {
     describe(`${tokenConfig.collateralDecimals} decimals`, function () {
       const tokenSponsor = accounts[0];
       const liquidator = accounts[1];
@@ -105,27 +94,23 @@ contract("FinancialContractEventClient.js", function (accounts) {
         const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
         const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
 
-        for (let testConfig of configs) {
-          describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
+        for (let testConfig of TEST_DECIMAL_COMBOS) {
+          describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
             before(async function () {
               identifier = `${testConfig.tokenName}TEST`;
-              fundingRateIdentifier = `${testConfig.tokenName}_FUNDING_IDENTIFIER`;
-              convertCollateral = Convert(testConfig.collateralDecimals);
-              convertSynthetic = Convert(testConfig.syntheticDecimals);
-              convertPrice = Convert(testConfig.priceFeedDecimals);
+              fundingRateIdentifier = `${testConfig.tokenName}_FUNDING`;
+              convertDecimals = Convert(testConfig.collateralDecimals);
               collateralToken = await Token.new(
                 testConfig.tokenSymbol + " Token", // Construct the token name.,
                 testConfig.tokenSymbol,
                 tokenConfig.collateralDecimals,
-                {
-                  from: tokenSponsor,
-                }
+                { from: tokenSponsor }
               );
               await collateralToken.addMember(1, tokenSponsor, { from: tokenSponsor });
-              await collateralToken.mint(liquidator, convertCollateral("100000"), { from: tokenSponsor });
-              await collateralToken.mint(sponsor1, convertCollateral("100000"), { from: tokenSponsor });
-              await collateralToken.mint(sponsor2, convertCollateral("100000"), { from: tokenSponsor });
-              await collateralToken.mint(sponsor3, convertCollateral("100000"), { from: tokenSponsor });
+              await collateralToken.mint(liquidator, convertDecimals("100000"), { from: tokenSponsor });
+              await collateralToken.mint(sponsor1, convertDecimals("100000"), { from: tokenSponsor });
+              await collateralToken.mint(sponsor2, convertDecimals("100000"), { from: tokenSponsor });
+              await collateralToken.mint(sponsor3, convertDecimals("100000"), { from: tokenSponsor });
 
               identifierWhitelist = await IdentifierWhitelist.new();
               await identifierWhitelist.addSupportedIdentifier(utf8ToHex(identifier));
@@ -162,9 +147,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 "Test Synthetic Token",
                 "SYNTH",
                 tokenConfig.syntheticDecimals,
-                {
-                  from: tokenSponsor,
-                }
+                { from: tokenSponsor }
               );
 
               // If we are testing a perpetual then we need to also deploy a config store, an optimistic oracle and set the funding rate identifier.
@@ -192,7 +175,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
               constructorParams = await createConstructorParamsForContractVersion(
                 contractVersion,
                 {
-                  convertSynthetic,
+                  convertDecimals,
                   finder,
                   collateralToken,
                   syntheticToken,
@@ -203,7 +186,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                   configStore: configStore || {}, // if the contract type is not a perp this will be null.
                 },
                 {
-                  minSponsorTokens: { rawValue: convertSynthetic("1") },
+                  minSponsorTokens: { rawValue: convertDecimals("1") },
                   collateralRequirement: { rawValue: toWei("1.5") }, // these tests assume a CR of 1.5, not the 1.2 default.
                   expirationTimestamp: expirationTime.toString(),
                 }
@@ -215,10 +198,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
               await syntheticToken.addBurner(financialContract.address);
 
               // The FinancialContractEventClient does not emit any info level events. Therefore no need to test Winston outputs.
-              dummyLogger = winston.createLogger({
-                level: "info",
-                transports: [new winston.transports.Console()],
-              });
+              dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
               // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.
               await financialContract.setCurrentTime(startTime);
@@ -234,46 +214,36 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 contractVersion.contractType,
                 contractVersion.contractVersion
               );
-              await collateralToken.approve(financialContract.address, convertCollateral("1000000"), {
-                from: sponsor1,
-              });
-              await collateralToken.approve(financialContract.address, convertCollateral("1000000"), {
-                from: sponsor2,
-              });
-              await collateralToken.approve(financialContract.address, convertCollateral("1000000"), {
-                from: sponsor3,
-              });
+              await collateralToken.approve(financialContract.address, convertDecimals("1000000"), { from: sponsor1 });
+              await collateralToken.approve(financialContract.address, convertDecimals("1000000"), { from: sponsor2 });
+              await collateralToken.approve(financialContract.address, convertDecimals("1000000"), { from: sponsor3 });
 
               syntheticToken = await Token.at(await financialContract.tokenCurrency());
-              await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), {
-                from: sponsor1,
-              });
-              await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), {
-                from: sponsor2,
-              });
+              await syntheticToken.approve(financialContract.address, convertDecimals("100000000"), { from: sponsor1 });
+              await syntheticToken.approve(financialContract.address, convertDecimals("100000000"), { from: sponsor2 });
 
               // Create two positions
               newSponsorTxObj1 = await financialContract.create(
-                { rawValue: convertCollateral("10") },
-                { rawValue: convertSynthetic("50") },
+                { rawValue: convertDecimals("10") },
+                { rawValue: convertDecimals("50") },
                 { from: sponsor1 }
               );
               newSponsorTxObj2 = await financialContract.create(
-                { rawValue: convertCollateral("100") },
-                { rawValue: convertSynthetic("45") },
+                { rawValue: convertDecimals("100") },
+                { rawValue: convertDecimals("45") },
                 { from: sponsor2 }
               );
 
               // Seed the liquidator position
-              await collateralToken.approve(financialContract.address, convertCollateral("1000000"), {
+              await collateralToken.approve(financialContract.address, convertDecimals("1000000"), {
                 from: liquidator,
               });
-              await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), {
+              await syntheticToken.approve(financialContract.address, convertDecimals("100000000"), {
                 from: liquidator,
               });
               newSponsorTxObj3 = await financialContract.create(
-                { rawValue: convertCollateral("500") },
-                { rawValue: convertSynthetic("200") },
+                { rawValue: convertDecimals("500") },
+                { rawValue: convertDecimals("200") },
                 { from: liquidator }
               );
             });
@@ -296,22 +266,22 @@ contract("FinancialContractEventClient.js", function (accounts) {
                       transactionHash: newSponsorTxObj1.tx,
                       blockNumber: newSponsorTxObj1.receipt.blockNumber,
                       sponsor: sponsor1,
-                      collateralAmount: convertCollateral("10"),
-                      tokenAmount: convertSynthetic("50"),
+                      collateralAmount: convertDecimals("10"),
+                      tokenAmount: convertDecimals("50"),
                     },
                     {
                       transactionHash: newSponsorTxObj2.tx,
                       blockNumber: newSponsorTxObj2.receipt.blockNumber,
                       sponsor: sponsor2,
-                      collateralAmount: convertCollateral("100"),
-                      tokenAmount: convertSynthetic("45"),
+                      collateralAmount: convertDecimals("100"),
+                      tokenAmount: convertDecimals("45"),
                     },
                     {
                       transactionHash: newSponsorTxObj3.tx,
                       blockNumber: newSponsorTxObj3.receipt.blockNumber,
                       sponsor: liquidator,
-                      collateralAmount: convertCollateral("500"),
-                      tokenAmount: convertSynthetic("200"),
+                      collateralAmount: convertDecimals("500"),
+                      tokenAmount: convertDecimals("200"),
                     },
                   ],
                   client.getAllNewSponsorEvents()
@@ -319,8 +289,8 @@ contract("FinancialContractEventClient.js", function (accounts) {
 
                 // Correctly adds only new events after last query
                 const newSponsorTxObj4 = await financialContract.create(
-                  { rawValue: convertCollateral("10") },
-                  { rawValue: convertSynthetic("1") },
+                  { rawValue: convertDecimals("10") },
+                  { rawValue: convertDecimals("1") },
                   { from: sponsor3 }
                 );
                 await client.clearState();
@@ -332,8 +302,8 @@ contract("FinancialContractEventClient.js", function (accounts) {
                       transactionHash: newSponsorTxObj4.tx,
                       blockNumber: newSponsorTxObj4.receipt.blockNumber,
                       sponsor: sponsor3,
-                      collateralAmount: convertCollateral("10"),
-                      tokenAmount: convertSynthetic("1"),
+                      collateralAmount: convertDecimals("10"),
+                      tokenAmount: convertDecimals("1"),
                     },
                   ],
                   client.getAllNewSponsorEvents()
@@ -357,22 +327,22 @@ contract("FinancialContractEventClient.js", function (accounts) {
                     transactionHash: newSponsorTxObj1.tx,
                     blockNumber: newSponsorTxObj1.receipt.blockNumber,
                     sponsor: sponsor1,
-                    collateralAmount: convertCollateral("10"),
-                    tokenAmount: convertSynthetic("50"),
+                    collateralAmount: convertDecimals("10"),
+                    tokenAmount: convertDecimals("50"),
                   },
                   {
                     transactionHash: newSponsorTxObj2.tx,
                     blockNumber: newSponsorTxObj2.receipt.blockNumber,
                     sponsor: sponsor2,
-                    collateralAmount: convertCollateral("100"),
-                    tokenAmount: convertSynthetic("45"),
+                    collateralAmount: convertDecimals("100"),
+                    tokenAmount: convertDecimals("45"),
                   },
                   {
                     transactionHash: newSponsorTxObj3.tx,
                     blockNumber: newSponsorTxObj3.receipt.blockNumber,
                     sponsor: liquidator,
-                    collateralAmount: convertCollateral("500"),
-                    tokenAmount: convertSynthetic("200"),
+                    collateralAmount: convertDecimals("500"),
+                    tokenAmount: convertDecimals("200"),
                   },
                 ],
                 client.getAllCreateEvents()
@@ -380,8 +350,8 @@ contract("FinancialContractEventClient.js", function (accounts) {
 
               // Correctly adds only new events after last query
               const newSponsorTxObj4 = await financialContract.create(
-                { rawValue: convertCollateral("10") },
-                { rawValue: convertSynthetic("1") },
+                { rawValue: convertDecimals("10") },
+                { rawValue: convertDecimals("1") },
                 { from: sponsor3 }
               );
               await client.clearState();
@@ -393,8 +363,8 @@ contract("FinancialContractEventClient.js", function (accounts) {
                     transactionHash: newSponsorTxObj4.tx,
                     blockNumber: newSponsorTxObj4.receipt.blockNumber,
                     sponsor: sponsor3,
-                    collateralAmount: convertCollateral("10"),
-                    tokenAmount: convertSynthetic("1"),
+                    collateralAmount: convertDecimals("10"),
+                    tokenAmount: convertDecimals("1"),
                   },
                 ],
                 client.getAllCreateEvents()
@@ -409,7 +379,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
               assert.deepStrictEqual([], client.getAllDepositEvents());
 
               const depositTxObj1 = await financialContract.deposit(
-                { rawValue: convertCollateral("5") },
+                { rawValue: convertDecimals("5") },
                 { from: sponsor1 }
               );
 
@@ -422,7 +392,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                     transactionHash: depositTxObj1.tx,
                     blockNumber: depositTxObj1.receipt.blockNumber,
                     sponsor: sponsor1,
-                    collateralAmount: convertCollateral("5"),
+                    collateralAmount: convertDecimals("5"),
                   },
                 ],
                 client.getAllDepositEvents()
@@ -430,7 +400,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
 
               // Correctly adds only new events after last query
               const depositTxObj2 = await financialContract.deposit(
-                { rawValue: convertCollateral("3") },
+                { rawValue: convertDecimals("3") },
                 { from: sponsor2 }
               );
               await client.clearState();
@@ -442,7 +412,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                     transactionHash: depositTxObj2.tx,
                     blockNumber: depositTxObj2.receipt.blockNumber,
                     sponsor: sponsor2,
-                    collateralAmount: convertCollateral("3"),
+                    collateralAmount: convertDecimals("3"),
                   },
                 ],
                 client.getAllDepositEvents()
@@ -458,7 +428,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
 
               // GCR is ~2.0, so sponsor2 and liquidator should be able to withdraw small amounts while keeping their CR above GCR.
               const withdrawTxObj1 = await financialContract.withdraw(
-                { rawValue: convertCollateral("1") },
+                { rawValue: convertDecimals("1") },
                 { from: liquidator }
               );
 
@@ -471,7 +441,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                     transactionHash: withdrawTxObj1.tx,
                     blockNumber: withdrawTxObj1.receipt.blockNumber,
                     sponsor: liquidator,
-                    collateralAmount: convertCollateral("1"),
+                    collateralAmount: convertDecimals("1"),
                   },
                 ],
                 client.getAllWithdrawEvents()
@@ -479,7 +449,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
 
               // Correctly adds only new events after last query
               const withdrawTxObj2 = await financialContract.withdraw(
-                { rawValue: convertCollateral("2") },
+                { rawValue: convertDecimals("2") },
                 { from: sponsor2 }
               );
               await client.clearState();
@@ -491,7 +461,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                     transactionHash: withdrawTxObj2.tx,
                     blockNumber: withdrawTxObj2.receipt.blockNumber,
                     sponsor: sponsor2,
-                    collateralAmount: convertCollateral("2"),
+                    collateralAmount: convertDecimals("2"),
                   },
                 ],
                 client.getAllWithdrawEvents()
@@ -507,7 +477,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
 
               // Redeem from liquidator who has many more than the min token amount
               const redeemTxObj1 = await financialContract.redeem(
-                { rawValue: convertSynthetic("1") },
+                { rawValue: convertDecimals("1") },
                 { from: liquidator }
               );
 
@@ -520,8 +490,8 @@ contract("FinancialContractEventClient.js", function (accounts) {
                     transactionHash: redeemTxObj1.tx,
                     blockNumber: redeemTxObj1.receipt.blockNumber,
                     sponsor: liquidator,
-                    collateralAmount: convertCollateral("2.5"),
-                    tokenAmount: convertSynthetic("1"),
+                    collateralAmount: convertDecimals("2.5"),
+                    tokenAmount: convertDecimals("1"),
                   },
                 ],
                 client.getAllRedeemEvents()
@@ -529,7 +499,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
 
               // Correctly adds only new events after last query
               const redeemTxObj2 = await financialContract.redeem(
-                { rawValue: convertSynthetic("1") },
+                { rawValue: convertDecimals("1") },
                 { from: sponsor1 }
               );
               await client.clearState();
@@ -541,8 +511,8 @@ contract("FinancialContractEventClient.js", function (accounts) {
                     transactionHash: redeemTxObj2.tx,
                     blockNumber: redeemTxObj2.receipt.blockNumber,
                     sponsor: sponsor1,
-                    collateralAmount: convertCollateral("0.2"),
-                    tokenAmount: convertSynthetic("1"),
+                    collateralAmount: convertDecimals("0.2"),
+                    tokenAmount: convertDecimals("1"),
                   },
                 ],
                 client.getAllRedeemEvents()
@@ -571,8 +541,8 @@ contract("FinancialContractEventClient.js", function (accounts) {
                     {
                       transactionHash: regularFeeTxObj1.tx,
                       blockNumber: regularFeeTxObj1.receipt.blockNumber,
-                      regularFee: convertCollateral("6.1"),
-                      lateFee: convertSynthetic("0"),
+                      regularFee: convertDecimals("6.1"),
+                      lateFee: convertDecimals("0"),
                     },
                   ],
                   client.getAllRegularFeeEvents()
@@ -590,8 +560,8 @@ contract("FinancialContractEventClient.js", function (accounts) {
                     {
                       transactionHash: regularFeeTxObj2.tx,
                       blockNumber: regularFeeTxObj2.receipt.blockNumber,
-                      regularFee: convertCollateral("6.039"),
-                      lateFee: convertSynthetic("0"),
+                      regularFee: convertDecimals("6.039"),
+                      lateFee: convertDecimals("0"),
                     },
                   ],
                   client.getAllRegularFeeEvents()
@@ -602,60 +572,6 @@ contract("FinancialContractEventClient.js", function (accounts) {
               }
             );
 
-            versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "1.2.2" }])(
-              "Return FinalFee Events",
-              async function () {
-                // Update the client and check it has the new sponsor event stored correctly
-                await client.clearState();
-
-                // State is empty before update()
-                assert.deepStrictEqual([], client.getAllFinalFeeEvents());
-
-                await store.setFinalFee(collateralToken.address, { rawValue: convertCollateral("1") });
-                await financialContract.createLiquidation(
-                  sponsor1,
-                  { rawValue: "0" },
-                  { rawValue: convertPrice("99999") },
-                  { rawValue: convertSynthetic("1") },
-                  unreachableDeadline,
-                  { from: liquidator }
-                );
-
-                // Compare with expected processed event objects.
-                const finalFeeTxObj1 = await financialContract.dispute("0", sponsor1, { from: sponsor2 });
-                await client.update();
-                assert.deepStrictEqual(
-                  [
-                    {
-                      transactionHash: finalFeeTxObj1.tx,
-                      blockNumber: finalFeeTxObj1.receipt.blockNumber,
-                      amount: convertCollateral("1"),
-                    },
-                  ],
-                  client.getAllFinalFeeEvents()
-                );
-
-                // Correctly adds only new events after last query.
-                await timer.setCurrentTime(await financialContract.expirationTimestamp());
-                const finalFeeTxObj2 = await financialContract.expire();
-                await client.clearState();
-                await client.update();
-                assert.deepStrictEqual(
-                  [
-                    {
-                      transactionHash: finalFeeTxObj2.tx,
-                      blockNumber: finalFeeTxObj2.receipt.blockNumber,
-                      amount: convertCollateral("1"),
-                    },
-                  ],
-                  client.getAllFinalFeeEvents()
-                );
-
-                // Reset fees
-                await store.setFinalFee(collateralToken.address, { rawValue: "0" });
-              }
-            );
-
             versionedIt([{ contractType: "any", contractVersion: "any" }])(
               "Return Liquidation Events",
               async function () {
@@ -663,8 +579,8 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 const txObject1 = await financialContract.createLiquidation(
                   sponsor1,
                   { rawValue: "0" },
-                  { rawValue: convertPrice("99999") },
-                  { rawValue: convertSynthetic("100") },
+                  { rawValue: toWei("99999") },
+                  { rawValue: convertDecimals("100") },
                   unreachableDeadline,
                   { from: liquidator }
                 );
@@ -686,9 +602,9 @@ contract("FinancialContractEventClient.js", function (accounts) {
                       sponsor: sponsor1,
                       liquidator: liquidator,
                       liquidationId: "0",
-                      tokensOutstanding: convertSynthetic("50"),
-                      lockedCollateral: convertCollateral("10"),
-                      liquidatedCollateral: convertCollateral("10"),
+                      tokensOutstanding: convertDecimals("50"),
+                      lockedCollateral: convertDecimals("10"),
+                      liquidatedCollateral: convertDecimals("10"),
                     },
                   ],
                   client.getAllLiquidationEvents()
@@ -698,8 +614,8 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 const txObject2 = await financialContract.createLiquidation(
                   sponsor2,
                   { rawValue: "0" },
-                  { rawValue: convertPrice("99999") },
-                  { rawValue: convertSynthetic("100") },
+                  { rawValue: toWei("99999") },
+                  { rawValue: convertDecimals("100") },
                   unreachableDeadline,
                   { from: liquidator }
                 );
@@ -713,9 +629,9 @@ contract("FinancialContractEventClient.js", function (accounts) {
                       sponsor: sponsor2,
                       liquidator: liquidator,
                       liquidationId: "0",
-                      tokensOutstanding: convertSynthetic("45"),
-                      lockedCollateral: convertCollateral("100"),
-                      liquidatedCollateral: convertCollateral("100"),
+                      tokensOutstanding: convertDecimals("45"),
+                      lockedCollateral: convertDecimals("100"),
+                      liquidatedCollateral: convertDecimals("100"),
                     },
                   ],
                   client.getAllLiquidationEvents()
@@ -728,8 +644,8 @@ contract("FinancialContractEventClient.js", function (accounts) {
               await financialContract.createLiquidation(
                 sponsor1,
                 { rawValue: "0" },
-                { rawValue: convertPrice("99999") },
-                { rawValue: convertSynthetic("100") },
+                { rawValue: toWei("99999") },
+                { rawValue: convertDecimals("100") },
                 unreachableDeadline,
                 { from: liquidator }
               );
@@ -754,7 +670,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                     liquidator: liquidator,
                     disputer: sponsor2,
                     liquidationId: "0",
-                    disputeBondAmount: convertCollateral("1"), // 10% of the liquidated position's collateral.
+                    disputeBondAmount: convertDecimals("1"), // 10% of the liquidated position's collateral.
                   },
                 ],
                 client.getAllDisputeEvents()
@@ -769,16 +685,14 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 await financialContract.createLiquidation(
                   sponsor1,
                   { rawValue: "0" },
-                  { rawValue: convertPrice("99999") },
-                  { rawValue: convertSynthetic("100") },
+                  { rawValue: toWei("99999") },
+                  { rawValue: convertDecimals("100") },
                   unreachableDeadline,
                   { from: liquidator }
                 );
 
                 // Dispute the position from the second sponsor
-                await financialContract.dispute("0", sponsor1, {
-                  from: sponsor2,
-                });
+                await financialContract.dispute("0", sponsor1, { from: sponsor2 });
 
                 // Advance time and settle
                 const timeAfterLiquidationLiveness = liquidationTime + 10;
@@ -787,7 +701,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
 
                 // Force a price such that the dispute fails, and then withdraw from the unsuccessfully
                 // disputed liquidation.
-                const disputePrice = convertPrice("1.6");
+                const disputePrice = toWei("1.6");
                 await mockOracle.pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice);
 
                 const txObject = await financialContract.withdrawLiquidation("0", sponsor1, { from: liquidator });
@@ -826,16 +740,14 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 await financialContract.createLiquidation(
                   sponsor1,
                   { rawValue: "0" },
-                  { rawValue: convertPrice("99999") },
-                  { rawValue: convertSynthetic("100") },
+                  { rawValue: toWei("99999") },
+                  { rawValue: convertDecimals("100") },
                   unreachableDeadline,
                   { from: liquidator }
                 );
 
                 // Dispute the position from the second sponsor
-                await financialContract.dispute("0", sponsor1, {
-                  from: sponsor2,
-                });
+                await financialContract.dispute("0", sponsor1, { from: sponsor2 });
 
                 // Advance time and settle
                 const timeAfterLiquidationLiveness = liquidationTime + 10;
@@ -844,7 +756,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
 
                 // Force a price such that the dispute succeeds, and then withdraw from the successfully
                 // disputed liquidation.
-                const disputePrice = convertPrice("0.1");
+                const disputePrice = toWei("0.1");
                 await mockOracle.pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice);
 
                 const txObject = await financialContract.withdrawLiquidation("0", sponsor1, { from: liquidator });
@@ -863,66 +775,11 @@ contract("FinancialContractEventClient.js", function (accounts) {
                       transactionHash: txObject.tx,
                       blockNumber: txObject.receipt.blockNumber,
                       caller: liquidator,
-                      withdrawalAmount: convertCollateral("4"), // On successful disputes, liquidator gets TRV - dispute rewards. TRV = (50 * 0.1 = 5), and rewards = (TRV * 0.1 = 5 * 0.1 = 0.5).
+                      withdrawalAmount: convertDecimals("4"), // On successful disputes, liquidator gets TRV - dispute rewards. TRV = (50 * 0.1 = 5), and rewards = (TRV * 0.1 = 5 * 0.1 = 0.5).
                       liquidationStatus: "3", // Settlement price makes dispute successful
                     },
                   ],
                   client.getAllLiquidationWithdrawnEvents()
-                );
-              }
-            );
-
-            versionedIt([{ contractType: "ExpiringMultiParty", contractVersion: "1.2.2" }])(
-              "Return SettleExpiredPosition Events",
-              async function () {
-                await client.clearState();
-
-                // State is empty before update()
-                assert.deepStrictEqual([], client.getAllSettleExpiredPositionEvents());
-
-                // Expire contract at settlement price of 0.2.
-                await timer.setCurrentTime(expirationTime.toString());
-                // Make the contract creator the admin to enable emergencyshutdown in tests.
-                await finder.changeImplementationAddress(
-                  utf8ToHex(interfaceName.FinancialContractsAdmin),
-                  tokenSponsor
-                );
-
-                await financialContract.expire();
-                await mockOracle.pushPrice(utf8ToHex(identifier), expirationTime.toString(), convertPrice("0.2"));
-                const txObject = await financialContract.settleExpired({ from: sponsor1 });
-
-                await client.update();
-
-                // Compare with expected processed event objects.
-                assert.deepStrictEqual(
-                  [
-                    {
-                      transactionHash: txObject.tx,
-                      blockNumber: txObject.receipt.blockNumber,
-                      caller: sponsor1,
-                      collateralReturned: convertCollateral("10"), // Sponsor should get back all collateral in position because they still hold all tokens
-                      tokensBurned: convertSynthetic("50"),
-                    },
-                  ],
-                  client.getAllSettleExpiredPositionEvents()
-                );
-
-                // Correctly adds only new events after last query.
-                const txObject2 = await financialContract.settleExpired({ from: sponsor2 });
-                await client.clearState();
-                await client.update();
-                assert.deepStrictEqual(
-                  [
-                    {
-                      transactionHash: txObject2.tx,
-                      blockNumber: txObject2.receipt.blockNumber,
-                      caller: sponsor2,
-                      collateralReturned: convertCollateral("100"), // Sponsor should get back all collateral in position because they still hold all tokens
-                      tokensBurned: convertSynthetic("45"),
-                    },
-                  ],
-                  client.getAllSettleExpiredPositionEvents()
                 );
               }
             );
@@ -946,10 +803,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                   // and publish it.
                   const proposalExpiry = proposalTime + optimisticOracleLiveness;
                   await timer.setCurrentTime(proposalExpiry);
-                  return {
-                    txObject: await financialContract.applyFundingRate(),
-                    proposalTime,
-                  };
+                  return { txObject: await financialContract.applyFundingRate(), proposalTime };
                 };
                 const { txObject, proposalTime } = await proposeAndPublishNewRate(toWei("-0.00001"));
 
@@ -1000,8 +854,8 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 await financialContract.createLiquidation(
                   sponsor1,
                   { rawValue: "0" },
-                  { rawValue: convertPrice("99999") },
-                  { rawValue: convertSynthetic("100") },
+                  { rawValue: toWei("99999") },
+                  { rawValue: convertDecimals("100") },
                   unreachableDeadline,
                   { from: liquidator }
                 );

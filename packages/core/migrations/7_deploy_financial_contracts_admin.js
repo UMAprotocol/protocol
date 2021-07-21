@@ -13,8 +13,6 @@ module.exports = async function (deployer, network, accounts) {
   await finder.changeImplementationAddress(
     web3.utils.utf8ToHex(interfaceName.FinancialContractsAdmin),
     financialContractsAdmin.address,
-    {
-      from: keys.deployer,
-    }
+    { from: keys.deployer }
   );
 };

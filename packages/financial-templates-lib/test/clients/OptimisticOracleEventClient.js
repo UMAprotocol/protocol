@@ -102,10 +102,7 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
 
     // The Event client does not emit any info `level` events.  Therefore no need to test Winston outputs.
     // DummyLogger will not print anything to console as only capture `info` level events.
-    dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+    dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
     client = new OptimisticOracleEventClient(
       dummyLogger,
@@ -141,9 +138,7 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
       requestTime,
       defaultAncillaryData,
       correctPrice,
-      {
-        from: proposer,
-      }
+      { from: proposer }
     );
     proposalTxn2 = await optimisticOracle.proposePrice(
       optimisticRequester.address,
@@ -151,9 +146,7 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
       requestTime + 1,
       defaultAncillaryData,
       correctPrice,
-      {
-        from: proposer,
-      }
+      { from: proposer }
     );
 
     // Make disputes and resolve them
@@ -163,9 +156,7 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
       identifier,
       requestTime,
       defaultAncillaryData,
-      {
-        from: disputer,
-      }
+      { from: disputer }
     );
     await pushPrice(correctPrice);
     disputeTxn2 = await optimisticOracle.disputePrice(
@@ -173,9 +164,7 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
       identifier,
       requestTime + 1,
       defaultAncillaryData,
-      {
-        from: disputer,
-      }
+      { from: disputer }
     );
     await pushPrice(correctPrice);
 
@@ -294,9 +283,7 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
       // This is important because `requestPrice` expects `ancillaryData` to be of type bytes,
       collateral.address.toLowerCase(),
       correctPrice,
-      {
-        from: proposer,
-      }
+      { from: proposer }
     );
     await client.clearState();
     await client.update();
@@ -355,9 +342,7 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
       requestTime,
       collateral.address.toLowerCase(),
       correctPrice,
-      {
-        from: proposer,
-      }
+      { from: proposer }
     );
     const newTxn = await optimisticOracle.disputePrice(
       optimisticRequester.address,
@@ -428,9 +413,7 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
       requestTime,
       collateral.address.toLowerCase(),
       correctPrice,
-      {
-        from: proposer,
-      }
+      { from: proposer }
     );
     await optimisticOracle.setCurrentTime((Number(newProposalTime) + liveness).toString());
     const newTxn = await optimisticOracle.settle(

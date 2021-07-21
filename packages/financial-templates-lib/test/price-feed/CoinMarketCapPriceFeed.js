@@ -21,26 +21,13 @@ contract("CoinMarketCapPriceFeed.js", function () {
   const { toWei, toBN } = web3.utils;
 
   const mockPrice = 48.200162117610525;
-  const validResponse = {
-    data: {
-      [symbol]: {
-        quote: {
-          [convert]: {
-            price: mockPrice,
-          },
-        },
-      },
-    },
-  };
+  const validResponse = { data: { [symbol]: { quote: { [convert]: { price: mockPrice } } } } };
 
   beforeEach(async function () {
     networker = new NetworkerMock();
     mockTime = new Date().getTime();
 
-    const dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+    const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
     coinMarketCapPriceFeed = new CoinMarketCapPriceFeed(
       dummyLogger,
@@ -150,13 +137,7 @@ contract("CoinMarketCapPriceFeed.js", function () {
   });
 
   it("Handles bad API response properly", async function () {
-    networker.getJsonReturns = [
-      {
-        status: {
-          error_message: "dummy error",
-        },
-      },
-    ];
+    networker.getJsonReturns = [{ status: { error_message: "dummy error" } }];
 
     const errorCatched = await coinMarketCapPriceFeed.update().catch(() => true);
     assert.isTrue(errorCatched, "Update didn't throw");
@@ -194,10 +175,7 @@ contract("CoinMarketCapPriceFeed.js", function () {
     networker = new NetworkerMock();
     mockTime = new Date().getTime();
 
-    const dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+    const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
     const cmcInvertedPriceFeed = new CoinMarketCapPriceFeed(
       dummyLogger,
@@ -233,25 +211,12 @@ contract("CoinMarketCapPriceFeed.js", function () {
   it("Can handle non-18 decimal place precision", async function () {
     // non-18 decimal price feed setup
     const expectedPrice = 48.216239;
-    const expectedResponse = {
-      data: {
-        [symbol]: {
-          quote: {
-            [convert]: {
-              price: expectedPrice,
-            },
-          },
-        },
-      },
-    };
+    const expectedResponse = { data: { [symbol]: { quote: { [convert]: { price: expectedPrice } } } } };
 
     networker = new NetworkerMock();
     mockTime = new Date().getTime();
 
-    const dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+    const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
     const cgSixDecimalPriceFeed = new CoinMarketCapPriceFeed(
       dummyLogger,

@@ -38,12 +38,7 @@ describe("DevMining Rewards", function () {
       const queries = Queries(datasetPath);
       const coingecko = Coingecko(datasetPath);
       const synthPrices = SynthPrices(datasetPath);
-      affiliates = DevMining({
-        queries,
-        defaultEmpAbi: empAbi,
-        coingecko,
-        synthPrices,
-      });
+      affiliates = DevMining({ queries, defaultEmpAbi: empAbi, coingecko, synthPrices });
 
       function makePricesWithValue(count) {
         return [makePrices(count), affiliates.utils.calculateValue];
@@ -193,23 +188,11 @@ describe("DevMining Rewards", function () {
         blockTimestamp: 0,
       });
       // create position at block 1 for first emp
-      balanceHistories[0][1].handleEvent(1, {
-        name: "PositionCreated",
-        args: ["b", "2", "1"],
-        blockTimestamp: 1,
-      });
+      balanceHistories[0][1].handleEvent(1, { name: "PositionCreated", args: ["b", "2", "1"], blockTimestamp: 1 });
       // create positionat block 1 for second emp
-      balanceHistories[1][1].handleEvent(1, {
-        name: "PositionCreated",
-        args: ["b", "2", "1"],
-        blockTimestamp: 1,
-      });
+      balanceHistories[1][1].handleEvent(1, { name: "PositionCreated", args: ["b", "2", "1"], blockTimestamp: 1 });
       // now we will also expire emp 2, rendering its latest value unrecordded
-      balanceHistories[1][1].handleEvent(1, {
-        name: "ContractExpired",
-        args: [],
-        blockTimestamp: 1,
-      });
+      balanceHistories[1][1].handleEvent(1, { name: "ContractExpired", args: [], blockTimestamp: 1 });
       balanceHistories[0][1].finalize();
       balanceHistories[1][1].finalize();
       // Run for 2 blocks, [0-2)
@@ -235,12 +218,7 @@ describe("DevMining Rewards", function () {
       const queries = Queries(datasetPath);
       const coingecko = Coingecko(datasetPath);
       const synthPrices = SynthPrices(datasetPath);
-      affiliates = DevMining({
-        queries,
-        defaultEmpAbi: empAbi,
-        coingecko,
-        synthPrices,
-      });
+      affiliates = DevMining({ queries, defaultEmpAbi: empAbi, coingecko, synthPrices });
     });
     it("getAllBalanceHistory", async function () {
       this.timeout(10000);

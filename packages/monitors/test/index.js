@@ -42,7 +42,7 @@ let toBlock = null; // setting the to block to 0 will query up to the latest blo
 let errorRetries = 1; // setting execution re-tried to 0 will exit as soon as the process encounters an error.
 let errorRetriesTimeout = 0.1; // 100 milliseconds between performing retries
 let identifier = "TEST_IDENTIFIER";
-let fundingRateIdentifier = "TEST_FUNDiNG_IDENTIFIER";
+let fundingRateIdentifier = "TEST_FUNDING";
 
 contract("index.js", function (accounts) {
   const contractCreator = accounts[0];
@@ -83,9 +83,7 @@ contract("index.js", function (accounts) {
         );
         await identifierWhitelist.addSupportedIdentifier(utf8ToHex("TEST_IDENTIFIER"));
 
-        mockOracle = await MockOracle.new(finder.address, timer.address, {
-          from: contractCreator,
-        });
+        mockOracle = await MockOracle.new(finder.address, timer.address, { from: contractCreator });
         await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
         // Set the address in the global name space to enable disputer's index.js to access it.
         addGlobalHardhatTestingAddress("Voting", mockOracle.address);
@@ -130,7 +128,7 @@ contract("index.js", function (accounts) {
         constructorParams = await createConstructorParamsForContractVersion(
           contractVersion,
           {
-            convertSynthetic: toWei, // These tests do not use convertSynthetic. Override this with toWei
+            convertDecimals: toWei, // These tests do not use convertSynthetic. Override this with toWei
             finder,
             collateralToken,
             syntheticToken,
@@ -148,11 +146,7 @@ contract("index.js", function (accounts) {
         await syntheticToken.addBurner(financialContract.address);
 
         defaultMonitorConfig = {};
-        defaultTokenPricefeedConfig = {
-          type: "test",
-          currentPrice: "1",
-          historicalPrice: "1",
-        };
+        defaultTokenPricefeedConfig = { type: "test", currentPrice: "1", historicalPrice: "1" };
         defaultMedianizerPricefeedConfig = {};
       });
 
@@ -374,9 +368,7 @@ contract("index.js", function (accounts) {
         }
         // Iterate over all log events and count the number of
         // execution loop errors.
-        let reTryCounts = {
-          executionLoopErrors: 0,
-        };
+        let reTryCounts = { executionLoopErrors: 0 };
         for (let i = 0; i < spy.callCount; i++) {
           if (spyLogIncludes(spy, i, "An error was thrown in the execution loop")) reTryCounts.executionLoopErrors += 1;
         }

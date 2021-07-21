@@ -18,6 +18,4 @@ class NetworkerMock {
   }
 }
 
-module.exports = {
-  NetworkerMock,
-};
+module.exports = { NetworkerMock };

@@ -53,7 +53,4 @@ function getAbiDecoder() {
   return abiDecoder;
 }
 
-module.exports = {
-  getAllContracts,
-  getAbiDecoder,
-};
+module.exports = { getAllContracts, getAbiDecoder };

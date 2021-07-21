@@ -14,10 +14,7 @@ contract("BasketSpreadPriceFeed.js", function () {
   let basketSpreadPriceFeed;
 
   beforeEach(async function () {
-    dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+    dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
   });
   it("Update", async function () {
     const priceFeeds = [new PriceFeedMock()];

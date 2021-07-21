@@ -63,9 +63,7 @@ async function getHistoricalPrice(callback) {
     const lookback = Math.round(Math.max(getTime() - queryTime, 1800));
 
     // Create and update a new default price feed.
-    let dummyLogger = winston.createLogger({
-      silent: true,
-    });
+    let dummyLogger = winston.createLogger({ silent: true });
     let priceFeedConfig = {
       // Empirically, Cryptowatch API only returns data up to ~4 days back so that's why we default the lookback
       // 1800.

@@ -15,22 +15,14 @@ function DecodeLog(abi, meta = {}) {
   assert(abi, "requires abi");
   const iface = new ethers.utils.Interface(abi);
   return (log, props = {}) => {
-    return {
-      ...iface.parseLog(log),
-      ...meta,
-      ...props,
-    };
+    return { ...iface.parseLog(log), ...meta, ...props };
   };
 }
 function DecodeTransaction(abi, meta = {}) {
   assert(abi, "requires abi");
   const iface = new ethers.utils.Interface(abi);
   return (transaction, props = {}) => {
-    return {
-      ...iface.parseTransaction({ data: transaction.input }),
-      ...meta,
-      ...props,
-    };
+    return { ...iface.parseTransaction({ data: transaction.input }), ...meta, ...props };
   };
 }
 
@@ -105,9 +97,7 @@ function Erc20({ abi = getAbi("ERC20"), web3 }) {
     contract.options.address = tokenAddress;
     return contract.methods.decimals().call();
   }
-  return {
-    decimals,
-  };
+  return { decimals };
 }
 
 // Wrapper for some basic emp functionality.  Currently we just need token and collateral info Lookup by emp address
@@ -127,32 +117,16 @@ function Emp({ abi = getAbi("ExpiringMultiParty"), web3 } = {}) {
   }
   async function tokenInfo(empAddress) {
     const tokenAddress = await tokenCurrency(empAddress);
-    return {
-      address: tokenAddress,
-      decimals: await erc20.decimals(tokenAddress),
-    };
+    return { address: tokenAddress, decimals: await erc20.decimals(tokenAddress) };
   }
   async function collateralInfo(empAddress) {
     const tokenAddress = await collateralCurrency(empAddress);
-    return {
-      address: tokenAddress,
-      decimals: await erc20.decimals(tokenAddress),
-    };
+    return { address: tokenAddress, decimals: await erc20.decimals(tokenAddress) };
   }
   async function info(empAddress) {
-    return {
-      address: empAddress,
-      token: await tokenInfo(empAddress),
-      collateral: await collateralInfo(empAddress),
-    };
+    return { address: empAddress, token: await tokenInfo(empAddress), collateral: await collateralInfo(empAddress) };
   }
-  return {
-    tokenCurrency,
-    collateralCurrency,
-    collateralInfo,
-    tokenInfo,
-    info,
-  };
+  return { tokenCurrency, collateralCurrency, collateralInfo, tokenInfo, info };
 }
 
 module.exports = {

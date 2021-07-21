@@ -126,13 +126,7 @@ async function runExport() {
       roundId: currentRoundId,
       identifier: request.identifier,
     });
-    requestsToVoteOn.push({
-      identifier,
-      salt,
-      time,
-      price,
-      voteHash,
-    });
+    requestsToVoteOn.push({ identifier, salt, time, price, voteHash });
   }
 
   console.log("2. COMMIT VOTE FROM FOUNDATION WALLET\nVote information:");

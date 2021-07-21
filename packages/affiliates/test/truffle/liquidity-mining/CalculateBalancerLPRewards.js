@@ -17,12 +17,8 @@ contract("CalculateBalancerLPProviders.js", function (accounts) {
 
   describe("Correctly calculates payout at a given block number (_updatePayoutAtBlock)", function () {
     beforeEach(async function () {
-      bpToken = await Token.new("BPT", "BPT", 18, {
-        from: contractCreator,
-      });
-      await bpToken.addMember(1, contractCreator, {
-        from: contractCreator,
-      });
+      bpToken = await Token.new("BPT", "BPT", 18, { from: contractCreator });
+      await bpToken.addMember(1, contractCreator, { from: contractCreator });
     });
 
     it("Correctly splits payout over all liquidity providers (balanced case)", async function () {
@@ -90,12 +86,8 @@ contract("CalculateBalancerLPProviders.js", function (accounts) {
     });
     it("Correctly splits payout over all liquidity providers (extreme fractional case)", async function () {
       // Create 10e18 tokens to distribute, sending all to one LP and send 100 wei of tokens to another provider.
-      await bpToken.mint(shareHolders[0], toWei("10"), {
-        from: contractCreator,
-      }); // shareholder0 gets 10e18 tokens
-      await bpToken.mint(shareHolders[1], "100", {
-        from: contractCreator,
-      }); // Shareholder1 gets 100 tokens. (100 wei)
+      await bpToken.mint(shareHolders[0], toWei("10"), { from: contractCreator }); // shareholder0 gets 10e18 tokens
+      await bpToken.mint(shareHolders[1], "100", { from: contractCreator }); // Shareholder1 gets 100 tokens. (100 wei)
 
       // Create an object to store the payouts for a given block. This should be an object with key being the
       // shareholder address and value being their respective payout.
@@ -147,12 +139,8 @@ contract("CalculateBalancerLPProviders.js", function (accounts) {
   });
   describe("Correctly calculates payouts over a range of block numbers (_calculatePayoutsBetweenBlocks)", function () {
     beforeEach(async function () {
-      bpToken = await Token.new("BPT", "BPT", 18, {
-        from: contractCreator,
-      });
-      await bpToken.addMember(1, contractCreator, {
-        from: contractCreator,
-      });
+      bpToken = await Token.new("BPT", "BPT", 18, { from: contractCreator });
+      await bpToken.addMember(1, contractCreator, { from: contractCreator });
     });
 
     it("Correctly splits rewards over n blocks (simple case)", async function () {

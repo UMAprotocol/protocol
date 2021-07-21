@@ -88,9 +88,7 @@ describe("RangeBondLongShortPairFinancialProductLibrary", function () {
       // collateralPerPair. i.e each short token is worth 0*collateralPerPair and each long token is worth 1*collateralPerPair.
       const expiryTokensForCollateral = await rangeBondLSPFPL.methods
         .percentageLongCollateralAtExpiry(toWei("9"))
-        .call({
-          from: lspMock.options.address,
-        });
+        .call({ from: lspMock.options.address });
       assert.equal(expiryTokensForCollateral.toString(), toWei("1"));
     });
     it("Higher than upper bound should return 0.2 (long side is long call option)", async () => {
@@ -99,9 +97,7 @@ describe("RangeBondLongShortPairFinancialProductLibrary", function () {
       // i.e each short token is worth 0.8* collateralPerPair = 8 tokens and each long token is worth 0.2*collateralPerPair=2.
       const expiryTokensForCollateral = await rangeBondLSPFPL.methods
         .percentageLongCollateralAtExpiry(toWei("60"))
-        .call({
-          from: lspMock.options.address,
-        });
+        .call({ from: lspMock.options.address });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0.2"));
     });
     it("Midway between bounds should return long worth bond notional (long side is long yield dollar)", async () => {
@@ -111,18 +107,14 @@ describe("RangeBondLongShortPairFinancialProductLibrary", function () {
       // be 10/5=0.5, thereby allocating half to the long and half to the short.
       const expiryTokensForCollateral1 = await rangeBondLSPFPL.methods
         .percentageLongCollateralAtExpiry(toWei("20"))
-        .call({
-          from: lspMock.options.address,
-        });
+        .call({ from: lspMock.options.address });
       assert.equal(expiryTokensForCollateral1.toString(), toWei("0.5"));
 
       // Equally, at a price of 40 each long should still be worth 100 so there should be 100/40=2.5 UMA per long. As
       // each collateralPerPair=10 expiryPercentLong should be 10/2.5=0.25, thereby allocating 25% to long and the remaining to short.
       const expiryTokensForCollateral2 = await rangeBondLSPFPL.methods
         .percentageLongCollateralAtExpiry(toWei("20"))
-        .call({
-          from: lspMock.options.address,
-        });
+        .call({ from: lspMock.options.address });
       assert.equal(expiryTokensForCollateral2.toString(), toWei("0.5"));
     });
 
@@ -137,9 +129,9 @@ describe("RangeBondLongShortPairFinancialProductLibrary", function () {
       // form of the range bond equation where as the library uses an algebraic simplification of this equation. This
       // test validates the correct mapping between these two forms.
       for (const price of [toWei("5.555"), toWei("11"), toWei("33"), toWei("55"), toWei("66"), toWei("111")]) {
-        const expiryTokensForCollateral = await rangeBondLSPFPL.methods.percentageLongCollateralAtExpiry(price).call({
-          from: lspMock.options.address,
-        });
+        const expiryTokensForCollateral = await rangeBondLSPFPL.methods
+          .percentageLongCollateralAtExpiry(price)
+          .call({ from: lspMock.options.address });
         //
         const term1 = BN.min(
           toBN(bondNotional).mul(fixedPointAdjustment).div(toBN(price)),

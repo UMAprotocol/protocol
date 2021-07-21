@@ -18,6 +18,7 @@ module.exports = {
   ...require("./src/TimeUtils"),
   ...require("./src/VotingUtils"),
   ...require("./src/PriceIdentifierUtils"),
-  ...require("./src/MultiVersionTestHelpers.js"),
+  ...require("./src/MultiDecimalTestHelper"),
+  ...require("./src/MultiVersionTestHelpers"),
   ...require("./src/hardhat/fixtures"),
 };

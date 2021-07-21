@@ -238,11 +238,7 @@ async function parseRevealEvents({ committedVotes, revealedVotes, priceData, reb
 
   return {
     rebateReceipts,
-    totals: {
-      totalGasUsed: totalGasUsed,
-      totalEthSpent: totalEthSpent,
-      totalUmaRepaid: totalUmaRepaid,
-    },
+    totals: { totalGasUsed: totalGasUsed, totalEthSpent: totalEthSpent, totalUmaRepaid: totalUmaRepaid },
   };
 }
 
@@ -357,11 +353,7 @@ async function parseClaimEvents({ claimedRewards, priceData, rebateOutput, debug
 
   return {
     rebateReceipts,
-    totals: {
-      totalGasUsed: totalGasUsed,
-      totalEthSpent: totalEthSpent,
-      totalUmaRepaid: totalUmaRepaid,
-    },
+    totals: { totalGasUsed: totalGasUsed, totalEthSpent: totalEthSpent, totalUmaRepaid: totalUmaRepaid },
   };
 }
 
@@ -390,28 +382,13 @@ async function calculateRebate({
 
     // Query past contract events.
     const [committedVotes, revealedVotes, claimedRewards] = await Promise.all([
-      voting.getPastEvents("VoteCommitted", {
-        fromBlock: startBlock,
-        toBlock: endBlock,
-      }),
-      voting.getPastEvents("VoteRevealed", {
-        fromBlock: startBlock,
-        toBlock: endBlock,
-      }),
-      voting.getPastEvents("RewardsRetrieved", {
-        fromBlock: startBlock,
-        toBlock: endBlock,
-      }),
+      voting.getPastEvents("VoteCommitted", { fromBlock: startBlock, toBlock: endBlock }),
+      voting.getPastEvents("VoteRevealed", { fromBlock: startBlock, toBlock: endBlock }),
+      voting.getPastEvents("RewardsRetrieved", { fromBlock: startBlock, toBlock: endBlock }),
     ]);
 
-    const priceData = {
-      dailyAvgGasPrices,
-      dailyAvgUmaEthPrices,
-    };
-    const readablePriceData = {
-      dailyAvgGasPrices,
-      dailyAvgUmaEthPrices,
-    };
+    const priceData = { dailyAvgGasPrices, dailyAvgUmaEthPrices };
+    const readablePriceData = { dailyAvgGasPrices, dailyAvgUmaEthPrices };
     if (!debug) {
       Object.keys(readablePriceData).forEach((k) => {
         if (typeof readablePriceData[k] !== "object") {
@@ -437,29 +414,14 @@ async function calculateRebate({
 
     // Parse data for vote reveals to rebate.
     if (!claimOnly) {
-      parsePromises.push(
-        parseRevealEvents({
-          committedVotes,
-          revealedVotes,
-          priceData,
-          rebateOutput,
-          debug,
-        })
-      );
+      parsePromises.push(parseRevealEvents({ committedVotes, revealedVotes, priceData, rebateOutput, debug }));
     } else {
       parsePromises.push(null);
     }
 
     // Parse data for claimed rewards to rebate
     if (!revealOnly) {
-      parsePromises.push(
-        parseClaimEvents({
-          claimedRewards,
-          priceData,
-          rebateOutput,
-          debug,
-        })
-      );
+      parsePromises.push(parseClaimEvents({ claimedRewards, priceData, rebateOutput, debug }));
     } else {
       parsePromises.push(null);
     }
@@ -548,11 +510,7 @@ async function calculateRebate({
     }
 
     // Return debug and prod outputs for testing
-    return {
-      revealRebates,
-      claimRebates,
-      rebateOutput,
-    };
+    return { revealRebates, claimRebates, rebateOutput };
   } catch (err) {
     console.error("calculateRebate ERROR:", err);
     return;
@@ -565,10 +523,7 @@ async function getUmaPriceAtTimestamp(timestamp) {
     const query = `https://api.coingecko.com/api/v3/coins/uma/history?date=${dateFormatted}`;
 
     const response = await fetch(query, {
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
     });
 
     let pricesResponse = await response.json();
@@ -598,10 +553,7 @@ async function getHistoricalGasPrice(startBlock, endBlock) {
 
     const query = `https://api.etherscan.io/api?module=stats&action=dailyavggasprice&startdate=${startTimeString}&enddate=${endTimeString}&sort=asc&apikey=${etherscanApiKey}`;
     const response = await fetch(query, {
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json",
-      },
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
     });
 
     let data = (await response.json()).result;

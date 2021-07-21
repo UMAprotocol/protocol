@@ -1,6 +1,6 @@
 // This script generates and submits an add-member transaction to the DVM, which registers a new contractCreator. This can be used to register a new EMPCreator for example.
-// It can be run on a local ganache fork of the main net or can be run directly on the main net to execute the upgrade transactions.
-// To run this on the localhost first fork main net into Ganache with the proposerWallet unlocked as follows:
+// It can be run on a local ganache fork of the mainnet or can be run directly on the mainnet to execute the upgrade transactions.
+// To run this on the localhost first fork mainnet into Ganache with the proposerWallet unlocked as follows:
 // ganache-cli --fork https://mainnet.infura.io/v3/5f56f0a4c8844c96a430fbd3d7993e39 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25 --port 9545
 // Then execute the script as: yarn truffle exec ./scripts/creator-umip/1_Propose.js --network mainnet-fork --creator 0x9A077D4fCf7B26a0514Baa4cff0B481e9c35CE87 from core
 
@@ -21,9 +21,7 @@ async function runExport() {
   console.log("Connected to network id", netId);
 
   const gasEstimator = new GasEstimator(
-    winston.createLogger({
-      silent: true,
-    }),
+    winston.createLogger({ silent: true }),
     60, // Time between updates.
     netId
   );
@@ -39,16 +37,10 @@ async function runExport() {
   // Send the proposal
   const governor = await Governor.deployed();
   await gasEstimator.update();
-  await governor.propose(
-    [
-      {
-        to: registry.address,
-        value: 0,
-        data: addCreatorToRegistryTx,
-      },
-    ],
-    { from: proposerWallet, gasPrice: gasEstimator.getCurrentFastPrice() }
-  );
+  await governor.propose([{ to: registry.address, value: 0, data: addCreatorToRegistryTx }], {
+    from: proposerWallet,
+    gasPrice: gasEstimator.getCurrentFastPrice(),
+  });
 
   console.log(`
 

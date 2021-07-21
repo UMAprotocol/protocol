@@ -19,10 +19,4 @@ const totalRewards = 10000n.toString();
 // network 1 = mainnet, 42 = kovan, will default to 1 if not specified
 const network = 1;
 
-module.exports = {
-  empWhitelist,
-  startTime,
-  endTime,
-  totalRewards,
-  network,
-};
+module.exports = { empWhitelist, startTime, endTime, totalRewards, network };

@@ -7,9 +7,7 @@
 const { toWei } = web3.utils;
 const { ZERO_ADDRESS } = require("@uma/common");
 const { getAbi, getTruffleContract } = require("../../dist/index");
-const argv = require("minimist")(process.argv.slice(), {
-  string: ["cversion", "address"],
-});
+const argv = require("minimist")(process.argv.slice(), { string: ["cversion", "address"] });
 const abiVersion = argv.cversion || "latest"; // Default to most recent mainnet deployment, 1.2.2.
 const address = argv.address || "0x0";
 

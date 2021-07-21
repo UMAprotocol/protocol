@@ -4,10 +4,7 @@ const func = async function (hre) {
 
   const { deployer } = await getNamedAccounts();
 
-  await deploy("AddressWhitelist", {
-    from: deployer,
-    log: true,
-  });
+  await deploy("AddressWhitelist", { from: deployer, log: true });
 };
 module.exports = func;
 func.tags = ["AddressWhitelist", "dvm"];

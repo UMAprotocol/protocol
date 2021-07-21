@@ -31,15 +31,9 @@ module.exports = class PagerDutyTransport extends Transport {
         incident: {
           type: "incident",
           title: `${info.level}: ${info.at} ⭢ ${info.message}`,
-          service: {
-            id: serviceId,
-            type: "service_reference",
-          },
+          service: { id: serviceId, type: "service_reference" },
           urgency: info.level == "warn" ? "low" : "high", // If level is warn then urgency is low. If level is error then urgency is high.
-          body: {
-            type: "incident_body",
-            details: logMessage,
-          },
+          body: { type: "incident_body", details: logMessage },
         },
       });
     } catch (error) {

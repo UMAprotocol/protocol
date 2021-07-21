@@ -10,7 +10,7 @@ Diagram of oracle tunnel system: ![image](https://user-images.githubusercontent.
 
 # Root Tunnel Contract
 
-This contract is deployed on Ethereum and inherits from the official tunnel implementation called the "FxBaseRootTunnel" which implements `_processMessageFromChild(bytes memory data)` to receive messages from Polygon and enforces that the message originated from a Polygon transaction that has been provably [checkpointed](https://docs.matic.network/docs/contribute/heimdall/checkpoint/) to Ethereum. Notably, the root tunnel can only communicate with one child tunnel on Polygon, and the child tunnel address cannot be overwritten after being set.
+This contract is deployed on Ethereum and inherits from the official tunnel implementation called the ["FxBaseRootTunnel"](https://github.com/fx-portal/contracts/blob/main/contracts/tunnel/FxBaseRootTunnel.sol) which implements `_processMessageFromChild(bytes memory data)` to receive messages from Polygon and enforces that the message originated from a Polygon transaction that has been provably [checkpointed](https://docs.matic.network/docs/contribute/heimdall/checkpoint/) to Ethereum. Notably, the root tunnel can only communicate with one child tunnel on Polygon, and the child tunnel address cannot be overwritten after being set.
 
 In order to send messages to Polygon, the tunnel contract must be initialized to point to a "FxRoot" contract that is [already deployed](https://etherscan.io/address/0xfe5e5D361b2ad62c541bAb87C45a0B9B018389a2#code) to Ethereum. The tunnel contract can send messages to Polygon via the "FxRoot" which has special permission to call `syncState(address receiver, bytes calldata data)` on the ["StateSender" contract](https://etherscan.io/address/0x28e4f3a7f651294b9564800b2d01f35189a5bfbe/advanced#code).
 
@@ -18,9 +18,9 @@ To receive messages from Polygon, the tunnel contract is similarly initialized t
 
 # Child Tunnel Contract
 
-This contract is deployed on Polygon and inherits from the official tunnel implementation called the "FxBaseChildTunnel" which implements `_processMessageFromChild(bytes memory data)` to receive messages from Ethereum. Like the root tunnel, the child tunnel can only communicate with one root tunnel whose address cannot be overwritten after being set.
+This contract is deployed on Polygon and inherits from the official tunnel implementation called the ["FxBaseChildTunnel"](https://github.com/fx-portal/contracts/blob/main/contracts/tunnel/FxBaseChildTunnel.sol) which implements `_processMessageFromRoot(bytes memory data)` to receive messages from Ethereum. Like the root tunnel, the child tunnel can only communicate with one root tunnel whose address cannot be overwritten after being set.
 
-To send messages to Ethereum, the tunnel contract emits a `MessageSent(bytes message)` event containing the message that can be [passed to the Root tunnel contract](https://github.com/QEDK/fx-portal/blob/main/contracts/tunnel/FxBaseRootTunnel.sol#L138) after the transaction that originally emitted the `MessageSent` event has been included in a Checkpoint.
+To send messages to Ethereum, the tunnel contract emits a `MessageSent(bytes message)` event containing the message that can be [passed to the Root tunnel contract](https://github.com/fx-portal/contracts/blob/main/contracts/tunnel/FxBaseRootTunnel.sol#L138) after the transaction that originally emitted the `MessageSent` event has been included in a Checkpoint.
 
 To receive messages from Ethereum, Polygon validators will automatically detect and submit `StateSynced(uint256 id, address contractAddress, bytes data)` to Polygon's "FxChild" contract and execute `onStateReceive(uint256 stateId, bytes _data)`, which will pass the message on to the Child tunnel contract. The Child tunnel must be initialized by pointing to the ["FxChild" contract](https://explorer-mainnet.maticvigil.com/address/0x8397259c983751DAf40400790063935a11afa28a/read-contract) deployed on Polygon which can only be called by the System [Superuser address](https://explorer-mainnet.maticvigil.com/address/0x0000000000000000000000000000000000001001/transactions) on Polygon.
 

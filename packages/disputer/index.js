@@ -133,9 +133,7 @@ async function run({
     }
 
     // Generate Financial Contract properties to inform bot of important on-chain state values that we only want to query once.
-    const financialContractProps = {
-      priceIdentifier: priceIdentifier,
-    };
+    const financialContractProps = { priceIdentifier: priceIdentifier };
 
     // Client and dispute bot.
     const financialContractClient = new FinancialContractClient(
@@ -241,10 +239,7 @@ async function run({
       );
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (pollingDelay === 0) {
-        logger.debug({
-          at: "Disputer#index",
-          message: "End of serverless execution loop - terminating process",
-        });
+        logger.debug({ at: "Disputer#index", message: "End of serverless execution loop - terminating process" });
         await waitForLogger(logger);
         await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
         break;

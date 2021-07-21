@@ -24,12 +24,8 @@ describe("Perpetual", function () {
   });
 
   it("Can deploy", async function () {
-    const collateralToken = await Token.new("Wrapped Ether", "WETH", 18).send({
-      from: accounts[0],
-    });
-    const tokenCurrency = await Token.new("Test Synthetic Token", "SYNTH", 18).send({
-      from: accounts[0],
-    });
+    const collateralToken = await Token.new("Wrapped Ether", "WETH", 18).send({ from: accounts[0] });
+    const tokenCurrency = await Token.new("Test Synthetic Token", "SYNTH", 18).send({ from: accounts[0] });
     const configStore = await ConfigStore.new(
       {
         timelockLiveness: 86400, // 1 day
@@ -48,7 +44,7 @@ describe("Perpetual", function () {
       tokenAddress: tokenCurrency.options.address,
       finderAddress: finder.options.address,
       priceFeedIdentifier: padRight(utf8ToHex("TEST_IDENTIFIER"), 64),
-      fundingRateIdentifier: padRight(utf8ToHex("TEST_FUNDING_IDENTIFIER"), 64),
+      fundingRateIdentifier: padRight(utf8ToHex("TEST_FUNDING"), 64),
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPercentage: { rawValue: toWei("0.1") },

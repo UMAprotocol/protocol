@@ -235,6 +235,4 @@ class OptimisticOracleContractMonitor {
   }
 }
 
-module.exports = {
-  OptimisticOracleContractMonitor,
-};
+module.exports = { OptimisticOracleContractMonitor };
