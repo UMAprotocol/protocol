@@ -1,10 +1,14 @@
 import winston from "winston";
 import sinon from "sinon";
 import { run } from "../src/index";
-import { web3 } from "hardhat";
+import {
+  interfaceName,
+  addGlobalHardhatTestingAddress,
+  createConstructorParamsForContractVersion,
+  getWeb3,
+} from "@uma/common";
+const web3 = getWeb3();
 const { toWei, utf8ToHex, padRight } = web3.utils;
-
-import { interfaceName, addGlobalHardhatTestingAddress, createConstructorParamsForContractVersion } from "@uma/common";
 
 import { getTruffleContract } from "@uma/core";
 
