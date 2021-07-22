@@ -42,7 +42,7 @@
     "eslint": "eslint './src/**/*.ts'",
     "prettier": "prettier './**/*.md' './src/**/*.ts'",
     "lint": "yarn prettier --write && yarn eslint --fix",
-    "api": "ts-node src/start api"
+    "api": "node build/start api"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.com/",
