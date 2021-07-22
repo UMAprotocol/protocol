@@ -119,16 +119,11 @@ const deployEMP = async (callback) => {
 
     // Inject constructor params neccessary for "latest" version of the EMPCreator:
     if (abiVersion === "latest") {
-      constructorParams = {
-        ...constructorParams,
-        financialProductLibraryAddress: ZERO_ADDRESS,
-      };
+      constructorParams = { ...constructorParams, financialProductLibraryAddress: ZERO_ADDRESS };
     }
 
     const gasEstimator = new GasEstimator(
-      winston.createLogger({
-        silent: true,
-      }),
+      winston.createLogger({ silent: true }),
       60, // Time between updates.
       await web3.eth.net.getId()
     );
@@ -156,10 +151,7 @@ const deployEMP = async (callback) => {
 
     // Grab `tokenAddress` from newly constructed EMP and add to `empConstructorParams` for new EMP's
     if (abiVersion === "latest") {
-      empConstructorParams = {
-        ...empConstructorParams,
-        tokenAddress: await emp.tokenCurrency(),
-      };
+      empConstructorParams = { ...empConstructorParams, tokenAddress: await emp.tokenCurrency() };
     }
 
     const encodedParameters = web3.eth.abi.encodeParameters(getAbi("ExpiringMultiParty", abiVersion)[0].inputs, [

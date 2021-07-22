@@ -274,6 +274,4 @@ const VALID_SYMBOLS = [
   "EUR",
 ];
 
-module.exports = {
-  ForexDailyPriceFeed,
-};
+module.exports = { ForexDailyPriceFeed };

@@ -2,6 +2,7 @@ import * as uma from "@uma/sdk";
 import { Data, makeId, makeEndId } from "./utils";
 const { SortedJsMap } = uma.tables.generic;
 
+const globalId = "global";
 export const Table = (type = "Emp Stat History") => {
   const table = SortedJsMap<string, Data>(type, makeId);
 
@@ -25,12 +26,33 @@ export const Table = (type = "Emp Stat History") => {
     return result.slice(0, length);
   }
 
+  function hasGlobal(timestamp: number) {
+    return hasByAddress(globalId, timestamp);
+  }
+  function getAllGlobal() {
+    return getAllByAddress(globalId);
+  }
+  function betweenByGlobal(start: number, end: number) {
+    return betweenByAddress(globalId, start, end);
+  }
+  function sliceByGlobal(start: number, length: number) {
+    return sliceByAddress(globalId, start, length);
+  }
+  function createGlobal(data: { timestamp: number; value: string }) {
+    return table.create({ ...data, address: globalId });
+  }
+
   return {
     ...table,
     getAllByAddress,
     hasByAddress,
     betweenByAddress,
     sliceByAddress,
+    hasGlobal,
+    getAllGlobal,
+    betweenByGlobal,
+    sliceByGlobal,
+    createGlobal,
   };
 };
 export type Table = ReturnType<typeof Table>;

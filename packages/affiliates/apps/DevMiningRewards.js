@@ -37,11 +37,7 @@ const App = (env) => async (params) => {
     tradermadeApiKey: env.TRADERMADE_KEY,
   });
 
-  const rewards = DevMining({
-    queries,
-    coingecko,
-    synthPrices,
-  });
+  const rewards = DevMining({ queries, coingecko, synthPrices });
 
   // This just sets a default abi version in case no abi is passed along with the emp address.
   // This should default to the latest version

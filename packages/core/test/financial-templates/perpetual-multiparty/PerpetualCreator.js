@@ -66,7 +66,7 @@ describe("PerpetualCreator", function () {
     constructorParams = {
       collateralAddress: collateralToken.options.address,
       priceFeedIdentifier: padRight(utf8ToHex("TEST_IDENTIFIER"), 64),
-      fundingRateIdentifier: padRight(utf8ToHex("TEST_FUNDING_IDENTIFIER"), 64),
+      fundingRateIdentifier: padRight(utf8ToHex("TEST_FUNDING"), 64),
       syntheticName: "Test Synthetic Token",
       syntheticSymbol: "SYNTH",
       collateralRequirement: { rawValue: toWei("1.5") },
@@ -108,9 +108,7 @@ describe("PerpetualCreator", function () {
   it("Collateral token must be whitelisted", async function () {
     // Change only the collateral token address
     constructorParams.collateralAddress = (
-      await Token.new("Test Synthetic Token", "SYNTH", 18).send({
-        from: contractCreator,
-      })
+      await Token.new("Test Synthetic Token", "SYNTH", 18).send({ from: contractCreator })
     ).options.address;
     assert(
       await didContractThrow(
@@ -162,9 +160,7 @@ describe("PerpetualCreator", function () {
   it("Token scaling cannot be too large", async function () {
     // Change only the token scaling.
     // 1e28 + 1
-    constructorParams.tokenScaling = {
-      rawValue: toBN(10).pow(toBN(28)).addn(1).toString(),
-    };
+    constructorParams.tokenScaling = { rawValue: toBN(10).pow(toBN(28)).addn(1).toString() };
     assert(
       await didContractThrow(
         perpetualCreator.methods.createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
@@ -175,9 +171,7 @@ describe("PerpetualCreator", function () {
   it("Token scaling cannot be too small", async function () {
     // Change only the token scaling.
     // 1e8 - 1
-    constructorParams.tokenScaling = {
-      rawValue: toBN(10).pow(toBN(8)).subn(1).toString(),
-    };
+    constructorParams.tokenScaling = { rawValue: toBN(10).pow(toBN(8)).subn(1).toString() };
     assert(
       await didContractThrow(
         perpetualCreator.methods.createPerpetual(constructorParams, testConfig).send({ from: contractCreator })
@@ -187,9 +181,9 @@ describe("PerpetualCreator", function () {
 
   it("Can create new instances of Perpetual", async function () {
     // Use `.call` to get the returned value from the function.
-    let functionReturnedAddress = await perpetualCreator.methods.createPerpetual(constructorParams, testConfig).call({
-      from: contractCreator,
-    });
+    let functionReturnedAddress = await perpetualCreator.methods
+      .createPerpetual(constructorParams, testConfig)
+      .call({ from: contractCreator });
 
     // Execute without the `.call` to perform state change. catch the result to query the event.
     let createdAddressResult = await perpetualCreator.methods

@@ -1560,18 +1560,8 @@ describe("Voting", function () {
     // NOTE: Signed integers inside structs must be supplied as a string rather than a BN.
     const result = await voting.methods
       .batchReveal([
-        {
-          identifier,
-          time: time1,
-          price: price1.toString(),
-          salt: salt1.toString(),
-        },
-        {
-          identifier,
-          time: time2,
-          price: price2.toString(),
-          salt: salt2.toString(),
-        },
+        { identifier, time: time1, price: price1.toString(), salt: salt1.toString() },
+        { identifier, time: time2, price: price2.toString(), salt: salt2.toString() },
       ])
       .send({ from: accounts[0] });
 

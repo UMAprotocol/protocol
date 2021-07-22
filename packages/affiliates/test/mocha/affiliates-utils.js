@@ -51,21 +51,13 @@ describe("affiliates/utils", function () {
   it("makeDevMiningFilename", function () {
     const startTime = moment("2021", "YYYY").startOf("year").valueOf();
     const endTime = moment("2021", "YYYY").startOf("year").add(1, "week").valueOf();
-    const result = utils.makeDevMiningFilename({
-      startTime,
-      endTime,
-      weekNumber: 10,
-    });
+    const result = utils.makeDevMiningFilename({ startTime, endTime, weekNumber: 10 });
     assert.ok(result);
   });
   it("makeDappMiningFilename", function () {
     const startTime = moment("2021", "YYYY").startOf("year").valueOf();
     const endTime = moment("2021", "YYYY").startOf("year").add(1, "week").valueOf();
-    const result = utils.makeDappMiningFilename({
-      startTime,
-      endTime,
-      weekNumber: 10,
-    });
+    const result = utils.makeDappMiningFilename({ startTime, endTime, weekNumber: 10 });
     assert.ok(result);
   });
   it("generateDappMiningConfig", function () {

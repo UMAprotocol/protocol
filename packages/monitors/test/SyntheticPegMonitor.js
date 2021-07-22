@@ -3,7 +3,7 @@ const { toWei, toBN } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 
-const { parseFixed } = require("@uma/common");
+const { parseFixed, TEST_DECIMAL_COMBOS } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
 // Tested module
@@ -21,17 +21,10 @@ const {
 
 const PerpetualMock = getTruffleContract("PerpetualMock", web3);
 
-// Run the tests against 2 diffrent price feed scaling combinations. Note these tests differ from the other monitor tests
-// as the Synthetic peg monitor is only dependent on price feeds. No need to test different decimal or collateral combinations.
-// 1) 18 decimal price feed.
-// 2) 8 decimal price feed.
-// 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
-const configs = [{ priceFeedDecimals: 18 }, { priceFeedDecimals: 8 }];
-
 const Convert = (decimals) => (number) => toBN(parseFixed(number.toString(), decimals).toString());
 
 contract("SyntheticPegMonitor", function () {
-  for (let testConfig of configs) {
+  for (let testConfig of TEST_DECIMAL_COMBOS) {
     describe(`${testConfig.priceFeedDecimals} pricefeed decimals`, function () {
       let uniswapPriceFeedMock;
       let medianizerPriceFeedMock;

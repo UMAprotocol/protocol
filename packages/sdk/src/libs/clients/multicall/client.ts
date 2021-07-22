@@ -1,8 +1,9 @@
-import { Multicall__factory, Multicall } from "@uma/core/contract-types/ethers";
+import { EthersContracts } from "@uma/core";
 import type { SignerOrProvider } from "../..";
 
-export type Instance = Multicall;
+export type Instance = EthersContracts.Multicall;
+const Factory = EthersContracts.Multicall__factory;
 
 export function connect(address: string, provider: SignerOrProvider): Instance {
-  return Multicall__factory.connect(address, provider);
+  return Factory.connect(address, provider);
 }

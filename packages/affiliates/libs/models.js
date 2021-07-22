@@ -50,11 +50,7 @@ function Prices(prices = []) {
     });
   }
 
-  return {
-    lookup,
-    prices,
-    closest,
-  };
+  return { lookup, prices, closest };
 }
 
 // Keeps track of all attributions for a particular user. This also allows a lookup to calculate
@@ -130,10 +126,7 @@ function AttributionLookback({ scale = 10n ** 18n } = {}) {
         attributions[next.affiliate] += attributionUsed;
         amountRemaining -= attributionUsed;
 
-        return {
-          attributions,
-          amountRemaining,
-        };
+        return { attributions, amountRemaining };
       },
       { attributions: {}, amountRemaining: BigInt(amount) }
     );
@@ -249,18 +242,7 @@ function SharedAttributions({ scale = 10n ** 18n } = {}) {
     });
   }
 
-  return {
-    get,
-    set,
-    create,
-    getOrCreate,
-    attribute,
-    calculateShare,
-    snapshot,
-    addresses,
-    forEach,
-    getAttribution,
-  };
+  return { get, set, create, getOrCreate, attribute, calculateShare, snapshot, addresses, forEach, getAttribution };
 }
 
 // Table of address balances. Option to allow negative balances.
@@ -330,21 +312,7 @@ function Balances({ allowNegative = false } = {}) {
     balances.forEach(cb);
   }
 
-  return {
-    get,
-    set,
-    has,
-    create,
-    getOrCreate,
-    sub,
-    add,
-    snapshot,
-    keys,
-    getTotal,
-    getPercent,
-    forEach,
-    balances,
-  };
+  return { get, set, has, create, getOrCreate, sub, add, snapshot, keys, getTotal, getPercent, forEach, balances };
 }
 
 // hold any kind of data which can have a history by block number
@@ -381,20 +349,7 @@ function History() {
   function length() {
     return history.length;
   }
-  return {
-    get,
-    has,
-    insert,
-    lookup,
-    history,
-    length,
-  };
+  return { get, has, insert, lookup, history, length };
 }
 
-module.exports = {
-  SharedAttributions,
-  AttributionLookback,
-  History,
-  Balances,
-  Prices,
-};
+module.exports = { SharedAttributions, AttributionLookback, History, Balances, Prices };

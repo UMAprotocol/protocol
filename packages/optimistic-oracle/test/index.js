@@ -49,13 +49,7 @@ contract("index.js", function () {
       transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
     });
 
-    await Main.run({
-      logger: spyLogger,
-      web3,
-      pollingDelay,
-      errorRetries,
-      errorRetriesTimeout,
-    });
+    await Main.run({ logger: spyLogger, web3, pollingDelay, errorRetries, errorRetriesTimeout });
 
     for (let i = 0; i < spy.callCount; i++) {
       assert.notStrictEqual(spyLogLevel(spy, i), "error");

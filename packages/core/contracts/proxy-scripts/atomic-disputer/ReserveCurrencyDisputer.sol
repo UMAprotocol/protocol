@@ -45,15 +45,8 @@ contract ReserveCurrencyDisputer {
         // 1. Fetch information about the liquidation from the financial contract.
         IFinancialContract.LiquidationData memory liquidationData = fc.liquidations(sponsor, liquidationId);
 
-        // 2. Fetch the disputeBondPercentage from the financial contract. Between UMA contracts 1.2.2 and 2.x we re-named
-        // disputerDisputeRewardPct to disputeBondPercentage. To ensure this ReserveCurrencyDisputer is compatible with
-        // both types, first try the new interface name and if this fails tre the old one.
-        FixedPoint.Unsigned memory disputeBondPercentage;
-        try fc.disputeBondPercentage() returns (FixedPoint.Unsigned memory disputeBond) {
-            disputeBondPercentage = disputeBond;
-        } catch {
-            disputeBondPercentage = fc.disputerDisputeRewardPct();
-        }
+        // 2. Fetch the disputeBondPercentage from the financial contract.
+        FixedPoint.Unsigned memory disputeBondPercentage = fc.disputeBondPercentage();
 
         // 3. Compute the disputeBondAmount. Multiply by the unit collateral so the dispute bond is a percentage of the
         // locked collateral after fees. To add fees we simply multiply the rawUnitCollateral by the cumulativeFeeMultiplier.

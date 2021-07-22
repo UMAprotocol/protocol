@@ -77,24 +77,20 @@ describe("CoveredCallLongShortPairFinancialProductLibrary", function () {
     it("Lower than strike should return 0", async () => {
       const expiryTokensForCollateral = await callOptionLSPFPL.methods
         .percentageLongCollateralAtExpiry(toWei("300"))
-        .call({
-          from: expiringContractMock.options.address,
-        });
+        .call({ from: expiringContractMock.options.address });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0"));
     });
     it("Higher than strike correct value", async () => {
       const expiryTokensForCollateral = await callOptionLSPFPL.methods
         .percentageLongCollateralAtExpiry(toWei("500"))
-        .call({
-          from: expiringContractMock.options.address,
-        });
+        .call({ from: expiringContractMock.options.address });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0.2"));
     });
     it("Arbitrary expiry price above strike should return correctly", async () => {
       for (const price of [toWei("500"), toWei("600"), toWei("1000"), toWei("1500"), toWei("2000")]) {
-        const expiryTokensForCollateral = await callOptionLSPFPL.methods.percentageLongCollateralAtExpiry(price).call({
-          from: expiringContractMock.options.address,
-        });
+        const expiryTokensForCollateral = await callOptionLSPFPL.methods
+          .percentageLongCollateralAtExpiry(price)
+          .call({ from: expiringContractMock.options.address });
         const expectedPrice = toBN(price)
           .sub(toBN(strikePrice))
           .mul(toBN(toWei("1")))

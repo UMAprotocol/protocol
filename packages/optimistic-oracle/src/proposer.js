@@ -242,12 +242,7 @@ class OptimisticOracleProposer {
         error.type === "call"
           ? "Cannot propose price: not enough collateral (or large enough approval)✋"
           : "Failed to propose price🚨";
-      this.logger.error({
-        at: "OptimisticOracleProposer#sendProposals",
-        message,
-        priceRequest,
-        error,
-      });
+      this.logger.error({ at: "OptimisticOracleProposer#sendProposals", message, priceRequest, error });
       return;
     }
   }
@@ -342,12 +337,7 @@ class OptimisticOracleProposer {
           error.type === "call"
             ? "Cannot dispute price: not enough collateral (or large enough approval)✋"
             : "Failed to dispute proposal🚨";
-        this.logger.error({
-          at: "OptimisticOracleProposer#sendDisputes",
-          message,
-          priceRequest,
-          error,
-        });
+        this.logger.error({ at: "OptimisticOracleProposer#sendDisputes", message, priceRequest, error });
         return;
       }
     } else {
@@ -404,12 +394,7 @@ class OptimisticOracleProposer {
     } catch (error) {
       const message =
         error.type === "call" ? "Cannot settle for unknown reason☹️" : "Failed to settle proposal or dispute🚨";
-      this.logger.error({
-        at: "OptimisticOracleProposer#settleRequests",
-        message,
-        priceRequest,
-        error,
-      });
+      this.logger.error({ at: "OptimisticOracleProposer#settleRequests", message, priceRequest, error });
       return;
     }
   }
@@ -474,6 +459,4 @@ class OptimisticOracleProposer {
   }
 }
 
-module.exports = {
-  OptimisticOracleProposer,
-};
+module.exports = { OptimisticOracleProposer };

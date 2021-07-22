@@ -33,18 +33,10 @@ contract("ForexDailyPriceFeed.js", function () {
   const validResponses = [
     {
       rates: {
-        "2021-03-09": {
-          USD: 1.1933333333333333,
-        },
-        "2021-03-10": {
-          USD: 1.1923333333333333,
-        },
-        "2021-03-11": {
-          USD: 1.19263333333333333,
-        },
-        "2021-03-12": {
-          USD: 1.19163333333333333,
-        },
+        "2021-03-09": { USD: 1.1933333333333333 },
+        "2021-03-10": { USD: 1.1923333333333333 },
+        "2021-03-11": { USD: 1.19263333333333333 },
+        "2021-03-12": { USD: 1.19163333333333333 },
       },
       start_at: "2021-03-10",
       base: "EUR",
@@ -56,10 +48,7 @@ contract("ForexDailyPriceFeed.js", function () {
     spy = sinon.spy();
     networker = new NetworkerMock();
     forexPriceFeed = new ForexDailyPriceFeed(
-      winston.createLogger({
-        level: "info",
-        transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
-      }),
+      winston.createLogger({ level: "info", transports: [new SpyTransport({ level: "debug" }, { spy: spy })] }),
       web3,
       base,
       symbol,
@@ -81,10 +70,7 @@ contract("ForexDailyPriceFeed.js", function () {
     let errorThrown = false;
     try {
       forexPriceFeed = new ForexDailyPriceFeed(
-        winston.createLogger({
-          level: "info",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
-        }),
+        winston.createLogger({ level: "info", transports: [new SpyTransport({ level: "debug" }, { spy: spy })] }),
         web3,
         "invalid",
         symbol,
@@ -101,10 +87,7 @@ contract("ForexDailyPriceFeed.js", function () {
     errorThrown = false;
     try {
       forexPriceFeed = new ForexDailyPriceFeed(
-        winston.createLogger({
-          level: "info",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
-        }),
+        winston.createLogger({ level: "info", transports: [new SpyTransport({ level: "debug" }, { spy: spy })] }),
         web3,
         base,
         "invalid",
@@ -188,12 +171,8 @@ contract("ForexDailyPriceFeed.js", function () {
           "2021-03-09": {},
         },
       },
-      {
-        rates: {},
-      },
-      {
-        error: "test",
-      },
+      { rates: {} },
+      { error: "test" },
     ];
 
     // Update should throw errors in all cases.

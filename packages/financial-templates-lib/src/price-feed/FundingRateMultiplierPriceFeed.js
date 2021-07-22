@@ -100,6 +100,4 @@ class FundingRateMultiplierPriceFeed extends PriceFeedInterface {
   }
 }
 
-module.exports = {
-  FundingRateMultiplierPriceFeed,
-};
+module.exports = { FundingRateMultiplierPriceFeed };

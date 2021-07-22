@@ -1,14 +1,8 @@
 // Corresponds to Registry.Roles.
-const RegistryRolesEnum = {
-  OWNER: "0",
-  CONTRACT_CREATOR: "1",
-};
+const RegistryRolesEnum = { OWNER: "0", CONTRACT_CREATOR: "1" };
 
 // Corresponds to VoteTiming.Phase.
-const VotePhasesEnum = {
-  COMMIT: "0",
-  REVEAL: "1",
-};
+const VotePhasesEnum = { COMMIT: "0", REVEAL: "1" };
 
 // States for an EMP's Liquidation to be in.
 const LiquidationStatesEnum = {
@@ -30,18 +24,9 @@ const PostWithdrawLiquidationRewardsStatusTranslations = {
 };
 
 // States for an EMP's Position to be in.
-const PositionStatesEnum = {
-  OPEN: "0",
-  EXPIRED_PRICE_REQUESTED: "1",
-  EXPIRED_PRICE_RECEIVED: "2",
-};
+const PositionStatesEnum = { OPEN: "0", EXPIRED_PRICE_REQUESTED: "1", EXPIRED_PRICE_RECEIVED: "2" };
 
-const PriceRequestStatusEnum = {
-  NOT_REQUESTED: "0",
-  ACTIVE: "1",
-  RESOLVED: "2",
-  FUTURE: "3",
-};
+const PriceRequestStatusEnum = { NOT_REQUESTED: "0", ACTIVE: "1", RESOLVED: "2", FUTURE: "3" };
 
 const OptimisticOracleRequestStatesEnum = {
   INVALID: "0",

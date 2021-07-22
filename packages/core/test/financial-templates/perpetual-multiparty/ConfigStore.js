@@ -102,17 +102,11 @@ describe("ConfigStore", function () {
     });
     it("Invalid default values revert on construction", async function () {
       // Invalid timelock
-      let invalidConfig = {
-        ...testConfig,
-        timelockLiveness: 0,
-      };
+      let invalidConfig = { ...testConfig, timelockLiveness: 0 };
       assert(await didContractThrow(ConfigStore.new(invalidConfig, timer.options.address).send({ from: accounts[0] })));
 
       // Invalid reward rate
-      invalidConfig = {
-        ...testConfig,
-        rewardRatePerSecond: { rawValue: toWei("0.00000331") },
-      };
+      invalidConfig = { ...testConfig, rewardRatePerSecond: { rawValue: toWei("0.00000331") } };
       assert(await didContractThrow(ConfigStore.new(invalidConfig, timer.options.address).send({ from: accounts[0] })));
     });
   });
@@ -198,10 +192,7 @@ describe("ConfigStore", function () {
       );
 
       // Proposing a new config overwrites the pending proposal.
-      let test2Config = {
-        ...testConfig,
-        timelockLiveness: 86402,
-      };
+      let test2Config = { ...testConfig, timelockLiveness: 86402 };
       const overwriteProposalTime = toBN(await configStore.methods.getCurrentTime().call());
       proposeTxn = await configStore.methods.proposeNewConfig(test2Config).send({ from: accounts[0] });
       await assertEventEmitted(proposeTxn, configStore, "ProposedNewConfigSettings", (ev) => {

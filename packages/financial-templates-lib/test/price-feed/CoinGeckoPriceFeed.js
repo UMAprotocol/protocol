@@ -20,20 +20,13 @@ contract("CoinGeckoPriceFeed.js", function () {
   const { toWei, toBN } = web3.utils;
 
   const mockPrice = 48.15;
-  const validResponse = {
-    [contractAddress]: {
-      [currency]: mockPrice,
-    },
-  };
+  const validResponse = { [contractAddress]: { [currency]: mockPrice } };
 
   beforeEach(async function () {
     networker = new NetworkerMock();
     mockTime = new Date().getTime();
 
-    const dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+    const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
     coinGeckoPriceFeed = new CoinGeckoPriceFeed(
       dummyLogger,
@@ -180,10 +173,7 @@ contract("CoinGeckoPriceFeed.js", function () {
     networker = new NetworkerMock();
     mockTime = new Date().getTime();
 
-    const dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+    const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
     const cgInvertedPriceFeed = new CoinGeckoPriceFeed(
       dummyLogger,
@@ -218,19 +208,12 @@ contract("CoinGeckoPriceFeed.js", function () {
   it("Can handle non-18 decimal place precision", async function () {
     // non-18 decimal price feed setup
     const expectedPrice = 48.158716;
-    const expectedResponse = {
-      [contractAddress]: {
-        [currency]: expectedPrice,
-      },
-    };
+    const expectedResponse = { [contractAddress]: { [currency]: expectedPrice } };
 
     networker = new NetworkerMock();
     mockTime = new Date().getTime();
 
-    const dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+    const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
     const cgSixDecimalPriceFeed = new CoinGeckoPriceFeed(
       dummyLogger,

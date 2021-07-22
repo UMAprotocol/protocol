@@ -111,10 +111,7 @@ async function deploy(deployer, network, contractType, ...args) {
   }
 
   // Return relevant info about the contract.
-  return {
-    contract: contractInstance,
-    didDeploy: willDeploy,
-  };
+  return { contract: contractInstance, didDeploy: willDeploy };
 }
 
 async function setToExistingAddress(network, contractType, address) {

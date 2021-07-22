@@ -77,10 +77,7 @@ const App = async (params) => {
   const dappmining = DappMining[version]({ empAbi, queries, web3 });
   const result = await dappmining.getRewards(config);
 
-  return {
-    ...params,
-    result,
-  };
+  return { ...params, result };
 };
 
 makeUnixPipe(App)
