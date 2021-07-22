@@ -1,4 +1,4 @@
-const SolcoverConfig = {
+export const SolcoverConfig = {
   providerOptions: { network_id: 1234 },
   skipFiles: [
     "Migrations.sol",
@@ -8,5 +8,3 @@ const SolcoverConfig = {
     "oracle/implementation/test",
   ],
 };
-
-module.exports = { SolcoverConfig };

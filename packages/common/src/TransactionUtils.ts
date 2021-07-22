@@ -1,6 +1,9 @@
-const util = require("util");
-const argv = require("minimist")(process.argv.slice(), {});
-const ynatm = require("@umaprotocol/ynatm");
+import util from "util";
+import minimist from "minimist";
+import ynatm from "@umaprotocol/ynatm";
+import type Web3 from "web3";
+
+const argv = minimist(process.argv.slice(), {});
 
 /**
  * Simulate transaction via .call() and then .send() and return receipt. If an error is thrown, return the error and add
@@ -9,10 +12,18 @@ const ynatm = require("@umaprotocol/ynatm");
  * @notice Uses the ynatm package to retry the transaction with increasing gas price.
  * @param {*Object} web3.js object for making queries and accessing Ethereum related methods.
  * @param {*Object} transaction Transaction to call `.call()` and subsequently `.send()` on from `senderAccount`.
- * @param {*Object} config transaction config, e.g. { gasPrice, from }, passed to web3 transaction.
+ * @param {*Object} transactionconfig transaction config, e.g. { gasPrice, from }, passed to web3 transaction.
  * @return Error and type of error (originating from `.call()` or `.send()`) or transaction receipt and return value.
  */
-const runTransaction = async ({ web3, transaction, transactionConfig, availableAccounts = 1 }) => {
+export const runTransaction = async ({
+  web3,
+  transaction,
+  transactionConfig,
+  availableAccounts = 1,
+}: {
+  web3: Web3;
+  transaction: number;
+}) => {
   // Add chainId in case RPC enforces transactions to be replay-protected, (i.e. enforced in geth v1.10,
   // https://blog.ethereum.org/2021/03/03/geth-v1-10-0/).
   transactionConfig.chainId = web3.utils.toHex(await web3.eth.getChainId());
