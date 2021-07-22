@@ -77,6 +77,15 @@ task("generate-contracts-frontend", "Generate typescipt for the contracts-fronte
     });
     fs.appendFileSync(out, '} from "../typechain/ethers";\n');
 
+    // Write Web3 contract types.
+    artifacts.forEach(({ contractName }) => {
+      if (fs.existsSync(`typechain/web3/${contractName}.d.ts`))
+        fs.appendFileSync(
+          out,
+          `export type { ${contractName} as ${contractName}Web3 } from "../typechain/web3/${contractName}";\n`
+        );
+    });
+
     // Write abi and bytecode for the browser file.
     // Note: the idea behind writing the functions this way is to make them as optimized as possible for tree-shaking
     // to remove any unused json files. In modern versions of webpack, this should allow absolutely _no_ artifact
@@ -111,7 +120,28 @@ task("generate-contracts-node", "Generate typescipt for the contracts-node packa
     const addresses = getAddressesMap(hre);
 
     // Write Ethers contract types/factories export.
-    fs.appendFileSync(out, 'export * as EthersContracts from "../typechain/ethers";\n');
+    fs.appendFileSync(out, "export type {\n");
+    artifacts.forEach(({ contractName }) => {
+      if (fs.existsSync(`typechain/ethers/${contractName}.d.ts`))
+        fs.appendFileSync(out, `  ${contractName} as ${contractName}Ethers,\n`);
+    });
+    fs.appendFileSync(out, '} from "../typechain/ethers";\n');
+
+    fs.appendFileSync(out, "export {\n");
+    artifacts.forEach(({ contractName }) => {
+      if (fs.existsSync(`typechain/ethers/factories/${contractName}__factory.ts`))
+        fs.appendFileSync(out, `  ${contractName}__factory as ${contractName}Ethers__factory,\n`);
+    });
+    fs.appendFileSync(out, '} from "../typechain/ethers";\n');
+
+    // Write Web3 contract types.
+    artifacts.forEach(({ contractName }) => {
+      if (fs.existsSync(`ttypechain/web3/${contractName}.d.ts`))
+        fs.appendFileSync(
+          out,
+          `export type { ${contractName} as ${contractName}Web3 } from "../typechain/web3/${contractName}.ts";\n`
+        );
+    });
 
     // Write abi and bytecode for the nodejs file.
     // Write an object that maps artifacts to their paths.
@@ -193,10 +223,7 @@ task("load-addresses", "Load addresses from the networks folder into the hardhat
         const abi = hre.artifacts.readArtifactSync(contractName).abi;
 
         // Save the deployment using hardhat deploy's built-in function.
-        await hre.deployments.save(saveName, {
-          address,
-          abi,
-        });
+        await hre.deployments.save(saveName, { address, abi });
       }
     }
   }
