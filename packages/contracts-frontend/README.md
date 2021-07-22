@@ -1,4 +1,4 @@
-# @uma/contracts-node
+# @uma/contracts-frontend
 
 This package exports all UMA smart contract artifacts specifically meant for consumption in a frontend. These exports
 are specifically optimized for frontends so they are able to drop any unused artifacts in order to keep the bundle size
