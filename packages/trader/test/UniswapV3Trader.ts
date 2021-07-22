@@ -1,6 +1,18 @@
 import winston from "winston";
 import sinon from "sinon";
-import { web3, assert } from "hardhat";
+import assert from "assert";
+import {
+  encodePriceSqrt,
+  getTickFromPrice,
+  getCurrentPrice,
+  encodePath,
+  computePoolAddress,
+  FeeAmount,
+  createContractObjectFromJson,
+  replaceLibraryBindingReferenceInArtitifact,
+  getWeb3,
+} from "@uma/common";
+const web3 = getWeb3();
 const { toWei, fromWei } = web3.utils;
 
 import { getTruffleContract } from "@uma/core";
@@ -12,17 +24,6 @@ import {
   GasEstimator,
   UniswapV3PriceFeed,
 } from "@uma/financial-templates-lib";
-
-import {
-  encodePriceSqrt,
-  getTickFromPrice,
-  getCurrentPrice,
-  encodePath,
-  computePoolAddress,
-  FeeAmount,
-  createContractObjectFromJson,
-  replaceLibraryBindingReferenceInArtitifact,
-} from "@uma/common";
 
 // Script to test
 import { RangeTrader } from "../src/RangeTrader";
