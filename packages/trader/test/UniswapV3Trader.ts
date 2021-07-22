@@ -1,6 +1,6 @@
 import winston from "winston";
 import sinon from "sinon";
-import assert from "assert";
+import { assert } from "chai";
 import {
   encodePriceSqrt,
   getTickFromPrice,

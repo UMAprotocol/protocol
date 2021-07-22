@@ -1,6 +1,6 @@
 import winston from "winston";
 import sinon from "sinon";
-import assert from "assert";
+import { assert } from "chai";
 import { createContractObjectFromJson, getWeb3 } from "@uma/common";
 const web3 = getWeb3();
 const { toWei, toBN, fromWei } = web3.utils;
