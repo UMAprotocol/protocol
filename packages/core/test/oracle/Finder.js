@@ -1,5 +1,4 @@
 const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;
 const { didContractThrow } = require("@uma/common");
 const { utf8ToHex } = web3.utils;
@@ -12,19 +11,15 @@ describe("Finder", function () {
   let owner;
   let user;
 
-  let runningOptimism;
+  let finder;
   before(async function () {
     accounts = await web3.eth.getAccounts();
     [owner, user] = accounts;
 
-    // If connected to Optimism network, then we can't compile some of the other contracts required in the default
-    // test fixture, so we'll skip them for now.
-    runningOptimism = (await web3.eth.net.getId()) === 420;
-    if (!runningOptimism) await runDefaultFixture(hre);
+    finder = await Finder.new().send({ from: owner });
   });
 
   it("General methods", async function () {
-    const finder = runningOptimism ? await Finder.new().send({ from: owner }) : await Finder.deployed();
     const interfaceName1 = utf8ToHex("interface1");
     const interfaceName2 = utf8ToHex("interface2");
     const implementationAddress1 = web3.utils.toChecksumAddress(web3.utils.randomHex(20));

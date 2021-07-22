@@ -49,7 +49,7 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
     ovm: { solcVersion: "0.7.6" },
     networks: {
       hardhat: { gas: 11500000, blockGasLimit: 11500000, allowUnlimitedContractSize: false, timeout: 1800000 },
-      localhost: { url: "http://127.0.0.1:8545" },
+      localhost: { url: "http://127.0.0.1:9545" },
       rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true), accounts: { mnemonic } },
       kovan: { chainId: 42, url: getNodeUrl("kovan", true), accounts: { mnemonic } },
       goerli: { chainId: 5, url: getNodeUrl("goerli", true), accounts: { mnemonic } },

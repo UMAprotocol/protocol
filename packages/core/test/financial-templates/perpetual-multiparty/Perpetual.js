@@ -44,7 +44,7 @@ describe("Perpetual", function () {
       tokenAddress: tokenCurrency.options.address,
       finderAddress: finder.options.address,
       priceFeedIdentifier: padRight(utf8ToHex("TEST_IDENTIFIER"), 64),
-      fundingRateIdentifier: padRight(utf8ToHex("TEST_FUNDING_IDENTIFIER"), 64),
+      fundingRateIdentifier: padRight(utf8ToHex("TEST_FUNDING"), 64),
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPercentage: { rawValue: toWei("0.1") },

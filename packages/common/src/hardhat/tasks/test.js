@@ -24,7 +24,7 @@ internalTask(TASK_TEST_GET_TEST_FILES, async (_, { config, network }, runSuper) 
 
     filePaths = filePaths.filter((filePath) => {
       for (let whitelistedDir of whitelistDirs) {
-        if (!filePath.startsWith(whitelistedDir)) return false;
+        if (!path.resolve(process.cwd(), filePath).startsWith(whitelistedDir)) return false;
         else continue;
       }
       return true;
