@@ -22,7 +22,7 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
         uint256 maxFee
     );
     event LPDepositCollateral(address token, uint256 amount, uint256 lpTokensMinted, address caller);
-    event L2TransferSpedUp(uint256 transactionId, address fastRelayer);
+    event L2TransferSpeedUp(uint256 transactionId, address fastRelayer);
     event FinalizedL2Transfer(uint256 transferId, address caller);
     event TransferDisputeSettled(uint256 transferId, address caller, bool outcome);
 
