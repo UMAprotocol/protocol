@@ -1,8 +1,6 @@
 import winston from "winston";
 import sinon from "sinon";
-import { assert } from "chai";
-import { createContractObjectFromJson, getWeb3 } from "@uma/common";
-const web3 = getWeb3();
+import { web3, assert } from "hardhat";
 const { toWei, toBN, fromWei } = web3.utils;
 
 import {
@@ -14,6 +12,7 @@ import {
   UniswapV2PriceFeed,
 } from "@uma/financial-templates-lib";
 import { getTruffleContract } from "@uma/core";
+import { createContractObjectFromJson } from "@uma/common";
 
 // Script to test
 import { RangeTrader } from "../src/RangeTrader";
