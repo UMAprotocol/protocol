@@ -39,12 +39,7 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
 
     function setL2DepositContract(address l2Contract) public onlyOwner {}
 
-    function whitelistToken(address l1Token, address l2Token) public onlyOwner {
-        // TODO: create a new new BridgePool and register all associated address.
-        // bytes memory message =
-        //     abi.encodeWithSelector(L2_BridgeDepositBox.finalizeDeposit.whitelistToken, l1Token, l2Token);
-        // sendCrossDomainMessage(l2DepositBox, 0, message);
-    }
+    function whitelistToken(address l1Token, address l2Token) public onlyOwner {}
 
     function pauseL2Deposits() public onlyOwner {}
 
