@@ -1,7 +1,7 @@
 import assert from "assert";
 import * as uma from "@uma/sdk";
 import { Json, Actions, AppState, CurrencySymbol, PriceSample } from "../..";
-import Queries from "../../libs/queries";
+import * as Queries from "../../libs/queries";
 import { nowS } from "../../libs/utils";
 import lodash from "lodash";
 
@@ -12,7 +12,7 @@ type Dependencies = AppState;
 type Config = undefined;
 
 export function Handlers(config: Config, appState: Dependencies): Actions {
-  const queries = Queries(appState);
+  const queries = Queries.Emp(appState);
   const {
     registeredEmps,
     erc20s,
@@ -118,35 +118,35 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       return queries.sumTvm(addresses, currency);
     },
     async tvlHistoryBetween(empAddress: string, start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") {
-      assert(stats[currency], "Invalid currency type: " + currency);
-      return stats[currency].history.tvl.betweenByAddress(empAddress, start, end);
+      assert(stats.emp[currency], "Invalid currency type: " + currency);
+      return stats.emp[currency].history.tvl.betweenByAddress(empAddress, start, end);
     },
     async tvmHistoryBetween(empAddress: string, start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") {
-      assert(stats[currency], "Invalid currency type: " + currency);
-      return stats[currency].history.tvm.betweenByAddress(empAddress, start, end);
+      assert(stats.emp[currency], "Invalid currency type: " + currency);
+      return stats.emp[currency].history.tvm.betweenByAddress(empAddress, start, end);
     },
     async globalTvlHistoryBetween(start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") {
-      assert(stats[currency], "Invalid currency type: " + currency);
-      return stats[currency].history.tvl.betweenByGlobal(start, end);
+      assert(stats.emp[currency], "Invalid currency type: " + currency);
+      return stats.emp[currency].history.tvl.betweenByGlobal(start, end);
     },
     async tvlHistorySlice(empAddress: string, start = 0, length = 1, currency: CurrencySymbol = "usd") {
-      assert(stats[currency], "Invalid currency type: " + currency);
-      return stats[currency].history.tvl.sliceByAddress(empAddress, start, length);
+      assert(stats.emp[currency], "Invalid currency type: " + currency);
+      return stats.emp[currency].history.tvl.sliceByAddress(empAddress, start, length);
     },
     async globalTvlSlice(start = 0, length = 1, currency: CurrencySymbol = "usd") {
-      assert(stats[currency], "Invalid currency type: " + currency);
-      return stats[currency].history.tvl.sliceByGlobal(start, length);
+      assert(stats.emp[currency], "Invalid currency type: " + currency);
+      return stats.emp[currency].history.tvl.sliceByGlobal(start, length);
     },
     async tvmHistorySlice(empAddress: string, start = 0, length = 1, currency: CurrencySymbol = "usd") {
-      assert(stats[currency], "Invalid currency type: " + currency);
+      assert(stats.emp[currency], "Invalid currency type: " + currency);
       assert(length < 1000, "length must be less than 1000 samples");
-      return stats[currency].history.tvm.sliceByAddress(empAddress, start, length);
+      return stats.emp[currency].history.tvm.sliceByAddress(empAddress, start, length);
     },
     async listTvls(currency: CurrencySymbol = "usd") {
-      return appState.stats[currency].latest.tvl.values();
+      return appState.stats.emp[currency].latest.tvl.values();
     },
     async listTvms(currency: CurrencySymbol = "usd") {
-      return appState.stats[currency].latest.tvm.values();
+      return appState.stats.emp[currency].latest.tvm.values();
     },
     async historicalMarketPricesBetween(tokenAddress: string, start = 0, end: number = nowS()) {
       assert(tokenAddress, "requires token address");

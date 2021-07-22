@@ -1,9 +1,9 @@
 import assert from "assert";
 import * as uma from "@uma/sdk";
 import { BigNumber } from "ethers";
-import { Currencies, AppState, PriceSample, BaseConfig } from "..";
-import { calcTvl, calcTvm, nowS } from "../libs/utils";
-import Queries from "../libs/queries";
+import { Currencies, AppState, PriceSample, BaseConfig } from "../..";
+import { calcTvl, calcTvm, nowS } from "../../libs/utils";
+import * as Queries from "../../libs/queries";
 
 interface Config extends BaseConfig {
   currency?: Currencies;
@@ -18,19 +18,19 @@ export default (config: Config, appState: Dependencies) => {
   const { stats, prices, registeredEmps } = appState;
   const { currency = "usd" } = config;
 
-  const queries = Queries(appState);
+  const queries = Queries.Emp(appState);
 
   function getTvmHistoryTable() {
-    return stats[currency].history.tvm;
+    return stats.emp[currency].history.tvm;
   }
   function getTvlHistoryTable() {
-    return stats[currency].history.tvl;
+    return stats.emp[currency].history.tvl;
   }
   function getLatestTvlTable() {
-    return stats[currency].latest.tvl;
+    return stats.emp[currency].latest.tvl;
   }
   function getLatestTvmTable() {
-    return stats[currency].latest.tvm;
+    return stats.emp[currency].latest.tvm;
   }
   async function updateTvlHistory(empAddress: string) {
     const stat = await getLatestTvlTable().get(empAddress);
@@ -84,7 +84,7 @@ export default (config: Config, appState: Dependencies) => {
       value,
       timestamp: priceSample[0],
     };
-    return stats[currency].latest.tvl.upsert(emp.address, update);
+    return stats.emp[currency].latest.tvl.upsert(emp.address, update);
   }
   async function updateTvm(emp: uma.tables.emps.Data) {
     assert(emp.tokenCurrency, "TVM Requires token currency for emp: " + emp.address);
@@ -100,7 +100,7 @@ export default (config: Config, appState: Dependencies) => {
       value,
       timestamp: priceSample[0],
     };
-    return stats[currency].latest.tvm.upsert(emp.address, update);
+    return stats.emp[currency].latest.tvm.upsert(emp.address, update);
   }
   // update all stats based on array of emp addresses
   async function updateAllTvl(addresses: string[]) {
@@ -142,7 +142,7 @@ export default (config: Config, appState: Dependencies) => {
       timestamp: nowS(),
     };
     // normally you would upsert an emp address where "global" is, but we are going to use a custom value to represent tvl across all addresses
-    return stats[currency].latest.tvl.upsertGlobal(update);
+    return stats.emp[currency].latest.tvl.upsertGlobal(update);
   }
 
   async function update() {

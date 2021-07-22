@@ -67,14 +67,36 @@ export type AppState = {
   };
   erc20s: uma.tables.erc20s.JsMap;
   stats: {
-    usd: {
-      latest: {
-        tvl: empStats.JsMap;
-        tvm: empStats.JsMap;
+    emp: {
+      usd: {
+        latest: {
+          tvl: empStats.JsMap;
+          tvm: empStats.JsMap;
+        };
+        history: {
+          tvl: empStatsHistory.SortedJsMap;
+          tvm: empStatsHistory.SortedJsMap;
+        };
       };
-      history: {
-        tvl: empStatsHistory.SortedJsMap;
-        tvm: empStatsHistory.SortedJsMap;
+    };
+    lsp: {
+      usd: {
+        latest: {
+          tvl: empStats.JsMap;
+        };
+        history: {
+          tvl: empStatsHistory.SortedJsMap;
+        };
+      };
+    };
+    global: {
+      usd: {
+        latest: {
+          tvl: empStats.JsMap;
+        };
+        history: {
+          tvl: empStatsHistory.SortedJsMap;
+        };
       };
     };
   };
