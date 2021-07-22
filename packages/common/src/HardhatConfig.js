@@ -66,7 +66,8 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
         ovm: true,
         // We use custom logic to only compile contracts within the listed directories, as opposed to choosing which
         // ones to ignore, because there are more contracts to ignore than to include.
-        compileWhitelist: ["insured-bridge/implementation/L2_BridgeDepositBox.sol"],
+        compileWhitelist: ["oracle/implementation/Finder.sol", "insured-bridge/implementation/L2_BridgeDepositBox.sol"],
+        testWhitelist: ["oracle/Finder"],
       },
     },
     mocha: { timeout: 1800000 },
