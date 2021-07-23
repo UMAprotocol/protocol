@@ -76,12 +76,13 @@
     "truffle-test": "truffle test ./truffle-test/scripts/*",
     "hardhat-test": "hardhat test --network hardhat",
     "mocha-test": "mocha ./mocha-test --recursive",
-    "load-addresses": "yarn run apply-registry",
+    "load-addresses": "yarn run apply-registry && yarn hardhat load-addresses",
     "clean": "rm -rf build && rm -rf contract-types && rm -rf artifacts && rm -rf deployments && rm -rf dist",
-    "build": "yarn truffle compile && yarn load-addresses && yarn generate-contract-types && yarn hardhat load-addresses && yarn compile-ts && yarn buildLatestHardhatVersionHashes && yarn hardhat compile --network optimism",
+    "build-contracts": "yarn truffle compile && yarn hardhat compile && yarn hardhat compile --network optimism",
+    "build": "yarn build-contracts && yarn load-addresses && yarn generate-contract-types && yarn compile-ts && yarn buildLatestHardhatVersionHashes && yarn hardhat compile --network optimism",
     "buildLatestHardhatVersionHashes": "yarn hardhat run ./scripts/BuildContractVersionHashes.js",
     "compile-ts": "rm -rf types dist && mkdir -p types/contract-types && rsync -R contract-types/**/*.d.ts ./types && tsc",
-    "generate-contract-types": "rm -rf contract-types && TYPECHAIN=web3 yarn hardhat compile && TYPECHAIN=truffle yarn hardhat compile && TYPECHAIN=ethers yarn hardhat compile ",
+    "generate-contract-types": "rm -rf contract-types && TYPECHAIN=web3 yarn hardhat typechain && TYPECHAIN=truffle yarn hardhat typechain && TYPECHAIN=ethers yarn hardhat typechain",
     "prepublish": "yarn build"
   },
   "bugs": {
