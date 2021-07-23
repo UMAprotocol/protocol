@@ -1,5 +1,5 @@
 {
-  "name": "@uma/periphery",
+  "name": "@uma/scripts",
   "version": "1.0.0",
   "description": "UMA Core Peripheral Scripts",
   "dependencies": {

@@ -31,7 +31,7 @@ yarn hardhat node --fork https://mainnet.infura.io/v3/YOUR-INFURA-KEY --no-deplo
 2. Request to impersonate accounts we'll need to propose and vote on admin proposals:
 
 ```sh
-./packages/periphery/setupFork.sh
+./packages/scripts/setupFork.sh
 ```
 
 3. Run your script against the local mainnet fork
