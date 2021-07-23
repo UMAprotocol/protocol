@@ -16,7 +16,7 @@ import "../../../../common/implementation/Lockable.sol";
  * For example, consider a covered call option collateralized in SUSHI, with a strike a price of $20,
  * and collateralPerPair of 2.
  * - If the price is less than $20 then the each long is worth 0.5 collateralPerPair and each short is worth 0.5
- * collateralPerPair.
+ * collateralPerPair. i.e., each long is worth 1 SUSHI (calls expire worthless).
  * - If the price is more than $20 then each long is worth 0.5 collateralPerPair plus 0.5 times the fraction of
  * collateralPerPair that was in the money, and each short is worth the remaining collateralPerPair.
  * - Say settlement price is $30.  Then expiryPercentLong = 0.5 + (0.5 * (30 - 20) / 30) = 0.6667.
@@ -67,8 +67,8 @@ contract SimpleSuccessTokenLongShortPairFinancialProductLibrary is LongShortPair
         // If the expiry price is less than the strike price then the long options expire worthless (out of the money).
         // In this case, return of value of 50% (half of collateral goes to long)
         // Note we do not consider negative expiry prices in this call option implementation.
-        if (expiryPrice < 0 || uint256(expiryPrice) < contractStrikePrice)
-            return FixedPoint.Unsigned(basePercentage).rawValue;
+        uint256 positiveExpiryPrice = expiryPrice > 0 ? uint256(expiryPrice) : 0;
+        if (positiveExpiryPrice == 0 || uint256(positiveExpiryPrice) <= contractStrikePrice) return basePercentage;
 
         // Else, token expires to be worth the 0.5 of the collateral plus 0.5 * the fraction of a collateral token
         // that's in the money.
@@ -80,8 +80,10 @@ contract SimpleSuccessTokenLongShortPairFinancialProductLibrary is LongShortPair
                 FixedPoint.Unsigned(basePercentage).add(
                     FixedPoint
                         .Unsigned(variablePercentage)
-                        .mul(FixedPoint.Unsigned(uint256(expiryPrice)).sub(FixedPoint.Unsigned(contractStrikePrice)))
-                        .div(FixedPoint.Unsigned(uint256(expiryPrice)))
+                        .mul(
+                        FixedPoint.Unsigned(uint256(positiveExpiryPrice)).sub(FixedPoint.Unsigned(contractStrikePrice))
+                    )
+                        .div(FixedPoint.Unsigned(uint256(positiveExpiryPrice)))
                 )
             )
                 .rawValue;

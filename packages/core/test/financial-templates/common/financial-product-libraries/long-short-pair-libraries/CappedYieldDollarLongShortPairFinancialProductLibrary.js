@@ -87,18 +87,18 @@ describe("CappedYieldDollarLongShortPairFinancialProductLibrary", function () {
       // If the price is above the low price range then the payout is simply that of a yield dollar. i.e every
       // long token is worth the bond notional of 100. At a price of 20 we are between the bounds. Each long should be worth
       // 100 so there should be 100/20=5 UMA per long token. As each collateralPerPair is worth 10, expiryPercentLong should
-      // be 10/5=0.5, thereby allocating half to the long and half to the short.
+      // be 5/10=0.5, thereby allocating half to the long and half to the short.
       const expiryTokensForCollateral1 = await cappedYieldDollarLSPFPL.methods
         .percentageLongCollateralAtExpiry(toWei("20"))
         .call({ from: lspMock.options.address });
       assert.equal(expiryTokensForCollateral1.toString(), toWei("0.5"));
 
       // Equally, at a price of 40 each long should still be worth 100 so there should be 100/40=2.5 UMA per long. As
-      // each collateralPerPair=10 expiryPercentLong should be 10/2.5=0.25, thereby allocating 25% to long and the remaining to short.
+      // each collateralPerPair=10 expiryPercentLong should be 2.5/10=0.25, thereby allocating 25% to long and the remaining to short.
       const expiryTokensForCollateral2 = await cappedYieldDollarLSPFPL.methods
-        .percentageLongCollateralAtExpiry(toWei("20"))
+        .percentageLongCollateralAtExpiry(toWei("40"))
         .call({ from: lspMock.options.address });
-      assert.equal(expiryTokensForCollateral2.toString(), toWei("0.5"));
+      assert.equal(expiryTokensForCollateral2.toString(), toWei("0.25"));
     });
   });
 });
