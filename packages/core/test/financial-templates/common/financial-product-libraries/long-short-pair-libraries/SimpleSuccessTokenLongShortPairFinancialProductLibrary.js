@@ -73,23 +73,32 @@ describe("SimpleSuccessTokenLongShortPairFinancialProductLibrary", function () {
   describe("Compute expiry tokens for collateral", () => {
     beforeEach(async () => {
       await simpleSuccessTokenLSPFPL.methods
+        // Set the strike price at 400.
         .setLongShortPairParameters(lspMock.options.address, strikePrice)
         .send({ from: accounts[0] });
     });
     it("Lower than strike should return 0.5", async () => {
       const expiryTokensForCollateral = await simpleSuccessTokenLSPFPL.methods
+        // If the expiry price is below the strike price, the long should be worth 50% of the
+        // collateralPerPair, or 0.5.
         .percentageLongCollateralAtExpiry(toWei("300"))
         .call({ from: lspMock.options.address });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0.5"));
     });
     it("Higher than strike correct value", async () => {
       const expiryTokensForCollateral = await simpleSuccessTokenLSPFPL.methods
+        // If the expiry price is above the strike price, the long should be worth 50% of the
+        // collateralPerPair, plus 50% * ((expiry price - strike price) / expiry price)
+        // With a collateralPerPair of 1, this can be expressed as:
+        // 0.5 + (0.5 * (expiryPrice - strikePrice) / expiryPrice)
+        // With an expiry price of 500 and strike price of 400, this becomes:
+        // 0.5 + (0.5 * (500 - 400) / 500) = 0.6
         .percentageLongCollateralAtExpiry(toWei("500"))
         .call({ from: lspMock.options.address });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0.6"));
     });
     it("Should never return a value greater than 1", async () => {
-      // create a massive expiry price. 1e18*1e18. Under all conditions should return less than 1.
+      // Create a massive expiry price. 1e18*1e18. Under all conditions should return less than 1.
       const expiryTokensForCollateral = await simpleSuccessTokenLSPFPL.methods
         .percentageLongCollateralAtExpiry(toWei(toWei("1")))
         .call({ from: lspMock.options.address });
