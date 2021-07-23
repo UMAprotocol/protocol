@@ -63,6 +63,18 @@ task("generate-contracts-frontend", "Generate typescipt for the contracts-fronte
     const addresses = getAddressesMap(hre);
 
     // Write Ethers contract types/factories export.
+    fs.appendFileSync(
+      out,
+      `export type {
+  TypedListener as TypedListenerEthers,
+  MinEthersFactory as MinEthersFactoryEthers,
+  GetContractTypeFromFactory as GetContractTypeFromFactoryEthers,
+  GetARGsTypeFromFactory as GetARGsTypeFromFactoryEthers,
+  TypedEventFilter as TypedEventFilterEthers,
+  TypedEvent as TypedEventEthers,
+} from "../typechain/ethers/commons";\n`
+    );
+
     fs.appendFileSync(out, "export type {\n");
     artifacts.forEach(({ contractName }) => {
       if (fs.existsSync(`typechain/ethers/${contractName}.d.ts`))
@@ -120,6 +132,18 @@ task("generate-contracts-node", "Generate typescipt for the contracts-node packa
     const addresses = getAddressesMap(hre);
 
     // Write Ethers contract types/factories export.
+    fs.appendFileSync(
+      out,
+      `export type {
+  TypedListener as TypedListenerEthers,
+  MinEthersFactory as MinEthersFactoryEthers,
+  GetContractTypeFromFactory as GetContractTypeFromFactoryEthers,
+  GetARGsTypeFromFactory as GetARGsTypeFromFactoryEthers,
+  TypedEventFilter as TypedEventFilterEthers,
+  TypedEvent as TypedEventEthers,
+} from "../typechain/ethers/commons";\n`
+    );
+
     fs.appendFileSync(out, "export type {\n");
     artifacts.forEach(({ contractName }) => {
       if (fs.existsSync(`typechain/ethers/${contractName}.d.ts`))
@@ -136,10 +160,10 @@ task("generate-contracts-node", "Generate typescipt for the contracts-node packa
 
     // Write Web3 contract types.
     artifacts.forEach(({ contractName }) => {
-      if (fs.existsSync(`ttypechain/web3/${contractName}.d.ts`))
+      if (fs.existsSync(`typechain/web3/${contractName}.d.ts`))
         fs.appendFileSync(
           out,
-          `export type { ${contractName} as ${contractName}Web3 } from "../typechain/web3/${contractName}.ts";\n`
+          `export type { ${contractName} as ${contractName}Web3 } from "../typechain/web3/${contractName}";\n`
         );
     });
 

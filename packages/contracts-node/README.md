@@ -61,11 +61,18 @@ Web3 factories are not provided, but web3 contract types are. They can be used a
 
 ```ts
 import type { VotingWeb3 } from "@uma/contracts-node"
-import { getAbi, getAddress } from "@uma/contracts-node"
+import { getAbi, getAddress, getBytecode } from "@uma/contracts-node"
 
 const VOTING_ABI = getAbi("Voting")
 const NETWORK_ID = 1
 const VOTING_ADDRESS = getAddress("Voting", NETWORK_ID)
 
+// Create a voting instance to represent a pre-deployed voting contract.
 const voting = new web3.eth.Contract(VOTING_ABI, VOTING_ADDRESS) as VotingWeb3
+
+// Or you can create a new voting instance using the bytecode.
+const VOTING_BYTECODE = getBytecode("Voting")
+const newVotingInstance = (await new web3Instance.eth.Contract(VOTING_ABI, undefined)
+  .deploy({ data: VOTING_BYTECODE, arguments: VOTING_ARGS })
+  .send({ from: YOUR_ADDRESS })) as VotingWeb3
 ```
