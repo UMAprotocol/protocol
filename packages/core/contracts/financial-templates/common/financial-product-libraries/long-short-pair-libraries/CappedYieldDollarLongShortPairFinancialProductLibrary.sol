@@ -77,11 +77,9 @@ contract CappedYieldDollarLongShortPairFinancialProductLibrary is LongShortPairF
 
         // For expiry prices below lower bound, return expiryPercentLong = 1 (full position)
         if (positiveExpiryPrice <= contractLowPriceRange) return FixedPoint.fromUnscaledUint(1).rawValue;
-        /**
-         * For expiry prices above lower bound. For example, if the lower bound of Sushi is $4, collateral per pair
-         * is 0.25, and the expiry price is $12, the payout will be (4/12)*0.25, or .08333 Sushi. With Sushi at $12,
-         * .08333 Sushi is equal to $1.
-         */
+        // For expiry prices above lower bound. For example, if the lower bound of Sushi is $4, collateral per pair
+        // is 0.25, and the expiry price is $12, the payout will be (4/12)*0.25, or .08333 Sushi. With Sushi at $12,
+        // .08333 Sushi is equal to $1.
         return FixedPoint.Unsigned(contractLowPriceRange).div(FixedPoint.Unsigned(positiveExpiryPrice)).rawValue;
     }
 }

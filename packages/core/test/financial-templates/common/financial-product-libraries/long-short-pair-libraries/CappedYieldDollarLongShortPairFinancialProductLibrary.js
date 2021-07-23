@@ -11,8 +11,8 @@ const CappedYieldDollarLongShortPairFinancialProductLibrary = getContract(
 
 const LongShortPairMock = getContract("LongShortPairMock");
 
+// Note: Assume that the notional value of the bond is 100.
 const { toWei, toBN } = web3.utils;
-// const bondNotional = toBN(toWei("100"));
 const lowPriceRange = toBN(toWei("10"));
 const collateralPerPair = toBN(toWei("10"));
 
