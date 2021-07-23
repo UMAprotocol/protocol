@@ -5,6 +5,7 @@ import * as uma from "@uma/sdk";
 import { calcGcr } from "./utils";
 import bluebird from "bluebird";
 import { BigNumber } from "ethers";
+import * as tables from "../tables";
 
 type Config = {
   globalKey?: string;
@@ -12,7 +13,7 @@ type Config = {
 const { exists } = uma.utils;
 type Dependencies = Pick<
   AppState,
-  "erc20s" | "emps" | "stats" | "registeredEmps" | "prices" | "synthPrices" | "marketPrices"
+  "erc20s" | "emps" | "stats" | "registeredEmps" | "prices" | "synthPrices" | "marketPrices" | "lsps"
 >;
 
 export default (appState: Dependencies) => {
@@ -70,6 +71,34 @@ export default (appState: Dependencies) => {
     }
     return appState.emps.expired.get(empAddress);
   }
+  async function getAnyLsp(address: string) {
+    if (await appState.lsps.active.has(address)) {
+      return appState.lsps.active.get(address);
+    }
+    if (await appState.lsps.expired.has(address)) {
+      return appState.lsps.expired.get(address);
+    }
+    throw new Error("LSP not found by address: " + address);
+  }
+  async function getFullLspState(state: tables.lsps.Data) {
+    const collateralState = state.collateralToken
+      ? await appState.erc20s.get(state.collateralToken).catch(() => null)
+      : null;
+    const longTokenState = state.longToken ? await appState.erc20s.get(state.longToken).catch(() => null) : null;
+    const shortTokenState = state.shortToken ? await appState.erc20s.get(state.shortToken).catch(() => null) : null;
+    return {
+      ...state,
+      longTokenDecimals: longTokenState?.decimals,
+      shortTokenDecimals: shortTokenState?.decimals,
+      collateralDecimals: collateralState?.decimals,
+      longTokenName: longTokenState?.name,
+      shortTokenName: shortTokenState?.name,
+      collateralName: collateralState?.name,
+      longTokenSymbol: longTokenState?.symbol,
+      shortTokenSymbol: shortTokenState?.symbol,
+      collateralSymbol: collateralState?.symbol,
+    };
+  }
   // joins emp with token state and gcr
   async function getFullEmpState(empState: uma.tables.emps.Data) {
     const token = empState.tokenCurrency ? await appState.erc20s.get(empState.tokenCurrency).catch(() => null) : null;
@@ -111,6 +140,14 @@ export default (appState: Dependencies) => {
   async function listExpiredEmps() {
     const emps = appState.emps.expired.values();
     return bluebird.map(emps, (emp) => getFullEmpState(emp).catch(() => emp));
+  }
+  async function listActiveLsps() {
+    const list = await appState.lsps.active.values();
+    return bluebird.map(list, (el) => getFullLspState(el).catch(() => el));
+  }
+  async function listExpiredLsps() {
+    const list = await appState.lsps.expired.values();
+    return bluebird.map(list, (el) => getFullLspState(el).catch(() => el));
   }
 
   async function sumTvl(addresses: string[], currency: CurrencySymbol = "usd") {
@@ -176,5 +213,9 @@ export default (appState: Dependencies) => {
     historicalPricesByTokenAddress,
     sliceHistoricalPricesByTokenAddress,
     getGlobalTvl,
+    getFullLspState,
+    getAnyLsp,
+    listExpiredLsps,
+    listActiveLsps,
   };
 };
