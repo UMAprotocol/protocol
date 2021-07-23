@@ -25,6 +25,7 @@
     "@openzeppelin/contracts": "4.1.0",
     "@tsconfig/node14": "^1.0.0",
     "@typechain/ethers-v5": "^7.0.1",
+    "@typechain/hardhat": "^2.2.0",
     "@typechain/truffle-v5": "^5.0.0",
     "@typechain/web3-v1": "^3.0.0",
     "@uma/financial-templates-lib": "^2.6.1",
@@ -76,11 +77,11 @@
     "hardhat-test": "hardhat test --network hardhat",
     "mocha-test": "mocha ./mocha-test --recursive",
     "load-addresses": "yarn run apply-registry",
-    "clean": "rm -rf build",
-    "build": "yarn truffle compile && yarn load-addresses && yarn generate-contract-types && yarn compile-ts && yarn buildLatestHardhatVersionHashes && yarn hardhat compile --network optimism",
+    "clean": "rm -rf build && rm -rf contract-types && rm -rf artifacts && rm -rf deployments && rm -rf dist",
+    "build": "yarn truffle compile && yarn load-addresses && yarn generate-contract-types && yarn hardhat load-addresses && yarn compile-ts && yarn buildLatestHardhatVersionHashes && yarn hardhat compile --network optimism",
     "buildLatestHardhatVersionHashes": "yarn hardhat run ./scripts/BuildContractVersionHashes.js",
-    "compile-ts": "rm -rf types dist && mkdir -p types/contract-types &&  rsync -R contract-types/**/*.d.ts ./types && tsc",
-    "generate-contract-types": "rm -rf contract-types && typechain --target=web3-v1 './build/contracts/*.json' --out-dir contract-types/web3 && typechain --target=truffle-v5 './build/contracts/*.json' --out-dir contract-types/truffle && typechain --target=ethers-v5 './build/contracts/*.json' --out-dir contract-types/ethers",
+    "compile-ts": "rm -rf types dist && mkdir -p types/contract-types && rsync -R contract-types/**/*.d.ts ./types && tsc",
+    "generate-contract-types": "rm -rf contract-types && TYPECHAIN=web3 yarn hardhat compile && TYPECHAIN=truffle yarn hardhat compile && TYPECHAIN=ethers yarn hardhat compile ",
     "prepublish": "yarn build"
   },
   "bugs": {

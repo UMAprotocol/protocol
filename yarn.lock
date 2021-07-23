@@ -6243,6 +6243,13 @@
   resolved "https://registry.yarnpkg.com/@typechain/ethers-v5/-/ethers-v5-7.0.1.tgz#f9ae60ae5bd9e8ea8a996f66244147e8e74034ae"
   integrity sha512-mXEJ7LG0pOYO+MRPkHtbf30Ey9X2KAsU0wkeoVvjQIn7iAY6tB3k3s+82bbmJAUMyENbQ04RDOZit36CgSG6Gg==
 
+"@typechain/hardhat@^2.2.0":
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/@typechain/hardhat/-/hardhat-2.2.0.tgz#a3e99b49c215c364c375c554bdce626bb21ecc47"
+  integrity sha512-ICZdbc5QA/bSZEvdAHsEL3/u260ZPIK7WZLNnoGywQNo6A98w7VKQW4DR7hPPMHe1FaSI1LTuIesRQvCUVyT3A==
+  dependencies:
+    fs-extra "^9.1.0"
+
 "@typechain/truffle-v5@^5.0.0":
   version "5.0.0"
   resolved "https://registry.yarnpkg.com/@typechain/truffle-v5/-/truffle-v5-5.0.0.tgz#01ab526b3986e06f8f2720d4a88dd11b6d0fe11d"

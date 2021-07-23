@@ -1,6 +1,6 @@
 const { getNodeUrl, mnemonic } = require("./TruffleConfig");
-const path = require("path");
 
+// eslint-disable-next-line no-unused-vars
 function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = true) {
   // Hardhat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function
   // get access to the plugins as well.
@@ -73,16 +73,6 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
       apiKey: process.env.ETHERSCAN_API_KEY,
     },
     namedAccounts: { deployer: 0 },
-    external: {
-      deployments: {
-        mainnet: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/mainnet")],
-        mumbai: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/mumbai")],
-        matic: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/matic")],
-        rinkeby: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/rinkeby")],
-        kovan: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/kovan")],
-        goerli: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/goerli")],
-      },
-    },
   };
 
   return { ...defaultConfig, ...configOverrides };
