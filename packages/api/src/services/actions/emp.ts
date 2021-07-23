@@ -108,7 +108,7 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       return queries.sliceHistoricalPricesByTokenAddress(emp.collateralCurrency, start, length);
     },
     async tvl(addresses: string[] = [], currency: CurrencySymbol = "usd") {
-      if (addresses == null || addresses.length == 0) return queries.getGlobalTvl(currency);
+      if (addresses == null || addresses.length == 0) return queries.getTotalTvl(currency);
       addresses = addresses ? lodash.castArray(addresses) : [];
       return queries.sumTvl(addresses, currency);
     },

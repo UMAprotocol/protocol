@@ -192,7 +192,7 @@ export default (appState: Dependencies) => {
     const addresses = Array.from(appState.registeredEmps.values());
     return sumTvm(addresses, currency);
   }
-  async function getGlobalTvl(currency: CurrencySymbol = "usd") {
+  async function getTotalTvl(currency: CurrencySymbol = "usd") {
     assert(appState.stats.emp[currency], "Invalid currency: " + currency);
     const { value } = await appState.stats.emp[currency].latest.tvl.getGlobal();
     return value;
@@ -210,7 +210,7 @@ export default (appState: Dependencies) => {
     latestPriceByTokenAddress,
     historicalPricesByTokenAddress,
     sliceHistoricalPricesByTokenAddress,
-    getGlobalTvl,
+    getTotalTvl,
     getFullLspState,
     getAnyLsp,
     listExpiredLsps,

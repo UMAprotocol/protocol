@@ -87,16 +87,6 @@ export default async (env: ProcessEnv) => {
           },
         },
       },
-      global: {
-        usd: {
-          latest: {
-            tvl: empStats.JsMap("Latest Tvl"),
-          },
-          history: {
-            tvl: empStatsHistory.SortedJsMap("Tvl History"),
-          },
-        },
-      },
     },
     lastBlock: 0,
     lastBlockUpdate: 0,
@@ -189,6 +179,8 @@ export default async (env: ProcessEnv) => {
     // Should switch all clients to explicit channels
     ["emp", Actions.Emp(undefined, appState)],
     ["lsp", Actions.Lsp(undefined, appState)],
+    // TODO: switch this to root path once frontend is ready to transition
+    ["global", Actions.Global(undefined, appState)],
   ];
 
   await Express({ port: Number(env.EXPRESS_PORT), debug }, channels)();
