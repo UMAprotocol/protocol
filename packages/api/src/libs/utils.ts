@@ -141,3 +141,10 @@ export const Profile = (enabled: boolean | undefined) => {
     return () => console.timeEnd(id);
   };
 };
+
+// defines a standard convention to pass arrays through an env.  assumes each element in the string is delimited by a comma
+export function parseEnvArray(str: string, delimiter = ","): string[] {
+  if (str.length == 0) return [];
+  if (!str.includes(delimiter)) return [];
+  return str.split(delimiter).map((x) => x.trim());
+}
