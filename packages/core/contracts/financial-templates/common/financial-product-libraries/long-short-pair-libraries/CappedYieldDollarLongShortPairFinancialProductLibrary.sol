@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SignedSafeMath.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 
 import "./LongShortPairFinancialProductLibrary.sol";
@@ -32,7 +31,6 @@ import "../../../../common/implementation/Lockable.sol";
  */
 contract CappedYieldDollarLongShortPairFinancialProductLibrary is LongShortPairFinancialProductLibrary, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
-    using SignedSafeMath for int256;
 
     mapping(address => uint256) public lowPriceRanges;
 

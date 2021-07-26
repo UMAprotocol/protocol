@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-
 import "./LongShortPairFinancialProductLibrary.sol";
 import "../../../../common/implementation/Lockable.sol";
 
@@ -26,11 +24,10 @@ import "../../../../common/implementation/Lockable.sol";
  */
 contract SimpleSuccessTokenLongShortPairFinancialProductLibrary is LongShortPairFinancialProductLibrary, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
-    using SafeMath for uint256;
 
     mapping(address => uint256) public longShortPairStrikePrices;
     uint256 basePercentage = 500000000000000000; // 0.5 with 18 decimals
-    uint256 variablePercentage = uint256(1000000000000000000).sub(basePercentage);
+    uint256 variablePercentage = uint256(1000000000000000000) - basePercentage;
 
     /**
      * @notice Enables any address to set the strike price for an associated LSP.
