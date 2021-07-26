@@ -5133,58 +5133,57 @@
   resolved "https://registry.yarnpkg.com/@multiformats/base-x/-/base-x-4.0.1.tgz#95ff0fa58711789d53aefb2590a8b7a4e715d121"
   integrity sha512-eMk0b9ReBbV23xXU693TAIrLyeO5iTgBZGSJfpqriG8UkYvr/hC9u9pyMlAakDNHWmbhMZCDs6KQO0jzKD8OTw==
 
-"@napi-rs/triples@^1.0.2":
-  version "1.0.2"
-  resolved "https://registry.yarnpkg.com/@napi-rs/triples/-/triples-1.0.2.tgz#2ce4c6a78568358772008f564ee5009093d20a19"
-  integrity sha512-EL3SiX43m9poFSnhDx4d4fn9SSaqyO2rHsCNhETi9bWPmjXK3uPJ0QpPFtx39FEdHcz1vJmsiW41kqc0AgvtzQ==
+"@napi-rs/triples@^1.0.3":
+  version "1.0.3"
+  resolved "https://registry.yarnpkg.com/@napi-rs/triples/-/triples-1.0.3.tgz#76d6d0c3f4d16013c61e45dfca5ff1e6c31ae53c"
+  integrity sha512-jDJTpta+P4p1NZTFVLHJ/TLFVYVcOqv6l8xwOeBKNPMgY/zDYH/YH7SJbvrr/h1RcS9GzbPcLKGzpuK9cV56UA==
 
 "@node-rs/crc32-android-arm64@^1.0.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-android-arm64/-/crc32-android-arm64-1.2.0.tgz#4c7f408ab2e2440e54fa4c218e4963b56b6d5895"
-  integrity sha512-VwKAZPL8xE3ieZt2/Irza6LFQ/LYUVnFphimQ3ew3o4aWOsm7SrXtcSibI9uMSjCDsmkLphHVx2tM018cY/Ebg==
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-android-arm64/-/crc32-android-arm64-1.2.1.tgz#eefa48373e98fe5f592c9d645d06d9adb700ac61"
+  integrity sha512-SWz9X44WQzZqzURYz4DY3DccB97T+aKJl+i6rvREwf1Y5suWiPdxU4xqg9zZ66aG6XeE3ts+WeqKH26bVbZTQA==
 
 "@node-rs/crc32-darwin-arm64@^1.0.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-arm64/-/crc32-darwin-arm64-1.2.0.tgz#cfdc54820b9f732971cf9102e6ee048ec4b90a0e"
-  integrity sha512-8gqbmtHrDE4ikQST2rDsl2qGohKSrsIQb4U17STGOyLjWnVVEtpDwNn+uWrRgBKazLOzy4vwTlU+7L5XUBliVg==
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-arm64/-/crc32-darwin-arm64-1.2.1.tgz#a50d6b52f6b4743719b252ceb49e393e6ca361cd"
+  integrity sha512-JKKYEc5YKrZZ0CQ0nXSLCraU+6b9SldGU3/Wf3s4WCzYGkkB4XtMwjx3t7bGZAGmZ2ZcRy9M2EGJ8tUfV8cOOg==
 
 "@node-rs/crc32-darwin-x64@^1.0.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-x64/-/crc32-darwin-x64-1.2.0.tgz#04d3678079107c6936819cc2d0859b7365c7ff8d"
-  integrity sha512-zzdUz6E001gSST6/n0WfRM4WqLPNEwpjI4T5e4ZFS+ay2bGAUwZ/z7/uX1AD5IxWb/glbKoBf9b9VzJDvwm+NA==
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-x64/-/crc32-darwin-x64-1.2.1.tgz#aede4451147cdc19366af984383237b33ca7da24"
+  integrity sha512-BaWeOdzJ73MyrChWQqQkJEKM9jRUjb19tE7PbFhG8cZPVxBFyxgTFNuBrR0xHOByCHI4QXSBvNCLEfawHbsscQ==
 
 "@node-rs/crc32-linux-arm-gnueabihf@^1.0.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm-gnueabihf/-/crc32-linux-arm-gnueabihf-1.2.0.tgz#3ab2a8d9b89e80debc2fb7ab623a8b79d73c0781"
-  integrity sha512-BquqyDU/Xh9T1Y/1pyZJ3a8ZqlHq/Ok4PIzKyBdvT+AT91xQkFcjQvMyQEh0fOGl+CbzVVeR4JsOvxY97orh+A==
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm-gnueabihf/-/crc32-linux-arm-gnueabihf-1.2.1.tgz#fbb569be2a06ef1df1fa08c0ed6cef831a3d87e3"
+  integrity sha512-6nRDyFgGsLc9bqaiK21KANqAdeh+9ZOHf3MY9HWvZoGQnxj2/LwvSHyaeG9ut+TvkL+Ic2hMtjLDNYYBaUcImw==
 
 "@node-rs/crc32-linux-arm64-gnu@^1.0.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm64-gnu/-/crc32-linux-arm64-gnu-1.2.0.tgz#ad50b5f5e88a426a062b09688e81c152e8d32ee9"
-  integrity sha512-hcqXLHIUh/Id6mBiXYREMCLhuSudDAm4dT2o+BCFJF/RQXOAK2/Ns2nNCHGN3djCvfXdpT6uhMrT7Yb9A3uozQ==
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm64-gnu/-/crc32-linux-arm64-gnu-1.2.1.tgz#101383a5c4c1125bd80a88d82c6d870141e96cea"
+  integrity sha512-ZNluh2Wse68JgLGRl75fkLmVkAPSb1LE/2OdPXKZ85ExGYB5/3el2nE1CnysbqxqzL/Cc6kJ7UnsI/cxSe/D4Q==
 
 "@node-rs/crc32-linux-x64-gnu@^1.0.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-gnu/-/crc32-linux-x64-gnu-1.2.0.tgz#9318d0223ef5bfc5442e30c74ce1bde7790fc24c"
-  integrity sha512-WWvKr9Y96LOSgI3r1xMjOOqQUIPAPY/O+bVwjOLl4lYKvrcmDmf2lCCHxi8+Ss8FaF8MYE2N6mjnFmxc0sKEXg==
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-gnu/-/crc32-linux-x64-gnu-1.2.1.tgz#ec7121e79aeae395b8679179419f4d3ab477ba1a"
+  integrity sha512-laJ7cAzYfNk+h3OOSwYsDdxfp1bXnpWqXVObXvylwHZQwIqUqTC5GCOa6kMMz2ElzJ9gDBgVvLplI8QX7BQnwA==
 
 "@node-rs/crc32-linux-x64-musl@^1.0.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-musl/-/crc32-linux-x64-musl-1.2.0.tgz#94702e46f4473cc8136d618e23263ee9e6b20d6e"
-  integrity sha512-GkzWdHNJZR313LgFQ77qDTRGphQf4EEMcoDZSaVc1MyHHj0uFEwdLqbKNvOBXas0u5B9yxSkQU3JM+Qk+tmt9A==
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-musl/-/crc32-linux-x64-musl-1.2.1.tgz#2ab9da696460e4ad327123cb493cc0a24f5db455"
+  integrity sha512-d6DyJMgIg4E2E+GHeIYMImqDd+iaGQjwGrzLDqO1TaC08yE63chlvCMNNoQ5k2c8mzdWH2VX72IapWT5nArR0A==
 
 "@node-rs/crc32-win32-x64-msvc@^1.0.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-win32-x64-msvc/-/crc32-win32-x64-msvc-1.2.0.tgz#abe80df6489584cab50655616cd685ba61ab1c38"
-  integrity sha512-PJJcxyVf3PM3P0o4vnhD623nexuSCfTg0UMuXfPXuQUbLs8Nw5srubb8oWwMnGCMUvEqYwvYLFbJeLZ2MyuRWg==
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/crc32-win32-x64-msvc/-/crc32-win32-x64-msvc-1.2.1.tgz#6df8d9b3d0bc2b2920115ccf3d44cf4902a16872"
+  integrity sha512-BGTEFRdIk6Vq9BSC3VuBVYKadZXOhhtPT8LUfz4s9cK3k8ba6nFzKIbOm5UsPIUSz2lRqlWdHQQWVaCoGAAvbQ==
 
 "@node-rs/helper@^1.0.0":
-  version "1.2.0"
-  resolved "https://registry.yarnpkg.com/@node-rs/helper/-/helper-1.2.0.tgz#c72c9f04527ee5d65700ac4842e3ea21ad0714c1"
-  integrity sha512-pzIFIS0POyqWVqdcF0NQO2DjnO1IeI1UN/hENCZMW3o/ndEpTmZLRVhoXGSHjjzoQaEuHwzj79BnYUXI3syv8w==
+  version "1.2.1"
+  resolved "https://registry.yarnpkg.com/@node-rs/helper/-/helper-1.2.1.tgz#e079b05f21ff4329d82c4e1f71c0290e4ecdc70c"
+  integrity sha512-R5wEmm8nbuQU0YGGmYVjEc0OHtYsuXdpRG+Ut/3wZ9XAvQWyThN08bTh2cBJgoZxHQUPtvRfeQuxcAgLuiBISg==
   dependencies:
-    "@napi-rs/triples" "^1.0.2"
-    tslib "^2.2.0"
+    "@napi-rs/triples" "^1.0.3"
 
 "@nodelib/fs.scandir@2.1.4":
   version "2.1.4"

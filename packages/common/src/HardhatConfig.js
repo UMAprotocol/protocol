@@ -6,8 +6,9 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
   // get access to the plugins as well.
   if (includeTruffle) require("@nomiclabs/hardhat-truffle5");
   require("@nomiclabs/hardhat-web3");
-  require("@nomiclabs/hardhat-ethers");
   require("@nomiclabs/hardhat-etherscan");
+  require("@nomiclabs/hardhat-ethers");
+  require("hardhat-deploy");
   require("hardhat-gas-reporter");
   require("hardhat-deploy");
   require("@eth-optimism/hardhat-ovm");
@@ -66,7 +67,7 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
         ovm: true,
         // We use custom logic to only compile contracts within the listed directories, as opposed to choosing which
         // ones to ignore, because there are more contracts to ignore than to include.
-        compileWhitelist: ["oracle/implementation/Finder.sol", "insured-bridge/implementation/L2_BridgeDepositBox.sol"],
+        compileWhitelist: ["insured-bridge/implementation/L2_BridgeDepositBox.sol"],
         testWhitelist: ["oracle/Finder"],
       },
     },
