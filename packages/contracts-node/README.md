@@ -76,3 +76,26 @@ const newVotingInstance = (await new web3Instance.eth.Contract(VOTING_ABI, undef
   .deploy({ data: VOTING_BYTECODE, arguments: VOTING_ARGS })
   .send({ from: YOUR_ADDRESS })) as VotingWeb3
 ```
+
+## Testing
+
+This package works well with hardhat test. If you use hardhat-deploy to set up deployments in hardhat, `getAddress`
+should recognize them.
+
+```js
+// Note: if running directly from node rather than inside hardhat, you will need to manually set global.hre.
+// @uma/contracts-node uses the global object to detect hardhat. For hardhat tests, this step should be
+// unnecessary.
+global.hre = require("hardhat");
+const { getAddress } = require("@uma/contracts-node");
+
+...
+// hre.deployments.deploy deploys and saves the deployment.
+await hre.deployments.deploy("Voting", { args: YOUR_ARGS, from: YOUR_ADDRESS });
+
+// To add an address deployed without .deploy
+// hre.deployments.save("Voting", { address: VOTING_ADDRESS, abi: VOTING_ABI });
+
+// Address should be pulled out as expected.
+const address = getAddress("Voting", parseInt(await hre.getChainId()));
+```
