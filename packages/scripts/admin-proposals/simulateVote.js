@@ -3,11 +3,11 @@
 
 // Run:
 // - Start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
-// - Next, open another terminal window and run `node ./packages/core/scripts/admin-proposals/setup.sh` to unlock
+// - Next, open another terminal window and run `node ./packages/scripts/admin-proposals/setupFork.sh` to unlock
 //   accounts on the local node that we'll need to run this script.
 // - This script should be run after any Admin proposal UMIP script against a local Mainnet fork. It allows the tester
 //   to simulate what would happen if the proposal were to pass and to verify that contract state changes as expected.
-// - Vote Simulate: node ./packages/core/scripts/admin-proposals/simulateVote.js --network mainnet-fork
+// - Vote Simulate: node ./packages/scripts/admin-proposals/simulateVote.js --network mainnet-fork
 
 const hre = require("hardhat");
 const { getContract } = hre;
@@ -23,8 +23,15 @@ const {
   computeVoteHash,
   signMessage,
 } = require("@uma/common");
-const { _getContractAddressByName, _setupWeb3 } = require("./utils");
-const { REQUIRED_SIGNER_ADDRESSES, YES_VOTE, SECONDS_PER_DAY, SNAPSHOT_MESSAGE } = require("./constants");
+const { _getContractAddressByName, _setupWeb3 } = require("../utils");
+const { REQUIRED_SIGNER_ADDRESSES, YES_VOTE, SECONDS_PER_DAY, SNAPSHOT_MESSAGE } = require("../utils/constants");
+const argv = require("minimist")(process.argv.slice(), {
+  boolean: [
+    // set to True to not execute any proposals after voting on them
+    "skipExecute",
+  ],
+  default: { skipExecute: false },
+});
 
 async function run() {
   // Set up provider so that we can sign from special wallets. This script is designed to only run against local mainnet
@@ -192,21 +199,23 @@ async function run() {
     );
   }
 
-  // Execute the most recent admin votes that we just passed through.
-  console.group("\n📢 Executing Governor Proposals");
-  for (let i = requestsToVoteOn.length; i > 0; i--) {
-    // Set `proposalId` to index of most recent proposal in voting.sol
-    const proposalId = Number(await governor.methods.numProposals().call()) - i;
-    const proposal = await governor.methods.getProposal(proposalId.toString()).call();
-    for (let j = 0; j < proposal.transactions.length; j++) {
-      console.log(`- Submitting transaction #${j + 1} from proposal #${i}`);
-      let txn = await governor.methods
-        .executeProposal(proposalId.toString(), j.toString())
-        .send({ from: REQUIRED_SIGNER_ADDRESSES["foundation"], gasPrice: gasEstimator.getCurrentFastPrice() });
-      console.log(`    - Success, receipt: ${txn.transactionHash}`);
+  if (!argv.skipExecute) {
+    // Execute the most recent admin votes that we just passed through.
+    console.group("\n📢 Executing Governor Proposals");
+    for (let i = requestsToVoteOn.length; i > 0; i--) {
+      // Set `proposalId` to index of most recent proposal in voting.sol
+      const proposalId = Number(await governor.methods.numProposals().call()) - i;
+      const proposal = await governor.methods.getProposal(proposalId.toString()).call();
+      for (let j = 0; j < proposal.transactions.length; j++) {
+        console.log(`- Submitting transaction #${j + 1} from proposal #${i}`);
+        let txn = await governor.methods
+          .executeProposal(proposalId.toString(), j.toString())
+          .send({ from: REQUIRED_SIGNER_ADDRESSES["foundation"], gasPrice: gasEstimator.getCurrentFastPrice() });
+        console.log(`    - Success, receipt: ${txn.transactionHash}`);
+      }
     }
+    console.groupEnd();
   }
-  console.groupEnd();
 
   console.log("\n😇 Success!");
 }
