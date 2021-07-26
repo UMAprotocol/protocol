@@ -15,15 +15,16 @@ export function getHardhatConfig(
   require("@nomiclabs/hardhat-web3");
   require("hardhat-deploy");
   require("@nomiclabs/hardhat-etherscan");
+  require("@eth-optimism/hardhat-ovm");
   require("./gckms/KeyInjectorPlugin");
 
-  // Custom tasks to interact conveniently with smart contracts.
-  require("./hardhat/tasks");
+  // Custom tasks.
+  require("./hardhat");
 
   // Custom plugin to enhance web3 functionality.
   require("./hardhat/plugins/ExtendedWeb3");
 
-  // Solc version defined here so etherscan-verification has access to it
+  // Solc version defined here so etherscan-verification has access to it.
   const solcVersion = "0.8.4";
 
   // Compilation settings are overridden for large contracts to allow them to compile without going over the bytecode
@@ -47,8 +48,16 @@ export function getHardhatConfig(
         "contracts/oracle/implementation/test/VotingTest.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       },
     },
+    ovm: { solcVersion: "0.8.4-broken_alpha" },
     networks: {
-      hardhat: { gas: 11500000, blockGasLimit: 11500000, allowUnlimitedContractSize: false, timeout: 1800000 },
+      hardhat: {
+        hardfork: "london",
+        gasPrice: "auto",
+        initialBaseFeePerGas: 1_000_000_000,
+        gas: 11500000,
+        blockGasLimit: 15_000_000,
+        timeout: 1800000,
+      },
       localhost: { url: "http://127.0.0.1:9545" },
       rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true), accounts: { mnemonic } },
       kovan: { chainId: 42, url: getNodeUrl("kovan", true), accounts: { mnemonic } },
@@ -56,6 +65,19 @@ export function getHardhatConfig(
       mumbai: { chainId: 80001, url: getNodeUrl("polygon-mumbai", true), accounts: { mnemonic } },
       matic: { chainId: 137, url: getNodeUrl("polygon-matic", true), accounts: { mnemonic } },
       mainnet: { chainId: 1, url: getNodeUrl("mainnet", true), accounts: { mnemonic } },
+      optimism: {
+        url: "http://127.0.0.1:8545",
+        accounts: { mnemonic: "test test test test test test test test test test test junk" },
+        // This sets the gas price to 0 for all transactions on L2. We do this because account balances are not yet
+        // automatically initiated with an ETH balance.
+        gasPrice: 0,
+        // This sets the network as using the ovm and ensure contract will be compiled against that.
+        ovm: true,
+        // We use custom logic to only compile contracts within the listed directories, as opposed to choosing which
+        // ones to ignore, because there are more contracts to ignore than to include.
+        compileWhitelist: ["oracle/implementation/Finder.sol"],
+        testWhitelist: ["oracle/Finder"],
+      },
     },
     mocha: { timeout: 1800000 },
     etherscan: {

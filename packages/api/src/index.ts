@@ -3,6 +3,8 @@ import { ethers } from "ethers";
 import type { empStats, empStatsHistory, lsps } from "./tables";
 import type Zrx from "./libs/zrx";
 
+export { Channels } from "./services/express-channels";
+
 export interface BaseConfig {
   debug?: boolean;
 }
@@ -65,14 +67,36 @@ export type AppState = {
   };
   erc20s: uma.tables.erc20s.JsMap;
   stats: {
-    usd: {
-      latest: {
-        tvl: empStats.JsMap;
-        tvm: empStats.JsMap;
+    emp: {
+      usd: {
+        latest: {
+          tvl: empStats.JsMap;
+          tvm: empStats.JsMap;
+        };
+        history: {
+          tvl: empStatsHistory.SortedJsMap;
+          tvm: empStatsHistory.SortedJsMap;
+        };
       };
-      history: {
-        tvl: empStatsHistory.SortedJsMap;
-        tvm: empStatsHistory.SortedJsMap;
+    };
+    lsp: {
+      usd: {
+        latest: {
+          tvl: empStats.JsMap;
+        };
+        history: {
+          tvl: empStatsHistory.SortedJsMap;
+        };
+      };
+    };
+    global: {
+      usd: {
+        latest: {
+          tvl: empStats.JsMap;
+        };
+        history: {
+          tvl: empStatsHistory.SortedJsMap;
+        };
       };
     };
   };

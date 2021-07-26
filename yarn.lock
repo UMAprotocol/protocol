@@ -1947,6 +1947,13 @@
     minimatch "^3.0.4"
     strip-json-comments "^3.1.1"
 
+"@eth-optimism/hardhat-ovm@^0.2.2":
+  version "0.2.2"
+  resolved "https://registry.yarnpkg.com/@eth-optimism/hardhat-ovm/-/hardhat-ovm-0.2.2.tgz#55fafaa6b8277447abaf132602c1c6d14a2a18a2"
+  integrity sha512-QLzqawYCzC/m6K/Oaj/tCZQlu6kZTgnleg1cJad8kVYA5E+JWZQ6ZJrcStoJoJrco9RIroPUjAFEhFM8YiCc7Q==
+  dependencies:
+    node-fetch "^2.6.1"
+
 "@ethereumjs/block@^3.4.0":
   version "3.4.0"
   resolved "https://registry.yarnpkg.com/@ethereumjs/block/-/block-3.4.0.tgz#4747b0c06220ee10cbdfe1cbde8cbb0677b1b074"
@@ -16933,10 +16940,10 @@ hardhat@^2.0.4:
     uuid "^3.3.2"
     ws "^7.2.1"
 
-hardhat@^2.4.3:
-  version "2.4.3"
-  resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.4.3.tgz#093373b383eacec0d3e7fb223353b2f0cb9f2802"
-  integrity sha512-xgbnhEnmaKau8xT6wPJlzoyMLAZyxQoElACQQCyEeAY1DURpZbYwjIQUywmL/ZNv3QEl38Yqu/n8mPOc2HXyGA==
+hardhat@^2.5.0:
+  version "2.5.0"
+  resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.5.0.tgz#0a10bf85d9b2c3c7c12cfa4e35454296c670c054"
+  integrity sha512-S5CWcmiFZlFF2qFGyf5LlgVnJDXwTs5UBKU3GPQCjsUD3NAIWzXr/4xDSij3YWdg751axgLiKAJM01cHcxGb7A==
   dependencies:
     "@ethereumjs/block" "^3.4.0"
     "@ethereumjs/blockchain" "^5.4.0"

@@ -16,7 +16,7 @@ ui
 antora.yml
 .eslintcache
 .idea
-
+optimism
 
 # GAE deployment files and directories for GAE deployments.
 app.yaml
