@@ -10,7 +10,7 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
     address public l2DepositBox;
 
     event AddedL2DepositContract(address l2Contract);
-    event AddedL2DepositContract(address originToken, address destinationToken);
+    event WhitelistedToken(address l1Token, address l2Token);
     event L2DepositRelayed(
         address sender,
         address recipient,

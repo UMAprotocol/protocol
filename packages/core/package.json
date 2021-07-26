@@ -21,7 +21,6 @@
   },
   "devDependencies": {
     "@eth-optimism/smock": "^1.1.9",
-    "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@awaitjs/express": "^0.3.0",
     "@ethersproject/units": "^5.0.3",
     "@google-cloud/bigquery": "^5.3.0",
@@ -79,7 +78,7 @@
     "mocha-test": "mocha ./mocha-test --recursive",
     "load-addresses": "yarn run apply-registry",
     "clean": "rm -rf build",
-    "build": "yarn truffle compile && yarn load-addresses && yarn generate-contract-types && yarn compile-ts && yarn buildLatestHardhatVersionHashes && yarn hardhat compile --network optimism",
+    "build": "yarn load-addresses && yarn generate-contract-types && yarn compile-ts && yarn buildLatestHardhatVersionHashes && yarn hardhat compile && yarn hardhat compile --network optimism",
     "buildLatestHardhatVersionHashes": "yarn hardhat run ./scripts/BuildContractVersionHashes.js",
     "compile-ts": "rm -rf types dist && mkdir -p types/contract-types &&  rsync -R contract-types/**/*.d.ts ./types && tsc",
     "generate-contract-types": "rm -rf contract-types && typechain --target=web3-v1 './build/contracts/*.json' --outDir contract-types/web3 && typechain --target=truffle-v5 './build/contracts/*.json' --outDir contract-types/truffle && typechain --target=ethers-v5 './build/contracts/*.json' --outDir contract-types/ethers",
