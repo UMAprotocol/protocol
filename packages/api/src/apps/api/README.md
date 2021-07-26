@@ -212,7 +212,7 @@ Gets the history of global tvl, the sum of all known EMP total value locked, sta
 
 ## LSP
 
-Lsp calls are on the lsp channel
+Lsp calls are on the lsp channel. These calls are the same as the EMP calls, but just scoped to LSP contracts.
 
 ### lsp/actions() => string[]
 
@@ -233,3 +233,15 @@ Lsp calls are on the lsp channel
 ### lsp/longAddresses() => String[]
 
 ### lsp/shortAddresses() => String[]
+
+### lsp/listTvls(currency: CurrencySymbol = "usd") => Stat[]
+
+### lsp/tvl(addresses: string[] = [], currency: CurrencySymbol = "usd") => Stat
+
+### lsp/tvlHistoryBetween contractAddress: string, start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") => Stat[]
+
+### lsp/tvlHistorySlice(contractAddress: string, start = 0, length = 1, currency: CurrencySymbol = "usd") => Stat[]
+
+### lsp/totalTvlHistoryBetween(start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") => Stat[]
+
+### lsp/totalTvlSlice(start = 0, length = 1, currency: CurrencySymbol = "usd") => Stat[]

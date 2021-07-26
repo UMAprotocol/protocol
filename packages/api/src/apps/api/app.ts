@@ -65,14 +65,36 @@ export default async (env: ProcessEnv) => {
     },
     erc20s: tables.erc20s.JsMap(),
     stats: {
-      usd: {
-        latest: {
-          tvm: empStats.JsMap("Latest Tvm"),
-          tvl: empStats.JsMap("Latest Tvl"),
+      emp: {
+        usd: {
+          latest: {
+            tvm: empStats.JsMap("Latest Tvm"),
+            tvl: empStats.JsMap("Latest Tvl"),
+          },
+          history: {
+            tvm: empStatsHistory.SortedJsMap("Tvm History"),
+            tvl: empStatsHistory.SortedJsMap("Tvl History"),
+          },
         },
-        history: {
-          tvm: empStatsHistory.SortedJsMap("Tvm History"),
-          tvl: empStatsHistory.SortedJsMap("Tvl History"),
+      },
+      lsp: {
+        usd: {
+          latest: {
+            tvl: empStats.JsMap("Latest Tvl"),
+          },
+          history: {
+            tvl: empStatsHistory.SortedJsMap("Tvl History"),
+          },
+        },
+      },
+      global: {
+        usd: {
+          latest: {
+            tvl: empStats.JsMap("Latest Tvl"),
+          },
+          history: {
+            tvl: empStatsHistory.SortedJsMap("Tvl History"),
+          },
         },
       },
     },
@@ -110,10 +132,11 @@ export default async (env: ProcessEnv) => {
       appState
     ),
     erc20s: Services.Erc20s({ debug }, appState),
-    empStats: Services.EmpStats({ debug }, appState),
+    empStats: Services.stats.Emp({ debug }, appState),
     marketPrices: Services.MarketPrices({ debug }, appState),
     lspCreator: Services.MultiLspCreator({ debug, addresses: lspCreatorAddresses }, appState),
     lsps: Services.LspState({ debug }, appState),
+    lspStats: Services.stats.Lsp({ debug }, appState),
   };
 
   // warm caches
@@ -139,6 +162,9 @@ export default async (env: ProcessEnv) => {
     console.log("Updated Collateral Prices Backfill");
     await services.empStats.backfill();
     console.log("Updated EMP Backfill");
+
+    await services.lspStats.backfill();
+    console.log("Updated LSP Backfill");
   }
 
   await services.collateralPrices.update();
@@ -149,6 +175,9 @@ export default async (env: ProcessEnv) => {
 
   await services.empStats.update();
   console.log("Updated EMP Stats");
+
+  await services.lspStats.update();
+  console.log("Updated LSP Stats");
 
   await services.marketPrices.update();
   console.log("Updated Market Prices");
@@ -196,6 +225,7 @@ export default async (env: ProcessEnv) => {
     await services.syntheticPrices.update();
     await services.marketPrices.update();
     await services.empStats.update();
+    await services.lspStats.update();
   }
 
   // coingeckos prices don't update very fast, so set it on an interval every few minutes
