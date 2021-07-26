@@ -67,7 +67,7 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
         // We use custom logic to only compile contracts within the listed directories, as opposed to choosing which
         // ones to ignore, because there are more contracts to ignore than to include.
         compileWhitelist: ["oracle/implementation/Finder.sol", "insured-bridge/implementation/L2_BridgeDepositBox.sol"],
-        testWhitelist: ["oracle/Finder"],
+        // testWhitelist: ["oracle/Finder", "insured-bridge/2e2_InsuredBridge_dumby"],
       },
     },
     mocha: { timeout: 1800000 },
@@ -76,6 +76,7 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
       // Obtain one at https://etherscan.io/
       apiKey: process.env.ETHERSCAN_API_KEY,
     },
+    gasReporter: { enabled: true, currency: "USD", gasPrice: 50 },
     namedAccounts: { deployer: 0 },
     external: {
       deployments: {
