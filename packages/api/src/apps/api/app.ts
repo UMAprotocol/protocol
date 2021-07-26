@@ -6,14 +6,14 @@ import moment from "moment";
 import { tables, Coingecko, utils, Multicall } from "@uma/sdk";
 
 import * as Services from "../../services";
-import Express from "../../services/express";
-import Actions from "../../services/actions";
-import { ProcessEnv, AppState } from "../..";
+import Express from "../../services/express-channels";
+import * as Actions from "../../services/actions";
+import { ProcessEnv, AppState, Channels } from "../..";
 import { empStats, empStatsHistory, lsps } from "../../tables";
 import Zrx from "../../libs/zrx";
 import { Profile } from "../../libs/utils";
 
-async function run(env: ProcessEnv) {
+export default async (env: ProcessEnv) => {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
   assert(env.EXPRESS_PORT, "requires EXPRESS_PORT");
   assert(env.zrxBaseUrl, "requires zrxBaseUrl");
@@ -95,7 +95,7 @@ async function run(env: ProcessEnv) {
   const services = {
     // these services can optionally be configured with a config object, but currently they are undefined or have defaults
     blocks: Services.Blocks(undefined, appState),
-    emps: Services.Emps({ debug }, appState),
+    emps: Services.EmpState({ debug }, appState),
     registry: Services.Registry({ debug }, appState),
     collateralPrices: Services.CollateralPrices({ debug }, appState),
     syntheticPrices: Services.SyntheticPrices(
@@ -112,11 +112,8 @@ async function run(env: ProcessEnv) {
     empStats: Services.EmpStats({ debug }, appState),
     marketPrices: Services.MarketPrices({ debug }, appState),
     lspCreator: Services.LspCreator({ debug }, appState),
-    lsps: Services.Lsps({ debug }, appState),
+    lsps: Services.LspState({ debug }, appState),
   };
-
-  // services consuming data
-  const actions = Actions(undefined, appState);
 
   // warm caches
   await services.registry();
@@ -155,21 +152,31 @@ async function run(env: ProcessEnv) {
   await services.marketPrices.update();
   console.log("Updated Market Prices");
 
-  // expose calls through express
-  await Express({ port: Number(env.EXPRESS_PORT), debug }, actions);
+  // services consuming data
+  const channels: Channels = [
+    // set this as default channel for backward compatibility. This is deprecated and will eventually be used for global style queries
+    ["", Actions.Emp(undefined, appState)],
+    // Should switch all clients to explicit channels
+    ["emp", Actions.Emp(undefined, appState)],
+    ["lsp", Actions.Lsp(undefined, appState)],
+  ];
+
+  await Express({ port: Number(env.EXPRESS_PORT), debug }, channels)();
 
   // break all state updates by block events into a cleaner function
   async function updateByBlock(blockNumber: number) {
     await services.blocks.handleNewBlock(blockNumber);
     // dont do update if this number or blocks hasnt passed
     if (blockNumber - appState.lastBlockUpdate >= updateBlocks) {
+      const end = profile("Updating state from block event");
       // update everyting
       await services.registry(appState.lastBlock, blockNumber);
       await services.lspCreator.update(appState.lastBlock, blockNumber);
       await services.emps(appState.lastBlock, blockNumber);
-      await services.lsps.update();
+      await services.lsps.update(appState.lastBlock, blockNumber);
       await services.erc20s.update();
 
+      end();
       appState.lastBlockUpdate = blockNumber;
     }
     appState.lastBlock = blockNumber;
@@ -178,7 +185,7 @@ async function run(env: ProcessEnv) {
 
   // main update loop, update every block
   provider.on("block", (blockNumber: number) => {
-    const end = profile("Update state from block event");
+    const end = profile("Block event starting");
     updateByBlock(blockNumber).catch(console.error).finally(end);
   });
 
@@ -195,6 +202,4 @@ async function run(env: ProcessEnv) {
     const end = profile("Update all prices");
     updatePrices().catch(console.error).finally(end);
   }, 10 * 60 * 1000);
-}
-
-export default run;
+};

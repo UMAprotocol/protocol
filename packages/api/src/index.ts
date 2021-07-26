@@ -3,6 +3,8 @@ import { ethers } from "ethers";
 import type { empStats, empStatsHistory, lsps } from "./tables";
 import type Zrx from "./libs/zrx";
 
+export { Channels } from "./services/express-channels";
+
 export interface BaseConfig {
   debug?: boolean;
 }

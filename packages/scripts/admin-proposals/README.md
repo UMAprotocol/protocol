@@ -6,20 +6,6 @@ This folder contains scripts that facilitate the testing of proposing admin pric
 
 These scripts are expected by default to run against a local (hardhat) [Mainnet fork](https://hardhat.org/guides/mainnet-forking.html) in order to test that the DVM contract state is modified as expected following a [simulated vote](https://docs.umaproject.org/uma-tokenholders/uma-holders#voting-on-price-requests). The local node should be set to run on port `9545`.
 
-Test scripts can then be run as `node` scripts and passing in the `--network mainnet-fork` flag.
-
-After the developer has tested against the local Mainnet fork, they can use the same script to submit the Admin proposal on-chain against the public Ethereum network. Usually this would involve passing the `--network` flag to the script and other supporting flags like `--keys`.
-
-## How to run
-
-Scripts are designed to be run as `node` scripts.
-
-For testing locally against a mainnet fork, we first need to [impersonate accounts](https://hardhat.org/guides/mainnet-forking.html#impersonating-accounts) on the local fork. We can do so via the helper script `./packages/core/scripts/admin-proposals/setup.sh`.
-
-Test scripts can be run by passing in the `--network mainnet-fork` flag.
-
-For running scripts in production, simply point the `--network` flag to a public network like `mainnet_gckms` like so: `node ... --network mainnet_gckms --keys deployer`.
-
 ## Relaying governance to Polygon
 
 Admin proposals can be relayed from Ethereum to Polygon like in [this example](https://github.com/UMAprotocol/protocol/blob/349401a869e89f9b5583d34c1f282407dca021ac/packages/core/test/polygon/e2e.js#L221). This just requires that the `POLYGON_NODE_URL` is set so that the script can also query network information from Polygon.
@@ -34,14 +20,14 @@ yarn hardhat node --fork https://mainnet.infura.io/v3/YOUR-INFURA-KEY --no-deplo
 
 2. Request to impersonate accounts we'll need to propose and vote on admin proposals:
 
-```
-./packages/core/scripts/admin-proposals/setup.sh
+```sh
+./packages/scripts/setupFork.sh
 ```
 
 3. Propose the admin proposal to whitelist 9 new collateral types on Ethereum and 2 on polygon:
 
 ```sh
-node ./packages/core/scripts/admin-proposals/collateral.js \
+node ./packages/scripts/admin-proposals/collateral.js \
     --collateral 0x3472a5a71965499acd81997a54bba8d852c6e53d,0x383518188c0c6d7730d91b2c03a03c837814a899,0x875773784af8135ea0ef43b5a374aad105c5d39e,0x6810e776880c02933d47db1b9fc05908e5386b96,,0x0cec1a9154ff802e7934fc916ed7ca50bde6844e,0xad32A8e6220741182940c5aBF610bDE99E737b2D,0x956F47F50A910163D8BF957Cf5846D573E7f87CA,0xc7283b66Eb1EB5FB86327f08e1B5816b0720212B,0xc770eefad204b5180df6a14ee197d99d808ee52d \
     --polygon 0x1fcbe5937b0cc2adf69772d228fa4205acf4d9b2,,,,0x580a84c73811e1839f75d86d75d88cca0c241ff4,,,,, \
     --fee 60,0.8,130,3,500,45,1100,400,800,670 \
@@ -51,13 +37,13 @@ node ./packages/core/scripts/admin-proposals/collateral.js \
 4. Simulate voting on the proposal and executing the approved proposal:
 
 ```sh
-node ./packages/core/scripts/admin-proposals/simulateVote.js --network mainnet-fork
+node ./packages/scripts/admin-proposals/simulateVote.js --network mainnet-fork
 ```
 
 5. Verify that executing the proposal modified DVM state as expected:
 
 ```sh
-node ./packages/core/scripts/admin-proposals/collateral.js \
+node ./packages/scripts/admin-proposals/collateral.js \
     --collateral 0x3472a5a71965499acd81997a54bba8d852c6e53d,0x383518188c0c6d7730d91b2c03a03c837814a899,0x875773784af8135ea0ef43b5a374aad105c5d39e,0x6810e776880c02933d47db1b9fc05908e5386b96,,0x0cec1a9154ff802e7934fc916ed7ca50bde6844e,0xad32A8e6220741182940c5aBF610bDE99E737b2D,0x956F47F50A910163D8BF957Cf5846D573E7f87CA,0xc7283b66Eb1EB5FB86327f08e1B5816b0720212B,0xc770eefad204b5180df6a14ee197d99d808ee52d \
     --polygon 0x1fcbe5937b0cc2adf69772d228fa4205acf4d9b2,,,,0x580a84c73811e1839f75d86d75d88cca0c241ff4,,,,, \
     --fee 60,0.8,130,3,500,45,1100,400,800,670 \

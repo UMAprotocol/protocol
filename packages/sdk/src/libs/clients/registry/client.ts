@@ -1,17 +1,11 @@
+import { EthersContracts } from "@uma/core";
 import assert from "assert";
-import { Registry__factory, Registry } from "@uma/core/contract-types/ethers";
 import RegistryArtifacts from "@uma/core/build/contracts/Registry.json";
 import type { SignerOrProvider, GetEventType } from "../..";
 import { Event } from "ethers";
 
-// exporting Registry type in case its needed
-export type Instance = Registry;
-
-export type NewContractRegistered = GetEventType<Instance, "NewContractRegistered">;
-
-export interface EventState {
-  contracts?: { [key: string]: NewContractRegistered };
-}
+export type Instance = EthersContracts.Registry;
+const Factory = EthersContracts.Registry__factory;
 
 export type Network = keyof typeof RegistryArtifacts.networks;
 
@@ -22,20 +16,27 @@ export function getAddress(network: Network): string {
 }
 
 export function connect(address: string, provider: SignerOrProvider): Instance {
-  return Registry__factory.connect(address, provider);
+  return Factory.connect(address, provider);
 }
+
+export interface EventState {
+  contracts?: { [key: string]: NewContractRegistered };
+}
+
+export type NewContractRegistered = GetEventType<Instance, "NewContractRegistered">;
 
 // experimenting with a generalized way of handling events and returning state, inspired from react style reducers
 export function reduceEvents(state: EventState = {}, event: Event, index?: number): EventState {
   switch (event.event) {
     case "NewContractRegistered": {
       const typedEvent = event as NewContractRegistered;
+      const { contractAddress } = typedEvent.args;
       const contracts = state?.contracts || {};
       return {
         ...state,
         contracts: {
           ...contracts,
-          [typedEvent.args.contractAddress]: typedEvent,
+          [contractAddress]: typedEvent,
         },
       };
     }
