@@ -11,13 +11,14 @@ import * as Actions from "../../services/actions";
 import { ProcessEnv, AppState, Channels } from "../..";
 import { empStats, empStatsHistory, lsps } from "../../tables";
 import Zrx from "../../libs/zrx";
-import { Profile } from "../../libs/utils";
+import { Profile, parseEnvArray } from "../../libs/utils";
 
 export default async (env: ProcessEnv) => {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
   assert(env.EXPRESS_PORT, "requires EXPRESS_PORT");
   assert(env.zrxBaseUrl, "requires zrxBaseUrl");
   assert(env.MULTI_CALL_ADDRESS, "requires MULTI_CALL_ADDRESS");
+  const lspCreatorAddresses = parseEnvArray(env.lspCreatorAddresses || "");
 
   // debug flag for more verbose logs
   const debug = Boolean(env.debug);
@@ -111,7 +112,7 @@ export default async (env: ProcessEnv) => {
     erc20s: Services.Erc20s({ debug }, appState),
     empStats: Services.EmpStats({ debug }, appState),
     marketPrices: Services.MarketPrices({ debug }, appState),
-    lspCreator: Services.LspCreator({ debug }, appState),
+    lspCreator: Services.MultiLspCreator({ debug, addresses: lspCreatorAddresses }, appState),
     lsps: Services.LspState({ debug }, appState),
   };
 

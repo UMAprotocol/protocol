@@ -1,18 +1,19 @@
 import { clients } from "@uma/sdk";
-import Promise from "bluebird";
+import bluebird from "bluebird";
 import { AppState, BaseConfig } from "..";
 
 const { lspCreator } = clients;
 
 interface Config extends BaseConfig {
   network?: number;
+  address?: string;
 }
 type Dependencies = Pick<AppState, "registeredLsps" | "provider">;
 
 export default (config: Config, appState: Dependencies) => {
-  const { network = 1 } = config;
+  const { network = 1, address = lspCreator.getAddress(network) } = config;
   const { registeredLsps, provider } = appState;
-  const address = lspCreator.getAddress(network);
+
   const contract = lspCreator.connect(address, provider);
 
   async function update(startBlock?: number | "latest", endBlock?: number) {
@@ -22,7 +23,7 @@ export default (config: Config, appState: Dependencies) => {
       endBlock
     );
     const { contracts } = lspCreator.getEventState(events);
-    await Promise.map(Object.keys(contracts || {}), (x) => {
+    await bluebird.map(Object.keys(contracts || {}), (x) => {
       return registeredLsps.add(x);
     });
   }
