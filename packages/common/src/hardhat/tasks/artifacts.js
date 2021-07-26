@@ -208,9 +208,17 @@ task("generate-contracts-node", "Generate typescipt for the contracts-node packa
     fs.appendFileSync(
       out,
       `function isDeploymentName(name: string): name is DeploymentName { return addressFunctions.hasOwnProperty(name); }
+interface HRE {
+  getChainId: () => Promise<string>;
+  deployments: {
+    get: (name: string) => { address: string };
+    getOrNull: (name: string) => ({ address: string } | null)
+  }
+}
 export async function getAddress(name: DeploymentName | ContractName, chainId: number): Promise<string> {
-  const hre = (global as unknown as { hre: { deployments: { get: (name: string) => { address: string } } } | undefined }).hre;
-  if (hre) return (await hre.deployments.get(name)).address;
+  const hre = (global as unknown as { hre?: HRE }).hre;
+  const hreDeployment = hre && parseInt(await hre.getChainId()) === chainId && await hre.deployments.getOrNull(name);
+  if (hreDeployment) return hreDeployment.address;
   if (!isDeploymentName(name)) throw new Error(\`No deployments for name: \${name}\`);
   const fn = addressFunctions[name];
   return fn(chainId);
@@ -235,9 +243,8 @@ task("load-addresses", "Load addresses from the networks folder into the hardhat
       if (!networkName) {
         console.error(`Skipping file ./networks/${dir} because there is no configured network for this chainId`);
       }
-      // Force hardhat deployment to read the intended network name and chain id.
+      // Force hardhat deployment to read the intended network name.
       hre.network.name = networkName;
-      hre.getChainId = () => chainId;
       const deployments = JSON.parse(fs.readFileSync(`./networks/${dir}`, "utf8"));
 
       // Loop over the deployments in the file and save each one.
@@ -249,6 +256,11 @@ task("load-addresses", "Load addresses from the networks folder into the hardhat
         // Save the deployment using hardhat deploy's built-in function.
         await hre.deployments.save(saveName, { address, abi });
       }
+
+      // Ensure the chainId file records the correct chainId.
+      const chainIdFilePath = `./deployments/${networkName}/.chainId`;
+      fs.unlinkSync(chainIdFilePath);
+      fs.writeFileSync(chainIdFilePath, chainId.toString());
     }
   }
 );
