@@ -17,8 +17,8 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
     // Finder used to point to latest OptimisticOracle and other DVM contracts.
     address public finder;
 
-    // Deposit contract that originates deposits that can be fulfilled by this contract.
-    address depositContract;
+    // L2 Deposit contract that originates deposits that can be fulfilled by this contract.
+    address public depositContract;
 
     // L1 token addresses are mapped to their canonical token address on L2 and the BridgePool contract that houses
     // relay liquidity for any deposits of the canonical L2 token.
@@ -63,7 +63,7 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
     mapping(uint256 => Deposit) deposits;
 
     event SetDepositContract(address indexed l2DepositContract);
-    event WhitelistToken(address indexed l2Token, address indexed l1Token, address indexed bridgePool);
+    event WhitelistToken(address indexed l1Token, address indexed l2Token, address indexed bridgePool);
     event DepositRelayed(
         address indexed sender,
         address recipient,
@@ -80,6 +80,7 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
     event RelayDisputeSettled(uint256 indexed depositId, address indexed caller, bool disputeSuccessful);
 
     // TODO: We can't use @openzeppelin/Ownable until we bump this contract to Solidity 0.8
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     address public owner;
     modifier onlyOwner() {
         require(msg.sender == owner, "Not owner");
@@ -98,15 +99,60 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
     }
 
     // Admin functions
-    function setDepositContract(address depositContract) public onlyOwner {}
 
+    /**
+     * @dev Leaves the contract without owner. It will not be possible to call
+     * `onlyOwner` functions anymore. Can only be called by the current owner.
+     *
+     * NOTE: Renouncing ownership will leave the contract without an owner,
+     * thereby removing any functionality that is only available to the owner.
+     */
+    function renounceOwnership() public onlyOwner {
+        _setOwner(address(0));
+    }
+
+    /**
+     * @dev Transfers ownership of the contract to a new account (`newOwner`).
+     * Can only be called by the current owner.
+     */
+    function transferOwnership(address newOwner) public onlyOwner {
+        require(newOwner != address(0), "Ownable: new owner is the zero address");
+        _setOwner(newOwner);
+    }
+
+    /**
+     * @notice Privileged account can set L2 deposit contract that originates deposit orders to be fulfilled by this
+     * contract.
+     * @dev Only callable by Owner of this contract.
+     * @param _depositContract Address of L2 deposit contract.
+     */
+    function setDepositContract(address _depositContract) public onlyOwner {
+        depositContract = _depositContract;
+        emit SetDepositContract(depositContract);
+    }
+
+    /**
+     * @notice Privileged account can associate a whitelisted token with its linked token address on L2 and its
+     * BridgePool address on this network. The linked L2 token can thereafter be deposited into the Deposit contract
+     * on L2 and relayed via this contract denominated in the L1 token.
+     * @dev Only callable by Owner of this contract.
+     * @param _l1Token Address of L1 token that can be used to relay L2 token deposits.
+     * @param _l2Token Address of L2 token whose deposits are fulfilled by `_l1Token`.
+     * @param _bridgePool Address of pool contract that stores passive liquidity with which to fulfill deposits.
+     */
     function whitelistToken(
-        address l1Token,
-        address l2Token,
-        address bridgePool
-    ) public onlyOwner {}
+        address _l1Token,
+        address _l2Token,
+        address _bridgePool
+    ) public onlyOwner {
+        L1TokenRelationships storage whitelistedToken = whitelistedTokens[_l1Token];
+        whitelistedToken.l2Token = _l2Token;
+        whitelistedToken.bridgePool = _bridgePool;
+        emit WhitelistToken(_l1Token, whitelistedToken.l2Token, whitelistedToken.bridgePool);
+    }
 
-    function pauseL2Deposits() public onlyOwner {}
+    // TODO:
+    // function pauseL2Deposits() public onlyOwner {}
 
     // Liquidity provider functions
 
@@ -131,4 +177,11 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
     function finalizeRelay(uint256 depositId) public {}
 
     function settleDisputedRelay(uint256 depositId, address slowRelayer) public {}
+
+    // Internal functions
+    function _setOwner(address newOwner) private {
+        address oldOwner = owner;
+        owner = newOwner;
+        emit OwnershipTransferred(oldOwner, newOwner);
+    }
 }
