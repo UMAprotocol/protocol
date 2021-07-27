@@ -13,7 +13,7 @@ import "./OVM_L2BridgeDepositBox.sol";
  * instantly, or request that the funds are taken out of the passive liquidity provider pool following a challenge period.
  * @dev A "Deposit" is an order to send capital from L2 to L1, and a "Relay" is a fulfillment attempt of that order.
  */
-contract L1_BridgeRouter is OVM_CrossDomainEnabled {
+contract OVM_L1BridgeRouter is OVM_CrossDomainEnabled {
     // Finder used to point to latest OptimisticOracle and other DVM contracts.
     address public finder;
 
