@@ -87,4 +87,16 @@ describe("utils", function () {
     const result = utils.calcSyntheticPrice(syntheticPrice, collateralPrice);
     assert.equal(result.toString(), parseUnits("1").toString());
   });
+  it("parseEnvArray", function () {
+    const lspCreatorAddresses =
+      "0x0b8de441B26E36f461b2748919ed71f50593A67b , 0x60F3f5DDE708D097B7F092EFaB2E085AC0a82F42,0x31C893843685f1255A26502eaB5379A3518Aa5a9 ,0x9504b4ab8cd743b06074757d3B1bE3a3aF9cea10 ";
+    const result = utils.parseEnvArray(lspCreatorAddresses);
+    assert.equal(result.length, 4);
+    let plan = result.length;
+    result.forEach((address) => {
+      plan--;
+      assert.ok(ethers.utils.isAddress(address));
+    });
+    assert.equal(plan, 0);
+  });
 });

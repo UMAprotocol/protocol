@@ -21,11 +21,11 @@ describe("lsp-state service", function () {
   let appState: Dependencies;
   before(async function () {
     assert(process.env.CUSTOM_NODE_URL);
-    assert(process.env.multicallAddress);
+    assert(process.env.MULTI_CALL_ADDRESS);
     const provider = new ethers.providers.WebSocketProvider(process.env.CUSTOM_NODE_URL);
     appState = {
       provider,
-      multicall: new Multicall(process.env.multicallAddress, provider),
+      multicall: new Multicall(process.env.MULTI_CALL_ADDRESS, provider),
       registeredLsps: new Set<string>(registeredContracts),
       collateralAddresses: new Set<string>(),
       longAddresses: new Set<string>(),
@@ -40,11 +40,25 @@ describe("lsp-state service", function () {
     const service = Service({}, appState);
     assert.ok(service);
   });
+  it("get collateral balance", async function () {
+    const collateralAddress = "0x04Fa0d235C4abf4BcF4787aF4CF447DE572eF828";
+    const service = Service({}, appState);
+    const [address] = registeredContracts;
+    const result = await service.utils.getErc20BalanceOf(collateralAddress, address);
+    assert.ok(result);
+  });
+  it("getPositionCollateral", async function () {
+    const service = Service({}, appState);
+    const [address] = registeredContracts;
+    const instance = await uma.clients.lsp.connect(address, appState.provider);
+    const result = await service.utils.getPositionCollateral(instance, address);
+    assert.ok(result);
+  });
   it("readDynamicState", async function () {
     const [address] = registeredContracts;
     const service = Service({}, appState);
     const instance = await uma.clients.lsp.connect(address, appState.provider);
-    const result = await service.utils.batchRead(service.utils.dynamicProps, instance, address);
+    const result = await service.utils.getDynamicProps(instance, address);
     assert.equal(result.address, address);
     assert.ok(result.updated > 0);
     assert.ok(result.expiryPrice);
@@ -55,7 +69,7 @@ describe("lsp-state service", function () {
     const [address] = registeredContracts;
     const service = Service({}, appState);
     const instance = await uma.clients.lsp.connect(address, appState.provider);
-    const result = await service.utils.batchRead(service.utils.staticProps, instance, address);
+    const result = await service.utils.getStaticProps(instance, address);
     assert.equal(result.address, address);
     assert.ok(result.updated > 0);
     assert.equal(result.collateralPerPair, "250000000000000000");

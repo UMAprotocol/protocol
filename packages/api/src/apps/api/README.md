@@ -33,6 +33,9 @@ MULTI_CALL_ADDRESS=0xeefBa1e63905eF1D7ACbA5a8513c70307C1cE441
 
 # any non null value will turn on debugging. This adds additional logs and time profiles for key calls.
 debug=1
+
+# LSP Creator addresses are used to discover deployed lsp contracts. Currently we have to manually specify old creator addresses
+lspCreatorAddresses=0x0b8de441B26E36f461b2748919ed71f50593A67b,0x60F3f5DDE708D097B7F092EFaB2E085AC0a82F42,0x31C893843685f1255A26502eaB5379A3518Aa5a9,0x9504b4ab8cd743b06074757d3B1bE3a3aF9cea10
 ```
 
 ## Starting
@@ -209,7 +212,7 @@ Gets the history of global tvl, the sum of all known EMP total value locked, sta
 
 ## LSP
 
-Lsp calls are on the lsp channel
+Lsp calls are on the lsp channel. These calls are the same as the EMP calls, but just scoped to LSP contracts.
 
 ### lsp/actions() => string[]
 
@@ -230,3 +233,15 @@ Lsp calls are on the lsp channel
 ### lsp/longAddresses() => String[]
 
 ### lsp/shortAddresses() => String[]
+
+### lsp/listTvls(currency: CurrencySymbol = "usd") => Stat[]
+
+### lsp/tvl(addresses: string[] = [], currency: CurrencySymbol = "usd") => Stat
+
+### lsp/tvlHistoryBetween contractAddress: string, start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") => Stat[]
+
+### lsp/tvlHistorySlice(contractAddress: string, start = 0, length = 1, currency: CurrencySymbol = "usd") => Stat[]
+
+### lsp/totalTvlHistoryBetween(start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") => Stat[]
+
+### lsp/totalTvlSlice(start = 0, length = 1, currency: CurrencySymbol = "usd") => Stat[]

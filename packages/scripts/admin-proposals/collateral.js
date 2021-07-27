@@ -173,7 +173,7 @@ async function run() {
           console.log("- setFinalFeeData", setFinalFeeData);
           adminProposalTransactions.push({ to: store.options.address, value: 0, data: setFinalFeeData });
         } else {
-          console.log("- Final fee for ", collaterals[i], `is already equal to ${convertedFeeAmount}. Nothing to do.`);
+          console.log(`- Final fee for is already equal to ${convertedFeeAmount}. Nothing to do.`);
         }
 
         // The proposal will then add the currency to the whitelist if it isn't already there.
@@ -182,7 +182,7 @@ async function run() {
           console.log("- addToWhitelistData", addToWhitelistData);
           adminProposalTransactions.push({ to: whitelist.options.address, value: 0, data: addToWhitelistData });
         } else {
-          console.log("- Collateral", collateral, "is on the whitelist. Nothing to do.");
+          console.log("- Collateral is on the whitelist. Nothing to do.");
         }
         console.groupEnd();
       }
@@ -210,7 +210,7 @@ async function run() {
             data: relayGovernanceData,
           });
         } else {
-          console.log("- Final fee for ", collaterals[i], `is already equal to ${convertedFeeAmount}. Nothing to do.`);
+          console.log(`- Final fee for is already equal to ${convertedFeeAmount}. Nothing to do.`);
         }
 
         // The proposal will then add the currency to the whitelist if it isn't already there.
@@ -227,7 +227,7 @@ async function run() {
             data: relayGovernanceData,
           });
         } else {
-          console.log("- Collateral", collateral, "is on the whitelist. Nothing to do.");
+          console.log("- Collateral is on the whitelist. Nothing to do.");
         }
         console.groupEnd();
       }
