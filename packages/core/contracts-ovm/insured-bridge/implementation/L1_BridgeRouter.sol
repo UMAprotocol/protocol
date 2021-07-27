@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
+
+// Note that we use < 0.8 because `@eth-optimism` contracts use that version.
 pragma solidity >=0.7.6;
 
 import "@eth-optimism/contracts/libraries/bridge/OVM_CrossDomainEnabled.sol";
@@ -18,10 +20,13 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
     // Deposit contract that originates deposits that can be fulfilled by this contract.
     address depositContract;
 
-    // Links L2-L1 addresses between canonical versions of the same token for each network. For example, if the
-    // official address of WETH on L2 is 0x123 and the official address of WETH on L1 is 0xabc, then the mapping will
-    // be (0x123 => 0xabc).
-    mapping(address => address) public whitelistedTokens;
+    // L1 token addresses are mapped to their canonical token address on L2 and the BridgePool contract that houses
+    // relay liquidity for any deposits of the canonical L2 token.
+    struct L1TokenRelationships {
+        address l2Token;
+        address bridgePool;
+    }
+    mapping(address => L1TokenRelationships) public whitelistedTokens;
 
     // Set upon construction and can be reset by Owner.
     uint256 public optimisticOracleLiveness;
@@ -58,7 +63,7 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
     mapping(uint256 => Deposit) deposits;
 
     event SetDepositContract(address indexed l2DepositContract);
-    event WhitelistToken(address indexed l2Token, address indexed l1Token);
+    event WhitelistToken(address indexed l2Token, address indexed l1Token, address indexed bridgePool);
     event DepositRelayed(
         address indexed sender,
         address recipient,
@@ -96,7 +101,11 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
 
     function setDepositContract(address depositContract) public onlyOwner {}
 
-    function whitelistToken(address l1Token, address l2Token) public onlyOwner {}
+    function whitelistToken(
+        address l1Token,
+        address l2Token,
+        address bridgePool
+    ) public onlyOwner {}
 
     function pauseL2Deposits() public onlyOwner {}
 
