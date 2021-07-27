@@ -5,39 +5,97 @@ import "@eth-optimism/contracts/libraries/bridge/OVM_CrossDomainEnabled.sol";
 
 import "./L2_BridgeDepositBox.sol";
 
+/**
+ * @notice Contract deployed on L1 that has an implicit reference to a DepositBox on L2 and provides methods for
+ * "Relayers" to fulfill deposit orders to that contract. The Relayers can either post capital to fulfill the deposit
+ * instantly, or request that the funds are taken out of the passive liquidity provider pool following a challenge period.
+ * @dev A "Deposit" is an order to send capital from L2 to L1, and a "Relay" is a fulfillment attempt of that order.
+ */
 contract BridgeRouter is OVM_CrossDomainEnabled {
-    address public l1Owner;
-    address public l2DepositBox;
+    // Finder used to point to latest OptimisticOracle and other DVM contracts.
+    address public finder;
 
-    event AddedL2DepositContract(address l2Contract);
-    event WhitelistedToken(address l1Token, address l2Token);
-    event L2DepositRelayed(
-        address sender,
+    // Links deposit contract addresses to L2 networks they are deployed on.
+    // TODO: Can we convert uint256 to uint128 or smaller based on some assumption about how large netIDs get?
+    mapping(uint256 => address) public netIdToDepositContract;
+
+    // Links L2-L1 addresses between canonical versions of the same token for each network. For example, if the
+    // official address of WETH on L2 is 0x123 and the official address of WETH on L1 is 0xabc, then the mapping will
+    // be (0x123 => 0xabc).
+    mapping(address => address) public whitelistedTokens;
+
+    // Set upon construction and can be reset by Owner.
+    uint256 public optimisticOracleLiveness;
+
+    // A Deposit represents a transfer that originated on an L2 DepositBox contract and can be bridged via this contract.
+    enum DepositState { PendingSlow, PendingInstant, FinalizedSlow, FinalizedInstant }
+    enum DepositType { Slow, Instant }
+
+    struct Deposit {
+        DepositState depositState;
+        DepositType depositType;
+        // The following params are set by the L2 depositor:
+        address l1Recipient;
+        address l2Token;
+        uint256 amount;
+        uint256 maxFee;
+        // Params inferred by this contract:
+        address l1Token;
+        // The following params are inferred and set by the L2 deposit contract:
+        address l2Sender;
+        uint256 depositTimestamp;
+        uint256 depositNetId;
+        // Relayer will compute the realized fee considering the amount of liquidity in this contract and the pending
+        // withdrawals at the depositTimestamp.
+        uint256 realizedFee;
+        // A deposit can have both a slow and an instant relayer if a slow relay is "sped up" from slow to instant. In
+        // these cases, we want to store both addresses for separate payouts.
+        address slowRelayer;
+        address instantRelayer;
+        // TODO: Not sure how this will be used or why its stored but its in the interface doc
+        bytes priceRequestAncillaryData;
+    }
+    // Associates each deposit with a unique ID.
+    mapping(uint256 => Deposit) deposits;
+
+    event AddedDepositContract(address indexed l2DepositContract, uint256 indexed netId);
+    event WhitelistToken(address indexed l2Token, address indexed l1Token);
+    event DepositRelayed(
+        address indexed sender,
         address recipient,
-        address originToken,
-        address destinationToken,
+        address indexed l2Token,
+        address indexed l1Token,
         address relayer,
         uint256 amount,
+        uint256 netId,
         uint256 realizedFee,
         uint256 maxFee
     );
-    event LPDepositCollateral(address token, uint256 amount, uint256 lpTokensMinted, address caller);
-    event L2TransferSpeedUp(uint256 transactionId, address fastRelayer);
-    event FinalizedL2Transfer(uint256 transferId, address caller);
-    event TransferDisputeSettled(uint256 transferId, address caller, bool outcome);
+    event RelaySpedUp(uint256 indexed depositId, address indexed fastRelayer, address indexed slowRelayer);
+    event FinalizedRelay(uint256 indexed depositId, address indexed caller);
+    event RelayDisputeSettled(uint256 indexed depositId, address indexed caller, bool disputeSuccessful);
 
+    // TODO: We can't use @openzeppelin/Ownable until we bump this contract to Solidity 0.8
+    address public owner;
     modifier onlyOwner() {
-        require(msg.sender == l1Owner, "Not owner");
+        require(msg.sender == owner, "Not owner");
         _;
     }
 
-    constructor(address _l1messenger, address _l1Owner) OVM_CrossDomainEnabled(_l1messenger) {
-        l1Owner = _l1Owner;
+    constructor(
+        address _finder,
+        address _crossDomainMessenger,
+        address _owner,
+        uint256 _optimisticOracleLiveness
+    ) OVM_CrossDomainEnabled(_crossDomainMessenger) {
+        finder = _finder;
+        owner = _owner;
+        optimisticOracleLiveness = _optimisticOracleLiveness;
     }
 
     // Admin functions
 
-    function setL2DepositContract(address l2Contract) public onlyOwner {}
+    function addDepositContract(address depositContract, uint256 netId) public onlyOwner {}
 
     function whitelistToken(address l1Token, address l2Token) public onlyOwner {}
 
@@ -51,19 +109,19 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
 
     // Relayer functions
 
-    function relayL2Transfer(
-        uint256 transferId,
-        uint256 timestamp,
+    function relayDeposit(
+        uint256 depositId,
+        uint256 depositTimestamp,
         address recipient,
-        address originToken,
+        address l2Token,
         uint256 amount,
         uint256 realizedFee,
         uint256 maxFee
     ) public {}
 
-    function speedUpL2Transfer(uint256 transferId) public {}
+    function speedUpRelay(uint256 depositId) public {}
 
-    function finalizeL2Transfer(uint256 transferId) public {}
+    function finalizeRelay(uint256 depositId) public {}
 
-    function settleDisputedTransfer(uint256 transferId, address initialRelayer) public {}
+    function settleDisputedRelay(uint256 depositId, address slowRelayer) public {}
 }
