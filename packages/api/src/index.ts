@@ -89,16 +89,6 @@ export type AppState = {
         };
       };
     };
-    global: {
-      usd: {
-        latest: {
-          tvl: empStats.JsMap;
-        };
-        history: {
-          tvl: empStatsHistory.SortedJsMap;
-        };
-      };
-    };
   };
   registeredEmps: Set<string>;
   registeredLsps: Set<string>;
