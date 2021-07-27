@@ -15,9 +15,8 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
     // Finder used to point to latest OptimisticOracle and other DVM contracts.
     address public finder;
 
-    // Links deposit contract addresses to L2 networks they are deployed on.
-    // TODO: Can we convert uint256 to uint128 or smaller based on some assumption about how large netIDs get?
-    mapping(uint256 => address) public netIdToDepositContract;
+    // Deposit contract that originates deposits that can be fulfilled by this contract.
+    address depositContract;
 
     // Links L2-L1 addresses between canonical versions of the same token for each network. For example, if the
     // official address of WETH on L2 is 0x123 and the official address of WETH on L1 is 0xabc, then the mapping will
@@ -43,8 +42,8 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
         address l1Token;
         // The following params are inferred and set by the L2 deposit contract:
         address l2Sender;
+        address depositContract;
         uint256 depositTimestamp;
-        uint256 depositNetId;
         // Relayer will compute the realized fee considering the amount of liquidity in this contract and the pending
         // withdrawals at the depositTimestamp.
         uint256 realizedFee;
@@ -58,7 +57,7 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
     // Associates each deposit with a unique ID.
     mapping(uint256 => Deposit) deposits;
 
-    event AddedDepositContract(address indexed l2DepositContract, uint256 indexed netId);
+    event SetDepositContract(address indexed l2DepositContract);
     event WhitelistToken(address indexed l2Token, address indexed l1Token);
     event DepositRelayed(
         address indexed sender,
@@ -67,7 +66,7 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
         address indexed l1Token,
         address relayer,
         uint256 amount,
-        uint256 netId,
+        address depositContract,
         uint256 realizedFee,
         uint256 maxFee
     );
@@ -95,7 +94,7 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
 
     // Admin functions
 
-    function addDepositContract(address depositContract, uint256 netId) public onlyOwner {}
+    function setDepositContract(address depositContract) public onlyOwner {}
 
     function whitelistToken(address l1Token, address l2Token) public onlyOwner {}
 
