@@ -10,7 +10,6 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
   require("@nomiclabs/hardhat-ethers");
   require("hardhat-deploy");
   require("hardhat-gas-reporter");
-  require("hardhat-deploy");
   require("@eth-optimism/hardhat-ovm");
   require("./gckms/KeyInjectorPlugin");
 
@@ -65,13 +64,12 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
       matic: { chainId: 137, url: getNodeUrl("polygon-matic", true), accounts: { mnemonic } },
       mainnet: { chainId: 1, url: getNodeUrl("mainnet", true), accounts: { mnemonic } },
       optimism: {
+        ovm: true,
         url: "http://127.0.0.1:8545",
         accounts: { mnemonic: "test test test test test test test test test test test junk" },
         // This sets the gas price to 0 for all transactions on L2. We do this because account balances are not yet
         // automatically initiated with an ETH balance.
         gasPrice: 0,
-        // This sets the network as using the ovm and ensure contract will be compiled against that.
-        ovm: true,
         // We use custom logic to only compile contracts within the listed directories, as opposed to choosing which
         // ones to ignore, because there are more contracts to ignore than to include.
         compileWhitelist: ["insured-bridge/implementation/L2_BridgeDepositBox.sol"],
