@@ -34,16 +34,16 @@ function findArtifactFromPaths(contractName, artifactsPath) {
 
 function getOptimismArtifact(contractName, ovm = false) {
   const artifactsPath = ovm
-    ? path.resolve(__dirname, "../../../../../node_modules/@eth-optimism/contracts/artifacts-ovm")
-    : path.resolve(__dirname, "../../../../../node_modules/@eth-optimism/contracts/artifacts");
+    ? path.resolve(__dirname, "../../../../../../node_modules/@eth-optimism/contracts/artifacts-ovm")
+    : path.resolve(__dirname, "../../../../../../node_modules/@eth-optimism/contracts/artifacts");
 
   return findArtifactFromPaths(contractName, artifactsPath);
 }
 
 function getLocalArtifact(contractName, ovm = false) {
   const artifactsPath = ovm
-    ? path.resolve(__dirname, "../../../artifacts-ovm")
-    : path.resolve(__dirname, "../../../artifacts");
+    ? path.resolve(__dirname, "../../../../artifacts-ovm")
+    : path.resolve(__dirname, "../../../../artifacts");
 
   return findArtifactFromPaths(contractName, artifactsPath);
 }
