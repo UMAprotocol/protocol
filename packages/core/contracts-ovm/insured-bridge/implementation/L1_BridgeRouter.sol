@@ -9,7 +9,6 @@ import "./L2_BridgeDepositBox.sol";
 
 /**
  * @notice Contract deployed on L1 that has an implicit reference to a DepositBox on L2 and provides methods for
- * "Relayers" to fulfill deposit orders to that contract. The Relayers can either post capital to fulfill the deposit
  * instantly, or request that the funds are taken out of the passive liquidity provider pool following a challenge period.
  * @dev A "Deposit" is an order to send capital from L2 to L1, and a "Relay" is a fulfillment attempt of that order.
  */
@@ -97,8 +96,6 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
         optimisticOracleLiveness = _optimisticOracleLiveness;
     }
 
-    // Admin functions
-
     function setDepositContract(address depositContract) public onlyOwner {}
 
     function whitelistToken(
@@ -122,14 +119,12 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
         uint256 depositTimestamp,
         address recipient,
         address l2Token,
-        uint256 amount,
-        uint256 realizedFee,
-        uint256 maxFee
+        uint256 amount
     ) public {}
 
     function speedUpRelay(uint256 depositId) public {}
 
     function finalizeRelay(uint256 depositId) public {}
 
-    function settleDisputedRelay(uint256 depositId, address slowRelayer) public {}
+    function finalizeL2Transfer(uint256 transferId) public {}
 }
