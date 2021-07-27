@@ -7,13 +7,13 @@ const { assert } = require("chai");
 const { deployOptimismContractMock } = require("./helpers/SmockitHelper");
 
 // Tested contract
-const BridgeDepositBox = getContract("L2_BridgeDepositBox");
+const BridgeDepositBox = getContract("OVM_L2DepositBox");
 
 // Contract objects
 let depositBox;
 let l2CrossDomainMessengerMock;
 
-describe("L2_depositBox", () => {
+describe("OVM_L2DepositBox", () => {
   let accounts, deployer, user1, l1Owner, l2MessengerImpersonator, rando;
 
   beforeEach(async function () {

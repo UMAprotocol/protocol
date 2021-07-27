@@ -5,7 +5,7 @@ pragma solidity >=0.7.6;
 
 import "@eth-optimism/contracts/libraries/bridge/OVM_CrossDomainEnabled.sol";
 
-import "./L2_BridgeDepositBox.sol";
+import "./OVM_L2BridgeDepositBox.sol";
 
 /**
  * @notice Contract deployed on L1 that has an implicit reference to a DepositBox on L2 and provides methods for

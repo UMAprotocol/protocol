@@ -5,14 +5,14 @@ const { getContract, assertEventEmitted } = hre;
 const { assert } = require("chai");
 
 // Tested contract
-const BridgeRouter = getContract("L1_BridgeRouter");
+const BridgeRouter = getContract("OVM_L1BridgeRouter");
 const Finder = getContract("Finder");
 
 // Contract objects
 let bridgeRouter;
 let finder;
 
-describe("L1_BridgeRouter", () => {
+describe("OVM_L1BridgeRouter", () => {
   let accounts, owner, rando, l1CrossDomainMessenger;
 
   before(async function () {
