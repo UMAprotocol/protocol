@@ -27,4 +27,9 @@ export type Data = {
   finder?: string | null;
   prepaidProposerReward?: string | null;
   sponsors?: string[] | null;
+  // these are not on the contract but queried from erc20
+  totalPositionCollateral?: string | null;
+  collateralDecimals?: number | null;
+  longTokenDecimals?: number | null;
+  shortTokenDecimals?: number | null;
 };

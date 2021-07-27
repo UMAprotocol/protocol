@@ -2,6 +2,7 @@ import * as uma from "@uma/sdk";
 import { BatchRead, toString, toNumber, parseBytes, nowS } from "../libs/utils";
 import { AppState, BaseConfig } from "..";
 import { lsps } from "../tables";
+import { BigNumber } from "ethers";
 
 type Instance = uma.clients.lsp.Instance;
 type Config = BaseConfig;
@@ -43,6 +44,28 @@ export default (config: Config, appState: Dependencies) => {
       ...result,
     };
   }
+
+  async function getStaticProps(instance: Instance, address: string) {
+    return batchRead(staticProps, instance, address);
+  }
+  async function getDynamicProps(instance: Instance, address: string) {
+    return batchRead(dynamicProps, instance, address);
+  }
+  // this is not ideal, but contract does not have a way to query this directly. this is a dyanmic value which
+  // depends first on gettin the static value 'collateralToken'.
+  async function getPositionCollateral(instance: Instance, address: string) {
+    const collateralToken = await instance.collateralToken();
+    return getErc20BalanceOf(collateralToken, address);
+  }
+  // get token state based on contract
+  async function getErc20BalanceOf(erc20Address: string, userAddress: string) {
+    const instance = uma.clients.erc20.connect(erc20Address, provider);
+    return instance
+      .balanceOf(userAddress)
+      .then((x: BigNumber) => x.toString())
+      .catch(() => "0");
+  }
+
   async function updateLsp(address: string, startBlock?: number | "latest", endBlock?: number) {
     // ignored expired lsps
     if (await lsps.expired.has(address)) return;
@@ -55,7 +78,8 @@ export default (config: Config, appState: Dependencies) => {
     const events = await instance.queryFilter({}, startBlock, endBlock);
     // returns all sponsors ( this should really be a seperate table eventually)
     eventState = await uma.clients.lsp.getEventState(events);
-    dynamicState = await batchRead(dynamicProps, instance, address);
+    dynamicState = await getDynamicProps(instance, address);
+    const totalPositionCollateral = await getPositionCollateral(instance, address);
 
     if (eventState.expired) {
       // see if it used to be active
@@ -65,6 +89,7 @@ export default (config: Config, appState: Dependencies) => {
         await lsps.expired.create({
           ...currentState,
           ...dynamicState,
+          totalPositionCollateral,
           expired: true,
         });
         await lsps.expired.addSponsors(address, eventState.sponsors || []);
@@ -72,18 +97,28 @@ export default (config: Config, appState: Dependencies) => {
         await lsps.active.delete(address);
       } else {
         // have to make sure we get static state if we have never seen this expired emp before
-        staticState = await batchRead(staticProps, instance, address);
+        staticState = await getStaticProps(instance, address);
         // if it was never active, just create an expired emp
-        await lsps.expired.create({ ...staticState, ...dynamicState, sponsors: eventState.sponsors, expired: true });
+        await lsps.expired.create({
+          ...staticState,
+          ...dynamicState,
+          totalPositionCollateral,
+          sponsors: eventState.sponsors,
+          expired: true,
+        });
       }
       // handle the case wehre emp is not yet expired
     } else {
       // if it doesnt exist we need to create it
       if (!(await lsps.active.has(address))) {
         // get static state once if it does not exist (optimizes network calls)
-        staticState = await batchRead(staticProps, instance, address);
+        staticState = await getStaticProps(instance, address);
         // create active emp with static/dynamic state
-        await lsps.active.create({ ...staticState, ...dynamicState });
+        await lsps.active.create({
+          ...staticState,
+          ...dynamicState,
+          totalPositionCollateral,
+        });
       }
       // add any new sponsors
       await lsps.active.addSponsors(address, eventState.sponsors || []);
@@ -124,6 +159,10 @@ export default (config: Config, appState: Dependencies) => {
       dynamicProps,
       staticProps,
       batchRead,
+      getErc20BalanceOf,
+      getStaticProps,
+      getDynamicProps,
+      getPositionCollateral,
     },
   };
 };

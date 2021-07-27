@@ -3,7 +3,7 @@ import SynthPrices from "../libs/synthPrices";
 import { AppState, PriceSample, Currencies, BaseConfig } from "..";
 import * as uma from "@uma/sdk";
 import bluebird from "bluebird";
-import Queries from "../libs/queries";
+import * as Queries from "../libs/queries";
 import { calcSyntheticPrice, Profile } from "../libs/utils";
 
 interface Config extends BaseConfig {
@@ -25,7 +25,7 @@ export default function (config: Config, appState: Dependencies) {
   const { web3, emps, synthPrices, prices } = appState;
   const getSynthPrices = SynthPrices(config, web3);
 
-  const queries = Queries(appState);
+  const queries = Queries.Emp(appState);
   const profile = Profile(debug);
 
   // get or create a history table by an erc20 token address. this might be a bit confusing because we also have a

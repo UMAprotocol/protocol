@@ -11,13 +11,14 @@ import * as Actions from "../../services/actions";
 import { ProcessEnv, AppState, Channels } from "../..";
 import { empStats, empStatsHistory, lsps } from "../../tables";
 import Zrx from "../../libs/zrx";
-import { Profile } from "../../libs/utils";
+import { Profile, parseEnvArray } from "../../libs/utils";
 
 export default async (env: ProcessEnv) => {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
   assert(env.EXPRESS_PORT, "requires EXPRESS_PORT");
   assert(env.zrxBaseUrl, "requires zrxBaseUrl");
   assert(env.MULTI_CALL_ADDRESS, "requires MULTI_CALL_ADDRESS");
+  const lspCreatorAddresses = parseEnvArray(env.lspCreatorAddresses || "");
 
   // debug flag for more verbose logs
   const debug = Boolean(env.debug);
@@ -64,14 +65,26 @@ export default async (env: ProcessEnv) => {
     },
     erc20s: tables.erc20s.JsMap(),
     stats: {
-      usd: {
-        latest: {
-          tvm: empStats.JsMap("Latest Tvm"),
-          tvl: empStats.JsMap("Latest Tvl"),
+      emp: {
+        usd: {
+          latest: {
+            tvm: empStats.JsMap("Latest Tvm"),
+            tvl: empStats.JsMap("Latest Tvl"),
+          },
+          history: {
+            tvm: empStatsHistory.SortedJsMap("Tvm History"),
+            tvl: empStatsHistory.SortedJsMap("Tvl History"),
+          },
         },
-        history: {
-          tvm: empStatsHistory.SortedJsMap("Tvm History"),
-          tvl: empStatsHistory.SortedJsMap("Tvl History"),
+      },
+      lsp: {
+        usd: {
+          latest: {
+            tvl: empStats.JsMap("Latest Tvl"),
+          },
+          history: {
+            tvl: empStatsHistory.SortedJsMap("Tvl History"),
+          },
         },
       },
     },
@@ -109,10 +122,11 @@ export default async (env: ProcessEnv) => {
       appState
     ),
     erc20s: Services.Erc20s({ debug }, appState),
-    empStats: Services.EmpStats({ debug }, appState),
+    empStats: Services.stats.Emp({ debug }, appState),
     marketPrices: Services.MarketPrices({ debug }, appState),
-    lspCreator: Services.LspCreator({ debug }, appState),
+    lspCreator: Services.MultiLspCreator({ debug, addresses: lspCreatorAddresses }, appState),
     lsps: Services.LspState({ debug }, appState),
+    lspStats: Services.stats.Lsp({ debug }, appState),
   };
 
   // warm caches
@@ -138,6 +152,9 @@ export default async (env: ProcessEnv) => {
     console.log("Updated Collateral Prices Backfill");
     await services.empStats.backfill();
     console.log("Updated EMP Backfill");
+
+    await services.lspStats.backfill();
+    console.log("Updated LSP Backfill");
   }
 
   await services.collateralPrices.update();
@@ -149,6 +166,9 @@ export default async (env: ProcessEnv) => {
   await services.empStats.update();
   console.log("Updated EMP Stats");
 
+  await services.lspStats.update();
+  console.log("Updated LSP Stats");
+
   await services.marketPrices.update();
   console.log("Updated Market Prices");
 
@@ -159,6 +179,8 @@ export default async (env: ProcessEnv) => {
     // Should switch all clients to explicit channels
     ["emp", Actions.Emp(undefined, appState)],
     ["lsp", Actions.Lsp(undefined, appState)],
+    // TODO: switch this to root path once frontend is ready to transition
+    ["global", Actions.Global(undefined, appState)],
   ];
 
   await Express({ port: Number(env.EXPRESS_PORT), debug }, channels)();
@@ -195,6 +217,7 @@ export default async (env: ProcessEnv) => {
     await services.syntheticPrices.update();
     await services.marketPrices.update();
     await services.empStats.update();
+    await services.lspStats.update();
   }
 
   // coingeckos prices don't update very fast, so set it on an interval every few minutes

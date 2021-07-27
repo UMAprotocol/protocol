@@ -1,15 +1,12 @@
 import assert from "assert";
 // allow for more complex queries, joins and shared queries between services
-import type { AppState, CurrencySymbol, PriceSample } from "..";
 import * as uma from "@uma/sdk";
-import { calcGcr } from "./utils";
+import { calcGcr } from "../utils";
 import bluebird from "bluebird";
 import { BigNumber } from "ethers";
-import * as tables from "../tables";
+import * as tables from "../../tables";
+import type { AppState, CurrencySymbol, PriceSample } from "../..";
 
-type Config = {
-  globalKey?: string;
-};
 const { exists } = uma.utils;
 type Dependencies = Pick<
   AppState,
@@ -120,6 +117,7 @@ export default (appState: Dependencies) => {
       collateralSymbol: collateral?.symbol,
       identifierPrice: await getLatestIdentifierPrice(empState.address).catch(() => null),
       tokenMarketPrice,
+      type: "emp",
     };
     let gcr = "0";
     try {
@@ -154,7 +152,7 @@ export default (appState: Dependencies) => {
     const tvls = await Promise.all(
       addresses.map(async (address) => {
         try {
-          const stat = await appState.stats[currency].latest.tvl.get(address);
+          const stat = await appState.stats.emp[currency].latest.tvl.get(address);
           return stat.value || "0";
         } catch (err) {
           return "0";
@@ -176,7 +174,7 @@ export default (appState: Dependencies) => {
     const tvms = await Promise.all(
       addresses.map(async (address) => {
         try {
-          const stat = await appState.stats[currency].latest.tvm.get(address);
+          const stat = await appState.stats.emp[currency].latest.tvm.get(address);
           return stat.value || "0";
         } catch (err) {
           return "0";
@@ -194,9 +192,9 @@ export default (appState: Dependencies) => {
     const addresses = Array.from(appState.registeredEmps.values());
     return sumTvm(addresses, currency);
   }
-  async function getGlobalTvl(currency: CurrencySymbol = "usd") {
-    assert(appState.stats[currency], "Invalid currency: " + currency);
-    const { value } = await appState.stats[currency].latest.tvl.getGlobal();
+  async function getTotalTvl(currency: CurrencySymbol = "usd") {
+    assert(appState.stats.emp[currency], "Invalid currency: " + currency);
+    const { value } = await appState.stats.emp[currency].latest.tvl.getGlobal();
     return value;
   }
 
@@ -212,7 +210,7 @@ export default (appState: Dependencies) => {
     latestPriceByTokenAddress,
     historicalPricesByTokenAddress,
     sliceHistoricalPricesByTokenAddress,
-    getGlobalTvl,
+    getTotalTvl,
     getFullLspState,
     getAnyLsp,
     listExpiredLsps,

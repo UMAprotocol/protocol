@@ -4,7 +4,6 @@
   "description": "UMA smart contracts and unit tests",
   "dependencies": {
     "@eth-optimism/contracts": "^0.4.5",
-    "@eth-optimism/watcher": "^0.0.1-alpha.9",
     "@truffle/contract": "^4.3.15",
     "@uma/common": "^2.6.0",
     "@uma/core-1-1-0": "npm:@uma/core@1.1.0",
@@ -21,6 +20,7 @@
     "decimal.js": "^10.2.1"
   },
   "devDependencies": {
+    "@eth-optimism/smock": "^1.1.9",
     "@awaitjs/express": "^0.3.0",
     "@eth-optimism/smock": "^1.1.9",
     "@ethersproject/units": "^5.0.3",
