@@ -5,11 +5,10 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
   // Hardhat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function
   // get access to the plugins as well.
   if (includeTruffle) require("@nomiclabs/hardhat-truffle5");
-  require("@nomiclabs/hardhat-web3");
-  require("@nomiclabs/hardhat-ethers");
-  require("@nomiclabs/hardhat-etherscan");
   require("hardhat-gas-reporter");
+  require("@nomiclabs/hardhat-web3");
   require("hardhat-deploy");
+  require("@nomiclabs/hardhat-etherscan");
   require("@eth-optimism/hardhat-ovm");
   require("./gckms/KeyInjectorPlugin");
 
@@ -31,10 +30,7 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
 
   const defaultConfig = {
     solidity: {
-      compilers: [
-        { version: solcVersion, settings: { optimizer: { enabled: true, runs: 1000000 } } },
-        { version: "0.7.6", settings: { optimizer: { enabled: true, runs: 1000000 } } },
-      ],
+      compilers: [{ version: solcVersion, settings: { optimizer: { enabled: true, runs: 1000000 } } }],
       overrides: {
         "contracts/financial-templates/expiring-multiparty/ExpiringMultiParty.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
         "contracts/financial-templates/expiring-multiparty/ExpiringMultiPartyLib.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
@@ -46,7 +42,7 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
         "contracts/oracle/implementation/test/VotingTest.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       },
     },
-    ovm: { solcVersion: "0.7.6" },
+    ovm: { solcVersion: "0.8.4-broken_alpha" },
     networks: {
       hardhat: {
         hardfork: "london",
@@ -73,12 +69,8 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
         ovm: true,
         // We use custom logic to only compile contracts within the listed directories, as opposed to choosing which
         // ones to ignore, because there are more contracts to ignore than to include.
-        compileWhitelist: [
-          "oracle/implementation/Finder.sol",
-          "insured-bridge/implementation/L2_BridgeDepositBox.sol",
-          "insured-bridge/implementation/L2DepositedERC20.sol",
-        ],
-        // testWhitelist: ["oracle/Finder", "insured-bridge/2e2_InsuredBridge_dumby"],
+        compileWhitelist: ["oracle/implementation/Finder.sol"],
+        testWhitelist: ["oracle/Finder"],
       },
     },
     mocha: { timeout: 1800000 },
@@ -87,7 +79,6 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
       // Obtain one at https://etherscan.io/
       apiKey: process.env.ETHERSCAN_API_KEY,
     },
-    gasReporter: { enabled: true, currency: "USD", gasPrice: 50 },
     namedAccounts: { deployer: 0 },
     external: {
       deployments: {
