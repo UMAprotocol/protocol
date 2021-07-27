@@ -80,7 +80,7 @@
     "clean": "rm -rf build",
     "build": "yarn truffle compile && yarn load-addresses && yarn generate-contract-types && yarn compile-ts && yarn buildLatestHardhatVersionHashes && yarn hardhat compile --network optimism",
     "buildLatestHardhatVersionHashes": "yarn hardhat run ./scripts/BuildContractVersionHashes.js",
-    "compile-ts": "rm -rf types dist && mkdir -p types/contract-types &&  rsync -R contract-types/**/*.d.ts ./types && tsc || true",
+    "compile-ts": "rm -rf types dist && mkdir -p types/contract-types &&  rsync -R contract-types/**/*.d.ts ./types && tsc",
     "generate-contract-types": "rm -rf contract-types && typechain --target=web3-v1 './build/contracts/*.json' --outDir contract-types/web3 && typechain --target=truffle-v5 './build/contracts/*.json' --outDir contract-types/truffle && typechain --target=ethers-v5 './build/contracts/*.json' --outDir contract-types/ethers",
     "prepublish": "yarn build"
   },

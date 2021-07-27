@@ -43,4 +43,6 @@ internalTask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS, async (_, { config, network
     `${ovmPath}/insured-bridge/implementation/L1_BridgeRouter.sol`,
     `${ovmPath}/insured-bridge/implementation/L2_BridgeDepositBox.sol`,
   ];
+
+  // return filePaths;
 });
