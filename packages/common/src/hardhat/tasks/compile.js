@@ -39,7 +39,6 @@ internalTask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS, async (_, { config, network
 
   return [
     ...filePaths,
-    `${ovmPath}/insured-bridge/implementation/L1BridgePool.sol`,
     `${ovmPath}/insured-bridge/implementation/OVM_L1BridgeRouter.sol`,
     `${ovmPath}/insured-bridge/implementation/OVM_L2BridgeDepositBox.sol`,
   ];
