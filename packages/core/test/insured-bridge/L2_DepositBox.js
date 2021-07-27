@@ -7,7 +7,7 @@ const { assert } = require("chai");
 const { deployOptimismContractMock } = require("./helpers/SmockitHelper");
 
 // Tested contract
-const BridgeDepositBox = getContract("BridgeDepositBox");
+const BridgeDepositBox = getContract("L2_BridgeDepositBox");
 
 // Contract objects
 let depositBox;

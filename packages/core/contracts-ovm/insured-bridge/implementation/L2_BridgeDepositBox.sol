@@ -3,7 +3,7 @@ pragma solidity >=0.7.6;
 
 import { OVM_CrossDomainEnabled } from "@eth-optimism/contracts/libraries/bridge/OVM_CrossDomainEnabled.sol";
 
-contract BridgeDepositBox is OVM_CrossDomainEnabled {
+contract L2_BridgeDepositBox is OVM_CrossDomainEnabled {
     address public l1Owner;
 
     event Deposit(
