@@ -1,8 +1,10 @@
+// Note: smockit is designed to run on the local hardhat network and not the optimism network.
 const { getContractDefinition } = require("@eth-optimism/contracts");
 const { smockit } = require("@eth-optimism/smock");
 
 const hre = require("hardhat");
 
+// Deploy contract from @eth-optimism/contracts directory as a smockit
 async function deployOptimismContractMock(name, opts) {
   const artifact = getContractDefinition(name);
 

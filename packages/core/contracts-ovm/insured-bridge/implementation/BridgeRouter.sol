@@ -138,19 +138,30 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
      * @notice Privileged account can associate a whitelisted token with its linked token address on L2 and its
      * BridgePool address on this network. The linked L2 token can thereafter be deposited into the Deposit contract
      * on L2 and relayed via this contract denominated in the L1 token.
-     * @dev Only callable by Owner of this contract.
+     * @dev Only callable by Owner of this contract. Also initiates a cross-chain call to the L2 Deposit contract to
+     * whitelist the token mapping.
      * @param _l1Token Address of L1 token that can be used to relay L2 token deposits.
      * @param _l2Token Address of L2 token whose deposits are fulfilled by `_l1Token`.
      * @param _bridgePool Address of pool contract that stores passive liquidity with which to fulfill deposits.
+     * @param _l2Gas Gas limit to set for relayed message on L2
      */
     function whitelistToken(
         address _l1Token,
         address _l2Token,
-        address _bridgePool
+        address _bridgePool,
+        uint32 _l2Gas
     ) public onlyOwner {
         L1TokenRelationships storage whitelistedToken = whitelistedTokens[_l1Token];
         whitelistedToken.l2Token = _l2Token;
         whitelistedToken.bridgePool = _bridgePool;
+        // TODO: Is this check required? Are we OK if a token mapping is whitelisted on this contract but not on the
+        // corresponding L2 contract?
+        require(depositContract != address(0), "Deposit contract not set");
+        sendCrossDomainMessage(
+            depositContract,
+            _l2Gas,
+            abi.encodeWithSignature("whitelistToken(address,address)", _l1Token, whitelistedToken.l2Token)
+        );
         emit WhitelistToken(_l1Token, whitelistedToken.l2Token, whitelistedToken.bridgePool);
     }
 
