@@ -29,8 +29,8 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
     settings: { optimizer: { enabled: true, runs: 200 } },
   };
 
-  // Some tests in the /test directory should not be tested using hardhat. Define these tests to ignore.
-  const testBlacklist = ["insured-bridge/e2e"];
+  // Some tests in the should not be tested using hardhat. Define all tests that end with *e2e.js to be ignored.
+  const testBlacklist = [".e2e.js"];
 
   const defaultConfig = {
     solidity: {

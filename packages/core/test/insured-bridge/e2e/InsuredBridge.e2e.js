@@ -6,11 +6,7 @@ const { ethers } = require("hardhat");
 const { Watcher } = require("@eth-optimism/watcher");
 const { getContractInterface, predeploys } = require("@eth-optimism/contracts");
 
-const {
-  createLocalEthersFactory,
-  createOptimismEthersFactory,
-  getProviders,
-} = require("./helpers/MultiProviderHelper");
+const { createLocalEthersFactory, createOptimismEthersFactory, getProviders } = require("./helpers/ArtifactsHelper");
 
 const { DEFAULT_ADMIN_KEY } = require("./helpers/OptimismConstants");
 
