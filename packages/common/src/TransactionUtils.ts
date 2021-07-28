@@ -5,6 +5,18 @@ import type Web3 from "web3";
 
 const argv = minimist(process.argv.slice(), {});
 
+type Transaction = ReturnType<InstanceType<Web3["eth"]["Contract"]>["deploy"]>;
+type CallReturnValue = ReturnType<Transaction["call"]>;
+type TransactionReceiptPromise = ReturnType<Web3["eth"]["sendTransaction"]>;
+
+type Web3TransactionConfig = Parameters<Transaction["send"]>[0];
+interface TransactionConfig extends Web3TransactionConfig {
+  chainId: string;
+  usingOffSetDSProxyAccount: boolean;
+  nonce: number;
+  gasPrice: string;
+}
+
 /**
  * Simulate transaction via .call() and then .send() and return receipt. If an error is thrown, return the error and add
  * a flag denoting whether it was sent on the .call() or the .send(). Enables multiple EOAs to be used when sending the
@@ -22,8 +34,14 @@ export const runTransaction = async ({
   availableAccounts = 1,
 }: {
   web3: Web3;
-  transaction: number;
-}) => {
+  transaction: Transaction;
+  transactionConfig: TransactionConfig;
+  availableAccounts: number;
+}): Promise<{
+  receipt: TransactionReceiptPromise;
+  returnValue: CallReturnValue;
+  transactionConfig: TransactionConfig;
+}> => {
   // Add chainId in case RPC enforces transactions to be replay-protected, (i.e. enforced in geth v1.10,
   // https://blog.ethereum.org/2021/03/03/geth-v1-10-0/).
   transactionConfig.chainId = web3.utils.toHex(await web3.eth.getChainId());
@@ -75,10 +93,10 @@ export const runTransaction = async ({
     const gasPriceScalingFunction = ynatm.DOUBLES;
     const retryDelay = 60000;
     const minGasPrice = transactionConfig.gasPrice;
-    const maxGasPrice = 2 * 3 * minGasPrice;
+    const maxGasPrice = 2 * 3 * parseInt(minGasPrice);
 
     const receipt = await ynatm.send({
-      sendTransactionFunction: (gasPrice) => transaction.send({ ...transactionConfig, gasPrice }),
+      sendTransactionFunction: (gasPrice: string) => transaction.send({ ...transactionConfig, gasPrice }),
       minGasPrice,
       maxGasPrice,
       gasPriceScalingFunction,
@@ -98,7 +116,7 @@ export const runTransaction = async ({
  * @param {*string} account account to check.
  * @return Bool true if the account has pending transaction and false if no pending transaction.
  */
-const accountHasPendingTransactions = async (web3, account) => {
+export const accountHasPendingTransactions = async (web3: Web3, account: string): Promise<boolean> => {
   const [currentMindedTransactions, currentTransactionsIncludingPending] = await Promise.all([
     web3.eth.getTransactionCount(account, "latest"),
     getPendingTransactionCount(web3, account),
@@ -114,7 +132,7 @@ const accountHasPendingTransactions = async (web3, account) => {
  * @param {*string} account account to check.
  * @returns number representing the number of transactions, including pending.
  */
-const getPendingTransactionCount = async (web3, account) => {
+export const getPendingTransactionCount = async (web3: Web3, account: string): number => {
   const sendRpc = util.promisify(web3.currentProvider.send).bind(web3.currentProvider);
 
   const rpcResponse = await sendRpc({
