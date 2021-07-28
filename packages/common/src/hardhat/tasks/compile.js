@@ -32,15 +32,17 @@ internalTask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS, async (_, { config, network
       }
       return false;
     });
-  }
-  // Temp work around to exclude some directories from truffle while compiling
-  // with hardhat.
-  const ovmPath = path.resolve(__dirname, "../../../../core/contracts-ovm");
+    return filePaths;
+  } else {
+    // Temp work around to exclude some directories from truffle while compiling
+    // with hardhat.
+    const ovmPath = path.resolve(__dirname, "../../../../core/contracts-ovm");
 
-  return [
-    ...filePaths,
-    `${ovmPath}/insured-bridge/implementation/BridgePool.sol`,
-    `${ovmPath}/insured-bridge/implementation/BridgeRouter.sol`,
-    `${ovmPath}/insured-bridge/implementation/OVM_BridgeDepositBox.sol`,
-  ];
+    return [
+      ...filePaths,
+      `${ovmPath}/insured-bridge/implementation/BridgePool.sol`,
+      `${ovmPath}/insured-bridge/implementation/BridgeRouter.sol`,
+      `${ovmPath}/insured-bridge/implementation/OVM_BridgeDepositBox.sol`,
+    ];
+  }
 });
