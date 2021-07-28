@@ -76,7 +76,6 @@ describe("L1 <> L2 Deposit and Withdrawal", () => {
 
       // Allow the gateway to lock up some of our tokens.
       await L1_ERC20.approve(L1StandardBridge.address, 1234);
-      // await tx1.wait();
 
       // Lock the tokens up inside the gateway and ask the L2 contract to mint new ones.
       const depositTx = await L1StandardBridge.depositERC20(L1_ERC20.address, L2_ERC20.address, 1234, 2000000, "0x");
