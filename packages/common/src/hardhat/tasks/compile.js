@@ -37,5 +37,9 @@ internalTask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS, async (_, { config, network
   // with hardhat.
   const ovmPath = path.resolve(__dirname, "../../../../core/contracts-ovm");
 
-  return [...filePaths, `${ovmPath}/insured-bridge/implementation/OVM_BridgeDepositBox.sol`];
+  return [
+    ...filePaths,
+    `${ovmPath}/insured-bridge/implementation/BridgeRouter.sol`,
+    `${ovmPath}/insured-bridge/implementation/OVM_BridgeDepositBox.sol`,
+  ];
 });
