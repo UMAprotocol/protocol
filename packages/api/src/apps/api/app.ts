@@ -6,18 +6,19 @@ import moment from "moment";
 import { tables, Coingecko, utils, Multicall } from "@uma/sdk";
 
 import * as Services from "../../services";
-import Express from "../../services/express";
-import Actions from "../../services/actions";
-import { ProcessEnv, AppState } from "../..";
+import Express from "../../services/express-channels";
+import * as Actions from "../../services/actions";
+import { ProcessEnv, AppState, Channels } from "../..";
 import { empStats, empStatsHistory, lsps } from "../../tables";
 import Zrx from "../../libs/zrx";
-import { Profile } from "../../libs/utils";
+import { Profile, parseEnvArray } from "../../libs/utils";
 
 export default async (env: ProcessEnv) => {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
   assert(env.EXPRESS_PORT, "requires EXPRESS_PORT");
   assert(env.zrxBaseUrl, "requires zrxBaseUrl");
   assert(env.MULTI_CALL_ADDRESS, "requires MULTI_CALL_ADDRESS");
+  const lspCreatorAddresses = parseEnvArray(env.lspCreatorAddresses || "");
 
   // debug flag for more verbose logs
   const debug = Boolean(env.debug);
@@ -64,14 +65,26 @@ export default async (env: ProcessEnv) => {
     },
     erc20s: tables.erc20s.JsMap(),
     stats: {
-      usd: {
-        latest: {
-          tvm: empStats.JsMap("Latest Tvm"),
-          tvl: empStats.JsMap("Latest Tvl"),
+      emp: {
+        usd: {
+          latest: {
+            tvm: empStats.JsMap("Latest Tvm"),
+            tvl: empStats.JsMap("Latest Tvl"),
+          },
+          history: {
+            tvm: empStatsHistory.SortedJsMap("Tvm History"),
+            tvl: empStatsHistory.SortedJsMap("Tvl History"),
+          },
         },
-        history: {
-          tvm: empStatsHistory.SortedJsMap("Tvm History"),
-          tvl: empStatsHistory.SortedJsMap("Tvl History"),
+      },
+      lsp: {
+        usd: {
+          latest: {
+            tvl: empStats.JsMap("Latest Tvl"),
+          },
+          history: {
+            tvl: empStatsHistory.SortedJsMap("Tvl History"),
+          },
         },
       },
     },
@@ -95,7 +108,7 @@ export default async (env: ProcessEnv) => {
   const services = {
     // these services can optionally be configured with a config object, but currently they are undefined or have defaults
     blocks: Services.Blocks(undefined, appState),
-    emps: Services.Emps({ debug }, appState),
+    emps: Services.EmpState({ debug }, appState),
     registry: Services.Registry({ debug }, appState),
     collateralPrices: Services.CollateralPrices({ debug }, appState),
     syntheticPrices: Services.SyntheticPrices(
@@ -109,14 +122,12 @@ export default async (env: ProcessEnv) => {
       appState
     ),
     erc20s: Services.Erc20s({ debug }, appState),
-    empStats: Services.EmpStats({ debug }, appState),
+    empStats: Services.stats.Emp({ debug }, appState),
     marketPrices: Services.MarketPrices({ debug }, appState),
-    lspCreator: Services.LspCreator({ debug }, appState),
-    lsps: Services.Lsps({ debug }, appState),
+    lspCreator: Services.MultiLspCreator({ debug, addresses: lspCreatorAddresses }, appState),
+    lsps: Services.LspState({ debug }, appState),
+    lspStats: Services.stats.Lsp({ debug }, appState),
   };
-
-  // services consuming data
-  const actions = Actions(undefined, appState);
 
   // warm caches
   await services.registry();
@@ -141,6 +152,9 @@ export default async (env: ProcessEnv) => {
     console.log("Updated Collateral Prices Backfill");
     await services.empStats.backfill();
     console.log("Updated EMP Backfill");
+
+    await services.lspStats.backfill();
+    console.log("Updated LSP Backfill");
   }
 
   await services.collateralPrices.update();
@@ -152,11 +166,24 @@ export default async (env: ProcessEnv) => {
   await services.empStats.update();
   console.log("Updated EMP Stats");
 
+  await services.lspStats.update();
+  console.log("Updated LSP Stats");
+
   await services.marketPrices.update();
   console.log("Updated Market Prices");
 
-  // expose calls through express
-  await Express({ port: Number(env.EXPRESS_PORT), debug }, actions);
+  // services consuming data
+  const channels: Channels = [
+    // set this as default channel for backward compatibility. This is deprecated and will eventually be used for global style queries
+    ["", Actions.Emp(undefined, appState)],
+    // Should switch all clients to explicit channels
+    ["emp", Actions.Emp(undefined, appState)],
+    ["lsp", Actions.Lsp(undefined, appState)],
+    // TODO: switch this to root path once frontend is ready to transition
+    ["global", Actions.Global(undefined, appState)],
+  ];
+
+  await Express({ port: Number(env.EXPRESS_PORT), debug }, channels)();
 
   // break all state updates by block events into a cleaner function
   async function updateByBlock(blockNumber: number) {
@@ -190,6 +217,7 @@ export default async (env: ProcessEnv) => {
     await services.syntheticPrices.update();
     await services.marketPrices.update();
     await services.empStats.update();
+    await services.lspStats.update();
   }
 
   // coingeckos prices don't update very fast, so set it on an interval every few minutes

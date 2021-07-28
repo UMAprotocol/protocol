@@ -12,8 +12,6 @@
     "dotenv": "^8.2.0"
   },
   "devDependencies": {
-    "@nomiclabs/hardhat-truffle5": "^2.0.0",
-    "@nomiclabs/hardhat-web3": "^2.0.0",
     "@tsconfig/node14": "^1.0.0",
     "@types/async-retry": "^1.4.2",
     "@types/chai": "^4.2.14",

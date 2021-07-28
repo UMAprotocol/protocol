@@ -33,6 +33,16 @@ internalTask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS, async (_, { config, network
       return false;
     });
   }
+  // Temp work around to exclude some directories from truffle while compiling
+  // with hardhat.
+  const ovmPath = path.resolve(__dirname, "../../../../core/contracts-ovm");
 
-  return filePaths;
+  return [
+    ...filePaths,
+    `${ovmPath}/insured-bridge/implementation/L1_BridgePool.sol`,
+    `${ovmPath}/insured-bridge/implementation/L1_BridgeRouter.sol`,
+    `${ovmPath}/insured-bridge/implementation/L2_BridgeDepositBox.sol`,
+  ];
+
+  // return filePaths;
 });

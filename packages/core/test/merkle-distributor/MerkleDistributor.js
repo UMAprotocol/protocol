@@ -541,7 +541,7 @@ describe("MerkleDistributor.js", function () {
       it("gas", async function () {
         const txn = await merkleDistributor.methods.claimMulti(batchedClaims).send({ from: accounts[0] });
         assertApproximate(
-          32096,
+          32550,
           Math.floor(txn.gasUsed / (rewardLeafs.length * Object.keys(SamplePayouts.exampleRecipients).length))
         );
       });

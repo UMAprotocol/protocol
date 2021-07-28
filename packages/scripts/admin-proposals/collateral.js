@@ -5,11 +5,11 @@
 // - For testing, start mainnet fork in one window with `yarn hardhat node --fork <ARCHIVAL_NODE_URL> --no-deploy --port 9545`
 // - (optional, or required if --polygon is not undefined) set POLYGON_NODE_URL to a Polygon mainnet node. This will
 //   be used to query contract data from Polygon when relaying proposals through the GovernorRootTunnel.
-// - Next, open another terminal window and run `node ./packages/core/scripts/admin-proposals/setup.sh` to unlock
+// - Next, open another terminal window and run `node ./packages/scripts/admin-proposals/setupFork.sh` to unlock
 //   accounts on the local node that we'll need to run this script.
-// - Propose: node ./packages/core/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456 --network mainnet-fork
-// - Vote Simulate: node ./packages/core/scripts/admin-proposals/simulateVote.js --network mainnet-fork
-// - Verify: node ./packages/core/scripts/admin-proposals/collateral.js --verify --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456 --network mainnet-fork
+// - Propose: node ./packages/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456 --network mainnet-fork
+// - Vote Simulate: node ./packages/scripts/admin-proposals/simulateVote.js --network mainnet-fork
+// - Verify: node ./packages/scripts/admin-proposals/collateral.js --verify --collateral 0xabc,0x123 --fee 0.1,0.2 --polygon 0xdef,0x456 --network mainnet-fork
 // - For production, set the CUSTOM_NODE_URL environment, run the script with a production network passed to the
 //   `--network` flag (along with other params like --keys) like so: `node ... --network mainnet_gckms --keys deployer`
 
@@ -23,11 +23,11 @@
 
 // Examples:
 // - Whitelist collateral on Ethereum only:
-//    - `node ./packages/core/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123 --network mainnet-fork`
+//    - `node ./packages/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123 --network mainnet-fork`
 // - Whitelist collateral on Polygon only:
-//    - `node ./packages/core/scripts/admin-proposals/collateral.js --polygon 0xabc,0x123 --network mainnet-fork`
+//    - `node ./packages/scripts/admin-proposals/collateral.js --polygon 0xabc,0x123 --network mainnet-fork`
 // - Whitelist collateral on both (some on Ethereum, some on Polygon):
-//    - `node ./packages/core/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123 --polygon 0xdef, --network mainnet-fork`
+//    - `node ./packages/scripts/admin-proposals/collateral.js --collateral 0xabc,0x123 --polygon 0xdef, --network mainnet-fork`
 
 const hre = require("hardhat");
 const { getContract } = hre;
@@ -38,8 +38,8 @@ const Web3 = require("web3");
 const winston = require("winston");
 const { parseUnits } = require("@ethersproject/units");
 const { interfaceName } = require("@uma/common");
-const { _getDecimals, _getContractAddressByName, _setupWeb3 } = require("./utils");
-const { REQUIRED_SIGNER_ADDRESSES } = require("./constants");
+const { _getDecimals, _getContractAddressByName, _setupWeb3 } = require("../utils");
+const { REQUIRED_SIGNER_ADDRESSES } = require("../utils/constants");
 const argv = require("minimist")(process.argv.slice(), {
   string: [
     // comma-delimited list of final fees to set for whitelisted collateral.
@@ -173,7 +173,7 @@ async function run() {
           console.log("- setFinalFeeData", setFinalFeeData);
           adminProposalTransactions.push({ to: store.options.address, value: 0, data: setFinalFeeData });
         } else {
-          console.log("- Final fee for ", collaterals[i], `is already equal to ${convertedFeeAmount}. Nothing to do.`);
+          console.log(`- Final fee for is already equal to ${convertedFeeAmount}. Nothing to do.`);
         }
 
         // The proposal will then add the currency to the whitelist if it isn't already there.
@@ -182,7 +182,7 @@ async function run() {
           console.log("- addToWhitelistData", addToWhitelistData);
           adminProposalTransactions.push({ to: whitelist.options.address, value: 0, data: addToWhitelistData });
         } else {
-          console.log("- Collateral", collateral, "is on the whitelist. Nothing to do.");
+          console.log("- Collateral is on the whitelist. Nothing to do.");
         }
         console.groupEnd();
       }
@@ -210,7 +210,7 @@ async function run() {
             data: relayGovernanceData,
           });
         } else {
-          console.log("- Final fee for ", collaterals[i], `is already equal to ${convertedFeeAmount}. Nothing to do.`);
+          console.log(`- Final fee for is already equal to ${convertedFeeAmount}. Nothing to do.`);
         }
 
         // The proposal will then add the currency to the whitelist if it isn't already there.
@@ -227,7 +227,7 @@ async function run() {
             data: relayGovernanceData,
           });
         } else {
-          console.log("- Collateral", collateral, "is on the whitelist. Nothing to do.");
+          console.log("- Collateral is on the whitelist. Nothing to do.");
         }
         console.groupEnd();
       }
