@@ -1,11 +1,9 @@
 {
   "extends": "@tsconfig/node14/tsconfig.json",
-  "include": ["src/**/*", "index.js"],
+  "include": ["src/**/*", "index.ts"],
   "compilerOptions": {
     "typeRoots": ["./types", "./node_modules/@types"],
     "outDir": "dist",
-    "declaration": true,
-    "emitDeclarationOnly": true,
-    "allowJs": true
+    "declaration": true
   }
 }

@@ -153,7 +153,7 @@ function addLocalNetwork(networks, name, customOptions) {
   networks[name] = { ...defaultOptions, ...customOptions };
 }
 
-let networks = {};
+const networks = {};
 
 // Public networks that need both a mnemonic and GCS ManagedSecretProvider network.
 for (const [id, { name, customTruffleConfig }] of Object.entries(PublicNetworks)) {
