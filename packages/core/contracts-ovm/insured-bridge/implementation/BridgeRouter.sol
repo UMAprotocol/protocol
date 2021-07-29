@@ -62,8 +62,8 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
     // Associates each deposit with a unique ID.
     mapping(uint256 => Deposit) public deposits;
     // If a deposit is disputed, it is removed from the `deposits` mapping and added to the `disputedDeposits` mapping.
-    // There can only be one disputed deposit for each deposit ID.
-    mapping(uint256 => Deposit) public disputedDeposits;
+    // There can only be one disputed deposit per relayer for each deposit ID.
+    mapping(uint256 => mapping(address => Deposit)) public disputedDeposits;
 
     event SetDepositContract(address indexed l2DepositContract);
     event WhitelistToken(address indexed l1Token, address indexed l2Token, address indexed bridgePool);
