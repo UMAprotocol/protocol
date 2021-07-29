@@ -4,36 +4,57 @@ pragma solidity >=0.7.6;
 import { OVM_CrossDomainEnabled } from "@eth-optimism/contracts/libraries/bridge/OVM_CrossDomainEnabled.sol";
 
 contract OVM_L2BridgeDepositBox is OVM_CrossDomainEnabled {
-    address public l1Owner;
+    address public l1WithdrawContract;
+
+    bool public depositsEnabled = true;
+
+    // Mapping of L2Token to L1Token.
+    mapping(address => address) public whitelistedTokens;
 
     event Deposit(
         uint256 transferId,
         uint256 timestamp,
         address sender,
         address recipient,
-        address originToken,
+        address l1Token,
         uint256 amount,
         uint256 networkId,
         uint256 maxFee
     );
-    event WithdrawalContractSet(address withdrawalContract);
-    event TokenWhitelisted(address originToken, address destinationToken);
-    event DepositContractEnabledStateToggled(bool enabled);
+    event L1WithdrawContractChanged(address oldL1WithdrawContract, address newL1WithdrawContract);
+    event TokenWhitelisted(address l1Token, address l2Token);
+    event DepositsEnabled(bool enabledResultantState);
 
-    constructor(address _l2CrossDomainMessenger, address _l1Owner) OVM_CrossDomainEnabled(_l2CrossDomainMessenger) {
-        l1Owner = _l1Owner;
+    modifier onlyIfDepositsEnabled() {
+        require(depositsEnabled, "Contract is disabled");
+        _;
+    }
+
+    constructor(address _l2CrossDomainMessenger, address _l1WithdrawContract)
+        OVM_CrossDomainEnabled(_l2CrossDomainMessenger)
+    {
+        l1WithdrawContract = _l1WithdrawContract;
     }
 
     // Admin functions
 
-    function setWithdrawalContract(address withdrawalContract) public onlyFromCrossDomainAccount(l1Owner) {}
+    function changeL1WithdrawContract(address newL1WithdrawContract)
+        public
+        onlyFromCrossDomainAccount(l1WithdrawContract)
+    {
+        emit L1WithdrawContractChanged(l1WithdrawContract, newL1WithdrawContract);
+        l1WithdrawContract = newL1WithdrawContract;
+    }
 
-    function whitelistToken(address l1Token, address l2Token) public onlyFromCrossDomainAccount(l1Owner) {}
+    function whitelistToken(address l1Token, address l2Token) public onlyFromCrossDomainAccount(l1WithdrawContract) {
+        whitelistedTokens[l2Token] = l1Token;
 
-    function disableDepositContract() public onlyFromCrossDomainAccount(l1Owner) {}
+        emit TokenWhitelisted(l1Token, l2Token);
+    }
 
-    function transferL1Owner(address _l1Owner) public onlyFromCrossDomainAccount(l1Owner) {
-        l1Owner = _l1Owner;
+    function setEnableDeposits(bool _depositsEnabled) public onlyFromCrossDomainAccount(l1WithdrawContract) {
+        depositsEnabled = _depositsEnabled;
+        emit DepositsEnabled(_depositsEnabled);
     }
 
     // Depositor functions
@@ -43,5 +64,5 @@ contract OVM_L2BridgeDepositBox is OVM_CrossDomainEnabled {
         address l1Token,
         uint256 amount,
         uint256 maxFee
-    ) public {}
+    ) public onlyIfDepositsEnabled() {}
 }
