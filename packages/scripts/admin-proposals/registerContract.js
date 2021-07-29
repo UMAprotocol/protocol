@@ -246,45 +246,51 @@ async function run() {
     }
 
     if (polygonContractToRegister) {
-      const addMemberData = polygon_registry.methods
-        .addMember(RegistryRolesEnum.CONTRACT_CREATOR, polygon_governor.options.address)
-        .encodeABI();
-      const registerContractData = polygon_registry.methods.registerContract([], polygonContractToRegister).encodeABI();
-      const removeMemberData = polygon_registry.methods
-        .removeMember(RegistryRolesEnum.CONTRACT_CREATOR, polygon_governor.options.address)
-        .encodeABI();
-      const relayedRegistryTransactions = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
-        filter: { to: polygon_registry.options.address },
-        fromBlock: 0,
-      });
-      const relayedRegisterContractEvent = relayedRegistryTransactions.find(
-        (e) => e.returnValues.data === registerContractData
-      );
-      // It's hard to test whether the addMember and removeMember transactions were relayed as well, since those
-      // governance transactions could have been executed many blocks before and after the registerContract
-      // transaction respectively. For now, we'll make the loose assumption that they were executed within a
-      // reasonable range of blocks, which will be true when testing against a Mainnet fork.
-      const beforeRelayedRegistryTransactions = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
-        filter: { to: polygon_registry.options.address },
-        fromBlock: relayedRegisterContractEvent.blockNumber - 1,
-        toBlock: relayedRegisterContractEvent.blockNumber,
-      });
-      assert(
-        beforeRelayedRegistryTransactions.find((e) => e.returnValues.data === addMemberData),
-        "Could not find RelayedGovernanceRequest matching expected relayed addMemberData transaction"
-      );
-      const afterRelayedRegistryTransactions = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
-        filter: { to: polygon_registry.options.address },
-        fromBlock: relayedRegisterContractEvent.blockNumber,
-        toBlock: relayedRegisterContractEvent.blockNumber + 1,
-      });
-      assert(
-        afterRelayedRegistryTransactions.find((e) => e.returnValues.data === removeMemberData),
-        "Could not find RelayedGovernanceRequest matching expected relayed removeMemberData transaction"
-      );
-      console.log(
-        `- GovernorRootTunnel correctly emitted events to registry ${polygon_registry.options.address} preceded and followed by addMember and removeMember respectively`
-      );
+      if (!(await polygon_registry.methods.isContractRegistered(polygonContractToRegister).call())) {
+        const addMemberData = polygon_registry.methods
+          .addMember(RegistryRolesEnum.CONTRACT_CREATOR, polygon_governor.options.address)
+          .encodeABI();
+        const registerContractData = polygon_registry.methods
+          .registerContract([], polygonContractToRegister)
+          .encodeABI();
+        const removeMemberData = polygon_registry.methods
+          .removeMember(RegistryRolesEnum.CONTRACT_CREATOR, polygon_governor.options.address)
+          .encodeABI();
+        const relayedRegistryTransactions = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
+          filter: { to: polygon_registry.options.address },
+          fromBlock: 0,
+        });
+        const relayedRegisterContractEvent = relayedRegistryTransactions.find(
+          (e) => e.returnValues.data === registerContractData
+        );
+        // It's hard to test whether the addMember and removeMember transactions were relayed as well, since those
+        // governance transactions could have been executed many blocks before and after the registerContract
+        // transaction respectively. For now, we'll make the loose assumption that they were executed within a
+        // reasonable range of blocks, which will be true when testing against a Mainnet fork.
+        const beforeRelayedRegistryTransactions = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
+          filter: { to: polygon_registry.options.address },
+          fromBlock: relayedRegisterContractEvent.blockNumber - 1,
+          toBlock: relayedRegisterContractEvent.blockNumber,
+        });
+        assert(
+          beforeRelayedRegistryTransactions.find((e) => e.returnValues.data === addMemberData),
+          "Could not find RelayedGovernanceRequest matching expected relayed addMemberData transaction"
+        );
+        const afterRelayedRegistryTransactions = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
+          filter: { to: polygon_registry.options.address },
+          fromBlock: relayedRegisterContractEvent.blockNumber,
+          toBlock: relayedRegisterContractEvent.blockNumber + 1,
+        });
+        assert(
+          afterRelayedRegistryTransactions.find((e) => e.returnValues.data === removeMemberData),
+          "Could not find RelayedGovernanceRequest matching expected relayed removeMemberData transaction"
+        );
+        console.log(
+          `- GovernorRootTunnel correctly emitted events to registry ${polygon_registry.options.address} preceded and followed by addMember and removeMember respectively`
+        );
+      } else {
+        console.log("- Contract @ ", polygonContractToRegister, "is already registered on Polygon. Nothing to do.");
+      }
     }
   }
   console.groupEnd();

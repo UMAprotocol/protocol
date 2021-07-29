@@ -225,23 +225,31 @@ async function run() {
       }
 
       if (polygonIdentifiers && polygonIdentifiers[i]) {
-        // Construct expected data to be relayed to Polygon contracts
-        const addSupportedIdentifierData = polygon_whitelist.methods
-          .addSupportedIdentifier(polygonIdentifiers[i])
-          .encodeABI();
-        const relayedWhitelistTransactions = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
-          filter: { to: polygon_whitelist.options.address },
-          fromBlock: 0,
-        });
-        assert(
-          relayedWhitelistTransactions.find((e) => e.returnValues.data === addSupportedIdentifierData),
-          "Could not find RelayedGovernanceRequest matching expected relayed addSupportedIdentifier transaction"
-        );
-        console.log(
-          `- GovernorRootTunnel correctly emitted events to whitelist identifier ${
-            polygonIdentifiers[i]
-          } (UTF8: ${web3.utils.hexToUtf8(polygonIdentifiers[i])})`
-        );
+        if (!(await polygon_whitelist.methods.isIdentifierSupported(polygonIdentifiers[i]).call())) {
+          // Construct expected data to be relayed to Polygon contracts
+          const addSupportedIdentifierData = polygon_whitelist.methods
+            .addSupportedIdentifier(polygonIdentifiers[i])
+            .encodeABI();
+          const relayedWhitelistTransactions = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
+            filter: { to: polygon_whitelist.options.address },
+            fromBlock: 0,
+          });
+          assert(
+            relayedWhitelistTransactions.find((e) => e.returnValues.data === addSupportedIdentifierData),
+            "Could not find RelayedGovernanceRequest matching expected relayed addSupportedIdentifier transaction"
+          );
+          console.log(
+            `- GovernorRootTunnel correctly emitted events to whitelist identifier ${
+              polygonIdentifiers[i]
+            } (UTF8: ${web3.utils.hexToUtf8(polygonIdentifiers[i])})`
+          );
+        } else {
+          console.log(
+            `- Identifier ${identifiers[i]} (UTF8: ${web3.utils.hexToUtf8(
+              polygonIdentifiers[i]
+            )}) is whitelisted on Polygon`
+          );
+        }
       }
     }
   }

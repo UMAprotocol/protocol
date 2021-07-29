@@ -210,20 +210,32 @@ async function run() {
     }
 
     if (polygonContractToRegister) {
-      const addMemberData = polygon_registry.methods
-        .addMember(RegistryRolesEnum.CONTRACT_CREATOR, polygon_governor.options.address)
-        .encodeABI();
-      const relayedRegistryTransactions = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
-        filter: { to: polygon_registry.options.address },
-        fromBlock: 0,
-      });
-      assert(
-        relayedRegistryTransactions.find((e) => e.returnValues.data === addMemberData),
-        "Could not find RelayedGovernanceRequest matching expected relayed addMemberData transaction"
-      );
-      console.log(
-        `- GovernorRootTunnel correctly emitted events to registry ${polygon_registry.options.address} containing addMember data`
-      );
+      if (
+        !(await polygon_registry.methods
+          .holdsRole(RegistryRolesEnum.CONTRACT_CREATOR, polygonContractToRegister)
+          .call())
+      ) {
+        const addMemberData = polygon_registry.methods
+          .addMember(RegistryRolesEnum.CONTRACT_CREATOR, polygon_governor.options.address)
+          .encodeABI();
+        const relayedRegistryTransactions = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
+          filter: { to: polygon_registry.options.address },
+          fromBlock: 0,
+        });
+        assert(
+          relayedRegistryTransactions.find((e) => e.returnValues.data === addMemberData),
+          "Could not find RelayedGovernanceRequest matching expected relayed addMemberData transaction"
+        );
+        console.log(
+          `- GovernorRootTunnel correctly emitted events to registry ${polygon_registry.options.address} containing addMember data`
+        );
+      } else {
+        console.log(
+          "- Contract @ ",
+          polygonContractToRegister,
+          "is already a contract creator on Polygon. Nothing to do."
+        );
+      }
     }
   }
   console.groupEnd();

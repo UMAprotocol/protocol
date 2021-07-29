@@ -266,32 +266,41 @@ async function run() {
         console.log(`- Collateral @ ${collaterals[i]} has correct final fee and is whitelisted on Ethereum`);
       }
       if (polygonCollaterals && polygonCollaterals[i]) {
-        // Construct expected data to be relayed to Polygon contracts
         const collateralDecimals = await _getDecimals(crossChainWeb3, polygonCollaterals[i], ERC20);
         const convertedFeeAmount = parseUnits(fees[i], collateralDecimals).toString();
-        const setFinalFeeData = polygon_store.methods
-          .setFinalFee(polygonCollaterals[i], { rawValue: convertedFeeAmount })
-          .encodeABI();
-        const addToWhitelistData = polygon_whitelist.methods.addToWhitelist(polygonCollaterals[i]).encodeABI();
-        const relayedStoreTransactions = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
-          filter: { to: polygon_store.options.address },
-          fromBlock: 0,
-        });
-        assert(
-          relayedStoreTransactions.find((e) => e.returnValues.data === setFinalFeeData),
-          "Could not find RelayedGovernanceRequest matching expected relayed setFinalFee transaction"
-        );
-        const relayedWhitelistTransactions = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
-          filter: { to: polygon_whitelist.options.address },
-          fromBlock: 0,
-        });
-        assert(
-          relayedWhitelistTransactions.find((e) => e.returnValues.data === addToWhitelistData),
-          "Could not find RelayedGovernanceRequest matching expected relayed addToWhitelist transaction"
-        );
-        console.log(
-          `- GovernorRootTunnel correctly emitted events to whitelist collateral ${polygonCollaterals[i]} with final fee set to ${convertedFeeAmount}`
-        );
+        const currentFinalFee = await polygon_store.methods.computeFinalFee(polygonCollaterals[i]).call();
+        if (currentFinalFee.toString() !== convertedFeeAmount) {
+          const setFinalFeeData = polygon_store.methods
+            .setFinalFee(polygonCollaterals[i], { rawValue: convertedFeeAmount })
+            .encodeABI();
+          const relayedStoreTransactions = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
+            filter: { to: polygon_store.options.address },
+            fromBlock: 0,
+          });
+          assert(
+            relayedStoreTransactions.find((e) => e.returnValues.data === setFinalFeeData),
+            "Could not find RelayedGovernanceRequest matching expected relayed setFinalFee transaction"
+          );
+          console.log(
+            `- GovernorRootTunnel correctly emitted events to set final fee for collateral @ ${polygonCollaterals[i]} with final fee set to ${convertedFeeAmount}`
+          );
+        } else {
+          console.log(`- Final fee for is already equal to ${convertedFeeAmount}. Nothing to do.`);
+        }
+        if (!(await polygon_whitelist.methods.isOnWhitelist(polygonCollaterals[i]).call())) {
+          const addToWhitelistData = polygon_whitelist.methods.addToWhitelist(polygonCollaterals[i]).encodeABI();
+          const relayedWhitelistTransactions = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
+            filter: { to: polygon_whitelist.options.address },
+            fromBlock: 0,
+          });
+          assert(
+            relayedWhitelistTransactions.find((e) => e.returnValues.data === addToWhitelistData),
+            "Could not find RelayedGovernanceRequest matching expected relayed addToWhitelist transaction"
+          );
+          console.log(`- GovernorRootTunnel correctly emitted events to whitelist collateral ${polygonCollaterals[i]}`);
+        } else {
+          console.log("- Collateral is on the whitelist. Nothing to do.");
+        }
       }
     }
   }
