@@ -1,3 +1,5 @@
+const { getAllFilesInPath } = require("@uma/common");
+
 const path = require("path");
 
 // This file is mostly taken from the modified `compile` task file written by Synthetix: https://github.com/Synthetixio/synthetix
@@ -18,6 +20,12 @@ const CONTRACTS_DIR = path.resolve(__dirname, "../../../../core/contracts");
 internalTask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS, async (_, { config, network }, runSuper) => {
   let filePaths = await runSuper();
 
+  // Temp work around to exclude some directories from truffle while compiling with hardhat. Pulls in all contracts in
+  // the directory `contracts-ovm` to compile with hardhat.
+  const corePackagePath = require.resolve("@uma/core/package.json");
+  const corePath = corePackagePath.slice(0, corePackagePath.indexOf("package.json"));
+  filePaths = [...filePaths, ...getAllFilesInPath(`${corePath}/contracts-ovm`)];
+
   // Build absolute path for all directories on user-specified whitelist.
   const whitelist = config.networks[network.name].compileWhitelist;
   if (whitelist && Array.isArray(whitelist)) {
@@ -33,13 +41,5 @@ internalTask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS, async (_, { config, network
       return false;
     });
   }
-  // Temp work around to exclude some directories from truffle while compiling
-  // with hardhat.
-  const ovmPath = path.resolve(__dirname, "../../../../core/contracts-ovm");
-
-  return [
-    ...filePaths,
-    `${ovmPath}/insured-bridge/implementation/OVM_L1BridgeRouter.sol`,
-    `${ovmPath}/insured-bridge/implementation/OVM_L2BridgeDepositBox.sol`,
-  ];
+  return filePaths;
 });

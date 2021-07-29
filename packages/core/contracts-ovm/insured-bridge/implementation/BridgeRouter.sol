@@ -5,7 +5,7 @@ pragma solidity >=0.7.6;
 
 import "@eth-optimism/contracts/libraries/bridge/OVM_CrossDomainEnabled.sol";
 
-import "./OVM_L2BridgeDepositBox.sol";
+import "./OVM_BridgeDepositBox.sol";
 
 /**
  * @notice Contract deployed on L1 that has an implicit reference to a DepositBox on L2 and provides methods for
@@ -13,7 +13,7 @@ import "./OVM_L2BridgeDepositBox.sol";
  * instantly, or request that the funds are taken out of the passive liquidity provider pool following a challenge period.
  * @dev A "Deposit" is an order to send capital from L2 to L1, and a "Relay" is a fulfillment attempt of that order.
  */
-contract OVM_L1BridgeRouter is OVM_CrossDomainEnabled {
+contract BridgeRouter is OVM_CrossDomainEnabled {
     // Finder used to point to latest OptimisticOracle and other DVM contracts.
     address public finder;
 
