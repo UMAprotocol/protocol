@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-
+pragma abicoder v2;
 // Note that we use < 0.8 because `@eth-optimism` contracts use that version.
 pragma solidity >=0.7.6;
 
 import "@eth-optimism/contracts/libraries/bridge/OVM_CrossDomainEnabled.sol";
 import "./OVM_BridgeDepositBox.sol";
+import "./FixedPoint.sol";
+import "./SafeMath.sol";
+import "./IERC20.sol";
+import "./SafeERC20.sol";
 
 interface OptimisticOracleInterface {
     function requestPrice(
@@ -36,19 +40,23 @@ interface OptimisticOracleInterface {
         uint256 timestamp,
         bytes memory ancillaryData,
         int256 proposedPrice
-    ) public virtual returns (uint256 totalBond);
+    ) external virtual returns (uint256 totalBond);
 }
 
-interface IdentifierWhitelistHelper {
+interface IdentifierWhitelistInterface {
     function isIdentifierSupported(bytes32 identifier) external view returns (bool);
 }
 
-interface StoreHelper {
+interface StoreInterface {
     function computeFinalFee(address currency) external view returns (FixedPoint.Unsigned memory);
 }
 
-interface AddressWhitelistHelper {
+interface AddressWhitelistInterface {
     function isOnWhitelist(address newElement) external view virtual returns (bool);
+}
+
+interface FinderInterface {
+    function getImplementationAddress(bytes32 interfaceName) external view returns (address);
 }
 
 library OracleInterfaces {
@@ -81,6 +89,7 @@ library TokenHelper {
  * @dev A "Deposit" is an order to send capital from L2 to L1, and a "Relay" is a fulfillment attempt of that order.
  */
 contract BridgeRouter is OVM_CrossDomainEnabled {
+    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     // Finder used to point to latest OptimisticOracle and other DVM contracts.
@@ -309,22 +318,22 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
     ) public {
         require(realizedFee <= maxFee, "Invalid realized fee");
         Deposit storage deposit = deposits[depositId];
-        require(deposit.state == DepositState.Uninitialized, "Pending relay for deposit ID exists");
+        require(deposit.depositState == DepositState.Uninitialized, "Pending relay for deposit ID exists");
         Deposit storage disputedDeposit = disputedDeposits[depositId][msg.sender];
         require(
-            disputedDeposit.state == DepositState.Uninitialized,
+            disputedDeposit.depositState == DepositState.Uninitialized,
             "Pending dispute by relayer for deposit ID exists"
         );
 
         // TODO: Revisit these OO price request params.
-        uint256 requestTimestamp = now;
-        bytes32 customAncillaryData = bytes("0xTODO");
+        uint256 requestTimestamp = block.timestamp;
+        bytes memory customAncillaryData = bytes("0xTODO");
 
         // Store new deposit:
         deposit.depositState = DepositState.PendingSlow;
         deposit.depositType = DepositType.Slow;
         deposit.l1Recipient = recipient;
-        deposit.l2Token = whitelistedToken[l1Token].l2Token;
+        deposit.l2Token = whitelistedTokens[l1Token].l2Token;
         deposit.amount = amount;
         deposit.maxFee = maxFee;
         deposit.l1Token = l1Token;
@@ -336,15 +345,13 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
         deposit.priceRequestAncillaryData = customAncillaryData = bytes("0xTODO");
 
         // Request a price for the relay identifier and propose "true" optimistically.
-        uint256 proposalReward = whitelistedToken[l1Token].proposalReward;
-        _requestOraclePriceRelay(l1Token, requestTimestamp, customAncillaryData, proposalReward);
-        uint256 proposalBond = whitelistedToken[l1Token].proposalBond;
-        _proposeOraclePriceRelay(l1Token, requestTimestamp, customAncillaryData, proposalBond);
+        _requestOraclePriceRelay(l1Token, requestTimestamp, customAncillaryData);
+        _proposeOraclePriceRelay(l1Token, requestTimestamp, customAncillaryData);
 
         emit DepositRelayed(
             l2Sender,
             recipient,
-            whitelistedToken[l1Token].l2Token,
+            whitelistedTokens[l1Token].l2Token,
             l1Token,
             msg.sender,
             amount,
@@ -363,19 +370,28 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
     // Internal functions
 
     function _getOptimisticOracle() private view returns (OptimisticOracleInterface) {
-        return OptimisticOracleInterface(finder.getImplementationAddress(OracleInterfaces.OptimisticOracle));
+        return
+            OptimisticOracleInterface(
+                FinderInterface(finder).getImplementationAddress(OracleInterfaces.OptimisticOracle)
+            );
     }
 
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface) {
-        return IdentifierWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.IdentifierWhitelist));
+        return
+            IdentifierWhitelistInterface(
+                FinderInterface(finder).getImplementationAddress(OracleInterfaces.IdentifierWhitelist)
+            );
     }
 
     function _getCollateralWhitelist() private view returns (AddressWhitelistInterface) {
-        return AddressWhitelistInterface(finder.getImplementationAddress(OracleInterfaces.CollateralWhitelist));
+        return
+            AddressWhitelistInterface(
+                FinderInterface(finder).getImplementationAddress(OracleInterfaces.CollateralWhitelist)
+            );
     }
 
     function _getStore() private view returns (StoreInterface) {
-        return StoreInterface(finder.getImplementationAddress(OracleInterfaces.Store));
+        return StoreInterface(FinderInterface(finder).getImplementationAddress(OracleInterfaces.Store));
     }
 
     function _setOwner(address newOwner) private {
@@ -393,17 +409,23 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
     function _requestOraclePriceRelay(
         address l1Token,
         uint256 requestTimestamp,
-        bytes32 customAncillaryData,
-        uint256 proposalReward
+        bytes memory customAncillaryData
     ) private {
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
 
-        uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
+        uint256 finalFee = _getStore().computeFinalFee(l1Token).rawValue;
+        uint256 proposalReward = whitelistedTokens[l1Token].proposerReward;
 
         // This will pull the proposal reward from the caller.
         if (proposalReward > 0)
             TokenHelper.safeTransferFrom(l1Token, msg.sender, address(optimisticOracle), proposalReward);
-        optimisticOracle.requestPrice(identifier, requestTimestamp, customAncillaryData, l1Token, proposalReward);
+        optimisticOracle.requestPrice(
+            identifier,
+            requestTimestamp,
+            customAncillaryData,
+            IERC20(l1Token),
+            proposalReward
+        );
 
         // Set the Optimistic oracle liveness for the price request.
         optimisticOracle.setCustomLiveness(identifier, requestTimestamp, customAncillaryData, optimisticOracleLiveness);
@@ -416,16 +438,16 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
     function _proposeOraclePriceRelay(
         address l1Token,
         uint256 requestTimestamp,
-        bytes32 customAncillaryData
+        bytes memory customAncillaryData
     ) private {
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
 
-        uint256 proposalBond = whitelistedToken[l1Token].proposerBond;
+        uint256 proposalBond = whitelistedTokens[l1Token].proposerBond;
         uint256 finalFee = _getStore().computeFinalFee(address(l1Token)).rawValue;
         uint256 totalBond = proposalBond.add(finalFee);
 
         // This will pull the total bond from the caller.
         TokenHelper.safeTransferFrom(l1Token, msg.sender, address(optimisticOracle), totalBond);
-        proposePriceFor(msg.sender, msg.sender, identifier, requestTimestamp, customAncillaryData, 1);
+        optimisticOracle.proposePriceFor(msg.sender, msg.sender, identifier, requestTimestamp, customAncillaryData, 1);
     }
 }
