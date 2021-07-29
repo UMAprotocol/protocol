@@ -29,7 +29,7 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
     settings: { optimizer: { enabled: true, runs: 200 } },
   };
 
-  // Some tests in the should not be tested using hardhat. Define all tests that end with *e2e.js to be ignored.
+  // Some tests should not be tested using hardhat. Define all tests that end with *e2e.js to be ignored.
   const testBlacklist = [".e2e.js"];
 
   const defaultConfig = {
