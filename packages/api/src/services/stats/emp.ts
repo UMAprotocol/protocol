@@ -71,9 +71,9 @@ export default (config: Config, appState: Dependencies) => {
   }
 
   async function getFullEmpState(empAddress: string) {
-    const emp = await queries.getAnyEmp(empAddress);
+    const emp = await queries.getAny(empAddress);
     // the full state has collateral decimals, pulled from erc20 state
-    return queries.getFullEmpState(emp);
+    return queries.getFullState(emp);
   }
 
   async function updateTvl(emp: uma.tables.emps.Data) {
