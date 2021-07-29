@@ -299,7 +299,7 @@ async function run() {
           );
           console.log(`- GovernorRootTunnel correctly emitted events to whitelist collateral ${polygonCollaterals[i]}`);
         } else {
-          console.log("- Collateral is on the whitelist. Nothing to do.");
+          console.log("- Polygon collateral is on the whitelist. Nothing to do.");
         }
       }
     }
