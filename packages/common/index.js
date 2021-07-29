@@ -9,6 +9,7 @@ const browserUnsafe = {
   ...require("./src/HardhatConfig"),
   ...require("./src/RetryProvider"),
   ...require("./src/UniswapV3Helpers"),
+  ...require("./src/FileHelpers"),
 };
 
 module.exports = { ...browserSafe, ...browserUnsafe };
