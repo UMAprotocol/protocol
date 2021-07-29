@@ -12,6 +12,11 @@ function removeFileIfExists(filename) {
   }
 }
 
+function normalizeClassName(name) {
+  const capitalizedName = name.charAt(0).toUpperCase() + name.slice(1); // Capitalize first letter.
+  return capitalizedName.replace(/_/g, ""); // Remove underscores.
+}
+
 async function getArtifactPathList(hre, relativeTo) {
   const artifactPaths = await hre.artifacts.getArtifactPaths();
 
@@ -94,7 +99,9 @@ task("generate-contracts-frontend", "Generate typescipt for the contracts-fronte
       if (fs.existsSync(`typechain/web3/${contractName}.d.ts`))
         fs.appendFileSync(
           out,
-          `export type { ${contractName} as ${contractName}Web3 } from "../typechain/web3/${contractName}";\n`
+          `export type { ${normalizeClassName(contractName)} as ${normalizeClassName(
+            contractName
+          )}Web3 } from "../typechain/web3/${contractName}";\n`
         );
     });
 
@@ -163,7 +170,9 @@ task("generate-contracts-node", "Generate typescipt for the contracts-node packa
       if (fs.existsSync(`typechain/web3/${contractName}.d.ts`))
         fs.appendFileSync(
           out,
-          `export type { ${contractName} as ${contractName}Web3 } from "../typechain/web3/${contractName}";\n`
+          `export type { ${normalizeClassName(contractName)} as ${normalizeClassName(
+            contractName
+          )}Web3 } from "../typechain/web3/${contractName}";\n`
         );
     });
 
