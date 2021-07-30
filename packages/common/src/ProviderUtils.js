@@ -79,7 +79,7 @@ function getWeb3(parameterizedNetwork = "test") {
   const network = argv.network || parameterizedNetwork; // Default to the test network (local network).
   const nodeRetryConfig = NODE_RETRY_CONFIG
     ? JSON.parse(NODE_RETRY_CONFIG)
-    : [{ url: getNodeUrl(network), retries: 1 }];
+    : [{ url: getNodeUrl(network), retries: 0 }];
   const basicProvider = createBasicProvider(nodeRetryConfig);
 
   // Use the basic provider to create a provider with an unlocked wallet. This piggybacks off the UMA common TruffleConfig
