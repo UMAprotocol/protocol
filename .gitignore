@@ -17,6 +17,8 @@ antora.yml
 .eslintcache
 .idea
 optimism
+generated
+typechain
 
 # GAE deployment files and directories for GAE deployments.
 app.yaml

@@ -5,7 +5,7 @@ import { utils, BigNumber, Contract } from "ethers";
 import assert from "assert";
 const { parseUnits, parseBytes32String } = utils;
 
-export const SCALING_MULTIPLIER = parseUnits("1");
+export const SCALING_MULTIPLIER: BigNumber = parseUnits("1");
 export type BigNumberish = number | string | BigNumber;
 
 export { parseUnits };
@@ -28,7 +28,7 @@ export function calcGcr(
     uma.tables.emps.Data,
     "totalTokensOutstanding" | "totalPositionCollateral" | "tokenDecimals" | "collateralDecimals"
   >
-) {
+): BigNumber {
   const { totalTokensOutstanding, totalPositionCollateral, tokenDecimals, collateralDecimals } = params;
   assert(uma.utils.exists(totalTokensOutstanding), "requires total tokens outstanding");
   assert(uma.utils.exists(totalPositionCollateral), "requires total position collateral");

@@ -122,7 +122,8 @@ export const Balances = () => {
   let total = 0n;
   const store = new Map<Id, string>();
   function getOrCreate(address: string) {
-    if (store.has(address)) return store.get(address);
+    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+    if (store.has(address)) return store.get(address)!; // Null assertion because we know the map element exists.
     return create(address);
   }
   function create(addr: string) {
