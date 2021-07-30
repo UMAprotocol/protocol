@@ -122,7 +122,7 @@ describe("OVM_BridgeDepositBox", () => {
         l1TokenAddress
       );
 
-      await assertEventEmitted(tx, depositBox, "TokenWhitelisted", (ev) => {
+      await assertEventEmitted(tx, depositBox, "WhitelistToken", (ev) => {
         return ev.l1Token == l1TokenAddress && ev.l2Token == l2Token.options.address;
       });
     });

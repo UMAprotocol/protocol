@@ -210,7 +210,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
         );
 
         emit TokensBridged(l2Token, bridgeDepositBoxBalance, l1Gas, msg.sender);
-        whitelistedTokens[l2Token].lastBridgeTime = getCurrentTime();
+        whitelistedTokens[l2Token].lastBridgeTime = uint64(getCurrentTime());
     }
 
     /**************************************
