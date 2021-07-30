@@ -106,6 +106,10 @@ describe("BridgeRouter", () => {
         const whitelistTxn = await bridgeRouter.methods
           .whitelistToken(l1Token, l2Token, bridgePoolAddress, defaultGasLimit)
           .send({ from: owner });
+        assert.isTrue(
+          l1CrossDomainMessengerMock.smocked.sendMessage.calls.length === 1,
+          "Unexpected number of xdomain messages"
+        );
         const whitelistCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
 
         // Check for L1 logs and state change
