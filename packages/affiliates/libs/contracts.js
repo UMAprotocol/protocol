@@ -4,6 +4,8 @@ const { getAbi } = require("@uma/core");
 const Web3 = require("web3");
 const web3 = new Web3();
 
+const { toWei, toBN } = web3.utils;
+
 function toChecksumAddress(addr) {
   return web3.utils.toChecksumAddress(addr);
 }
@@ -129,6 +131,22 @@ function Emp({ abi = getAbi("ExpiringMultiParty"), web3 } = {}) {
   return { tokenCurrency, collateralCurrency, collateralInfo, tokenInfo, info };
 }
 
+// web3s fromWei does not allow you to specify numeric decimal conversion, it has to be mapped to a name
+function fromWei(amount, decimals = 18) {
+  const denominator = toBN("10").pow(toBN(decimals.toString()));
+  return toBN(amount.toString()).div(denominator);
+}
+// calculate a value given token amount, price and decimals
+// amount: amount of token in wei
+// price: price as a float
+// decimals: decimal value for the token
+// returns value in wei 18 decimals
+function calculateValue(amount, price, decimals) {
+  price = toBN(toWei(price.toString()));
+  amount = toBN(amount);
+  return fromWei(amount.mul(price), decimals);
+}
+
 module.exports = {
   DecodeLog,
   DecodeTransaction,
@@ -140,4 +158,5 @@ module.exports = {
   toChecksumAddress,
   isAddress,
   EncodeCallData,
+  calculateValue,
 };
