@@ -69,21 +69,19 @@ contract SuccessTokenLongShortPairFinancialProductLibrary is LongShortPairFinanc
         // In this case, return of value of the base percentage to the long tokenholders.
         // Note we do not consider negative expiry prices in this implementation.
         uint256 positiveExpiryPrice = expiryPrice > 0 ? uint256(expiryPrice) : 0;
-        if (positiveExpiryPrice == 0 || uint256(positiveExpiryPrice) <= contractStrikePrice) return basePercentage;
+        if (positiveExpiryPrice == 0 || positiveExpiryPrice <= contractStrikePrice) return basePercentage;
 
         // Else, token expires to be worth basePercentage + (1 - basePercentage) * (expiryPrice - strikePrice).
-        // E.g., if SUSHI is $30 and strike is $20, long token is redeemable for 0.5 + 0.5*(30-20)/30 = 0.6667%
-        // which if the collateralPerPair is 2, is worth 1.3333 $SUSHI, which is worth $40 if 1 $SUSHI is worth $30.
+        // E.g., if $TOKEN is $30 and strike is $20, long token is redeemable for 0.5 + 0.5*(30-20)/30 = 0.6667%
+        // which if the collateralPerPair is 2, is worth 1.3333 $TOKEN, which is worth $40 if 1 $TOKEN is worth $30.
         // This return value is strictly < 1. The return value tends to 1 as the expiryPrice tends to infinity.
         return
             (
                 FixedPoint.Unsigned(basePercentage).add(
                     FixedPoint
-                        .Unsigned(uint256(1000000000000000000) - basePercentage)
-                        .mul(
-                        FixedPoint.Unsigned(uint256(positiveExpiryPrice)).sub(FixedPoint.Unsigned(contractStrikePrice))
-                    )
-                        .div(FixedPoint.Unsigned(uint256(positiveExpiryPrice)))
+                        .Unsigned(1e18 - basePercentage)
+                        .mul(FixedPoint.Unsigned(positiveExpiryPrice).sub(FixedPoint.Unsigned(contractStrikePrice)))
+                        .div(FixedPoint.Unsigned(positiveExpiryPrice))
                 )
             )
                 .rawValue;
