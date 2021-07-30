@@ -37,11 +37,11 @@ describe("SuccessTokenLongShortPairFinancialProductLibrary", function () {
   describe("Long Short Pair Parameterization", () => {
     it("Can set and fetch valid strikes", async () => {
       await successTokenLSPFPL.methods
-        .setLongShortPairParameters(lspMock.options.address, strikePrice)
+        .setLongShortPairParameters(lspMock.options.address, strikePrice, basePercentage1)
         .send({ from: accounts[0] });
 
-      const setStrike = await successTokenLSPFPL.methods.longShortPairStrikePrices(lspMock.options.address).call();
-      assert.equal(setStrike.toString(), strikePrice);
+      const setParams = await successTokenLSPFPL.methods.longShortPairParameters(lspMock.options.address).call();
+      assert.equal(setParams.strikePrice.toString(), strikePrice);
     });
     it("Can not re-use existing LSP contract address", async () => {
       await successTokenLSPFPL.methods

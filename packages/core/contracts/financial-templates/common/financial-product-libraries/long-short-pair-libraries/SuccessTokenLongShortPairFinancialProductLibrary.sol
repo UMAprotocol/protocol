@@ -69,7 +69,7 @@ contract SuccessTokenLongShortPairFinancialProductLibrary is LongShortPairFinanc
         // In this case, return of value of the base percentage to the long tokenholders.
         // Note we do not consider negative expiry prices in this implementation.
         uint256 positiveExpiryPrice = expiryPrice > 0 ? uint256(expiryPrice) : 0;
-        if (positiveExpiryPrice == 0 || positiveExpiryPrice <= contractStrikePrice) return basePercentage;
+        if (positiveExpiryPrice == 0 || positiveExpiryPrice <= params.strikePrice) return params.basePercentage;
 
         // Else, token expires to be worth basePercentage + (1 - basePercentage) * (expiryPrice - strikePrice).
         // E.g., if $TOKEN is $30 and strike is $20, long token is redeemable for 0.5 + 0.5*(30-20)/30 = 0.6667%
@@ -77,10 +77,10 @@ contract SuccessTokenLongShortPairFinancialProductLibrary is LongShortPairFinanc
         // This return value is strictly < 1. The return value tends to 1 as the expiryPrice tends to infinity.
         return
             (
-                FixedPoint.Unsigned(basePercentage).add(
+                FixedPoint.Unsigned(params.basePercentage).add(
                     FixedPoint
-                        .Unsigned(1e18 - basePercentage)
-                        .mul(FixedPoint.Unsigned(positiveExpiryPrice).sub(FixedPoint.Unsigned(contractStrikePrice)))
+                        .Unsigned(1e18 - params.basePercentage)
+                        .mul(FixedPoint.Unsigned(positiveExpiryPrice).sub(FixedPoint.Unsigned(params.strikePrice)))
                         .div(FixedPoint.Unsigned(positiveExpiryPrice))
                 )
             )
