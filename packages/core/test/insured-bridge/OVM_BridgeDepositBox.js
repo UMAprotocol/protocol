@@ -1,5 +1,5 @@
 // These tests are meant to be run within the `hardhat` network (not OVM) and use smockit to mock L2 contracts
-// such as the cross domain message bridge ect. The context of all calls, tokens and setup are the mocked L2 network.
+// such as the cross domain message bridge etc. The context of all calls, tokens and setup are the mocked L2 network.
 
 const hre = require("hardhat");
 const { predeploys } = require("@eth-optimism/contracts");

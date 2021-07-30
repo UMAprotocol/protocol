@@ -6,8 +6,8 @@ import "./OVM_Testable.sol"; //TODO: replace this with the normal UMA Testable o
 import { OVM_CrossDomainEnabled } from "@eth-optimism/contracts/libraries/bridge/OVM_CrossDomainEnabled.sol";
 import { Lib_PredeployAddresses } from "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 
-// Define some interfaces and helper libraries. This is temporary until such that time that we can bump the solidity
-// version in these contracts to 0.8.x and import the rest of these libs from other UMA contracts in the rpo.
+// Define some interfaces and helper libraries. This is temporary until we can bump the solidity
+// version in these contracts to 0.8.x and import the rest of these libs from other UMA contracts in the repo.
 library TokenHelper {
     function safeTransferFrom(
         address token,
