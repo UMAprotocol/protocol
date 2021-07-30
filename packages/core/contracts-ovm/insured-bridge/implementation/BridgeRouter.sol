@@ -42,7 +42,7 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
         address l1Recipient;
         address l2Token;
         uint256 amount;
-        uint256 maxFee;
+        uint256 maxFeePct;
         // Params inferred by this contract:
         address l1Token;
         // The following params are inferred and set by the L2 deposit contract:
@@ -76,7 +76,7 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
         uint256 amount,
         address depositContract,
         uint256 realizedFee,
-        uint256 maxFee
+        uint256 maxFeePct
     );
     event RelaySpedUp(uint256 indexed depositId, address indexed fastRelayer, address indexed slowRelayer);
     event FinalizedRelay(uint256 indexed depositId, address indexed caller);
@@ -172,7 +172,7 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
         address l2Token,
         uint256 amount,
         uint256 realizedFee,
-        uint256 maxFee
+        uint256 maxFeePct
     ) public {}
 
     function speedUpRelay(uint256 depositId) public {}

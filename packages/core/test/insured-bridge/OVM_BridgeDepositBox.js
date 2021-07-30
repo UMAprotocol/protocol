@@ -30,11 +30,11 @@ const minimumBridgingDelay = 60; // L2->L1 token bridging must wait at least thi
 
 describe("OVM_BridgeDepositBox", () => {
   // Account objects
-  let accounts, deployer, user1, l1WithdrawContract, rando;
+  let accounts, deployer, user1, bridgeRouter, rando;
 
   before(async function () {
     accounts = await web3.eth.getAccounts();
-    [deployer, user1, l1WithdrawContract, rando] = accounts;
+    [deployer, user1, bridgeRouter, rando] = accounts;
 
     timer = await Timer.new().send({ from: deployer });
   });
@@ -47,7 +47,7 @@ describe("OVM_BridgeDepositBox", () => {
     });
     await web3.eth.sendTransaction({ from: deployer, to: predeploys.OVM_L2CrossDomainMessenger, value: toWei("1") });
 
-    depositBox = await BridgeDepositBox.new(l1WithdrawContract, minimumBridgingDelay, timer.options.address).send({
+    depositBox = await BridgeDepositBox.new(bridgeRouter, minimumBridgingDelay, timer.options.address).send({
       from: deployer,
     });
 
@@ -58,12 +58,12 @@ describe("OVM_BridgeDepositBox", () => {
     await l2Token.methods.mint(user1, toWei("100")).send({ from: deployer });
   });
   describe("Box admin logic", () => {
-    // Only the l1WithdrawContract, called via the canonical bridge, can: a) change the L1 withdraw contract,
-    // b) whitelist collateral or c) disable deposits. In production, the l1WithdrawContract will be the L1_BridgeRouter.
-    // In these tests mock this as being any l1WithdrawContract, calling via the l2MessengerImpersonator.
-    it("Change l1 withdraw contract", async () => {
+    // Only the bridgeRouter, called via the canonical bridge, can: a) change the L1 withdraw contract,
+    // b) whitelist collateral or c) disable deposits. In production, the bridgeRouter will be the L1_BridgeRouter.
+    // In these tests mock this as being any bridgeRouter, calling via the l2MessengerImpersonator.
+    it("Change L1 bridge router contract", async () => {
       // Owner should start out as the set owner.
-      assert.equal(await depositBox.methods.l1WithdrawContract().call(), l1WithdrawContract);
+      assert.equal(await depositBox.methods.bridgeRouter().call(), bridgeRouter);
 
       // Trying to transfer ownership from non-cross-domain owner should fail.
       assert(await didContractThrow(depositBox.methods.setWithdrawContract(user1).send({ from: rando })));
@@ -77,17 +77,47 @@ describe("OVM_BridgeDepositBox", () => {
         )
       );
 
-      // Setting the l2CrossDomainMessengerMock to correctly mock the l1WithdrawContract should let the ownership change.
-      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => l1WithdrawContract);
+      // Setting the l2CrossDomainMessengerMock to correctly mock the bridgeRouter should let the ownership change.
+      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => bridgeRouter);
 
       const tx = await depositBox.methods
         .setWithdrawContract(user1)
         .send({ from: predeploys.OVM_L2CrossDomainMessenger });
 
-      assert.equal(await depositBox.methods.l1WithdrawContract().call(), user1);
+      assert.equal(await depositBox.methods.bridgeRouter().call(), user1);
 
-      await assertEventEmitted(tx, depositBox, "SetWithdrawalContract", (ev) => {
-        return ev.oldL1WithdrawContract == l1WithdrawContract && ev.newL1WithdrawContract == user1;
+      await assertEventEmitted(tx, depositBox, "SetWithdrawContract", (ev) => {
+        return ev.newL1WithdrawContract == user1;
+      });
+    });
+
+    it("Set minimum bridging delay", async () => {
+      // Bridging delay should be set initially to the correct value.
+      assert.equal(await depositBox.methods.minimumBridgingDelay().call(), minimumBridgingDelay);
+
+      // Trying to change bridging delay from non-cross-domain owner should fail.
+      assert(await didContractThrow(depositBox.methods.setMinimumBridgingDelay(55).send({ from: rando })));
+
+      // Trying to call correctly via the L2 message impersonator, but from the wrong xDomainMessageSender should revert.
+      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => rando);
+
+      assert(
+        await didContractThrow(
+          depositBox.methods.setMinimumBridgingDelay(55).send({ from: predeploys.OVM_L2CrossDomainMessenger })
+        )
+      );
+
+      // Setting the l2CrossDomainMessengerMock to correctly mock the bridgeRouter should let the bridging delay change.
+      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => bridgeRouter);
+
+      const tx = await depositBox.methods
+        .setMinimumBridgingDelay(55)
+        .send({ from: predeploys.OVM_L2CrossDomainMessenger });
+
+      assert.equal(await depositBox.methods.minimumBridgingDelay().call(), 55);
+
+      await assertEventEmitted(tx, depositBox, "SetMinimumBridgingDelay", (ev) => {
+        return ev.newMinimumBridgingDelay == 55;
       });
     });
 
@@ -111,7 +141,7 @@ describe("OVM_BridgeDepositBox", () => {
       );
 
       // Setting the l2CrossDomainMessengerMock to correctly mock the L1WithdrawContract should let the whitelist change.
-      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => l1WithdrawContract);
+      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => bridgeRouter);
 
       const tx = await depositBox.methods
         .whitelistToken(l1TokenAddress, l2Token.options.address)
@@ -122,8 +152,13 @@ describe("OVM_BridgeDepositBox", () => {
         l1TokenAddress
       );
 
+      const expectedLastBridgeTime = await timer.methods.getCurrentTime().call();
       await assertEventEmitted(tx, depositBox, "WhitelistToken", (ev) => {
-        return ev.l1Token == l1TokenAddress && ev.l2Token == l2Token.options.address;
+        return (
+          ev.l1Token == l1TokenAddress &&
+          ev.l2Token == l2Token.options.address &&
+          ev.lastBridgeTime == expectedLastBridgeTime
+        );
       });
     });
 
@@ -141,7 +176,7 @@ describe("OVM_BridgeDepositBox", () => {
       );
 
       // Setting the l2CrossDomainMessengerMock to correctly mock the L1WithdrawContract should let the enable state change.
-      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => l1WithdrawContract);
+      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => bridgeRouter);
 
       const tx = await depositBox.methods
         .setEnableDeposits(false)
@@ -157,7 +192,7 @@ describe("OVM_BridgeDepositBox", () => {
   describe("Box deposit logic", () => {
     beforeEach(async function () {
       // Whitelist the token in the deposit box.
-      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => l1WithdrawContract);
+      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => bridgeRouter);
       await depositBox.methods
         .whitelistToken(l1TokenAddress, l2Token.options.address)
         .send({ from: predeploys.OVM_L2CrossDomainMessenger });
@@ -184,7 +219,7 @@ describe("OVM_BridgeDepositBox", () => {
           ev.recipient == user1 &&
           ev.l1Token == l1TokenAddress &&
           ev.amount == toWei("50") &&
-          ev.maxFee == toWei("0.05")
+          ev.maxFeePct == toWei("0.05")
         );
       });
 
@@ -208,7 +243,7 @@ describe("OVM_BridgeDepositBox", () => {
     });
     it("Reverts if deposits disabled", async () => {
       // Disable deposits
-      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => l1WithdrawContract);
+      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => bridgeRouter);
       await depositBox.methods.setEnableDeposits(false).send({ from: predeploys.OVM_L2CrossDomainMessenger });
 
       // Try to deposit and check it reverts.
@@ -224,7 +259,7 @@ describe("OVM_BridgeDepositBox", () => {
     let l2StandardBridge;
     beforeEach(async function () {
       // Whitelist the token in the deposit box.
-      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => l1WithdrawContract);
+      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => bridgeRouter);
       await depositBox.methods
         .whitelistToken(l1TokenAddress, l2Token.options.address)
         .send({ from: predeploys.OVM_L2CrossDomainMessenger });

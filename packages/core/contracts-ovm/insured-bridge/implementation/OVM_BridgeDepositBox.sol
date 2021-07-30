@@ -48,7 +48,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
      *  OVM DEPOSIT BOX DATA STRUCTURES  *
      *************************************/
 
-    address public l1WithdrawContract;
+    address public bridgeRouter;
 
     bool public depositsEnabled = true;
 
@@ -71,8 +71,9 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
      *                EVENTS                *
      ****************************************/
 
-    event SetWithdrawalContract(address oldL1WithdrawContract, address newL1WithdrawContract);
-    event WhitelistToken(address l1Token, address l2Token);
+    event SetWithdrawContract(address newL1WithdrawContract);
+    event SetMinimumBridgingDelay(uint64 newMinimumBridgingDelay);
+    event WhitelistToken(address l1Token, address l2Token, uint64 lastBridgeTime);
     event DepositsEnabled(bool enabledResultantState);
     event FundsDeposited(
         uint256 depositId,
@@ -81,7 +82,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
         address recipient,
         address l1Token,
         uint256 amount,
-        uint256 maxFee
+        uint256 maxFeePct
     );
     event TokensBridged(address l2Token, uint256 numberOfTokensBridged, uint256 l1Gas, address caller);
 
@@ -96,17 +97,18 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
 
     /**
      * @notice Construct the OVM Bridge Deposit Box
-     * @param _l1WithdrawContract Address of the bridge withdraw contract on L1. Tokens are sent to this address at the
+     * @param _bridgeRouter Address of the bridge withdraw contract on L1. Tokens are sent to this address at the
      *          conclusion of fast relay. This address is the "owner" of the deposit box.
      * @param _minimumBridgingDelay Minimum second that must elapse between L2->L1 token transfer to prevent dos.
      * @param timerAddress Timer used to synchronize contract time in testing. Set to 0x000... in production.
      */
     constructor(
-        address _l1WithdrawContract,
+        address _bridgeRouter,
         uint64 _minimumBridgingDelay,
         address timerAddress
     ) OVM_CrossDomainEnabled(Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER) OVM_Testable(timerAddress) {
-        l1WithdrawContract = _l1WithdrawContract;
+        require(_bridgeRouter != address(0), "Bad bridge router address");
+        bridgeRouter = _bridgeRouter;
         minimumBridgingDelay = _minimumBridgingDelay;
     }
 
@@ -116,32 +118,43 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
 
     /**
      * @notice Changes the L1 withdraw associated with this L2 deposit box.
-     * @dev Only callable by the existing l1WithdrawContract via the optimism cross domain messenger.
-     * @param newL1WithdrawContract address of the new L1 withdrawContract.
+     * @dev Only callable by the existing bridgeRouter via the optimism cross domain messenger.
+     * @param _L1WithdrawContract address of the new L1 withdrawContract.
      */
-    function setWithdrawContract(address newL1WithdrawContract) public onlyFromCrossDomainAccount(l1WithdrawContract) {
-        emit SetWithdrawalContract(l1WithdrawContract, newL1WithdrawContract);
-        l1WithdrawContract = newL1WithdrawContract;
+    function setWithdrawContract(address _L1WithdrawContract) public onlyFromCrossDomainAccount(bridgeRouter) {
+        require(_L1WithdrawContract != address(0), "Bad bridge router address");
+        bridgeRouter = _L1WithdrawContract;
+        emit SetWithdrawContract(bridgeRouter);
+    }
+
+    /**
+     * @notice Changes the minimum time in seconds that must elapse between withdraws from L2->L1.
+     * @dev Only callable by the existing bridgeRouter via the optimism cross domain messenger.
+     * @param _MinimumBridgingDelay the new minimum delay.
+     */
+    function setMinimumBridgingDelay(uint64 _MinimumBridgingDelay) public onlyFromCrossDomainAccount(bridgeRouter) {
+        minimumBridgingDelay = _MinimumBridgingDelay;
+        emit SetMinimumBridgingDelay(minimumBridgingDelay);
     }
 
     /**
      * @notice Enables L1 owner to whitelist a L1 Token <-> L2 Token pair for bridging.
-     * @dev Only callable by the existing l1WithdrawContract via the optimism cross domain messenger.
+     * @dev Only callable by the existing bridgeRouter via the optimism cross domain messenger.
      * @param l1Token Address of the canonical L1 token. This is the token users will receive on Ethereum.
      * @param l2Token Address of the L2 token representation. This is the token users would deposit on optimism.
      */
-    function whitelistToken(address l1Token, address l2Token) public onlyFromCrossDomainAccount(l1WithdrawContract) {
+    function whitelistToken(address l1Token, address l2Token) public onlyFromCrossDomainAccount(bridgeRouter) {
         whitelistedTokens[l2Token] = WhitelistedToken({ l1Token: l1Token, lastBridgeTime: uint64(getCurrentTime()) });
 
-        emit WhitelistToken(l1Token, l2Token);
+        emit WhitelistToken(l1Token, l2Token, uint64(getCurrentTime()));
     }
 
     /**
      * @notice L1 owner can enable/disable deposits over all whitelisted tokens.
-     * @dev Only callable by the existing l1WithdrawContract via the optimism cross domain messenger.
+     * @dev Only callable by the existing bridgeRouter via the optimism cross domain messenger.
      * @param _depositsEnabled bool to set if the deposit box should accept/reject deposits.
      */
-    function setEnableDeposits(bool _depositsEnabled) public onlyFromCrossDomainAccount(l1WithdrawContract) {
+    function setEnableDeposits(bool _depositsEnabled) public onlyFromCrossDomainAccount(bridgeRouter) {
         depositsEnabled = _depositsEnabled;
         emit DepositsEnabled(_depositsEnabled);
     }
@@ -157,16 +170,16 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
      * @param recipient L1 address that should receive the tokens.
      * @param l2Token L2 token to deposit.
      * @param amount How many L2 tokens should be deposited.
-     * @param maxFee Max fraction of the total `amount` that the depositor is willing to pay as a fee. scaled by 1e18.
+     * @param maxFeePct Max fraction of the total `amount` that the depositor is willing to pay as a fee. scaled by 1e18.
      */
     function deposit(
         address recipient,
         address l2Token,
         uint256 amount,
-        uint256 maxFee
+        uint256 maxFeePct
     ) public onlyIfDepositsEnabled() {
         require(isWhitelistToken(l2Token), "deposit token not whitelisted");
-        require(maxFee <= 1e18, "max fee can not be over 1e18");
+        require(maxFeePct <= 1e18, "max fee can not be over 1e18");
 
         emit FundsDeposited(
             numberOfDeposits, // the current number of deposits acts as a deposit ID (nonce).
@@ -175,7 +188,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
             recipient,
             whitelistedTokens[l2Token].l1Token,
             amount,
-            maxFee
+            maxFeePct
         );
 
         numberOfDeposits += 1;
@@ -201,16 +214,17 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
         require(isWhitelistToken(l2Token), "can't bridge non-whitelisted token");
         require(hasEnoughTimeElapsedToBridge(l2Token), "not enough time has elapsed from previous bridge");
 
+        whitelistedTokens[l2Token].lastBridgeTime = uint64(getCurrentTime());
+
         StandardBridgeLike(Lib_PredeployAddresses.L2_STANDARD_BRIDGE).withdrawTo(
             l2Token, // _l2Token. Address of the L2 token to bridge over.
-            l1WithdrawContract, // _to. Withdraw, over the bridge, to the l1Withdraw contract.
+            bridgeRouter, // _to. Withdraw, over the bridge, to the l1Withdraw contract.
             bridgeDepositBoxBalance, // _amount. Send the full balance of the deposit box to bridge.
             l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
             "0x" // _data. TODO: add additional info into this data prop this.
         );
 
         emit TokensBridged(l2Token, bridgeDepositBoxBalance, l1Gas, msg.sender);
-        whitelistedTokens[l2Token].lastBridgeTime = uint64(getCurrentTime());
     }
 
     /**************************************
