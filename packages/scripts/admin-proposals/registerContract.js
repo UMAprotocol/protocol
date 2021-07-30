@@ -289,7 +289,7 @@ async function run() {
           `- GovernorRootTunnel correctly emitted events to registry ${polygon_registry.options.address} preceded and followed by addMember and removeMember respectively`
         );
       } else {
-        console.log("- Contract @ ", polygonContractToRegister, "is already registered on Polygon. Nothing to do.");
+        console.log("- Contract @ ", polygonContractToRegister, "is already registered on Polygon. Nothing to check.");
       }
     }
   }

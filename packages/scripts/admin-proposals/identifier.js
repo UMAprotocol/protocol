@@ -247,7 +247,7 @@ async function run() {
           console.log(
             `- Identifier ${identifiers[i]} (UTF8: ${web3.utils.hexToUtf8(
               polygonIdentifiers[i]
-            )}) is whitelisted on Polygon`
+            )}) is whitelisted on Polygon. Nothing to check.`
           );
         }
       }

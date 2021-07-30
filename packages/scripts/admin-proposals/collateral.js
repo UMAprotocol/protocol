@@ -285,7 +285,7 @@ async function run() {
             `- GovernorRootTunnel correctly emitted events to set final fee for collateral @ ${polygonCollaterals[i]} with final fee set to ${convertedFeeAmount}`
           );
         } else {
-          console.log(`- Final fee for is already equal to ${convertedFeeAmount}. Nothing to do.`);
+          console.log(`- Final fee for is already equal to ${convertedFeeAmount}. Nothing to check.`);
         }
         if (!(await polygon_whitelist.methods.isOnWhitelist(polygonCollaterals[i]).call())) {
           const addToWhitelistData = polygon_whitelist.methods.addToWhitelist(polygonCollaterals[i]).encodeABI();
@@ -299,7 +299,7 @@ async function run() {
           );
           console.log(`- GovernorRootTunnel correctly emitted events to whitelist collateral ${polygonCollaterals[i]}`);
         } else {
-          console.log("- Polygon collateral is on the whitelist. Nothing to do.");
+          console.log("- Polygon collateral is on the whitelist. Nothing to check.");
         }
       }
     }

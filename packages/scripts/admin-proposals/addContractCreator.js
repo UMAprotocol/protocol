@@ -233,7 +233,7 @@ async function run() {
         console.log(
           "- Contract @ ",
           polygonContractToRegister,
-          "is already a contract creator on Polygon. Nothing to do."
+          "is already a contract creator on Polygon. Nothing to check."
         );
       }
     }
