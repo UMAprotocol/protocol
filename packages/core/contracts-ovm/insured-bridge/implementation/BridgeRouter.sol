@@ -1,13 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma abicoder v2;
+pragma experimental ABIEncoderV2;
 // Note that we use < 0.8 because `@eth-optimism` contracts use that version.
 pragma solidity >=0.7.6;
 
 import "@eth-optimism/contracts/libraries/bridge/OVM_CrossDomainEnabled.sol";
 import "./OVM_BridgeDepositBox.sol";
-import "./FixedPoint.sol";
-import "./SafeMath.sol";
-import "./IERC20.sol";
 
 interface OptimisticOracleInterface {
     function requestPrice(
@@ -58,6 +55,20 @@ interface FinderInterface {
     function getImplementationAddress(bytes32 interfaceName) external view returns (address);
 }
 
+interface IERC20 {
+    function transferFrom(
+        address sender,
+        address recipient,
+        uint256 amount
+    ) external returns (bool);
+}
+
+library FixedPoint {
+    struct Unsigned {
+        uint256 rawValue;
+    }
+}
+
 library OracleInterfaces {
     bytes32 public constant IdentifierWhitelist = "IdentifierWhitelist";
     bytes32 public constant Store = "Store";
@@ -72,7 +83,7 @@ library TokenHelper {
         address to,
         uint256 value
     ) internal {
-        // bytes4(keccak256(bytes('transferFrom(address,address,uint256)')));
+        bytes4(keccak256(bytes("transferFrom(address,address,uint256)")));
         (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x23b872dd, from, to, value));
         require(
             success && (data.length == 0 || abi.decode(data, (bool))),
@@ -88,8 +99,6 @@ library TokenHelper {
  * @dev A "Deposit" is an order to send capital from L2 to L1, and a "Relay" is a fulfillment attempt of that order.
  */
 contract BridgeRouter is OVM_CrossDomainEnabled {
-    using SafeMath for uint256;
-
     // Finder used to point to latest OptimisticOracle and other DVM contracts.
     address public finder;
 
@@ -446,7 +455,9 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
 
         uint256 proposalBond = whitelistedTokens[l1Token].proposerBond;
         uint256 finalFee = _getStore().computeFinalFee(address(l1Token)).rawValue;
-        uint256 totalBond = proposalBond.add(finalFee);
+        // TODO: If this contract is not using Solidity v8, then need to check for overflow and possibly use a 0.7
+        // SafeMath library. I've left it like this for now for simplicity.
+        uint256 totalBond = proposalBond + finalFee;
 
         // This will pull the total bond from the caller.
         TokenHelper.safeTransferFrom(l1Token, msg.sender, address(optimisticOracle), totalBond);
