@@ -12,7 +12,7 @@
     "@uniswap/v3-periphery": "1.0.0-beta.23",
     "cli-progress": "^3.8.2",
     "ethers": "^5.0.17",
-    "googleapis": "39",
+    "googleapis": "^39.1.0",
     "highland": "^2.13.5",
     "lodash": "^4.17.20",
     "mkdirp": "^1.0.4",

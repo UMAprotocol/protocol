@@ -16906,7 +16906,7 @@ googleapis-common@^0.7.0:
     url-template "^2.0.8"
     uuid "^3.2.1"
 
-googleapis@39:
+googleapis@^39.1.0:
   version "39.2.0"
   resolved "https://registry.yarnpkg.com/googleapis/-/googleapis-39.2.0.tgz#5c81f721e9da2e80cb0b25821ed60d3bc200c3da"
   integrity sha512-66X8TG1B33zAt177sG1CoKoYHPP/B66tEpnnSANGCqotMuY5gqSQO8G/0gqHZR2jRgc5CHSSNOJCnpI0SuDxMQ==
