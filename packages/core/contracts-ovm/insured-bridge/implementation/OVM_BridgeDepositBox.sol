@@ -72,7 +72,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
      *                EVENTS                *
      ****************************************/
 
-    event SetBridgeRouter(address newL1WithdrawContract);
+    event SetBridgeRouter(address newBridgeRouterContract);
     event SetMinimumBridgingDelay(uint64 newMinimumBridgingDelay);
     event WhitelistToken(address l1Token, address l2Token, uint64 lastBridgeTime);
     event DepositsEnabled(bool enabledResultantState);
@@ -167,11 +167,13 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
     /**
      * @notice Called by L2 user to bridge funds between L2 and L1.
      * @dev Emits the `FundsDeposited` event which relayers listen for as part of the bridging action.
+     * @dev Max fee Pct
      * @dev The caller must first approve this contract to spend `amount` of `l2Token`.
      * @param recipient L1 address that should receive the tokens.
      * @param l2Token L2 token to deposit.
      * @param amount How many L2 tokens should be deposited.
-     * @param maxFeePct Max fraction of the total `amount` that the depositor is willing to pay as a fee. scaled by 1e18.
+     * @param maxFeePct Max fraction of the total `amount` that the depositor is willing to pay as a fee. This number is
+     * scaled by 1e18 to represent the percentage of the total transfer, deducted as a fee. Eg 5% would be 0.05e18.
      */
     function deposit(
         address recipient,

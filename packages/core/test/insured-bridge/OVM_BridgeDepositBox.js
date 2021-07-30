@@ -85,7 +85,7 @@ describe("OVM_BridgeDepositBox", () => {
       assert.equal(await depositBox.methods.bridgeRouter().call(), user1);
 
       await assertEventEmitted(tx, depositBox, "SetBridgeRouter", (ev) => {
-        return ev.newL1WithdrawContract == user1;
+        return ev.newBridgeRouterContract == user1;
       });
     });
 
