@@ -66,27 +66,25 @@ describe("OVM_BridgeDepositBox", () => {
       assert.equal(await depositBox.methods.bridgeRouter().call(), bridgeRouter);
 
       // Trying to transfer ownership from non-cross-domain owner should fail.
-      assert(await didContractThrow(depositBox.methods.setWithdrawContract(user1).send({ from: rando })));
+      assert(await didContractThrow(depositBox.methods.setBridgeRouter(user1).send({ from: rando })));
 
       // Trying to call correctly via the L2 message impersonator, but from the wrong xDomainMessageSender should revert.
       l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => rando);
 
       assert(
         await didContractThrow(
-          depositBox.methods.setWithdrawContract(user1).send({ from: predeploys.OVM_L2CrossDomainMessenger })
+          depositBox.methods.setBridgeRouter(user1).send({ from: predeploys.OVM_L2CrossDomainMessenger })
         )
       );
 
       // Setting the l2CrossDomainMessengerMock to correctly mock the bridgeRouter should let the ownership change.
       l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => bridgeRouter);
 
-      const tx = await depositBox.methods
-        .setWithdrawContract(user1)
-        .send({ from: predeploys.OVM_L2CrossDomainMessenger });
+      const tx = await depositBox.methods.setBridgeRouter(user1).send({ from: predeploys.OVM_L2CrossDomainMessenger });
 
       assert.equal(await depositBox.methods.bridgeRouter().call(), user1);
 
-      await assertEventEmitted(tx, depositBox, "SetWithdrawContract", (ev) => {
+      await assertEventEmitted(tx, depositBox, "SetBridgeRouter", (ev) => {
         return ev.newL1WithdrawContract == user1;
       });
     });
