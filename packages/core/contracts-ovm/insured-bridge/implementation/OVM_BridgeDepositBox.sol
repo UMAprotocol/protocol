@@ -71,11 +71,11 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
      *                EVENTS                *
      ****************************************/
 
-    event L1WithdrawContractChanged(address oldL1WithdrawContract, address newL1WithdrawContract);
-    event TokenWhitelisted(address l1Token, address l2Token);
+    event SetWithdrawalContract(address oldL1WithdrawContract, address newL1WithdrawContract);
+    event WhitelistToken(address l1Token, address l2Token);
     event DepositsEnabled(bool enabledResultantState);
-    event L2FundsDeposited(
-        uint256 transferId,
+    event FundsDeposited(
+        uint256 depositId,
         uint256 timestamp,
         address sender,
         address recipient,
@@ -119,11 +119,8 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
      * @dev Only callable by the existing l1WithdrawContract via the optimism cross domain messenger.
      * @param newL1WithdrawContract address of the new L1 withdrawContract.
      */
-    function changeL1WithdrawContract(address newL1WithdrawContract)
-        public
-        onlyFromCrossDomainAccount(l1WithdrawContract)
-    {
-        emit L1WithdrawContractChanged(l1WithdrawContract, newL1WithdrawContract);
+    function setWithdrawContract(address newL1WithdrawContract) public onlyFromCrossDomainAccount(l1WithdrawContract) {
+        emit SetWithdrawalContract(l1WithdrawContract, newL1WithdrawContract);
         l1WithdrawContract = newL1WithdrawContract;
     }
 
@@ -136,7 +133,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
     function whitelistToken(address l1Token, address l2Token) public onlyFromCrossDomainAccount(l1WithdrawContract) {
         whitelistedTokens[l2Token] = WhitelistedToken({ l1Token: l1Token, lastBridgeTime: uint64(getCurrentTime()) });
 
-        emit TokenWhitelisted(l1Token, l2Token);
+        emit WhitelistToken(l1Token, l2Token);
     }
 
     /**
@@ -155,7 +152,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
 
     /**
      * @notice Called by L2 user to bridge funds between L2 and L1.
-     * @dev Emits the `L2FundsDeposited` event which relayers listen for as part of the bridging action.
+     * @dev Emits the `FundsDeposited` event which relayers listen for as part of the bridging action.
      * @dev The caller must first approve this contract to spend `amount` of `l2Token`.
      * @param recipient L1 address that should receive the tokens.
      * @param l2Token L2 token to deposit.
@@ -168,12 +165,10 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
         uint256 amount,
         uint256 maxFee
     ) public onlyIfDepositsEnabled() {
-        require(isTokenWhitelisted(l2Token), "deposit token not whitelisted");
+        require(isWhitelistToken(l2Token), "deposit token not whitelisted");
         require(maxFee <= 1e18, "max fee can not be over 1e18");
 
-        TokenHelper.safeTransferFrom(l2Token, msg.sender, address(this), amount);
-
-        emit L2FundsDeposited(
+        emit FundsDeposited(
             numberOfDeposits, // the current number of deposits acts as a deposit ID (nonce).
             getCurrentTime(),
             msg.sender,
@@ -184,6 +179,8 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
         );
 
         numberOfDeposits += 1;
+
+        TokenHelper.safeTransferFrom(l2Token, msg.sender, address(this), amount);
     }
 
     /**************************************
@@ -199,20 +196,21 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
      * @param l1Gas Unused by optimism, but included for potential forward compatibility considerations.
      */
     function bridgeTokens(address l2Token, uint32 l1Gas) public {
-        uint256 bridgeDepositBoxBallance = TokenLike(l2Token).balanceOf(address(this));
-        require(bridgeDepositBoxBallance > 0, "can't bridge zero tokens");
-        require(isTokenWhitelisted(l2Token), "can't bridge non-whitelisted token");
+        uint256 bridgeDepositBoxBalance = TokenLike(l2Token).balanceOf(address(this));
+        require(bridgeDepositBoxBalance > 0, "can't bridge zero tokens");
+        require(isWhitelistToken(l2Token), "can't bridge non-whitelisted token");
         require(hasEnoughTimeElapsedToBridge(l2Token), "not enough time has elapsed from previous bridge");
 
         StandardBridgeLike(Lib_PredeployAddresses.L2_STANDARD_BRIDGE).withdrawTo(
             l2Token, // _l2Token. Address of the L2 token to bridge over.
             l1WithdrawContract, // _to. Withdraw, over the bridge, to the l1Withdraw contract.
-            bridgeDepositBoxBallance, // _amount. Send the full balance of the deposit box to bridge.
+            bridgeDepositBoxBalance, // _amount. Send the full balance of the deposit box to bridge.
             l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
             "0x" // _data. TODO: add additional info into this data prop this.
         );
 
-        emit TokensBridged(l2Token, bridgeDepositBoxBallance, l1Gas, msg.sender);
+        emit TokensBridged(l2Token, bridgeDepositBoxBalance, l1Gas, msg.sender);
+        whitelistedTokens[l2Token].lastBridgeTime = getCurrentTime();
     }
 
     /**************************************
@@ -223,7 +221,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
      * @notice Checks if a given L2 token is whitelisted.
      * @param l2Token L2 token to check against the whitelist.
      */
-    function isTokenWhitelisted(address l2Token) public view returns (bool) {
+    function isWhitelistToken(address l2Token) public view returns (bool) {
         return whitelistedTokens[l2Token].l1Token != address(0);
     }
 

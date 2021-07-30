@@ -66,14 +66,14 @@ describe("OVM_BridgeDepositBox", () => {
       assert.equal(await depositBox.methods.l1WithdrawContract().call(), l1WithdrawContract);
 
       // Trying to transfer ownership from non-cross-domain owner should fail.
-      assert(await didContractThrow(depositBox.methods.changeL1WithdrawContract(user1).send({ from: rando })));
+      assert(await didContractThrow(depositBox.methods.setWithdrawContract(user1).send({ from: rando })));
 
       // Trying to call correctly via the L2 message impersonator, but from the wrong xDomainMessageSender should revert.
       l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => rando);
 
       assert(
         await didContractThrow(
-          depositBox.methods.changeL1WithdrawContract(user1).send({ from: predeploys.OVM_L2CrossDomainMessenger })
+          depositBox.methods.setWithdrawContract(user1).send({ from: predeploys.OVM_L2CrossDomainMessenger })
         )
       );
 
@@ -81,12 +81,12 @@ describe("OVM_BridgeDepositBox", () => {
       l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => l1WithdrawContract);
 
       const tx = await depositBox.methods
-        .changeL1WithdrawContract(user1)
+        .setWithdrawContract(user1)
         .send({ from: predeploys.OVM_L2CrossDomainMessenger });
 
       assert.equal(await depositBox.methods.l1WithdrawContract().call(), user1);
 
-      await assertEventEmitted(tx, depositBox, "L1WithdrawContractChanged", (ev) => {
+      await assertEventEmitted(tx, depositBox, "SetWithdrawalContract", (ev) => {
         return ev.oldL1WithdrawContract == l1WithdrawContract && ev.newL1WithdrawContract == user1;
       });
     });
@@ -176,9 +176,9 @@ describe("OVM_BridgeDepositBox", () => {
       assert.equal((await l2Token.methods.balanceOf(depositBox.options.address).call()).toString(), toWei("50"));
 
       const expectedDepositTimestamp = await timer.methods.getCurrentTime().call();
-      await assertEventEmitted(tx, depositBox, "L2FundsDeposited", (ev) => {
+      await assertEventEmitted(tx, depositBox, "FundsDeposited", (ev) => {
         return (
-          ev.transferId == "0" &&
+          ev.depositId == "0" &&
           ev.timestamp == expectedDepositTimestamp &&
           ev.sender == user1 &&
           ev.recipient == user1 &&
