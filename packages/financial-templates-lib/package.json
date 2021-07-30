@@ -24,8 +24,7 @@
   },
   "devDependencies": {
     "@tsconfig/node14": "^1.0.0",
-    "bignumber.js": "^9.0.1",
-    "typescript": "^4.3.5"
+    "bignumber.js": "^9.0.1"
   },
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",

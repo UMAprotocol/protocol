@@ -9,7 +9,6 @@
     "@ethersproject/providers": "^5.4.2",
     "@uma/core": "^2.5.0",
     "@uma/common": "^2.4.0",
-    "typescript": "^4.3.5",
     "ethers": "^5.4.2"
   },
   "homepage": "https://umaproject.org",
