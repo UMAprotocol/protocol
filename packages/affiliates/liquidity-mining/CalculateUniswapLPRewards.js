@@ -196,7 +196,7 @@ async function _updatePayoutAtBlock(
   );
 
   // For each balance result, calculate their associated payment addition. The data structures below are used to store
-  // and compute the "effective" ballance. this is the minimum of the token sponsors sponsor position OR redeemable
+  // and compute the "effective" balance. this is the minimum of the token sponsors sponsor position OR redeemable
   // synths from their LP position.
   let shareHolderEffectiveSnapshotBalance = {};
   let cumulativeEffectiveSnapshotBalance = toBN("0");

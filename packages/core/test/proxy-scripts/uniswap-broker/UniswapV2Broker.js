@@ -25,9 +25,9 @@ let pairAddress;
 
 // Returns the current spot price of a uniswap pool, scaled to 4 decimal points.
 const getPoolSpotPrice = async () => {
-  const poolTokenABallance = toBN(await tokenA.methods.balanceOf(pairAddress).call());
-  const poolTokenBBallance = toBN(await tokenB.methods.balanceOf(pairAddress).call());
-  return Number(fromWei(poolTokenABallance.mul(toBN(toWei("1"))).div(poolTokenBBallance))).toFixed(4);
+  const poolTokenABalance = toBN(await tokenA.methods.balanceOf(pairAddress).call());
+  const poolTokenBBalance = toBN(await tokenB.methods.balanceOf(pairAddress).call());
+  return Number(fromWei(poolTokenABalance.mul(toBN(toWei("1"))).div(poolTokenBBalance))).toFixed(4);
 };
 
 // For a given amountIn, return the amount out expected from a trade. aToB defines the direction of the trade. If aToB
