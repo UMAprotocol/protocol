@@ -143,6 +143,7 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
     mapping(uint256 => Deposit) public deposits;
     // If a deposit is disputed, it is removed from the `deposits` mapping and added to the `disputedDeposits` mapping.
     // There can only be one disputed deposit per relayer for each deposit ID.
+    // @dev The mapping is `depositId-->disputer-->Deposit`
     mapping(uint256 => mapping(address => Deposit)) public disputedDeposits;
 
     event SetDepositContract(address indexed l2DepositContract);
@@ -264,6 +265,9 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
         whitelistedToken.bridgePool = _bridgePool;
         whitelistedToken.proposerReward = _proposalReward;
         whitelistedToken.proposerBond = _proposalBond;
+        // We want to prevent any situation where a token mapping is whitelisted on this contract but not on the
+        // corresponding L2 contract.
+        require(depositContract != address(0), "Deposit contract not set");
         sendCrossDomainMessage(
             depositContract,
             _l2Gas,

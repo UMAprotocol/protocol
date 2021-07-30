@@ -29,6 +29,9 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
     settings: { optimizer: { enabled: true, runs: 200 } },
   };
 
+  // Some tests should not be tested using hardhat. Define all tests that end with *e2e.js to be ignored.
+  const testBlacklist = [".e2e.js"];
+
   const defaultConfig = {
     solidity: {
       compilers: [
@@ -55,8 +58,9 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
         gas: 11500000,
         blockGasLimit: 15_000_000,
         timeout: 1800000,
+        testBlacklist,
       },
-      localhost: { url: "http://127.0.0.1:9545" },
+      localhost: { url: "http://127.0.0.1:9545", testBlacklist },
       rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true), accounts: { mnemonic } },
       kovan: { chainId: 42, url: getNodeUrl("kovan", true), accounts: { mnemonic } },
       goerli: { chainId: 5, url: getNodeUrl("goerli", true), accounts: { mnemonic } },
@@ -74,6 +78,7 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
         // ones to ignore, because there are more contracts to ignore than to include.
         compileWhitelist: ["insured-bridge/implementation/OVM_BridgeDepositBox.sol"],
         testWhitelist: ["oracle/Finder"],
+        testBlacklist,
       },
     },
     mocha: { timeout: 1800000 },
