@@ -367,7 +367,8 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
         deposit.slowRelayer = msg.sender;
         deposit.priceRequestAncillaryData = customAncillaryData;
 
-        // Request a price for the relay identifier and propose "true" optimistically.
+        // Request a price for the relay identifier and propose "true" optimistically. These methods will pull the
+        // (proposer reward + proposer bond + final fee) from the caller.
         _requestOraclePriceRelay(l1Token, requestTimestamp, customAncillaryData);
         _proposeOraclePriceRelay(l1Token, requestTimestamp, customAncillaryData);
 
