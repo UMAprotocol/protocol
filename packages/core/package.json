@@ -23,7 +23,6 @@
   "devDependencies": {
     "@eth-optimism/smock": "^1.1.9",
     "@awaitjs/express": "^0.3.0",
-    "@eth-optimism/smock": "^1.1.9",
     "@ethersproject/units": "^5.0.3",
     "@google-cloud/bigquery": "^5.3.0",
     "@nomiclabs/hardhat-ethers": "^2.0.2",
