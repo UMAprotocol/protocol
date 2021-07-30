@@ -23,6 +23,7 @@
     "winston-transport": "^4.3.0"
   },
   "devDependencies": {
+    "@openzeppelin/contracts": "4.1.0",
     "@tsconfig/node14": "^1.0.0",
     "bignumber.js": "^9.0.1"
   },

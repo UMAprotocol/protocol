@@ -5,6 +5,7 @@
   "dependencies": {
     "@eth-optimism/contracts": "^0.4.5",
     "@eth-optimism/watcher": "^0.0.1-alpha.9",
+    "@openzeppelin/contracts": "4.1.0",
     "@truffle/contract": "^4.3.15",
     "@uma/common": "^2.6.0",
     "@uma/core-1-1-0": "npm:@uma/core@1.1.0",
@@ -29,8 +30,8 @@
     "@ethersproject/providers": "^5.4.2",
     "@eth-optimism/smock": "^1.1.9",
     "@google-cloud/bigquery": "^5.3.0",
+    "@nomiclabs/ethereumjs-vm": "^4.2.2",
     "@nomiclabs/hardhat-ethers": "^2.0.2",
-    "@openzeppelin/contracts": "4.1.0",
     "@tsconfig/node14": "^1.0.0",
     "@typechain/ethers-v5": "^7.0.1",
     "@typechain/hardhat": "^2.2.0",

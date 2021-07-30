@@ -21,7 +21,8 @@
   },
   "devDependencies": {
     "mocha": "^8.2.0",
-    "tape": "^5.0.1"
+    "tape": "^5.0.1",
+    "@openzeppelin/contracts": "4.1.0"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.com/",
