@@ -8,7 +8,6 @@ import "./OVM_BridgeDepositBox.sol";
 import "./FixedPoint.sol";
 import "./SafeMath.sol";
 import "./IERC20.sol";
-import "./SafeERC20.sol";
 
 interface OptimisticOracleInterface {
     function requestPrice(
@@ -90,7 +89,6 @@ library TokenHelper {
  */
 contract BridgeRouter is OVM_CrossDomainEnabled {
     using SafeMath for uint256;
-    using SafeERC20 for IERC20;
 
     // Finder used to point to latest OptimisticOracle and other DVM contracts.
     address public finder;
