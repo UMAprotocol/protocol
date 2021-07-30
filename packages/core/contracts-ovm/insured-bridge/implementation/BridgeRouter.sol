@@ -5,6 +5,7 @@ pragma solidity >=0.7.6;
 
 import "@eth-optimism/contracts/libraries/bridge/OVM_CrossDomainEnabled.sol";
 import "./OVM_BridgeDepositBox.sol";
+import "./AncillaryData.sol";
 
 interface OptimisticOracleInterface {
     function requestPrice(
@@ -338,7 +339,18 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
 
         // TODO: Revisit these OO price request params.
         uint256 requestTimestamp = block.timestamp;
-        bytes memory customAncillaryData = bytes("0xTODO");
+        bytes memory customAncillaryData =
+            _createRelayAncillaryData(
+                depositId,
+                depositTimestamp,
+                recipient,
+                l2Sender,
+                l1Token,
+                amount,
+                realizedFee,
+                maxFee,
+                msg.sender
+            );
 
         // Store new deposit:
         deposit.depositState = DepositState.PendingSlow;
@@ -353,7 +365,7 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
         deposit.depositTimestamp = depositTimestamp;
         deposit.realizedFee = realizedFee;
         deposit.slowRelayer = msg.sender;
-        deposit.priceRequestAncillaryData = customAncillaryData = bytes("0xTODO");
+        deposit.priceRequestAncillaryData = customAncillaryData;
 
         // Request a price for the relay identifier and propose "true" optimistically.
         _requestOraclePriceRelay(l1Token, requestTimestamp, customAncillaryData);
@@ -462,5 +474,51 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
         // This will pull the total bond from the caller.
         TokenHelper.safeTransferFrom(l1Token, msg.sender, address(optimisticOracle), totalBond);
         optimisticOracle.proposePriceFor(msg.sender, msg.sender, identifier, requestTimestamp, customAncillaryData, 1);
+    }
+
+    function _createRelayAncillaryData(
+        uint256 depositId,
+        uint256 depositTimestamp,
+        address recipient,
+        address l2Sender,
+        address l1Token,
+        uint256 amount,
+        uint256 realizedFee,
+        uint256 maxFee,
+        address relayer
+    ) internal view returns (bytes memory) {
+        bytes memory intermediateAncillaryData = bytes("0x");
+        intermediateAncillaryData = AncillaryData.appendKeyValueUint(intermediateAncillaryData, "depositId", depositId);
+        intermediateAncillaryData = AncillaryData.appendKeyValueUint(
+            intermediateAncillaryData,
+            "depositTimestamp",
+            depositTimestamp
+        );
+        intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
+            intermediateAncillaryData,
+            "recipient",
+            recipient
+        );
+        intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
+            intermediateAncillaryData,
+            "l2Sender",
+            l2Sender
+        );
+        intermediateAncillaryData = AncillaryData.appendKeyValueAddress(intermediateAncillaryData, "l1Token", l1Token);
+        intermediateAncillaryData = AncillaryData.appendKeyValueUint(intermediateAncillaryData, "amount", amount);
+        intermediateAncillaryData = AncillaryData.appendKeyValueUint(
+            intermediateAncillaryData,
+            "realizedFee",
+            realizedFee
+        );
+        intermediateAncillaryData = AncillaryData.appendKeyValueUint(intermediateAncillaryData, "maxFee", maxFee);
+        intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
+            intermediateAncillaryData,
+            "depositContract",
+            depositContract
+        );
+        intermediateAncillaryData = AncillaryData.appendKeyValueAddress(intermediateAncillaryData, "relayer", relayer);
+
+        return intermediateAncillaryData;
     }
 }
