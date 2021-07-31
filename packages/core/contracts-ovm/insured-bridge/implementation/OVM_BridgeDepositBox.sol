@@ -75,7 +75,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
     event SetBridgeRouter(address newBridgeRouterContract);
     event SetMinimumBridgingDelay(uint64 newMinimumBridgingDelay);
     event WhitelistToken(address l1Token, address l2Token, uint64 lastBridgeTime);
-    event DepositsEnabled(bool enabledResultantState);
+    event DepositsEnabled(bool depositsEnabled);
     event FundsDeposited(
         uint256 depositId,
         uint256 timestamp,
