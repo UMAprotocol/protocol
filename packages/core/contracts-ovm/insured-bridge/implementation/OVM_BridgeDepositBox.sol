@@ -182,7 +182,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
         uint256 maxFeePct
     ) public onlyIfDepositsEnabled() {
         require(isWhitelistToken(l2Token), "deposit token not whitelisted");
-        require(maxFeePct <= 1e18, "maxFeePct can not be over 100% (represented as 1e18)");
+        require(maxFeePct <= 1e18, "maxFeePct cannot be over 100% (represented as 1e18)");
 
         emit FundsDeposited(
             numberOfDeposits, // the current number of deposits acts as a deposit ID (nonce).
