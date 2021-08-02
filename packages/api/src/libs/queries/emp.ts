@@ -10,7 +10,7 @@ import type { AppState, CurrencySymbol, PriceSample } from "../..";
 const { exists } = uma.utils;
 type Dependencies = Pick<
   AppState,
-  "erc20s" | "emps" | "stats" | "registeredEmps" | "prices" | "synthPrices" | "marketPrices" | "lsps"
+  "erc20s" | "emps" | "stats" | "registeredEmps" | "prices" | "synthPrices" | "marketPrices"
 >;
 
 export default (appState: Dependencies) => {
@@ -62,42 +62,17 @@ export default (appState: Dependencies) => {
     assert(exists(priceSample), "No price for address: " + address);
     return priceSample[1];
   }
-  async function getAnyEmp(empAddress: string) {
+  async function getAny(empAddress: string) {
     if (await appState.emps.active.has(empAddress)) {
       return appState.emps.active.get(empAddress);
     }
-    return appState.emps.expired.get(empAddress);
-  }
-  async function getAnyLsp(address: string) {
-    if (await appState.lsps.active.has(address)) {
-      return appState.lsps.active.get(address);
+    if (await appState.emps.expired.has(empAddress)) {
+      return appState.emps.expired.get(empAddress);
     }
-    if (await appState.lsps.expired.has(address)) {
-      return appState.lsps.expired.get(address);
-    }
-    throw new Error("LSP not found by address: " + address);
-  }
-  async function getFullLspState(state: tables.lsps.Data) {
-    const collateralState = state.collateralToken
-      ? await appState.erc20s.get(state.collateralToken).catch(() => null)
-      : null;
-    const longTokenState = state.longToken ? await appState.erc20s.get(state.longToken).catch(() => null) : null;
-    const shortTokenState = state.shortToken ? await appState.erc20s.get(state.shortToken).catch(() => null) : null;
-    return {
-      ...state,
-      longTokenDecimals: longTokenState?.decimals,
-      shortTokenDecimals: shortTokenState?.decimals,
-      collateralDecimals: collateralState?.decimals,
-      longTokenName: longTokenState?.name,
-      shortTokenName: shortTokenState?.name,
-      collateralName: collateralState?.name,
-      longTokenSymbol: longTokenState?.symbol,
-      shortTokenSymbol: shortTokenState?.symbol,
-      collateralSymbol: collateralState?.symbol,
-    };
+    throw new Error("Unable to find EMP with address: " + empAddress);
   }
   // joins emp with token state and gcr
-  async function getFullEmpState(empState: uma.tables.emps.Data) {
+  async function getFullState(empState: uma.tables.emps.Data) {
     const token = empState.tokenCurrency ? await appState.erc20s.get(empState.tokenCurrency).catch(() => null) : null;
     const collateral = empState.collateralCurrency
       ? await appState.erc20s.get(empState.collateralCurrency).catch(() => null)
@@ -131,23 +106,14 @@ export default (appState: Dependencies) => {
     };
   }
 
-  async function listActiveEmps() {
+  async function listActive() {
     const emps = appState.emps.active.values();
-    return bluebird.map(emps, (emp) => getFullEmpState(emp).catch(() => emp));
+    return bluebird.map(emps, (emp) => getFullState(emp).catch(() => emp));
   }
-  async function listExpiredEmps() {
+  async function listExpired() {
     const emps = appState.emps.expired.values();
-    return bluebird.map(emps, (emp) => getFullEmpState(emp).catch(() => emp));
+    return bluebird.map(emps, (emp) => getFullState(emp).catch(() => emp));
   }
-  async function listActiveLsps() {
-    const list = await appState.lsps.active.values();
-    return bluebird.map(list, (el) => getFullLspState(el).catch(() => el));
-  }
-  async function listExpiredLsps() {
-    const list = await appState.lsps.expired.values();
-    return bluebird.map(list, (el) => getFullLspState(el).catch(() => el));
-  }
-
   async function sumTvl(addresses: string[], currency: CurrencySymbol = "usd") {
     const tvls = await Promise.all(
       addresses.map(async (address) => {
@@ -192,17 +158,20 @@ export default (appState: Dependencies) => {
     const addresses = Array.from(appState.registeredEmps.values());
     return sumTvm(addresses, currency);
   }
-  async function getTotalTvl(currency: CurrencySymbol = "usd") {
+  async function getTotalTvlSample(currency: CurrencySymbol = "usd") {
     assert(appState.stats.emp[currency], "Invalid currency: " + currency);
-    const { value } = await appState.stats.emp[currency].latest.tvl.getGlobal();
-    return value;
+    return appState.stats.emp[currency].latest.tvl.getGlobal();
+  }
+  async function getTotalTvl(currency: CurrencySymbol = "usd") {
+    const result = await getTotalTvlSample(currency);
+    return result.value;
   }
 
   return {
-    getFullEmpState,
-    getAnyEmp,
-    listActiveEmps,
-    listExpiredEmps,
+    getFullState,
+    getAny,
+    listActive,
+    listExpired,
     totalTvl,
     sumTvl,
     totalTvm,
@@ -211,9 +180,6 @@ export default (appState: Dependencies) => {
     historicalPricesByTokenAddress,
     sliceHistoricalPricesByTokenAddress,
     getTotalTvl,
-    getFullLspState,
-    getAnyLsp,
-    listExpiredLsps,
-    listActiveLsps,
+    getTotalTvlSample,
   };
 };

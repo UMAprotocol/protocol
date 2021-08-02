@@ -56,9 +56,9 @@ let dsProxyFactory: any;
 
 // Returns the current spot price of a uniswap pool, scaled to 4 decimal points.
 const getPoolSpotPrice = async () => {
-  const poolTokenABallance = await tokenA.balanceOf(pairAddress);
-  const poolTokenBBallance = await tokenB.balanceOf(pairAddress);
-  return Number(fromWei(poolTokenABallance.mul(toBN(toWei("1"))).div(poolTokenBBallance))).toFixed(4);
+  const poolTokenABalance = await tokenA.balanceOf(pairAddress);
+  const poolTokenBBalance = await tokenB.balanceOf(pairAddress);
+  return Number(fromWei(poolTokenABalance.mul(toBN(toWei("1"))).div(poolTokenBBalance))).toFixed(4);
 };
 
 describe("UniswapV2Trader.js", function () {

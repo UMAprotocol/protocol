@@ -69,9 +69,9 @@ const pairName = "Long Short Pair Test";
 
 // Returns the current spot price of a uniswap pool, scaled to `precision` # decimal points.
 const getPoolSpotPrice = async (tokenA, tokenB, _pairAddress = pairAddress, precision = 4) => {
-  const poolTokenABallance = toBN(await tokenA.methods.balanceOf(_pairAddress).call());
-  const poolTokenBBallance = toBN(await tokenB.methods.balanceOf(_pairAddress).call());
-  return Number(fromWei(poolTokenABallance.mul(toBN(toWei("1"))).div(poolTokenBBallance))).toFixed(precision);
+  const poolTokenABalance = toBN(await tokenA.methods.balanceOf(_pairAddress).call());
+  const poolTokenBBalance = toBN(await tokenB.methods.balanceOf(_pairAddress).call());
+  return Number(fromWei(poolTokenABalance.mul(toBN(toWei("1"))).div(poolTokenBBalance))).toFixed(precision);
 };
 
 // For a given amountIn, return the amount out expected from a trade. aToB defines the direction of the trade. If aToB

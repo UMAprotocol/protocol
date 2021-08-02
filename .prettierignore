@@ -11,3 +11,5 @@ cache
 .github
 types
 contract-types
+generated
+typechain

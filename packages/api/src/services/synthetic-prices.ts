@@ -91,9 +91,9 @@ export default function (config: Config, appState: Dependencies) {
   }
 
   async function getFullEmpState(empAddress: string) {
-    const emp = await queries.getAnyEmp(empAddress);
+    const emp = await queries.getAny(empAddress);
     // the full state has collateral decimals, pulled from erc20 state
-    return queries.getFullEmpState(emp);
+    return queries.getFullState(emp);
   }
 
   // gets any price from table, synthetic or collateral. Synthetics go into this table once converted to usd
@@ -110,7 +110,7 @@ export default function (config: Config, appState: Dependencies) {
 
   // convert synth price to {currency} which is typically usd, based on the current collateral price
   async function updateLatestPrice(empAddress: string) {
-    const emp = await queries.getAnyEmp(empAddress);
+    const emp = await queries.getAny(empAddress);
 
     assert(uma.utils.exists(emp.collateralCurrency), "Requires contract collateralCurrency: " + empAddress);
     assert(uma.utils.exists(emp.tokenCurrency), "Requires contract tokenCurrency: " + empAddress);

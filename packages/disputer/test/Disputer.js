@@ -1408,7 +1408,7 @@ contract("Disputer.js", function (accounts) {
               const liquidationTime = await financialContract.getCurrentTime();
               await mockOracle.pushPrice(web3.utils.utf8ToHex(identifier), liquidationTime, toWei("1.1"));
 
-              // rewards should be withdrawn and the DSProxy collateral ballance should increase.
+              // rewards should be withdrawn and the DSProxy collateral balance should increase.
 
               const dsProxyCollateralBalanceBefore = await collateralToken.balanceOf(dsProxy.address);
 
