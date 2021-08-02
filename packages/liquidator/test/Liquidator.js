@@ -1733,11 +1733,9 @@ contract("Liquidator.js", function (accounts) {
           let dsProxy;
 
           const getPoolSpotPrice = async () => {
-            const poolTokenABallance = await reserveToken.balanceOf(pairAddress);
-            const poolTokenBBallance = await collateralToken.balanceOf(pairAddress);
-            return Number(fromWei(poolTokenABallance.mul(toBN(convertDecimals("1"))).div(poolTokenBBallance))).toFixed(
-              4
-            );
+            const poolTokenABalance = await reserveToken.balanceOf(pairAddress);
+            const poolTokenBBalance = await collateralToken.balanceOf(pairAddress);
+            return Number(fromWei(poolTokenABalance.mul(toBN(convertDecimals("1"))).div(poolTokenBBalance))).toFixed(4);
           };
 
           beforeEach(async () => {

@@ -112,7 +112,7 @@ class CRMonitor {
     this.fixedPointAdjustment = this.toBN(this.toWei("1"));
   }
 
-  // Queries all monitored wallet ballance for collateralization ratio against a given threshold.
+  // Queries all monitored wallet balance for collateralization ratio against a given threshold.
   async checkWalletCrRatio() {
     if (this.walletsToMonitor.length == 0) return; // If there are no wallets to monitor exit early
     // yield the price feed at the current time.

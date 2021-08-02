@@ -59,9 +59,9 @@ const fixedPointAdjustment = toBN(toWei("1"));
 
 // Returns the current spot price of a uniswap pool, scaled to 4 decimal points.
 const getPoolSpotPrice = async () => {
-  const poolTokenABallance = toBN(await reserveToken.methods.balanceOf(pairAddress).call());
-  const poolTokenBBallance = toBN(await collateralToken.methods.balanceOf(pairAddress).call());
-  return Number(fromWei(poolTokenABallance.mul(fixedPointAdjustment).div(poolTokenBBallance))).toFixed(4);
+  const poolTokenABalance = toBN(await reserveToken.methods.balanceOf(pairAddress).call());
+  const poolTokenBBalance = toBN(await collateralToken.methods.balanceOf(pairAddress).call());
+  return Number(fromWei(poolTokenABalance.mul(fixedPointAdjustment).div(poolTokenBBalance))).toFixed(4);
 };
 
 // For a given number of tokens to liquidate, calculate the expected number of tokens that the DSProxy will likely buy
@@ -292,7 +292,7 @@ describe("ReserveTokenLiquidator", function () {
       from: liquidator,
     });
 
-    // The DSProxy should not have any collateral after the liquidation as everything was used. The synthetic ballance
+    // The DSProxy should not have any collateral after the liquidation as everything was used. The synthetic balance
     // should be the starting balance minus the amount liquidated as 2000-1000=1000.
     assert.equal((await collateralToken.methods.balanceOf(dsProxy.options.address).call()).toString(), "0");
     assert.equal((await syntheticToken.methods.balanceOf(dsProxy.options.address).call()).toString(), toWei("1000"));
