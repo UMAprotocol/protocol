@@ -75,7 +75,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
     event SetBridgeRouter(address newBridgeRouterContract);
     event SetMinimumBridgingDelay(uint64 newMinimumBridgingDelay);
     event WhitelistToken(address l1Token, address l2Token, uint64 lastBridgeTime);
-    event DepositsEnabled(bool enabledResultantState);
+    event DepositsEnabled(bool depositsEnabled);
     event FundsDeposited(
         uint256 depositId,
         uint256 timestamp,
@@ -182,7 +182,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
         uint256 maxFeePct
     ) public onlyIfDepositsEnabled() {
         require(isWhitelistToken(l2Token), "deposit token not whitelisted");
-        require(maxFeePct <= 1e18, "maxFeePct can not be over 100% (represented as 1e18)");
+        require(maxFeePct <= 1e18, "maxFeePct cannot be over 100% (represented as 1e18)");
 
         emit FundsDeposited(
             numberOfDeposits, // the current number of deposits acts as a deposit ID (nonce).
