@@ -1,97 +1,22 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma experimental ABIEncoderV2;
-// Note that we use < 0.8 because `@eth-optimism` contracts use that version.
-pragma solidity >=0.7.6;
+pragma solidity ^0.8.0;
 
-import "@eth-optimism/contracts/libraries/bridge/OVM_CrossDomainEnabled.sol";
-import "./OVM_BridgeDepositBox.sol";
-import "./AncillaryData.sol";
+// Importing local copies of OVM contracts is a temporary fix until the @eth-optimism/contracts package exports 0.8.x
+// contracts. These contracts are relatively small and should have no problems porting from 0.7.x to 0.8.x, and
+// changing their version is preferable to changing this contract to 0.7.x and defining compatible interfaces for all
+// of the imported DVM contracts below.
+import "./OVM_CrossDomainEnabled.sol";
+import "../../../contracts/oracle/interfaces/OptimisticOracleInterface.sol";
+import "../../../contracts/oracle/interfaces/IdentifierWhitelistInterface.sol";
+import "../../../contracts/oracle/interfaces/StoreInterface.sol";
+import "../../../contracts/oracle/interfaces/FinderInterface.sol";
+import "../../../contracts/oracle/implementation/Constants.sol";
+import "../../../contracts/common/interfaces/AddressWhitelistInterface.sol";
+import "../../../contracts/common/implementation/AncillaryData.sol";
 
-interface OptimisticOracleInterface {
-    function requestPrice(
-        bytes32 identifier,
-        uint256 timestamp,
-        bytes memory ancillaryData,
-        IERC20 currency,
-        uint256 reward
-    ) external virtual returns (uint256 totalBond);
-
-    function setBond(
-        bytes32 identifier,
-        uint256 timestamp,
-        bytes memory ancillaryData,
-        uint256 bond
-    ) external virtual returns (uint256 totalBond);
-
-    function setCustomLiveness(
-        bytes32 identifier,
-        uint256 timestamp,
-        bytes memory ancillaryData,
-        uint256 customLiveness
-    ) external virtual;
-
-    function proposePriceFor(
-        address proposer,
-        address requester,
-        bytes32 identifier,
-        uint256 timestamp,
-        bytes memory ancillaryData,
-        int256 proposedPrice
-    ) external virtual returns (uint256 totalBond);
-}
-
-interface IdentifierWhitelistInterface {
-    function isIdentifierSupported(bytes32 identifier) external view returns (bool);
-}
-
-interface StoreInterface {
-    function computeFinalFee(address currency) external view returns (FixedPoint.Unsigned memory);
-}
-
-interface AddressWhitelistInterface {
-    function isOnWhitelist(address newElement) external view virtual returns (bool);
-}
-
-interface FinderInterface {
-    function getImplementationAddress(bytes32 interfaceName) external view returns (address);
-}
-
-interface IERC20 {
-    function transferFrom(
-        address sender,
-        address recipient,
-        uint256 amount
-    ) external returns (bool);
-}
-
-library FixedPoint {
-    struct Unsigned {
-        uint256 rawValue;
-    }
-}
-
-library OracleInterfaces {
-    bytes32 public constant IdentifierWhitelist = "IdentifierWhitelist";
-    bytes32 public constant Store = "Store";
-    bytes32 public constant CollateralWhitelist = "CollateralWhitelist";
-    bytes32 public constant OptimisticOracle = "OptimisticOracle";
-}
-
-library TokenHelper {
-    function safeTransferFrom(
-        address token,
-        address from,
-        address to,
-        uint256 value
-    ) internal {
-        bytes4(keccak256(bytes("transferFrom(address,address,uint256)")));
-        (bool success, bytes memory data) = token.call(abi.encodeWithSelector(0x23b872dd, from, to, value));
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "TokenHelper::transferFrom: transferFrom failed"
-        );
-    }
-}
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @notice Contract deployed on L1 that has an implicit reference to a DepositBox on L2 and provides methods for
@@ -99,7 +24,9 @@ library TokenHelper {
  * instantly, or request that the funds are taken out of the passive liquidity provider pool following a challenge period.
  * @dev A "Deposit" is an order to send capital from L2 to L1, and a "Relay" is a fulfillment attempt of that order.
  */
-contract BridgeRouter is OVM_CrossDomainEnabled {
+contract BridgeRouter is OVM_CrossDomainEnabled, Ownable {
+    using SafeERC20 for IERC20;
+
     // Finder used to point to latest OptimisticOracle and other DVM contracts.
     address public finder;
 
@@ -125,28 +52,33 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
     enum DepositState { Uninitialized, PendingSlow, PendingInstant, FinalizedSlow, FinalizedInstant }
     enum DepositType { Slow, Instant }
 
-    struct Deposit {
-        DepositState depositState;
-        DepositType depositType;
-        // The following params are set by the L2 depositor:
-        address l1Recipient;
-        address l2Token;
+    // @dev: There is a limit to how many params a struct can contain. Without encapsulating some of the Deposit params
+    // inside the RelayAncillaryDataContents struct, the compiler throws an error related to this issue:
+    // https://github.com/ethereum/solidity/issues/10930.
+    struct RelayAncillaryDataContents {
+        uint256 depositId;
+        // The following params are inferred by the L2 deposit:
+        address l2Sender;
+        address recipient;
+        uint256 depositTimestamp;
+        address l1Token;
         uint256 amount;
         uint256 maxFee;
-        // Params inferred by this contract:
-        address l1Token;
-        // The following params are inferred and set by the L2 deposit contract:
-        address l2Sender;
-        address depositContract;
-        uint256 depositTimestamp;
         // Relayer will compute the realized fee considering the amount of liquidity in this contract and the pending
         // withdrawals at the depositTimestamp.
         uint256 realizedFee;
+        address relayer;
+    }
+    struct Deposit {
+        DepositState depositState;
+        DepositType depositType;
         // A deposit can have both a slow and an instant relayer if a slow relay is "sped up" from slow to instant. In
         // these cases, we want to store both addresses for separate payouts.
         address slowRelayer;
         address instantRelayer;
-        // TODO: Not sure how this will be used or why its stored but its in the interface doc
+        // @dev: See @dev note above about why some Deposit params are collapsed into `RelayAncillaryDataContents`.
+        RelayAncillaryDataContents relayData;
+        // Custom ancillary data crafted from `RelayAncillaryDataContents` data.
         bytes priceRequestAncillaryData;
     }
     // Associates each deposit with a unique ID.
@@ -179,51 +111,21 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
     event FinalizedRelay(uint256 indexed depositId, address indexed caller);
     event RelayDisputeSettled(uint256 indexed depositId, address indexed caller, bool disputeSuccessful);
 
-    // TODO: We can't use @openzeppelin/Ownable until we bump this contract to Solidity 0.8
-    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
-    address public owner;
-    modifier onlyOwner() {
-        require(msg.sender == owner, "Not owner");
-        _;
-    }
-
     constructor(
         address _finder,
         address _crossDomainMessenger,
-        address _owner,
         uint256 _optimisticOracleLiveness,
         uint256 _optimisticOracleProposalReward,
         bytes32 _identifier
     ) OVM_CrossDomainEnabled(_crossDomainMessenger) {
         finder = _finder;
         require(address(_getOptimisticOracle()) != address(0), "Invalid finder");
-        owner = _owner;
         optimisticOracleLiveness = _optimisticOracleLiveness;
         optimisticOracleProposalReward = _optimisticOracleProposalReward;
         _setIdentifier(_identifier);
     }
 
     // Admin functions
-
-    /**
-     * @dev Leaves the contract without owner. It will not be possible to call
-     * `onlyOwner` functions anymore. Can only be called by the current owner.
-     *
-     * NOTE: Renouncing ownership will leave the contract without an owner,
-     * thereby removing any functionality that is only available to the owner.
-     */
-    function renounceOwnership() public onlyOwner {
-        _setOwner(address(0));
-    }
-
-    /**
-     * @dev Transfers ownership of the contract to a new account (`newOwner`).
-     * Can only be called by the current owner.
-     */
-    function transferOwnership(address newOwner) public onlyOwner {
-        require(newOwner != address(0), "Ownable: new owner is the zero address");
-        _setOwner(newOwner);
-    }
 
     /**
      * @dev Sets new price identifier to use for relayed deposits.
@@ -266,8 +168,8 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
         uint256 _proposalBond
     ) public onlyOwner {
         require(_getCollateralWhitelist().isOnWhitelist(address(_l1Token)), "Payment token not whitelisted");
-        // TODO: Is this check required? Are we OK if a token mapping is whitelisted on this contract but not on the
-        // corresponding L2 contract?
+        // We want to prevent any situation where a token mapping is whitelisted on this contract but not on the
+        // corresponding L2 contract.
         require(depositContract != address(0), "Deposit contract not set");
 
         L1TokenRelationships storage whitelistedToken = whitelistedTokens[_l1Token];
@@ -275,9 +177,6 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
         whitelistedToken.bridgePool = _bridgePool;
         whitelistedToken.proposerReward = _proposalReward;
         whitelistedToken.proposerBond = _proposalBond;
-        // We want to prevent any situation where a token mapping is whitelisted on this contract but not on the
-        // corresponding L2 contract.
-        require(depositContract != address(0), "Deposit contract not set");
         sendCrossDomainMessage(
             depositContract,
             _l2Gas,
@@ -292,8 +191,7 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
         );
     }
 
-    // TODO:
-    // function pauseL2Deposits() public onlyOwner {}
+    function pauseL2Deposits() public onlyOwner {}
 
     // Liquidity provider functions
 
@@ -329,8 +227,8 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
         uint256 maxFee
     ) public {
         require(realizedFee <= maxFee, "Invalid realized fee");
-        Deposit storage deposit = deposits[depositId];
-        require(deposit.depositState == DepositState.Uninitialized, "Pending relay for deposit ID exists");
+        Deposit storage newDeposit = deposits[depositId];
+        require(newDeposit.depositState == DepositState.Uninitialized, "Pending relay for deposit ID exists");
         Deposit storage disputedDeposit = disputedDeposits[depositId][msg.sender];
         require(
             disputedDeposit.depositState == DepositState.Uninitialized,
@@ -339,33 +237,26 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
 
         // TODO: Revisit these OO price request params.
         uint256 requestTimestamp = block.timestamp;
-        bytes memory customAncillaryData =
-            _createRelayAncillaryData(
-                depositId,
-                depositTimestamp,
-                recipient,
-                l2Sender,
-                l1Token,
-                amount,
-                realizedFee,
-                maxFee,
-                msg.sender
-            );
+        RelayAncillaryDataContents memory newRelayData =
+            RelayAncillaryDataContents({
+                depositId: depositId,
+                l2Sender: l2Sender,
+                recipient: recipient,
+                depositTimestamp: depositTimestamp,
+                l1Token: l1Token,
+                amount: amount,
+                maxFee: maxFee,
+                realizedFee: realizedFee,
+                relayer: msg.sender
+            });
+        bytes memory customAncillaryData = _createRelayAncillaryData(newRelayData, msg.sender);
 
         // Store new deposit:
-        deposit.depositState = DepositState.PendingSlow;
-        deposit.depositType = DepositType.Slow;
-        deposit.l1Recipient = recipient;
-        deposit.l2Token = whitelistedTokens[l1Token].l2Token;
-        deposit.amount = amount;
-        deposit.maxFee = maxFee;
-        deposit.l1Token = l1Token;
-        deposit.l2Sender = l2Sender;
-        deposit.depositContract = depositContract;
-        deposit.depositTimestamp = depositTimestamp;
-        deposit.realizedFee = realizedFee;
-        deposit.slowRelayer = msg.sender;
-        deposit.priceRequestAncillaryData = customAncillaryData;
+        newDeposit.depositState = DepositState.PendingSlow;
+        newDeposit.depositType = DepositType.Slow;
+        newDeposit.relayData = newRelayData;
+        newDeposit.priceRequestAncillaryData = customAncillaryData;
+        newDeposit.slowRelayer = msg.sender;
 
         // Request a price for the relay identifier and propose "true" optimistically. These methods will pull the
         // (proposer reward + proposer bond + final fee) from the caller.
@@ -418,12 +309,6 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
         return StoreInterface(FinderInterface(finder).getImplementationAddress(OracleInterfaces.Store));
     }
 
-    function _setOwner(address newOwner) private {
-        address oldOwner = owner;
-        owner = newOwner;
-        emit OwnershipTransferred(oldOwner, newOwner);
-    }
-
     function _setIdentifier(bytes32 _identifier) private {
         require(_getIdentifierWhitelist().isIdentifierSupported(_identifier), "Identifier not registered");
         // TODO: Should we validate this _identifier? Perhaps check that its not 0x?
@@ -437,12 +322,11 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
     ) private {
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
 
-        uint256 finalFee = _getStore().computeFinalFee(l1Token).rawValue;
         uint256 proposalReward = whitelistedTokens[l1Token].proposerReward;
 
-        // This will pull the proposal reward from the caller.
-        if (proposalReward > 0)
-            TokenHelper.safeTransferFrom(l1Token, msg.sender, address(optimisticOracle), proposalReward);
+        // TODO: Relayer should not have to pay the proposal reward, instead they should be receiving reward from the
+        // Bridge Pool.
+        if (proposalReward > 0) IERC20(l1Token).safeTransferFrom(msg.sender, address(optimisticOracle), proposalReward);
         optimisticOracle.requestPrice(
             identifier,
             requestTimestamp,
@@ -468,57 +352,71 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
 
         uint256 proposalBond = whitelistedTokens[l1Token].proposerBond;
         uint256 finalFee = _getStore().computeFinalFee(address(l1Token)).rawValue;
-        // TODO: If this contract is not using Solidity v8, then need to check for overflow and possibly use a 0.7
-        // SafeMath library. I've left it like this for now for simplicity.
         uint256 totalBond = proposalBond + finalFee;
 
         // This will pull the total bond from the caller.
-        TokenHelper.safeTransferFrom(l1Token, msg.sender, address(optimisticOracle), totalBond);
+        IERC20(l1Token).safeTransferFrom(msg.sender, address(optimisticOracle), totalBond);
         optimisticOracle.proposePriceFor(msg.sender, msg.sender, identifier, requestTimestamp, customAncillaryData, 1);
     }
 
-    function _createRelayAncillaryData(
-        uint256 depositId,
-        uint256 depositTimestamp,
-        address recipient,
-        address l2Sender,
-        address l1Token,
-        uint256 amount,
-        uint256 realizedFee,
-        uint256 maxFee,
-        address relayer
-    ) internal view returns (bytes memory) {
+    function _createRelayAncillaryData(RelayAncillaryDataContents memory _relayData, address relayer)
+        internal
+        view
+        returns (bytes memory)
+    {
         bytes memory intermediateAncillaryData = bytes("0x");
-        intermediateAncillaryData = AncillaryData.appendKeyValueUint(intermediateAncillaryData, "depositId", depositId);
+
+        // Add relay data inferred from the original deposit on L2:
+        intermediateAncillaryData = AncillaryData.appendKeyValueUint(
+            intermediateAncillaryData,
+            "depositId",
+            _relayData.depositId
+        );
         intermediateAncillaryData = AncillaryData.appendKeyValueUint(
             intermediateAncillaryData,
             "depositTimestamp",
-            depositTimestamp
+            _relayData.depositTimestamp
         );
         intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
             intermediateAncillaryData,
             "recipient",
-            recipient
+            _relayData.recipient
         );
         intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
             intermediateAncillaryData,
             "l2Sender",
-            l2Sender
+            _relayData.l2Sender
         );
-        intermediateAncillaryData = AncillaryData.appendKeyValueAddress(intermediateAncillaryData, "l1Token", l1Token);
-        intermediateAncillaryData = AncillaryData.appendKeyValueUint(intermediateAncillaryData, "amount", amount);
+        intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
+            intermediateAncillaryData,
+            "l1Token",
+            _relayData.l1Token
+        );
+        intermediateAncillaryData = AncillaryData.appendKeyValueUint(
+            intermediateAncillaryData,
+            "amount",
+            _relayData.amount
+        );
         intermediateAncillaryData = AncillaryData.appendKeyValueUint(
             intermediateAncillaryData,
             "realizedFee",
-            realizedFee
+            _relayData.realizedFee
         );
-        intermediateAncillaryData = AncillaryData.appendKeyValueUint(intermediateAncillaryData, "maxFee", maxFee);
+        intermediateAncillaryData = AncillaryData.appendKeyValueUint(
+            intermediateAncillaryData,
+            "maxFee",
+            _relayData.maxFee
+        );
+
+        // Add parameterized data:
+        intermediateAncillaryData = AncillaryData.appendKeyValueAddress(intermediateAncillaryData, "relayer", relayer);
+
+        // Add global state data stored by this contract:
         intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
             intermediateAncillaryData,
             "depositContract",
             depositContract
         );
-        intermediateAncillaryData = AncillaryData.appendKeyValueAddress(intermediateAncillaryData, "relayer", relayer);
 
         return intermediateAncillaryData;
     }
