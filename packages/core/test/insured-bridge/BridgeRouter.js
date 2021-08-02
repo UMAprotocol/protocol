@@ -8,17 +8,22 @@ const { assert } = require("chai");
 
 // Tested contracts
 const BridgeRouter = getContract("BridgeRouter");
-const Finder = getContract("Finder");
+
+// Helper contracts
 const BridgeDepositBox = getContract("OVM_BridgeDepositBox");
+const Finder = getContract("Finder");
+const Timer = getContract("Finder");
 
 // Contract objects
 let bridgeRouter;
 let finder;
+let timer;
 let l1CrossDomainMessengerMock;
 let depositBox;
 
 // Test function inputs
 const defaultGasLimit = 1_000_000;
+const minimumBridgingDelay = 60;
 let l1Token;
 let l2Token;
 let bridgePoolAddress;
@@ -34,6 +39,7 @@ describe("BridgeRouter", () => {
     bridgePoolAddress = l2MessengerImpersonator;
     await runDefaultFixture(hre);
     finder = await Finder.deployed();
+    timer = await Timer.deployed();
   });
   beforeEach(async function () {
     l1CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L1CrossDomainMessenger");
@@ -45,7 +51,7 @@ describe("BridgeRouter", () => {
       7200
     ).send({ from: owner });
 
-    depositBox = await BridgeDepositBox.new(l2MessengerImpersonator, owner).send({ from: owner });
+    depositBox = await BridgeDepositBox.new(owner, minimumBridgingDelay, timer.options.address).send({ from: owner });
   });
   describe("Admin functions", () => {
     it("Ownership", async () => {
