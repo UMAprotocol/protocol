@@ -53,15 +53,17 @@ contract BridgePool is Testable {
         // A deposit can have both a slow and an instant relayer if a slow relay is "sped up" from slow to instant.
         // We want to store both addresses for separate payouts.
         address instantRelayer;
-        // @dev: See note above about why some Deposit params are collapsed into `RelayAncillaryDataContents`.
+        // Store relay data that we'll use to settle finalized or disputed relays.
         RelayAncillaryDataContents relayData;
+        // All of the deposit's RelayAncillaryDataContents is hashed to create a unique deposit hash or "ancillaryData".
+        bytes ancillaryData;
     }
-    // Associates each deposit with a unique ID.
-    mapping(uint64 => Deposit) public deposits;
+    // Associates each deposit with a unique hash derived from its constituent data..
+    mapping(bytes => Deposit) public deposits;
     // If a deposit is disputed, it is removed from the `deposits` mapping and added to the `disputedDeposits` mapping.
-    // There can only be one disputed deposit per relayer for each deposit ID.
-    // @dev The mapping is `depositId-->disputer-->Deposit`
-    mapping(uint64 => mapping(address => Deposit)) public disputedDeposits;
+    // There can only be one disputed deposit per relayer for each deposit hash.
+    // @dev The mapping is `depositHash-->disputer-->Deposit`
+    mapping(bytes => mapping(address => Deposit)) public disputedDeposits;
 
     event DepositRelayed(
         address indexed sender,
@@ -125,9 +127,25 @@ contract BridgePool is Testable {
         uint64 proposerRewardPct
     ) public {
         require(realizedFeePct <= maxFeePct, "Invalid realized fee");
-        Deposit storage newDeposit = deposits[depositId];
+
+        // Construct unique ancillary data for this deposit, and link relay data to it.
+        RelayAncillaryDataContents memory relayData =
+            RelayAncillaryDataContents({
+                depositId: depositId,
+                l2Sender: l2Sender,
+                recipient: recipient,
+                depositTimestamp: depositTimestamp,
+                l1Token: l1Token,
+                amount: amount,
+                maxFeePct: maxFeePct,
+                proposerRewardPct: proposerRewardPct,
+                realizedFeePct: realizedFeePct,
+                slowRelayer: msg.sender
+            });
+        bytes memory priceRequestAncillaryData = getRelayAncillaryData(relayData);
+        Deposit storage newDeposit = deposits[priceRequestAncillaryData];
         require(newDeposit.depositState == DepositState.Uninitialized, "Pending relay for deposit ID exists");
-        Deposit storage disputedDeposit = disputedDeposits[depositId][msg.sender];
+        Deposit storage disputedDeposit = disputedDeposits[priceRequestAncillaryData][msg.sender];
         require(
             disputedDeposit.depositState == DepositState.Uninitialized,
             "Pending dispute by relayer for deposit ID exists"
@@ -136,19 +154,8 @@ contract BridgePool is Testable {
         // Save new deposit:
         newDeposit.depositState = DepositState.PendingSlow;
         newDeposit.depositType = DepositType.Slow;
-        newDeposit.relayData = RelayAncillaryDataContents({
-            depositId: depositId,
-            l2Sender: l2Sender,
-            recipient: recipient,
-            depositTimestamp: depositTimestamp,
-            l1Token: l1Token,
-            amount: amount,
-            maxFeePct: maxFeePct,
-            proposerRewardPct: proposerRewardPct,
-            realizedFeePct: realizedFeePct,
-            slowRelayer: msg.sender
-        });
-        bytes memory priceRequestAncillaryData = getRelayAncillaryData(newDeposit.relayData);
+        newDeposit.relayData = relayData;
+        newDeposit.ancillaryData = priceRequestAncillaryData;
 
         // Request a price for the relay identifier and propose "true" optimistically. These methods will pull the
         // (proposer reward + proposer bond + final fee) from the caller.
