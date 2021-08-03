@@ -47,14 +47,16 @@ contract BridgePool is Testable {
         address l1Token;
         address slowRelayer;
     }
+
+    // TODO: Rename Deposit --> Relay since the Relay is derived from the Deposit.
     struct Deposit {
         DepositState depositState;
         DepositType depositType;
         // A deposit can have both a slow and an instant relayer if a slow relay is "sped up" from slow to instant.
         // We want to store both addresses for separate payouts.
         address instantRelayer;
-        // Store relay data that we'll use to settle finalized or disputed relays.
-        RelayAncillaryDataContents relayData;
+        // Store unique hash derived from all of the data neccessary to construct deposit and relay data.
+        bytes32 depositHash;
     }
     // Associates each deposit with a unique hash derived from its constituent data..
     mapping(bytes => Deposit) public deposits;
@@ -152,7 +154,7 @@ contract BridgePool is Testable {
         // Save new deposit:
         newDeposit.depositState = DepositState.PendingSlow;
         newDeposit.depositType = DepositType.Slow;
-        newDeposit.relayData = relayData;
+        newDeposit.depositHash = getRelayHash(relayData);
 
         // Request a price for the relay identifier and propose "true" optimistically. These methods will pull the
         // (proposer reward + proposer bond + final fee) from the caller.
@@ -185,6 +187,56 @@ contract BridgePool is Testable {
     function finalizeRelay(uint256 depositId) public {}
 
     function settleDisputedRelay(uint256 depositId, address slowRelayer) public {}
+
+    function getRelayHash(RelayAncillaryDataContents memory _relayData) public view returns (bytes32) {
+        return
+            keccak256(
+                abi.encodePacked(
+                    _relayData.depositId,
+                    _relayData.l2Sender,
+                    _relayData.recipient,
+                    _relayData.depositTimestamp,
+                    _relayData.l1Token,
+                    _relayData.amount,
+                    _relayData.maxFeePct,
+                    _relayData.proposerRewardPct,
+                    _relayData.realizedFeePct,
+                    _relayData.slowRelayer
+                )
+            );
+    }
+
+    function decodeRelayHash(bytes32 _relayHash) public view returns (RelayAncillaryDataContents memory) {
+        (
+            uint64 depositId,
+            address l2Sender,
+            address recipient,
+            uint64 depositTimestamp,
+            address l1Token,
+            uint256 amount,
+            uint64 maxFeePct,
+            uint64 proposerRewardPct,
+            uint64 realizedFeePct,
+            address slowRelayer
+        ) =
+            abi.decode(
+                _relayHash,
+                (uint64, address, address, uint64, address, uint256, uint64, uint64, uint64, address)
+            );
+        return
+            RelayAncillaryDataContents({
+                depositId: depositId,
+                l2Sender: l2Sender,
+                recipient: recipient,
+                depositTimestamp: depositTimestamp,
+                l1Token: l1Token,
+                amount: amount,
+                maxFeePct: maxFeePct,
+                proposerRewardPct: proposerRewardPct,
+                realizedFeePct: realizedFeePct,
+                slowRelayer: slowRelayer
+            });
+    }
 
     /**
      * @notice Returns ancillary data containing all relevant Relay data that voters can format into UTF8 and use to
