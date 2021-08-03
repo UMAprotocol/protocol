@@ -8,6 +8,8 @@
 
 import abiDecoder from "abi-decoder";
 
+export type AbiDecoder = typeof abiDecoder;
+
 interface Context {
   keys: () => string[];
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

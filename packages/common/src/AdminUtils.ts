@@ -1,7 +1,7 @@
-import { getAbiDecoder } from "./AbiUtils";
+import { getAbiDecoder, AbiDecoder } from "./AbiUtils";
 import type { BN } from "./types";
 
-let abiDecoder: ReturnType<typeof getAbiDecoder>;
+let abiDecoder: AbiDecoder;
 
 interface Transaction {
   data?: string;
