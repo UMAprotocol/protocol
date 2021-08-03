@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "./BridgePoolFactoryInterface.sol";
+import "./BridgePoolFactory.sol";
 import "../../../contracts/oracle/interfaces/OptimisticOracleInterface.sol";
 import "../../../contracts/oracle/interfaces/StoreInterface.sol";
 import "../../../contracts/oracle/interfaces/FinderInterface.sol";
@@ -26,7 +26,7 @@ contract BridgePool is Testable {
     using FixedPoint for FixedPoint.Unsigned;
 
     // Administrative contract that deployed this contract and also houses all state variables needed to relay deposits.
-    BridgePoolFactoryInterface public bridgePoolFactory;
+    BridgePoolFactory public bridgePoolFactory;
 
     // A Deposit represents a transfer that originated on an L2 DepositBox contract and can be bridged via this contract.
     enum DepositState { Uninitialized, PendingSlow, PendingInstant, FinalizedSlow, FinalizedInstant }
@@ -85,17 +85,21 @@ contract BridgePool is Testable {
     event ProvidedLiquidity(address indexed token, uint256 amount, uint256 lpTokensMinted, address liquidityProvider);
 
     constructor(address _bridgePoolFactory, address _timer) Testable(_timer) {
-        bridgePoolFactory = BridgePoolFactoryInterface(_bridgePoolFactory);
-        require(bridgePoolFactory.getFinder() != address(0), "Invalid bridge pool factory");
+        bridgePoolFactory = BridgePoolFactory(_bridgePoolFactory);
+        require(bridgePoolFactory.finder() != address(0), "Invalid bridge pool factory");
     }
 
-    // Liquidity provider functions
+    /*********************************
+     * Liquidity Provision Functions *
+     *********************************/
 
     function deposit(address l1Token, uint256 amount) public {}
 
     function withdraw(address lpToken, uint256 amount) public {}
 
-    // Relayer functions
+    /*********************************
+     * Relayer Functions *
+     *********************************/
 
     /**
      * @notice Called by Relayer to execute Slow relay from L2 to L1, fulfilling a corresponding deposit order.
@@ -125,7 +129,6 @@ contract BridgePool is Testable {
         uint256 maxFeePct,
         uint256 proposerRewardPct
     ) public {
-        // TODO: Should this perform a check that the amount to relay minus fees and rewards is <= current balance?
         require(realizedFeePct <= maxFeePct, "Invalid realized fee");
         Deposit storage newDeposit = deposits[depositId];
         require(newDeposit.depositState == DepositState.Uninitialized, "Pending relay for deposit ID exists");
@@ -135,20 +138,22 @@ contract BridgePool is Testable {
             "Pending dispute by relayer for deposit ID exists"
         );
 
-        RelayAncillaryDataContents memory newRelayData =
-            RelayAncillaryDataContents({
-                depositId: depositId,
-                l2Sender: l2Sender,
-                recipient: recipient,
-                depositTimestamp: depositTimestamp,
-                l1Token: l1Token,
-                amount: amount,
-                maxFeePct: maxFeePct,
-                proposerRewardPct: proposerRewardPct,
-                realizedFeePct: realizedFeePct,
-                slowRelayer: msg.sender
-            });
-        bytes memory customAncillaryData = getRelayAncillaryData(newRelayData);
+        // Save new deposit:
+        newDeposit.depositState = DepositState.PendingSlow;
+        newDeposit.depositType = DepositType.Slow;
+        newDeposit.relayData = RelayAncillaryDataContents({
+            depositId: depositId,
+            l2Sender: l2Sender,
+            recipient: recipient,
+            depositTimestamp: depositTimestamp,
+            l1Token: l1Token,
+            amount: amount,
+            maxFeePct: maxFeePct,
+            proposerRewardPct: proposerRewardPct,
+            realizedFeePct: realizedFeePct,
+            slowRelayer: msg.sender
+        });
+        newDeposit.priceRequestAncillaryData = getRelayAncillaryData(newDeposit.relayData);
 
         // Request a price for the relay identifier and propose "true" optimistically. These methods will pull the
         // (proposer reward + proposer bond + final fee) from the caller.
@@ -157,14 +162,14 @@ contract BridgePool is Testable {
         // that are always "in the future" relative to L1 blocks, then the OptimisticOracle would always reject
         // requests.
         uint256 requestTimestamp = getCurrentTime();
-        _requestOraclePriceRelay(l1Token, amount, requestTimestamp, customAncillaryData, proposerRewardPct);
-        _proposeOraclePriceRelay(l1Token, amount, depositTimestamp, customAncillaryData);
-
-        // Save new deposit:
-        newDeposit.depositState = DepositState.PendingSlow;
-        newDeposit.depositType = DepositType.Slow;
-        newDeposit.relayData = newRelayData;
-        newDeposit.priceRequestAncillaryData = customAncillaryData;
+        _requestOraclePriceRelay(
+            l1Token,
+            amount,
+            requestTimestamp,
+            newDeposit.priceRequestAncillaryData,
+            proposerRewardPct
+        );
+        _proposeOraclePriceRelay(l1Token, amount, depositTimestamp, newDeposit.priceRequestAncillaryData);
 
         // TODO: There is more data we'd like to emit, such as depositId, but we are limited by how many variables
         // we can fit into an event. Perhaps we need multiple events? Or think more critically about what information
@@ -178,7 +183,7 @@ contract BridgePool is Testable {
             amount,
             proposerRewardPct,
             realizedFeePct,
-            bridgePoolFactory.getDepositContract()
+            bridgePoolFactory.depositContract()
         );
     }
 
@@ -253,27 +258,27 @@ contract BridgePool is Testable {
         intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
             intermediateAncillaryData,
             "depositContract",
-            bridgePoolFactory.getDepositContract()
+            bridgePoolFactory.depositContract()
         );
 
         return intermediateAncillaryData;
     }
 
-    // Internal functions
+    /**********************
+     * Internal Functions *
+     **********************/
 
     function _getOptimisticOracle() private view returns (OptimisticOracleInterface) {
         return
             OptimisticOracleInterface(
-                FinderInterface(bridgePoolFactory.getFinder()).getImplementationAddress(
-                    OracleInterfaces.OptimisticOracle
-                )
+                FinderInterface(bridgePoolFactory.finder()).getImplementationAddress(OracleInterfaces.OptimisticOracle)
             );
     }
 
     function _getStore() private view returns (StoreInterface) {
         return
             StoreInterface(
-                FinderInterface(bridgePoolFactory.getFinder()).getImplementationAddress(OracleInterfaces.Store)
+                FinderInterface(bridgePoolFactory.finder()).getImplementationAddress(OracleInterfaces.Store)
             );
     }
 
@@ -286,7 +291,7 @@ contract BridgePool is Testable {
     ) private {
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
         uint256 proposerBondPct =
-            FixedPoint.Unsigned(bridgePoolFactory.getProposerBondPct()).div(FixedPoint.fromUnscaledUint(1)).rawValue;
+            FixedPoint.Unsigned(bridgePoolFactory.proposerBondPct()).div(FixedPoint.fromUnscaledUint(1)).rawValue;
 
         // Optimistic oracle will pull proposer reward from passive LP pool.
         uint256 proposerReward =
@@ -296,9 +301,12 @@ contract BridgePool is Testable {
                 .mul(FixedPoint.Unsigned(amount))
                 .rawValue;
 
+        // Sanity check that pool balance is enough to cover relay amount + proposer reward.
+        require(IERC20(l1Token).balanceOf(address(this)) >= amount + proposerReward, "Insufficient pool balance");
+
         IERC20(l1Token).safeApprove(address(optimisticOracle), proposerReward);
         optimisticOracle.requestPrice(
-            bridgePoolFactory.getIdentifier(),
+            bridgePoolFactory.identifier(),
             requestTimestamp,
             customAncillaryData,
             IERC20(l1Token),
@@ -307,20 +315,15 @@ contract BridgePool is Testable {
 
         // Set the Optimistic oracle liveness for the price request.
         optimisticOracle.setCustomLiveness(
-            bridgePoolFactory.getIdentifier(),
+            bridgePoolFactory.identifier(),
             requestTimestamp,
             customAncillaryData,
-            bridgePoolFactory.getOptimisticOracleLiveness()
+            bridgePoolFactory.optimisticOracleLiveness()
         );
 
         // Set the Optimistic oracle proposer bond for the price request.
         uint256 proposerBond = FixedPoint.Unsigned(proposerBondPct).mul(FixedPoint.Unsigned(amount)).rawValue;
-        optimisticOracle.setBond(
-            bridgePoolFactory.getIdentifier(),
-            requestTimestamp,
-            customAncillaryData,
-            proposerBond
-        );
+        optimisticOracle.setBond(bridgePoolFactory.identifier(), requestTimestamp, customAncillaryData, proposerBond);
     }
 
     function _proposeOraclePriceRelay(
@@ -331,7 +334,7 @@ contract BridgePool is Testable {
     ) private {
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
         uint256 proposerBondPct =
-            FixedPoint.Unsigned(bridgePoolFactory.getProposerBondPct()).div(FixedPoint.fromUnscaledUint(1)).rawValue;
+            FixedPoint.Unsigned(bridgePoolFactory.proposerBondPct()).div(FixedPoint.fromUnscaledUint(1)).rawValue;
         uint256 finalFee = _getStore().computeFinalFee(address(l1Token)).rawValue;
 
         uint256 totalBond =
@@ -347,7 +350,7 @@ contract BridgePool is Testable {
         optimisticOracle.proposePriceFor(
             msg.sender,
             address(this),
-            bridgePoolFactory.getIdentifier(),
+            bridgePoolFactory.identifier(),
             requestTimestamp,
             customAncillaryData,
             1e18

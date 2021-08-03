@@ -77,7 +77,7 @@ describe("BridgePoolFactory", () => {
       await assertEventEmitted(txn, bridgePoolFactory, "SetDepositContract", (ev) => {
         return ev.l2DepositContract === newDepositContract;
       });
-      assert.equal(await bridgePoolFactory.methods.getDepositContract().call(), newDepositContract);
+      assert.equal(await bridgePoolFactory.methods.depositContract().call(), newDepositContract);
     });
     it("Set relay identifier", async () => {
       const newIdentifier = utf8ToHex("NEW_IDENTIFIER");
@@ -94,7 +94,7 @@ describe("BridgePoolFactory", () => {
       await assertEventEmitted(txn, bridgePoolFactory, "SetRelayIdentifier", (ev) => {
         return hexToUtf8(ev.identifier) === hexToUtf8(newIdentifier);
       });
-      assert.equal(hexToUtf8(await bridgePoolFactory.methods.getIdentifier().call()), hexToUtf8(newIdentifier));
+      assert.equal(hexToUtf8(await bridgePoolFactory.methods.identifier().call()), hexToUtf8(newIdentifier));
     });
     it("Set optimistic oracle liveness", async () => {
       const newLiveness = 100;
@@ -110,7 +110,7 @@ describe("BridgePoolFactory", () => {
         return ev.liveness.toString() === newLiveness.toString();
       });
       assert.equal(
-        (await bridgePoolFactory.methods.getOptimisticOracleLiveness().call()).toString(),
+        (await bridgePoolFactory.methods.optimisticOracleLiveness().call()).toString(),
         newLiveness.toString()
       );
     });
@@ -125,7 +125,7 @@ describe("BridgePoolFactory", () => {
       await assertEventEmitted(txn, bridgePoolFactory, "SetProposerBondPct", (ev) => {
         return ev.proposerBondPct.toString() === newBond.toString();
       });
-      assert.equal((await bridgePoolFactory.methods.getProposerBondPct().call()).toString(), newBond.toString());
+      assert.equal((await bridgePoolFactory.methods.proposerBondPct().call()).toString(), newBond.toString());
     });
     describe("Whitelist tokens", () => {
       it("Basic checks", async () => {
@@ -181,7 +181,7 @@ describe("BridgePoolFactory", () => {
         await assertEventEmitted(whitelistTxn, bridgePoolFactory, "WhitelistToken", (ev) => {
           return ev.l1Token === l1Token && ev.l2Token === l2Token && ev.bridgePool === bridgePoolAddress;
         });
-        const tokenMapping = await bridgePoolFactory.methods.getWhitelistedToken(l1Token).call();
+        const tokenMapping = await bridgePoolFactory.methods.whitelistedTokens(l1Token).call();
         assert.isTrue(
           tokenMapping.l2Token === l2Token && tokenMapping.bridgePool === bridgePoolAddress,
           "Token mapping not created correctly"

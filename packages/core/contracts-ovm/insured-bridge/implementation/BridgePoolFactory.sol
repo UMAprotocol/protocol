@@ -6,7 +6,6 @@ pragma solidity ^0.8.0;
 // changing their version is preferable to changing this contract to 0.7.x and defining compatible interfaces for all
 // of the imported DVM contracts below.
 import "./OVM_CrossDomainEnabled.sol";
-import "./BridgePoolFactoryInterface.sol";
 import "../../../contracts/oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../../contracts/oracle/interfaces/FinderInterface.sol";
 import "../../../contracts/oracle/implementation/Constants.sol";
@@ -18,19 +17,25 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * responsible for deploying new BridgePools, which houses passive liquidity and enables relaying of L2 deposits.
  * @dev The owner of this contract can call permissioned functions on the L2 DepositBox.
  */
-contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, OVM_CrossDomainEnabled {
+contract BridgePoolFactory is Ownable, OVM_CrossDomainEnabled {
     // Finder used to point to latest OptimisticOracle and other DVM contracts.
-    address private finder;
+    address public finder;
 
     // L2 Deposit contract that originates deposits that can be fulfilled by this contract.
-    address private depositContract;
+    address public depositContract;
 
-    mapping(address => L1TokenRelationships) private whitelistedTokens;
+    // L1 token addresses are mapped to their canonical token address on L2 and the BridgePool contract that houses
+    // relay liquidity for any deposits of the canonical L2 token.
+    struct L1TokenRelationships {
+        address l2Token;
+        address bridgePool;
+    }
+    mapping(address => L1TokenRelationships) public whitelistedTokens;
 
     // Set upon construction and can be reset by Owner.
-    uint256 private optimisticOracleLiveness;
-    uint256 private proposerBondPct;
-    bytes32 private identifier;
+    uint256 public optimisticOracleLiveness;
+    uint256 public proposerBondPct;
+    bytes32 public identifier;
 
     event SetDepositContract(address indexed l2DepositContract);
     event SetRelayIdentifier(bytes32 indexed identifier);
@@ -59,7 +64,9 @@ contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, OVM_CrossDoma
         _setIdentifier(_identifier);
     }
 
-    // Admin functions
+    /**********************
+     * Admin Functions *
+     **********************/
 
     /**
      * @notice Sets new price identifier to use for relayed deposits. BridgePools will read the identifier from this
@@ -138,32 +145,9 @@ contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, OVM_CrossDoma
 
     function pauseL2Deposits() public onlyOwner {}
 
-    // Interface view methods exposed to child BridgePool contracts.
-    function getFinder() external view override returns (address) {
-        return finder;
-    }
-
-    function getDepositContract() external view override returns (address) {
-        return depositContract;
-    }
-
-    function getWhitelistedToken(address l1Token) external view override returns (L1TokenRelationships memory) {
-        return whitelistedTokens[l1Token];
-    }
-
-    function getOptimisticOracleLiveness() external view override returns (uint256) {
-        return optimisticOracleLiveness;
-    }
-
-    function getProposerBondPct() external view override returns (uint256) {
-        return proposerBondPct;
-    }
-
-    function getIdentifier() external view override returns (bytes32) {
-        return identifier;
-    }
-
-    // Internal functions
+    /**********************
+     * Internal Functions *
+     **********************/
 
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface) {
         return
@@ -181,7 +165,6 @@ contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, OVM_CrossDoma
 
     function _setIdentifier(bytes32 _identifier) private {
         require(_getIdentifierWhitelist().isIdentifierSupported(_identifier), "Identifier not registered");
-        // TODO: Should we validate this _identifier? Perhaps check that its not 0x?
         identifier = _identifier;
         emit SetRelayIdentifier(identifier);
     }

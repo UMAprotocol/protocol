@@ -49,7 +49,10 @@ const defaultMaxFee = toWei("0.25");
 const defaultRealizedFee = toWei("0.1");
 const finalFee = toWei("1");
 const initialPoolLiquidity = toWei("1000");
-const relayAmount = toWei("100");
+const relayAmount = toBN(initialPoolLiquidity)
+  .mul(toBN(toWei("0.1")))
+  .div(toBN(toWei("1")))
+  .toString();
 const totalRelayBond = toBN(defaultProposerBondPct)
   .mul(toBN(relayAmount))
   .div(toBN(toWei("1")))
@@ -191,8 +194,13 @@ describe("BridgePool", () => {
         )
       );
 
-      // Fails if pool doesn't have enough funds to cover reward.
-      // e.g. setting relay amount to the pool's full balance and the reward % to >100% will induce this
+      // Note: For the following tests, mint relayer enough balance such that their balance isn't the reason why the
+      // contract call reverts.
+      await l1Token.methods.mint(relayer, initialPoolLiquidity).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, initialPoolLiquidity).send({ from: relayer });
+
+      // Fails if pool doesn't have enough funds to cover reward; request price will revert when it tries to pull reward.
+      // - setting relay amount to the pool's full balance and the reward % to >100% will induce this
       assert(
         await didContractThrow(
           bridgePool.methods
@@ -206,6 +214,29 @@ describe("BridgePool", () => {
               relayAncillaryData.realizedFeePct,
               relayAncillaryData.maxFeePct,
               toWei("1.01")
+            )
+            .send({ from: relayer })
+        )
+      );
+
+      // Fails if withdrawal amount + proposer reward > pool balance. Setting relay amount to 99% of pool's full
+      // balance and then reward % to 15%, where the relay amount is already assumed to be 10% of the full balance,
+      // means that total withdrawal % = (0.99 + 0.15 * 0.1) > 1.0
+      assert(
+        await didContractThrow(
+          bridgePool.methods
+            .relayDeposit(
+              relayAncillaryData.depositId,
+              relayAncillaryData.depositTimestamp,
+              relayAncillaryData.recipient,
+              relayAncillaryData.l2Sender,
+              relayAncillaryData.l1Token,
+              toBN(initialPoolLiquidity)
+                .mul(toBN(toWei("0.99")))
+                .div(toBN(toWei("1"))),
+              relayAncillaryData.realizedFeePct,
+              relayAncillaryData.maxFeePct,
+              toWei("0.15")
             )
             .send({ from: relayer })
         )
