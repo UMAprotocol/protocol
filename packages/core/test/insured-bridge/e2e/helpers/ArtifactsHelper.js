@@ -18,7 +18,7 @@ function getOptimismArtifact(contractName, ovm = false) {
 
 function getLocalArtifact(contractName, ovm = false) {
   const coreContractsPath = findPathToRootOfPackage("@uma/core");
-  const artifactsPath = ovm ? `${coreContractsPath}/artifacts-ovm` : `${coreContractsPath}/artifacts`;
+  const artifactsPath = ovm ? `${coreContractsPath}artifacts-ovm` : `${coreContractsPath}artifacts`;
 
   return findArtifactFromPath(contractName, artifactsPath);
 }
