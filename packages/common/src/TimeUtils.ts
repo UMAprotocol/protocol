@@ -37,7 +37,7 @@ export async function getFromBlock(web3: Web3): Promise<number> {
  * @param seconds the number of seconds.
  * @param cushionPercentage the percentage to add to the number as a cushion.
  */
-async function estimateBlocksElapsed(seconds: number, cushionPercentage = 0.0): Promise<number> {
+export async function estimateBlocksElapsed(seconds: number, cushionPercentage = 0.0): Promise<number> {
   const cushionMultiplier = cushionPercentage + 1.0;
   const averageBlockTime = await averageBlockTimeSeconds();
   return Math.floor((seconds * cushionMultiplier) / averageBlockTime);
