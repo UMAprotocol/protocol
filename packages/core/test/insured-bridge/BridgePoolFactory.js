@@ -129,156 +129,285 @@ describe("BridgePoolFactory", () => {
       });
       assert.equal((await bridgePoolFactory.methods.proposerBondPct().call()).toString(), newBond.toString());
     });
-    describe("Whitelist tokens", () => {
-      it("Basic checks", async () => {
-        assert(
-          await didContractThrow(
-            bridgePoolFactory.methods.whitelistToken(l1Token, l2Token, defaultGasLimit).send({ from: rando })
-          ),
-          "OnlyOwner modifier not enforced"
-        );
+    describe("CrossDomain Admin functions", () => {
+      describe("Whitelist tokens", () => {
+        it("Basic checks", async () => {
+          assert(
+            await didContractThrow(
+              bridgePoolFactory.methods.whitelistToken(l1Token, l2Token, defaultGasLimit).send({ from: rando })
+            ),
+            "OnlyOwner modifier not enforced"
+          );
 
-        // Fails if depositContract not set in BridgeRouter
-        assert(
-          await didContractThrow(
-            bridgePoolFactory.methods.whitelistToken(l1Token, l2Token, defaultGasLimit).send({ from: owner })
-          ),
-          "Deposit contract not set"
-        );
-        await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
+          // Fails if depositContract not set in BridgeRouter
+          assert(
+            await didContractThrow(
+              bridgePoolFactory.methods.whitelistToken(l1Token, l2Token, defaultGasLimit).send({ from: owner })
+            ),
+            "Deposit contract not set"
+          );
+          await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
 
-        // Fails if l1 token is not whitelisted
-        assert(
-          await didContractThrow(
-            bridgePoolFactory.methods.whitelistToken(l1Token, l2Token, defaultGasLimit).send({ from: owner })
-          ),
-          "Deposit contract not set"
-        );
-        await collateralWhitelist.methods.addToWhitelist(l1Token).send({ from: owner });
+          // Fails if l1 token is not whitelisted
+          assert(
+            await didContractThrow(
+              bridgePoolFactory.methods.whitelistToken(l1Token, l2Token, defaultGasLimit).send({ from: owner })
+            ),
+            "Deposit contract not set"
+          );
+          await collateralWhitelist.methods.addToWhitelist(l1Token).send({ from: owner });
 
-        // Successful call
-        await bridgePoolFactory.methods.whitelistToken(l1Token, l2Token, defaultGasLimit).send({ from: owner });
-      });
-      it("Add token mapping on L1, deploys a new BridgePool, and sends xchain message", async () => {
-        await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
-        await collateralWhitelist.methods.addToWhitelist(l1Token).send({ from: owner });
-        const whitelistTxn = await bridgePoolFactory.methods
-          .whitelistToken(l1Token, l2Token, defaultGasLimit)
-          .send({ from: owner });
-        const whitelistCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
-
-        // Grab new bridge pool address from event.
-        const deploymentEvents = await bridgePoolFactory.getPastEvents("DeployedBridgePool", {
-          fromBlock: whitelistTxn.blockNumber,
-          toBlock: whitelistTxn.blockNumber,
+          // Successful call
+          await bridgePoolFactory.methods.whitelistToken(l1Token, l2Token, defaultGasLimit).send({ from: owner });
         });
-        const bridgePoolAddress = deploymentEvents[0].returnValues.bridgePool;
+        it("Add token mapping on L1, deploys a new BridgePool, and sends xchain message", async () => {
+          await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
+          await collateralWhitelist.methods.addToWhitelist(l1Token).send({ from: owner });
+          const whitelistTxn = await bridgePoolFactory.methods
+            .whitelistToken(l1Token, l2Token, defaultGasLimit)
+            .send({ from: owner });
+          const whitelistCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
 
-        // Validate that BridgePool stores BridgePoolFactory address correctly.
-        const bridgePool = new web3.eth.Contract(getContract("BridgePool").abi, bridgePoolAddress);
-        assert.equal(
-          await bridgePool.methods.bridgePoolFactory().call({ from: owner }),
-          bridgePoolFactory.options.address
-        );
+          // Grab new bridge pool address from event.
+          const deploymentEvents = await bridgePoolFactory.getPastEvents("DeployedBridgePool", {
+            fromBlock: whitelistTxn.blockNumber,
+            toBlock: whitelistTxn.blockNumber,
+          });
+          const bridgePoolAddress = deploymentEvents[0].returnValues.bridgePool;
 
-        // Check for L1 logs and state change
-        await assertEventEmitted(whitelistTxn, bridgePoolFactory, "WhitelistToken", (ev) => {
-          return ev.l1Token === l1Token && ev.l2Token === l2Token && ev.bridgePool === bridgePoolAddress;
+          // Validate that BridgePool stores BridgePoolFactory address correctly.
+          const bridgePool = new web3.eth.Contract(getContract("BridgePool").abi, bridgePoolAddress);
+          assert.equal(
+            await bridgePool.methods.bridgePoolFactory().call({ from: owner }),
+            bridgePoolFactory.options.address
+          );
+
+          // Check for L1 logs and state change
+          await assertEventEmitted(whitelistTxn, bridgePoolFactory, "WhitelistToken", (ev) => {
+            return ev.l1Token === l1Token && ev.l2Token === l2Token && ev.bridgePool === bridgePoolAddress;
+          });
+          const tokenMapping = await bridgePoolFactory.methods.whitelistedTokens(l1Token).call();
+          assert.isTrue(
+            tokenMapping.l2Token === l2Token && tokenMapping.bridgePool === bridgePoolAddress,
+            "Token mapping not created correctly"
+          );
+
+          // Validate xchain message
+          assert.equal(
+            whitelistCallToMessengerCall._target,
+            depositBoxImpersonator,
+            "xchain target should be deposit contract"
+          );
+          const expectedAbiData = depositBox.methods.whitelistToken(l1Token, l2Token, bridgePoolAddress).encodeABI();
+          assert.equal(whitelistCallToMessengerCall._message, expectedAbiData, "xchain message bytes unexpected");
+          assert.equal(whitelistCallToMessengerCall._gasLimit, defaultGasLimit, "xchain gas limit unexpected");
         });
-        const tokenMapping = await bridgePoolFactory.methods.whitelistedTokens(l1Token).call();
-        assert.isTrue(
-          tokenMapping.l2Token === l2Token && tokenMapping.bridgePool === bridgePoolAddress,
-          "Token mapping not created correctly"
-        );
-
-        // Validate xchain message
-        assert.equal(
-          whitelistCallToMessengerCall._target,
-          depositBoxImpersonator,
-          "xchain target should be deposit contract"
-        );
-        const expectedAbiData = depositBox.methods.whitelistToken(l1Token, l2Token, bridgePoolAddress).encodeABI();
-        assert.equal(whitelistCallToMessengerCall._message, expectedAbiData, "xchain message bytes unexpected");
-        assert.equal(whitelistCallToMessengerCall._gasLimit, defaultGasLimit, "xchain gas limit unexpected");
-      });
-      it("Works with custom gas", async () => {
-        const customGasLimit = 10;
-        await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
-        await bridgePoolFactory.methods.whitelistToken(l1Token, l2Token, customGasLimit).send({ from: owner });
-        const whitelistCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
-        assert.equal(whitelistCallToMessengerCall._gasLimit, customGasLimit, "xchain gas limit unexpected");
-      });
-      it("Duplicate call does not deploy a new BridgePool", async function () {
-        await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
-        const deploymentTxn = await bridgePoolFactory.methods
-          .whitelistToken(l1Token, l2Token, defaultGasLimit)
-          .send({ from: owner });
-
-        // Grab new bridge pool address from event.
-        const deploymentEvents = await bridgePoolFactory.getPastEvents("DeployedBridgePool", {
-          fromBlock: deploymentTxn.blockNumber,
-          toBlock: deploymentTxn.blockNumber,
+        it("Works with custom gas", async () => {
+          const customGasLimit = 10;
+          await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
+          await bridgePoolFactory.methods.whitelistToken(l1Token, l2Token, customGasLimit).send({ from: owner });
+          const whitelistCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
+          assert.equal(whitelistCallToMessengerCall._gasLimit, customGasLimit, "xchain gas limit unexpected");
         });
-        const bridgePoolAddress = deploymentEvents[0].returnValues.bridgePool;
+        it("Duplicate call does not deploy a new BridgePool", async function () {
+          await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
+          const deploymentTxn = await bridgePoolFactory.methods
+            .whitelistToken(l1Token, l2Token, defaultGasLimit)
+            .send({ from: owner });
 
-        // This should not deploy a second BridgePool
-        const newL2Token = rando;
-        const repeatDeploymentTxn = await bridgePoolFactory.methods
-          .whitelistToken(l1Token, newL2Token, defaultGasLimit)
-          .send({ from: owner });
-        const repeatDeploymentEvents = await bridgePoolFactory.getPastEvents("DeployedBridgePool", {
-          fromBlock: repeatDeploymentTxn.blockNumber,
-          toBlock: repeatDeploymentTxn.blockNumber,
+          // Grab new bridge pool address from event.
+          const deploymentEvents = await bridgePoolFactory.getPastEvents("DeployedBridgePool", {
+            fromBlock: deploymentTxn.blockNumber,
+            toBlock: deploymentTxn.blockNumber,
+          });
+          const bridgePoolAddress = deploymentEvents[0].returnValues.bridgePool;
+
+          // This should not deploy a second BridgePool
+          const newL2Token = rando;
+          const repeatDeploymentTxn = await bridgePoolFactory.methods
+            .whitelistToken(l1Token, newL2Token, defaultGasLimit)
+            .send({ from: owner });
+          const repeatDeploymentEvents = await bridgePoolFactory.getPastEvents("DeployedBridgePool", {
+            fromBlock: repeatDeploymentTxn.blockNumber,
+            toBlock: repeatDeploymentTxn.blockNumber,
+          });
+          assert.equal(repeatDeploymentEvents.length, 0);
+
+          // This should still emit a cross-chain admin transaction.
+          const whitelistCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
+          assert.equal(
+            whitelistCallToMessengerCall._target,
+            depositBoxImpersonator,
+            "xchain target should be deposit contract"
+          );
+          const expectedAbiData = depositBox.methods.whitelistToken(l1Token, newL2Token, bridgePoolAddress).encodeABI();
+          assert.equal(whitelistCallToMessengerCall._message, expectedAbiData, "xchain message bytes unexpected");
+          assert.equal(whitelistCallToMessengerCall._gasLimit, defaultGasLimit, "xchain gas limit unexpected");
         });
-        assert.equal(repeatDeploymentEvents.length, 0);
-
-        // This should still emit a cross-chain admin transaction.
-        const whitelistCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
-        assert.equal(
-          whitelistCallToMessengerCall._target,
-          depositBoxImpersonator,
-          "xchain target should be deposit contract"
-        );
-        const expectedAbiData = depositBox.methods.whitelistToken(l1Token, newL2Token, bridgePoolAddress).encodeABI();
-        assert.equal(whitelistCallToMessengerCall._message, expectedAbiData, "xchain message bytes unexpected");
-        assert.equal(whitelistCallToMessengerCall._gasLimit, defaultGasLimit, "xchain gas limit unexpected");
       });
-    });
-    describe("Set bridge admin", () => {
-      it("Changes admin address", async () => {
-        await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
-        const setAdminTxn = await bridgePoolFactory.methods.setBridgeAdmin(defaultGasLimit).send({ from: owner });
+      describe("Set bridge admin", () => {
+        it("Basic checks", async () => {
+          assert(
+            await didContractThrow(bridgePoolFactory.methods.setBridgeAdmin(defaultGasLimit).send({ from: rando })),
+            "OnlyOwner modifier not enforced"
+          );
 
-        assert.isTrue(
-          l1CrossDomainMessengerMock.smocked.sendMessage.calls.length === 1,
-          "Unexpected number of xdomain messages"
-        );
-        const setAdminCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
+          // Fails if depositContract not set in BridgeRouter
+          assert(
+            await didContractThrow(bridgePoolFactory.methods.setBridgeAdmin(defaultGasLimit).send({ from: owner })),
+            "Deposit contract not set"
+          );
+          await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
 
-        // Check for L1 logs and state change
-        await assertEventEmitted(setAdminTxn, bridgePoolFactory, "SetBridgeAdmin", (ev) => {
-          return ev.bridgeAdmin === bridgePoolFactory.options.address;
+          // Successful call
+          await bridgePoolFactory.methods.setBridgeAdmin(defaultGasLimit).send({ from: owner });
         });
+        it("Changes admin address", async () => {
+          await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
+          const setAdminTxn = await bridgePoolFactory.methods.setBridgeAdmin(defaultGasLimit).send({ from: owner });
+          const setAdminCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
 
-        // Validate xchain message
-        assert.equal(
-          setAdminCallToMessengerCall._target,
-          depositBoxImpersonator,
-          "xchain target should be deposit contract"
-        );
-        const expectedAbiData = depositBox.methods.setBridgeAdmin(bridgePoolFactory.options.address).encodeABI();
-        assert.equal(setAdminCallToMessengerCall._message, expectedAbiData, "xchain message bytes unexpected");
-        assert.equal(setAdminCallToMessengerCall._gasLimit, defaultGasLimit, "xchain gas limit unexpected");
+          // Check for L1 logs and state change
+          await assertEventEmitted(setAdminTxn, bridgePoolFactory, "SetBridgeAdmin", (ev) => {
+            return ev.bridgeAdmin === bridgePoolFactory.options.address;
+          });
+
+          // Validate xchain message
+          assert.equal(
+            setAdminCallToMessengerCall._target,
+            depositBoxImpersonator,
+            "xchain target should be deposit contract"
+          );
+          const expectedAbiData = depositBox.methods.setBridgeAdmin(bridgePoolFactory.options.address).encodeABI();
+          assert.equal(setAdminCallToMessengerCall._message, expectedAbiData, "xchain message bytes unexpected");
+          assert.equal(setAdminCallToMessengerCall._gasLimit, defaultGasLimit, "xchain gas limit unexpected");
+        });
+        it("Works with custom gas", async () => {
+          const customGasLimit = 10;
+          await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
+          await bridgePoolFactory.methods.setBridgeAdmin(customGasLimit).send({ from: owner });
+          assert.equal(
+            l1CrossDomainMessengerMock.smocked.sendMessage.calls[0]._gasLimit,
+            customGasLimit,
+            "xchain gas limit unexpected"
+          );
+        });
       });
-      it("Works with custom gas", async () => {
-        const customGasLimit = 10;
-        await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
-        await bridgePoolFactory.methods.setBridgeAdmin(customGasLimit).send({ from: owner });
-        assert.equal(
-          l1CrossDomainMessengerMock.smocked.sendMessage.calls[0]._gasLimit,
-          customGasLimit,
-          "xchain gas limit unexpected"
-        );
+      describe("Set minimum bridge delay", () => {
+        it("Basic checks", async () => {
+          assert(
+            await didContractThrow(
+              bridgePoolFactory.methods
+                .setMinimumBridgingDelay(defaultBridgingDelay, defaultGasLimit)
+                .send({ from: rando })
+            ),
+            "OnlyOwner modifier not enforced"
+          );
+
+          // Fails if depositContract not set in BridgeRouter
+          assert(
+            await didContractThrow(
+              bridgePoolFactory.methods
+                .setMinimumBridgingDelay(defaultBridgingDelay, defaultGasLimit)
+                .send({ from: owner })
+            ),
+            "Deposit contract not set"
+          );
+          await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
+
+          // Successful call
+          await bridgePoolFactory.methods
+            .setMinimumBridgingDelay(defaultBridgingDelay, defaultGasLimit)
+            .send({ from: owner });
+        });
+        it("Sets delay", async () => {
+          await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
+          const setDelayTxn = await bridgePoolFactory.methods
+            .setMinimumBridgingDelay(defaultBridgingDelay, defaultGasLimit)
+            .send({ from: owner });
+          const setDelayCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
+
+          // Check for L1 logs and state change
+          await assertEventEmitted(setDelayTxn, bridgePoolFactory, "SetMinimumBridgingDelay", (ev) => {
+            return ev.newMinimumBridgingDelay.toString() === defaultBridgingDelay.toString();
+          });
+
+          // Validate xchain message
+          assert.equal(
+            setDelayCallToMessengerCall._target,
+            depositBoxImpersonator,
+            "xchain target should be deposit contract"
+          );
+          const expectedAbiData = depositBox.methods.setMinimumBridgingDelay(defaultBridgingDelay).encodeABI();
+          assert.equal(setDelayCallToMessengerCall._message, expectedAbiData, "xchain message bytes unexpected");
+          assert.equal(setDelayCallToMessengerCall._gasLimit, defaultGasLimit, "xchain gas limit unexpected");
+        });
+        it("Works with custom gas", async () => {
+          const customGasLimit = 10;
+          await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
+          await bridgePoolFactory.methods
+            .setMinimumBridgingDelay(defaultBridgingDelay, customGasLimit)
+            .send({ from: owner });
+          assert.equal(
+            l1CrossDomainMessengerMock.smocked.sendMessage.calls[0]._gasLimit,
+            customGasLimit,
+            "xchain gas limit unexpected"
+          );
+        });
+      });
+      describe("Pause deposits", () => {
+        it("Basic checks", async () => {
+          assert(
+            await didContractThrow(
+              bridgePoolFactory.methods.setEnableDeposits(false, defaultGasLimit).send({ from: rando })
+            ),
+            "OnlyOwner modifier not enforced"
+          );
+
+          // Fails if depositContract not set in BridgeRouter
+          assert(
+            await didContractThrow(
+              bridgePoolFactory.methods.setEnableDeposits(false, defaultGasLimit).send({ from: owner })
+            ),
+            "Deposit contract not set"
+          );
+          await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
+
+          // Successful call
+          await bridgePoolFactory.methods.setEnableDeposits(false, defaultGasLimit).send({ from: owner });
+        });
+        it("Sets boolean value", async () => {
+          await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
+          const setDelayTxn = await bridgePoolFactory.methods
+            .setEnableDeposits(false, defaultGasLimit)
+            .send({ from: owner });
+          const setDelayCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
+
+          // Check for L1 logs and state change
+          await assertEventEmitted(setDelayTxn, bridgePoolFactory, "DepositsEnabled", (ev) => {
+            return Boolean(ev.depositsEnabled) === false;
+          });
+
+          // Validate xchain message
+          assert.equal(
+            setDelayCallToMessengerCall._target,
+            depositBoxImpersonator,
+            "xchain target should be deposit contract"
+          );
+          const expectedAbiData = depositBox.methods.setEnableDeposits(false).encodeABI();
+          assert.equal(setDelayCallToMessengerCall._message, expectedAbiData, "xchain message bytes unexpected");
+          assert.equal(setDelayCallToMessengerCall._gasLimit, defaultGasLimit, "xchain gas limit unexpected");
+        });
+        it("Works with custom gas", async () => {
+          const customGasLimit = 10;
+          await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
+          await bridgePoolFactory.methods.setEnableDeposits(false, customGasLimit).send({ from: owner });
+          assert.equal(
+            l1CrossDomainMessengerMock.smocked.sendMessage.calls[0]._gasLimit,
+            customGasLimit,
+            "xchain gas limit unexpected"
+          );
+        });
       });
     });
   });

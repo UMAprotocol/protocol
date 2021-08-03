@@ -130,10 +130,10 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
     /**
      * @notice Changes the minimum time in seconds that must elapse between withdraws from L2->L1.
      * @dev Only callable by the existing bridgeAdmin via the optimism cross domain messenger.
-     * @param _MinimumBridgingDelay the new minimum delay.
+     * @param _minimumBridgingDelay the new minimum delay.
      */
-    function setMinimumBridgingDelay(uint64 _MinimumBridgingDelay) public onlyFromCrossDomainAccount(bridgeAdmin) {
-        _setMinimumBridgingDelay(_MinimumBridgingDelay);
+    function setMinimumBridgingDelay(uint64 _minimumBridgingDelay) public onlyFromCrossDomainAccount(bridgeAdmin) {
+        _setMinimumBridgingDelay(_minimumBridgingDelay);
     }
 
     /**

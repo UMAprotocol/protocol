@@ -45,6 +45,8 @@ contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, Testable, OVM
     event SetProposerBondPct(uint64 indexed proposerBondPct);
     event WhitelistToken(address indexed l1Token, address indexed l2Token, address indexed bridgePool);
     event DeployedBridgePool(address indexed bridgePool);
+    event SetMinimumBridgingDelay(uint64 newMinimumBridgingDelay);
+    event DepositsEnabled(bool depositsEnabled);
 
     // Add this modifier to methods that are expected to bridge admin functionality to the L2 Deposit contract, which
     // will cause unexpected behavior if the deposit contract isn't set and valid.
@@ -116,18 +118,53 @@ contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, Testable, OVM
         emit SetDepositContract(depositContract);
     }
 
+    /**************************************************
+     *        CROSSDOMAIN ADMIN FUNCTIONS             *
+     **************************************************/
+
     /**
-     * @notice Privileged account can set this contract as the admin address in the L2 Deposit contract.
+     * @notice Set this contract as the admin address in the L2 Deposit contract.
      * @dev Only callable by the current owner.
      * @param _l2Gas Gas limit to set for relayed message on L2
      */
-    function setBridgeAdmin(uint32 _l2Gas) public onlyOwner {
+    function setBridgeAdmin(uint32 _l2Gas) public onlyOwner depositContractSet {
         sendCrossDomainMessage(
             depositContract,
             _l2Gas,
             abi.encodeWithSignature("setBridgeAdmin(address)", address(this))
         );
         emit SetBridgeAdmin(address(this));
+    }
+
+    /**
+     * @notice Sets the minimum time between L2-->L1 token withdrawals in the L2 Deposit contract.
+     * @dev Only callable by the current owner.
+     * @param _minimumBridgingDelay the new minimum delay.
+     * @param _l2Gas Gas limit to set for relayed message on L2
+     */
+    function setMinimumBridgingDelay(uint64 _minimumBridgingDelay, uint32 _l2Gas) public onlyOwner depositContractSet {
+        sendCrossDomainMessage(
+            depositContract,
+            _l2Gas,
+            abi.encodeWithSignature("setMinimumBridgingDelay(uint64)", _minimumBridgingDelay)
+        );
+        emit SetMinimumBridgingDelay(_minimumBridgingDelay);
+    }
+
+    /**
+     * @notice Owner can pause/unpause L2 deposits for all tokens.
+     * @dev Only callable by the current owner. Will set the same setting in the L2 Deposit contract via the cross
+     * domain messenger.
+     * @param _depositsEnabled bool to set if the deposit box should accept/reject deposits.
+     * @param _l2Gas Gas limit to set for relayed message on L2
+     */
+    function setEnableDeposits(bool _depositsEnabled, uint32 _l2Gas) public onlyOwner depositContractSet {
+        sendCrossDomainMessage(
+            depositContract,
+            _l2Gas,
+            abi.encodeWithSignature("setEnableDeposits(bool)", _depositsEnabled)
+        );
+        emit DepositsEnabled(_depositsEnabled);
     }
 
     /**
@@ -171,8 +208,6 @@ contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, Testable, OVM
 
         emit WhitelistToken(_l1Token, _l2Token, whitelistedToken.bridgePool);
     }
-
-    function pauseL2Deposits() public onlyOwner {}
 
     /**************************************
      *        INTERNAL FUNCTIONS          *
