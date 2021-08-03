@@ -104,8 +104,8 @@ contract BridgePool is Testable {
      * @param depositId Unique ID corresponding to deposit order that caller wants to relay.
      * @param depositTimestamp Timestamp of Deposit emitted by L2 contract when order was initiated.
      * @param recipient Address on this network who should receive the relayed deposit.
-     * @param l1Token Token currency to pay recipient. This contract stores a mapping of
-     * `l1Token` to the canonical token currency on the L2 network that was deposited to the Deposit contract.
+     * @param l1Token Token currency to pay recipient. This contract stores a mapping of `l1Token` to the 
+     *     canonical token currency on the L2 network that was deposited to the Deposit contract.
      * @param amount Deposited amount.
      * @param realizedFeePct Computed offchain by caller, considering the amount of available liquidity for the token
      * currency needed to pay the recipient and the count of pending withdrawals at the `depositTimestamp`. This fee
