@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
+/**
+ * @notice The primary usage of this interface is for child `BridgePool` contracts to be able to read global state
+ * data from their parent `BridgePoolFactory` contract.
+ */
 interface BridgePoolFactoryInterface {
     // L1 token addresses are mapped to their canonical token address on L2 and the BridgePool contract that houses
     // relay liquidity for any deposits of the canonical L2 token.
