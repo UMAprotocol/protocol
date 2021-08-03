@@ -68,10 +68,13 @@ export default (appState: Dependencies) => {
     return sumTvl(addresses, currency);
   }
 
-  async function getTotalTvl(currency: CurrencySymbol = "usd") {
+  async function getTotalTvlSample(currency: CurrencySymbol = "usd") {
     assert(appState.stats.lsp[currency], "Invalid currency: " + currency);
-    const { value } = await appState.stats.lsp[currency].latest.tvl.getGlobal();
-    return value;
+    return appState.stats.lsp[currency].latest.tvl.getGlobal();
+  }
+  async function getTotalTvl(currency: CurrencySymbol = "usd") {
+    const result = await getTotalTvlSample(currency);
+    return result.value;
   }
   return {
     getFullState,
@@ -81,5 +84,6 @@ export default (appState: Dependencies) => {
     totalTvl,
     sumTvl,
     getTotalTvl,
+    getTotalTvlSample,
   };
 };

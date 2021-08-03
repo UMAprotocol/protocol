@@ -30,9 +30,9 @@ contract LongShortPair is Testable, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
 
-    /*********************************************
+    /*************************************
      *  LONG SHORT PAIR DATA STRUCTURES  *
-     *********************************************/
+     *************************************/
 
     // Define the contract's constructor parameters as a struct to enable more variables to be specified.
     struct ConstructorParams {

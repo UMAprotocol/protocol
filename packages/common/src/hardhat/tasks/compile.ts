@@ -1,4 +1,5 @@
 import path from "path";
+import { getAllFilesInPath } from "../../FileHelpers";
 
 // This file is mostly taken from the modified `compile` task file written by Synthetix: https://github.com/Synthetixio/synthetix
 
@@ -23,6 +24,12 @@ interface ExtendedConfig extends HttpNetworkConfig {
 internalTask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS, async (_, { config, network }, runSuper) => {
   let filePaths = await runSuper();
 
+  // Temp work around to exclude some directories from truffle while compiling with hardhat. Pulls in all contracts in
+  // the directory `contracts-ovm` to compile with hardhat.
+  const corePackagePath = require.resolve("@uma/core/package.json");
+  const corePath = corePackagePath.slice(0, corePackagePath.indexOf("package.json"));
+  filePaths = [...filePaths, ...getAllFilesInPath(`${corePath}/contracts-ovm`)];
+
   // Build absolute path for all directories on user-specified whitelist.
   const whitelist = (config.networks[network.name] as ExtendedConfig).compileWhitelist;
   if (whitelist && Array.isArray(whitelist)) {
@@ -38,6 +45,5 @@ internalTask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS, async (_, { config, network
       return false;
     });
   }
-
   return filePaths;
 });

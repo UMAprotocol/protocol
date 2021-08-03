@@ -1,21 +1,20 @@
 import { HardhatConfig } from "hardhat/types";
 
 const { getNodeUrl, mnemonic } = require("./TruffleConfig");
-const path = require("path");
 
 export function getHardhatConfig(
-  // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
-  configOverrides: any,
-  workingDir = "./",
+  configOverrides: Partial<HardhatConfig>,
+  _workingDir = "./",
   includeTruffle = true
 ): Partial<HardhatConfig> {
   // Hardhat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function
   // get access to the plugins as well.
   if (includeTruffle) require("@nomiclabs/hardhat-truffle5");
-  require("hardhat-gas-reporter");
   require("@nomiclabs/hardhat-web3");
-  require("hardhat-deploy");
   require("@nomiclabs/hardhat-etherscan");
+  require("@nomiclabs/hardhat-ethers");
+  require("hardhat-deploy");
+  require("hardhat-gas-reporter");
   require("@eth-optimism/hardhat-ovm");
   require("./gckms/KeyInjectorPlugin");
 
@@ -35,9 +34,15 @@ export function getHardhatConfig(
     settings: { optimizer: { enabled: true, runs: 200 } },
   };
 
-  const defaultConfig = {
+  // Some tests should not be tested using hardhat. Define all tests that end with *e2e.js to be ignored.
+  const testBlacklist = [".e2e.js"];
+
+  const defaultConfig = ({
     solidity: {
-      compilers: [{ version: solcVersion, settings: { optimizer: { enabled: true, runs: 1000000 } } }],
+      compilers: [
+        { version: solcVersion, settings: { optimizer: { enabled: true, runs: 1000000 } } },
+        { version: "0.7.6", settings: { optimizer: { enabled: true, runs: 1000000 } } },
+      ],
       overrides: {
         "contracts/financial-templates/expiring-multiparty/ExpiringMultiParty.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
         "contracts/financial-templates/expiring-multiparty/ExpiringMultiPartyLib.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
@@ -49,7 +54,7 @@ export function getHardhatConfig(
         "contracts/oracle/implementation/test/VotingTest.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       },
     },
-    ovm: { solcVersion: "0.8.4-broken_alpha" },
+    ovm: { solcVersion: "0.7.6" },
     networks: {
       hardhat: {
         hardfork: "london",
@@ -58,8 +63,9 @@ export function getHardhatConfig(
         gas: 11500000,
         blockGasLimit: 15_000_000,
         timeout: 1800000,
+        testBlacklist,
       },
-      localhost: { url: "http://127.0.0.1:9545" },
+      localhost: { url: "http://127.0.0.1:9545", testBlacklist },
       rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true), accounts: { mnemonic } },
       kovan: { chainId: 42, url: getNodeUrl("kovan", true), accounts: { mnemonic } },
       goerli: { chainId: 5, url: getNodeUrl("goerli", true), accounts: { mnemonic } },
@@ -67,17 +73,17 @@ export function getHardhatConfig(
       matic: { chainId: 137, url: getNodeUrl("polygon-matic", true), accounts: { mnemonic } },
       mainnet: { chainId: 1, url: getNodeUrl("mainnet", true), accounts: { mnemonic } },
       optimism: {
+        ovm: true,
         url: "http://127.0.0.1:8545",
         accounts: { mnemonic: "test test test test test test test test test test test junk" },
         // This sets the gas price to 0 for all transactions on L2. We do this because account balances are not yet
         // automatically initiated with an ETH balance.
         gasPrice: 0,
-        // This sets the network as using the ovm and ensure contract will be compiled against that.
-        ovm: true,
         // We use custom logic to only compile contracts within the listed directories, as opposed to choosing which
         // ones to ignore, because there are more contracts to ignore than to include.
-        compileWhitelist: ["oracle/implementation/Finder.sol"],
+        compileWhitelist: ["insured-bridge/implementation/OVM_BridgeDepositBox.sol"],
         testWhitelist: ["oracle/Finder"],
+        testBlacklist,
       },
     },
     mocha: { timeout: 1800000 },
@@ -87,17 +93,7 @@ export function getHardhatConfig(
       apiKey: process.env.ETHERSCAN_API_KEY,
     },
     namedAccounts: { deployer: 0 },
-    external: {
-      deployments: {
-        mainnet: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/mainnet")],
-        mumbai: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/mumbai")],
-        matic: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/matic")],
-        rinkeby: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/rinkeby")],
-        kovan: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/kovan")],
-        goerli: [path.join(workingDir, "build/contracts"), path.join(workingDir, "deployments/goerli")],
-      },
-    },
-  };
+  } as unknown) as HardhatConfig; // Cast to allow extra properties.
 
   return { ...defaultConfig, ...configOverrides };
 }

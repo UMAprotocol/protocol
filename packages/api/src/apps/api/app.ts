@@ -90,10 +90,10 @@ export default async (env: ProcessEnv) => {
       global: {
         usd: {
           latest: {
-            tvl: empStats.JsMap("Latest Tvl"),
+            tvl: [0, "0"],
           },
           history: {
-            tvl: empStatsHistory.SortedJsMap("Tvl History"),
+            tvl: empStatsHistory.SortedJsMap("Tvl Global History"),
           },
         },
       },
@@ -137,6 +137,7 @@ export default async (env: ProcessEnv) => {
     lspCreator: Services.MultiLspCreator({ debug, addresses: lspCreatorAddresses }, appState),
     lsps: Services.LspState({ debug }, appState),
     lspStats: Services.stats.Lsp({ debug }, appState),
+    globalStats: Services.stats.Global({ debug }, appState),
   };
 
   // warm caches
@@ -179,6 +180,9 @@ export default async (env: ProcessEnv) => {
   await services.lspStats.update();
   console.log("Updated LSP Stats");
 
+  await services.globalStats.update();
+  console.log("Updated Global Stats");
+
   await services.marketPrices.update();
   console.log("Updated Market Prices");
 
@@ -189,6 +193,8 @@ export default async (env: ProcessEnv) => {
     // Should switch all clients to explicit channels
     ["emp", Actions.Emp(undefined, appState)],
     ["lsp", Actions.Lsp(undefined, appState)],
+    // TODO: switch this to root path once frontend is ready to transition
+    ["global", Actions.Global(undefined, appState)],
   ];
 
   await Express({ port: Number(env.EXPRESS_PORT), debug }, channels)();
@@ -226,6 +232,7 @@ export default async (env: ProcessEnv) => {
     await services.marketPrices.update();
     await services.empStats.update();
     await services.lspStats.update();
+    await services.globalStats.update();
   }
 
   // coingeckos prices don't update very fast, so set it on an interval every few minutes

@@ -1,5 +1,6 @@
 export * from "./browser";
 export * from "./gckms/ManagedSecretProvider";
+export * from "./FileHelpers";
 export * from "./MetaMaskTruffleProvider";
 export * from "./TruffleConfig";
 export * from "./ProviderUtils";

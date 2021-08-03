@@ -119,7 +119,7 @@ class BalanceMonitor {
     this.toBN = this.web3.utils.toBN;
   }
 
-  // Queries all bot ballance for collateral, synthetic and ether against specified thresholds.
+  // Queries all bot balance for collateral, synthetic and ether against specified thresholds.
   async checkBotBalances() {
     this.logger.debug({ at: "BalanceMonitor", message: "Checking bot balances" });
 
