@@ -337,14 +337,13 @@ describe("BridgePool", () => {
       Object.keys(relayAncillaryData).forEach((key) => {
         assert.equal(relayAncillaryData[key], deposit.relayData[key]);
       });
-      const expectedAncillaryData = await bridgePool.methods
-        .getRelayAncillaryData(relayAncillaryData)
-        .call({ from: owner });
-      assert.equal(deposit.priceRequestAncillaryData, expectedAncillaryData);
 
       // Check OptimisticOracle emitted price request contains correct data.
       const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
       const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
+      const expectedAncillaryData = await bridgePool.methods
+        .getRelayAncillaryData(relayAncillaryData)
+        .call({ from: owner });
       await assertEventEmitted(txn, optimisticOracle, "RequestPrice", (ev) => {
         return (
           ev.requester === bridgePool.options.address &&
