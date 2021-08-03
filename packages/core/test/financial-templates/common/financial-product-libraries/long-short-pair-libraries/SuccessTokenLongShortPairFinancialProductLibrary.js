@@ -35,6 +35,24 @@ describe("SuccessTokenLongShortPairFinancialProductLibrary", function () {
     ).send({ from: accounts[0] });
   });
   describe("Long Short Pair Parameterization", () => {
+    it("Cannot set strike price to 0", async () => {
+      assert(
+        await didContractThrow(
+          successTokenLSPFPL.methods
+            .setLongShortPairParameters(lspMock.options.address, 0, basePercentage1)
+            .send({ from: accounts[0] })
+        )
+      );
+    });
+    it("Cannot set base percentage to 0", async () => {
+      assert(
+        await didContractThrow(
+          successTokenLSPFPL.methods
+            .setLongShortPairParameters(lspMock.options.address, strikePrice, 0)
+            .send({ from: accounts[0] })
+        )
+      );
+    });
     it("Can set and fetch valid strikes", async () => {
       await successTokenLSPFPL.methods
         .setLongShortPairParameters(lspMock.options.address, strikePrice, basePercentage1)
@@ -43,7 +61,7 @@ describe("SuccessTokenLongShortPairFinancialProductLibrary", function () {
       const setParams = await successTokenLSPFPL.methods.longShortPairParameters(lspMock.options.address).call();
       assert.equal(setParams.strikePrice.toString(), strikePrice);
     });
-    it("Can not re-use existing LSP contract address", async () => {
+    it("Cannot re-use existing LSP contract address", async () => {
       await successTokenLSPFPL.methods
         .setLongShortPairParameters(lspMock.options.address, strikePrice, basePercentage1)
         .send({ from: accounts[0] });
@@ -57,13 +75,20 @@ describe("SuccessTokenLongShortPairFinancialProductLibrary", function () {
         )
       );
     });
-    it("Can not set invalid LSP contract address", async () => {
+    it("Cannot set invalid LSP contract address", async () => {
       // LSP Address must implement the `expirationTimestamp method.
       assert(
         await didContractThrow(
           successTokenLSPFPL.methods
             .setLongShortPairParameters(ZERO_ADDRESS, strikePrice, basePercentage1)
             .send({ from: accounts[0] })
+        )
+      );
+    });
+    it("Cannot compute expiry tokens if parameters have not been set yet", async () => {
+      assert(
+        await didContractThrow(
+          successTokenLSPFPL.methods.percentageLongCollateralAtExpiry(toWei("300")).send({ from: accounts[0] })
         )
       );
     });
@@ -80,6 +105,12 @@ describe("SuccessTokenLongShortPairFinancialProductLibrary", function () {
         // If the expiry price is below the strike price, the long should be worth 50% of the
         // collateralPerPair, or 0.5.
         .percentageLongCollateralAtExpiry(toWei("300"))
+        .call({ from: lspMock.options.address });
+      assert.equal(expiryTokensForCollateral.toString(), toWei("0.5"));
+    });
+    it("Expiry price of 0 should return 0.5", async () => {
+      const expiryTokensForCollateral = await successTokenLSPFPL.methods
+        .percentageLongCollateralAtExpiry(toWei("0"))
         .call({ from: lspMock.options.address });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0.5"));
     });
@@ -115,6 +146,12 @@ describe("SuccessTokenLongShortPairFinancialProductLibrary", function () {
         // If the expiry price is below the strike price, the long should be worth 20% of the
         // collateralPerPair, or 0.2.
         .percentageLongCollateralAtExpiry(toWei("300"))
+        .call({ from: lspMock.options.address });
+      assert.equal(expiryTokensForCollateral.toString(), toWei("0.2"));
+    });
+    it("Expiry price of 0 should return 0.2", async () => {
+      const expiryTokensForCollateral = await successTokenLSPFPL.methods
+        .percentageLongCollateralAtExpiry(toWei("0"))
         .call({ from: lspMock.options.address });
       assert.equal(expiryTokensForCollateral.toString(), toWei("0.2"));
     });
