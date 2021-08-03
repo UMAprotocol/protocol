@@ -157,11 +157,11 @@ contract BridgeRouter is OVM_CrossDomainEnabled {
         whitelistedToken.bridgePool = _bridgePool;
         // We want to prevent any situation where a token mapping is whitelisted on this contract but not on the
         // corresponding L2 contract.
-        require(depositContract != address(0), "Deposit contract not set");
+        require(depositContract != address(0), "Deposit contract not set"); //TODO: turn this into a modifier
         sendCrossDomainMessage(
             depositContract,
             _l2Gas,
-            abi.encodeWithSignature("whitelistToken(address,address)", _l1Token, whitelistedToken.l2Token)
+            abi.encodeWithSignature("whitelistToken(address,address)", _l1Token, _l2Token)
         );
         emit WhitelistToken(_l1Token, whitelistedToken.l2Token, whitelistedToken.bridgePool);
     }
