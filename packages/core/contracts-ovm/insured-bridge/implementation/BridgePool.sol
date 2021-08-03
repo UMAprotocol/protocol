@@ -56,7 +56,7 @@ contract BridgePool is Testable {
         // A deposit can have both a slow and an instant relayer if a slow relay is "sped up" from slow to instant.
         // We want to store both addresses for separate payouts.
         address instantRelayer;
-        // @dev: See @dev note above about why some Deposit params are collapsed into `RelayAncillaryDataContents`.
+        // @dev: See note above about why some Deposit params are collapsed into `RelayAncillaryDataContents`.
         RelayAncillaryDataContents relayData;
         // Custom ancillary data crafted from `RelayAncillaryDataContents` data.
         bytes priceRequestAncillaryData;
