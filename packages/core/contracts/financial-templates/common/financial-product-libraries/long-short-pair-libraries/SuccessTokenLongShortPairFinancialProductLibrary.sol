@@ -8,8 +8,8 @@ import "../../../../common/implementation/Lockable.sol";
  * @title Success Token Long Short Pair Financial Product Library.
  * @notice Adds settlement logic to create success token LSPs. A success token pays out a fixed amount of
  * collateral as a floor, with the remaining amount functioning like an embedded option. The embedded
- * option can use the payout logic of other financial product libraries, and resemble a covered call, a
- * KPI option, a range bond, a capped yield dollar, or custom payout logic in a new financial library.
+ * option in this case uses payout logic that resembles a covered call. I.e., the token expires to be worth
+ * basePercentage + (1 - basePercentage) * (expiryPrice - strikePrice).
  */
 contract SuccessTokenLongShortPairFinancialProductLibrary is LongShortPairFinancialProductLibrary, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
@@ -72,10 +72,11 @@ contract SuccessTokenLongShortPairFinancialProductLibrary is LongShortPairFinanc
         if (positiveExpiryPrice == 0 || positiveExpiryPrice <= params.strikePrice) return params.basePercentage;
 
         // Else, token expires to be worth basePercentage + (1 - basePercentage) * (expiryPrice - strikePrice).
-        // E.g., if $TOKEN is $30 and strike is $20, long token is redeemable for 0.5 + 0.5*(30-20)/30 = 0.6667%
-        // which if the collateralPerPair is 2, is worth 1.3333 $TOKEN, which is worth $40 if 1 $TOKEN is worth $30.
-        // This return value is strictly < 1. The return value tends to 1 as the expiryPrice tends to infinity.
-        // Due to rounding down and precision errors, this may return a very slightly smaller value than expected.
+        // E.g., if base percentage is 50%, $TOKEN is $30, and strike is $20, long token is redeemable for
+        // 0.5 + 0.5*(30-20)/30 = 0.6667%, which if the collateralPerPair is 2, is worth 1.3333 $TOKEN, which is
+        // worth $40 if 1 $TOKEN is worth $30. This return value is strictly < 1. The return value tends to 1 as
+        // the expiryPrice tends to infinity. Due to rounding down and precision errors, this may return a very
+        // slightly smaller value than expected.
         return
             (
                 FixedPoint.Unsigned(params.basePercentage).add(
