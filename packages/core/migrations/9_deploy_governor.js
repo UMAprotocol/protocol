@@ -2,7 +2,8 @@ const Governor = artifacts.require("Governor");
 const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");
 const Timer = artifacts.require("Timer");
-const { getKeysForNetwork, deploy, enableControllableTiming, RegistryRolesEnum } = require("@uma/common");
+const { RegistryRolesEnum } = require("@uma/common");
+const { getKeysForNetwork, deploy, enableControllableTiming } = require("./MigrationUtils");
 
 module.exports = async function (deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
