@@ -1,4 +1,3 @@
-import path from "path";
 import { getAllFilesInPath } from "../../FileHelpers";
 
 // This file is mostly taken from the modified `compile` task file written by Synthetix: https://github.com/Synthetixio/synthetix
@@ -6,8 +5,6 @@ import { getAllFilesInPath } from "../../FileHelpers";
 import { internalTask } from "hardhat/config";
 import type { HttpNetworkConfig } from "hardhat/types";
 import { TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS } from "hardhat/builtin-tasks/task-names";
-
-const CONTRACTS_DIR = path.resolve(__dirname, "../../../../core/contracts");
 
 interface ExtendedConfig extends HttpNetworkConfig {
   compileWhitelist?: string[];
@@ -33,13 +30,9 @@ internalTask(TASK_COMPILE_SOLIDITY_GET_SOURCE_PATHS, async (_, { config, network
   // Build absolute path for all directories on user-specified whitelist.
   const whitelist = (config.networks[network.name] as ExtendedConfig).compileWhitelist;
   if (whitelist && Array.isArray(whitelist)) {
-    const whitelistDirs = whitelist.map((x) => {
-      return path.resolve(CONTRACTS_DIR, x);
-    });
-
     filePaths = filePaths.filter((filePath: string) => {
-      for (const whitelistedDir of whitelistDirs) {
-        if (filePath.startsWith(whitelistedDir)) return true;
+      for (const whitelistedDir of whitelist) {
+        if (filePath.includes(whitelistedDir)) return true;
         else continue;
       }
       return false;

@@ -81,6 +81,7 @@
   "sideEffects": false,
   "scripts": {
     "test": "yarn mocha-test && yarn hardhat-test",
+    "test-e2e": "mocha -test ./.mocharc.js --e2e",
     "truffle-test": "truffle test ./truffle-test/scripts/*",
     "hardhat-test": "hardhat test --network hardhat",
     "mocha-test": "mocha ./mocha-test --recursive",
