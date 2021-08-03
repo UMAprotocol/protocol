@@ -1,5 +1,6 @@
 import Web3 from "web3";
 import assert from "assert";
+import { AbstractProvider } from "web3-core";
 
 type Web3ProviderOptions =
   | ConstructorParameters<typeof Web3.providers.HttpProvider>[1]
@@ -53,6 +54,11 @@ export class RetryProvider {
 
   // Passes the send through, catches errors, and retries on error.
   sendAsync(payload: Payload, callback: Callback): void {
+    this.send(payload, callback);
+  }
+
+  // Passes the send through, catches errors, and retries on error.
+  send(payload: Payload, callback: Callback): void {
     // Turn callback into async-await internally.
     const sendWithProvider = (provider: Web3Provider): Promise<CallbackResult> => {
       return new Promise((resolve, reject) => {
