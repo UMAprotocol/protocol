@@ -193,7 +193,7 @@ describe("BridgePoolFactory", () => {
           depositBoxImpersonator,
           "xchain target should be deposit contract"
         );
-        const expectedAbiData = depositBox.methods.whitelistToken(l1Token, l2Token).encodeABI();
+        const expectedAbiData = depositBox.methods.whitelistToken(l1Token, l2Token, bridgePoolAddress).encodeABI();
         assert.equal(whitelistCallToMessengerCall._message, expectedAbiData, "xchain message bytes unexpected");
         assert.equal(whitelistCallToMessengerCall._gasLimit, defaultGasLimit, "xchain gas limit unexpected");
       });
@@ -205,6 +205,43 @@ describe("BridgePoolFactory", () => {
           .send({ from: owner });
         const whitelistCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
         assert.equal(whitelistCallToMessengerCall._gasLimit, customGasLimit, "xchain gas limit unexpected");
+      });
+    });
+    describe("Set bridge admin", () => {
+      it("Changes admin address", async () => {
+        await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
+        const setAdminTxn = await bridgePoolFactory.methods.setBridgeAdmin(defaultGasLimit).send({ from: owner });
+
+        assert.isTrue(
+          l1CrossDomainMessengerMock.smocked.sendMessage.calls.length === 1,
+          "Unexpected number of xdomain messages"
+        );
+        const setAdminCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
+
+        // Check for L1 logs and state change
+        await assertEventEmitted(setAdminTxn, bridgePoolFactory, "SetBridgeAdmin", (ev) => {
+          return ev.bridgeAdmin === bridgePoolFactory.options.address;
+        });
+
+        // Validate xchain message
+        assert.equal(
+          setAdminCallToMessengerCall._target,
+          depositBoxImpersonator,
+          "xchain target should be deposit contract"
+        );
+        const expectedAbiData = depositBox.methods.setBridgeAdmin(bridgePoolFactory.options.address).encodeABI();
+        assert.equal(setAdminCallToMessengerCall._message, expectedAbiData, "xchain message bytes unexpected");
+        assert.equal(setAdminCallToMessengerCall._gasLimit, defaultGasLimit, "xchain gas limit unexpected");
+      });
+      it("Works with custom gas", async () => {
+        const customGasLimit = 10;
+        await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
+        await bridgePoolFactory.methods.setBridgeAdmin(customGasLimit).send({ from: owner });
+        assert.equal(
+          l1CrossDomainMessengerMock.smocked.sendMessage.calls[0]._gasLimit,
+          customGasLimit,
+          "xchain gas limit unexpected"
+        );
       });
     });
   });

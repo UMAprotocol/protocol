@@ -38,6 +38,7 @@ contract BridgePoolFactory is Ownable, OVM_CrossDomainEnabled {
     bytes32 public identifier;
 
     event SetDepositContract(address indexed l2DepositContract);
+    event SetBridgeAdmin(address indexed bridgeAdmin);
     event SetRelayIdentifier(bytes32 indexed identifier);
     event SetOptimisticOracleLiveness(uint256 indexed liveness);
     event SetProposerBondPct(uint256 indexed proposerBondPct);
@@ -50,6 +51,7 @@ contract BridgePoolFactory is Ownable, OVM_CrossDomainEnabled {
         _;
     }
 
+    // TODO: Switch to hardcoded OVM_L1CrossDomainMessenger: https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts/deployments/README.md
     constructor(
         address _finder,
         address _crossDomainMessenger,
@@ -111,6 +113,20 @@ contract BridgePoolFactory is Ownable, OVM_CrossDomainEnabled {
     }
 
     /**
+     * @notice Privileged account can set this contract as the admin address in the L2 Deposit contract.
+     * @dev Only callable by the current owner.
+     * @param _l2Gas Gas limit to set for relayed message on L2
+     */
+    function setBridgeAdmin(uint32 _l2Gas) public onlyOwner {
+        sendCrossDomainMessage(
+            depositContract,
+            _l2Gas,
+            abi.encodeWithSignature("setBridgeAdmin(address)", address(this))
+        );
+        emit SetBridgeAdmin(address(this));
+    }
+
+    /**
      * @notice Privileged account can associate a whitelisted token with its linked token address on L2 and its
      * BridgePool address on this network. The linked L2 token can thereafter be deposited into the Deposit contract
      * on L2 and relayed via the BridgePool contract.
@@ -131,14 +147,13 @@ contract BridgePoolFactory is Ownable, OVM_CrossDomainEnabled {
 
         L1TokenRelationships storage whitelistedToken = whitelistedTokens[_l1Token];
         whitelistedToken.l2Token = _l2Token;
+        // TODO: This contract should deploy a new BridgePool if the address is set to 0x0 at this point.
+        whitelistedToken.bridgePool = _bridgePool;
         sendCrossDomainMessage(
             depositContract,
             _l2Gas,
-            abi.encodeWithSignature("whitelistToken(address,address)", _l1Token, _l2Token)
+            abi.encodeWithSignature("whitelistToken(address,address,address)", _l1Token, _l2Token, _bridgePool)
         );
-
-        // TODO: This contract should deploy a new BridgePool if the address is set to 0x0 at this point.
-        whitelistedToken.bridgePool = _bridgePool;
 
         emit WhitelistToken(_l1Token, _l2Token, _bridgePool);
     }
