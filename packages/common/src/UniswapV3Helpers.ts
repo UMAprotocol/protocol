@@ -32,7 +32,7 @@ export async function getCurrentPrice(poolAddress: string, web3: Web3): Promise<
 }
 
 // Encode a path. Note that pools (and therefore paths) change when you use different fees.
-export function encodePath(path: string[], fees: BN[] | string[]): string {
+export function encodePath(path: string[], fees: BN[] | string[] | number[]): string {
   const FEE_SIZE = 3;
   if (path.length != fees.length + 1) {
     throw new Error("path/fee lengths do not match");
@@ -61,7 +61,7 @@ export type FeeAmount = keyof typeof TICK_SPACINGS;
 // Solving for the tick in terms of the price yields tick≈1.00005*ln(p) (calculated on wolframalpha). When creating a
 // position, the tick needs to be a multiple of the TICK_SPACING for that particular fee. This method therefore computes
 // a valid tick for a given price and poolFee.
-export function getTickFromPrice(price: BN | string, poolFee: FeeAmount): string {
+export function getTickFromPrice(price: BN | string | number, poolFee: FeeAmount): string {
   return toBNWei(10000.5)
     .mul(toBNWei(new Decimal(price.toString()).ln().toFixed(10)))
     .div(toBNWei(1))

@@ -1,10 +1,11 @@
-const path = require("path");
-const fs = require("fs");
-const uniqBy = require("lodash.uniqby");
+import path from "path";
+import fs from "fs";
+import uniqBy from "lodash.uniqby";
+import { task, types } from "hardhat/config";
+import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { CombinedHRE } from "./types";
 
-const { task, types } = require("hardhat/config");
-
-function removeFileIfExists(filename) {
+function removeFileIfExists(filename: string): void {
   try {
     fs.unlinkSync(filename);
   } catch (e) {
@@ -12,18 +13,18 @@ function removeFileIfExists(filename) {
   }
 }
 
-function normalizeClassName(name) {
+function normalizeClassName(name: string): string {
   const capitalizedName = name.charAt(0).toUpperCase() + name.slice(1); // Capitalize first letter.
   return capitalizedName.replace(/_/g, ""); // Remove underscores.
 }
 
-async function getArtifactPathList(hre, relativeTo) {
+async function getArtifactPathList(hre: HardhatRuntimeEnvironment, relativeTo: string) {
   const artifactPaths = await hre.artifacts.getArtifactPaths();
 
   // Generate a unique list of artifacts and paths to them. Unique is necessary because there are some redundantly
   // named contracts.
   return uniqBy(
-    artifactPaths.map((artifactPath) => ({
+    artifactPaths.map((artifactPath: string) => ({
       contractName: path.basename(artifactPath).split(".")[0],
       relativePath: `./${path.relative(path.dirname(relativeTo), artifactPath)}`,
     })),
@@ -31,16 +32,16 @@ async function getArtifactPathList(hre, relativeTo) {
   );
 }
 
-function getCorePath(hre, relativeTo) {
+function getCorePath(hre: HardhatRuntimeEnvironment, relativeTo: string): string {
   const artifactPath = hre.config.paths.artifacts ? path.join(hre.config.paths.artifacts, "../") : "./";
   return `./${path.relative(relativeTo, artifactPath)}`;
 }
 
-function getAddressesMap(hre) {
+function getAddressesMap(hre: HardhatRuntimeEnvironment) {
   // Generate a map of name => chain id => address.
   const networksPath = path.join(getCorePath(hre, "./"), "networks");
   const dirs = fs.readdirSync(networksPath);
-  const addresses = {};
+  const addresses: { [name: string]: { [chainId: number]: string } } = {};
   for (const dir of dirs) {
     const chainId = parseInt(dir.split(".")[0]);
     const deployments = JSON.parse(fs.readFileSync(path.join(networksPath, dir), "utf8"));
@@ -110,11 +111,11 @@ task("generate-contracts-frontend", "Generate typescipt for the contracts-fronte
     // to remove any unused json files. In modern versions of webpack, this should allow absolutely _no_ artifact
     // information that isn't needed to be pulled in.
     artifacts.forEach(({ contractName, relativePath }) => {
-      const abi = JSON.stringify(JSON.parse(fs.readFileSync(relativePath)).abi);
+      const abi = JSON.stringify(JSON.parse(fs.readFileSync(relativePath).toString("utf8")).abi);
       fs.appendFileSync(out, `export function get${contractName}Abi(): any[] { return JSON.parse(\`${abi}\`); }\n`);
     });
     artifacts.forEach(({ contractName, relativePath }) => {
-      const bytecode = JSON.stringify(JSON.parse(fs.readFileSync(relativePath)).bytecode);
+      const bytecode = JSON.stringify(JSON.parse(fs.readFileSync(relativePath).toString("utf8")).bytecode);
       fs.appendFileSync(out, `export function get${contractName}Bytecode(): string { return \`${bytecode}\`; }\n`);
     });
 
@@ -238,11 +239,12 @@ export async function getAddress(name: DeploymentName | ContractName, chainId: n
   });
 
 task("load-addresses", "Load addresses from the networks folder into the hardhat deployments folder").setAction(
-  async function (taskArguments, hre) {
+  async function (taskArguments, hre_) {
+    const hre = hre_ as CombinedHRE;
     // Generate chain id mapping.
-    const chainIdToNetworkName = {};
+    const chainIdToNetworkName: { [chainId: number]: string } = {};
     for (const [name, { chainId }] of Object.entries(hre.config.networks)) {
-      chainIdToNetworkName[chainId] = name;
+      if (chainId !== undefined) chainIdToNetworkName[chainId] = name;
     }
 
     const dirs = fs.readdirSync("./networks");

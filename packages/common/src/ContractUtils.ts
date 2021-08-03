@@ -13,6 +13,9 @@ export interface TruffleContract extends truffleContract_.Contract {
   setProvider: (provider: Provider) => void;
   at: (address: string) => Promise<TruffleInstance>;
   deployed: () => Promise<TruffleInstance>;
+  new: (...args: any[]) => Promise<TruffleInstance>;
+  link: (arg: any) => TruffleContract;
+  detectNetwork: () => Promise<void>;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

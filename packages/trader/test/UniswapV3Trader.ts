@@ -322,7 +322,7 @@ describe("uniswapV3Trader.js", function () {
     await tokenPriceFeed.update();
     assert.equal(
       Number(fromWei(tokenPriceFeed.getLastBlockPrice())).toFixed(4),
-      (await getCurrentPrice(poolAddress, web3)).toNumber()
+      (await getCurrentPrice(poolAddress, web3)).toString()
     );
 
     // If the checkRangeMovementsAndTrade is called again no trade should occur as the deviation error is less than 20%.

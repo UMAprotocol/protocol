@@ -3,7 +3,7 @@ import { HardhatConfig } from "hardhat/types";
 const { getNodeUrl, mnemonic } = require("./TruffleConfig");
 
 export function getHardhatConfig(
-  configOverrides: Partial<HardhatConfig>,
+  configOverrides: any,
   _workingDir = "./",
   includeTruffle = true
 ): Partial<HardhatConfig> {
