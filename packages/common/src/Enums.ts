@@ -1,7 +1,7 @@
 // Corresponds to Registry.Roles.
 export const RegistryRolesEnum = { OWNER: "0", CONTRACT_CREATOR: "1" };
 
-const TokenRolesEnum = { OWNER: "0", MINTER: "1", BURNER: "3" };
+export const TokenRolesEnum = { OWNER: "0", MINTER: "1", BURNER: "3" };
 
 // Corresponds to VoteTiming.Phase.
 export const VotePhasesEnum = { COMMIT: "0", REVEAL: "1" };
