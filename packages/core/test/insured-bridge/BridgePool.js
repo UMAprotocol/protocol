@@ -106,7 +106,8 @@ describe("BridgePool", () => {
       l1CrossDomainMessengerMock.options.address,
       defaultLiveness,
       defaultProposerBondPct,
-      defaultIdentifier
+      defaultIdentifier,
+      timer.options.address
     ).send({ from: owner });
     await bridgePoolFactory.methods.setDepositContract(depositContractImpersonator).send({ from: owner });
 
@@ -115,7 +116,7 @@ describe("BridgePool", () => {
 
     // Add L1-L2 token mapping
     await bridgePoolFactory.methods
-      .whitelistToken(l1Token.options.address, l2Token, bridgePool.options.address, defaultGasLimit)
+      .whitelistToken(l1Token.options.address, l2Token, defaultGasLimit)
       .send({ from: owner });
 
     // Seed Pool and relayer with tokens.
