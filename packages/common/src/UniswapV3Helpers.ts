@@ -13,7 +13,10 @@ bn.config({ EXPONENTIAL_AT: 999999, DECIMAL_PLACES: 40 });
 const { toBN, toWei } = Web3.utils;
 
 // Given a price defined in a ratio of reserve1 and reserve0 in x96, compute a price as sqrt(r1/r0) * 2^96
-export function encodePriceSqrt(reserve1: BN | string, reserve0: BN | string): bn {
+export function encodePriceSqrt<T extends { toString: () => string }, U extends { toString: () => string }>(
+  reserve1: T,
+  reserve0: U
+): bn {
   return new bn(reserve1.toString()).div(reserve0.toString()).sqrt().multipliedBy(new bn(2).pow(96)).integerValue(3);
 }
 
