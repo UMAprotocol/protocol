@@ -3,14 +3,10 @@
 import minimist from "minimist";
 import fs from "fs";
 import dotenv from "dotenv";
-import { PublicNetworks } from "../PublicNetworks";
+import { isPublicNetwork } from "../PublicNetworks";
 
 const argv = minimist(process.argv.slice());
 dotenv.config();
-
-// Grab the name property from each to get a list of the names of the public networks.
-const publicNetworkNames = Object.values(PublicNetworks).map((elt) => elt.name);
-const isPublicNetwork = (name: string) => publicNetworkNames.some((elt) => elt.startsWith(name));
 
 // The anatomy of an individual config is:
 //   projectId: ID of a Google Cloud project

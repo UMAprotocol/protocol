@@ -69,3 +69,7 @@ export const PublicNetworks: PublicNetworksType = {
     customTruffleConfig: { confirmations: 2, timeoutBlocks: 200 },
   },
 };
+
+export function isPublicNetwork(name: string): boolean {
+  return Object.values(PublicNetworks).some((network) => name.startsWith(network.name));
+}

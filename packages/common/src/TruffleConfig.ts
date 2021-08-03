@@ -13,7 +13,7 @@ import HDWalletProvider from "@truffle/hdwallet-provider";
 import LedgerWalletProvider from "@umaprotocol/truffle-ledger-provider";
 import { getGckmsConfig } from "./gckms/GckmsConfig";
 import { ManagedSecretProvider } from "./gckms/ManagedSecretProvider";
-import { PublicNetworks } from "./PublicNetworks";
+import { PublicNetworks, isPublicNetwork } from "./PublicNetworks";
 import { MetaMaskTruffleProvider } from "./MetaMaskTruffleProvider";
 
 import type { AbstractProvider } from "web3-core";
@@ -28,10 +28,6 @@ export interface Network {
   gasPrice?: number | string;
   provider?: ((inputProviderOrUrl?: AbstractProvider | string) => AbstractProvider) | AbstractProvider | string;
 }
-
-const isPublicNetwork = (name: string): boolean => {
-  return Object.values(PublicNetworks).some((network) => network.name.startsWith(name));
-};
 
 // Fallback to a public mnemonic to prevent exceptions.
 export const mnemonic = process.env.MNEMONIC
