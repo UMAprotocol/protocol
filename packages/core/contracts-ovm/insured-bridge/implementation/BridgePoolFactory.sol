@@ -55,24 +55,30 @@ contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, OVM_CrossDoma
     // Admin functions
 
     /**
-     * @dev Sets new price identifier to use for relayed deposits. BridgePools will read the identifier from this
-     * contract. Can only be called by the current owner.
+     * @notice Sets new price identifier to use for relayed deposits. BridgePools will read the identifier from this
+     * contract.
+     * @dev Can only be called by the current owner.
+     * @param _identifier New identifier to set.
      */
     function setIdentifier(bytes32 _identifier) public onlyOwner {
         _setIdentifier(_identifier);
     }
 
     /**
-     * @dev Sets challenge pereiod for relayed deposits. BridgePools will read this value from this
-     * contract. Can only be called by the current owner.
+     * @notice Sets challenge period for relayed deposits. BridgePools will read this value from this
+     * contract.
+     * @dev Can only be called by the current owner.
+     * @param _liveness New OptimisticOracle liveness period to set for relay price requests.
      */
     function setOptimisticOracleLiveness(uint256 _liveness) public onlyOwner {
         _setOptimisticOracleLiveness(_liveness);
     }
 
     /**
-     * @dev Sets challenge pereiod for relayed deposits. BridgePools will read this value from this
-     * contract. Can only be called by the current owner.
+     * @notice Sets challenge pereiod for relayed deposits. BridgePools will read this value from this
+     * contract.
+     * @dev Can only be called by the current owner.
+     * @param _proposerBondPct New OptimisticOracle proposer bond % to set for relay price requests. 1e18 = 100%.
      */
     function setProposerBondPct(uint256 _proposerBondPct) public onlyOwner {
         _setProposerBondPct(_proposerBondPct);
@@ -81,7 +87,7 @@ contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, OVM_CrossDoma
     /**
      * @notice Privileged account can set L2 deposit contract that originates deposit orders to be fulfilled by this
      * contract.
-     * @dev Only callable by Owner of this contract.
+     * @dev Only callable by the current owner.
      * @param _depositContract Address of L2 deposit contract.
      */
     function setDepositContract(address _depositContract) public onlyOwner {
