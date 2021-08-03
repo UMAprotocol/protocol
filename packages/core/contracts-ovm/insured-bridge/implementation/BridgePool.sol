@@ -37,7 +37,7 @@ contract BridgePool is Testable {
     // https://github.com/ethereum/solidity/issues/10930.
     struct RelayAncillaryDataContents {
         uint256 depositId;
-        // The following params are inferred by the L2 deposit:
+        // The following params are inferred from the L2 deposit:
         address l2Sender;
         address recipient;
         uint256 depositTimestamp;
@@ -56,7 +56,7 @@ contract BridgePool is Testable {
         // A deposit can have both a slow and an instant relayer if a slow relay is "sped up" from slow to instant.
         // We want to store both addresses for separate payouts.
         address instantRelayer;
-        // @dev: See @dev note above about why some Deposit params are collapsed into `RelayAncillaryDataContents`.
+        // @dev: See note above about why some Deposit params are collapsed into `RelayAncillaryDataContents`.
         RelayAncillaryDataContents relayData;
         // Custom ancillary data crafted from `RelayAncillaryDataContents` data.
         bytes priceRequestAncillaryData;
@@ -104,8 +104,8 @@ contract BridgePool is Testable {
      * @param depositId Unique ID corresponding to deposit order that caller wants to relay.
      * @param depositTimestamp Timestamp of Deposit emitted by L2 contract when order was initiated.
      * @param recipient Address on this network who should receive the relayed deposit.
-     * @param l1Token Token currency to pay recipient. This contract stores a mapping of
-     * `l1Token` to the canonical token currency on the L2 network that was deposited to the Deposit contract.
+     * @param l1Token Token currency to pay recipient. This contract stores a mapping of `l1Token` to the 
+     *     canonical token currency on the L2 network that was deposited to the Deposit contract.
      * @param amount Deposited amount.
      * @param realizedFeePct Computed offchain by caller, considering the amount of available liquidity for the token
      * currency needed to pay the recipient and the count of pending withdrawals at the `depositTimestamp`. This fee
