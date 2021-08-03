@@ -1,6 +1,5 @@
 import Web3 from "web3";
 import assert from "assert";
-import { AbstractProvider } from "web3-core";
 
 type Web3ProviderOptions =
   | ConstructorParameters<typeof Web3.providers.HttpProvider>[1]
