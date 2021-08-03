@@ -152,10 +152,10 @@ contract BridgePool is Testable {
 
         // Request a price for the relay identifier and propose "true" optimistically. These methods will pull the
         // (proposer reward + proposer bond + final fee) from the caller.
-        // TODO: Figure out what to set for price request timestamp. I don't think we should simply set it to the
-        // the `depositTimestamp`, which is dependent on the L2 VM on which the DepositContract is deployed. What if
-        // the timestamps on the L2 have an offset that is unparseable by the OptimisticOracle on this network? Or,
-        // what if the L2 VM time mechanism returns timestamps that are always "in the future" relative to L1 blocks?
+        // Note: We can't simply set the price request timestamp equal to the `depositTimestamp`, which is dependent
+        // on the L2 VM on which the DepositContract is deployed. Imagine if the timestamps on the L2 have an offset
+        // that are always "in the future" relative to L1 blocks, then the OptimisticOracle would always reject
+        // requests.
         uint256 requestTimestamp = getCurrentTime();
         _requestOraclePriceRelay(l1Token, amount, requestTimestamp, customAncillaryData, proposerRewardPct);
         _proposeOraclePriceRelay(l1Token, amount, depositTimestamp, customAncillaryData);
