@@ -64,9 +64,9 @@ contract BridgePoolFactory is Ownable, OVM_CrossDomainEnabled {
         _setIdentifier(_identifier);
     }
 
-    /**********************
-     * Admin Functions *
-     **********************/
+    /**************************************
+     *        ADMIN FUNCTIONS             *
+     **************************************/
 
     /**
      * @notice Sets new price identifier to use for relayed deposits. BridgePools will read the identifier from this
@@ -145,9 +145,9 @@ contract BridgePoolFactory is Ownable, OVM_CrossDomainEnabled {
 
     function pauseL2Deposits() public onlyOwner {}
 
-    /**********************
-     * Internal Functions *
-     **********************/
+    /**************************************
+     *        INTERNAL FUNCTIONS          *
+     **************************************/
 
     function _getIdentifierWhitelist() private view returns (IdentifierWhitelistInterface) {
         return

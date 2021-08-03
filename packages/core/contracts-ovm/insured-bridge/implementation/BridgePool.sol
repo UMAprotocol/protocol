@@ -89,17 +89,17 @@ contract BridgePool is Testable {
         require(bridgePoolFactory.finder() != address(0), "Invalid bridge pool factory");
     }
 
-    /*********************************
-     * Liquidity Provision Functions *
-     *********************************/
+    /*************************************************
+     *          LIQUIDITY PROVIDER FUNCTIONS         *
+     *************************************************/
 
     function deposit(address l1Token, uint256 amount) public {}
 
     function withdraw(address lpToken, uint256 amount) public {}
 
-    /*********************************
-     * Relayer Functions *
-     *********************************/
+    /**************************************
+     *          RELAYER FUNCTIONS         *
+     **************************************/
 
     /**
      * @notice Called by Relayer to execute Slow relay from L2 to L1, fulfilling a corresponding deposit order.
@@ -264,9 +264,9 @@ contract BridgePool is Testable {
         return intermediateAncillaryData;
     }
 
-    /**********************
-     * Internal Functions *
-     **********************/
+    /**************************************
+     *        INTERNAL FUNCTIONS          *
+     **************************************/
 
     function _getOptimisticOracle() private view returns (OptimisticOracleInterface) {
         return
