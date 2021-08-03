@@ -6,10 +6,12 @@ pragma solidity ^0.8.0;
 // changing their version is preferable to changing this contract to 0.7.x and defining compatible interfaces for all
 // of the imported DVM contracts below.
 import "./OVM_CrossDomainEnabled.sol";
+import "./BridgePool.sol";
 import "../../../contracts/oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../../contracts/oracle/interfaces/FinderInterface.sol";
 import "../../../contracts/oracle/implementation/Constants.sol";
 import "../../../contracts/common/interfaces/AddressWhitelistInterface.sol";
+import "../../../contracts/common/implementation/Testable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
@@ -17,9 +19,11 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * responsible for deploying new BridgePools, which houses passive liquidity and enables relaying of L2 deposits.
  * @dev The owner of this contract can call permissioned functions on the L2 DepositBox.
  */
-contract BridgePoolFactory is Ownable, OVM_CrossDomainEnabled {
+contract BridgePoolFactory is Ownable, OVM_CrossDomainEnabled, Testable {
     // Finder used to point to latest OptimisticOracle and other DVM contracts.
     address public finder;
+
+    address public timer;
 
     // L2 Deposit contract that originates deposits that can be fulfilled by this contract.
     address public depositContract;
@@ -43,6 +47,7 @@ contract BridgePoolFactory is Ownable, OVM_CrossDomainEnabled {
     event SetOptimisticOracleLiveness(uint256 indexed liveness);
     event SetProposerBondPct(uint256 indexed proposerBondPct);
     event WhitelistToken(address indexed l1Token, address indexed l2Token, address indexed bridgePool);
+    event DeployedBridgePool(address indexed bridgePool);
 
     // Add this modifier to methods that are expected to bridge admin functionality to the L2 Deposit contract, which
     // will cause unexpected behavior if the deposit contract isn't set and valid.
@@ -57,9 +62,11 @@ contract BridgePoolFactory is Ownable, OVM_CrossDomainEnabled {
         address _crossDomainMessenger,
         uint256 _optimisticOracleLiveness,
         uint256 _proposerBondPct,
-        bytes32 _identifier
-    ) OVM_CrossDomainEnabled(_crossDomainMessenger) {
+        bytes32 _identifier,
+        address _timer
+    ) OVM_CrossDomainEnabled(_crossDomainMessenger) Testable(_timer) {
         finder = _finder;
+        timer = _timer;
         require(address(_getCollateralWhitelist()) != address(0), "Invalid finder");
         _setOptimisticOracleLiveness(_optimisticOracleLiveness);
         _setProposerBondPct(_proposerBondPct);
@@ -127,35 +134,42 @@ contract BridgePoolFactory is Ownable, OVM_CrossDomainEnabled {
     }
 
     /**
-     * @notice Privileged account can associate a whitelisted token with its linked token address on L2 and its
-     * BridgePool address on this network. The linked L2 token can thereafter be deposited into the Deposit contract
-     * on L2 and relayed via the BridgePool contract.
+     * @notice Privileged account can associate a whitelisted token with its linked token address on L2. The linked L2
+     * token can thereafter be deposited into the Deposit contract on L2 and relayed via the BridgePool contract.
+     * @dev This will also deploy a new BridgePool if there is no such contract associated with the L1 token.
      * @dev Only callable by Owner of this contract. Also initiates a cross-chain call to the L2 Deposit contract to
      * whitelist the token mapping.
      * @param _l1Token Address of L1 token that can be used to relay L2 token deposits.
      * @param _l2Token Address of L2 token whose deposits are fulfilled by `_l1Token`.
-     * @param _bridgePool Address of pool contract that stores passive liquidity with which to fulfill deposits.
      * @param _l2Gas Gas limit to set for relayed message on L2
      */
     function whitelistToken(
         address _l1Token,
         address _l2Token,
-        address _bridgePool,
         uint32 _l2Gas
     ) public onlyOwner depositContractSet {
         require(_getCollateralWhitelist().isOnWhitelist(address(_l1Token)), "Payment token not whitelisted");
 
         L1TokenRelationships storage whitelistedToken = whitelistedTokens[_l1Token];
         whitelistedToken.l2Token = _l2Token;
-        // TODO: This contract should deploy a new BridgePool if the address is set to 0x0 at this point.
-        whitelistedToken.bridgePool = _bridgePool;
+        // If token mapping isn't associated with a BridgePool, then deploy a new one. Otherwise just update the mapping.
+        if (whitelistedToken.bridgePool == address(0)) {
+            BridgePool newPool = new BridgePool(address(this), timer);
+            whitelistedToken.bridgePool = address(newPool);
+            emit DeployedBridgePool(address(newPool));
+        }
         sendCrossDomainMessage(
             depositContract,
             _l2Gas,
-            abi.encodeWithSignature("whitelistToken(address,address,address)", _l1Token, _l2Token, _bridgePool)
+            abi.encodeWithSignature(
+                "whitelistToken(address,address,address)",
+                _l1Token,
+                _l2Token,
+                whitelistedToken.bridgePool
+            )
         );
 
-        emit WhitelistToken(_l1Token, _l2Token, _bridgePool);
+        emit WhitelistToken(_l1Token, _l2Token, whitelistedToken.bridgePool);
     }
 
     function pauseL2Deposits() public onlyOwner {}

@@ -13,6 +13,7 @@ const Finder = getContract("Finder");
 const BridgeDepositBox = getContract("OVM_BridgeDepositBox");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
+const Timer = getContract("Timer");
 
 // Contract objects
 let bridgePoolFactory;
@@ -21,6 +22,7 @@ let l1CrossDomainMessengerMock;
 let depositBox;
 let identifierWhitelist;
 let collateralWhitelist;
+let timer;
 
 // Test function inputs
 const defaultGasLimit = 1_000_000;
@@ -30,18 +32,17 @@ const defaultProposerBondPct = toWei("0.05");
 const defaultBridgingDelay = 60;
 let l1Token;
 let l2Token;
-let bridgePoolAddress;
 
 describe("BridgePoolFactory", () => {
-  let accounts, owner, rando, l2MessengerImpersonator, depositBoxImpersonator, bridgePoolFactoryImpersonator;
+  let accounts, owner, rando, depositBoxImpersonator, bridgePoolFactoryImpersonator;
 
   before(async function () {
     accounts = await web3.eth.getAccounts();
-    [owner, rando, l2MessengerImpersonator, depositBoxImpersonator, bridgePoolFactoryImpersonator] = accounts;
+    [owner, rando, depositBoxImpersonator, bridgePoolFactoryImpersonator] = accounts;
     l1Token = rando;
     l2Token = owner;
-    bridgePoolAddress = l2MessengerImpersonator;
     await runDefaultFixture(hre);
+    timer = await Timer.new().send({ from: owner });
     finder = await Finder.deployed();
     identifierWhitelist = await IdentifierWhitelist.deployed();
     collateralWhitelist = await AddressWhitelist.deployed();
@@ -55,7 +56,8 @@ describe("BridgePoolFactory", () => {
       l1CrossDomainMessengerMock.options.address,
       defaultLiveness,
       defaultProposerBondPct,
-      defaultIdentifier
+      defaultIdentifier,
+      timer.options.address
     ).send({ from: owner });
 
     depositBox = await BridgeDepositBox.new(bridgePoolFactoryImpersonator, defaultBridgingDelay, ZERO_ADDRESS).send({
@@ -131,9 +133,7 @@ describe("BridgePoolFactory", () => {
       it("Basic checks", async () => {
         assert(
           await didContractThrow(
-            bridgePoolFactory.methods
-              .whitelistToken(l1Token, l2Token, bridgePoolAddress, defaultGasLimit)
-              .send({ from: rando })
+            bridgePoolFactory.methods.whitelistToken(l1Token, l2Token, defaultGasLimit).send({ from: rando })
           ),
           "OnlyOwner modifier not enforced"
         );
@@ -141,9 +141,7 @@ describe("BridgePoolFactory", () => {
         // Fails if depositContract not set in BridgeRouter
         assert(
           await didContractThrow(
-            bridgePoolFactory.methods
-              .whitelistToken(l1Token, l2Token, bridgePoolAddress, defaultGasLimit)
-              .send({ from: owner })
+            bridgePoolFactory.methods.whitelistToken(l1Token, l2Token, defaultGasLimit).send({ from: owner })
           ),
           "Deposit contract not set"
         );
@@ -152,30 +150,36 @@ describe("BridgePoolFactory", () => {
         // Fails if l1 token is not whitelisted
         assert(
           await didContractThrow(
-            bridgePoolFactory.methods
-              .whitelistToken(l1Token, l2Token, bridgePoolAddress, defaultGasLimit)
-              .send({ from: owner })
+            bridgePoolFactory.methods.whitelistToken(l1Token, l2Token, defaultGasLimit).send({ from: owner })
           ),
           "Deposit contract not set"
         );
         await collateralWhitelist.methods.addToWhitelist(l1Token).send({ from: owner });
 
         // Successful call
-        await bridgePoolFactory.methods
-          .whitelistToken(l1Token, l2Token, bridgePoolAddress, defaultGasLimit)
-          .send({ from: owner });
+        await bridgePoolFactory.methods.whitelistToken(l1Token, l2Token, defaultGasLimit).send({ from: owner });
       });
-      it("Add token mapping on L1 and sends xchain message", async () => {
+      it("Add token mapping on L1, deploys a new BridgePool, and sends xchain message", async () => {
         await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
         await collateralWhitelist.methods.addToWhitelist(l1Token).send({ from: owner });
         const whitelistTxn = await bridgePoolFactory.methods
-          .whitelistToken(l1Token, l2Token, bridgePoolAddress, defaultGasLimit)
+          .whitelistToken(l1Token, l2Token, defaultGasLimit)
           .send({ from: owner });
-        assert.isTrue(
-          l1CrossDomainMessengerMock.smocked.sendMessage.calls.length === 1,
-          "Unexpected number of xdomain messages"
-        );
         const whitelistCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
+
+        // Grab new bridge pool address from event.
+        const deploymentEvents = await bridgePoolFactory.getPastEvents("DeployedBridgePool", {
+          fromBlock: whitelistTxn.blockNumber,
+          toBlock: whitelistTxn.blockNumber,
+        });
+        const bridgePoolAddress = deploymentEvents[0].returnValues.bridgePool;
+
+        // Validate that BridgePool stores BridgePoolFactory address correctly.
+        const bridgePool = new web3.eth.Contract(getContract("BridgePool").abi, bridgePoolAddress);
+        assert.equal(
+          await bridgePool.methods.bridgePoolFactory().call({ from: owner }),
+          bridgePoolFactory.options.address
+        );
 
         // Check for L1 logs and state change
         await assertEventEmitted(whitelistTxn, bridgePoolFactory, "WhitelistToken", (ev) => {
@@ -200,11 +204,44 @@ describe("BridgePoolFactory", () => {
       it("Works with custom gas", async () => {
         const customGasLimit = 10;
         await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
-        await bridgePoolFactory.methods
-          .whitelistToken(l1Token, l2Token, bridgePoolAddress, customGasLimit)
-          .send({ from: owner });
+        await bridgePoolFactory.methods.whitelistToken(l1Token, l2Token, customGasLimit).send({ from: owner });
         const whitelistCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
         assert.equal(whitelistCallToMessengerCall._gasLimit, customGasLimit, "xchain gas limit unexpected");
+      });
+      it("Duplicate call does not deploy a new BridgePool", async function () {
+        await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
+        const deploymentTxn = await bridgePoolFactory.methods
+          .whitelistToken(l1Token, l2Token, defaultGasLimit)
+          .send({ from: owner });
+
+        // Grab new bridge pool address from event.
+        const deploymentEvents = await bridgePoolFactory.getPastEvents("DeployedBridgePool", {
+          fromBlock: deploymentTxn.blockNumber,
+          toBlock: deploymentTxn.blockNumber,
+        });
+        const bridgePoolAddress = deploymentEvents[0].returnValues.bridgePool;
+
+        // This should not deploy a second BridgePool
+        const newL2Token = rando;
+        const repeatDeploymentTxn = await bridgePoolFactory.methods
+          .whitelistToken(l1Token, newL2Token, defaultGasLimit)
+          .send({ from: owner });
+        const repeatDeploymentEvents = await bridgePoolFactory.getPastEvents("DeployedBridgePool", {
+          fromBlock: repeatDeploymentTxn.blockNumber,
+          toBlock: repeatDeploymentTxn.blockNumber,
+        });
+        assert.equal(repeatDeploymentEvents.length, 0);
+
+        // This should still emit a cross-chain admin transaction.
+        const whitelistCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
+        assert.equal(
+          whitelistCallToMessengerCall._target,
+          depositBoxImpersonator,
+          "xchain target should be deposit contract"
+        );
+        const expectedAbiData = depositBox.methods.whitelistToken(l1Token, newL2Token, bridgePoolAddress).encodeABI();
+        assert.equal(whitelistCallToMessengerCall._message, expectedAbiData, "xchain message bytes unexpected");
+        assert.equal(whitelistCallToMessengerCall._gasLimit, defaultGasLimit, "xchain gas limit unexpected");
       });
     });
     describe("Set bridge admin", () => {
