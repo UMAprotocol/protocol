@@ -183,7 +183,7 @@ describe("OVM_BridgeDepositBox", () => {
       assert.equal(await depositBox.methods.depositsEnabled().call(), false);
 
       await assertEventEmitted(tx, depositBox, "DepositsEnabled", (ev) => {
-        return ev.enabledResultantState == false;
+        return ev.depositsEnabled == false;
       });
     });
   });
