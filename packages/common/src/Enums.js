@@ -1,6 +1,8 @@
 // Corresponds to Registry.Roles.
 const RegistryRolesEnum = { OWNER: "0", CONTRACT_CREATOR: "1" };
 
+const TokenRolesEnum = { OWNER: "0", MINTER: "1", BURNER: "3" };
+
 // Corresponds to VoteTiming.Phase.
 const VotePhasesEnum = { COMMIT: "0", REVEAL: "1" };
 
@@ -38,12 +40,25 @@ const OptimisticOracleRequestStatesEnum = {
   SETTLED: "6",
 };
 
+const InsuredBridgeDepositStateEnum = {
+  UNINITIALIZED: "0",
+  PENDING_SLOW: "1",
+  PENDING_INSTANT: "2",
+  FINALIZED_SLOW: "3",
+  FINALIZED_INSTANT: "4",
+};
+
+const InsuredBridgeDepositTypeEnum = { SLOW: "0", INSTANT: "1" };
+
 module.exports = {
   RegistryRolesEnum,
+  TokenRolesEnum,
   VotePhasesEnum,
   LiquidationStatesEnum,
   PostWithdrawLiquidationRewardsStatusTranslations,
   PositionStatesEnum,
   PriceRequestStatusEnum,
   OptimisticOracleRequestStatesEnum,
+  InsuredBridgeDepositStateEnum,
+  InsuredBridgeDepositTypeEnum,
 };

@@ -21,7 +21,7 @@ const factory__L1StandardBridge = createOptimismEthersFactory("OVM_L1StandardBri
 const factory__L2StandardBridge = createOptimismEthersFactory("OVM_L2StandardBridge", true);
 
 // Insured bridge contract factories
-const factory__L1_BridgeRouter = createLocalEthersFactory("BridgeRouter");
+const factory__L1_BridgePoolFactory = createLocalEthersFactory("BridgePoolFactory");
 const factory__L2_BridgeDepositBox = createLocalEthersFactory("OVM_BridgeDepositBox", true);
 
 // UMA ecosystem contract factories
@@ -126,9 +126,11 @@ describe("Insured Bride", () => {
   });
   describe("Insured bridge functionality", async () => {
     // Contract objects
-    let l1Finder, l1BridgeRouter, l2Timer, l2BridgeDepositBox;
+    let l1Finder, l1BridgePoolFactory, l2Timer, l2BridgeDepositBox;
     beforeEach("Deploy and configure insured bridge contracts on appropriate networks", async () => {
       let optimisticOracleLiveness = 7200;
+      let proposerBondPct = "0";
+      let identifier = "0x123";
       let minimumBridgingDelay = 60;
 
       // Deploy UMA helper contracts
@@ -140,25 +142,31 @@ describe("Insured Bride", () => {
 
       // Bridging infrastructure and initialization. Note we use the l1 proxy cross-domain messenger for the routers
       // _crossDomainMessenger. This is done to mimic the production setup which routes transactions through this proxy.
-      l1BridgeRouter = await factory__L1_BridgeRouter
+      l1BridgePoolFactory = await factory__L1_BridgePoolFactory
         .connect(l1Wallet)
-        .deploy(l1Finder.address, PROXY__OVM_L1_CROSS_DOMAIN_MESSENGER, l1Wallet.address, optimisticOracleLiveness);
-      await l1BridgeRouter.deployTransaction.wait();
+        .deploy(
+          l1Finder.address,
+          PROXY__OVM_L1_CROSS_DOMAIN_MESSENGER,
+          optimisticOracleLiveness,
+          proposerBondPct,
+          identifier
+        );
+      await l1BridgePoolFactory.deployTransaction.wait();
 
       l2BridgeDepositBox = await factory__L2_BridgeDepositBox
         .connect(l2Wallet)
-        .deploy(l1BridgeRouter.address, minimumBridgingDelay, l2Timer.address, OPTIMISM_GAS_OPTS);
+        .deploy(l1BridgePoolFactory.address, minimumBridgingDelay, l2Timer.address, OPTIMISM_GAS_OPTS);
       // await l2BridgeDepositBox.deployTransaction.wait();
       await l2BridgeDepositBox.deployTransaction.wait();
     });
     it("Can whitelist token on L2 from L1 Router", async () => {
       // Set deposit contract on deposit router.
-      await l1BridgeRouter.setDepositContract(l2BridgeDepositBox.address);
+      await l1BridgePoolFactory.setDepositContract(l2BridgeDepositBox.address);
 
-      assert.equal(await l1BridgeRouter.depositContract(), l2BridgeDepositBox.address);
+      assert.equal(await l1BridgePoolFactory.getDepositContract(), l2BridgeDepositBox.address);
 
       // Wallet should have to tokens on L1 from the mint action and no tokens on L2.
-      const whitelistTx = await l1BridgeRouter.whitelistToken(
+      const whitelistTx = await l1BridgePoolFactory.whitelistToken(
         l1Erc20.address, // L1 token.
         l2Erc20.address, // Associated L2 token.
         ZERO_ADDRESS, // BridgePool. TODO: add in the bridge pool address once we have logic to deploy these from the factory.
