@@ -37,7 +37,7 @@ contract BridgePool is Testable {
     // https://github.com/ethereum/solidity/issues/10930.
     struct RelayAncillaryDataContents {
         uint256 depositId;
-        // The following params are inferred by the L2 deposit:
+        // The following params are inferred from the L2 deposit:
         address l2Sender;
         address recipient;
         uint256 depositTimestamp;
