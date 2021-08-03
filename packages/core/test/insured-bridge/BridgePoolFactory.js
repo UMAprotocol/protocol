@@ -209,7 +209,7 @@ describe("BridgePoolFactory", () => {
           const whitelistCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
           assert.equal(whitelistCallToMessengerCall._gasLimit, customGasLimit, "xchain gas limit unexpected");
         });
-        it("Duplicate call does not deploy a new BridgePool", async function () {
+        it("Duplicate call modifies token mapping but does not deploy a new BridgePool", async function () {
           await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
           const deploymentTxn = await bridgePoolFactory.methods
             .whitelistToken(l1Token, l2Token, defaultGasLimit)
@@ -233,7 +233,7 @@ describe("BridgePoolFactory", () => {
           });
           assert.equal(repeatDeploymentEvents.length, 0);
 
-          // This should still emit a cross-chain admin transaction.
+          // This should still emit a cross-chain admin transaction with updated mapping.
           const whitelistCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
           assert.equal(
             whitelistCallToMessengerCall._target,
