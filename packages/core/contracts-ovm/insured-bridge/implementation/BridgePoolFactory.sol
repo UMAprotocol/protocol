@@ -29,50 +29,27 @@ contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, OVM_CrossDoma
 
     // Set upon construction and can be reset by Owner.
     uint256 private optimisticOracleLiveness;
+    uint256 private proposerBondPct;
     bytes32 private identifier;
 
     event SetDepositContract(address indexed l2DepositContract);
     event SetRelayIdentifier(bytes32 indexed identifier);
     event SetOptimisticOracleLiveness(uint256 indexed liveness);
-    event WhitelistToken(
-        address indexed l1Token,
-        address indexed l2Token,
-        address indexed bridgePool,
-        uint256 proposerRewardPct,
-        uint256 proposerBondPct
-    );
+    event SetProposerBondPct(uint256 indexed proposerBondPct);
+    event WhitelistToken(address indexed l1Token, address indexed l2Token, address indexed bridgePool);
 
     constructor(
         address _finder,
         address _crossDomainMessenger,
         uint256 _optimisticOracleLiveness,
+        uint256 _proposerBondPct,
         bytes32 _identifier
     ) OVM_CrossDomainEnabled(_crossDomainMessenger) {
         finder = _finder;
         require(address(_getCollateralWhitelist()) != address(0), "Invalid finder");
         _setOptimisticOracleLiveness(_optimisticOracleLiveness);
+        _setProposerBondPct(_proposerBondPct);
         _setIdentifier(_identifier);
-    }
-
-    // Interface methods called by child BridgePool contracts.
-    function getFinder() external view override returns (address) {
-        return finder;
-    }
-
-    function getDepositContract() external view override returns (address) {
-        return depositContract;
-    }
-
-    function getWhitelistedToken(address l1Token) external view override returns (L1TokenRelationships memory) {
-        return whitelistedTokens[l1Token];
-    }
-
-    function getOptimisticOracleLiveness() external view override returns (uint256) {
-        return optimisticOracleLiveness;
-    }
-
-    function getIdentifier() external view override returns (bytes32) {
-        return identifier;
     }
 
     // Admin functions
@@ -91,6 +68,14 @@ contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, OVM_CrossDoma
      */
     function setOptimisticOracleLiveness(uint256 _liveness) public onlyOwner {
         _setOptimisticOracleLiveness(_liveness);
+    }
+
+    /**
+     * @dev Sets challenge pereiod for relayed deposits. BridgePools will read this value from this
+     * contract. Can only be called by the current owner.
+     */
+    function setProposerBondPct(uint256 _proposerBondPct) public onlyOwner {
+        _setProposerBondPct(_proposerBondPct);
     }
 
     /**
@@ -114,16 +99,12 @@ contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, OVM_CrossDoma
      * @param _l2Token Address of L2 token whose deposits are fulfilled by `_l1Token`.
      * @param _bridgePool Address of pool contract that stores passive liquidity with which to fulfill deposits.
      * @param _l2Gas Gas limit to set for relayed message on L2
-     * @param _proposerRewardPct Proposal reward % to pay relayers of this L2->L1 relay. 1e18 = 100%.
-     * @param _proposerBondPct Proposal bond % that relayers must pay to relay deposits for this L2->L1 relay. 1e18 = 100%.
      */
     function whitelistToken(
         address _l1Token,
         address _l2Token,
         address _bridgePool,
-        uint32 _l2Gas,
-        uint256 _proposerRewardPct,
-        uint256 _proposerBondPct
+        uint32 _l2Gas
     ) public onlyOwner {
         require(_getCollateralWhitelist().isOnWhitelist(address(_l1Token)), "Payment token not whitelisted");
         // We want to prevent any situation where a token mapping is whitelisted on this contract but not on the
@@ -132,24 +113,44 @@ contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, OVM_CrossDoma
 
         L1TokenRelationships storage whitelistedToken = whitelistedTokens[_l1Token];
         whitelistedToken.l2Token = _l2Token;
-        whitelistedToken.bridgePool = _bridgePool;
-        whitelistedToken.proposerRewardPct = _proposerRewardPct;
-        whitelistedToken.proposerBondPct = _proposerBondPct;
         sendCrossDomainMessage(
             depositContract,
             _l2Gas,
             abi.encodeWithSignature("whitelistToken(address,address)", _l1Token, whitelistedToken.l2Token)
         );
-        emit WhitelistToken(
-            _l1Token,
-            whitelistedToken.l2Token,
-            whitelistedToken.bridgePool,
-            whitelistedToken.proposerRewardPct,
-            whitelistedToken.proposerBondPct
-        );
+
+        // TODO: This contract should deploy a new BridgePool if the address is set to 0x0 at this point.
+        whitelistedToken.bridgePool = _bridgePool;
+
+        emit WhitelistToken(_l1Token, whitelistedToken.l2Token, whitelistedToken.bridgePool);
     }
 
     function pauseL2Deposits() public onlyOwner {}
+
+    // Interface view methods exposed to child BridgePool contracts.
+    function getFinder() external view override returns (address) {
+        return finder;
+    }
+
+    function getDepositContract() external view override returns (address) {
+        return depositContract;
+    }
+
+    function getWhitelistedToken(address l1Token) external view override returns (L1TokenRelationships memory) {
+        return whitelistedTokens[l1Token];
+    }
+
+    function getOptimisticOracleLiveness() external view override returns (uint256) {
+        return optimisticOracleLiveness;
+    }
+
+    function getProposerBondPct() external view override returns (uint256) {
+        return proposerBondPct;
+    }
+
+    function getIdentifier() external view override returns (bytes32) {
+        return identifier;
+    }
 
     // Internal functions
 
@@ -178,5 +179,11 @@ contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, OVM_CrossDoma
         // TODO: Validate liveness period value.
         optimisticOracleLiveness = _liveness;
         emit SetOptimisticOracleLiveness(optimisticOracleLiveness);
+    }
+
+    function _setProposerBondPct(uint256 _proposerBondPct) private {
+        // TODO: Validate bond % value.
+        proposerBondPct = _proposerBondPct;
+        emit SetProposerBondPct(proposerBondPct);
     }
 }

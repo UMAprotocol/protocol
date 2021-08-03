@@ -26,7 +26,6 @@ let collateralWhitelist;
 const defaultGasLimit = 1_000_000;
 const defaultIdentifier = utf8ToHex("IS_CROSS_CHAIN_RELAY_VALID");
 const defaultLiveness = 7200;
-const defaultProposerRewardPct = toWei("0.05");
 const defaultProposerBondPct = toWei("0.05");
 let l1Token;
 let l2Token;
@@ -54,6 +53,7 @@ describe("BridgePoolFactory", () => {
       finder.options.address,
       l1CrossDomainMessengerMock.options.address,
       defaultLiveness,
+      defaultProposerBondPct,
       defaultIdentifier
     ).send({ from: owner });
 
@@ -108,19 +108,25 @@ describe("BridgePoolFactory", () => {
         newLiveness.toString()
       );
     });
+    it("Set proposer bond", async () => {
+      const newBond = toWei("0.1");
+      assert(
+        await didContractThrow(bridgePoolFactory.methods.setProposerBondPct(newBond).send({ from: rando })),
+        "OnlyOwner modifier not enforced"
+      );
+
+      const txn = await bridgePoolFactory.methods.setProposerBondPct(newBond).send({ from: owner });
+      await assertEventEmitted(txn, bridgePoolFactory, "SetProposerBondPct", (ev) => {
+        return ev.proposerBondPct.toString() === newBond.toString();
+      });
+      assert.equal((await bridgePoolFactory.methods.getProposerBondPct().call()).toString(), newBond.toString());
+    });
     describe("Whitelist tokens", () => {
       it("Basic checks", async () => {
         assert(
           await didContractThrow(
             bridgePoolFactory.methods
-              .whitelistToken(
-                l1Token,
-                l2Token,
-                bridgePoolAddress,
-                defaultGasLimit,
-                defaultProposerRewardPct,
-                defaultProposerBondPct
-              )
+              .whitelistToken(l1Token, l2Token, bridgePoolAddress, defaultGasLimit)
               .send({ from: rando })
           ),
           "OnlyOwner modifier not enforced"
@@ -130,14 +136,7 @@ describe("BridgePoolFactory", () => {
         assert(
           await didContractThrow(
             bridgePoolFactory.methods
-              .whitelistToken(
-                l1Token,
-                l2Token,
-                bridgePoolAddress,
-                defaultGasLimit,
-                defaultProposerRewardPct,
-                defaultProposerBondPct
-              )
+              .whitelistToken(l1Token, l2Token, bridgePoolAddress, defaultGasLimit)
               .send({ from: owner })
           ),
           "Deposit contract not set"
@@ -148,14 +147,7 @@ describe("BridgePoolFactory", () => {
         assert(
           await didContractThrow(
             bridgePoolFactory.methods
-              .whitelistToken(
-                l1Token,
-                l2Token,
-                bridgePoolAddress,
-                defaultGasLimit,
-                defaultProposerRewardPct,
-                defaultProposerBondPct
-              )
+              .whitelistToken(l1Token, l2Token, bridgePoolAddress, defaultGasLimit)
               .send({ from: owner })
           ),
           "Deposit contract not set"
@@ -164,28 +156,14 @@ describe("BridgePoolFactory", () => {
 
         // Successful call
         await bridgePoolFactory.methods
-          .whitelistToken(
-            l1Token,
-            l2Token,
-            bridgePoolAddress,
-            defaultGasLimit,
-            defaultProposerRewardPct,
-            defaultProposerBondPct
-          )
+          .whitelistToken(l1Token, l2Token, bridgePoolAddress, defaultGasLimit)
           .send({ from: owner });
       });
       it("Add token mapping on L1 and sends xchain message", async () => {
         await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
         await collateralWhitelist.methods.addToWhitelist(l1Token).send({ from: owner });
         const whitelistTxn = await bridgePoolFactory.methods
-          .whitelistToken(
-            l1Token,
-            l2Token,
-            bridgePoolAddress,
-            defaultGasLimit,
-            defaultProposerRewardPct,
-            defaultProposerBondPct
-          )
+          .whitelistToken(l1Token, l2Token, bridgePoolAddress, defaultGasLimit)
           .send({ from: owner });
         assert.isTrue(
           l1CrossDomainMessengerMock.smocked.sendMessage.calls.length === 1,
@@ -195,20 +173,11 @@ describe("BridgePoolFactory", () => {
 
         // Check for L1 logs and state change
         await assertEventEmitted(whitelistTxn, bridgePoolFactory, "WhitelistToken", (ev) => {
-          return (
-            ev.l1Token === l1Token &&
-            ev.l2Token === l2Token &&
-            ev.bridgePool === bridgePoolAddress &&
-            ev.proposerRewardPct.toString() === defaultProposerRewardPct &&
-            ev.proposerBondPct.toString() === defaultProposerBondPct
-          );
+          return ev.l1Token === l1Token && ev.l2Token === l2Token && ev.bridgePool === bridgePoolAddress;
         });
         const tokenMapping = await bridgePoolFactory.methods.getWhitelistedToken(l1Token).call();
         assert.isTrue(
-          tokenMapping.l2Token === l2Token &&
-            tokenMapping.bridgePool === bridgePoolAddress &&
-            tokenMapping.proposerRewardPct.toString() === defaultProposerRewardPct.toString() &&
-            tokenMapping.proposerBondPct.toString() === defaultProposerBondPct.toString(),
+          tokenMapping.l2Token === l2Token && tokenMapping.bridgePool === bridgePoolAddress,
           "Token mapping not created correctly"
         );
 
@@ -226,14 +195,7 @@ describe("BridgePoolFactory", () => {
         const customGasLimit = 10;
         await bridgePoolFactory.methods.setDepositContract(depositBoxImpersonator).send({ from: owner });
         await bridgePoolFactory.methods
-          .whitelistToken(
-            l1Token,
-            l2Token,
-            bridgePoolAddress,
-            customGasLimit,
-            defaultProposerRewardPct,
-            defaultProposerBondPct
-          )
+          .whitelistToken(l1Token, l2Token, bridgePoolAddress, customGasLimit)
           .send({ from: owner });
         const whitelistCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
         assert.equal(whitelistCallToMessengerCall._gasLimit, customGasLimit, "xchain gas limit unexpected");

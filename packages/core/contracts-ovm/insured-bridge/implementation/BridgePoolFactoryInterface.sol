@@ -7,8 +7,6 @@ interface BridgePoolFactoryInterface {
     struct L1TokenRelationships {
         address l2Token;
         address bridgePool;
-        uint256 proposerRewardPct;
-        uint256 proposerBondPct;
     }
 
     // Finder used to point to latest OptimisticOracle and other DVM contracts.
@@ -20,6 +18,8 @@ interface BridgePoolFactoryInterface {
     function getWhitelistedToken(address l1Token) external view returns (L1TokenRelationships memory);
 
     function getOptimisticOracleLiveness() external view returns (uint256);
+
+    function getProposerBondPct() external view returns (uint256);
 
     function getIdentifier() external view returns (bytes32);
 }
