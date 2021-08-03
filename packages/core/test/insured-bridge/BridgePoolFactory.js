@@ -1,5 +1,5 @@
 const hre = require("hardhat");
-const { didContractThrow, runDefaultFixture } = require("@uma/common");
+const { didContractThrow, runDefaultFixture, ZERO_ADDRESS } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;
 const { hexToUtf8, utf8ToHex, toWei } = web3.utils;
 
@@ -27,16 +27,17 @@ const defaultGasLimit = 1_000_000;
 const defaultIdentifier = utf8ToHex("IS_CROSS_CHAIN_RELAY_VALID");
 const defaultLiveness = 7200;
 const defaultProposerBondPct = toWei("0.05");
+const defaultBridgingDelay = 60;
 let l1Token;
 let l2Token;
 let bridgePoolAddress;
 
 describe("BridgePoolFactory", () => {
-  let accounts, owner, rando, l2MessengerImpersonator, depositBoxImpersonator;
+  let accounts, owner, rando, l2MessengerImpersonator, depositBoxImpersonator, bridgePoolFactoryImpersonator;
 
   before(async function () {
     accounts = await web3.eth.getAccounts();
-    [owner, rando, l2MessengerImpersonator, depositBoxImpersonator] = accounts;
+    [owner, rando, l2MessengerImpersonator, depositBoxImpersonator, bridgePoolFactoryImpersonator] = accounts;
     l1Token = rando;
     l2Token = owner;
     bridgePoolAddress = l2MessengerImpersonator;
@@ -57,7 +58,9 @@ describe("BridgePoolFactory", () => {
       defaultIdentifier
     ).send({ from: owner });
 
-    depositBox = await BridgeDepositBox.new(l2MessengerImpersonator, owner).send({ from: owner });
+    depositBox = await BridgeDepositBox.new(bridgePoolFactoryImpersonator, defaultBridgingDelay, ZERO_ADDRESS).send({
+      from: owner,
+    });
   });
   describe("Admin functions", () => {
     it("Set deposit contract", async () => {
