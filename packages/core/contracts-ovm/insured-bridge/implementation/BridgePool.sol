@@ -55,8 +55,6 @@ contract BridgePool is Testable {
         address instantRelayer;
         // Store relay data that we'll use to settle finalized or disputed relays.
         RelayAncillaryDataContents relayData;
-        // All of the deposit's RelayAncillaryDataContents is hashed to create a unique deposit hash or "ancillaryData".
-        bytes ancillaryData;
     }
     // Associates each deposit with a unique hash derived from its constituent data..
     mapping(bytes => Deposit) public deposits;
@@ -155,7 +153,6 @@ contract BridgePool is Testable {
         newDeposit.depositState = DepositState.PendingSlow;
         newDeposit.depositType = DepositType.Slow;
         newDeposit.relayData = relayData;
-        newDeposit.ancillaryData = priceRequestAncillaryData;
 
         // Request a price for the relay identifier and propose "true" optimistically. These methods will pull the
         // (proposer reward + proposer bond + final fee) from the caller.
