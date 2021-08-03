@@ -76,7 +76,7 @@ function getHardhatConfig(configOverrides, workingDir = "./", includeTruffle = t
         gasPrice: 0,
         // We use custom logic to only compile contracts within the listed directories, as opposed to choosing which
         // ones to ignore, because there are more contracts to ignore than to include.
-        compileWhitelist: ["insured-bridge/implementation/OVM_BridgeDepositBox.sol"],
+        compileWhitelist: ["OVM_BridgeDepositBox", "OVM_Timer"],
         testWhitelist: ["oracle/Finder"],
         testBlacklist,
       },
