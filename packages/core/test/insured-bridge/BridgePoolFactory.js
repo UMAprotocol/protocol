@@ -69,7 +69,10 @@ describe("BridgePoolFactory", () => {
         await didContractThrow(bridgePoolFactory.methods.setDepositContract(newDepositContract).send({ from: rando })),
         "OnlyOwner modifier not enforced"
       );
-
+      assert(
+        await didContractThrow(bridgePoolFactory.methods.setDepositContract(ZERO_ADDRESS).send({ from: owner })),
+        "Can't set to 0x address"
+      );
       const txn = await bridgePoolFactory.methods.setDepositContract(newDepositContract).send({ from: owner });
       await assertEventEmitted(txn, bridgePoolFactory, "SetDepositContract", (ev) => {
         return ev.l2DepositContract === newDepositContract;

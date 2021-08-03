@@ -38,6 +38,13 @@ contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, OVM_CrossDoma
     event SetProposerBondPct(uint256 indexed proposerBondPct);
     event WhitelistToken(address indexed l1Token, address indexed l2Token, address indexed bridgePool);
 
+    // Add this modifier to methods that are expected to bridge admin functionality to the L2 Deposit contract, which
+    // will cause unexpected behavior if the deposit contract isn't set and valid.
+    modifier depositContractSet() {
+        _validateDepositContract(depositContract);
+        _;
+    }
+
     constructor(
         address _finder,
         address _crossDomainMessenger,
@@ -91,6 +98,7 @@ contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, OVM_CrossDoma
      * @param _depositContract Address of L2 deposit contract.
      */
     function setDepositContract(address _depositContract) public onlyOwner {
+        _validateDepositContract(_depositContract);
         depositContract = _depositContract;
         emit SetDepositContract(depositContract);
     }
@@ -111,24 +119,21 @@ contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, OVM_CrossDoma
         address _l2Token,
         address _bridgePool,
         uint32 _l2Gas
-    ) public onlyOwner {
+    ) public onlyOwner depositContractSet {
         require(_getCollateralWhitelist().isOnWhitelist(address(_l1Token)), "Payment token not whitelisted");
-        // We want to prevent any situation where a token mapping is whitelisted on this contract but not on the
-        // corresponding L2 contract.
-        require(depositContract != address(0), "Deposit contract not set");
 
         L1TokenRelationships storage whitelistedToken = whitelistedTokens[_l1Token];
         whitelistedToken.l2Token = _l2Token;
         sendCrossDomainMessage(
             depositContract,
             _l2Gas,
-            abi.encodeWithSignature("whitelistToken(address,address)", _l1Token, whitelistedToken.l2Token)
+            abi.encodeWithSignature("whitelistToken(address,address)", _l1Token, _l2Token)
         );
 
         // TODO: This contract should deploy a new BridgePool if the address is set to 0x0 at this point.
         whitelistedToken.bridgePool = _bridgePool;
 
-        emit WhitelistToken(_l1Token, whitelistedToken.l2Token, whitelistedToken.bridgePool);
+        emit WhitelistToken(_l1Token, _l2Token, _bridgePool);
     }
 
     function pauseL2Deposits() public onlyOwner {}
@@ -191,5 +196,9 @@ contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, OVM_CrossDoma
         // TODO: Validate bond % value.
         proposerBondPct = _proposerBondPct;
         emit SetProposerBondPct(proposerBondPct);
+    }
+
+    function _validateDepositContract(address _depositContract) private {
+        require(_depositContract != address(0), "Invalid deposit contract");
     }
 }
