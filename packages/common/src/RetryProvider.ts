@@ -21,8 +21,10 @@ type Payload = Parameters<Web3Provider["send"]>[0];
 type Callback = Parameters<Web3Provider["send"]>[1];
 type CallbackResult = Parameters<Callback>[1];
 
+export type RetryConfig = PartialExcept<Config, "url">;
+
 // Wraps one or more web3 http/websocket providers and allows per-request retries and fallbacks.
-class RetryProvider {
+export class RetryProvider {
   private providerCaches: (Config & { provider?: Web3Provider })[];
 
   /**
@@ -44,13 +46,13 @@ class RetryProvider {
    *      }
    *   ]
    */
-  constructor(configs: PartialExcept<Config, "url">[]) {
+  constructor(configs: RetryConfig[]) {
     assert(configs.length > 0, "Must have at least one provider");
     this.providerCaches = configs.map((config) => ({ retries: 1, delay: 0, ...config }));
   }
 
   // Passes the send through, catches errors, and retries on error.
-  send(payload: Payload, callback: Callback) {
+  sendAsync(payload: Payload, callback: Callback): void {
     // Turn callback into async-await internally.
     const sendWithProvider = (provider: Web3Provider): Promise<CallbackResult> => {
       return new Promise((resolve, reject) => {
@@ -100,7 +102,7 @@ class RetryProvider {
   }
 
   // Returns a Promise that resolves to the wrapped provider.
-  async _runRetry<T>(fn: (provider: Web3Provider) => T, providerIndex = 0, retryIndex = 0): T {
+  async _runRetry<T>(fn: (provider: Web3Provider) => Promise<T>, providerIndex = 0, retryIndex = 0): Promise<T> {
     const provider = this._constructOrGetProvider(providerIndex);
     try {
       return await fn(provider);
@@ -118,5 +120,3 @@ class RetryProvider {
     }
   }
 }
-
-module.exports = { RetryProvider };

@@ -1,23 +1,14 @@
 import HDWalletProvider from "@truffle/hdwallet-provider";
-import kms from "@google-cloud/kms";
-import { Storage } from "@google-cloud/storage";
-const { retrieveGckmsKeys } = require("./utils");
+import { retrieveGckmsKeys } from "./utils";
+import type { KeyConfig } from "./GckmsConfig";
 
-interface CloudKmsConfig {
-  projectId: string;
-  locationId: string;
-  keyRingId: string;
-  cryptoKeyId: string;
-  ciphertextBucket: string;
-  ciphertextFilename: string;
-}
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Tail2<T extends any[]> = T extends [unknown, unknown, ...infer R] ? R : never;
 type RemainingHDWalletArgs = Tail2<ConstructorParameters<typeof HDWalletProvider>>;
 
 // Wraps HDWalletProvider, deferring construction and allowing a Cloud KMS managed secret to be fetched asynchronously
 // and used to initialize an HDWalletProvider.
-class ManagedSecretProvider {
+export class ManagedSecretProvider {
   // cloudKmsSecretConfigs must either be:
   //   a single config object which representing a mnemonic or a private key on GCKMS
   //   or
@@ -33,9 +24,10 @@ class ManagedSecretProvider {
   private wrappedProvider: null | HDWalletProvider;
   private wrappedProviderPromise: Promise<HDWalletProvider>;
   constructor(
-    private readonly cloudKmsSecretConfigs: CloudKmsConfig[],
+    private readonly cloudKmsSecretConfigs: KeyConfig[],
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private readonly providerOrUrl: string | any, // Mirrors the type that HDWalletProvider expects.
-    ...remainingArgs: Tail2<ConstructorParameters<typeof HDWalletProvider>>
+    ...remainingArgs: RemainingHDWalletArgs
   ) {
     if (!Array.isArray(cloudKmsSecretConfigs)) {
       cloudKmsSecretConfigs = [cloudKmsSecretConfigs];
@@ -46,26 +38,26 @@ class ManagedSecretProvider {
   }
 
   // Passes the call through, by attaching a callback to the wrapper provider promise.
-  sendAsync(...all: Parameters<HDWalletProvider["sendAsync"]>) {
+  sendAsync(...all: Parameters<HDWalletProvider["sendAsync"]>): ReturnType<HDWalletProvider["sendAsync"]> {
     this.wrappedProviderPromise.then((wrappedProvider) => {
       wrappedProvider.sendAsync(...all);
     });
   }
 
   // Passes the call through. Requires that the wrapped provider has been created via, e.g., `constructWrappedProvider`.
-  send(...all: Parameters<HDWalletProvider["send"]>) {
+  send(...all: Parameters<HDWalletProvider["send"]>): ReturnType<HDWalletProvider["send"]> {
     this.wrappedProviderPromise.then((wrappedProvider) => {
       wrappedProvider.send(...all);
     });
   }
 
   // Passes the call through. Requires that the wrapped provider has been created via, e.g., `constructWrappedProvider`.
-  getAddress(...all: Parameters<HDWalletProvider["getAddress"]>) {
+  getAddress(...all: Parameters<HDWalletProvider["getAddress"]>): ReturnType<HDWalletProvider["getAddress"]> {
     return this.getWrappedProviderOrThrow().getAddress(...all);
   }
 
   // Returns the underlying wrapped provider.
-  getWrappedProviderOrThrow() {
+  getWrappedProviderOrThrow(): HDWalletProvider {
     if (this.wrappedProvider) {
       return this.wrappedProvider;
     } else {
@@ -74,49 +66,14 @@ class ManagedSecretProvider {
   }
 
   // Returns a Promise that resolves to the wrapped provider.
-  async getOrConstructWrappedProvider() {
+  async getOrConstructWrappedProvider(): Promise<HDWalletProvider> {
     if (this.wrappedProvider) {
       return this.wrappedProvider;
     }
 
-    // const fetchKeys = this.cloudKmsSecretConfigs.map((config) => {
-    //   const storage = new Storage();
-    //   const keyMaterialBucket = storage.bucket(config.ciphertextBucket);
-    //   const ciphertextFile = keyMaterialBucket.file(config.ciphertextFilename);
-
-    //   return ciphertextFile.download().then((data) => {
-    //     // Send the request to decrypt the downloaded file.
-    //     const contentsBuffer = data[0];
-    //     const ciphertext = contentsBuffer.toString("base64");
-
-    //     const client = new kms.KeyManagementServiceClient();
-    //     const name = client.cryptoKeyPath(config.projectId, config.locationId, config.keyRingId, config.cryptoKeyId);
-    //     return client.decrypt({ name, ciphertext });
-    //   });
-    // });
-
-    // return Promise.all(fetchKeys).then(
-    //   (results) => {
-    //     let keys: string[] | string = results.map(([result]) => {
-    //       if (result.plaintext !== typeof Uint8Array) {
-    //         throw new Error("Result formatted incorrectly");
-    //       }
-    //       return Buffer.from(result.plaintext, "base64").toString().trim();
-    //     });
-
-    //     // If there is only 1 key, convert into a single element before constructing `HDWalletProvider`
-    //     // This is important, as a single mnemonic will fail if passed in as an array.
-    //     if (keys.length == 1) {
-    //       keys = keys[0];
-    //     }
-
-    //     this.wrappedProvider = new HDWalletProvider(keys, this.providerOrUrl, ...this.remainingArgs);
-
     const keys = await retrieveGckmsKeys(this.cloudKmsSecretConfigs);
-    this.wrappedProvider = new HDWalletProvider(keys, ...this.remainingArgs);
+    this.wrappedProvider = new HDWalletProvider(keys, this.providerOrUrl, ...this.remainingArgs);
 
     return this.wrappedProvider;
   }
 }
-
-module.exports = { ManagedSecretProvider };

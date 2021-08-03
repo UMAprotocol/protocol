@@ -1,7 +1,7 @@
 declare module "@umaprotocol/ynatm" {
-    export const EXPONENTIAL: (base?: number, inGwei?: boolean) => (arg: { x: number }) => number;
-    export const LINEAR: (base?: number, inGwei?: boolean) => (arg: { x: number, c: number }) => number;
-    export const DOUBLES: (base?: number, inGwei?: boolean) => (arg: { y: number }) => number;
+    export const EXPONENTIAL: (base?: number, inGwei?: boolean) => (arg: { x?: number }) => number;
+    export const LINEAR: (slope?: number, inGwei?: boolean) => (arg: { x?: number, c?: number }) => number;
+    export const DOUBLES: (arg: { y?: number }) => number;
     export const toGwei: (x: number) => number;
 
     export interface SendArgs<T> {

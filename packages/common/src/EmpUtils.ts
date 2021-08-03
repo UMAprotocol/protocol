@@ -1,4 +1,5 @@
-import type { BN, Web3 } from "./types";
+import type { BN } from "./types";
+import type Web3 from "web3";
 
 /**
  * Get the collateralization ratio for an EMP position.

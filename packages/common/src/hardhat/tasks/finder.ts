@@ -1,5 +1,12 @@
-const { task } = require("hardhat/config");
-const { interfaceName } = require("@uma/common");
+import { task } from "hardhat/config";
+import { interfaceName } from "../../Constants";
+import assert from "assert";
+import type { CombinedHRE } from "./types";
+
+type InterfaceName = keyof typeof interfaceName;
+function isInterfaceName(name: string | InterfaceName): name is InterfaceName {
+  return name in interfaceName;
+}
 
 task("setup-finder", "Points Finder to DVM system contracts")
   .addFlag("registry", "Use if you want to set Registry")
@@ -14,7 +21,8 @@ task("setup-finder", "Points Finder to DVM system contracts")
   .addFlag("sinkoracle", "Use if you want to set SinkOracle as the Oracle")
   .addFlag("prod", "Configure production setup in Finder")
   .addFlag("test", "Configure test setup in Finder")
-  .setAction(async function (taskArguments, hre) {
+  .setAction(async function (taskArguments, hre_) {
+    const hre = hre_ as CombinedHRE;
     const { deployments, getNamedAccounts, web3 } = hre;
     const { padRight, utf8ToHex } = web3.utils;
     const { deployer } = await getNamedAccounts();
@@ -62,9 +70,10 @@ task("setup-finder", "Points Finder to DVM system contracts")
     const Finder = await deployments.get("Finder");
     const finder = new web3.eth.Contract(Finder.abi, Finder.address);
     console.log(`Using Finder @ ${finder.options.address}`);
-    for (let contractName of contractsToSet) {
+    for (const contractName of contractsToSet) {
       const deployed = await deployments.get(contractName);
       const contract = new web3.eth.Contract(deployed.abi, deployed.address);
+      if (!isInterfaceName(contractName)) throw new Error(`No mapped interface name for contract name ${contractName}`);
       const identifierHex = padRight(utf8ToHex(interfaceName[contractName]), 64);
       const currentlySetAddress = await finder.methods.interfacesImplemented(identifierHex).call();
       if (currentlySetAddress !== contract.options.address) {

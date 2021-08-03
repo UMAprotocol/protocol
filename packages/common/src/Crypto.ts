@@ -1,5 +1,5 @@
 import EthCrypto from "eth-crypto";
-import type { Web3 } from "./types";
+import type Web3 from "web3";
 import assert from "assert";
 
 interface KeyPair {
@@ -95,7 +95,7 @@ export async function deriveKeyPairFromSignatureTruffle(
 }
 
 // Signs a message in a way where it can be verified onchain by the openzeppelin ECDSA library.
-export async function signMessage(web3: Web3, message: string, account: string): string {
+export async function signMessage(web3: Web3, message: string, account: string): Promise<string> {
   // Must hash the inner message because Solidity requires a fixed length message to verify a signature.
   const innerMessageHash = await web3.utils.soliditySha3(message);
   assert(innerMessageHash, "innerMessageHash is null");

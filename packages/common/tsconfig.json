@@ -1,9 +1,11 @@
 {
   "extends": "@tsconfig/node14/tsconfig.json",
   "include": ["src/**/*", "index.ts"],
+  "exclude": ["dist/**/*"],
   "compilerOptions": {
     "typeRoots": ["./types", "./node_modules/@types"],
     "outDir": "dist",
-    "declaration": true
+    "declaration": true,
+    "resolveJsonModule": true
   }
 }

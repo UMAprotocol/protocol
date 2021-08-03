@@ -60,7 +60,7 @@ export function computeVoteHashAncillary(request: VoteHashAncillaryRequest): str
   return hash;
 }
 
-export function getKeyGenMessage(roundId: number) {
+export function getKeyGenMessage(roundId: number | string): string {
   // TODO: discuss dApp tradeoffs for changing this to a per-topic hash keypair.
   return `UMA Protocol one time key for round: ${roundId.toString()}`;
 }

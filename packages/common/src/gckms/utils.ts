@@ -1,5 +1,6 @@
-const kms = require("@google-cloud/kms");
-const { Storage } = require("@google-cloud/storage");
+import kms from "@google-cloud/kms";
+import { Storage } from "@google-cloud/storage";
+import type { KeyConfig } from "./GckmsConfig";
 
 // This function takes an array of GCKMS configs that are shaped as follows:
 // {
@@ -12,7 +13,7 @@ const { Storage } = require("@google-cloud/storage");
 // }
 //
 // It returns an array of private keys that can be used to send transactions.
-async function retrieveGckmsKeys(gckmsConfigs) {
+export async function retrieveGckmsKeys(gckmsConfigs: KeyConfig[]): Promise<string[]> {
   return await Promise.all(
     gckmsConfigs.map(async (config) => {
       const storage = new Storage();
@@ -26,7 +27,8 @@ async function retrieveGckmsKeys(gckmsConfigs) {
       const client = new kms.KeyManagementServiceClient();
       const name = client.cryptoKeyPath(config.projectId, config.locationId, config.keyRingId, config.cryptoKeyId);
       const [result] = await client.decrypt({ name, ciphertext });
-      return "0x" + Buffer.from(result.plaintext, "base64").toString().trim();
+      if (!result.plaintext || result.plaintext instanceof Uint8Array) throw new Error("result.plaintext wrong type");
+      return "0x" + Buffer.from(result.plaintext.toString(), "base64").toString().trim();
     })
   );
 }

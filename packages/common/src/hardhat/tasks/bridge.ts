@@ -1,4 +1,5 @@
-const { task, types } = require("hardhat/config");
+import { task, types } from "hardhat/config";
+import type { CombinedHRE } from "./types";
 
 // Use BLANK_FUNCTION_SIG if you don't want `deposit` or `executeProposal` to delegate a contract call.
 const BLANK_FUNCTION_SIG = "0x00000000";
@@ -17,7 +18,8 @@ task("register-generic-resource", "Admin can set generic resource ID on Bridge")
   )
   .addOptionalParam("deposit", "Deposit function prototype string (e.g. func(uint256,bool))", "", types.string)
   .addOptionalParam("execute", "Contract to delegate call to for this resource ID", "", types.string)
-  .setAction(async function (taskArguments, hre) {
+  .setAction(async function (taskArguments, hre_) {
+    const hre = hre_ as CombinedHRE; // Cast to the extended HRE.
     const { deployments, getNamedAccounts, web3 } = hre;
     const { deployer } = await getNamedAccounts();
     const { target, deposit, execute, rname, cid } = taskArguments;
@@ -26,11 +28,11 @@ task("register-generic-resource", "Admin can set generic resource ID on Bridge")
     const { utf8ToHex, sha3 } = web3.utils;
 
     // Returns first 4 bytes of the sha3 hash of the function name including types/
-    const _getFunctionSignature = (functionPrototypeString) => {
-      return sha3(utf8ToHex(functionPrototypeString)).substr(0, 10);
+    const _getFunctionSignature = (functionPrototypeString: string) => {
+      return sha3(utf8ToHex(functionPrototypeString))?.substr(0, 10);
     };
 
-    const _getResourceId = (name, chainId) => {
+    const _getResourceId = (name: string, chainId: string) => {
       const encodedParams = web3.eth.abi.encodeParameters(["string", "uint8"], [name, chainId]);
       return web3.utils.soliditySha3(encodedParams);
     };

@@ -3,13 +3,14 @@
 import minimist from "minimist";
 import fs from "fs";
 import dotenv from "dotenv";
+import { PublicNetworks } from "../PublicNetworks";
 
 const argv = minimist(process.argv.slice());
 dotenv.config();
 
 // Grab the name property from each to get a list of the names of the public networks.
-const publicNetworkNames = Object.values(require("../PublicNetworks.js").PublicNetworks).map((elt) => elt.name);
-const { isPublicNetwork } = require("../MigrationUtils.js");
+const publicNetworkNames = Object.values(PublicNetworks).map((elt) => elt.name);
+const isPublicNetwork = (name: string) => publicNetworkNames.some((elt) => elt.startsWith(name));
 
 // The anatomy of an individual config is:
 //   projectId: ID of a Google Cloud project
@@ -18,27 +19,28 @@ const { isPublicNetwork } = require("../MigrationUtils.js");
 //   locationId: Google Cloud location, e.g., 'global'.
 //   ciphertextBucket: ID of a Google Cloud storage bucket.
 //   ciphertextFilename: Name of a file within `ciphertextBucket`.
-interface GckmsConfig {
+export interface KeyConfig {
+  projectId: string;
+  locationId: string;
+  keyRingId: string;
+  cryptoKeyId: string;
+  ciphertextBucket: string;
+  ciphertextFilename: string;
+}
+export interface GckmsConfig {
   [network: string]: {
-    [keyName: string]: {
-      projectId: string;
-      locationId: string;
-      keyRingId: string;
-      cryptoKeyId: string;
-      ciphertextBucket: string;
-      ciphertextFilename: string;
-    };
+    [keyName: string]: KeyConfig;
   };
 }
 
-function arrayify<Type>(input: Type[] | Type | undefined): Type[] {
+function arrayify(input: string[] | string | undefined): string[] {
   if (!input) return [];
   if (!Array.isArray(input)) return [input];
   return input;
 }
 
-function getGckmsConfig(keys = arrayify(argv.keys), network = argv.network) {
-  let configOverride = {};
+export function getGckmsConfig(keys = arrayify(argv.keys), network = argv.network): KeyConfig[] {
+  let configOverride: GckmsConfig = {};
 
   // If there is no env variable providing the config, attempt to pull it from a file.
   // TODO: this is kinda hacky. We should refactor this to only take in the config using one method.
@@ -51,7 +53,7 @@ function getGckmsConfig(keys = arrayify(argv.keys), network = argv.network) {
     const overrideFname = ".GckmsOverride.js";
     try {
       if (fs.existsSync(`${__dirname}/${overrideFname}`)) {
-        configOverride = require(`./${overrideFname}`);
+        configOverride = JSON.parse(fs.readFileSync(`./${overrideFname}`).toString("utf8"));
       }
     } catch (err) {
       console.error(err);
@@ -59,7 +61,7 @@ function getGckmsConfig(keys = arrayify(argv.keys), network = argv.network) {
   }
 
   const getNetworkName = () => {
-    if (isPublicNetwork(network || "")) {
+    if (isPublicNetwork(network || "unknown")) {
       // Take everything before the underscore:
       // mainnet_gckms -> mainnet.
       return network.split("_")[0];
@@ -78,6 +80,3 @@ function getGckmsConfig(keys = arrayify(argv.keys), network = argv.network) {
 
   return keyConfigs;
 }
-
-// Export the requested config.
-module.exports = { getGckmsConfig };

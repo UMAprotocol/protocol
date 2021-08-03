@@ -1,44 +1,37 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import MetaMaskConnector from "node-metamask";
 import minimist from "minimist";
+import type { AbstractProvider } from "web3-core";
 const argv = minimist(process.argv.slice());
 
-interface Provider {
-  sendAsync: (...arr: any[]) => void;
-  send: (...arr: any[]) => void;
-  getAddress: (...arr: any[]) => string;
-}
+type MetamaskProvider = ReturnType<MetaMaskConnector["getProvider"]>;
 
 // Wraps the MetaMask Connector enabling truffle to init a web3 provider and continue truffle execution until the
 // MetaMask connection has been established. This calls metaMask asynchronously while returning a provider synchronously.
-export class MetaMaskTruffleProvider implements Provider {
-  public wrappedProvider: Provider | null;
-  public wrappedProviderPromise: Promise<Provider>;
+export class MetaMaskTruffleProvider implements AbstractProvider {
+  public wrappedProvider: MetamaskProvider | null;
+  public wrappedProviderPromise: Promise<MetamaskProvider>;
   constructor() {
     this.wrappedProvider = null;
     this.wrappedProviderPromise = this.getOrConstructWrappedProvider();
   }
 
   // Passes the call through, by attaching a callback to the wrapper provider promise.
-  sendAsync(...all: any[]): void {
+  sendAsync(...all: Parameters<AbstractProvider["sendAsync"]>): void {
     this.wrappedProviderPromise.then((wrappedProvider) => {
       wrappedProvider.sendAsync(...all);
     });
   }
 
   // Passes the call through. Requires that the wrapped provider has been created via, e.g., `constructWrappedProvider`.
-  send(...all: any[]): void {
-    this.wrappedProviderPromise.then((wrappedProvider) => {
+  send(...all: Parameters<NonNullable<AbstractProvider["send"]>>): void {
+    this.wrappedProviderPromise.then((wrappedProvider: MetamaskProvider) => {
       wrappedProvider.send(...all);
     });
   }
 
-  // Passes the call through. Requires that the wrapped provider has been created via, e.g., `constructWrappedProvider`.
-  getAddress(...all: any[]): string {
-    return this.getWrappedProviderOrThrow().getAddress(...all);
-  }
-
   // Returns the underlying wrapped provider.
-  getWrappedProviderOrThrow(): Provider {
+  getWrappedProviderOrThrow(): MetamaskProvider {
     if (this.wrappedProvider) {
       return this.wrappedProvider;
     } else {
@@ -47,10 +40,10 @@ export class MetaMaskTruffleProvider implements Provider {
   }
 
   // Returns a Promise that resolves to the wrapped provider.
-  getOrConstructWrappedProvider(): Promise<Provider> {
+  getOrConstructWrappedProvider(): Promise<MetamaskProvider> {
     // Only if the network is MetaMask should we init the wrapped provider.
     if (argv.network != "metamask") {
-      new Promise<Provider>(() => {
+      new Promise<MetamaskProvider>(() => {
         /* do nothing */
       });
     }

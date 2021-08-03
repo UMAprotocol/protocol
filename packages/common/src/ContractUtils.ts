@@ -1,7 +1,29 @@
-const truffleContract = require("@truffle/contract");
-import type { BN, Web3 } from "./types";
+// The types in this package are broken, so we have to require it.
+const contractConstructor_ = require("@truffle/contract");
+import type truffleContract_ from "@truffle/contract";
+import type { BN } from "./types";
+import Web3 from "web3";
+import type { provider as Provider } from "web3-core";
 
+// Truffle library types aren't specified correctly. Cast and modify to correct for this.
+export interface TruffleInstance {
+  [prop: string]: any;
+}
+export interface TruffleContract extends truffleContract_.Contract {
+  setProvider: (provider: Provider) => void;
+  at: (address: string) => Promise<TruffleInstance>;
+  deployed: () => Promise<TruffleInstance>;
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const truffleContract = contractConstructor_ as (artifact: any) => TruffleContract;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type CallResult = string | BN | { [key: string]: any };
+
+function isBN(input: CallResult): input is BN {
+  return input?.constructor?.name === "BN";
+}
 
 /**
  * This is a hack to handle reverts for view/pure functions that don't actually revert on public networks.
@@ -19,10 +41,10 @@ export const revertWrapper = (result: CallResult): null | CallResult => {
     return null;
   }
 
-  if (typeof result !== "string") {
+  if (typeof result !== "string" && !isBN(result)) {
     // Iterate over the properties of the object and see if any match the revert value.
     for (const prop in result) {
-      if (result[prop] && result[prop].toString() === revertValue) {
+      if (!(prop in result) && result[prop].toString() === revertValue) {
         return null;
       }
     }
@@ -36,7 +58,10 @@ export const revertWrapper = (result: CallResult): null | CallResult => {
  * @param {Object} web3 instance. In unit tests this is globally accessable but when used in production needs injection.
  * @returns truffle contract instance
  */
-const createContractObjectFromJson = (contractJsonObject: { [key: string]: any }, _web3 = (global as unknown as { web3: Web3 }).web3) => {
+export const createContractObjectFromJson = (
+  contractJsonObject: { [key: string]: any },
+  _web3 = ((global as unknown) as { web3: Web3 }).web3
+): TruffleContract => {
   const truffleContractCreator = truffleContract(contractJsonObject);
   truffleContractCreator.setProvider(_web3.currentProvider);
   return truffleContractCreator;
@@ -46,11 +71,8 @@ const createContractObjectFromJson = (contractJsonObject: { [key: string]: any }
  * produced by an external project. Can also be useful if the artifact was compiled using ethers.
  * @param {object} artifact representing the compiled contract instance.
  * @param {string} libraryName to be found and replaced within the artifact.
- * @returns
  */
-const replaceLibraryBindingReferenceInArtitifact = (artifact, libraryName) => {
+export const replaceLibraryBindingReferenceInArtitifact = <T>(artifact: T, libraryName: string): T => {
   const artifactString = JSON.stringify(artifact);
   return JSON.parse(artifactString.replace(/\$.*\$/g, libraryName));
 };
-
-module.exports = { revertWrapper, createContractObjectFromJson, replaceLibraryBindingReferenceInArtitifact };

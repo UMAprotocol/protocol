@@ -14,7 +14,21 @@ export const getBridgeChainId = (netId: number): number => {
   return isModifedChainId(netId) ? BRIDGE_CHAIN_ID[netId] : netId;
 };
 
-export const PublicNetworks = {
+interface PublicNetworksType {
+  [networkId: number]: {
+    name: string;
+    ethFaucet?: null | string;
+    etherscan: string;
+    daiAddress?: string;
+    wethAddress?: string;
+    customTruffleConfig?: {
+      confirmations: number;
+      timeoutBlocks: number;
+    };
+  };
+}
+
+export const PublicNetworks: PublicNetworksType = {
   1: {
     name: "mainnet",
     ethFaucet: null,

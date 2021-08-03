@@ -1,7 +1,7 @@
-const { retrieveGckmsKeys } = require("./utils");
-const { extendConfig } = require("hardhat/config");
-const { HardhatPluginError } = require("hardhat/plugins");
-const { getGckmsConfig } = require("./GckmsConfig");
+import { retrieveGckmsKeys } from "./utils";
+import { extendConfig } from "hardhat/config";
+import { HardhatPluginError } from "hardhat/plugins";
+import { getGckmsConfig } from "./GckmsConfig";
 
 // This plugin just injects GCKMS keys into the config.
 // Because it does so asynchonously, it creates a race condition. This means it may not work in all circumstances.

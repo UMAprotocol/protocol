@@ -43,6 +43,7 @@ export async function stopMining(web3: Web3): Promise<CallbackResult> {
       reject(new Error("No web3 provider that allows send()"));
       return;
     }
+
     web3.currentProvider.send(
       { jsonrpc: "2.0", method: "miner_stop", params: [], id: new Date().getTime() },
       (err: CallbackError, result: CallbackResult) => {

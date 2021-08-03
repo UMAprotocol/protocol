@@ -4,6 +4,7 @@ const { getNodeUrl, mnemonic } = require("./TruffleConfig");
 const path = require("path");
 
 export function getHardhatConfig(
+  // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types
   configOverrides: any,
   workingDir = "./",
   includeTruffle = true

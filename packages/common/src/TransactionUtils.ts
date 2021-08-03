@@ -2,20 +2,16 @@ import util from "util";
 import minimist from "minimist";
 import ynatm from "@umaprotocol/ynatm";
 import type Web3 from "web3";
+import type { TransactionReceipt } from "web3-core";
+import type { ContractSendMethod, SendOptions } from "web3-eth-contract";
+
+type CallReturnValue = ReturnType<ContractSendMethod["call"]>;
+interface AugmentedSendOptions extends SendOptions {
+  chainId?: string;
+  usingOffSetDSProxyAccount?: boolean;
+}
 
 const argv = minimist(process.argv.slice(), {});
-
-type Transaction = ReturnType<InstanceType<Web3["eth"]["Contract"]>["deploy"]>;
-type CallReturnValue = ReturnType<Transaction["call"]>;
-type TransactionReceiptPromise = ReturnType<Web3["eth"]["sendTransaction"]>;
-
-type Web3TransactionConfig = Parameters<Transaction["send"]>[0];
-interface TransactionConfig extends Web3TransactionConfig {
-  chainId: string;
-  usingOffSetDSProxyAccount: boolean;
-  nonce: number;
-  gasPrice: string;
-}
 
 /**
  * Simulate transaction via .call() and then .send() and return receipt. If an error is thrown, return the error and add
@@ -34,13 +30,13 @@ export const runTransaction = async ({
   availableAccounts = 1,
 }: {
   web3: Web3;
-  transaction: Transaction;
-  transactionConfig: TransactionConfig;
+  transaction: ContractSendMethod;
+  transactionConfig: AugmentedSendOptions;
   availableAccounts: number;
 }): Promise<{
-  receipt: TransactionReceiptPromise;
+  receipt: TransactionReceipt;
   returnValue: CallReturnValue;
-  transactionConfig: TransactionConfig;
+  transactionConfig: AugmentedSendOptions;
 }> => {
   // Add chainId in case RPC enforces transactions to be replay-protected, (i.e. enforced in geth v1.10,
   // https://blog.ethereum.org/2021/03/03/geth-v1-10-0/).
@@ -92,18 +88,21 @@ export const runTransaction = async ({
     // hasn't mined. Min Gas price starts at caller's transactionConfig.gasPrice, with a max gasPrice of x6.
     const gasPriceScalingFunction = ynatm.DOUBLES;
     const retryDelay = 60000;
+    if (!transactionConfig.gasPrice) throw new Error("No gas price provided");
     const minGasPrice = transactionConfig.gasPrice;
     const maxGasPrice = 2 * 3 * parseInt(minGasPrice);
 
     const receipt = await ynatm.send({
-      sendTransactionFunction: (gasPrice: string) => transaction.send({ ...transactionConfig, gasPrice }),
+      sendTransactionFunction: (gasPrice: number) =>
+        transaction.send({ ...transactionConfig, gasPrice: gasPrice.toString() }),
       minGasPrice,
       maxGasPrice,
       gasPriceScalingFunction,
       delay: retryDelay,
     });
 
-    return { receipt, returnValue, transactionConfig };
+    // Note: cast is due to an incorrect type in the web3 declarations that assumes send returns a contract.
+    return { receipt: (receipt as unknown) as TransactionReceipt, returnValue, transactionConfig };
   } catch (error) {
     error.type = "send";
     throw error;
@@ -132,7 +131,9 @@ export const accountHasPendingTransactions = async (web3: Web3, account: string)
  * @param {*string} account account to check.
  * @returns number representing the number of transactions, including pending.
  */
-export const getPendingTransactionCount = async (web3: Web3, account: string): number => {
+export const getPendingTransactionCount = async (web3: Web3, account: string): Promise<number> => {
+  if (!web3.currentProvider || typeof web3.currentProvider === "string" || !web3.currentProvider.send)
+    throw new Error("A valid provider with send method not initialized");
   const sendRpc = util.promisify(web3.currentProvider.send).bind(web3.currentProvider);
 
   const rpcResponse = await sendRpc({
@@ -141,6 +142,7 @@ export const getPendingTransactionCount = async (web3: Web3, account: string): n
     params: [account, "pending"],
     id: Math.round(Math.random() * 100000),
   });
+  if (!rpcResponse || !rpcResponse.result) throw new Error("Bad RPC response");
   return web3.utils.toDecimal(rpcResponse.result);
 };
 
@@ -150,7 +152,7 @@ export const getPendingTransactionCount = async (web3: Web3, account: string): n
  * @param {Object} web3 Provider from Truffle/node to connect to Ethereum network.
  * @param {number} blockerBlockNumber block execution until this block number is mined.
  */
-const blockUntilBlockMined = async (web3, blockerBlockNumber, delay = 500) => {
+export const blockUntilBlockMined = async (web3: Web3, blockerBlockNumber: number, delay = 500): Promise<void> => {
   if (argv._.indexOf("test") !== -1) return;
   for (;;) {
     const currentBlockNumber = await web3.eth.getBlockNumber();
@@ -158,5 +160,3 @@ const blockUntilBlockMined = async (web3, blockerBlockNumber, delay = 500) => {
     await new Promise((r) => setTimeout(r, delay));
   }
 };
-
-module.exports = { runTransaction, blockUntilBlockMined, accountHasPendingTransactions };

@@ -1,7 +1,9 @@
-const { task, types } = require("hardhat/config");
-const { RegistryRolesEnum } = require("../../Enums");
+import { task, types } from "hardhat/config";
+import { RegistryRolesEnum } from "../../Enums";
+import { Contract } from "web3-eth-contract";
+import { CombinedHRE } from "./types";
 
-const _registerAccount = async (account, registry, deployer) => {
+const _registerAccount = async (account: string, registry: Contract, deployer: string) => {
   const isRegistered = await registry.methods.isContractRegistered(account).call();
   if (!isRegistered) {
     console.log(`Registering ${account}...`);
@@ -14,7 +16,8 @@ const _registerAccount = async (account, registry, deployer) => {
 
 task("register-accounts", "Register deployer plus custom account with Registry capable of making price requests")
   .addOptionalParam("account", "Custom account to register", "", types.string)
-  .setAction(async function (taskArguments, hre) {
+  .setAction(async function (taskArguments, hre_) {
+    const hre = hre_ as CombinedHRE;
     const { deployments, getNamedAccounts, web3 } = hre;
     const { deployer } = await getNamedAccounts();
     const { account } = taskArguments;

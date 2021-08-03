@@ -27,9 +27,46 @@
 //                            eventReturnValues => eventReturnValues.someValueICareAbout === 5);
 //
 
-const { extendEnvironment } = require("hardhat/config");
+import { extendEnvironment } from "hardhat/config";
+import type { HardhatRuntimeEnvironment, Artifact } from "hardhat/types";
+import type { ContractSendMethod, Contract, EventData } from "web3-eth-contract";
+import type Web3 from "web3";
+import type { DeploymentsExtension } from "hardhat-deploy/types";
 
-extendEnvironment((hre) => {
+export interface ContractFactory extends Artifact {
+  deployed: () => Promise<Contract>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  new: (...args: any[]) => ContractSendMethod;
+  at: (address: string) => Contract;
+}
+
+type FindEventFunction = (
+  txnResult: { blockNumber: number },
+  contract: Contract,
+  eventName: string,
+  fn: (eventValues: EventData["returnValues"]) => boolean
+) => Promise<{
+  match: EventData | undefined;
+  allEvents: EventData["returnValues"][];
+}>;
+
+export interface Extension {
+  _artifactCache: { [name: string]: Artifact };
+  getContract: (name: string) => ContractFactory;
+  findEvent: FindEventFunction;
+  assertEventEmitted: (...args: Parameters<FindEventFunction>) => void;
+  assertEventNotEmitted: (...args: Parameters<FindEventFunction>) => void;
+}
+
+interface OtherExtensions {
+  web3: Web3;
+  deployments: DeploymentsExtension;
+}
+
+type HRE = Extension & OtherExtensions & HardhatRuntimeEnvironment;
+
+extendEnvironment((_hre) => {
+  const hre = _hre as HRE;
   hre._artifactCache = {};
   hre.getContract = (name) => {
     if (!hre._artifactCache[name]) hre._artifactCache[name] = hre.artifacts.readArtifactSync(name);
@@ -40,15 +77,20 @@ extendEnvironment((hre) => {
       return new hre.web3.eth.Contract(artifact.abi, deployment.address);
     };
 
-    const newProp = (...args) =>
+    const newProp = (...args: any[]) =>
       new hre.web3.eth.Contract(artifact.abi, undefined).deploy({ data: artifact.bytecode, arguments: args });
 
-    const at = (address) => new hre.web3.eth.Contract(artifact.abi, address);
+    const at = (address: string) => new hre.web3.eth.Contract(artifact.abi, address);
 
     return { ...artifact, deployed, new: newProp, at };
   };
 
-  hre.findEvent = async (txnResult, contract, eventName, fn = () => true) => {
+  hre.findEvent = async (
+    txnResult,
+    contract,
+    eventName,
+    fn: (eventValues: EventData["returnValues"]) => boolean = () => true
+  ) => {
     // TODO: this can be improved by making sure the event falls in the correct transaction.
     const events = await contract.getPastEvents(eventName, {
       fromBlock: txnResult.blockNumber,
@@ -65,7 +107,9 @@ extendEnvironment((hre) => {
     const { match, allEvents } = await hre.findEvent(txnResult, contract, eventName, fn);
 
     if (match === undefined) {
-      throw new Error(`No matching events found. Events found:\n\n${allEvents.map(JSON.stringify).join("\n\n")}`);
+      throw new Error(
+        `No matching events found. Events found:\n\n${allEvents.map((event) => JSON.stringify(event)).join("\n\n")}`
+      );
     }
   };
 

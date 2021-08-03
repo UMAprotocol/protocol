@@ -5,8 +5,7 @@ import type { BN } from "./types";
 import BigNumber from "bignumber.js";
 import moment from "moment";
 import assert from "assert";
-import { formatFixed, parseFixed } from "@ethersproject/bignumber";
-import { Net } from "web3/eth/types";
+export { formatFixed, parseFixed } from "@ethersproject/bignumber";
 
 // Apply settings to BigNumber.js library.
 // Note: ROUNDING_MODE is set to round ceiling so we send at least enough collateral to create the requested tokens.
@@ -25,13 +24,13 @@ export const formatDate = (timestampInSeconds: number): string => {
   return new Date(Math.floor(timestampInSeconds * 1000)).toString();
 };
 
-export const formatHours = (seconds: number, decimals = 2) => {
+export const formatHours = (seconds: number, decimals = 2): string => {
   // 3600 seconds in an hour.
   return (seconds / 3600).toFixed(decimals);
 };
 
 // formatWei converts a string or BN instance from Wei to Ether, e.g., 1e19 -> 10.
-export const formatWei = (num: string | BN) => {
+export const formatWei = (num: string | BN): string => {
   // Web3's `fromWei` function doesn't work on BN objects in minified mode (e.g.,
   // `web3.utils.isBN(web3.utils.fromBN("5"))` is false), so we use a workaround where we always pass in strings.
   // See https://github.com/ethereum/web3.js/issues/1777.
@@ -77,7 +76,7 @@ export const createFormatFunction = (
   showSign = false,
   decimals = 18
 ) => {
-  return (valInWei: string | BN) =>
+  return (valInWei: string | BN): string =>
     formatWithMaxDecimals(
       formatWei(ConvertDecimals(decimals, 18)(valInWei)),
       numDisplayedDecimals,
@@ -137,13 +136,13 @@ export function addSign(number: string): string {
 // toDecimals: number - decimal value to convert to
 // web3: web3 object to get a big number function.
 // return => (amount:string)=>BN
-export const ConvertDecimals = (fromDecimals: number, toDecimals: number): ((amountIn: string) => BN) => {
+export const ConvertDecimals = (fromDecimals: number, toDecimals: number): ((amountIn: string | number | BN) => BN) => {
   assert(fromDecimals >= 0, "requires fromDecimals as an integer >= 0");
   assert(toDecimals >= 0, "requires toDecimals as an integer >= 0");
   // amount: string, BN, number - integer amount in fromDecimals smallest unit that want to convert toDecimals
   // returns: BN with toDecimals in smallest unit
-  return (amountIn: string | number) => {
-    const amount = Web3.utils.toBN(amountIn);
+  return (amountIn: string | number | BN) => {
+    const amount = Web3.utils.toBN(amountIn.toString());
     if (amount.isZero()) return amount;
     const diff = fromDecimals - toDecimals;
     if (diff == 0) return amount;

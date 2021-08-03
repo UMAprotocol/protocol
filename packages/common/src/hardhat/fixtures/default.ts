@@ -1,13 +1,17 @@
-const { interfaceName } = require("../../Constants");
-const { RegistryRolesEnum } = require("../../Enums");
+import { HardhatRuntimeEnvironment } from "hardhat/types";
+import { interfaceName } from "../../Constants";
+import { RegistryRolesEnum } from "../../Enums";
+import { CombinedHRE } from "../tasks/types";
+import { DeploymentsExtension } from "hardhat-deploy/types";
 
-async function runDefaultFixture({ deployments }) {
-  const setup = deployments.createFixture(async ({ deployments, getNamedAccounts, web3 }) => {
+export async function runDefaultFixture({ deployments }: { deployments: DeploymentsExtension }): Promise<void> {
+  const setup = deployments.createFixture(async (hre: HardhatRuntimeEnvironment) => {
+    const { deployments, getNamedAccounts, web3 } = hre as CombinedHRE; // Cast because hardhat extension isn't well-typed.
     const { padRight, toWei, utf8ToHex } = web3.utils;
     await deployments.fixture();
     const { deployer } = await getNamedAccounts();
 
-    const getDeployment = async (name) => {
+    const getDeployment = async (name: string) => {
       const contract = await deployments.get(name);
       return new web3.eth.Contract(contract.abi, contract.address);
     };
@@ -15,9 +19,9 @@ async function runDefaultFixture({ deployments }) {
     // Setup finder.
     const finder = await getDeployment("Finder");
 
-    const addToFinder = async (deploymentName, finderName) => {
+    const addToFinder = async (deploymentName: string, finderName: string) => {
       const { address } = await deployments.get(deploymentName);
-      const hexName = padRight(utf8ToHex(finderName));
+      const hexName = padRight(utf8ToHex(finderName), 64);
       await finder.methods.changeImplementationAddress(hexName, address).send({ from: deployer });
     };
 
@@ -61,5 +65,3 @@ async function runDefaultFixture({ deployments }) {
   });
   await setup();
 }
-
-module.exports = { runDefaultFixture };

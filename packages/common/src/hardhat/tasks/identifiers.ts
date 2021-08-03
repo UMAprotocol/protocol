@@ -1,9 +1,18 @@
-const { task, types } = require("hardhat/config");
-require("dotenv").config();
-const assert = require("assert");
-const Web3 = require("web3");
+import { task, types } from "hardhat/config";
+import assert from "assert";
+import Web3 from "web3";
+import dotenv from "dotenv";
+import type { Contract } from "web3-eth-contract";
+import type { TransactionReceipt } from "web3-core";
+import type { CombinedHRE } from "./types";
+dotenv.config();
 
-const _whitelistIdentifier = async (web3, identifierUtf8, identifierWhitelist, deployer) => {
+const _whitelistIdentifier = async (
+  web3: Web3,
+  identifierUtf8: string,
+  identifierWhitelist: Contract,
+  deployer: string
+) => {
   const { padRight, utf8ToHex } = web3.utils;
   const identifierBytes = padRight(utf8ToHex(identifierUtf8), 64);
   if (!(await identifierWhitelist.methods.isIdentifierSupported(identifierBytes).call())) {
@@ -14,9 +23,14 @@ const _whitelistIdentifier = async (web3, identifierUtf8, identifierWhitelist, d
   }
 };
 
+function isString(input: string | null): input is string {
+  return typeof input === "string";
+}
+
 task("whitelist-identifiers", "Whitelist identifiers from JSON file")
   .addParam("id", "Custom identifier to whitelist", "Test Identifier", types.string)
-  .setAction(async function (taskArguments, hre) {
+  .setAction(async function (taskArguments, hre_) {
+    const hre = hre_ as CombinedHRE;
     const { deployments, getNamedAccounts, web3 } = hre;
     const { deployer } = await getNamedAccounts();
     const { id } = taskArguments;
@@ -37,7 +51,8 @@ task("migrate-identifiers", "Adds all whitelisted identifiers on one IdentifierW
     false,
     types.boolean
   )
-  .setAction(async function (taskArguments, hre) {
+  .setAction(async function (taskArguments, hre_) {
+    const hre = hre_ as CombinedHRE;
     const { deployments, getNamedAccounts, web3 } = hre;
     const { deployer } = await getNamedAccounts();
     const { from, to, crosschain } = taskArguments;
@@ -61,35 +76,42 @@ task("migrate-identifiers", "Adds all whitelisted identifiers on one IdentifierW
 
     // Filter out identifiers that are not currently whitelisted.
     const isIdentifierSupported = await Promise.all(
-      addedIdentifierEvents.map((_event) =>
+      addedIdentifierEvents.map((_event): boolean =>
         oldWhitelist.methods.isIdentifierSupported(_event.returnValues.identifier).call()
       )
     );
     const identifiersToWhitelist = isIdentifierSupported
       .map((isOnWhitelist, i) => {
-        if (isOnWhitelist) return addedIdentifierEvents[i].returnValues.identifier;
+        // Cast to help typescript discern the type.
+        if (isOnWhitelist) return addedIdentifierEvents[i].returnValues.identifier as string;
         return null;
       })
-      .filter((id) => id);
+      .filter(isString);
+
+    interface TableElement {
+      identifierToWhitelist: string;
+      utf8: string;
+      txn?: string;
+    }
 
     // Create table with results to display to user:
-    let resultsTable = identifiersToWhitelist.map((id) => {
+    const resultsTable: TableElement[] = identifiersToWhitelist.map((id) => {
       return { identifierToWhitelist: id, utf8: web3.utils.hexToUtf8(id) };
     });
 
     if (to) {
       const newWhitelist = new web3.eth.Contract(IdentifierWhitelist.abi, to);
       const isIdentifierSupportedOnNewWhitelist = await Promise.all(
-        identifiersToWhitelist.map((id) => newWhitelist.methods.isIdentifierSupported(id).call())
+        identifiersToWhitelist.map((id) => newWhitelist.methods.isIdentifierSupported(id).call() as boolean)
       );
 
       // Send transactions sequentially to avoid nonce collisions. Note that this might fail due to timeout if there
       // are a lot of transactions to send or the gas price to send with is too low.
       for (let i = 0; i < isIdentifierSupportedOnNewWhitelist.length; i++) {
         if (!isIdentifierSupportedOnNewWhitelist[i]) {
-          const receipt = await newWhitelist.methods
+          const receipt = (await newWhitelist.methods
             .addSupportedIdentifier(identifiersToWhitelist[i])
-            .send({ from: deployer });
+            .send({ from: deployer })) as TransactionReceipt;
           console.log(
             `${i}: Added new identifier ${web3.utils.hexToUtf8(identifiersToWhitelist[i])} (${receipt.transactionHash})`
           );

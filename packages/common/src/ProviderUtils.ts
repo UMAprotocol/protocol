@@ -3,19 +3,12 @@
 // syntax mimics that of the main UMA Truffle implementation to make this backwards compatible.
 
 import Web3 from "web3";
-import { getTruffleConfig, getNodeUrl } from "./TruffleConfig";
+import { getTruffleConfig, getNodeUrl, Network } from "./TruffleConfig";
 import minimist from "minimist";
 import Url from "url";
-import { RetryProvider } from "./RetryProvider";
+import { RetryProvider, RetryConfig } from "./RetryProvider";
+import { AbstractProvider } from "web3-core";
 const argv = minimist(process.argv.slice(), { string: ["network"] });
-
-interface Retry {
-  retries: number;
-  delay: number;
-  url: string;
-}
-
-type RetryConfig = Retry[];
 
 // NODE_RETRY_CONFIG should be a JSON of the form (retries and delay are optional, they default to 1 and 0 respectively):
 // [
@@ -35,14 +28,13 @@ const { NODE_RETRY_CONFIG } = process.env;
 // Set web3 to null
 let web3: Web3 | null = null;
 
-export function createBasicProvider(nodeRetryConfig: RetryConfig): RetryProvider {
-  type RetryProviderConstructorParam = ConstructorParameters<typeof RetryProvider>[0];
+export function createBasicProvider(nodeRetryConfig: RetryConfig[]): RetryProvider {
   return new RetryProvider(
     nodeRetryConfig.map(
-      (configElement): RetryProviderConstructorParam => {
+      (configElement: RetryConfig): RetryConfig => {
         const protocol = Url.parse(configElement.url).protocol;
         if (protocol === null) throw new Error(`No protocol detected for url: ${configElement.url}`);
-        let options: RetryProviderConstructorParam["options"] = {
+        let options: RetryConfig["options"] = {
           timeout: 10000, // 10 second timeout
         };
 
@@ -62,7 +54,7 @@ export function createBasicProvider(nodeRetryConfig: RetryConfig): RetryProvider
             },
           };
         }
-        return { options, ...configElement };
+        return { ...configElement, options };
       }
     )
   );
@@ -98,7 +90,16 @@ export function getWeb3(parameterizedNetwork = "test"): Web3 {
 
   // Use the basic provider to create a provider with an unlocked wallet. This piggybacks off the UMA common TruffleConfig
   // implementing all networks & wallet types. EG: mainnet_mnemonic, kovan_gckms. Errors if no argv.network.
-  const providerWithWallet = getTruffleConfig().networks[network].provider(basicProvider);
+  const provider = getTruffleConfig().networks[network].provider;
+
+  function isCallable(
+    input: typeof provider
+  ): input is (inputProviderOrUrl?: AbstractProvider | string) => AbstractProvider {
+    return input instanceof Function;
+  }
+
+  if (!isCallable(provider)) throw new Error(`Null or string provider for network ${network}`);
+  const providerWithWallet = provider(basicProvider);
 
   // Lastly, create a web3 instance with the wallet-based provider. This can be used to query the chain via the
   // a basic web3 provider & has access to the users wallet based on the kind of connection they created.
