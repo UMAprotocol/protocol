@@ -56,7 +56,7 @@ contract BridgePool is Testable {
         // We want to store both addresses for separate payouts.
         address instantRelayer;
         // Store unique hash derived from all of the data neccessary to construct deposit and relay data.
-        bytes32 depositHash;
+        bytes depositHash;
     }
     // Associates each deposit with a unique hash derived from its constituent data..
     mapping(bytes => Deposit) public deposits;
@@ -188,25 +188,23 @@ contract BridgePool is Testable {
 
     function settleDisputedRelay(uint256 depositId, address slowRelayer) public {}
 
-    function getRelayHash(RelayAncillaryDataContents memory _relayData) public view returns (bytes32) {
+    function getRelayHash(RelayAncillaryDataContents memory _relayData) public view returns (bytes memory) {
         return
-            keccak256(
-                abi.encodePacked(
-                    _relayData.depositId,
-                    _relayData.l2Sender,
-                    _relayData.recipient,
-                    _relayData.depositTimestamp,
-                    _relayData.l1Token,
-                    _relayData.amount,
-                    _relayData.maxFeePct,
-                    _relayData.proposerRewardPct,
-                    _relayData.realizedFeePct,
-                    _relayData.slowRelayer
-                )
+            abi.encodePacked(
+                _relayData.depositId,
+                _relayData.l2Sender,
+                _relayData.recipient,
+                _relayData.depositTimestamp,
+                _relayData.l1Token,
+                _relayData.amount,
+                _relayData.maxFeePct,
+                _relayData.proposerRewardPct,
+                _relayData.realizedFeePct,
+                _relayData.slowRelayer
             );
     }
 
-    function decodeRelayHash(bytes32 _relayHash) public view returns (RelayAncillaryDataContents memory) {
+    function decodeRelayHash(bytes memory _relayHash) public view returns (RelayAncillaryDataContents memory) {
         (
             uint64 depositId,
             address l2Sender,
