@@ -125,12 +125,11 @@ describe("Insured Bride", () => {
     });
   });
   describe("Insured bridge functionality", async () => {
+    // Contract objects
     let l1Finder, l1BridgeRouter, l2Timer, l2BridgeDepositBox;
     beforeEach("Deploy and configure insured bridge contracts on appropriate networks", async () => {
       let optimisticOracleLiveness = 7200;
       let minimumBridgingDelay = 60;
-
-      // Contract objects
 
       // Deploy UMA helper contracts
       l1Finder = await factory__L1_Finder.connect(l1Wallet).deploy();
@@ -140,7 +139,7 @@ describe("Insured Bride", () => {
       // TODO: when doing full integration tests we will need the OO as well. For now show that we can do basic bridging.
 
       // Bridging infrastructure and initialization. Note we use the l1 proxy cross-domain messenger for the routers
-      // _crossDomainMessenger. This is done to mimic the production setup which routes L1 transactions through this proxy.
+      // _crossDomainMessenger. This is done to mimic the production setup which routes transactions through this proxy.
       l1BridgeRouter = await factory__L1_BridgeRouter
         .connect(l1Wallet)
         .deploy(l1Finder.address, PROXY__OVM_L1_CROSS_DOMAIN_MESSENGER, l1Wallet.address, optimisticOracleLiveness);
