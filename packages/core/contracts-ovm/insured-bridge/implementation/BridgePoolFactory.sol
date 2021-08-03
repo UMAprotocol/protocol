@@ -6,6 +6,7 @@ pragma solidity ^0.8.0;
 // changing their version is preferable to changing this contract to 0.7.x and defining compatible interfaces for all
 // of the imported DVM contracts below.
 import "./OVM_CrossDomainEnabled.sol";
+import "./BridgePoolFactoryInterface.sol";
 import "../../../contracts/oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../../contracts/oracle/interfaces/FinderInterface.sol";
 import "../../../contracts/oracle/implementation/Constants.sol";
@@ -17,30 +18,26 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * responsible for deploying new BridgePools, which houses passive liquidity and enables relaying of L2 deposits.
  * @dev The owner of this contract can call permissioned functions on the L2 DepositBox.
  */
-contract BridgePoolFactory is Ownable, OVM_CrossDomainEnabled {
+contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, OVM_CrossDomainEnabled {
     // Finder used to point to latest OptimisticOracle and other DVM contracts.
-    address public finder;
+    address public override finder;
 
     // L2 Deposit contract that originates deposits that can be fulfilled by this contract.
-    address public depositContract;
+    address public override depositContract;
 
     // L1 token addresses are mapped to their canonical token address on L2 and the BridgePool contract that houses
     // relay liquidity for any deposits of the canonical L2 token.
-    struct L1TokenRelationships {
-        address l2Token;
-        address bridgePool;
-    }
     mapping(address => L1TokenRelationships) public whitelistedTokens;
 
     // Set upon construction and can be reset by Owner.
-    uint256 public optimisticOracleLiveness;
-    uint256 public proposerBondPct;
-    bytes32 public identifier;
+    uint64 public override optimisticOracleLiveness;
+    uint64 public override proposerBondPct;
+    bytes32 public override identifier;
 
     event SetDepositContract(address indexed l2DepositContract);
     event SetRelayIdentifier(bytes32 indexed identifier);
-    event SetOptimisticOracleLiveness(uint256 indexed liveness);
-    event SetProposerBondPct(uint256 indexed proposerBondPct);
+    event SetOptimisticOracleLiveness(uint64 indexed liveness);
+    event SetProposerBondPct(uint64 indexed proposerBondPct);
     event WhitelistToken(address indexed l1Token, address indexed l2Token, address indexed bridgePool);
 
     // Add this modifier to methods that are expected to bridge admin functionality to the L2 Deposit contract, which
@@ -53,8 +50,8 @@ contract BridgePoolFactory is Ownable, OVM_CrossDomainEnabled {
     constructor(
         address _finder,
         address _crossDomainMessenger,
-        uint256 _optimisticOracleLiveness,
-        uint256 _proposerBondPct,
+        uint64 _optimisticOracleLiveness,
+        uint64 _proposerBondPct,
         bytes32 _identifier
     ) OVM_CrossDomainEnabled(_crossDomainMessenger) {
         finder = _finder;
@@ -84,7 +81,7 @@ contract BridgePoolFactory is Ownable, OVM_CrossDomainEnabled {
      * @dev Can only be called by the current owner.
      * @param _liveness New OptimisticOracle liveness period to set for relay price requests.
      */
-    function setOptimisticOracleLiveness(uint256 _liveness) public onlyOwner {
+    function setOptimisticOracleLiveness(uint64 _liveness) public onlyOwner {
         _setOptimisticOracleLiveness(_liveness);
     }
 
@@ -94,7 +91,7 @@ contract BridgePoolFactory is Ownable, OVM_CrossDomainEnabled {
      * @dev Can only be called by the current owner.
      * @param _proposerBondPct New OptimisticOracle proposer bond % to set for relay price requests. 1e18 = 100%.
      */
-    function setProposerBondPct(uint256 _proposerBondPct) public onlyOwner {
+    function setProposerBondPct(uint64 _proposerBondPct) public onlyOwner {
         _setProposerBondPct(_proposerBondPct);
     }
 
@@ -131,6 +128,8 @@ contract BridgePoolFactory is Ownable, OVM_CrossDomainEnabled {
 
         L1TokenRelationships storage whitelistedToken = whitelistedTokens[_l1Token];
         whitelistedToken.l2Token = _l2Token;
+        // TODO: Need to prepare for situation where this async transaction fails due to insufficient gas, or other
+        // reasons. Currently, the user can execute this function again.
         sendCrossDomainMessage(
             depositContract,
             _l2Gas,
@@ -169,13 +168,13 @@ contract BridgePoolFactory is Ownable, OVM_CrossDomainEnabled {
         emit SetRelayIdentifier(identifier);
     }
 
-    function _setOptimisticOracleLiveness(uint256 _liveness) private {
+    function _setOptimisticOracleLiveness(uint64 _liveness) private {
         // TODO: Validate liveness period value.
         optimisticOracleLiveness = _liveness;
         emit SetOptimisticOracleLiveness(optimisticOracleLiveness);
     }
 
-    function _setProposerBondPct(uint256 _proposerBondPct) private {
+    function _setProposerBondPct(uint64 _proposerBondPct) private {
         // TODO: Validate bond % value.
         proposerBondPct = _proposerBondPct;
         emit SetProposerBondPct(proposerBondPct);

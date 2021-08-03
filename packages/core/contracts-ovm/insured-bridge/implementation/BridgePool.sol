@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "./BridgePoolFactory.sol";
+import "./BridgePoolFactoryInterface.sol";
 import "../../../contracts/oracle/interfaces/OptimisticOracleInterface.sol";
 import "../../../contracts/oracle/interfaces/StoreInterface.sol";
 import "../../../contracts/oracle/interfaces/FinderInterface.sol";
@@ -26,7 +26,7 @@ contract BridgePool is Testable {
     using FixedPoint for FixedPoint.Unsigned;
 
     // Administrative contract that deployed this contract and also houses all state variables needed to relay deposits.
-    BridgePoolFactory public bridgePoolFactory;
+    BridgePoolFactoryInterface public bridgePoolFactory;
 
     // A Deposit represents a transfer that originated on an L2 DepositBox contract and can be bridged via this contract.
     enum DepositState { Uninitialized, PendingSlow, PendingInstant, FinalizedSlow, FinalizedInstant }
@@ -36,18 +36,15 @@ contract BridgePool is Testable {
     // inside the RelayAncillaryDataContents struct, the compiler throws an error related to this issue:
     // https://github.com/ethereum/solidity/issues/10930.
     struct RelayAncillaryDataContents {
-        uint256 depositId;
-        // The following params are inferred from the L2 deposit:
+        uint64 depositTimestamp;
+        uint64 maxFeePct;
+        uint64 proposerRewardPct;
+        uint64 realizedFeePct;
+        uint64 depositId;
+        uint256 amount;
         address l2Sender;
         address recipient;
-        uint256 depositTimestamp;
         address l1Token;
-        uint256 amount;
-        uint256 maxFeePct;
-        uint256 proposerRewardPct;
-        // Relayer will compute the realized fee considering the amount of liquidity in this contract and the pending
-        // withdrawals at the depositTimestamp.
-        uint256 realizedFeePct;
         address slowRelayer;
     }
     struct Deposit {
@@ -58,34 +55,32 @@ contract BridgePool is Testable {
         address instantRelayer;
         // @dev: See note above about why some Deposit params are collapsed into `RelayAncillaryDataContents`.
         RelayAncillaryDataContents relayData;
-        // Custom ancillary data crafted from `RelayAncillaryDataContents` data.
-        bytes priceRequestAncillaryData;
     }
     // Associates each deposit with a unique ID.
-    mapping(uint256 => Deposit) public deposits;
+    mapping(uint64 => Deposit) public deposits;
     // If a deposit is disputed, it is removed from the `deposits` mapping and added to the `disputedDeposits` mapping.
     // There can only be one disputed deposit per relayer for each deposit ID.
     // @dev The mapping is `depositId-->disputer-->Deposit`
-    mapping(uint256 => mapping(address => Deposit)) public disputedDeposits;
+    mapping(uint64 => mapping(address => Deposit)) public disputedDeposits;
 
     event DepositRelayed(
         address indexed sender,
-        uint256 indexed depositTimestamp,
+        uint64 indexed depositTimestamp,
         address recipient,
         address indexed l1Token,
         address slowRelayer,
         uint256 amount,
-        uint256 proposerRewardPct,
-        uint256 realizedFeePct,
+        uint64 proposerRewardPct,
+        uint64 realizedFeePct,
         address depositContract
     );
-    event RelaySpedUp(uint256 indexed depositId, address indexed fastRelayer, address indexed slowRelayer);
-    event FinalizedRelay(uint256 indexed depositId, address indexed caller);
-    event RelayDisputeSettled(uint256 indexed depositId, address indexed caller, bool disputeSuccessful);
+    event RelaySpedUp(uint64 indexed depositId, address indexed fastRelayer, address indexed slowRelayer);
+    event FinalizedRelay(uint64 indexed depositId, address indexed caller);
+    event RelayDisputeSettled(uint64 indexed depositId, address indexed caller, bool disputeSuccessful);
     event ProvidedLiquidity(address indexed token, uint256 amount, uint256 lpTokensMinted, address liquidityProvider);
 
     constructor(address _bridgePoolFactory, address _timer) Testable(_timer) {
-        bridgePoolFactory = BridgePoolFactory(_bridgePoolFactory);
+        bridgePoolFactory = BridgePoolFactoryInterface(_bridgePoolFactory);
         require(bridgePoolFactory.finder() != address(0), "Invalid bridge pool factory");
     }
 
@@ -118,16 +113,16 @@ contract BridgePool is Testable {
      * @param proposerRewardPct Reward % of deposit amount to pay relayers.
      */
     function relayDeposit(
-        uint256 depositId,
-        uint256 depositTimestamp,
+        uint64 depositId,
+        uint64 depositTimestamp,
         address recipient,
         address l2Sender,
         address l1Token,
         uint256 amount,
         // TODO: Allow caller to distinguish between slow and fast fees/rewards.
-        uint256 realizedFeePct,
-        uint256 maxFeePct,
-        uint256 proposerRewardPct
+        uint64 realizedFeePct,
+        uint64 maxFeePct,
+        uint64 proposerRewardPct
     ) public {
         require(realizedFeePct <= maxFeePct, "Invalid realized fee");
         Deposit storage newDeposit = deposits[depositId];
@@ -153,7 +148,7 @@ contract BridgePool is Testable {
             realizedFeePct: realizedFeePct,
             slowRelayer: msg.sender
         });
-        newDeposit.priceRequestAncillaryData = getRelayAncillaryData(newDeposit.relayData);
+        bytes memory priceRequestAncillaryData = getRelayAncillaryData(newDeposit.relayData);
 
         // Request a price for the relay identifier and propose "true" optimistically. These methods will pull the
         // (proposer reward + proposer bond + final fee) from the caller.
@@ -162,14 +157,8 @@ contract BridgePool is Testable {
         // that are always "in the future" relative to L1 blocks, then the OptimisticOracle would always reject
         // requests.
         uint256 requestTimestamp = getCurrentTime();
-        _requestOraclePriceRelay(
-            l1Token,
-            amount,
-            requestTimestamp,
-            newDeposit.priceRequestAncillaryData,
-            proposerRewardPct
-        );
-        _proposeOraclePriceRelay(l1Token, amount, depositTimestamp, newDeposit.priceRequestAncillaryData);
+        _requestOraclePriceRelay(l1Token, amount, requestTimestamp, priceRequestAncillaryData, proposerRewardPct);
+        _proposeOraclePriceRelay(l1Token, amount, depositTimestamp, priceRequestAncillaryData);
 
         // TODO: There is more data we'd like to emit, such as depositId, but we are limited by how many variables
         // we can fit into an event. Perhaps we need multiple events? Or think more critically about what information
@@ -206,7 +195,7 @@ contract BridgePool is Testable {
         intermediateAncillaryData = AncillaryData.appendKeyValueUint(
             intermediateAncillaryData,
             "depositId",
-            _relayData.depositId
+            uint256(_relayData.depositId)
         );
         intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
             intermediateAncillaryData,
@@ -221,7 +210,7 @@ contract BridgePool is Testable {
         intermediateAncillaryData = AncillaryData.appendKeyValueUint(
             intermediateAncillaryData,
             "depositTimestamp",
-            _relayData.depositTimestamp
+            uint256(_relayData.depositTimestamp)
         );
         intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
             intermediateAncillaryData,
@@ -236,17 +225,17 @@ contract BridgePool is Testable {
         intermediateAncillaryData = AncillaryData.appendKeyValueUint(
             intermediateAncillaryData,
             "maxFeePct",
-            _relayData.maxFeePct
+            uint256(_relayData.maxFeePct)
         );
         intermediateAncillaryData = AncillaryData.appendKeyValueUint(
             intermediateAncillaryData,
             "proposerRewardPct",
-            _relayData.proposerRewardPct
+            uint256(_relayData.proposerRewardPct)
         );
         intermediateAncillaryData = AncillaryData.appendKeyValueUint(
             intermediateAncillaryData,
             "realizedFeePct",
-            _relayData.realizedFeePct
+            uint256(_relayData.realizedFeePct)
         );
         intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
             intermediateAncillaryData,
@@ -287,16 +276,19 @@ contract BridgePool is Testable {
         uint256 amount,
         uint256 requestTimestamp,
         bytes memory customAncillaryData,
-        uint256 proposerRewardPct
+        uint64 proposerRewardPct
     ) private {
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
         uint256 proposerBondPct =
-            FixedPoint.Unsigned(bridgePoolFactory.proposerBondPct()).div(FixedPoint.fromUnscaledUint(1)).rawValue;
+            FixedPoint
+                .Unsigned(uint256(bridgePoolFactory.proposerBondPct()))
+                .div(FixedPoint.fromUnscaledUint(1))
+                .rawValue;
 
         // Optimistic oracle will pull proposer reward from passive LP pool.
         uint256 proposerReward =
             FixedPoint
-                .Unsigned(proposerRewardPct)
+                .Unsigned(uint256(proposerRewardPct))
                 .div(FixedPoint.fromUnscaledUint(1))
                 .mul(FixedPoint.Unsigned(amount))
                 .rawValue;
@@ -318,7 +310,7 @@ contract BridgePool is Testable {
             bridgePoolFactory.identifier(),
             requestTimestamp,
             customAncillaryData,
-            bridgePoolFactory.optimisticOracleLiveness()
+            uint256(bridgePoolFactory.optimisticOracleLiveness())
         );
 
         // Set the Optimistic oracle proposer bond for the price request.
@@ -334,7 +326,10 @@ contract BridgePool is Testable {
     ) private {
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
         uint256 proposerBondPct =
-            FixedPoint.Unsigned(bridgePoolFactory.proposerBondPct()).div(FixedPoint.fromUnscaledUint(1)).rawValue;
+            FixedPoint
+                .Unsigned(uint256(bridgePoolFactory.proposerBondPct()))
+                .div(FixedPoint.fromUnscaledUint(1))
+                .rawValue;
         uint256 finalFee = _getStore().computeFinalFee(address(l1Token)).rawValue;
 
         uint256 totalBond =
