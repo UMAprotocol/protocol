@@ -163,14 +163,20 @@ describe("OVM_BridgeDepositBox", () => {
 
     it("Disable deposits", async () => {
       // Trying to disable tokens from something other than the l2MessengerImpersonator should fail.
-      assert(await didContractThrow(depositBox.methods.setEnableDeposits(false).send({ from: rando })));
+      assert(
+        await didContractThrow(
+          depositBox.methods.setEnableDeposits(l2Token.options.address, false).send({ from: rando })
+        )
+      );
 
       // Trying to call correctly via the L2 message impersonator, but from the wrong xDomainMessageSender should revert.
       l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => rando);
 
       assert(
         await didContractThrow(
-          depositBox.methods.setEnableDeposits(false).send({ from: predeploys.OVM_L2CrossDomainMessenger })
+          depositBox.methods
+            .setEnableDeposits(l2Token.options.address, false)
+            .send({ from: predeploys.OVM_L2CrossDomainMessenger })
         )
       );
 
@@ -178,13 +184,13 @@ describe("OVM_BridgeDepositBox", () => {
       l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => bridgeAdmin);
 
       const tx = await depositBox.methods
-        .setEnableDeposits(false)
+        .setEnableDeposits(l2Token.options.address, false)
         .send({ from: predeploys.OVM_L2CrossDomainMessenger });
 
-      assert.equal(await depositBox.methods.depositsEnabled().call(), false);
+      assert.equal((await depositBox.methods.whitelistedTokens(l2Token.options.address).call()).depositsEnabled, false);
 
       await assertEventEmitted(tx, depositBox, "DepositsEnabled", (ev) => {
-        return ev.depositsEnabled == false;
+        return ev.l2Token === l2Token.options.address && ev.depositsEnabled == false;
       });
     });
   });
@@ -243,7 +249,9 @@ describe("OVM_BridgeDepositBox", () => {
     it("Reverts if deposits disabled", async () => {
       // Disable deposits
       l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => bridgeAdmin);
-      await depositBox.methods.setEnableDeposits(false).send({ from: predeploys.OVM_L2CrossDomainMessenger });
+      await depositBox.methods
+        .setEnableDeposits(l2Token.options.address, false)
+        .send({ from: predeploys.OVM_L2CrossDomainMessenger });
 
       // Try to deposit and check it reverts.
       await l2Token.methods.approve(depositBox.options.address, toWei("100")).send({ from: user1 });

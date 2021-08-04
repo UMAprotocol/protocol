@@ -55,7 +55,7 @@ export default (config: Config, channels: Channels = []) => {
 
   // this is an error handler, express knows this because the function has 4 parameters rather than 3
   // cant remove the "next" parameter, even though linting complains
-  app.use(function (err: Error, req: Request, res: Response, next: NextFunction) {
+  app.use(function (err: Error, req: Request, res: Response) {
     res.status(500).send(err.message || err);
   });
 

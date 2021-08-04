@@ -27,7 +27,7 @@ export type Withdrawal = GetEventType<Instance, "Withdrawal">;
 export type LiquidationCreated = GetEventType<Instance, "LiquidationCreated">;
 
 // experimenting with a generalized way of handling events and returning state, inspired from react style reducers
-export function reduceEvents(state: EventState = {}, event: Event, index?: number): EventState {
+export function reduceEvents(state: EventState = {}, event: Event): EventState {
   switch (event.event) {
     case "RequestTransferPositionExecuted": {
       const typedEvent = event as RequestTransferPositionExecuted;
