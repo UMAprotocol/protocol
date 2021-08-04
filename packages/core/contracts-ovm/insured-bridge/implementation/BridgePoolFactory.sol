@@ -97,7 +97,7 @@ contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, Testable, OVM
     }
 
     /**
-     * @notice Sets challenge pereiod for relayed deposits. BridgePools will read this value from this
+     * @notice Sets challenge period for relayed deposits. BridgePools will read this value from this
      * contract.
      * @dev Can only be called by the current owner.
      * @param _proposerBondPct New OptimisticOracle proposer bond % to set for relay price requests. 1e18 = 100%.
@@ -119,7 +119,7 @@ contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, Testable, OVM
     }
 
     /**************************************************
-     *        CROSSDOMAIN ADMIN FUNCTIONS             *
+     *       CROSS DOMAIN ADMIN FUNCTIONS             *
      **************************************************/
 
     /**
@@ -127,13 +127,13 @@ contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, Testable, OVM
      * @dev Only callable by the current owner.
      * @param _l2Gas Gas limit to set for relayed message on L2
      */
-    function setBridgeAdmin(uint32 _l2Gas) public onlyOwner depositContractSet {
+    function setBridgeAdmin(address bridgeAdmin, uint32 _l2Gas) public onlyOwner depositContractSet {
         sendCrossDomainMessage(
             depositContract,
             _l2Gas,
-            abi.encodeWithSignature("setBridgeAdmin(address)", address(this))
+            abi.encodeWithSignature("setBridgeAdmin(address)", bridgeAdmin)
         );
-        emit SetBridgeAdmin(address(this));
+        emit SetBridgeAdmin(bridgeAdmin);
     }
 
     /**

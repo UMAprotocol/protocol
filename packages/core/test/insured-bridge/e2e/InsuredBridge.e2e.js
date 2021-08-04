@@ -8,6 +8,8 @@ const { getContractInterface, predeploys } = require("@eth-optimism/contracts");
 
 const { createLocalEthersFactory, createOptimismEthersFactory, getProviders } = require("./helpers/ArtifactsHelper");
 
+const { setUpUmaEcosystemContracts } = require("./helpers/TestPreamble");
+
 const {
   DEFAULT_ADMIN_KEY,
   OPTIMISM_GAS_OPTS,
@@ -24,11 +26,7 @@ const factory__L2StandardBridge = createOptimismEthersFactory("OVM_L2StandardBri
 const factory__L1_BridgePoolFactory = createLocalEthersFactory("BridgePoolFactory");
 const factory__L2_BridgeDepositBox = createLocalEthersFactory("OVM_BridgeDepositBox", true);
 
-// UMA ecosystem contract factories
-const factory__L1_Finder = createLocalEthersFactory("Finder");
-const factory__L2_Timer = createLocalEthersFactory("OVM_Timer", true);
-
-describe("Insured Bride", () => {
+describe("Insured bridge e2e tests", () => {
   // Set up our RPC provider connections.
   const { l1RpcProvider, l2RpcProvider } = getProviders();
 
@@ -125,20 +123,21 @@ describe("Insured Bride", () => {
     });
   });
   describe("Insured bridge functionality", async () => {
-    // Contract objects
-    let l1Finder, l1BridgePoolFactory, l2Timer, l2BridgeDepositBox;
-    beforeEach("Deploy and configure insured bridge contracts on appropriate networks", async () => {
-      let optimisticOracleLiveness = 7200;
-      let proposerBondPct = "0";
-      let identifier = "0x123";
-      let minimumBridgingDelay = 60;
+    let optimisticOracleLiveness = 7200;
+    let proposerBondPct = "0";
+    let identifier = ethers.utils.formatBytes32String("BRIDGE_TRANSFER_TEST");
+    let minimumBridgingDelay = 60;
 
-      // Deploy UMA helper contracts
-      l1Finder = await factory__L1_Finder.connect(l1Wallet).deploy();
-      l2Timer = await factory__L2_Timer.connect(l2Wallet).deploy(OPTIMISM_GAS_OPTS);
-      await l2Timer.deployTransaction.wait();
+    // End to end tested contracts
+    let l1BridgePoolFactory, l2BridgeDepositBox;
 
-      // TODO: when doing full integration tests we will need the OO as well. For now show that we can do basic bridging.
+    // UMA ecosystem objects.
+    let l1Timer, l1Finder, l2Timer;
+
+    beforeEach(async () => {
+      // Set up required UMA L1 ecosystem contracts. Note that this also sets up collateralWhitelist, identifierWhitelist
+      // and store which are not used in the tests. TODO: setup OO when we have more implementation cross-chain.
+      ({ l1Timer, l1Finder, l2Timer } = await setUpUmaEcosystemContracts(l1Wallet, l2Wallet, l1Erc20, identifier));
 
       // Bridging infrastructure and initialization. Note we use the l1 proxy cross-domain messenger for the routers
       // _crossDomainMessenger. This is done to mimic the production setup which routes transactions through this proxy.
@@ -149,50 +148,100 @@ describe("Insured Bride", () => {
           PROXY__OVM_L1_CROSS_DOMAIN_MESSENGER,
           optimisticOracleLiveness,
           proposerBondPct,
-          identifier
+          identifier,
+          l1Timer.address
         );
       await l1BridgePoolFactory.deployTransaction.wait();
 
       l2BridgeDepositBox = await factory__L2_BridgeDepositBox
         .connect(l2Wallet)
         .deploy(l1BridgePoolFactory.address, minimumBridgingDelay, l2Timer.address, OPTIMISM_GAS_OPTS);
-      // await l2BridgeDepositBox.deployTransaction.wait();
       await l2BridgeDepositBox.deployTransaction.wait();
-    });
-    it("Can whitelist token on L2 from L1 Router", async () => {
-      // Set deposit contract on deposit router.
+
+      // Set deposit contract on deposit Admin.
       await l1BridgePoolFactory.setDepositContract(l2BridgeDepositBox.address);
+    });
+    describe("Cross-domain admin functionality", () => {
+      it("Can whitelist token on L2 from L1", async () => {
+        // Token is not whitelisted before
+        assert.isFalse(await l2BridgeDepositBox.isWhitelistToken(l2Erc20.address));
 
-      assert.equal(await l1BridgePoolFactory.getDepositContract(), l2BridgeDepositBox.address);
+        // Wallet should have to tokens on L1 from the mint action and no tokens on L2.
+        const whitelistTx = await l1BridgePoolFactory.whitelistToken(
+          l1Erc20.address, // L1 token.
+          l2Erc20.address, // Associated L2 token.
+          10000000 // L2Gas limit. set this to a large number, but less than gas limit, to ensure no L2 revert.
+        );
+        await whitelistTx.wait();
 
-      // Wallet should have to tokens on L1 from the mint action and no tokens on L2.
-      const whitelistTx = await l1BridgePoolFactory.whitelistToken(
-        l1Erc20.address, // L1 token.
-        l2Erc20.address, // Associated L2 token.
-        ZERO_ADDRESS, // BridgePool. TODO: add in the bridge pool address once we have logic to deploy these from the factory.
-        10000000 // L2Gas limit. set this to a large number, but less than gas limit, to ensure no L2 revert.
-      );
-      await whitelistTx.wait();
+        // Wait for the message to be relayed to L2.
+        const [msgHash] = await watcher.getMessageHashesFromL1Tx(whitelistTx.hash);
 
-      // Wait for the message to be relayed to L2.
-      const [msgHash] = await watcher.getMessageHashesFromL1Tx(whitelistTx.hash);
+        // Fetch the L2 transaction receipt. This also acts to block until the bridging transaction has been mined on L2.
+        const receipt = await watcher.getL2TransactionReceipt(msgHash, true);
 
-      // Fetch the L2 transaction receipt. This also acts to block until the bridging transaction has been mined on L2.
-      const receipt = await watcher.getL2TransactionReceipt(msgHash, true);
+        assert.equal(receipt.to, predeploys.OVM_L2CrossDomainMessenger);
+        assert.equal(receipt.from, ZERO_ADDRESS);
 
-      assert.equal(receipt.to, predeploys.OVM_L2CrossDomainMessenger);
-      assert.equal(receipt.from, ZERO_ADDRESS);
+        // The log emitted should be sent to the deposit box.
+        assert.equal(receipt.logs[0].address, l2BridgeDepositBox.address);
 
-      // The log emitted should be sent to the deposit box.
-      assert.equal(receipt.logs[0].address, l2BridgeDepositBox.address);
+        // Validate that on L2 the address has been whitelisted correctly.
+        assert.isTrue(await l2BridgeDepositBox.isWhitelistToken(l2Erc20.address));
+        assert.equal((await l2BridgeDepositBox.whitelistedTokens(l2Erc20.address)).l1Token, l1Erc20.address);
+        assert.equal(
+          (await l2BridgeDepositBox.whitelistedTokens(l2Erc20.address)).lastBridgeTime.toString(),
+          (await l2Timer.getCurrentTime()).toString()
+        );
+      });
+      it("Can change the bridge admin address", async () => {
+        // Correct admin before the change.
+        assert.equal(await l2BridgeDepositBox.bridgeAdmin(), l1BridgePoolFactory.address);
+        const bridgeAdminChangeTx = await l1BridgePoolFactory.setBridgeAdmin(l1Wallet.address, 10000000);
+        await bridgeAdminChangeTx.wait();
 
-      // Validate that on L2 the address has been whitelisted correctly.
-      assert.isTrue(await l2BridgeDepositBox.isWhitelistToken(l2Erc20.address));
-      assert.equal((await l2BridgeDepositBox.whitelistedTokens(l2Erc20.address)).l1Token, l1Erc20.address);
-      assert.equal(
-        (await l2BridgeDepositBox.whitelistedTokens(l2Erc20.address)).lastBridgeTime.toString(),
-        (await l2Timer.getCurrentTime()).toString()
-      );
+        const [msgHash] = await watcher.getMessageHashesFromL1Tx(bridgeAdminChangeTx.hash);
+        const receipt = await watcher.getL2TransactionReceipt(msgHash, true);
+
+        assert.equal(receipt.to, predeploys.OVM_L2CrossDomainMessenger);
+        assert.equal(receipt.from, ZERO_ADDRESS);
+        assert.equal(receipt.logs[0].address, l2BridgeDepositBox.address);
+
+        // Validate that on L2 the bridge admin has been changed correctly.
+        assert.equal(await l2BridgeDepositBox.bridgeAdmin(), l1Wallet.address);
+      });
+      it("Can enable/disable deposits on L2", async () => {
+        // Is enabled before the change.
+        assert.isTrue(await l2BridgeDepositBox.depositsEnabled());
+        const bridgeAdminChangeTx = await l1BridgePoolFactory.setEnableDeposits(false, 10000000);
+        await bridgeAdminChangeTx.wait();
+
+        const [msgHash] = await watcher.getMessageHashesFromL1Tx(bridgeAdminChangeTx.hash);
+        const receipt = await watcher.getL2TransactionReceipt(msgHash, true);
+
+        assert.equal(receipt.to, predeploys.OVM_L2CrossDomainMessenger);
+        assert.equal(receipt.from, ZERO_ADDRESS);
+        assert.equal(receipt.logs[0].address, l2BridgeDepositBox.address);
+
+        // Validate that on L2 the deposits have been disabled.
+        assert.isFalse(await l2BridgeDepositBox.depositsEnabled());
+      });
+      it("Can update the L2 minimum bridging delay", async () => {
+        // Correct min delay before the change.
+        assert.equal(await l2BridgeDepositBox.minimumBridgingDelay(), minimumBridgingDelay);
+        const bridgeAdminChangeTx = await l1BridgePoolFactory.setMinimumBridgingDelay(420, 10000000);
+        await bridgeAdminChangeTx.wait();
+
+        const [msgHash] = await watcher.getMessageHashesFromL1Tx(bridgeAdminChangeTx.hash);
+        const receipt = await watcher.getL2TransactionReceipt(msgHash, true);
+
+        assert.equal(receipt.to, predeploys.OVM_L2CrossDomainMessenger);
+        assert.equal(receipt.from, ZERO_ADDRESS);
+        assert.equal(receipt.logs[0].address, l2BridgeDepositBox.address);
+
+        // Validate that on L2 the deposits have been disabled.
+        assert.equal(await l2BridgeDepositBox.minimumBridgingDelay(), 420);
+      });
     });
   });
 });
