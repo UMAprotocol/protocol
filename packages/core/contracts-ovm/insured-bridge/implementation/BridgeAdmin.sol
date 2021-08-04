@@ -118,6 +118,10 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
      *        CROSSDOMAIN ADMIN FUNCTIONS             *
      **************************************************/
 
+    // TODO: In following functions, we need to consider two things concerning asynchronous cross-domain messaging:
+    // - how to set the l2Gas value such that the OVM allocates enough gas to execute the function. Should we hardcode
+    //   a really high OVM gas limit value like 10_000_000 and use that for all functions?
+    // - contract needs to assume that the cross domain message might fail.
     /**
      * @notice Set new contract as the admin address in the L2 Deposit contract.
      * @dev Only callable by the current owner.
