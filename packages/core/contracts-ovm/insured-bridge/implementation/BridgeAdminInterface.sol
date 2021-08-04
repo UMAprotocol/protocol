@@ -2,9 +2,9 @@
 pragma solidity ^0.8.0;
 
 /**
- * @notice Helper view methods designed to be called by children BridgePool contracts.
+ * @notice Helper view methods designed to be called by BridgePool contracts.
  */
-interface BridgePoolFactoryInterface {
+interface BridgeAdminInterface {
     function finder() external view returns (address);
 
     function depositContract() external view returns (address);
