@@ -26,7 +26,7 @@ export interface EventState {
 export type NewContractRegistered = GetEventType<Instance, "NewContractRegistered">;
 
 // experimenting with a generalized way of handling events and returning state, inspired from react style reducers
-export function reduceEvents(state: EventState = {}, event: Event, index?: number): EventState {
+export function reduceEvents(state: EventState = {}, event: Event): EventState {
   switch (event.event) {
     case "NewContractRegistered": {
       const typedEvent = event as NewContractRegistered;

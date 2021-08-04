@@ -321,7 +321,7 @@ describe("uniswapV3Trader.js", function () {
     mockTime = Number((await web3.eth.getBlock("latest")).timestamp) + 1;
     await tokenPriceFeed.update();
     assert.equal(
-      Number(fromWei(tokenPriceFeed.getLastBlockPrice())).toFixed(4),
+      Number(Number(fromWei(tokenPriceFeed.getLastBlockPrice())).toFixed(4)),
       (await getCurrentPrice(poolAddress, web3)).toNumber()
     );
 

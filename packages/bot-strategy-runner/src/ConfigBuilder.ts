@@ -7,7 +7,6 @@ const { toChecksumAddress } = Web3.utils;
 import { getWeb3 } from "@uma/common";
 import { getAbi } from "@uma/core";
 
-import { liquidatorConfig, disputerConfig, monitorConfig } from "./BotEntryWrapper";
 import nodeFetch from "node-fetch";
 import assert from "assert";
 

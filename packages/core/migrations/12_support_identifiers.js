@@ -1,5 +1,5 @@
 const IdentiferWhitelist = artifacts.require("IdentifierWhitelist");
-const { getKeysForNetwork } = require("@uma/common");
+const { getKeysForNetwork } = require("./MigrationUtils");
 const identifiers = require("../config/identifiers");
 
 module.exports = async function (deployer, network, accounts) {

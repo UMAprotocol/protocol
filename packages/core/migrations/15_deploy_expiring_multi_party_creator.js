@@ -6,13 +6,8 @@ const TokenFactory = artifacts.require("TokenFactory");
 const Timer = artifacts.require("Timer");
 const Registry = artifacts.require("Registry");
 const TestnetERC20 = artifacts.require("TestnetERC20");
-const {
-  RegistryRolesEnum,
-  interfaceName,
-  getKeysForNetwork,
-  deploy,
-  enableControllableTiming,
-} = require("@uma/common");
+const { interfaceName, RegistryRolesEnum } = require("@uma/common");
+const { getKeysForNetwork, deploy, enableControllableTiming } = require("./MigrationUtils");
 
 module.exports = async function (deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
