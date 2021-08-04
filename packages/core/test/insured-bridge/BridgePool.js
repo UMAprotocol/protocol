@@ -4,8 +4,8 @@ const {
   runDefaultFixture,
   interfaceName,
   TokenRolesEnum,
-  InsuredBridgeDepositStateEnum,
-  InsuredBridgeDepositTypeEnum,
+  InsuredBridgeRelayStateEnum,
+  InsuredBridgeRelayTypeEnum,
   ZERO_ADDRESS,
 } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;
@@ -316,25 +316,25 @@ describe("BridgePool", () => {
       // Check event is logged correctly.
       await assertEventEmitted(txn, bridgePool, "DepositRelayed", (ev) => {
         return (
+          ev.depositId.toString() === relayData.depositId.toString() &&
           ev.sender === relayData.l2Sender &&
           ev.depositTimestamp === relayData.depositTimestamp &&
           ev.recipient === relayData.recipient &&
           ev.l1Token === relayData.l1Token &&
           ev.slowRelayer === relayer &&
           ev.amount === relayData.amount &&
-          ev.amount === relayData.amount &&
           ev.proposerRewardPct === relayData.proposerRewardPct &&
           ev.realizedFeePct === relayData.realizedFeePct &&
-          ev.depositContract === depositContractImpersonator
+          ev.maxFeePct === relayData.maxFeePct
         );
       });
 
       // Check Deposit struct is stored correctly.
       const relayAncillaryData = await bridgePool.methods.getRelayAncillaryData(relayData).call();
-      const deposit = await bridgePool.methods.deposits(relayAncillaryData).call();
-      assert.equal(deposit.depositState, InsuredBridgeDepositStateEnum.PENDING_SLOW);
-      assert.equal(deposit.depositType, InsuredBridgeDepositTypeEnum.SLOW);
-      assert.equal(deposit.instantRelayer, ZERO_ADDRESS);
+      const relay = await bridgePool.methods.relays(relayAncillaryData).call();
+      assert.equal(relay.relayState, InsuredBridgeRelayStateEnum.PENDING_SLOW);
+      assert.equal(relay.relayType, InsuredBridgeRelayTypeEnum.SLOW);
+      assert.equal(relay.instantRelayer, ZERO_ADDRESS);
       const abiEncodedDataPacked = web3.eth.abi.encodeParameters(
         ["uint64", "address", "address", "uint64", "address", "uint256", "uint64", "uint64", "uint64", "address"],
         [
@@ -357,7 +357,7 @@ describe("BridgePool", () => {
         relayHash,
         "Contract and client do not produce the same hash from the same relay data"
       );
-      assert.equal(deposit.relayHash, expectedRelayHash, "Deposit does not hash and store relay data correctly");
+      assert.equal(relay.relayHash, expectedRelayHash, "Deposit does not hash and store relay data correctly");
 
       // Check OptimisticOracle emitted price request contains correct data.
       const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();

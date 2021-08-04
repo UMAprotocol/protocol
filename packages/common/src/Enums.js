@@ -40,7 +40,7 @@ const OptimisticOracleRequestStatesEnum = {
   SETTLED: "6",
 };
 
-const InsuredBridgeDepositStateEnum = {
+const InsuredBridgeRelayStateEnum = {
   UNINITIALIZED: "0",
   PENDING_SLOW: "1",
   PENDING_INSTANT: "2",
@@ -48,7 +48,7 @@ const InsuredBridgeDepositStateEnum = {
   FINALIZED_INSTANT: "4",
 };
 
-const InsuredBridgeDepositTypeEnum = { SLOW: "0", INSTANT: "1" };
+const InsuredBridgeRelayTypeEnum = { SLOW: "0", INSTANT: "1" };
 
 module.exports = {
   RegistryRolesEnum,
@@ -59,6 +59,6 @@ module.exports = {
   PositionStatesEnum,
   PriceRequestStatusEnum,
   OptimisticOracleRequestStatesEnum,
-  InsuredBridgeDepositStateEnum,
-  InsuredBridgeDepositTypeEnum,
+  InsuredBridgeRelayStateEnum,
+  InsuredBridgeRelayTypeEnum,
 };

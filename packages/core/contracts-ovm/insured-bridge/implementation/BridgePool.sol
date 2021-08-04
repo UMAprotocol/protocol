@@ -28,14 +28,13 @@ contract BridgePool is Testable {
     // Administrative contract that deployed this contract and also houses all state variables needed to relay deposits.
     BridgePoolFactoryInterface public bridgePoolFactory;
 
-    // A Deposit represents a transfer that originated on an L2 DepositBox contract and can be bridged via this contract.
-    enum DepositState { Uninitialized, PendingSlow, PendingInstant, FinalizedSlow, FinalizedInstant }
-    enum DepositType { Slow, Instant }
+    // A Relay represents a an attempt to finalize a cross-chain transfer that originated on an L2 DepositBox contract
+    // and can be bridged via this contract.
+    enum RelayState { Uninitialized, PendingSlow, PendingInstant, FinalizedSlow, FinalizedInstant }
+    enum RelayType { Slow, Instant }
 
-    // @dev: There is a limit to how many params a struct can contain. Without encapsulating some of the Deposit params
-    // inside the RelayAncillaryDataContents struct, the compiler throws an error related to this issue:
-    // https://github.com/ethereum/solidity/issues/10930.
-    struct RelayAncillaryDataContents {
+    // All data required by off-chain actors (validators, DVM voters, etc.) to verify that a relay is valid.
+    struct RelayDataContents {
         uint64 depositTimestamp;
         uint64 maxFeePct;
         uint64 proposerRewardPct;
@@ -48,35 +47,36 @@ contract BridgePool is Testable {
         address slowRelayer;
     }
 
-    // TODO: Rename Deposit --> Relay since the Relay is derived from the Deposit.
-    struct Deposit {
-        DepositState depositState;
-        DepositType depositType;
+    // A Relay is linked to a Deposit object originating from L2
+    struct Relay {
+        RelayState relayState;
+        RelayType relayType;
         // A deposit can have both a slow and an instant relayer if a slow relay is "sped up" from slow to instant.
         // We want to store both addresses for separate payouts.
         address instantRelayer;
-        // Store unique hash derived from all of the data neccessary to construct this deposit.
+        // Store unique hash derived from all of the data necessary to construct this rela.y
         bytes32 relayHash;
     }
-    // Associates each deposit with a unique ancillary data derived from its constituent data. We need to key by the
-    // ancillary data so that the OptimisticOracle can locate deposits on callbacks using only price requests' ancillary
+    // Associates each relay with a unique ancillary data derived from its constituent data. We need to key by the
+    // ancillary data so that the OptimisticOracle can locate relays on callbacks using only price requests' ancillary
     // data
-    mapping(bytes => Deposit) public deposits;
-    // If a deposit is disputed, it is removed from the `deposits` mapping and added to the `disputedDeposits` mapping.
-    // There can only be one disputed deposit per relayer for each deposit hash.
-    // @dev The mapping is `depositHash-->disputer-->Deposit`
-    mapping(bytes => mapping(address => Deposit)) public disputedDeposits;
+    mapping(bytes => Relay) public relays;
+    // If a relay is disputed, it is removed from the `relays` mapping and added to the `disputedRelays` mapping.
+    // There can only be one disputed relay per relayer for each relay ancillary data.
+    // @dev The mapping is `relayAncillaryData-->disputer-->Relay`
+    mapping(bytes => mapping(address => Relay)) public disputedRelays;
 
     event DepositRelayed(
+        uint64 depositId,
         address indexed sender,
         uint64 indexed depositTimestamp,
         address recipient,
         address indexed l1Token,
-        address slowRelayer,
         uint256 amount,
+        address slowRelayer,
+        uint64 maxFeePct,
         uint64 proposerRewardPct,
-        uint64 realizedFeePct,
-        address depositContract
+        uint64 realizedFeePct
     );
     event RelaySpedUp(uint64 indexed depositId, address indexed fastRelayer, address indexed slowRelayer);
     event FinalizedRelay(uint64 indexed depositId, address indexed caller);
@@ -131,8 +131,8 @@ contract BridgePool is Testable {
         require(realizedFeePct <= maxFeePct, "Invalid realized fee");
 
         // Construct unique ancillary data for this deposit, and link relay data to it.
-        RelayAncillaryDataContents memory relayData =
-            RelayAncillaryDataContents({
+        RelayDataContents memory relayData =
+            RelayDataContents({
                 depositId: depositId,
                 l2Sender: l2Sender,
                 recipient: recipient,
@@ -145,54 +145,52 @@ contract BridgePool is Testable {
                 slowRelayer: msg.sender
             });
         bytes memory priceRequestAncillaryData = getRelayAncillaryData(relayData);
-        Deposit storage newDeposit = deposits[priceRequestAncillaryData];
-        require(newDeposit.depositState == DepositState.Uninitialized, "Pending relay for deposit ID exists");
-        Deposit storage disputedDeposit = disputedDeposits[priceRequestAncillaryData][msg.sender];
+        Relay storage newRelay = relays[priceRequestAncillaryData];
+        require(newRelay.relayState == RelayState.Uninitialized, "Pending relay exists");
         require(
-            disputedDeposit.depositState == DepositState.Uninitialized,
+            disputedRelays[priceRequestAncillaryData][msg.sender].relayState == RelayState.Uninitialized,
             "Pending dispute by relayer for deposit ID exists"
         );
 
         // Save new deposit:
-        newDeposit.depositState = DepositState.PendingSlow;
-        newDeposit.depositType = DepositType.Slow;
-        newDeposit.relayHash = getRelayHash(relayData);
+        newRelay.relayState = RelayState.PendingSlow;
+        newRelay.relayType = RelayType.Slow;
+        newRelay.relayHash = getRelayHash(relayData);
 
         // Request a price for the relay identifier and propose "true" optimistically. These methods will pull the
         // (proposer reward + proposer bond + final fee) from the caller.
-        // Note: We can't simply set the price request timestamp equal to the `depositTimestamp`, which is dependent
-        // on the L2 VM on which the DepositContract is deployed. Imagine if the timestamps on the L2 have an offset
-        // that are always "in the future" relative to L1 blocks, then the OptimisticOracle would always reject
-        // requests.
-        uint256 requestTimestamp = getCurrentTime();
-        _requestOraclePriceRelay(l1Token, amount, requestTimestamp, priceRequestAncillaryData, proposerRewardPct);
+        // Note: We need to set a new price request timestamp instead of default setting to equal to the
+        // `depositTimestamp`, which is dependent on the L2 VM on which the DepositContract is deployed. Imagine if
+        // the timestamps on the L2 have an offset that are always "in the future" relative to L1 blocks, then the
+        // OptimisticOracle would always reject requests.
+        _requestOraclePriceRelay(l1Token, amount, getCurrentTime(), priceRequestAncillaryData, proposerRewardPct);
         _proposeOraclePriceRelay(l1Token, amount, depositTimestamp, priceRequestAncillaryData);
 
-        // TODO: There is more data we'd like to emit, such as depositId, but we are limited by how many variables
-        // we can fit into an event. Perhaps we need multiple events? Or think more critically about what information
-        // clients will want.
+        // Since we only store the hash of the relay data contents, its important that we emit all relay params in an
+        // event. This should aid off-chain clients who want to modify/query the deposit.
         emit DepositRelayed(
+            depositId,
             l2Sender,
             depositTimestamp,
             recipient,
             l1Token,
-            msg.sender,
             amount,
+            msg.sender,
+            maxFeePct,
             proposerRewardPct,
-            realizedFeePct,
-            bridgePoolFactory.depositContract()
+            realizedFeePct
         );
     }
 
-    function speedUpRelay(bytes32 _relayHash, RelayAncillaryDataContents memory _relayData) public {
+    function speedUpRelay(bytes32 _relayHash, RelayDataContents memory _relayData) public {
         verifyRelayHash(_relayHash, _relayData);
     }
 
-    function finalizeRelay(bytes32 _relayHash, RelayAncillaryDataContents memory _relayData) public {
+    function finalizeRelay(bytes32 _relayHash, RelayDataContents memory _relayData) public {
         verifyRelayHash(_relayHash, _relayData);
     }
 
-    function settleDisputedRelay(bytes32 _relayHash, RelayAncillaryDataContents memory _relayData) public {
+    function settleDisputedRelay(bytes32 _relayHash, RelayDataContents memory _relayData) public {
         verifyRelayHash(_relayHash, _relayData);
     }
 
@@ -205,18 +203,18 @@ contract BridgePool is Testable {
         bytes memory ancillaryData,
         uint256 refund
     ) public {
-        Deposit storage pendingDeposit = deposits[ancillaryData];
+        Relay storage pendingRelay = relays[ancillaryData];
         // TODO: Implement logic. For now, placeholder code demonstrates how relay can be migrated from pending to
         // disputed mapping.
-        Deposit storage disputedDeposit = disputedDeposits[ancillaryData][msg.sender];
-        disputedDeposit.depositState = pendingDeposit.depositState;
-        disputedDeposit.depositType = pendingDeposit.depositType;
-        disputedDeposit.relayHash = pendingDeposit.relayHash;
-        disputedDeposit.instantRelayer = pendingDeposit.instantRelayer;
-        delete deposits[ancillaryData];
+        Relay storage disputedRelay = disputedRelays[ancillaryData][msg.sender];
+        disputedRelay.relayState = pendingRelay.relayState;
+        disputedRelay.relayType = pendingRelay.relayType;
+        disputedRelay.relayHash = pendingRelay.relayHash;
+        disputedRelay.instantRelayer = pendingRelay.instantRelayer;
+        delete relays[ancillaryData];
     }
 
-    function getRelayHash(RelayAncillaryDataContents memory _relayData) public view returns (bytes32) {
+    function getRelayHash(RelayDataContents memory _relayData) public view returns (bytes32) {
         return
             keccak256(
                 abi.encode(
@@ -234,10 +232,10 @@ contract BridgePool is Testable {
             );
     }
 
-    function verifyRelayHash(bytes32 _relayHash, RelayAncillaryDataContents memory _relayData)
+    function verifyRelayHash(bytes32 _relayHash, RelayDataContents memory _relayData)
         public
         view
-        returns (RelayAncillaryDataContents memory)
+        returns (RelayDataContents memory)
     {
         require(getRelayHash(_relayData) == _relayHash, "Relay data does not match input hash");
     }
@@ -248,7 +246,7 @@ contract BridgePool is Testable {
      * @param _relayData Contains relevant relay data.
      * @return bytes New ancillary data that can be decoded into UTF8.
      */
-    function getRelayAncillaryData(RelayAncillaryDataContents memory _relayData) public view returns (bytes memory) {
+    function getRelayAncillaryData(RelayDataContents memory _relayData) public view returns (bytes memory) {
         bytes memory intermediateAncillaryData = "";
 
         // Add relay data inferred from the original deposit on L2:
