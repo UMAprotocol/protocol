@@ -145,9 +145,6 @@ contract BridgePool is Testable {
             });
         Relay storage newRelay = relays[keccak256(getRelayAncillaryData(relayData))];
         require(newRelay.relayState == RelayState.Uninitialized, "Pending relay exists");
-
-        // TODO: Query OptimisticOracle to see if there is a dispute for pending relay request. If so, mark relay as
-        // disputed and allow another relay, otherwise revert.
         require(
             disputedRelays[keccak256(getRelayAncillaryData(relayData))][msg.sender].relayState ==
                 RelayState.Uninitialized,
