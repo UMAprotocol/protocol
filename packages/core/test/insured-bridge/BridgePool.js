@@ -25,6 +25,7 @@ const OptimisticOracle = getContract("OptimisticOracle");
 const Store = getContract("Store");
 const ERC20 = getContract("ExpandedERC20");
 const Timer = getContract("Timer");
+const MockOracle = getContract("MockOracleAncillary");
 
 // Contract objects
 let bridgeAdmin;
@@ -38,6 +39,7 @@ let timer;
 let optimisticOracle;
 let l1Token;
 let l2Token;
+let mockOracle;
 
 // Hard-coded test params:
 const defaultGasLimit = 1_000_000;
@@ -62,11 +64,11 @@ const totalRelayBond = toBN(defaultProposerBondPct)
 let relayData;
 
 describe("BridgePool", () => {
-  let accounts, owner, depositContractImpersonator, depositor, relayer, recipient;
+  let accounts, owner, depositContractImpersonator, depositor, relayer, recipient, disputer, rando;
 
   before(async function () {
     accounts = await web3.eth.getAccounts();
-    [owner, depositContractImpersonator, depositor, relayer, recipient, l2Token] = accounts;
+    [owner, depositContractImpersonator, depositor, relayer, recipient, l2Token, disputer, rando] = accounts;
     await runDefaultFixture(hre);
 
     // Deploy or fetch deployed contracts:
@@ -99,6 +101,12 @@ describe("BridgePool", () => {
       .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
       .send({ from: owner });
 
+    // Deploy new MockOracle so that OptimisticOracle disputes can make price requests to it:
+    mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address)
+      .send({ from: owner });
+
     // Deploy and setup BridgeFactory:
     l1CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L1CrossDomainMessenger");
     bridgeAdmin = await BridgeAdmin.new(
@@ -118,9 +126,10 @@ describe("BridgePool", () => {
       .whitelistToken(l1Token.options.address, l2Token, bridgePool.options.address, defaultGasLimit)
       .send({ from: owner });
 
-    // Seed Pool and relayer with tokens.
+    // Seed Pool, relayer, and disputer with tokens.
     await l1Token.methods.mint(bridgePool.options.address, initialPoolLiquidity).send({ from: owner });
     await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
+    await l1Token.methods.mint(disputer, totalRelayBond).send({ from: owner });
 
     // Store expected relay data that we'll use to verify contract state:
     relayData = {
@@ -273,8 +282,6 @@ describe("BridgePool", () => {
             .send({ from: relayer })
         )
       );
-
-      // TODO: Pending dispute doesn't exist for relayer
     });
     it("Requests and proposes optimistic price request", async () => {
       // Proposer approves pool to withdraw total bond.
@@ -364,6 +371,134 @@ describe("BridgePool", () => {
           ev.currency === l1Token.options.address
         );
       });
+    });
+  });
+  describe("Dispute pending relay", () => {
+    it("OptimisticOracle callback deletes relay and marks as a disputed relay", async () => {
+      // Store price request timestamp before its submitted and proposed to.
+      const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
+
+      // Proposer approves pool to withdraw total bond.
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      const relayTxn = await bridgePool.methods
+        .relayDeposit(
+          relayData.depositId,
+          relayData.depositTimestamp,
+          relayData.recipient,
+          relayData.l2Sender,
+          relayData.l1Token,
+          relayData.amount,
+          relayData.realizedFeePct,
+          relayData.maxFeePct,
+          relayData.proposerRewardPct
+        )
+        .send({ from: relayer });
+
+      // Grab OO price request information:
+      const priceRequest = {};
+      const proposals = await optimisticOracle.getPastEvents("ProposePrice", {
+        fromBlock: relayTxn.blockNumber,
+        toBlock: relayTxn.blockNumber,
+      });
+      priceRequest.identifier = proposals[0].returnValues.identifier;
+      priceRequest.timestamp = proposals[0].returnValues.timestamp;
+      priceRequest.ancillaryData = proposals[0].returnValues.ancillaryData;
+      priceRequest.requester = proposals[0].returnValues.requester;
+
+      // Fails if not called by OptimisticOracle
+      assert(
+        await didContractThrow(
+          bridgePool.methods
+            .priceDisputed(priceRequest.identifier, priceRequest.timestamp, priceRequest.ancillaryData, 0)
+            .send({ from: disputer })
+        )
+      );
+      assert.ok(
+        await bridgePool.methods
+          .priceDisputed(priceRequest.identifier, priceRequest.timestamp, priceRequest.ancillaryData, 0)
+          .call({ from: optimisticOracle.options.address }),
+        "Simulated priceDisputed method should succeed if called by OptimisticOracle"
+      );
+
+      // Dispute bond should be equal to proposal bond, and OptimisticOracle needs to be able to pull dispute bond
+      // from disputer.
+      await l1Token.methods.approve(optimisticOracle.options.address, totalRelayBond).send({ from: disputer });
+      const disputeTxn = await optimisticOracle.methods
+        .disputePrice(
+          priceRequest.requester,
+          priceRequest.identifier,
+          priceRequest.timestamp,
+          priceRequest.ancillaryData
+        )
+        .send({ from: disputer });
+
+      // Check for expected events:
+      const relayAncillaryData = await bridgePool.methods.getRelayAncillaryData(relayData).call();
+      await assertEventEmitted(disputeTxn, optimisticOracle, "DisputePrice", (ev) => {
+        return (
+          ev.requester === bridgePool.options.address &&
+          ev.proposer === relayer &&
+          ev.disputer === disputer &&
+          hexToUtf8(ev.identifier) === hexToUtf8(defaultIdentifier) &&
+          ev.timestamp.toString() === requestTimestamp &&
+          ev.ancillaryData === relayAncillaryData &&
+          ev.proposedPrice.toString() === toWei("1")
+        );
+      });
+      const relayHash = web3.utils.soliditySha3(relayAncillaryData);
+      await assertEventEmitted(disputeTxn, bridgePool, "RelayDisputed", (ev) => {
+        return ev.priceRequestAncillaryDataHash === relayHash;
+      });
+
+      // Check BridgePool relay and disputedRelay mappings were modified as expected:
+      const deletedRelay = await bridgePool.methods.relays(relayHash).call();
+      assert.equal(deletedRelay.relayState, InsuredBridgeRelayStateEnum.UNINITIALIZED);
+      const disputedRelay = await bridgePool.methods.disputedRelays(relayHash).call();
+      assert.equal(disputedRelay.relayState, InsuredBridgeRelayStateEnum.PENDING_SLOW);
+      assert.equal(disputedRelay.relayType, InsuredBridgeRelayTypeEnum.SLOW);
+      assert.equal(disputedRelay.instantRelayer, ZERO_ADDRESS);
+
+      // Mint relayer and another user new bonds to try relaying again:
+      await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
+      await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
+
+      // Disputed relayer cannot relay the same deposit again since their address is tied into the relay hash.
+      assert(
+        await didContractThrow(
+          bridgePool.methods
+            .relayDeposit(
+              relayData.depositId,
+              relayData.depositTimestamp,
+              relayData.recipient,
+              relayData.l2Sender,
+              relayData.l1Token,
+              relayData.amount,
+              relayData.realizedFeePct,
+              relayData.maxFeePct,
+              relayData.proposerRewardPct
+            )
+            .send({ from: relayer })
+        )
+      );
+
+      // Another relayer can relay.
+      assert.ok(
+        await bridgePool.methods
+          .relayDeposit(
+            relayData.depositId,
+            relayData.depositTimestamp,
+            relayData.recipient,
+            relayData.l2Sender,
+            relayData.l1Token,
+            relayData.amount,
+            relayData.realizedFeePct,
+            relayData.maxFeePct,
+            relayData.proposerRewardPct
+          )
+          .send({ from: rando })
+      );
     });
   });
 });

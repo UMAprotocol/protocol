@@ -61,8 +61,7 @@ contract BridgePool is Testable {
     mapping(bytes32 => Relay) public relays;
     // If a relay is disputed, it is removed from the `relays` mapping and added to the `disputedRelays` mapping.
     // There can only be one disputed relay per relayer for each relay ancillary data.
-    // @dev The mapping is `relayAncillaryData-->disputer-->Relay`
-    mapping(bytes32 => mapping(address => Relay)) public disputedRelays;
+    mapping(bytes32 => Relay) public disputedRelays;
 
     event DepositRelayed(
         uint64 indexed depositId,
@@ -77,10 +76,16 @@ contract BridgePool is Testable {
         uint64 realizedFeePct,
         bytes32 indexed priceRequestAncillaryDataHash
     );
+    event RelayDisputed(bytes32 indexed priceRequestAncillaryDataHash);
     event RelaySpedUp(uint64 indexed depositId, address indexed fastRelayer, address indexed slowRelayer);
     event FinalizedRelay(uint64 indexed depositId, address indexed caller);
     event RelayDisputeSettled(uint64 indexed depositId, address indexed caller, bool disputeSuccessful);
     event ProvidedLiquidity(address indexed token, uint256 amount, uint256 lpTokensMinted, address liquidityProvider);
+
+    modifier onlyFromOptimisticOracle() {
+        require(msg.sender == address(_getOptimisticOracle()), "Caller must be OptimisticOracle");
+        _;
+    }
 
     constructor(address _bridgeAdmin, address _timer) Testable(_timer) {
         bridgeAdmin = BridgeAdminInterface(_bridgeAdmin);
@@ -146,8 +151,7 @@ contract BridgePool is Testable {
         Relay storage newRelay = relays[keccak256(getRelayAncillaryData(relayData))];
         require(newRelay.relayState == RelayState.Uninitialized, "Pending relay exists");
         require(
-            disputedRelays[keccak256(getRelayAncillaryData(relayData))][msg.sender].relayState ==
-                RelayState.Uninitialized,
+            disputedRelays[keccak256(getRelayAncillaryData(relayData))].relayState == RelayState.Uninitialized,
             "Pending dispute by relayer for deposit ID exists"
         );
 
@@ -202,26 +206,38 @@ contract BridgePool is Testable {
     function settleDisputedRelay(RelayDataContents memory _relayData) public {
         // Alternatively, force client to hash off-chain and pass `bytes32 _relayAncillaryDataHash` as param.
         Relay storage relay = relays[keccak256(getRelayAncillaryData(_relayData))];
-        // TODO: Do stuff
+        // TODO: Grab dispute result from DVM and do stuff.
     }
 
     /**
      * @notice OptimisticOracle will callback to this function after a pending relay is disputed.
+     * @dev Only callable by OptimisticOracle.
+     * @param identifier Identifier for price request tied to pending relay.
+     * @param timestamp Timestamp for price request tied to pending relay.
+     * @param ancillaryData Ancillary data for price request tied to pending relay.
+     * @param refund Refund for price request tied to pending relay. This param is ignored but is part of the function
+     * signature that the OptimisticOracle will callback.
      */
     function priceDisputed(
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData,
         uint256 refund
-    ) public {
+    ) public onlyFromOptimisticOracle {
+        // TODO: Should we use the `refund` parameter at all? If we set `refundOnDispute`, then the OptimisticOracle
+        // will return the relayer reward to this contract upon a dispute. Currently we'll ignore this param.
+
         Relay storage pendingRelay = relays[keccak256(ancillaryData)];
-        // TODO: Implement logic. For now, placeholder code demonstrates how relay can be migrated from pending to
-        // disputed mapping.
-        Relay storage disputedRelay = disputedRelays[keccak256(ancillaryData)][msg.sender];
+
+        // Copy pending relay data to dispute mapping, and then delete relay data to allow another relay to fulfill the
+        // deposit.
+        Relay storage disputedRelay = disputedRelays[keccak256(ancillaryData)];
         disputedRelay.relayState = pendingRelay.relayState;
         disputedRelay.relayType = pendingRelay.relayType;
         disputedRelay.instantRelayer = pendingRelay.instantRelayer;
         delete relays[keccak256(ancillaryData)];
+
+        emit RelayDisputed(keccak256(ancillaryData));
     }
 
     /**
