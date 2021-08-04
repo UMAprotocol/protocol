@@ -32,7 +32,7 @@ export interface EventState {
   };
 }
 
-export function reduceEvents(state: EventState, event: Event, index?: number): EventState {
+export function reduceEvents(state: EventState, event: Event): EventState {
   switch (event.event) {
     case "CreatedLongShortPair": {
       const typedEvent = event as CreatedLongShortPair;
