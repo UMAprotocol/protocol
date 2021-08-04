@@ -41,11 +41,13 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
   const HarvestVaultInterface = getTruffleContract("HarvestVaultInterface", web3);
   const Perpetual = getTruffleContract("Perpetual", web3);
 
-  let providedWeb3 = web3;
-  if (config.nodeEnvVariable) {
-    if (!process.env[config.nodeEnvVariable])
-      throw Error(`Expected node url to be provided in env variable ${config.nodeEnvVariable}`);
-    providedWeb3 = new Web3(process.env[config.nodeEnvVariable]);
+  let providedWeb3;
+  if (config.nodeUrlEnvVar) {
+    if (!process.env[config.nodeUrlEnvVar])
+      throw Error(`Expected node url to be provided in env variable ${config.nodeUrlEnvVar}`);
+    providedWeb3 = new Web3(process.env[config.nodeUrlEnvVar]);
+  } else {
+    providedWeb3 = web3;
   }
 
   if (config.type === "cryptowatch") {
