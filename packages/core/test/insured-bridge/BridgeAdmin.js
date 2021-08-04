@@ -146,7 +146,7 @@ describe("BridgeAdmin", () => {
             await didContractThrow(
               bridgeAdmin.methods.whitelistToken(l1Token, l2Token, bridgePool, defaultGasLimit).send({ from: owner })
             ),
-            "Deposit contract not set"
+            "L1 token is not whitelisted collateral"
           );
           await collateralWhitelist.methods.addToWhitelist(l1Token).send({ from: owner });
 
