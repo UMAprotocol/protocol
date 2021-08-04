@@ -23,7 +23,7 @@ module.exports = {
         "plugin:@typescript-eslint/eslint-recommended",
         "plugin:@typescript-eslint/recommended",
       ],
-      rules: { "@typescript-eslint/no-var-requires": 0 },
+      rules: { "@typescript-eslint/no-var-requires": 0, "@typescript-eslint/no-unused-vars": "error" },
     },
   ],
   settings: { "mocha/additionalTestFunctions": ["describeModule"] },

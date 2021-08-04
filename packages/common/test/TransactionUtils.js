@@ -1,5 +1,5 @@
 // Script to test
-const TransactionUtils = require("../src/TransactionUtils");
+const TransactionUtils = require("../dist/TransactionUtils");
 const { getTruffleContract, getAbi } = require("@uma/core");
 const ERC20 = getTruffleContract("BasicERC20", web3);
 const ERC20ABI = getAbi("BasicERC20");

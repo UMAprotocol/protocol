@@ -31,14 +31,14 @@ const devRewardsToDistribute = "50000";
 // mocks
 const { Queries, Coingecko, SynthPrices } = mocks;
 
-describe("DevMining Rewards", function () {
+describe("DevMining Rewards V1", function () {
   describe("CalculateRewards Simple Data", function () {
     let balanceHistories, params, totalRewards, affiliates;
     beforeEach(function () {
       const queries = Queries(datasetPath);
       const coingecko = Coingecko(datasetPath);
       const synthPrices = SynthPrices(datasetPath);
-      affiliates = DevMining({ queries, defaultEmpAbi: empAbi, coingecko, synthPrices });
+      affiliates = DevMining.v1({ queries, defaultEmpAbi: empAbi, coingecko, synthPrices });
 
       function makePricesWithValue(count) {
         return [makePrices(count), affiliates.utils.calculateValue];
@@ -218,7 +218,7 @@ describe("DevMining Rewards", function () {
       const queries = Queries(datasetPath);
       const coingecko = Coingecko(datasetPath);
       const synthPrices = SynthPrices(datasetPath);
-      affiliates = DevMining({ queries, defaultEmpAbi: empAbi, coingecko, synthPrices });
+      affiliates = DevMining.v1({ queries, defaultEmpAbi: empAbi, coingecko, synthPrices });
     });
     it("getAllBalanceHistory", async function () {
       this.timeout(10000);

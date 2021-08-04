@@ -7,7 +7,7 @@ import type { AppState } from "../";
 import { Multicall } from "@uma/sdk";
 import { lsps } from "../tables";
 // this fixes usage of "this" as any
-import type Mocha from "mocha";
+import "mocha";
 
 type Dependencies = Pick<
   AppState,

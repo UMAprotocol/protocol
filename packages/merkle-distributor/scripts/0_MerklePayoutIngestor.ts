@@ -67,7 +67,7 @@ async function main() {
       const checkSumRecipientAddress = toChecksumAddress(recipientAddress); // Ensure consistent address case
 
       // Scale the amount by the number of decimals for that particular input.
-      const recipientAmountScaled = ConvertDecimals(0, o.decimals[i], Web3)(recipients[recipientAddress]);
+      const recipientAmountScaled = ConvertDecimals(0, o.decimals[i])(recipients[recipientAddress]);
 
       // If the output file already contains information for this particular recipient, then append and add their rewards.
       // Else, simply init the object with their values from the file. Note that accountIndex in both cases is set to -1.

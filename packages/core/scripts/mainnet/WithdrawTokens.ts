@@ -16,7 +16,7 @@ async function WithdrawTokens() {
   const { getWeb3 } = require("@uma/common");
   const web3 = getWeb3();
 
-  const { getAbi, getTruffleContract } = require("@uma/core");
+  const { getTruffleContract } = require("@uma/core");
   const { GasEstimator } = require("@uma/financial-templates-lib");
 
   assert(

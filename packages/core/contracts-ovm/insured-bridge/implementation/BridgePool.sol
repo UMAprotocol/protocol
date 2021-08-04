@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "./BridgePoolFactoryInterface.sol";
+import "./BridgeAdminInterface.sol";
 import "../../../contracts/oracle/interfaces/OptimisticOracleInterface.sol";
 import "../../../contracts/oracle/interfaces/StoreInterface.sol";
 import "../../../contracts/oracle/interfaces/FinderInterface.sol";
@@ -26,7 +26,7 @@ contract BridgePool is Testable {
     using FixedPoint for FixedPoint.Unsigned;
 
     // Administrative contract that deployed this contract and also houses all state variables needed to relay deposits.
-    BridgePoolFactoryInterface public bridgePoolFactory;
+    BridgeAdminInterface public bridgeAdmin;
 
     // A Relay represents a an attempt to finalize a cross-chain transfer that originated on an L2 DepositBox contract
     // and can be bridged via this contract.
@@ -82,9 +82,9 @@ contract BridgePool is Testable {
     event RelayDisputeSettled(uint64 indexed depositId, address indexed caller, bool disputeSuccessful);
     event ProvidedLiquidity(address indexed token, uint256 amount, uint256 lpTokensMinted, address liquidityProvider);
 
-    constructor(address _bridgePoolFactory, address _timer) Testable(_timer) {
-        bridgePoolFactory = BridgePoolFactoryInterface(_bridgePoolFactory);
-        require(bridgePoolFactory.finder() != address(0), "Invalid bridge pool factory");
+    constructor(address _bridgeAdmin, address _timer) Testable(_timer) {
+        bridgeAdmin = BridgeAdminInterface(_bridgeAdmin);
+        require(bridgeAdmin.finder() != address(0), "Invalid bridge pool factory");
     }
 
     /*************************************************
@@ -289,7 +289,7 @@ contract BridgePool is Testable {
         intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
             intermediateAncillaryData,
             "depositContract",
-            bridgePoolFactory.depositContract()
+            bridgeAdmin.depositContract()
         );
 
         return intermediateAncillaryData;
@@ -302,15 +302,12 @@ contract BridgePool is Testable {
     function _getOptimisticOracle() private view returns (OptimisticOracleInterface) {
         return
             OptimisticOracleInterface(
-                FinderInterface(bridgePoolFactory.finder()).getImplementationAddress(OracleInterfaces.OptimisticOracle)
+                FinderInterface(bridgeAdmin.finder()).getImplementationAddress(OracleInterfaces.OptimisticOracle)
             );
     }
 
     function _getStore() private view returns (StoreInterface) {
-        return
-            StoreInterface(
-                FinderInterface(bridgePoolFactory.finder()).getImplementationAddress(OracleInterfaces.Store)
-            );
+        return StoreInterface(FinderInterface(bridgeAdmin.finder()).getImplementationAddress(OracleInterfaces.Store));
     }
 
     function _requestOraclePriceRelay(
@@ -322,10 +319,7 @@ contract BridgePool is Testable {
     ) private {
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
         uint256 proposerBondPct =
-            FixedPoint
-                .Unsigned(uint256(bridgePoolFactory.proposerBondPct()))
-                .div(FixedPoint.fromUnscaledUint(1))
-                .rawValue;
+            FixedPoint.Unsigned(uint256(bridgeAdmin.proposerBondPct())).div(FixedPoint.fromUnscaledUint(1)).rawValue;
 
         // Optimistic oracle will pull proposer reward from passive LP pool.
         uint256 proposerReward =
@@ -340,7 +334,7 @@ contract BridgePool is Testable {
 
         IERC20(l1Token).safeApprove(address(optimisticOracle), proposerReward);
         optimisticOracle.requestPrice(
-            bridgePoolFactory.identifier(),
+            bridgeAdmin.identifier(),
             requestTimestamp,
             customAncillaryData,
             IERC20(l1Token),
@@ -349,15 +343,15 @@ contract BridgePool is Testable {
 
         // Set the Optimistic oracle liveness for the price request.
         optimisticOracle.setCustomLiveness(
-            bridgePoolFactory.identifier(),
+            bridgeAdmin.identifier(),
             requestTimestamp,
             customAncillaryData,
-            uint256(bridgePoolFactory.optimisticOracleLiveness())
+            uint256(bridgeAdmin.optimisticOracleLiveness())
         );
 
         // Set the Optimistic oracle proposer bond for the price request.
         uint256 proposerBond = FixedPoint.Unsigned(proposerBondPct).mul(FixedPoint.Unsigned(amount)).rawValue;
-        optimisticOracle.setBond(bridgePoolFactory.identifier(), requestTimestamp, customAncillaryData, proposerBond);
+        optimisticOracle.setBond(bridgeAdmin.identifier(), requestTimestamp, customAncillaryData, proposerBond);
     }
 
     function _proposeOraclePriceRelay(
@@ -368,10 +362,7 @@ contract BridgePool is Testable {
     ) private {
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
         uint256 proposerBondPct =
-            FixedPoint
-                .Unsigned(uint256(bridgePoolFactory.proposerBondPct()))
-                .div(FixedPoint.fromUnscaledUint(1))
-                .rawValue;
+            FixedPoint.Unsigned(uint256(bridgeAdmin.proposerBondPct())).div(FixedPoint.fromUnscaledUint(1)).rawValue;
         uint256 finalFee = _getStore().computeFinalFee(address(l1Token)).rawValue;
 
         uint256 totalBond =
@@ -387,7 +378,7 @@ contract BridgePool is Testable {
         optimisticOracle.proposePriceFor(
             msg.sender,
             address(this),
-            bridgePoolFactory.identifier(),
+            bridgeAdmin.identifier(),
             requestTimestamp,
             customAncillaryData,
             1e18

@@ -16,7 +16,7 @@ const { deployOptimismContractMock } = require("./helpers/SmockitHelper");
 const { assert } = require("chai");
 
 // Tested contracts
-const BridgePoolFactory = getContract("BridgePoolFactory");
+const BridgeAdmin = getContract("BridgeAdmin");
 const BridgePool = getContract("BridgePool");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
@@ -27,7 +27,7 @@ const ERC20 = getContract("ExpandedERC20");
 const Timer = getContract("Timer");
 
 // Contract objects
-let bridgePoolFactory;
+let bridgeAdmin;
 let bridgePool;
 let finder;
 let store;
@@ -101,20 +101,20 @@ describe("BridgePool", () => {
 
     // Deploy and setup BridgeFactory:
     l1CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L1CrossDomainMessenger");
-    bridgePoolFactory = await BridgePoolFactory.new(
+    bridgeAdmin = await BridgeAdmin.new(
       finder.options.address,
       l1CrossDomainMessengerMock.options.address,
       defaultLiveness,
       defaultProposerBondPct,
       defaultIdentifier
     ).send({ from: owner });
-    await bridgePoolFactory.methods.setDepositContract(depositContractImpersonator).send({ from: owner });
+    await bridgeAdmin.methods.setDepositContract(depositContractImpersonator).send({ from: owner });
 
     // New BridgePool linked to BridgeFactory
-    bridgePool = await BridgePool.new(bridgePoolFactory.options.address, timer.options.address).send({ from: owner });
+    bridgePool = await BridgePool.new(bridgeAdmin.options.address, timer.options.address).send({ from: owner });
 
     // Add L1-L2 token mapping
-    await bridgePoolFactory.methods
+    await bridgeAdmin.methods
       .whitelistToken(l1Token.options.address, l2Token, bridgePool.options.address, defaultGasLimit)
       .send({ from: owner });
 
