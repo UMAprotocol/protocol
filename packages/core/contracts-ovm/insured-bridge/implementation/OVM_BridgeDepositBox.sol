@@ -167,8 +167,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
      * @param _depositsEnabled bool to set if the deposit box should accept/reject deposits.
      */
     function setEnableDeposits(address _l2Token, bool _depositsEnabled) public onlyFromCrossDomainAccount(bridgeAdmin) {
-        L2TokenRelationships storage _token = whitelistedTokens[_l2Token];
-        _token.depositsEnabled = _depositsEnabled;
+        whitelistedTokens[_l2Token].depositsEnabled = _depositsEnabled;
         emit DepositsEnabled(_l2Token, _depositsEnabled);
     }
 
