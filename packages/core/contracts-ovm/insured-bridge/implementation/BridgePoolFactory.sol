@@ -24,8 +24,6 @@ contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, Testable, OVM
     // Finder used to point to latest OptimisticOracle and other DVM contracts.
     address public override finder;
 
-    address public timer;
-
     // L2 Deposit contract that originates deposits that can be fulfilled by this contract.
     address public override depositContract;
 
@@ -65,7 +63,6 @@ contract BridgePoolFactory is BridgePoolFactoryInterface, Ownable, Testable, OVM
         address _timer
     ) OVM_CrossDomainEnabled(_crossDomainMessenger) Testable(_timer) {
         finder = _finder;
-        timer = _timer;
         require(address(_getCollateralWhitelist()) != address(0), "Invalid finder");
         _setOptimisticOracleLiveness(_optimisticOracleLiveness);
         _setProposerBondPct(_proposerBondPct);
