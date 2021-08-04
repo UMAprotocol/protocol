@@ -1,5 +1,8 @@
 // Contains helpful methods for interacting with the Object data type.
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ObjectType = { [key: string]: any };
+
 /**
  * @notice Given `overrideProps` and `defaultProps` Objects, returns a new Object, `newObject`,
  * with the same properties as `defaultProps`, but replaces any property values that overlap with
@@ -13,7 +16,7 @@
  * the new Object and `isValid` will be called to validate each of `newObject`'s properties.
  * @return `newObject` a new Object with the same properties as `defaultProps`, or `defaultProps` if undefined `overrideProps`.
  */
-export const createObjectFromDefaultProps = (overrideProps: any, defaultProps: any): any => {
+export const createObjectFromDefaultProps = (overrideProps: ObjectType, defaultProps: ObjectType): ObjectType => {
   if (!defaultProps) {
     throw new Error("Undefined `defaultProps`");
   }
@@ -22,7 +25,7 @@ export const createObjectFromDefaultProps = (overrideProps: any, defaultProps: a
     overrideProps = {};
   }
 
-  const newObject: any = {};
+  const newObject: ObjectType = {};
 
   Object.keys(defaultProps).forEach((prop) => {
     // Set property value to that contained in `overrideProps` if it exists, else set to `defaultProps`.
