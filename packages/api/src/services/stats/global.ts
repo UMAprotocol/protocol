@@ -1,7 +1,6 @@
 import assert from "assert";
 import * as uma from "@uma/sdk";
 import { Currencies, AppState, BaseConfig } from "../..";
-import { nowS } from "../../libs/utils";
 import * as Queries from "../../libs/queries";
 import { BigNumber } from "ethers";
 import bluebird from "bluebird";

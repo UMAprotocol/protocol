@@ -3,7 +3,7 @@
 // syntax mimics that of the main UMA Truffle implementation to make this backwards compatible.
 
 import Web3 from "web3";
-import { getTruffleConfig, getNodeUrl, Network } from "./TruffleConfig";
+import { getTruffleConfig, getNodeUrl } from "./TruffleConfig";
 import minimist from "minimist";
 import Url from "url";
 import { RetryProvider, RetryConfig } from "./RetryProvider";
