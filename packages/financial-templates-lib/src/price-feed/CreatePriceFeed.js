@@ -5,6 +5,7 @@ const { getTruffleContract } = require("@uma/core");
 const { BlockFinder } = require("./utils");
 const { getPrecisionForIdentifier, PublicNetworks } = require("@uma/common");
 const { multicallAddressMap } = require("../helpers/multicall");
+const Web3 = require("web3");
 
 // Price feed interfaces (sorted alphabetically)
 const { BalancerPriceFeed } = require("./BalancerPriceFeed");
@@ -40,6 +41,15 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
   const HarvestVaultInterface = getTruffleContract("HarvestVaultInterface", web3);
   const Perpetual = getTruffleContract("Perpetual", web3);
 
+  let providedWeb3;
+  if (config.nodeUrlEnvVar) {
+    if (!process.env[config.nodeUrlEnvVar])
+      throw Error(`Expected node url to be provided in env variable ${config.nodeUrlEnvVar}`);
+    providedWeb3 = new Web3(process.env[config.nodeUrlEnvVar]);
+  } else {
+    providedWeb3 = web3;
+  }
+
   if (config.type === "cryptowatch") {
     const requiredFields = ["exchange", "pair", "lookback", "minTimeBetweenUpdates"];
 
@@ -51,7 +61,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
 
     return new CryptoWatchPriceFeed(
       logger,
-      web3,
+      providedWeb3,
       config.cryptowatchApiKey,
       config.exchange,
       config.pair,
@@ -76,7 +86,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
 
     return new QuandlPriceFeed(
       logger,
-      web3,
+      providedWeb3,
       config.quandlApiKey,
       config.datasetCode,
       config.databaseCode,
@@ -97,7 +107,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
 
     return new DominationFinancePriceFeed(
       logger,
-      web3,
+      providedWeb3,
       config.pair,
       config.lookback,
       networker,
@@ -125,7 +135,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       logger,
       uniswapAbi,
       ERC20.abi,
-      web3,
+      providedWeb3,
       config.uniswapAddress,
       config.twapLength,
       config.lookback,
@@ -145,7 +155,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
 
     return new ForexDailyPriceFeed(
       logger,
-      web3,
+      providedWeb3,
       config.base,
       config.symbol,
       config.lookback,
@@ -165,7 +175,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
 
     return new DefiPulsePriceFeed(
       logger,
-      web3,
+      providedWeb3,
       config.defipulseApiKey,
       config.lookback,
       networker,
@@ -216,7 +226,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
 
     return new BalancerPriceFeed(
       logger,
-      web3,
+      providedWeb3,
       getTime,
       Balancer.abi,
       config.balancerAddress,
@@ -245,7 +255,13 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     const denominatorPriceFeed =
       config.denominatorPriceFeed && (await _createMedianizerPriceFeed(config.denominatorPriceFeed));
 
-    return new BasketSpreadPriceFeed(web3, logger, baselinePriceFeeds, experimentalPriceFeeds, denominatorPriceFeed);
+    return new BasketSpreadPriceFeed(
+      providedWeb3,
+      logger,
+      baselinePriceFeeds,
+      experimentalPriceFeeds,
+      denominatorPriceFeed
+    );
   } else if (config.type === "coinmarketcap") {
     const requiredFields = ["cmcApiKey", "symbol", "quoteCurrency", "lookback", "minTimeBetweenUpdates"];
 
@@ -257,7 +273,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
 
     return new CoinMarketCapPriceFeed(
       logger,
-      web3,
+      providedWeb3,
       config.cmcApiKey,
       config.symbol,
       config.quoteCurrency,
@@ -279,7 +295,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
 
     return new CoinGeckoPriceFeed(
       logger,
-      web3,
+      providedWeb3,
       config.contractAddress,
       config.quoteCurrency,
       config.lookback,
@@ -300,7 +316,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
 
     return new TraderMadePriceFeed(
       logger,
-      web3,
+      providedWeb3,
       config.tradermadeApiKey,
       config.pair,
       config.minuteLookback,
@@ -330,7 +346,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
 
     return new ETHVIXPriceFeed(
       logger,
-      web3,
+      providedWeb3,
       config.inverse,
       networker,
       getTime,
@@ -361,7 +377,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     return new VaultPriceFeed({
       ...config,
       logger,
-      web3,
+      web3: providedWeb3,
       getTime,
       vaultAbi: VaultInterface.abi,
       erc20Abi: ERC20.abi,
@@ -379,7 +395,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     return new HarvestVaultPriceFeed({
       ...config,
       logger,
-      web3,
+      web3: providedWeb3,
       getTime,
       vaultAbi: HarvestVaultInterface.abi,
       erc20Abi: ERC20.abi,
@@ -397,7 +413,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     return new LPPriceFeed({
       ...config,
       logger,
-      web3,
+      web3: providedWeb3,
       getTime,
       erc20Abi: ERC20.abi,
       blockFinder: getSharedBlockFinder(web3),
@@ -412,7 +428,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
 
     let multicallAddress = config.multicallAddress;
     if (!multicallAddress) {
-      const networkId = await web3.eth.net.getId();
+      const networkId = await providedWeb3.eth.net.getId();
       const networkName = PublicNetworks[Number(networkId)]?.name;
       multicallAddress = multicallAddressMap[networkName]?.multicall;
     }
@@ -428,7 +444,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     return new FundingRateMultiplierPriceFeed({
       ...config,
       logger,
-      web3,
+      web3: providedWeb3,
       getTime,
       perpetualAbi: Perpetual.abi,
       multicallAddress: multicallAddress,
