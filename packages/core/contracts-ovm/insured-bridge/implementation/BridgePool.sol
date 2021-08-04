@@ -55,8 +55,8 @@ contract BridgePool is Testable {
         // A deposit can have both a slow and an instant relayer if a slow relay is "sped up" from slow to instant.
         // We want to store both addresses for separate payouts.
         address instantRelayer;
-        // Store unique hash derived from all of the data neccessary to construct deposit and relay data.
-        bytes depositHash;
+        // Store unique hash derived from all of the data neccessary to construct this deposit.
+        bytes32 relayHash;
     }
     // Associates each deposit with a unique hash derived from its constituent data..
     mapping(bytes => Deposit) public deposits;
@@ -154,7 +154,7 @@ contract BridgePool is Testable {
         // Save new deposit:
         newDeposit.depositState = DepositState.PendingSlow;
         newDeposit.depositType = DepositType.Slow;
-        newDeposit.depositHash = getRelayHash(relayData);
+        newDeposit.relayHash = getRelayHash(relayData);
 
         // Request a price for the relay identifier and propose "true" optimistically. These methods will pull the
         // (proposer reward + proposer bond + final fee) from the caller.
@@ -182,58 +182,62 @@ contract BridgePool is Testable {
         );
     }
 
-    function speedUpRelay(uint256 depositId) public {}
+    function speedUpRelay(bytes32 _relayHash, RelayAncillaryDataContents memory _relayData) public {
+        verifyRelayHash(_relayHash, _relayData);
+    }
 
-    function finalizeRelay(uint256 depositId) public {}
+    function finalizeRelay(bytes32 _relayHash, RelayAncillaryDataContents memory _relayData) public {
+        verifyRelayHash(_relayHash, _relayData);
+    }
 
-    function settleDisputedRelay(uint256 depositId, address slowRelayer) public {}
+    function settleDisputedRelay(bytes32 _relayHash, RelayAncillaryDataContents memory _relayData) public {
+        verifyRelayHash(_relayHash, _relayData);
+    }
 
-    function getRelayHash(RelayAncillaryDataContents memory _relayData) public view returns (bytes memory) {
+    /**
+     * @notice OptimisticOracle will callback to this function after a pending relay is disputed.
+     */
+    function priceDisputed(
+        bytes32 identifier,
+        uint256 timestamp,
+        bytes memory ancillaryData,
+        uint256 refund
+    ) public {
+        Deposit storage pendingDeposit = deposits[ancillaryData];
+        // TODO: Implement logic. For now, placeholder code demonstrates how relay can be migrated from pending to
+        // disputed mapping.
+        Deposit storage disputedDeposit = disputedDeposits[ancillaryData][msg.sender];
+        disputedDeposit.depositState = pendingDeposit.depositState;
+        disputedDeposit.depositType = pendingDeposit.depositType;
+        disputedDeposit.relayHash = pendingDeposit.relayHash;
+        disputedDeposit.instantRelayer = pendingDeposit.instantRelayer;
+        delete deposits[ancillaryData];
+    }
+
+    function getRelayHash(RelayAncillaryDataContents memory _relayData) public view returns (bytes32) {
         return
-            abi.encodePacked(
-                _relayData.depositId,
-                _relayData.l2Sender,
-                _relayData.recipient,
-                _relayData.depositTimestamp,
-                _relayData.l1Token,
-                _relayData.amount,
-                _relayData.maxFeePct,
-                _relayData.proposerRewardPct,
-                _relayData.realizedFeePct,
-                _relayData.slowRelayer
+            keccak256(
+                abi.encode(
+                    _relayData.depositId,
+                    _relayData.l2Sender,
+                    _relayData.recipient,
+                    _relayData.depositTimestamp,
+                    _relayData.l1Token,
+                    _relayData.amount,
+                    _relayData.maxFeePct,
+                    _relayData.proposerRewardPct,
+                    _relayData.realizedFeePct,
+                    _relayData.slowRelayer
+                )
             );
     }
 
-    function decodeRelayHash(bytes memory _relayHash) public view returns (RelayAncillaryDataContents memory) {
-        (
-            uint64 depositId,
-            address l2Sender,
-            address recipient,
-            uint64 depositTimestamp,
-            address l1Token,
-            uint256 amount,
-            uint64 maxFeePct,
-            uint64 proposerRewardPct,
-            uint64 realizedFeePct,
-            address slowRelayer
-        ) =
-            abi.decode(
-                _relayHash,
-                (uint64, address, address, uint64, address, uint256, uint64, uint64, uint64, address)
-            );
-        return
-            RelayAncillaryDataContents({
-                depositId: depositId,
-                l2Sender: l2Sender,
-                recipient: recipient,
-                depositTimestamp: depositTimestamp,
-                l1Token: l1Token,
-                amount: amount,
-                maxFeePct: maxFeePct,
-                proposerRewardPct: proposerRewardPct,
-                realizedFeePct: realizedFeePct,
-                slowRelayer: slowRelayer
-            });
+    function verifyRelayHash(bytes32 _relayHash, RelayAncillaryDataContents memory _relayData)
+        public
+        view
+        returns (RelayAncillaryDataContents memory)
+    {
+        require(getRelayHash(_relayData) == _relayHash, "Relay data does not match input hash");
     }
 
     /**

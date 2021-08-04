@@ -59,7 +59,7 @@ const totalRelayBond = toBN(defaultProposerBondPct)
   .add(toBN(finalFee));
 
 // Expected data that will be used to identify a successful relay:
-let relayAncillaryData;
+let relayData;
 
 describe("BridgePool", () => {
   let accounts, owner, depositContractImpersonator, depositor, relayer, recipient;
@@ -123,7 +123,7 @@ describe("BridgePool", () => {
     await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
 
     // Store expected relay data that we'll use to verify contract state:
-    relayAncillaryData = {
+    relayData = {
       depositId: 1,
       l2Sender: depositor,
       recipient: recipient,
@@ -137,15 +137,15 @@ describe("BridgePool", () => {
     };
   });
   it("Constructs utf8-encoded ancillary data for relay", async function () {
-    const result = await bridgePool.methods.getRelayAncillaryData(relayAncillaryData).call({ from: owner });
+    const result = await bridgePool.methods.getRelayAncillaryData(relayData).call({ from: owner });
     let expectedAncillaryDataUtf8 = "";
-    Object.keys(relayAncillaryData).forEach((key) => {
+    Object.keys(relayData).forEach((key) => {
       // Set addresses to lower case and strip leading "0x"'s in order to recreate how Solidity encodes addresses
       // to utf8.
-      if (relayAncillaryData[key].toString().startsWith("0x")) {
-        expectedAncillaryDataUtf8 += `${key}:${relayAncillaryData[key].toString().substr(2).toLowerCase()},`;
+      if (relayData[key].toString().startsWith("0x")) {
+        expectedAncillaryDataUtf8 += `${key}:${relayData[key].toString().substr(2).toLowerCase()},`;
       } else {
-        expectedAncillaryDataUtf8 += `${key}:${relayAncillaryData[key].toString()},`;
+        expectedAncillaryDataUtf8 += `${key}:${relayData[key].toString()},`;
       }
     });
     expectedAncillaryDataUtf8 += `depositContract:${depositContractImpersonator.substr(2).toLowerCase()}`;
@@ -158,15 +158,15 @@ describe("BridgePool", () => {
         await didContractThrow(
           bridgePool.methods
             .relayDeposit(
-              relayAncillaryData.depositId,
-              relayAncillaryData.depositTimestamp,
-              relayAncillaryData.recipient,
-              relayAncillaryData.l2Sender,
-              relayAncillaryData.l1Token,
-              relayAncillaryData.amount,
-              relayAncillaryData.realizedFeePct,
-              relayAncillaryData.maxFeePct,
-              relayAncillaryData.proposerRewardPct
+              relayData.depositId,
+              relayData.depositTimestamp,
+              relayData.recipient,
+              relayData.l2Sender,
+              relayData.l1Token,
+              relayData.amount,
+              relayData.realizedFeePct,
+              relayData.maxFeePct,
+              relayData.proposerRewardPct
             )
             .send({ from: relayer })
         )
@@ -178,17 +178,17 @@ describe("BridgePool", () => {
         await didContractThrow(
           bridgePool.methods
             .relayDeposit(
-              relayAncillaryData.depositId,
-              relayAncillaryData.depositTimestamp,
-              relayAncillaryData.recipient,
-              relayAncillaryData.l2Sender,
-              relayAncillaryData.l1Token,
-              relayAncillaryData.amount,
+              relayData.depositId,
+              relayData.depositTimestamp,
+              relayData.recipient,
+              relayData.l2Sender,
+              relayData.l1Token,
+              relayData.amount,
               toBN(defaultMaxFee)
                 .add(toBN(toWei("0.01")))
                 .toString(),
-              relayAncillaryData.maxFeePct,
-              relayAncillaryData.proposerRewardPct
+              relayData.maxFeePct,
+              relayData.proposerRewardPct
             )
             .send({ from: relayer })
         )
@@ -205,14 +205,14 @@ describe("BridgePool", () => {
         await didContractThrow(
           bridgePool.methods
             .relayDeposit(
-              relayAncillaryData.depositId,
-              relayAncillaryData.depositTimestamp,
-              relayAncillaryData.recipient,
-              relayAncillaryData.l2Sender,
-              relayAncillaryData.l1Token,
+              relayData.depositId,
+              relayData.depositTimestamp,
+              relayData.recipient,
+              relayData.l2Sender,
+              relayData.l1Token,
               initialPoolLiquidity,
-              relayAncillaryData.realizedFeePct,
-              relayAncillaryData.maxFeePct,
+              relayData.realizedFeePct,
+              relayData.maxFeePct,
               toWei("1.01")
             )
             .send({ from: relayer })
@@ -226,16 +226,16 @@ describe("BridgePool", () => {
         await didContractThrow(
           bridgePool.methods
             .relayDeposit(
-              relayAncillaryData.depositId,
-              relayAncillaryData.depositTimestamp,
-              relayAncillaryData.recipient,
-              relayAncillaryData.l2Sender,
-              relayAncillaryData.l1Token,
+              relayData.depositId,
+              relayData.depositTimestamp,
+              relayData.recipient,
+              relayData.l2Sender,
+              relayData.l1Token,
               toBN(initialPoolLiquidity)
                 .mul(toBN(toWei("0.99")))
                 .div(toBN(toWei("1"))),
-              relayAncillaryData.realizedFeePct,
-              relayAncillaryData.maxFeePct,
+              relayData.realizedFeePct,
+              relayData.maxFeePct,
               toWei("0.15")
             )
             .send({ from: relayer })
@@ -245,30 +245,30 @@ describe("BridgePool", () => {
       // Pending relay doesn't already exist.
       await bridgePool.methods
         .relayDeposit(
-          relayAncillaryData.depositId,
-          relayAncillaryData.depositTimestamp,
-          relayAncillaryData.recipient,
-          relayAncillaryData.l2Sender,
-          relayAncillaryData.l1Token,
-          relayAncillaryData.amount,
-          relayAncillaryData.realizedFeePct,
-          relayAncillaryData.maxFeePct,
-          relayAncillaryData.proposerRewardPct
+          relayData.depositId,
+          relayData.depositTimestamp,
+          relayData.recipient,
+          relayData.l2Sender,
+          relayData.l1Token,
+          relayData.amount,
+          relayData.realizedFeePct,
+          relayData.maxFeePct,
+          relayData.proposerRewardPct
         )
         .send({ from: relayer });
       assert(
         await didContractThrow(
           bridgePool.methods
             .relayDeposit(
-              relayAncillaryData.depositId,
-              relayAncillaryData.depositTimestamp,
-              relayAncillaryData.recipient,
-              relayAncillaryData.l2Sender,
-              relayAncillaryData.l1Token,
-              relayAncillaryData.amount,
-              relayAncillaryData.realizedFeePct,
-              relayAncillaryData.maxFeePct,
-              relayAncillaryData.proposerRewardPct
+              relayData.depositId,
+              relayData.depositTimestamp,
+              relayData.recipient,
+              relayData.l2Sender,
+              relayData.l1Token,
+              relayData.amount,
+              relayData.realizedFeePct,
+              relayData.maxFeePct,
+              relayData.proposerRewardPct
             )
             .send({ from: relayer })
         )
@@ -281,15 +281,15 @@ describe("BridgePool", () => {
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
       const txn = await bridgePool.methods
         .relayDeposit(
-          relayAncillaryData.depositId,
-          relayAncillaryData.depositTimestamp,
-          relayAncillaryData.recipient,
-          relayAncillaryData.l2Sender,
-          relayAncillaryData.l1Token,
-          relayAncillaryData.amount,
-          relayAncillaryData.realizedFeePct,
-          relayAncillaryData.maxFeePct,
-          relayAncillaryData.proposerRewardPct
+          relayData.depositId,
+          relayData.depositTimestamp,
+          relayData.recipient,
+          relayData.l2Sender,
+          relayData.l1Token,
+          relayData.amount,
+          relayData.realizedFeePct,
+          relayData.maxFeePct,
+          relayData.proposerRewardPct
         )
         .send({ from: relayer });
 
@@ -316,40 +316,58 @@ describe("BridgePool", () => {
       // Check event is logged correctly.
       await assertEventEmitted(txn, bridgePool, "DepositRelayed", (ev) => {
         return (
-          ev.sender === relayAncillaryData.l2Sender &&
-          ev.depositTimestamp === relayAncillaryData.depositTimestamp &&
-          ev.recipient === relayAncillaryData.recipient &&
-          ev.l1Token === relayAncillaryData.l1Token &&
+          ev.sender === relayData.l2Sender &&
+          ev.depositTimestamp === relayData.depositTimestamp &&
+          ev.recipient === relayData.recipient &&
+          ev.l1Token === relayData.l1Token &&
           ev.slowRelayer === relayer &&
-          ev.amount === relayAncillaryData.amount &&
-          ev.amount === relayAncillaryData.amount &&
-          ev.proposerRewardPct === relayAncillaryData.proposerRewardPct &&
-          ev.realizedFeePct === relayAncillaryData.realizedFeePct &&
+          ev.amount === relayData.amount &&
+          ev.amount === relayData.amount &&
+          ev.proposerRewardPct === relayData.proposerRewardPct &&
+          ev.realizedFeePct === relayData.realizedFeePct &&
           ev.depositContract === depositContractImpersonator
         );
       });
 
       // Check Deposit struct is stored correctly.
-      const deposit = await bridgePool.methods.deposits(relayAncillaryData.depositId).call({ from: relayer });
+      const relayAncillaryData = await bridgePool.methods.getRelayAncillaryData(relayData).call();
+      const deposit = await bridgePool.methods.deposits(relayAncillaryData).call();
       assert.equal(deposit.depositState, InsuredBridgeDepositStateEnum.PENDING_SLOW);
       assert.equal(deposit.depositType, InsuredBridgeDepositTypeEnum.SLOW);
       assert.equal(deposit.instantRelayer, ZERO_ADDRESS);
-      Object.keys(relayAncillaryData).forEach((key) => {
-        assert.equal(relayAncillaryData[key], deposit.relayData[key]);
-      });
+      const abiEncodedDataPacked = web3.eth.abi.encodeParameters(
+        ["uint64", "address", "address", "uint64", "address", "uint256", "uint64", "uint64", "uint64", "address"],
+        [
+          relayData.depositId,
+          relayData.l2Sender,
+          relayData.recipient,
+          relayData.depositTimestamp,
+          relayData.l1Token,
+          relayData.amount,
+          relayData.maxFeePct,
+          relayData.proposerRewardPct,
+          relayData.realizedFeePct,
+          relayData.slowRelayer,
+        ]
+      );
+      const expectedRelayHash = web3.utils.soliditySha3(abiEncodedDataPacked);
+      const relayHash = await bridgePool.methods.getRelayHash(relayData).call();
+      assert.equal(
+        expectedRelayHash,
+        relayHash,
+        "Contract and client do not produce the same hash from the same relay data"
+      );
+      assert.equal(deposit.relayHash, expectedRelayHash, "Deposit does not hash and store relay data correctly");
 
       // Check OptimisticOracle emitted price request contains correct data.
       const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
       const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
-      const expectedAncillaryData = await bridgePool.methods
-        .getRelayAncillaryData(relayAncillaryData)
-        .call({ from: owner });
       await assertEventEmitted(txn, optimisticOracle, "RequestPrice", (ev) => {
         return (
           ev.requester === bridgePool.options.address &&
           hexToUtf8(ev.identifier) === hexToUtf8(defaultIdentifier) &&
           ev.timestamp.toString() === requestTimestamp &&
-          ev.ancillaryData === expectedAncillaryData &&
+          ev.ancillaryData === relayAncillaryData &&
           ev.currency === l1Token.options.address &&
           ev.reward.toString() === expectedReward.toString() &&
           ev.finalFee.toString() === finalFee.toString()
@@ -362,7 +380,7 @@ describe("BridgePool", () => {
           hexToUtf8(ev.identifier) === hexToUtf8(defaultIdentifier) &&
           ev.timestamp.toString() === requestTimestamp &&
           ev.proposedPrice.toString() === toWei("1") &&
-          ev.ancillaryData === expectedAncillaryData &&
+          ev.ancillaryData === relayAncillaryData &&
           ev.expirationTimestamp === expectedExpirationTimestamp &&
           ev.currency === l1Token.options.address
         );
