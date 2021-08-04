@@ -23,7 +23,6 @@ const {
   empDeployers,
   collateralTokens,
   collateralTokenDecimals,
-  syntheticTokenDecimals,
   startingTimestamp,
   endingTimestamp,
 } = params;
@@ -31,18 +30,15 @@ const devRewardsToDistribute = "50000";
 // mocks
 const { Queries, Coingecko, SynthPrices } = mocks;
 
-describe("DevMining Rewards V1", function () {
+describe("DevMining Rewards V2", function () {
   describe("CalculateRewards Simple Data", function () {
     let balanceHistories, params, totalRewards, affiliates;
     beforeEach(function () {
       const queries = Queries(datasetPath);
       const coingecko = Coingecko(datasetPath);
       const synthPrices = SynthPrices(datasetPath);
-      affiliates = DevMining.v1({ queries, defaultEmpAbi: empAbi, coingecko, synthPrices });
+      affiliates = DevMining.v2({ queries, defaultEmpAbi: empAbi, coingecko, synthPrices });
 
-      function makePricesWithValue(count) {
-        return [makePrices(count), affiliates.utils.calculateValue];
-      }
       function makePrices(count) {
         return Prices(
           lodash.times(count, (i) => {
@@ -70,8 +66,6 @@ describe("DevMining Rewards V1", function () {
         snapshotSteps: 1,
         collateralTokenPrices: empWhitelist.map(() => makePrices(endTime - startTime)),
         collateralTokenDecimals: empWhitelist.map(() => 18),
-        syntheticTokenPricesWithValueCalculation: empWhitelist.map(() => makePricesWithValue(endTime - startTime)),
-        syntheticTokenDecimals: empWhitelist.map(() => 18),
         blocks: lodash.times(endTime - startTime, (i) => ({ timestamp: i, number: i })),
         balanceHistories,
         totalRewards,
@@ -126,13 +120,13 @@ describe("DevMining Rewards V1", function () {
       // update balance history for emp b user bb
       balanceHistories[1][1].handleEvent(0, {
         name: "PositionCreated",
-        // creating a position for address "bb" with 10 collateral 3 synthetic
-        args: ["bb", "10", "3"],
+        // creating a position for address "bb" with 30 collateral 1 synthetic
+        args: ["bb", "30", "1"],
         blockTimestamp: 0,
       });
       balanceHistories[1][1].finalize();
 
-      // EMP A should be rewarded less than B since less synth is minted for the same collateral
+      // EMP A should be rewarded less than B since they deposited less collateral.
       // In this case B should be reward 3/4 and A should be rewarded 1/4
       const result = affiliates.utils.calculateRewards(params);
       assert.equal(result.empPayouts["a"], totalRewards / 4);
@@ -189,7 +183,7 @@ describe("DevMining Rewards V1", function () {
       });
       // create position at block 1 for first emp
       balanceHistories[0][1].handleEvent(1, { name: "PositionCreated", args: ["b", "2", "1"], blockTimestamp: 1 });
-      // create positionat block 1 for second emp
+      // create position at block 1 for second emp
       balanceHistories[1][1].handleEvent(1, { name: "PositionCreated", args: ["b", "2", "1"], blockTimestamp: 1 });
       // now we will also expire emp 2, rendering its latest value unrecordded
       balanceHistories[1][1].handleEvent(1, { name: "ContractExpired", args: [], blockTimestamp: 1 });
@@ -218,7 +212,7 @@ describe("DevMining Rewards V1", function () {
       const queries = Queries(datasetPath);
       const coingecko = Coingecko(datasetPath);
       const synthPrices = SynthPrices(datasetPath);
-      affiliates = DevMining.v1({ queries, defaultEmpAbi: empAbi, coingecko, synthPrices });
+      affiliates = DevMining.v2({ queries, defaultEmpAbi: empAbi, coingecko, synthPrices });
     });
     it("getAllBalanceHistory", async function () {
       this.timeout(10000);
@@ -246,12 +240,6 @@ describe("DevMining Rewards V1", function () {
       );
       assert.ok(result.prices.length);
     });
-    it("getSyntheticPriceHistory", async function () {
-      this.timeout(10000);
-      const [, address] = empContracts;
-      const result = await affiliates.utils.getSyntheticPriceHistory(address, startingTimestamp, endingTimestamp);
-      assert.ok(result.prices.length);
-    });
     it("getBlocks", async function () {
       this.timeout(30000);
       const result = await affiliates.utils.getBlocks(startingTimestamp, startingTimestamp + 60 * 1000 * 5);
@@ -259,38 +247,6 @@ describe("DevMining Rewards V1", function () {
       const [first] = result;
       assert(first.timestamp > 0);
       assert(first.number > 0);
-    });
-    it("calculateValue", async function () {
-      // these are all stable coins so they should roughly be around 1 dollar
-      // epsilon is high because variations could be nearly a dollar in any direction
-      const epsilon = 10n ** 17n;
-      const target = 10n ** 18n;
-      // btc example
-      let result = affiliates.utils.calculateValue(target, "15437.012543625458", "65019421301142", 8, 18).toString();
-      let diff = BigInt(result) - target;
-      assert(diff > 0 ? diff : -diff < epsilon);
-      // eth example
-      result = affiliates.utils.calculateValue(target, "452.1007409061987", "2201527860335072", 18, 18).toString();
-      diff = BigInt(result) - target;
-      assert(diff > 0 ? diff : -diff < epsilon);
-      // perlin example
-      result = affiliates.utils
-        .calculateValue(target, "0.021647425848012932", "45829514207149404216", 18, 18)
-        .toString();
-      diff = BigInt(result) - target;
-      assert(diff > 0 ? diff : -diff < epsilon);
-    });
-    it("calculateValueFromUsd", async function () {
-      // these are all stable coins so they should roughly be around 1 dollar
-      // epsilon is high because variations could be nearly a dollar in any direction
-      let target = 10n ** 18n;
-      const syntheticPrice = 26.358177384415466;
-      let result = affiliates.utils.calculateValueFromUsd(target, 0, syntheticPrice, 18, 18).toString();
-      assert.equal(result, toWei(syntheticPrice.toFixed(18)));
-
-      target = 10n ** 8n;
-      result = affiliates.utils.calculateValueFromUsd(target, 0, syntheticPrice, 0, 8).toString();
-      assert.equal(result, toWei(syntheticPrice.toFixed(18)));
     });
     it("getBalanceHistory", async function () {
       this.timeout(10000);
@@ -312,12 +268,6 @@ describe("DevMining Rewards V1", function () {
         startingTimestamp,
         endingTimestamp
       );
-      assert.ok(result.prices.length);
-    });
-    it("getSyntheticPriceHistory", async function () {
-      this.timeout(10000);
-      const [, address] = empContracts;
-      const result = await affiliates.utils.getSyntheticPriceHistory(address, startingTimestamp, endingTimestamp);
       assert.ok(result.prices.length);
     });
     it("getBlocks", async function () {
@@ -344,7 +294,6 @@ describe("DevMining Rewards V1", function () {
         ),
         collateralTokens: collateralTokens,
         collateralTokenDecimals: collateralTokenDecimals,
-        syntheticTokenDecimals: syntheticTokenDecimals,
       });
 
       assert.equal(Object.keys(result.deployerPayouts).length, 2); // There should be 2 deployers for the 3 EMPs.
