@@ -51,8 +51,6 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
     // Address of the L1 contract that acts as the owner of this Bridge deposit box.
     address public bridgeAdmin;
 
-    bool public depositsEnabled = true;
-
     // Track the total number of deposits. Used as a unique identifier for bridged transfers.
     uint256 public numberOfDeposits;
 
@@ -60,6 +58,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
         address l1Token;
         address l1BridgePool;
         uint64 lastBridgeTime;
+        bool depositsEnabled;
     }
 
     // Mapping of whitelisted L2Token to L2TokenRelationships. Contains L1 TokenAddress and the last time this token
@@ -76,7 +75,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
     event SetBridgeAdmin(address newBridgeAdmin);
     event SetMinimumBridgingDelay(uint64 newMinimumBridgingDelay);
     event WhitelistToken(address l1Token, address l2Token, uint64 lastBridgeTime, address bridgePool);
-    event DepositsEnabled(bool depositsEnabled);
+    event DepositsEnabled(address l2Token, bool depositsEnabled);
     event FundsDeposited(
         uint256 depositId,
         uint256 timestamp,
@@ -92,8 +91,8 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
      *               MODIFIERS              *
      ****************************************/
 
-    modifier onlyIfDepositsEnabled() {
-        require(depositsEnabled, "Contract is disabled");
+    modifier onlyIfDepositsEnabled(address _l2Token) {
+        require(whitelistedTokens[_l2Token].depositsEnabled, "Contract is disabled");
         _;
     }
 
@@ -151,20 +150,26 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
         whitelistedTokens[l2Token] = L2TokenRelationships({
             l1Token: l1Token,
             l1BridgePool: l1BridgePool,
-            lastBridgeTime: uint64(getCurrentTime())
+            lastBridgeTime: uint64(getCurrentTime()),
+            depositsEnabled: true
         });
 
         emit WhitelistToken(l1Token, l2Token, uint64(getCurrentTime()), l1BridgePool);
     }
 
+    // TODO: Also provide method to blanket enable/disable entire contract? We might want both that functionality
+    // along with the ability to enable/disable individual L2 tokens.
+
     /**
-     * @notice L1 owner can enable/disable deposits over all whitelisted tokens.
+     * @notice L1 owner can enable/disable deposits for a whitelisted tokens.
      * @dev Only callable by the existing bridgeAdmin via the optimism cross domain messenger.
+     * @param _l2Token address of L2 token to enable/disable deposits for.
      * @param _depositsEnabled bool to set if the deposit box should accept/reject deposits.
      */
-    function setEnableDeposits(bool _depositsEnabled) public onlyFromCrossDomainAccount(bridgeAdmin) {
-        depositsEnabled = _depositsEnabled;
-        emit DepositsEnabled(_depositsEnabled);
+    function setEnableDeposits(address _l2Token, bool _depositsEnabled) public onlyFromCrossDomainAccount(bridgeAdmin) {
+        L2TokenRelationships storage _token = whitelistedTokens[_l2Token];
+        _token.depositsEnabled = _depositsEnabled;
+        emit DepositsEnabled(_l2Token, _depositsEnabled);
     }
 
     /**************************************
@@ -187,7 +192,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
         address l2Token,
         uint256 amount,
         uint256 maxFeePct
-    ) public onlyIfDepositsEnabled() {
+    ) public onlyIfDepositsEnabled(l2Token) {
         require(isWhitelistToken(l2Token), "deposit token not whitelisted");
         require(maxFeePct <= 1e18, "maxFeePct cannot be over 100% (represented as 1e18)");
 
