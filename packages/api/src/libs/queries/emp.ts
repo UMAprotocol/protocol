@@ -4,7 +4,6 @@ import * as uma from "@uma/sdk";
 import { calcGcr } from "../utils";
 import bluebird from "bluebird";
 import { BigNumber } from "ethers";
-import * as tables from "../../tables";
 import type { AppState, CurrencySymbol, PriceSample } from "../..";
 
 const { exists } = uma.utils;

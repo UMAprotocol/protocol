@@ -24,7 +24,7 @@ export interface EventState {
   expiredBy?: string;
 }
 
-export function reduceEvents(state: EventState, event: Event, index?: number): EventState {
+export function reduceEvents(state: EventState, event: Event): EventState {
   switch (event.event) {
     case "TokensCreated": {
       const typedEvent = event as TokensCreated;

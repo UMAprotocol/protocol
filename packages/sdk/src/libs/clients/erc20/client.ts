@@ -35,7 +35,7 @@ export type Transfer = GetEventType<Instance, "Transfer">;
 export type Approval = GetEventType<Instance, "Approval">;
 
 // takes all events and returns user balances and approvals
-export function reduceEvents(state: EventState = {}, event: Event, index?: number): EventState {
+export function reduceEvents(state: EventState = {}, event: Event): EventState {
   switch (event.event) {
     case "Transfer": {
       const typedEvent = event as Transfer;

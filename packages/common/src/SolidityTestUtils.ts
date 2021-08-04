@@ -76,7 +76,7 @@ async function startMining(web3: Web3): Promise<CallbackResult> {
   });
 }
 
-async function takeSnapshot(web3: Web3): Promise<CallbackResult> {
+export async function takeSnapshot(web3: Web3): Promise<CallbackResult> {
   return new Promise((resolve, reject) => {
     if (!web3.currentProvider || typeof web3?.currentProvider === "string" || !web3.currentProvider.send) {
       reject(new Error("No web3 provider that allows send()"));
@@ -94,7 +94,7 @@ async function takeSnapshot(web3: Web3): Promise<CallbackResult> {
   });
 }
 
-async function revertToSnapshot(web3: Web3, id: number): Promise<CallbackResult> {
+export async function revertToSnapshot(web3: Web3, id: number): Promise<CallbackResult> {
   return new Promise((resolve, reject) => {
     if (!web3.currentProvider || typeof web3?.currentProvider === "string" || !web3.currentProvider.send) {
       reject(new Error("No web3 provider that allows send()"));
