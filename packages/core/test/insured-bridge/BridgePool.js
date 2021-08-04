@@ -313,6 +313,14 @@ describe("BridgePool", () => {
         "OptimisticOracle should custody total relay bond + reward"
       );
 
+      // Check Deposit struct is stored correctly and mapped to the price request ancillary data.
+      const relayAncillaryData = await bridgePool.methods.getRelayAncillaryData(relayData).call();
+      const relayHash = web3.utils.soliditySha3(relayAncillaryData);
+      const relay = await bridgePool.methods.relays(relayHash).call();
+      assert.equal(relay.relayState, InsuredBridgeRelayStateEnum.PENDING_SLOW);
+      assert.equal(relay.relayType, InsuredBridgeRelayTypeEnum.SLOW);
+      assert.equal(relay.instantRelayer, ZERO_ADDRESS);
+
       // Check event is logged correctly.
       await assertEventEmitted(txn, bridgePool, "DepositRelayed", (ev) => {
         return (
@@ -325,39 +333,10 @@ describe("BridgePool", () => {
           ev.amount === relayData.amount &&
           ev.proposerRewardPct === relayData.proposerRewardPct &&
           ev.realizedFeePct === relayData.realizedFeePct &&
-          ev.maxFeePct === relayData.maxFeePct
+          ev.maxFeePct === relayData.maxFeePct &&
+          ev.priceRequestAncillaryDataHash === relayHash
         );
       });
-
-      // Check Deposit struct is stored correctly.
-      const relayAncillaryData = await bridgePool.methods.getRelayAncillaryData(relayData).call();
-      const relay = await bridgePool.methods.relays(relayAncillaryData).call();
-      assert.equal(relay.relayState, InsuredBridgeRelayStateEnum.PENDING_SLOW);
-      assert.equal(relay.relayType, InsuredBridgeRelayTypeEnum.SLOW);
-      assert.equal(relay.instantRelayer, ZERO_ADDRESS);
-      const abiEncodedDataPacked = web3.eth.abi.encodeParameters(
-        ["uint64", "address", "address", "uint64", "address", "uint256", "uint64", "uint64", "uint64", "address"],
-        [
-          relayData.depositId,
-          relayData.l2Sender,
-          relayData.recipient,
-          relayData.depositTimestamp,
-          relayData.l1Token,
-          relayData.amount,
-          relayData.maxFeePct,
-          relayData.proposerRewardPct,
-          relayData.realizedFeePct,
-          relayData.slowRelayer,
-        ]
-      );
-      const expectedRelayHash = web3.utils.soliditySha3(abiEncodedDataPacked);
-      const relayHash = await bridgePool.methods.getRelayHash(relayData).call();
-      assert.equal(
-        expectedRelayHash,
-        relayHash,
-        "Contract and client do not produce the same hash from the same relay data"
-      );
-      assert.equal(relay.relayHash, expectedRelayHash, "Deposit does not hash and store relay data correctly");
 
       // Check OptimisticOracle emitted price request contains correct data.
       const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
