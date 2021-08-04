@@ -58,7 +58,9 @@ contract BridgePool is Testable {
         // Store unique hash derived from all of the data neccessary to construct this deposit.
         bytes32 relayHash;
     }
-    // Associates each deposit with a unique hash derived from its constituent data..
+    // Associates each deposit with a unique ancillary data derived from its constituent data. We need to key by the
+    // ancillary data so that the OptimisticOracle can locate deposits on callbacks using only price requests' ancillary
+    // data
     mapping(bytes => Deposit) public deposits;
     // If a deposit is disputed, it is removed from the `deposits` mapping and added to the `disputedDeposits` mapping.
     // There can only be one disputed deposit per relayer for each deposit hash.
