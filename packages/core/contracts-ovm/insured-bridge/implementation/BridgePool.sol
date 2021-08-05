@@ -53,8 +53,9 @@ contract BridgePool is Testable {
         address instantRelayer;
     }
 
-    // Associate deposits with pending relays. When RelayState is Uninitialized, new relay attempts can be
-    // made for this deposit. Also contains information neccessary to pay out relayers on successful relay.
+    // Associate deposits with pending relay data. When RelayState is Uninitialized, new relay attempts can be
+    // made for this deposit. Contains information neccessary to pay out relayers on successful relay. Deposits get
+    // reset to the "Uninitialized" state when they are disputed on the OptimisticOracle.
     mapping(bytes32 => RelayData) public relays;
     // Associates ancillary data related to relay price request with the deposit hash that the relay is attempting to
     // fulfill. We need to key by the ancillary data so that the OptimisticOracle can locate relays on callbacks using
@@ -71,11 +72,18 @@ contract BridgePool is Testable {
         uint256 amount,
         uint64 maxFeePct,
         bytes32 indexed priceRequestAncillaryDataHash,
-        bytes32 indexed depositHash
+        bytes32 indexed depositHash,
+        address depositContract
     );
     event RelaySpedUp(bytes32 indexed depositHash, address indexed instantRelayer);
+    event RelayDisputed(bytes32 indexed depositHash, bytes32 indexed priceRequestAncillaryDataHash);
     event FinalizedRelay(bytes32 indexed depositHash, address indexed caller);
     event ProvidedLiquidity(address indexed token, uint256 amount, uint256 lpTokensMinted, address liquidityProvider);
+
+    modifier onlyFromOptimisticOracle() {
+        require(msg.sender == address(_getOptimisticOracle()), "Caller must be OptimisticOracle");
+        _;
+    }
 
     constructor(address _bridgeAdmin, address _timer) Testable(_timer) {
         bridgeAdmin = BridgeAdminInterface(_bridgeAdmin);
@@ -165,8 +173,14 @@ contract BridgePool is Testable {
 
         // Construct unique ancillary data for this relay attempt and associate it with the deposit in a reverse lookup
         // that the OptimisticOracle can use to mark disputed relay attempts.
-        bytes32 relayAncillaryDataHash = keccak256(getRelayAncillaryData(depositData, relayData));
-        ancillaryDataToDepositHash[relayAncillaryDataHash] = depositHash;
+        ancillaryDataToDepositHash[keccak256(getRelayAncillaryData(depositData, relayData))] = depositHash;
+
+        // Sanity check that pool has enough balance to cover relay amount + proposer reward. Reward amount will be
+        // paid on settlement after the OptimisticOracle price request has passed the challenge period.
+        require(
+            IERC20(l1Token).balanceOf(address(this)) >= amount + _getProposerRewardAmount(proposerRewardPct, amount),
+            "Insufficient pool balance"
+        );
 
         // Request a price for the relay identifier and propose "true" optimistically. These methods will pull the
         // (proposer reward + proposer bond + final fee) from the caller.
@@ -174,49 +188,47 @@ contract BridgePool is Testable {
         // `depositTimestamp`, which is dependent on the L2 VM on which the DepositContract is deployed. Imagine if
         // the timestamps on the L2 have an offset that are always "in the future" relative to L1 blocks, then the
         // OptimisticOracle would always reject requests.
-        _requestOraclePriceRelay(
-            l1Token,
-            amount,
-            priceRequestTime,
-            getRelayAncillaryData(depositData, relayData),
-            proposerRewardPct
-        );
-        _proposeOraclePriceRelay(l1Token, amount, depositTimestamp, getRelayAncillaryData(depositData, relayData));
+        _requestOraclePriceRelay(l1Token, amount, priceRequestTime, getRelayAncillaryData(depositData, relayData));
+        _proposeOraclePriceRelay(l1Token, amount, priceRequestTime, getRelayAncillaryData(depositData, relayData));
 
         // We use an internal method to emit this event to overcome Solidity's "stack too deep" error.
-        _emitDepositRelayedEvent(depositData, relayAncillaryDataHash, depositHash);
+        _emitDepositRelayedEvent(depositData, keccak256(getRelayAncillaryData(depositData, relayData)), depositHash);
     }
 
     // TODO: Implement fully the following functions:
     function speedUpRelay(bytes32 _depositHash) public {
         RelayData storage relay = relays[_depositHash];
+        require(relays[_depositHash].relayState == RelayState.Pending, "Can only speed up pending slow relay");
+        require(relays[_depositHash].instantRelayer == address(0), "Relay has already been instant relayed");
         relay.instantRelayer = msg.sender;
         // TODO: Pull funds from caller.
         emit RelaySpedUp(_depositHash, msg.sender);
     }
 
-    function finalizeRelay(bytes32 _depositHash) public {
+    function settleRelay(bytes32 _depositHash) public {
         RelayData storage relay = relays[_depositHash];
-        // TODO: Do stuff using PendingRelay data.
+        // TODO: Pay relayer rewards using PendingRelay data.
     }
 
     /**
      * @notice OptimisticOracle will callback to this function after a pending relay is disputed. This function should
      * ensure that another slow relayer can fulfill the disputed relay for an L2 deposit.
-     * @dev TODO: Add checks that only the optimistic oracle can call this function.
      */
     function priceDisputed(
         bytes32 identifier,
         uint256 timestamp,
         bytes memory ancillaryData,
         uint256 refund
-    ) public {
+    ) public onlyFromOptimisticOracle {
         bytes32 depositHash = ancillaryDataToDepositHash[keccak256(ancillaryData)];
         RelayData storage relay = relays[depositHash];
 
         // Mark pending relay as uninitialized but do not delete instant relayer information which should be copied
         // over to next slow relay.
         relay.relayState = RelayState.Uninitialized;
+
+        // TODO: Do we need to reset the other state in `relay` aside from `instantRelayer` which we want to save?
+        emit RelayDisputed(depositHash, keccak256(ancillaryData));
     }
 
     /**
@@ -312,35 +324,33 @@ contract BridgePool is Testable {
         return StoreInterface(FinderInterface(bridgeAdmin.finder()).getImplementationAddress(OracleInterfaces.Store));
     }
 
+    function _getProposerRewardAmount(uint64 _proposerRewardPct, uint256 _amount) private pure returns (uint256) {
+        return
+            FixedPoint
+                .Unsigned(uint256(_proposerRewardPct))
+                .div(FixedPoint.fromUnscaledUint(1))
+                .mul(FixedPoint.Unsigned(_amount))
+                .rawValue;
+    }
+
     function _requestOraclePriceRelay(
         address l1Token,
         uint256 amount,
         uint256 requestTimestamp,
-        bytes memory customAncillaryData,
-        uint64 proposerRewardPct
+        bytes memory customAncillaryData
     ) private {
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
         uint256 proposerBondPct =
             FixedPoint.Unsigned(uint256(bridgeAdmin.proposerBondPct())).div(FixedPoint.fromUnscaledUint(1)).rawValue;
 
-        // Optimistic oracle will pull proposer reward from passive LP pool.
-        uint256 proposerReward =
-            FixedPoint
-                .Unsigned(uint256(proposerRewardPct))
-                .div(FixedPoint.fromUnscaledUint(1))
-                .mul(FixedPoint.Unsigned(amount))
-                .rawValue;
-
-        // Sanity check that pool balance is enough to cover relay amount + proposer reward.
-        require(IERC20(l1Token).balanceOf(address(this)) >= amount + proposerReward, "Insufficient pool balance");
-
-        IERC20(l1Token).safeApprove(address(optimisticOracle), proposerReward);
+        // Set reward to 0, since we'll settle proposer reward payouts directly from this contract after a relay
+        // proposal has passed the challenge period.
         optimisticOracle.requestPrice(
             bridgeAdmin.identifier(),
             requestTimestamp,
             customAncillaryData,
             IERC20(l1Token),
-            proposerReward
+            0
         );
 
         // Set the Optimistic oracle liveness for the price request.
@@ -383,7 +393,7 @@ contract BridgePool is Testable {
             bridgeAdmin.identifier(),
             requestTimestamp,
             customAncillaryData,
-            1e18
+            1e18 // Canonical value representing "True"; i.e. the proposed relay is valid.
         );
     }
 
@@ -391,7 +401,7 @@ contract BridgePool is Testable {
         DepositData memory _depositData,
         bytes32 _ancillaryDataHash,
         bytes32 _depositHash
-    ) internal {
+    ) private {
         // Emit only information that is not stored in this contract. The relay data associated with the `_depositHash`
         // can be queried on-chain via the `relays` mapping keyed by `_depositHash`.
         emit DepositRelayed(
@@ -403,7 +413,8 @@ contract BridgePool is Testable {
             _depositData.amount,
             _depositData.maxFeePct,
             _ancillaryDataHash,
-            _depositHash
+            _depositHash,
+            bridgeAdmin.depositContract()
         );
     }
 }
