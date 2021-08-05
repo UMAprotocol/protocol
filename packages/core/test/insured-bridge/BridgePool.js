@@ -57,6 +57,9 @@ const relayAmount = toBN(initialPoolLiquidity)
 const realizedFeeAmount = toBN(defaultRealizedFee)
   .mul(toBN(relayAmount))
   .div(toBN(toWei("1")));
+const proposerRewardAmount = toBN(defaultProposerRewardPct)
+  .mul(toBN(relayAmount))
+  .div(toBN(toWei("1")));
 const relayAmountSubFee = toBN(relayAmount).sub(realizedFeeAmount).toString();
 // Relayers must post proposal bond + final fee
 const totalRelayBond = toBN(defaultProposerBondPct)
@@ -896,7 +899,7 @@ describe("BridgePool", () => {
       // - Slow relayer should get back their proposal bond from OO and reward from BridgePool.
       assert.equal(
         (await l1Token.methods.balanceOf(relayer).call()).toString(),
-        totalRelayBond,
+        toBN(totalRelayBond).add(proposerRewardAmount).toString(),
         "Relayer should receive proposal bond + slow relay reward"
       );
       assert.equal(
@@ -906,10 +909,78 @@ describe("BridgePool", () => {
       );
       assert.equal(
         (await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(),
-        initialPoolLiquidity,
-        "BridgePool should have balance reduced by relay amount less fees"
+        toBN(initialPoolLiquidity).sub(toBN(relayAmountSubFee)).sub(proposerRewardAmount).toString(),
+        "BridgePool should have balance reduced by relay amount less fees and rewards"
       );
     });
-    it("Instant and slow relayers split the reward", async () => {});
+    it("Instant and slow relayers split the reward, pool does not need to cover relay amount", async () => {
+      // Cache price request timestamp.
+      const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
+      const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
+
+      // Proposer approves pool to withdraw total bond.
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      await bridgePool.methods
+        .relayDeposit(
+          depositData.depositId,
+          depositData.depositTimestamp,
+          depositData.recipient,
+          depositData.l2Sender,
+          depositData.l1Token,
+          depositData.amount,
+          relayData.realizedFeePct,
+          depositData.maxFeePct,
+          relayData.proposerRewardPct
+        )
+        .send({ from: relayer });
+      const relayStatus = await bridgePool.methods.relays(depositHash).call();
+
+      // Speed up relay.
+      await l1Token.methods.approve(bridgePool.options.address, relayAmountSubFee).send({ from: instantRelayer });
+      await bridgePool.methods.speedUpRelay(depositData).send({ from: instantRelayer });
+
+      // Expire and settle proposal on the OptimisticOracle.
+      await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
+      await optimisticOracle.methods
+        .settle(
+          bridgePool.options.address,
+          defaultIdentifier,
+          relayStatus.priceRequestTime.toString(),
+          relayAncillaryData
+        )
+        .send({ from: relayer });
+
+      // Settle relay.
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+
+      // Check token balances.
+      // - Slow relayer should get back their proposal bond from OO and reward from BridgePool.
+      // - Fast relayer should get reward from BridgePool.
+      assert.equal(
+        (await l1Token.methods.balanceOf(relayer).call()).toString(),
+        toBN(totalRelayBond)
+          .add(proposerRewardAmount.mul(toBN(toWei("0.5"))).div(toBN(toWei("1"))))
+          .toString(),
+        "Slow relayer should receive proposal bond + slow relay reward"
+      );
+      assert.equal(
+        (await l1Token.methods.balanceOf(instantRelayer).call()).toString(),
+        proposerRewardAmount
+          .mul(toBN(toWei("0.5")))
+          .div(toBN(toWei("1")))
+          .toString(),
+        "Instant relayer should receive instant relay reward"
+      );
+      assert.equal(
+        (await l1Token.methods.balanceOf(optimisticOracle.options.address).call()).toString(),
+        "0",
+        "OptimisticOracle should refund proposal bond"
+      );
+      assert.equal(
+        (await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(),
+        toBN(initialPoolLiquidity).sub(proposerRewardAmount).toString(),
+        "BridgePool should have balance reduced by rewards only"
+      );
+    });
   });
 });

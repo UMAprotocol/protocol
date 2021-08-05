@@ -215,9 +215,7 @@ contract BridgePool is Testable {
     /**
      * @notice Reward relayers if a pending relay price request has a price available on the OptimisticOracle. Mark
      * the relay as complete.
-     * @dev Caller must have approved this contract to spend the deposit amount of L1 tokens to relay. There can only
-     * be one instant relayer per relay attempt and disputed relays cannot be sped up.
-     * @param _depositData Unique set of L2 deposit data that caller is trying to instantly relay.
+     * @param _depositData Unique set of L2 deposit data that caller is trying to settle a relay for.
      */
     function settleRelay(DepositData memory _depositData) public {
         bytes32 depositHash = _getDepositHash(_depositData);
@@ -235,7 +233,36 @@ contract BridgePool is Testable {
 
         relay.relayState = RelayState.Finalized;
 
-        // TODO: Pay relayer rewards using PendingRelay data.
+        // Pay recipient the deposit amount less fees.
+        IERC20(_depositData.l1Token).safeTransfer(
+            _depositData.recipient,
+            _depositData.amount - _getRealizedFeeAmount(relay.realizedFeePct, _depositData.amount)
+        );
+
+        // Reward relayers.
+        // TODO: For now, if there was an instant relay associated with this deposit, then split the reward 50/50
+        // between slow and instant relayer. Otherwise pay the slow relayer the full reward.
+        uint256 rewardPool = _getProposerRewardAmount(relay.proposerRewardPct, _depositData.amount);
+        if (relay.instantRelayer != address(0)) {
+            IERC20(_depositData.l1Token).safeTransfer(
+                relay.instantRelayer,
+                FixedPoint
+                    .Unsigned(rewardPool)
+                    .mul(FixedPoint.fromUnscaledUint(1))
+                    .div(FixedPoint.fromUnscaledUint(2))
+                    .rawValue
+            );
+            IERC20(_depositData.l1Token).safeTransfer(
+                relay.slowRelayer,
+                FixedPoint
+                    .Unsigned(rewardPool)
+                    .mul(FixedPoint.fromUnscaledUint(1))
+                    .div(FixedPoint.fromUnscaledUint(2))
+                    .rawValue
+            );
+        } else {
+            IERC20(_depositData.l1Token).safeTransfer(relay.slowRelayer, rewardPool);
+        }
 
         emit SettledRelay(depositHash, keccak256(getRelayAncillaryData(_depositData, relay)), msg.sender);
     }
