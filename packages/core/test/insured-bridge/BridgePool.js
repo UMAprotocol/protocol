@@ -885,6 +885,23 @@ describe("BridgePool", () => {
         true
       );
 
+      // If the relay status is PENDING and the price is available, then the value must match the original proposal:
+      // 1e18.
+      assert.equal(relayStatus.relayState, InsuredBridgeRelayStateEnum.PENDING);
+      assert.equal(
+        (
+          await optimisticOracle.methods
+            .getPrice(
+              bridgePool.options.address,
+              defaultIdentifier,
+              relayStatus.priceRequestTime.toString(),
+              relayAncillaryData
+            )
+            .call()
+        ).toString(),
+        toWei("1")
+      );
+
       // Settle relay and check event logs.
       const settleTxn = await bridgePool.methods.settleRelay(depositData).send({ from: rando });
       await assertEventEmitted(settleTxn, bridgePool, "SettledRelay", (ev) => {
