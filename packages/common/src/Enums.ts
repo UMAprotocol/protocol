@@ -42,10 +42,6 @@ export const OptimisticOracleRequestStatesEnum = {
 
 export const InsuredBridgeRelayStateEnum = {
   UNINITIALIZED: "0",
-  PENDING_SLOW: "1",
-  PENDING_INSTANT: "2",
-  FINALIZED_SLOW: "3",
-  FINALIZED_INSTANT: "4",
+  PENDING: "1",
+  FINALIZED: "2",
 };
-
-export const InsuredBridgeRelayTypeEnum = { SLOW: "0", INSTANT: "1" };

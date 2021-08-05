@@ -30,56 +30,51 @@ contract BridgePool is Testable {
 
     // A Relay represents a an attempt to finalize a cross-chain transfer that originated on an L2 DepositBox contract
     // and can be bridged via this contract.
-    enum RelayState { Uninitialized, PendingSlow, PendingInstant, FinalizedSlow, FinalizedInstant }
-    enum RelayType { Slow, Instant }
+    enum RelayState { Uninitialized, Pending, Finalized }
 
-    // All data required by off-chain actors (validators, DVM voters, etc.) to verify that a relay is valid.
-    struct RelayDataContents {
+    // Data from L2 deposit transaction.
+    struct DepositData {
         uint64 depositTimestamp;
         uint64 maxFeePct;
-        uint64 proposerRewardPct;
-        uint64 realizedFeePct;
         uint64 depositId;
         uint256 amount;
         address l2Sender;
         address recipient;
         address l1Token;
-        address slowRelayer;
     }
 
-    // A Relay is linked to a Deposit object originating from L2
-    struct Relay {
+    // A Relay is linked to a L2 Deposit.
+    struct RelayData {
         RelayState relayState;
-        RelayType relayType;
-        // A deposit can have both a slow and an instant relayer if a slow relay is "sped up" from slow to instant.
-        // We want to store both addresses for separate payouts.
+        uint256 priceRequestTime;
+        uint64 proposerRewardPct;
+        uint64 realizedFeePct;
+        address slowRelayer;
         address instantRelayer;
     }
-    // Associates each relay with a unique ancillary data hash derived from its constituent data. We need to key by the
-    // ancillary data so that the OptimisticOracle can locate relays on callbacks using only price requests' ancillary
-    // data
-    mapping(bytes32 => Relay) public relays;
-    // If a relay is disputed, it is removed from the `relays` mapping and added to the `disputedRelays` mapping.
-    // There can only be one disputed relay per relayer for each relay ancillary data.
-    // @dev The mapping is `relayAncillaryData-->disputer-->Relay`
-    mapping(bytes32 => mapping(address => Relay)) public disputedRelays;
+
+    // Associate deposits with pending relays. When RelayState is Uninitialized, new relay attempts can be
+    // made for this deposit. Also contains information neccessary to pay out relayers on successful relay.
+    mapping(bytes32 => RelayData) public relays;
+    // Associates ancillary data related to relay price request with the deposit hash that the relay is attempting to
+    // fulfill. We need to key by the ancillary data so that the OptimisticOracle can locate relays on callbacks using
+    // only price requests' ancillary data. The ancillary data should contain all information required by off-chain
+    // actors (validators, DVM voters, etc.) to verify that a relay is valid.
+    mapping(bytes32 => bytes32) public ancillaryDataToDepositHash;
 
     event DepositRelayed(
-        uint64 indexed depositId,
+        uint64 depositId,
         address indexed sender,
         uint64 depositTimestamp,
         address recipient,
         address l1Token,
         uint256 amount,
-        address slowRelayer,
         uint64 maxFeePct,
-        uint64 proposerRewardPct,
-        uint64 realizedFeePct,
-        bytes32 indexed priceRequestAncillaryDataHash
+        bytes32 indexed priceRequestAncillaryDataHash,
+        bytes32 indexed depositHash
     );
-    event RelaySpedUp(uint64 indexed depositId, address indexed fastRelayer, address indexed slowRelayer);
-    event FinalizedRelay(uint64 indexed depositId, address indexed caller);
-    event RelayDisputeSettled(uint64 indexed depositId, address indexed caller, bool disputeSuccessful);
+    event RelaySpedUp(bytes32 indexed depositHash, address indexed instantRelayer);
+    event FinalizedRelay(bytes32 indexed depositHash, address indexed caller);
     event ProvidedLiquidity(address indexed token, uint256 amount, uint256 lpTokensMinted, address liquidityProvider);
 
     constructor(address _bridgeAdmin, address _timer) Testable(_timer) {
@@ -101,7 +96,7 @@ contract BridgePool is Testable {
 
     /**
      * @notice Called by Relayer to execute Slow relay from L2 to L1, fulfilling a corresponding deposit order.
-     * @dev There can only be one pending Slow relay for a deposit ID.
+     * @dev There can only be one pending relay for a deposit.
      * @dev Caller must have approved this contract to spend the total bond for `l1Token`.
      * @param depositId Unique ID corresponding to deposit order that caller wants to relay.
      * @param depositTimestamp Timestamp of Deposit emitted by L2 contract when order was initiated.
@@ -129,31 +124,49 @@ contract BridgePool is Testable {
     ) public {
         require(realizedFeePct <= maxFeePct, "Invalid realized fee");
 
-        // Construct unique ancillary data for this deposit, and link relay data to it.
-        RelayDataContents memory relayData =
-            RelayDataContents({
+        // Check if there is a pending relay for this deposit.
+        DepositData memory depositData =
+            DepositData({
                 depositId: depositId,
                 l2Sender: l2Sender,
                 recipient: recipient,
                 depositTimestamp: depositTimestamp,
                 l1Token: l1Token,
                 amount: amount,
-                maxFeePct: maxFeePct,
+                maxFeePct: maxFeePct
+            });
+        bytes32 depositHash =
+            keccak256(
+                abi.encode(
+                    depositData.depositTimestamp,
+                    depositData.maxFeePct,
+                    depositData.depositId,
+                    depositData.amount,
+                    depositData.l2Sender,
+                    depositData.recipient,
+                    depositData.l1Token
+                )
+            );
+        require(relays[depositHash].relayState == RelayState.Uninitialized, "Pending relay for deposit exists");
+
+        // If no pending relay for this deposit, then associate the caller's relay attempt with it. Copy over the
+        // instant relayer so that the recipient cannot receive double payments.
+        uint256 priceRequestTime = getCurrentTime();
+        RelayData memory relayData =
+            RelayData({
+                relayState: RelayState.Pending,
+                priceRequestTime: priceRequestTime,
                 proposerRewardPct: proposerRewardPct,
                 realizedFeePct: realizedFeePct,
-                slowRelayer: msg.sender
+                slowRelayer: msg.sender,
+                instantRelayer: relays[depositHash].instantRelayer
             });
-        Relay storage newRelay = relays[keccak256(getRelayAncillaryData(relayData))];
-        require(newRelay.relayState == RelayState.Uninitialized, "Pending relay exists");
-        require(
-            disputedRelays[keccak256(getRelayAncillaryData(relayData))][msg.sender].relayState ==
-                RelayState.Uninitialized,
-            "Pending dispute by relayer for deposit ID exists"
-        );
+        relays[depositHash] = relayData;
 
-        // Save new deposit:
-        newRelay.relayState = RelayState.PendingSlow;
-        newRelay.relayType = RelayType.Slow;
+        // Construct unique ancillary data for this relay attempt and associate it with the deposit in a reverse lookup
+        // that the OptimisticOracle can use to mark disputed relay attempts.
+        bytes32 relayAncillaryDataHash = keccak256(getRelayAncillaryData(depositData, relayData));
+        ancillaryDataToDepositHash[relayAncillaryDataHash] = depositHash;
 
         // Request a price for the relay identifier and propose "true" optimistically. These methods will pull the
         // (proposer reward + proposer bond + final fee) from the caller.
@@ -164,49 +177,33 @@ contract BridgePool is Testable {
         _requestOraclePriceRelay(
             l1Token,
             amount,
-            getCurrentTime(),
-            getRelayAncillaryData(relayData),
+            priceRequestTime,
+            getRelayAncillaryData(depositData, relayData),
             proposerRewardPct
         );
-        _proposeOraclePriceRelay(l1Token, amount, depositTimestamp, getRelayAncillaryData(relayData));
+        _proposeOraclePriceRelay(l1Token, amount, depositTimestamp, getRelayAncillaryData(depositData, relayData));
 
-        // Since we only store the hash of the relay data contents, its important that we emit all relay params in an
-        // event. This should aid off-chain clients who want to modify/query the deposit.
-        emit DepositRelayed(
-            depositId,
-            l2Sender,
-            depositTimestamp,
-            recipient,
-            l1Token,
-            amount,
-            msg.sender,
-            maxFeePct,
-            proposerRewardPct,
-            realizedFeePct,
-            keccak256(getRelayAncillaryData(relayData))
-        );
+        // We use an internal method to emit this event to overcome Solidity's "stack too deep" error.
+        _emitDepositRelayedEvent(depositData, relayAncillaryDataHash, depositHash);
     }
 
-    function speedUpRelay(RelayDataContents memory _relayData) public {
-        // Alternatively, force client to hash off-chain and pass `bytes32 _relayAncillaryDataHash` as param.
-        Relay storage relay = relays[keccak256(getRelayAncillaryData(_relayData))];
-        // TODO: Do stuff
+    // TODO: Implement fully the following functions:
+    function speedUpRelay(bytes32 _depositHash) public {
+        RelayData storage relay = relays[_depositHash];
+        relay.instantRelayer = msg.sender;
+        // TODO: Pull funds from caller.
+        emit RelaySpedUp(_depositHash, msg.sender);
     }
 
-    function finalizeRelay(RelayDataContents memory _relayData) public {
-        // Alternatively, force client to hash off-chain and pass `bytes32 _relayAncillaryDataHash` as param.
-        Relay storage relay = relays[keccak256(getRelayAncillaryData(_relayData))];
-        // TODO: Do stuff
-    }
-
-    function settleDisputedRelay(RelayDataContents memory _relayData) public {
-        // Alternatively, force client to hash off-chain and pass `bytes32 _relayAncillaryDataHash` as param.
-        Relay storage relay = relays[keccak256(getRelayAncillaryData(_relayData))];
-        // TODO: Do stuff
+    function finalizeRelay(bytes32 _depositHash) public {
+        RelayData storage relay = relays[_depositHash];
+        // TODO: Do stuff using PendingRelay data.
     }
 
     /**
-     * @notice OptimisticOracle will callback to this function after a pending relay is disputed.
+     * @notice OptimisticOracle will callback to this function after a pending relay is disputed. This function should
+     * ensure that another slow relayer can fulfill the disputed relay for an L2 deposit.
+     * @dev TODO: Add checks that only the optimistic oracle can call this function.
      */
     function priceDisputed(
         bytes32 identifier,
@@ -214,61 +211,66 @@ contract BridgePool is Testable {
         bytes memory ancillaryData,
         uint256 refund
     ) public {
-        Relay storage pendingRelay = relays[keccak256(ancillaryData)];
-        // TODO: Implement logic. For now, placeholder code demonstrates how relay can be migrated from pending to
-        // disputed mapping.
-        Relay storage disputedRelay = disputedRelays[keccak256(ancillaryData)][msg.sender];
-        disputedRelay.relayState = pendingRelay.relayState;
-        disputedRelay.relayType = pendingRelay.relayType;
-        disputedRelay.instantRelayer = pendingRelay.instantRelayer;
-        delete relays[keccak256(ancillaryData)];
+        bytes32 depositHash = ancillaryDataToDepositHash[keccak256(ancillaryData)];
+        RelayData storage relay = relays[depositHash];
+
+        // Mark pending relay as uninitialized but do not delete instant relayer information which should be copied
+        // over to next slow relay.
+        relay.relayState = RelayState.Uninitialized;
     }
 
     /**
      * @notice Returns ancillary data containing all relevant Relay data that voters can format into UTF8 and use to
      * determine if the relay is valid.
-     * @param _relayData Contains relevant relay data.
+     * @param _depositData Contains L2 deposit information used by off-chain validators to validate relay.
+     * @param _relayData Contains relay information used by off-chain validators to validate relay.
      * @return bytes New ancillary data that can be decoded into UTF8.
      */
-    function getRelayAncillaryData(RelayDataContents memory _relayData) public view returns (bytes memory) {
+    function getRelayAncillaryData(DepositData memory _depositData, RelayData memory _relayData)
+        public
+        view
+        returns (bytes memory)
+    {
         bytes memory intermediateAncillaryData = "";
 
-        // Add relay data inferred from the original deposit on L2:
+        // Add data inferred from the original deposit on L2:
         intermediateAncillaryData = AncillaryData.appendKeyValueUint(
             intermediateAncillaryData,
             "depositId",
-            uint256(_relayData.depositId)
+            uint256(_depositData.depositId)
         );
         intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
             intermediateAncillaryData,
             "l2Sender",
-            _relayData.l2Sender
+            _depositData.l2Sender
         );
         intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
             intermediateAncillaryData,
             "recipient",
-            _relayData.recipient
+            _depositData.recipient
         );
         intermediateAncillaryData = AncillaryData.appendKeyValueUint(
             intermediateAncillaryData,
             "depositTimestamp",
-            uint256(_relayData.depositTimestamp)
+            uint256(_depositData.depositTimestamp)
         );
         intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
             intermediateAncillaryData,
             "l1Token",
-            _relayData.l1Token
+            _depositData.l1Token
         );
         intermediateAncillaryData = AncillaryData.appendKeyValueUint(
             intermediateAncillaryData,
             "amount",
-            _relayData.amount
+            _depositData.amount
         );
         intermediateAncillaryData = AncillaryData.appendKeyValueUint(
             intermediateAncillaryData,
             "maxFeePct",
-            uint256(_relayData.maxFeePct)
+            uint256(_depositData.maxFeePct)
         );
+
+        // Add relay data.
         intermediateAncillaryData = AncillaryData.appendKeyValueUint(
             intermediateAncillaryData,
             "proposerRewardPct",
@@ -382,6 +384,26 @@ contract BridgePool is Testable {
             requestTimestamp,
             customAncillaryData,
             1e18
+        );
+    }
+
+    function _emitDepositRelayedEvent(
+        DepositData memory _depositData,
+        bytes32 _ancillaryDataHash,
+        bytes32 _depositHash
+    ) internal {
+        // Emit only information that is not stored in this contract. The relay data associated with the `_depositHash`
+        // can be queried on-chain via the `relays` mapping keyed by `_depositHash`.
+        emit DepositRelayed(
+            _depositData.depositId,
+            _depositData.l2Sender,
+            _depositData.depositTimestamp,
+            _depositData.recipient,
+            _depositData.l1Token,
+            _depositData.amount,
+            _depositData.maxFeePct,
+            _ancillaryDataHash,
+            _depositHash
         );
     }
 }
