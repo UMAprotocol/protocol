@@ -182,7 +182,7 @@ describe("Insured bridge e2e tests", () => {
           l1Token.address, // L1 token.
           l2Token.address, // Associated L2 token.
           l1BridgePool.address,
-          10000000 // L2Gas limit. set this to a large number, but less than gas limit, to ensure no L2 revert.
+          OPTIMISM_GAS_OPTS.gasLimit // L2Gas limit. set this to a large number, but less than gas limit, to ensure no L2 revert.
         );
 
         await whitelistTx.wait();
@@ -202,6 +202,8 @@ describe("Insured bridge e2e tests", () => {
         // Validate that on L2 the address has been whitelisted correctly.
         assert.isTrue(await l2BridgeDepositBox.isWhitelistToken(l2Token.address));
         assert.equal((await l2BridgeDepositBox.whitelistedTokens(l2Token.address)).l1Token, l1Token.address);
+        assert.equal((await l2BridgeDepositBox.whitelistedTokens(l2Token.address)).l1BridgePool, l1BridgePool.address);
+        assert.equal((await l2BridgeDepositBox.whitelistedTokens(l2Token.address)).depositsEnabled, true);
         assert.equal(
           (await l2BridgeDepositBox.whitelistedTokens(l2Token.address)).lastBridgeTime.toString(),
           (await l2Timer.getCurrentTime()).toString()
@@ -211,7 +213,7 @@ describe("Insured bridge e2e tests", () => {
         // Correct admin before the change.
 
         assert.equal(await l2BridgeDepositBox.bridgeAdmin(), l1BridgeAdmin.address);
-        const bridgeAdminChangeTx = await l1BridgeAdmin.setBridgeAdmin(l1Wallet.address, 10000000);
+        const bridgeAdminChangeTx = await l1BridgeAdmin.setBridgeAdmin(l1Wallet.address, OPTIMISM_GAS_OPTS.gasLimit);
         await bridgeAdminChangeTx.wait();
 
         const [msgHash] = await watcher.getMessageHashesFromL1Tx(bridgeAdminChangeTx.hash);
@@ -228,7 +230,11 @@ describe("Insured bridge e2e tests", () => {
         // Is enabled before the change.
 
         assert.isFalse((await l2BridgeDepositBox.whitelistedTokens(l2Token.address)).depositsEnabled);
-        const bridgeAdminChangeTx = await l1BridgeAdmin.setEnableDeposits(l2Token.address, true, 10000000);
+        const bridgeAdminChangeTx = await l1BridgeAdmin.setEnableDeposits(
+          l2Token.address,
+          true,
+          OPTIMISM_GAS_OPTS.gasLimit
+        );
         await bridgeAdminChangeTx.wait();
 
         const [msgHash] = await watcher.getMessageHashesFromL1Tx(bridgeAdminChangeTx.hash);
@@ -244,7 +250,7 @@ describe("Insured bridge e2e tests", () => {
       it("Can update the L2 minimum bridging delay", async () => {
         // Correct min delay before the change.
         assert.equal(await l2BridgeDepositBox.minimumBridgingDelay(), minimumBridgingDelay);
-        const bridgeAdminChangeTx = await l1BridgeAdmin.setMinimumBridgingDelay(420, 10000000);
+        const bridgeAdminChangeTx = await l1BridgeAdmin.setMinimumBridgingDelay(420, OPTIMISM_GAS_OPTS.gasLimit);
         await bridgeAdminChangeTx.wait();
 
         const [msgHash] = await watcher.getMessageHashesFromL1Tx(bridgeAdminChangeTx.hash);
