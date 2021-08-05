@@ -891,13 +891,8 @@ describe("BridgePool", () => {
       assert.equal(
         (
           await optimisticOracle.methods
-            .getPrice(
-              bridgePool.options.address,
-              defaultIdentifier,
-              relayStatus.priceRequestTime.toString(),
-              relayAncillaryData
-            )
-            .call()
+            .settleAndGetPrice(defaultIdentifier, relayStatus.priceRequestTime.toString(), relayAncillaryData)
+            .call({ from: bridgePool.options.address })
         ).toString(),
         toWei("1")
       );
