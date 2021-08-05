@@ -143,18 +143,7 @@ contract BridgePool is Testable {
                 amount: amount,
                 maxFeePct: maxFeePct
             });
-        bytes32 depositHash =
-            keccak256(
-                abi.encode(
-                    depositData.depositTimestamp,
-                    depositData.maxFeePct,
-                    depositData.depositId,
-                    depositData.amount,
-                    depositData.l2Sender,
-                    depositData.recipient,
-                    depositData.l1Token
-                )
-            );
+        bytes32 depositHash = _getDepositHash(depositData);
         require(relays[depositHash].relayState == RelayState.Uninitialized, "Pending relay for deposit exists");
 
         // If no pending relay for this deposit, then associate the caller's relay attempt with it. Copy over the
@@ -195,18 +184,41 @@ contract BridgePool is Testable {
         _emitDepositRelayedEvent(depositData, keccak256(getRelayAncillaryData(depositData, relayData)), depositHash);
     }
 
-    // TODO: Implement fully the following functions:
-    function speedUpRelay(bytes32 _depositHash) public {
-        RelayData storage relay = relays[_depositHash];
-        require(relays[_depositHash].relayState == RelayState.Pending, "Can only speed up pending slow relay");
-        require(relays[_depositHash].instantRelayer == address(0), "Relay has already been instant relayed");
+    /**
+     * @notice Instantly relay a deposit amount minus fees. Instant relayer earns a reward following the pending relay
+     * challenge period.
+     * @dev Caller must have approved this contract to spend the deposit amount of L1 tokens to relay. There can only
+     * be one instant relayer per relay attempt and disputed relays cannot be sped up.
+     * @param _depositData Unique set of L2 deposit data that caller is trying to instantly relay.
+     */
+    function speedUpRelay(DepositData memory _depositData) public {
+        bytes32 depositHash = _getDepositHash(_depositData);
+        RelayData storage relay = relays[depositHash];
+        require(relays[depositHash].relayState == RelayState.Pending, "Can only speed up pending slow relay");
+        require(relays[depositHash].instantRelayer == address(0), "Relay has already been instant relayed");
         relay.instantRelayer = msg.sender;
-        // TODO: Pull funds from caller.
-        emit RelaySpedUp(_depositHash, msg.sender);
+
+        // Pull relay amount minus fees from caller.
+        IERC20(_depositData.l1Token).safeTransferFrom(
+            msg.sender,
+            address(this),
+            _depositData.amount - _getRealizedFeeAmount(relay.realizedFeePct, _depositData.amount)
+        );
+
+        emit RelaySpedUp(depositHash, msg.sender);
     }
 
-    function settleRelay(bytes32 _depositHash) public {
-        RelayData storage relay = relays[_depositHash];
+    /**
+     * @notice Reward relayers if a pending relay price request has a price available on the OptimisticOracle. Mark
+     * the relay as complete.
+     * @dev Caller must have approved this contract to spend the deposit amount of L1 tokens to relay. There can only
+     * be one instant relayer per relay attempt and disputed relays cannot be sped up.
+     * @param _depositData Unique set of L2 deposit data that caller is trying to instantly relay.
+     */
+    function settleRelay(DepositData memory _depositData) public {
+        bytes32 depositHash = _getDepositHash(_depositData);
+        RelayData storage relay = relays[depositHash];
+        require(relays[depositHash].relayState == RelayState.Pending, "Can only speed up pending slow relay");
         // TODO: Pay relayer rewards using PendingRelay data.
     }
 
@@ -331,6 +343,30 @@ contract BridgePool is Testable {
                 .div(FixedPoint.fromUnscaledUint(1))
                 .mul(FixedPoint.Unsigned(_amount))
                 .rawValue;
+    }
+
+    function _getRealizedFeeAmount(uint64 _realizedFeePct, uint256 _amount) private pure returns (uint256) {
+        return
+            FixedPoint
+                .Unsigned(uint256(_realizedFeePct))
+                .div(FixedPoint.fromUnscaledUint(1))
+                .mul(FixedPoint.Unsigned(_amount))
+                .rawValue;
+    }
+
+    function _getDepositHash(DepositData memory _depositData) private pure returns (bytes32) {
+        return
+            keccak256(
+                abi.encode(
+                    _depositData.depositTimestamp,
+                    _depositData.maxFeePct,
+                    _depositData.depositId,
+                    _depositData.amount,
+                    _depositData.l2Sender,
+                    _depositData.recipient,
+                    _depositData.l1Token
+                )
+            );
     }
 
     function _requestOraclePriceRelay(
