@@ -409,13 +409,20 @@ describe("BridgePool", () => {
         return ev.instantRelayer === instantRelayer && ev.depositHash === depositHash;
       });
       const speedupRelayStatus = await bridgePool.methods.relays(depositHash).call();
+      assert.equal(speedupRelayStatus.relayState, InsuredBridgeRelayStateEnum.PENDING);
+      assert.equal(speedupRelayStatus.priceRequestTime.toString(), requestTimestamp);
       assert.equal(speedupRelayStatus.instantRelayer, instantRelayer);
+      assert.equal(speedupRelayStatus.slowRelayer, relayer);
+      assert.equal(speedupRelayStatus.proposerRewardPct.toString(), defaultProposerRewardPct);
+      assert.equal(speedupRelayStatus.realizedFeePct.toString(), defaultRealizedFee);
 
       // If relay is disputed, then a new relay can be made but the instant relayer is carried over.
       // TODO: Integrate the OptimisticOracle into this test once this function is fully implemented
       await bridgePool.methods
         .priceDisputed(defaultIdentifier, requestTimestamp, relayAncillaryData, 0)
         .send({ from: disputer });
+      const disputedRelayStatus = await bridgePool.methods.relays(depositHash).call();
+      assert.equal(disputedRelayStatus.relayState, InsuredBridgeRelayStateEnum.UNINITIALIZED);
       await bridgePool.methods
         .relayDeposit(
           depositData.depositId,
