@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./BridgeAdminInterface.sol";
+import "./BridgePoolInterface.sol";
 import "../../../contracts/oracle/interfaces/OptimisticOracleInterface.sol";
 import "../../../contracts/oracle/interfaces/StoreInterface.sol";
 import "../../../contracts/oracle/interfaces/FinderInterface.sol";
@@ -9,6 +10,7 @@ import "../../../contracts/oracle/implementation/Constants.sol";
 import "../../../contracts/common/implementation/AncillaryData.sol";
 import "../../../contracts/common/implementation/Testable.sol";
 import "../../../contracts/common/implementation/FixedPoint.sol";
+import "../../../contracts/common/implementation/ExpandedERC20.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -21,9 +23,18 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * to post collateral by earning a fee per fulfilled deposit order.
  * @dev A "Deposit" is an order to send capital from L2 to L1, and a "Relay" is a fulfillment attempt of that order.
  */
-contract BridgePool is Testable {
+contract BridgePool is BridgePoolInterface, Testable, ExpandedERC20 {
     using SafeERC20 for IERC20;
     using FixedPoint for FixedPoint.Unsigned;
+
+    // Token that this contract receives as LP deposits.
+    IERC20 public override l1Token;
+
+    // Reserves that are unutilized and withdrawable.
+    uint256 public liquidReserves;
+
+    // Reserves currently utilized due to L2-L1 transactions in flight.
+    uint256 public utilizedReserves;
 
     // Administrative contract that deployed this contract and also houses all state variables needed to relay deposits.
     BridgeAdminInterface public bridgeAdmin;
@@ -54,7 +65,7 @@ contract BridgePool is Testable {
     }
 
     // Associate deposits with pending relays. When RelayState is Uninitialized, new relay attempts can be
-    // made for this deposit. Also contains information neccessary to pay out relayers on successful relay.
+    // made for this deposit. Also contains information necessary to pay out relayers on successful relay.
     mapping(bytes32 => RelayData) public relays;
     // Associates ancillary data related to relay price request with the deposit hash that the relay is attempting to
     // fulfill. We need to key by the ancillary data so that the OptimisticOracle can locate relays on callbacks using
@@ -75,20 +86,51 @@ contract BridgePool is Testable {
     );
     event RelaySpedUp(bytes32 indexed depositHash, address indexed instantRelayer);
     event FinalizedRelay(bytes32 indexed depositHash, address indexed caller);
-    event ProvidedLiquidity(address indexed token, uint256 amount, uint256 lpTokensMinted, address liquidityProvider);
+    event LiquidityAdded(address indexed token, uint256 amount, uint256 lpTokensMinted, address liquidityProvider);
+    event LiquidityRemoved(address indexed token, uint256 amount, uint256 lpTokensBurnt, address liquidityProvider);
 
-    constructor(address _bridgeAdmin, address _timer) Testable(_timer) {
+    // TODO: should we consider changing the name of the LP token as a function of the l1Token? if so, might not be able
+    // to do this with this contract inheriting from expanded ERC20 or might need this contract to have an instance
+    // of the LPToken.
+    constructor(
+        address _bridgeAdmin,
+        address _l1Token,
+        address _timer
+    ) Testable(_timer) ExpandedERC20("UMA Insured Bride LP Token", "UMA-LP", 18) {
         bridgeAdmin = BridgeAdminInterface(_bridgeAdmin);
         require(bridgeAdmin.finder() != address(0), "Invalid bridge pool factory");
+
+        l1Token = IERC20(_l1Token);
     }
 
     /*************************************************
      *          LIQUIDITY PROVIDER FUNCTIONS         *
      *************************************************/
 
-    function deposit(address l1Token, uint256 amount) public {}
+    function addLiquidity(uint256 l1TokenAmount) public {
+        l1Token.safeTransferFrom(msg.sender, address(this), l1TokenAmount);
 
-    function withdraw(address lpToken, uint256 amount) public {}
+        uint256 lpTokensToMint =
+            FixedPoint.Unsigned(l1TokenAmount).div(FixedPoint.Unsigned(exchangeRateCurrent())).rawValue;
+
+        _mint(msg.sender, lpTokensToMint);
+
+        liquidReserves += l1TokenAmount;
+
+        emit LiquidityAdded(address(l1Token), l1TokenAmount, lpTokensToMint, msg.sender);
+    }
+
+    function removeLiquidity(uint256 lpTokenAmount) public {
+        //TODO: check pool utilization before removing
+        uint256 l1TokensToReturn =
+            FixedPoint.Unsigned(lpTokenAmount).mul(FixedPoint.Unsigned(exchangeRateCurrent())).rawValue;
+
+        _burn(msg.sender, lpTokenAmount);
+
+        liquidReserves -= l1TokensToReturn;
+
+        l1Token.safeTransfer(msg.sender, l1TokensToReturn);
+    }
 
     /**************************************
      *          RELAYER FUNCTIONS         *
@@ -101,8 +143,6 @@ contract BridgePool is Testable {
      * @param depositId Unique ID corresponding to deposit order that caller wants to relay.
      * @param depositTimestamp Timestamp of Deposit emitted by L2 contract when order was initiated.
      * @param recipient Address on this network who should receive the relayed deposit.
-     * @param l1Token Token currency to pay recipient. This contract stores a mapping of `l1Token` to the
-     *     canonical token currency on the L2 network that was deposited to the Deposit contract.
      * @param amount Deposited amount.
      * @param realizedFeePct Computed offchain by caller, considering the amount of available liquidity for the token
      * currency needed to pay the recipient and the count of pending withdrawals at the `depositTimestamp`. This fee
@@ -115,7 +155,6 @@ contract BridgePool is Testable {
         uint64 depositTimestamp,
         address recipient,
         address l2Sender,
-        address l1Token,
         uint256 amount,
         // TODO: Allow caller to distinguish between slow and fast fees/rewards.
         uint64 realizedFeePct,
@@ -131,7 +170,7 @@ contract BridgePool is Testable {
                 l2Sender: l2Sender,
                 recipient: recipient,
                 depositTimestamp: depositTimestamp,
-                l1Token: l1Token,
+                l1Token: address(l1Token),
                 amount: amount,
                 maxFeePct: maxFeePct
             });
@@ -175,13 +214,12 @@ contract BridgePool is Testable {
         // the timestamps on the L2 have an offset that are always "in the future" relative to L1 blocks, then the
         // OptimisticOracle would always reject requests.
         _requestOraclePriceRelay(
-            l1Token,
             amount,
             priceRequestTime,
             getRelayAncillaryData(depositData, relayData),
             proposerRewardPct
         );
-        _proposeOraclePriceRelay(l1Token, amount, depositTimestamp, getRelayAncillaryData(depositData, relayData));
+        _proposeOraclePriceRelay(amount, depositTimestamp, getRelayAncillaryData(depositData, relayData));
 
         // We use an internal method to emit this event to overcome Solidity's "stack too deep" error.
         _emitDepositRelayedEvent(depositData, relayAncillaryDataHash, depositHash);
@@ -198,6 +236,16 @@ contract BridgePool is Testable {
     function finalizeRelay(bytes32 _depositHash) public {
         RelayData storage relay = relays[_depositHash];
         // TODO: Do stuff using PendingRelay data.
+        // book keeping logic for exchange rate:
+        // - utilizedReserves+=relayPaymentAmount
+        // - unutilizedReserves=-relayPaymentAmount
+    }
+
+    function finalizeL2BatchTransfer() public {
+        // TODO: call canonical bridge and pull any finds that have been transferred from L2.
+        // book keeping logic for exchange rate data:
+        // - utilizedReserves=-batchTransferAmount
+        // - unutilizedReserves=+batchTransferAmount
     }
 
     /**
@@ -217,6 +265,26 @@ contract BridgePool is Testable {
         // Mark pending relay as uninitialized but do not delete instant relayer information which should be copied
         // over to next slow relay.
         relay.relayState = RelayState.Uninitialized;
+    }
+
+    /************************************
+     *           View FUNCTIONS         *
+     ************************************/
+
+    /**
+     * @notice Computes the exchange rate between LP tokens and L1Tokens. Used when adding/removing liquidity.
+     */
+    function exchangeRateCurrent() public view returns (uint256) {
+        if (totalSupply() == 0) return 1e18; //initial rate is 1 pre any mint action.
+
+        // Consider a naive rate implementation. This acts like a step function, increasing when funds hit L1 from the
+        // canonical bridge. TODO: update with a more elaborate technique that pays out gradually over the 1 week loan.
+        return
+            FixedPoint
+                .fromUnscaledUint(liquidReserves)
+                .add(FixedPoint.fromUnscaledUint(utilizedReserves))
+                .div(FixedPoint.fromUnscaledUint(totalSupply()))
+                .rawValue;
     }
 
     /**
@@ -313,7 +381,6 @@ contract BridgePool is Testable {
     }
 
     function _requestOraclePriceRelay(
-        address l1Token,
         uint256 amount,
         uint256 requestTimestamp,
         bytes memory customAncillaryData,
@@ -332,7 +399,7 @@ contract BridgePool is Testable {
                 .rawValue;
 
         // Sanity check that pool balance is enough to cover relay amount + proposer reward.
-        require(IERC20(l1Token).balanceOf(address(this)) >= amount + proposerReward, "Insufficient pool balance");
+        require(l1Token.balanceOf(address(this)) >= amount + proposerReward, "Insufficient pool balance");
 
         IERC20(l1Token).safeApprove(address(optimisticOracle), proposerReward);
         optimisticOracle.requestPrice(
@@ -357,7 +424,6 @@ contract BridgePool is Testable {
     }
 
     function _proposeOraclePriceRelay(
-        address l1Token,
         uint256 amount,
         uint256 requestTimestamp,
         bytes memory customAncillaryData
@@ -375,8 +441,8 @@ contract BridgePool is Testable {
                 .rawValue;
 
         // Pull the total bond from the caller so that the OptimisticOracle can subsequently pull it from here.
-        IERC20(l1Token).safeTransferFrom(msg.sender, address(this), totalBond);
-        IERC20(l1Token).safeApprove(address(optimisticOracle), totalBond);
+        l1Token.safeTransferFrom(msg.sender, address(this), totalBond);
+        l1Token.safeApprove(address(optimisticOracle), totalBond);
         optimisticOracle.proposePriceFor(
             msg.sender,
             address(this),
