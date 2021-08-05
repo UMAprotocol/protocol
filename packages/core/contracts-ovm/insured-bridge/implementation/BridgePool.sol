@@ -77,7 +77,11 @@ contract BridgePool is Testable {
     );
     event RelaySpedUp(bytes32 indexed depositHash, address indexed instantRelayer);
     event RelayDisputed(bytes32 indexed depositHash, bytes32 indexed priceRequestAncillaryDataHash);
-    event FinalizedRelay(bytes32 indexed depositHash, address indexed caller);
+    event SettledRelay(
+        bytes32 indexed depositHash,
+        bytes32 indexed priceRequestAncillaryDataHash,
+        address indexed caller
+    );
     event ProvidedLiquidity(address indexed token, uint256 amount, uint256 lpTokensMinted, address liquidityProvider);
 
     modifier onlyFromOptimisticOracle() {
@@ -219,7 +223,21 @@ contract BridgePool is Testable {
         bytes32 depositHash = _getDepositHash(_depositData);
         RelayData storage relay = relays[depositHash];
         require(relays[depositHash].relayState == RelayState.Pending, "Can only speed up pending slow relay");
+        require(
+            _getOptimisticOracle().hasPrice(
+                address(this),
+                bridgeAdmin.identifier(),
+                relay.priceRequestTime,
+                getRelayAncillaryData(_depositData, relay)
+            ),
+            "OptimisticOracle has not resolved relay price request"
+        );
+
+        relay.relayState = RelayState.Finalized;
+
         // TODO: Pay relayer rewards using PendingRelay data.
+
+        emit SettledRelay(depositHash, keccak256(getRelayAncillaryData(_depositData, relay)), msg.sender);
     }
 
     /**
