@@ -159,7 +159,7 @@ const processExecutionOptions = async () => {
 
 // Returns a promise that is resolved after `seconds` delay. Used to limit how long a spoke can run for.
 const _rejectAfterDelay = (seconds: number | undefined, executionConfig: any) =>
-  new Promise((resolve, _) => {
+  new Promise((resolve) => {
     setTimeout(resolve, (seconds ? seconds : defaultStrategyTimeout) * 1000, {
       error: "timeout",
       message: `The strategy call took longer than ${seconds} seconds to exit`,

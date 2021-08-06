@@ -216,7 +216,7 @@ async function run() {
           .call())
       ) {
         const addMemberData = polygon_registry.methods
-          .addMember(RegistryRolesEnum.CONTRACT_CREATOR, polygon_governor.options.address)
+          .addMember(RegistryRolesEnum.CONTRACT_CREATOR, polygonContractToRegister)
           .encodeABI();
         const relayedRegistryTransactions = await governorRootTunnel.getPastEvents("RelayedGovernanceRequest", {
           filter: { to: polygon_registry.options.address },

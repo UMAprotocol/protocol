@@ -3,6 +3,7 @@ import Web3 from "web3";
 const { isAddress } = Web3.utils;
 
 import { strategyRunnerConfig, buildBotConfigs, buildGlobalWhitelist } from "../src/ConfigBuilder";
+import { getWeb3 } from "@uma/common";
 
 // simple config with a permalink to a white lists.
 const minimalConfig: strategyRunnerConfig = {
@@ -35,6 +36,11 @@ const minimumRequiredConfigKeys = [
   "pollingDelay",
 ];
 describe("buildGlobalWhitelist", async function () {
+  before(async () => {
+    // Web3 instance (for some reason) needs to be warmed up.
+    const web3 = getWeb3(minimalConfig.botNetwork);
+    await web3.eth.getAccounts();
+  });
   it("Correctly fetches global whitelist", async function (this: any) {
     this.timeout(60000);
     // Construct a whitelist from all current EMPs on the affiliates payout. Append a sample address to the list.

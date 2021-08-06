@@ -29,6 +29,6 @@ if (!process.argv.includes("--e2e")) {
     extension: ["js"],
     watchExtensions: ["js"],
     spec: endToEndTests, // mocha will run this sent of test files defined in this array.
-    timeout: 80000,
+    timeout: 100000,
   };
 }

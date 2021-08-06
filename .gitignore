@@ -9,6 +9,7 @@ coverage
 coverage.json
 out.log
 .GckmsOverride.js
+.GckmsOverride.ts
 docs
 modules
 ui
@@ -17,6 +18,8 @@ antora.yml
 .eslintcache
 .idea
 optimism
+generated
+typechain
 
 # GAE deployment files and directories for GAE deployments.
 app.yaml

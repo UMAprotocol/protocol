@@ -67,6 +67,7 @@ contract("CreatePriceFeed.js", function (accounts) {
   const contractAddress = "test-address";
   const forexBase = "EUR";
   const forexSymbol = "USD";
+  const nodeUrlEnvVar = "ALT_NODE_URL";
 
   before(async function () {
     identifierWhitelist = await IdentifierWhitelist.new();
@@ -75,6 +76,7 @@ contract("CreatePriceFeed.js", function (accounts) {
     timer = await Timer.new();
     store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
     await finder.changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address);
+    process.env[nodeUrlEnvVar] = "https://cloudflare-eth.com";
   });
 
   beforeEach(async function () {
@@ -82,6 +84,10 @@ contract("CreatePriceFeed.js", function (accounts) {
     spy = sinon.spy();
 
     logger = winston.createLogger({ level: "info", transports: [new SpyTransport({ level: "error" }, { spy: spy })] });
+  });
+
+  after(async function () {
+    delete process.env[nodeUrlEnvVar];
   });
 
   it("No type", async function () {
@@ -280,6 +286,7 @@ contract("CreatePriceFeed.js", function (accounts) {
     assert.equal(validUniswapFeed.historicalLookback, lookback);
     assert.equal(validUniswapFeed.getTime(), getTime());
     assert.equal(validUniswapFeed.invertPrice, undefined);
+    assert.equal(validUniswapFeed.web3, web3);
 
     // Invert parameter should be passed through.
     const validInvertedUniswapFeed = await createPriceFeed(logger, web3, networker, getTime, {
@@ -287,6 +294,14 @@ contract("CreatePriceFeed.js", function (accounts) {
       invertPrice: true,
     });
     assert.isTrue(validInvertedUniswapFeed.invertPrice);
+  });
+
+  it("Valid Uniswap config with alternate node", async function () {
+    const config = { type: "uniswap", uniswapAddress, twapLength, lookback, nodeUrlEnvVar };
+
+    const validUniswapFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.notEqual(validUniswapFeed.web3, web3);
   });
 
   it("Invalid Uniswap config", async function () {
@@ -405,6 +420,22 @@ contract("CreatePriceFeed.js", function (accounts) {
 
     const balancerFeed = await createPriceFeed(logger, web3, networker, getTime, config);
     assert.isTrue(balancerFeed instanceof BalancerPriceFeed);
+    assert.equal(balancerFeed.web3, web3);
+  });
+
+  it("Valid Balancer config with alternate node", async function () {
+    const config = {
+      type: "balancer",
+      balancerAddress,
+      balancerTokenIn: accounts[1],
+      balancerTokenOut: accounts[2],
+      lookback: 7200,
+      twapLength: 7200,
+      nodeUrlEnvVar,
+    };
+
+    const balancerFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+    assert.notEqual(balancerFeed.web3, web3);
   });
 
   it("Valid Uniswap v3 config", async function () {
@@ -413,6 +444,16 @@ contract("CreatePriceFeed.js", function (accounts) {
     const validUniswapFeed = await createPriceFeed(logger, web3, networker, getTime, config);
 
     assert.isTrue(validUniswapFeed instanceof UniswapV3PriceFeed);
+    assert.equal(validUniswapFeed.web3, web3);
+  });
+
+  it("Valid Uniswap v3 config with alternate node", async function () {
+    const config = { type: "uniswap", uniswapAddress, twapLength, lookback, version: "v3", nodeUrlEnvVar };
+
+    const validUniswapFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.isTrue(validUniswapFeed instanceof UniswapV3PriceFeed);
+    assert.notEqual(validUniswapFeed.web3, web3);
   });
 
   it("Invalid Uniswap version string", async function () {
@@ -558,6 +599,7 @@ contract("CreatePriceFeed.js", function (accounts) {
       uniswapAddress,
       twapLength,
       medianizedFeeds: [{ type: "cryptowatch" }, { type: "uniswap" }],
+      nodeUrlEnvVar,
     };
 
     const validMedianizerFeed = await createPriceFeed(logger, web3, networker, getTime, config);
@@ -568,6 +610,9 @@ contract("CreatePriceFeed.js", function (accounts) {
 
     assert.equal(validMedianizerFeed.priceFeeds[0].pair, pair);
     assert.equal(validMedianizerFeed.priceFeeds[1].uniswap.options.address, uniswapAddress);
+
+    assert.notEqual(validMedianizerFeed.priceFeeds[0].web3, web3);
+    assert.notEqual(validMedianizerFeed.priceFeeds[1].web3, web3);
   });
 
   it("Valid Medianizer override config", async function () {
@@ -733,6 +778,7 @@ contract("CreatePriceFeed.js", function (accounts) {
       lookback,
       minTimeBetweenUpdates,
       customFeeds: { mysymbol: { type: "cryptowatch" } },
+      nodeUrlEnvVar,
     };
 
     const expressionPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
@@ -740,6 +786,7 @@ contract("CreatePriceFeed.js", function (accounts) {
     assert.isNotNull(expressionPriceFeed);
     assert.exists(expressionPriceFeed.priceFeedMap["mysymbol"]);
     assert.equal(expressionPriceFeed.priceFeedMap["mysymbol"].lookback, lookback);
+    assert.notEqual(expressionPriceFeed.priceFeedMap["mysymbol"].web3, web3);
   });
 
   it("ExpressionPriceFeed: invalid config, no expression", async function () {
@@ -788,6 +835,14 @@ contract("CreatePriceFeed.js", function (accounts) {
     assert.isNotNull(vaultPriceFeed);
   });
 
+  it("VaultPriceFeed: valid config with alternate node", async function () {
+    const config = { type: "vault", address: web3.utils.randomHex(20), nodeUrlEnvVar };
+
+    const vaultPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.notEqual(vaultPriceFeed.web3, web3);
+  });
+
   it("VaultPriceFeed: invalid config", async function () {
     const config = { type: "vault" };
 
@@ -823,6 +878,19 @@ contract("CreatePriceFeed.js", function (accounts) {
     const lpPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
 
     assert.isNotNull(lpPriceFeed);
+  });
+
+  it("LPPriceFeed: valid config with alternate node", async function () {
+    const config = {
+      type: "lp",
+      poolAddress: web3.utils.randomHex(20),
+      tokenAddress: web3.utils.randomHex(20),
+      nodeUrlEnvVar,
+    };
+
+    const lpPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+
+    assert.notEqual(lpPriceFeed.web3, web3);
   });
 
   it("LPPriceFeed: invalid config, no token address", async function () {
@@ -879,6 +947,15 @@ contract("CreatePriceFeed.js", function (accounts) {
       web3.utils.toChecksumAddress(frmPriceFeed.multicallAddress),
       web3.utils.toChecksumAddress(multicallAddress)
     );
+  });
+
+  it("FundingRateMultiplierPriceFeed: creation succeeds with alternate node", async function () {
+    const perpetualAddress = web3.utils.randomHex(20);
+    const multicallAddress = web3.utils.randomHex(20);
+    const config = { type: "frm", perpetualAddress, multicallAddress, nodeUrlEnvVar };
+
+    const frmPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
+    assert.notEqual(frmPriceFeed.web3, web3);
   });
 
   it("FundingRateMultiplierPriceFeed: creation fails due to missing perpetual address", async function () {
