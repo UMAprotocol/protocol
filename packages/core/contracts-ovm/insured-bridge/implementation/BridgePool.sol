@@ -220,7 +220,8 @@ contract BridgePool is Testable {
     function settleRelay(DepositData memory _depositData) public {
         bytes32 depositHash = _getDepositHash(_depositData);
         RelayData storage relay = relays[depositHash];
-        require(relays[depositHash].relayState == RelayState.Pending, "Can only speed up pending slow relay");
+        require(relays[depositHash].relayState == RelayState.Pending, "Only pending state can be settled");
+        // Note `hasPrice` will return false if liveness has not been passed in the optimistic oracle.
         require(
             _getOptimisticOracle().hasPrice(
                 address(this),
@@ -236,7 +237,7 @@ contract BridgePool is Testable {
         // was validated. This is because this contract proposes a price of 1e18, or "YES" to the identifier posing the
         // question "Is this relay valid for the associated deposit?". If the proposal is disputed, then the relayState
         // will be reset to UNINITIALIZED. If the proposal is not disputed, and there is a price available, then the
-        // proposal must have passed the dispute period.
+        // proposal must have passed the dispute period, assuming the proposal passed optimistic oracle liveness.
 
         relay.relayState = RelayState.Finalized;
 
@@ -250,6 +251,7 @@ contract BridgePool is Testable {
         // TODO: For now, if there was an instant relay associated with this deposit, then split the reward 50/50
         // between slow and instant relayer. Otherwise pay the slow relayer the full reward.
         uint256 rewardPool = _getProposerRewardAmount(relay.proposerRewardPct, _depositData.amount);
+        // Depending on the if there is an instant relayer set or not, branch to payout accordingly.
         if (relay.instantRelayer != address(0)) {
             IERC20(_depositData.l1Token).safeTransfer(
                 relay.instantRelayer,
