@@ -34,9 +34,19 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     lastBlock() {
       return appState.lastBlock;
     },
+    // deprecated
     listActiveEmps: queries.listActive,
+    // deprecated
     listExpiredEmps: queries.listExpired,
+    listActive: queries.listActive,
+    listExpired: queries.listExpired,
+    // deprecated
     async getEmpState(address: string) {
+      assert(await registeredEmps.has(address), "Not a valid emp address: " + address);
+      const state = await queries.getAny(address);
+      return queries.getFullState(state);
+    },
+    async getState(address: string) {
       assert(await registeredEmps.has(address), "Not a valid emp address: " + address);
       const state = await queries.getAny(address);
       return queries.getFullState(state);
