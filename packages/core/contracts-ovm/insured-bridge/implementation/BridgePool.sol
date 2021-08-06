@@ -77,7 +77,11 @@ contract BridgePool is Testable {
     );
     event RelaySpedUp(bytes32 indexed depositHash, address indexed instantRelayer);
     event RelayDisputed(bytes32 indexed depositHash, bytes32 indexed priceRequestAncillaryDataHash);
-    event FinalizedRelay(bytes32 indexed depositHash, address indexed caller);
+    event SettledRelay(
+        bytes32 indexed depositHash,
+        bytes32 indexed priceRequestAncillaryDataHash,
+        address indexed caller
+    );
     event ProvidedLiquidity(address indexed token, uint256 amount, uint256 lpTokensMinted, address liquidityProvider);
 
     modifier onlyFromOptimisticOracle() {
@@ -211,15 +215,65 @@ contract BridgePool is Testable {
     /**
      * @notice Reward relayers if a pending relay price request has a price available on the OptimisticOracle. Mark
      * the relay as complete.
-     * @dev Caller must have approved this contract to spend the deposit amount of L1 tokens to relay. There can only
-     * be one instant relayer per relay attempt and disputed relays cannot be sped up.
-     * @param _depositData Unique set of L2 deposit data that caller is trying to instantly relay.
+     * @param _depositData Unique set of L2 deposit data that caller is trying to settle a relay for.
      */
     function settleRelay(DepositData memory _depositData) public {
         bytes32 depositHash = _getDepositHash(_depositData);
         RelayData storage relay = relays[depositHash];
-        require(relays[depositHash].relayState == RelayState.Pending, "Can only speed up pending slow relay");
-        // TODO: Pay relayer rewards using PendingRelay data.
+        require(relays[depositHash].relayState == RelayState.Pending, "Only pending state can be settled");
+        // Note `hasPrice` will return false if liveness has not been passed in the optimistic oracle.
+        require(
+            _getOptimisticOracle().hasPrice(
+                address(this),
+                bridgeAdmin.identifier(),
+                relay.priceRequestTime,
+                getRelayAncillaryData(_depositData, relay)
+            ),
+            "OptimisticOracle has not resolved relay price request"
+        );
+
+        // Note: Why don't we have to check the value of the price?
+        // - If the OptimisticOracle has a price and the relayState is PENDING, then we can safely assume that the relay
+        // was validated. This is because this contract proposes a price of 1e18, or "YES" to the identifier posing the
+        // question "Is this relay valid for the associated deposit?". If the proposal is disputed, then the relayState
+        // will be reset to UNINITIALIZED. If the proposal is not disputed, and there is a price available, then the
+        // proposal must have passed the dispute period, assuming the proposal passed optimistic oracle liveness.
+
+        relay.relayState = RelayState.Finalized;
+
+        // Pay recipient the deposit amount less fees.
+        IERC20(_depositData.l1Token).safeTransfer(
+            _depositData.recipient,
+            _depositData.amount - _getRealizedFeeAmount(relay.realizedFeePct, _depositData.amount)
+        );
+
+        // Reward relayers.
+        // TODO: For now, if there was an instant relay associated with this deposit, then split the reward 50/50
+        // between slow and instant relayer. Otherwise pay the slow relayer the full reward.
+        uint256 rewardPool = _getProposerRewardAmount(relay.proposerRewardPct, _depositData.amount);
+        // Depending on the if there is an instant relayer set or not, branch to payout accordingly.
+        if (relay.instantRelayer != address(0)) {
+            IERC20(_depositData.l1Token).safeTransfer(
+                relay.instantRelayer,
+                FixedPoint
+                    .Unsigned(rewardPool)
+                    .mul(FixedPoint.fromUnscaledUint(1))
+                    .div(FixedPoint.fromUnscaledUint(2))
+                    .rawValue
+            );
+            IERC20(_depositData.l1Token).safeTransfer(
+                relay.slowRelayer,
+                FixedPoint
+                    .Unsigned(rewardPool)
+                    .mul(FixedPoint.fromUnscaledUint(1))
+                    .div(FixedPoint.fromUnscaledUint(2))
+                    .rawValue
+            );
+        } else {
+            IERC20(_depositData.l1Token).safeTransfer(relay.slowRelayer, rewardPool);
+        }
+
+        emit SettledRelay(depositHash, keccak256(getRelayAncillaryData(_depositData, relay)), msg.sender);
     }
 
     /**
