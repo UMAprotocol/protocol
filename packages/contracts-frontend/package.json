@@ -24,7 +24,6 @@
   "files": [
     "dist/**/*"
   ],
-  "main": "dist/generated/index.js",
   "types": "dist/generated/index.d.ts",
   "module": "dist/generated/index.js",
   "side-effects": false,
