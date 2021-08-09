@@ -1066,5 +1066,91 @@ describe("BridgePool", () => {
       assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("0"));
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
     });
+    beforeEach(async function () {
+      // For the next two tests, add liquidity, relay and finalize the relay as the initial state.
+
+      // Approve funds and add to liquidity.
+      await l1Token.methods.mint(liquidityProvider, initialPoolLiquidity).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: liquidityProvider });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
+
+      // Mint relayer bond.
+      await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+
+      const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
+      const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
+
+      await bridgePool.methods
+        .relayDeposit(
+          depositData.depositId,
+          depositData.depositTimestamp,
+          depositData.recipient,
+          depositData.l2Sender,
+          depositData.amount,
+          relayData.realizedFeePct,
+          depositData.maxFeePct,
+          relayData.proposerRewardPct
+        )
+        .send({ from: relayer });
+
+      // Expire and settle proposal on the OptimisticOracle.
+      const relayStatus = await bridgePool.methods.relays(depositHash).call();
+      await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
+      await optimisticOracle.methods
+        .settle(
+          bridgePool.options.address,
+          defaultIdentifier,
+          relayStatus.priceRequestTime.toString(),
+          relayAncillaryData
+        )
+        .send({ from: relayer });
+    });
+    it("SettleRelay", async () => {
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+
+      // Exchange rate should still be 1 (no fees accumulated yet). Pool balance, liquidReserves and utilizedReserves
+      // should update accordingly. Calculate the bridge tokens used as the amount sent to the receiver + the bond.
+      const bridgeTokensUsed = toBN(relayAmountSubFee).add(proposerRewardAmount);
+
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+      assert.equal(
+        (await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(),
+        toBN(initialPoolLiquidity).sub(bridgeTokensUsed).toString()
+      );
+      assert.equal((await lpToken.methods.balanceOf(liquidityProvider).call()).toString(), initialPoolLiquidity);
+      assert.equal(
+        (await bridgePool.methods.liquidReserves().call()).toString(),
+        toBN(initialPoolLiquidity).sub(bridgeTokensUsed).toString()
+      );
+      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), bridgeTokensUsed.toString());
+    });
+    it("Sync updates ballance & exchange rates correctly", async () => {
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+
+      // To simulate the finalization of L2->L1 token transfers due to bridging (via the canonical bridge) sent tokens
+      // directly to the bridgePool. Note that on L1 this is exactly how this will happen as the finalization of bridging
+      // occurs without informing the recipient (tokens are just "sent"). Validate the sync method updates correctly.
+      await l1Token.methods.mint(bridgePool.options.address, relayAmount).send({ from: owner });
+
+      // The balance of the pool should be the initialPoolLiquidity + the total realized fee - fee sent to relayer.
+      assert.equal(
+        toBN(initialPoolLiquidity).add(realizedFeeAmount).sub(proposerRewardAmount).toString(),
+        (await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString()
+      );
+
+      // Call sync to update local balances according to the finalization transfer.
+      await bridgePool.methods.sync().send({ from: rando });
+
+      // After syncing: a) liquidReserves should equal token balance which should equal the initial liquidity + fees,
+      // b) UtilizedReserves reserves should be zero and c) exchange rate should have increased to include the LP fees.
+      // Exchange rate should be initialPoolLiquidity+realizedFee-proposerReward)/lpTokens=(1000+10-5)/1000=1.005
+      assert.equal(
+        (await bridgePool.methods.liquidReserves().call()).toString(),
+        (await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString()
+      );
+      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("0"));
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.005"));
+    });
   });
 });

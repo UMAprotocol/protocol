@@ -253,6 +253,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         );
 
         emit RelaySpedUp(depositHash, msg.sender);
+
+        // Note that in a sped up relay we dont need to increment/decrement any utilization numbers as the liquidity
+        // used is the fast relayers, not the LPs. Only at the settlement of the relay do we modify these numbers.
     }
 
     /**
@@ -353,8 +356,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     /**
      * @notice Computes the exchange rate between LP tokens and L1Tokens. Used when adding/removing liquidity.
      */
-    function exchangeRateCurrent() public view returns (uint256) {
+    function exchangeRateCurrent() public returns (uint256) {
         if (totalSupply() == 0) return 1e18; //initial rate is 1 pre any mint action.
+
+        // First, update local accounting of finalized transfers from L2->L1.
+        sync();
 
         // Consider a naive rate implementation. This acts like a step function, increasing when funds hit L1 from the
         // canonical bridge. TODO: update with a more elaborate technique that pays out gradually over the 1 week loan.
@@ -366,11 +372,17 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
                 .rawValue;
     }
 
+    /**
+     * @notice At the conclusion of an L2->L1 token transfer via the canonical token bridge, tokens will appear in this
+     * contract. This method checks if the l1Token balance of the contract is greater than the liquidReserves. If it
+     * is then the bridging action from L2->L1 has concluded and the local accounting can be updated.
+     */
     function sync() public {
         uint256 l1TokenBalance = l1Token.balanceOf(address(this));
         uint256 bridgedAmount = l1TokenBalance - liquidReserves;
         if (bridgedAmount > 0) {
-            utilizedReserves -= bridgedAmount;
+            // utilizedReserves can never be zero. If all pending transfers are done then this equals zero.
+            utilizedReserves = utilizedReserves > bridgedAmount ? utilizedReserves - bridgedAmount : 0;
             liquidReserves = l1TokenBalance;
         }
     }
