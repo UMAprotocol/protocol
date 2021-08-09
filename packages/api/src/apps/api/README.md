@@ -75,6 +75,7 @@ Current channels are
 
 - emp - all emp calls
 - lsp - all lsp calls
+- global - custom calls that are not contract type specific
 
 ## Action Client
 
@@ -245,3 +246,51 @@ Lsp calls are on the lsp channel. These calls are the same as the EMP calls, but
 ### lsp/totalTvlHistoryBetween(start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") => Stat[]
 
 ### lsp/totalTvlSlice(start = 0, length = 1, currency: CurrencySymbol = "usd") => Stat[]
+
+## Global
+
+Global calls allow you to make calls without knowing the type of contract you are dealing with
+
+### global/listActive()
+
+List all active contracts, both LSP or EMP
+
+### global/listExpired()
+
+List all expired contracts, both LSP or EMP
+
+### global/getState(address: string)
+
+Get the state of a known contract address.
+
+### global/globalTvl(currency: CurrencySymbol = "usd")
+
+Global tvl, or the sum of tvls of all known contracts.
+
+### global/tvl(address: string, currency: CurrencySymbol = "usd")
+
+Look up tvl for any contract address.
+
+### global/globalTvlHistoryBetween(start = 0, end: number = nowS(), currency: CurrencySymbol = "usd")
+
+Global tvl history between times in seconds.
+
+### global/tvlHistoryBetween(address: string, start = 0, end: number = nowS(), currency: CurrencySymbol = "usd")
+
+TVL history for a particular address.
+
+### global/globalTvm(currency: CurrencySymbol = "usd")
+
+Global tvm or the sum of all tvms of all known contracts.
+
+### global/tvm(address: string, currency: CurrencySymbol = "usd")
+
+TVM for a particular address.
+
+### global/tvmHistoryBetween(address: string, start = 0, end: number = nowS(), currency: CurrencySymbol = "usd")
+
+TVM history for a specific address between timestamps in seconds.
+
+### global/tvmHistorySlice(address: string, start = 0, length = 1, currency: CurrencySymbol = "usd")
+
+TVM history slice for a specific address.
