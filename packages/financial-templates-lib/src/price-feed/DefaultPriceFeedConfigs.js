@@ -940,6 +940,23 @@ const defaultConfigs = {
     twapLength: 7200,
     invertPrice: true,
   },
+  "ibBTC/BTC": {
+    type: "medianizer",
+    lookback: 7200,
+    twapLength: 1800,
+    invertPrice: true,
+    medianizedFeeds: [
+      { type: "uniswap", uniswapAddress: "0x18d98D452072Ac2EB7b74ce3DB723374360539f1" },
+      {
+        type: "uniswap",
+        nodeUrlEnvVar: "POLYGON_NODE_URL",
+        uniswapAddress: "0x8F8e95Ff4B4c5E354ccB005c6B0278492D7B5907",
+      },
+    ],
+  },
+  "BTC/ibBTC": { type: "expression", expression: "1 / ibBTC\\/BTC" },
+  "ibBTC/USD": { type: "expression", expression: "ibBTC\\/BTC * BTCUSD" },
+  "USD/ibBTC": { type: "expression", expression: "1 / ibBTC\\/USD" },
 };
 
 // Pull in the number of decimals for each identifier from the common getPrecisionForIdentifier. This is used within the
