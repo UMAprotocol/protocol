@@ -1,9 +1,14 @@
 // A thick client for getting information about an ExpiringMultiParty. Used to get sponsor information, outstanding
 // positions, undisputed Liquidations, expired liquidations, disputed liquidations.
 
-const { ConvertDecimals, LiquidationStatesEnum, getFromBlock } = require("@uma/common");
-const { aggregateTransactionsAndCall } = require("../helpers/multicall");
-const Promise = require("bluebird");
+import { ConvertDecimals, LiquidationStatesEnum, getFromBlock } from "@uma/common";
+import type { Abi } from "../types";
+import type Web3 from "web3";
+import { aggregateTransactionsAndCall } from "../helpers/multicall";
+import type { Logger } from "winston";
+
+import Promise from "bluebird";
+
 class FinancialContractClient {
   /**
    * @notice Constructs new FinancialContractClient.
@@ -22,11 +27,11 @@ class FinancialContractClient {
    * @return None or throws an Error.
    */
   constructor(
-    logger,
-    financialContractAbi,
-    web3,
-    financialContractAddress,
-    multicallContractAddress,
+    logger: Logger,
+    financialContractAbi: Abi,
+    web3: Web3,
+    financialContractAddress: string,
+    multicallContractAddress: string,
     collateralDecimals = 18,
     syntheticDecimals = 18,
     priceFeedDecimals = 18,
