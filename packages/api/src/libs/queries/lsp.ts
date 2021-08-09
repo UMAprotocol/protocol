@@ -10,6 +10,9 @@ type Dependencies = Pick<AppState, "erc20s" | "stats" | "lsps" | "registeredLsps
 export default (appState: Dependencies) => {
   const { lsps, erc20s } = appState;
 
+  async function hasAddress(address: string) {
+    return (await lsps.active.has(address)) || (await lsps.expired.has(address));
+  }
   async function getAny(address: string) {
     if (await lsps.active.has(address)) {
       return lsps.active.get(address);
@@ -19,10 +22,17 @@ export default (appState: Dependencies) => {
     }
     throw new Error("LSP not found by address: " + address);
   }
+  function getTvl(address: string, currency: CurrencySymbol = "usd") {
+    assert(appState.stats.lsp[currency], "invalid currency: " + currency);
+    return appState.stats.lsp["usd"].latest.tvl.get(address);
+  }
   async function getFullState(state: tables.lsps.Data) {
     const collateralState = state.collateralToken ? await erc20s.get(state.collateralToken).catch(() => null) : null;
     const longTokenState = state.longToken ? await erc20s.get(state.longToken).catch(() => null) : null;
     const shortTokenState = state.shortToken ? await erc20s.get(state.shortToken).catch(() => null) : null;
+    const tvl = await getTvl(state.address)
+      .then((sample) => sample.value)
+      .catch(() => null);
     return {
       ...state,
       longTokenDecimals: longTokenState?.decimals,
@@ -34,6 +44,7 @@ export default (appState: Dependencies) => {
       longTokenSymbol: longTokenState?.symbol,
       shortTokenSymbol: shortTokenState?.symbol,
       collateralSymbol: collateralState?.symbol,
+      tvl,
       type: "lsp",
     };
   }
@@ -85,5 +96,6 @@ export default (appState: Dependencies) => {
     sumTvl,
     getTotalTvl,
     getTotalTvlSample,
+    hasAddress,
   };
 };

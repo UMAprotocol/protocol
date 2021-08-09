@@ -16,6 +16,7 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     listAddresses() {
       return Array.from(registeredLsps.values());
     },
+    hasAddress: queries.hasAddress,
     listActive: queries.listActive,
     listExpired: queries.listExpired,
     async getState(address: string) {

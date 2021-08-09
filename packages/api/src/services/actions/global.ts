@@ -40,10 +40,8 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     async getState(address: string) {
       assert(address, "requires a contract address");
       for (const action of contractActions) {
-        try {
-          return await action.getState(address);
-        } catch (err) {
-          // do nothing
+        if (await action.hasAddress(address)) {
+          return action.getState(address);
         }
       }
       throw new Error("Unable to find contract address " + address);
@@ -61,10 +59,8 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     async tvl(address: string, currency: CurrencySymbol = "usd") {
       assert(address, "requires a contract address");
       for (const action of contractActions) {
-        try {
-          return await action.tvl([address], currency);
-        } catch (err) {
-          // do nothing
+        if (await action.hasAddress(address)) {
+          return action.tvl([address], currency);
         }
       }
       throw new Error("Unable to find TVL for address " + address);
@@ -87,10 +83,8 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       assert(address, "requires contract address");
       // otherwise look up tvm for contract
       for (const action of contractActions) {
-        try {
+        if (await action.hasAddress(address)) {
           return await action.tvlHistoryBetween(address, start, end, currency);
-        } catch (err) {
-          // do nothing
         }
       }
       throw new Error("Unable to find TVL History between for address " + address);
@@ -103,10 +97,8 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       assert(address, "requires contract address");
       // otherwise look up tvm for contract
       for (const action of contractActions) {
-        try {
-          return await action.tvlHistorySlice(address, start, length, currency);
-        } catch (err) {
-          // do nothing
+        if (await action.hasAddress(address)) {
+          return action.tvlHistorySlice(address, start, length, currency);
         }
       }
       throw new Error("Unable to find TVL History slice for address " + address);
@@ -115,10 +107,8 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       assert(address, "requires contract address");
       // otherwise look up tvm for contract
       for (const action of contractActions) {
-        try {
+        if (await action.hasAddress(address)) {
           return await action.tvm([address], currency);
-        } catch (err) {
-          // do nothing
         }
       }
       throw new Error("Unable to find TVM for address " + address);
@@ -126,10 +116,8 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     async tvmHistoryBetween(address: string, start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") {
       assert(address, "requires contract address");
       for (const action of contractActions) {
-        try {
+        if (await action.hasAddress(address)) {
           return await action.tvmHistoryBetween(address, start, end, currency);
-        } catch (err) {
-          // do nothing
         }
       }
       throw new Error("Unable to find TVM History between for address " + address);
@@ -137,10 +125,8 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     async tvmHistorySlice(address: string, start = 0, length = 1, currency: CurrencySymbol = "usd") {
       assert(address, "requires contract address");
       for (const action of contractActions) {
-        try {
+        if (await action.hasAddress(address)) {
           return await action.tvmHistorySlice(address, start, length, currency);
-        } catch (err) {
-          // do nothing
         }
       }
       throw new Error("Unable to find TVM History slice for address " + address);

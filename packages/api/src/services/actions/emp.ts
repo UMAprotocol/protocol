@@ -34,6 +34,7 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     lastBlock() {
       return appState.lastBlock;
     },
+    hasAddress: queries.hasAddress,
     // deprecated
     listActiveEmps: queries.listActive,
     // deprecated
