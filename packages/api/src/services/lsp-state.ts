@@ -16,8 +16,6 @@ export default (config: Config, appState: Dependencies) => {
 
   // default props we want to query on contract
   const staticProps: [string, (x: any) => any][] = [
-    // TODO: deal with this when early contracts dont have pairName
-    // ["pairName", parseBytes],
     ["collateralPerPair", toString],
     ["priceIdentifier", parseBytes],
     ["collateralToken", toString],
@@ -45,6 +43,16 @@ export default (config: Config, appState: Dependencies) => {
     };
   }
 
+  async function getOptionalProps(instance: Instance, address: string) {
+    return {
+      address,
+      updated: nowS(),
+      pairName: await instance
+        .pairName()
+        .then(toString)
+        .catch(() => null),
+    };
+  }
   async function getStaticProps(instance: Instance, address: string) {
     return batchRead(staticProps, instance, address);
   }
@@ -73,6 +81,7 @@ export default (config: Config, appState: Dependencies) => {
     let currentState: lsps.Data = { address };
     let staticState: lsps.Data = { address };
     let dynamicState: lsps.Data = { address };
+    let optionalState: lsps.Data = { address };
     let eventState: uma.clients.lsp.EventState = { sponsors: [] };
 
     const events = await instance.queryFilter({}, startBlock, endBlock);
@@ -98,8 +107,10 @@ export default (config: Config, appState: Dependencies) => {
       } else {
         // have to make sure we get static state if we have never seen this expired emp before
         staticState = await getStaticProps(instance, address);
+        optionalState = await getOptionalProps(instance, address);
         // if it was never active, just create an expired emp
         await lsps.expired.create({
+          ...optionalState,
           ...staticState,
           ...dynamicState,
           totalPositionCollateral,
@@ -113,8 +124,10 @@ export default (config: Config, appState: Dependencies) => {
       if (!(await lsps.active.has(address))) {
         // get static state once if it does not exist (optimizes network calls)
         staticState = await getStaticProps(instance, address);
+        optionalState = await getOptionalProps(instance, address);
         // create active emp with static/dynamic state
         await lsps.active.create({
+          ...optionalState,
           ...staticState,
           ...dynamicState,
           totalPositionCollateral,
@@ -162,6 +175,7 @@ export default (config: Config, appState: Dependencies) => {
       getErc20BalanceOf,
       getStaticProps,
       getDynamicProps,
+      getOptionalProps,
       getPositionCollateral,
     },
   };

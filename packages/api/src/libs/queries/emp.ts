@@ -61,6 +61,9 @@ export default (appState: Dependencies) => {
     assert(exists(priceSample), "No price for address: " + address);
     return priceSample[1];
   }
+  async function hasAddress(address: string) {
+    return (await appState.emps.active.has(address)) || (await appState.emps.expired.has(address));
+  }
   async function getAny(empAddress: string) {
     if (await appState.emps.active.has(empAddress)) {
       return appState.emps.active.get(empAddress);
@@ -69,6 +72,14 @@ export default (appState: Dependencies) => {
       return appState.emps.expired.get(empAddress);
     }
     throw new Error("Unable to find EMP with address: " + empAddress);
+  }
+  function getTvl(address: string, currency: CurrencySymbol = "usd") {
+    assert(appState.stats.emp[currency], "invalid currency: " + currency);
+    return appState.stats.emp[currency].latest.tvl.get(address);
+  }
+  function getTvm(address: string, currency: CurrencySymbol = "usd") {
+    assert(appState.stats.emp[currency], "invalid currency: " + currency);
+    return appState.stats.emp[currency].latest.tvm.get(address);
   }
   // joins emp with token state and gcr
   async function getFullState(empState: uma.tables.emps.Data) {
@@ -81,6 +92,13 @@ export default (appState: Dependencies) => {
       ? await getLatestMarketPrice(empState.tokenCurrency).catch(() => null)
       : null;
 
+    const tvl = await getTvl(empState.address)
+      .then((sample) => sample.value)
+      .catch(() => null);
+    const tvm = await getTvm(empState.address)
+      .then((sample) => sample.value)
+      .catch(() => null);
+
     const state = {
       ...empState,
       tokenDecimals: token?.decimals,
@@ -91,6 +109,8 @@ export default (appState: Dependencies) => {
       collateralSymbol: collateral?.symbol,
       identifierPrice: await getLatestIdentifierPrice(empState.address).catch(() => null),
       tokenMarketPrice,
+      tvl,
+      tvm,
       type: "emp",
     };
     let gcr = "0";
@@ -180,5 +200,6 @@ export default (appState: Dependencies) => {
     sliceHistoricalPricesByTokenAddress,
     getTotalTvl,
     getTotalTvlSample,
+    hasAddress,
   };
 };

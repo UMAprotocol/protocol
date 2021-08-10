@@ -14,8 +14,11 @@ type Dependencies = Pick<
   "lsps" | "registeredLsps" | "provider" | "collateralAddresses" | "shortAddresses" | "longAddresses" | "multicall"
 >;
 
-// first contract launched, does not have pairName property
-const registeredContracts = ["0x372802d8A2D69bB43872a1AABe2bd403a0FafA1F"];
+// this contract updated to have pairName                                 // does not have pairname
+const registeredContracts = [
+  "0x6B435F5C417d1D058683E2B175d8396F09f2186d",
+  "0x372802d8A2D69bB43872a1AABe2bd403a0FafA1F",
+];
 
 describe("lsp-state service", function () {
   let appState: Dependencies;
@@ -65,6 +68,13 @@ describe("lsp-state service", function () {
     assert.ok(result.expiryPercentLong);
     assert.ok(result.contractState >= 0);
   });
+  it("readOptionalState", async function () {
+    const [address] = registeredContracts;
+    const service = Service({}, appState);
+    const instance = await uma.clients.lsp.connect(address, appState.provider);
+    const result = await service.utils.getOptionalProps(instance, address);
+    assert.equal(result.pairName, "SUSHIsBOND July 2024");
+  });
   it("readStaticState", async function () {
     const [address] = registeredContracts;
     const service = Service({}, appState);
@@ -72,14 +82,15 @@ describe("lsp-state service", function () {
     const result = await service.utils.getStaticProps(instance, address);
     assert.equal(result.address, address);
     assert.ok(result.updated > 0);
-    assert.equal(result.collateralPerPair, "250000000000000000");
-    assert.equal(result.priceIdentifier, "UMAUSD");
-    assert.equal(result.collateralToken, "0x04Fa0d235C4abf4BcF4787aF4CF447DE572eF828");
-    assert.equal(result.longToken, "0xa1b777a18333A9EC31b4D81f5d08371b6AE1FEb9");
-    assert.equal(result.shortToken, "0xeFA3356e054A035dD91fA25b3F2A61484Bc2CD54");
+    assert.equal(result.collateralPerPair, "200000000000000000000");
+    assert.equal(result.priceIdentifier, "SUSHIUSD");
+    assert.equal(result.collateralToken, "0x6B3595068778DD592e39A122f4f5a5cF09C90fE2");
+    assert.equal(result.longToken, "0x9c728BAD65cCED25B7F03fB47dCB4AB1d3F2b431");
+    assert.equal(result.shortToken, "0x29c71D66De780396677ddEe87af7261e2Ef34306");
     assert.equal(result.finder, "0x40f941E48A552bF496B154Af6bf55725f18D77c3");
-    assert.equal(result.financialProductLibrary, "0x9214454Ff30410a1558b8749Ab3FB0fD6F942539");
+    assert.equal(result.financialProductLibrary, "0x5a116B8bAb914513F710085cAd0f4628Dcc7eeca");
     assert.equal(result.customAncillaryData, "0x747761704c656e6774683a33363030");
+    assert.equal(result.expirationTimestamp, "1722441600");
     assert.equal(result.prepaidProposerReward, "0");
   });
   it("update", async function () {

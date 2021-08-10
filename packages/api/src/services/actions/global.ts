@@ -1,9 +1,10 @@
 import assert from "assert";
 import { Json, Actions, AppState, CurrencySymbol, AllContractStates } from "../..";
-import * as Queries from "../../libs/queries";
 import bluebird from "bluebird";
 import { BigNumber } from "ethers";
 import { nowS } from "../../libs/utils";
+import { Handlers as EmpActions } from "./emp";
+import { Handlers as LspActions } from "./lsp";
 
 // actions use all the app state
 type Dependencies = AppState;
@@ -11,7 +12,7 @@ type Config = undefined;
 
 export function Handlers(config: Config, appState: Dependencies): Actions {
   const { stats } = appState;
-  const queries = [Queries.Emp(appState), Queries.Lsp(appState)];
+  const contractActions = [EmpActions(config, appState), LspActions(config, appState)];
 
   const actions: Actions = {
     echo(...args: Json[]) {
@@ -19,18 +20,18 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     },
     async listActive() {
       return bluebird.reduce(
-        queries,
-        async (result: AllContractStates[], query) => {
-          return result.concat(await query.listActive());
+        contractActions,
+        async (result: AllContractStates[], actions) => {
+          return result.concat((await actions.listActive()) as AllContractStates[]);
         },
         []
       );
     },
     async listExpired() {
       return bluebird.reduce(
-        queries,
-        async (result: AllContractStates[], query) => {
-          return result.concat(await query.listExpired());
+        contractActions,
+        async (result: AllContractStates[], actions) => {
+          return result.concat((await actions.listExpired()) as AllContractStates[]);
         },
         []
       );
@@ -38,33 +39,95 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     // return the first address found
     async getState(address: string) {
       assert(address, "requires a contract address");
-      for (const query of queries) {
-        try {
-          const state = await query.getAny(address);
-          return query.getFullState(state);
-        } catch (err) {
-          // do nothing
+      for (const action of contractActions) {
+        if (await action.hasAddress(address)) {
+          return action.getState(address);
         }
       }
       throw new Error("Unable to find contract address " + address);
     },
-    async tvl(currency: CurrencySymbol = "usd") {
+    async globalTvl(currency: CurrencySymbol = "usd") {
       const sum = await bluebird.reduce(
-        queries,
-        async (sum, queries) => {
-          return sum.add((await queries.getTotalTvl(currency)) || "0");
+        contractActions,
+        async (sum, actions) => {
+          return sum.add(((await actions.tvl(undefined, currency)) as string) || "0");
         },
         BigNumber.from("0")
       );
       return sum.toString();
     },
-    async tvlHistoryBetween(start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") {
+    async tvl(address: string, currency: CurrencySymbol = "usd") {
+      assert(address, "requires a contract address");
+      for (const action of contractActions) {
+        if (await action.hasAddress(address)) {
+          return action.tvl([address], currency);
+        }
+      }
+      throw new Error("Unable to find TVL for address " + address);
+    },
+    async globalTvm(currency: CurrencySymbol = "usd") {
+      const sum = await bluebird.reduce(
+        contractActions,
+        async (sum, actions) => {
+          return sum.add(((await actions.tvm(undefined, currency)) as string) || "0");
+        },
+        BigNumber.from("0")
+      );
+      return sum.toString();
+    },
+    async globalTvlHistoryBetween(start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") {
       assert(stats.global[currency], "Invalid currency type: " + currency);
       return stats.global[currency].history.tvl.betweenByGlobal(start, end);
     },
-    async tvlHistorySlice(start = 0, length = 1, currency: CurrencySymbol = "usd") {
+    async tvlHistoryBetween(address: string, start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") {
+      assert(address, "requires contract address");
+      // otherwise look up tvl for contract
+      for (const action of contractActions) {
+        if (await action.hasAddress(address)) {
+          return await action.tvlHistoryBetween(address, start, end, currency);
+        }
+      }
+      throw new Error("Unable to find TVL History between for address " + address);
+    },
+    async globalTvlHistorySlice(start = 0, length = 1, currency: CurrencySymbol = "usd") {
       assert(stats.global[currency], "Invalid currency type: " + currency);
       return stats.global[currency].history.tvl.sliceByGlobal(start, length);
+    },
+    async tvlHistorySlice(address: string, start = 0, length = 1, currency: CurrencySymbol = "usd") {
+      assert(address, "requires contract address");
+      for (const action of contractActions) {
+        if (await action.hasAddress(address)) {
+          return action.tvlHistorySlice(address, start, length, currency);
+        }
+      }
+      throw new Error("Unable to find TVL History slice for address " + address);
+    },
+    async tvm(address: string, currency: CurrencySymbol = "usd") {
+      assert(address, "requires contract address");
+      for (const action of contractActions) {
+        if (await action.hasAddress(address)) {
+          return await action.tvm([address], currency);
+        }
+      }
+      throw new Error("Unable to find TVM for address " + address);
+    },
+    async tvmHistoryBetween(address: string, start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") {
+      assert(address, "requires contract address");
+      for (const action of contractActions) {
+        if (await action.hasAddress(address)) {
+          return await action.tvmHistoryBetween(address, start, end, currency);
+        }
+      }
+      throw new Error("Unable to find TVM History between for address " + address);
+    },
+    async tvmHistorySlice(address: string, start = 0, length = 1, currency: CurrencySymbol = "usd") {
+      assert(address, "requires contract address");
+      for (const action of contractActions) {
+        if (await action.hasAddress(address)) {
+          return await action.tvmHistorySlice(address, start, length, currency);
+        }
+      }
+      throw new Error("Unable to find TVM History slice for address " + address);
     },
   };
 
