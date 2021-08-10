@@ -147,10 +147,10 @@ export default async (env: ProcessEnv) => {
   await services.lspCreator.update();
   console.log("Got all LSP addresses");
 
-  await services.emps();
+  await services.emps(0);
   console.log("Updated EMP state");
 
-  await services.lsps.update();
+  await services.lsps.update(0);
   console.log("Updated LSP state");
 
   await services.erc20s.update();

@@ -16,7 +16,7 @@ export default (config: Config, appState: Dependencies) => {
 
   // default props we want to query on contract
   const staticProps: [string, (x: any) => any][] = [
-    // ["pairName", parseBytes],
+    ["pairName", toString],
     ["collateralPerPair", toString],
     ["priceIdentifier", parseBytes],
     ["collateralToken", toString],
