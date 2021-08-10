@@ -14,8 +14,11 @@ type Dependencies = Pick<
   "lsps" | "registeredLsps" | "provider" | "collateralAddresses" | "shortAddresses" | "longAddresses" | "multicall"
 >;
 
-// this contract updated to have pairName
-const registeredContracts = ["0x6B435F5C417d1D058683E2B175d8396F09f2186d"];
+// this contract updated to have pairName                                 // does not have pairname
+const registeredContracts = [
+  "0x6B435F5C417d1D058683E2B175d8396F09f2186d",
+  "0x372802d8A2D69bB43872a1AABe2bd403a0FafA1F",
+];
 
 describe("lsp-state service", function () {
   let appState: Dependencies;
@@ -65,6 +68,13 @@ describe("lsp-state service", function () {
     assert.ok(result.expiryPercentLong);
     assert.ok(result.contractState >= 0);
   });
+  it("readOptionalState", async function () {
+    const [address] = registeredContracts;
+    const service = Service({}, appState);
+    const instance = await uma.clients.lsp.connect(address, appState.provider);
+    const result = await service.utils.getOptionalProps(instance, address);
+    assert.equal(result.pairName, "SUSHIsBOND July 2024");
+  });
   it("readStaticState", async function () {
     const [address] = registeredContracts;
     const service = Service({}, appState);
@@ -72,7 +82,6 @@ describe("lsp-state service", function () {
     const result = await service.utils.getStaticProps(instance, address);
     assert.equal(result.address, address);
     assert.ok(result.updated > 0);
-    assert.equal(result.pairName, "SUSHIsBOND July 2024");
     assert.equal(result.collateralPerPair, "200000000000000000000");
     assert.equal(result.priceIdentifier, "SUSHIUSD");
     assert.equal(result.collateralToken, "0x6B3595068778DD592e39A122f4f5a5cF09C90fE2");
