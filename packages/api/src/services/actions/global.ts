@@ -81,7 +81,7 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     },
     async tvlHistoryBetween(address: string, start = 0, end: number = nowS(), currency: CurrencySymbol = "usd") {
       assert(address, "requires contract address");
-      // otherwise look up tvm for contract
+      // otherwise look up tvl for contract
       for (const action of contractActions) {
         if (await action.hasAddress(address)) {
           return await action.tvlHistoryBetween(address, start, end, currency);
@@ -95,7 +95,6 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     },
     async tvlHistorySlice(address: string, start = 0, length = 1, currency: CurrencySymbol = "usd") {
       assert(address, "requires contract address");
-      // otherwise look up tvm for contract
       for (const action of contractActions) {
         if (await action.hasAddress(address)) {
           return action.tvlHistorySlice(address, start, length, currency);
@@ -105,7 +104,6 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     },
     async tvm(address: string, currency: CurrencySymbol = "usd") {
       assert(address, "requires contract address");
-      // otherwise look up tvm for contract
       for (const action of contractActions) {
         if (await action.hasAddress(address)) {
           return await action.tvm([address], currency);

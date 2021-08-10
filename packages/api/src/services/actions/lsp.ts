@@ -47,6 +47,10 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
       addresses = addresses ? lodash.castArray(addresses) : [];
       return queries.sumTvl(addresses, currency);
     },
+    // lsp does not support tvm at this time, but we want a function here for consistency with emp interface
+    async tvm() {
+      return "0";
+    },
     async tvlHistoryBetween(
       contractAddress: string,
       start = 0,
@@ -55,6 +59,14 @@ export function Handlers(config: Config, appState: Dependencies): Actions {
     ) {
       assert(stats.lsp[currency], "Invalid currency type: " + currency);
       return stats.lsp[currency].history.tvl.betweenByAddress(contractAddress, start, end);
+    },
+    // this is not supported
+    async tvmHistoryBetween() {
+      throw new Error("LSP does not support TVM");
+    },
+    // this is not supported
+    async tvmHistorySlice() {
+      throw new Error("LSP does not support TVM");
     },
     async tvlHistorySlice(contractAddress: string, start = 0, length = 1, currency: CurrencySymbol = "usd") {
       assert(stats.lsp[currency], "Invalid currency type: " + currency);
