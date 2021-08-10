@@ -3,6 +3,7 @@
 
 import { ConvertDecimals, LiquidationStatesEnum, getFromBlock } from "@uma/common";
 import type { Abi } from "../types";
+import type { ExpiringMultiPartyWeb3, PerpetualWeb3 } from "@uma/contracts-node";
 import type Web3 from "web3";
 import { aggregateTransactionsAndCall } from "../helpers/multicall";
 import type { Logger } from "winston";
@@ -10,6 +11,9 @@ import type { Logger } from "winston";
 import Promise from "bluebird";
 
 class FinancialContractClient {
+
+  public readonly financialContract: ExpiringMultiPartyWeb3 | PerpetualWeb3;
+
   /**
    * @notice Constructs new FinancialContractClient.
    * @param {Object} logger Winston module used to send logs.
@@ -27,21 +31,18 @@ class FinancialContractClient {
    * @return None or throws an Error.
    */
   constructor(
-    logger: Logger,
-    financialContractAbi: Abi,
-    web3: Web3,
-    financialContractAddress: string,
-    multicallContractAddress: string,
-    collateralDecimals = 18,
-    syntheticDecimals = 18,
-    priceFeedDecimals = 18,
-    contractType = "ExpiringMultiParty"
+    readonly logger: Logger,
+    readonly financialContractAbi: Abi,
+    readonly web3: Web3,
+    readonly financialContractAddress: string,
+    readonly multicallContractAddress: string,
+    readonly collateralDecimals = 18,
+    readonly syntheticDecimals = 18,
+    readonly priceFeedDecimals = 18,
+    readonly contractType: "ExpiringMultiParty" | "Perpetual" = "ExpiringMultiParty"
     // Default to Expiring Multi Party for now to enable backwards compatibility with other bots.
     // This will be removed as soon as the other bots have been updated to work with these contract types.
   ) {
-    this.logger = logger;
-    this.web3 = web3;
-
     // Financial Contract contract
     this.financialContract = new web3.eth.Contract(financialContractAbi, financialContractAddress);
     this.financialContractAddress = financialContractAddress;
@@ -81,7 +82,7 @@ class FinancialContractClient {
 
     this.fixedPointAdjustment = this.toBN(this.toWei("1"));
 
-    if (contractType != "ExpiringMultiParty" && contractType != "Perpetual")
+    if (contractType !== "ExpiringMultiParty" && contractType !== "Perpetual")
       throw new Error(
         `Invalid contract type provided: ${contractType}! The financial product client only supports ExpiringMultiParty or Perpetual`
       );

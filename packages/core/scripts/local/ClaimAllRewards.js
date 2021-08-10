@@ -141,48 +141,57 @@ async function claimRewards() {
     return;
   }
 
-  const dataArray = retrievableRewards.map(({ voter, priceRequests, round, voting }) => {
-    return voting.methods.retrieveRewards(voter, round, priceRequests).encodeABI();
-  });
-
-  const valuesArray = retrievableRewards.map(() => "0");
-  const targetArray = retrievableRewards.map(({ voting }) => voting.options.address);
-
-  const transactionBatcher = await TransactionBatcher.at(argv.batcherAddress);
-
   const gasEstimator = new GasEstimator(
     winston.createLogger({ silent: true }),
     60, // Time between updates.
     networkId
   );
 
-  // These nested calls just chunk up the above arrays into 30 transaction chunks, then organize them in groups for
-  // sending on-chain.
-  await Promise.all(
-    lodash
-      .zip(...[targetArray, valuesArray, dataArray].map((arr) => lodash.chunk(arr, 30)))
-      .map(async ([chunkedTargetArray, chunkedValueArray, chunkedDataArray]) => {
-        const txn = transactionBatcher.contract.methods.batchSend(
-          chunkedTargetArray,
-          chunkedValueArray,
-          chunkedDataArray
-        );
-        const gasEstimate = await txn.estimateGas({ from: account });
+  await Promise.all(retrievableRewards.map(async ({ voter, priceRequests, round, voting }) => {
+    const txn = voting.methods.retrieveRewards(voter, round, priceRequests);
+    const gasEstimate = await txn.estimateGas({ from: account });
 
-        if (gasEstimate > 6000000) {
-          throw "The transaction requires too much gas. Will need to be split up.";
-        }
-        await gasEstimator.update();
+    const receipt = await txn.send({
+      gasPrice: gasEstimator.getCurrentFastPrice(),
+      gas: gasEstimate * 2,
+      from: account,
+    });
 
-        const receipt = await txn.send({
-          gasPrice: gasEstimator.getCurrentFastPrice(),
-          gas: gasEstimate * 2,
-          from: account,
-        });
+    console.log("Transaction hash", receipt.transactionHash);
+  }));
 
-        console.log("Transaction hash", receipt.transactionHash);
-      })
-  );
+  // const valuesArray = retrievableRewards.map(() => "0");
+  // const targetArray = retrievableRewards.map(({ voting }) => voting.options.address);
+
+  // const transactionBatcher = await TransactionBatcher.at(argv.batcherAddress);
+
+  // // These nested calls just chunk up the above arrays into 30 transaction chunks, then organize them in groups for
+  // // sending on-chain.
+  // await Promise.all(
+  //   lodash
+  //     .zip(...[targetArray, valuesArray, dataArray].map((arr) => lodash.chunk(arr, 30)))
+  //     .map(async ([chunkedTargetArray, chunkedValueArray, chunkedDataArray]) => {
+  //       const txn = transactionBatcher.contract.methods.batchSend(
+  //         chunkedTargetArray,
+  //         chunkedValueArray,
+  //         chunkedDataArray
+  //       );
+  //       const gasEstimate = await txn.estimateGas({ from: account });
+
+  //       if (gasEstimate > 6000000) {
+  //         throw "The transaction requires too much gas. Will need to be split up.";
+  //       }
+  //       await gasEstimator.update();
+
+  //       const receipt = await txn.send({
+  //         gasPrice: gasEstimator.getCurrentFastPrice(),
+  //         gas: gasEstimate * 2,
+  //         from: account,
+  //       });
+
+  //       console.log("Transaction hash", receipt.transactionHash);
+  //     })
+  // );
 }
 
 async function wrapper(callback) {
