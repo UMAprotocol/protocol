@@ -49,7 +49,7 @@ export function getGckmsConfig(keys = arrayify(argv.keys), network = argv.networ
     const overrideFname = ".GckmsOverride.js";
     try {
       if (fs.existsSync(`${__dirname}/${overrideFname}`)) {
-        configOverride = JSON.parse(fs.readFileSync(`./${overrideFname}`).toString("utf8"));
+        configOverride = require(`./${overrideFname}`);
       }
     } catch (err) {
       console.error(err);
