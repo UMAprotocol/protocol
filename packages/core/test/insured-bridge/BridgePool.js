@@ -6,6 +6,7 @@ const {
   TokenRolesEnum,
   InsuredBridgeRelayStateEnum,
   ZERO_ADDRESS,
+  MAX_UINT_VAL,
 } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;
 const { hexToUtf8, utf8ToHex, toWei, toBN, soliditySha3 } = web3.utils;
@@ -38,6 +39,7 @@ let timer;
 let optimisticOracle;
 let l1Token;
 let l2Token;
+let lpToken;
 let mockOracle;
 
 // Hard-coded test params:
@@ -91,7 +93,16 @@ let relayAncillaryData;
 let relayAncillaryDataHash;
 
 describe("BridgePool", () => {
-  let accounts, owner, depositContractImpersonator, depositor, relayer, recipient, instantRelayer, disputer, rando;
+  let accounts,
+    owner,
+    depositContractImpersonator,
+    depositor,
+    relayer,
+    liquidityProvider,
+    recipient,
+    instantRelayer,
+    disputer,
+    rando;
 
   before(async function () {
     accounts = await web3.eth.getAccounts();
@@ -100,6 +111,7 @@ describe("BridgePool", () => {
       depositContractImpersonator,
       depositor,
       relayer,
+      liquidityProvider,
       recipient,
       l2Token,
       instantRelayer,
@@ -155,18 +167,25 @@ describe("BridgePool", () => {
     await bridgeAdmin.methods.setDepositContract(depositContractImpersonator).send({ from: owner });
 
     // New BridgePool linked to BridgeFactory
-    bridgePool = await BridgePool.new(bridgeAdmin.options.address, timer.options.address).send({ from: owner });
+    bridgePool = await BridgePool.new(
+      bridgeAdmin.options.address,
+      l1Token.options.address,
+      timer.options.address
+    ).send({ from: owner });
+
+    // The bridge pool has an embedded ERC20 to represent LP positions.
+    lpToken = await ERC20.at(bridgePool.options.address);
 
     // Add L1-L2 token mapping
     await bridgeAdmin.methods
       .whitelistToken(l1Token.options.address, l2Token, bridgePool.options.address, defaultGasLimit)
       .send({ from: owner });
 
-    // Seed Pool, relayers, and disputer with tokens.
-    await l1Token.methods.mint(bridgePool.options.address, initialPoolLiquidity).send({ from: owner });
+    // Seed relayers, and disputer with tokens.
     await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
     await l1Token.methods.mint(disputer, totalRelayBond).send({ from: owner });
     await l1Token.methods.mint(instantRelayer, relayAmountSubFee).send({ from: owner });
+    await l1Token.methods.mint(liquidityProvider, initialPoolLiquidity).send({ from: owner });
 
     // Store expected relay data that we'll use to verify contract state:
     depositData = {
@@ -231,6 +250,11 @@ describe("BridgePool", () => {
     assert.equal(hexToUtf8(relayAncillaryData), expectedAncillaryDataUtf8);
   });
   describe("Relay deposit", () => {
+    beforeEach(async function () {
+      // Add liquidity to the pool
+      await l1Token.methods.approve(bridgePool.options.address, initialPoolLiquidity).send({ from: liquidityProvider });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
+    });
     it("Basic checks", async () => {
       // Fails if approval not given by relayer.
       assert(
@@ -241,7 +265,6 @@ describe("BridgePool", () => {
               depositData.depositTimestamp,
               depositData.recipient,
               depositData.l2Sender,
-              depositData.l1Token,
               depositData.amount,
               relayData.realizedFeePct,
               depositData.maxFeePct,
@@ -261,7 +284,6 @@ describe("BridgePool", () => {
               depositData.depositTimestamp,
               depositData.recipient,
               depositData.l2Sender,
-              depositData.l1Token,
               depositData.amount,
               toBN(defaultMaxFee)
                 .add(toBN(toWei("0.01")))
@@ -288,7 +310,7 @@ describe("BridgePool", () => {
               depositData.depositTimestamp,
               depositData.recipient,
               depositData.l2Sender,
-              depositData.l1Token,
+
               initialPoolLiquidity,
               relayData.realizedFeePct,
               depositData.maxFeePct,
@@ -309,7 +331,7 @@ describe("BridgePool", () => {
               depositData.depositTimestamp,
               depositData.recipient,
               depositData.l2Sender,
-              depositData.l1Token,
+
               toBN(initialPoolLiquidity)
                 .mul(toBN(toWei("0.99")))
                 .div(toBN(toWei("1"))),
@@ -334,7 +356,6 @@ describe("BridgePool", () => {
           depositData.depositTimestamp,
           depositData.recipient,
           depositData.l2Sender,
-          depositData.l1Token,
           depositData.amount,
           relayData.realizedFeePct,
           depositData.maxFeePct,
@@ -423,7 +444,6 @@ describe("BridgePool", () => {
               depositData.depositTimestamp,
               depositData.recipient,
               depositData.l2Sender,
-              depositData.l1Token,
               depositData.amount,
               duplicateRelayData.realizedFeePct,
               depositData.maxFeePct,
@@ -435,6 +455,11 @@ describe("BridgePool", () => {
     });
   });
   describe("Speed up relay", () => {
+    beforeEach(async function () {
+      // Add liquidity to the pool
+      await l1Token.methods.approve(bridgePool.options.address, initialPoolLiquidity).send({ from: liquidityProvider });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
+    });
     it("Can add instant relayer to pending relay", async () => {
       // Propose new relay:
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
@@ -444,7 +469,6 @@ describe("BridgePool", () => {
           depositData.depositTimestamp,
           depositData.recipient,
           depositData.l2Sender,
-          depositData.l1Token,
           depositData.amount,
           relayData.realizedFeePct,
           depositData.maxFeePct,
@@ -483,7 +507,6 @@ describe("BridgePool", () => {
           depositData.depositTimestamp,
           depositData.recipient,
           depositData.l2Sender,
-          depositData.l1Token,
           depositData.amount,
           relayData.realizedFeePct,
           depositData.maxFeePct,
@@ -523,6 +546,11 @@ describe("BridgePool", () => {
     });
   });
   describe("Dispute pending relay", () => {
+    beforeEach(async function () {
+      // Add liquidity to the pool
+      await l1Token.methods.approve(bridgePool.options.address, initialPoolLiquidity).send({ from: liquidityProvider });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
+    });
     it("OptimisticOracle callback deletes relay and marks as a disputed relay", async () => {
       // Proposer approves pool to withdraw total bond.
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
@@ -532,7 +560,6 @@ describe("BridgePool", () => {
           depositData.depositTimestamp,
           depositData.recipient,
           depositData.l2Sender,
-          depositData.l1Token,
           depositData.amount,
           relayData.realizedFeePct,
           depositData.maxFeePct,
@@ -604,7 +631,6 @@ describe("BridgePool", () => {
               depositData.depositTimestamp,
               depositData.recipient,
               depositData.l2Sender,
-              depositData.l1Token,
               depositData.amount,
               relayData.realizedFeePct,
               depositData.maxFeePct,
@@ -622,7 +648,7 @@ describe("BridgePool", () => {
             depositData.depositTimestamp,
             depositData.recipient,
             depositData.l2Sender,
-            depositData.l1Token,
+
             depositData.amount,
             toBN(relayData.realizedFeePct).mul(toBN("2")),
             depositData.maxFeePct,
@@ -642,7 +668,7 @@ describe("BridgePool", () => {
             depositData.depositTimestamp,
             depositData.recipient,
             depositData.l2Sender,
-            depositData.l1Token,
+
             depositData.amount,
             relayData.realizedFeePct,
             depositData.maxFeePct,
@@ -660,7 +686,6 @@ describe("BridgePool", () => {
           depositData.depositTimestamp,
           depositData.recipient,
           depositData.l2Sender,
-          depositData.l1Token,
           depositData.amount,
           relayData.realizedFeePct,
           depositData.maxFeePct,
@@ -698,7 +723,6 @@ describe("BridgePool", () => {
           depositData.depositTimestamp,
           depositData.recipient,
           depositData.l2Sender,
-          depositData.l1Token,
           depositData.amount,
           relayData.realizedFeePct,
           depositData.maxFeePct,
@@ -724,7 +748,6 @@ describe("BridgePool", () => {
           depositData.depositTimestamp,
           depositData.recipient,
           depositData.l2Sender,
-          depositData.l1Token,
           depositData.amount,
           relayData.realizedFeePct,
           depositData.maxFeePct,
@@ -791,6 +814,11 @@ describe("BridgePool", () => {
     });
   });
   describe("Settle finalized relay", () => {
+    beforeEach(async function () {
+      // Add liquidity to the pool
+      await l1Token.methods.approve(bridgePool.options.address, initialPoolLiquidity).send({ from: liquidityProvider });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
+    });
     it("Cannot settle disputed", async () => {
       // Proposer approves pool to withdraw total bond.
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
@@ -800,7 +828,6 @@ describe("BridgePool", () => {
           depositData.depositTimestamp,
           depositData.recipient,
           depositData.l2Sender,
-          depositData.l1Token,
           depositData.amount,
           relayData.realizedFeePct,
           depositData.maxFeePct,
@@ -838,7 +865,6 @@ describe("BridgePool", () => {
           depositData.depositTimestamp,
           depositData.recipient,
           depositData.l2Sender,
-          depositData.l1Token,
           depositData.amount,
           relayData.realizedFeePct,
           depositData.maxFeePct,
@@ -938,7 +964,6 @@ describe("BridgePool", () => {
           depositData.depositTimestamp,
           depositData.recipient,
           depositData.l2Sender,
-          depositData.l1Token,
           depositData.amount,
           relayData.realizedFeePct,
           depositData.maxFeePct,
@@ -993,6 +1018,53 @@ describe("BridgePool", () => {
         toBN(initialPoolLiquidity).sub(proposerRewardAmount).toString(),
         "BridgePool should have balance reduced by rewards only"
       );
+    });
+  });
+  describe("Liquidity provision", () => {
+    beforeEach(async function () {
+      await l1Token.methods.mint(rando, toWei("100")).send({ from: owner });
+    });
+    it("Deposit liquidity", async () => {
+      // Before adding liquidity pool should have none and LP should have no LP tokens.
+      assert.equal((await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(), "0");
+      assert.equal((await lpToken.methods.balanceOf(rando).call()).toString(), "0");
+
+      // Starting exchange rate should be 1, even though there is no liquidity in the pool.
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Approve funds and add to liquidity.
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: rando });
+      await bridgePool.methods.addLiquidity(toWei("10")).send({ from: rando });
+
+      // Check balances have updated accordingly. Check liquid reserves incremented. Check exchange rate unchanged.
+      assert.equal((await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(), toWei("10"));
+      assert.equal((await lpToken.methods.balanceOf(rando).call()).toString(), toWei("10"));
+      assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("10"));
+      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("0"));
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+    });
+    it("Withdraw liquidity", async () => {
+      // Approve funds and add to liquidity.
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: rando });
+      await bridgePool.methods.addLiquidity(toWei("10")).send({ from: rando });
+
+      // LP redeems half their liquidity. Balance should change accordingly.
+      await bridgePool.methods.removeLiquidity(toWei("5")).send({ from: rando });
+
+      assert.equal((await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(), toWei("5"));
+      assert.equal((await lpToken.methods.balanceOf(rando).call()).toString(), toWei("5"));
+      assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("5"));
+      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("0"));
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // LP redeems their remaining liquidity. Balance should change accordingly.
+      await bridgePool.methods.removeLiquidity(toWei("5")).send({ from: rando });
+
+      assert.equal((await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(), toWei("0"));
+      assert.equal((await lpToken.methods.balanceOf(rando).call()).toString(), toWei("0"));
+      assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("0"));
+      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("0"));
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
     });
   });
 });
