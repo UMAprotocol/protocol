@@ -132,9 +132,9 @@ hub.post("/", async (req, res) => {
     // hub is called again.
     await _saveQueriedBlockNumber(req.body.configFile, blockNumbersForChain);
 
-    // Finally, loop over all config objects in the config file and for each append a call promise to the promiseArray. Note
-    // that each promise is a race between the serverlessSpoke command and a `_rejectAfterDelay`. This places an upper
-    // bound on how long each spoke can take to respond, acting as a timeout for each spoke call.
+    // Finally, loop over all config objects in the config file and for each append a call promise to the promiseArray.
+    // Note that each promise is a race between the serverlessSpoke command and a `_rejectAfterDelay`. This places an
+    // upper bound on how long each spoke can take to respond, acting as a timeout for each spoke call.
     let promiseArray = [];
     let botConfigs = {};
     for (const botName in configObject) {
@@ -422,8 +422,10 @@ async function _postJson(url, body) {
 }
 
 // Takes in a spokeResponse object for a given botKey and identifies if the response includes an error. If it does,
-// append the error information to the errorOutputs. If there is no error, append to validOutputs.
+// append the error information to the errorOutputs. An error could be rejected from the spoke, timeout in the spoke,
+// an error code from the spoke or the stdout is a blank string. If there is no error, append to validOutputs.
 function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs) {
+  console.log("spokeResponseXXXXXXXXX", spokeResponse);
   if (spokeResponse.status == "rejected" && spokeResponse.reason.status == "timeout") {
     errorOutputs[botKey] = { status: "timeout", message: spokeResponse.reason.message, botIdentifier: botKey };
   } else if (
@@ -441,7 +443,27 @@ function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs
           spokeResponse.reason.response.data.execResponse),
       botIdentifier: botKey,
     };
-  } else {
+  }
+  // } else if (spokeResponse.value && spokeResponse.value.execResponse && spokeResponse.value.execResponse.stdout == "") {
+  //   errorOutputs[botKey] = {
+  //     status: spokeResponse.status,
+  //     execResponse: spokeResponse.value && spokeResponse.value.execResponse,
+  //     status: "empty stdout",
+  //     botIdentifier: botKey,
+  //   };
+  //   // } else if (
+  //   //   spokeResponse.value &&
+  //   //   spokeResponse.value.execResponse &&
+  //   //   !spokeResponse.value.execResponse.stdout.includes("started")
+  //   // ) {
+  //   //   errorOutputs[botKey] = {
+  //   //     status: spokeResponse.status,
+  //   //     execResponse: spokeResponse.value && spokeResponse.value.execResponse,
+  //   //     status: "missing `Started` key word",
+  //   //     botIdentifier: botKey,
+  //   //   };
+  // }
+  else {
     validOutputs[botKey] = {
       status: spokeResponse.status,
       execResponse: spokeResponse.value && spokeResponse.value.execResponse,
