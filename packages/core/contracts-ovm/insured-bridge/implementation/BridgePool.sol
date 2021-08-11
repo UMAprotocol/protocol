@@ -298,46 +298,36 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         // will be reset to UNINITIALIZED. If the proposal is not disputed, and there is a price available, then the
         // proposal must have passed the dispute period, assuming the proposal passed optimistic oracle liveness.
 
+        // Update the relay state to Finalized. This prevents any re-settling of a relay.
         relay.relayState = RelayState.Finalized;
 
         // Reward relayers and pay out recipient.
 
-        // Depending on the if there is an instant relayer set or not, branch to payout accordingly.
-        if (relay.instantRelayer != address(0)) {
-            // If there was an instant relayer, then the transfer was sped up. In this case, the recipient has already
-            // been paid out and we refund the instant relayer.
+        // At this point there are two possible cases:
+        // - This was a slow relay: In this case, a) pay the slow relayer their reward and b) pay the recipient of the
+        //      amount minus the realized LP fee and the slow Relay fee. The transfer was not sped up so no instant fee.
+        // - This was a instant relay: In this case, a) pay the slow relayer their reward and b) pay the instant relayer
+        //      the full bridging amount, minus the realized LP fee and minus the slow relay fee. When the instant
+        //      relayer called speedUpRelay they were docked this same amount, minus the instant relayer fee. As a
+        //      result, they are effectively paid what they spent when speeding up the relay + the instantRelayFee.
 
-            // Pay the instant relayer the amount - the LP fee & slow relay fee. They are effectively paid what
-            // they spent when speeding up the relay + the instantRelayFee.
-            l1Token.safeTransfer(
-                relay.instantRelayer,
-                _depositData.amount -
-                    _getAmountFromPct(relay.realizedLpFeePct + _depositData.slowRelayFeePct, _depositData.amount)
-            );
+        uint256 instantRelayerOrRecipientAmount =
+            _depositData.amount -
+                _getAmountFromPct(relay.realizedLpFeePct + _depositData.slowRelayFeePct, _depositData.amount);
 
-            // The slow relayer gets paid the slow relay fee.
-            l1Token.safeTransfer(
-                relay.slowRelayer,
-                _getAmountFromPct(_depositData.slowRelayFeePct, _depositData.amount)
-            );
-        } else {
-            // If there was no instant relayer, then we are finalizing a slow relay. In this case pay the recipient
-            // the amount minus the LP fee & slow relay fee. They are refunded the instant relayer fee.
-            l1Token.safeTransfer(
-                _depositData.recipient,
-                _depositData.amount -
-                    _getAmountFromPct(relay.realizedLpFeePct + _depositData.slowRelayFeePct, _depositData.amount)
-            );
+        l1Token.safeTransfer(
+            relay.instantRelayer != address(0) ? relay.instantRelayer : _depositData.recipient,
+            instantRelayerOrRecipientAmount
+        );
 
-            // The slow relayer is sent the slow relay fee.
-            l1Token.safeTransfer(
-                relay.slowRelayer,
-                _getAmountFromPct(_depositData.slowRelayFeePct, _depositData.amount)
-            );
-        }
+        // The slow relayer gets paid the slow relay fee. This is the same irrespective if the relay was sped up or not.
+        uint256 slowRelayerAmount = _getAmountFromPct(_depositData.slowRelayFeePct, _depositData.amount);
+        l1Token.safeTransfer(relay.slowRelayer, slowRelayerAmount);
 
-        utilizedReserves += _depositData.amount;
-        liquidReserves -= _depositData.amount;
+        uint256 totalAmountSent = instantRelayerOrRecipientAmount + slowRelayerAmount;
+
+        utilizedReserves += totalAmountSent;
+        liquidReserves -= totalAmountSent;
 
         emit SettledRelay(depositHash, keccak256(getRelayAncillaryData(_depositData, relay)), msg.sender);
     }
