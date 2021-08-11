@@ -536,20 +536,19 @@ contract("ServerlessHub.js", function (accounts) {
       }
     }
   });
-  it.only("ServerlessHub can correctly deal with multiple providers", async function () {
+  it("ServerlessHub can correctly deal with multiple providers", async function () {
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
     const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
 
     // Temporarily spin up a new web3 provider with an overridden chain ID. The hub should be able to detect the
     // alternative node URL and fetch its chain ID.
-    const alternativeChainId = 666;
-    const alternativeNode = ganache.server({ _chainIdRpc: alternativeChainId });
-    const alternativeNodePort = 6545;
-    await alternativeNode.listen(alternativeNodePort, async function (err, blockchain) {});
+    const alternateChainId = 666;
+    const alternateNode = ganache.server({ _chainIdRpc: alternateChainId });
+    const alternateNodePort = 7777;
+    alternateNode.listen(alternateNodePort);
     // This server should automatically tear down after the test.
-    // const alternativeWeb3 = new Web3("http://127.0.0.1:" + alternativeNodePort);
-    const alternativeWeb3Url = "http://127.0.0.1:" + alternativeNodePort;
+    const alternateWeb3 = new Web3("http://127.0.0.1:" + alternateNodePort);
 
     const hubConfig = {
       testServerlessMonitor: {
@@ -565,7 +564,7 @@ contract("ServerlessHub.js", function (accounts) {
       testServerlessMonitor2: {
         serverlessCommand: "yarn --silent monitors --network test",
         environmentVariables: {
-          CUSTOM_NODE_URL: alternativeWeb3Url,
+          CUSTOM_NODE_URL: alternateWeb3.currentProvider.host,
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           PRICE_FEED_CONFIG: defaultPricefeedConfig,
@@ -575,7 +574,7 @@ contract("ServerlessHub.js", function (accounts) {
       testServerlessMonitor3: {
         serverlessCommand: "yarn --silent monitors --network test",
         environmentVariables: {
-          CUSTOM_NODE_URL: alternativeWeb3Url,
+          CUSTOM_NODE_URL: alternateWeb3.currentProvider.host,
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           PRICE_FEED_CONFIG: defaultPricefeedConfig,
@@ -592,14 +591,13 @@ contract("ServerlessHub.js", function (accounts) {
     const validBody = { bucket: testBucket, configFile: testConfigFile };
 
     const validResponse = await sendHubRequest(validBody);
-    console.log("validResponseBOIII", validResponse);
     assert.equal(validResponse.res.statusCode, 200); // no error code
 
     // Check for two hub logs caching each unique chain ID seen:
     assert.isTrue(spyLogIncludes(hubSpy, 3, defaultChainId));
-    assert.isTrue(spyLogIncludes(hubSpy, 3, alternativeChainId));
-    assert.isTrue(false);
+    assert.isTrue(spyLogIncludes(hubSpy, 3, alternateChainId));
   });
+
   it("ServerlessHub can detects errors if the spoke process has a blank stdout or missing `started`", async function () {
     // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
     // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be

@@ -425,7 +425,6 @@ async function _postJson(url, body) {
 // append the error information to the errorOutputs. An error could be rejected from the spoke, timeout in the spoke,
 // an error code from the spoke or the stdout is a blank string. If there is no error, append to validOutputs.
 function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs) {
-  console.log("spokeResponseXXXXXXXXX", spokeResponse);
   if (spokeResponse.status == "rejected" && spokeResponse.reason.status == "timeout") {
     errorOutputs[botKey] = { status: "timeout", message: spokeResponse.reason.message, botIdentifier: botKey };
   } else if (
@@ -443,27 +442,25 @@ function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs
           spokeResponse.reason.response.data.execResponse),
       botIdentifier: botKey,
     };
-  }
-  // } else if (spokeResponse.value && spokeResponse.value.execResponse && spokeResponse.value.execResponse.stdout == "") {
-  //   errorOutputs[botKey] = {
-  //     status: spokeResponse.status,
-  //     execResponse: spokeResponse.value && spokeResponse.value.execResponse,
-  //     status: "empty stdout",
-  //     botIdentifier: botKey,
-  //   };
-  //   // } else if (
-  //   //   spokeResponse.value &&
-  //   //   spokeResponse.value.execResponse &&
-  //   //   !spokeResponse.value.execResponse.stdout.includes("started")
-  //   // ) {
-  //   //   errorOutputs[botKey] = {
-  //   //     status: spokeResponse.status,
-  //   //     execResponse: spokeResponse.value && spokeResponse.value.execResponse,
-  //   //     status: "missing `Started` key word",
-  //   //     botIdentifier: botKey,
-  //   //   };
-  // }
-  else {
+  } else if (spokeResponse.value && spokeResponse.value.execResponse && spokeResponse.value.execResponse.stdout == "") {
+    errorOutputs[botKey] = {
+      status: spokeResponse.status,
+      execResponse: spokeResponse.value && spokeResponse.value.execResponse,
+      reason: "empty stdout",
+      botIdentifier: botKey,
+    };
+  } else if (
+    spokeResponse.value &&
+    spokeResponse.value.execResponse &&
+    !spokeResponse.value.execResponse.stdout.includes("started")
+  ) {
+    errorOutputs[botKey] = {
+      status: spokeResponse.status,
+      execResponse: spokeResponse.value && spokeResponse.value.execResponse,
+      reason: "missing `Started` key word",
+      botIdentifier: botKey,
+    };
+  } else {
     validOutputs[botKey] = {
       status: spokeResponse.status,
       execResponse: spokeResponse.value && spokeResponse.value.execResponse,
