@@ -27,6 +27,10 @@ let depositBox, l2CrossDomainMessengerMock, l1TokenAddress, l2Token, timer;
 l1TokenAddress = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
 
 const minimumBridgingDelay = 60; // L2->L1 token bridging must wait at least this time.
+const depositAmount = toWei("50");
+const slowRelayFeePct = toWei("0.005");
+const instantRelayFeePct = toWei("0.005");
+const quoteDeadlineOffset = 60; // 60 seconds into the future.
 
 describe("OVM_BridgeDepositBox", () => {
   // Account objects
@@ -209,11 +213,12 @@ describe("OVM_BridgeDepositBox", () => {
 
       assert.equal((await l2Token.methods.balanceOf(depositBox.options.address).call()).toString(), "0");
 
+      const quoteDeadline = (await timer.methods.getCurrentTime().call()) + quoteDeadlineOffset;
       const tx = await depositBox.methods
-        .deposit(user1, l2Token.options.address, toWei("50"), toWei("0.05"))
+        .deposit(user1, l2Token.options.address, depositAmount, slowRelayFeePct, instantRelayFeePct, quoteDeadline)
         .send({ from: user1 });
 
-      assert.equal((await l2Token.methods.balanceOf(depositBox.options.address).call()).toString(), toWei("50"));
+      assert.equal((await l2Token.methods.balanceOf(depositBox.options.address).call()).toString(), depositAmount);
 
       const expectedDepositTimestamp = await timer.methods.getCurrentTime().call();
       await assertEventEmitted(tx, depositBox, "FundsDeposited", (ev) => {
@@ -223,8 +228,10 @@ describe("OVM_BridgeDepositBox", () => {
           ev.sender == user1 &&
           ev.recipient == user1 &&
           ev.l1Token == l1TokenAddress &&
-          ev.amount == toWei("50") &&
-          ev.maxFeePct == toWei("0.05")
+          ev.amount == depositAmount &&
+          ev.slowRelayFeePct == slowRelayFeePct &&
+          ev.instantRelayFeePct == instantRelayFeePct &&
+          ev.quoteDeadline == quoteDeadline
         );
       });
 
@@ -238,10 +245,18 @@ describe("OVM_BridgeDepositBox", () => {
 
       await l2Token_nonWhitelisted.methods.approve(depositBox.options.address, toWei("100")).send({ from: user1 });
 
+      const quoteDeadline = (await timer.methods.getCurrentTime().call()) + quoteDeadlineOffset;
       assert(
         await didContractThrow(
           depositBox.methods
-            .deposit(user1, l2Token_nonWhitelisted.options.address, toWei("50"), toWei("0.05"))
+            .deposit(
+              user1,
+              l2Token_nonWhitelisted.options.address,
+              depositAmount,
+              slowRelayFeePct,
+              instantRelayFeePct,
+              quoteDeadline
+            )
             .send({ from: user1 })
         )
       );
@@ -255,9 +270,40 @@ describe("OVM_BridgeDepositBox", () => {
 
       // Try to deposit and check it reverts.
       await l2Token.methods.approve(depositBox.options.address, toWei("100")).send({ from: user1 });
+      const quoteDeadline = (await timer.methods.getCurrentTime().call()) + quoteDeadlineOffset;
       assert(
         await didContractThrow(
-          depositBox.methods.deposit(user1, l2Token.options.address, toWei("50"), toWei("0.05")).send({ from: user1 })
+          depositBox.methods
+            .deposit(user1, l2Token.options.address, depositAmount, slowRelayFeePct, instantRelayFeePct, quoteDeadline)
+            .send({ from: user1 })
+        )
+      );
+    });
+    it("Reverts if sum of slow and instant relay fees exceed 50%", async () => {
+      // Try to deposit and check it reverts.
+      const quoteDeadline = (await timer.methods.getCurrentTime().call()) + quoteDeadlineOffset;
+      await l2Token.methods.approve(depositBox.options.address, toWei("100")).send({ from: user1 });
+      assert(
+        await didContractThrow(
+          depositBox.methods
+            .deposit(user1, l2Token.options.address, depositAmount, toWei("0.25"), toWei("0.26"), quoteDeadline)
+            .send({ from: user1 })
+        )
+      );
+    });
+    it("Reverts if deposit time after quoteDeadline", async () => {
+      const quoteDeadline = (await timer.methods.getCurrentTime().call()) + quoteDeadlineOffset;
+
+      // set the current time to be just after the quoteDeadline
+      await timer.methods.setCurrentTime(quoteDeadline + 1).send({ from: deployer });
+
+      // Try to deposit and check it reverts.
+      await l2Token.methods.approve(depositBox.options.address, toWei("100")).send({ from: user1 });
+      assert(
+        await didContractThrow(
+          depositBox.methods
+            .deposit(user1, l2Token.options.address, depositAmount, slowRelayFeePct, instantRelayFeePct, quoteDeadline)
+            .send({ from: user1 })
         )
       );
     });
@@ -280,8 +326,9 @@ describe("OVM_BridgeDepositBox", () => {
       // Deposit tokens as the user.
       await l2Token.methods.approve(depositBox.options.address, toWei("100")).send({ from: user1 });
 
+      const quoteDeadline = (await timer.methods.getCurrentTime().call()) + quoteDeadlineOffset;
       await depositBox.methods
-        .deposit(user1, l2Token.options.address, toWei("50"), toWei("0.05"))
+        .deposit(user1, l2Token.options.address, depositAmount, slowRelayFeePct, instantRelayFeePct, quoteDeadline)
         .send({ from: user1 });
 
       // Advance time enough to enable bridging of this token.
@@ -294,7 +341,7 @@ describe("OVM_BridgeDepositBox", () => {
       await assertEventEmitted(tx, depositBox, "TokensBridged", (ev) => {
         return (
           ev.l2Token == l2Token.options.address &&
-          ev.numberOfTokensBridged == toWei("50") &&
+          ev.numberOfTokensBridged == depositAmount &&
           ev.l1Gas == 0 &&
           ev.caller == rando
         );
@@ -307,15 +354,16 @@ describe("OVM_BridgeDepositBox", () => {
       const call = tokenBridgingCallsToBridge[0];
       assert.equal(call._l1Gas.toString(), 0); // right amount. We deposited 50e18.
       assert.equal(call._l2Token, l2Token.options.address); // right token.
-      assert.equal(call._amount.toString(), toWei("50")); // right amount. We deposited 50e18.
+      assert.equal(call._amount.toString(), depositAmount); // right amount. We deposited 50e18.
       assert.equal(call._l1Gas.toString(), 0); // right amount. We deposited 50e18.
     });
     it("Reverts if not enough time elapsed", async () => {
       // Deposit tokens as the user.
       await l2Token.methods.approve(depositBox.options.address, toWei("100")).send({ from: user1 });
 
+      const quoteDeadline = (await timer.methods.getCurrentTime().call()) + quoteDeadlineOffset;
       await depositBox.methods
-        .deposit(user1, l2Token.options.address, toWei("50"), toWei("0.05"))
+        .deposit(user1, l2Token.options.address, depositAmount, slowRelayFeePct, instantRelayFeePct, quoteDeadline)
         .send({ from: user1 });
 
       // Dont advance the timer by minimumBridgingDelay. Should revert.
