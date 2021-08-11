@@ -342,6 +342,10 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         emit SettledRelay(depositHash, keccak256(getRelayAncillaryData(_depositData, relay)), msg.sender);
     }
 
+    function finalizeL2BatchTransfer() public {
+        //TODO: implement this method that calls the canonical optimism bridge to pull any finalized L2->L1 transfers.
+    }
+
     /**
      * @notice OptimisticOracle will callback to this function after a pending relay is disputed. This function should
      * ensure that another slow relayer can fulfill the disputed relay for an L2 deposit.
