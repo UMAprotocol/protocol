@@ -4,6 +4,7 @@ cat << EOF
   test-integration:
     machine:
       image: ubuntu-2004:202010-01
+    working_directory: ~/protocol
     steps:
       - restore_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
@@ -11,8 +12,7 @@ cat << EOF
           name: Run integration tests
           command: |
             sudo apt update
-            sudo apt install nodejs
-            sudo apt install npm
+            sudo apt install nodejs npm
             npm install --global yarn
             yarn optimism-up
             yarn --cwd packages/core test-e2e
