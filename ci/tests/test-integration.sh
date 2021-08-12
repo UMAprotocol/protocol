@@ -13,9 +13,8 @@ cat << EOF
           name: Install Docker client
           command: |
             set -x
-            VER="17.03.0-ce"
-            curl -L -o /tmp/docker-$VER.tgz https://get.docker.com/builds/Linux/x86_64/docker-$VER.tgz
-            tar -xz -C /tmp -f /tmp/docker-$VER.tgz
+            curl -L -o /tmp/docker-17.03.0-ce.tgz https://get.docker.com/builds/Linux/x86_64/docker-$VER.tgz
+            tar -xz -C /tmp -f /tmp/docker-17.03.0-ce.tgz
             mv /tmp/docker/* /usr/bin
       - run:
           name: Install Docker Compose
