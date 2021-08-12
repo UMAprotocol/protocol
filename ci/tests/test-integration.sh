@@ -2,8 +2,8 @@
 
 cat << EOF
   test-integration:
-    docker:
-      - image: circleci/node:lts
+  machine:
+    image: ubuntu-2004:202010-01
     working_directory: ~/protocol
     resource_class: medium+
     steps:
