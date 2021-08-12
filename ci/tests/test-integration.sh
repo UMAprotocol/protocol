@@ -9,11 +9,14 @@ cat << EOF
       - restore_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
       - run:
-          name: Run integration tests
+          name: Install dependencies
           command: |
             sudo apt update
             sudo apt install nodejs npm
             npm install --global yarn
+      - run:
+          name: Run integration tests
+          command: |
             yarn optimism-up
             yarn --cwd packages/core test-e2e
 EOF
