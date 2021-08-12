@@ -2,27 +2,11 @@
 
 cat << EOF
   test-integration:
-  machine:
-    image: ubuntu-2004:202010-01
-    working_directory: ~/protocol
-    resource_class: medium+
+    machine:
+      image: ubuntu-2004:202010-01
     steps:
       - restore_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}
-      - run:
-          name: Install Docker client
-          command: |
-            set -x
-            sudo curl -L -o /tmp/docker-17.03.0-ce.tgz https://get.docker.com/builds/Linux/x86_64/docker-17.03.0-ce.tgz
-            sudo tar -xz -C /tmp -f /tmp/docker-17.03.0-ce.tgz
-            sudo mv /tmp/docker/* /usr/bin
-      - run:
-          name: Install Docker Compose
-          command: |
-            set -x
-            sudo curl -L https://github.com/docker/compose/releases/download/1.11.2/docker-compose-`uname -s`-`uname -m` > /home/circleci/docker-compose
-            sudo mv /home/circleci/docker-compose /usr/local/bin/docker-compose
-            sudo chmod +x /usr/local/bin/docker-compose
       - run:
           name: Run integration tests
           command: |
