@@ -26,6 +26,6 @@ cat << EOF
       - run:
           name: Run integration tests
           command: |
-            sudo yarn optimism-up
-            sudo yarn --cwd packages/core test-e2e
+            yarn optimism-up
+            yarn --cwd packages/core test-e2e
 EOF
