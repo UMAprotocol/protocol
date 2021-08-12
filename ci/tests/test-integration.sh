@@ -10,6 +10,10 @@ cat << EOF
       - run:
           name: Run integration tests
           command: |
+            sudo apt update
+            sudo apt install nodejs
+            sudo apt install npm
+            npm install --global yarn
             yarn optimism-up
             yarn --cwd packages/core test-e2e
 EOF
