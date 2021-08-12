@@ -181,7 +181,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         uint64 quoteDeadline,
         uint64 realizedLpFeePct
     ) public {
-        require(realizedLpFeePct <= 0.5e18, "Invalid realized LP fee");
+        // The realizedLPFeePct should never be greater than 0.5e18 and the slow and instant relay fees
+        // should never be more than 0.25e18 each.
+        require(slowRelayFeePct < 0.25e18, "Invalid slowRelayFeePct");
+        require(instantRelayFeePct < 0.25e18, "Invalid instantRelayFeePct");
+        require(realizedLpFeePct < 0.5e18, "Invalid realizedLpFeePct");
 
         // Check if there is a pending relay for this deposit.
         DepositData memory depositData =
@@ -218,11 +222,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
 
         // Sanity check that pool has enough balance to cover relay amount + proposer reward. Reward amount will be
         // paid on settlement after the OptimisticOracle price request has passed the challenge period.
-        require(
-            l1Token.balanceOf(address(this)) >=
-                amount + _getAmountFromPct(slowRelayFeePct + instantRelayFeePct, amount),
-            "Insufficient pool balance"
-        );
+        require(l1Token.balanceOf(address(this)) >= amount + _getProposerBond(amount), "Insufficient pool balance");
 
         // Request a price for the relay identifier and propose "true" optimistically. These methods will pull the
         // (proposer reward + proposer bond + final fee) from the caller.
@@ -475,13 +475,17 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         return StoreInterface(FinderInterface(bridgeAdmin.finder()).getImplementationAddress(OracleInterfaces.Store));
     }
 
-    function _getAmountFromPct(uint64 _RewardPct, uint256 _amount) private pure returns (uint256) {
+    function _getAmountFromPct(uint64 percent, uint256 amount) private pure returns (uint256) {
         return
             FixedPoint
-                .Unsigned(uint256(_RewardPct))
+                .Unsigned(uint256(percent))
                 .div(FixedPoint.fromUnscaledUint(1))
-                .mul(FixedPoint.Unsigned(_amount))
+                .mul(FixedPoint.Unsigned(amount))
                 .rawValue;
+    }
+
+    function _getProposerBond(uint256 amount) private view returns (uint256) {
+        return _getAmountFromPct(bridgeAdmin.proposerBondPct(), amount);
     }
 
     function _getDepositHash(DepositData memory _depositData) private pure returns (bytes32) {
@@ -507,8 +511,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         bytes memory customAncillaryData
     ) private {
         OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
-        uint256 proposerBondPct =
-            FixedPoint.Unsigned(uint256(bridgeAdmin.proposerBondPct())).div(FixedPoint.fromUnscaledUint(1)).rawValue;
 
         // Set reward to 0, since we'll settle proposer reward payouts directly from this contract after a relay
         // proposal has passed the challenge period.
@@ -529,7 +531,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         );
 
         // Set the Optimistic oracle proposer bond for the price request.
-        uint256 proposerBond = FixedPoint.Unsigned(proposerBondPct).mul(FixedPoint.Unsigned(amount)).rawValue;
+        uint256 proposerBond = _getProposerBond(amount);
         optimisticOracle.setBond(bridgeAdmin.identifier(), requestTimestamp, customAncillaryData, proposerBond);
     }
 
