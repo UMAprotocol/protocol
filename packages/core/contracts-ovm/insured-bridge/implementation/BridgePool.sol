@@ -20,7 +20,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * @notice Contract deployed on L1 that provides methods for "Relayers" to fulfill deposit orders that originated on L2.
  * The Relayers can either post capital to fulfill the deposit instantly, or request that the funds are taken out of
  * a passive liquidity provider pool following a challenge period. Related, this contract ingests liquidity from
- * passive liquidity providers and returns them claims to withdraw their funds. Liquidity providers are incentivized
+ * passive liquidity providers and returns them claims to withdraw their funds. Liquidity providers are incentivize
  * to post collateral by earning a fee per fulfilled deposit order.
  * @dev A "Deposit" is an order to send capital from L2 to L1, and a "Relay" is a fulfillment attempt of that order.
  */
@@ -36,6 +36,26 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
 
     // Reserves currently utilized due to L2-L1 transactions in flight.
     uint256 public utilizedReserves;
+
+    // Exponential decay exchange rate to accumulate fees to LPs over time.
+    uint256 public lpFeeRatePerSecond;
+
+    // Last timestamp that LP fees were updated.
+    uint256 public lastLpFeeUpdate;
+
+    // Cumulative undistributed LP fees.
+    uint256 public undistributedLpFees;
+
+    uint256 public unbridgedAccumulatedLpFees;
+
+    uint256 public cumulativeBridgedAmount;
+
+    uint256 public totalBridgedSansLpFees;
+
+    uint256 public cumulativeLpFeesEarned;
+
+    // How long, in seconds, it takes for transfers to move from L2 optimism to L1 Ethereum.
+    uint256 public optimismL2toL1Time = 1 weeks;
 
     // Administrative contract that deployed this contract and also houses all state variables needed to relay deposits.
     BridgeAdminInterface public bridgeAdmin;
@@ -98,9 +118,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         bytes32 indexed priceRequestAncillaryDataHash,
         address indexed caller
     );
-
     event LiquidityAdded(address indexed token, uint256 amount, uint256 lpTokensMinted, address liquidityProvider);
     event LiquidityRemoved(address indexed token, uint256 amount, uint256 lpTokensBurnt, address liquidityProvider);
+
+    event LOG(uint256 val1, uint256 val2, uint256 val3, uint256 val4);
+    event LOG2(uint256 val1, uint256 val2, uint256 val3, uint256 val4, uint256 val5);
 
     modifier onlyFromOptimisticOracle() {
         require(msg.sender == address(_getOptimisticOracle()), "Caller must be OptimisticOracle");
@@ -113,12 +135,15 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     constructor(
         address _bridgeAdmin,
         address _l1Token,
+        uint256 _lpFeeRatePerSecond,
         address _timer
     ) Testable(_timer) ExpandedERC20("UMA Insured Bride LP Token", "UMA-LP", 18) {
         bridgeAdmin = BridgeAdminInterface(_bridgeAdmin);
         require(bridgeAdmin.finder() != address(0), "Invalid bridge pool factory");
 
         l1Token = IERC20(_l1Token);
+        lastLpFeeUpdate = getCurrentTime();
+        lpFeeRatePerSecond = _lpFeeRatePerSecond;
     }
 
     /*************************************************
@@ -329,6 +354,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         utilizedReserves += totalAmountSent;
         liquidReserves -= totalAmountSent;
 
+        updateFeeCounters(_getAmountFromPct(relay.realizedLpFeePct, _depositData.amount));
+
         emit SettledRelay(depositHash, keccak256(getRelayAncillaryData(_depositData, relay)), msg.sender);
     }
 
@@ -357,23 +384,92 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         emit RelayDisputed(depositHash, keccak256(ancillaryData));
     }
 
-    /************************************
-     *           View FUNCTIONS         *
-     ************************************/
+    /**
+     * @notice At the conclusion of an L2->L1 token transfer via the canonical token bridge, tokens will appear in this
+     * contract. This method checks if the l1Token balance of the contract is greater than the liquidReserves. If it
+     * is then the bridging action from L2->L1 has concluded and the local accounting can be updated.
+     */
+    function sync() public {
+        uint256 l1TokenBalance = l1Token.balanceOf(address(this));
+        if (l1TokenBalance > liquidReserves) {
+            uint256 bridgedAmount = l1TokenBalance - liquidReserves;
+
+            // utilizedReserves can never be zero. If all pending transfers are done then this equals zero.
+            utilizedReserves = utilizedReserves > bridgedAmount ? utilizedReserves - bridgedAmount : 0;
+            liquidReserves = l1TokenBalance;
+
+            cumulativeBridgedAmount += bridgedAmount;
+            totalBridgedSansLpFees = totalBridgedSansLpFees + bridgedAmount - unbridgedAccumulatedLpFees;
+            unbridgedAccumulatedLpFees = 0;
+        }
+    }
+
+    function updateFeeCounters(uint256 allocatedLpFees) internal {
+        uint256 unallocatedAccumulatedFees = getUnallocatedAccumulatedFees();
+        undistributedLpFees = undistributedLpFees > unallocatedAccumulatedFees
+            ? undistributedLpFees - unallocatedAccumulatedFees
+            : 0;
+        cumulativeLpFeesEarned += unallocatedAccumulatedFees;
+        unbridgedAccumulatedLpFees += unallocatedAccumulatedFees;
+        lastLpFeeUpdate = getCurrentTime();
+
+        if (allocatedLpFees > 0) {
+            undistributedLpFees += allocatedLpFees;
+        }
+    }
 
     /**
      * @notice Computes the exchange rate between LP tokens and L1Tokens. Used when adding/removing liquidity.
      */
-    function exchangeRateCurrent() public view returns (uint256) {
+    function exchangeRateCurrent() public returns (uint256) {
         if (totalSupply() == 0) return 1e18; //initial rate is 1 pre any mint action.
 
-        // Consider a naive rate implementation. This acts like a step function, increasing when funds hit L1 from the
-        // canonical bridge. TODO: update with a more elaborate technique that pays out gradually over the 1 week loan.
+        // First, update fee counters and local accounting of finalized transfers from L2->L1.
+        updateFeeCounters(0);
+        sync();
+        emit LOG2(
+            liquidReserves,
+            utilizedReserves,
+            totalBridgedSansLpFees,
+            unbridgedAccumulatedLpFees,
+            cumulativeBridgedAmount
+        );
+
+        return
+            (
+                FixedPoint
+                    .Unsigned(liquidReserves)
+                    .add(FixedPoint.Unsigned(utilizedReserves))
+                    .add(FixedPoint.Unsigned(totalBridgedSansLpFees))
+                    .add(FixedPoint.Unsigned(unbridgedAccumulatedLpFees))
+                    .sub(FixedPoint.Unsigned(cumulativeBridgedAmount))
+            )
+                .div(FixedPoint.Unsigned(totalSupply()))
+                .rawValue;
+    }
+
+    /************************************
+     *           View FUNCTIONS         *
+     ************************************/
+
+    function getUnallocatedAccumulatedFees() public view returns (uint256) {
+        return computeAccumulatedFees(undistributedLpFees, lpFeeRatePerSecond, lastLpFeeUpdate, getCurrentTime());
+    }
+
+    function computeAccumulatedFees(
+        uint256 undistributedFees,
+        uint256 feeRatePerSecond,
+        uint256 startTime,
+        uint256 endTime
+    ) public pure returns (uint256) {
+        if (startTime >= endTime) return 0;
+
+        //TODO: consider capping at undistributedFees (100% payout of remaining fees).
         return
             FixedPoint
-                .fromUnscaledUint(liquidReserves)
-                .add(FixedPoint.fromUnscaledUint(utilizedReserves))
-                .div(FixedPoint.fromUnscaledUint(totalSupply()))
+                .Unsigned(undistributedFees)
+                .mul(FixedPoint.Unsigned(feeRatePerSecond))
+                .mul(FixedPoint.fromUnscaledUint(endTime - startTime))
                 .rawValue;
     }
 
