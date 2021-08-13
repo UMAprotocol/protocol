@@ -13,9 +13,9 @@ cat << EOF
           command: |
             sudo apt update
             sudo apt install nodejs npm
-            sudo npm install -g n
-            sudo n 15.10.0
-            PATH="$PATH"
+            curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
+            nvm install 15.10.0
+            nvm use 15.10.0
             sudo npm install --global yarn
       - run:
           name: Run integration tests
