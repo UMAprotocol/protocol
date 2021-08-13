@@ -13,6 +13,7 @@ cat << EOF
           command: |
             sudo apt update
             curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
+            . ~/.nvm/nvm.sh
             nvm install v15.10.0
             sudo apt install npm
             npm install --global yarn
