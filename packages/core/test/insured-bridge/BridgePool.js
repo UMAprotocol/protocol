@@ -49,7 +49,7 @@ const defaultLiveness = 100;
 const defaultProposerBondPct = toWei("0.05");
 const defaultSlowRelayFeePct = toWei("0.01");
 const defaultInstantRelayFeePct = toWei("0.01");
-const defaultQuoteDeadline = 100000; // no validation of this happens on L1.
+const defaultQuoteTimestamp = 100000; // no validation of this happens on L1.
 const defaultRealizedLpFee = toWei("0.1");
 const finalFee = toWei("1");
 const initialPoolLiquidity = toWei("1000");
@@ -206,7 +206,7 @@ describe("BridgePool", () => {
       amount: relayAmount,
       slowRelayFeePct: defaultSlowRelayFeePct,
       instantRelayFeePct: defaultInstantRelayFeePct,
-      quoteDeadline: defaultQuoteDeadline,
+      quoteTimestamp: defaultQuoteTimestamp,
     };
     relayData = {
       relayState: InsuredBridgeRelayStateEnum.UNINITIALIZED,
@@ -228,7 +228,7 @@ describe("BridgePool", () => {
         depositData.amount,
         depositData.slowRelayFeePct,
         depositData.instantRelayFeePct,
-        depositData.quoteDeadline,
+        depositData.quoteTimestamp,
       ]
     );
     depositHash = soliditySha3(depositDataAbiEncoded);
@@ -280,7 +280,7 @@ describe("BridgePool", () => {
               depositData.amount,
               depositData.slowRelayFeePct,
               depositData.instantRelayFeePct,
-              depositData.quoteDeadline,
+              depositData.quoteTimestamp,
               relayData.realizedLpFeePct
             )
             .send({ from: relayer })
@@ -306,7 +306,7 @@ describe("BridgePool", () => {
               initialPoolLiquidity,
               depositData.slowRelayFeePct,
               depositData.instantRelayFeePct,
-              depositData.quoteDeadline,
+              depositData.quoteTimestamp,
               toWei("1.01")
             )
             .send({ from: relayer })
@@ -329,7 +329,7 @@ describe("BridgePool", () => {
                 .div(toBN(toWei("1"))),
               depositData.slowRelayFeePct,
               depositData.instantRelayFeePct,
-              depositData.quoteDeadline,
+              depositData.quoteTimestamp,
               toWei("0.15")
             )
             .send({ from: relayer })
@@ -352,7 +352,7 @@ describe("BridgePool", () => {
           depositData.amount,
           depositData.slowRelayFeePct,
           depositData.instantRelayFeePct,
-          depositData.quoteDeadline,
+          depositData.quoteTimestamp,
           relayData.realizedLpFeePct
         )
         .send({ from: relayer });
@@ -437,7 +437,7 @@ describe("BridgePool", () => {
               depositData.amount,
               depositData.slowRelayFeePct,
               depositData.instantRelayFeePct,
-              depositData.quoteDeadline,
+              depositData.quoteTimestamp,
               duplicateRelayData.realizedLpFeePct
             )
             .send({ from: rando })
@@ -463,7 +463,7 @@ describe("BridgePool", () => {
           depositData.amount,
           depositData.slowRelayFeePct,
           depositData.instantRelayFeePct,
-          depositData.quoteDeadline,
+          depositData.quoteTimestamp,
           relayData.realizedLpFeePct
         )
         .send({ from: relayer });
@@ -503,7 +503,7 @@ describe("BridgePool", () => {
           depositData.amount,
           depositData.slowRelayFeePct,
           depositData.instantRelayFeePct,
-          depositData.quoteDeadline,
+          depositData.quoteTimestamp,
           relayData.realizedLpFeePct
         )
         .send({ from: rando });
@@ -559,7 +559,7 @@ describe("BridgePool", () => {
           depositData.amount,
           depositData.slowRelayFeePct,
           depositData.instantRelayFeePct,
-          depositData.quoteDeadline,
+          depositData.quoteTimestamp,
           relayData.realizedLpFeePct
         )
         .send({ from: relayer });
@@ -630,7 +630,7 @@ describe("BridgePool", () => {
               depositData.amount,
               depositData.slowRelayFeePct,
               depositData.instantRelayFeePct,
-              depositData.quoteDeadline,
+              depositData.quoteTimestamp,
               relayData.realizedLpFeePct
             )
             .call({ from: relayer })
@@ -647,7 +647,7 @@ describe("BridgePool", () => {
             depositData.amount,
             depositData.slowRelayFeePct,
             depositData.instantRelayFeePct,
-            depositData.quoteDeadline,
+            depositData.quoteTimestamp,
             toBN(relayData.realizedLpFeePct).mul(toBN("2"))
           )
           .call({ from: relayer })
@@ -667,7 +667,7 @@ describe("BridgePool", () => {
             depositData.amount,
             depositData.slowRelayFeePct,
             depositData.instantRelayFeePct,
-            depositData.quoteDeadline,
+            depositData.quoteTimestamp,
             relayData.realizedLpFeePct
           )
           .call({ from: relayer })
@@ -685,7 +685,7 @@ describe("BridgePool", () => {
           depositData.amount,
           depositData.slowRelayFeePct,
           depositData.instantRelayFeePct,
-          depositData.quoteDeadline,
+          depositData.quoteTimestamp,
           relayData.realizedLpFeePct
         )
         .send({ from: relayer });
@@ -723,7 +723,7 @@ describe("BridgePool", () => {
           depositData.amount,
           depositData.slowRelayFeePct,
           depositData.instantRelayFeePct,
-          depositData.quoteDeadline,
+          depositData.quoteTimestamp,
           relayData.realizedLpFeePct
         )
         .send({ from: rando });
@@ -748,7 +748,7 @@ describe("BridgePool", () => {
           depositData.amount,
           depositData.slowRelayFeePct,
           depositData.instantRelayFeePct,
-          depositData.quoteDeadline,
+          depositData.quoteTimestamp,
           relayData.realizedLpFeePct
         )
         .send({ from: relayer });
@@ -829,7 +829,7 @@ describe("BridgePool", () => {
           depositData.amount,
           depositData.slowRelayFeePct,
           depositData.instantRelayFeePct,
-          depositData.quoteDeadline,
+          depositData.quoteTimestamp,
           relayData.realizedLpFeePct
         )
         .send({ from: relayer });
@@ -867,7 +867,7 @@ describe("BridgePool", () => {
           depositData.amount,
           depositData.slowRelayFeePct,
           depositData.instantRelayFeePct,
-          depositData.quoteDeadline,
+          depositData.quoteTimestamp,
           relayData.realizedLpFeePct
         )
         .send({ from: relayer });
@@ -978,7 +978,7 @@ describe("BridgePool", () => {
           depositData.amount,
           depositData.slowRelayFeePct,
           depositData.instantRelayFeePct,
-          depositData.quoteDeadline,
+          depositData.quoteTimestamp,
           relayData.realizedLpFeePct
         )
         .send({ from: relayer });
