@@ -78,15 +78,15 @@ const totalRelayBond = toBN(defaultProposerBondPct)
   .mul(toBN(relayAmount))
   .div(toBN(toWei("1")))
   .add(toBN(finalFee));
-// Winner of a dispute gets bond back+1/2 of loser's bond+final fee. So, the total dispute refund is
-// 1.5x the proposer bond+final fee.
+// Winner of a dispute gets bond back + 1/2 of loser's bond+final fee. So, the total dispute refund is
+// 1.5x the proposer bond + final fee.
 const totalDisputeRefund = toBN(defaultProposerBondPct)
   .mul(toBN(relayAmount))
   .div(toBN(toWei("1")))
   .mul(toBN(toWei("1.5")))
   .div(toBN(toWei("1")))
   .add(toBN(finalFee));
-// Forfeited dispute bond+final fee is paid to store.
+// Forfeited dispute bond + final fee is paid to store.
 const disputePaidToStore = toBN(defaultProposerBondPct)
   .mul(toBN(relayAmount))
   .div(toBN(toWei("1")))
@@ -163,7 +163,7 @@ describe("BridgePool", () => {
     await store.methods.setFinalFee(l1Token.options.address, { rawValue: finalFee }).send({ from: owner });
 
     // Deploy new OptimisticOracle so that we can control its timing:
-    // -Set initial liveness to something != `defaultLiveness` so we can test that the custom liveness is set
+    // - Set initial liveness to something != `defaultLiveness` so we can test that the custom liveness is set
     //   correctly by the BridgePool.
     optimisticOracle = await OptimisticOracle.new(
       defaultLiveness * 10,
@@ -803,11 +803,11 @@ describe("BridgePool", () => {
         .send({ from: relayer });
 
       // Dispute was unsuccessful and proposer's original price of "1" was correct. Proposer should receive full relay
-      // bond back+portion of loser's bond.
+      // bond back + portion of loser's bond.
       assert.equal(
         (await l1Token.methods.balanceOf(relayer).call()).toString(),
         totalDisputeRefund.toString(),
-        "Relayer should receive entire bond back+1/2 of loser's bond"
+        "Relayer should receive entire bond back + 1/2 of loser's bond"
       );
       assert.equal(
         (await l1Token.methods.balanceOf(optimisticOracle.options.address).call()).toString(),
