@@ -50,7 +50,7 @@ const lpFeeRatePerSecond = toWei("0.0000015");
 const defaultProposerBondPct = toWei("0.05");
 const defaultSlowRelayFeePct = toWei("0.01");
 const defaultInstantRelayFeePct = toWei("0.01");
-const defaultQuoteDeadline = 100000; // no validation of this happens on L1.
+const defaultQuoteTimestamp = 100000; // no validation of this happens on L1.
 const defaultRealizedLpFee = toWei("0.1");
 const finalFee = toWei("1");
 const initialPoolLiquidity = toWei("1000");
@@ -73,7 +73,7 @@ const instantRelayAmountSubFee = toBN(relayAmount)
   .sub(realizedSlowRelayFeeAmount)
   .sub(realizedInstantRelayFeeAmount)
   .toString();
-// Relayers must post proposal bond+final fee
+// Relayers must post proposal bond + final fee
 const totalRelayBond = toBN(defaultProposerBondPct)
   .mul(toBN(relayAmount))
   .div(toBN(toWei("1")))
@@ -223,7 +223,7 @@ describe("BridgePool", () => {
       amount: relayAmount,
       slowRelayFeePct: defaultSlowRelayFeePct,
       instantRelayFeePct: defaultInstantRelayFeePct,
-      quoteDeadline: defaultQuoteDeadline,
+      quoteTimestamp: defaultQuoteTimestamp,
     };
     relayData = {
       relayState: InsuredBridgeRelayStateEnum.UNINITIALIZED,
@@ -245,7 +245,7 @@ describe("BridgePool", () => {
         depositData.amount,
         depositData.slowRelayFeePct,
         depositData.instantRelayFeePct,
-        depositData.quoteDeadline,
+        depositData.quoteTimestamp,
       ]
     );
     depositHash = soliditySha3(depositDataAbiEncoded);
@@ -297,7 +297,7 @@ describe("BridgePool", () => {
               depositData.amount,
               depositData.slowRelayFeePct,
               depositData.instantRelayFeePct,
-              depositData.quoteDeadline,
+              depositData.quoteTimestamp,
               relayData.realizedLpFeePct
             )
             .send({ from: relayer })
@@ -323,7 +323,7 @@ describe("BridgePool", () => {
               initialPoolLiquidity,
               depositData.slowRelayFeePct,
               depositData.instantRelayFeePct,
-              depositData.quoteDeadline,
+              depositData.quoteTimestamp,
               toWei("1.01")
             )
             .send({ from: relayer })
@@ -346,7 +346,7 @@ describe("BridgePool", () => {
                 .div(toBN(toWei("1"))),
               depositData.slowRelayFeePct,
               depositData.instantRelayFeePct,
-              depositData.quoteDeadline,
+              depositData.quoteTimestamp,
               toWei("0.15")
             )
             .send({ from: relayer })
@@ -369,7 +369,7 @@ describe("BridgePool", () => {
           depositData.amount,
           depositData.slowRelayFeePct,
           depositData.instantRelayFeePct,
-          depositData.quoteDeadline,
+          depositData.quoteTimestamp,
           relayData.realizedLpFeePct
         )
         .send({ from: relayer });
@@ -454,7 +454,7 @@ describe("BridgePool", () => {
               depositData.amount,
               depositData.slowRelayFeePct,
               depositData.instantRelayFeePct,
-              depositData.quoteDeadline,
+              depositData.quoteTimestamp,
               duplicateRelayData.realizedLpFeePct
             )
             .send({ from: rando })
@@ -480,7 +480,7 @@ describe("BridgePool", () => {
           depositData.amount,
           depositData.slowRelayFeePct,
           depositData.instantRelayFeePct,
-          depositData.quoteDeadline,
+          depositData.quoteTimestamp,
           relayData.realizedLpFeePct
         )
         .send({ from: relayer });
@@ -520,7 +520,7 @@ describe("BridgePool", () => {
           depositData.amount,
           depositData.slowRelayFeePct,
           depositData.instantRelayFeePct,
-          depositData.quoteDeadline,
+          depositData.quoteTimestamp,
           relayData.realizedLpFeePct
         )
         .send({ from: rando });
@@ -576,7 +576,7 @@ describe("BridgePool", () => {
           depositData.amount,
           depositData.slowRelayFeePct,
           depositData.instantRelayFeePct,
-          depositData.quoteDeadline,
+          depositData.quoteTimestamp,
           relayData.realizedLpFeePct
         )
         .send({ from: relayer });
@@ -647,7 +647,7 @@ describe("BridgePool", () => {
               depositData.amount,
               depositData.slowRelayFeePct,
               depositData.instantRelayFeePct,
-              depositData.quoteDeadline,
+              depositData.quoteTimestamp,
               relayData.realizedLpFeePct
             )
             .call({ from: relayer })
@@ -664,7 +664,7 @@ describe("BridgePool", () => {
             depositData.amount,
             depositData.slowRelayFeePct,
             depositData.instantRelayFeePct,
-            depositData.quoteDeadline,
+            depositData.quoteTimestamp,
             toBN(relayData.realizedLpFeePct).mul(toBN("2"))
           )
           .call({ from: relayer })
@@ -682,7 +682,7 @@ describe("BridgePool", () => {
             depositData.amount,
             depositData.slowRelayFeePct,
             depositData.instantRelayFeePct,
-            depositData.quoteDeadline,
+            depositData.quoteTimestamp,
             relayData.realizedLpFeePct
           )
           .call({ from: relayer })
@@ -700,7 +700,7 @@ describe("BridgePool", () => {
           depositData.amount,
           depositData.slowRelayFeePct,
           depositData.instantRelayFeePct,
-          depositData.quoteDeadline,
+          depositData.quoteTimestamp,
           relayData.realizedLpFeePct
         )
         .send({ from: relayer });
@@ -738,7 +738,7 @@ describe("BridgePool", () => {
           depositData.amount,
           depositData.slowRelayFeePct,
           depositData.instantRelayFeePct,
-          depositData.quoteDeadline,
+          depositData.quoteTimestamp,
           relayData.realizedLpFeePct
         )
         .send({ from: rando });
@@ -763,7 +763,7 @@ describe("BridgePool", () => {
           depositData.amount,
           depositData.slowRelayFeePct,
           depositData.instantRelayFeePct,
-          depositData.quoteDeadline,
+          depositData.quoteTimestamp,
           relayData.realizedLpFeePct
         )
         .send({ from: relayer });
@@ -844,7 +844,7 @@ describe("BridgePool", () => {
           depositData.amount,
           depositData.slowRelayFeePct,
           depositData.instantRelayFeePct,
-          depositData.quoteDeadline,
+          depositData.quoteTimestamp,
           relayData.realizedLpFeePct
         )
         .send({ from: relayer });
@@ -882,7 +882,7 @@ describe("BridgePool", () => {
           depositData.amount,
           depositData.slowRelayFeePct,
           depositData.instantRelayFeePct,
-          depositData.quoteDeadline,
+          depositData.quoteTimestamp,
           relayData.realizedLpFeePct
         )
         .send({ from: relayer });
@@ -953,24 +953,24 @@ describe("BridgePool", () => {
       assert.equal(
         (await l1Token.methods.balanceOf(relayer).call()).toString(),
         toBN(totalRelayBond).add(realizedSlowRelayFeeAmount).toString(),
-        "Relayer should receive proposal bond+slow relay reward"
+        "Relayer should receive proposal bond + slow relay reward"
       );
-      // -Optimistic oracle should have no funds left after refunding bond.
+      // - Optimistic oracle should have no funds left after refunding bond.
       assert.equal(
         (await l1Token.methods.balanceOf(optimisticOracle.options.address).call()).toString(),
         "0",
         "OptimisticOracle should refund proposal bond"
       );
 
-      // -Bridge pool should have the amount original pool liquidity minus the amount sent to recipient and amount
-      // sent to slow relayer. This is equivalent to the initial pool liquidity-the relay amount+realized LP fee.
+      // - Bridge pool should have the amount original pool liquidity minus the amount sent to recipient and amount
+      // sent to slow relayer. This is equivalent to the initial pool liquidity - the relay amount + realized LP fee.
       assert.equal(
         (await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(),
         toBN(initialPoolLiquidity).sub(toBN(relayAmount)).add(realizedLpFeeAmount).toString(),
         "BridgePool should have balance reduced by relay amount less slow fees and rewards"
       );
 
-      // -Recipient should receive the bridged amount minus the slow relay fee and the LP fee.
+      // - Recipient should receive the bridged amount minus the slow relay fee and the LP fee.
       assert.equal(
         (await l1Token.methods.balanceOf(recipient).call()).toString(),
         slowRelayAmountSubFee,
@@ -993,7 +993,7 @@ describe("BridgePool", () => {
           depositData.amount,
           depositData.slowRelayFeePct,
           depositData.instantRelayFeePct,
-          depositData.quoteDeadline,
+          depositData.quoteTimestamp,
           relayData.realizedLpFeePct
         )
         .send({ from: relayer });
@@ -1020,9 +1020,9 @@ describe("BridgePool", () => {
       await bridgePool.methods.settleRelay(depositData).send({ from: rando });
 
       // Check token balances.
-      // -Slow relayer should get back their proposal bond from OO and reward from BridgePool.
-      // -Fast relayer should get reward from BridgePool and the relayed amount, minus LP and slow withdraw fee. This
-      // is equivalent to what the recipient received+the instant relayer fee.
+      // - Slow relayer should get back their proposal bond from OO and reward from BridgePool.
+      // - Fast relayer should get reward from BridgePool and the relayed amount, minus LP and slow withdraw fee. This
+      // is equivalent to what the recipient received + the instant relayer fee.
       assert.equal(
         toBN(await l1Token.methods.balanceOf(relayer).call())
           .sub(toBN(relayerBalanceBefore))
@@ -1035,7 +1035,7 @@ describe("BridgePool", () => {
           .sub(toBN(instantRelayerBalanceBefore))
           .toString(),
         toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount).toString(),
-        "Instant relayer should receive instant relay reward+the instant relay amount sub fees"
+        "Instant relayer should receive instant relay reward + the instant relay amount sub fees"
       );
       assert.equal(
         (await l1Token.methods.balanceOf(optimisticOracle.options.address).call()).toString(),
@@ -1123,7 +1123,7 @@ describe("BridgePool", () => {
           depositData.amount,
           depositData.slowRelayFeePct,
           depositData.instantRelayFeePct,
-          depositData.quoteDeadline,
+          depositData.quoteTimestamp,
           relayData.realizedLpFeePct
         )
         .send({ from: relayer });
@@ -1232,7 +1232,7 @@ describe("BridgePool", () => {
       depositData.depositTimestamp = depositData.depositTimestamp + 172800;
       depositData.amount = toWei("50");
       depositData.recipient = rando;
-      depositData.quoteDeadline = depositData.quoteDeadline + 172800;
+      depositData.quoteTimestamp = depositData.quoteTimestamp + 172800;
 
       await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
@@ -1246,7 +1246,7 @@ describe("BridgePool", () => {
           depositData.amount,
           depositData.slowRelayFeePct,
           depositData.instantRelayFeePct,
-          depositData.quoteDeadline,
+          depositData.quoteTimestamp,
           relayData.realizedLpFeePct
         )
         .send({ from: relayer });
@@ -1264,7 +1264,7 @@ describe("BridgePool", () => {
           depositData.amount,
           depositData.slowRelayFeePct,
           depositData.instantRelayFeePct,
-          depositData.quoteDeadline,
+          depositData.quoteTimestamp,
         ]
       );
       depositHash = soliditySha3(depositDataAbiEncoded);

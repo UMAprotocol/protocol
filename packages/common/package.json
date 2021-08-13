@@ -19,7 +19,7 @@
   },
   "scripts": {
     "test": "hardhat test ./test/*",
-    "build": "rm -rf dist && tsc"
+    "build": "rm -rf dist && tsc && (cp src/gckms/.GckmsOverride.js dist/gckms/.GckmsOverride.js || echo 'No override file found, continuing')"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
