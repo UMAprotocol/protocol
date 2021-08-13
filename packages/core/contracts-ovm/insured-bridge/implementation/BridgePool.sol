@@ -54,7 +54,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         uint256 amount;
         uint64 slowRelayFeePct;
         uint64 instantRelayFeePct;
-        uint64 quoteDeadline;
+        uint64 quoteTimestamp;
     }
 
     // A Relay is linked to a L2 Deposit.
@@ -166,9 +166,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
      * @param amount Amount deposited on L2 to be brought over to L1.
      * @param slowRelayFeePct Max fraction of `amount` that the depositor is willing to pay as a slow relay fee.
      * @param instantRelayFeePct Fraction of `amount` that the depositor is willing to pay as a instant relay fee.
-     * @param quoteDeadline Timestamp up until the depositor is willing to accept an LP quotation for.
+     * @param quoteTimestamp Timestamp up until the depositor is willing to accept an LP quotation for.
      * @param realizedLpFeePct LP fee calculated off-chain considering the L1 pool liquidity at deposit time, before
-     *      quoteDeadline. The OO acts to verify the correctness of this realized fee. Can not exceed 50%.
+     *      quoteTimestamp. The OO acts to verify the correctness of this realized fee. Can not exceed 50%.
      */
     function relayDeposit(
         uint64 depositId,
@@ -178,7 +178,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         uint256 amount,
         uint64 slowRelayFeePct,
         uint64 instantRelayFeePct,
-        uint64 quoteDeadline,
+        uint64 quoteTimestamp,
         uint64 realizedLpFeePct
     ) public {
         // The realizedLPFeePct should never be greater than 0.5e18 and the slow and instant relay fees
@@ -198,7 +198,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
                 amount: amount,
                 slowRelayFeePct: slowRelayFeePct,
                 instantRelayFeePct: instantRelayFeePct,
-                quoteDeadline: quoteDeadline
+                quoteTimestamp: quoteTimestamp
             });
         bytes32 depositHash = _getDepositHash(depositData);
         require(relays[depositHash].relayState == RelayState.Uninitialized, "Pending relay for deposit exists");
@@ -434,8 +434,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         );
         intermediateAncillaryData = AncillaryData.appendKeyValueUint(
             intermediateAncillaryData,
-            "quoteDeadline",
-            uint256(_depositData.quoteDeadline)
+            "quoteTimestamp",
+            uint256(_depositData.quoteTimestamp)
         );
 
         // Add relay data.
@@ -500,7 +500,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
                     _depositData.amount,
                     _depositData.slowRelayFeePct,
                     _depositData.instantRelayFeePct,
-                    _depositData.quoteDeadline
+                    _depositData.quoteTimestamp
                 )
             );
     }
@@ -582,7 +582,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
             _depositData.amount,
             _depositData.slowRelayFeePct,
             _depositData.instantRelayFeePct,
-            _depositData.quoteDeadline,
+            _depositData.quoteTimestamp,
             realizedLpFeePct,
             _ancillaryDataHash,
             _depositHash,
