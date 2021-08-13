@@ -25,6 +25,6 @@ cat << EOF
             npm -v
             yarn -v
             yarn optimism-up
-            sleep 60
+            sleep 120
             yarn --cwd packages/core test-e2e
 EOF
