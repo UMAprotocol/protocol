@@ -5,23 +5,24 @@ import { parseUnits, nowS, Profile } from "../libs/utils";
 
 type Config = BaseConfig;
 
-type Dependencies = Pick<AppState, "zrx" | "marketPrices" | "collateralAddresses" | "syntheticAddresses">;
+type Dependencies = Pick<AppState, "zrx" | "marketPrices" | "collateralAddresses" | "syntheticAddresses" | "erc20s">;
 
 // market prices are pulled from the 0x matcha api
 export default function (config: Config, appState: Dependencies) {
   // these prices will be quoted against usdc by default, but can be specified as address or symbol
-  const { zrx, marketPrices, collateralAddresses, syntheticAddresses } = appState;
+  const { zrx, marketPrices, collateralAddresses, syntheticAddresses, erc20s } = appState;
   // this is hardcoded for now since it differs from the standard currency symbol usd
   const currency = "usdc";
   const profile = Profile(config.debug);
 
   // does not do any queries, just a helper to mutate the latest price table
   async function updateLatestPrice(tokenAddress: string, timestampS: number) {
+    const tokenData = await erc20s.get(tokenAddress);
     const result = await zrx.price({
       sellToken: tokenAddress,
       buyToken: currency.toUpperCase(),
       // default to selling 1 of the synthetic
-      sellAmount: parseUnits("1").toString(),
+      sellAmount: parseUnits("1", tokenData.decimals || 18).toString(),
     });
     // we need to store prices in wei, so use parse units on this price
     marketPrices.usdc.latest[tokenAddress] = [timestampS, parseUnits(result.price.toString()).toString()];
@@ -72,7 +73,7 @@ export default function (config: Config, appState: Dependencies) {
   // we can try to price all known erc20 addresses. Some will fail. Also this endpoint does not return a timestamp
   // so we will just set one from our query time.
   async function update(timestampS = nowS()) {
-    const addresses = Array.from(collateralAddresses.values()).concat(Array.from(syntheticAddresses.values()));
+    const addresses = Array.from(new Set(Array.from(collateralAddresses).concat(Array.from(syntheticAddresses))));
     await updateLatestPrices(addresses, timestampS).catch((err) => {
       console.error("Error getting Market Price: " + err.message);
     });
