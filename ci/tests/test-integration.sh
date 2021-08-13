@@ -15,6 +15,7 @@ cat << EOF
             sudo apt install nodejs npm
             sudo npm install -g n
             sudo n 15.10.0
+            PATH="$PATH"
             sudo npm install --global yarn
       - run:
           name: Run integration tests
