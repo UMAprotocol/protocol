@@ -12,13 +12,10 @@ cat << EOF
           name: Install dependencies
           command: |
             sudo apt update
-            curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
-            export NVM_DIR="/opt/circleci/.nvm"
-            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-            [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-            nvm install v15.10.0
-            sudo apt install npm
-            npm install --global yarn
+            sudo apt install nodejs npm
+            sudo npm install -g n
+            sudo n 15.10.0
+            sudo npm install --global yarn
       - run:
           name: Run integration tests
           command: |
