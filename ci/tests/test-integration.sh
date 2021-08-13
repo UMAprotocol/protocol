@@ -18,5 +18,6 @@ cat << EOF
           name: Run integration tests
           command: |
             yarn optimism-up
+            sleep 60
             yarn --cwd packages/core test-e2e
 EOF
