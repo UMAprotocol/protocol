@@ -17,6 +17,9 @@ cat << EOF
       - run:
           name: Run integration tests
           command: |
+            node -v
+            npm -v
+            yarn -v
             yarn optimism-up
             sleep 60
             yarn --cwd packages/core test-e2e
