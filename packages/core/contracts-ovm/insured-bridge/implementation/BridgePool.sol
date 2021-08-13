@@ -430,27 +430,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
                 .rawValue;
     }
 
-    // Update the internal fee counter metrics by adding in any accumulated fees from the last time this logic was
-    // called. Considers any allocated fees that are assigned to the LPs at the conclusion of a bridging action.
-    function updateFeeCounters(uint256 allocatedLpFees) internal {
-        // Calculate the unallocatedAccumulatedFees from the last time the contract was called.
-        uint256 unallocatedAccumulatedFees = getUnallocatedAccumulatedFees();
-
-        // Decrement the undistributedLpFees by the amount of accumulated fees.
-        undistributedLpFees = undistributedLpFees > unallocatedAccumulatedFees
-            ? undistributedLpFees - unallocatedAccumulatedFees
-            : 0;
-
-        lastLpFeeUpdate = getCurrentTime();
-
-        // If this method was called from settleRelay then it includes the exact amount of fees to be attributed to the
-        // Liquidity providers. add this to the associated variables.
-        if (allocatedLpFees > 0) {
-            undistributedLpFees += allocatedLpFees;
-            cumulativeLpFeesEarned += allocatedLpFees;
-        }
-    }
-
     /**
      * @notice Returns ancillary data containing all relevant Relay data that voters can format into UTF8 and use to
      * determine if the relay is valid.
@@ -537,6 +516,27 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     /**************************************
      *    INTERNAL & PRIVATE FUNCTIONS    *
      **************************************/
+
+    // Update the internal fee counter metrics by adding in any accumulated fees from the last time this logic was
+    // called. Considers any allocated fees that are assigned to the LPs at the conclusion of a bridging action.
+    function updateFeeCounters(uint256 allocatedLpFees) internal {
+        // Calculate the unallocatedAccumulatedFees from the last time the contract was called.
+        uint256 unallocatedAccumulatedFees = getUnallocatedAccumulatedFees();
+
+        // Decrement the undistributedLpFees by the amount of accumulated fees.
+        undistributedLpFees = undistributedLpFees > unallocatedAccumulatedFees
+            ? undistributedLpFees - unallocatedAccumulatedFees
+            : 0;
+
+        lastLpFeeUpdate = getCurrentTime();
+
+        // If this method was called from settleRelay then it includes the exact amount of fees to be attributed to the
+        // Liquidity providers. add this to the associated variables.
+        if (allocatedLpFees > 0) {
+            undistributedLpFees += allocatedLpFees;
+            cumulativeLpFeesEarned += allocatedLpFees;
+        }
+    }
 
     function _getOptimisticOracle() private view returns (OptimisticOracleInterface) {
         return
