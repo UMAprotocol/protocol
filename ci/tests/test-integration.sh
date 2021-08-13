@@ -13,17 +13,13 @@ cat << EOF
           command: |
             sudo apt update
             sudo apt install nodejs npm
+            sudo npm install --global yarn
             curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
             nvm install 15.10.0
-            nvm use 15.10.0
-            sudo npm install --global yarn
       - run:
           name: Run integration tests
           command: |
             nvm use 15.10.0
-            node -v
-            npm -v
-            yarn -v
             yarn optimism-up
             sleep 120
             yarn --cwd packages/core test-e2e
