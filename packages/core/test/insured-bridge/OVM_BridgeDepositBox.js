@@ -2,6 +2,7 @@
 // such as the cross domain message bridge etc. The context of all calls, tokens and setup are the mocked L2 network.
 
 const hre = require("hardhat");
+const { web3 } = require("hardhat");
 const { predeploys } = require("@eth-optimism/contracts");
 const { didContractThrow } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;

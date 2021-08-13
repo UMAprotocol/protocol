@@ -35,7 +35,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     uint256 public liquidReserves;
 
     // Reserves currently utilized due to L2-L1 transactions in flight.
-    uint256 public utilizedReserves;
+    int256 public utilizedReserves;
 
     // Exponential decay exchange rate to accumulate fees to LPs over time.
     uint256 public lpFeeRatePerSecond;
@@ -43,16 +43,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     // Last timestamp that LP fees were updated.
     uint256 public lastLpFeeUpdate;
 
-    // Cumulative undistributed LP fees.
-    uint256 public undistributedLpFees;
-
-    uint256 public unbridgedAccumulatedLpFees;
-
-    uint256 public cumulativeBridgedAmount;
-
-    uint256 public totalBridgedSansLpFees;
-
+    // Total LP fees earned over all time.
     uint256 public cumulativeLpFeesEarned;
+
+    // Cumulative undistributed LP fees. As fees accumulate, they are subtracted from this number.
+    uint256 public undistributedLpFees;
 
     // How long, in seconds, it takes for transfers to move from L2 optimism to L1 Ethereum.
     uint256 public optimismL2toL1Time = 1 weeks;
@@ -120,9 +115,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     );
     event LiquidityAdded(address indexed token, uint256 amount, uint256 lpTokensMinted, address liquidityProvider);
     event LiquidityRemoved(address indexed token, uint256 amount, uint256 lpTokensBurnt, address liquidityProvider);
-
-    event LOG(uint256 val1, uint256 val2, uint256 val3, uint256 val4);
-    event LOG2(uint256 val1, uint256 val2, uint256 val3, uint256 val4, uint256 val5);
 
     modifier onlyFromOptimisticOracle() {
         require(msg.sender == address(_getOptimisticOracle()), "Caller must be OptimisticOracle");
@@ -351,16 +343,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
 
         uint256 totalAmountSent = instantRelayerOrRecipientAmount + slowRelayerAmount;
 
-        utilizedReserves += totalAmountSent;
         liquidReserves -= totalAmountSent;
+        utilizedReserves += int256(totalAmountSent);
 
         updateFeeCounters(_getAmountFromPct(relay.realizedLpFeePct, _depositData.amount));
 
         emit SettledRelay(depositHash, keccak256(getRelayAncillaryData(_depositData, relay)), msg.sender);
-    }
-
-    function finalizeL2BatchTransfer() public {
-        //TODO: implement this method that calls the canonical optimism bridge to pull any finalized L2->L1 transfers.
     }
 
     /**
@@ -385,36 +373,19 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     }
 
     /**
-     * @notice At the conclusion of an L2->L1 token transfer via the canonical token bridge, tokens will appear in this
-     * contract. This method checks if the l1Token balance of the contract is greater than the liquidReserves. If it
-     * is then the bridging action from L2->L1 has concluded and the local accounting can be updated.
+     * @notice Synchronize any balance changes in this contract with the utilized & liquid reserves. This would be done
+     * at the conclusion of an L2->L1 token transfer via the canonical token bridge.
      */
     function sync() public {
+        // Check if the l1Token balance of the contract is greater than the liquidReserves. If it is then the bridging
+        // action from L2->L1 has concluded and the local accounting can be updated.
         uint256 l1TokenBalance = l1Token.balanceOf(address(this));
         if (l1TokenBalance > liquidReserves) {
-            uint256 bridgedAmount = l1TokenBalance - liquidReserves;
-
-            // utilizedReserves can never be zero. If all pending transfers are done then this equals zero.
-            utilizedReserves = utilizedReserves > bridgedAmount ? utilizedReserves - bridgedAmount : 0;
+            // utilizedReserves can go to less than zero. This will happen if the accumulated fees exceeds the current
+            // outstanding utalization. In other words, if outstanding bridging transfers are 0 then utilizedReserves
+            // will equal the total LP fees accumulated over all time.
+            utilizedReserves -= int256(l1TokenBalance - liquidReserves);
             liquidReserves = l1TokenBalance;
-
-            cumulativeBridgedAmount += bridgedAmount;
-            totalBridgedSansLpFees = totalBridgedSansLpFees + bridgedAmount - unbridgedAccumulatedLpFees;
-            unbridgedAccumulatedLpFees = 0;
-        }
-    }
-
-    function updateFeeCounters(uint256 allocatedLpFees) internal {
-        uint256 unallocatedAccumulatedFees = getUnallocatedAccumulatedFees();
-        undistributedLpFees = undistributedLpFees > unallocatedAccumulatedFees
-            ? undistributedLpFees - unallocatedAccumulatedFees
-            : 0;
-        cumulativeLpFeesEarned += unallocatedAccumulatedFees;
-        unbridgedAccumulatedLpFees += unallocatedAccumulatedFees;
-        lastLpFeeUpdate = getCurrentTime();
-
-        if (allocatedLpFees > 0) {
-            undistributedLpFees += allocatedLpFees;
         }
     }
 
@@ -425,52 +396,60 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         if (totalSupply() == 0) return 1e18; //initial rate is 1 pre any mint action.
 
         // First, update fee counters and local accounting of finalized transfers from L2->L1.
-        updateFeeCounters(0);
-        sync();
-        emit LOG2(
-            liquidReserves,
-            utilizedReserves,
-            totalBridgedSansLpFees,
-            unbridgedAccumulatedLpFees,
-            cumulativeBridgedAmount
-        );
+        updateFeeCounters(0); // Accumulate all allocated fees from the last time this method was called.
+        sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
 
-        return
-            (
-                FixedPoint
-                    .Unsigned(liquidReserves)
-                    .add(FixedPoint.Unsigned(utilizedReserves))
-                    .add(FixedPoint.Unsigned(totalBridgedSansLpFees))
-                    .add(FixedPoint.Unsigned(unbridgedAccumulatedLpFees))
-                    .sub(FixedPoint.Unsigned(cumulativeBridgedAmount))
-            )
-                .div(FixedPoint.Unsigned(totalSupply()))
-                .rawValue;
+        // ExchangeRate := (liquidReserves+utilizedReserves+cumulativeLpFeesEarned-undistributedLpFees)/lpTokenSupply
+        // Note to accommodate negative utilizedReserves without using FixedPoint.Signed we need to do a bit of branching
+        // logic. This is a gas optimization so we don't need to import this extra library logic.
+        FixedPoint.Unsigned memory numerator =
+            FixedPoint.Unsigned(liquidReserves).add(FixedPoint.Unsigned(cumulativeLpFeesEarned)).sub(
+                FixedPoint.Unsigned(undistributedLpFees)
+            );
+        if (utilizedReserves > 0) numerator = numerator.add(FixedPoint.Unsigned(uint256(utilizedReserves)));
+        else numerator = numerator.sub(FixedPoint.Unsigned(uint256(utilizedReserves * -1)));
+        return numerator.div(FixedPoint.Unsigned(totalSupply())).rawValue;
     }
 
     /************************************
      *           View FUNCTIONS         *
      ************************************/
 
+    /**
+     * @notice Computes the current amount of unallocated fees that have accumulated from the previous time this the
+     * contract was called.
+     */
     function getUnallocatedAccumulatedFees() public view returns (uint256) {
-        return computeAccumulatedFees(undistributedLpFees, lpFeeRatePerSecond, lastLpFeeUpdate, getCurrentTime());
-    }
-
-    function computeAccumulatedFees(
-        uint256 undistributedFees,
-        uint256 feeRatePerSecond,
-        uint256 startTime,
-        uint256 endTime
-    ) public pure returns (uint256) {
-        if (startTime >= endTime) return 0;
-
-        //TODO: consider capping at undistributedFees (100% payout of remaining fees).
+        // UnallocatedLpFees := min(undistributedLpFees*lpFeeRatePerSecond*timeFromLastInteraction,undistributedLpFees)
+        // The min acts to pay out all fees in the case the equation returns more than the remaining a fees.
         return
             FixedPoint
-                .Unsigned(undistributedFees)
-                .mul(FixedPoint.Unsigned(feeRatePerSecond))
-                .mul(FixedPoint.fromUnscaledUint(endTime - startTime))
+                .Unsigned(undistributedLpFees)
+                .mul(FixedPoint.Unsigned(lpFeeRatePerSecond))
+                .mul(FixedPoint.fromUnscaledUint(getCurrentTime() - lastLpFeeUpdate))
+                .min(FixedPoint.Unsigned(undistributedLpFees))
                 .rawValue;
+    }
+
+    // Update the internal fee counter metrics by adding in any accumulated fees from the last time this logic was
+    // called. Considers any allocated fees that are assigned to the LPs at the conclusion of a bridging action.
+    function updateFeeCounters(uint256 allocatedLpFees) internal {
+        // Calculate the unallocatedAccumulatedFees from the last time the contract was called.
+        uint256 unallocatedAccumulatedFees = getUnallocatedAccumulatedFees();
+
+        // Decrement the undistributedLpFees by the amount of accumulated fees.
+        undistributedLpFees = undistributedLpFees > unallocatedAccumulatedFees
+            ? undistributedLpFees - unallocatedAccumulatedFees
+            : 0;
+
+        lastLpFeeUpdate = getCurrentTime();
+
+        // If this method was called from settleRelay then it includes the exact amount of fees to be attributed to the
+        // Liquidity providers. add this to the associated variables.
+        if (allocatedLpFees > 0) {
+            undistributedLpFees += allocatedLpFees;
+            cumulativeLpFeesEarned += allocatedLpFees;
+        }
     }
 
     /**
@@ -557,7 +536,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     }
 
     /**************************************
-     *        INTERNAL FUNCTIONS          *
+     *    INTERNAL & PRIVATE FUNCTIONS    *
      **************************************/
 
     function _getOptimisticOracle() private view returns (OptimisticOracleInterface) {
