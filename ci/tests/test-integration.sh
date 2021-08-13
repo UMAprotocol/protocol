@@ -20,6 +20,7 @@ cat << EOF
       - run:
           name: Run integration tests
           command: |
+            nvm use 15.10.0
             node -v
             npm -v
             yarn -v
