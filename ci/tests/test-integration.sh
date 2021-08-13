@@ -12,7 +12,9 @@ cat << EOF
           name: Install dependencies
           command: |
             sudo apt update
-            sudo apt install nodejs npm
+            curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.38.0/install.sh | bash
+            nvm install v15.10.0
+            sudo apt install npm
             npm install --global yarn
       - run:
           name: Run integration tests
