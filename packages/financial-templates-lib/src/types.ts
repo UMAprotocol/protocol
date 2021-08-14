@@ -1,60 +1,7 @@
-export interface Parameter {
-  name: string;
-  type: string;
-  components: Parameter[];
-}
+import type { AbiItem, toBN } from "web3-utils";
 
-export type FunctionType = "function" | "constructor" | "receive" | "fallback";
-export type StateMutability = "pure" | "view" | "nonpayable" | "payable";
+export type Abi = AbiItem | AbiItem[];
 
-export interface ConstructorFunctionAbi {
-  type: "constructor";
-  inputs: Parameter[];
-  stateMutability: StateMutability;
-}
+export type BN = ReturnType<typeof toBN>;
 
-export interface FallbackFunctionAbi {
-  type: "fallback";
-  stateMutability: StateMutability;
-}
-
-export interface FunctionFunctionAbi {
-  type: "function";
-  name: string;
-  inputs: Parameter[];
-  outputs: Parameter[];
-  stateMutability: StateMutability;
-}
-
-export interface ReceiveFunctionAbi {
-  type: "receive";
-  name: string;
-  inputs: Parameter[];
-  outputs: Parameter[];
-  stateMutability: StateMutability;
-}
-
-export type FunctionAbi = ConstructorFunctionAbi | FallbackFunctionAbi | FunctionFunctionAbi | ReceiveFunctionAbi;
-
-export interface EventParameter extends Parameter {
-  indexed: boolean;
-}
-
-export interface EventAbi {
-  type: "event";
-  name: string;
-  inputs: EventParameter[];
-  anonymous: boolean;
-}
-
-export interface ErrorAbi {
-  type: "error";
-  name: string;
-  inputs: Parameter[];
-}
-
-export type AbiElementType = FunctionType | "event" | "error";
-
-export type AbiElement = FunctionAbi | EventAbi | ErrorAbi;
-
-export type Abi = AbiElement[];
+export type Awaited<T> = T extends PromiseLike<infer U> ? Awaited<U> : T;

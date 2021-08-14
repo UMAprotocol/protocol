@@ -1,7 +1,65 @@
+import type { Logger } from "winston";
+import type { Abi } from "../types";
+import type Web3 from "web3";
+import type {
+  ExpiringMultiPartyWeb3,
+  ExpiringMultiPartyWeb3Events,
+  PerpetualWeb3,
+  PerpetualWeb3Events,
+} from "@uma/contracts-node";
+
+export type FinancialContractType = "ExpiringMultiParty" | "Perpetual";
+export type LiquidationCreatedEvent =
+  | ExpiringMultiPartyWeb3Events.LiquidationCreated
+  | PerpetualWeb3Events.LiquidationCreated;
+export type DisputeEvent = ExpiringMultiPartyWeb3Events.LiquidationDisputed | PerpetualWeb3Events.LiquidationDisputed;
+export type DisputeSettlementEvent = ExpiringMultiPartyWeb3Events.DisputeSettled | PerpetualWeb3Events.DisputeSettled;
+export type NewSponsorEvent = ExpiringMultiPartyWeb3Events.NewSponsor | PerpetualWeb3Events.NewSponsor;
+export type DepositEvent = ExpiringMultiPartyWeb3Events.Deposit | PerpetualWeb3Events.Deposit;
+export type CreateEvent = ExpiringMultiPartyWeb3Events.PositionCreated | PerpetualWeb3Events.PositionCreated;
+export type WithdrawEvent = ExpiringMultiPartyWeb3Events.Withdrawal | PerpetualWeb3Events.Withdrawal;
+export type RedeemEvent = ExpiringMultiPartyWeb3Events.Redeem | PerpetualWeb3Events.Redeem;
+export type RegularFeeEvent = ExpiringMultiPartyWeb3Events.RegularFeesPaid | PerpetualWeb3Events.RegularFeesPaid;
+export type FinalFeeEvent = ExpiringMultiPartyWeb3Events.FinalFeesPaid | PerpetualWeb3Events.FinalFeesPaid;
+export type LiquidationWithadrawnEvent =
+  | ExpiringMultiPartyWeb3Events.LiquidationWithdrawn
+  | PerpetualWeb3Events.LiquidationWithdrawn;
+export type SettleExpiredEvent = ExpiringMultiPartyWeb3Events.SettleExpiredPosition;
+export type SettleEmergencyShutdownEvent = PerpetualWeb3Events.SettleEmergencyShutdown;
+export type FundingRateUpdatedEvent = PerpetualWeb3Events.FundingRateUpdated;
+
+interface TransactionMetadata {
+  transactionHash: string;
+  blockNumber: number;
+}
+
+type EventExport<T extends { returnValues: any }> = T["returnValues"] & TransactionMetadata;
+
 // A thick client for getting information about FinancialContract events. This client is kept separate from the
 // FinancialContractClient to keep a clear separation of concerns and to limit the overhead from querying the chain.
 
-class FinancialContractEventClient {
+export class FinancialContractEventClient {
+  public financialContract: ExpiringMultiPartyWeb3 | PerpetualWeb3;
+
+  // Financial Contract Events data structure to enable synchronous retrieval of information.
+  private liquidationEvents: EventExport<LiquidationCreatedEvent>[] = [];
+  private disputeEvents: EventExport<DisputeEvent>[] = [];
+  private disputeSettlementEvents: EventExport<DisputeSettlementEvent>[] = [];
+  private newSponsorEvents: (EventExport<NewSponsorEvent> &
+    Pick<EventExport<CreateEvent>, "tokenAmount" | "collateralAmount">)[] = [];
+  private depositEvents: EventExport<DepositEvent>[] = [];
+  private createEvents: EventExport<CreateEvent>[] = [];
+  private withdrawEvents: EventExport<WithdrawEvent>[] = [];
+  private redeemEvents: EventExport<RedeemEvent>[] = [];
+  private regularFeeEvents: EventExport<RegularFeeEvent>[] = [];
+  private finalFeeEvents: EventExport<FinalFeeEvent>[] = [];
+  private liquidationWithdrawnEvents: (EventExport<LiquidationWithadrawnEvent> & { withdrawalAmount: string })[] = [];
+  private settleExpiredPositionEvents: EventExport<SettleExpiredEvent | SettleEmergencyShutdownEvent>[] = [];
+  private fundingRateUpdatedEvents: EventExport<FundingRateUpdatedEvent>[] = [];
+  private firstBlockToSearch: number;
+  private lastBlockToSearchUntil: number | null;
+  private lastUpdateTimestamp: number;
+
   /**
    * @notice Constructs new FinancialContractEventClient.
    * @param {Object} logger Winston module used to send logs.
@@ -13,36 +71,20 @@ class FinancialContractEventClient {
    * @return None or throws an Error.
    */
   constructor(
-    logger,
-    financialContractAbi,
-    web3,
-    financialContractAddress,
+    private readonly logger: Logger,
+    financialContractAbi: Abi,
+    public readonly web3: Web3,
+    financialContractAddress: string,
     startingBlockNumber = 0,
-    endingBlockNumber = null,
-    contractType = "ExpiringMultiParty", // Default to Expiring Multi Party for now to enable backwards compatibility with other bots. This will be removed as soon as the other bots have been updated to work with these contract types.
-    contractVersion = "2.0.1"
+    endingBlockNumber: number | null = null,
+    private contractType: FinancialContractType = "ExpiringMultiParty", // Default to Expiring Multi Party for now to enable backwards compatibility with other bots. This will be removed as soon as the other bots have been updated to work with these contract types.
+    private contractVersion = "2.0.1"
   ) {
-    this.logger = logger;
-    this.web3 = web3;
-
     // Financial Contract contract
-    this.financialContract = new this.web3.eth.Contract(financialContractAbi, financialContractAddress);
-    this.financialContractAddress = financialContractAddress;
-
-    // Financial Contract Events data structure to enable synchronous retrieval of information.
-    this.liquidationEvents = [];
-    this.disputeEvents = [];
-    this.disputeSettlementEvents = [];
-    this.newSponsorEvents = [];
-    this.depositEvents = [];
-    this.createEvents = [];
-    this.withdrawEvents = [];
-    this.redeemEvents = [];
-    this.regularFeeEvents = [];
-    this.finalFeeEvents = [];
-    this.liquidationWithdrawnEvents = [];
-    this.settleExpiredPositionEvents = [];
-    this.fundingRateUpdatedEvents = [];
+    this.financialContract = (new this.web3.eth.Contract(
+      financialContractAbi,
+      financialContractAddress
+    ) as unknown) as FinancialContractEventClient["financialContract"];
 
     // First block number to begin searching for events after.
     this.firstBlockToSearch = startingBlockNumber;
@@ -53,13 +95,11 @@ class FinancialContractEventClient {
 
     if (contractType !== "ExpiringMultiParty" && contractType !== "Perpetual")
       throw new Error(`Invalid type: ${contractType}! This client only supports ExpiringMultiParty or Perpetual`);
-    this.contractType = contractType;
     if (contractVersion !== "2.0.1")
       throw new Error(`Invalid version: ${contractVersion}! This client only supports 2.0.1`);
-    this.contractVersion = contractVersion;
   }
   // Delete all events within the client
-  async clearState() {
+  public async clearState(): Promise<void> {
     this.liquidationEvents = [];
     this.disputeEvents = [];
     this.disputeSettlementEvents = [];
@@ -75,64 +115,69 @@ class FinancialContractEventClient {
     this.fundingRateUpdatedEvents = [];
   }
 
-  getAllNewSponsorEvents() {
+  public getAllNewSponsorEvents(): (EventExport<NewSponsorEvent> &
+    Pick<EventExport<CreateEvent>, "tokenAmount" | "collateralAmount">)[] {
     return this.newSponsorEvents;
   }
 
-  getAllLiquidationEvents() {
+  public getAllLiquidationEvents(): EventExport<LiquidationCreatedEvent>[] {
     return this.liquidationEvents;
   }
 
-  getAllDisputeEvents() {
+  public getAllDisputeEvents(): EventExport<DisputeEvent>[] {
     return this.disputeEvents;
   }
 
-  getAllDisputeSettlementEvents() {
+  public getAllDisputeSettlementEvents(): EventExport<DisputeSettlementEvent>[] {
     return this.disputeSettlementEvents;
   }
 
-  getAllDepositEvents() {
+  public getAllDepositEvents(): EventExport<DepositEvent>[] {
     return this.depositEvents;
   }
 
-  getAllCreateEvents() {
+  public getAllCreateEvents(): EventExport<CreateEvent>[] {
     return this.createEvents;
   }
 
-  getAllWithdrawEvents() {
+  public getAllWithdrawEvents(): EventExport<WithdrawEvent>[] {
     return this.withdrawEvents;
   }
 
-  getAllRedeemEvents() {
+  public getAllRedeemEvents(): EventExport<RedeemEvent>[] {
     return this.redeemEvents;
   }
 
-  getAllRegularFeeEvents() {
+  public getAllRegularFeeEvents(): EventExport<RegularFeeEvent>[] {
     return this.regularFeeEvents;
   }
 
-  getAllFinalFeeEvents() {
+  public getAllFinalFeeEvents(): EventExport<FinalFeeEvent>[] {
     return this.finalFeeEvents;
   }
 
-  getAllLiquidationWithdrawnEvents() {
+  public getAllLiquidationWithdrawnEvents(): (EventExport<LiquidationWithadrawnEvent> & {
+    withdrawalAmount: string;
+  })[] {
     return this.liquidationWithdrawnEvents;
   }
 
-  getAllSettleExpiredPositionEvents() {
+  public getAllSettleExpiredPositionEvents(): EventExport<
+    ExpiringMultiPartyWeb3Events.SettleExpiredPosition | PerpetualWeb3Events.SettleEmergencyShutdown
+  >[] {
     return this.settleExpiredPositionEvents;
   }
 
-  getAllFundingRateUpdatedEvents() {
+  public getAllFundingRateUpdatedEvents(): EventExport<PerpetualWeb3Events.FundingRateUpdated>[] {
     return this.fundingRateUpdatedEvents;
   }
 
   // Returns the last update timestamp.
-  getLastUpdateTime() {
+  public getLastUpdateTime(): number {
     return this.lastUpdateTimestamp;
   }
 
-  async update() {
+  public async update(): Promise<void> {
     // The last block to search is either the value specified in the constructor (useful in serverless mode) or is the
     // latest block number (if running in loop mode).
     // Set the last block to search up until.
@@ -158,7 +203,7 @@ class FinancialContractEventClient {
       finalFeeEventsObj,
       liquidationWithdrawnEventsObj,
       settleExpiredPositionEventsObj,
-    ] = await Promise.all([
+    ] = (await Promise.all([
       this.financialContract.methods.getCurrentTime().call(),
       this.financialContract.getPastEvents("LiquidationCreated", blockSearchConfig),
       this.financialContract.getPastEvents("LiquidationDisputed", blockSearchConfig),
@@ -174,65 +219,63 @@ class FinancialContractEventClient {
       this.contractType == "ExpiringMultiParty" // If the contract is an EMP then find the SettleExpiredPosition events.
         ? this.financialContract.getPastEvents("SettleExpiredPosition", blockSearchConfig)
         : this.financialContract.getPastEvents("SettleEmergencyShutdown", blockSearchConfig), // Else, find the SettleEmergencyShutdown events.
-    ]);
+    ] as any[])) as [
+      string,
+      LiquidationCreatedEvent[],
+      DisputeEvent[],
+      DisputeSettlementEvent[],
+      CreateEvent[],
+      NewSponsorEvent[],
+      DepositEvent[],
+      WithdrawEvent[],
+      RedeemEvent[],
+      RegularFeeEvent[],
+      FinalFeeEvent[],
+      LiquidationWithadrawnEvent[],
+      SettleExpiredEvent[] | SettleEmergencyShutdownEvent[]
+    ];
     // Set the current contract time as the last update timestamp from the contract.
-    this.lastUpdateTimestamp = currentTime;
+    this.lastUpdateTimestamp = parseInt(currentTime);
 
     // Process the responses into clean objects.
     // Liquidation events.
-    for (let event of liquidationEventsObj) {
+    for (const event of liquidationEventsObj) {
       this.liquidationEvents.push({
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
-        sponsor: event.returnValues.sponsor,
-        liquidator: event.returnValues.liquidator,
-        liquidationId: event.returnValues.liquidationId,
-        tokensOutstanding: event.returnValues.tokensOutstanding,
-        lockedCollateral: event.returnValues.lockedCollateral,
-        liquidatedCollateral: event.returnValues.liquidatedCollateral,
+        ...event.returnValues,
       });
     }
 
     // Dispute events.
-    for (let event of disputeEventsObj) {
+    for (const event of disputeEventsObj) {
       this.disputeEvents.push({
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
-        sponsor: event.returnValues.sponsor,
-        liquidator: event.returnValues.liquidator,
-        disputer: event.returnValues.disputer,
-        liquidationId: event.returnValues.liquidationId,
-        disputeBondAmount: event.returnValues.disputeBondAmount,
+        ...event.returnValues,
       });
     }
 
     // Dispute settlement events.
-    for (let event of disputeSettlementEventsObj) {
+    for (const event of disputeSettlementEventsObj) {
       this.disputeSettlementEvents.push({
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
-        caller: event.returnValues.caller,
-        sponsor: event.returnValues.sponsor,
-        liquidator: event.returnValues.liquidator,
-        disputer: event.returnValues.disputer,
-        liquidationId: event.returnValues.liquidationId,
-        disputeSucceeded: event.returnValues.disputeSucceeded,
+        ...event.returnValues,
       });
     }
 
     // Create events.
-    for (let event of createEventsObj) {
+    for (const event of createEventsObj) {
       this.createEvents.push({
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
-        sponsor: event.returnValues.sponsor,
-        collateralAmount: event.returnValues.collateralAmount,
-        tokenAmount: event.returnValues.tokenAmount,
+        ...event.returnValues,
       });
     }
 
     // NewSponsor events mapped against PositionCreated events to determine size of new positions created.
-    for (let event of newSponsorEventsObj) {
+    for (const event of newSponsorEventsObj) {
       // Every transaction that emits a NewSponsor event must also emit a PositionCreated event.
       // We assume that there is only one PositionCreated event that has the same block number as
       // the current NewSponsor event.
@@ -241,98 +284,88 @@ class FinancialContractEventClient {
       this.newSponsorEvents.push({
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
-        sponsor: event.returnValues.sponsor,
+        ...event.returnValues,
         collateralAmount: createEvent[0].collateralAmount,
         tokenAmount: createEvent[0].tokenAmount,
       });
     }
 
     // Deposit events.
-    for (let event of depositEventsObj) {
+    for (const event of depositEventsObj) {
       this.depositEvents.push({
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
-        sponsor: event.returnValues.sponsor,
-        collateralAmount: event.returnValues.collateralAmount,
+        ...event.returnValues,
       });
     }
 
     // Withdraw events.
-    for (let event of withdrawEventsObj) {
+    for (const event of withdrawEventsObj) {
       this.withdrawEvents.push({
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
-        sponsor: event.returnValues.sponsor,
-        collateralAmount: event.returnValues.collateralAmount,
+        ...event.returnValues,
       });
     }
 
     // Redeem events.
-    for (let event of redeemEventsObj) {
+    for (const event of redeemEventsObj) {
       this.redeemEvents.push({
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
-        sponsor: event.returnValues.sponsor,
-        collateralAmount: event.returnValues.collateralAmount,
-        tokenAmount: event.returnValues.tokenAmount,
+        ...event.returnValues,
       });
     }
 
     // Regular fee events.
-    for (let event of regularFeeEventsObj) {
+    for (const event of regularFeeEventsObj) {
       this.regularFeeEvents.push({
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
-        regularFee: event.returnValues.regularFee,
-        lateFee: event.returnValues.lateFee,
+        ...event.returnValues,
       });
     }
 
     // Final fee events.
-    for (let event of finalFeeEventsObj) {
+    for (const event of finalFeeEventsObj) {
       this.finalFeeEvents.push({
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
-        amount: event.returnValues.amount,
+        ...event.returnValues,
       });
     }
 
     // Liquidation withdrawn events.
-    for (let event of liquidationWithdrawnEventsObj) {
+    for (const event of liquidationWithdrawnEventsObj) {
       this.liquidationWithdrawnEvents.push({
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
-        caller: event.returnValues.caller,
+        ...event.returnValues,
         withdrawalAmount: event.returnValues.paidToLiquidator,
-        liquidationStatus: event.returnValues.liquidationStatus,
       });
     }
 
     // Settle expired position events.
-    for (let event of settleExpiredPositionEventsObj) {
+    for (const event of settleExpiredPositionEventsObj) {
       this.settleExpiredPositionEvents.push({
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
-        caller: event.returnValues.caller,
-        collateralReturned: event.returnValues.collateralReturned,
-        tokensBurned: event.returnValues.tokensBurned,
+        ...event.returnValues,
       });
     }
 
     // Look for perpetual specific events:
     if (this.contractType == "Perpetual") {
-      const [fundingRateUpdatedEventsObj] = await Promise.all([
+      const [fundingRateUpdatedEventsObj] = ((await Promise.all([
         this.financialContract.getPastEvents("FundingRateUpdated", blockSearchConfig),
-      ]);
+      ])) as unknown) as [FundingRateUpdatedEvent[]];
 
       // Funding Rate Updated events
-      for (let event of fundingRateUpdatedEventsObj) {
+      for (const event of fundingRateUpdatedEventsObj) {
         this.fundingRateUpdatedEvents.push({
           transactionHash: event.transactionHash,
           blockNumber: event.blockNumber,
-          newFundingRate: event.returnValues.newFundingRate,
-          updateTime: event.returnValues.updateTime,
-          reward: event.returnValues.reward,
+          ...event.returnValues,
         });
       }
     }
@@ -347,5 +380,3 @@ class FinancialContractEventClient {
     });
   }
 }
-
-module.exports = { FinancialContractEventClient };

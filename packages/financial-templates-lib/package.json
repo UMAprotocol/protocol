@@ -25,7 +25,8 @@
   "devDependencies": {
     "@openzeppelin/contracts": "4.1.0",
     "@tsconfig/node14": "^1.0.0",
-    "bignumber.js": "^9.0.1"
+    "bignumber.js": "^9.0.1",
+    "web3-utils": "^1.5.1"
   },
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
