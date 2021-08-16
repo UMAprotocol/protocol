@@ -11,7 +11,7 @@
     "hardhat": "^2.4.3",
     "minimist": "^1.2.0",
     "winston": "^3.2.1",
-    "web3": "^1.5.0"
+    "web3": "^1.5.2"
   },
   "devDependencies": {},
   "homepage": "https://umaproject.org",

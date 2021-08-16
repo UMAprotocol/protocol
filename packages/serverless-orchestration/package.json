@@ -7,7 +7,7 @@
     "@openzeppelin/contracts": "4.1.0",
     "@uma/common": "^2.6.0",
     "@uma/financial-templates-lib": "^2.6.1",
-    "web3": "^1.5.0"
+    "web3": "^1.5.2"
   },
   "devDependencies": {
     "@awaitjs/express": "^0.3.0",
