@@ -100,7 +100,7 @@ class GasEstimator {
       //   "fastest": "39.6"
       // }
       if (json.fastest) {
-        let price = json.fastest;
+        let price = json.recommendedBaseFee;
         return price;
       } else {
         throw new Error(`Main gas station API @ ${url}: bad json response`);
