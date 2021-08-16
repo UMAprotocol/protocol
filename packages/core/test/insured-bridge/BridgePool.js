@@ -628,7 +628,7 @@ describe("BridgePool", () => {
 
       // Check BridgePool relay and disputedRelay mappings were modified as expected:
       const postDisputeRelayStatus = await bridgePool.methods.relays(depositHash).call();
-      assert.equal(postDisputeRelayStatus.relayState, InsuredBridgeRelayStateEnum.UNINITIALIZED);
+      assert.equal(postDisputeRelayStatus.relayState, InsuredBridgeRelayStateEnum.DISPUTED);
 
       // Mint relayer new bond to try relaying again:
       await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
@@ -947,6 +947,9 @@ describe("BridgePool", () => {
           ev.caller === rando
         );
       });
+
+      // Cannot re-settle.
+      assert(await didContractThrow(bridgePool.methods.settleRelay(depositData).send({ from: rando })));
 
       // Check token balances.
       // -Slow relayer should get back their proposal bond from OO and reward from BridgePool.

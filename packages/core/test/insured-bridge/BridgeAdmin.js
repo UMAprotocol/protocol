@@ -114,6 +114,12 @@ describe("BridgeAdmin", () => {
         "OnlyOwner modifier not enforced"
       );
 
+      // Liveness too large.
+      assert(await didContractThrow(bridgeAdmin.methods.setOptimisticOracleLiveness(toWei("1")).send({ from: owner })));
+
+      // Liveness too small.
+      assert(await didContractThrow(bridgeAdmin.methods.setOptimisticOracleLiveness("0").send({ from: owner })));
+
       const txn = await bridgeAdmin.methods.setOptimisticOracleLiveness(newLiveness).send({ from: owner });
       await assertEventEmitted(txn, bridgeAdmin, "SetOptimisticOracleLiveness", (ev) => {
         return ev.liveness.toString() === newLiveness.toString();
@@ -126,6 +132,9 @@ describe("BridgeAdmin", () => {
         await didContractThrow(bridgeAdmin.methods.setProposerBondPct(newBond).send({ from: rando })),
         "OnlyOwner modifier not enforced"
       );
+
+      // Proposer bond % too large
+      assert(await didContractThrow(bridgeAdmin.methods.setProposerBondPct(toWei("1.01")).send({ from: owner })));
 
       const txn = await bridgeAdmin.methods.setProposerBondPct(newBond).send({ from: owner });
       await assertEventEmitted(txn, bridgeAdmin, "SetProposerBondPct", (ev) => {
@@ -166,6 +175,16 @@ describe("BridgeAdmin", () => {
             "L1 token is not whitelisted collateral"
           );
           await collateralWhitelist.methods.addToWhitelist(l1Token).send({ from: owner });
+
+          // Fails if l2 token address is invalid
+          assert(
+            await didContractThrow(
+              bridgeAdmin.methods
+                .whitelistToken(l1Token, ZERO_ADDRESS, bridgePool.options.address, defaultGasLimit)
+                .send({ from: owner })
+            ),
+            "L2 token cannot be zero address"
+          );
 
           // Fails if bridge pool is zero address.
           assert(

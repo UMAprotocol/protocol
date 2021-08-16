@@ -6,10 +6,8 @@ pragma solidity ^0.8.0;
 // changing their version is preferable to changing this contract to 0.7.x and defining compatible interfaces for all
 // of the imported DVM contracts below.
 import "./OVM_CrossDomainEnabled.sol";
-import "./BridgePoolInterface.sol";
-import "./BridgeAdminInterface.sol";
-import "./BridgePoolInterface.sol";
-
+import "../interfaces//BridgePoolInterface.sol";
+import "../interfaces/BridgeAdminInterface.sol";
 import "../../../contracts/oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../../contracts/oracle/interfaces/FinderInterface.sol";
 import "../../../contracts/oracle/implementation/Constants.sol";
@@ -122,11 +120,6 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
      *        CROSSDOMAIN ADMIN FUNCTIONS             *
      **************************************************/
 
-    // TODO: In following functions, we need to consider two things concerning asynchronous cross-domain messaging:
-    // - how to set the l2Gas value such that the OVM allocates enough gas to execute the function. Should we hardcode
-    //   a really high OVM gas limit value like 10_000_000 and use that for all functions?
-    // - contract needs to assume that the cross domain message might fail.
-
     /**
      * @notice Set new contract as the admin address in the L2 Deposit contract.
      * @dev Only callable by the current owner.
@@ -146,7 +139,6 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
      * @param _l2Gas Gas limit to set for relayed message on L2.
      */
     function setMinimumBridgingDelay(uint64 _minimumBridgingDelay, uint32 _l2Gas) public onlyOwner depositContractSet {
-        // TODO: Validate _minimumBridgingDelay
         sendCrossDomainMessage(
             depositContract,
             _l2Gas,
@@ -193,15 +185,13 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
         uint32 _l2Gas
     ) public onlyOwner depositContractSet {
         require(_bridgePool != address(0), "BridgePool cannot be zero address");
+        require(_l2Token != address(0), "L2 token cannot be zero address");
         require(_getCollateralWhitelist().isOnWhitelist(address(_l1Token)), "Payment token not whitelisted");
 
         require(address(BridgePoolInterface(_bridgePool).l1Token()) == _l1Token, "Bridge pool has different L1 token");
 
         whitelistedTokens[_l1Token] = L1TokenRelationships({ l2Token: _l2Token, bridgePool: _bridgePool });
 
-        // TODO: Need to prepare for situation where this async transaction fails due to insufficient gas, or other
-        // reasons. Currently, the user can execute this function again, but the whitelist mapping might get out of
-        // sync between L1 and L2.
         sendCrossDomainMessage(
             depositContract,
             _l2Gas,
@@ -236,13 +226,14 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
     }
 
     function _setOptimisticOracleLiveness(uint64 _liveness) private {
-        // TODO: Validate liveness period value.
+        require(_liveness < 5200 weeks, "Liveness too large");
+        require(_liveness > 0, "Liveness cannot be 0");
         optimisticOracleLiveness = _liveness;
         emit SetOptimisticOracleLiveness(optimisticOracleLiveness);
     }
 
     function _setProposerBondPct(uint64 _proposerBondPct) private {
-        // TODO: Validate bond % value.
+        require(_proposerBondPct <= 1e18, "Proposer bond cannot be greater than 100%");
         proposerBondPct = _proposerBondPct;
         emit SetProposerBondPct(proposerBondPct);
     }

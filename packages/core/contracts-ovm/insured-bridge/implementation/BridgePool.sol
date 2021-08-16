@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "./BridgeAdminInterface.sol";
-import "./BridgePoolInterface.sol";
+import "../interfaces/BridgeAdminInterface.sol";
+import "../interfaces/BridgePoolInterface.sol";
 
 import "../../../contracts/oracle/interfaces/OptimisticOracleInterface.sol";
 import "../../../contracts/oracle/interfaces/StoreInterface.sol";
@@ -54,7 +54,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
 
     // A Relay represents a an attempt to finalize a cross-chain transfer that originated on an L2 DepositBox contract
     // and can be bridged via this contract.
-    enum RelayState { Uninitialized, Pending, Finalized }
+    enum RelayState { Uninitialized, Pending, Disputed, Finalized }
 
     // Data from L2 deposit transaction.
     struct DepositData {
@@ -201,7 +201,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         require(instantRelayFeePct < 0.25e18);
         require(realizedLpFeePct < 0.5e18);
 
-        // Check if there is a pending relay for this deposit.
+        // Check if there is a pending undisputed relay for this deposit.
         DepositData memory depositData =
             DepositData({
                 depositId: depositId,
@@ -215,7 +215,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
                 quoteTimestamp: quoteTimestamp
             });
         bytes32 depositHash = _getDepositHash(depositData);
-        require(relays[depositHash].relayState == RelayState.Uninitialized, "Pending relay for deposit exists");
+        require(
+            (relays[depositHash].relayState == RelayState.Uninitialized ||
+                relays[depositHash].relayState == RelayState.Disputed),
+            "Pending undisputed relay for deposit exists"
+        );
 
         // If no pending relay for this deposit, then associate the caller's relay attempt with it. Copy over the
         // instant relayer so that the recipient cannot receive double payments.
@@ -360,11 +364,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         bytes32 depositHash = ancillaryDataToDepositHash[keccak256(ancillaryData)];
         RelayData storage relay = relays[depositHash];
 
-        // Mark pending relay as uninitialized but do not delete instant relayer information which should be copied
+        // Mark pending relay as disputed but do not delete instant relayer information which should be copied
         // over to next slow relay.
-        relay.relayState = RelayState.Uninitialized;
+        relay.relayState = RelayState.Disputed;
 
-        // TODO: Do we need to reset the other state in `relay` aside from `instantRelayer` which we want to save?
+        // We do not need to reset the other state in `relay` aside from `instantRelayer` because all of the state
+        // params get rewritten from global state in a `relayDeposit()` call.
         emit RelayDisputed(depositHash, keccak256(ancillaryData));
     }
 
