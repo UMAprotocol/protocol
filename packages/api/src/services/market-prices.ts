@@ -1,5 +1,6 @@
 import bluebird from "bluebird";
 import assert from "assert";
+import lodash from "lodash";
 import { AppState, BaseConfig } from "..";
 import { parseUnits, nowS, Profile } from "../libs/utils";
 
@@ -73,7 +74,8 @@ export default function (config: Config, appState: Dependencies) {
   // we can try to price all known erc20 addresses. Some will fail. Also this endpoint does not return a timestamp
   // so we will just set one from our query time.
   async function update(timestampS = nowS()) {
-    const addresses = Array.from(new Set(Array.from(collateralAddresses).concat(Array.from(syntheticAddresses))));
+    // want to make sure we dont have any duplicate addresses between collaterals and synthetic
+    const addresses = lodash.uniq(Array.from(collateralAddresses).concat(Array.from(syntheticAddresses)));
     await updateLatestPrices(addresses, timestampS).catch((err) => {
       console.error("Error getting Market Price: " + err.message);
     });
