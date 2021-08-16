@@ -63,7 +63,7 @@
     "@types/ethereum-protocol": "^1.0.0",
     "@types/mocha": "^5.2.7",
     "web3-core": "^1.5.0",
-    "web3-eth-contract": "^1.5.0",
+    "web3-eth-contract": "^1.5.2",
     "ethers": "^5.4.2",
     "@types/lodash.uniqby": "^4.7.6"
   }
