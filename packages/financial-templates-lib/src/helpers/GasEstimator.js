@@ -12,12 +12,11 @@ const GAS_ESTIMATOR_MAPPING_BY_NETWORK = {
   // }
   1: {
     url: "https://www.etherchain.org/api/gasPriceOracle",
-    defaultMaxFeePerGasGwei: 50,
-    defaultMaxPriorityFeePerGasGwei: 5,
-    type: "london",
+    backupUrl: "https://api.etherscan.io/api?module=gastracker&action=gasoracle",
+    defaultFastPriceGwei: 50,
   },
-  137: { url: "https://gasstation-mainnet.matic.network", defaultFastPriceGwei: 10, type: "legacy" },
-  80001: { url: "https://gasstation-mumbai.matic.today", defaultFastPriceGwei: 20, type: "legacy" },
+  137: { url: "https://gasstation-mainnet.matic.network", defaultFastPriceGwei: 10 },
+  80001: { url: "https://gasstation-mumbai.matic.today", defaultFastPriceGwei: 20 },
 };
 
 const DEFAULT_NETWORK_ID = 1; // Ethereum Mainnet.
@@ -33,8 +32,6 @@ class GasEstimator {
     this.logger = logger;
     this.updateThreshold = updateThreshold;
     this.lastUpdateTimestamp;
-    this.latestMaxFeePerGasGwei;
-    this.latestMaxPriorityFeePerGasGwei;
     this.lastFastPriceGwei;
 
     // If networkId is not found in GAS_ESTIMATOR_MAPPING_BY_NETWORK, then default to 1.
@@ -43,14 +40,8 @@ class GasEstimator {
     else this.networkId = networkId;
 
     // If the script fails or the API response fails default to this value.
-    this.defaultMaxFeePerGasGwei = GAS_ESTIMATOR_MAPPING_BY_NETWORK[this.networkId].defaultMaxFeePerGasGwei;
-    this.defaultMaxPriorityFeePerGasGwei =
-      GAS_ESTIMATOR_MAPPING_BY_NETWORK[this.networkId].defaultMaxPriorityFeePerGasGwei;
     this.defaultFastPriceGwei = GAS_ESTIMATOR_MAPPING_BY_NETWORK[this.networkId].defaultFastPriceGwei;
-    this.type = GAS_ESTIMATOR_MAPPING_BY_NETWORK[this.networkId].type;
-
-    this.latestMaxFeePerGasGwei = this.defaultMaxFeePerGasGwei;
-    this.latestMaxPriorityFeePerGasGwei = this.defaultMaxPriorityFeePerGasGwei;
+    this.lastFastPriceGwei = this.defaultFastPriceGwei;
   }
 
   // Calls update unless it was recently called, as determined by this.updateThreshold.
@@ -63,8 +54,7 @@ class GasEstimator {
         networkId: this.networkId,
         currentTime: currentTime,
         lastUpdateTimestamp: this.lastUpdateTimestamp,
-        currentMaxFeePerGas: this.lastMaxFeePerGas,
-        currentMaxPriorityFeePerGas: this.lastMaxPriorityFeePerGas,
+        currentFastPriceGwei: this.lastFastPriceGwei,
         timeRemainingUntilUpdate: this.lastUpdateTimestamp + this.updateThreshold - currentTime,
       });
       return;
@@ -76,30 +66,21 @@ class GasEstimator {
         message: "Gas estimator updated",
         networkId: this.networkId,
         lastUpdateTimestamp: this.lastUpdateTimestamp,
-        currentMaxFeePerGas: this.lastMaxFeePerGas,
-        currentMaxPriorityFeePerGas: this.lastMaxPriorityFeePerGas,
+        currentFastPriceGwei: this.lastFastPriceGwei,
       });
     }
   }
 
-  // Returns the current fast maxFeePerGas and maxPriorityFeePerGas.
+  // Returns the current fast gas price in Wei, converted from the stored Gwei value.
   getCurrentFastPrice() {
-    // Sometimes the multiplication by 1e9 introduces some error into the resulting number, so we'll conservatively ceil
-    // the result before returning.This output is usually passed into a web3 contract call so it MUST be an integer.
-    if (this.type == "london") {
-      return {
-        maxFeePerGas: Math.ceil(this.latestMaxFeePerGasGwei * 1e9),
-        maxPriorityFeePerGas: Math.ceil(this.latestMaxPriorityFeePerGasGwei * 1e9),
-      };
-    } else return { gasPrice: Math.ceil(this.lastFastPriceGwei * 1e9) };
+    // Sometimes the multiplication by 1e9 introduces some error into the resulting number,
+    // so we'll conservatively ceil the result before returning. This output is usually passed into
+    // a web3 contract call so it MUST be an integer.
+    return Math.ceil(this.lastFastPriceGwei * 1e9);
   }
 
   async _update() {
-    const latestGasInfo = await this._getPrice(this.networkId);
-    if (this.type == "london") {
-      this.latestMaxFeePerGasGwei = latestGasInfo.maxFeePerGas;
-      this.latestMaxPriorityFeePerGasGwei = latestGasInfo.maxPriorityFeePerGas;
-    } else this.lastFastPriceGwei = latestGasInfo.gasPrice;
+    this.lastFastPriceGwei = await this._getPrice(this.networkId);
   }
 
   async _getPrice(_networkId) {
@@ -111,28 +92,16 @@ class GasEstimator {
     try {
       const response = await fetch(url);
       const json = await response.json();
-      // Primary URL expected response structure for London
+      // Primary URL expected response structure:
       // {
-      //    safeLow: 1, // slow maxPriorityFeePerGas
-      //    standard: 1.5, // standard maxPriorityFeePerGas
-      //    fast: 4, // fast maxPriorityFeePerGas
-      //    fastest: 6.2, // fastest maxPriorityFeePerGas
-      //    currentBaseFee: 33.1, // previous blocks base fee
-      //    recommendedBaseFee: 67.1 // maxFeePerGas
-      // }
-      // Primary URL expected response structure for legacy. All values are gas price in Gwei
-      // {
-      //    "safeLow": 3,
-      //    "standard": 15,
-      //    "fast": 40,
-      //    "fastest": 311,
-      //    "blockTime": 2,
-      //    "blockNumber": 18040517
-      // }
+      //   "safeLow": "25.0",
+      //   "standard": "30.0",
+      //   "fast": "35.0",
+      //   "fastest": "39.6"
       // }
       if (json.fastest) {
-        if (this.type == "london") return { maxFeePerGas: json.recommendedBaseFee, maxPriorityFeePerGas: json.fastest };
-        else return { gasPrice: json.fastest };
+        let price = json.recommendedBaseFee;
+        return price;
       } else {
         throw new Error(`Main gas station API @ ${url}: bad json response`);
       }
@@ -167,14 +136,14 @@ class GasEstimator {
           this.logger.debug({
             at: "GasEstimator",
             message: "backup API failed, falling back to default fast gas price🚨",
-            defaultMaxFeePerGasGwei: this.defaultMaxFeePerGasGwei,
+            defaultFastPriceGwei: this.defaultFastPriceGwei,
             error: typeof errorBackup === "string" ? new Error(errorBackup) : errorBackup,
           });
         }
       }
 
       // In the failure mode return the fast default price.
-      return { maxFeePerGas: this.defaultMaxFeePerGasGwei, maxPriorityFeePerGas: this.defaultMaxPriorityFeePerGasGwei };
+      return this.defaultFastPriceGwei;
     }
   }
 }

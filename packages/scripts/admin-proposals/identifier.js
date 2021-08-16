@@ -108,12 +108,9 @@ async function run() {
   await gasEstimator.update();
   console.log(
     `⛽️ Current fast gas price for Ethereum: ${web3.utils.fromWei(
-      gasEstimator.getCurrentFastPrice().maxFeePerGas.toString(),
+      gasEstimator.getCurrentFastPrice().toString(),
       "gwei"
-    )} maxFeePerGas and ${web3.utils.fromWei(
-      gasEstimator.getCurrentFastPrice().maxPriorityFeePerGas.toString(),
-      "gwei"
-    )} maxPriorityFeePerGas`
+    )} gwei`
   );
   const governor = new web3.eth.Contract(Governor.abi, _getContractAddressByName("Governor", netId));
   const finder = new web3.eth.Contract(Finder.abi, _getContractAddressByName("Finder", netId));
@@ -202,7 +199,7 @@ async function run() {
     if (adminProposalTransactions.length > 0) {
       const txn = await governor.methods
         .propose(adminProposalTransactions)
-        .send({ from: REQUIRED_SIGNER_ADDRESSES["deployer"], ...gasEstimator.getCurrentFastPrice() });
+        .send({ from: REQUIRED_SIGNER_ADDRESSES["deployer"], gasPrice: gasEstimator.getCurrentFastPrice() });
       console.log("- Transaction: ", txn?.transactionHash);
 
       // Print out details about new Admin proposal

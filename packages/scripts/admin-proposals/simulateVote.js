@@ -54,12 +54,9 @@ async function run() {
   await gasEstimator.update();
   console.log(
     `⛽️ Current fast gas price for Ethereum: ${web3.utils.fromWei(
-      gasEstimator.getCurrentFastPrice().maxFeePerGas.toString(),
+      gasEstimator.getCurrentFastPrice().toString(),
       "gwei"
-    )} maxFeePerGas and ${web3.utils.fromWei(
-      gasEstimator.getCurrentFastPrice().maxPriorityFeePerGas.toString(),
-      "gwei"
-    )} maxPriorityFeePerGas`
+    )} gwei`
   );
   const governor = new web3.eth.Contract(Governor.abi, _getContractAddressByName("Governor", netId));
   const finder = new web3.eth.Contract(Finder.abi, _getContractAddressByName("Finder", netId));
@@ -151,13 +148,13 @@ async function run() {
     from: accounts[0],
     to: REQUIRED_SIGNER_ADDRESSES["foundation"],
     value: web3.utils.toWei("1"),
-    ...gasEstimator.getCurrentFastPrice(),
+    gasPrice: gasEstimator.getCurrentFastPrice(),
   });
   for (let i = 0; i < requestsToVoteOn.length; i++) {
     const request = requestsToVoteOn[i];
     const txn = await votingInterface.methods
       .commitVote(request.identifier, request.time, request.voteHash)
-      .send({ from: REQUIRED_SIGNER_ADDRESSES["foundation"], ...gasEstimator.getCurrentFastPrice() });
+      .send({ from: REQUIRED_SIGNER_ADDRESSES["foundation"], gasPrice: gasEstimator.getCurrentFastPrice() });
     console.log(`- [${i + 1}/${requestsToVoteOn.length}] Commit transaction hash: ${txn.transactionHash}`);
   }
   console.groupEnd();
@@ -171,7 +168,7 @@ async function run() {
   let signature = await signMessage(web3, SNAPSHOT_MESSAGE, accounts[0]);
   let snapshotTxn = await votingInterface.methods
     .snapshotCurrentRound(signature)
-    .send({ from: accounts[0], ...gasEstimator.getCurrentFastPrice() });
+    .send({ from: accounts[0], gasPrice: gasEstimator.getCurrentFastPrice() });
   console.log(`Snapshot transaction hash: ${snapshotTxn.transactionHash}`);
   console.groupEnd();
 
@@ -180,7 +177,7 @@ async function run() {
     const request = requestsToVoteOn[i];
     const txn = await votingInterface.methods
       .revealVote(request.identifier, request.time, request.price, request.salt)
-      .send({ from: REQUIRED_SIGNER_ADDRESSES["foundation"], ...gasEstimator.getCurrentFastPrice() });
+      .send({ from: REQUIRED_SIGNER_ADDRESSES["foundation"], gasPrice: gasEstimator.getCurrentFastPrice() });
     console.log(`- [${i + 1}/${requestsToVoteOn.length}] Reveal transaction hash: ${txn.transactionHash}`);
   }
   console.groupEnd();
@@ -213,7 +210,7 @@ async function run() {
         console.log(`- Submitting transaction #${j + 1} from proposal #${i}`);
         let txn = await governor.methods
           .executeProposal(proposalId.toString(), j.toString())
-          .send({ from: REQUIRED_SIGNER_ADDRESSES["foundation"], ...gasEstimator.getCurrentFastPrice() });
+          .send({ from: REQUIRED_SIGNER_ADDRESSES["foundation"], gasPrice: gasEstimator.getCurrentFastPrice() });
         console.log(`    - Success, receipt: ${txn.transactionHash}`);
       }
     }

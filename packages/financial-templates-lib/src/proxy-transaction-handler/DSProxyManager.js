@@ -96,7 +96,7 @@ class DSProxyManager {
       const { receipt, transactionConfig } = await runTransaction({
         web3: this.web3,
         transaction: this.dsProxyFactory.methods.build(),
-        transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
+        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
         availableAccounts: this.availableAccounts, // give the run transaction access to additional EOAs, if they are set.
       });
       this.dsProxyAddress = receipt.events.Created.returnValues.proxy;
@@ -127,7 +127,7 @@ class DSProxyManager {
     const { receipt, returnValue, transactionConfig } = await runTransaction({
       web3: this.web3,
       transaction: this.dsProxy.methods["execute(address,bytes)"](libraryAddress, callData),
-      transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
+      transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
       availableAccounts: this.availableAccounts,
     });
 
@@ -158,7 +158,7 @@ class DSProxyManager {
     const { receipt, returnValue, transactionConfig } = await runTransaction({
       web3: this.web3,
       transaction: this.dsProxy.methods["execute(bytes,bytes)"](callCode, callData),
-      transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
+      transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
       availableAccounts: this.availableAccounts,
     });
 

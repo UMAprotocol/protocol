@@ -190,7 +190,7 @@ class ProxyTransactionWrapper {
       const { receipt, returnValue, transactionConfig } = await runTransaction({
         web3: this.web3,
         transaction: liquidation,
-        transactionConfig: { ...this.gasEstimator.getCurrentFastPrice(), from: this.account },
+        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
       });
 
       return {

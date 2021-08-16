@@ -216,7 +216,7 @@ async function run() {
     if (adminProposalTransactions.length > 0) {
       const txn = await governor.methods
         .propose(adminProposalTransactions)
-        .send({ from: REQUIRED_SIGNER_ADDRESSES["deployer"], ...gasEstimator.getCurrentFastPrice() });
+        .send({ from: REQUIRED_SIGNER_ADDRESSES["deployer"], gasPrice: gasEstimator.getCurrentFastPrice() });
       console.log("- Transaction: ", txn?.transactionHash);
 
       // Print out details about new Admin proposal

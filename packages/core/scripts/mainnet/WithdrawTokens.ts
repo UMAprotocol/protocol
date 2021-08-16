@@ -50,7 +50,7 @@ async function WithdrawTokens() {
   // Send the transaction against the DSProxy manager.
   const tx = await token.transfer(argv.recipientAddress, amountToWithdraw, {
     from: accounts[0],
-    ...gasEstimator.getCurrentFastPrice(),
+    gasPrice: gasEstimator.getCurrentFastPrice(),
   });
 
   console.log(`Sent ${amountToWithdraw} ${await token.symbol()} to ${argv.recipientAddress}.`);

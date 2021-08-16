@@ -174,7 +174,11 @@ async function claimRewards() {
         }
         await gasEstimator.update();
 
-        const receipt = await txn.send({ ...gasEstimator.getCurrentFastPrice(), gas: gasEstimate * 2, from: account });
+        const receipt = await txn.send({
+          gasPrice: gasEstimator.getCurrentFastPrice(),
+          gas: gasEstimate * 2,
+          from: account,
+        });
 
         console.log("Transaction hash", receipt.transactionHash);
       })
