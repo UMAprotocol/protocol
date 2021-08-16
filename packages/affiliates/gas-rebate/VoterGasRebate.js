@@ -566,8 +566,7 @@ async function getHistoricalGasPrice(startBlock, endBlock) {
 
     let data = (await response.json()).result;
 
-    if (!Array.isArray(data))
-      throw new Error("Unexpected ETH gas price historical data, did you set ETHERSCAN_API_KEY environment variable?");
+    if (!Array.isArray(data)) throw new Error("Unexpected ETH gas price historical data format", data);
 
     // Return daily gas price (in Gwei) mapped to Unix timestamps so we can best estimate
     // the gas price for each transaction.
