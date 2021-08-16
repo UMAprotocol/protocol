@@ -133,9 +133,6 @@ describe("BridgeAdmin", () => {
         "OnlyOwner modifier not enforced"
       );
 
-      // Proposer bond % too large
-      assert(await didContractThrow(bridgeAdmin.methods.setProposerBondPct(toWei("1.01")).send({ from: owner })));
-
       const txn = await bridgeAdmin.methods.setProposerBondPct(newBond).send({ from: owner });
       await assertEventEmitted(txn, bridgeAdmin, "SetProposerBondPct", (ev) => {
         return ev.proposerBondPct.toString() === newBond.toString();

@@ -226,6 +226,8 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
     }
 
     function _setOptimisticOracleLiveness(uint64 _liveness) private {
+        // The following constraints are copied from a similar function in the OptimisticOracle contract:
+        // - https://github.com/UMAprotocol/protocol/blob/dd211c4e3825fe007d1161025a34e9901b26031a/packages/core/contracts/oracle/implementation/OptimisticOracle.sol#L621
         require(_liveness < 5200 weeks, "Liveness too large");
         require(_liveness > 0, "Liveness cannot be 0");
         optimisticOracleLiveness = _liveness;
@@ -233,7 +235,6 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
     }
 
     function _setProposerBondPct(uint64 _proposerBondPct) private {
-        require(_proposerBondPct <= 1e18, "Proposer bond cannot be greater than 100%");
         proposerBondPct = _proposerBondPct;
         emit SetProposerBondPct(proposerBondPct);
     }
