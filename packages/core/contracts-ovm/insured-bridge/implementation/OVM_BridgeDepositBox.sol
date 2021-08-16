@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity >=0.7.6;
 
-import "./OVM_Testable.sol"; //TODO: replace this with the normal UMA Testable once we can use 0.8 solidity.
+import "../external/OVM_Testable.sol"; //TODO: replace this with the normal UMA Testable once we can use 0.8 solidity.
 
 import { OVM_CrossDomainEnabled } from "@eth-optimism/contracts/libraries/bridge/OVM_CrossDomainEnabled.sol";
 import { Lib_PredeployAddresses } from "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
