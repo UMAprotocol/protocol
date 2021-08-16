@@ -20,7 +20,7 @@ const argv = minimist(process.argv.slice(), {});
  * @notice Uses the ynatm package to retry the transaction with increasing gas price.
  * @param {*Object} web3.js object for making queries and accessing Ethereum related methods.
  * @param {*Object} transaction Transaction to call `.call()` and subsequently `.send()` on from `senderAccount`.
- * @param {*Object} transactionconfig transaction config, e.g. { gasPrice, from }, passed to web3 transaction.
+ * @param {*Object} transactionConfig config, e.g. { maxFeePerGas, maxPriorityFeePerGas, from }, passed to transaction.
  * @return Error and type of error (originating from `.call()` or `.send()`) or transaction receipt and return value.
  */
 export const runTransaction = async ({
@@ -64,7 +64,7 @@ export const runTransaction = async ({
   if (await accountHasPendingTransactions(web3, transactionConfig.from))
     transactionConfig.nonce = await getPendingTransactionCount(web3, transactionConfig.from);
   // Else, there is no pending transaction and we use the current account transaction count as the nonce.
-  // This method does not play niceley in tests. Leave the nounce null to auto fill.
+  // This method does not play nicely in tests. Leave the nonce null to auto fill.
   else if (argv.network != "test") transactionConfig.nonce = await web3.eth.getTransactionCount(transactionConfig.from);
 
   // Next, simulate transaction and also extract return value if its a state-modifying transaction. If the function is state

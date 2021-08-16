@@ -41,9 +41,12 @@ async function run() {
   await gasEstimator.update();
   console.log(
     `⛽️ Current fast gas price for Ethereum: ${web3.utils.fromWei(
-      gasEstimator.getCurrentFastPrice().toString(),
+      gasEstimator.getCurrentFastPrice().maxFeePerGas.toString(),
       "gwei"
-    )} gwei`
+    )} maxFeePerGas and ${web3.utils.fromWei(
+      gasEstimator.getCurrentFastPrice().maxPriorityFeePerGas.toString(),
+      "gwei"
+    )} maxPriorityFeePerGas`
   );
   const governor = new web3.eth.Contract(Governor.abi, _getContractAddressByName("Governor", netId));
   console.group("\nℹ️  DVM infrastructure for Ethereum transactions:");
@@ -61,7 +64,7 @@ async function run() {
     try {
       let txn = await governor.methods
         .executeProposal(id.toString(), j.toString())
-        .send({ from: accounts[0], gasPrice: gasEstimator.getCurrentFastPrice() });
+        .send({ from: accounts[0], ...gasEstimator.getCurrentFastPrice() });
       console.log(`    - Success, receipt: ${txn.transactionHash}`);
     } catch (err) {
       console.error("    - Failure: Txn was likely executed previously, skipping to next one");

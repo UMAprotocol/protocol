@@ -13,7 +13,7 @@ const setAllowance = async (web3, gasEstimator, ownerAddress, spenderAddress, cu
     const { receipt } = await runTransaction({
       web3,
       transaction: approveTransaction,
-      transactionConfig: { gasPrice: gasEstimator.getCurrentFastPrice(), from: ownerAddress },
+      transactionConfig: { ...gasEstimator.getCurrentFastPrice(), from: ownerAddress },
     });
     return { tx: receipt, spenderAddress, currencyAddress };
   }
