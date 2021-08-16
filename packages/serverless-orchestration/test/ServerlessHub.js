@@ -680,7 +680,7 @@ contract("ServerlessHub.js", function (accounts) {
     ); // check that the catcher for empty standouts correctly caught the error
     assert.isTrue(
       JSON.stringify(responseObject.output.errorOutputs["testServerlessMonitorError2"]).includes(
-        "missing `Started` key word"
+        "missing `Started` keyword"
       )
     ); // check the catcher for missing `Started` key words, sent at the booting sequency of all bots, is captured correctly.
   });
