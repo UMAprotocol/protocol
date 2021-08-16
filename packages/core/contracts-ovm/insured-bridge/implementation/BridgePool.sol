@@ -43,9 +43,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     // Last timestamp that LP fees were updated.
     uint256 public lastLpFeeUpdate;
 
-    // Total LP fees earned over all time.
-    uint256 public cumulativeLpFeesEarned;
-
     // Cumulative undistributed LP fees. As fees accumulate, they are subtracted from this number.
     uint256 public undistributedLpFees;
 
@@ -402,9 +399,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         // Note to accommodate negative utilizedReserves without using FixedPoint.Signed we need to do a bit of
         // branching logic. This is a gas optimization so we don't need to import this extra library logic.
         FixedPoint.Unsigned memory numerator =
-            FixedPoint.Unsigned(liquidReserves).add(FixedPoint.Unsigned(cumulativeLpFeesEarned)).sub(
-                FixedPoint.Unsigned(undistributedLpFees)
-            );
+            FixedPoint.Unsigned(liquidReserves).sub(FixedPoint.Unsigned(undistributedLpFees));
         if (utilizedReserves > 0) numerator = numerator.add(FixedPoint.Unsigned(uint256(utilizedReserves)));
         else numerator = numerator.sub(FixedPoint.Unsigned(uint256(utilizedReserves * -1)));
         return numerator.div(FixedPoint.Unsigned(totalSupply())).rawValue;
@@ -531,10 +526,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         lastLpFeeUpdate = getCurrentTime();
 
         // If this method was called from settleRelay then it includes the exact amount of fees to be attributed to the
-        // Liquidity providers. add this to the associated variables.
+        // Liquidity providers. add this to the total undistributed LP fees and the utalized reserves. Adding it to the
+        // utalized reserves acts to book keep the fees while they are in transit.
         if (allocatedLpFees > 0) {
             undistributedLpFees += allocatedLpFees;
-            cumulativeLpFeesEarned += allocatedLpFees;
+            utilizedReserves += int256(allocatedLpFees);
         }
     }
 

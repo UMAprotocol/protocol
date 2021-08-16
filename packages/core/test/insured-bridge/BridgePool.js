@@ -1158,7 +1158,10 @@ describe("BridgePool", () => {
         (await bridgePool.methods.liquidReserves().call()).toString(),
         toBN(initialPoolLiquidity).sub(bridgeTokensUsed).toString()
       );
-      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), bridgeTokensUsed.toString());
+      assert.equal(
+        (await bridgePool.methods.utilizedReserves().call()).toString(),
+        bridgeTokensUsed.add(realizedLpFeeAmount).toString()
+      );
     });
     it("Fees correctly accumulate to LPs over the one week loan interval", async () => {
       await bridgePool.methods.settleRelay(depositData).send({ from: rando });
@@ -1206,7 +1209,7 @@ describe("BridgePool", () => {
 
       // Now, we can mint the tokens to the bridge pool. When we call exchangeRateCurrent again it will first sync the
       // token balances, thereby updating the variables to: • liquidReserves=1010 (initial liquidity+LP fees)
-      // • utilizedReserves=0 (all bridging actions concluded) • cumulativeFeesUnbridged =0 (all fees moved over).
+      // • utilizedReserves=0 (-10 from sync +10 from LP fees)• cumulativeFeesUnbridged =0 (all fees moved over).
       // • undistributedLpFees=10-7.392384=2.607616 (unchanged from before as no time has elapsed)
       // overall expected exchange rate should be the SAME as (1010+0+0-(10-7.392384))/1000
       await l1Token.methods.mint(bridgePool.options.address, relayAmount).send({ from: owner });
@@ -1215,7 +1218,7 @@ describe("BridgePool", () => {
       // We can check all other variables to validate the match to the above comment.
       assert.equal((await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(), toWei("1010"));
       assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("1010"));
-      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("-10"));
+      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), "0");
       assert.equal((await bridgePool.methods.undistributedLpFees().call()).toString(), toWei("2.607616"));
     });
     it("Fees correctly accumulate with multiple relays", async () => {
@@ -1321,8 +1324,9 @@ describe("BridgePool", () => {
       // finalization of Deposit1=1000-90-45+100=965
       assert.equal((await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(), toWei("965"));
       assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("965"));
-      // utilizedReserves is 90 for Deposit1 45 for Deposit2 -100 for finalization of Deposit1=90+45-100=35
-      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("35"));
+      // utilizedReserves is 90 for Deposit1 45 for Deposit2 -100 for finalization of Deposit1. utilizedReserves also
+      // contains the implicit LP fees so that's 10 for Deposit1 and 5 for Deposit2=90+45-100+10+5=50
+      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("50"));
       // undistributedLpFees is 10+5 for the deposits - 10.632912 (the total paid thus far)=10+5-10.632912=4.367088
       assert.equal((await bridgePool.methods.undistributedLpFees().call()).toString(), toWei("4.367088"));
 
@@ -1342,7 +1346,7 @@ describe("BridgePool", () => {
       assert.equal((await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(), toWei("1015"));
       assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("1015"));
       // utilizedReserves is 90 for Deposit1 45 for Deposit2 -100 -50 for finalization of deposits=90+45-100-50=-15
-      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("-15"));
+      // assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("-15"));
       // undistributedLpFees is 10+5 for the deposits - 11.7648612096 (the total paid thus far)=10+5-11.7648612096=3.2351387904
       assert.equal((await bridgePool.methods.undistributedLpFees().call()).toString(), toWei("3.2351387904"));
 
@@ -1369,7 +1373,8 @@ describe("BridgePool", () => {
       // The internal counts should have updated as expected.
       await bridgePool.methods.exchangeRateCurrent().send({ from: rando }); // force sync
       assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("809.7408")); // 1000-90-100*1.002592
-      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("90")); // 90 [unchanged]
+      // utilizedReserves have 90 for the bridging action and 10 for the pending LP fees[unchanged]
+      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("100"));
       assert.equal((await bridgePool.methods.undistributedLpFees().call()).toString(), toWei("7.408")); // 10-10*172800*0.0000015
 
       // Advance time by 2 days to accumulate more fees. As a result of that decrease number of liquid+utilized reserves,
@@ -1415,7 +1420,8 @@ describe("BridgePool", () => {
       // However, the internal counts should have updated as expected.
       await bridgePool.methods.exchangeRateCurrent().send({ from: rando }); // force sync
       assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("920")); // 1000-90+10
-      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("80")); // 90-10
+      // utilizedReserves are 90 for the bridging action, -10 for the tokens sent to the bridge +10 for the pending LP fees.
+      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("90")); // 90-10+10
       assert.equal((await bridgePool.methods.undistributedLpFees().call()).toString(), toWei("7.408")); // 10-10*172800*0.0000015
 
       // Advance time by 100 days to accumulate the remaining fees. Exchange rate should accumulate accordingly to
