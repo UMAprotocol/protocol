@@ -159,9 +159,6 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
         emit WhitelistToken(l1Token, l2Token, uint64(getCurrentTime()), l1BridgePool);
     }
 
-    // TODO: Also provide method to blanket enable/disable entire contract? We might want both that functionality
-    // along with the ability to enable/disable individual L2 tokens.
-
     /**
      * @notice L1 owner can enable/disable deposits for a whitelisted tokens.
      * @dev Only callable by the existing bridgeAdmin via the optimism cross domain messenger.
