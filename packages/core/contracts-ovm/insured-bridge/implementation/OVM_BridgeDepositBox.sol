@@ -83,7 +83,9 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
         address recipient,
         address l1Token,
         uint256 amount,
-        uint256 maxFeePct
+        uint64 slowRelayFeePct,
+        uint64 instantRelayFeePct,
+        uint64 quoteTimestamp
     );
     event TokensBridged(address l2Token, uint256 numberOfTokensBridged, uint256 l1Gas, address caller);
 
@@ -183,17 +185,30 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
      * @param recipient L1 address that should receive the tokens.
      * @param l2Token L2 token to deposit.
      * @param amount How many L2 tokens should be deposited.
-     * @param maxFeePct Max fraction of the total `amount` that the depositor is willing to pay as a fee. This number is
-     * scaled by 1e18 to represent the percentage of the total transfer, deducted as a fee. Eg 5% would be 0.05e18.
+     * @param slowRelayFeePct Max fraction of `amount` that the depositor is willing to pay as a slow relay fee.
+     * @param instantRelayFeePct Fraction of `amount` that the depositor is willing to pay as a instant relay fee.
+     * @param quoteTimestamp Timestamp, at which the depositor will be quoted for L1 liquidity. This enables the
+     *    depositor to know the L1 fees before submitting their deposit. Must be within 10 mins of the current time.
      */
     function deposit(
         address recipient,
         address l2Token,
         uint256 amount,
-        uint256 maxFeePct
+        uint64 slowRelayFeePct,
+        uint64 instantRelayFeePct,
+        uint64 quoteTimestamp
     ) public onlyIfDepositsEnabled(l2Token) {
         require(isWhitelistToken(l2Token), "deposit token not whitelisted");
-        require(maxFeePct <= 1e18, "maxFeePct cannot be over 100% (represented as 1e18)");
+        require(slowRelayFeePct <= 0.25e18, "slowRelayFeePct can not exceed 25%");
+        require(instantRelayFeePct <= 0.25e18, "instantRelayFeePct can not exceed 25%");
+
+        // Note that the OVM's notion of `block.timestamp` is different to the main ethereum L1 EVM. The OVM timestamp
+        // corresponds to the L1 timestamp of the last confirmed L1 ⇒ L2 transaction. The quoteTime must be within 10
+        // mins of the current time to allow for this variance.
+        require(
+            getCurrentTime() >= quoteTimestamp - 10 minutes && getCurrentTime() <= quoteTimestamp + 10 minutes,
+            "deposit mined after deadline"
+        );
 
         emit FundsDeposited(
             numberOfDeposits, // the current number of deposits acts as a deposit ID (nonce).
@@ -202,7 +217,9 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
             recipient,
             whitelistedTokens[l2Token].l1Token,
             amount,
-            maxFeePct
+            slowRelayFeePct,
+            instantRelayFeePct,
+            quoteTimestamp
         );
 
         numberOfDeposits += 1;

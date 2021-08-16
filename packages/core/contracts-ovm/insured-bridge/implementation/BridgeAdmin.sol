@@ -6,11 +6,15 @@ pragma solidity ^0.8.0;
 // changing their version is preferable to changing this contract to 0.7.x and defining compatible interfaces for all
 // of the imported DVM contracts below.
 import "./OVM_CrossDomainEnabled.sol";
+import "./BridgePoolInterface.sol";
 import "./BridgeAdminInterface.sol";
+import "./BridgePoolInterface.sol";
+
 import "../../../contracts/oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../../contracts/oracle/interfaces/FinderInterface.sol";
 import "../../../contracts/oracle/implementation/Constants.sol";
 import "../../../contracts/common/interfaces/AddressWhitelistInterface.sol";
+
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
@@ -191,9 +195,9 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
         require(_bridgePool != address(0), "BridgePool cannot be zero address");
         require(_getCollateralWhitelist().isOnWhitelist(address(_l1Token)), "Payment token not whitelisted");
 
-        L1TokenRelationships storage whitelistedToken = whitelistedTokens[_l1Token];
-        whitelistedToken.l2Token = _l2Token;
-        whitelistedToken.bridgePool = _bridgePool;
+        require(address(BridgePoolInterface(_bridgePool).l1Token()) == _l1Token, "Bridge pool has different L1 token");
+
+        whitelistedTokens[_l1Token] = L1TokenRelationships({ l2Token: _l2Token, bridgePool: _bridgePool });
 
         // TODO: Need to prepare for situation where this async transaction fails due to insufficient gas, or other
         // reasons. Currently, the user can execute this function again, but the whitelist mapping might get out of

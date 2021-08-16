@@ -3,7 +3,7 @@ import assert from "assert";
 import * as uma from "@uma/sdk";
 import { calcGcr } from "../utils";
 import bluebird from "bluebird";
-import { BigNumber } from "ethers";
+import { BigNumber, utils } from "ethers";
 import type { AppState, CurrencySymbol, PriceSample } from "../..";
 
 const { exists } = uma.utils;
@@ -113,14 +113,27 @@ export default (appState: Dependencies) => {
       tvm,
       type: "emp",
     };
-    let gcr = "0";
+    // raw gcr is just the collateral divided by tokens outstanding
+    let gcrRaw = "0";
     try {
-      gcr = calcGcr(state).toString();
+      gcrRaw = calcGcr(state).toString();
+    } catch (err) {
+      // nothing
+    }
+    // gcr now also takes into consideration the identifier price, defaults to raw if anything happens
+    let gcr = gcrRaw;
+    try {
+      gcr = utils
+        .parseUnits(gcrRaw)
+        // if theres no identifier price, just divide by 1
+        .div(state.identifierPrice || utils.parseUnits("1"))
+        .toString();
     } catch (err) {
       // nothing
     }
     return {
       ...state,
+      gcrRaw,
       gcr,
     };
   }

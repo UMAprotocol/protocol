@@ -30,7 +30,7 @@ async function runStrategies(strategyRunnerConfig: strategyRunnerConfig) {
   if (strategyRunnerConfig.emitRunnerLogs)
     Logger.debug({
       at: "BotStrategyRunner",
-      message: "Starting bot strategy runner",
+      message: "Bot strategy runner started 🤖",
       strategyRunnerConfig: strategyRunnerConfig,
     });
 

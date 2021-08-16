@@ -27,8 +27,8 @@ export async function retrieveGckmsKeys(gckmsConfigs: KeyConfig[]): Promise<stri
       const client = new kms.KeyManagementServiceClient();
       const name = client.cryptoKeyPath(config.projectId, config.locationId, config.keyRingId, config.cryptoKeyId);
       const [result] = await client.decrypt({ name, ciphertext });
-      if (!result.plaintext || result.plaintext instanceof Uint8Array) throw new Error("result.plaintext wrong type");
-      return "0x" + Buffer.from(result.plaintext.toString(), "base64").toString().trim();
+      if (!(result.plaintext instanceof Uint8Array)) throw new Error("result.plaintext wrong type");
+      return "0x" + Buffer.from(result.plaintext).toString().trim();
     })
   );
 }
