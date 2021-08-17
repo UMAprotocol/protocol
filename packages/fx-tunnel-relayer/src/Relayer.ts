@@ -91,8 +91,8 @@ export class Relayer {
       this.logger[logLevel]({
         at: "Relayer#relayMessage",
         message: "Failed to derive proof for MessageSent transaction hash 📛",
-        errorMessage: error.message,
         messageEvent,
+        error,
       });
       return;
     }
