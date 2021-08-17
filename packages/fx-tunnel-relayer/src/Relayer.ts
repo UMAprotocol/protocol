@@ -28,7 +28,7 @@ export class Relayer {
   // with a proof derived from the Polygon transaction hash that was checkpointed to Mainnet.
   async relayMessage() {
     this.logger.debug({
-      at: "Relayer",
+      at: "Relayer#relayMessage",
       message: "Checking for Polygon oracle messages that can be relayed to Ethereum",
       polygonEarliestBlockToQuery: this.polygonEarliestBlockToQuery,
       ethEarliestBlockToQuery: this.ethEarliestBlockToQuery,
@@ -41,7 +41,7 @@ export class Relayer {
       fromBlock: this.polygonEarliestBlockToQuery,
     });
     this.logger.info({
-      at: "Relayer",
+      at: "Relayer#relayMessage",
       message: "Found MessageSent events",
       polygonEarliestBlockToQuery: this.polygonEarliestBlockToQuery,
       eventCount: messageSentEvents.length,
@@ -54,7 +54,7 @@ export class Relayer {
       }
     } else {
       this.logger.debug({
-        at: "Relayer",
+        at: "Relayer#relayMessage",
         message: "No MessageSent events emitted by OracleChildTunnel, exiting",
       });
       return;
@@ -67,7 +67,7 @@ export class Relayer {
   async _relayMessage(messageEvent: EventData) {
     const transactionHash = messageEvent.transactionHash;
     this.logger.debug({
-      at: "Relayer",
+      at: "Relayer#relayMessage",
       message: "Deriving proof for transaction that emitted MessageSent",
       transactionHash: transactionHash,
       blockNumber: messageEvent.blockNumber,
