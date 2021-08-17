@@ -20,7 +20,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * @notice Contract deployed on L1 that provides methods for "Relayers" to fulfill deposit orders that originated on L2.
  * The Relayers can either post capital to fulfill the deposit instantly, or request that the funds are taken out of
  * a passive liquidity provider pool following a challenge period. Related, this contract ingests liquidity from
- * passive liquidity providers and returns them claims to withdraw their funds. Liquidity providers are incentivize
+ * passive liquidity providers and returns them claims to withdraw their funds. Liquidity providers are incentivized
  * to post collateral by earning a fee per fulfilled deposit order.
  * @dev A "Deposit" is an order to send capital from L2 to L1, and a "Relay" is a fulfillment attempt of that order.
  */
