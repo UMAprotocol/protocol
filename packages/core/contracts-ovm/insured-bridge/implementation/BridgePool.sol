@@ -46,9 +46,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     // Cumulative undistributed LP fees. As fees accumulate, they are subtracted from this number.
     uint256 public undistributedLpFees;
 
-    // How long, in seconds, it takes for transfers to move from L2 optimism to L1 Ethereum.
-    uint256 public optimismL2toL1Time = 1 weeks;
-
     // Administrative contract that deployed this contract and also houses all state variables needed to relay deposits.
     BridgeAdminInterface public bridgeAdmin;
 
