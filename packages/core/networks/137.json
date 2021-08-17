@@ -1,7 +1,7 @@
 [
   {
     "contractName": "Finder",
-    "address": "0xD6eC98De01FAE81d86390689F422Aca29B6e9580"
+    "address": "0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64"
   },
   {
     "contractName": "Registry",
@@ -29,7 +29,7 @@
   },
   {
     "contractName": "OracleChildTunnel",
-    "address": "0xfc2f1Bb788f2e818A36D23e8b6355DB957DeD117"
+    "address": "0x7f08B770E52e80ad418A90038FbcDf10DC7CD62F"
   },
   {
     "contractName": "TokenFactory",

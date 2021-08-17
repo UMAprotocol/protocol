@@ -40,3 +40,8 @@ export const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 // Block number of first EMP created.
 // https://etherscan.io/tx/0x741ccbf0f9655b0b71e3842d788d58770bd3eb80c8f5bdf4fdec7cd74a776ea3
 export const UMA_FIRST_EMP_BLOCK = 10103723;
+
+// Used by Matic/Polygon PoS client to construct proof for arbitrary message from Polygon that can be submitted to
+// Ethereum to relay a cross chain message.
+// - Source: https://github.com/maticnetwork/matic.js/blob/564c5502d856c2b1870f4b3ff465df70ade47d2e/src/root/POSRootChainManager.ts#L15
+export const POLYGON_MESSAGE_SENT_EVENT_SIG = "0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036";

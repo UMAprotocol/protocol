@@ -19,34 +19,26 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[config.pollingDelay === 0 ? "debug" : "info"]({
       at: "FxTunnelRelayer#index",
-      message: "Relayer started 🌉"
+      message: "Relayer started 🌉",
     });
 
     // Set up polygon web3.
-    const polygonNodeUrl = `https://polygon-mainnet.infura.io/v3/${config.infuraApiKey}`
+    const polygonNodeUrl = `https://polygon-mainnet.infura.io/v3/${config.infuraApiKey}`;
     const polygonNetworkId = 137;
     const polygonWeb3 = new Web3(polygonNodeUrl);
-    const [
-      polygonAverageBlockTime,
-      polygonCurrentBlock
-  ] = await Promise.all([
+    const [polygonAverageBlockTime, polygonCurrentBlock] = await Promise.all([
       averageBlockTimeSeconds(polygonNetworkId),
-      polygonWeb3.eth.getBlock("latest")
+      polygonWeb3.eth.getBlock("latest"),
     ]);
     const polygonLookbackBlocks = Math.ceil(config.lookback / polygonAverageBlockTime);
     const polygonEarliestBlockToQuery = Math.max(polygonCurrentBlock.number - polygonLookbackBlocks, 0);
 
     // Set up ethereum web3.
-    const ethNodeUrl = `https://mainnet.infura.io/v3/${config.infuraApiKey}`
     const ethNetworkId = 1;
-    const [
-      accounts,
-      ethAverageBlockTime,
-      ethCurrentBlock
-  ] = await Promise.all([
-      web3.eth.getAccounts(), 
+    const [accounts, ethAverageBlockTime, ethCurrentBlock] = await Promise.all([
+      web3.eth.getAccounts(),
       averageBlockTimeSeconds(ethNetworkId),
-      web3.eth.getBlock("latest")
+      web3.eth.getBlock("latest"),
     ]);
     const ethLookbackBlocks = Math.ceil(config.lookback / ethAverageBlockTime);
     const ethEarliestBlockToQuery = Math.max(ethCurrentBlock.number - ethLookbackBlocks, 0);
@@ -57,8 +49,8 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
     const maticPOSClient = new MaticJs.MaticPOSClient({
       network: "mainnet",
       version: "v1",
-      maticProvider: polygonNodeUrl,
-      parentProvider: ethNodeUrl,
+      maticProvider: polygonWeb3.currentProvider,
+      parentProvider: web3.currentProvider,
     });
     // Note: we use a private member of maticPosClient, so we cast to get rid of the error.
     const castedMaticPOSClient = (maticPOSClient as unknown) as {
@@ -73,18 +65,18 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
     const oracleRootTunnel = new web3.eth.Contract(
       getAbi("OracleRootTunnel"),
       getAddress("OracleRootTunnel", ethNetworkId) || undefined
-    )
+    );
 
     const relayer = new Relayer(
-      logger, 
+      logger,
       accounts[0],
       gasEstimator,
-      castedMaticPOSClient, 
-      oracleChildTunnel, 
-      oracleRootTunnel, 
+      castedMaticPOSClient,
+      oracleChildTunnel,
+      oracleRootTunnel,
       web3,
       ethEarliestBlockToQuery,
-      polygonEarliestBlockToQuery,
+      polygonEarliestBlockToQuery
     );
 
     for (;;) {

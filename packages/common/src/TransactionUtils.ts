@@ -75,12 +75,10 @@ export const runTransaction = async ({
       transaction.call({ from: transactionConfig.from }),
       transaction.estimateGas({ from: transactionConfig.from }),
     ]);
-    console.log(returnValue, estimatedGas)
   } catch (error) {
     error.type = "call";
     throw error;
   }
-  return;
 
   // .call() succeeded, now broadcast transaction.
   try {
