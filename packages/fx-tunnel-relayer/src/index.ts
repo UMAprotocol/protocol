@@ -15,33 +15,20 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
   try {
     const config = new RelayerConfig(process.env);
 
-    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
-    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
-    logger[config.pollingDelay === 0 ? "debug" : "info"]({
-      at: "FxTunnelRelayer#index",
-      message: "Relayer started 🌉",
-    });
+    // Set up ethereum web3.
+    const [accounts, ethNetworkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
 
-    // Set up polygon web3.
+    // Set up polygon web3. For testing purposes, if web3's network ID is not 1 (e.g. Ethereum's network ID), then
+    // set the polygon node equal to the web3 node.
     const polygonNodeUrl = `https://polygon-mainnet.infura.io/v3/${config.infuraApiKey}`;
-    const polygonNetworkId = 137;
-    const polygonWeb3 = new Web3(polygonNodeUrl);
+    const polygonWeb3 = ethNetworkId === 1 ? new Web3(polygonNodeUrl) : web3;
+    const polygonNetworkId = await polygonWeb3.eth.net.getId();
     const [polygonAverageBlockTime, polygonCurrentBlock] = await Promise.all([
-      averageBlockTimeSeconds(polygonNetworkId),
+      averageBlockTimeSeconds(undefined, polygonNetworkId),
       polygonWeb3.eth.getBlock("latest"),
     ]);
     const polygonLookbackBlocks = Math.ceil(config.lookback / polygonAverageBlockTime);
     const polygonEarliestBlockToQuery = Math.max(polygonCurrentBlock.number - polygonLookbackBlocks, 0);
-
-    // Set up ethereum web3.
-    const ethNetworkId = 1;
-    const [accounts, ethAverageBlockTime, ethCurrentBlock] = await Promise.all([
-      web3.eth.getAccounts(),
-      averageBlockTimeSeconds(ethNetworkId),
-      web3.eth.getBlock("latest"),
-    ]);
-    const ethLookbackBlocks = Math.ceil(config.lookback / ethAverageBlockTime);
-    const ethEarliestBlockToQuery = Math.max(ethCurrentBlock.number - ethLookbackBlocks, 0);
 
     const gasEstimator = new GasEstimator(logger);
 
@@ -67,6 +54,16 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       getAddress("OracleRootTunnel", ethNetworkId) || undefined
     );
 
+    // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
+    // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
+    logger[config.pollingDelay === 0 ? "debug" : "info"]({
+      at: "FxTunnelRelayer#index",
+      message: "Relayer started 🌉",
+      oracleChildTunnel: oracleChildTunnel.options.address,
+      oracleRootTunnel: oracleRootTunnel.options.address,
+      polygonEarliestBlockToQuery: polygonEarliestBlockToQuery,
+    });
+
     const relayer = new Relayer(
       logger,
       accounts[0],
@@ -75,7 +72,6 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       oracleChildTunnel,
       oracleRootTunnel,
       web3,
-      ethEarliestBlockToQuery,
       polygonEarliestBlockToQuery
     );
 

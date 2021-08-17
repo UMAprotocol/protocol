@@ -20,6 +20,6 @@ export class RelayerConfig {
     this.pollingDelay = POLLING_DELAY ? Number(POLLING_DELAY) : 60;
     this.errorRetries = ERROR_RETRIES ? Number(ERROR_RETRIES) : 3;
     this.errorRetriesTimeout = ERROR_RETRIES_TIMEOUT ? Number(ERROR_RETRIES_TIMEOUT) : 1;
-    this.lookback = LOOKBACK ? Number(LOOKBACK) : 604800; // 1 week.
+    this.lookback = LOOKBACK ? Number(LOOKBACK) : 259200; // 3 days.
   }
 }

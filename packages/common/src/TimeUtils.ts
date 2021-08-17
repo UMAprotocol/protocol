@@ -19,7 +19,7 @@ export async function averageBlockTimeSeconds(lookbackSeconds?: number, networkI
   switch (networkId) {
     // Source: https://polygonscan.com/chart/blocktime
     case 137:
-      return 3;
+      return 2.5;
     case 1:
       return defaultBlockTimeSeconds;
     default:

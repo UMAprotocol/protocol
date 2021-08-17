@@ -11,36 +11,29 @@ export class Relayer {
     readonly oracleChildTunnel: Contract,
     readonly oracleRootTunnel: Contract,
     readonly web3: Web3,
-    readonly ethEarliestBlockToQuery: number,
     readonly polygonEarliestBlockToQuery: number
-  ) {
-    this.oracleChildTunnel = oracleChildTunnel;
-    this.oracleRootTunnel = oracleRootTunnel;
-    this.maticPosClient = maticPosClient;
-    this.ethEarliestBlockToQuery = ethEarliestBlockToQuery;
-    this.polygonEarliestBlockToQuery = polygonEarliestBlockToQuery;
-    this.web3 = web3;
-    this.gasEstimator = gasEstimator;
-    this.account = account;
-  }
+  ) {}
 
   // In order to receive a message on Ethereum from Polygon, `receiveMessage` must be called on the Root Tunnel contract
   // with a proof derived from the Polygon transaction hash that was checkpointed to Mainnet.
-  async relayMessage() {
+  async relayMessage(): Promise<void> {
     this.logger.debug({
       at: "Relayer#relayMessage",
       message: "Checking for Polygon oracle messages that can be relayed to Ethereum",
       polygonEarliestBlockToQuery: this.polygonEarliestBlockToQuery,
-      ethEarliestBlockToQuery: this.ethEarliestBlockToQuery,
       oracleChildTunnel: this.oracleChildTunnel.options.address,
       oracleRootTunnel: this.oracleRootTunnel.options.address,
     });
 
     // First, query OracleChildTunnel on Polygon for any MessageSent events.
-    const messageSentEvents = await this.oracleChildTunnel.getPastEvents("MessageSent", {
-      fromBlock: this.polygonEarliestBlockToQuery,
-    });
-    this.logger.info({
+    // For some reason, the fromBlock filter doesn't work on local hardhat tests so I added this filter to explicitly
+    // remove events with block numbers older than the window.
+    const messageSentEvents: EventData[] = (
+      await this.oracleChildTunnel.getPastEvents("MessageSent", {
+        fromBlock: this.polygonEarliestBlockToQuery,
+      })
+    ).filter((e: EventData) => e.blockNumber >= this.polygonEarliestBlockToQuery);
+    this.logger.debug({
       at: "Relayer#relayMessage",
       message: "Found MessageSent events",
       polygonEarliestBlockToQuery: this.polygonEarliestBlockToQuery,
@@ -64,7 +57,7 @@ export class Relayer {
   // First check if the transaction hash corresponding to the MessageSent event has been checkpointed to Ethereum
   // Mainnet yet. If it has, then derive a Polygon-specific proof for it and execute OracleRootTunnel.receiveMessage
   // by passing in the proof as input.
-  async _relayMessage(messageEvent: EventData) {
+  async _relayMessage(messageEvent: EventData): Promise<void> {
     const transactionHash = messageEvent.transactionHash;
     this.logger.debug({
       at: "Relayer#relayMessage",
