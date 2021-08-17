@@ -87,6 +87,7 @@ export type AppState = {
       usd: {
         latest: {
           tvl: empStats.JsMap;
+          tvm: empStats.JsMap;
         };
         history: {
           tvl: empStatsHistory.SortedJsMap;

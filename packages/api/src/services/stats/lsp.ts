@@ -73,6 +73,19 @@ export default (config: Config, appState: Dependencies) => {
       })
     );
   }
+  // TVM for LSP will just be the TVL
+  async function updateTvm(address: string) {
+    const tvl = await stats[currency].latest.tvl.get(address);
+    return stats[currency].latest.tvm.upsert(address, tvl);
+  }
+  // update all stats based on array of LSP addresses
+  async function updateAllTvm(addresses: string[]) {
+    return Promise.allSettled(
+      addresses.map(async (address) => {
+        return updateTvm(address);
+      })
+    );
+  }
 
   async function updateGlobalTvlHistory() {
     const latest = getLatestTvlTable();
@@ -95,15 +108,33 @@ export default (config: Config, appState: Dependencies) => {
     // normally you would upsert an lsp address where "global" is, but we are going to use a custom value to represent tvl across all addresses
     return stats[currency].latest.tvl.upsertGlobal(update);
   }
+  // tvm is just based on TVL for LSPS.
+  async function updateGlobalTvm() {
+    const value = await queries.totalTvm(currency);
+    const update = {
+      value,
+      timestamp: nowS(),
+    };
+    // normally you would upsert an lsp address where "global" is, but we are going to use a custom value to represent tvl across all addresses
+    return stats[currency].latest.tvm.upsertGlobal(update);
+  }
   async function update() {
     const addresses = Array.from(registeredLsps.values());
     await updateAllTvl(addresses).then((results) => {
       results.forEach((result) => {
-        if (result.status === "rejected") console.error("Error updating tvl: " + result.reason.message);
+        if (result.status === "rejected") console.error("Error updating TVL: " + result.reason.message);
+      });
+    });
+    await updateAllTvm(addresses).then((results) => {
+      results.forEach((result) => {
+        if (result.status === "rejected") console.error("Error updating TVM: " + result.reason.message);
       });
     });
     await updateGlobalTvl().catch((err) => {
       console.error("Error updating global TVL: " + err.message);
+    });
+    await updateGlobalTvm().catch((err) => {
+      console.error("Error updating global TVM: " + err.message);
     });
     await updateGlobalTvlHistory().catch((err) => {
       console.error("Error updating global TVL History: " + err.message);

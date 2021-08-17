@@ -81,6 +81,7 @@ export default async (env: ProcessEnv) => {
         usd: {
           latest: {
             tvl: empStats.JsMap("Latest Tvl"),
+            tvm: empStats.JsMap("Latest Tvm"),
           },
           history: {
             tvl: empStatsHistory.SortedJsMap("Tvl History"),
