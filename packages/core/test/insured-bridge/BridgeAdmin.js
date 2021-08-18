@@ -30,6 +30,7 @@ const defaultGasLimit = 1_000_000;
 const defaultIdentifier = utf8ToHex("IS_CROSS_CHAIN_RELAY_VALID");
 const defaultLiveness = 7200;
 const defaultProposerBondPct = toWei("0.05");
+const lpFeeRatePerSecond = toWei("0.0000015");
 const defaultBridgingDelay = 60;
 let l1Token;
 let l2Token;
@@ -61,9 +62,12 @@ describe("BridgeAdmin", () => {
       defaultIdentifier
     ).send({ from: owner });
 
-    bridgePool = await BridgePool.new(bridgeAdmin.options.address, l1Token, timer.options.address).send({
-      from: owner,
-    });
+    bridgePool = await BridgePool.new(
+      bridgeAdmin.options.address,
+      l1Token,
+      lpFeeRatePerSecond,
+      timer.options.address
+    ).send({ from: owner });
 
     depositBox = await BridgeDepositBox.new(bridgeAdmin.options.address, defaultBridgingDelay, ZERO_ADDRESS).send({
       from: owner,

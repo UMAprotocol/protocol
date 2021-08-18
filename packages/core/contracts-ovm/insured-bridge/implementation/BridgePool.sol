@@ -35,7 +35,16 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     uint256 public liquidReserves;
 
     // Reserves currently utilized due to L2-L1 transactions in flight.
-    uint256 public utilizedReserves;
+    int256 public utilizedReserves;
+
+    // Exponential decay exchange rate to accumulate fees to LPs over time.
+    uint256 public lpFeeRatePerSecond;
+
+    // Last timestamp that LP fees were updated.
+    uint256 public lastLpFeeUpdate;
+
+    // Cumulative undistributed LP fees. As fees accumulate, they are subtracted from this number.
+    uint256 public undistributedLpFees;
 
     // Administrative contract that deployed this contract and also houses all state variables needed to relay deposits.
     BridgeAdminInterface public bridgeAdmin;
@@ -70,6 +79,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     // made for this deposit. Contains information necessary to pay out relayers on successful relay. Deposits get
     // reset to the "Uninitialized" state when they are disputed on the OptimisticOracle.
     mapping(bytes32 => RelayData) public relays;
+
     // Associates ancillary data related to relay price request with the deposit hash that the relay is attempting to
     // fulfill. We need to key by the ancillary data so that the OptimisticOracle can locate relays on callbacks using
     // only price requests' ancillary data. The ancillary data should contain all information required by off-chain
@@ -98,7 +108,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         bytes32 indexed priceRequestAncillaryDataHash,
         address indexed caller
     );
-
     event LiquidityAdded(address indexed token, uint256 amount, uint256 lpTokensMinted, address liquidityProvider);
     event LiquidityRemoved(address indexed token, uint256 amount, uint256 lpTokensBurnt, address liquidityProvider);
 
@@ -113,12 +122,14 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     constructor(
         address _bridgeAdmin,
         address _l1Token,
+        uint256 _lpFeeRatePerSecond,
         address _timer
     ) Testable(_timer) ExpandedERC20("UMA Insured Bride LP Token", "UMA-LP", 18) {
         bridgeAdmin = BridgeAdminInterface(_bridgeAdmin);
-        require(bridgeAdmin.finder() != address(0), "Invalid bridge pool factory");
 
         l1Token = IERC20(_l1Token);
+        lastLpFeeUpdate = getCurrentTime();
+        lpFeeRatePerSecond = _lpFeeRatePerSecond;
     }
 
     /*************************************************
@@ -183,9 +194,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     ) public {
         // The realizedLPFeePct should never be greater than 0.5e18 and the slow and instant relay fees
         // should never be more than 0.25e18 each.
-        require(slowRelayFeePct < 0.25e18, "Invalid slowRelayFeePct");
-        require(instantRelayFeePct < 0.25e18, "Invalid instantRelayFeePct");
-        require(realizedLpFeePct < 0.5e18, "Invalid realizedLpFeePct");
+        require(slowRelayFeePct < 0.25e18);
+        require(instantRelayFeePct < 0.25e18);
+        require(realizedLpFeePct < 0.5e18);
 
         // Check if there is a pending relay for this deposit.
         DepositData memory depositData =
@@ -252,8 +263,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     function speedUpRelay(DepositData memory _depositData) public {
         bytes32 depositHash = _getDepositHash(_depositData);
         RelayData storage relay = relays[depositHash];
-        require(relays[depositHash].relayState == RelayState.Pending, "Can only speed up pending slow relay");
-        require(relays[depositHash].instantRelayer == address(0), "Relay has already been instant relayed");
+        require(relays[depositHash].relayState == RelayState.Pending, "Can only speed up slow relay");
+        require(relays[depositHash].instantRelayer == address(0), "Instant relayer already set");
         relay.instantRelayer = msg.sender;
 
         // Pull relay amount minus fees from caller and send to the deposit recipient. The total fees paid is the sum
@@ -278,7 +289,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         bytes32 depositHash = _getDepositHash(_depositData);
         RelayData storage relay = relays[depositHash];
 
-        require(relays[depositHash].relayState == RelayState.Pending, "Only pending state can be settled");
+        require(relays[depositHash].relayState == RelayState.Pending, "State not pending");
         // Note `hasPrice` will return false if liveness has not been passed in the optimistic oracle.
 
         require(
@@ -288,7 +299,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
                 relay.priceRequestTime,
                 getRelayAncillaryData(_depositData, relay)
             ),
-            "OptimisticOracle has not resolved relay price request"
+            "Price not yet resolved"
         );
 
         // Note: Why don't we have to check the value of the price?
@@ -302,7 +313,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         relay.relayState = RelayState.Finalized;
 
         // Reward relayers and pay out recipient.
-
         // At this point there are two possible cases:
         // - This was a slow relay: In this case, a) pay the slow relayer their reward and b) pay the recipient of the
         //      amount minus the realized LP fee and the slow Relay fee. The transfer was not sped up so no instant fee.
@@ -326,14 +336,13 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
 
         uint256 totalAmountSent = instantRelayerOrRecipientAmount + slowRelayerAmount;
 
-        utilizedReserves += totalAmountSent;
+        // Update reserves by amounts changed and allocated LP fees.
         liquidReserves -= totalAmountSent;
+        utilizedReserves += int256(totalAmountSent);
+        updateAccumulatedLpFees();
+        allocateLpFees(_getAmountFromPct(relay.realizedLpFeePct, _depositData.amount));
 
         emit SettledRelay(depositHash, keccak256(getRelayAncillaryData(_depositData, relay)), msg.sender);
-    }
-
-    function finalizeL2BatchTransfer() public {
-        //TODO: implement this method that calls the canonical optimism bridge to pull any finalized L2->L1 transfers.
     }
 
     /**
@@ -357,23 +366,60 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         emit RelayDisputed(depositHash, keccak256(ancillaryData));
     }
 
+    /**
+     * @notice Synchronize any balance changes in this contract with the utilized & liquid reserves. This would be done
+     * at the conclusion of an L2->L1 token transfer via the canonical token bridge.
+     */
+    function sync() public {
+        // Check if the l1Token balance of the contract is greater than the liquidReserves. If it is then the bridging
+        // action from L2->L1 has concluded and the local accounting can be updated.
+        uint256 l1TokenBalance = l1Token.balanceOf(address(this));
+        if (l1TokenBalance > liquidReserves) {
+            // utilizedReserves can go to less than zero. This will happen if the accumulated fees exceeds the current
+            // outstanding utilization. In other words, if outstanding bridging transfers are 0 then utilizedReserves
+            // will equal the total LP fees accumulated over all time.
+            utilizedReserves -= int256(l1TokenBalance - liquidReserves);
+            liquidReserves = l1TokenBalance;
+        }
+    }
+
+    /**
+     * @notice Computes the exchange rate between LP tokens and L1Tokens. Used when adding/removing liquidity.
+     */
+    function exchangeRateCurrent() public returns (uint256) {
+        if (totalSupply() == 0) return 1e18; //initial rate is 1 pre any mint action.
+
+        // First, update fee counters and local accounting of finalized transfers from L2->L1.
+        updateAccumulatedLpFees(); // Accumulate all allocated fees from the last time this method was called.
+        sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
+
+        // ExchangeRate := (liquidReserves+utilizedReserves-undistributedLpFees)/lpTokenSupply
+        // Note to accommodate negative utilizedReserves without using FixedPoint.Signed we need to do a bit of
+        // branching logic. This is a gas optimization so we don't need to import this extra library logic.
+        FixedPoint.Unsigned memory numerator =
+            FixedPoint.Unsigned(liquidReserves).sub(FixedPoint.Unsigned(undistributedLpFees));
+        if (utilizedReserves > 0) numerator = numerator.add(FixedPoint.Unsigned(uint256(utilizedReserves)));
+        else numerator = numerator.sub(FixedPoint.Unsigned(uint256(utilizedReserves * -1)));
+        return numerator.div(FixedPoint.Unsigned(totalSupply())).rawValue;
+    }
+
     /************************************
      *           View FUNCTIONS         *
      ************************************/
 
     /**
-     * @notice Computes the exchange rate between LP tokens and L1Tokens. Used when adding/removing liquidity.
+     * @notice Computes the current amount of unallocated fees that have accumulated from the previous time this the
+     * contract was called.
      */
-    function exchangeRateCurrent() public view returns (uint256) {
-        if (totalSupply() == 0) return 1e18; //initial rate is 1 pre any mint action.
-
-        // Consider a naive rate implementation. This acts like a step function, increasing when funds hit L1 from the
-        // canonical bridge. TODO: update with a more elaborate technique that pays out gradually over the 1 week loan.
+    function getAccumulatedFees() public view returns (uint256) {
+        // UnallocatedLpFees := min(undistributedLpFees*lpFeeRatePerSecond*timeFromLastInteraction,undistributedLpFees)
+        // The min acts to pay out all fees in the case the equation returns more than the remaining a fees.
         return
             FixedPoint
-                .fromUnscaledUint(liquidReserves)
-                .add(FixedPoint.fromUnscaledUint(utilizedReserves))
-                .div(FixedPoint.fromUnscaledUint(totalSupply()))
+                .Unsigned(undistributedLpFees)
+                .mul(FixedPoint.Unsigned(lpFeeRatePerSecond))
+                .mul(FixedPoint.fromUnscaledUint(getCurrentTime() - lastLpFeeUpdate))
+                .min(FixedPoint.Unsigned(undistributedLpFees))
                 .rawValue;
     }
 
@@ -461,8 +507,29 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     }
 
     /**************************************
-     *        INTERNAL FUNCTIONS          *
+     *    INTERNAL & PRIVATE FUNCTIONS    *
      **************************************/
+
+    // Update internal fee counters by adding in any accumulated fees from the last time this logic was called.
+    function updateAccumulatedLpFees() internal {
+        // Calculate the unallocatedAccumulatedFees from the last time the contract was called.
+        uint256 unallocatedAccumulatedFees = getAccumulatedFees();
+
+        // Decrement the undistributedLpFees by the amount of accumulated fees.
+        undistributedLpFees = undistributedLpFees - unallocatedAccumulatedFees;
+
+        lastLpFeeUpdate = getCurrentTime();
+    }
+
+    // Allocate fees to the LPs by incrementing counters.
+    function allocateLpFees(uint256 allocatedLpFees) internal {
+        // Add to the total undistributed LP fees and the utilized reserves. Adding it to the utilized reserves acts to
+        // track the fees while they are in transit.
+        if (allocatedLpFees > 0) {
+            undistributedLpFees += allocatedLpFees;
+            utilizedReserves += int256(allocatedLpFees);
+        }
+    }
 
     function _getOptimisticOracle() private view returns (OptimisticOracleInterface) {
         return
