@@ -99,7 +99,7 @@ class GasEstimator {
       //   "fast": "35.0",
       //   "fastest": "39.6"
       // }
-      if (json.fastest) {
+      if (json.recommendedBaseFee) {
         let price = json.recommendedBaseFee;
         return price;
       } else {
