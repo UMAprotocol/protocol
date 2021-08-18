@@ -22,6 +22,7 @@ const configOverride = {
     artifacts: `${coreWkdir}/artifacts`,
     cache: `${coreWkdir}/cache`,
     tests: `${packageWkdir}/test`,
+    // test comment
   },
   typechain,
 };
