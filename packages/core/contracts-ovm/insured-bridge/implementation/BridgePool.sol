@@ -117,8 +117,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     }
 
     constructor(
-        address _lpTokenName,
-        address _lpTokenSymbol,
+        string memory _lpTokenName,
+        string memory _lpTokenSymbol,
         address _bridgeAdmin,
         address _l1Token,
         uint256 _lpFeeRatePerSecond,
