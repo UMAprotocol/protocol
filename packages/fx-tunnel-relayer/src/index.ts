@@ -79,9 +79,9 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       await retry(
         async () => {
           // Update state.
-          await Promise.all([gasEstimator.update()]);
+          await gasEstimator.update();
 
-          await relayer.relayMessage();
+          await relayer.fetchAndRelayMessages();
         },
         {
           retries: config.errorRetries,

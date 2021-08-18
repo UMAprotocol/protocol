@@ -1,6 +1,11 @@
 import { Contract, EventData } from "web3-eth-contract";
-import { runTransaction, POLYGON_MESSAGE_SENT_EVENT_SIG } from "@uma/common";
+import { runTransaction } from "@uma/common";
 import type Web3 from "web3";
+
+// Used by Matic/Polygon PoS client to construct proof for arbitrary message from Polygon that can be submitted to
+// Ethereum to relay a cross chain message.
+// - Source: https://github.com/maticnetwork/matic.js/blob/564c5502d856c2b1870f4b3ff465df70ade47d2e/src/root/POSRootChainManager.ts#L15
+const POLYGON_MESSAGE_SENT_EVENT_SIG = "0x8c5261668696ce22758910d05bab8f186d6eb247ceac2af2e82c7dc17669b036";
 
 export class Relayer {
   constructor(
@@ -16,7 +21,7 @@ export class Relayer {
 
   // In order to receive a message on Ethereum from Polygon, `receiveMessage` must be called on the Root Tunnel contract
   // with a proof derived from the Polygon transaction hash that was checkpointed to Mainnet.
-  async relayMessage(): Promise<void> {
+  async fetchAndRelayMessages(): Promise<void> {
     this.logger.debug({
       at: "Relayer#relayMessage",
       message: "Checking for Polygon oracle messages that can be relayed to Ethereum",

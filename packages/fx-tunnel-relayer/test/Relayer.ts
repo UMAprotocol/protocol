@@ -112,7 +112,7 @@ describe("Relayer unit tests", function () {
   });
 
   it("exits without error if no MessageSent events emitted", async function () {
-    await relayer.relayMessage();
+    await relayer.fetchAndRelayMessages();
     assert.isTrue(lastSpyLogIncludes(spy, "No MessageSent events emitted by OracleChildTunnel"));
   });
   it("relays message successfully", async function () {
@@ -127,7 +127,7 @@ describe("Relayer unit tests", function () {
     assert.equal(eventsEmitted[0].returnValues.message, messageBytes);
 
     // Relay message and check that it submitted transactions as expected.
-    await relayer.relayMessage();
+    await relayer.fetchAndRelayMessages();
     const nonDebugEvents = spy.getCalls().filter((log: any) => log.lastArg.level !== "debug");
     assert.equal(nonDebugEvents.length, 1);
     assert.isTrue(lastSpyLogIncludes(spy, "Submitted relay proof"));
@@ -157,7 +157,7 @@ describe("Relayer unit tests", function () {
       Number(txn.blockNumber + 1)
     );
     // Relay message and check that it ignores events as expected.
-    await _relayer.relayMessage();
+    await _relayer.fetchAndRelayMessages();
     const nonDebugEvents = spy.getCalls().filter((log: any) => log.lastArg.level !== "debug");
     assert.equal(nonDebugEvents.length, 0);
     assert.isTrue(lastSpyLogIncludes(spy, "No MessageSent events emitted by OracleChildTunnel"));
@@ -186,7 +186,7 @@ describe("Relayer unit tests", function () {
     await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
 
     // Relay message and check for error logs
-    await _relayer.relayMessage();
+    await _relayer.fetchAndRelayMessages();
     const nonDebugEvents = spy.getCalls().filter((log: any) => log.lastArg.level !== "debug");
     assert.equal(nonDebugEvents.length, 1);
     assert.isTrue(lastSpyLogIncludes(spy, "Failed to derive proof for MessageSent transaction hash"));
@@ -216,7 +216,7 @@ describe("Relayer unit tests", function () {
     await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
 
     // Relay message and check for error logs
-    await _relayer.relayMessage();
+    await _relayer.fetchAndRelayMessages();
     const nonDebugEvents = spy.getCalls().filter((log: any) => log.lastArg.level !== "debug");
     assert.equal(nonDebugEvents.length, 0);
     assert.isTrue(lastSpyLogIncludes(spy, "Failed to derive proof for MessageSent transaction hash"));
@@ -229,7 +229,7 @@ describe("Relayer unit tests", function () {
     await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
 
     // Bot should attempt to submit a transaction to the RootTunnelMock that will revert
-    await relayer.relayMessage();
+    await relayer.fetchAndRelayMessages();
     const nonDebugEvents = spy.getCalls().filter((log: any) => log.lastArg.level !== "debug");
     assert.equal(nonDebugEvents.length, 1);
     assert.isTrue(lastSpyLogIncludes(spy, "Failed to submit proof to root tunnel"));
@@ -244,7 +244,7 @@ describe("Relayer unit tests", function () {
     await oracleChild.methods.requestPrice(testIdentifier, testTimestamp, testAncillaryData).send({ from: owner });
 
     // Bot should attempt to submit a transaction to the RootTunnelMock that will revert
-    await relayer.relayMessage();
+    await relayer.fetchAndRelayMessages();
     const nonDebugEvents = spy.getCalls().filter((log: any) => log.lastArg.level !== "debug");
     assert.equal(nonDebugEvents.length, 0);
     assert.isTrue(lastSpyLogIncludes(spy, "Failed to submit proof to root tunnel"));
