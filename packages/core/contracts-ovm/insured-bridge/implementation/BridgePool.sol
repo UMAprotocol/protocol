@@ -46,9 +46,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     // Cumulative undistributed LP fees. As fees accumulate, they are subtracted from this number.
     uint256 public undistributedLpFees;
 
-    // How long, in seconds, it takes for transfers to move from L2 optimism to L1 Ethereum.
-    uint256 public optimismL2toL1Time = 1 weeks;
-
     // Administrative contract that deployed this contract and also houses all state variables needed to relay deposits.
     BridgeAdminInterface public bridgeAdmin;
 
@@ -343,8 +340,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
 
         uint256 totalAmountSent = instantRelayerOrRecipientAmount + slowRelayerAmount;
 
+        // Update reserves by amounts changed and allocated LP fees.
         liquidReserves -= totalAmountSent;
         utilizedReserves += int256(totalAmountSent);
+        updateAccumulatedLpFees();
+        allocateLpFees(_getAmountFromPct(relay.realizedLpFeePct, _depositData.amount));
 
         updateFeeCounters(_getAmountFromPct(relay.realizedLpFeePct, _depositData.amount));
 
@@ -397,7 +397,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         if (totalSupply() == 0) return 1e18; //initial rate is 1 pre any mint action.
 
         // First, update fee counters and local accounting of finalized transfers from L2->L1.
-        updateFeeCounters(0); // Accumulate all allocated fees from the last time this method was called.
+        updateAccumulatedLpFees(); // Accumulate all allocated fees from the last time this method was called.
         sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
 
         // ExchangeRate := (liquidReserves+utilizedReserves-undistributedLpFees)/lpTokenSupply
@@ -418,7 +418,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
      * @notice Computes the current amount of unallocated fees that have accumulated from the previous time this the
      * contract was called.
      */
-    function getUnallocatedAccumulatedFees() public view returns (uint256) {
+    function getAccumulatedFees() public view returns (uint256) {
         // UnallocatedLpFees := min(undistributedLpFees*lpFeeRatePerSecond*timeFromLastInteraction,undistributedLpFees)
         // The min acts to pay out all fees in the case the equation returns more than the remaining a fees.
         return
@@ -517,22 +517,21 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
      *    INTERNAL & PRIVATE FUNCTIONS    *
      **************************************/
 
-    // Update the internal fee counter metrics by adding in any accumulated fees from the last time this logic was
-    // called. Considers any allocated fees that are assigned to the LPs at the conclusion of a bridging action.
-    function updateFeeCounters(uint256 allocatedLpFees) internal {
+    // Update internal fee counters by adding in any accumulated fees from the last time this logic was called.
+    function updateAccumulatedLpFees() internal {
         // Calculate the unallocatedAccumulatedFees from the last time the contract was called.
-        uint256 unallocatedAccumulatedFees = getUnallocatedAccumulatedFees();
+        uint256 unallocatedAccumulatedFees = getAccumulatedFees();
 
         // Decrement the undistributedLpFees by the amount of accumulated fees.
-        undistributedLpFees = undistributedLpFees > unallocatedAccumulatedFees
-            ? undistributedLpFees - unallocatedAccumulatedFees
-            : 0;
+        undistributedLpFees = undistributedLpFees - unallocatedAccumulatedFees;
 
         lastLpFeeUpdate = getCurrentTime();
+    }
 
-        // If this method was called from settleRelay then it includes the exact amount of fees to be attributed to the
-        // Liquidity providers. add this to the total undistributed LP fees and the utalized reserves. Adding it to the
-        // utalized reserves acts to book keep the fees while they are in transit.
+    // Allocate fees to the LPs by incrementing counters.
+    function allocateLpFees(uint256 allocatedLpFees) internal {
+        // Add to the total undistributed LP fees and the utilized reserves. Adding it to the utilized reserves acts to
+        // track the fees while they are in transit.
         if (allocatedLpFees > 0) {
             undistributedLpFees += allocatedLpFees;
             utilizedReserves += int256(allocatedLpFees);

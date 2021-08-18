@@ -81,6 +81,7 @@ export default async (env: ProcessEnv) => {
         usd: {
           latest: {
             tvl: empStats.JsMap("Latest Tvl"),
+            tvm: empStats.JsMap("Latest Tvm"),
           },
           history: {
             tvl: empStatsHistory.SortedJsMap("Tvl History"),
@@ -140,17 +141,19 @@ export default async (env: ProcessEnv) => {
     globalStats: Services.stats.Global({ debug }, appState),
   };
 
+  const initBlock = await provider.getBlock("latest");
+
   // warm caches
-  await services.registry();
+  await services.registry(appState.lastBlockUpdate, initBlock.number);
   console.log("Got all EMP addresses");
 
-  await services.lspCreator.update();
+  await services.lspCreator.update(appState.lastBlockUpdate, initBlock.number);
   console.log("Got all LSP addresses");
 
-  await services.emps(0);
+  await services.emps(appState.lastBlockUpdate, initBlock.number);
   console.log("Updated EMP state");
 
-  await services.lsps.update(0);
+  await services.lsps.update(appState.lastBlockUpdate, initBlock.number);
   console.log("Updated LSP state");
 
   await services.erc20s.update();
@@ -206,10 +209,10 @@ export default async (env: ProcessEnv) => {
     if (blockNumber - appState.lastBlockUpdate >= updateBlocks) {
       const end = profile("Updating state from block event");
       // update everyting
-      await services.registry(appState.lastBlock, blockNumber);
-      await services.lspCreator.update(appState.lastBlock, blockNumber);
-      await services.emps(appState.lastBlock, blockNumber);
-      await services.lsps.update(appState.lastBlock, blockNumber);
+      await services.registry(appState.lastBlockUpdate, blockNumber);
+      await services.lspCreator.update(appState.lastBlockUpdate, blockNumber);
+      await services.emps(appState.lastBlockUpdate, blockNumber);
+      await services.lsps.update(appState.lastBlockUpdate, blockNumber);
       await services.erc20s.update();
 
       end();
