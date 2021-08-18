@@ -63,6 +63,8 @@ describe("BridgeAdmin", () => {
     ).send({ from: owner });
 
     bridgePool = await BridgePool.new(
+      "LP Token",
+      "LPT",
       bridgeAdmin.options.address,
       l1Token,
       lpFeeRatePerSecond,

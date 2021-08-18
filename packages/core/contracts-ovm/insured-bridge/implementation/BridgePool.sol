@@ -116,15 +116,14 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         _;
     }
 
-    // TODO: should we consider changing the name of the LP token as a function of the l1Token? if so, might not be able
-    // to do this with this contract inheriting from expanded ERC20 or might need this contract to have an instance
-    // of the LPToken.
     constructor(
+        address _lpTokenName,
+        address _lpTokenSymbol,
         address _bridgeAdmin,
         address _l1Token,
         uint256 _lpFeeRatePerSecond,
         address _timer
-    ) Testable(_timer) ExpandedERC20("UMA Insured Bride LP Token", "UMA-LP", 18) {
+    ) Testable(_timer) ExpandedERC20(_lpTokenName, _lpTokenSymbol, 18) {
         bridgeAdmin = BridgeAdminInterface(_bridgeAdmin);
 
         l1Token = IERC20(_l1Token);

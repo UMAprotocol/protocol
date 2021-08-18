@@ -193,6 +193,8 @@ describe("BridgePool", () => {
 
     // New BridgePool linked to BridgeFactory
     bridgePool = await BridgePool.new(
+      "LP Token",
+      "LPT",
       bridgeAdmin.options.address,
       l1Token.options.address,
       lpFeeRatePerSecond,
