@@ -16,8 +16,6 @@ else
 
   printf "version: 2.1\n\njobs:\n" >> $CI_CONFIG_FILE
 
-  /bin/bash $TESTS_PATH/test-integration.sh >> $CI_CONFIG_FILE
-
   if [[ " ${PACKAGES_ARRAY[@]} " =~ " @uma/financial-templates-lib " ]]; then
       /bin/bash $TESTS_PATH/test-financial-templates-lib.sh >> $CI_CONFIG_FILE
   fi
@@ -63,8 +61,6 @@ else
 EOF
   done
 
-  printf "      - test-integration\n" >> $CI_CONFIG_FILE
-
   printf "      - tests-required:\n          requires:\n" >> $CI_CONFIG_FILE
 
   for PACKAGE in "${WORKFLOW_JOBS[@]}"
@@ -73,7 +69,5 @@ EOF
             - test-${PACKAGE:5}
 EOF
   done
-
-  printf "            - test-integration" >> $CI_CONFIG_FILE
 
 fi
