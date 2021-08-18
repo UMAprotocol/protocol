@@ -1,7 +1,36 @@
 // A thick client for getting information about FinancialContractFactory contracts.
-const _ = require("lodash");
+import _ from "lodash";
+import type { Logger } from "winston";
+import type { Abi, FinancialContractFactoryType } from "../types";
+import type Web3 from "web3";
+import type {
+  ExpiringMultiPartyCreatorWeb3,
+  ExpiringMultiPartyCreatorWeb3Events,
+  PerpetualCreatorWeb3,
+  PerpetualCreatorWeb3Events,
+} from "@uma/contracts-node";
 
-class FinancialContractFactoryClient {
+type FinancialContractFactory = ExpiringMultiPartyCreatorWeb3 | PerpetualCreatorWeb3;
+
+interface ContractCreationEvent {
+  transactionHash: string;
+  blockNumber: number;
+  deployerAddress: string;
+  contractAddress: string;
+}
+
+export class FinancialContractFactoryClient {
+  public readonly financialContractFactory: FinancialContractFactory;
+  // Factory Contract Events data structure to enable synchronous retrieval of information.
+  private createdContractEvents: ContractCreationEvent[] = [];
+
+  // First block number to begin searching for events after.
+  private firstBlockToSearch: number;
+
+  // Last block number to end the searching for events at.
+  private lastBlockToSearchUntil: number | null;
+  private lastUpdateTimestamp: number;
+
   /**
    * @notice Constructs new FinancialContractFactoryClient.
    * @param {Object} logger Winston module used to send logs.
@@ -13,32 +42,21 @@ class FinancialContractFactoryClient {
    * @return None or throws an Error.
    */
   constructor(
-    logger,
-    financialContractFactoryAbi,
-    web3,
-    financialContractFactoryAddress,
+    private readonly logger: Logger,
+    financialContractFactoryAbi: Abi,
+    public readonly web3: Web3,
+    financialContractFactoryAddress: string,
     startingBlockNumber = 0,
-    endingBlockNumber = null,
-    contractType = "PerpetualCreator"
-    // Default to PerpetualMultiParty for now since the first intended user is the funding rate proposer bot.
+    endingBlockNumber: number | null = null,
+    private readonly contractType: FinancialContractFactoryType = "PerpetualCreator" // Default to PerpetualMultiParty for now since the first intended user is the funding rate proposer bot.
   ) {
-    this.logger = logger;
-    this.web3 = web3;
-
     // Factory contract
-    this.financialContractFactory = new this.web3.eth.Contract(
+    this.financialContractFactory = (new this.web3.eth.Contract(
       financialContractFactoryAbi,
       financialContractFactoryAddress
-    );
-    this.financialContractFactoryAddress = financialContractFactoryAddress;
+    ) as unknown) as FinancialContractFactory;
 
-    // Factory Contract Events data structure to enable synchronous retrieval of information.
-    this.createdContractEvents = [];
-
-    // First block number to begin searching for events after.
     this.firstBlockToSearch = startingBlockNumber;
-
-    // Last block number to end the searching for events at.
     this.lastBlockToSearchUntil = endingBlockNumber;
     this.lastUpdateTimestamp = 0;
 
@@ -46,31 +64,30 @@ class FinancialContractFactoryClient {
       throw new Error(
         `Invalid contract type provided: ${contractType}! The financial product factory client only supports ExpiringMultiPartyCreator or PerpetualCreator`
       );
-    this.contractType = contractType;
   }
   // Delete all events within the client
-  async clearState() {
+  async clearState(): Promise<void> {
     this.createdContractEvents = [];
   }
 
-  getContractType() {
+  getContractType(): FinancialContractFactoryType {
     return this.contractType;
   }
 
-  getAllCreatedContractEvents() {
+  getAllCreatedContractEvents(): ContractCreationEvent[] {
     return this.createdContractEvents;
   }
 
-  getAllCreatedContractAddresses() {
+  getAllCreatedContractAddresses(): string[] {
     return _.uniq(this.createdContractEvents.map((event) => event.contractAddress));
   }
 
   // Returns the last update timestamp.
-  getLastUpdateTime() {
+  getLastUpdateTime(): number {
     return this.lastUpdateTimestamp;
   }
 
-  async update() {
+  async update(): Promise<void> {
     // The last block to search is either the value specified in the constructor (useful in serverless mode) or is the
     // latest block number (if running in loop mode).
     // Set the last block to search up until.
@@ -88,21 +105,31 @@ class FinancialContractFactoryClient {
       this.financialContractFactory.methods.getCurrentTime().call(),
       this.financialContractFactory.getPastEvents(eventToSearchFor, blockSearchConfig),
     ]);
+
     // Set the current contract time as the last update timestamp from the contract.
-    this.lastUpdateTimestamp = currentTime;
+    this.lastUpdateTimestamp = parseInt(currentTime);
 
     // Process the responses into clean objects.
-    for (let event of createdContractEventsObj) {
-      const createdAddress =
-        this.contractType === "PerpetualCreator"
-          ? event.returnValues.perpetualAddress
-          : event.returnValues.expiringMultiPartyAddress;
-      this.createdContractEvents.push({
-        transactionHash: event.transactionHash,
-        blockNumber: event.blockNumber,
-        deployerAddress: event.returnValues.deployerAddress,
-        contractAddress: createdAddress,
-      });
+    if (this.contractType === "ExpiringMultiPartyCreator") {
+      for (const event of (createdContractEventsObj as unknown) as ExpiringMultiPartyCreatorWeb3Events.CreatedExpiringMultiParty[]) {
+        this.createdContractEvents.push({
+          transactionHash: event.transactionHash,
+          blockNumber: event.blockNumber,
+          deployerAddress: event.returnValues.deployerAddress,
+          contractAddress: event.returnValues.expiringMultiPartyAddress,
+        });
+      }
+    } else if (this.contractType === "PerpetualCreator") {
+      for (const event of (createdContractEventsObj as unknown) as PerpetualCreatorWeb3Events.CreatedPerpetual[]) {
+        this.createdContractEvents.push({
+          transactionHash: event.transactionHash,
+          blockNumber: event.blockNumber,
+          deployerAddress: event.returnValues.deployerAddress,
+          contractAddress: event.returnValues.perpetualAddress,
+        });
+      }
+    } else {
+      throw new Error(`Unexpected type ${this.contractType}`);
     }
 
     // Add 1 to current block so that we do not double count the last block number seen.
@@ -115,5 +142,3 @@ class FinancialContractFactoryClient {
     });
   }
 }
-
-module.exports = { FinancialContractFactoryClient };

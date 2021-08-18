@@ -1,9 +1,9 @@
 // This transport enables Winston logging to the console.
-const winston = require("winston");
+import winston from "winston";
 const { format } = winston;
 const { combine, timestamp, colorize, printf } = format;
 
-function createConsoleTransport() {
+export function createConsoleTransport(): winston.transports.ConsoleTransportInstance {
   return new winston.transports.Console({
     handleExceptions: true,
     format: combine(
@@ -28,5 +28,3 @@ function createConsoleTransport() {
     ),
   });
 }
-
-module.exports = { createConsoleTransport };

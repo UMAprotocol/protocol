@@ -1,7 +1,8 @@
-const { getPrecisionForIdentifier } = require("@uma/common");
+import { getPrecisionForIdentifier } from "@uma/common";
 
 // Default price feed configs for currently approved identifiers.
-const defaultConfigs = {
+// TODO: maybe add a more well-specified type that defines precisely what configs are possible/allowed.
+export const defaultConfigs: { [name: string]: { type: string; [key: string]: any } } = {
   "ETH/BTC": {
     type: "medianizer",
     pair: "ethbtc",
@@ -964,5 +965,3 @@ const defaultConfigs = {
 Object.keys(defaultConfigs).forEach((identifierName) => {
   defaultConfigs[identifierName].priceFeedDecimals = getPrecisionForIdentifier(identifierName);
 });
-
-module.exports = { defaultConfigs };

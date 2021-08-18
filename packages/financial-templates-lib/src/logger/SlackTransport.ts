@@ -21,11 +21,34 @@
 //      liquidationResult: logResult});
 //    In this log the liquidation and txnConfig are objects. these are spread as nested bullet points in the slack message.
 //    The amount is a string value. This is shown as a bullet point item.
-const Transport = require("winston-transport");
-const axios = require("axios").default;
-const { createEtherscanLinkMarkdown, getWeb3 } = require("@uma/common");
+import Transport from "winston-transport";
+import axios from "axios";
+import type { AxiosInstance, AxiosRequestConfig } from "axios";
+import { createEtherscanLinkMarkdown, getWeb3 } from "@uma/common";
 
-function slackFormatter(info) {
+interface MarkdownText {
+  type: "mrkdwn";
+  text: string;
+}
+
+type Text = MarkdownText; // Add more | types here to add other types of text.
+
+interface SectionBlock {
+  type: "section";
+  text: Text;
+}
+
+interface DividerBlock {
+  type: "divider";
+}
+
+type Block = SectionBlock | DividerBlock; // Add more | types here to add more types of blocks.
+
+interface SlackFormatterResponse {
+  blocks: Block[];
+}
+// Note: info is any because it comes directly from winston.
+function slackFormatter(info: any): SlackFormatterResponse {
   // Try and fetch injected web3 which we can use to customize the transaction receipt hyperlink:
   let networkId = 1;
   try {
@@ -44,7 +67,7 @@ function slackFormatter(info) {
 
     // Each part of the slack response is a separate block with markdown text within it.
     // All slack responses start with the heading level and where the message came from.
-    let formattedResponse = {
+    const formattedResponse: SlackFormatterResponse = {
       // If the bot contains an identifier flag it should be included in the heading.
       blocks: [
         {
@@ -68,20 +91,18 @@ function slackFormatter(info) {
       }
       // If the value in the message is an object then spread each key value pair within the object.
       else if (typeof info[key] === "object" && info[key] !== null) {
-        formattedResponse.blocks.push({ type: "section", text: { type: "mrkdwn", text: ` • _${key}_:\n` } });
+        // Note: create local reference to this object, so we can modify it in the if statement.
+        const newBlock: SectionBlock = { type: "section", text: { type: "mrkdwn", text: ` • _${key}_:\n` } };
+        formattedResponse.blocks.push(newBlock);
         // For each key value pair within the object, spread the object out for formatting.
         for (const subKey in info[key]) {
           // If the length of the value is 66 then we know this is a transaction hash. Format accordingly.
           if (info[key][subKey]?.length == 66) {
-            formattedResponse.blocks[
-              formattedResponse.blocks.length - 1
-            ].text.text += `    - _tx_: ${createEtherscanLinkMarkdown(info[key][subKey], networkId)}\n`;
+            newBlock.text.text += `    - _tx_: ${createEtherscanLinkMarkdown(info[key][subKey], networkId)}\n`;
           }
           // If the length of the value is 42 then we know this is an address. Format accordingly.
           else if (info[key][subKey]?.length == 42) {
-            formattedResponse.blocks[
-              formattedResponse.blocks.length - 1
-            ].text.text += `    - _${subKey}_: ${createEtherscanLinkMarkdown(info[key][subKey], networkId)}\n`;
+            newBlock.text.text += `    - _${subKey}_: ${createEtherscanLinkMarkdown(info[key][subKey], networkId)}\n`;
           }
           // If the value within the object itself is an object we dont want to spread it any further. Rather,
           // convert the object to a string and print it along side it's key value pair.
@@ -100,17 +121,14 @@ function slackFormatter(info) {
         }
         // Else, if the input is not an object then print the values as key value pairs. First check for addresses or txs
       } else if (info[key]) {
+        const lastBlock = formattedResponse.blocks[formattedResponse.blocks.length - 1] as SectionBlock;
         // like with the previous level, if there is a value that is a transaction or an address format accordingly
         if (info[key]?.length == 66) {
-          formattedResponse.blocks[
-            formattedResponse.blocks.length - 1
-          ].text.text += ` • _tx_: ${createEtherscanLinkMarkdown(info[key], networkId)}\n`;
+          lastBlock.text.text += ` • _tx_: ${createEtherscanLinkMarkdown(info[key], networkId)}\n`;
         }
         // If the length of the value is 42 then we know this is an address. Format accordingly.
         else if (info[key]?.length == 42) {
-          formattedResponse.blocks[
-            formattedResponse.blocks.length - 1
-          ].text.text += ` • _${key}_: ${createEtherscanLinkMarkdown(info[key], networkId)}\n`;
+          lastBlock.text.text += ` • _${key}_: ${createEtherscanLinkMarkdown(info[key], networkId)}\n`;
         } else {
           formattedResponse.blocks.push({
             type: "section",
@@ -143,39 +161,54 @@ function slackFormatter(info) {
   }
 }
 
+type TransportOptions = NonNullable<ConstructorParameters<typeof Transport>[0]>;
+interface Options extends TransportOptions {
+  name?: string;
+  transportConfig: {
+    escalationPathWebhookUrls?: { [key: string]: string };
+    defaultWebHookUrl: string;
+  };
+  formatter: (any) => SlackFormatterResponse;
+  mrkdwn?: boolean;
+  proxy?: AxiosRequestConfig["proxy"];
+}
+
 class SlackHook extends Transport {
-  constructor(opts) {
+  private name: string;
+  private readonly escalationPathWebhookUrls: { [key: string]: string };
+  private readonly defaultWebHookUrl: string;
+  private readonly formatter: (any) => SlackFormatterResponse;
+  private readonly mrkdwn: boolean;
+  private readonly axiosInstance: AxiosInstance;
+
+  constructor(opts: Options) {
     super(opts);
-    opts = opts || {};
     this.name = opts.name || "slackWebhook";
     this.level = opts.level || undefined;
     this.escalationPathWebhookUrls = opts.transportConfig.escalationPathWebhookUrls || {};
     this.defaultWebHookUrl = opts.transportConfig.defaultWebHookUrl;
-    this.formatter = opts.formatter || undefined;
+    this.formatter = opts.formatter;
     this.mrkdwn = opts.mrkdwn || false;
-
-    this.axiosInstance = axios.create({ proxy: opts.proxy || undefined });
+    this.axiosInstance = axios.create({ proxy: opts.proxy });
   }
 
-  async log(info, callback) {
+  async log(info: any, callback: () => void) {
     // If the log contains a notification path then use a custom slack webhook service. This lets the transport route to
     // diffrent slack channels depending on the context of the log.
     const webhookUrl = this.escalationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
 
-    let payload = { mrkdwn: this.mrkdwn };
-    let layout = this.formatter(info);
-    payload.text = layout.text || undefined;
-    payload.attachments = layout.attachments || undefined;
+    const payload: { blocks?: Block[]; text?: string; mrkdwn?: boolean } = { mrkdwn: this.mrkdwn };
+    const layout = this.formatter(info);
     payload.blocks = layout.blocks || undefined;
     let errorThrown = false;
     // If the overall payload is less than 3000 chars then we can send it all in one go to the slack API.
     if (JSON.stringify(payload).length < 3000) {
-      let response = await this.axiosInstance.post(webhookUrl, payload);
+      const response = await this.axiosInstance.post(webhookUrl, payload);
       if (response.status != 200) errorThrown = true;
     } else {
       // If it's more than 3000 chars then we need to split the message sent to slack API into multiple calls.
       let messageIndex = 0;
-      let processedBlocks = [[]];
+      const processedBlocks: Block[][] = [[]];
       for (let block of payload.blocks) {
         if (JSON.stringify(block).length > 3000) {
           // If the block (one single part of a message) is larger than 3000 chars then we must redact part of the message.
@@ -198,7 +231,7 @@ class SlackHook extends Transport {
       // Iterate over each message to send and generate a axios call for each message.
       for (const processedBlock of processedBlocks) {
         payload.blocks = processedBlock;
-        let response = await this.axiosInstance.post(webhookUrl, payload);
+        const response = await this.axiosInstance.post(webhookUrl, payload);
         if (response.status != 200) errorThrown = true;
       }
     }
@@ -207,7 +240,7 @@ class SlackHook extends Transport {
   }
 }
 
-function createSlackTransport(transportConfig) {
+export function createSlackTransport(transportConfig: Options["transportConfig"]): SlackHook {
   return new SlackHook({
     level: "info",
     transportConfig,
@@ -216,5 +249,3 @@ function createSlackTransport(transportConfig) {
     },
   });
 }
-
-module.exports = { createSlackTransport, SlackHook };

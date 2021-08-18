@@ -1,7 +1,43 @@
+import Web3 from "web3";
+import { Logger } from "winston";
+import { OptimisticOracleWeb3, OptimisticOracleWeb3Events } from "@uma/contracts-node";
+import { Abi } from "../types";
+
+interface TransactionMetadata {
+  transactionHash: string;
+  blockNumber: number;
+}
+
+type EventExport<T extends { returnValues: any }> = T["returnValues"] & TransactionMetadata;
+
+type RequestPrice = EventExport<OptimisticOracleWeb3Events.RequestPrice>;
+type ProposePrice = EventExport<OptimisticOracleWeb3Events.ProposePrice>;
+type DisputePrice = EventExport<OptimisticOracleWeb3Events.DisputePrice> & { currency: string };
+type Settle = EventExport<OptimisticOracleWeb3Events.Settle> & { currency: string };
+
 // A thick client for getting information about OptimisticOracle events. This client is kept separate from the
 // OptimisticOracleClient to keep a clear separation of concerns and to limit the overhead from querying the chain.
 
-class OptimisticOracleEventClient {
+export class OptimisticOracleEventClient {
+  // OptimisticOracle contract
+  public optimisticOracleContract: OptimisticOracleWeb3;
+
+  // OptimisticOracle Contract Events data structure to enable synchronous retrieval of information.
+  private requestPriceEvents: RequestPrice[] = [];
+  private proposePriceEvents: ProposePrice[] = [];
+  private disputePriceEvents: DisputePrice[] = [];
+  private settlementEvents: Settle[] = [];
+
+  // First block number to begin searching for events after.
+  private firstBlockToSearch: number;
+
+  // Last block number to end the searching for events at.
+  private lastBlockToSearchUntil: number | null;
+
+  private lastUpdateTimestamp = 0;
+
+  private hexToUtf8 = Web3.utils.hexToUtf8;
+
   /**
    * @notice Constructs new OptimisticOracleEventClient.
    * @param {Object} logger Winston module used to send logs.
@@ -13,65 +49,50 @@ class OptimisticOracleEventClient {
    * @return None or throws an Error.
    */
   constructor(
-    logger,
-    optimisticOracleAbi,
-    web3,
-    optimisticOracleAddress,
+    private readonly logger: Logger,
+    optimisticOracleAbi: Abi,
+    public readonly web3: Web3,
+    optimisticOracleAddress: string,
     startingBlockNumber = 0,
-    endingBlockNumber = null
+    endingBlockNumber: number | null = null
   ) {
-    this.logger = logger;
-    this.web3 = web3;
-
-    // OptimisticOracle contract
-    this.optimisticOracleContract = new this.web3.eth.Contract(optimisticOracleAbi, optimisticOracleAddress);
-    this.optimisticOracleAddress = optimisticOracleAddress;
-
-    // OptimisticOracle Contract Events data structure to enable synchronous retrieval of information.
-    this.requestPriceEvents = [];
-    this.proposePriceEvents = [];
-    this.disputePriceEvents = [];
-    this.settlementEvents = [];
-
-    // First block number to begin searching for events after.
+    this.optimisticOracleContract = (new this.web3.eth.Contract(
+      optimisticOracleAbi,
+      optimisticOracleAddress
+    ) as unknown) as OptimisticOracleWeb3;
     this.firstBlockToSearch = startingBlockNumber;
-
-    // Last block number to end the searching for events at.
     this.lastBlockToSearchUntil = endingBlockNumber;
-    this.lastUpdateTimestamp = 0;
-
-    this.hexToUtf8 = web3.utils.hexToUtf8;
   }
   // Delete all events within the client
-  async clearState() {
+  async clearState(): Promise<void> {
     this.requestPriceEvents = [];
     this.proposePriceEvents = [];
     this.disputePriceEvents = [];
     this.settlementEvents = [];
   }
 
-  getAllRequestPriceEvents() {
+  getAllRequestPriceEvents(): RequestPrice[] {
     return this.requestPriceEvents;
   }
 
-  getAllProposePriceEvents() {
+  getAllProposePriceEvents(): ProposePrice[] {
     return this.proposePriceEvents;
   }
 
-  getAllDisputePriceEvents() {
+  getAllDisputePriceEvents(): DisputePrice[] {
     return this.disputePriceEvents;
   }
 
-  getAllSettlementEvents() {
+  getAllSettlementEvents(): Settle[] {
     return this.settlementEvents;
   }
 
   // Returns the last update timestamp.
-  getLastUpdateTime() {
+  getLastUpdateTime(): number {
     return this.lastUpdateTimestamp;
   }
 
-  async update() {
+  async update(): Promise<void> {
     // The last block to search is either the value specified in the constructor (useful in serverless mode) or is the
     // latest block number (if running in loop mode).
     // Set the last block to search up until.
@@ -91,48 +112,47 @@ class OptimisticOracleEventClient {
       settlementEventsObj,
     ] = await Promise.all([
       this.optimisticOracleContract.methods.getCurrentTime().call(),
-      this.optimisticOracleContract.getPastEvents("RequestPrice", blockSearchConfig),
-      this.optimisticOracleContract.getPastEvents("ProposePrice", blockSearchConfig),
-      this.optimisticOracleContract.getPastEvents("DisputePrice", blockSearchConfig),
-      this.optimisticOracleContract.getPastEvents("Settle", blockSearchConfig),
+      (this.optimisticOracleContract.getPastEvents("RequestPrice", blockSearchConfig) as unknown) as Promise<
+        OptimisticOracleWeb3Events.RequestPrice[]
+      >,
+      (this.optimisticOracleContract.getPastEvents("ProposePrice", blockSearchConfig) as unknown) as Promise<
+        OptimisticOracleWeb3Events.ProposePrice[]
+      >,
+      (this.optimisticOracleContract.getPastEvents("DisputePrice", blockSearchConfig) as unknown) as Promise<
+        OptimisticOracleWeb3Events.DisputePrice[]
+      >,
+      (this.optimisticOracleContract.getPastEvents("Settle", blockSearchConfig) as unknown) as Promise<
+        OptimisticOracleWeb3Events.Settle[]
+      >,
     ]);
     // Set the current contract time as the last update timestamp from the contract.
-    this.lastUpdateTimestamp = currentTime;
+    this.lastUpdateTimestamp = parseInt(currentTime);
 
     // Process the responses into clean objects.
     // RequestPrice events.
-    for (let event of requestPriceEventsObj) {
+    for (const event of requestPriceEventsObj) {
       this.requestPriceEvents.push({
+        ...event.returnValues,
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
-        requester: event.returnValues.requester,
         identifier: this.hexToUtf8(event.returnValues.identifier),
-        timestamp: event.returnValues.timestamp,
         ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
-        currency: event.returnValues.currency,
-        reward: event.returnValues.reward,
-        finalFee: event.returnValues.finalFee,
       });
     }
 
     // ProposePrice events.
-    for (let event of proposePriceEventsObj) {
+    for (const event of proposePriceEventsObj) {
       this.proposePriceEvents.push({
+        ...event.returnValues,
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
-        requester: event.returnValues.requester,
-        proposer: event.returnValues.proposer,
         identifier: this.hexToUtf8(event.returnValues.identifier),
-        timestamp: event.returnValues.timestamp,
         ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
-        proposedPrice: event.returnValues.proposedPrice,
-        expirationTimestamp: event.returnValues.expirationTimestamp,
-        currency: event.returnValues.currency,
       });
     }
 
     // DisputePrice events.
-    for (let event of disputePriceEventsObj) {
+    for (const event of disputePriceEventsObj) {
       // The OptimisticOracle contract should ideally emit `currency` as part of this event, but alternatively we can
       // query the currency address on-chain.
       const requestData = await this._getRequestData(
@@ -142,21 +162,17 @@ class OptimisticOracleEventClient {
         event.returnValues.ancillaryData
       );
       this.disputePriceEvents.push({
+        ...event.returnValues,
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
-        requester: event.returnValues.requester,
-        proposer: event.returnValues.proposer,
-        disputer: event.returnValues.disputer,
         identifier: this.hexToUtf8(event.returnValues.identifier),
-        timestamp: event.returnValues.timestamp,
         ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
-        proposedPrice: event.returnValues.proposedPrice,
         currency: requestData.currency,
       });
     }
 
     // Settlement events.
-    for (let event of settlementEventsObj) {
+    for (const event of settlementEventsObj) {
       // See explanation above in disputeEventsObj loop.
       const requestData = await this._getRequestData(
         event.returnValues.requester,
@@ -165,16 +181,11 @@ class OptimisticOracleEventClient {
         event.returnValues.ancillaryData
       );
       this.settlementEvents.push({
+        ...event.returnValues,
         transactionHash: event.transactionHash,
         blockNumber: event.blockNumber,
-        requester: event.returnValues.requester,
-        proposer: event.returnValues.proposer,
-        disputer: event.returnValues.disputer,
         identifier: this.hexToUtf8(event.returnValues.identifier),
-        timestamp: event.returnValues.timestamp,
         ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
-        price: event.returnValues.price,
-        payout: event.returnValues.payout,
         currency: requestData.currency,
       });
     }
@@ -189,11 +200,14 @@ class OptimisticOracleEventClient {
     });
   }
 
-  async _getRequestData(requester, identifier, timestamp, ancillaryData) {
-    return await this.optimisticOracleContract.methods
+  private async _getRequestData(
+    requester: string,
+    identifier: string,
+    timestamp: string,
+    ancillaryData: string | null | undefined
+  ) {
+    return await ((this.optimisticOracleContract.methods
       .getRequest(requester, identifier, timestamp, ancillaryData || "0x")
-      .call();
+      .call() as unknown) as ReturnType<ReturnType<OptimisticOracleWeb3["methods"]["requests"]>["call"]>);
   }
 }
-
-module.exports = { OptimisticOracleEventClient };

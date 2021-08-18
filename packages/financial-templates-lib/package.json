@@ -10,7 +10,7 @@
     "@uma/core": "^2.7.0",
     "@uniswap/sdk": "^2.0.5",
     "bluebird": "^3.7.2",
-    "dotenv": "^6.2.0",
+    "dotenv": "^9.0.0",
     "lodash": "^4.17.20",
     "mathjs": "^9.2.0",
     "minimist": "^1.2.0",
@@ -26,7 +26,10 @@
     "@openzeppelin/contracts": "4.1.0",
     "@tsconfig/node14": "^1.0.0",
     "bignumber.js": "^9.0.1",
-    "web3-utils": "^1.5.1"
+    "web3-utils": "^1.5.1",
+    "web3-eth-contract": "^1.5.1",
+    "web3-core": "^1.5.1",
+    "sinon": "^9.0.2"
   },
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",

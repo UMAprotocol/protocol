@@ -1,53 +1,66 @@
-const assert = require("assert");
-const { PriceFeedInterface } = require("./PriceFeedInterface");
-const { BlockHistory, PriceHistory, computeTWAP } = require("./utils");
-const { ConvertDecimals } = require("@uma/common");
+import assert from "assert";
+import { PriceFeedInterface } from "./PriceFeedInterface";
+import { BlockHistory, PriceHistory, computeTWAP } from "./utils";
+import { ConvertDecimals } from "@uma/common";
+import { BalancerWeb3 } from "@uma/contracts-node";
+import type { Logger } from "winston";
+import Web3 from "web3";
+import { Abi, BN } from "../types";
+import type { BlockTransactionString } from "web3-eth";
+
+// Note: there is no way to do something like typeof SomeGenericType<SomeGenericParameter>, so we have to trick the
+// compiler into generating a type by creating a fake function that returns it.
+const _blockHistoryGenericWorkaround = (arg: (blockNumber?: number) => Promise<BlockTransactionString>) =>
+  BlockHistory<BlockTransactionString & { timestamp: number }>(arg);
+const _priceHistoryGenericWorkaround = (arg: (number: number) => Promise<BN | null>) => PriceHistory<BN>(arg);
 
 // Gets balancer spot and historical prices. This price feed assumes that it is returning
 // prices as 18 decimals of precision, so it will scale up the pool's price as reported by Balancer contracts
 // if the user specifies that the Balancer contract is returning non-18 decimal precision prices.
-class BalancerPriceFeed extends PriceFeedInterface {
+export class BalancerPriceFeed extends PriceFeedInterface {
+  public readonly contract: BalancerWeb3;
+  public readonly uuid: string;
+  private readonly toBN = Web3.utils.toBN;
+  private currentPrice: BN | null = null;
+  private lastUpdateTime: number | null = null;
+  private readonly getLatestBlock: (blockNumber?: number) => Promise<BlockTransactionString>;
+  private readonly blockHistory: ReturnType<typeof _blockHistoryGenericWorkaround>;
+  private readonly priceHistory: ReturnType<typeof _priceHistoryGenericWorkaround>;
+  private readonly convertPoolDecimalsToPriceFeedDecimals: ReturnType<typeof ConvertDecimals>;
+
   constructor(
-    logger,
-    web3,
-    getTime,
-    abi,
-    address,
-    tokenIn,
-    tokenOut,
-    lookback,
-    twapLength,
-    poolDecimals = 18,
-    priceFeedDecimals = 18
+    private readonly logger: Logger,
+    public readonly web3: Web3,
+    private readonly getTime: () => Promise<number>,
+    abi: Abi,
+    address: string,
+    private readonly tokenIn: string,
+    private readonly tokenOut: string,
+    public readonly lookback: number,
+    public readonly twapLength: number,
+    private readonly poolDecimals = 18,
+    private readonly priceFeedDecimals = 18
   ) {
+    super();
     assert(tokenIn, "BalancerPriceFeed requires tokenIn");
     assert(tokenOut, "BalancerPriceFeed requires tokenOut");
     assert(lookback >= 0, "BalancerPriceFeed requires lookback >= 0");
     assert(twapLength >= 0, "BalancerPriceFeed requires lookback >= 0");
-    super();
-    this.logger = logger;
-    this.web3 = web3;
-    this.toBN = web3.utils.toBN;
-    this.getTime = getTime;
 
-    this.contract = new web3.eth.Contract(abi, address);
+    // TODO: Should/Can we read in `poolDecimals` from this.contract?
+    this.contract = (new web3.eth.Contract(abi, address) as unknown) as BalancerWeb3;
     this.uuid = `Balancer-${address}`;
-    this.currentPrice = null;
-    this.lastUpdateTime = null;
-    this.tokenIn = tokenIn;
-    this.tokenOut = tokenOut;
-    this.lookback = lookback;
-    this.twapLength = twapLength;
-    this.getLatestBlock = (number) => web3.eth.getBlock(number >= 0 ? number : "latest");
+    this.getLatestBlock = (blockNumber?: number) =>
+      web3.eth.getBlock(blockNumber !== undefined ? blockNumber : "latest");
     // Provide a getblock function which returns the latest value if no number provided.
     this.blockHistory = BlockHistory(this.getLatestBlock);
 
     // Add a callback to get price, error can be thrown from web3 disconection or maybe something else
     // which affects the update call.
-    this.priceHistory = PriceHistory(async (number) => {
+    this.priceHistory = PriceHistory(async (number: number) => {
       try {
-        let bPoolPrice = this.toBN(
-          await this.contract.methods.getSpotPriceSansFee(this.tokenIn, this.tokenOut).call(number)
+        const bPoolPrice = this.toBN(
+          await this.contract.methods.getSpotPriceSansFee(this.tokenIn, this.tokenOut).call(undefined, number)
         );
         // Like the Uniswap price feed, if pool price is 0, then return null
         if (!bPoolPrice.isZero()) {
@@ -61,18 +74,13 @@ class BalancerPriceFeed extends PriceFeedInterface {
       }
     });
 
-    // poolDecimals represents the # of decimals that Balancer pool prices are returned in.
-    // TODO: Should/Can we read in `poolDecimals` from this.contract?
-    this.poolDecimals = poolDecimals;
-    this.priceFeedDecimals = priceFeedDecimals;
-
     // Convert _bn precision from poolDecimals to desired decimals by scaling up or down based
     // on the relationship between pool precision and the desired decimals.
-    this.convertPoolDecimalsToPriceFeedDecimals = ConvertDecimals(this.poolDecimals, this.priceFeedDecimals, this.web3);
+    this.convertPoolDecimalsToPriceFeedDecimals = ConvertDecimals(this.poolDecimals, this.priceFeedDecimals);
   }
 
-  async getHistoricalPrice(time) {
-    if (time < this.lastUpdateTime - this.lookback) {
+  public async getHistoricalPrice(time: number): Promise<BN> {
+    if (this.lastUpdateTime && time < this.lastUpdateTime - this.lookback) {
       // Requesting an historical TWAP earlier than the lookback.
       throw new Error(`${this.uuid} time ${time} is earlier than TWAP window`);
     }
@@ -91,32 +99,31 @@ class BalancerPriceFeed extends PriceFeedInterface {
     }
   }
 
-  getLastUpdateTime() {
+  public getLastUpdateTime(): number | null {
     return this.lastUpdateTime;
   }
 
-  getLookback() {
+  public getLookback(): number {
     return this.lookback;
   }
 
-  getCurrentPrice() {
+  public getCurrentPrice(): BN | null {
     let currentPrice;
     // If twap window is 0, then return last price
     if (this.twapLength === 0) {
       currentPrice = this.getSpotPrice();
     } else {
-      currentPrice = this._computeTwap(this.lastUpdateTime - this.twapLength, this.lastUpdateTime);
+      const lastUpdateTime = this.lastUpdateTime || 0;
+      currentPrice = this._computeTwap((lastUpdateTime || 0) - this.twapLength, lastUpdateTime);
     }
     return currentPrice && this.convertPoolDecimalsToPriceFeedDecimals(currentPrice);
   }
   // Not part of the price feed interface. Can be used to pull the balancer price at the most recent block.
   // If `time` is undefined, return latest block price.
-  getSpotPrice(time) {
+  public getSpotPrice(time?: number): BN | null {
     if (!time) {
-      return (
-        this.priceHistory.currentPrice() &&
-        this.convertPoolDecimalsToPriceFeedDecimals(this.priceHistory.currentPrice())
-      );
+      const currentPrice = this.priceHistory.currentPrice();
+      return currentPrice && this.convertPoolDecimalsToPriceFeedDecimals(currentPrice);
     } else {
       // We want the block and price equal to or before this time
       const block = this.blockHistory.getClosestBefore(time);
@@ -131,11 +138,11 @@ class BalancerPriceFeed extends PriceFeedInterface {
     }
   }
 
-  getPriceFeedDecimals() {
+  public getPriceFeedDecimals(): number {
     return this.priceFeedDecimals;
   }
 
-  async update() {
+  public async update(): Promise<void> {
     const currentTime = await this.getTime();
     this.logger.debug({
       at: "BalancerPriceFeed",
@@ -162,10 +169,8 @@ class BalancerPriceFeed extends PriceFeedInterface {
   }
   // If priceHistory only encompasses 1 block, which happens if the `lookback` window is 0,
   // then this should return the last and only price.
-  _computeTwap(startTime, endTime) {
+  private _computeTwap(startTime: number, endTime: number): BN | null {
     const events = this.priceHistory.list().slice();
     return computeTWAP(events, startTime, endTime, this.toBN("0"));
   }
 }
-
-module.exports = { BalancerPriceFeed };

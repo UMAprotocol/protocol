@@ -1,7 +1,17 @@
-const { PriceFeedInterface } = require("./PriceFeedInterface");
-const { parseFixed } = require("@uma/common");
+import { PriceFeedInterface } from "./PriceFeedInterface";
+import { parseFixed } from "@uma/common";
+import type { Logger } from "winston";
+import type Web3 from "web3";
+import type { NetworkerInterface } from "./Networker";
+import type { BN } from "../types";
 
-class CoinGeckoPriceFeed extends PriceFeedInterface {
+export class CoinGeckoPriceFeed extends PriceFeedInterface {
+  private priceHistory: { time: number; price: BN }[];
+  private readonly uuid: string;
+  private readonly convertPriceFeedDecimals: (number: number | string | BN) => BN;
+  private lastUpdateTime: null | number = null;
+  private currentPrice: undefined | BN;
+
   /**
    * @notice Constructs the CoinGeckoPriceFeed.
    * @param {Object} logger Winston module used to send logs.
@@ -17,29 +27,19 @@ class CoinGeckoPriceFeed extends PriceFeedInterface {
    * @param {Number} priceFeedDecimals Number of priceFeedDecimals to use to convert price to wei.
    */
   constructor(
-    logger,
-    web3,
-    contractAddress,
-    quoteCurrency,
-    lookback,
-    networker,
-    getTime,
-    minTimeBetweenUpdates,
-    invertPrice,
-    priceFeedDecimals = 18
+    private readonly logger: Logger,
+    public readonly web3: Web3,
+    private readonly contractAddress: string,
+    private readonly quoteCurrency: string,
+    private readonly lookback: number,
+    private readonly networker: NetworkerInterface,
+    private readonly getTime: () => Promise<number>,
+    private readonly minTimeBetweenUpdates: number,
+    private readonly invertPrice?: boolean,
+    private readonly priceFeedDecimals = 18
   ) {
     super();
-    this.logger = logger;
-    this.web3 = web3;
-    this.contractAddress = contractAddress;
-    this.quoteCurrency = quoteCurrency;
-    this.lookback = lookback;
     this.uuid = `CoinGecko-${contractAddress}-${quoteCurrency}`;
-    this.networker = networker;
-    this.getTime = getTime;
-    this.minTimeBetweenUpdates = minTimeBetweenUpdates;
-    this.invertPrice = invertPrice;
-    this.priceFeedDecimals = priceFeedDecimals;
 
     this.priceHistory = []; // array of { time: number, price: BN }
 
@@ -53,17 +53,17 @@ class CoinGeckoPriceFeed extends PriceFeedInterface {
     };
   }
 
-  async update() {
-    const currentTime = this.getTime();
+  public async update(): Promise<void> {
+    const currentTime = await this.getTime();
 
     // Return early if the last call was too recent.
-    if (this.lastUpdateTime !== undefined && this.lastUpdateTime + this.minTimeBetweenUpdates > currentTime) {
+    if (this.lastUpdateTime !== null && this.lastUpdateTime + this.minTimeBetweenUpdates > currentTime) {
       this.logger.debug({
         at: "CoinGeckoPriceFeed",
         message: "Update skipped because the last one was too recent",
         currentTime: currentTime,
         lastUpdateTimestamp: this.lastUpdateTime,
-        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime,
+        timeRemainingUntilUpdate: this.lastUpdateTime + this.minTimeBetweenUpdates - currentTime,
       });
       return;
     }
@@ -104,11 +104,11 @@ class CoinGeckoPriceFeed extends PriceFeedInterface {
     this.priceHistory.push({ time: currentTime, price: newPrice });
   }
 
-  getCurrentPrice() {
-    return this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
+  public getCurrentPrice(): BN | null {
+    return (this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice) || null;
   }
 
-  async getHistoricalPrice(time) {
+  public async getHistoricalPrice(time: number): Promise<BN | null> {
     if (this.lastUpdateTime === undefined) {
       throw new Error(`${this.uuid}: undefined lastUpdateTime`);
     }
@@ -128,22 +128,22 @@ class CoinGeckoPriceFeed extends PriceFeedInterface {
       throw new Error(`${this.uuid}: no matching price`);
     }
 
-    return this.invertPrice ? this._invertPriceSafely(matchingPrice) : matchingPrice;
+    return (this.invertPrice ? this._invertPriceSafely(matchingPrice) : matchingPrice) || null;
   }
 
-  getLastUpdateTime() {
+  public getLastUpdateTime(): null | number {
     return this.lastUpdateTime;
   }
 
-  getPriceFeedDecimals() {
+  public getPriceFeedDecimals(): number {
     return this.priceFeedDecimals;
   }
 
-  getLookback() {
+  public getLookback(): number {
     return this.lookback;
   }
 
-  _invertPriceSafely(priceBN) {
+  private _invertPriceSafely(priceBN: BN): BN | undefined {
     if (priceBN && !priceBN.isZero()) {
       return this.convertPriceFeedDecimals("1").mul(this.convertPriceFeedDecimals("1")).div(priceBN);
     } else {
@@ -151,5 +151,3 @@ class CoinGeckoPriceFeed extends PriceFeedInterface {
     }
   }
 }
-
-module.exports = { CoinGeckoPriceFeed };

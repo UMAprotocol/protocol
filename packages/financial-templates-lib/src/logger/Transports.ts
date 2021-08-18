@@ -3,24 +3,38 @@
 // associated formatting are created within this module.
 
 // Transport objects
-const ConsoleTransport = require("./ConsoleTransport");
-const JsonTransport = require("./JsonTransport");
-const SlackTransport = require("./SlackTransport");
-const PagerDutyTransport = require("./PagerDutyTransport");
+import { createConsoleTransport } from "./ConsoleTransport";
+import { createJsonTransport } from "./JsonTransport";
+import { createSlackTransport } from "./SlackTransport";
+import { PagerDutyTransport } from "./PagerDutyTransport";
+import type Transport from "winston-transport";
+import dotenv from "dotenv";
+import minimist from "minimist";
 
-require("dotenv").config();
-const argv = require("minimist")(process.argv.slice(), {});
+dotenv.config();
+const argv = minimist(process.argv.slice(), {});
 
-function createTransports(transportsConfig = {}) {
+type SlackConfig = Parameters<typeof createSlackTransport>[0];
+type PagerDutyConfig = ConstructorParameters<typeof PagerDutyTransport>[1];
+
+interface TransportsConfig {
+  environment?: string;
+  createConsoleTransport?: boolean;
+  slackConfig?: SlackConfig;
+  pdApiToken?: string;
+  pagerDutyConfig?: PagerDutyConfig;
+}
+
+export function createTransports(transportsConfig: TransportsConfig = {}) {
   // Transports array to store all winston transports.
-  let transports = [];
+  const transports: Transport[] = [];
 
   // If the logger is running in serverless mode then add the GCP winston transport and console transport.
   if ((transportsConfig.environment ?? process.env.ENVIRONMENT) == "serverless") {
     const { LoggingWinston } = require("@google-cloud/logging-winston");
     if (!require("@google-cloud/trace-agent").get().enabled) require("@google-cloud/trace-agent").start();
     transports.push(new LoggingWinston());
-    transports.push(JsonTransport.createJsonTransport());
+    transports.push(createJsonTransport());
   }
 
   // If the logger is running in production mode then add the GCE winston transport. Else, add a console transport.
@@ -30,15 +44,15 @@ function createTransports(transportsConfig = {}) {
     transports.push(new LoggingWinston());
   } else if (transportsConfig.createConsoleTransport != undefined ? transportsConfig.createConsoleTransport : true) {
     // Add a console transport to log to the console.
-    transports.push(ConsoleTransport.createConsoleTransport());
+    transports.push(createConsoleTransport());
   }
 
   // If there is "test" in the environment then skip the slack or pagerduty.
   if (argv._.indexOf("test") == -1) {
     // If there is a slack web hook, add to the transports array to enable slack messages.
-    const slackConfig = transportsConfig.slackConfig ?? JSON.parse(process.env.SLACK_CONFIG || null);
+    const slackConfig: SlackConfig = transportsConfig.slackConfig ?? JSON.parse(process.env.SLACK_CONFIG || "");
     if (slackConfig) {
-      transports.push(SlackTransport.createSlackTransport(slackConfig));
+      transports.push(createSlackTransport(slackConfig));
     }
 
     // If there is a Pagerduty API key then add the pagerduty winston transport.
@@ -46,12 +60,10 @@ function createTransports(transportsConfig = {}) {
       transports.push(
         new PagerDutyTransport(
           { level: "warn" },
-          transportsConfig.pagerDutyConfig ?? JSON.parse(process.env.PAGER_DUTY_CONFIG || null)
+          transportsConfig.pagerDutyConfig ?? JSON.parse(process.env.PAGER_DUTY_CONFIG || "")
         )
       );
     }
   }
   return transports;
 }
-
-module.exports = { createTransports };

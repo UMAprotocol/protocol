@@ -27,20 +27,23 @@
 //   id: liquidation.id
 // });
 
-const winston = require("winston");
-const { createTransports } = require("./Transports");
+import winston from "winston";
+import type { Logger as _Logger, LogEntry } from "winston";
+import type * as Transport from "winston-transport";
+import { createTransports } from "./Transports";
 
 // This async function can be called by a bot if the log message is generated right before the process terminates.
 // By calling `await waitForLogger(Logger)`, with the local Logger instance, the process will wait for all upstream
 // transports to clear. This enables slower transports like slack to still send their messages before the process yields.
-async function waitForLogger(logger) {
+// Note: typescript infers the return tyoe to be unknown. This is fine, as the return type should be void and unused.
+export async function waitForLogger(logger: _Logger): Promise<unknown> {
   const loggerDone = new Promise((resolve) => logger.on("finish", resolve));
   logger.end();
   return await loggerDone;
 }
 
 // If the log entry contains an error then extract the stack trace as the error message.
-function errorStackTracerFormatter(logEntry) {
+function errorStackTracerFormatter(logEntry: LogEntry) {
   if (logEntry.error) {
     logEntry.error = handleRecursiveErrorArray(logEntry.error);
   }
@@ -49,7 +52,7 @@ function errorStackTracerFormatter(logEntry) {
 
 // Handle case where `error` is an array of errors and we want to display all of the error stacks recursively.
 // i.e. `error` is in the shape: [[Error, Error], [Error], [Error, Error]]
-function handleRecursiveErrorArray(error) {
+function handleRecursiveErrorArray(error: Error | any[]): string | any[] {
   // If error is not an array, then just return error information for there is no need to recurse further.
   if (!Array.isArray(error)) return error.stack || error.message || error.toString() || "could not extract error info";
   // Recursively add all errors to an array and flatten the output.
@@ -57,14 +60,18 @@ function handleRecursiveErrorArray(error) {
 }
 
 // This formatter checks if the `BOT_IDENTIFIER` env variable is present. If it is, the name is appended to the message.
-function botIdentifyFormatter(botIdentifier) {
-  return function (logEntry) {
+function botIdentifyFormatter(botIdentifier: string) {
+  return function (logEntry: LogEntry) {
     if (botIdentifier) logEntry["bot-identifier"] = botIdentifier;
     return logEntry;
   };
 }
 
-function createNewLogger(injectedTransports = [], transportsConfig = {}, botIdentifier = process.env.BOT_IDENTIFIER) {
+export function createNewLogger(
+  injectedTransports: Transport[] = [],
+  transportsConfig = {},
+  botIdentifier = process.env.BOT_IDENTIFIER || "NO_BOT_ID"
+): _Logger {
   return winston.createLogger({
     level: "debug",
     format: winston.format.combine(
@@ -74,10 +81,8 @@ function createNewLogger(injectedTransports = [], transportsConfig = {}, botIden
       winston.format.json()
     ),
     transports: [...createTransports(transportsConfig), ...injectedTransports],
-    exitOnError: process.env.EXIT_ON_ERROR ? process.env.EXIT_ON_ERROR : false,
+    exitOnError: !!process.env.EXIT_ON_ERROR,
   });
 }
 
-const Logger = createNewLogger();
-
-module.exports = { Logger, createNewLogger, waitForLogger };
+export const Logger = createNewLogger();

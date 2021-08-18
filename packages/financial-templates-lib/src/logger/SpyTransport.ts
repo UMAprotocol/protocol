@@ -1,15 +1,22 @@
 // This transport enables unit tests to validate values passed to Winston using a Sinon Spy.
 
-const Transport = require("winston-transport");
-const argv = require("minimist")(process.argv.slice(), { boolean: ["logInTest"] });
+import Transport from "winston-transport";
+import minimist from "minimist";
+import type sinon from "sinon";
+const argv = minimist(process.argv.slice(), { boolean: ["logInTest"] });
 
-class SpyTransport extends Transport {
-  constructor(winstonOptions, spyOptions) {
+type Spy = sinon.SinonSpy<any>;
+
+type TransportOptions = ConstructorParameters<typeof Transport>[0];
+
+export class SpyTransport extends Transport {
+  private readonly spy: Spy;
+  constructor(winstonOptions: TransportOptions, spyOptions: { spy: Spy }) {
     super(winstonOptions);
     this.spy = spyOptions.spy; // local instance of the spy to capture passed messages.
   }
 
-  async log(info, callback) {
+  async log(info: any, callback: () => void): Promise<void> {
     // Add an `logInTest` option to help with debugging to bots in tests by printing all logs received by winston.
     if (argv._.includes("logInTest")) console.log(JSON.stringify(info, null, 2));
     // Add info sent to the winston transport to the spy. This enables unit tests to validate what is passed to winston.
@@ -20,11 +27,11 @@ class SpyTransport extends Transport {
 
 // Helper function used by unit tests to check if the last message sent to winston contains a particular string value.
 // Caller feeds in the spy instance and the value to check.
-function lastSpyLogIncludes(spy, value) {
+export function lastSpyLogIncludes(spy: Spy, value: string): boolean {
   return spyLogIncludes(spy, -1, value);
 }
 
-function spyLogIncludes(spy, messageIndex, value) {
+export function spyLogIncludes(spy: Spy, messageIndex: number, value: string): boolean {
   // Sinon's getCall(n) function returns values sent in the nth (zero-indexed) call to the spy. Flatten the whole object
   // and any log messages included and check if the provided value is within the object.
   // Some calls embed a LOT of data within the errors, such as hardhat contract reverts which include the full solidity
@@ -43,12 +50,10 @@ function spyLogIncludes(spy, messageIndex, value) {
 }
 
 // Helper function used by unit tests to get the most recent log level.
-function lastSpyLogLevel(spy) {
+export function lastSpyLogLevel(spy: Spy): string {
   return spy.getCall(-1).lastArg.level;
 }
 
-function spyLogLevel(spy, messageIndex) {
+export function spyLogLevel(spy: Spy, messageIndex: number): string {
   return spy.getCall(messageIndex).lastArg.level;
 }
-
-module.exports = { SpyTransport, lastSpyLogIncludes, spyLogIncludes, lastSpyLogLevel, spyLogLevel };

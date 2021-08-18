@@ -2,7 +2,7 @@
 // positions, undisputed Liquidations, expired liquidations, disputed liquidations.
 
 import { ConvertDecimals, LiquidationStatesEnum, getFromBlock } from "@uma/common";
-import type { Abi, Awaited, BN } from "../types";
+import type { Abi, Awaited, BN, FinancialContractType } from "../types";
 import type { ExpiringMultiPartyWeb3, PerpetualWeb3 } from "@uma/contracts-node";
 import Web3 from "web3";
 import { aggregateTransactionsAndCall } from "../helpers/multicall";
@@ -10,8 +10,7 @@ import type { Logger } from "winston";
 
 import BluebirdPromise from "bluebird";
 
-export type FinancialContractType = "ExpiringMultiParty" | "Perpetual";
-export interface Position {
+interface Position {
   sponsor: string;
   withdrawalRequestPassTimestamp: string;
   withdrawalRequestAmount: string;
@@ -21,7 +20,7 @@ export interface Position {
   hasPendingWithdrawal: boolean;
 }
 
-export interface Liquidation {
+interface Liquidation {
   sponsor: string;
   id: string;
   state: string;
@@ -33,7 +32,7 @@ export interface Liquidation {
   disputer: string;
 }
 
-export type FinancialContract = ExpiringMultiPartyWeb3 | PerpetualWeb3;
+type FinancialContract = ExpiringMultiPartyWeb3 | PerpetualWeb3;
 
 type ContractLiquidationStruct = Omit<
   Awaited<ReturnType<ReturnType<FinancialContract["methods"]["liquidations"]>["call"]>>,

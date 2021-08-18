@@ -1,9 +1,19 @@
-const { parseFixed } = require("@uma/common");
-const { PriceFeedInterface } = require("./PriceFeedInterface");
-const assert = require("assert");
+import { parseFixed } from "@uma/common";
+import { PriceFeedInterface } from "./PriceFeedInterface";
+import assert from "assert";
+import type { Logger } from "winston";
+import Web3 from "web3";
+import { NetworkerInterface } from "./Networker";
+import { BN } from "../types";
 
 // An implementation of PriceFeedInterface that uses DefiPulse Data api to retrieve prices.
-class DefiPulsePriceFeed extends PriceFeedInterface {
+export class DefiPulsePriceFeed extends PriceFeedInterface {
+  private readonly uuid: string;
+  private readonly toWei = Web3.utils.toWei;
+  private historicalPrices: { timestamp: number; tvlUSD: number }[] = [];
+  private currentPrice: BN | null = null;
+  private lastUpdateTime: number | null = null;
+
   /**
    * @notice Constructs price feeds for projects listed on DefiPulse.
    * @param {Object} logger Winston module used to send logs.
@@ -18,49 +28,39 @@ class DefiPulsePriceFeed extends PriceFeedInterface {
    * @param {String} project Project name that we want to query TVL for.
    */
   constructor(
-    logger,
-    web3,
-    defipulseApiKey,
-    lookback,
-    networker,
-    getTime,
-    minTimeBetweenUpdates,
-    priceFeedDecimals = 18,
-    project
+    private readonly logger: Logger,
+    private readonly web3: Web3,
+    private readonly defipulseApiKey: string,
+    private readonly lookback: number,
+    private readonly networker: NetworkerInterface,
+    private readonly getTime: () => Promise<number>,
+    private readonly minTimeBetweenUpdates: number,
+    private readonly priceFeedDecimals = 18,
+    private readonly project: string
   ) {
     super();
-    this.logger = logger;
-    this.web3 = web3;
-    this.defipulseApiKey = defipulseApiKey;
-    this.lookback = lookback;
-    this.networker = networker;
-    this.getTime = getTime;
-    this.minTimeBetweenUpdates = minTimeBetweenUpdates;
-    this.priceFeedDecimals = priceFeedDecimals;
     this.uuid = `DefiPulse ${project}`;
-    this.toWei = this.web3.utils.toWei;
-    this.historicalPrices = [];
 
     this.project = project;
     const VALID_PROJECTS = ["all", "SushiSwap", "Uniswap"];
     assert(VALID_PROJECTS.includes(this.project), "invalid project name");
   }
 
-  getCurrentPrice() {
+  public getCurrentPrice(): BN | null {
     return this.currentPrice;
   }
 
-  async getHistoricalPrice(time) {
+  public async getHistoricalPrice(time: number): Promise<BN> {
     if (this.lastUpdateTime === undefined) {
       throw new Error(`${this.uuid}: undefined lastUpdateTime`);
     }
 
-    let closestTime = { timestamp: 0, tvlUSD: 0 };
+    const closestTime = { timestamp: 0, tvlUSD: 0 };
 
     // Go through all values and find time that that is the largest and still less than 'time'
     for (let i = 0; i < this.historicalPrices.length; i++) {
-      let past = this.historicalPrices[i].timestamp;
-      let val = this.historicalPrices[i].tvlUSD;
+      const past = this.historicalPrices[i].timestamp;
+      const val = this.historicalPrices[i].tvlUSD;
 
       if (past > closestTime.timestamp && past < time) {
         closestTime.timestamp = past;
@@ -77,21 +77,21 @@ class DefiPulsePriceFeed extends PriceFeedInterface {
     }
   }
 
-  getLastUpdateTime() {
+  public getLastUpdateTime(): number | null {
     return this.lastUpdateTime;
   }
 
-  async update() {
-    const currentTime = this.getTime();
+  public async update(): Promise<void> {
+    const currentTime = await this.getTime();
 
     // Return early if the last call was too recent.
-    if (this.lastUpdateTime !== undefined && this.lastUpdateTime + this.minTimeBetweenUpdates > currentTime) {
+    if (this.lastUpdateTime !== null && this.lastUpdateTime + this.minTimeBetweenUpdates > currentTime) {
       this.logger.debug({
         at: "DefiPulsePriceFeed",
         message: "Update skipped because the last one was too recent",
         currentTime: currentTime,
         lastUpdateTimestamp: this.lastUpdateTime,
-        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime,
+        timeRemainingUntilUpdate: this.lastUpdateTime + this.minTimeBetweenUpdates - currentTime,
       });
       return;
     }
@@ -129,7 +129,7 @@ class DefiPulsePriceFeed extends PriceFeedInterface {
     //        ]
 
     // Get tvlUSD for most most recent timestamp
-    let mostRecent = { timestamp: 0, tvlUSD: 0 };
+    const mostRecent = { timestamp: 0, tvlUSD: 0 };
     for (let i = 0; i < response.length; i++) {
       if (Number(response[i].timestamp) > mostRecent.timestamp) {
         mostRecent.timestamp = Number(response[i].timestamp);
@@ -145,7 +145,7 @@ class DefiPulsePriceFeed extends PriceFeedInterface {
     this.historicalPrices = response;
   }
 
-  scaleResult(_tvlUSD) {
+  private scaleResult(_tvlUSD: number): BN {
     // As described in UMIP 24
     // In an effort to make the token price affordable, the value of the token is the tvlUSD divided by 1 billion.
     // We also cut off precision after 3 decimals to match the specified price step of .001
@@ -162,9 +162,7 @@ class DefiPulsePriceFeed extends PriceFeedInterface {
     return this.web3.utils.toBN(fixedPointValue.toString());
   }
 
-  getPriceFeedDecimals() {
+  public getPriceFeedDecimals(): number {
     return this.priceFeedDecimals;
   }
 }
-
-module.exports = { DefiPulsePriceFeed };

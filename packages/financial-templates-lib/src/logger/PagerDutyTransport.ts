@@ -3,22 +3,36 @@
 // notification is not acknowledged by the person on call within 30 mins a second person is contacted until the warning
 // is acknowledged. If set to `high` the incident is aggressively escalated. If no acknowledgement within 5 minutes a
 //  second person is contacted until the message is acknowledged.
+import Transport from "winston-transport";
+import PagerDutyClient from "node-pagerduty";
 
-const Transport = require("winston-transport");
-const pdClient = require("node-pagerduty");
+type TransportOptions = ConstructorParameters<typeof Transport>[0];
 
-module.exports = class PagerDutyTransport extends Transport {
-  constructor(winstonOpts, pagerDutyOptions) {
+export class PagerDutyTransport extends Transport {
+  private readonly pd: PagerDutyClient;
+  private readonly fromEmail: string;
+  private readonly defaultServiceId: string;
+  private readonly customServices: { [key: string]: string };
+  constructor(
+    winstonOpts: TransportOptions,
+    {
+      pdApiToken,
+      fromEmail,
+      defaultServiceId,
+      customServices = {},
+    }: { pdApiToken: string; fromEmail: string; defaultServiceId: string; customServices: { [key: string]: string } }
+  ) {
     super(winstonOpts);
 
-    this.pd = new pdClient(pagerDutyOptions.pdApiToken);
+    this.pd = new PagerDutyClient(pdApiToken);
 
-    this.fromEmail = pagerDutyOptions.fromEmail;
-    this.defaultServiceId = pagerDutyOptions.defaultServiceId;
-    this.customServices = pagerDutyOptions.customServices || {};
+    this.fromEmail = fromEmail;
+    this.defaultServiceId = defaultServiceId;
+    this.customServices = customServices;
   }
 
-  async log(info, callback) {
+  // Note: info must be any because that's what the base class uses.
+  async log(info: any, callback: () => void): Promise<void> {
     try {
       // If the message has markdown then add it and the bot-identifer field. Else put the whole info object as a string
       const logMessage = info.mrkdwn ? info.mrkdwn + `\n${info["bot-identifier"]}` : JSON.stringify(info);
@@ -42,4 +56,4 @@ module.exports = class PagerDutyTransport extends Transport {
 
     callback();
   }
-};
+}

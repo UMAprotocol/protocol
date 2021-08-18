@@ -1,5 +1,5 @@
 import type { Logger } from "winston";
-import type { Abi } from "../types";
+import type { Abi, FinancialContractType } from "../types";
 import type Web3 from "web3";
 import type {
   ExpiringMultiPartyWeb3,
@@ -8,25 +8,22 @@ import type {
   PerpetualWeb3Events,
 } from "@uma/contracts-node";
 
-export type FinancialContractType = "ExpiringMultiParty" | "Perpetual";
-export type LiquidationCreatedEvent =
-  | ExpiringMultiPartyWeb3Events.LiquidationCreated
-  | PerpetualWeb3Events.LiquidationCreated;
-export type DisputeEvent = ExpiringMultiPartyWeb3Events.LiquidationDisputed | PerpetualWeb3Events.LiquidationDisputed;
-export type DisputeSettlementEvent = ExpiringMultiPartyWeb3Events.DisputeSettled | PerpetualWeb3Events.DisputeSettled;
-export type NewSponsorEvent = ExpiringMultiPartyWeb3Events.NewSponsor | PerpetualWeb3Events.NewSponsor;
-export type DepositEvent = ExpiringMultiPartyWeb3Events.Deposit | PerpetualWeb3Events.Deposit;
-export type CreateEvent = ExpiringMultiPartyWeb3Events.PositionCreated | PerpetualWeb3Events.PositionCreated;
-export type WithdrawEvent = ExpiringMultiPartyWeb3Events.Withdrawal | PerpetualWeb3Events.Withdrawal;
-export type RedeemEvent = ExpiringMultiPartyWeb3Events.Redeem | PerpetualWeb3Events.Redeem;
-export type RegularFeeEvent = ExpiringMultiPartyWeb3Events.RegularFeesPaid | PerpetualWeb3Events.RegularFeesPaid;
-export type FinalFeeEvent = ExpiringMultiPartyWeb3Events.FinalFeesPaid | PerpetualWeb3Events.FinalFeesPaid;
-export type LiquidationWithadrawnEvent =
+type LiquidationCreatedEvent = ExpiringMultiPartyWeb3Events.LiquidationCreated | PerpetualWeb3Events.LiquidationCreated;
+type DisputeEvent = ExpiringMultiPartyWeb3Events.LiquidationDisputed | PerpetualWeb3Events.LiquidationDisputed;
+type DisputeSettlementEvent = ExpiringMultiPartyWeb3Events.DisputeSettled | PerpetualWeb3Events.DisputeSettled;
+type NewSponsorEvent = ExpiringMultiPartyWeb3Events.NewSponsor | PerpetualWeb3Events.NewSponsor;
+type DepositEvent = ExpiringMultiPartyWeb3Events.Deposit | PerpetualWeb3Events.Deposit;
+type CreateEvent = ExpiringMultiPartyWeb3Events.PositionCreated | PerpetualWeb3Events.PositionCreated;
+type WithdrawEvent = ExpiringMultiPartyWeb3Events.Withdrawal | PerpetualWeb3Events.Withdrawal;
+type RedeemEvent = ExpiringMultiPartyWeb3Events.Redeem | PerpetualWeb3Events.Redeem;
+type RegularFeeEvent = ExpiringMultiPartyWeb3Events.RegularFeesPaid | PerpetualWeb3Events.RegularFeesPaid;
+type FinalFeeEvent = ExpiringMultiPartyWeb3Events.FinalFeesPaid | PerpetualWeb3Events.FinalFeesPaid;
+type LiquidationWithadrawnEvent =
   | ExpiringMultiPartyWeb3Events.LiquidationWithdrawn
   | PerpetualWeb3Events.LiquidationWithdrawn;
-export type SettleExpiredEvent = ExpiringMultiPartyWeb3Events.SettleExpiredPosition;
-export type SettleEmergencyShutdownEvent = PerpetualWeb3Events.SettleEmergencyShutdown;
-export type FundingRateUpdatedEvent = PerpetualWeb3Events.FundingRateUpdated;
+type SettleExpiredEvent = ExpiringMultiPartyWeb3Events.SettleExpiredPosition;
+type SettleEmergencyShutdownEvent = PerpetualWeb3Events.SettleEmergencyShutdown;
+type FundingRateUpdatedEvent = PerpetualWeb3Events.FundingRateUpdated;
 
 interface TransactionMetadata {
   transactionHash: string;

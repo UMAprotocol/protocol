@@ -1,12 +1,27 @@
-const { PriceFeedInterface } = require("./PriceFeedInterface");
-const { parseFixed } = require("@ethersproject/bignumber");
-const assert = require("assert");
+import { PriceFeedInterface } from "./PriceFeedInterface";
+import { parseFixed } from "@ethersproject/bignumber";
+import assert from "assert";
+import Web3 from "web3";
+import type { Logger } from "winston";
+import { BN } from "../types";
+
+type WithHistoricalPricePeriods<T> = T & { getHistoricalPricePeriods: () => [time: number, price: BN][] };
+
+function allDefined<T>(array: (T | null | undefined)[]): array is T[] {
+  return array.every((element) => element !== null || element !== undefined);
+}
 
 // An implementation of PriceFeedInterface that takes as input two sets ("baskets") of price feeds,
 // computes the average price feed for each basket, and returns the spread between the two averages.
 // !!Note: This PriceFeed assumes that the baselinePriceFeeds, experimentalPriceFeed, and denominatorPriceFeed
 // are all returning prices in the same precision as `decimals`.
-class BasketSpreadPriceFeed extends PriceFeedInterface {
+export class BasketSpreadPriceFeed extends PriceFeedInterface {
+  private readonly toBN = Web3.utils.toBN;
+  private readonly toWei = Web3.utils.toWei;
+  private readonly allPriceFeeds: PriceFeedInterface[];
+  private readonly decimals: number;
+  private readonly convertPriceFeedDecimals: (number: number | string) => BN;
+
   /**
    * @notice Constructs new BasketSpreadPriceFeed.
    * @param {Object} logger Winston module used to send logs.
@@ -19,16 +34,18 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
    *      in order to "denominate" the basket spread price in a specified unit. For example, we might want to express the basket spread in terms
    *      of ETH-USD.
    */
-  constructor(web3, logger, baselinePriceFeeds, experimentalPriceFeeds, denominatorPriceFeed) {
+  constructor(
+    public readonly web3: Web3,
+    private readonly logger: Logger,
+    private readonly baselinePriceFeeds: PriceFeedInterface[],
+    private readonly experimentalPriceFeeds: PriceFeedInterface[],
+    private readonly denominatorPriceFeed?: PriceFeedInterface
+  ) {
     super();
 
     if (baselinePriceFeeds.length === 0 || experimentalPriceFeeds.length === 0) {
       throw new Error("BasketSpreadPriceFeed cannot be constructed with empty baseline or experimental baskets.");
     }
-
-    this.baselinePriceFeeds = baselinePriceFeeds;
-    this.experimentalPriceFeeds = experimentalPriceFeeds;
-    this.denominatorPriceFeed = denominatorPriceFeed;
 
     // For convenience, concatenate all constituent price feeds.
     this.allPriceFeeds = this.baselinePriceFeeds.concat(this.experimentalPriceFeeds);
@@ -36,17 +53,11 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
       this.allPriceFeeds = this.allPriceFeeds.concat(this.denominatorPriceFeed);
     }
 
-    // Helper modules.
-    this.web3 = web3;
-    this.toBN = this.web3.utils.toBN;
-    this.toWei = this.web3.utils.toWei;
-    this.logger = logger;
-
     // The precision that the user wants to return prices in must match all basket constituent price feeds and the denominator.
     this.decimals = this.allPriceFeeds[0].getPriceFeedDecimals();
 
     // Scale `number` by 10**decimals.
-    this.convertPriceFeedDecimals = (number) => {
+    this.convertPriceFeedDecimals = (number: number | string) => {
       // Converts price result to wei
       // returns price conversion to correct decimals as a big number
       return this.toBN(parseFixed(number.toString(), this.decimals).toString());
@@ -56,18 +67,19 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
   // Given lists of experimental and baseline prices, and a denominator price,
   // return the spread price, which is:
   // (avg(experimental) - avg(baseline) + 1) / denominator
-  _getSpreadFromBasketPrices(experimentalPrices, baselinePrices, denominatorPrice) {
+  private _getSpreadFromBasketPrices(
+    experimentalPrices: (BN | null)[],
+    baselinePrices: (BN | null)[],
+    denominatorPrice?: BN | null
+  ): BN {
     // Compute experimental basket mean.
-    if (
-      experimentalPrices.length === 0 ||
-      experimentalPrices.some((element) => element === undefined || element === null)
-    ) {
+    if (experimentalPrices.length === 0 || !allDefined(experimentalPrices)) {
       throw new Error("BasketSpreadPriceFeed: Missing unknown experimental basket price");
     }
     const experimentalMean = this._computeMean(experimentalPrices);
 
     // Second, compute the average of the baseline pricefeeds.
-    if (baselinePrices.length === 0 || baselinePrices.some((element) => element === undefined || element === null)) {
+    if (baselinePrices.length === 0 || !allDefined(baselinePrices)) {
       throw new Error("BasketSpreadPriceFeed: Missing unknown baseline basket price");
     }
     const baselineMean = this._computeMean(baselinePrices);
@@ -98,7 +110,7 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     return spreadValue;
   }
 
-  getCurrentPrice() {
+  public getCurrentPrice(): BN | null {
     const experimentalPrices = this.experimentalPriceFeeds.map((priceFeed) => priceFeed.getCurrentPrice());
     const baselinePrices = this.baselinePriceFeeds.map((priceFeed) => priceFeed.getCurrentPrice());
     const denominatorPrice = this.denominatorPriceFeed && this.denominatorPriceFeed.getCurrentPrice();
@@ -110,25 +122,32 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     }
   }
 
-  async getHistoricalPrice(time, verbose = false) {
+  public async getHistoricalPrice(time: number, verbose = false) {
     // If failure to fetch any constituent historical prices, then throw
     // array of errors.
-    const errors = [];
+    const errors: any[] = [];
     const experimentalPrices = await Promise.all(
       this.experimentalPriceFeeds.map((priceFeed) => {
-        return priceFeed.getHistoricalPrice(time, verbose).catch((err) => errors.push(err));
+        return priceFeed.getHistoricalPrice(time, verbose).catch((err) => {
+          errors.push(err);
+          return null;
+        });
       })
     );
     const baselinePrices = await Promise.all(
       this.baselinePriceFeeds.map((priceFeed) => {
-        return priceFeed.getHistoricalPrice(time, verbose).catch((err) => errors.push(err));
+        return priceFeed.getHistoricalPrice(time, verbose).catch((err) => {
+          errors.push(err);
+          return null;
+        });
       })
     );
     let denominatorPrice;
     if (this.denominatorPriceFeed) {
-      denominatorPrice = await this.denominatorPriceFeed
-        .getHistoricalPrice(time, verbose)
-        .catch((err) => errors.push(err));
+      denominatorPrice = await this.denominatorPriceFeed.getHistoricalPrice(time, verbose).catch((err) => {
+        errors.push(err);
+        return null;
+      });
     }
 
     if (errors.length > 0) {
@@ -140,8 +159,8 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
   // This searches for closest time in a list of [[time,price]] data. Based on code in affiliates models/prices.
   // input list is [[time,price]]
   // output price as BN
-  closestTime(list) {
-    return (time) => {
+  public closestTime(list: [time: number, price: string | number | BN][]) {
+    return (time: number) => {
       const result = list.reduce((a, b) => {
         const aDiff = Math.abs(a[0] - time);
         const bDiff = Math.abs(b[0] - time);
@@ -154,7 +173,7 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
         return bDiff < aDiff ? b : a;
       });
       assert(result, "no closest time found");
-      return this.toBN(result[1]);
+      return this.toBN(result[1].toString());
     };
   }
   // This function does something similar to get historicalprice, but does not have the luxury of only caring about a
@@ -162,21 +181,25 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
   // as there are multiple price histories which we must search through at each matching timestamp to find the closets
   // prices to add into the basket calculation.
   // Returns data in the form of [[time,price]]
-  getHistoricalPricePeriods() {
-    const experimentalPrices = this.experimentalPriceFeeds.map((priceFeed) => {
+  public getHistoricalPricePeriods(): (number | BN)[][] {
+    type AugmentedInterface = WithHistoricalPricePeriods<PriceFeedInterface>;
+    const experimentalPriceFeeds = this.experimentalPriceFeeds as AugmentedInterface[];
+    const baselinePriceFeeds = this.baselinePriceFeeds as AugmentedInterface[];
+    const denominatorPriceFeed = this.denominatorPriceFeed as AugmentedInterface | undefined;
+    const experimentalPrices = experimentalPriceFeeds.map((priceFeed) => {
       // This price history gets wrapped in "closestTime" which returns a searching function with timestamp input.
       return this.closestTime(priceFeed.getHistoricalPricePeriods());
     });
-    const baselinePrices = this.baselinePriceFeeds.map((priceFeed) => {
+    const baselinePrices = baselinePriceFeeds.map((priceFeed) => {
       return this.closestTime(priceFeed.getHistoricalPricePeriods());
     });
-    let denominatorPrice;
-    if (this.denominatorPriceFeed) {
-      denominatorPrice = this.closestTime(this.denominatorPriceFeed.getHistoricalPricePeriods());
+    let denominatorPrice: undefined | ((time: number) => BN);
+    if (denominatorPriceFeed) {
+      denominatorPrice = this.closestTime(denominatorPriceFeed.getHistoricalPricePeriods());
     }
 
     // This uses the first baseline price feed as a reference for the historical timestamps to search for
-    const pricePeriods = this.baselinePriceFeeds[0].getHistoricalPricePeriods();
+    const pricePeriods = baselinePriceFeeds[0].getHistoricalPricePeriods();
     return pricePeriods.map((pricePeriod) => {
       const [time] = pricePeriod;
       // Each parameter looks up and returns the closest price to the timestamp.
@@ -189,9 +212,9 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
     });
   }
   // Gets the *most recent* update time for all constituent price feeds.
-  getLastUpdateTime() {
+  public getLastUpdateTime(): number | null {
     const lastUpdateTimes = this.allPriceFeeds.map((priceFeed) => priceFeed.getLastUpdateTime());
-    if (lastUpdateTimes.some((element) => element === undefined || element === null)) {
+    if (!allDefined<number>(lastUpdateTimes)) {
       return null;
     }
 
@@ -200,15 +223,15 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
   }
 
   // Returns the shortest lookback window of the constituent price feeds.
-  getLookback() {
+  public getLookback(): number | null {
     const lookbacks = this.allPriceFeeds.map((priceFeed) => priceFeed.getLookback());
-    if (lookbacks.some((element) => element === undefined || element === null)) {
+    if (!allDefined(lookbacks)) {
       return null;
     }
     return Math.min(...lookbacks);
   }
 
-  getPriceFeedDecimals() {
+  public getPriceFeedDecimals(): number {
     // Check that every price feeds decimals are the same.
     const priceFeedDecimals = this.allPriceFeeds.map((priceFeed) => priceFeed.getPriceFeedDecimals());
     if (!priceFeedDecimals.every((feedDecimals) => feedDecimals === this.decimals)) {
@@ -219,20 +242,18 @@ class BasketSpreadPriceFeed extends PriceFeedInterface {
   }
 
   // Updates all constituent price feeds.
-  async update() {
+  public async update(): Promise<void> {
     await Promise.all(this.allPriceFeeds.map((priceFeed) => priceFeed.update()));
   }
 
   // Inputs are expected to be BNs.
-  _computeMean(inputs) {
+  private _computeMean(inputs: BN[]): BN {
     let sum = this.toBN("0");
 
-    for (let priceBN of inputs) {
+    for (const priceBN of inputs) {
       sum = sum.add(priceBN);
     }
 
     return sum.divn(inputs.length);
   }
 }
-
-module.exports = { BasketSpreadPriceFeed };

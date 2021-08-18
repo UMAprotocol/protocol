@@ -1,8 +1,24 @@
-const { PriceFeedInterface } = require("./PriceFeedInterface");
-const { parseFixed, formatFixed } = require("@ethersproject/bignumber");
+import { PriceFeedInterface } from "./PriceFeedInterface";
+import { parseFixed, formatFixed } from "@ethersproject/bignumber";
+import type { Logger } from "winston";
+import Web3 from "web3";
+import { NetworkerInterface } from "./Networker";
+import { BN } from "../types";
 
 // An implementation of PriceFeedInterface that uses DominationFinance's API to retrieve prices.
-class DominationFinancePriceFeed extends PriceFeedInterface {
+export class DominationFinancePriceFeed extends PriceFeedInterface {
+  private readonly uuid: string;
+  private readonly toBN = Web3.utils.toBN;
+  private readonly convertPriceFeedDecimals: (number: number | string | BN) => BN;
+  private historicalPrices: { timestamp: number; tvlUSD: number }[] = [];
+  private currentPrice: BN | null = null;
+  private lastUpdateTime: number | null = null;
+  private historicalPricePeriods: {
+    openTime: number;
+    closeTime: number;
+    closePrice: BN;
+  }[] = [];
+
   /**
    * @notice Constructs the DominationFinancePriceFeed.
    * @param {Object} logger Winston module used to send logs.
@@ -19,33 +35,19 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
    * @param {Number} tickPeriod Number of seconds interval between price entries.
    */
   constructor(
-    logger,
-    web3,
-    pair,
-    lookback,
-    networker,
-    getTime,
-    minTimeBetweenUpdates,
-    invertPrice,
-    priceFeedDecimals = 18,
-    tickPeriod = 60
+    private readonly logger: Logger,
+    private readonly web3: Web3,
+    private readonly pair: string,
+    private readonly lookback: number,
+    private readonly networker: NetworkerInterface,
+    private readonly getTime: () => Promise<number>,
+    private readonly minTimeBetweenUpdates: number,
+    private readonly invertPrice?: boolean,
+    private readonly priceFeedDecimals = 18,
+    private readonly tickPeriod = 60
   ) {
     super();
-    this.logger = logger;
-    this.web3 = web3;
-
-    this.pair = pair;
-    this.lookback = lookback;
     this.uuid = `DominationFinance-${pair}`;
-    this.tickPeriod = tickPeriod;
-    this.networker = networker;
-    this.getTime = getTime;
-    this.minTimeBetweenUpdates = minTimeBetweenUpdates;
-    this.invertPrice = invertPrice;
-
-    this.toBN = this.web3.utils.toBN;
-
-    this.priceFeedDecimals = priceFeedDecimals;
     this.convertPriceFeedDecimals = (number) => {
       // Converts price result to wei
       // returns price conversion to correct decimals as a big number
@@ -53,19 +55,19 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
     };
   }
 
-  get _priceUrl() {
+  private get _priceUrl() {
     return `https://api.domination.finance/api/v0/price/${this.pair}`;
   }
 
-  get _historicalPricesUrl() {
+  private get _historicalPricesUrl() {
     return `https://api.domination.finance/api/v0/price/${this.pair}/history?tick=${this.tickPeriod}s&range=${this.lookback}s`;
   }
 
-  getCurrentPrice() {
+  public getCurrentPrice(): BN | null {
     return this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
   }
 
-  async getHistoricalPrice(time, verbose = false) {
+  public async getHistoricalPrice(time: number, verbose = false): Promise<BN | null> {
     if (this.lastUpdateTime === undefined) {
       throw new Error(`${this.uuid}: undefined lastUpdateTime`);
     }
@@ -104,10 +106,9 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
       if (verbose) {
         console.group(`\n(${this.pair}) No historical price available @ ${time}`);
         console.log(
-          `- ✅ Time is later than earliest historical time, fetching current price: ${formatFixed(
-            returnPrice.toString(),
-            this.priceFeedDecimals
-          )}`
+          `- ✅ Time is later than earliest historical time, fetching current price: ${
+            returnPrice && formatFixed(returnPrice.toString(), this.priceFeedDecimals)
+          }`
         );
         console.log(
           `- ⚠️  If you want to manually verify the specific prices, you can make a GET request to: \n- ${this._priceUrl}`
@@ -133,7 +134,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
     return returnPrice;
   }
 
-  getHistoricalPricePeriods() {
+  public getHistoricalPricePeriods(): [number, BN | null][] {
     if (!this.invertPrice) return this.historicalPricePeriods.map((x) => [x.closeTime, x.closePrice]);
     else
       return this.historicalPricePeriods.map((historicalPrice) => {
@@ -141,29 +142,29 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
       });
   }
 
-  getLastUpdateTime() {
+  public getLastUpdateTime(): number | null {
     return this.lastUpdateTime;
   }
 
-  getLookback() {
+  public getLookback(): number {
     return this.lookback;
   }
 
-  getPriceFeedDecimals() {
+  public getPriceFeedDecimals(): number {
     return this.priceFeedDecimals;
   }
 
-  async update() {
-    const currentTime = this.getTime();
+  public async update(): Promise<void> {
+    const currentTime = await this.getTime();
 
     // Return early if the last call was too recent.
-    if (this.lastUpdateTime !== undefined && this.lastUpdateTime + this.minTimeBetweenUpdates > currentTime) {
+    if (this.lastUpdateTime !== null && this.lastUpdateTime + this.minTimeBetweenUpdates > currentTime) {
       this.logger.debug({
         at: "DominationFinancePriceFeed",
         message: "Update skipped because the last one was too recent",
         currentTime: currentTime,
         lastUpdateTimestamp: this.lastUpdateTime,
-        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime,
+        timeRemainingUntilUpdate: this.lastUpdateTime + this.minTimeBetweenUpdates - currentTime,
       });
       return;
     }
@@ -226,8 +227,8 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
 
     // Use `closeTime` and `closePrice` to maintain the same format that is
     // expected by `MedianizerPriceFeed`
-    const newHistoricalPricePeriods = historyResponse.data.rows
-      .map((row) => ({
+    const newHistoricalPricePeriods = (historyResponse.data.rows as [number, string][])
+      .map((row: [number, string]) => ({
         openTime: row[0],
         closeTime: row[0] + this.tickPeriod,
         closePrice: this.convertPriceFeedDecimals(row[1]),
@@ -235,7 +236,7 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
       .sort((a, b) => {
         // Sorts the data such that the oldest elements come first.
         // Should already be the case, but ensures otherwise.
-        return a.time - b.time;
+        return a.openTime - b.openTime;
       });
 
     // 5. Store results.
@@ -244,13 +245,11 @@ class DominationFinancePriceFeed extends PriceFeedInterface {
     this.lastUpdateTime = currentTime;
   }
 
-  _invertPriceSafely(priceBN) {
+  private _invertPriceSafely(priceBN: BN | null): BN | null {
     if (priceBN && !priceBN.isZero()) {
       return this.convertPriceFeedDecimals("1").mul(this.convertPriceFeedDecimals("1")).div(priceBN);
     } else {
-      return undefined;
+      return null;
     }
   }
 }
-
-module.exports = { DominationFinancePriceFeed };

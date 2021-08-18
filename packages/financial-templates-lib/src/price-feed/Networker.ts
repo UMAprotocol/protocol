@@ -1,18 +1,25 @@
 // This class makes networking calls on behalf of the caller. Note: this is separated out to allow this functionality
 // to be mocked out in tests so no real network calls have to be made.
 
-const fetch = require("node-fetch");
+import fetch from "node-fetch";
+import type { Logger } from "winston";
 
-class Networker {
+type NetworkerOptions = Parameters<typeof fetch>[1];
+
+export abstract class NetworkerInterface {
+  public abstract getJson(url: string, options?: NetworkerOptions): Promise<any>;
+}
+
+export class Networker extends NetworkerInterface {
   /**
    * @notice Constructs new Networker.
    * @param {Object} logger Winston module used to send logs.
    */
-  constructor(logger) {
-    this.logger = logger;
+  constructor(private readonly logger: Logger) {
+    super();
   }
 
-  async getJson(url, options) {
+  async getJson(url: string, options: NetworkerOptions): Promise<any> {
     const response = await fetch(url, options);
     const json = await response.json();
     if (!json) {
@@ -22,5 +29,3 @@ class Networker {
     return json;
   }
 }
-
-module.exports = { Networker };
