@@ -83,8 +83,6 @@ describe("index.ts", function () {
   });
 
   it("Runs with no errors", async function () {
-    process.env.INFURA_API_KEY = "testkey";
-
     process.env.POLLING_DELAY = "0";
 
     // Must not throw.

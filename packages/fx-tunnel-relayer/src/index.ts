@@ -18,10 +18,10 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
     // Set up ethereum web3.
     const [accounts, ethNetworkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
 
-    // Set up polygon web3. For testing purposes, if web3's network ID is not 1 (e.g. Ethereum's network ID), then
-    // set the polygon node equal to the web3 node.
-    const polygonNodeUrl = `https://polygon-mainnet.infura.io/v3/${config.infuraApiKey}`;
-    const polygonWeb3 = ethNetworkId === 1 ? new Web3(polygonNodeUrl) : web3;
+    // Set up polygon web3. If polygon node URL is undefined, then default to setting it equal to the web3 instance.
+    // This facilitates local testing where contracts are deployed to the same local network.
+    const polygonNodeUrl = config.polygonNodeUrl;
+    const polygonWeb3 = polygonNodeUrl !== "" ? new Web3(polygonNodeUrl) : web3;
     const polygonNetworkId = await polygonWeb3.eth.net.getId();
     const [polygonAverageBlockTime, polygonCurrentBlock] = await Promise.all([
       averageBlockTimeSeconds(undefined, polygonNetworkId),
