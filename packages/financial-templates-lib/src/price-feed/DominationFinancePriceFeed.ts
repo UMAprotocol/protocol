@@ -3,7 +3,7 @@ import { parseFixed, formatFixed } from "@ethersproject/bignumber";
 import type { Logger } from "winston";
 import Web3 from "web3";
 import { NetworkerInterface } from "./Networker";
-import { BN } from "../types";
+import type { BN } from "../types";
 
 // An implementation of PriceFeedInterface that uses DominationFinance's API to retrieve prices.
 export class DominationFinancePriceFeed extends PriceFeedInterface {
@@ -121,7 +121,7 @@ export class DominationFinancePriceFeed extends PriceFeedInterface {
     returnPrice = this.invertPrice ? this._invertPriceSafely(match.closePrice) : match.closePrice;
     if (verbose) {
       console.group(`\n(${this.pair}) Historical Prices @ ${match.closeTime}`);
-      console.log(`- ✅ Price: ${formatFixed(returnPrice.toString(), this.priceFeedDecimals)}`);
+      console.log(`- ✅ Price: ${returnPrice && formatFixed(returnPrice.toString(), this.priceFeedDecimals)}`);
       console.log(
         `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n  - ${this._historicalPricesUrl}`
       );

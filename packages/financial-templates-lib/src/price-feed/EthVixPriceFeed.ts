@@ -1,10 +1,21 @@
-const assert = require("assert");
-const moment = require("moment");
-const { parseFixed } = require("@uma/common");
-const { PriceFeedInterface } = require("./PriceFeedInterface");
+import assert from "assert";
+import moment from "moment";
+import { parseFixed } from "@uma/common";
+import { PriceFeedInterface } from "./PriceFeedInterface";
+import type { Logger } from "winston";
+import Web3 from "web3";
+import { NetworkerInterface } from "./Networker";
+import type { BN } from "../types";
 
 // An implementation of PriceFeedInterface that uses the dVIX API to retrieve ethVIX prices.
-class ETHVIXPriceFeed extends PriceFeedInterface {
+export class ETHVIXPriceFeed extends PriceFeedInterface {
+  private readonly uuid: string;
+  private readonly toBN = Web3.utils.toBN;
+  private readonly convertPriceFeedDecimals: (number: number | string | BN) => BN;
+  private historicalPrices: { timestamp: string; vix: string; iVix: string }[] = [];
+  private currentPrice: BN | null = null;
+  private lastUpdateTime: number | null = null;
+
   /**
    * @notice Constructs price feeds for indexes listed on dVIX.io.
    * @param {Object} logger Winston module used to send logs.
@@ -16,21 +27,17 @@ class ETHVIXPriceFeed extends PriceFeedInterface {
    *      this number of seconds has passed, it will be a no-op.
    * @param {Number} priceFeedDecimals Number of priceFeedDecimals to use to convert price to wei.
    */
-  constructor(logger, web3, inverse, networker, getTime, minTimeBetweenUpdates = 60, priceFeedDecimals = 18) {
+  constructor(
+    private readonly logger: Logger,
+    private readonly web3: Web3,
+    private readonly inverse: boolean,
+    private readonly networker: NetworkerInterface,
+    private readonly getTime: () => Promise<number>,
+    private readonly minTimeBetweenUpdates = 60,
+    private readonly priceFeedDecimals = 18
+  ) {
     super();
-    this.logger = logger;
-    this.web3 = web3;
-    this.inverse = inverse;
-    this.networker = networker;
-    this.getTime = getTime;
-    this.minTimeBetweenUpdates = minTimeBetweenUpdates;
-    this.priceFeedDecimals = priceFeedDecimals;
-
     this.uuid = `dVIX.${inverse ? "iethVIX" : "ethVIX"}`;
-    this.historicalPrices = [];
-
-    this.toBN = this.web3.utils.toBN;
-
     this.convertPriceFeedDecimals = (number) => {
       // Converts the decimal price result to a BigNumber integer scaled to wei units.
       // Note: Must ensure that `number` has no more decimal places than `priceFeedDecimals`.
@@ -38,12 +45,12 @@ class ETHVIXPriceFeed extends PriceFeedInterface {
     };
   }
 
-  getCurrentPrice() {
-    assert(this.lastUpdateTime, `${this.uuid}: undefined lastUpdateTime. Update required.`);
+  public getCurrentPrice(): BN {
+    assert(this.lastUpdateTime && this.currentPrice, `${this.uuid}: undefined lastUpdateTime. Update required.`);
     return this.convertPriceFeedDecimals(this.currentPrice);
   }
 
-  async getHistoricalPrice(time) {
+  public async getHistoricalPrice(time: number): Promise<BN> {
     assert(this.lastUpdateTime, `${this.uuid}: undefined lastUpdateTime. Update required.`);
 
     assert(
@@ -63,22 +70,21 @@ class ETHVIXPriceFeed extends PriceFeedInterface {
     return this.convertPriceFeedDecimals(result.vix);
   }
 
-  getLastUpdateTime() {
+  public getLastUpdateTime(): number | null {
     return this.lastUpdateTime;
   }
 
-  async update() {
-    const currentTime = this.getTime();
-    const earliestAllowableUpdateTime = currentTime + moment.duration(this.minTimeBetweenUpdates, "seconds");
+  async update(): Promise<void> {
+    const currentTime = await this.getTime();
 
     // Return early if the last call was too recent.
-    if (this.lastUpdateTime !== undefined && moment(currentTime).isSameOrAfter(earliestAllowableUpdateTime)) {
+    if (this.lastUpdateTime !== null && this.lastUpdateTime + this.minTimeBetweenUpdates < currentTime) {
       console.log({
         at: "ETHVIXPriceFeed",
         message: "Update skipped because the last one was too recent",
         currentTime: currentTime,
         lastUpdateTimestamp: this.lastUpdateTime,
-        timeRemainingUntilUpdate: earliestAllowableUpdateTime - currentTime,
+        timeRemainingUntilUpdate: this.lastUpdateTime + this.minTimeBetweenUpdates - currentTime,
       });
       return;
     }
@@ -122,6 +128,14 @@ class ETHVIXPriceFeed extends PriceFeedInterface {
     this.historicalPrices = [...this.historicalPrices, ...response];
     this.currentPrice = this.inverse ? mostRecent.iVix : mostRecent.vix;
   }
-}
 
-module.exports = { ETHVIXPriceFeed };
+  public getLookback(): number {
+    return this.lastUpdateTime === null || this.historicalPrices.length === 0
+      ? 0
+      : this.lastUpdateTime - moment(this.historicalPrices[this.historicalPrices.length - 1].timestamp).unix();
+  }
+
+  public getPriceFeedDecimals(): number {
+    return this.priceFeedDecimals;
+  }
+}

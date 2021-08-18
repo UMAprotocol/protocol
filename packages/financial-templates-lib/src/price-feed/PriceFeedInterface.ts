@@ -28,7 +28,7 @@ export abstract class PriceFeedInterface {
 
   // This returns the precision that prices are returned in. It is called by the Medianizer price feed to enforce that all
   // of the pricefeeds are using the same precision.
-  public abstract getPriceFeedDecimals(): number;
+  public abstract getPriceFeedDecimals(): number | null;
 
   // Returns the lookback window for a historical price query. Timestamps before (currentTime - lookback) will fail if passed into
   // `getHistoricalPrice`. This method can make clients more efficient by catching invalid historical timestamps early.

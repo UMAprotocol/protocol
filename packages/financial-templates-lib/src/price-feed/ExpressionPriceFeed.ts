@@ -1,10 +1,11 @@
-const assert = require("assert");
-const { PriceFeedInterface } = require("./PriceFeedInterface");
-const Web3 = require("web3");
-const { create, all } = require("mathjs");
+import assert from "assert";
+import { PriceFeedInterface } from "./PriceFeedInterface";
+import Web3 from "web3";
+import { create, all, MathJsStatic } from "mathjs";
+import type { BN } from "../types";
 
 // Customize math (will be exported for other modules to use).
-const math = create(all, { number: "BigNumber", precision: 100 });
+export const math = create(all, { number: "BigNumber", precision: 100 }) as MathJsStatic; // Assumes all fields are returned.
 const nativeIsAlpha = math.parse.isAlpha;
 const allowedSpecialCharacters = Array.from("[]/ -");
 
@@ -22,7 +23,7 @@ math.parse.isAlpha = function (c, cPrev, cNext) {
 // This escapes all the special characters (defined in the allowedSpecialCharacters array) in a string.
 // For example (note that "\\" is the js representation for a single literal backslash)
 // "ab/c d [e]" -> "ab\\/c\\ d\\[e\\]"
-function escapeSpecialCharacters(input) {
+export function escapeSpecialCharacters(input: string): string {
   return Array.from(input)
     .map((char, index, array) => {
       if (allowedSpecialCharacters.includes(char) && array[index - 1] !== "\\") {
@@ -34,10 +35,20 @@ function escapeSpecialCharacters(input) {
     .join("");
 }
 
+function isDefined<T>(input: T | undefined | null): input is T {
+  return input !== undefined && input !== null;
+}
+
+interface ResultSet<T> {
+  entries: T[];
+}
+
 // Allows users to combine other price feeds using "expressions" with the price feed identifiers being the symbols
 // in these expressions. Ex: "USDETH * COMPUSD". Users can also comfigure custom price feeds in their configuration
 // with custom symbols. Ex: "USDETH * COMPUSD * MY_CUSTOM_FEED".
-class ExpressionPriceFeed extends PriceFeedInterface {
+export class ExpressionPriceFeed extends PriceFeedInterface {
+  private readonly expressionCode: math.EvalFunction;
+
   /**
    * @notice Constructs the DominationFinancePriceFeed.
    * @param {Object} priceFeedMap an object mapping from price feed names to the price feed objects.
@@ -51,20 +62,33 @@ class ExpressionPriceFeed extends PriceFeedInterface {
    *                 Ex: "(USDETH + COMPUSD) / COMPUSD"
    * @param {number} decimals decimals to use in the price output.
    */
-  constructor(priceFeedMap, expression, decimals = 18) {
+  constructor(
+    private readonly priceFeedMap: { [name: string]: PriceFeedInterface },
+    expression: string,
+    private readonly decimals = 18
+  ) {
     super();
     this.expressionCode = math.parse(expression).compile();
     this.priceFeedMap = priceFeedMap;
     this.decimals = decimals;
   }
 
-  async getHistoricalPrice(time, verbose = false) {
-    const historicalPrices = {};
-    const errors = [];
+  public async getHistoricalPrice(time: number | string, verbose = false): Promise<BN> {
+    const historicalPrices: { [name: string]: math.BigNumber } = {};
+    const errors: any[] = [];
     await Promise.all(
       Object.entries(this.priceFeedMap).map(async ([name, pf]) => {
-        const price = await pf.getHistoricalPrice(Number(time), verbose).catch((err) => errors.push(err));
-        historicalPrices[name] = this._convertToDecimal(price, pf.getPriceFeedDecimals());
+        const price = await pf
+          .getHistoricalPrice(Number(time), verbose)
+          .then((value) => {
+            if (!value) throw new Error(`Price feed ${name} returned null when calling getHistoricalPrice`);
+            return value;
+          })
+          .catch((err) => {
+            errors.push(err);
+            return Web3.utils.toBN(0); // Just return 0 since this will be ignored anyway.
+          });
+        historicalPrices[name] = this._convertToDecimal(price, pf.getPriceFeedDecimals() || 18);
       })
     );
 
@@ -75,11 +99,11 @@ class ExpressionPriceFeed extends PriceFeedInterface {
     return this._convertToFixed(this.expressionCode.evaluate(historicalPrices), this.getPriceFeedDecimals());
   }
 
-  getLastUpdateTime() {
+  public getLastUpdateTime(): number | null {
     const lastUpdateTimes = Object.values(this.priceFeedMap).map((pf) => pf.getLastUpdateTime());
 
     // If any constituents returned an invalid value, bubble it up.
-    if (lastUpdateTimes.some((time) => time === null || time === undefined)) {
+    if (!lastUpdateTimes.every(isDefined)) {
       return null;
     }
 
@@ -87,11 +111,11 @@ class ExpressionPriceFeed extends PriceFeedInterface {
     return Math.max(...lastUpdateTimes);
   }
 
-  getLookback() {
+  public getLookback(): number | null {
     const lookbacks = Object.values(this.priceFeedMap).map((priceFeed) => priceFeed.getLookback());
 
     // If any constituents returned an invalid value, bubble it up.
-    if (lookbacks.some((lookback) => lookback === undefined || lookback === null)) {
+    if (!lookbacks.every(isDefined)) {
       return null;
     }
 
@@ -99,14 +123,16 @@ class ExpressionPriceFeed extends PriceFeedInterface {
     return Math.min(...lookbacks);
   }
 
-  getCurrentPrice() {
-    const prices = {};
+  public getCurrentPrice(): BN | null {
+    const prices: { [name: string]: math.BigNumber } = {};
     const errors = [];
     Object.entries(this.priceFeedMap).map(([name, pf]) => {
       try {
         const price = pf.getCurrentPrice();
+        const decimals = pf.getPriceFeedDecimals();
         assert(price !== undefined && price !== null, "Valid price must be returned");
-        prices[name] = this._convertToDecimal(price, pf.getPriceFeedDecimals());
+        assert(decimals !== null, "Valid decimals must be returned");
+        prices[name] = this._convertToDecimal(price, decimals);
       } catch (err) {
         errors.push(err);
       }
@@ -117,27 +143,28 @@ class ExpressionPriceFeed extends PriceFeedInterface {
     return this._convertToFixed(this.expressionCode.evaluate(prices), this.getPriceFeedDecimals());
   }
 
-  getPriceFeedDecimals() {
+  public getPriceFeedDecimals(): number {
     return this.decimals;
   }
 
-  async update() {
+  public async update(): Promise<void> {
     // Update all constituent price feeds.
     await Promise.all(Object.values(this.priceFeedMap).map((pf) => pf.update()));
   }
 
   // Takes a BN fixed point number and converts it to a math.bignumber decimal number that the math library can handle.
-  _convertToDecimal(price, inputDecimals) {
+  private _convertToDecimal(price: BN, inputDecimals: number): math.BigNumber {
     const decimals = math.bignumber(inputDecimals);
     const decimalsMultiplier = math.bignumber(10).pow(decimals);
+
     return math.bignumber(price.toString()).div(decimalsMultiplier);
   }
 
   // Takes a math.bignumber OR math.ResultSet of math.bignumbers and converts it to a fixed point number that's
   // expected outside this library. Note: if the price is a ResultSet, the last value is converted and returned.
-  _convertToFixed(price, outputDecimals) {
+  private _convertToFixed(price: math.BigNumber | ResultSet<math.BigNumber>, outputDecimals: number): BN {
     // If the price is a ResultSet with multiple entires, extract the last one and make that the price.
-    if (price.entries) {
+    if ("entries" in price) {
       price = price.entries[price.entries.length - 1];
     }
     const decimals = math.bignumber(outputDecimals);
@@ -145,5 +172,3 @@ class ExpressionPriceFeed extends PriceFeedInterface {
     return Web3.utils.toBN(math.format(price.mul(decimalsMultiplier).round(), { notation: "fixed" }));
   }
 }
-
-module.exports = { ExpressionPriceFeed, math, allowedSpecialCharacters, escapeSpecialCharacters };

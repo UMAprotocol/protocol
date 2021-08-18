@@ -21,7 +21,7 @@ class FallBackPriceFeed extends PriceFeedInterface {
 
   // Return first successfully fetched price or throw an error if they all fail.
   getCurrentPrice() {
-    for (let _priceFeed of this.priceFeeds) {
+    for (const _priceFeed of this.priceFeeds) {
       const price = _priceFeed.getCurrentPrice();
       if (!price) continue;
       return price;
@@ -34,8 +34,8 @@ class FallBackPriceFeed extends PriceFeedInterface {
   async getHistoricalPrice(time, verbose = false) {
     // If failure to fetch any constituent historical prices, then throw
     // array of errors.
-    let errors = [];
-    for (let _priceFeed of this.priceFeeds) {
+    const errors = [];
+    for (const _priceFeed of this.priceFeeds) {
       try {
         return await _priceFeed.getHistoricalPrice(time, verbose);
       } catch (err) {
@@ -56,7 +56,7 @@ class FallBackPriceFeed extends PriceFeedInterface {
   // Gets the *most recent* update time for all constituent price feeds.
   getLastUpdateTime() {
     // Filter out missing update times:
-    let lastUpdateTimes = this.priceFeeds
+    const lastUpdateTimes = this.priceFeeds
       .map((priceFeed) => priceFeed.getLastUpdateTime())
       .filter((element) => element !== undefined && element !== null);
 
@@ -88,7 +88,7 @@ class FallBackPriceFeed extends PriceFeedInterface {
   // causing this pricefeed's getPrice methods to fail. Only throw an error
   // if all updates fail.
   async update() {
-    let errors = [];
+    const errors = [];
     // allSettled() does not short-circuit if any promises reject, instead it returns
     // an array of ["fulfilled", "rejected"] statuses.
     const results = await Promise.allSettled(this.priceFeeds.map((priceFeed) => priceFeed.update()));
