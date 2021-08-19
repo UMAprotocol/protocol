@@ -43,16 +43,14 @@ export default function <D>(kind: string, store: Datastore): SortedStore<string,
   }
   // all this does is map over full entries to return the id of the entry. have not found a better way to query this.
   async function keys() {
-    const [results] = await store.createQuery(kind).run();
+    const [results] = await store.createQuery(kind).select("__key__").run();
     return results.map((result) => {
       return result[store.KEY].name;
     }) as string[];
   }
   // theres no way to really do built into the store client. Google recommends managing a size entry yourself.
-  async function size() {
+  async function size(): Promise<number> {
     throw new Error("size not supported in google store");
-    // typescript complains if theres no return value
-    return NaN;
   }
   // this actually queries all values, then batches them to delete N at a time. This is a horrible way
   // to do this, but I could not find a better way to "drop" all kinds from the table.

@@ -12,6 +12,9 @@ type Price = {
 function makeId(data: Price) {
   return [data.identifier, data.timestamp.toString().padStart(4, "0")].join("!");
 }
+function sortPrices(a: Price, b: Price) {
+  return makeId(a) <= makeId(b) ? -1 : 1;
+}
 const prices: Price[] = [
   { timestamp: 10, identifier: "a", price: 100 },
   { timestamp: 11, identifier: "a", price: 99 },
@@ -25,6 +28,8 @@ const prices: Price[] = [
   { timestamp: 2, identifier: "b", price: 820 },
   { timestamp: 13, identifier: "b", price: 1001 },
 ];
+const sortedPrices = [...prices].sort(sortPrices);
+
 describe("google-store", function () {
   let store: any;
   let datastore: Datastore;
@@ -37,7 +42,6 @@ describe("google-store", function () {
     try {
       await store.clear();
     } catch (err) {
-      console.log(err);
       // do nothing
     }
   });
@@ -49,6 +53,22 @@ describe("google-store", function () {
   test("entries", async function () {
     const result = await store.entries();
     assert.equal(result.length, prices.length);
+  });
+  test("keys", async function () {
+    const result = await store.keys();
+    assert.equal(result.length, prices.length);
+    result.forEach((id: string, i: number) => {
+      assert.equal(id, makeId(sortedPrices[i]));
+    });
+  });
+  test("values", async function () {
+    const result = await store.values();
+    assert.equal(result.length, prices.length);
+    result.forEach((price: Price, i: number) => {
+      assert.equal(price.identifier, sortedPrices[i].identifier);
+      assert.equal(price.timestamp, sortedPrices[i].timestamp);
+      assert.equal(price.price, sortedPrices[i].price);
+    });
   });
   test("get", async function () {
     const result = await store.get(makeId(prices[0]));
@@ -71,41 +91,46 @@ describe("google-store", function () {
   });
   test("between a", async () => {
     const result = await store.between("a", "b");
-    let last: Price;
+    const answer = sortedPrices.filter((x) => x.identifier === "a");
     assert.equal(result.length, 5);
-    result.forEach((price: Price) => {
-      assert.equal(price.identifier, "a");
-      if (last == null) {
-        last = price;
-        return;
-      }
-      assert.ok(makeId(price) >= makeId(last));
+    result.forEach((price: Price, i: number) => {
+      assert.equal(price.identifier, answer[i].identifier);
+      assert.equal(price.timestamp, answer[i].timestamp);
+      assert.equal(price.price, answer[i].price);
     });
   });
   test("between b", async () => {
     const result = await store.between("b", "b~");
-    let last: Price;
+    const answer = sortedPrices.filter((x) => x.identifier === "b");
     assert.equal(result.length, 5);
-    result.forEach((price: Price) => {
-      assert.equal(price.identifier, "b");
-      if (last == null) {
-        last = price;
-        return;
-      }
-      assert.ok(makeId(price) >= makeId(last));
+    result.forEach((price: Price, i: number) => {
+      assert.equal(price.identifier, answer[i].identifier);
+      assert.equal(price.timestamp, answer[i].timestamp);
+      assert.equal(price.price, answer[i].price);
     });
   });
-  test("slice", async () => {
-    const result = await store.slice("a", 4);
-    let last: Price;
-    assert.equal(result.length, 4);
-    result.forEach((price: Price) => {
-      assert.equal(price.identifier, "a");
-      if (last == null) {
-        last = price;
-        return;
-      }
-      assert.ok(makeId(price) >= makeId(last));
+  test("slice a", async () => {
+    const len = 4;
+    const result = await store.slice("a", len);
+    assert.equal(result.length, len);
+
+    const answer = sortedPrices.filter((x) => x.identifier === "a").slice(0, len);
+    result.forEach((price: Price, i: number) => {
+      assert.equal(price.identifier, answer[i].identifier);
+      assert.equal(price.timestamp, answer[i].timestamp);
+      assert.equal(price.price, answer[i].price);
+    });
+  });
+  test("slice b", async () => {
+    const len = 3;
+    const result = await store.slice("b", len);
+    assert.equal(result.length, len);
+
+    const answer = sortedPrices.filter((x) => x.identifier === "b").slice(0, len);
+    result.forEach((price: Price, i: number) => {
+      assert.equal(price.identifier, answer[i].identifier);
+      assert.equal(price.timestamp, answer[i].timestamp);
+      assert.equal(price.price, answer[i].price);
     });
   });
   test("delete", async function () {
