@@ -150,6 +150,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         liquidReserves += l1TokenAmount;
 
         emit LiquidityAdded(address(l1Token), l1TokenAmount, lpTokensToMint, msg.sender);
+        emit LiquidityAdded(address(l1Token), l1TokenAmount, 0, msg.sender);
     }
 
     function removeLiquidity(uint256 lpTokenAmount) public {

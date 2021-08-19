@@ -4,9 +4,13 @@ const { findArtifactFromPath } = require("@uma/common");
 
 function getProviders() {
   return {
-    l1RpcProvider: new hre.ethers.providers.JsonRpcProvider("http://localhost:9545"),
-    l2RpcProvider: new hre.ethers.providers.JsonRpcProvider("http://localhost:8545"),
+    l1RpcProvider: new hre.ethers.providers.JsonRpcProvider(getProviderUrls().l1RpcProviderUrl),
+    l2RpcProvider: new hre.ethers.providers.JsonRpcProvider(getProviderUrls().l2RpcProviderUrl),
   };
+}
+
+function getProviderUrls() {
+  return { l1RpcProviderUrl: "http://localhost:9545", l2RpcProviderUrl: "http://localhost:8545" };
 }
 
 function getOptimismArtifact(contractName, ovm = false) {
@@ -39,6 +43,7 @@ function createOptimismEthersFactory(contractName, ovm = false) {
 }
 
 module.exports = {
+  getProviderUrls,
   getProviders,
   createLocalEthersFactory,
   createOptimismEthersFactory,
