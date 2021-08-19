@@ -188,7 +188,7 @@ describe("Insured bridge e2e tests", () => {
 
       l1BridgePool = await factory__L1_BridgePool
         .connect(l1Wallet)
-        .deploy("LP TOken Name", "TKN", l1BridgeAdmin.address, l1Token.address, lpFeeRatePerSecond, l1Timer.address);
+        .deploy("LP Token", "LPT", l1BridgeAdmin.address, l1Token.address, lpFeeRatePerSecond, l1Timer.address);
       await l1BridgePool.deployTransaction.wait();
 
       l2BridgeDepositBox = await factory__L2_BridgeDepositBox
