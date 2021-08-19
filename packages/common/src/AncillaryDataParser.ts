@@ -10,7 +10,7 @@ dotenv.config();
  * @param {String} hex string representation of ancillaryData
  * @return {Object} parsed ancillary data object.
  */
-export function parseAncillaryData(web3: Web3, ancillaryData: string) {
+export function parseAncillaryData(web3: Web3, ancillaryData: string): any {
   // Some requesting contracts set the synthetic token address as ancillary data, so try to parse it first:
   if (web3.utils.isAddress(ancillaryData)) return { address: ancillaryData };
   let ancillaryString;
@@ -23,7 +23,7 @@ export function parseAncillaryData(web3: Web3, ancillaryData: string) {
 }
 
 // Parses ancillary data string to object.
-function parseAncillaryString(ancillaryString: string) {
+function parseAncillaryString(ancillaryString: string): any {
   const stringObject: any = [];
   const ancillaryObject: any = {};
   ancillaryString.split("").forEach((character) => {
@@ -40,7 +40,7 @@ function parseAncillaryString(ancillaryString: string) {
 
 // Escapes double quoted keys/values and values enclosed in curly/square brackets.
 function markEscapes(stringObject: any) {
-  stringObject.forEach((charObject: any, openIndex: any, stringObject: any) => {
+  stringObject.forEach((charObject: any, openIndex: number, stringObject: any) => {
     // Skip searching in already escaped characters or closing double quotes:
     if (charObject.escape || charObject.skip) return;
 
@@ -66,9 +66,9 @@ function markEscapes(stringObject: any) {
 }
 
 // Splits ancillary data object into key-value pairs.
-function splitKeyValues(stringObject: any) {
+function splitKeyValues(stringObject: any): any {
   const keyValues: any = [];
-  for (let startIndex: any = 0; startIndex < stringObject.length; startIndex++) {
+  for (let startIndex = 0; startIndex < stringObject.length; startIndex++) {
     const charObject: any = stringObject[startIndex];
 
     // If reached unescaped comma (,) continue with the next key-value pair:
@@ -96,14 +96,14 @@ function splitKeyValues(stringObject: any) {
   }
 
   // Remove enclosing double quotes.
-  keyValues.forEach((keyValue: any, index: any, keyValues: any) => {
+  keyValues.forEach((keyValue: any, index: number, keyValues: any) => {
     keyValues[index] = keyValue.filter(removeDoubleQuotes);
   });
   return keyValues;
 }
 
 // Tries to parse key:value pair.
-function parseKeyValue(keyValue: any) {
+function parseKeyValue(keyValue: any): any {
   let key = "";
   let value = "";
 
@@ -164,7 +164,7 @@ function parseKeyValue(keyValue: any) {
 }
 
 // Checks if reached end/start without whitespace.
-function isNextEnd(stringObject: any, start: any, forward = true) {
+function isNextEnd(stringObject: any, start: number, forward = true): boolean {
   if (forward) {
     return stringObject.slice(start + 1).findIndex(skipWhitespace) == -1;
   } else {
@@ -173,7 +173,7 @@ function isNextEnd(stringObject: any, start: any, forward = true) {
 }
 
 // Checks if next non-whitespace character forward/backward matches the provided input character.
-export function isNextChar(stringObject: any, start: any, character: any, forward = true) {
+export function isNextChar(stringObject: any, start: number, character: any, forward = true): boolean {
   if (forward) {
     const nextCharIndex = stringObject.slice(start + 1).findIndex(skipWhitespace);
     if (nextCharIndex == -1) {
@@ -202,12 +202,12 @@ export function isNextChar(stringObject: any, start: any, character: any, forwar
  * For values: closing quotes should be either before comma (,) or at the end.
  * For keys: closing quotes should be before column (:).
  */
-function escapeQuotes(stringObject: any, openIndex: any, escapeValues = true) {
+function escapeQuotes(stringObject: any, openIndex: number, escapeValues = true): boolean {
   const nextCharFn = escapeValues
-    ? function (stringObject: any, closeIndex: any) {
+    ? function (stringObject: any, closeIndex: number) {
         return isNextEnd(stringObject, closeIndex) || isNextChar(stringObject, closeIndex, ",");
       }
-    : function (stringObject: any, closeIndex: any) {
+    : function (stringObject: any, closeIndex: number) {
         return isNextChar(stringObject, closeIndex, ":");
       };
   for (let closeIndex = openIndex + 1; closeIndex < stringObject.length; closeIndex++) {
@@ -223,7 +223,7 @@ function escapeQuotes(stringObject: any, openIndex: any, escapeValues = true) {
 }
 
 // Finds closing brackets for JSON value and marks escaped: last closing brackets should be either before comma (,) or at the end.
-function escapeJSON(stringObject: any, openIndex: any, curly = true) {
+function escapeJSON(stringObject: any, openIndex: number, curly = true) {
   const openChar = curly ? "{" : "[";
   const closeChar = curly ? "}" : "]";
   let nestingLevel = 1;
