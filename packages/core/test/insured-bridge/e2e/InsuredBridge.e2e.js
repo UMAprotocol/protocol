@@ -14,6 +14,7 @@ const { createLocalEthersFactory, createOptimismEthersFactory, getProviders } = 
 const { setUpUmaEcosystemContracts } = require("./helpers/TestPreamble");
 
 const { waitForL1ToL2Transaction, waitForL2ToL1Transaction } = require("./helpers/WatcherHelpers");
+const { delay } = require("@uma/financial-templates-lib");
 
 const {
   DEFAULT_ADMIN_KEY,
@@ -84,6 +85,11 @@ describe("Insured bridge e2e tests", () => {
     const l1StandardBridgeAddress = await l2StandardBridge.l1TokenBridge();
     l1StandardBridge = factory__L1StandardBridge.connect(l1Wallet).attach(l1StandardBridgeAddress);
   });
+  beforeEach(async () => {
+    // Running these tests back to back can be extremely flaky. One solution is to add in a delay between tests. This
+    // is really nasty but it works. Hopefully the optimism container stack will be more stable in the future.
+    delay(10);
+  });
 
   describe("Basic L1 <> L2 bridging functionality", async () => {
     it("Can send tokens from L1 to L2", async () => {
@@ -153,14 +159,14 @@ describe("Insured bridge e2e tests", () => {
     let l1BridgeAdmin, l1BridgePool, l2BridgeDepositBox;
 
     // UMA ecosystem objects.
-    let l1Timer, l1Finder, l1CollateralWhitelist, l1OptimisticOracle, l2Timer;
+    let l1Timer, l1Finder, l1CollateralWhitelist, l2Timer;
 
     // Create another wallet to act as the LP.
     const l1LiquidityProvider = new ethers.Wallet(OTHER_WALLET_KEY, l1RpcProvider);
 
     beforeEach(async () => {
       // Set up required UMA L1 ecosystem contracts.
-      ({ l1Timer, l1Finder, l1CollateralWhitelist, l1OptimisticOracle, l2Timer } = await setUpUmaEcosystemContracts(
+      ({ l1Timer, l1Finder, l1CollateralWhitelist, l2Timer } = await setUpUmaEcosystemContracts(
         l1Wallet,
         l2Wallet,
         l1Token,
@@ -300,7 +306,7 @@ describe("Insured bridge e2e tests", () => {
         )
           .to.emit(l2BridgeDepositBox, "FundsDeposited")
           .withArgs(
-            "0", //depositId
+            "0", // depositId
             depositL2Time, // timestamp
             l2Wallet.address, // sender
             l2Wallet.address, // recipient
@@ -308,7 +314,7 @@ describe("Insured bridge e2e tests", () => {
             depositAmount, // amount
             slowRelayFeePct, // slowRelayFeePct
             instantRelayFeePct, // instantRelayFeePct
-            depositL2Time //quoteTimestamp
+            depositL2Time // quoteTimestamp
           );
         assert.equal((await l2Token.balanceOf(l2Wallet.address)).toString(), "0"); // no tokens left in the wallet.
         assert.equal((await l2Token.balanceOf(l2BridgeDepositBox.address)).toString(), depositAmount); // all tokens in box.
@@ -371,11 +377,11 @@ describe("Insured bridge e2e tests", () => {
           assert.equal((await l2Token.balanceOf(l2Wallet.address)).toString(), "0");
           assert.equal((await l2Token.balanceOf(l2BridgeDepositBox.address)).toString(), depositAmount);
 
-          //Step 3: Relayer makes a claim to the bridge pool for the deposit information from the deposit event. For this
+          // Step 3: Relayer makes a claim to the bridge pool for the deposit information from the deposit event. For this
           // the liquidityProvider will be acting as the relayer. Mint and approve enough for the proposer bond. Propose
           // bond is 10%. Deposit amount is 10 so deposit bond should be 1 l1Token. As this call both requests a price
           // and proposes one we will need to set mint and approve 2 tokens for the reward and bond.
-          //TODO: consider if we should change this behaviour. perhaps the reward should be 0 to make the cost of this
+          // TODO: consider if we should change this behaviour. perhaps the reward should be 0 to make the cost of this
           // call equal to the bond.
 
           const bondAmount = ethers.utils.parseEther("2");
@@ -437,7 +443,7 @@ describe("Insured bridge e2e tests", () => {
         });
         it("instant relay", async () => {
           // At the enf of the before each block we advanced time half way through the OO liveness (1 hour). Now we will
-          //try to speed up the relay then settle.Use the liquidity provider as fast relayer.
+          // try to speed up the relay then settle.Use the liquidity provider as fast relayer.
           // Mint the Liquidity provider enough for the speed up. this is equal to the exact amount the recipient will
           // get as the bridged amount - the LP fee, - slow relay fee, - instant relay fee equalling 10-1-0.1-0.1=8.8
 
