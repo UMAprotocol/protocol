@@ -193,6 +193,8 @@ describe("BridgePool", () => {
 
     // New BridgePool linked to BridgeFactory
     bridgePool = await BridgePool.new(
+      "LP Token",
+      "LPT",
       bridgeAdmin.options.address,
       l1Token.options.address,
       lpFeeRatePerSecond,
@@ -251,6 +253,33 @@ describe("BridgePool", () => {
     depositHash = soliditySha3(depositDataAbiEncoded);
     relayAncillaryData = await bridgePool.methods.getRelayAncillaryData(depositData, relayData).call();
     relayAncillaryDataHash = soliditySha3(relayAncillaryData);
+  });
+  it("Constructor validation", async function () {
+    // LP Token symbol and name cannot be empty.
+    assert(
+      await didContractThrow(
+        BridgePool.new(
+          "",
+          "LPT",
+          bridgeAdmin.options.address,
+          l1Token.options.address,
+          lpFeeRatePerSecond,
+          timer.options.address
+        ).send({ from: owner })
+      )
+    );
+    assert(
+      await didContractThrow(
+        BridgePool.new(
+          "LP Token",
+          "",
+          bridgeAdmin.options.address,
+          l1Token.options.address,
+          lpFeeRatePerSecond,
+          timer.options.address
+        ).send({ from: owner })
+      )
+    );
   });
   it("Constructs utf8-encoded ancillary data for relay", async function () {
     let expectedAncillaryDataUtf8 = "";
@@ -628,7 +657,7 @@ describe("BridgePool", () => {
 
       // Check BridgePool relay and disputedRelay mappings were modified as expected:
       const postDisputeRelayStatus = await bridgePool.methods.relays(depositHash).call();
-      assert.equal(postDisputeRelayStatus.relayState, InsuredBridgeRelayStateEnum.UNINITIALIZED);
+      assert.equal(postDisputeRelayStatus.relayState, InsuredBridgeRelayStateEnum.DISPUTED);
 
       // Mint relayer new bond to try relaying again:
       await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
@@ -947,6 +976,9 @@ describe("BridgePool", () => {
           ev.caller === rando
         );
       });
+
+      // Cannot re-settle.
+      assert(await didContractThrow(bridgePool.methods.settleRelay(depositData).send({ from: rando })));
 
       // Check token balances.
       // -Slow relayer should get back their proposal bond from OO and reward from BridgePool.

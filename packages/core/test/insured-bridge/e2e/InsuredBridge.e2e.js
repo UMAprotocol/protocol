@@ -158,9 +158,11 @@ describe("Insured bridge e2e tests", () => {
         );
       await l1BridgeAdmin.deployTransaction.wait();
 
+      // Deploy new BridgePool with arbitrary parameters. Its configuration is not tested in this file which only tests
+      // L1 <> L2 communication.
       l1BridgePool = await factory__L1_BridgePool
         .connect(l1Wallet)
-        .deploy(l1BridgeAdmin.address, l1Token.address, l1Timer.address);
+        .deploy("LP Token", "LPT", l1BridgeAdmin.address, l1Token.address, "0", l1Timer.address);
       await l1BridgePool.deployTransaction.wait();
 
       l2BridgeDepositBox = await factory__L2_BridgeDepositBox
