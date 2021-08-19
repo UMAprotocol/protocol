@@ -14,7 +14,7 @@
     "start": "tsdx watch",
     "build": "tsdx build",
     "test": "tsdx test",
-    "test:e2e": "tsdx test --config jest-e2e-config.json",
+    "e2e": "tsdx test --config jest-e2e-config.json",
     "test:watch": "tsdx test --watch",
     "eslint": "eslint './src/**/*.ts'",
     "prettier": "prettier './**/*.md' './src/**/*.ts'",
@@ -37,13 +37,15 @@
     }
   ],
   "dependencies": {
+    "@types/highland": "^2.12.13",
     "@uma/core": "^2.7.0",
-    "ethers": "^5.4.2"
+    "ethers": "^5.4.2",
+    "highland": "^2.13.5"
   },
   "devDependencies": {
     "@ethersproject/abi": "^5.4.0",
-    "@ethersproject/contracts": "^5.4.0",
     "@ethersproject/abstract-provider": "^5.4.0",
+    "@ethersproject/contracts": "^5.4.0",
     "@ethersproject/providers": "^5.4.2",
     "@size-limit/preset-small-lib": "^4.10.2",
     "size-limit": "^4.10.2",
