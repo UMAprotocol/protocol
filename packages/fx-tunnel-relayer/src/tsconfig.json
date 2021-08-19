@@ -1,0 +1,10 @@
+{
+  "extends": "@tsconfig/node14/tsconfig.json",
+  "include": ["./**/*.ts"],
+  "compilerOptions": {
+    "outDir": "../dist",
+    "rootDir": "../",
+    "composite": true,
+    "resolveJsonModule": true
+  }
+}

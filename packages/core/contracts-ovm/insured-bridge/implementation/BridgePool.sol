@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "./BridgeAdminInterface.sol";
-import "./BridgePoolInterface.sol";
+import "../interfaces/BridgeAdminInterface.sol";
+import "../interfaces/BridgePoolInterface.sol";
 
 import "../../../contracts/oracle/interfaces/OptimisticOracleInterface.sol";
 import "../../../contracts/oracle/interfaces/StoreInterface.sol";
@@ -20,7 +20,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * @notice Contract deployed on L1 that provides methods for "Relayers" to fulfill deposit orders that originated on L2.
  * The Relayers can either post capital to fulfill the deposit instantly, or request that the funds are taken out of
  * a passive liquidity provider pool following a challenge period. Related, this contract ingests liquidity from
- * passive liquidity providers and returns them claims to withdraw their funds. Liquidity providers are incentivize
+ * passive liquidity providers and returns them claims to withdraw their funds. Liquidity providers are incentivized
  * to post collateral by earning a fee per fulfilled deposit order.
  * @dev A "Deposit" is an order to send capital from L2 to L1, and a "Relay" is a fulfillment attempt of that order.
  */
@@ -46,15 +46,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     // Cumulative undistributed LP fees. As fees accumulate, they are subtracted from this number.
     uint256 public undistributedLpFees;
 
-    // How long, in seconds, it takes for transfers to move from L2 optimism to L1 Ethereum.
-    uint256 public optimismL2toL1Time = 1 weeks;
-
     // Administrative contract that deployed this contract and also houses all state variables needed to relay deposits.
     BridgeAdminInterface public bridgeAdmin;
 
     // A Relay represents a an attempt to finalize a cross-chain transfer that originated on an L2 DepositBox contract
     // and can be bridged via this contract.
-    enum RelayState { Uninitialized, Pending, Finalized }
+    enum RelayState { Uninitialized, Pending, Disputed, Finalized }
 
     // Data from L2 deposit transaction.
     struct DepositData {
@@ -119,15 +116,16 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         _;
     }
 
-    // TODO: should we consider changing the name of the LP token as a function of the l1Token? if so, might not be able
-    // to do this with this contract inheriting from expanded ERC20 or might need this contract to have an instance
-    // of the LPToken.
     constructor(
+        string memory _lpTokenName,
+        string memory _lpTokenSymbol,
         address _bridgeAdmin,
         address _l1Token,
         uint256 _lpFeeRatePerSecond,
         address _timer
-    ) Testable(_timer) ExpandedERC20("UMA Insured Bride LP Token", "UMA-LP", 18) {
+    ) Testable(_timer) ExpandedERC20(_lpTokenName, _lpTokenSymbol, 18) {
+        require(bytes(_lpTokenName).length != 0, "Missing LP token name");
+        require(bytes(_lpTokenSymbol).length != 0, "Missing LP token symbol");
         bridgeAdmin = BridgeAdminInterface(_bridgeAdmin);
 
         l1Token = IERC20(_l1Token);
@@ -150,7 +148,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         liquidReserves += l1TokenAmount;
 
         emit LiquidityAdded(address(l1Token), l1TokenAmount, lpTokensToMint, msg.sender);
-        emit LiquidityAdded(address(l1Token), l1TokenAmount, 0, msg.sender);
     }
 
     function removeLiquidity(uint256 lpTokenAmount) public {
@@ -202,7 +199,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         require(instantRelayFeePct < 0.25e18);
         require(realizedLpFeePct < 0.5e18);
 
-        // Check if there is a pending relay for this deposit.
+        // Check if there is a pending undisputed relay for this deposit.
         DepositData memory depositData =
             DepositData({
                 depositId: depositId,
@@ -216,7 +213,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
                 quoteTimestamp: quoteTimestamp
             });
         bytes32 depositHash = _getDepositHash(depositData);
-        require(relays[depositHash].relayState == RelayState.Uninitialized, "Pending relay for deposit exists");
+        require(
+            (relays[depositHash].relayState == RelayState.Uninitialized ||
+                relays[depositHash].relayState == RelayState.Disputed),
+            "Pending undisputed relay for deposit exists"
+        );
 
         // If no pending relay for this deposit, then associate the caller's relay attempt with it. Copy over the
         // instant relayer so that the recipient cannot receive double payments.
@@ -340,10 +341,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
 
         uint256 totalAmountSent = instantRelayerOrRecipientAmount + slowRelayerAmount;
 
+        // Update reserves by amounts changed and allocated LP fees.
         liquidReserves -= totalAmountSent;
         utilizedReserves += int256(totalAmountSent);
-
-        updateFeeCounters(_getAmountFromPct(relay.realizedLpFeePct, _depositData.amount));
+        updateAccumulatedLpFees();
+        allocateLpFees(_getAmountFromPct(relay.realizedLpFeePct, _depositData.amount));
 
         emit SettledRelay(depositHash, keccak256(getRelayAncillaryData(_depositData, relay)), msg.sender);
     }
@@ -361,11 +363,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         bytes32 depositHash = ancillaryDataToDepositHash[keccak256(ancillaryData)];
         RelayData storage relay = relays[depositHash];
 
-        // Mark pending relay as uninitialized but do not delete instant relayer information which should be copied
+        // Mark pending relay as disputed but do not delete instant relayer information which should be copied
         // over to next slow relay.
-        relay.relayState = RelayState.Uninitialized;
+        relay.relayState = RelayState.Disputed;
 
-        // TODO: Do we need to reset the other state in `relay` aside from `instantRelayer` which we want to save?
+        // We do not need to reset the other state in `relay` aside from `instantRelayer` because all of the state
+        // params get rewritten from global state in a `relayDeposit()` call.
         emit RelayDisputed(depositHash, keccak256(ancillaryData));
     }
 
@@ -393,7 +396,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         if (totalSupply() == 0) return 1e18; //initial rate is 1 pre any mint action.
 
         // First, update fee counters and local accounting of finalized transfers from L2->L1.
-        updateFeeCounters(0); // Accumulate all allocated fees from the last time this method was called.
+        updateAccumulatedLpFees(); // Accumulate all allocated fees from the last time this method was called.
         sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
 
         // ExchangeRate := (liquidReserves+utilizedReserves-undistributedLpFees)/lpTokenSupply
@@ -414,7 +417,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
      * @notice Computes the current amount of unallocated fees that have accumulated from the previous time this the
      * contract was called.
      */
-    function getUnallocatedAccumulatedFees() public view returns (uint256) {
+    function getAccumulatedFees() public view returns (uint256) {
         // UnallocatedLpFees := min(undistributedLpFees*lpFeeRatePerSecond*timeFromLastInteraction,undistributedLpFees)
         // The min acts to pay out all fees in the case the equation returns more than the remaining a fees.
         return
@@ -513,22 +516,21 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
      *    INTERNAL & PRIVATE FUNCTIONS    *
      **************************************/
 
-    // Update the internal fee counter metrics by adding in any accumulated fees from the last time this logic was
-    // called. Considers any allocated fees that are assigned to the LPs at the conclusion of a bridging action.
-    function updateFeeCounters(uint256 allocatedLpFees) internal {
+    // Update internal fee counters by adding in any accumulated fees from the last time this logic was called.
+    function updateAccumulatedLpFees() internal {
         // Calculate the unallocatedAccumulatedFees from the last time the contract was called.
-        uint256 unallocatedAccumulatedFees = getUnallocatedAccumulatedFees();
+        uint256 unallocatedAccumulatedFees = getAccumulatedFees();
 
         // Decrement the undistributedLpFees by the amount of accumulated fees.
-        undistributedLpFees = undistributedLpFees > unallocatedAccumulatedFees
-            ? undistributedLpFees - unallocatedAccumulatedFees
-            : 0;
+        undistributedLpFees = undistributedLpFees - unallocatedAccumulatedFees;
 
         lastLpFeeUpdate = getCurrentTime();
+    }
 
-        // If this method was called from settleRelay then it includes the exact amount of fees to be attributed to the
-        // Liquidity providers. add this to the total undistributed LP fees and the utalized reserves. Adding it to the
-        // utalized reserves acts to book keep the fees while they are in transit.
+    // Allocate fees to the LPs by incrementing counters.
+    function allocateLpFees(uint256 allocatedLpFees) internal {
+        // Add to the total undistributed LP fees and the utilized reserves. Adding it to the utilized reserves acts to
+        // track the fees while they are in transit.
         if (allocatedLpFees > 0) {
             undistributedLpFees += allocatedLpFees;
             utilizedReserves += int256(allocatedLpFees);
