@@ -202,7 +202,7 @@ export function isNextChar(stringObject: any, start: number, character: any, for
  * For values: closing quotes should be either before comma (,) or at the end.
  * For keys: closing quotes should be before column (:).
  */
-function escapeQuotes(stringObject: any, openIndex: number, escapeValues = true): boolean {
+function escapeQuotes(stringObject: any, openIndex: number, escapeValues = true) {
   const nextCharFn = escapeValues
     ? function (stringObject: any, closeIndex: number) {
         return isNextEnd(stringObject, closeIndex) || isNextChar(stringObject, closeIndex, ",");
