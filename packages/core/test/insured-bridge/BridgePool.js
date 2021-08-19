@@ -254,6 +254,33 @@ describe("BridgePool", () => {
     relayAncillaryData = await bridgePool.methods.getRelayAncillaryData(depositData, relayData).call();
     relayAncillaryDataHash = soliditySha3(relayAncillaryData);
   });
+  it("Constructor validation", async function () {
+    // LP Token symbol and name cannot be empty.
+    assert(
+      await didContractThrow(
+        BridgePool.new(
+          "",
+          "LPT",
+          bridgeAdmin.options.address,
+          l1Token.options.address,
+          lpFeeRatePerSecond,
+          timer.options.address
+        ).send({ from: owner })
+      )
+    );
+    assert(
+      await didContractThrow(
+        BridgePool.new(
+          "LP Token",
+          "",
+          bridgeAdmin.options.address,
+          l1Token.options.address,
+          lpFeeRatePerSecond,
+          timer.options.address
+        ).send({ from: owner })
+      )
+    );
+  });
   it("Constructs utf8-encoded ancillary data for relay", async function () {
     let expectedAncillaryDataUtf8 = "";
     Object.keys(depositData).forEach((key) => {
