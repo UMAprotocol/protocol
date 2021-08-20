@@ -87,7 +87,7 @@ function splitKeyValues(stringObject: CharObject[]): CharObject[][] {
         isNextChar(stringObject, endIndex, ",")
       ) {
         // Copy the identified key-value pair:
-        keyValues.push(stringObject.slice(startIndex, endIndex));
+        keyValues.push(stringObject.slice(startIndex, endIndex + 1));
 
         // Skip start index to the end of current key-value pair:
         startIndex = endIndex;
@@ -100,7 +100,6 @@ function splitKeyValues(stringObject: CharObject[]): CharObject[][] {
   keyValues.forEach((keyValue: CharObject[], index: number) => {
     keyValues[index] = keyValue.filter(removeDoubleQuotes);
   });
-  console.log("keyValues:", keyValues);
   return keyValues;
 }
 
@@ -130,7 +129,6 @@ function parseKeyValue(keyValue: CharObject[]): [string, unknown] {
     index++;
   }
 
-  console.log("keyValue:", keyValue);
   // No column (:) delimiter found, but reached the end of keyValue pair:
   if (index === keyValue.length) throw "Cannot parse key value pair: no column delimiter found!";
 
