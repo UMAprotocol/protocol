@@ -74,5 +74,29 @@ contract("AncillaryDataParser.js", function () {
         AncillaryDataParser.parseAncillaryData(data);
       });
     });
+    it("json object as key should throw error", async function () {
+      const data = web3.utils.utf8ToHex('{"nestedKey":"nestedValue"}:value');
+      assert.throw(() => {
+        AncillaryDataParser.parseAncillaryData(data);
+      });
+    });
+    it("key with no column delimiter should throw error", async function () {
+      const data = web3.utils.utf8ToHex("key");
+      assert.throw(() => {
+        AncillaryDataParser.parseAncillaryData(data);
+      });
+    });
+    it("empty key before column delimiter should throw error", async function () {
+      const data = web3.utils.utf8ToHex(":value");
+      assert.throw(() => {
+        AncillaryDataParser.parseAncillaryData(data);
+      });
+    });
+    it("multiple column delimiters in a key-value pair should throw error", async function () {
+      const data = web3.utils.utf8ToHex("key:value1:value2");
+      assert.throw(() => {
+        AncillaryDataParser.parseAncillaryData(data);
+      });
+    });
   });
 });
