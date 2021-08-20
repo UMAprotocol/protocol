@@ -1,16 +1,24 @@
-const { toBN } = require("web3").utils;
-const { PriceFeedInterface } = require("./PriceFeedInterface");
-const { parseFixed } = require("@ethersproject/bignumber");
+import Web3 from "web3";
+import { PriceFeedInterface } from "./PriceFeedInterface";
+import { parseFixed } from "@ethersproject/bignumber";
+import { BN } from "../types";
+const { toBN } = Web3.utils;
 
 // Adds a final precision conversion step to the PriceFeedMock before returning prices.
-class PriceFeedMockScaled extends PriceFeedInterface {
-  constructor(currentPrice, historicalPrice, lastUpdateTime, priceFeedDecimals = 18, lookback = 3600) {
+export class PriceFeedMockScaled extends PriceFeedInterface {
+  public updateCalled = 0;
+  public uuid: string;
+  public historicalPrices: { [timestamp: number]: BN | null } = {};
+  public convertDecimals: (number: number | BN | string) => BN;
+  constructor(
+    public currentPrice: BN | null = null,
+    public historicalPrice: BN | null = null,
+    public lastUpdateTime: number | null = null,
+    public priceFeedDecimals = 18,
+    public lookback: number | null = 3600
+  ) {
     super();
-    this.updateCalled = 0;
-    this.lastUpdateTime = lastUpdateTime;
-    this.priceFeedDecimals = priceFeedDecimals;
     this.historicalPrices = [];
-    this.lookback = lookback;
     this.uuid = "PriceFeedMockScaled";
 
     this.convertDecimals = (number) => {
@@ -24,14 +32,14 @@ class PriceFeedMockScaled extends PriceFeedInterface {
     this.setHistoricalPrice(historicalPrice);
   }
 
-  setCurrentPrice(currentPrice) {
+  public setCurrentPrice(currentPrice: null | BN): void {
     // allows this to be set to null without throwing.
     this.currentPrice = currentPrice ? this.convertDecimals(currentPrice) : currentPrice;
   }
 
   // Store an array of historical prices [{timestamp, price}] so that await  getHistoricalPrice can return
   // a price for a specific timestamp if found in this array.
-  setHistoricalPrices(historicalPrices) {
+  public setHistoricalPrices(historicalPrices: { timestamp: number; price: BN | null }[]): void {
     historicalPrices.forEach((_price) => {
       if (isNaN(_price.timestamp)) {
         throw "Invalid historical price => [{timestamp, price}]";
@@ -41,23 +49,23 @@ class PriceFeedMockScaled extends PriceFeedInterface {
     });
   }
 
-  setHistoricalPrice(historicalPrice) {
+  public setHistoricalPrice(historicalPrice: BN | null): void {
     this.historicalPrice = historicalPrice ? this.convertDecimals(historicalPrice) : historicalPrice;
   }
 
-  setLastUpdateTime(lastUpdateTime) {
+  public setLastUpdateTime(lastUpdateTime: number | null): void {
     this.lastUpdateTime = lastUpdateTime;
   }
 
-  setLookback(lookback) {
+  public setLookback(lookback: number | null): void {
     this.lookback = lookback;
   }
 
-  getCurrentPrice() {
+  public getCurrentPrice(): BN | null {
     return this.currentPrice;
   }
 
-  async getHistoricalPrice(time) {
+  public async getHistoricalPrice(time: number): Promise<BN | null> {
     // To implement the PriceFeedInterface properly, this method must either return a valid price
     // or throw.
     if (!this.historicalPrice && !(time in this.historicalPrices)) {
@@ -73,21 +81,19 @@ class PriceFeedMockScaled extends PriceFeedInterface {
     }
   }
 
-  getLastUpdateTime() {
+  public getLastUpdateTime(): number | null {
     return this.lastUpdateTime;
   }
 
-  getLookback() {
+  public getLookback(): number | null {
     return this.lookback;
   }
 
-  getPriceFeedDecimals() {
+  public getPriceFeedDecimals(): number {
     return this.priceFeedDecimals;
   }
 
-  async update() {
+  public async update(): Promise<void> {
     this.updateCalled++;
   }
 }
-
-module.exports = { PriceFeedMockScaled };
