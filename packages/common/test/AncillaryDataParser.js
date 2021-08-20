@@ -3,6 +3,54 @@ const AncillaryDataParser = require("../dist/AncillaryDataParser");
 
 contract("AncillaryDataParser.js", function () {
   describe("parseAncillaryData", function () {
+    it("parses simple key-value data correctly", async function () {
+      const data = web3.utils.utf8ToHex("key:value");
+      const expectedObject = { key: "value" };
+      const parsedData = AncillaryDataParser.parseAncillaryData(data);
+      assert.equal(JSON.stringify(parsedData).toLowerCase(), JSON.stringify(expectedObject).toLowerCase());
+    });
+    it("removes excess whitespace", async function () {
+      const data = web3.utils.utf8ToHex("  key1  :  value1  , key2 : value2 ");
+      const expectedObject = { key1: "value1", key2: "value2" };
+      const parsedData = AncillaryDataParser.parseAncillaryData(data);
+      assert.equal(JSON.stringify(parsedData).toLowerCase(), JSON.stringify(expectedObject).toLowerCase());
+    });
+    it("leaves quoted whitespace", async function () {
+      const data = web3.utils.utf8ToHex('"  key " :"  value  "');
+      const expectedObject = { "  key ": "  value  " };
+      const parsedData = AncillaryDataParser.parseAncillaryData(data);
+      assert.equal(JSON.stringify(parsedData).toLowerCase(), JSON.stringify(expectedObject).toLowerCase());
+    });
+    it("leaves unclosed quotes", async function () {
+      const data = web3.utils.utf8ToHex('"  key  :  value  "');
+      const expectedObject = { '"  key': 'value  "' };
+      const parsedData = AncillaryDataParser.parseAncillaryData(data);
+      assert.equal(JSON.stringify(parsedData).toLowerCase(), JSON.stringify(expectedObject).toLowerCase());
+    });
+    it("parses json values as an object", async function () {
+      const data = web3.utils.utf8ToHex('key:{"nestedKey": "nestedValue"}');
+      const expectedObject = { key: { nestedKey: "nestedValue" } };
+      const parsedData = AncillaryDataParser.parseAncillaryData(data);
+      assert.equal(JSON.stringify(parsedData).toLowerCase(), JSON.stringify(expectedObject).toLowerCase());
+    });
+    it("parses non-compliant json enclosed in {} or [] as a string", async function () {
+      const data = web3.utils.utf8ToHex('key:{nestedKey: "nestedValue",}');
+      const expectedObject = { key: '{nestedKey: "nestedValue",}' };
+      const parsedData = AncillaryDataParser.parseAncillaryData(data);
+      assert.equal(JSON.stringify(parsedData).toLowerCase(), JSON.stringify(expectedObject).toLowerCase());
+    });
+    it("parses json array with different types as values correctly", async function () {
+      const data = web3.utils.utf8ToHex('key:[1, "a", null, true, { }, []]');
+      const expectedObject = { key: [1, "a", null, true, {}, []] };
+      const parsedData = AncillaryDataParser.parseAncillaryData(data);
+      assert.equal(JSON.stringify(parsedData).toLowerCase(), JSON.stringify(expectedObject).toLowerCase());
+    });
+    it("parses no value after column delimiter as an empty string", async function () {
+      const data = web3.utils.utf8ToHex("key:");
+      const expectedObject = { key: "" };
+      const parsedData = AncillaryDataParser.parseAncillaryData(data);
+      assert.equal(JSON.stringify(parsedData).toLowerCase(), JSON.stringify(expectedObject).toLowerCase());
+    });
     it("parses SPACEXLAUNCH data correctly", async function () {
       const data = "0x6964303a537461726c696e6b2d31382c77303a312c6964313a537461726c696e6b2d31392c77313a31";
       const expectedObject = { id0: "Starlink-18", w0: 1, id1: "Starlink-19", w1: 1 };
