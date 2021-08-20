@@ -1,9 +1,13 @@
 #!/bin/bash
 
+# download pre-builted images
+repo="ethereumoptimism"
+for image in {builder,l2geth,deployer};do docker pull $repo/$image; done
+
 # build in 2 steps
 function build_images() {
-  docker-compose build --parallel -- builder l2geth l1_chain
-  docker-compose build --parallel -- deployer dtl batch_submitter relayer
+  docker-compose build --parallel -- dtl l1_chain
+  docker-compose build --parallel -- batch_submitter relayer
 }
 
 # clones /optimism to current directory

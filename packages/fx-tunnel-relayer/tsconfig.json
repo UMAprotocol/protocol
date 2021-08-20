@@ -1,0 +1,10 @@
+{
+  "extends": "@tsconfig/node14/tsconfig.json",
+  "include": ["test/**/*.ts", "hardhat.config.ts"],
+  "compilerOptions": {
+    "outDir": "build",
+    "esModuleInterop": true,
+    "resolveJsonModule": true
+  },
+  "references": [{ "path": "./src/" }]
+}
