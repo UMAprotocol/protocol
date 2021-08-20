@@ -92,6 +92,16 @@ class GasEstimator {
     try {
       const response = await fetch(url);
       const json = await response.json();
+      // Depending on the network ID, the structure back from the API might change. If ethereum then expected structure is:
+      // {
+      //    safeLow: 1, // slow maxPriorityFeePerGas
+      //    standard: 1.5, // standard maxPriorityFeePerGas
+      //    fast: 4, // fast maxPriorityFeePerGas
+      //    fastest: 6.2, // fastest maxPriorityFeePerGas
+      //    currentBaseFee: 33.1, // previous blocks base fee
+      //    recommendedBaseFee: 67.1 // maxFeePerGas
+      // }
+      // In this case, we want to use recommendedBaseFee & send legacy transactions. If Polygon then the expected structure is:
       // Primary URL expected response structure:
       // {
       //   "safeLow": "25.0",
@@ -99,9 +109,11 @@ class GasEstimator {
       //   "fast": "35.0",
       //   "fastest": "39.6"
       // }
-      if (json.fastest) {
-        let price = json.recommendedBaseFee;
-        return price;
+      // In this case, we want to use fastest and send legacy transactions.
+      if (json.recommendedBaseFee) {
+        return json.recommendedBaseFee;
+      } else if (json.fastest) {
+        return json.fastest;
       } else {
         throw new Error(`Main gas station API @ ${url}: bad json response`);
       }
