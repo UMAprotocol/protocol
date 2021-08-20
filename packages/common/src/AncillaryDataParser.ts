@@ -1,4 +1,4 @@
-import type Web3 from "web3";
+import Web3 from "web3";
 import dotenv from "dotenv";
 dotenv.config();
 
@@ -12,16 +12,15 @@ type CharObject = {
  * @title Parse ancillary data.
  * @notice Ancillary data parser implementation following guidelines at:
  * https://docs.google.com/document/d/1zhKKjgY1BupBGPPrY_WOJvui0B6DMcd-xDR8-9-SPDw/edit
- * @param {Web3} Web3 instance for accessing important utility functions
  * @param {String} hex string representation of ancillaryData
  * @return {Object} parsed ancillary data object.
  */
-export function parseAncillaryData(web3: Web3, ancillaryData: string): Record<string, unknown> {
+export function parseAncillaryData(ancillaryData: string): Record<string, unknown> {
   // Some requesting contracts set the synthetic token address as ancillary data, so try to parse it first:
-  if (web3.utils.isAddress(ancillaryData)) return { address: ancillaryData };
+  if (Web3.utils.isAddress(ancillaryData)) return { address: ancillaryData };
   let ancillaryString;
   try {
-    ancillaryString = web3.utils.hexToUtf8(ancillaryData);
+    ancillaryString = Web3.utils.hexToUtf8(ancillaryData);
   } catch (err) {
     throw "Cannot parse ancillary data bytes to UTF-8!";
   }
@@ -72,8 +71,8 @@ function markEscapes(stringObject: CharObject[]) {
 }
 
 // Splits ancillary data object into key-value pairs.
-function splitKeyValues(stringObject: CharObject[]): [CharObject[]] {
-  const keyValues: [CharObject[]] = [[]];
+function splitKeyValues(stringObject: CharObject[]): CharObject[][] {
+  const keyValues: CharObject[][] = [];
   for (let startIndex = 0; startIndex < stringObject.length; startIndex++) {
     const charObject: CharObject = stringObject[startIndex];
 
@@ -101,6 +100,7 @@ function splitKeyValues(stringObject: CharObject[]): [CharObject[]] {
   keyValues.forEach((keyValue: CharObject[], index: number) => {
     keyValues[index] = keyValue.filter(removeDoubleQuotes);
   });
+  console.log("keyValues:", keyValues);
   return keyValues;
 }
 
@@ -130,6 +130,7 @@ function parseKeyValue(keyValue: CharObject[]): [string, unknown] {
     index++;
   }
 
+  console.log("keyValue:", keyValue);
   // No column (:) delimiter found, but reached the end of keyValue pair:
   if (index === keyValue.length) throw "Cannot parse key value pair: no column delimiter found!";
 
