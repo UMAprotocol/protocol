@@ -20,7 +20,8 @@ const argv = minimist(process.argv.slice(), {});
  * @notice Uses the ynatm package to retry the transaction with increasing gas price.
  * @param {*Object} web3.js object for making queries and accessing Ethereum related methods.
  * @param {*Object} transaction Transaction to call `.call()` and subsequently `.send()` on from `senderAccount`.
- * @param {*Object} transactionConfig config, e.g. { maxFeePerGas, maxPriorityFeePerGas, from }, passed to transaction.
+ * @param {*Object} transactionConfig config, e.g. { maxFeePerGas, maxPriorityFeePerGas, from } or { gasPrice, from}
+ *     depending if this is a london or pre-london transaction, passed to transaction.
  * @return Error and type of error (originating from `.call()` or `.send()`) or transaction receipt and return value.
  */
 export const runTransaction = async ({
@@ -92,6 +93,7 @@ export const runTransaction = async ({
     const minGasPrice = transactionConfig.gasPrice;
     const maxGasPrice = 2 * 3 * parseInt(minGasPrice);
 
+    // TODO: this method will need to be updated once we have updated ynatm to work with EIP1559.
     const receipt = await ynatm.send({
       sendTransactionFunction: (gasPrice: number) =>
         transaction.send({ ...transactionConfig, gasPrice: gasPrice.toString() }),
