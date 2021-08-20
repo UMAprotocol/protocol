@@ -99,9 +99,12 @@ async function run() {
   await gasEstimator.update();
   console.log(
     `⛽️ Current fast gas price for Ethereum: ${web3.utils.fromWei(
-      gasEstimator.getCurrentFastPrice().toString(),
+      gasEstimator.getCurrentFastPrice().maxFeePerGas.toString(),
       "gwei"
-    )} gwei`
+    )} maxFeePerGas and ${web3.utils.fromWei(
+      gasEstimator.getCurrentFastPrice().maxPriorityFeePerGas.toString(),
+      "gwei"
+    )} maxPriorityFeePerGas`
   );
   const governor = new web3.eth.Contract(Governor.abi, _getContractAddressByName("Governor", netId));
   const governorRootTunnel = new web3.eth.Contract(
