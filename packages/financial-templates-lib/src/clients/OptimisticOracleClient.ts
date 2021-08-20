@@ -3,7 +3,7 @@
 import { averageBlockTimeSeconds, revertWrapper, OptimisticOracleRequestStatesEnum } from "@uma/common";
 import Web3 from "web3";
 import type { Logger } from "winston";
-import { Abi } from "../types";
+import { Abi, isDefined } from "../types";
 import {
   OptimisticOracleWeb3,
   VotingAncillaryInterfaceTestingWeb3,
@@ -139,10 +139,6 @@ export class OptimisticOracleClient {
       const hasDispute = disputeEvents.find((disputeEvent) => this._getPriceRequestKey(disputeEvent) === key);
       return hasDispute === undefined;
     });
-
-    const isDefined = <T>(element: T | undefined): element is T => {
-      return element !== undefined;
-    };
 
     const unsettledProposals = (
       await Promise.all(

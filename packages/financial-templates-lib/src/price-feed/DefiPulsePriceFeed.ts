@@ -165,4 +165,8 @@ export class DefiPulsePriceFeed extends PriceFeedInterface {
   public getPriceFeedDecimals(): number {
     return this.priceFeedDecimals;
   }
+
+  public getLookback(): number {
+    return this.lookback;
+  }
 }

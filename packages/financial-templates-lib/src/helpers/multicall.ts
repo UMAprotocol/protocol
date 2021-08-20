@@ -27,7 +27,7 @@ export const aggregateTransactionsAndCall = async (
   web3: Web3,
   transactions: Transaction[],
   blockNumber: number
-): Promise<{ [key: string]: any }> => {
+): Promise<{ [key: string]: any }[]> => {
   const multicallContract = (new web3.eth.Contract(getAbi("Multicall"), multicallAddress) as unknown) as MulticallWeb3;
   for (let i = 0; i < transactions.length; i++) {
     assert(

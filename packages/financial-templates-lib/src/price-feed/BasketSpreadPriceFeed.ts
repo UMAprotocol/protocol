@@ -3,13 +3,9 @@ import { parseFixed } from "@ethersproject/bignumber";
 import assert from "assert";
 import Web3 from "web3";
 import type { Logger } from "winston";
-import { BN } from "../types";
+import { BN, isDefined } from "../types";
 
 type WithHistoricalPricePeriods<T> = T & { getHistoricalPricePeriods: () => [time: number, price: BN][] };
-
-function allDefined<T>(array: (T | null | undefined)[]): array is T[] {
-  return array.every((element) => element !== null || element !== undefined);
-}
 
 // An implementation of PriceFeedInterface that takes as input two sets ("baskets") of price feeds,
 // computes the average price feed for each basket, and returns the spread between the two averages.
@@ -17,7 +13,6 @@ function allDefined<T>(array: (T | null | undefined)[]): array is T[] {
 // are all returning prices in the same precision as `decimals`.
 export class BasketSpreadPriceFeed extends PriceFeedInterface {
   private readonly toBN = Web3.utils.toBN;
-  private readonly toWei = Web3.utils.toWei;
   private readonly allPriceFeeds: PriceFeedInterface[];
   private readonly decimals: number;
   private readonly convertPriceFeedDecimals: (number: number | string) => BN;
@@ -73,13 +68,13 @@ export class BasketSpreadPriceFeed extends PriceFeedInterface {
     denominatorPrice?: BN | null
   ): BN {
     // Compute experimental basket mean.
-    if (experimentalPrices.length === 0 || !allDefined(experimentalPrices)) {
+    if (experimentalPrices.length === 0 || !experimentalPrices.every(isDefined)) {
       throw new Error("BasketSpreadPriceFeed: Missing unknown experimental basket price");
     }
     const experimentalMean = this._computeMean(experimentalPrices);
 
     // Second, compute the average of the baseline pricefeeds.
-    if (baselinePrices.length === 0 || !allDefined(baselinePrices)) {
+    if (baselinePrices.length === 0 || !baselinePrices.every(isDefined)) {
       throw new Error("BasketSpreadPriceFeed: Missing unknown baseline basket price");
     }
     const baselineMean = this._computeMean(baselinePrices);
@@ -214,7 +209,7 @@ export class BasketSpreadPriceFeed extends PriceFeedInterface {
   // Gets the *most recent* update time for all constituent price feeds.
   public getLastUpdateTime(): number | null {
     const lastUpdateTimes = this.allPriceFeeds.map((priceFeed) => priceFeed.getLastUpdateTime());
-    if (!allDefined<number>(lastUpdateTimes)) {
+    if (!lastUpdateTimes.every(isDefined)) {
       return null;
     }
 
@@ -225,7 +220,7 @@ export class BasketSpreadPriceFeed extends PriceFeedInterface {
   // Returns the shortest lookback window of the constituent price feeds.
   public getLookback(): number | null {
     const lookbacks = this.allPriceFeeds.map((priceFeed) => priceFeed.getLookback());
-    if (!allDefined(lookbacks)) {
+    if (!lookbacks.every(isDefined)) {
       return null;
     }
     return Math.min(...lookbacks);

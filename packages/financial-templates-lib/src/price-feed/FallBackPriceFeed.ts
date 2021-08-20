@@ -1,26 +1,25 @@
-const { PriceFeedInterface } = require("./PriceFeedInterface");
+import { PriceFeedInterface } from "./PriceFeedInterface";
+import { BN, isDefined } from "../types";
 
 // An implementation of PriceFeedInterface that provides an order pricefeeds to fall back to
 // if the higher-priority ones fail for any reason.
-class FallBackPriceFeed extends PriceFeedInterface {
+export class FallBackPriceFeed extends PriceFeedInterface {
   /**
    * @notice Constructs new FallBackPriceFeed.
    * @param {List} orderedPriceFeeds an ordered list of priceFeeds to fallback through.
    *      All elements must be of type PriceFeedInterface. Pricefeeds fall back from beginning of the array to the end.
    *      Must be an array of at least one element.
    */
-  constructor(orderedPriceFeeds) {
+  constructor(private readonly priceFeeds: PriceFeedInterface[]) {
     super();
 
-    if (orderedPriceFeeds.length === 0) {
+    if (priceFeeds.length === 0) {
       throw new Error("FallBackPriceFeed cannot be constructed with no constituent price feeds.");
     }
-
-    this.priceFeeds = orderedPriceFeeds;
   }
 
   // Return first successfully fetched price or throw an error if they all fail.
-  getCurrentPrice() {
+  public getCurrentPrice(): BN | null {
     for (const _priceFeed of this.priceFeeds) {
       const price = _priceFeed.getCurrentPrice();
       if (!price) continue;
@@ -31,13 +30,20 @@ class FallBackPriceFeed extends PriceFeedInterface {
     return null;
   }
 
-  async getHistoricalPrice(time, verbose = false) {
+  public async getHistoricalPrice(time: number, verbose = false): Promise<BN> {
     // If failure to fetch any constituent historical prices, then throw
     // array of errors.
     const errors = [];
     for (const _priceFeed of this.priceFeeds) {
       try {
-        return await _priceFeed.getHistoricalPrice(time, verbose);
+        const price = await _priceFeed.getHistoricalPrice(time, verbose);
+        if (!price)
+          throw new Error(
+            `Feed at index ${this.priceFeeds.findIndex(
+              (feed) => feed === _priceFeed
+            )} returned null for historical price query.`
+          );
+        return price;
       } catch (err) {
         errors.push(err);
         continue;
@@ -49,12 +55,12 @@ class FallBackPriceFeed extends PriceFeedInterface {
 
   // Note: This method will fail if one of the pricefeeds has not implemented `getHistoricalPricePeriods`, which
   // is basically every price feed except for the CryptoWatchPriceFeed.
-  getHistoricalPricePeriods() {
+  public getHistoricalPricePeriods(): [number, BN | null][] {
     throw new Error("getHistoricalPricePeriods Unimplemented for FallBackPriceFeed");
   }
 
   // Gets the *most recent* update time for all constituent price feeds.
-  getLastUpdateTime() {
+  public getLastUpdateTime(): number | null {
     // Filter out missing update times:
     const lastUpdateTimes = this.priceFeeds
       .map((priceFeed) => priceFeed.getLastUpdateTime())
@@ -69,26 +75,32 @@ class FallBackPriceFeed extends PriceFeedInterface {
   }
 
   // Return the longest lookback within all the fallback feeds.
-  getLookback() {
-    return Math.max(this.priceFeeds.map((feed) => feed.historicalLookback));
+  public getLookback(): number | null {
+    const lookbacks = this.priceFeeds.map((feed) => feed.getLookback()).filter(isDefined);
+    if (lookbacks.length === 0) return null;
+    return Math.max(...lookbacks);
   }
 
   // Errors out if any price feed had a different number of decimals.
-  getPriceFeedDecimals() {
+  getPriceFeedDecimals(): number {
     const priceFeedDecimals = this.priceFeeds.map((priceFeed) => priceFeed.getPriceFeedDecimals());
     // Check that every price feeds decimals match the 0th price feeds decimals.
-    if (!priceFeedDecimals[0] || !priceFeedDecimals.every((feedDecimals) => feedDecimals === priceFeedDecimals[0])) {
+    const firstDecimals = priceFeedDecimals[0];
+    if (
+      !isDefined(firstDecimals) ||
+      !priceFeedDecimals.every((feedDecimals) => feedDecimals === priceFeedDecimals[0])
+    ) {
       throw new Error("FallBackPriceFeed's feeds do not all have the same decimals or invalid decimals!");
     }
 
-    return priceFeedDecimals[0];
+    return firstDecimals;
   }
 
   // Updates all constituent price feeds, but ignore errors since some might fail without
   // causing this pricefeed's getPrice methods to fail. Only throw an error
   // if all updates fail.
-  async update() {
-    const errors = [];
+  public async update(): Promise<void> {
+    const errors: any[] = [];
     // allSettled() does not short-circuit if any promises reject, instead it returns
     // an array of ["fulfilled", "rejected"] statuses.
     const results = await Promise.allSettled(this.priceFeeds.map((priceFeed) => priceFeed.update()));
@@ -104,5 +116,3 @@ class FallBackPriceFeed extends PriceFeedInterface {
     if (errors.length === this.priceFeeds.length) throw errors;
   }
 }
-
-module.exports = { FallBackPriceFeed };

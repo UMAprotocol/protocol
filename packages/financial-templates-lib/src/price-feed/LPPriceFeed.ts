@@ -1,8 +1,49 @@
-const { PriceFeedInterface } = require("./PriceFeedInterface");
-const { BlockFinder } = require("./utils");
-const { ConvertDecimals } = require("@uma/common");
-const assert = require("assert");
-class LPPriceFeed extends PriceFeedInterface {
+import { PriceFeedInterface } from "./PriceFeedInterface";
+import { BlockFinder } from "./utils";
+import { ConvertDecimals } from "@uma/common";
+import assert from "assert";
+import type { Logger } from "winston";
+import type { Abi } from "../types";
+import Web3 from "web3";
+import type { BlockTransactionString } from "web3-eth";
+import type { ERC20Web3 } from "@uma/contracts-node";
+import type { BN } from "../types";
+
+const _blockFinderGenericWorkaround = (requestBlock: (number: string | number) => Promise<BlockTransactionString>) => {
+  return BlockFinder(requestBlock);
+};
+
+type BlockFinder = ReturnType<typeof _blockFinderGenericWorkaround>;
+
+interface Params {
+  logger: Logger;
+  web3: Web3;
+  erc20Abi: Abi;
+  poolAddress: string;
+  tokenAddress: string;
+  getTime: () => Promise<number>;
+  blockFinder?: BlockFinder;
+  minTimeBetweenUpdates?: number;
+  priceFeedDecimals?: number;
+}
+
+export class LPPriceFeed extends PriceFeedInterface {
+  private readonly logger: Logger;
+  private readonly web3: Web3;
+  private readonly toBN = Web3.utils.toBN;
+  private readonly pool: ERC20Web3;
+  private readonly token: ERC20Web3;
+  private readonly uuid: string;
+  private readonly getTime: () => Promise<number>;
+  private readonly priceFeedDecimals: number;
+  private readonly minTimeBetweenUpdates: number;
+  private readonly blockFinder: BlockFinder;
+
+  private price: BN | null = null;
+  private lastUpdateTime: number | null = null;
+  private tokenDecimals: number | null = null;
+  private poolDecimals: number | null = null;
+
   /**
    * @notice Constructs new price feed object that tracks how much of a provided token a single LP share is redeemable
    *         for.
@@ -29,7 +70,7 @@ class LPPriceFeed extends PriceFeedInterface {
     blockFinder,
     minTimeBetweenUpdates = 60,
     priceFeedDecimals = 18,
-  }) {
+  }: Params) {
     super();
 
     // Assert required arguments.
@@ -42,60 +83,59 @@ class LPPriceFeed extends PriceFeedInterface {
 
     this.logger = logger;
     this.web3 = web3;
-    this.toBN = web3.utils.toBN;
 
-    this.pool = new web3.eth.Contract(erc20Abi, poolAddress);
-    this.token = new web3.eth.Contract(erc20Abi, tokenAddress);
+    this.pool = (new web3.eth.Contract(erc20Abi, poolAddress) as unknown) as ERC20Web3;
+    this.token = (new web3.eth.Contract(erc20Abi, tokenAddress) as unknown) as ERC20Web3;
     this.uuid = `LP-${poolAddress}-${tokenAddress}`;
     this.getTime = getTime;
     this.priceFeedDecimals = priceFeedDecimals;
     this.minTimeBetweenUpdates = minTimeBetweenUpdates;
-    this.blockFinder = blockFinder || BlockFinder(web3.eth.getBlock);
+    this.blockFinder = blockFinder || BlockFinder((number: number | string) => web3.eth.getBlock(number));
   }
 
-  getCurrentPrice() {
+  public getCurrentPrice(): BN | null {
     return this.price;
   }
 
-  async getHistoricalPrice(time) {
+  public async getHistoricalPrice(time: number): Promise<BN> {
     const block = await this.blockFinder.getBlockForTimestamp(time);
     return this._getPrice(block.number);
   }
 
-  getLastUpdateTime() {
+  public getLastUpdateTime(): number | null {
     return this.lastUpdateTime;
   }
 
-  getLookback() {
+  public getLookback(): number {
     // Return infinity since this price feed can technically look back as far as needed.
     return Infinity;
   }
 
-  getPriceFeedDecimals() {
+  public getPriceFeedDecimals(): number {
     return this.priceFeedDecimals;
   }
 
-  async update() {
+  public async update(): Promise<void> {
     const currentTime = await this.getTime();
-    if (this.lastUpdateTime === undefined || currentTime >= this.lastUpdateTime + this.minTimeBetweenUpdates) {
+    if (this.lastUpdateTime === null || currentTime >= this.lastUpdateTime + this.minTimeBetweenUpdates) {
       this.price = await this._getPrice();
       this.lastUpdateTime = currentTime;
     }
   }
 
-  async _getDecimals() {
-    if (this.tokenDecimals === undefined) {
+  private async _getDecimals(): Promise<{ poolDecimals: number; tokenDecimals: number }> {
+    if (this.tokenDecimals === null) {
       this.tokenDecimals = parseInt(await this.token.methods.decimals().call());
     }
 
-    if (this.poolDecimals === undefined) {
+    if (this.poolDecimals === null) {
       this.poolDecimals = parseInt(await this.pool.methods.decimals().call());
     }
 
     return { poolDecimals: this.poolDecimals, tokenDecimals: this.tokenDecimals };
   }
 
-  async _getPrice(blockNumber = "latest") {
+  private async _getPrice(blockNumber: number | "latest" = "latest"): Promise<BN> {
     const lpTotalSupply = this.toBN(await this.pool.methods.totalSupply().call(undefined, blockNumber));
     const tokensInPool = this.toBN(
       await this.token.methods.balanceOf(this.pool.options.address).call(undefined, blockNumber)
@@ -117,11 +157,9 @@ class LPPriceFeed extends PriceFeedInterface {
   }
 
   // Converts decimals from the token decimals to the configured output decimals.
-  async _convertDecimals(value) {
+  private async _convertDecimals(value: BN): Promise<BN> {
     const { tokenDecimals } = await this._getDecimals();
-    const convertDecimals = ConvertDecimals(tokenDecimals, this.priceFeedDecimals, this.web3);
+    const convertDecimals = ConvertDecimals(tokenDecimals, this.priceFeedDecimals);
     return convertDecimals(value);
   }
 }
-
-module.exports = { LPPriceFeed };

@@ -2,7 +2,7 @@
 // positions, undisputed Liquidations, expired liquidations, disputed liquidations.
 
 import { ConvertDecimals, LiquidationStatesEnum, getFromBlock } from "@uma/common";
-import type { Abi, Awaited, BN, FinancialContractType } from "../types";
+import { Abi, Awaited, BN, FinancialContractType, isDefined } from "../types";
 import type { ExpiringMultiPartyWeb3, PerpetualWeb3 } from "@uma/contracts-node";
 import Web3 from "web3";
 import { aggregateTransactionsAndCall } from "../helpers/multicall";
@@ -38,10 +38,6 @@ type ContractLiquidationStruct = Omit<
   Awaited<ReturnType<ReturnType<FinancialContract["methods"]["liquidations"]>["call"]>>,
   number
 >;
-
-function isDefined<T>(val: T | undefined): val is T {
-  return val !== undefined && val !== null;
-}
 
 type ConvertDecimals = ReturnType<typeof ConvertDecimals>;
 

@@ -3,14 +3,14 @@ import assert from "assert";
 import { averageBlockTimeSeconds, MAX_SAFE_JS_INT, estimateBlocksElapsed } from "@uma/common";
 import type { BN } from "../types";
 
-type WithStringTimestamp<T extends { timestamp: number }> = Omit<T, "timestamp"> & { timestamp: number | string };
+type WithoutStringTimestamp<T extends { timestamp: number | string }> = T & { timestamp: number };
 
 // Downloads blocks and caches them for certain time into the past.
 // Allows some in memory searches to go from timestamp to block number.
 // Use blocks parameter to optionally insert prefilled cache of blocks.
 // Block array is sorted from oldest to newest (smallest timestamp => newest timestamp)
-export const BlockHistory = <T extends { number: number; timestamp: number }>(
-  _getBlock: (number?: number) => Promise<WithStringTimestamp<T>>,
+export const BlockHistory = <T extends { number: number; timestamp: number | string }>(
+  getBlock: (number?: number) => Promise<T>,
   blocks: T[] = []
 ): {
   has(number: number): boolean;
@@ -21,12 +21,7 @@ export const BlockHistory = <T extends { number: number; timestamp: number }>(
   update: (lookback: number, now: number, bufferBlockPercent?: number) => Promise<T[]>;
   listBlocks(): T[];
 } => {
-  assert(_getBlock, "requires getBlock(number) function");
-  const getBlock = async (number?: number) => {
-    const block = await _getBlock(number);
-    if (typeof block.timestamp === "string") block.timestamp = parseInt(block.timestamp);
-    return block;
-  };
+  assert(getBlock, "requires getBlock(number) function");
 
   // Check if we have downloaded a block by number
   function has(number: number): boolean {
@@ -68,7 +63,7 @@ export const BlockHistory = <T extends { number: number; timestamp: number }>(
     // Note, we make an informed approximation about the block height that corresponds to the earliest timestamp,
     // this allows us to query all block heights from this early number to the current number in parallel, instead of
     // having to traverse backwards sequentially from the current number to this early number.
-    const latestBlock = await getBlock();
+    const latestBlock = (await getBlock()) as WithoutStringTimestamp<T>;
     const latestBlockHeight = latestBlock.number;
     // Add a conservative block height buffer so that we capture all of the blocks within the lookback window,
     // and if the result is negative then set it to 0. On a test network it is possible for the `earliestBlockHeight`
@@ -79,9 +74,9 @@ export const BlockHistory = <T extends { number: number; timestamp: number }>(
     );
 
     // Push all getBlock() promises into an array to execute in parallel
-    const getBlockPromises = [];
+    const getBlockPromises: Promise<WithoutStringTimestamp<T>>[] = [];
     for (let i = earliestBlockHeight; i <= latestBlockHeight; i++) {
-      getBlockPromises.push(getBlock(i));
+      getBlockPromises.push(getBlock(i) as Promise<WithoutStringTimestamp<T>>);
     }
     const result = await Promise.all(getBlockPromises);
 
@@ -206,13 +201,14 @@ export const PriceHistory = <T>(
  * @param {Function} requestBlock async function, like web3.eth.getBlock that returns a block for a particular block
  *      number or returns the latest block if no argument is provided. Blocks returned must have a `number` and
  */
-export const BlockFinder = <T extends { number: number; timestamp: number }>(
-  requestBlock: (requestedBlock: string | number) => T,
+export const BlockFinder = <T extends { number: number; timestamp: number | string }>(
+  requestBlock: (requestedBlock: string | number) => Promise<T>,
   blocks: T[] = []
 ): {
   getBlockForTimestamp: (timestamp: number) => Promise<T>;
 } => {
   assert(requestBlock, "requestBlock function must be provided");
+
   // Grabs the most recent block and caches it.
   async function getLatestBlock() {
     const block = await requestBlock("latest");
@@ -233,7 +229,8 @@ export const BlockFinder = <T extends { number: number; timestamp: number }>(
   // Return the latest block, between startBlock and endBlock, whose timestamp is <= timestamp.
   // Effectively, this is an interpolation search algorithm to minimize block requests.
   // Note: startBlock and endBlock _must_ be different blocks.
-  async function findBlock(startBlock: T, endBlock: T, timestamp: number): Promise<T> {
+  async function findBlock(_startBlock: T, _endBlock: T, timestamp: number): Promise<T> {
+    const [startBlock, endBlock] = [_startBlock, _endBlock] as WithoutStringTimestamp<T>[];
     // In the case of equality, the endBlock is expected to be passed as the one whose timestamp === the requested
     // timestamp.
     if (endBlock.timestamp === timestamp) return endBlock;
@@ -269,7 +266,7 @@ export const BlockFinder = <T extends { number: number; timestamp: number }>(
    * @notice Gets the latest block whose timestamp is <= the provided timestamp.
    * @param {number} timestamp timestamp to search.
    */
-  async function getBlockForTimestamp(timestamp: number): Promise<T> {
+  async function getBlockForTimestamp(timestamp: number | string): Promise<T> {
     timestamp = Number(timestamp);
     assert(timestamp !== undefined && timestamp !== null, "timestamp must be provided");
     // If the last block we have stored is too early, grab the latest block.
@@ -280,7 +277,7 @@ export const BlockFinder = <T extends { number: number; timestamp: number }>(
 
     // Check the first block. If it's grater than our timestamp, we need to find an earlier block.
     if (blocks[0].timestamp > timestamp) {
-      const initialBlock = blocks[0];
+      const initialBlock = blocks[0] as WithoutStringTimestamp<T>;
       const cushion = 1.1;
       // Ensure the increment block distance is _at least_ a single block to prevent an infinite loop.
       const incrementDistance = Math.max(await estimateBlocksElapsed(initialBlock.timestamp - timestamp, cushion), 1);

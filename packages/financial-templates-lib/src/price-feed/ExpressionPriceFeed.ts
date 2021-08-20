@@ -2,7 +2,7 @@ import assert from "assert";
 import { PriceFeedInterface } from "./PriceFeedInterface";
 import Web3 from "web3";
 import { create, all, MathJsStatic } from "mathjs";
-import type { BN } from "../types";
+import { BN, isDefined } from "../types";
 
 // Customize math (will be exported for other modules to use).
 export const math = create(all, { number: "BigNumber", precision: 100 }) as MathJsStatic; // Assumes all fields are returned.
@@ -33,10 +33,6 @@ export function escapeSpecialCharacters(input: string): string {
       }
     })
     .join("");
-}
-
-function isDefined<T>(input: T | undefined | null): input is T {
-  return input !== undefined && input !== null;
 }
 
 interface ResultSet<T> {
