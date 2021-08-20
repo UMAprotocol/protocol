@@ -63,8 +63,9 @@ class GasEstimator {
         networkId: this.networkId,
         currentTime: currentTime,
         lastUpdateTimestamp: this.lastUpdateTimestamp,
-        currentMaxFeePerGas: this.lastMaxFeePerGas,
-        currentMaxPriorityFeePerGas: this.lastMaxPriorityFeePerGas,
+        currentMaxFeePerGas: this.latestMaxFeePerGasGwei,
+        currentMaxPriorityFeePerGas: this.latestMaxPriorityFeePerGasGwei,
+        lastFastPriceGwei: this.lastFastPriceGwei,
         timeRemainingUntilUpdate: this.lastUpdateTimestamp + this.updateThreshold - currentTime,
       });
       return;
@@ -76,8 +77,9 @@ class GasEstimator {
         message: "Gas estimator updated",
         networkId: this.networkId,
         lastUpdateTimestamp: this.lastUpdateTimestamp,
-        currentMaxFeePerGas: this.lastMaxFeePerGas,
-        currentMaxPriorityFeePerGas: this.lastMaxPriorityFeePerGas,
+        currentMaxFeePerGas: this.latestMaxFeePerGasGwei,
+        currentMaxPriorityFeePerGas: this.latestMaxPriorityFeePerGasGwei,
+        lastFastPriceGwei: this.lastFastPriceGwei,
       });
     }
   }
@@ -111,6 +113,7 @@ class GasEstimator {
     try {
       const response = await fetch(url);
       const json = await response.json();
+      console.log("json", json);
       // Primary URL expected response structure for London
       // {
       //    safeLow: 1, // slow maxPriorityFeePerGas
@@ -130,11 +133,14 @@ class GasEstimator {
       //    "blockNumber": 18040517
       // }
       // }
-      if (json.recommendedBaseFee) {
+      if (
+        (this.type == "london" && json.recommendedBaseFee && json.fastest) ||
+        (this.type == "legacy" && json.fastest)
+      ) {
         if (this.type == "london") return { maxFeePerGas: json.recommendedBaseFee, maxPriorityFeePerGas: json.fastest };
-        else return { gasPrice: json.recommendedBaseFee };
+        else return { gasPrice: json.fastest };
       } else {
-        throw new Error(`Main gas station API @ ${url}: bad json response`);
+        throw new Error(`Main gas station API @ ${url}: bad json response ${json}`);
       }
     } catch (error) {
       this.logger.debug({
