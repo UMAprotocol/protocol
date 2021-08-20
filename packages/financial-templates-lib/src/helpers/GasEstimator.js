@@ -130,9 +130,9 @@ class GasEstimator {
       //    "blockNumber": 18040517
       // }
       // }
-      if (json.fastest) {
+      if (json.recommendedBaseFee) {
         if (this.type == "london") return { maxFeePerGas: json.recommendedBaseFee, maxPriorityFeePerGas: json.fastest };
-        else return { gasPrice: json.fastest };
+        else return { gasPrice: json.recommendedBaseFee };
       } else {
         throw new Error(`Main gas station API @ ${url}: bad json response`);
       }

@@ -452,12 +452,12 @@ function _processSpokeResponse(botKey, spokeResponse, validOutputs, errorOutputs
   } else if (
     spokeResponse.value &&
     spokeResponse.value.execResponse &&
-    !spokeResponse.value.execResponse.stdout.includes("started")
+    !JSON.stringify(spokeResponse.value.execResponse.stdout).includes("started")
   ) {
     errorOutputs[botKey] = {
       status: spokeResponse.status,
       execResponse: spokeResponse.value && spokeResponse.value.execResponse,
-      reason: "missing `Started` key word",
+      reason: "missing `Started` keyword",
       botIdentifier: botKey,
     };
   } else {

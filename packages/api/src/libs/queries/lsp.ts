@@ -26,11 +26,18 @@ export default (appState: Dependencies) => {
     assert(appState.stats.lsp[currency], "invalid currency: " + currency);
     return appState.stats.lsp["usd"].latest.tvl.get(address);
   }
+  function getTvm(address: string, currency: CurrencySymbol = "usd") {
+    assert(appState.stats.lsp[currency], "invalid currency: " + currency);
+    return appState.stats.lsp["usd"].latest.tvm.get(address);
+  }
   async function getFullState(state: tables.lsps.Data) {
     const collateralState = state.collateralToken ? await erc20s.get(state.collateralToken).catch(() => null) : null;
     const longTokenState = state.longToken ? await erc20s.get(state.longToken).catch(() => null) : null;
     const shortTokenState = state.shortToken ? await erc20s.get(state.shortToken).catch(() => null) : null;
     const tvl = await getTvl(state.address)
+      .then((sample) => sample.value)
+      .catch(() => null);
+    const tvm = await getTvm(state.address)
       .then((sample) => sample.value)
       .catch(() => null);
     return {
@@ -45,6 +52,7 @@ export default (appState: Dependencies) => {
       shortTokenSymbol: shortTokenState?.symbol,
       collateralSymbol: collateralState?.symbol,
       tvl,
+      tvm,
       type: "lsp",
     };
   }
@@ -60,7 +68,7 @@ export default (appState: Dependencies) => {
     const tvls = await Promise.all(
       addresses.map(async (address) => {
         try {
-          const stat = await appState.stats.lsp[currency].latest.tvl.get(address);
+          const stat = await getTvl(address, currency);
           return stat.value || "0";
         } catch (err) {
           return "0";
@@ -87,15 +95,52 @@ export default (appState: Dependencies) => {
     const result = await getTotalTvlSample(currency);
     return result.value;
   }
+  // tvm calculations, these are just based on tvl
+  async function sumTvm(addresses: string[], currency: CurrencySymbol = "usd") {
+    const tvms = await Promise.all(
+      addresses.map(async (address) => {
+        try {
+          const stat = await getTvm(address, currency);
+          return stat.value || "0";
+        } catch (err) {
+          return "0";
+        }
+      })
+    );
+
+    const tvm = await tvms.reduce((sum, tvm) => {
+      return sum.add(tvm);
+    }, BigNumber.from("0"));
+
+    return tvm.toString();
+  }
+  async function totalTvm(currency: CurrencySymbol = "usd") {
+    const addresses = Array.from(appState.registeredLsps);
+    return sumTvm(addresses, currency);
+  }
+  async function getTotalTvmSample(currency: CurrencySymbol = "usd") {
+    assert(appState.stats.lsp[currency], "Invalid currency: " + currency);
+    return appState.stats.lsp[currency].latest.tvm.getGlobal();
+  }
+  async function getTotalTvm(currency: CurrencySymbol = "usd") {
+    const result = await getTotalTvmSample(currency);
+    return result.value;
+  }
   return {
     getFullState,
     getAny,
     listExpired,
     listActive,
     totalTvl,
+    totalTvm,
     sumTvl,
+    sumTvm,
     getTotalTvl,
+    getTotalTvm,
     getTotalTvlSample,
+    getTotalTvmSample,
     hasAddress,
+    getTvm,
+    getTvl,
   };
 };
