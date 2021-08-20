@@ -38,7 +38,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     // Reserves currently utilized due to L2-L1 transactions in flight.
     int256 public utilizedReserves;
 
-    // Reserves that are not yet utilized but are in pre-allocated for a not yet finalized relay.
+    // Reserves that are not yet utilized but are pre-allocated for a pending relay.
     uint256 public pendingReserves;
 
     // Exponential decay exchange rate to accumulate fees to LPs over time.
