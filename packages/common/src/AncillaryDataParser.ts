@@ -1,6 +1,4 @@
 import Web3 from "web3";
-import dotenv from "dotenv";
-dotenv.config();
 
 type CharObject = {
   character: string;
@@ -205,10 +203,10 @@ export function isNextChar(stringObject: CharObject[], start: number, character:
  */
 function escapeQuotes(stringObject: CharObject[], openIndex: number, escapeValues = true) {
   const nextCharFn = escapeValues
-    ? function (stringObject: CharObject[], closeIndex: number) {
+    ? function (stringObject: CharObject[], closeIndex: number): boolean {
         return isNextEnd(stringObject, closeIndex) || isNextChar(stringObject, closeIndex, ",");
       }
-    : function (stringObject: CharObject[], closeIndex: number) {
+    : function (stringObject: CharObject[], closeIndex: number): boolean {
         return isNextChar(stringObject, closeIndex, ":");
       };
   for (let closeIndex = openIndex + 1; closeIndex < stringObject.length; closeIndex++) {
@@ -245,12 +243,12 @@ function escapeJSON(stringObject: CharObject[], openIndex: number, curly = true)
 }
 
 // Checks whether the passed character object does not represent whitespace.
-function skipWhitespace(charObject: CharObject) {
+function skipWhitespace(charObject: CharObject): boolean {
   const whitespaceCharacters = Array.from(" \t\n\r");
   return !whitespaceCharacters.includes(charObject.character) || charObject.escape;
 }
 
 // Used to filter out double quotes.
-function removeDoubleQuotes(charObject: CharObject) {
+function removeDoubleQuotes(charObject: CharObject): boolean {
   return !charObject.skip;
 }
