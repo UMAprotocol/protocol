@@ -6,7 +6,7 @@ contract("AncillaryDataParser.js", function () {
     it("parses SPACEXLAUNCH data correctly", async function () {
       const data = "0x6964303a537461726c696e6b2d31382c77303a312c6964313a537461726c696e6b2d31392c77313a31";
       const expectedObject = { id0: "Starlink-18", w0: 1, id1: "Starlink-19", w1: 1 };
-      const parsedData = await AncillaryDataParser.parseAncillaryData(data);
+      const parsedData = AncillaryDataParser.parseAncillaryData(data);
       assert.equal(JSON.stringify(parsedData).toLowerCase(), JSON.stringify(expectedObject).toLowerCase());
     });
     it("parses KPI option example #1 data correctly", async function () {
@@ -21,7 +21,7 @@ contract("AncillaryDataParser.js", function () {
         Rounding: -7,
         Scaling: -9,
       };
-      const parsedData = await AncillaryDataParser.parseAncillaryData(data);
+      const parsedData = AncillaryDataParser.parseAncillaryData(data);
       assert.equal(JSON.stringify(parsedData).toLowerCase(), JSON.stringify(expectedObject).toLowerCase());
     });
     it("parses KPI option example #2 data correctly", async function () {
@@ -41,7 +41,7 @@ contract("AncillaryDataParser.js", function () {
         bonusIntegrationsMultiplier: 3.0,
         floorIntegrations: 3,
       };
-      const parsedData = await AncillaryDataParser.parseAncillaryData(data);
+      const parsedData = AncillaryDataParser.parseAncillaryData(data);
       assert.equal(JSON.stringify(parsedData).toLowerCase(), JSON.stringify(expectedObject).toLowerCase());
     });
     it("parses TOKEN_PRICE example data correctly", async function () {
@@ -65,8 +65,14 @@ contract("AncillaryDataParser.js", function () {
           ],
         },
       };
-      const parsedData = await AncillaryDataParser.parseAncillaryData(data);
+      const parsedData = AncillaryDataParser.parseAncillaryData(data);
       assert.equal(JSON.stringify(parsedData).toLowerCase(), JSON.stringify(expectedObject).toLowerCase());
+    });
+    it("random hex should throw error", async function () {
+      const data = "0xb54a997b04e78c474d02d297a31b75a6";
+      assert.throw(() => {
+        AncillaryDataParser.parseAncillaryData(data);
+      });
     });
   });
 });
