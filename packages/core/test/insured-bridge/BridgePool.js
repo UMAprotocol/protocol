@@ -1,7 +1,7 @@
 const hre = require("hardhat");
+const { web3 } = require("hardhat");
 const {
   didContractThrow,
-  runDefaultFixture,
   interfaceName,
   TokenRolesEnum,
   InsuredBridgeRelayStateEnum,
@@ -46,6 +46,7 @@ let mockOracle;
 const defaultGasLimit = 1_000_000;
 const defaultIdentifier = utf8ToHex("IS_CROSS_CHAIN_RELAY_VALID");
 const defaultLiveness = 100;
+const lpFeeRatePerSecond = toWei("0.0000015");
 const defaultProposerBondPct = toWei("0.05");
 const defaultSlowRelayFeePct = toWei("0.01");
 const defaultInstantRelayFeePct = toWei("0.01");
@@ -77,7 +78,7 @@ const totalRelayBond = toBN(defaultProposerBondPct)
   .mul(toBN(relayAmount))
   .div(toBN(toWei("1")))
   .add(toBN(finalFee));
-// Winner of a dispute gets bond back + 1/2 of loser's bond + final fee. So, the total dispute refund is
+// Winner of a dispute gets bond back + 1/2 of loser's bond+final fee. So, the total dispute refund is
 // 1.5x the proposer bond + final fee.
 const totalDisputeRefund = toBN(defaultProposerBondPct)
   .mul(toBN(relayAmount))
@@ -113,6 +114,12 @@ describe("BridgePool", () => {
     disputer,
     rando;
 
+  const advanceTime = async (timeIncrease) => {
+    await timer.methods
+      .setCurrentTime(Number(await timer.methods.getCurrentTime().call()) + timeIncrease)
+      .send({ from: owner });
+  };
+
   before(async function () {
     accounts = await web3.eth.getAccounts();
     [
@@ -127,14 +134,23 @@ describe("BridgePool", () => {
       disputer,
       rando,
     ] = accounts;
-    await runDefaultFixture(hre);
 
     // Deploy or fetch deployed contracts:
-    finder = await Finder.deployed();
-    identifierWhitelist = await IdentifierWhitelist.deployed();
-    collateralWhitelist = await AddressWhitelist.deployed();
-    store = await Store.deployed();
+    finder = await Finder.new().send({ from: owner });
+    collateralWhitelist = await AddressWhitelist.new().send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.options.address)
+      .send({ from: owner });
+
+    identifierWhitelist = await IdentifierWhitelist.new().send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.options.address)
+      .send({ from: owner });
     timer = await Timer.new().send({ from: owner });
+    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.options.address).send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
+      .send({ from: owner });
 
     // Other contract setup needed to relay deposit:
     await identifierWhitelist.methods.addSupportedIdentifier(defaultIdentifier).send({ from: owner });
@@ -177,8 +193,11 @@ describe("BridgePool", () => {
 
     // New BridgePool linked to BridgeFactory
     bridgePool = await BridgePool.new(
+      "LP Token",
+      "LPT",
       bridgeAdmin.options.address,
       l1Token.options.address,
+      lpFeeRatePerSecond,
       timer.options.address
     ).send({ from: owner });
 
@@ -234,6 +253,33 @@ describe("BridgePool", () => {
     depositHash = soliditySha3(depositDataAbiEncoded);
     relayAncillaryData = await bridgePool.methods.getRelayAncillaryData(depositData, relayData).call();
     relayAncillaryDataHash = soliditySha3(relayAncillaryData);
+  });
+  it("Constructor validation", async function () {
+    // LP Token symbol and name cannot be empty.
+    assert(
+      await didContractThrow(
+        BridgePool.new(
+          "",
+          "LPT",
+          bridgeAdmin.options.address,
+          l1Token.options.address,
+          lpFeeRatePerSecond,
+          timer.options.address
+        ).send({ from: owner })
+      )
+    );
+    assert(
+      await didContractThrow(
+        BridgePool.new(
+          "LP Token",
+          "",
+          bridgeAdmin.options.address,
+          l1Token.options.address,
+          lpFeeRatePerSecond,
+          timer.options.address
+        ).send({ from: owner })
+      )
+    );
   });
   it("Constructs utf8-encoded ancillary data for relay", async function () {
     let expectedAncillaryDataUtf8 = "";
@@ -294,7 +340,7 @@ describe("BridgePool", () => {
       await l1Token.methods.approve(bridgePool.options.address, initialPoolLiquidity).send({ from: relayer });
 
       // Fails if pool doesn't have enough funds to cover reward; request price will revert when it tries to pull reward.
-      // - setting relay amount to the pool's full balance and the reward % to >100% will induce this
+      // -setting relay amount to the pool's full balance and the reward % to >100% will induce this
       assert(
         await didContractThrow(
           bridgePool.methods
@@ -313,9 +359,9 @@ describe("BridgePool", () => {
         )
       );
 
-      // Fails if withdrawal amount + proposer reward > pool balance. Setting relay amount to 99% of pool's full
+      // Fails if withdrawal amount+proposer reward > pool balance. Setting relay amount to 99% of pool's full
       // balance and then reward % to 15%, where the relay amount is already assumed to be 10% of the full balance,
-      // means that total withdrawal % = (0.99 + 0.15 * 0.1) > 1.0
+      // means that total withdrawal %=(0.99+0.15*0.1) > 1.0
       assert(
         await didContractThrow(
           bridgePool.methods
@@ -611,7 +657,7 @@ describe("BridgePool", () => {
 
       // Check BridgePool relay and disputedRelay mappings were modified as expected:
       const postDisputeRelayStatus = await bridgePool.methods.relays(depositHash).call();
-      assert.equal(postDisputeRelayStatus.relayState, InsuredBridgeRelayStateEnum.UNINITIALIZED);
+      assert.equal(postDisputeRelayStatus.relayState, InsuredBridgeRelayStateEnum.DISPUTED);
 
       // Mint relayer new bond to try relaying again:
       await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
@@ -654,9 +700,7 @@ describe("BridgePool", () => {
       );
 
       // The same relay params for a new request time will also succeed.
-      await timer.methods
-        .setCurrentTime((Number(relayStatus.priceRequestTime.toString()) + 1).toString())
-        .send({ from: owner });
+      await advanceTime(Number(relayStatus.priceRequestTime.toString()) + 1);
       assert.ok(
         await bridgePool.methods
           .relayDeposit(
@@ -933,8 +977,11 @@ describe("BridgePool", () => {
         );
       });
 
+      // Cannot re-settle.
+      assert(await didContractThrow(bridgePool.methods.settleRelay(depositData).send({ from: rando })));
+
       // Check token balances.
-      // - Slow relayer should get back their proposal bond from OO and reward from BridgePool.
+      // -Slow relayer should get back their proposal bond from OO and reward from BridgePool.
       assert.equal(
         (await l1Token.methods.balanceOf(relayer).call()).toString(),
         toBN(totalRelayBond).add(realizedSlowRelayFeeAmount).toString(),
@@ -1032,7 +1079,7 @@ describe("BridgePool", () => {
         toBN(initialPoolLiquidity)
           .sub(toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount).add(realizedSlowRelayFeeAmount))
           .toString(),
-        "BridgePool should have balance reduced by relayed amount to recipinet "
+        "BridgePool should have balance reduced by relayed amount to recipient"
       );
     });
   });
@@ -1081,6 +1128,342 @@ describe("BridgePool", () => {
       assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("0"));
       assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("0"));
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+    });
+  });
+  describe("Virtual balance accounting", () => {
+    beforeEach(async function () {
+      // For the next two tests, add liquidity, relay and finalize the relay as the initial state.
+
+      // Approve funds and add to liquidity.
+      await l1Token.methods.mint(liquidityProvider, initialPoolLiquidity).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: liquidityProvider });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
+
+      // Mint relayer bond.
+      await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+
+      const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
+      const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
+
+      await bridgePool.methods
+        .relayDeposit(
+          depositData.depositId,
+          depositData.depositTimestamp,
+          depositData.recipient,
+          depositData.l2Sender,
+          depositData.amount,
+          depositData.slowRelayFeePct,
+          depositData.instantRelayFeePct,
+          depositData.quoteTimestamp,
+          relayData.realizedLpFeePct
+        )
+        .send({ from: relayer });
+
+      // Expire and settle proposal on the OptimisticOracle.
+      const relayStatus = await bridgePool.methods.relays(depositHash).call();
+      await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
+      await optimisticOracle.methods
+        .settle(
+          bridgePool.options.address,
+          defaultIdentifier,
+          relayStatus.priceRequestTime.toString(),
+          relayAncillaryData
+        )
+        .send({ from: relayer });
+    });
+    it("SettleRelay modifies virtual balances", async () => {
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+
+      // Exchange rate should still be 1, no fees accumulated yet as no time has passed from the settlement. Pool
+      // balance, liquidReserves and utilizedReserves should update accordingly. Calculate the bridge tokens used as
+      // the amount sent to the receiver+the bond.
+      const bridgeTokensUsed = toBN(slowRelayAmountSubFee).add(realizedSlowRelayFeeAmount);
+
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+      assert.equal(
+        (await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(),
+        toBN(initialPoolLiquidity).sub(bridgeTokensUsed).toString()
+      );
+      assert.equal((await lpToken.methods.balanceOf(liquidityProvider).call()).toString(), initialPoolLiquidity);
+      assert.equal(
+        (await bridgePool.methods.liquidReserves().call()).toString(),
+        toBN(initialPoolLiquidity).sub(bridgeTokensUsed).toString()
+      );
+      assert.equal(
+        (await bridgePool.methods.utilizedReserves().call()).toString(),
+        bridgeTokensUsed.add(realizedLpFeeAmount).toString()
+      );
+    });
+    it("Fees correctly accumulate to LPs over the one week loan interval", async () => {
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+
+      await bridgePool.methods.exchangeRateCurrent().send({ from: rando }); // force sync
+
+      // As no time has elapsed, no fees should be earned and the exchange rate should still be 1.
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
+
+      // Advance time by a 2 days (172800s) and check that the exchange rate increments accordingly. From the bridging
+      // action 10 L1 tokens have been allocated for fees (defaultRealizedLpFee and the relayAmount is 100). At a rate
+      // of lpFeeRatePerSecond set to 0.0000015, the expected fee allocation should be rate_per_second *
+      // seconds_since_last_action* undistributed_fees: 0.0000015*172800*10=2.592. Expected exchange rate is
+      // (liquidReserves+utilizedReserves+cumulativeFeesUnbridged-undistributedLpFees)/totalLpTokenSupply
+      // =(910+90+10-7.408)/1000=1.002592.
+      await advanceTime(172800);
+
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.002592"));
+
+      // If we now call exchangeRateCurrent the fee state variables should increment to the expected size.
+      await bridgePool.methods.exchangeRateCurrent().send({ from: rando }); // force sync
+      // undistributedLpFees should be the total fees (10) minus the cumulative fees.
+      assert.equal((await bridgePool.methods.undistributedLpFees().call()).toString(), toWei("7.408")); // 10-2.592
+      // Last LP fee update should be the current time.
+      assert.equal(
+        await (await bridgePool.methods.lastLpFeeUpdate().call()).toString(),
+        (await timer.methods.getCurrentTime().call()).toString()
+      );
+
+      // Next, To simulate finalization of L2->L1 token transfers due to bridging (via the canonical bridge) send tokens
+      // directly to the bridgePool. Note that on L1 this is exactly how this will happen as the finalization of bridging
+      // occurs without informing the recipient (tokens are just "sent"). Validate the sync method updates correctly.
+      // Also increment time such that we are past the 1 week liveness from OO. increment by 5 days (432000s).
+      await advanceTime(432000);
+
+      // At this point it is useful to verify that the exchange rate right before the tokens hit the contract is equal
+      // to the rate right after they hit the contract, without incrementing any time. This proves the exchangeRate
+      // equation has no discontinuity in it and that fees are correctly captured when syncing the pool balance.
+      // accumulated fees should be updated accordingly. a total of 1 week has passed at a rate of 0.0000015. Total
+      // expected cumulative LP fees earned of 2.592+7.408* 4 32000*0.0000015=7.392384
+      await bridgePool.methods.exchangeRateCurrent().send({ from: rando }); // force sync
+
+      // expected exchange rate of (910+90+10-(10-7.392384))/1000=1.007392384
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.007392384"));
+
+      // Now, we can mint the tokens to the bridge pool. When we call exchangeRateCurrent again it will first sync the
+      // token balances, thereby updating the variables to: • liquidReserves=1010 (initial liquidity+LP fees)
+      // • utilizedReserves=0 (-10 from sync +10 from LP fees)• cumulativeFeesUnbridged =0 (all fees moved over).
+      // • undistributedLpFees=10-7.392384=2.607616 (unchanged from before as no time has elapsed)
+      // overall expected exchange rate should be the SAME as (1010+0+0-(10-7.392384))/1000
+      await l1Token.methods.mint(bridgePool.options.address, relayAmount).send({ from: owner });
+      await bridgePool.methods.exchangeRateCurrent().send({ from: rando }); // force sync
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.007392384"));
+      // We can check all other variables to validate the match to the above comment.
+      assert.equal((await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(), toWei("1010"));
+      assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("1010"));
+      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), "0");
+      assert.equal((await bridgePool.methods.undistributedLpFees().call()).toString(), toWei("2.607616"));
+    });
+    it("Fees correctly accumulate with multiple relays", async () => {
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+
+      // Advance time by a 2 days (172800s) and check that the exchange rate increments accordingly. Expected exchange rate is (910+90+10-(10-0.0000015*172800*10))/1000=1.002592.
+      await advanceTime(172800);
+
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.002592"));
+
+      // Next, bridge another relay. This time for 50 L1 tokens. Keep the fee percentages at the same size: 10% LP fee
+      // 1% slow and 1% instant relay fees. Update the existing data structures to simplify the process.
+      depositData.depositId = depositData.depositId + 1;
+      depositData.depositTimestamp = depositData.depositTimestamp + 172800;
+      depositData.amount = toWei("50");
+      depositData.recipient = rando;
+      depositData.quoteTimestamp = depositData.quoteTimestamp + 172800;
+
+      await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+
+      await bridgePool.methods
+        .relayDeposit(
+          depositData.depositId,
+          depositData.depositTimestamp,
+          depositData.recipient,
+          depositData.l2Sender,
+          depositData.amount,
+          depositData.slowRelayFeePct,
+          depositData.instantRelayFeePct,
+          depositData.quoteTimestamp,
+          relayData.realizedLpFeePct
+        )
+        .send({ from: relayer });
+
+      // TODO: refactor some of these tests to have re-used methods for depositHash.
+      // TODO: consider using a spread operator on `relayDeposit` params to decrease test length
+      depositDataAbiEncoded = web3.eth.abi.encodeParameters(
+        ["uint64", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint64"],
+        [
+          depositData.depositId,
+          depositData.depositTimestamp,
+          depositData.l2Sender,
+          depositData.recipient,
+          depositData.l1Token,
+          depositData.amount,
+          depositData.slowRelayFeePct,
+          depositData.instantRelayFeePct,
+          depositData.quoteTimestamp,
+        ]
+      );
+      depositHash = soliditySha3(depositDataAbiEncoded);
+
+      // Expire and settle proposal on the OptimisticOracle.
+      const relayStatus = await bridgePool.methods.relays(depositHash).call();
+      await advanceTime(defaultLiveness);
+
+      relayAncillaryData = await bridgePool.methods.getRelayAncillaryData(depositData, relayData).call();
+      await optimisticOracle.methods
+        .settle(
+          bridgePool.options.address,
+          defaultIdentifier,
+          relayStatus.priceRequestTime.toString(),
+          relayAncillaryData
+        )
+        .send({ from: relayer });
+
+      // Settle the relay action.
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+
+      // Double check the rando balance incremented by the expected amount of: 50-5 (LP fee)-0.5 (slow relay fee).
+      assert.equal((await l1Token.methods.balanceOf(rando).call()).toString(), toWei("44.5"));
+
+      // The exchanger rate should have been increased by the initial deposits fees grown over defaultLiveness. As the
+      // second deposit happened after this time increment, no new fees should be accumulated at this point for these
+      // funds. Expected exchange rate is: (865.5+134.5+15-(15-0.0000015*(172800+100)*10+0))/1000=1.0025935
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.0025935"));
+
+      // Advance time by another 2 days and check that rate updates accordingly to capture the generated.
+      await advanceTime(172800);
+
+      // Expected exchange rate at this point is easiest to reason about if we consider the two deposits separately.
+      // Deposit1 was 10 tokens of fees, grown over 4 days+100 seconds. Deposit2 was 5 tokens fees, grown over 2 days.
+      // Deposit1's first period was 0.0000015*(172800+100)*10=2.5935. This leaves 10-2.5935=7.4065 remaining.
+      // Deposit1's second period is therefore 0.0000015*(172800)*7.4065=1.9197648. Total accumulated for Deposit1
+      // =2.5935+1.9197648=4.5132648. Deposit2 is just 0.0000015*(172800)*5=1.296. Total accumulated fees for
+      // both deposits is therefore 4.5132648+1.296=5.8092648. We can compute the expected exchange rate using a
+      // simplified form of (total LP Deposits+accumulated fees)/totalSupply (this form is equivalent to the contracts
+      // but is easier to reason about as it ignores any bridging actions) giving us (1000+5.8092648)/1000=1.0058092648
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.0058092648"));
+
+      // Next, advance time past the finalization of the first deposits L2->L1 bridge time by plus 3 days (259200s).
+      await advanceTime(259200);
+      await l1Token.methods.mint(bridgePool.options.address, relayAmount).send({ from: owner });
+
+      // Expected exchange rate can be calculated with the same modified format as before Deposit1's second period is
+      // now 0.0000015*(172800+259200)*7.4065=4.799412 and Deposit2 is 0.0000015*(172800+259200)*5=3.24. Cumulative fees
+      // are 2.5935+4.799412+3.24=10.632912 Therefore expected exchange rate is (1000+10.632912)/1000=1.010632912
+      await bridgePool.methods.exchangeRateCurrent().send({ from: rando }); // force sync
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.010632912"));
+
+      // balance is 1000 initial liquidity - 90 bridged for Deposit1, -45 bridged for Deposit2 +100 for
+      // finalization of Deposit1=1000-90-45+100=965
+      assert.equal((await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(), toWei("965"));
+      assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("965"));
+      // utilizedReserves is 90 for Deposit1 45 for Deposit2 -100 for finalization of Deposit1. utilizedReserves also
+      // contains the implicit LP fees so that's 10 for Deposit1 and 5 for Deposit2=90+45-100+10+5=50
+      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("50"));
+      // undistributedLpFees is 10+5 for the deposits - 10.632912 (the total paid thus far)=10+5-10.632912=4.367088
+      assert.equal((await bridgePool.methods.undistributedLpFees().call()).toString(), toWei("4.367088"));
+
+      // Advance time another 2 days and finalize the Deposit2.
+      // Next, advance time past the finalization of the first deposits L2->L1 bridge time by plus 3 days (259200s).
+      await advanceTime(172800);
+      await l1Token.methods.mint(bridgePool.options.address, depositData.amount).send({ from: owner });
+
+      // Expected exchange rate is now Deposit1's second period is now 0.0000015*(172800)*(7.4065-4.799412)=0.6757572096
+      // and Deposit2 is 0.0000015*(172800)*(5-3.24)=0.456192. Cumulative fees are 10.632912+0.6757572096+0.456192=
+      // 11.7648612096 Therefore expected exchange rate is (1000+11.7648612096)/1000=1.0117648612096
+      await bridgePool.methods.exchangeRateCurrent().send({ from: rando }); // force sync
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.0117648612096"));
+      // Token balance should be 1000 initial liquidity - 90 bridged for Deposit1, -45 bridged for Deposit2+100 for
+      // finalization of Deposit1+50 for finalization of Deposit2 = 1000-90-45+100+50=965. This is equivalent to the
+      // original liquidity+the total LP fees (1000+10+5).
+      assert.equal((await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(), toWei("1015"));
+      assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("1015"));
+      // utilizedReserves is 90 for Deposit1 45 for Deposit2 -100 -50 for finalization of deposits=90+45-100-50=-15
+      // assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("-15"));
+      // undistributedLpFees is 10+5 for the deposits - 11.7648612096 (the total paid thus far)=10+5-11.7648612096=3.2351387904
+      assert.equal((await bridgePool.methods.undistributedLpFees().call()).toString(), toWei("3.2351387904"));
+
+      // Finally, advance time by a lot into the future (100 days). All remaining fees should be paid out. Exchange rate
+      // should simply be (1000+10+5)/1000=1.015 for the culmination of the remaining fees.
+      await advanceTime(8640000);
+      await bridgePool.methods.exchangeRateCurrent().send({ from: rando }); // force sync
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.015"));
+      // All fees have been distributed. 0 remaining fees.
+      assert.equal((await bridgePool.methods.undistributedLpFees().call()).toString(), toWei("0"));
+    });
+    it("Adding/removing impact exchange rate accumulation as expected", async () => {
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+
+      // Advance time by a 2 days (172800s). Exchange rate should be (1000+10*172800*0.0000015)/1000=1.002592
+      await advanceTime(172800);
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.002592"));
+
+      // Now, remove the equivalent of 100 units of LP Tokens. This method takes in the number of LP tokens so we will
+      // end up withdrawing slightly more than the number of LP tokens as the number of LP tokens * the exchange rate.
+      await bridgePool.methods.removeLiquidity(toWei("100")).send({ from: liquidityProvider });
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.002592"));
+
+      // The internal counts should have updated as expected.
+      await bridgePool.methods.exchangeRateCurrent().send({ from: rando }); // force sync
+      assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("809.7408")); // 1000-90-100*1.002592
+      // utilizedReserves have 90 for the bridging action and 10 for the pending LP fees[unchanged]
+      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("100"));
+      assert.equal((await bridgePool.methods.undistributedLpFees().call()).toString(), toWei("7.408")); // 10-10*172800*0.0000015
+
+      // Advance time by 2 days to accumulate more fees. As a result of that decrease number of liquid+utilized reserves,
+      // the exchange rate should increment faster. Exchange rate is calculated using the equation ExchangeRate :=
+      // (liquidReserves+utilizedReserves+cumulativeLpFeesEarned-undistributedLpFees)/lpTokenSupply. undistributedLpFees
+      // is found as the total fees to earn, minus the sum of period1's fees earned and the second period's fees. The
+      // first period is 10*172800*0.0000015=2.592. The second period is the remaining after the first, with fees applied
+      // as (10-2.592)*172800*0.0000015=1.9201536. Total fees paid are 2.592+1.9201536=4.5121536. Therefore, undistributedLpFees= 10-4.5121536=5.4878464. Exchange rate is therefore (809.7408+90+10-5.4878464)/900=1.004725504
+      await advanceTime(172800);
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.004725504"));
+
+      // Next, advance time past the conclusion of this deposit (+5 days) and mint tokens to the contract.
+      await advanceTime(432000);
+      await l1Token.methods.mint(bridgePool.options.address, toWei("100")).send({ from: owner });
+
+      // Recalculate the exchange rate. As we did not force sync at the previous step we can just extent the period2
+      // accumulated fees as (10-2.592)*(172800+432000)*0.0000015=6.7205376. Cumulative fees are therefore
+      // 2.592+6.7205376=9.3125376. Hence, undistributedLpFees=10-9.3125376=0.6874624. Exchange rate is thus
+      // (809.7408+90+10-0.6874624)/900=1.010059264
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.010059264"));
+
+      // Finally, increment time such that the remaining fees are attributed (say 100 days). Expected exchange rate is
+      // simply the previous equation with the undistributedLpFees set to 0. Exchange rate will be
+      // (809.7408+90+10-0)/900=1.010823111111111111
+      await advanceTime(8640000);
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.010823111111111111"));
+    });
+    it("Fees & Exchange rate can correctly handel gifted tokens", async () => {
+      // We cant control when funds are sent to the contract, just like we cant control when the bridging action
+      // concludes. If someone was to randomly send the contract tokens the exchange rate should ignore this. The contract should ignore the exchange rate if someone was to randomly send tokens.
+
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+
+      // Advance time by a 2 days (172800s). Exchange rate should be (1000+10*172800*0.0000015)/1000=1.002592
+      await advanceTime(172800);
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.002592"));
+
+      // Now, randomly send the contract 10 tokens. This is not part of the conclusion of any bridging action. The
+      // exchange rate should not be modified at all.
+      await l1Token.methods.mint(bridgePool.options.address, toWei("10")).send({ from: owner });
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.002592"));
+
+      // However, the internal counts should have updated as expected.
+      await bridgePool.methods.exchangeRateCurrent().send({ from: rando }); // force sync
+      assert.equal((await bridgePool.methods.liquidReserves().call()).toString(), toWei("920")); // 1000-90+10
+      // utilizedReserves are 90 for the bridging action, -10 for the tokens sent to the bridge +10 for the pending LP fees.
+      assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("90")); // 90-10+10
+      assert.equal((await bridgePool.methods.undistributedLpFees().call()).toString(), toWei("7.408")); // 10-10*172800*0.0000015
+
+      // Advance time by 100 days to accumulate the remaining fees. Exchange rate should accumulate accordingly to
+      // (1000+10)/1000=1.01
+      await advanceTime(8640000);
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.01"));
+
+      // Sending more tokens does not modify the rate.
+      await l1Token.methods.mint(bridgePool.options.address, toWei("100")).send({ from: owner });
+      assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.01"));
     });
   });
 });
