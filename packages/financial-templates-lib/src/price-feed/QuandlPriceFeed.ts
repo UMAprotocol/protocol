@@ -1,10 +1,34 @@
-const { PriceFeedInterface } = require("./PriceFeedInterface");
-const { parseFixed } = require("@uma/common");
-const moment = require("moment");
+import { PriceFeedInterface } from "./PriceFeedInterface";
+import { parseFixed } from "@uma/common";
+import moment from "moment";
+import type { Logger } from "winston";
+import Web3 from "web3";
+import { BN } from "../types";
+import { NetworkerInterface } from "./Networker";
+
+interface HistoricalPricePeriod {
+  openTime: number;
+  closeTime: number;
+  openPrice: BN;
+  closePrice: BN;
+}
+
+interface QuandlResponse {
+  dataset_data?: {
+    data?: [string, ...number[]][];
+  };
+}
 
 // An implementation of PriceFeedInterface that uses the Quandl free API to retrieve prices.
 // API details can be found here: https://docs.quandl.com/docs
-class QuandlPriceFeed extends PriceFeedInterface {
+export class QuandlPriceFeed extends PriceFeedInterface {
+  private readonly uuid: string;
+  private readonly toBN = Web3.utils.toBN;
+  private readonly convertPriceFeedDecimals: (number: number | string | BN) => BN;
+  private currentPrice: BN | null = null;
+  private lastUpdateTime: number | null = null;
+  private historicalPricePeriods: HistoricalPricePeriod[] = [];
+
   /**
    * @notice Constructs the QuandlPriceFeed.
    * @param {Object} logger Winston module used to send logs.
@@ -20,33 +44,21 @@ class QuandlPriceFeed extends PriceFeedInterface {
    *      this number of seconds has passed, it will be a no-op.
    */
   constructor(
-    logger,
-    web3,
-    quandlApiKey,
-    datasetCode,
-    databaseCode,
-    lookback,
-    networker,
-    getTime,
-    priceFeedDecimals = 18,
-    minTimeBetweenUpdates = 43200
-    // 12 hours is a reasonable default since this pricefeed returns daily granularity at best.
+    private readonly logger: Logger,
+    private readonly web3: Web3,
+    private readonly apiKey: string,
+    private readonly datasetCode: string,
+    private readonly databaseCode: string,
+    private readonly lookback: number,
+    private readonly networker: NetworkerInterface,
+    private readonly getTime: () => Promise<number>,
+    private readonly priceFeedDecimals = 18,
+    private readonly minTimeBetweenUpdates = 43200 // 12 hours is a reasonable default since this pricefeed returns daily granularity at best.
   ) {
     super();
-    this.logger = logger;
-    this.web3 = web3;
-
-    this.apiKey = quandlApiKey;
     this.datasetCode = datasetCode.toUpperCase();
     this.databaseCode = databaseCode.toUpperCase();
-    this.lookback = lookback;
     this.uuid = `Quandl-${datasetCode}-${databaseCode}`;
-    this.networker = networker;
-    this.getTime = getTime;
-    this.minTimeBetweenUpdates = minTimeBetweenUpdates;
-    this.priceFeedDecimals = priceFeedDecimals;
-
-    this.toBN = this.web3.utils.toBN;
 
     this.convertPriceFeedDecimals = (number) => {
       // Converts price result to wei
@@ -56,18 +68,18 @@ class QuandlPriceFeed extends PriceFeedInterface {
     };
   }
 
-  getCurrentPrice() {
+  public getCurrentPrice(): BN | null {
     return this.currentPrice;
   }
 
-  async getHistoricalPrice(time, verbose = false) {
+  public async getHistoricalPrice(time: number, verbose = false): Promise<BN> {
     if (this.lastUpdateTime === undefined) {
       throw new Error(`${this.uuid}: undefined lastUpdateTime`);
     }
 
     // Set first price period in `historicalPricePeriods` to first non-null price.
-    let firstPricePeriod;
-    for (let p in this.historicalPricePeriods) {
+    let firstPricePeriod: HistoricalPricePeriod | null = null;
+    for (const p in this.historicalPricePeriods) {
       if (this.historicalPricePeriods[p] && this.historicalPricePeriods[p].openTime) {
         firstPricePeriod = this.historicalPricePeriods[p];
         break;
@@ -95,6 +107,7 @@ class QuandlPriceFeed extends PriceFeedInterface {
     // In this case, the best match for this price is the current price.
     let returnPrice;
     if (match === undefined) {
+      if (this.currentPrice === null) throw new Error(`${this.uuid}: currentPrice is null`);
       returnPrice = this.currentPrice;
       if (verbose) {
         console.group(`\n(${this.datasetCode}:${this.databaseCode}) No OHLC available @ ${time}`);
@@ -127,34 +140,34 @@ class QuandlPriceFeed extends PriceFeedInterface {
     return returnPrice;
   }
 
-  getHistoricalPricePeriods() {
+  public getHistoricalPricePeriods(): [number, BN][] {
     return this.historicalPricePeriods.map((historicalPrice) => {
       return [historicalPrice.closeTime, historicalPrice.closePrice];
     });
   }
-  getLastUpdateTime() {
+  public getLastUpdateTime(): number | null {
     return this.lastUpdateTime;
   }
 
-  getLookback() {
+  public getLookback(): number {
     return this.lookback;
   }
 
-  getPriceFeedDecimals() {
+  public getPriceFeedDecimals(): number {
     return this.priceFeedDecimals;
   }
 
-  async update() {
-    const currentTime = this.getTime();
+  public async update(): Promise<void> {
+    const currentTime = await this.getTime();
 
     // Return early if the last call was too recent.
-    if (this.lastUpdateTime !== undefined && this.lastUpdateTime + this.minTimeBetweenUpdates > currentTime) {
+    if (this.lastUpdateTime !== null && this.lastUpdateTime + this.minTimeBetweenUpdates > currentTime) {
       this.logger.debug({
         at: "QuandlPriceFeed",
         message: "Update skipped because the last one was too recent",
         currentTime: currentTime,
         lastUpdateTimestamp: this.lastUpdateTime,
-        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime,
+        timeRemainingUntilUpdate: this.lastUpdateTime + this.minTimeBetweenUpdates - currentTime,
       });
       return;
     }
@@ -183,7 +196,7 @@ class QuandlPriceFeed extends PriceFeedInterface {
     ].join("");
 
     // 2. Send request.
-    const historyResponse = await this.networker.getJson(url);
+    const historyResponse = (await this.networker.getJson(url)) as QuandlResponse | null | undefined;
 
     // 3. Check responses.
     if (
@@ -237,10 +250,10 @@ class QuandlPriceFeed extends PriceFeedInterface {
     this.lastUpdateTime = currentTime;
   }
 
-  _secondToDateTime(inputSecond) {
+  private _secondToDateTime(inputSecond: number) {
     return moment.unix(inputSecond).format("YYYY-MM-DD");
   }
-  _dateTimeToSecond(inputDateTime, endOfDay = false) {
+  private _dateTimeToSecond(inputDateTime: string, endOfDay = false) {
     if (endOfDay) {
       return moment(inputDateTime, "YYYY-MM-DD").endOf("day").unix();
     } else {
@@ -248,5 +261,3 @@ class QuandlPriceFeed extends PriceFeedInterface {
     }
   }
 }
-
-module.exports = { QuandlPriceFeed };

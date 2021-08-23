@@ -45,7 +45,7 @@ export const aggregateTransactionsAndCall = async (
   return returnData.map((data, i) => _decodeOutput(transactions[i].callData, data, web3));
 };
 
-export const multicallAddressMap = {
+export const multicallAddressMap: { [network: string]: { multicall: string } } = {
   mainnet: { multicall: "0xeefba1e63905ef1d7acba5a8513c70307c1ce441" },
   kovan: { multicall: "0x2cc8688c5f75e365aaeeb4ea8d6a480405a48d2a" },
   rinkeby: { multicall: "0x42ad527de7d4e9d9d011ac45b31d8551f8fe9821" },

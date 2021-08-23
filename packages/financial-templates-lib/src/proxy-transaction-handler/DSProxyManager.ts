@@ -1,7 +1,44 @@
-const assert = require("assert");
+import assert from "assert";
 
-const { getFromBlock, runTransaction } = require("@uma/common");
-class DSProxyManager {
+import { getFromBlock, runTransaction } from "@uma/common";
+import type { Logger } from "winston";
+import Web3 from "web3";
+import type { GasEstimator } from "../helpers/GasEstimator";
+import type { Abi } from "../types";
+import type { DSProxyFactoryWeb3, DSProxyWeb3, DSProxyFactoryWeb3Events } from "@uma/contracts-node";
+import { TransactionReceipt } from "web3-eth";
+
+interface Params {
+  logger: Logger;
+  web3: Web3;
+  gasEstimator: GasEstimator;
+  account: string;
+  dsProxyFactoryAddress: string;
+  dsProxyFactoryAbi: Abi;
+  dsProxyAbi: Abi;
+  availableAccounts?: number;
+}
+
+type TransactionType = Parameters<typeof runTransaction>[0]["transaction"];
+
+export class DSProxyManager {
+  private readonly logger: Logger;
+  private readonly web3: Web3;
+  private readonly account: string;
+  private readonly dsProxyFactoryAddress: string;
+  private readonly dsProxyFactory: DSProxyFactoryWeb3;
+  private readonly gasEstimator: GasEstimator;
+  private readonly dsProxyAbi: Abi;
+  private readonly availableAccounts: number;
+
+  // Helper functions from web3.
+  private readonly isAddress = Web3.utils.isAddress;
+
+  // Multiplier applied to Truffle's estimated gas limit for a transaction to send.
+  private readonly GAS_LIMIT_BUFFER = 1.25;
+  private dsProxy: DSProxyWeb3 | null = null;
+  private dsProxyAddress: string | null = null;
+
   /**
    * @notice Constructs new Liquidator bot.
    * @param {Object} logger Module used to send logs.
@@ -23,7 +60,7 @@ class DSProxyManager {
     dsProxyFactoryAbi,
     dsProxyAbi,
     availableAccounts = 1,
-  }) {
+  }: Params) {
     assert(web3.utils.isAddress(account), "Account needs to be a valid address");
     assert(web3.utils.isAddress(dsProxyFactoryAddress), "dsProxyFactoryAddress needs to be a valid contract address");
     this.logger = logger;
@@ -31,35 +68,33 @@ class DSProxyManager {
     this.web3 = web3;
     this.gasEstimator = gasEstimator;
     this.dsProxyFactoryAddress = dsProxyFactoryAddress;
-    this.dsProxyFactory = new web3.eth.Contract(dsProxyFactoryAbi, dsProxyFactoryAddress);
+    this.dsProxyFactory = (new web3.eth.Contract(
+      dsProxyFactoryAbi,
+      dsProxyFactoryAddress
+    ) as unknown) as DSProxyFactoryWeb3;
     this.dsProxyAbi = dsProxyAbi;
     this.availableAccounts = availableAccounts;
-    this.dsProxy = null;
-    this.dsProxyAddress = null;
-
-    // Helper functions from web3.
-    this.isAddress = this.web3.utils.isAddress;
-
-    // Multiplier applied to Truffle's estimated gas limit for a transaction to send.
-    this.GAS_LIMIT_BUFFER = 1.25;
   }
 
-  getDSProxyFactoryAddress() {
+  public getDSProxyFactoryAddress(): string {
     return this.dsProxyFactoryAddress;
   }
 
-  getDSProxyAddress() {
-    if (!this.dsProxyFactoryAddress) throw new Error("DSProxy not yet set! call initializeDSProxy first!");
+  public getDSProxyAddress(): string {
+    if (!this.dsProxyAddress) throw new Error("DSProxy not yet set! call initializeDSProxy first!");
     return this.dsProxyAddress;
   }
 
   // Load in an existing DSProxy for the account EOA if one already exists or create a new one for the user. Note that
   // the user can provide a dsProxyAddress if they want to override the factory behaviour and load in a DSProxy directly.
-  async initializeDSProxy(dsProxyAddress = null, shouldCreateProxy = true) {
+  public async initializeDSProxy(
+    dsProxyAddress: string | null = null,
+    shouldCreateProxy = true
+  ): Promise<string | null> {
     if (dsProxyAddress) {
       this.logger.debug({ at: "DSProxyManager", message: "Initalizing to a provided DSProxy Address", dsProxyAddress });
       this.dsProxyAddress = dsProxyAddress;
-      this.dsProxy = new this.web3.eth.Contract(this.dsProxyAbi, this.dsProxyAddress);
+      this.dsProxy = (new this.web3.eth.Contract(this.dsProxyAbi, dsProxyAddress) as unknown) as DSProxyWeb3;
       return dsProxyAddress;
     }
     this.logger.debug({
@@ -70,12 +105,15 @@ class DSProxyManager {
 
     if (this.dsProxy && this.dsProxyAddress) return this.dsProxyAddress;
     const fromBlock = await getFromBlock(this.web3);
-    const events = await this.dsProxyFactory.getPastEvents("Created", { fromBlock, filter: { owner: this.account } });
+    const events = await ((this.dsProxyFactory.getPastEvents("Created", {
+      fromBlock,
+      filter: { owner: this.account },
+    }) as unknown) as Promise<DSProxyFactoryWeb3Events.Created[]>);
 
     // The user already has a DSProxy deployed. Load it in from the events.
     if (events.length > 0) {
       this.dsProxyAddress = events[events.length - 1].returnValues.proxy; // use the most recent DSProxy (end index).
-      this.dsProxy = new this.web3.eth.Contract(this.dsProxyAbi, this.dsProxyAddress);
+      this.dsProxy = (new this.web3.eth.Contract(this.dsProxyAbi, this.dsProxyAddress) as unknown) as DSProxyWeb3;
       this.logger.debug({
         at: "DSProxyManager",
         message: "DSProxy has been loaded in for the EOA",
@@ -96,11 +134,12 @@ class DSProxyManager {
       const { receipt, transactionConfig } = await runTransaction({
         web3: this.web3,
         transaction: this.dsProxyFactory.methods.build(),
-        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
+        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
         availableAccounts: this.availableAccounts, // give the run transaction access to additional EOAs, if they are set.
       });
-      this.dsProxyAddress = receipt.events.Created.returnValues.proxy;
-      this.dsProxy = new this.web3.eth.Contract(this.dsProxyAbi, this.dsProxyAddress);
+      if (!receipt?.events?.Created?.returnValues?.proxy) throw new Error("Proxy address not found in log");
+      this.dsProxyAddress = receipt.events.Created.returnValues.proxy as string;
+      this.dsProxy = (new this.web3.eth.Contract(this.dsProxyAbi, this.dsProxyAddress) as unknown) as DSProxyWeb3;
       this.logger.info({
         at: "DSProxyManager",
         message: "DSProxy deployed for your EOA 🚀",
@@ -112,8 +151,9 @@ class DSProxyManager {
     }
     return this.dsProxyAddress;
   }
+
   // Encode with `yourTruffleContractInstance.yourMethod(params1,param2).encodeABI()
-  async callFunctionOnExistingLibrary(libraryAddress, callData) {
+  public async callFunctionOnExistingLibrary(libraryAddress: string, callData: string): Promise<TransactionReceipt> {
     assert(this.dsProxy, "DSProxy must first be initialized to use this method");
     assert(this.isAddress(libraryAddress), "Library address must be valid address");
     assert(typeof callData === "string", "Call data must be a string");
@@ -126,8 +166,12 @@ class DSProxyManager {
     await this.gasEstimator.update();
     const { receipt, returnValue, transactionConfig } = await runTransaction({
       web3: this.web3,
-      transaction: this.dsProxy.methods["execute(address,bytes)"](libraryAddress, callData),
-      transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
+      // Have to hard cast this due to minor issues with types and versions.
+      transaction: (this.dsProxy.methods["execute(address,bytes)"](
+        libraryAddress,
+        callData
+      ) as unknown) as TransactionType,
+      transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
       availableAccounts: this.availableAccounts,
     });
 
@@ -143,7 +187,7 @@ class DSProxyManager {
     return receipt;
   }
   // Extract call code using the `.abi` syntax on a truffle object or the `getABI(contractType,contractVersion)` from common.
-  async callFunctionOnNewlyDeployedLibrary(callCode, callData) {
+  public async callFunctionOnNewlyDeployedLibrary(callCode: string, callData: string): Promise<TransactionReceipt> {
     assert(this.dsProxy, "DSProxy must first be initialized to use this method");
     assert(typeof callCode === "string", "Call code must be a string");
     assert(typeof callData === "string", "Call data must be a string");
@@ -157,8 +201,8 @@ class DSProxyManager {
     await this.gasEstimator.update();
     const { receipt, returnValue, transactionConfig } = await runTransaction({
       web3: this.web3,
-      transaction: this.dsProxy.methods["execute(bytes,bytes)"](callCode, callData),
-      transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
+      transaction: (this.dsProxy.methods["execute(bytes,bytes)"](callCode, callData) as unknown) as TransactionType,
+      transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
       availableAccounts: this.availableAccounts,
     });
 
@@ -173,5 +217,3 @@ class DSProxyManager {
     return receipt;
   }
 }
-
-module.exports = { DSProxyManager };

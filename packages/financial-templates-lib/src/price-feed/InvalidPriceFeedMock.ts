@@ -8,9 +8,9 @@ export class InvalidPriceFeedMock extends PriceFeedInterface {
   private currentPrice: BN | null = null;
   private lastUpdateTime: number | null = null;
   constructor(
-    private readonly logger: Logger,
-    private readonly web3: Web3,
-    private readonly getTime: () => Promise<number>,
+    private readonly logger?: Logger,
+    private readonly web3?: Web3,
+    private readonly getTime?: () => Promise<number>,
     private readonly shouldUpdateThrow = false,
     private readonly priceFeedDecimals = 18
   ) {

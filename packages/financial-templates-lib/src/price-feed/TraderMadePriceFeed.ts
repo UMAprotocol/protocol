@@ -1,7 +1,40 @@
-const { PriceFeedInterface } = require("./PriceFeedInterface");
-const { parseFixed } = require("@uma/common");
-const moment = require("moment");
-const assert = require("assert");
+import { PriceFeedInterface } from "./PriceFeedInterface";
+import { parseFixed } from "@uma/common";
+import moment from "moment";
+import assert from "assert";
+import type { Logger } from "winston";
+import Web3 from "web3";
+import { BN } from "../types";
+import { NetworkerInterface } from "./Networker";
+
+interface TraderMadeLatestResponse {
+  endpoint: "live";
+  quotes: {
+    ask: number;
+    base_currency: string;
+    bid: number;
+    mid: number;
+    quote_currency: string;
+  }[];
+  requested_time: string;
+  timestamp: number;
+}
+
+interface TraderMadeHistoricalResponse {
+  base_currency: string;
+  end_date: string;
+  endpoint: "timeseries";
+  quote_currency: string;
+  quotes: {
+    close: number;
+    date: string;
+    high: number;
+    low: number;
+    open: number;
+  }[];
+  request_time: string;
+  start_date: string;
+}
 
 // Constants
 const VALID_OHLC_PERIODS = [1, 5, 10, 15, 30];
@@ -9,7 +42,14 @@ const MAX_MINUTE_LOOKBACK = 172800; // 2 days
 const MAX_HOURLY_LOOKBACK = 5184000; // 2 months
 
 // An implementation of PriceFeedInterface that uses TraderMade api to retrieve prices.
-class TraderMadePriceFeed extends PriceFeedInterface {
+export class TraderMadePriceFeed extends PriceFeedInterface {
+  private readonly uuid: string;
+  private readonly toBN = Web3.utils.toBN;
+  private readonly convertPriceFeedDecimals: (number: string | number | BN) => BN;
+  private currentPrice: BN | null = null;
+  private historicalPricesMinute: { closePrice: BN; openTime: number; closeTime: number }[] = [];
+  private historicalPricesHourly: { closePrice: BN; openTime: number; closeTime: number }[] = [];
+  private lastUpdateTime: number | null = null;
   /**
    * @notice Constructs the TraderMadePriceFeed.
    * @param {Object} logger Winston module used to send logs.
@@ -44,42 +84,25 @@ class TraderMadePriceFeed extends PriceFeedInterface {
    *                 one of {1, 5, 10, 15, 30}
    */
   constructor(
-    logger,
-    web3,
-    apiKey,
-    pair,
-    minuteLookback,
-    hourlyLookback,
-    networker,
-    getTime,
-    minTimeBetweenUpdates,
-    priceFeedDecimals = 18,
-    ohlcPeriod = 1
+    private readonly logger: Logger,
+    private readonly web3: Web3,
+    private readonly apiKey: string,
+    private readonly pair: string,
+    private readonly minuteLookback: number,
+    private readonly hourlyLookback: number,
+    private readonly networker: NetworkerInterface,
+    private readonly getTime: () => Promise<number>,
+    private readonly minTimeBetweenUpdates: number,
+    private readonly priceFeedDecimals = 18,
+    private readonly ohlcPeriod = 1
   ) {
     super();
-    this.logger = logger;
-    this.web3 = web3;
-
-    this.apiKey = apiKey;
-    this.pair = pair;
 
     // Sanitize API specific parameters:
     assert(VALID_OHLC_PERIODS.includes(ohlcPeriod), `ohlcPeriod must be one of ${JSON.stringify(VALID_OHLC_PERIODS)}`);
     assert(minuteLookback <= MAX_MINUTE_LOOKBACK, `minuteLookback must be < ${MAX_MINUTE_LOOKBACK}`);
     assert(hourlyLookback <= MAX_HOURLY_LOOKBACK, `hourlyLookback must be < ${MAX_HOURLY_LOOKBACK}`);
-
-    this.minuteLookback = minuteLookback;
-    this.hourlyLookback = hourlyLookback;
     this.uuid = `TraderMade-${pair}`;
-    this.networker = networker;
-    this.getTime = getTime;
-    this.minTimeBetweenUpdates = minTimeBetweenUpdates;
-
-    this.toBN = this.web3.utils.toBN;
-    this.ohlcPeriod = ohlcPeriod;
-
-    this.priceFeedDecimals = priceFeedDecimals;
-    this.ohlcPeriod = ohlcPeriod;
 
     this.convertPriceFeedDecimals = (number) => {
       // Converts price result to wei
@@ -88,13 +111,13 @@ class TraderMadePriceFeed extends PriceFeedInterface {
     };
   }
 
-  getCurrentPrice() {
+  public getCurrentPrice(): BN | null {
     return this.currentPrice;
   }
 
-  async getHistoricalPrice(time, verbose = false) {
-    if (this.lastUpdateTime === undefined) {
-      throw new Error(`${this.uuid}: undefined lastUpdateTime`);
+  public async getHistoricalPrice(time: number, verbose = false): Promise<BN> {
+    if (this.lastUpdateTime === null || this.currentPrice === null) {
+      throw new Error(`${this.uuid}: undefined lastUpdateTime or currentPrice`);
     }
 
     // Set first price time in `historicalPrices` to first non-null price.
@@ -104,10 +127,10 @@ class TraderMadePriceFeed extends PriceFeedInterface {
     // on the longer lookback window of the hourly timeseries. (The lookback limit for the minute inverval is 2 days, while
     // the limit for the hourly interval is 2 months). This fall back logic will only work if `this.hourlyLookback` is
     // configured long enough such that there is an hourly price available.
-    let historicalPricesToCheck = this.historicalPricesMinute
+    const historicalPricesToCheck = this.historicalPricesMinute
       ? this.historicalPricesMinute
       : this.historicalPricesHourly;
-    for (let p in historicalPricesToCheck) {
+    for (const p in historicalPricesToCheck) {
       if (historicalPricesToCheck[p] && historicalPricesToCheck[p].openTime) {
         firstPriceTime = historicalPricesToCheck[p];
         break;
@@ -163,39 +186,39 @@ class TraderMadePriceFeed extends PriceFeedInterface {
     return returnPrice;
   }
 
-  getHistoricalPricePeriods() {
+  public getHistoricalPricePeriods(): { closePrice: BN; openTime: number; closeTime: number }[] {
     return this.historicalPricesHourly;
   }
 
-  getLastUpdateTime() {
+  public getLastUpdateTime(): number | null {
     return this.lastUpdateTime;
   }
 
-  getMinuteLookback() {
+  public getMinuteLookback(): number {
     return this.minuteLookback;
   }
 
-  getHourlyLookback() {
+  public getHourlyLookback(): number {
     return this.hourlyLookback;
   }
 
-  getPriceFeedDecimals() {
+  public getPriceFeedDecimals(): number {
     return this.priceFeedDecimals;
   }
 
   // Documentation for `/live` endpoint found here:
   // - https://tradermade.com/exchange-rate-api/documentation#live_rates
-  async updateLatest(lastUpdateTime) {
-    const currentTime = this.getTime();
+  public async updateLatest(lastUpdateTime: number | null): Promise<void> {
+    const currentTime = await this.getTime();
 
     // Return early if the last call was too recent.
-    if (this.lastUpdateTime !== undefined && lastUpdateTime + this.minTimeBetweenUpdates > currentTime) {
+    if (lastUpdateTime !== null && lastUpdateTime + this.minTimeBetweenUpdates > currentTime) {
       this.logger.debug({
         at: "TraderMadePriceFeed",
         message: "Update skipped because the last one was too recent",
         currentTime: currentTime,
         lastUpdateTimestamp: this.lastUpdateTime,
-        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime,
+        timeRemainingUntilUpdate: lastUpdateTime + this.minTimeBetweenUpdates - currentTime,
       });
       return;
     }
@@ -211,7 +234,10 @@ class TraderMadePriceFeed extends PriceFeedInterface {
     const priceUrl = `https://marketdata.tradermade.com/api/v1/live?currency=${this.pair}&api_key=${this.apiKey}`;
 
     // 2. Send requests.
-    const priceResponse = await this.networker.getJson(priceUrl);
+    const priceResponse = (await this.networker.getJson(priceUrl)) as
+      | Partial<TraderMadeLatestResponse>
+      | null
+      | undefined;
 
     // 4. Parse results.
     // Return data structure:
@@ -230,6 +256,7 @@ class TraderMadePriceFeed extends PriceFeedInterface {
     //     "timestamp": 1611624593
     //   }
     // For more info, see: https://marketdata.tradermade.com/documentation
+    if (!priceResponse?.quotes?.[0]?.ask) throw new Error("No ask price in response!");
     const newPrice = this.convertPriceFeedDecimals(priceResponse.quotes[0].ask);
 
     // 5. Store results.
@@ -239,11 +266,11 @@ class TraderMadePriceFeed extends PriceFeedInterface {
 
   // Documentation for the `/timeseries` endpoint found here:
   // - https://tradermade.com/exchange-rate-api/documentation#timeseries
-  async updateMinute(lastUpdateTime) {
-    const currentTime = this.getTime();
+  public async updateMinute(lastUpdateTime: number | null): Promise<void> {
+    const currentTime = await this.getTime();
 
     // Return early if the last call was too recent.
-    if (this.lastUpdateTime !== undefined && lastUpdateTime + this.minTimeBetweenUpdates > currentTime) {
+    if (lastUpdateTime !== null && lastUpdateTime + this.minTimeBetweenUpdates > currentTime) {
       return;
     }
 
@@ -265,10 +292,13 @@ class TraderMadePriceFeed extends PriceFeedInterface {
     const ohlcMinuteUrl = `https://marketdata.tradermade.com/api/v1/timeseries?currency=${this.pair}&api_key=${this.apiKey}&start_date=${startMinuteDate}&end_date=${endDate}&format=records&interval=minute&period=${this.ohlcPeriod}`;
 
     // 2. Send requests.
-    const ohlcMinuteResponse = await this.networker.getJson(ohlcMinuteUrl);
+    const ohlcMinuteResponse = (await this.networker.getJson(ohlcMinuteUrl)) as
+      | Partial<TraderMadeHistoricalResponse>
+      | null
+      | undefined;
 
     // 3. Check responses.
-    if (!ohlcMinuteResponse || ohlcMinuteResponse.quotes.length === 0 || !ohlcMinuteResponse.quotes[0]?.close) {
+    if (!ohlcMinuteResponse?.quotes?.[0]?.close) {
       throw new Error(
         `🚨Could not parse ohlc minute price result from url ${ohlcMinuteUrl}: ${JSON.stringify(ohlcMinuteResponse)}`
       );
@@ -310,11 +340,11 @@ class TraderMadePriceFeed extends PriceFeedInterface {
     this.historicalPricesMinute = newHistoricalPricesMinute;
   }
 
-  async updateHourly(lastUpdateTime) {
-    const currentTime = this.getTime();
+  public async updateHourly(lastUpdateTime: number | null): Promise<void> {
+    const currentTime = await this.getTime();
 
     // Return early if the last call was too recent.
-    if (this.lastUpdateTime !== undefined && lastUpdateTime + this.minTimeBetweenUpdates > currentTime) {
+    if (this.lastUpdateTime !== null && lastUpdateTime + this.minTimeBetweenUpdates > currentTime) {
       return;
     }
 
@@ -335,11 +365,14 @@ class TraderMadePriceFeed extends PriceFeedInterface {
     const ohlcHourlyUrl = `https://marketdata.tradermade.com/api/v1/timeseries?currency=${this.pair}&api_key=${this.apiKey}&start_date=${startHourlyDate}&end_date=${endDate}&format=records&interval=hourly`;
 
     // 2. Send requests.
-    const ohlcHourlyResponse = await this.networker.getJson(ohlcHourlyUrl);
+    const ohlcHourlyResponse = (await this.networker.getJson(ohlcHourlyUrl)) as
+      | Partial<TraderMadeHistoricalResponse>
+      | null
+      | undefined;
 
     // 3. Check responses.
 
-    if (!ohlcHourlyResponse || ohlcHourlyResponse.quotes.length === 0 || !ohlcHourlyResponse.quotes[0].close) {
+    if (!ohlcHourlyResponse?.quotes?.[0]?.close) {
       throw new Error(
         `🚨Could not parse ohlc hourly price result from url ${ohlcHourlyUrl}: ${JSON.stringify(ohlcHourlyResponse)}`
       );
@@ -381,7 +414,7 @@ class TraderMadePriceFeed extends PriceFeedInterface {
     this.historicalPricesHourly = newHistoricalPricesHourly;
   }
 
-  async update() {
+  public async update(): Promise<void> {
     const lastUpdateTime = this.lastUpdateTime;
     await this.updateLatest(lastUpdateTime);
 
@@ -427,13 +460,15 @@ class TraderMadePriceFeed extends PriceFeedInterface {
     }
   }
 
-  _secondToDateTime(inputSecond) {
+  public getLookback(): number {
+    return Math.max(this.hourlyLookback, this.minuteLookback);
+  }
+
+  private _secondToDateTime(inputSecond: number) {
     return moment.unix(inputSecond).format("YYYY-MM-DD-HH:mm");
   }
 
-  _dateTimeToSecond(inputDateTime) {
+  private _dateTimeToSecond(inputDateTime: string) {
     return moment(inputDateTime, "YYYY-MM-DD HH:mm").unix();
   }
 }
-
-module.exports = { TraderMadePriceFeed };
