@@ -1,7 +1,6 @@
 const winston = require("winston");
 const sinon = require("sinon");
 const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
 const { getContract } = hre;
 const { assert } = require("chai");
 
@@ -100,22 +99,31 @@ describe("OptimisticOracle: proposer.js", function () {
 
   before(async function () {
     [owner, requester, randoProposer, disputer, botRunner] = await web3.eth.getAccounts();
-    await runDefaultFixture(hre);
 
-    finder = await Finder.deployed();
-    identifierWhitelist = await IdentifierWhitelist.deployed();
-    collateralWhitelist = await AddressWhitelist.deployed();
-    store = await Store.deployed();
-    mockOracle = await MockOracle.deployed();
-    timer = await Timer.deployed();
+    finder = await Finder.new().send({ from: owner });
+    timer = await Timer.new().send({ from: owner });
+    identifierWhitelist = await IdentifierWhitelist.new().send({ from: owner });
+    collateralWhitelist = await AddressWhitelist.new().send({ from: owner });
+    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.options.address).send({ from: owner });
+    mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({ from: owner });
 
     // Whitelist test identifiers we can use to make default price requests.
     for (let i = 0; i < identifiersToTest.length; i++) {
       await identifierWhitelist.methods.addSupportedIdentifier(identifiersToTest[i]).send({ from: owner });
     }
 
+    // Add deployed contracts to finder.
     await finder.methods
       .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address)
+      .send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.options.address)
+      .send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.AddressWhitelist), collateralWhitelist.options.address)
+      .send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
       .send({ from: owner });
   });
 

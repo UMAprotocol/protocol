@@ -4,15 +4,17 @@ const Main = require("../index.js");
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
 const sinon = require("sinon");
+const assert = require("chai").assert;
 
 const hre = require("hardhat");
-const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
-const { assert } = require("chai");
+const { getContract, deployments } = hre;
 
 const { SpyTransport, spyLogLevel, spyLogIncludes } = require("@uma/financial-templates-lib");
 
 const OptimisticOracle = getContract("OptimisticOracle");
+const MockOracle = getContract("MockOracleAncillary");
+const Finder = getContract("Finder");
+const Timer = getContract("Timer");
 
 describe("index.js", function () {
   let spy;
@@ -23,10 +25,24 @@ describe("index.js", function () {
   let errorRetriesTimeout = 0.1; // 100 milliseconds between performing retries
 
   let optimisticOracle;
+  let finder;
+  let timer;
+  let mockOracle;
 
   before(async function () {
-    await runDefaultFixture(hre);
-    optimisticOracle = await OptimisticOracle.deployed();
+    const accounts = await web3.eth.getAccounts();
+    finder = await Finder.new().send({ from: accounts[0] });
+    timer = await Timer.new().send({ from: accounts[0] });
+    mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({ from: accounts[0] });
+
+    // Deploy a new OptimisticOracle.
+    optimisticOracle = await OptimisticOracle.new("120", finder.options.address, timer.options.address).send({
+      from: accounts[0],
+    });
+
+    // Add deployed addresses to hardhat deployments so they are available from `getAddress`.
+    deployments.save("OptimisticOracle", { address: optimisticOracle.options.address, abi: OptimisticOracle.abi });
+    deployments.save("Voting", { address: mockOracle.options.address, abi: MockOracle.abi });
   });
 
   it("Completes one iteration without logging any errors", async function () {
