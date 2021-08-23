@@ -73,9 +73,7 @@ contract("ServerlessHub.js", function (accounts) {
     defaultChainId = await web3.eth.getChainId();
 
     collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractDeployer });
-    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, {
-      from: contractDeployer,
-    });
+    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractDeployer });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
@@ -129,11 +127,7 @@ contract("ServerlessHub.js", function (accounts) {
 
     uniswap = await UniswapV2Mock.new();
 
-    defaultPricefeedConfig = {
-      type: "test",
-      currentPrice: "1",
-      historicalPrice: "1",
-    };
+    defaultPricefeedConfig = { type: "test", currentPrice: "1", historicalPrice: "1" };
 
     // Set two uniswap prices to give it a little history.
     await uniswap.setPrice(toWei("1"), toWei("1"));
@@ -229,10 +223,7 @@ contract("ServerlessHub.js", function (accounts) {
     setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
     setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
 
-    const validBody = {
-      bucket: testBucket,
-      configFile: testConfigFile,
-    };
+    const validBody = { bucket: testBucket, configFile: testConfigFile };
 
     const testHubPort = 8082; // create a separate port to run this specific test on.
     // Create a hub instance with invalid spoke port. This will force the spoke to reject
@@ -277,10 +268,7 @@ contract("ServerlessHub.js", function (accounts) {
     setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
     setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
 
-    const validBody = {
-      bucket: testBucket,
-      configFile: testConfigFile,
-    };
+    const validBody = { bucket: testBucket, configFile: testConfigFile };
 
     // start the timoutSpokemock on a new port. Set the timeout for the response to be 5 seconds.
     const timeoutSpokeInstance = await timeoutSpoke.Poll(8083, 5);
@@ -354,10 +342,7 @@ contract("ServerlessHub.js", function (accounts) {
     setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
     setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
 
-    const validBody = {
-      bucket: testBucket,
-      configFile: testConfigFile,
-    };
+    const validBody = { bucket: testBucket, configFile: testConfigFile };
 
     const validResponse = await sendHubRequest(validBody);
     assert.equal(validResponse.res.statusCode, 200); // no error code
@@ -517,10 +502,7 @@ contract("ServerlessHub.js", function (accounts) {
     setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
     setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
 
-    const body = {
-      bucket: testBucket,
-      configFile: testConfigFile,
-    };
+    const body = { bucket: testBucket, configFile: testConfigFile };
 
     await sendHubRequest(body);
 
@@ -606,10 +588,7 @@ contract("ServerlessHub.js", function (accounts) {
     setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
     setEnvironmentVariable(`lastQueriedBlockNumber-${666}-${testConfigFile}`, startingBlockNumber);
 
-    const validBody = {
-      bucket: testBucket,
-      configFile: testConfigFile,
-    };
+    const validBody = { bucket: testBucket, configFile: testConfigFile };
 
     const validResponse = await sendHubRequest(validBody);
     assert.equal(validResponse.res.statusCode, 200); // no error code
@@ -617,5 +596,92 @@ contract("ServerlessHub.js", function (accounts) {
     // Check for two hub logs caching each unique chain ID seen:
     assert.isTrue(spyLogIncludes(hubSpy, 3, defaultChainId));
     assert.isTrue(spyLogIncludes(hubSpy, 3, alternateChainId));
+  });
+
+  it("ServerlessHub can detects errors if the spoke process has a blank stdout or missing `started`", async function () {
+    // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
+    // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be
+    // used by a user running the hub-spoke on their local machine.
+    const testBucket = "test-bucket"; // name of the config bucket.
+    const testConfigFile = "test-config-file"; // name of the config file.
+    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+
+    const hubConfig = {
+      testServerlessMonitor: {
+        // Creates no error.
+        serverlessCommand: "yarn --silent monitors --network test",
+        environmentVariables: {
+          CUSTOM_NODE_URL: web3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
+      testServerlessMonitorError: {
+        // Create an error in the execution path. Child process spoke will crash.
+        serverlessCommand: "echo ''",
+        environmentVariables: {
+          CUSTOM_NODE_URL: web3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          PRICE_FEED_CONFIG: defaultPricefeedConfig,
+        },
+      },
+      testServerlessMonitorError2: {
+        // Create an error in the execution path. Child process will run but will throw an error.
+        serverlessCommand: "echo 'something random but not the magic bot start key word'",
+        environmentVariables: {
+          CUSTOM_NODE_URL: web3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: "0x0000000000000000000000000000000000000000",
+          PRICE_FEED_CONFIG: defaultPricefeedConfig,
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
+    };
+    // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
+    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
+
+    const errorBody = { bucket: testBucket, configFile: testConfigFile };
+
+    const errorResponse = await sendHubRequest(errorBody);
+
+    assert.equal(errorResponse.res.statusCode, 500); // error code
+    const responseObject = JSON.parse(errorResponse.res.text); // extract json response
+
+    // Check that the http response contains correct logs
+    assert.equal(responseObject.message, "Some spoke calls returned errors"); // Final text in monitor loop.
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "Some spoke calls returned errors")); // The hub should have exited correctly.
+    assert.equal(lastSpyLogLevel(hubSpy), "error"); // most recent log level should be "error"
+    assert.equal(Object.keys(responseObject.output.errorOutputs).length, 2); // should be 2 errors
+    assert.equal(Object.keys(responseObject.output.validOutputs).length, 1); // should be 1 valid output
+
+    // Check the valid outputs.
+    assert.equal(responseObject.output.validOutputs["testServerlessMonitor"].botIdentifier, "testServerlessMonitor"); // Check that the valid output is the expected bot
+    assert.isTrue(
+      responseObject.output.validOutputs["testServerlessMonitor"].execResponse.stdout.includes(
+        "End of serverless execution loop - terminating process"
+      )
+    );
+
+    // Check the error outputs form the hub logger and the hub response.
+    assert.equal(
+      responseObject.output.errorOutputs["testServerlessMonitorError"].botIdentifier,
+      "testServerlessMonitorError"
+    ); // Check that the valid output is the expected bot
+    assert.equal(
+      responseObject.output.errorOutputs["testServerlessMonitorError2"].botIdentifier,
+      "testServerlessMonitorError2"
+    ); // Check that the valid output is the expected bot
+    assert.isTrue(
+      JSON.stringify(responseObject.output.errorOutputs["testServerlessMonitorError"]).includes("empty stdout")
+    ); // check that the catcher for empty standouts correctly caught the error
+    assert.isTrue(
+      JSON.stringify(responseObject.output.errorOutputs["testServerlessMonitorError2"]).includes(
+        "missing `Started` keyword"
+      )
+    ); // check the catcher for missing `Started` key words, sent at the booting sequency of all bots, is captured correctly.
   });
 });

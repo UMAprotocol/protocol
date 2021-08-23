@@ -13,9 +13,7 @@ const func = async function (hre) {
   await deploy("ExpiringMultiPartyCreator", {
     from: deployer,
     args: [Finder.address, TokenFactory.address, Timer.address],
-    libraries: {
-      ExpiringMultiPartyLib: EMPLib.address,
-    },
+    libraries: { ExpiringMultiPartyLib: EMPLib.address },
     log: true,
   });
 };

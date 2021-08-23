@@ -7,7 +7,7 @@ import join from "url-join";
 // This is a basic client to allow you to call into the server in the form of
 // client(action,arg1,arg2,...etc) => Promise<Json>.
 // see tests for usage.
-export default function Client(host: string) {
+export default function Client(host: string, channel = "") {
   assert(host, "requires api host url");
 
   const defaultOptions = {
@@ -20,7 +20,7 @@ export default function Client(host: string) {
   };
 
   async function call(action: string, ...args: Json[]): Promise<Json> {
-    const url = join(host, action);
+    const url = join(host, channel, action);
     const options = {
       ...defaultOptions,
       body: JSON.stringify(args),

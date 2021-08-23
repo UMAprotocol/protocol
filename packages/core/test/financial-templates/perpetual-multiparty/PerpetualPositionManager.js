@@ -53,7 +53,7 @@ describe("PerpetualPositionManager", function () {
   const startTimestamp = Math.floor(Date.now() / 1000);
   const priceFeedIdentifier = utf8ToHex("TEST_IDENTIIFER");
   const fundingRateRewardRate = toWei("0.000001");
-  const fundingRateFeedIdentifier = utf8ToHex("TEST_FUNDING_IDENTIFIER"); // example identifier for funding rate.
+  const fundingRateFeedIdentifier = utf8ToHex("TEST_FUNDING"); // example identifier for funding rate.
   const maxFundingRate = toWei("0.00001");
   const minFundingRate = toWei("-0.00001");
   const minSponsorTokens = "5";
@@ -127,9 +127,9 @@ describe("PerpetualPositionManager", function () {
       .changeImplementationAddress(mockOracleInterfaceName, mockOracle.options.address)
       .send({ from: contractDeployer });
 
-    await finder.methods.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address).send({
-      from: contractDeployer,
-    });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address)
+      .send({ from: contractDeployer });
 
     configStore = await ConfigStore.new(
       {
@@ -567,11 +567,7 @@ describe("PerpetualPositionManager", function () {
     assert(await didContractThrow(positionManager.methods.cancelWithdrawal().send({ from: sponsor })));
 
     // Request to withdraw remaining collateral. Post-fees, this amount should get reduced to the remaining collateral.
-    await positionManager.methods
-      .requestWithdrawal({
-        rawValue: toWei("125"),
-      })
-      .send({ from: sponsor });
+    await positionManager.methods.requestWithdrawal({ rawValue: toWei("125") }).send({ from: sponsor });
     // Setting fees to 0.00001 per second will charge (0.00001 * 1000) = 0.01 or 1 % of the collateral.
     await store.methods.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.00001") }).send({ from: accounts[0] });
     await positionManager.methods
@@ -788,11 +784,7 @@ describe("PerpetualPositionManager", function () {
     // would leave the position at a size of 2 wei, which is less than acceptable minimum.
     assert(
       await didContractThrow(
-        positionManager.methods
-          .repay({
-            rawValue: toBN(toWei("60")).subn(3).toString(),
-          })
-          .send({ from: sponsor })
+        positionManager.methods.repay({ rawValue: toBN(toWei("60")).subn(3).toString() }).send({ from: sponsor })
       )
     );
 
@@ -801,9 +793,7 @@ describe("PerpetualPositionManager", function () {
     assert(
       await didContractThrow(
         positionManager.methods
-          .repay({
-            rawValue: toBN(toWei("60")).sub(toBN(minSponsorTokens)).toString(),
-          })
+          .repay({ rawValue: toBN(toWei("60")).sub(toBN(minSponsorTokens)).toString() })
           .send({ from: sponsor })
       )
     );
@@ -811,9 +801,7 @@ describe("PerpetualPositionManager", function () {
 
     // Can repay up to the minimum sponsor size
     await positionManager.methods
-      .repay({
-        rawValue: toBN(toWei("60")).sub(toBN(minSponsorTokens)).toString(),
-      })
+      .repay({ rawValue: toBN(toWei("60")).sub(toBN(minSponsorTokens)).toString() })
       .send({ from: sponsor });
 
     assert.equal(

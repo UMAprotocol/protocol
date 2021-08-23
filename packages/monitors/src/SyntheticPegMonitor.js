@@ -320,23 +320,14 @@ class SyntheticPegMonitor {
     try {
       pricefeedLatestPrice = pricefeed.getCurrentPrice();
     } catch (error) {
-      this.logger.debug({
-        at: "SyntheticPegMonitor",
-        message: "Issue getting current price",
-        error,
-      });
+      this.logger.debug({ at: "SyntheticPegMonitor", message: "Issue getting current price", error });
       pricefeedLatestPrice = null;
     }
 
     // `_calculateHistoricalVolatility` will throw an error if it does not return successfully.
     const volData = await this._calculateHistoricalVolatility(pricefeed, latestTime, this.volatilityWindow);
 
-    return {
-      pricefeedVolatility: volData.volatility,
-      pricefeedLatestPrice,
-      min: volData.min,
-      max: volData.max,
-    };
+    return { pricefeedVolatility: volData.volatility, pricefeedLatestPrice, min: volData.min, max: volData.max };
   }
 
   _calculateDeviationError(observedValue, expectedValue) {
@@ -411,6 +402,4 @@ class SyntheticPegMonitor {
   }
 }
 
-module.exports = {
-  SyntheticPegMonitor,
-};
+module.exports = { SyntheticPegMonitor };

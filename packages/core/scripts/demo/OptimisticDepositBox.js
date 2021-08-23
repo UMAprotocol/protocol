@@ -81,10 +81,7 @@ const deploy = async () => {
     finder.address,
     priceFeedIdentifier,
     Timer.address,
-    {
-      gas: 4712388,
-      gasPrice: 100000000000,
-    }
+    { gas: 4712388, gasPrice: 100000000000 }
   );
   console.log("- Deployed a new OptimisticDepositBox");
   console.groupEnd();

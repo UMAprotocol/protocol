@@ -29,8 +29,5 @@ module.exports = (host = "https://api.coingecko.com") => {
     else throw new Error("Something went wrong fetching coingecko prices!");
   }
 
-  return {
-    call,
-    getHistoricContractPrices,
-  };
+  return { call, getHistoricContractPrices };
 };

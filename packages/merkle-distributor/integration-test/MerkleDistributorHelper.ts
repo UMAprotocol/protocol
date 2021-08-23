@@ -2,7 +2,6 @@
 // they require privileged information(such as cloudflare API keys) and they run against the kovan test network.
 // They are simply meant to showcase the correct behavior of the helpers under a number of different situations and inputs.
 
-const { ethers } = require("ethers");
 const { assert } = require("chai");
 
 import { createLeaf, createMerkleDistributionProofs, getClaimsForAddress } from "../src/MerkleDistributorHelper";

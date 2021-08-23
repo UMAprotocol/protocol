@@ -12,3 +12,5 @@ dist
 cache
 types
 contract-types
+generated
+typechain

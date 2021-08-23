@@ -168,6 +168,4 @@ class BalancerPriceFeed extends PriceFeedInterface {
   }
 }
 
-module.exports = {
-  BalancerPriceFeed,
-};
+module.exports = { BalancerPriceFeed };

@@ -26,10 +26,7 @@ contract("LPPriceFeed.js", function (accounts) {
     pool.addMinter(owner);
     token.addMinter(owner);
 
-    dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+    dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
     lpPriceFeed = new LPPriceFeed({
       logger: dummyLogger,

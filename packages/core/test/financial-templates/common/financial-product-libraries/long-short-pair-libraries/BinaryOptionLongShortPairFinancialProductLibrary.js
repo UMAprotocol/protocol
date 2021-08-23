@@ -77,33 +77,27 @@ describe("BinaryOptionLongShortPairFinancialProductLibrary", function () {
     it("Lower than lower bound should return 0", async () => {
       const expiraryTokensForCollateral = await binaryLSPFPL.methods
         .percentageLongCollateralAtExpiry(toWei("2500"))
-        .call({
-          from: expiringContractMock.options.address,
-        });
+        .call({ from: expiringContractMock.options.address });
       assert.equal(expiraryTokensForCollateral.toString(), toWei("0"));
     });
     it("equal to upper bound should return 1", async () => {
       const expiraryTokensForCollateral = await binaryLSPFPL.methods
         .percentageLongCollateralAtExpiry(toWei("3000"))
-        .call({
-          from: expiringContractMock.options.address,
-        });
+        .call({ from: expiringContractMock.options.address });
       assert.equal(expiraryTokensForCollateral.toString(), toWei("1"));
     });
     it("Higher than upper bound should return 1", async () => {
       const expiraryTokensForCollateral = await binaryLSPFPL.methods
         .percentageLongCollateralAtExpiry(toWei("3500"))
-        .call({
-          from: expiringContractMock.options.address,
-        });
+        .call({ from: expiringContractMock.options.address });
       assert.equal(expiraryTokensForCollateral.toString(), toWei("1"));
     });
 
     it("Arbitrary price between bounds should return correctly", async () => {
       for (const price of [toWei("1000"), toWei("2000"), toWei("3000"), toWei("4000"), toWei("5000"), toWei("10000")]) {
-        const expiraryTokensForCollateral = await binaryLSPFPL.methods.percentageLongCollateralAtExpiry(price).call({
-          from: expiringContractMock.options.address,
-        });
+        const expiraryTokensForCollateral = await binaryLSPFPL.methods
+          .percentageLongCollateralAtExpiry(price)
+          .call({ from: expiringContractMock.options.address });
         const expectedPrice = toBN(price).gte(toBN(strikePrice)) ? toWei("1") : toWei("0");
 
         assert.equal(expiraryTokensForCollateral.toString(), expectedPrice.toString());

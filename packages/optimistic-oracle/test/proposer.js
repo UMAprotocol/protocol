@@ -206,9 +206,7 @@ describe("OptimisticOracle: proposer.js", function () {
       };
       // For this test, we'll dispute any proposals that are not equal to historical price up to a
       // 10% margin of error
-      let optimisticOracleProposerConfig = {
-        disputePriceErrorPercent: 0.1,
-      };
+      let optimisticOracleProposerConfig = { disputePriceErrorPercent: 0.1 };
       proposer = new OptimisticOracleProposer({
         logger: spyLogger,
         optimisticOracleClient: client,
@@ -514,9 +512,7 @@ describe("OptimisticOracle: proposer.js", function () {
       .send({ from: randoProposer });
     await optimisticOracle.methods
       .proposePrice(optimisticRequester.options.address, identifiersToTest[0], requestTime, "0x", "1")
-      .send({
-        from: randoProposer,
-      });
+      .send({ from: randoProposer });
 
     // `sendDisputes`: Should throw another error
     await proposer.update();
@@ -563,9 +559,7 @@ describe("OptimisticOracle: proposer.js", function () {
       .send({ from: randoProposer });
     await optimisticOracle.methods
       .proposePrice(optimisticRequester.options.address, invalidPriceFeedIdentifier, requestTime, "0x", "1")
-      .send({
-        from: randoProposer,
-      });
+      .send({ from: randoProposer });
 
     // `sendDisputes`: Should throw another error
     await proposer.update();

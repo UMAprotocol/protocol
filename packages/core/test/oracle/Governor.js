@@ -92,15 +92,7 @@ describe("Governor", function () {
     const txnData = constructTransferTransaction(proposer, "0");
     assert(
       await didContractThrow(
-        governor.methods
-          .propose([
-            {
-              to: testToken.options.address,
-              value: 0,
-              data: txnData,
-            },
-          ])
-          .send({ from: account2 })
+        governor.methods.propose([{ to: testToken.options.address, value: 0, data: txnData }]).send({ from: account2 })
       )
     );
   });
@@ -111,15 +103,7 @@ describe("Governor", function () {
     const zeroAddress = "0x0000000000000000000000000000000000000000";
     assert(
       await didContractThrow(
-        governor.methods
-          .propose([
-            {
-              to: zeroAddress,
-              value: 0,
-              data: txnData,
-            },
-          ])
-          .send({ from: accounts[0] })
+        governor.methods.propose([{ to: zeroAddress, value: 0, data: txnData }]).send({ from: accounts[0] })
       )
     );
 
@@ -127,16 +111,8 @@ describe("Governor", function () {
       await didContractThrow(
         governor.methods
           .propose([
-            {
-              to: testToken.options.address,
-              value: 0,
-              data: txnData,
-            },
-            {
-              to: zeroAddress,
-              value: 0,
-              data: txnData,
-            },
+            { to: testToken.options.address, value: 0, data: txnData },
+            { to: zeroAddress, value: 0, data: txnData },
           ])
           .send({ from: accounts[0] })
       )
@@ -148,15 +124,7 @@ describe("Governor", function () {
     // A proposal with data should not be able to be sent to an EOA as only a contract can process data in a tx.
     assert(
       await didContractThrow(
-        governor.methods
-          .propose([
-            {
-              to: account2,
-              value: 0,
-              data: txnData,
-            },
-          ])
-          .send({ from: accounts[0] })
+        governor.methods.propose([{ to: account2, value: 0, data: txnData }]).send({ from: accounts[0] })
       )
     );
   });
@@ -170,25 +138,13 @@ describe("Governor", function () {
 
     // Send the proposal.
     await governor.methods
-      .propose([
-        {
-          to: testToken.options.address,
-          value: 0,
-          data: txnData,
-        },
-      ])
+      .propose([{ to: testToken.options.address, value: 0, data: txnData }])
       .send({ from: accounts[0] });
 
     // Send a second proposal. Note: a second proposal is necessary to ensure we test at least one nonzero id.
     const id2 = await governor.methods.numProposals().call();
     await governor.methods
-      .propose([
-        {
-          to: testToken.options.address,
-          value: 0,
-          data: txnData,
-        },
-      ])
+      .propose([{ to: testToken.options.address, value: 0, data: txnData }])
       .send({ from: accounts[0] });
 
     // The proposals should show up in the pending requests in the *next* round.
@@ -198,14 +154,8 @@ describe("Governor", function () {
 
     // Check that the proposals shows up and that the identifiers are constructed correctly.
     assert.equal(pendingRequests.length, 2);
-    const request1 = {
-      ...pendingRequests[0],
-      identifier: padRight(pendingRequests[0].identifier, 64),
-    };
-    const request2 = {
-      ...pendingRequests[1],
-      identifier: padRight(pendingRequests[1].identifier, 64),
-    };
+    const request1 = { ...pendingRequests[0], identifier: padRight(pendingRequests[0].identifier, 64) };
+    const request2 = { ...pendingRequests[1], identifier: padRight(pendingRequests[1].identifier, 64) };
     assert.equal(web3.utils.hexToUtf8(request1.identifier), `Admin ${id1}`);
     assert.equal(web3.utils.hexToUtf8(request2.identifier), `Admin ${id2}`);
 
@@ -249,21 +199,12 @@ describe("Governor", function () {
     // Send the proposal.
     const id = await governor.methods.numProposals().call();
     await governor.methods
-      .propose([
-        {
-          to: testToken.options.address,
-          value: 0,
-          data: txnData,
-        },
-      ])
+      .propose([{ to: testToken.options.address, value: 0, data: txnData }])
       .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
-    const request = {
-      ...pendingRequests[0],
-      identifier: padRight(pendingRequests[0].identifier, 64),
-    };
+    const request = { ...pendingRequests[0], identifier: padRight(pendingRequests[0].identifier, 64) };
 
     // Vote the proposal through.
     const vote = toWei("1");
@@ -314,10 +255,7 @@ describe("Governor", function () {
     await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
-    const request = {
-      ...pendingRequests[0],
-      identifier: padRight(pendingRequests[0].identifier, 64),
-    };
+    const request = { ...pendingRequests[0], identifier: padRight(pendingRequests[0].identifier, 64) };
 
     // Vote the proposal through.
     const vote = toWei("1");
@@ -349,22 +287,13 @@ describe("Governor", function () {
     // Send the proposal to send ETH to account2.
     const id = await governor.methods.numProposals().call();
     await governor.methods
-      .propose([
-        {
-          to: account2,
-          value: amountToDeposit,
-          data: web3.utils.hexToBytes("0x"),
-        },
-      ])
+      .propose([{ to: account2, value: amountToDeposit, data: web3.utils.hexToBytes("0x") }])
       .send({ from: accounts[0] });
 
     await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
-    const request = {
-      ...pendingRequests[0],
-      identifier: padRight(pendingRequests[0].identifier, 64),
-    };
+    const request = { ...pendingRequests[0], identifier: padRight(pendingRequests[0].identifier, 64) };
 
     // Vote the proposal through.
     const vote = toWei("1");
@@ -407,26 +336,15 @@ describe("Governor", function () {
     const id = await governor.methods.numProposals().call();
     await governor.methods
       .propose([
-        {
-          to: testToken.options.address,
-          value: 0,
-          data: txnData1,
-        },
-        {
-          to: testToken.options.address,
-          value: 0,
-          data: txnData2,
-        },
+        { to: testToken.options.address, value: 0, data: txnData1 },
+        { to: testToken.options.address, value: 0, data: txnData2 },
       ])
       .send({ from: accounts[0] });
 
     await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
-    const request = {
-      ...pendingRequests[0],
-      identifier: padRight(pendingRequests[0].identifier, 64),
-    };
+    const request = { ...pendingRequests[0], identifier: padRight(pendingRequests[0].identifier, 64) };
 
     // Vote the proposal through.
     const vote = toWei("1");
@@ -466,21 +384,12 @@ describe("Governor", function () {
     const txnData = constructTransferTransaction(proposer, "0");
     const id = await governor.methods.numProposals().call();
     await governor.methods
-      .propose([
-        {
-          to: testToken.options.address,
-          value: 0,
-          data: txnData,
-        },
-      ])
+      .propose([{ to: testToken.options.address, value: 0, data: txnData }])
       .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
-    const request = {
-      ...pendingRequests[0],
-      identifier: padRight(pendingRequests[0].identifier, 64),
-    };
+    const request = { ...pendingRequests[0], identifier: padRight(pendingRequests[0].identifier, 64) };
 
     // Vote the proposal through.
     const vote = toWei("1");
@@ -512,25 +421,14 @@ describe("Governor", function () {
     const id = await governor.methods.numProposals().call();
     await governor.methods
       .propose([
-        {
-          to: testToken.options.address,
-          value: 0,
-          data: txnData,
-        },
-        {
-          to: testToken.options.address,
-          value: 0,
-          data: txnData,
-        },
+        { to: testToken.options.address, value: 0, data: txnData },
+        { to: testToken.options.address, value: 0, data: txnData },
       ])
       .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
-    const request = {
-      ...pendingRequests[0],
-      identifier: padRight(pendingRequests[0].identifier, 64),
-    };
+    const request = { ...pendingRequests[0], identifier: padRight(pendingRequests[0].identifier, 64) };
 
     // Vote the proposal through.
     const vote = toWei("1");
@@ -567,21 +465,12 @@ describe("Governor", function () {
     // Send the proposal.
     const id = await governor.methods.numProposals().call();
     await governor.methods
-      .propose([
-        {
-          to: testToken.options.address,
-          value: 0,
-          data: txnData,
-        },
-      ])
+      .propose([{ to: testToken.options.address, value: 0, data: txnData }])
       .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
-    const request = {
-      ...pendingRequests[0],
-      identifier: padRight(pendingRequests[0].identifier, 64),
-    };
+    const request = { ...pendingRequests[0], identifier: padRight(pendingRequests[0].identifier, 64) };
 
     // Vote down the proposal.
     const vote = "0";
@@ -616,21 +505,12 @@ describe("Governor", function () {
     // Send the proposal.
     const id = await governor.methods.numProposals().call();
     await governor.methods
-      .propose([
-        {
-          to: testToken.options.address,
-          value: 0,
-          data: txnData,
-        },
-      ])
+      .propose([{ to: testToken.options.address, value: 0, data: txnData }])
       .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
     let roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
-    const request = {
-      ...pendingRequests[0],
-      identifier: padRight(pendingRequests[0].identifier, 64),
-    };
+    const request = { ...pendingRequests[0], identifier: padRight(pendingRequests[0].identifier, 64) };
 
     // Vote on the proposal, but don't reach the GAT.
     const vote = toWei("1");
@@ -678,21 +558,12 @@ describe("Governor", function () {
     // Send the proposal.
     const id = await governor.methods.numProposals().call();
     await governor.methods
-      .propose([
-        {
-          to: testToken.options.address,
-          value: 0,
-          data: txnData,
-        },
-      ])
+      .propose([{ to: testToken.options.address, value: 0, data: txnData }])
       .send({ from: accounts[0] });
     await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
-    const request = {
-      ...pendingRequests[0],
-      identifier: padRight(pendingRequests[0].identifier, 64),
-    };
+    const request = { ...pendingRequests[0], identifier: padRight(pendingRequests[0].identifier, 64) };
 
     // Vote the proposal through.
     const vote = toWei("1");
@@ -724,13 +595,7 @@ describe("Governor", function () {
     // Send the proposal and verify that an event is produced.
     const id = await governor.methods.numProposals().call();
     let receipt = await governor.methods
-      .propose([
-        {
-          to: testToken.options.address,
-          value: 0,
-          data: txnData,
-        },
-      ])
+      .propose([{ to: testToken.options.address, value: 0, data: txnData }])
       .send({ from: accounts[0] });
     await assertEventEmitted(receipt, governor, "NewProposal", (ev) => {
       return (
@@ -746,10 +611,7 @@ describe("Governor", function () {
     await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
-    const request = {
-      ...pendingRequests[0],
-      identifier: padRight(pendingRequests[0].identifier, 64),
-    };
+    const request = { ...pendingRequests[0], identifier: padRight(pendingRequests[0].identifier, 64) };
     const vote = toWei("1");
     const salt = getRandomSignedInt();
     const hash = computeVoteHash({
@@ -797,10 +659,7 @@ describe("Governor", function () {
     await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
-    const request = {
-      ...pendingRequests[0],
-      identifier: padRight(pendingRequests[0].identifier, 64),
-    };
+    const request = { ...pendingRequests[0], identifier: padRight(pendingRequests[0].identifier, 64) };
     const vote = toWei("1");
     const salt = getRandomSignedInt();
     const hash = computeVoteHash({
@@ -866,13 +725,7 @@ describe("Governor", function () {
     const txnData = constructTransferTransaction(proposer, toWei("1"));
 
     await newGovernor.methods
-      .propose([
-        {
-          to: testToken.options.address,
-          value: 0,
-          data: txnData,
-        },
-      ])
+      .propose([{ to: testToken.options.address, value: 0, data: txnData }])
       .send({ from: accounts[0] });
 
     // Check that the proposal is correct.
@@ -886,10 +739,7 @@ describe("Governor", function () {
     await moveToNextRound(voting, accounts[0]);
     const roundId = await voting.methods.getCurrentRoundId().call();
     const pendingRequests = await voting.methods.getPendingRequests().call();
-    const request = {
-      ...pendingRequests[0],
-      identifier: padRight(pendingRequests[0].identifier, 64),
-    };
+    const request = { ...pendingRequests[0], identifier: padRight(pendingRequests[0].identifier, 64) };
 
     // Vote the proposal through.
     const vote = toWei("1");

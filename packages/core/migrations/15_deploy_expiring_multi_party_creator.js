@@ -6,31 +6,22 @@ const TokenFactory = artifacts.require("TokenFactory");
 const Timer = artifacts.require("Timer");
 const Registry = artifacts.require("Registry");
 const TestnetERC20 = artifacts.require("TestnetERC20");
-const {
-  RegistryRolesEnum,
-  interfaceName,
-  getKeysForNetwork,
-  deploy,
-  enableControllableTiming,
-} = require("@uma/common");
+const { interfaceName, RegistryRolesEnum } = require("@uma/common");
+const { getKeysForNetwork, deploy, enableControllableTiming } = require("./MigrationUtils");
 
 module.exports = async function (deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
   const controllableTiming = enableControllableTiming(network);
 
   // Deploy CollateralWhitelist.
-  const { contract: collateralWhitelist } = await deploy(deployer, network, AddressWhitelist, {
-    from: keys.deployer,
-  });
+  const { contract: collateralWhitelist } = await deploy(deployer, network, AddressWhitelist, { from: keys.deployer });
 
   // Add CollateralWhitelist to finder.
   const finder = await Finder.deployed();
   await finder.changeImplementationAddress(
     web3.utils.utf8ToHex(interfaceName.CollateralWhitelist),
     collateralWhitelist.address,
-    {
-      from: keys.deployer,
-    }
+    { from: keys.deployer }
   );
 
   // Add the testnet ERC20 as the default collateral currency (this is the DAI address on mainnet).

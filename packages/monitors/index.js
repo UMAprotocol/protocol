@@ -230,12 +230,7 @@ async function run({
         syntheticTokenAddress
       );
 
-      const balanceMonitor = new BalanceMonitor({
-        logger,
-        tokenBalanceClient,
-        monitorConfig,
-        financialContractProps,
-      });
+      const balanceMonitor = new BalanceMonitor({ logger, tokenBalanceClient, monitorConfig, financialContractProps });
 
       // 3. Collateralization Ratio monitor.
       const financialContractClient = new FinancialContractClient(
@@ -328,9 +323,7 @@ async function run({
         endingBlock
       );
 
-      const contractProps = {
-        networkId,
-      };
+      const contractProps = { networkId };
       const contractMonitor = new OptimisticOracleContractMonitor({
         logger,
         optimisticOracleContractEventClient,
@@ -378,18 +371,12 @@ async function run({
       );
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (pollingDelay === 0) {
-        logger.debug({
-          at: "Monitor#index",
-          message: "End of serverless execution loop - terminating process",
-        });
+        logger.debug({ at: "Monitor#index", message: "End of serverless execution loop - terminating process" });
         await waitForLogger(logger);
         await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
         break;
       }
-      logger.debug({
-        at: "Monitor#index",
-        message: "End of execution loop - waiting polling delay",
-      });
+      logger.debug({ at: "Monitor#index", message: "End of execution loop - waiting polling delay" });
       await delay(Number(pollingDelay));
     }
   } catch (error) {

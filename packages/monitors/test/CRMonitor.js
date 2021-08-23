@@ -7,6 +7,7 @@ const {
   runTestForVersion,
   createConstructorParamsForContractVersion,
   TESTED_CONTRACT_VERSIONS,
+  TEST_DECIMAL_COMBOS,
 } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 
@@ -21,16 +22,6 @@ const {
   lastSpyLogIncludes,
   lastSpyLogLevel,
 } = require("@uma/financial-templates-lib");
-
-// Run the tests against 3 different kinds of token/synth decimal combinations:
-// 1) matching 18 & 18 for collateral for most token types with normal tokens.
-// 2) non-matching 8 collateral & 18 synthetic for legacy UMA synthetics.
-// 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
-const configs = [
-  { tokenSymbol: "WETH", collateralDecimals: 18, syntheticDecimals: 18, priceFeedDecimals: 18 },
-  { tokenSymbol: "Legacy BTC", collateralDecimals: 8, syntheticDecimals: 18, priceFeedDecimals: 8 },
-  { tokenSymbol: "BTC", collateralDecimals: 8, syntheticDecimals: 8, priceFeedDecimals: 18 },
-];
 
 let iterationTestVersion; // store the test version between tests that is currently being tested.
 const startTime = "15798990420";
@@ -63,9 +54,7 @@ let currentTime;
 let financialContractClient;
 let crMonitor;
 
-let convertCollateral;
-let convertSynthetic;
-let convertPrice;
+let convertDecimals;
 
 // Set the funding rate and advances time by 10k seconds.
 const _setFundingRateAndAdvanceTime = async (fundingRate) => {
@@ -111,14 +100,12 @@ contract("CRMonitor.js", function (accounts) {
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
     const MulticallMock = getTruffleContract("MulticallMock", web3);
 
-    for (let testConfig of configs) {
-      describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
+    for (let testConfig of TEST_DECIMAL_COMBOS) {
+      describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
         before(async function () {
           identifier = `${testConfig.tokenSymbol}TEST`;
-          fundingRateIdentifier = `${testConfig.tokenName}_FUNDING_IDENTIFIER`;
-          convertCollateral = Convert(testConfig.collateralDecimals);
-          convertSynthetic = Convert(testConfig.syntheticDecimals);
-          convertPrice = Convert(testConfig.priceFeedDecimals);
+          fundingRateIdentifier = `${testConfig.tokenName}_FUNDING`;
+          convertDecimals = Convert(testConfig.collateralDecimals);
           collateralToken = await Token.new(
             testConfig.tokenSymbol + " Token",
             testConfig.tokenSymbol,
@@ -189,7 +176,7 @@ contract("CRMonitor.js", function (accounts) {
           const constructorParams = await createConstructorParamsForContractVersion(
             contractVersion,
             {
-              convertSynthetic,
+              convertDecimals,
               finder,
               collateralToken,
               syntheticToken,
@@ -200,7 +187,7 @@ contract("CRMonitor.js", function (accounts) {
               configStore: configStore || {}, // if the contract type is not a perp this will be null.
             },
             {
-              minSponsorTokens: { rawValue: convertSynthetic("1") },
+              minSponsorTokens: { rawValue: convertDecimals("1") },
               collateralRequirement: { rawValue: toWei("1.5") },
               withdrawalLiveness: "10",
               liquidationLiveness: "10",
@@ -269,30 +256,28 @@ contract("CRMonitor.js", function (accounts) {
             financialContractProps,
           });
 
-          await collateralToken.addMember(1, tokenSponsor, {
-            from: tokenSponsor,
-          });
+          await collateralToken.addMember(1, tokenSponsor, { from: tokenSponsor });
 
           //   Bulk mint and approve for all wallets
           for (let i = 1; i < 3; i++) {
-            await collateralToken.mint(accounts[i], convertCollateral("100000000"), { from: tokenSponsor });
-            await collateralToken.approve(financialContract.address, convertCollateral("100000000"), {
+            await collateralToken.mint(accounts[i], convertDecimals("100000000"), { from: tokenSponsor });
+            await collateralToken.approve(financialContract.address, convertDecimals("100000000"), {
               from: accounts[i],
             });
-            await syntheticToken.approve(financialContract.address, convertSynthetic("100000000"), {
+            await syntheticToken.approve(financialContract.address, convertDecimals("100000000"), {
               from: accounts[i],
             });
           }
 
           // Create positions for the monitoredTrader and monitoredSponsor accounts
           await financialContract.create(
-            { rawValue: convertCollateral("250") },
-            { rawValue: convertSynthetic("100") },
+            { rawValue: convertDecimals("250") },
+            { rawValue: convertDecimals("100") },
             { from: monitoredTrader }
           );
           await financialContract.create(
-            { rawValue: convertCollateral("300") },
-            { rawValue: convertSynthetic("100") },
+            { rawValue: convertDecimals("300") },
+            { rawValue: convertDecimals("100") },
             { from: monitoredSponsor }
           );
         });
@@ -302,14 +287,14 @@ contract("CRMonitor.js", function (accounts) {
           async function () {
             // No messages created if safely above the CR threshold
             await financialContractClient.update();
-            priceFeedMock.setCurrentPrice(convertPrice("1"));
+            priceFeedMock.setCurrentPrice(toWei("1"));
             await crMonitor.checkWalletCrRatio();
             assert.equal(spy.callCount, 0);
 
             // Emits a message if below the CR threshold. At a price of 1.3 only the monitoredTrader should be undercollateralized
             // with a CR of 250 / (100 * 1.3) =1.923 which is below this addresses threshold of 200 and should emit a message.
             await financialContractClient.update();
-            priceFeedMock.setCurrentPrice(convertPrice("1.3"));
+            priceFeedMock.setCurrentPrice(toWei("1.3"));
             await crMonitor.checkWalletCrRatio();
             assert.equal(spy.callCount, 1);
             assert.isTrue(lastSpyLogIncludes(spy, "Collateralization ratio alert"));
@@ -328,7 +313,7 @@ contract("CRMonitor.js", function (accounts) {
             // of 1.2 monitoredTrader's CR = 250/(100*1.2) = 2.083 and monitoredSponsor's CR = 300/(100*1.2) = 2.5 which places
             // both monitored wallets above their thresholds. As a result no new message should be sent.
             await financialContractClient.update();
-            priceFeedMock.setCurrentPrice(convertPrice("1.2"));
+            priceFeedMock.setCurrentPrice(toWei("1.2"));
             await crMonitor.checkWalletCrRatio();
             assert.equal(spy.callCount, 1); // no new message.
 
@@ -336,20 +321,20 @@ contract("CRMonitor.js", function (accounts) {
             // monitoredTrader's CR = 250/(100*2.1) = 1.1904 and monitoredSponsor's CR = 300/(100*2.1) = 1.42857. At these CRs
             // Both bots are below their thresholds
             await financialContractClient.update();
-            priceFeedMock.setCurrentPrice(convertPrice("2.1"));
+            priceFeedMock.setCurrentPrice(toWei("2.1"));
             await crMonitor.checkWalletCrRatio();
             assert.equal(spy.callCount, 3); // two new messages
 
             // A second check below this threshold should again trigger messages for both sponsors.
             await financialContractClient.update();
-            priceFeedMock.setCurrentPrice(convertPrice("2.1"));
+            priceFeedMock.setCurrentPrice(toWei("2.1"));
             await crMonitor.checkWalletCrRatio();
             assert.equal(spy.callCount, 5);
 
             // Reset the price to over collateralized state for both accounts by moving the price into the lower value. This
             // should not emit any events as both correctly collateralized.
             await financialContractClient.update();
-            priceFeedMock.setCurrentPrice(convertPrice("1"));
+            priceFeedMock.setCurrentPrice(toWei("1"));
             await crMonitor.checkWalletCrRatio();
             assert.equal(spy.callCount, 5);
 
@@ -358,7 +343,7 @@ contract("CRMonitor.js", function (accounts) {
             // withdrawal liveness they can place their position's collateralization under the threshold. Say monitoredTrader
             // withdraws 75 units of collateral. Given price is 1 unit of synthetic for each unit of debt. This would place
             // their position at a collateralization ratio of 175/(100*1)=1.75. monitoredSponsor is at 300/(100*1)=3.00.
-            await financialContract.requestWithdrawal({ rawValue: convertCollateral("75") }, { from: monitoredTrader });
+            await financialContract.requestWithdrawal({ rawValue: convertDecimals("75") }, { from: monitoredTrader });
 
             // The wallet CR should reflect the requested withdrawal amount.
             await financialContractClient.update();
@@ -395,7 +380,7 @@ contract("CRMonitor.js", function (accounts) {
           async function () {
             // No messages created if safely above the CR threshold
             await financialContractClient.update();
-            priceFeedMock.setCurrentPrice(convertPrice("1"));
+            priceFeedMock.setCurrentPrice(toWei("1"));
             await crMonitor.checkWalletCrRatio();
             assert.equal(spy.callCount, 0);
 
@@ -410,7 +395,7 @@ contract("CRMonitor.js", function (accounts) {
             // effective funding rate charge will be.
             await financialContractClient.update();
             assert.equal(financialContractClient.getLatestCumulativeFundingRateMultiplier(), toWei("1.1"));
-            priceFeedMock.setCurrentPrice(convertPrice("1.1"));
+            priceFeedMock.setCurrentPrice(toWei("1.1"));
             await crMonitor.checkWalletCrRatio();
             assert.equal(spy.callCount, 0);
 
@@ -444,12 +429,7 @@ contract("CRMonitor.js", function (accounts) {
             // and `crAlert`.
             const invalidMonitorConfig1 = {
               // Config missing `crAlert`.
-              walletsToMonitor: [
-                {
-                  name: "Sponsor wallet",
-                  address: tokenSponsor,
-                },
-              ],
+              walletsToMonitor: [{ name: "Sponsor wallet", address: tokenSponsor }],
             };
 
             crMonitor = new CRMonitor({
@@ -471,13 +451,7 @@ contract("CRMonitor.js", function (accounts) {
             // `collateralThreshold`, `etherThreshold`. The value of `address` must be of type address.
             const invalidMonitorConfig2 = {
               // Config has an invalid address for the monitored bot.
-              walletsToMonitor: [
-                {
-                  name: "Sponsor wallet",
-                  address: "INVALID_ADDRESS",
-                  crAlert: 1.5,
-                },
-              ],
+              walletsToMonitor: [{ name: "Sponsor wallet", address: "INVALID_ADDRESS", crAlert: 1.5 }],
             };
 
             crMonitor = new CRMonitor({
@@ -528,7 +502,7 @@ contract("CRMonitor.js", function (accounts) {
 
             // Increase price to lower wallet CR below threshold
             await financialContractClient.update();
-            priceFeedMock.setCurrentPrice(convertPrice("1.3"));
+            priceFeedMock.setCurrentPrice(toWei("1.3"));
             await crMonitor.checkWalletCrRatio();
             assert.isTrue(lastSpyLogIncludes(spy, "Collateralization ratio alert"));
             assert.equal(lastSpyLogLevel(spy), "error");

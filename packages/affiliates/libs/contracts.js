@@ -4,6 +4,8 @@ const { getAbi } = require("@uma/core");
 const Web3 = require("web3");
 const web3 = new Web3();
 
+const { toWei, toBN } = web3.utils;
+
 function toChecksumAddress(addr) {
   return web3.utils.toChecksumAddress(addr);
 }
@@ -15,22 +17,14 @@ function DecodeLog(abi, meta = {}) {
   assert(abi, "requires abi");
   const iface = new ethers.utils.Interface(abi);
   return (log, props = {}) => {
-    return {
-      ...iface.parseLog(log),
-      ...meta,
-      ...props,
-    };
+    return { ...iface.parseLog(log), ...meta, ...props };
   };
 }
 function DecodeTransaction(abi, meta = {}) {
   assert(abi, "requires abi");
   const iface = new ethers.utils.Interface(abi);
   return (transaction, props = {}) => {
-    return {
-      ...iface.parseTransaction({ data: transaction.input }),
-      ...meta,
-      ...props,
-    };
+    return { ...iface.parseTransaction({ data: transaction.input }), ...meta, ...props };
   };
 }
 
@@ -105,9 +99,7 @@ function Erc20({ abi = getAbi("ERC20"), web3 }) {
     contract.options.address = tokenAddress;
     return contract.methods.decimals().call();
   }
-  return {
-    decimals,
-  };
+  return { decimals };
 }
 
 // Wrapper for some basic emp functionality.  Currently we just need token and collateral info Lookup by emp address
@@ -127,32 +119,32 @@ function Emp({ abi = getAbi("ExpiringMultiParty"), web3 } = {}) {
   }
   async function tokenInfo(empAddress) {
     const tokenAddress = await tokenCurrency(empAddress);
-    return {
-      address: tokenAddress,
-      decimals: await erc20.decimals(tokenAddress),
-    };
+    return { address: tokenAddress, decimals: await erc20.decimals(tokenAddress) };
   }
   async function collateralInfo(empAddress) {
     const tokenAddress = await collateralCurrency(empAddress);
-    return {
-      address: tokenAddress,
-      decimals: await erc20.decimals(tokenAddress),
-    };
+    return { address: tokenAddress, decimals: await erc20.decimals(tokenAddress) };
   }
   async function info(empAddress) {
-    return {
-      address: empAddress,
-      token: await tokenInfo(empAddress),
-      collateral: await collateralInfo(empAddress),
-    };
+    return { address: empAddress, token: await tokenInfo(empAddress), collateral: await collateralInfo(empAddress) };
   }
-  return {
-    tokenCurrency,
-    collateralCurrency,
-    collateralInfo,
-    tokenInfo,
-    info,
-  };
+  return { tokenCurrency, collateralCurrency, collateralInfo, tokenInfo, info };
+}
+
+// web3s fromWei does not allow you to specify numeric decimal conversion, it has to be mapped to a name
+function fromWei(amount, decimals = 18) {
+  const denominator = toBN("10").pow(toBN(decimals.toString()));
+  return toBN(amount.toString()).div(denominator);
+}
+// calculate a value given token amount, price and decimals
+// amount: amount of token in wei
+// price: price as a float
+// decimals: decimal value for the token
+// returns value in wei 18 decimals
+function calculateValue(amount, price, decimals) {
+  price = toBN(toWei(price.toString()));
+  amount = toBN(amount);
+  return fromWei(amount.mul(price), decimals);
 }
 
 module.exports = {
@@ -166,4 +158,5 @@ module.exports = {
   toChecksumAddress,
   isAddress,
   EncodeCallData,
+  calculateValue,
 };

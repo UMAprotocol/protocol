@@ -18,11 +18,11 @@ function createQuery(earlierTimeBound, laterTimeBound) {
   IF block_count >= 134400 THEN
   INSERT INTO cum_gas (
     SELECT
-      gas_price,
-      SUM(gas_used) OVER (ORDER BY gas_price) AS cum_sum
+    receipt_effective_gas_price,
+      SUM(gas_used) OVER (ORDER BY receipt_effective_gas_price) AS cum_sum
     FROM (
       SELECT
-        gas_price,
+      receipt_effective_gas_price,
         SUM(receipt_gas_used) AS gas_used
       FROM
         \`bigquery-public-data.crypto_ethereum.transactions\`
@@ -30,15 +30,15 @@ function createQuery(earlierTimeBound, laterTimeBound) {
       BETWEEN TIMESTAMP('${earlierTimeBound}', 'UTC')
       AND TIMESTAMP('${laterTimeBound}', 'UTC')  
       GROUP BY
-        gas_price));
+      receipt_effective_gas_price));
   ELSE -- If a minimum threshold of blocks is not met, query for the minimum amount of blocks
   INSERT INTO cum_gas (
     SELECT
-      gas_price,
-      SUM(gas_used) OVER (ORDER BY gas_price) AS cum_sum
+    receipt_effective_gas_price,
+      SUM(gas_used) OVER (ORDER BY receipt_effective_gas_price) AS cum_sum
     FROM (
       SELECT
-        gas_price,
+      receipt_effective_gas_price,
         SUM(receipt_gas_used) AS gas_used
       FROM
         \`bigquery-public-data.crypto_ethereum.transactions\`
@@ -46,7 +46,7 @@ function createQuery(earlierTimeBound, laterTimeBound) {
       BETWEEN (max_block - 134400)
       AND max_block
       GROUP BY
-        gas_price));
+      receipt_effective_gas_price));
   END IF;
 
   SET halfway = (SELECT DIV(MAX(cum_sum),2) FROM cum_gas);
@@ -57,6 +57,4 @@ function createQuery(earlierTimeBound, laterTimeBound) {
   return query;
 }
 
-module.exports = {
-  createQuery,
-};
+module.exports = { createQuery };

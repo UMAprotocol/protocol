@@ -5,7 +5,7 @@
   },
   {
     "contractName": "Registry",
-    "address": "0x119e9008882C4f6beCB42Eaf2C2502fBDb9D405A"
+    "address": "0x52313039f1b849B49dce4bdf6a43AC76995bE366"
   },
   {
     "contractName": "IdentifierWhitelist",
@@ -13,15 +13,15 @@
   },
   {
     "contractName": "AddressWhitelist",
-    "address": "0x7da554228555C8Bf3748403573d48a2138C6b848"
+    "address": "0xa59E59112e3a0e96c97e2109004434C4125db80E"
   },
   {
     "contractName": "FinancialContractsAdmin",
-    "address": "0x9328Ce3B1FBCD0FCca9Dc9F1eB6a0a0Ed2aF0bDF"
+    "address": "0xA4E6061cE6C6743839a24eE4b4FD0D9A0E377691"
   },
   {
     "contractName": "Store",
-    "address": "0x68306388c266dce735245A0A6DAe6Dd3b727A640"
+    "address": "0xce9Cf0C8f8121b573f6212344F53BC7746846e71"
   },
   {
     "contractName": "OptimisticOracle",
@@ -29,7 +29,7 @@
   },
   {
     "contractName": "TokenFactory",
-    "address": "0xa5eA165AfAc780807DE19aefa2B8a21079B8A627"
+    "address": "0x56f2c8353049270d3553773E680B0d6c632544b6"
   },
   {
     "contractName": "ExpiringMultiPartyLib",
@@ -41,30 +41,34 @@
   },
   {
     "contractName": "OracleChildTunnel",
-    "address": "0x61D5d43F227782F2Fa02Eb811420AB622A785d3a"
+    "address": "0xAb955711ECd766Ce70dc2DbF2D9e0E8e4b431232"
   },
   {
     "contractName": "GovernorChildTunnel",
-    "address": "0x6B95974539eBc874595d3B2A08D5509263346D5d"
+    "address": "0x9dd627a6FDeF9B5fB9E29edCC7EB75d6D79dC480"
   },
   {
     "contractName": "LongShortPairCreator",
-    "address": "0xe1fC1EB80db9AD0160AEF6998673625bc2a09d14"
+    "address": "0x57EE47829369e2EF62fBb423648bec70d0366204"
   },
   {
     "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
-    "address": "0x2158C256b2d9B2b58D90D3ddA1b6a90d64498F7d"
+    "address": "0x9a5de999108042946F59848E083e12690ff018C6"
   },
   {
     "contractName": "CoveredCallLongShortPairFinancialProductLibrary",
-    "address": "0xc19B7EF43a6eBd393446F401d1eCFac01B181ac0"
+    "address": "0xc6aFa90Ebf5F7eC9Ce0409a0B2bF7b0E6E81b5F6"
   },
   {
     "contractName": "LinearLongShortPairFinancialProductLibrary",
-    "address": "0x2aBf1Bd76655de80eDB3086114315Eec75AF500c"
+    "address": "0xC7B7029373f504949553106c9eb2dAfDd48eF086"
   },
   {
     "contractName": "RangeBondLongShortPairFinancialProductLibrary",
-    "address": "0xb53A60f595EE2418be9F6057121EE77f0249AC28"
+    "address": "0xbe96050668dECb6FA0ef5Af919f37221658cfbEf"
+  },
+  {
+    "contractName": "MockOracleAncillary",
+    "address": "0xe1C367e2b576Ac421a9f46C9cC624935730c36aa"
   }
 ]

@@ -1,6 +1,7 @@
 const FinancialContractsAdmin = artifacts.require("FinancialContractsAdmin");
 const Finder = artifacts.require("Finder");
-const { getKeysForNetwork, deploy, interfaceName } = require("@uma/common");
+const { interfaceName } = require("@uma/common");
+const { getKeysForNetwork, deploy } = require("./MigrationUtils");
 
 module.exports = async function (deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
@@ -13,8 +14,6 @@ module.exports = async function (deployer, network, accounts) {
   await finder.changeImplementationAddress(
     web3.utils.utf8ToHex(interfaceName.FinancialContractsAdmin),
     financialContractsAdmin.address,
-    {
-      from: keys.deployer,
-    }
+    { from: keys.deployer }
   );
 };

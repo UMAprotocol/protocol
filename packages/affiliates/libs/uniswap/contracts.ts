@@ -1,4 +1,3 @@
-import assert from "assert";
 import { ethers } from "ethers";
 import Promise from "bluebird";
 

@@ -6,10 +6,10 @@ This package is meant as a low level cross platform utility library for viewing 
 
 This is meant to be modular and add features as needed. This was bootstraped with TSDX, which you can find usage at the bottom of this file.
 
-- [**clients**](./src/libs/clients/README.md): are meant to be contract interaction clients that can lookup deployed contracts by network and return an ethers contract instance as well as parse events into useful state.
-- [**stores**](./src/libs/stores/README.md): are meant to be data shape agnostic classes for persistence or caching
-- [**tables**](./src/libs/tables/README.md): are classes which store tabular data, understand data shape and rely on stores for low level persistence
-- [**utils**](./src/libs/utils.ts): are meant to hold and expose useful utilities which can be shared and eventually promoted to their own modules
+- [**clients**](./src/clients/README.md): are meant to be contract interaction clients that can lookup deployed contracts by network and return an ethers contract instance as well as parse events into useful state.
+- [**stores**](./src/stores/README.md): are meant to be data shape agnostic classes for persistence or caching
+- [**tables**](./src/tables/README.md): are classes which store tabular data, understand data shape and rely on stores for low level persistence
+- [**utils**](./src/utils.ts): are meant to hold and expose useful utilities which can be shared and eventually promoted to their own modules
 
 Each folder should contain a README, index.ts and index.d.ts if needed which expose any code to the root of the SDK.
 

@@ -124,6 +124,4 @@ class LPPriceFeed extends PriceFeedInterface {
   }
 }
 
-module.exports = {
-  LPPriceFeed,
-};
+module.exports = { LPPriceFeed };

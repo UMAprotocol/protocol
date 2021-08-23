@@ -282,7 +282,4 @@ class UniswapV3PriceFeed extends UniswapPriceFeed {
   }
 }
 
-module.exports = {
-  UniswapV2PriceFeed,
-  UniswapV3PriceFeed,
-};
+module.exports = { UniswapV2PriceFeed, UniswapV3PriceFeed };

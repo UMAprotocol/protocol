@@ -25,10 +25,7 @@ contract("HarvestVaultPriceFeed.js", function (accounts) {
     erc20 = await ERC20.new("Test Token", "TT", tokenDecimals, { from: owner });
     vaultMock = await VaultMock.new(erc20.address, { from: owner });
 
-    dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+    dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
     vaultPriceFeed = new HarvestVaultPriceFeed({
       logger: dummyLogger,
