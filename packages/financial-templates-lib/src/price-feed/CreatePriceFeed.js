@@ -33,7 +33,6 @@ const { VaultPriceFeed, HarvestVaultPriceFeed } = require("./VaultPriceFeed");
 const uniswapBlockCache = {};
 
 async function createPriceFeed(logger, web3, networker, getTime, config) {
-
   let providedWeb3;
   if (config.nodeUrlEnvVar) {
     if (!process.env[config.nodeUrlEnvVar])

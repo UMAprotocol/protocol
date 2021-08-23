@@ -10,7 +10,7 @@ const {
   OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY,
   OPTIMISTIC_ORACLE_IGNORE,
 } = require("@uma/common");
-const { getAbi } = require("@uma/contracts-node")
+const { getAbi } = require("@uma/contracts-node");
 
 class OptimisticOracleProposer {
   /**
