@@ -168,7 +168,7 @@ interface Options extends TransportOptions {
     escalationPathWebhookUrls?: { [key: string]: string };
     defaultWebHookUrl: string;
   };
-  formatter: (any) => SlackFormatterResponse;
+  formatter: (info: any) => SlackFormatterResponse;
   mrkdwn?: boolean;
   proxy?: AxiosRequestConfig["proxy"];
 }
@@ -177,7 +177,7 @@ class SlackHook extends Transport {
   private name: string;
   private readonly escalationPathWebhookUrls: { [key: string]: string };
   private readonly defaultWebHookUrl: string;
-  private readonly formatter: (any) => SlackFormatterResponse;
+  private readonly formatter: (info: any) => SlackFormatterResponse;
   private readonly mrkdwn: boolean;
   private readonly axiosInstance: AxiosInstance;
 

@@ -2,9 +2,10 @@ import { MAX_SAFE_ALLOWANCE, MAX_UINT_VAL, runTransaction } from "@uma/common";
 import { getAbi } from "@uma/contracts-node";
 import { ExpandedERC20Web3 } from "@uma/contracts-node";
 import type Web3 from "web3";
-import type { ContractSendMethod } from "web3-eth-contract";
 import type { TransactionReceipt } from "web3-core";
 import type { GasEstimator } from "./GasEstimator";
+
+type ContractSendMethod = Parameters<typeof runTransaction>[0]["transaction"];
 
 // Sets `owner` allowance for `spender` to MAX_UINT_VAL, unless `spender` already has
 // an allowance > MAX_SAFE_ALLOWANCE. Return successful approval transaction data, or undefined

@@ -133,7 +133,7 @@ export class DSProxyManager {
       await this.gasEstimator.update();
       const { receipt, transactionConfig } = await runTransaction({
         web3: this.web3,
-        transaction: this.dsProxyFactory.methods.build(),
+        transaction: (this.dsProxyFactory.methods["build()"]() as unknown) as TransactionType,
         transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
         availableAccounts: this.availableAccounts, // give the run transaction access to additional EOAs, if they are set.
       });

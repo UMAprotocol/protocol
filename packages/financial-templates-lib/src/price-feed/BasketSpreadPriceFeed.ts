@@ -49,7 +49,9 @@ export class BasketSpreadPriceFeed extends PriceFeedInterface {
     }
 
     // The precision that the user wants to return prices in must match all basket constituent price feeds and the denominator.
-    this.decimals = this.allPriceFeeds[0].getPriceFeedDecimals();
+    const decimals = this.allPriceFeeds[0].getPriceFeedDecimals();
+    if (decimals === null) throw new Error(`BasketSpreadPriceFeed -- first price feed has null decimals`);
+    this.decimals = decimals;
 
     // Scale `number` by 10**decimals.
     this.convertPriceFeedDecimals = (number: number | string) => {

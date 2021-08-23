@@ -63,40 +63,45 @@ export class OptimisticOracleClient {
   }
 
   // Returns an array of Price Requests that have no proposals yet.
-  getUnproposedPriceRequests(): RequestPrice[] {
+  public getUnproposedPriceRequests(): RequestPrice[] {
     return this.unproposedPriceRequests;
   }
 
   // Returns an array of Price Proposals that have not been disputed.
-  getUndisputedProposals(): ProposePrice[] {
+  public getUndisputedProposals(): ProposePrice[] {
     return this.undisputedProposals;
   }
 
   // Returns an array of expired Price Proposals that can be settled and that involved
   // the caller as the proposer
-  getSettleableProposals(caller: string): ProposePrice[] {
+  public getSettleableProposals(caller: string): ProposePrice[] {
     return this.expiredProposals.filter((event) => {
       return event.proposer === caller;
     });
   }
 
   // Returns disputes that can be settled and that involved the caller as the disputer
-  getSettleableDisputes(caller: string): DisputePrice[] {
+  public getSettleableDisputes(caller: string): DisputePrice[] {
     return this.settleableDisputes.filter((event) => {
       return event.disputer === caller;
     });
   }
 
   // Returns the last update timestamp.
-  getLastUpdateTime() {
+  public getLastUpdateTime(): number {
     return this.lastUpdateTimestamp;
   }
 
-  _getPriceRequestKey(reqEvent: OptimisticOracleWeb3Events.RequestPrice): string {
+  private _getPriceRequestKey(
+    reqEvent:
+      | OptimisticOracleWeb3Events.RequestPrice
+      | OptimisticOracleWeb3Events.ProposePrice
+      | OptimisticOracleWeb3Events.DisputePrice
+  ): string {
     return `${reqEvent.returnValues.requester}-${reqEvent.returnValues.identifier}-${reqEvent.returnValues.timestamp}-${reqEvent.returnValues.ancillaryData}`;
   }
 
-  async update(): Promise<void> {
+  public async update(): Promise<void> {
     // Determine earliest block to query events for based on lookback window:
     const [averageBlockTime, currentBlock] = await Promise.all([
       averageBlockTimeSeconds(),

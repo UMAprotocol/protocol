@@ -11,7 +11,7 @@ import type { BlockTransactionString } from "web3-eth";
 // Note: there is no way to do something like typeof SomeGenericType<SomeGenericParameter>, so we have to trick the
 // compiler into generating a type by creating a fake function that returns it.
 const _blockHistoryGenericWorkaround = (arg: (blockNumber?: number) => Promise<BlockTransactionString>) =>
-  BlockHistory<BlockTransactionString & { timestamp: number }>(arg);
+  BlockHistory<BlockTransactionString>(arg);
 const _priceHistoryGenericWorkaround = (arg: (number: number) => Promise<BN | null>) => PriceHistory<BN>(arg);
 
 // Gets balancer spot and historical prices. This price feed assumes that it is returning
@@ -128,12 +128,12 @@ export class BalancerPriceFeed extends PriceFeedInterface {
       // We want the block and price equal to or before this time
       const block = this.blockHistory.getClosestBefore(time);
       if (block == null) return null;
-      if (!this.priceHistory.has(block.timestamp)) {
+      if (!this.priceHistory.has(Number(block.timestamp))) {
         return null;
       }
       return (
-        this.priceHistory.get(block.timestamp) &&
-        this.convertPoolDecimalsToPriceFeedDecimals(this.priceHistory.get(block.timestamp))
+        this.priceHistory.get(Number(block.timestamp)) &&
+        this.convertPoolDecimalsToPriceFeedDecimals(this.priceHistory.get(Number(block.timestamp)))
       );
     }
   }

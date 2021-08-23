@@ -10,7 +10,7 @@ export class CoinGeckoPriceFeed extends PriceFeedInterface {
   private readonly uuid: string;
   private readonly convertPriceFeedDecimals: (number: number | string | BN) => BN;
   private lastUpdateTime: null | number = null;
-  private currentPrice: undefined | BN;
+  private currentPrice: null | BN = null;
 
   /**
    * @notice Constructs the CoinGeckoPriceFeed.
@@ -105,6 +105,7 @@ export class CoinGeckoPriceFeed extends PriceFeedInterface {
   }
 
   public getCurrentPrice(): BN | null {
+    if (this.currentPrice === null) return null;
     return (this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice) || null;
   }
 

@@ -344,7 +344,7 @@ export class TraderMadePriceFeed extends PriceFeedInterface {
     const currentTime = await this.getTime();
 
     // Return early if the last call was too recent.
-    if (this.lastUpdateTime !== null && lastUpdateTime + this.minTimeBetweenUpdates > currentTime) {
+    if (lastUpdateTime !== null && lastUpdateTime + this.minTimeBetweenUpdates > currentTime) {
       return;
     }
 

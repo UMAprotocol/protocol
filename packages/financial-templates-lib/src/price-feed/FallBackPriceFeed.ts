@@ -62,9 +62,7 @@ export class FallBackPriceFeed extends PriceFeedInterface {
   // Gets the *most recent* update time for all constituent price feeds.
   public getLastUpdateTime(): number | null {
     // Filter out missing update times:
-    const lastUpdateTimes = this.priceFeeds
-      .map((priceFeed) => priceFeed.getLastUpdateTime())
-      .filter((element) => element !== undefined && element !== null);
+    const lastUpdateTimes = this.priceFeeds.map((priceFeed) => priceFeed.getLastUpdateTime()).filter(isDefined);
 
     if (lastUpdateTimes.length > 0) {
       // Take the most recent update time.

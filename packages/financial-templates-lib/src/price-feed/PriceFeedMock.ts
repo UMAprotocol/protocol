@@ -6,6 +6,7 @@ const { toBN } = Web3.utils;
 export class PriceFeedMock extends PriceFeedInterface {
   public updateCalled: number;
   public historicalPrices: (BN | null)[];
+  private readonly uuid: string;
 
   constructor(
     public currentPrice: BN | null = null,
@@ -25,7 +26,7 @@ export class PriceFeedMock extends PriceFeedInterface {
     this.uuid = "PriceFeedMock";
   }
 
-  public setCurrentPrice(currentPrice: BN | string | number | null): BN | null {
+  public setCurrentPrice(currentPrice: BN | string | number | null): void {
     // allows this to be set to null without throwing.
     this.currentPrice = currentPrice !== null ? toBN(currentPrice.toString()) : currentPrice;
   }

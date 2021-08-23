@@ -47,7 +47,7 @@ export async function createPriceFeed(
   web3: Web3,
   networker: NetworkerInterface,
   getTime: () => Promise<number>,
-  config: { [key: string]: any }
+  config: any
 ): Promise<PriceFeedInterface | null> {
   const UniswapV2 = getTruffleContract("UniswapV2", web3);
   const UniswapV3 = getTruffleContract("UniswapV3", web3);
@@ -270,6 +270,8 @@ export async function createPriceFeed(
     const baselinePriceFeeds = await _createBasketOfMedianizerPriceFeeds(config.baselinePriceFeeds);
     const denominatorPriceFeed =
       config.denominatorPriceFeed && (await _createMedianizerPriceFeed(config.denominatorPriceFeed));
+
+    if (!baselinePriceFeeds.every(isDefined) || !experimentalPriceFeeds.every(isDefined)) return null;
 
     return new BasketSpreadPriceFeed(
       providedWeb3,
@@ -509,7 +511,7 @@ export async function createPriceFeed(
       (
         await Promise.all(
           symbols.map(
-            async (symbol: string): Promise<null | [string, PriceFeedInterface]> => {
+            async (symbol: string): Promise<null | [string, PriceFeedInterface | null]> => {
               const config = allConfigs[symbol];
 
               // If there is no config for this symbol, return just null, which will be filtered out.
@@ -538,9 +540,14 @@ export async function createPriceFeed(
     );
 
     // Return null if any of the price feeds in the map are null (meaning there was an error).
-    if (Object.values(priceFeedMap).some((priceFeed) => priceFeed === null)) return null;
+    if (!Object.values(priceFeedMap).every(isDefined)) return null;
 
-    return new ExpressionPriceFeed(priceFeedMap, expressionConfig.expression, expressionConfig.priceFeedDecimals);
+    // Can assert type because it was verified in the previous line.
+    return new ExpressionPriceFeed(
+      priceFeedMap as { [name: string]: PriceFeedInterface },
+      expressionConfig.expression,
+      expressionConfig.priceFeedDecimals
+    );
   }
 
   async function _createMedianizerPriceFeed(medianizerConfig: {

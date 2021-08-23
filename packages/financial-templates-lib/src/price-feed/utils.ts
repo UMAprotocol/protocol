@@ -119,7 +119,7 @@ export const PriceHistory = <T>(
   get: (timestamp: number) => T;
   has: (timestamp: number) => boolean;
   set: (timestamp: number, price: T) => T;
-  update: (block: { timestamp: number; number: number }) => Promise<t>;
+  update: (block: { timestamp: number | string; number: number }) => Promise<T | undefined>;
   list: () => [number: number, price: T][];
 } => {
   assert(getPrice, "requires getPrice(blockNumber) function");
@@ -166,14 +166,15 @@ export const PriceHistory = <T>(
   }
 
   // Update price for block unless a price exists already
-  async function update(block: { timestamp: number; number: number }): Promise<T> {
-    assert(block.timestamp >= 0, "requires block with timestamp");
+  async function update(block: { timestamp: number | string; number: number }): Promise<T | undefined> {
+    assert(block.timestamp && Number(block.timestamp) >= 0, "requires block with timestamp");
     assert(block.number >= 0, "requires block with number");
-    if (has(block.timestamp)) return get(block.timestamp);
+    const timestamp = Number(block.timestamp);
+    if (has(timestamp)) return get(timestamp);
     const price = await getPrice(block.number);
     if (price !== undefined && price !== null) {
       // Only add prices to history that are non-null.
-      return set(block.timestamp, price);
+      return set(timestamp, price);
     }
   }
 
