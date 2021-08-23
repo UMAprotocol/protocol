@@ -4506,58 +4506,6 @@
   resolved "https://registry.yarnpkg.com/@multiformats/base-x/-/base-x-4.0.1.tgz#95ff0fa58711789d53aefb2590a8b7a4e715d121"
   integrity sha512-eMk0b9ReBbV23xXU693TAIrLyeO5iTgBZGSJfpqriG8UkYvr/hC9u9pyMlAakDNHWmbhMZCDs6KQO0jzKD8OTw==
 
-"@napi-rs/triples@^1.0.3":
-  version "1.0.3"
-  resolved "https://registry.yarnpkg.com/@napi-rs/triples/-/triples-1.0.3.tgz#76d6d0c3f4d16013c61e45dfca5ff1e6c31ae53c"
-  integrity sha512-jDJTpta+P4p1NZTFVLHJ/TLFVYVcOqv6l8xwOeBKNPMgY/zDYH/YH7SJbvrr/h1RcS9GzbPcLKGzpuK9cV56UA==
-
-"@node-rs/crc32-android-arm64@^1.0.0":
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-android-arm64/-/crc32-android-arm64-1.2.1.tgz#eefa48373e98fe5f592c9d645d06d9adb700ac61"
-  integrity sha512-SWz9X44WQzZqzURYz4DY3DccB97T+aKJl+i6rvREwf1Y5suWiPdxU4xqg9zZ66aG6XeE3ts+WeqKH26bVbZTQA==
-
-"@node-rs/crc32-darwin-arm64@^1.0.0":
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-arm64/-/crc32-darwin-arm64-1.2.1.tgz#a50d6b52f6b4743719b252ceb49e393e6ca361cd"
-  integrity sha512-JKKYEc5YKrZZ0CQ0nXSLCraU+6b9SldGU3/Wf3s4WCzYGkkB4XtMwjx3t7bGZAGmZ2ZcRy9M2EGJ8tUfV8cOOg==
-
-"@node-rs/crc32-darwin-x64@^1.0.0":
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-x64/-/crc32-darwin-x64-1.2.1.tgz#aede4451147cdc19366af984383237b33ca7da24"
-  integrity sha512-BaWeOdzJ73MyrChWQqQkJEKM9jRUjb19tE7PbFhG8cZPVxBFyxgTFNuBrR0xHOByCHI4QXSBvNCLEfawHbsscQ==
-
-"@node-rs/crc32-linux-arm-gnueabihf@^1.0.0":
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm-gnueabihf/-/crc32-linux-arm-gnueabihf-1.2.1.tgz#fbb569be2a06ef1df1fa08c0ed6cef831a3d87e3"
-  integrity sha512-6nRDyFgGsLc9bqaiK21KANqAdeh+9ZOHf3MY9HWvZoGQnxj2/LwvSHyaeG9ut+TvkL+Ic2hMtjLDNYYBaUcImw==
-
-"@node-rs/crc32-linux-arm64-gnu@^1.0.0":
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm64-gnu/-/crc32-linux-arm64-gnu-1.2.1.tgz#101383a5c4c1125bd80a88d82c6d870141e96cea"
-  integrity sha512-ZNluh2Wse68JgLGRl75fkLmVkAPSb1LE/2OdPXKZ85ExGYB5/3el2nE1CnysbqxqzL/Cc6kJ7UnsI/cxSe/D4Q==
-
-"@node-rs/crc32-linux-x64-gnu@^1.0.0":
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-gnu/-/crc32-linux-x64-gnu-1.2.1.tgz#ec7121e79aeae395b8679179419f4d3ab477ba1a"
-  integrity sha512-laJ7cAzYfNk+h3OOSwYsDdxfp1bXnpWqXVObXvylwHZQwIqUqTC5GCOa6kMMz2ElzJ9gDBgVvLplI8QX7BQnwA==
-
-"@node-rs/crc32-linux-x64-musl@^1.0.0":
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-musl/-/crc32-linux-x64-musl-1.2.1.tgz#2ab9da696460e4ad327123cb493cc0a24f5db455"
-  integrity sha512-d6DyJMgIg4E2E+GHeIYMImqDd+iaGQjwGrzLDqO1TaC08yE63chlvCMNNoQ5k2c8mzdWH2VX72IapWT5nArR0A==
-
-"@node-rs/crc32-win32-x64-msvc@^1.0.0":
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-win32-x64-msvc/-/crc32-win32-x64-msvc-1.2.1.tgz#6df8d9b3d0bc2b2920115ccf3d44cf4902a16872"
-  integrity sha512-BGTEFRdIk6Vq9BSC3VuBVYKadZXOhhtPT8LUfz4s9cK3k8ba6nFzKIbOm5UsPIUSz2lRqlWdHQQWVaCoGAAvbQ==
-
-"@node-rs/helper@^1.0.0":
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/helper/-/helper-1.2.1.tgz#e079b05f21ff4329d82c4e1f71c0290e4ecdc70c"
-  integrity sha512-R5wEmm8nbuQU0YGGmYVjEc0OHtYsuXdpRG+Ut/3wZ9XAvQWyThN08bTh2cBJgoZxHQUPtvRfeQuxcAgLuiBISg==
-  dependencies:
-    "@napi-rs/triples" "^1.0.3"
-
 "@nodefactory/filsnap-adapter@^0.2.1":
   version "0.2.2"
   resolved "https://registry.yarnpkg.com/@nodefactory/filsnap-adapter/-/filsnap-adapter-0.2.2.tgz#0e182150ce3825b6c26b8512ab9355ab7759b498"
@@ -22557,6 +22505,11 @@ node-addon-api@3.0.2:
   resolved "https://registry.yarnpkg.com/node-addon-api/-/node-addon-api-3.0.2.tgz#04bc7b83fd845ba785bb6eae25bc857e1ef75681"
   integrity sha512-+D4s2HCnxPd5PjjI0STKwncjXTUKKqm74MDMz9OPXavjsGmjkvwgLtA5yoxJUdmpj52+2u+RrXgPipahKczMKg==
 
+node-addon-api@^1.3.0:
+  version "1.7.2"
+  resolved "https://registry.yarnpkg.com/node-addon-api/-/node-addon-api-1.7.2.tgz#3df30b95720b53c24e59948b49532b662444f54d"
+  integrity sha512-ibPK3iA+vaY1eEjESkQkM0BbCqFOaZMiXRTtdB0u7b4djtY6JnsjvPdUHVMg6xQt3B8fpTTWHI9A+ADjM9frzg==
+
 node-addon-api@^2.0.0:
   version "2.0.2"
   resolved "https://registry.yarnpkg.com/node-addon-api/-/node-addon-api-2.0.2.tgz#432cfa82962ce494b132e9d72a15b29f71ff5d32"
@@ -28481,21 +28434,13 @@ sqlite3@^4.0.0:
     nan "^2.12.1"
     node-pre-gyp "^0.11.0"
 
-sse4_crc32@^6.0.1, "sse4_crc32@npm:@node-rs/crc32@1.0.0":
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32/-/crc32-1.0.0.tgz#b5038542a754f85d340b7c6c316853ee8c76a079"
-  integrity sha512-0Y5VP0f4vFuEujP3G2j+wd5bdTJg/pzj7ILq0K7PyUeGuI0iGQwg1iYSGIjQg0OU+xp987P7XCQaMpNt0+DcDg==
+sse4_crc32@^6.0.1:
+  version "6.0.1"
+  resolved "https://registry.yarnpkg.com/sse4_crc32/-/sse4_crc32-6.0.1.tgz#3511c747ce48a224e0554ebb23d5835ba08a9637"
+  integrity sha512-FUTYXpLroqytNKWIfHzlDWoy9E4tmBB/RklNMy6w3VJs+/XEYAHgbiylg4SS43iOk/9bM0BlJ2EDpFAGT66IoQ==
   dependencies:
-    "@node-rs/helper" "^1.0.0"
-  optionalDependencies:
-    "@node-rs/crc32-android-arm64" "^1.0.0"
-    "@node-rs/crc32-darwin-arm64" "^1.0.0"
-    "@node-rs/crc32-darwin-x64" "^1.0.0"
-    "@node-rs/crc32-linux-arm-gnueabihf" "^1.0.0"
-    "@node-rs/crc32-linux-arm64-gnu" "^1.0.0"
-    "@node-rs/crc32-linux-x64-gnu" "^1.0.0"
-    "@node-rs/crc32-linux-x64-musl" "^1.0.0"
-    "@node-rs/crc32-win32-x64-msvc" "^1.0.0"
+    bindings "^1.3.0"
+    node-addon-api "^1.3.0"
 
 sshpk@^1.7.0:
   version "1.16.1"
