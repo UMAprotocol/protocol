@@ -8,7 +8,7 @@ const { OptimisticOracleProposer } = require("./src/proposer");
 
 // Contract ABIs and network Addresses.
 const hre = require("hardhat");
-const { getContract, deployments } = hre;
+const { getContract } = hre;
 const { getWeb3 } = require("@uma/common");
 
 /**
@@ -36,7 +36,7 @@ async function run({
 }) {
   try {
     const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
-    const optimisticOracleAddress = (await deployments.get("OptimisticOracle")).address;
+    const optimisticOracleAddress = (await getContract("OptimisticOracle").deployed()).options.address;
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
@@ -59,7 +59,7 @@ async function run({
       getContract(oracleType).abi,
       web3,
       optimisticOracleAddress,
-      (await deployments.get(oracleType)).address
+      (await getContract(oracleType).deployed()).options.address
     );
     const gasEstimator = new GasEstimator(logger, 60, networkId);
 

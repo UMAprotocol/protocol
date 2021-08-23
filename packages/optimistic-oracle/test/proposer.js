@@ -45,6 +45,7 @@ describe("OptimisticOracle: proposer.js", function () {
   let optimisticRequester;
   let optimisticOracle;
   let finder;
+  let timer;
   let identifierWhitelist;
   let collateralWhitelist;
   let store;
@@ -98,13 +99,7 @@ describe("OptimisticOracle: proposer.js", function () {
   };
 
   before(async function () {
-    const accounts = await web3.eth.getAccounts();
-    owner = accounts[0];
-    requester = accounts[1];
-    randoProposer = accounts[2]; // Used when testing disputes
-    disputer = accounts[3];
-    botRunner = accounts[5];
-
+    [owner, requester, randoProposer, disputer, botRunner] = await web3.eth.getAccounts();
     await runDefaultFixture(hre);
 
     finder = await Finder.deployed();
@@ -112,6 +107,7 @@ describe("OptimisticOracle: proposer.js", function () {
     collateralWhitelist = await AddressWhitelist.deployed();
     store = await Store.deployed();
     mockOracle = await MockOracle.deployed();
+    timer = await Timer.deployed();
 
     // Whitelist test identifiers we can use to make default price requests.
     for (let i = 0; i < identifiersToTest.length; i++) {
@@ -141,11 +137,9 @@ describe("OptimisticOracle: proposer.js", function () {
       collateralCurrenciesForIdentifier[i] = collateral;
     }
 
-    const timer = await Timer.deployed();
     optimisticOracle = await OptimisticOracle.new(liveness, finder.options.address, timer.options.address).send({
       from: owner,
     });
-    // optimisticOracle = await OptimisticOracle.deployed();
 
     // Contract used to make price requests
     optimisticRequester = await OptimisticRequesterTest.new(optimisticOracle.options.address).send({ from: owner });

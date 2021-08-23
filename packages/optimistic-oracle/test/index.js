@@ -6,15 +6,13 @@ const winston = require("winston");
 const sinon = require("sinon");
 
 const hre = require("hardhat");
-const { runDefaultFixture, interfaceName } = require("@uma/common");
+const { runDefaultFixture } = require("@uma/common");
 const { getContract } = hre;
 const { assert } = require("chai");
 
 const { SpyTransport, spyLogLevel, spyLogIncludes } = require("@uma/financial-templates-lib");
 
-const Finder = getContract("Finder");
 const OptimisticOracle = getContract("OptimisticOracle");
-const MockOracle = getContract("MockOracleAncillary");
 
 describe("index.js", function () {
   let spy;
@@ -25,19 +23,10 @@ describe("index.js", function () {
   let errorRetriesTimeout = 0.1; // 100 milliseconds between performing retries
 
   let optimisticOracle;
-  let mockOracle;
 
   before(async function () {
-    const accounts = await web3.eth.getAccounts();
     await runDefaultFixture(hre);
-    // Deploy a new OptimisticOracle.
-    const finder = await Finder.deployed();
     optimisticOracle = await OptimisticOracle.deployed();
-    mockOracle = await MockOracle.deployed();
-
-    await finder.methods
-      .changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle), mockOracle.options.address)
-      .send({ from: accounts[0] });
   });
 
   it("Completes one iteration without logging any errors", async function () {
