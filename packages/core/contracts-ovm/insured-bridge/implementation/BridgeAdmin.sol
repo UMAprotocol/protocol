@@ -58,7 +58,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
      * @notice Construct the Bridge Admin
      * @param _finder DVM finder to find other UMA ecosystem contracts.
      * @param _crossDomainMessenger Optimism messenger contract used to send messages to L2.
-     * @param _optimisticOracleLiveness Timeout that all bridging actions from L2->L1 must wait for a OO response.
+     * @param _optimisticOracleLiveness Timeout that all bridging actions from L2->L1 must wait for a OptimisticOracle response.
      * @param _proposerBondPct Percentage of the bridged amount that a relayer must put up as a bond.
      * @param _identifier Identifier used when querying the OO for a cross bridge transfer action.
      */
