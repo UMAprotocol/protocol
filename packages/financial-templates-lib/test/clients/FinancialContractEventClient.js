@@ -14,7 +14,7 @@ const {
 const { getTruffleContract } = require("@uma/core");
 
 // Script to test
-const { FinancialContractEventClient } = require("../../src/clients/FinancialContractEventClient");
+const { FinancialContractEventClient } = require("../../dist/clients/FinancialContractEventClient");
 
 const startTime = "15798990420";
 const unreachableDeadline = MAX_UINT_VAL;

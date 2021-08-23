@@ -1,6 +1,6 @@
-const { TraderMadePriceFeed } = require("../../src/price-feed/TraderMadePriceFeed");
-const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
-const { spyLogIncludes, SpyTransport } = require("../../src/logger/SpyTransport");
+const { TraderMadePriceFeed } = require("../../dist/price-feed/TraderMadePriceFeed");
+const { NetworkerMock } = require("../../dist/price-feed/NetworkerMock");
+const { spyLogIncludes, SpyTransport } = require("../../dist/logger/SpyTransport");
 const winston = require("winston");
 const sinon = require("sinon");
 const moment = require("moment");

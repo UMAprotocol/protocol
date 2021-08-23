@@ -1,6 +1,6 @@
-const { ForexDailyPriceFeed } = require("../../src/price-feed/ForexDailyPriceFeed");
-const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
-const { spyLogIncludes, SpyTransport } = require("../../src/logger/SpyTransport");
+const { ForexDailyPriceFeed } = require("../../dist/price-feed/ForexDailyPriceFeed");
+const { NetworkerMock } = require("../../dist/price-feed/NetworkerMock");
+const { spyLogIncludes, SpyTransport } = require("../../dist/logger/SpyTransport");
 const winston = require("winston");
 const moment = require("moment-timezone");
 const { parseFixed } = require("@uma/common");

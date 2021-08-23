@@ -2,7 +2,7 @@ const winston = require("winston");
 
 const { toWei, hexToUtf8, utf8ToHex, toBN } = web3.utils;
 
-const { OptimisticOracleEventClient } = require("../../src/clients/OptimisticOracleEventClient");
+const { OptimisticOracleEventClient } = require("../../dist/clients/OptimisticOracleEventClient");
 const { interfaceName, advanceBlockAndSetTime, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 

@@ -1,8 +1,8 @@
 const winston = require("winston");
 
-const { LPPriceFeed } = require("../../src/price-feed/LPPriceFeed");
+const { LPPriceFeed } = require("../../dist/price-feed/LPPriceFeed");
 const { advanceBlockAndSetTime, parseFixed } = require("@uma/common");
-const { BlockFinder } = require("../../src/price-feed/utils");
+const { BlockFinder } = require("../../dist/price-feed/utils");
 const { getTruffleContract } = require("@uma/core");
 
 const ERC20Interface = getTruffleContract("IERC20Standard", web3);

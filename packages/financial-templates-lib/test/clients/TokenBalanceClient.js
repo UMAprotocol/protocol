@@ -4,7 +4,7 @@ const winston = require("winston");
 const { parseFixed, TEST_DECIMAL_COMBOS } = require("@uma/common");
 
 // Script to test
-const { TokenBalanceClient } = require("../../src/clients/TokenBalanceClient");
+const { TokenBalanceClient } = require("../../dist/clients/TokenBalanceClient");
 const { getTruffleContract } = require("@uma/core");
 
 // Truffle artifacts
