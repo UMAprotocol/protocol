@@ -1,6 +1,5 @@
 // Provides convenience methods for interacting with deployed Multicall contract on network.
-const hre = require("hardhat");
-const { getContract } = hre;
+const { getAbi } = require("@uma/contracts-node");
 const { getAbiDecoder } = require("@uma/common");
 const assert = require("assert");
 
@@ -17,7 +16,7 @@ function _decodeOutput(callData, returnData, web3) {
 // Simulate submitting a batch of `transactions` to the multicall contact
 // and return an array of decoded, simulated output values.
 const aggregateTransactionsAndCall = async (multicallAddress, web3, transactions, blockNumber) => {
-  const multicallContract = new web3.eth.Contract(getContract("Multicall").abi, multicallAddress);
+  const multicallContract = new web3.eth.Contract(getAbi("Multicall"), multicallAddress);
   for (let i = 0; i < transactions.length; i++) {
     assert(
       transactions[i].target && transactions[i].callData,
