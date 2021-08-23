@@ -33,7 +33,7 @@
   },
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
-  "main": "index.js",
+  "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "publishConfig": {
     "registry": "https://registry.npmjs.com/",
