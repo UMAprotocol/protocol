@@ -1,5 +1,5 @@
 // Provides convenience methods for interacting with deployed Multicall contract on network.
-const { getAbi } = require("@uma/core");
+const { getAbi } = require("@uma/contracts-node");
 const { getAbiDecoder } = require("@uma/common");
 const assert = require("assert");
 

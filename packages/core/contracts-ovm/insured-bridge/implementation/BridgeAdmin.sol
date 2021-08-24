@@ -5,11 +5,9 @@ pragma solidity ^0.8.0;
 // contracts. These contracts are relatively small and should have no problems porting from 0.7.x to 0.8.x, and
 // changing their version is preferable to changing this contract to 0.7.x and defining compatible interfaces for all
 // of the imported DVM contracts below.
-import "./OVM_CrossDomainEnabled.sol";
-import "./BridgePoolInterface.sol";
-import "./BridgeAdminInterface.sol";
-import "./BridgePoolInterface.sol";
-
+import "../external/OVM_CrossDomainEnabled.sol";
+import "../interfaces//BridgePoolInterface.sol";
+import "../interfaces/BridgeAdminInterface.sol";
 import "../../../contracts/oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../../contracts/oracle/interfaces/FinderInterface.sol";
 import "../../../contracts/oracle/implementation/Constants.sol";
@@ -56,8 +54,14 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
         _;
     }
 
-    // TODO: Consider switching to hardcoded OVM_L1CrossDomainMessenger:
-    // https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts/deployments/README.md
+    /**
+     * @notice Construct the Bridge Admin
+     * @param _finder DVM finder to find other UMA ecosystem contracts.
+     * @param _crossDomainMessenger Optimism messenger contract used to send messages to L2.
+     * @param _optimisticOracleLiveness Timeout that all bridging actions from L2->L1 must wait for a OptimisticOracle response.
+     * @param _proposerBondPct Percentage of the bridged amount that a relayer must put up as a bond.
+     * @param _identifier Identifier used when querying the OO for a cross bridge transfer action.
+     */
     constructor(
         address _finder,
         address _crossDomainMessenger,
@@ -77,8 +81,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
      **************************************/
 
     /**
-     * @notice Sets new price identifier to use for relayed deposits. BridgePools will read the identifier from this
-     * contract.
+     * @notice Sets a price identifier to use for relayed deposits. BridgePools reads the identifier from this contract.
      * @dev Can only be called by the current owner.
      * @param _identifier New identifier to set.
      */
@@ -87,8 +90,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
     }
 
     /**
-     * @notice Sets challenge period for relayed deposits. BridgePools will read this value from this
-     * contract.
+     * @notice Sets challenge period for relayed deposits. BridgePools will read this value from this contract.
      * @dev Can only be called by the current owner.
      * @param _liveness New OptimisticOracle liveness period to set for relay price requests.
      */
@@ -97,8 +99,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
     }
 
     /**
-     * @notice Sets challenge pereiod for relayed deposits. BridgePools will read this value from this
-     * contract.
+     * @notice Sets challenge period for relayed deposits. BridgePools will read this value from this contract.
      * @dev Can only be called by the current owner.
      * @param _proposerBondPct New OptimisticOracle proposer bond % to set for relay price requests. 1e18 = 100%.
      */
@@ -107,8 +108,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
     }
 
     /**
-     * @notice Privileged account can set L2 deposit contract that originates deposit orders to be fulfilled by this
-     * contract.
+     * @notice Sets the L2 deposit contract that originates deposit orders to be fulfilled by this bridgePool contracts.
      * @dev Only callable by the current owner.
      * @param _depositContract Address of L2 deposit contract.
      */
@@ -121,11 +121,6 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
     /**************************************************
      *        CROSSDOMAIN ADMIN FUNCTIONS             *
      **************************************************/
-
-    // TODO: In following functions, we need to consider two things concerning asynchronous cross-domain messaging:
-    // - how to set the l2Gas value such that the OVM allocates enough gas to execute the function. Should we hardcode
-    //   a really high OVM gas limit value like 10_000_000 and use that for all functions?
-    // - contract needs to assume that the cross domain message might fail.
 
     /**
      * @notice Set new contract as the admin address in the L2 Deposit contract.
@@ -146,7 +141,6 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
      * @param _l2Gas Gas limit to set for relayed message on L2.
      */
     function setMinimumBridgingDelay(uint64 _minimumBridgingDelay, uint32 _l2Gas) public onlyOwner depositContractSet {
-        // TODO: Validate _minimumBridgingDelay
         sendCrossDomainMessage(
             depositContract,
             _l2Gas,
@@ -157,7 +151,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
 
     /**
      * @notice Owner can pause/unpause L2 deposits for a tokens.
-     * @dev Only callable by the current owner. Will set the same setting in the L2 Deposit contract via the cross
+     * @dev Only callable by Owner of this contract. Will set the same setting in the L2 Deposit contract via the cross
      * domain messenger.
      * @param _l2Token address of L2 token to enable/disable deposits for.
      * @param _depositsEnabled bool to set if the deposit box should accept/reject deposits.
@@ -183,7 +177,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
      * whitelist the token mapping.
      * @param _l1Token Address of L1 token that can be used to relay L2 token deposits.
      * @param _l2Token Address of L2 token whose deposits are fulfilled by `_l1Token`.
-     * @param _bridgePool Address of BridgePool which manages liquidity to filfill L2-->L1 relays.
+     * @param _bridgePool Address of BridgePool which manages liquidity to fulfill L2-->L1 relays.
      * @param _l2Gas Gas limit to set for relayed message on L2
      */
     function whitelistToken(
@@ -193,15 +187,13 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
         uint32 _l2Gas
     ) public onlyOwner depositContractSet {
         require(_bridgePool != address(0), "BridgePool cannot be zero address");
+        require(_l2Token != address(0), "L2 token cannot be zero address");
         require(_getCollateralWhitelist().isOnWhitelist(address(_l1Token)), "Payment token not whitelisted");
 
         require(address(BridgePoolInterface(_bridgePool).l1Token()) == _l1Token, "Bridge pool has different L1 token");
 
         whitelistedTokens[_l1Token] = L1TokenRelationships({ l2Token: _l2Token, bridgePool: _bridgePool });
 
-        // TODO: Need to prepare for situation where this async transaction fails due to insufficient gas, or other
-        // reasons. Currently, the user can execute this function again, but the whitelist mapping might get out of
-        // sync between L1 and L2.
         sendCrossDomainMessage(
             depositContract,
             _l2Gas,
@@ -236,13 +228,15 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
     }
 
     function _setOptimisticOracleLiveness(uint64 _liveness) private {
-        // TODO: Validate liveness period value.
+        // The following constraints are copied from a similar function in the OptimisticOracle contract:
+        // - https://github.com/UMAprotocol/protocol/blob/dd211c4e3825fe007d1161025a34e9901b26031a/packages/core/contracts/oracle/implementation/OptimisticOracle.sol#L621
+        require(_liveness < 5200 weeks, "Liveness too large");
+        require(_liveness > 0, "Liveness cannot be 0");
         optimisticOracleLiveness = _liveness;
         emit SetOptimisticOracleLiveness(optimisticOracleLiveness);
     }
 
     function _setProposerBondPct(uint64 _proposerBondPct) private {
-        // TODO: Validate bond % value.
         proposerBondPct = _proposerBondPct;
         emit SetProposerBondPct(proposerBondPct);
     }

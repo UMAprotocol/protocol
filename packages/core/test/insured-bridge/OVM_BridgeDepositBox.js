@@ -2,6 +2,7 @@
 // such as the cross domain message bridge etc. The context of all calls, tokens and setup are the mocked L2 network.
 
 const hre = require("hardhat");
+const { web3 } = require("hardhat");
 const { predeploys } = require("@eth-optimism/contracts");
 const { didContractThrow } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;
@@ -279,56 +280,27 @@ describe("OVM_BridgeDepositBox", () => {
         )
       );
     });
-    it("Reverts if sum of slow and instant relay fees exceed 50%", async () => {
+    it("Reverts if slow and instant relay fees exceed individually exceed 25%", async () => {
       // Try to deposit and check it reverts.
       const quoteTimestamp = Number(await timer.methods.getCurrentTime().call()) + quoteTimestampOffset;
       await l2Token.methods.approve(depositBox.options.address, toWei("100")).send({ from: user1 });
       assert(
         await didContractThrow(
           depositBox.methods
-            .deposit(user1, l2Token.options.address, depositAmount, toWei("0.25"), toWei("0.26"), quoteTimestamp)
+            .deposit(user1, l2Token.options.address, depositAmount, toWei("0.24"), toWei("0.26"), quoteTimestamp)
             .send({ from: user1 })
         )
       );
-    });
-    it("Reverts if deposit time before or after valid quoteTimestamp", async () => {
-      const currentTime = await timer.methods.getCurrentTime().call();
-      const invalidFutureTime = currentTime + (60 * 10 + 1);
-      const invalidPastTime = currentTime - (60 * 10 + 1);
-
-      // Try to deposit too far in the future and check it reverts.
-      await l2Token.methods.approve(depositBox.options.address, toWei("100")).send({ from: user1 });
       assert(
         await didContractThrow(
           depositBox.methods
-            .deposit(
-              user1,
-              l2Token.options.address,
-              depositAmount,
-              slowRelayFeePct,
-              instantRelayFeePct,
-              invalidFutureTime
-            )
+            .deposit(user1, l2Token.options.address, depositAmount, toWei("0.26"), toWei("0.24"), quoteTimestamp)
             .send({ from: user1 })
         )
       );
-
-      // Try to deposit too far in the past and check it reverts.
-      await l2Token.methods.approve(depositBox.options.address, toWei("100")).send({ from: user1 });
-      assert(
-        await didContractThrow(
-          depositBox.methods
-            .deposit(
-              user1,
-              l2Token.options.address,
-              depositAmount,
-              slowRelayFeePct,
-              instantRelayFeePct,
-              invalidPastTime
-            )
-            .send({ from: user1 })
-        )
-      );
+      await depositBox.methods
+        .deposit(user1, l2Token.options.address, depositAmount, toWei("0.24"), toWei("0.24"), quoteTimestamp)
+        .send({ from: user1 });
     });
   });
   describe("Box bridging logic", () => {
