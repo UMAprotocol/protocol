@@ -13,5 +13,12 @@ contract Multicall2 {
 
     function aggregate(Call[] memory calls) public virtual returns (uint256 blockNumber, bytes[] memory returnData) {}
 
-    function tryBlockAndAggregate(bool requireSuccess, Call[] memory calls) public returns (uint256 blockNumber, bytes32 blockHash, Result[] memory returnData) {}
+    function tryBlockAndAggregate(bool requireSuccess, Call[] memory calls)
+        public
+        returns (
+            uint256 blockNumber,
+            bytes32 blockHash,
+            Result[] memory returnData
+        )
+    {}
 }
