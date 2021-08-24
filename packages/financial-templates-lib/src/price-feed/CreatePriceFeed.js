@@ -1,7 +1,7 @@
 const assert = require("assert");
 const { ChainId, Token, Pair, TokenAmount } = require("@uniswap/sdk");
 const { defaultConfigs } = require("./DefaultPriceFeedConfigs");
-const { getTruffleContract } = require("@uma/core");
+const { getAbi } = require("@uma/contracts-node");
 const { BlockFinder } = require("./utils");
 const { getPrecisionForIdentifier, PublicNetworks } = require("@uma/common");
 const { multicallAddressMap } = require("../helpers/multicall");
@@ -33,14 +33,6 @@ const { VaultPriceFeed, HarvestVaultPriceFeed } = require("./VaultPriceFeed");
 const uniswapBlockCache = {};
 
 async function createPriceFeed(logger, web3, networker, getTime, config) {
-  const UniswapV2 = getTruffleContract("UniswapV2", web3);
-  const UniswapV3 = getTruffleContract("UniswapV3", web3);
-  const ERC20 = getTruffleContract("ExpandedERC20", web3);
-  const Balancer = getTruffleContract("Balancer", web3);
-  const VaultInterface = getTruffleContract("VaultInterface", web3);
-  const HarvestVaultInterface = getTruffleContract("HarvestVaultInterface", web3);
-  const Perpetual = getTruffleContract("Perpetual", web3);
-
   let providedWeb3;
   if (config.nodeUrlEnvVar) {
     if (!process.env[config.nodeUrlEnvVar])
@@ -129,12 +121,12 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
     if (config.version !== undefined && config.version !== "v2" && config.version !== "v3") return null;
 
     const [uniswapAbi, UniswapPriceFeed] =
-      config.version === "v3" ? [UniswapV3.abi, UniswapV3PriceFeed] : [UniswapV2.abi, UniswapV2PriceFeed];
+      config.version === "v3" ? [getAbi("UniswapV3"), UniswapV3PriceFeed] : [getAbi("UniswapV2"), UniswapV2PriceFeed];
 
     return new UniswapPriceFeed(
       logger,
       uniswapAbi,
-      ERC20.abi,
+      getAbi("ERC20"),
       providedWeb3,
       config.uniswapAddress,
       config.twapLength,
@@ -228,7 +220,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       logger,
       providedWeb3,
       getTime,
-      Balancer.abi,
+      getAbi("Balancer"),
       config.balancerAddress,
       config.balancerTokenIn,
       config.balancerTokenOut,
@@ -379,8 +371,8 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       logger,
       web3: providedWeb3,
       getTime,
-      vaultAbi: VaultInterface.abi,
-      erc20Abi: ERC20.abi,
+      vaultAbi: getAbi("VaultInterface"),
+      erc20Abi: getAbi("ERC20"),
       vaultAddress: config.address,
       blockFinder: getSharedBlockFinder(web3),
     });
@@ -397,8 +389,8 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       logger,
       web3: providedWeb3,
       getTime,
-      vaultAbi: HarvestVaultInterface.abi,
-      erc20Abi: ERC20.abi,
+      vaultAbi: getAbi("HarvestVaultInterface"),
+      erc20Abi: getAbi("ERC20"),
       vaultAddress: config.address,
       blockFinder: getSharedBlockFinder(web3),
     });
@@ -415,7 +407,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       logger,
       web3: providedWeb3,
       getTime,
-      erc20Abi: ERC20.abi,
+      erc20Abi: getAbi("ERC20"),
       blockFinder: getSharedBlockFinder(web3),
     });
   } else if (config.type === "frm") {
@@ -446,7 +438,7 @@ async function createPriceFeed(logger, web3, networker, getTime, config) {
       logger,
       web3: providedWeb3,
       getTime,
-      perpetualAbi: Perpetual.abi,
+      perpetualAbi: getAbi("Perpetual"),
       multicallAddress: multicallAddress,
       blockFinder: getSharedBlockFinder(web3),
     });
@@ -817,8 +809,7 @@ async function createReferencePriceFeedForFinancialContract(
 
 function getFinancialContractIdentifierAtAddress(web3, financialContractAddress) {
   try {
-    const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, "1.2.0");
-    return new web3.eth.Contract(ExpiringMultiParty.abi, financialContractAddress);
+    return new web3.eth.Contract(getAbi("ExpiringMultiParty"), financialContractAddress);
   } catch (error) {
     throw new Error({ message: "Something went wrong in fetching the financial contract identifier", error });
   }
