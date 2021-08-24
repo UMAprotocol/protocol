@@ -99,10 +99,9 @@ export class FinancialContractClient {
     private readonly contractType: FinancialContractType = "ExpiringMultiParty" // Default to Expiring Multi Party for now to enable backwards compatibility with other bots. // This will be removed as soon as the other bots have been updated to work with these contract types.
   ) {
     // Financial Contract contract
-    this.financialContract = (new web3.eth.Contract(
-      financialContractAbi,
-      financialContractAddress
-    ) as unknown) as FinancialContractClient["financialContract"]; // Cast to web3-specific type
+    this.financialContract = (new web3.eth.Contract(financialContractAbi, financialContractAddress) as unknown) as
+      | ExpiringMultiPartyWeb3
+      | PerpetualWeb3; // Cast to web3-specific type
 
     // Define a set of normalization functions. These Convert a number delimited with given base number of decimals to a
     // number delimited with a given number of decimals (18). For example, consider normalizeCollateralDecimals. 100 BTC

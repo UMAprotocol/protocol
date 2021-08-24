@@ -631,13 +631,13 @@ export async function getUniswapPairDetails(
   web3: Web3,
   syntheticTokenAddress: string,
   collateralCurrencyAddress: string
-): Promise<{ address?: string; pairAddress?: string; inverted?: boolean }> {
+): Promise<{ pairAddress?: string; inverted?: boolean }> {
   const networkId = await web3.eth.net.getId();
 
   if (process.env.UNISWAP_ADDRESS) {
     // Used for mock uniswap pair contracts.
     // TODO: is address the wrong name for this field?
-    return { address: process.env.UNISWAP_ADDRESS, inverted: false };
+    return { pairAddress: process.env.UNISWAP_ADDRESS, inverted: false };
   } else if (networkId in Object.keys(ChainId)) {
     // If Uniswap V2 supports this network, compute the address using the SDK.
     const syntheticToken = new Token(networkId, syntheticTokenAddress, 18, "", "");
@@ -865,6 +865,6 @@ function getFinancialContractIdentifierAtAddress(web3: Web3, financialContractAd
     const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, "1.2.0");
     return new web3.eth.Contract(ExpiringMultiParty.abi, financialContractAddress);
   } catch (error) {
-    throw new Error(`Something went wrong in fetching the financial contract identifier ${error}`);
+    throw new Error(`Something went wrong in fetching the financial contract identifier ${error?.stack || error}`);
   }
 }

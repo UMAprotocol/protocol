@@ -13,6 +13,10 @@ import {
 type RequestPrice = OptimisticOracleWeb3Events.RequestPrice["returnValues"];
 type ProposePrice = OptimisticOracleWeb3Events.ProposePrice["returnValues"];
 type DisputePrice = OptimisticOracleWeb3Events.DisputePrice["returnValues"];
+type AnyRequestEvent =
+  | OptimisticOracleWeb3Events.RequestPrice
+  | OptimisticOracleWeb3Events.ProposePrice
+  | OptimisticOracleWeb3Events.DisputePrice;
 
 export class OptimisticOracleClient {
   public readonly oracle: OptimisticOracleWeb3;
@@ -92,12 +96,7 @@ export class OptimisticOracleClient {
     return this.lastUpdateTimestamp;
   }
 
-  private _getPriceRequestKey(
-    reqEvent:
-      | OptimisticOracleWeb3Events.RequestPrice
-      | OptimisticOracleWeb3Events.ProposePrice
-      | OptimisticOracleWeb3Events.DisputePrice
-  ): string {
+  private _getPriceRequestKey(reqEvent: AnyRequestEvent): string {
     return `${reqEvent.returnValues.requester}-${reqEvent.returnValues.identifier}-${reqEvent.returnValues.timestamp}-${reqEvent.returnValues.ancillaryData}`;
   }
 

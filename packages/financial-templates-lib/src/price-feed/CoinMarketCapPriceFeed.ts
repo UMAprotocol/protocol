@@ -10,7 +10,7 @@ export class CoinMarketCapPriceFeed extends PriceFeedInterface {
   private readonly priceHistory: { time: number; price: BN }[];
   private readonly convertPriceFeedDecimals: (number: number | string | BN) => BN;
   private lastUpdateTime: number | null = null;
-  private currentPrice: BN | undefined;
+  private currentPrice: BN | null = null;
   /**
    * @notice Constructs the CoinMarketCapPriceFeed.
    * @param {Object} logger Winston module used to send logs.
@@ -118,12 +118,12 @@ export class CoinMarketCapPriceFeed extends PriceFeedInterface {
   }
 
   public getCurrentPrice(): BN | null {
-    return (this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice) || null;
+    return this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
   }
 
   public async getHistoricalPrice(time: number): Promise<BN | null> {
-    if (this.lastUpdateTime === undefined) {
-      throw new Error(`${this.uuid}: undefined lastUpdateTime`);
+    if (this.lastUpdateTime === null) {
+      throw new Error(`${this.uuid}: null lastUpdateTime`);
     }
 
     let matchingPrice;
@@ -156,11 +156,11 @@ export class CoinMarketCapPriceFeed extends PriceFeedInterface {
     return this.lookback;
   }
 
-  private _invertPriceSafely(priceBN: BN | undefined) {
+  private _invertPriceSafely(priceBN: BN | null) {
     if (priceBN && !priceBN.isZero()) {
       return this.convertPriceFeedDecimals("1").mul(this.convertPriceFeedDecimals("1")).div(priceBN);
     } else {
-      return undefined;
+      return null;
     }
   }
 }

@@ -30,6 +30,9 @@ interface TransactionMetadata {
   blockNumber: number;
 }
 
+// This defines a generic type that takes an event and returns the type that we export to the user to represent that
+// event. It essentially combines the returnValues struct with a few fields that we add to all expoerts (hash and
+// block number).
 type EventExport<T extends { returnValues: any }> = T["returnValues"] & TransactionMetadata;
 
 // A thick client for getting information about FinancialContract events. This client is kept separate from the

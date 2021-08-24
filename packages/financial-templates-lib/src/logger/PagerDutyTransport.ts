@@ -20,7 +20,7 @@ export class PagerDutyTransport extends Transport {
       fromEmail,
       defaultServiceId,
       customServices = {},
-    }: { pdApiToken: string; fromEmail: string; defaultServiceId: string; customServices: { [key: string]: string } }
+    }: { pdApiToken: string; fromEmail: string; defaultServiceId: string; customServices?: { [key: string]: string } }
   ) {
     super(winstonOpts);
 

@@ -105,8 +105,7 @@ export class CoinGeckoPriceFeed extends PriceFeedInterface {
   }
 
   public getCurrentPrice(): BN | null {
-    if (this.currentPrice === null) return null;
-    return (this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice) || null;
+    return this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
   }
 
   public async getHistoricalPrice(time: number): Promise<BN | null> {
@@ -144,11 +143,11 @@ export class CoinGeckoPriceFeed extends PriceFeedInterface {
     return this.lookback;
   }
 
-  private _invertPriceSafely(priceBN: BN): BN | undefined {
+  private _invertPriceSafely(priceBN: BN | null): BN | null {
     if (priceBN && !priceBN.isZero()) {
       return this.convertPriceFeedDecimals("1").mul(this.convertPriceFeedDecimals("1")).div(priceBN);
     } else {
-      return undefined;
+      return null;
     }
   }
 }
