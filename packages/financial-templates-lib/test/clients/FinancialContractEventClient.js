@@ -63,6 +63,11 @@ const versionedIt = function (supportedVersions, shouldBeItOnly = false) {
   return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it : () => {};
 };
 
+const objectsInArrayInclude = (subset, superset) => {
+  assert.equal(superset.length, subset.length);
+  for (let i = 0; i < superset.length; i++) assert.deepInclude(superset[i], subset[i]);
+};
+
 contract("FinancialContractEventClient.js", function (accounts) {
   for (let tokenConfig of TEST_DECIMAL_COMBOS) {
     describe(`${tokenConfig.collateralDecimals} decimals`, function () {
@@ -255,12 +260,12 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 await client.clearState();
 
                 // State is empty before update().
-                assert.deepStrictEqual([], client.getAllNewSponsorEvents());
+                objectsInArrayInclude([], client.getAllNewSponsorEvents());
 
                 await client.update();
 
                 // Compare with expected processed event objects
-                assert.deepStrictEqual(
+                objectsInArrayInclude(
                   [
                     {
                       transactionHash: newSponsorTxObj1.tx,
@@ -296,7 +301,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 await client.clearState();
                 await client.update();
 
-                assert.deepStrictEqual(
+                objectsInArrayInclude(
                   [
                     {
                       transactionHash: newSponsorTxObj4.tx,
@@ -316,12 +321,12 @@ contract("FinancialContractEventClient.js", function (accounts) {
               await client.clearState();
 
               // State is empty before update().
-              assert.deepStrictEqual([], client.getAllCreateEvents());
+              objectsInArrayInclude([], client.getAllCreateEvents());
 
               await client.update();
 
               // Compare with expected processed event objects
-              assert.deepStrictEqual(
+              objectsInArrayInclude(
                 [
                   {
                     transactionHash: newSponsorTxObj1.tx,
@@ -357,7 +362,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
               await client.clearState();
               await client.update();
 
-              assert.deepStrictEqual(
+              objectsInArrayInclude(
                 [
                   {
                     transactionHash: newSponsorTxObj4.tx,
@@ -376,7 +381,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
               await client.clearState();
 
               // State is empty before update().
-              assert.deepStrictEqual([], client.getAllDepositEvents());
+              objectsInArrayInclude([], client.getAllDepositEvents());
 
               const depositTxObj1 = await financialContract.deposit(
                 { rawValue: convertDecimals("5") },
@@ -386,7 +391,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
               await client.update();
 
               // Compare with expected processed event objects
-              assert.deepStrictEqual(
+              objectsInArrayInclude(
                 [
                   {
                     transactionHash: depositTxObj1.tx,
@@ -406,7 +411,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
               await client.clearState();
               await client.update();
 
-              assert.deepStrictEqual(
+              objectsInArrayInclude(
                 [
                   {
                     transactionHash: depositTxObj2.tx,
@@ -424,7 +429,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
               await client.clearState();
 
               // State is empty before update().
-              assert.deepStrictEqual([], client.getAllWithdrawEvents());
+              objectsInArrayInclude([], client.getAllWithdrawEvents());
 
               // GCR is ~2.0, so sponsor2 and liquidator should be able to withdraw small amounts while keeping their CR above GCR.
               const withdrawTxObj1 = await financialContract.withdraw(
@@ -435,7 +440,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
               await client.update();
 
               // Compare with expected processed event objects
-              assert.deepStrictEqual(
+              objectsInArrayInclude(
                 [
                   {
                     transactionHash: withdrawTxObj1.tx,
@@ -455,7 +460,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
               await client.clearState();
               await client.update();
 
-              assert.deepStrictEqual(
+              objectsInArrayInclude(
                 [
                   {
                     transactionHash: withdrawTxObj2.tx,
@@ -473,7 +478,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
               await client.clearState();
 
               // State is empty before update().
-              assert.deepStrictEqual([], client.getAllRedeemEvents());
+              objectsInArrayInclude([], client.getAllRedeemEvents());
 
               // Redeem from liquidator who has many more than the min token amount
               const redeemTxObj1 = await financialContract.redeem(
@@ -484,7 +489,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
               await client.update();
 
               // Compare with expected processed event objects
-              assert.deepStrictEqual(
+              objectsInArrayInclude(
                 [
                   {
                     transactionHash: redeemTxObj1.tx,
@@ -505,7 +510,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
               await client.clearState();
               await client.update();
 
-              assert.deepStrictEqual(
+              objectsInArrayInclude(
                 [
                   {
                     transactionHash: redeemTxObj2.tx,
@@ -525,7 +530,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 await client.clearState();
 
                 // State is empty before update()
-                assert.deepStrictEqual([], client.getAllRegularFeeEvents());
+                objectsInArrayInclude([], client.getAllRegularFeeEvents());
 
                 // Set fees to 1% per second and advance 1 second.
                 await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.01") });
@@ -536,7 +541,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
 
                 // Compare with expected processed event objects.
                 // The starting collateral is 610 so 6.1 are paid in fees.
-                assert.deepStrictEqual(
+                objectsInArrayInclude(
                   [
                     {
                       transactionHash: regularFeeTxObj1.tx,
@@ -555,7 +560,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 await client.clearState();
                 await client.update();
 
-                assert.deepStrictEqual(
+                objectsInArrayInclude(
                   [
                     {
                       transactionHash: regularFeeTxObj2.tx,
@@ -589,12 +594,12 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 await client.clearState();
 
                 // State is empty before update().
-                assert.deepStrictEqual([], client.getAllLiquidationEvents());
+                objectsInArrayInclude([], client.getAllLiquidationEvents());
 
                 await client.update();
 
                 // Compare with expected processed event object
-                assert.deepStrictEqual(
+                objectsInArrayInclude(
                   [
                     {
                       transactionHash: txObject1.tx,
@@ -621,7 +626,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 );
                 await client.clearState();
                 await client.update();
-                assert.deepStrictEqual(
+                objectsInArrayInclude(
                   [
                     {
                       transactionHash: txObject2.tx,
@@ -656,12 +661,12 @@ contract("FinancialContractEventClient.js", function (accounts) {
               await client.clearState();
 
               // State is empty before update().
-              assert.deepStrictEqual([], client.getAllDisputeEvents());
+              objectsInArrayInclude([], client.getAllDisputeEvents());
 
               await client.update();
 
               // Compare with expected processed event object
-              assert.deepStrictEqual(
+              objectsInArrayInclude(
                 [
                   {
                     transactionHash: txObject.tx,
@@ -708,13 +713,13 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 await client.clearState();
 
                 // State is empty before update().
-                assert.deepStrictEqual([], client.getAllDisputeSettlementEvents());
+                objectsInArrayInclude([], client.getAllDisputeSettlementEvents());
 
                 // Update the client and check it has the dispute event stored correctly
                 await client.update();
 
                 // Compare with expected processed event object
-                assert.deepStrictEqual(
+                objectsInArrayInclude(
                   [
                     {
                       transactionHash: txObject.tx,
@@ -763,13 +768,13 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 await client.clearState();
 
                 // State is empty before update().
-                assert.deepStrictEqual([], client.getAllLiquidationWithdrawnEvents());
+                objectsInArrayInclude([], client.getAllLiquidationWithdrawnEvents());
 
                 // Update the client and check it has the liquidation withdrawn event stored correctly
                 await client.update();
 
                 // Compare with expected processed event object
-                assert.deepStrictEqual(
+                objectsInArrayInclude(
                   [
                     {
                       transactionHash: txObject.tx,
@@ -790,7 +795,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 await client.clearState();
 
                 // State is empty before update()
-                assert.deepStrictEqual([], client.getAllFundingRateUpdatedEvents());
+                objectsInArrayInclude([], client.getAllFundingRateUpdatedEvents());
 
                 // Propose new funding rate.
                 const proposeAndPublishNewRate = async (newRateWei) => {
@@ -810,7 +815,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 await client.update();
 
                 // Compare with expected processed event objects.
-                assert.deepStrictEqual(
+                objectsInArrayInclude(
                   [
                     {
                       transactionHash: txObject.tx,
@@ -829,7 +834,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 );
                 await client.clearState();
                 await client.update();
-                assert.deepStrictEqual(
+                objectsInArrayInclude(
                   [
                     {
                       transactionHash: txObject2.tx,
@@ -879,9 +884,9 @@ contract("FinancialContractEventClient.js", function (accounts) {
 
                 await offSetClient.update();
 
-                assert.deepStrictEqual([], offSetClient.getAllLiquidationEvents()); // Created liquidation should not be captured
-                assert.deepStrictEqual([], offSetClient.getAllDisputeEvents());
-                assert.deepStrictEqual([], offSetClient.getAllDisputeSettlementEvents());
+                objectsInArrayInclude([], offSetClient.getAllLiquidationEvents()); // Created liquidation should not be captured
+                objectsInArrayInclude([], offSetClient.getAllDisputeEvents());
+                objectsInArrayInclude([], offSetClient.getAllDisputeSettlementEvents());
               }
             );
           });

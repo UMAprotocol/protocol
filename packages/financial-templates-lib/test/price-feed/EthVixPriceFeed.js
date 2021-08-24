@@ -112,7 +112,7 @@ describe("EthVixPriceFeed.js", () => {
 
   describe("Before an initial update has been performed", () => {
     it("does not have a last update time", () => {
-      assert.isUndefined(priceFeed.getLastUpdateTime());
+      assert.isNull(priceFeed.getLastUpdateTime());
     });
 
     it("throws when the ethVIX price is requested", () => {

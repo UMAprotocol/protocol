@@ -16,6 +16,11 @@ const Timer = getTruffleContract("Timer", web3);
 const Store = getTruffleContract("Store", web3);
 const MockOracle = getTruffleContract("MockOracleAncillary", web3);
 
+const objectsInArrayInclude = (superset, subset) => {
+  assert.equal(superset.length, subset.length);
+  for (let i = 0; i < superset.length; i++) assert.deepInclude(superset[i], subset[i]);
+};
+
 contract("OptimisticOracleClient.js", function (accounts) {
   const owner = accounts[0];
   const requester = accounts[1];
@@ -113,23 +118,23 @@ contract("OptimisticOracleClient.js", function (accounts) {
 
     // Initially, no proposals and no price requests.
     let result = client.getUndisputedProposals();
-    assert.deepStrictEqual(result, []);
+    objectsInArrayInclude(result, []);
     result = client.getUnproposedPriceRequests();
-    assert.deepStrictEqual(result, []);
+    objectsInArrayInclude(result, []);
     result = client.getSettleableProposals(proposer);
-    assert.deepStrictEqual(result, []);
+    objectsInArrayInclude(result, []);
 
     // Request and update again, should show no proposals.
     await optimisticRequester.requestPrice(identifier, requestTime, "0x", collateral.address, 0);
     await client.update();
     result = client.getUndisputedProposals();
-    assert.deepStrictEqual(result, []);
+    objectsInArrayInclude(result, []);
     result = client.getSettleableProposals(proposer);
-    assert.deepStrictEqual(result, []);
+    objectsInArrayInclude(result, []);
 
     // Should have one price request.
     result = client.getUnproposedPriceRequests();
-    assert.deepStrictEqual(result, [
+    objectsInArrayInclude(result, [
       {
         requester: optimisticRequester.address,
         identifier: hexToUtf8(identifier),
@@ -150,7 +155,7 @@ contract("OptimisticOracleClient.js", function (accounts) {
 
     await client.update();
     result = client.getUndisputedProposals();
-    assert.deepStrictEqual(result, [
+    objectsInArrayInclude(result, [
       {
         requester: optimisticRequester.address,
         proposer: proposer,
@@ -163,22 +168,22 @@ contract("OptimisticOracleClient.js", function (accounts) {
       },
     ]);
     result = client.getUnproposedPriceRequests();
-    assert.deepStrictEqual(result, []);
+    objectsInArrayInclude(result, []);
     result = client.getSettleableProposals(proposer);
-    assert.deepStrictEqual(result, []);
+    objectsInArrayInclude(result, []);
 
     // Now, advance time so that the proposal expires and check that the client detects the new state:
     await optimisticOracle.setCurrentTime((Number(currentContractTime) + liveness).toString());
     await client.update();
     result = client.getUndisputedProposals();
-    assert.deepStrictEqual(result, []);
+    objectsInArrayInclude(result, []);
     result = client.getUnproposedPriceRequests();
-    assert.deepStrictEqual(result, []);
+    objectsInArrayInclude(result, []);
     // Note: `getSettleableProposals` only returns proposals where the `proposer` is involved
     result = client.getSettleableProposals(rando);
-    assert.deepStrictEqual(result, []);
+    objectsInArrayInclude(result, []);
     result = client.getSettleableProposals(proposer);
-    assert.deepStrictEqual(result, [
+    objectsInArrayInclude(result, [
       {
         requester: optimisticRequester.address,
         proposer: proposer,
@@ -195,7 +200,7 @@ contract("OptimisticOracleClient.js", function (accounts) {
     await optimisticOracle.settle(optimisticRequester.address, identifier, requestTime, "0x");
     await client.update();
     result = client.getSettleableProposals(proposer);
-    assert.deepStrictEqual(result, []);
+    objectsInArrayInclude(result, []);
   });
 
   it("Basic dispute lifecycle: request, propose, dispute, resolve & settle", async function () {
@@ -204,13 +209,13 @@ contract("OptimisticOracleClient.js", function (accounts) {
 
     // Initially, no settleable disputes:
     let result = client.getSettleableDisputes(disputer);
-    assert.deepStrictEqual(result, []);
+    objectsInArrayInclude(result, []);
 
     // Request a price:
     await optimisticRequester.requestPrice(identifier, requestTime, "0x", collateral.address, 0);
     await client.update();
     result = client.getSettleableDisputes(disputer);
-    assert.deepStrictEqual(result, []);
+    objectsInArrayInclude(result, []);
 
     // Make a proposal:
     await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: proposer });
@@ -220,22 +225,22 @@ contract("OptimisticOracleClient.js", function (accounts) {
 
     await client.update();
     result = client.getSettleableDisputes(disputer);
-    assert.deepStrictEqual(result, []);
+    objectsInArrayInclude(result, []);
 
     // Dispute the proposal:
     await collateral.approve(optimisticOracle.address, totalDefaultBond, { from: disputer });
     await optimisticOracle.disputePrice(optimisticRequester.address, identifier, requestTime, "0x", { from: disputer });
     result = client.getSettleableDisputes(disputer);
-    assert.deepStrictEqual(result, []);
+    objectsInArrayInclude(result, []);
 
     // Resolve the dispute and check that the client detects the new state:
     await pushPrice(correctPrice);
     await client.update();
     // Note: `getSettleableDisputes` only returns proposals where the `disputer` is involved
     result = client.getSettleableDisputes(rando);
-    assert.deepStrictEqual(result, []);
+    objectsInArrayInclude(result, []);
     result = client.getSettleableDisputes(disputer);
-    assert.deepStrictEqual(result, [
+    objectsInArrayInclude(result, [
       {
         requester: optimisticRequester.address,
         proposer: proposer,
@@ -250,7 +255,7 @@ contract("OptimisticOracleClient.js", function (accounts) {
     await optimisticOracle.settle(optimisticRequester.address, identifier, requestTime, "0x");
     await client.update();
     result = client.getSettleableDisputes(disputer);
-    assert.deepStrictEqual(result, []);
+    objectsInArrayInclude(result, []);
   });
 
   it("Lookback window enforced", async function () {
@@ -270,7 +275,7 @@ contract("OptimisticOracleClient.js", function (accounts) {
     await optimisticRequester.requestPrice(identifier, requestTime, "0x", collateral.address, 0);
     await client.update();
     let result = client.getUnproposedPriceRequests();
-    assert.deepStrictEqual(result, [
+    objectsInArrayInclude(result, [
       {
         requester: optimisticRequester.address,
         identifier: hexToUtf8(identifier),
@@ -289,6 +294,6 @@ contract("OptimisticOracleClient.js", function (accounts) {
 
     await clientShortLookback.update();
     result = clientShortLookback.getUnproposedPriceRequests();
-    assert.deepStrictEqual(result, []);
+    objectsInArrayInclude(result, []);
   });
 });

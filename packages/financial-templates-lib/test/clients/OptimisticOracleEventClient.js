@@ -16,6 +16,11 @@ const Timer = getTruffleContract("Timer", web3);
 const Store = getTruffleContract("Store", web3);
 const MockOracle = getTruffleContract("MockOracleAncillary", web3);
 
+const objectsInArrayInclude = (superset, subset) => {
+  assert.equal(superset.length, subset.length);
+  for (let i = 0; i < superset.length; i++) assert.deepInclude(superset[i], subset[i]);
+};
+
 contract("OptimisticOracleEventClient.js", function (accounts) {
   const owner = accounts[0];
   const requester = accounts[1];
@@ -186,9 +191,9 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
   it("Return RequestPrice events", async function () {
     await client.clearState();
     // State is empty before update().
-    assert.deepStrictEqual([], client.getAllRequestPriceEvents());
+    objectsInArrayInclude([], client.getAllRequestPriceEvents());
     await client.update();
-    assert.deepStrictEqual(client.getAllRequestPriceEvents(), [
+    objectsInArrayInclude(client.getAllRequestPriceEvents(), [
       {
         transactionHash: requestTxn1.tx,
         blockNumber: requestTxn1.receipt.blockNumber,
@@ -224,7 +229,7 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
     );
     await client.clearState();
     await client.update();
-    assert.deepStrictEqual(client.getAllRequestPriceEvents(), [
+    objectsInArrayInclude(client.getAllRequestPriceEvents(), [
       {
         transactionHash: newTxn.tx,
         blockNumber: newTxn.receipt.blockNumber,
@@ -243,9 +248,9 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
   it("Return ProposePrice events", async function () {
     await client.clearState();
     // State is empty before update().
-    assert.deepStrictEqual([], client.getAllProposePriceEvents());
+    objectsInArrayInclude([], client.getAllProposePriceEvents());
     await client.update();
-    assert.deepStrictEqual(client.getAllProposePriceEvents(), [
+    objectsInArrayInclude(client.getAllProposePriceEvents(), [
       {
         transactionHash: proposalTxn1.tx,
         blockNumber: proposalTxn1.receipt.blockNumber,
@@ -287,7 +292,7 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
     );
     await client.clearState();
     await client.update();
-    assert.deepStrictEqual(client.getAllProposePriceEvents(), [
+    objectsInArrayInclude(client.getAllProposePriceEvents(), [
       {
         transactionHash: newTxn.tx,
         blockNumber: newTxn.receipt.blockNumber,
@@ -305,9 +310,9 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
   it("Return DisputePrice events", async function () {
     await client.clearState();
     // State is empty before update().
-    assert.deepStrictEqual([], client.getAllDisputePriceEvents());
+    objectsInArrayInclude([], client.getAllDisputePriceEvents());
     await client.update();
-    assert.deepStrictEqual(client.getAllDisputePriceEvents(), [
+    objectsInArrayInclude(client.getAllDisputePriceEvents(), [
       {
         transactionHash: disputeTxn1.tx,
         blockNumber: disputeTxn1.receipt.blockNumber,
@@ -353,7 +358,7 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
     );
     await client.clearState();
     await client.update();
-    assert.deepStrictEqual(client.getAllDisputePriceEvents(), [
+    objectsInArrayInclude(client.getAllDisputePriceEvents(), [
       {
         transactionHash: newTxn.tx,
         blockNumber: newTxn.receipt.blockNumber,
@@ -373,9 +378,9 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
   it("Return Settlement events", async function () {
     await client.clearState();
     // State is empty before update().
-    assert.deepStrictEqual([], client.getAllSettlementEvents());
+    objectsInArrayInclude([], client.getAllSettlementEvents());
     await client.update();
-    assert.deepStrictEqual(client.getAllSettlementEvents(), [
+    objectsInArrayInclude(client.getAllSettlementEvents(), [
       {
         transactionHash: settlementTxn1.tx,
         blockNumber: settlementTxn1.receipt.blockNumber,
@@ -424,7 +429,7 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
     );
     await client.clearState();
     await client.update();
-    assert.deepStrictEqual(client.getAllSettlementEvents(), [
+    objectsInArrayInclude(client.getAllSettlementEvents(), [
       {
         transactionHash: newTxn.tx,
         blockNumber: newTxn.receipt.blockNumber,
@@ -462,9 +467,9 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
 
     await offSetClient.update();
 
-    assert.deepStrictEqual([], offSetClient.getAllRequestPriceEvents());
-    assert.deepStrictEqual([], offSetClient.getAllProposePriceEvents());
-    assert.deepStrictEqual([], offSetClient.getAllDisputePriceEvents());
-    assert.deepStrictEqual([], offSetClient.getAllSettlementEvents());
+    objectsInArrayInclude([], offSetClient.getAllRequestPriceEvents());
+    objectsInArrayInclude([], offSetClient.getAllProposePriceEvents());
+    objectsInArrayInclude([], offSetClient.getAllDisputePriceEvents());
+    objectsInArrayInclude([], offSetClient.getAllSettlementEvents());
   });
 });

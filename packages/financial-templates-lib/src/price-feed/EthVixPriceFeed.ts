@@ -78,7 +78,7 @@ export class ETHVIXPriceFeed extends PriceFeedInterface {
     const currentTime = await this.getTime();
 
     // Return early if the last call was too recent.
-    if (this.lastUpdateTime !== null && this.lastUpdateTime + this.minTimeBetweenUpdates < currentTime) {
+    if (this.lastUpdateTime !== null && this.lastUpdateTime + this.minTimeBetweenUpdates >= currentTime) {
       console.log({
         at: "ETHVIXPriceFeed",
         message: "Update skipped because the last one was too recent",

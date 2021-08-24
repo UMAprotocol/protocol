@@ -41,7 +41,7 @@ interface MaticResponse {
   blockNumber: number;
 }
 
-const GAS_ESTIMATOR_MAPPING_BY_NETWORK: GasEstimatorMapping = {
+export const GAS_ESTIMATOR_MAPPING_BY_NETWORK: GasEstimatorMapping = {
   // Expected shape:
   // <netId>: {
   //     url: <primary-gas-station-url>,

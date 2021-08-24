@@ -116,20 +116,24 @@ export class TraderMadePriceFeed extends PriceFeedInterface {
   }
 
   public async getHistoricalPrice(time: number, verbose = false): Promise<BN> {
-    if (this.lastUpdateTime === null || this.currentPrice === null) {
+    if (this.lastUpdateTime === null) {
       throw new Error(`${this.uuid}: undefined lastUpdateTime or currentPrice`);
     }
 
     // Set first price time in `historicalPrices` to first non-null price.
-    let firstPriceTime;
+    let firstPriceTime: {
+      closePrice: BN;
+      openTime: number;
+      closeTime: number;
+    } | null = null;
 
     // Note: The TraderMade API does not update /timeseries data over the weekend, so to handle this case we can fall back
     // on the longer lookback window of the hourly timeseries. (The lookback limit for the minute inverval is 2 days, while
     // the limit for the hourly interval is 2 months). This fall back logic will only work if `this.hourlyLookback` is
     // configured long enough such that there is an hourly price available.
-    const historicalPricesToCheck = this.historicalPricesMinute
-      ? this.historicalPricesMinute
-      : this.historicalPricesHourly;
+    const historicalPricesToCheck =
+      this.historicalPricesMinute.length > 0 ? this.historicalPricesMinute : this.historicalPricesHourly;
+    console.log(historicalPricesToCheck);
     for (const p in historicalPricesToCheck) {
       if (historicalPricesToCheck[p] && historicalPricesToCheck[p].openTime) {
         firstPriceTime = historicalPricesToCheck[p];
@@ -156,8 +160,9 @@ export class TraderMadePriceFeed extends PriceFeedInterface {
 
     // If there is no match, that means that the time was past the last data point.
     // In this case, the best match for this price is the current price.
-    let returnPrice;
+    let returnPrice: BN;
     if (match === undefined) {
+      if (this.currentPrice === null) throw new Error("Current price is undefined and no match found");
       returnPrice = this.currentPrice;
       if (verbose) {
         console.group(`\n(${this.pair}) No OHLC available @ ${time}`);
@@ -217,7 +222,7 @@ export class TraderMadePriceFeed extends PriceFeedInterface {
         at: "TraderMadePriceFeed",
         message: "Update skipped because the last one was too recent",
         currentTime: currentTime,
-        lastUpdateTimestamp: this.lastUpdateTime,
+        lastUpdateTimestamp: lastUpdateTime,
         timeRemainingUntilUpdate: lastUpdateTime + this.minTimeBetweenUpdates - currentTime,
       });
       return;
@@ -299,6 +304,7 @@ export class TraderMadePriceFeed extends PriceFeedInterface {
 
     // 3. Check responses.
     if (!ohlcMinuteResponse?.quotes?.[0]?.close) {
+      console.log(ohlcMinuteResponse);
       throw new Error(
         `🚨Could not parse ohlc minute price result from url ${ohlcMinuteUrl}: ${JSON.stringify(ohlcMinuteResponse)}`
       );
@@ -428,6 +434,7 @@ export class TraderMadePriceFeed extends PriceFeedInterface {
       try {
         await this.updateMinute(lastUpdateTime);
       } catch (minuteError) {
+        console.log(minuteError);
         // Update should throw an error if historical prices cannot be updated for some reason,
         // which would cause a subsequent call to `getHistoricalPrice` to throw an error,
         // but in this case we'll check if an hourly interval fallback is specified,
@@ -441,6 +448,7 @@ export class TraderMadePriceFeed extends PriceFeedInterface {
           try {
             await this.updateHourly(lastUpdateTime);
           } catch (hourlyError) {
+            console.log(hourlyError);
             this.logger.debug({ at: "TraderMade_PriceFeed#update", message: "fallback to updateHourly also failed" });
             throw [minuteError, hourlyError];
           }
@@ -455,7 +463,7 @@ export class TraderMadePriceFeed extends PriceFeedInterface {
     // just update the hourly timeseries and throw an error if that fails.
     // Skip this update if hourlyPrices were already updated following an updateMinute
     // failure.
-    if (!this.historicalPricesHourly && this.hourlyLookback) {
+    if (this.historicalPricesHourly.length === 0 && this.hourlyLookback) {
       await this.updateHourly(lastUpdateTime);
     }
   }
@@ -469,6 +477,7 @@ export class TraderMadePriceFeed extends PriceFeedInterface {
   }
 
   private _dateTimeToSecond(inputDateTime: string) {
+    console.log(moment(inputDateTime, "YYYY-MM-DD HH:mm").unix());
     return moment(inputDateTime, "YYYY-MM-DD HH:mm").unix();
   }
 }
