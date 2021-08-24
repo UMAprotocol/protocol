@@ -293,9 +293,13 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     /**
      * @notice Instantly relay a deposit amount minus fees to the recipient. Instant relayer earns a reward following
      * the pending relay challenge period.
-     * @dev We assume that the caller has performed an off-chain check that the relayed deposit data is valid that they
-     * are attempting to speed up. If the relayed deposit data is invalid, then the instant relayer has no recourse
-     * to receive their funds back after the invalid relay is disputed.
+     * @dev We assume that the caller has performed an off-chain check that the deposit data they are attempting to
+     * relay is valid. If the deposit data is invalid, then the instant relayer has no recourse
+     * to receive their funds back after the invalid deposit data is disputed. Moreover, no one will be able to
+     * resubmit a relay for the invalid deposit data because they know it will get disputed again. On the other hand,
+     * if the deposit data is valid, then even if it is falsely disputed, the instant relayer will eventually get
+     * reimbursed because someone else will be incentivized to resubmit the relay to earn slow relayer rewards. Once the
+     * valid relay is finalized, the instant relayer will be reimbursed.
      * @dev Caller must have approved this contract to spend the deposit amount of L1 tokens to relay. There can only
      * be one instant relayer per relay attempt and disputed relays cannot be sped up.
      * @param _depositData Unique set of L2 deposit data that caller is trying to instantly relay.
