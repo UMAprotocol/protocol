@@ -133,7 +133,6 @@ export class TraderMadePriceFeed extends PriceFeedInterface {
     // configured long enough such that there is an hourly price available.
     const historicalPricesToCheck =
       this.historicalPricesMinute.length > 0 ? this.historicalPricesMinute : this.historicalPricesHourly;
-    console.log(historicalPricesToCheck);
     for (const p in historicalPricesToCheck) {
       if (historicalPricesToCheck[p] && historicalPricesToCheck[p].openTime) {
         firstPriceTime = historicalPricesToCheck[p];
@@ -304,7 +303,6 @@ export class TraderMadePriceFeed extends PriceFeedInterface {
 
     // 3. Check responses.
     if (!ohlcMinuteResponse?.quotes?.[0]?.close) {
-      console.log(ohlcMinuteResponse);
       throw new Error(
         `🚨Could not parse ohlc minute price result from url ${ohlcMinuteUrl}: ${JSON.stringify(ohlcMinuteResponse)}`
       );
@@ -434,7 +432,6 @@ export class TraderMadePriceFeed extends PriceFeedInterface {
       try {
         await this.updateMinute(lastUpdateTime);
       } catch (minuteError) {
-        console.log(minuteError);
         // Update should throw an error if historical prices cannot be updated for some reason,
         // which would cause a subsequent call to `getHistoricalPrice` to throw an error,
         // but in this case we'll check if an hourly interval fallback is specified,
@@ -448,7 +445,6 @@ export class TraderMadePriceFeed extends PriceFeedInterface {
           try {
             await this.updateHourly(lastUpdateTime);
           } catch (hourlyError) {
-            console.log(hourlyError);
             this.logger.debug({ at: "TraderMade_PriceFeed#update", message: "fallback to updateHourly also failed" });
             throw [minuteError, hourlyError];
           }
@@ -477,7 +473,6 @@ export class TraderMadePriceFeed extends PriceFeedInterface {
   }
 
   private _dateTimeToSecond(inputDateTime: string) {
-    console.log(moment(inputDateTime, "YYYY-MM-DD HH:mm").unix());
     return moment(inputDateTime, "YYYY-MM-DD HH:mm").unix();
   }
 }

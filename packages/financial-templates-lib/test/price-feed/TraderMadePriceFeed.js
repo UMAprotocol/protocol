@@ -219,7 +219,7 @@ contract("TraderMadePriceFeed.js", function () {
       assert.isTrue(
         await traderMadePriceFeed.getHistoricalPrice(1611608300 - timezeoneOffsetSeconds).catch(() => true)
       );
-      assert.equal(traderMadePriceFeed.getHistoricalPricePeriods(), undefined);
+      assert.equal(traderMadePriceFeed.getHistoricalPricePeriods().length, 0);
     });
     it("Fallback to hourly interval ENABLED, latest, minute and hourly intervals all fail to respond", async function () {
       // Bad current price response causes update() to throw regardless of historical data.
@@ -244,11 +244,11 @@ contract("TraderMadePriceFeed.js", function () {
       // Update should throw errors in both cases because the `updateLatest` method throws.
       assert.isTrue(await traderMadePriceFeed.update().catch(() => true), "Update didn't throw");
 
-      assert.equal(traderMadePriceFeed.getCurrentPrice(), undefined);
+      assert.equal(traderMadePriceFeed.getCurrentPrice(), null);
       assert.isTrue(
         await traderMadePriceFeed.getHistoricalPrice(1614319100 - timezeoneOffsetSeconds).catch(() => true)
       );
-      assert.equal(traderMadePriceFeed.getHistoricalPricePeriods(), undefined);
+      assert.equal(traderMadePriceFeed.getHistoricalPricePeriods().length, 0);
 
       // Missing minute and hourly interval historical ohlc response. Minute interval and subsequent
       // fallback to hourly interval fail.
@@ -281,7 +281,7 @@ contract("TraderMadePriceFeed.js", function () {
       assert.isTrue(
         await traderMadePriceFeed.getHistoricalPrice(1614319100 - timezeoneOffsetSeconds).catch(() => true)
       );
-      assert.equal(traderMadePriceFeed.getHistoricalPricePeriods(), undefined);
+      assert.equal(traderMadePriceFeed.getHistoricalPricePeriods().length, 0);
     });
     it("minuteLookback is undefined, only need to fetch hourly interval data", async function () {
       // Missing minute interval historical ohlc response is not a problem if minuteLookback is not set.
@@ -316,7 +316,7 @@ contract("TraderMadePriceFeed.js", function () {
       assert.isTrue(
         await traderMadePriceFeed.getHistoricalPrice(1611608300 - timezeoneOffsetSeconds).catch(() => true)
       );
-      assert.equal(traderMadePriceFeed.getHistoricalPricePeriods(), undefined);
+      assert.equal(traderMadePriceFeed.getHistoricalPricePeriods().length, 0);
     });
   });
 

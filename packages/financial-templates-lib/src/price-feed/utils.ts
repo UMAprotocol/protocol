@@ -155,7 +155,7 @@ export const PriceHistory = <T>(
   function getBetween(start: number, end = Date.now()): T[] {
     assert(start <= end, "Start time must be less than end time");
     return Object.keys(prices)
-      .map(parseInt)
+      .map(Number)
       .filter((timestamp) => timestamp <= end && timestamp >= start)
       .map((key) => prices[key]);
   }
@@ -167,7 +167,10 @@ export const PriceHistory = <T>(
 
   // Update price for block unless a price exists already
   async function update(block: { timestamp: number | string; number: number }): Promise<T | undefined> {
-    assert(block.timestamp && Number(block.timestamp) >= 0, "requires block with timestamp");
+    assert(
+      block.timestamp !== null && block.timestamp !== undefined && Number(block.timestamp) >= 0,
+      "requires block with timestamp"
+    );
     assert(block.number >= 0, "requires block with number");
     const timestamp = Number(block.timestamp);
     if (has(timestamp)) return get(timestamp);
