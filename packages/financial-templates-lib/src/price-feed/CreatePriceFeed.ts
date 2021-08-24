@@ -628,7 +628,6 @@ export async function getUniswapPairDetails(
 
   if (process.env.UNISWAP_ADDRESS) {
     // Used for mock uniswap pair contracts.
-    // TODO: is address the wrong name for this field?
     return { pairAddress: process.env.UNISWAP_ADDRESS, inverted: false };
   } else if (networkId in Object.keys(ChainId)) {
     // If Uniswap V2 supports this network, compute the address using the SDK.

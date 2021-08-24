@@ -93,6 +93,8 @@ function slackFormatter(info: any): SlackFormatterResponse {
       else if (typeof info[key] === "object" && info[key] !== null) {
         // Note: create local reference to this object, so we can modify it in the if statement.
         const newBlock: SectionBlock = { type: "section", text: { type: "mrkdwn", text: ` • _${key}_:\n` } };
+        // Note: after pushing, we can still modify newBlock and it will affect the element in the array since what's
+        // pushed into the array is a pointer.
         formattedResponse.blocks.push(newBlock);
         // For each key value pair within the object, spread the object out for formatting.
         for (const subKey in info[key]) {
