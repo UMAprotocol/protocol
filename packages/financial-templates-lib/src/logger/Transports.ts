@@ -25,7 +25,7 @@ interface TransportsConfig {
   pagerDutyConfig?: PagerDutyConfig;
 }
 
-export function createTransports(transportsConfig: TransportsConfig = {}) {
+export function createTransports(transportsConfig: TransportsConfig = {}): Transport[] {
   // Transports array to store all winston transports.
   const transports: Transport[] = [];
 
@@ -50,7 +50,7 @@ export function createTransports(transportsConfig: TransportsConfig = {}) {
   // If there is "test" in the environment then skip the slack or pagerduty.
   if (argv._.indexOf("test") == -1) {
     // If there is a slack web hook, add to the transports array to enable slack messages.
-    const slackConfig: SlackConfig = transportsConfig.slackConfig ?? JSON.parse(process.env.SLACK_CONFIG || "");
+    const slackConfig: SlackConfig = transportsConfig.slackConfig ?? JSON.parse(process.env.SLACK_CONFIG || "null");
     if (slackConfig) {
       transports.push(createSlackTransport(slackConfig));
     }
@@ -60,7 +60,7 @@ export function createTransports(transportsConfig: TransportsConfig = {}) {
       transports.push(
         new PagerDutyTransport(
           { level: "warn" },
-          transportsConfig.pagerDutyConfig ?? JSON.parse(process.env.PAGER_DUTY_CONFIG || "")
+          transportsConfig.pagerDutyConfig ?? JSON.parse(process.env.PAGER_DUTY_CONFIG || "null")
         )
       );
     }
