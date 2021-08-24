@@ -103,8 +103,8 @@ task("generate-contracts-frontend", "Generate typescipt for the contracts-fronte
           `export type { ${normalizeClassName(contractName)} as ${normalizeClassName(
             contractName
           )}Web3 } from "../typechain/web3/${contractName}";
-          import type * as ${normalizeClassName(contractName)}Web3Events from "../typechain/web3/${contractName}";
-          export type { ${normalizeClassName(contractName)}Web3Events };\n`
+import type * as ${normalizeClassName(contractName)}Web3Events from "../typechain/web3/${contractName}";
+export type { ${normalizeClassName(contractName)}Web3Events };\n`
         );
     });
 
@@ -176,8 +176,8 @@ task("generate-contracts-node", "Generate typescipt for the contracts-node packa
           `export type { ${normalizeClassName(contractName)} as ${normalizeClassName(
             contractName
           )}Web3 } from "../typechain/web3/${contractName}";
-          import type * as ${normalizeClassName(contractName)}Web3Events from "../typechain/web3/${contractName}";
-          export type { ${normalizeClassName(contractName)}Web3Events };\n`
+import type * as ${normalizeClassName(contractName)}Web3Events from "../typechain/web3/${contractName}";
+export type { ${normalizeClassName(contractName)}Web3Events };\n`
         );
     });
 
