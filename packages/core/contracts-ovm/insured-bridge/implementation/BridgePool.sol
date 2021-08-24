@@ -329,20 +329,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         bytes32 depositHash = _getDepositHash(_depositData);
         RelayData storage relay = relays[depositHash];
 
-        // Note `hasPrice` will return false if liveness has not been passed in the optimistic oracle.
-        require(
-            relays[depositHash].relayState == RelayState.Pending &&
-                _getOptimisticOracle().hasPrice(
-                    address(this),
-                    bridgeAdmin.identifier(),
-                    relay.priceRequestTime,
-                    getRelayAncillaryData(_depositData, relay)
-                ),
-            "Relay not settleable"
-        );
+        // If relay was disputed, then parties in dispute need to go through OptimisticOracle to resolve dispute.
+        require(relays[depositHash].relayState == RelayState.Pending, "Relay not settleable");
 
-        // Optimistically settle OptimisticOracle price as a convenience for the slow relayer who will receive their
-        // dispute bond back.
+        // Attempt to settle OptimisticOracle price as a convenience for the slow relayer who will receive their
+        // dispute bond back. This doubles as a check that the optimistic price request has resolved because this will
+        // revert if the price has not resolved yet.
         _getOptimisticOracle().settle(
             address(this),
             bridgeAdmin.identifier(),
