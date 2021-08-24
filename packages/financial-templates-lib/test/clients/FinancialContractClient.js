@@ -13,7 +13,7 @@ const {
 const { getTruffleContract } = require("@uma/core");
 
 // Script to test
-const { FinancialContractClient } = require("../../src/clients/FinancialContractClient");
+const { FinancialContractClient } = require("../../dist/clients/FinancialContractClient");
 
 const startTime = "15798990420";
 const zeroAddress = "0x0000000000000000000000000000000000000000";

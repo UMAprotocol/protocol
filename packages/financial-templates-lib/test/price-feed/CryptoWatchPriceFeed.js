@@ -1,5 +1,5 @@
-const { CryptoWatchPriceFeed } = require("../../src/price-feed/CryptoWatchPriceFeed");
-const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
+const { CryptoWatchPriceFeed } = require("../../dist/price-feed/CryptoWatchPriceFeed");
+const { NetworkerMock } = require("../../dist/price-feed/NetworkerMock");
 const winston = require("winston");
 
 contract("CryptoWatchPriceFeed.js", function () {

@@ -1,6 +1,6 @@
 const { toWei, toBN } = web3.utils;
-const { ExpressionPriceFeed, escapeSpecialCharacters, math } = require("../../src/price-feed/ExpressionPriceFeed");
-const { PriceFeedMock } = require("../../src/price-feed/PriceFeedMock");
+const { ExpressionPriceFeed, escapeSpecialCharacters, math } = require("../../dist/price-feed/ExpressionPriceFeed");
+const { PriceFeedMock } = require("../../dist/price-feed/PriceFeedMock");
 
 contract("ExpressionPriceFeed.js", function () {
   it("Update", async function () {
