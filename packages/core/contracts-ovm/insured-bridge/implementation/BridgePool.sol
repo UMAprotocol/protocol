@@ -346,10 +346,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
             getRelayAncillaryData(_depositData, relay)
         );
 
-        // Note: Why don't we have to check the value of the price?
-        // - If the OptimisticOracle has a price and the relayState is PENDING, then we can safely assume that the relay
-        // was validated. This is because this contract proposes a price of 1e18, or "YES" to the identifier posing the
-        // question "Is this relay valid for the associated deposit?". If the proposal is disputed, then the relayState
+        // We don't need to check that the optimistic price request has a price, because if it doesn't then the above
+        // settle call will revert. Moreover, we don't need to check whether the optimistic price request was resolved
+        // via a dispute to the DVM because of the above check that the RelayState is PENDING. If the OptimisticOracle
+        // has a price and the relayState is PENDING, then we can safely assume that the relay was validated. This is
+        // because this contract proposes a price of 1e18, or "YES" to the identifier posing the question
+        // "Is this relay valid for the associated deposit?". If the proposal is disputed, then the relayState
         // will be reset to DISPUTED. If the proposal is not disputed, and there is a price available, then the
         // proposal must have passed the dispute period, assuming the proposal passed optimistic oracle liveness.
 
