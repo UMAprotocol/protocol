@@ -7,8 +7,8 @@ const { Logger, waitForLogger, delay, OptimisticOracleClient, GasEstimator } = r
 const { OptimisticOracleProposer } = require("./src/proposer");
 
 // Contract ABIs and network Addresses.
-const { getAbi, getAddress } = require("@uma/core");
 const { getWeb3 } = require("@uma/common");
+const { getAbi, getAddress } = require("@uma/contracts-node");
 
 /**
  * @notice Runs strategies that propose and dispute prices for any price identifier serviced by the Optimistic Oracle.
@@ -35,7 +35,7 @@ async function run({
 }) {
   try {
     const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
-    const optimisticOracleAddress = getAddress("OptimisticOracle", networkId);
+    const optimisticOracleAddress = await getAddress("OptimisticOracle", networkId);
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
@@ -58,7 +58,7 @@ async function run({
       getAbi(oracleType),
       web3,
       optimisticOracleAddress,
-      getAddress(oracleType, networkId)
+      await getAddress(oracleType, networkId)
     );
     const gasEstimator = new GasEstimator(logger, 60, networkId);
 

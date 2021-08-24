@@ -1,5 +1,5 @@
 const { MAX_SAFE_ALLOWANCE, MAX_UINT_VAL, runTransaction } = require("@uma/common");
-const { getAbi } = require("@uma/core");
+const { getAbi } = require("@uma/contracts-node");
 
 // Sets `owner` allowance for `spender` to MAX_UINT_VAL, unless `spender` already has
 // an allowance > MAX_SAFE_ALLOWANCE. Return successful approval transaction data, or undefined

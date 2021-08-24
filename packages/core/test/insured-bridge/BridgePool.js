@@ -1129,6 +1129,92 @@ describe("BridgePool", () => {
       assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("0"));
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
     });
+    it("Withdraw liquidity is blocked when utilization is too high", async () => {
+      // Approve funds and add to liquidity.
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: liquidityProvider });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
+
+      // Initiate a relay. The relay amount is 10% of the total pool liquidity.
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: relayer });
+      await bridgePool.methods
+        .relayDeposit(
+          depositData.depositId,
+          depositData.depositTimestamp,
+          depositData.recipient,
+          depositData.l2Sender,
+          depositData.amount,
+          depositData.slowRelayFeePct,
+          depositData.instantRelayFeePct,
+          depositData.quoteTimestamp,
+          relayData.realizedLpFeePct
+        )
+        .send({ from: relayer });
+      assert.equal(await bridgePool.methods.pendingReserves().call(), depositData.amount);
+
+      // If the LP tries to pull out anything more than 90% of the pool funds this should revert. The 10% of the funds
+      // are allocated for the deposit and the contract should prevent any additional amount over this from being removed.
+      assert(
+        await didContractThrow(
+          bridgePool.methods
+            .removeLiquidity(
+              toBN(initialPoolLiquidity)
+                .mul(toBN(toWei("0.90"))) // try withdrawing 95%. should fail
+                .div(toBN(toWei("1")))
+                .addn(1) // 90% + 1 we
+                .toString()
+            )
+            .send({ from: liquidityProvider })
+        )
+      );
+
+      // Should be able to withdraw 90% exactly, leaving the exact amount of liquidity in the pool to finalize the relay.
+      await bridgePool.methods
+        .removeLiquidity(
+          toBN(initialPoolLiquidity)
+            .mul(toBN(toWei("0.9"))) // try withdrawing 95%. should fail
+            .div(toBN(toWei("1")))
+            .toString()
+        )
+        .send({ from: liquidityProvider });
+
+      // As we've removed all free liquidity the liquid reserves should now be zero.
+      await bridgePool.methods.exchangeRateCurrent().send({ from: rando });
+
+      // Next, finalize the bridging action. This should reset the pendingReserves to 0 and increment the utilizedReserves.
+      // Expire and settle proposal on the OptimisticOracle.
+      const relayStatus = await bridgePool.methods.relays(depositHash).call();
+
+      await timer.methods
+        .setCurrentTime(Number(await bridgePool.methods.getCurrentTime().call()) + defaultLiveness)
+        .send({ from: owner });
+      await optimisticOracle.methods
+        .settle(
+          bridgePool.options.address,
+          defaultIdentifier,
+          relayStatus.priceRequestTime.toString(),
+          relayAncillaryData
+        )
+        .send({ from: relayer });
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+      // Check the balances have updated correctly. Pending should be 0 (funds are actually utilized now), liquid should
+      // be equal to the LP fee of 10 and the utilized should equal the total bridged amount (100).
+      assert.equal(await bridgePool.methods.pendingReserves().call(), "0");
+      assert.equal(await bridgePool.methods.liquidReserves().call(), toWei("10"));
+      assert.equal(await bridgePool.methods.utilizedReserves().call(), depositData.amount);
+
+      // The LP should be able to withdraw exactly 10 tokens (they still have 100 tokens in the contract). Anything
+      // more than this is not possible as the remaining funds are in transit from L2.
+      assert(
+        await didContractThrow(
+          bridgePool.methods.removeLiquidity(toBN(toWei("10")).addn(1).toString()).send({ from: liquidityProvider })
+        )
+      );
+      await bridgePool.methods.removeLiquidity(toWei("10")).send({ from: liquidityProvider });
+
+      assert.equal(await bridgePool.methods.pendingReserves().call(), "0");
+      assert.equal(await bridgePool.methods.liquidReserves().call(), "0");
+      assert.equal(await bridgePool.methods.utilizedReserves().call(), depositData.amount);
+    });
   });
   describe("Virtual balance accounting", () => {
     beforeEach(async function () {
