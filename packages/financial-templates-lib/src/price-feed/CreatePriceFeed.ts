@@ -1,7 +1,7 @@
 import assert = require("assert");
 import { ChainId, Token, Pair, TokenAmount } from "@uniswap/sdk";
 import { defaultConfigs } from "./DefaultPriceFeedConfigs";
-import { getTruffleContract } from "@uma/core";
+import { getAbi } from "@uma/contracts-node";
 import { BlockFinder } from "./utils";
 import { getPrecisionForIdentifier, PublicNetworks } from "@uma/common";
 import { multicallAddressMap } from "../helpers/multicall";
@@ -49,15 +49,7 @@ export async function createPriceFeed(
   getTime: () => Promise<number>,
   config: any
 ): Promise<PriceFeedInterface | null> {
-  const UniswapV2 = getTruffleContract("UniswapV2", web3);
-  const UniswapV3 = getTruffleContract("UniswapV3", web3);
-  const ERC20 = getTruffleContract("ExpandedERC20", web3);
-  const Balancer = getTruffleContract("Balancer", web3);
-  const VaultInterface = getTruffleContract("VaultInterface", web3);
-  const HarvestVaultInterface = getTruffleContract("HarvestVaultInterface", web3);
-  const Perpetual = getTruffleContract("Perpetual", web3);
-
-  let providedWeb3;
+  let providedWeb3: Web3;
   if (config.nodeUrlEnvVar) {
     const nodeUrl = process.env[config.nodeUrlEnvVar];
     if (!nodeUrl) throw Error(`Expected node url to be provided in env variable ${config.nodeUrlEnvVar}`);
@@ -145,12 +137,12 @@ export async function createPriceFeed(
     if (config.version !== undefined && config.version !== "v2" && config.version !== "v3") return null;
 
     const [uniswapAbi, UniswapPriceFeed] =
-      config.version === "v3" ? [UniswapV3.abi, UniswapV3PriceFeed] : [UniswapV2.abi, UniswapV2PriceFeed];
+      config.version === "v3" ? [getAbi("UniswapV3"), UniswapV3PriceFeed] : [getAbi("UniswapV2"), UniswapV2PriceFeed];
 
     return new UniswapPriceFeed(
       logger,
       uniswapAbi,
-      ERC20.abi,
+      getAbi("ERC20"),
       providedWeb3,
       config.uniswapAddress,
       config.twapLength,
@@ -244,7 +236,7 @@ export async function createPriceFeed(
       logger,
       providedWeb3,
       getTime,
-      Balancer.abi,
+      getAbi("Balancer"),
       config.balancerAddress,
       config.balancerTokenIn,
       config.balancerTokenOut,
@@ -397,8 +389,8 @@ export async function createPriceFeed(
       logger,
       web3: providedWeb3,
       getTime,
-      vaultAbi: VaultInterface.abi,
-      erc20Abi: ERC20.abi,
+      vaultAbi: getAbi("VaultInterface"),
+      erc20Abi: getAbi("ERC20"),
       vaultAddress: config.address,
       blockFinder: getSharedBlockFinder(web3),
     });
@@ -415,8 +407,8 @@ export async function createPriceFeed(
       logger,
       web3: providedWeb3,
       getTime,
-      vaultAbi: HarvestVaultInterface.abi,
-      erc20Abi: ERC20.abi,
+      vaultAbi: getAbi("HarvestVaultInterface"),
+      erc20Abi: getAbi("ERC20"),
       vaultAddress: config.address,
       blockFinder: getSharedBlockFinder(web3),
     });
@@ -433,7 +425,7 @@ export async function createPriceFeed(
       logger,
       web3: providedWeb3,
       getTime,
-      erc20Abi: ERC20.abi,
+      erc20Abi: getAbi("ERC20"),
       blockFinder: getSharedBlockFinder(web3),
     });
   } else if (config.type === "frm") {
@@ -464,7 +456,7 @@ export async function createPriceFeed(
       logger,
       web3: providedWeb3,
       getTime,
-      perpetualAbi: Perpetual.abi,
+      perpetualAbi: getAbi("Perpetual"),
       multicallAddress: multicallAddress,
       blockFinder: getSharedBlockFinder(web3),
     });
@@ -862,8 +854,7 @@ export async function createReferencePriceFeedForFinancialContract(
 
 function getFinancialContractIdentifierAtAddress(web3: Web3, financialContractAddress: string) {
   try {
-    const ExpiringMultiParty = getTruffleContract("ExpiringMultiParty", web3, "1.2.0");
-    return new web3.eth.Contract(ExpiringMultiParty.abi, financialContractAddress);
+    return new web3.eth.Contract(getAbi("ExpiringMultiParty"), financialContractAddress);
   } catch (error) {
     throw new Error(`Something went wrong in fetching the financial contract identifier ${error?.stack || error}`);
   }

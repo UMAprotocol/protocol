@@ -8,7 +8,6 @@
     "@google-cloud/trace-agent": "^4.2.5",
     "@uma/common": "^2.6.0",
     "@uma/contracts-node": "^0.1.0",
-    "@uma/core": "^2.7.0",
     "@uniswap/sdk": "^2.0.5",
     "bluebird": "^3.7.2",
     "dotenv": "^9.0.0",

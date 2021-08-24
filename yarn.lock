@@ -6298,6 +6298,13 @@
   dependencies:
     "@types/node" "*"
 
+"@types/highland@^2.12.13":
+  version "2.12.13"
+  resolved "https://registry.yarnpkg.com/@types/highland/-/highland-2.12.13.tgz#ec41635d9b4b7305c6ea41b7e4a37c6598cccfd5"
+  integrity sha512-mKESwg+EDt+wJTxl8uIiuwP6Vc0jWoo9XdpT6fLYutw56I63obI+/FTIed3WHXxAjIzkjJOgx4ESS4JuGwFpQw==
+  dependencies:
+    "@types/node" "*"
+
 "@types/hoist-non-react-statics@^3.0.1":
   version "3.3.1"
   resolved "https://registry.yarnpkg.com/@types/hoist-non-react-statics/-/hoist-non-react-statics-3.3.1.tgz#1124aafe5118cb591977aeb1ceaaed1070eb039f"

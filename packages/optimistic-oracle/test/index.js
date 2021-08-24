@@ -4,17 +4,19 @@ const Main = require("../index.js");
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
 const sinon = require("sinon");
+const assert = require("chai").assert;
+
+const hre = require("hardhat");
+const { getContract, deployments } = hre;
 
 const { SpyTransport, spyLogLevel, spyLogIncludes } = require("@uma/financial-templates-lib");
-const { getTruffleContract } = require("@uma/core");
-const { addGlobalHardhatTestingAddress } = require("@uma/common");
 
-const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
-const MockOracle = getTruffleContract("MockOracleAncillary", web3);
-const Finder = getTruffleContract("Finder", web3);
-const Timer = getTruffleContract("Timer", web3);
+const OptimisticOracle = getContract("OptimisticOracle");
+const MockOracle = getContract("MockOracleAncillary");
+const Finder = getContract("Finder");
+const Timer = getContract("Timer");
 
-contract("index.js", function () {
+describe("index.js", function () {
   let spy;
   let spyLogger;
 
@@ -22,22 +24,25 @@ contract("index.js", function () {
   let errorRetries = 1;
   let errorRetriesTimeout = 0.1; // 100 milliseconds between performing retries
 
+  let optimisticOracle;
   let finder;
   let timer;
-  let optimisticOracle;
   let mockOracle;
 
   before(async function () {
-    finder = await Finder.new();
-    timer = await Timer.new();
-    mockOracle = await MockOracle.new(finder.address, timer.address);
+    const accounts = await web3.eth.getAccounts();
+    finder = await Finder.new().send({ from: accounts[0] });
+    timer = await Timer.new().send({ from: accounts[0] });
+    mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({ from: accounts[0] });
 
     // Deploy a new OptimisticOracle.
-    optimisticOracle = await OptimisticOracle.new("120", finder.address, timer.address);
+    optimisticOracle = await OptimisticOracle.new("120", finder.options.address, timer.options.address).send({
+      from: accounts[0],
+    });
 
-    // Set addresses in the global name space that the OO proposer's index.js needs to fetch:
-    addGlobalHardhatTestingAddress("OptimisticOracle", optimisticOracle.address);
-    addGlobalHardhatTestingAddress("Voting", mockOracle.address);
+    // Add deployed addresses to hardhat deployments so they are available from `getAddress`.
+    deployments.save("OptimisticOracle", { address: optimisticOracle.options.address, abi: OptimisticOracle.abi });
+    deployments.save("Voting", { address: mockOracle.options.address, abi: MockOracle.abi });
   });
 
   it("Completes one iteration without logging any errors", async function () {
@@ -58,7 +63,7 @@ contract("index.js", function () {
     // The first log should indicate that the OO-Proposer runner started successfully
     // and auto detected the OO's deployed address.
     assert.isTrue(spyLogIncludes(spy, 0, "OptimisticOracle proposer started"));
-    assert.isTrue(spyLogIncludes(spy, 0, optimisticOracle.address));
+    assert.isTrue(spyLogIncludes(spy, 0, optimisticOracle.options.address));
     assert.isTrue(spyLogIncludes(spy, spy.callCount - 1, "End of serverless execution loop - terminating process"));
   });
 });
