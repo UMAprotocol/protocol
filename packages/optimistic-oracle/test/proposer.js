@@ -33,6 +33,11 @@ const Store = getContract("Store");
 const MockOracle = getContract("MockOracleAncillary");
 const Timer = getContract("Timer");
 
+const objectsInArrayInclude = (superset, subset) => {
+  assert.equal(superset.length, subset.length);
+  for (let i = 0; i < superset.length; i++) assert.deepInclude(superset[i], subset[i]);
+};
+
 describe("OptimisticOracle: proposer.js", function () {
   let owner;
   let requester;
@@ -254,7 +259,7 @@ describe("OptimisticOracle: proposer.js", function () {
         });
       }
       let result = client.getUnproposedPriceRequests();
-      assert.deepStrictEqual(result, expectedResults);
+      objectsInArrayInclude(result, expectedResults);
 
       // Now: Execute `sendProposals()` and test that the bot correctly responds to these price proposals
       await proposer.sendProposals();
@@ -299,7 +304,7 @@ describe("OptimisticOracle: proposer.js", function () {
         });
       }
       let result = client.getUnproposedPriceRequests();
-      assert.deepStrictEqual(result, expectedRequests);
+      objectsInArrayInclude(result, expectedRequests);
 
       // Propose a price for each request:
       // 1) "TEST8DECIMALS"
@@ -352,7 +357,7 @@ describe("OptimisticOracle: proposer.js", function () {
       }
       await proposer.update();
       result = client.getUndisputedProposals();
-      assert.deepStrictEqual(result, expectedProposals);
+      objectsInArrayInclude(result, expectedProposals);
 
       // Now: Execute `sendDisputes()` and test that the bot correctly responds to these price proposals
       await proposer.sendDisputes();
@@ -404,7 +409,7 @@ describe("OptimisticOracle: proposer.js", function () {
         });
       }
       let result = client.getUnproposedPriceRequests();
-      assert.deepStrictEqual(result, expectedRequests);
+      objectsInArrayInclude(result, expectedRequests);
 
       // Make one proposal for bot to dispute:
       let collateralCurrency = collateralCurrenciesForIdentifier[0];
@@ -604,7 +609,7 @@ describe("OptimisticOracle: proposer.js", function () {
     await proposer.update();
 
     // Client should still see the unproposed price request:
-    assert.deepStrictEqual(client.getUnproposedPriceRequests(), [
+    objectsInArrayInclude(client.getUnproposedPriceRequests(), [
       {
         requester: optimisticRequester.options.address,
         identifier: hexToUtf8(identifierToIgnore),
@@ -682,7 +687,7 @@ describe("OptimisticOracle: proposer.js", function () {
     await proposer.update();
 
     // Client should still see the unproposed price request:
-    assert.deepStrictEqual(client.getUnproposedPriceRequests(), [
+    objectsInArrayInclude(client.getUnproposedPriceRequests(), [
       {
         requester: optimisticRequester.options.address,
         identifier: hexToUtf8(identifierToIgnore),
