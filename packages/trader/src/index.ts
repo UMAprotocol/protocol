@@ -23,7 +23,7 @@ config();
 
 export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
   try {
-    const getTime = () => Promise.resolve(Math.round(new Date().getTime() / 1000));
+    const getTime = async () => Math.round(new Date().getTime() / 1000);
     const config = new TraderConfig(process.env);
 
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
