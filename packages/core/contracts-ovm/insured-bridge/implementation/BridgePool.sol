@@ -259,8 +259,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     }
 
     /**
-     * @notice Instantly relay a deposit amount minus fees. Instant relayer earns a reward following the pending relay
-     * challenge period.
+     * @notice Instantly relay a deposit amount minus fees to the recipient. Instant relayer earns a reward following
+     * the pending relay challenge period.
+     * @dev We assume that the caller has performed an off-chain check that the relayed deposit data is valid that they
+     * are attempting to speed up. If the relayed deposit data is invalid, then the instant relayer has no recourse
+     * to receive their funds back after the invalid relay is disputed.
      * @dev Caller must have approved this contract to spend the deposit amount of L1 tokens to relay. There can only
      * be one instant relayer per relay attempt and disputed relays cannot be sped up.
      * @param _depositData Unique set of L2 deposit data that caller is trying to instantly relay.
@@ -295,8 +298,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         RelayData storage relay = relays[depositHash];
 
         require(relays[depositHash].relayState == RelayState.Pending, "State not pending");
-        // Note `hasPrice` will return false if liveness has not been passed in the optimistic oracle.
 
+        // Note `hasPrice` will return false if liveness has not been passed in the optimistic oracle.
         require(
             _getOptimisticOracle().hasPrice(
                 address(this),
@@ -307,11 +310,20 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
             "Price not yet resolved"
         );
 
+        // Optimistically settle OptimisticOracle price as a convenience for the slow relayer who will receive their
+        // dispute bond back.
+        _getOptimisticOracle().settle(
+            address(this),
+            bridgeAdmin.identifier(),
+            relay.priceRequestTime,
+            getRelayAncillaryData(_depositData, relay)
+        );
+
         // Note: Why don't we have to check the value of the price?
         // - If the OptimisticOracle has a price and the relayState is PENDING, then we can safely assume that the relay
         // was validated. This is because this contract proposes a price of 1e18, or "YES" to the identifier posing the
         // question "Is this relay valid for the associated deposit?". If the proposal is disputed, then the relayState
-        // will be reset to UNINITIALIZED. If the proposal is not disputed, and there is a price available, then the
+        // will be reset to DISPUTED. If the proposal is not disputed, and there is a price available, then the
         // proposal must have passed the dispute period, assuming the proposal passed optimistic oracle liveness.
 
         // Update the relay state to Finalized. This prevents any re-settling of a relay.
