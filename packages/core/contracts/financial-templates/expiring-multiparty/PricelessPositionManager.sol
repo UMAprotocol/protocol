@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 
 import "../../common/implementation/FixedPoint.sol";
@@ -17,7 +16,7 @@ import "../../oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../oracle/implementation/Constants.sol";
 
 import "../common/FeePayer.sol";
-import "../common/financial-product-libraries/FinancialProductLibrary.sol";
+import "../common/financial-product-libraries/expiring-multiparty-libraries/FinancialProductLibrary.sol";
 
 /**
  * @title Financial contract with priceless position management.
@@ -159,7 +158,7 @@ contract PricelessPositionManager is FeePayer {
      * @param _tokenAddress ERC20 token used as synthetic token.
      * @param _finderAddress UMA protocol Finder used to discover other protocol contracts.
      * @param _priceIdentifier registered in the DVM for the synthetic.
-     * @param _minSponsorTokens minimum amount of collateral that must exist at any time in a position.
+     * @param _minSponsorTokens minimum number of tokens that must exist at any time in a position.
      * @param _timerAddress Contract that stores the current time in a testing environment.
      * Must be set to 0x0 for production environments that use live time.
      * @param _financialProductLibraryAddress Contract providing contract state transformations.
@@ -174,7 +173,7 @@ contract PricelessPositionManager is FeePayer {
         FixedPoint.Unsigned memory _minSponsorTokens,
         address _timerAddress,
         address _financialProductLibraryAddress
-    ) public FeePayer(_collateralAddress, _finderAddress, _timerAddress) nonReentrant() {
+    ) FeePayer(_collateralAddress, _finderAddress, _timerAddress) nonReentrant() {
         require(_expirationTimestamp > getCurrentTime());
         require(_getIdentifierWhitelist().isIdentifierSupported(_priceIdentifier));
 

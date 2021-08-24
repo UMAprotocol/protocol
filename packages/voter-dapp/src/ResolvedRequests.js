@@ -17,7 +17,7 @@ import {
   DialogContentText,
   List,
   ListItem,
-  ListItemText
+  ListItemText,
 } from "@material-ui/core";
 
 import { useTableStyles } from "./Styles.js";
@@ -30,7 +30,7 @@ import {
   MAX_UINT_VAL,
   IDENTIFIER_BLACKLIST,
   getPrecisionForIdentifier,
-  formatFixed
+  formatFixed,
 } from "@uma/common";
 
 import VoteData from "./containers/VoteData";
@@ -38,7 +38,7 @@ import VoteData from "./containers/VoteData";
 function ResolvedRequests({ votingAccount }) {
   const { drizzle, useCacheCall, useCacheEvents } = drizzleReactHooks.useDrizzle();
   const { web3 } = drizzle;
-  const { toBN, fromWei, hexToUtf8 } = web3.utils;
+  const { toBN, hexToUtf8 } = web3.utils;
   const classes = useTableStyles();
 
   const currentRoundId = useCacheCall("Voting", "getCurrentRoundId");
@@ -54,7 +54,7 @@ function ResolvedRequests({ votingAccount }) {
   const [hasSpamRequests, setHasSpamRequests] = useState(false);
   const [resolvedEvents, setResolvedEvents] = useState([]);
 
-  const getVoteStats = resolutionData => {
+  const getVoteStats = (resolutionData) => {
     if (resolutionData) {
       const voteDataKey = getRequestKey(
         resolutionData.time,
@@ -70,15 +70,15 @@ function ResolvedRequests({ votingAccount }) {
   /**
    * Decoding Admin Proposals
    */
-  const handleClickExplain = index => {
+  const handleClickExplain = (index) => {
     setOpenExplainAdminDialog(true);
     setExplainAdminDialogData(index);
   };
-  const adminProposals = useCacheCall(["Governor"], call => {
-    return resolvedEvents.map(request => ({
+  const adminProposals = useCacheCall(["Governor"], (call) => {
+    return resolvedEvents.map((request) => ({
       id: isAdminRequest(hexToUtf8(request.returnValues.identifier))
         ? getAdminRequestId(hexToUtf8(request.returnValues.identifier))
-        : null
+        : null,
     }));
   });
   const newProposalEvents = useCacheEvents(
@@ -86,11 +86,14 @@ function ResolvedRequests({ votingAccount }) {
     "NewProposal",
     useMemo(() => ({ fromBlock: 0 }), [])
   );
-  const decodeRequestIndex = index => {
+
+  const decodeRequestIndex = (index) => {
     const proposal = adminProposals[index];
 
     if (newProposalEvents) {
-      const proposalEventWithId = newProposalEvents.find(p => p.returnValues.id.toString() === proposal.id.toString());
+      const proposalEventWithId = newProposalEvents.find(
+        (p) => p.returnValues.id.toString() === proposal.id.toString()
+      );
       if (proposalEventWithId) {
         const transactions = proposalEventWithId.returnValues.transactions;
         let output =
@@ -107,7 +110,7 @@ function ResolvedRequests({ votingAccount }) {
   /**
    * Displaying vote statistics via graphQL API
    */
-  const handleClickStats = voteStats => {
+  const handleClickStats = (voteStats) => {
     setOpenVoteStatsDialog(true);
     setVoteStatDialogData(voteStats);
   };
@@ -128,11 +131,11 @@ function ResolvedRequests({ votingAccount }) {
         return { filter: { roundId: showAllResolvedRequests ? undefined : indexRoundId }, fromBlock: 0 };
       }, [currentRoundId, showAllResolvedRequests])
     ) || [];
+
   useEffect(() => {
     setHasSpamRequests(false);
-
-    if (allResolvedEvents) {
-      const nonBlacklistedRequests = allResolvedEvents.filter(ev => {
+    if (allResolvedEvents?.length) {
+      const nonBlacklistedRequests = allResolvedEvents.filter((ev) => {
         if (!IDENTIFIER_BLACKLIST[hexToUtf8(ev.returnValues.identifier)]) return true;
         else {
           if (!IDENTIFIER_BLACKLIST[hexToUtf8(ev.returnValues.identifier)].includes(ev.returnValues.time)) {
@@ -151,7 +154,7 @@ function ResolvedRequests({ votingAccount }) {
         setResolvedEvents(nonBlacklistedRequests);
       }
     }
-  }, [allResolvedEvents, IDENTIFIER_BLACKLIST, showSpamRequests]);
+  }, [hexToUtf8, allResolvedEvents, showSpamRequests]);
 
   const revealedVoteEvents =
     useCacheEvents(
@@ -162,7 +165,7 @@ function ResolvedRequests({ votingAccount }) {
         // If all resolved requests are being shown, don't filter by round id.
         return {
           filter: { roundId: showAllResolvedRequests ? undefined : indexRoundId, voter: votingAccount },
-          fromBlock: 0
+          fromBlock: 0,
         };
       }, [currentRoundId, votingAccount, showAllResolvedRequests])
     ) || [];
@@ -183,7 +186,7 @@ function ResolvedRequests({ votingAccount }) {
     return bRoundId.cmp(aRoundId);
   });
 
-  const prettyFormatNumber = x => {
+  const prettyFormatNumber = (x) => {
     return Number(x).toLocaleString({ minimumFractionDigits: 4 });
   };
 
@@ -287,7 +290,7 @@ function ResolvedRequests({ votingAccount }) {
             const resolutionData = event.returnValues;
 
             const revealEvent = revealedVoteEvents.find(
-              event =>
+              (event) =>
                 event.returnValues.identifier === resolutionData.identifier &&
                 event.returnValues.time === resolutionData.time
             );

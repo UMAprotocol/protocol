@@ -2,9 +2,10 @@ const Governor = artifacts.require("Governor");
 const Finder = artifacts.require("Finder");
 const Registry = artifacts.require("Registry");
 const Timer = artifacts.require("Timer");
-const { getKeysForNetwork, deploy, enableControllableTiming, RegistryRolesEnum } = require("@uma/common");
+const { RegistryRolesEnum } = require("@uma/common");
+const { getKeysForNetwork, deploy, enableControllableTiming } = require("./MigrationUtils");
 
-module.exports = async function(deployer, network, accounts) {
+module.exports = async function (deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
   const controllableTiming = enableControllableTiming(network);
   const startingId = "0";
@@ -16,7 +17,7 @@ module.exports = async function(deployer, network, accounts) {
   const finder = await Finder.deployed();
 
   const { contract: governor } = await deploy(deployer, network, Governor, finder.address, startingId, timerAddress, {
-    from: keys.deployer
+    from: keys.deployer,
   });
 
   // Add governor to registry so it can send price requests.

@@ -14,9 +14,7 @@
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Governor = artifacts.require("Governor");
 const assert = require("assert");
-const argv = require("minimist")(process.argv.slice(), {
-  boolean: ["prod"]
-});
+const argv = require("minimist")(process.argv.slice(), { boolean: ["prod"] });
 
 // Customizable settings:
 // - Identifier UTF8 to add to whitelist
@@ -65,11 +63,7 @@ async function propose(callback) {
      *
      *********************************/
     const proposalTxn = governor.contract.methods.propose([
-      {
-        to: identifierWhitelist.address,
-        value: 0,
-        data: proposedTx
-      }
+      { to: identifierWhitelist.address, value: 0, data: proposedTx },
     ]);
     const estimatedGas = await proposalTxn.estimateGas({ from: proposerAddress });
     console.log(`Successful simulated execution! Estimated gas: ${estimatedGas}`);
@@ -77,17 +71,11 @@ async function propose(callback) {
     // For security, force the user to explicitly run this in production mode before sending a mainnet transaction.
     if (argv.prod) {
       await governor
-        .propose([
-          {
-            to: identifierWhitelist.address,
-            value: 0,
-            data: proposedTx
-          }
-        ])
-        .on("transactionHash", function(hash) {
+        .propose([{ to: identifierWhitelist.address, value: 0, data: proposedTx }])
+        .on("transactionHash", function (hash) {
           console.log(`- Pending transaction hash: ${hash}`);
         })
-        .on("receipt", function(receipt) {
+        .on("receipt", function (receipt) {
           console.log("- Successfully sent:", receipt);
         })
         .on("error", console.error);

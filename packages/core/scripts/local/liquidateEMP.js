@@ -22,7 +22,7 @@ let syntheticToken;
 /** ***************************************************
  * Main Script
  /*****************************************************/
-const liquidateEMP = async callback => {
+const liquidateEMP = async (callback) => {
   try {
     // Accounts
     const accounts = await web3.eth.getAccounts();
@@ -77,12 +77,12 @@ const liquidateEMP = async callback => {
       {
         rawValue: toBN(liquidationPrice)
           .sub(toBN(toWei("0.01")))
-          .toString()
+          .toString(),
       },
       {
         rawValue: toBN(liquidationPrice)
           .add(toBN(toWei("0.01")))
-          .toString()
+          .toString(),
       },
       { rawValue: tokensToLiquidate.toString() },
       unreachableDeadline,

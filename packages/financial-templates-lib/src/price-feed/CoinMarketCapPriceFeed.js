@@ -46,7 +46,7 @@ class CoinMarketCapPriceFeed extends PriceFeedInterface {
 
     this.priceHistory = []; // array of { time: number, price: BN }
 
-    this.convertPriceFeedDecimals = number => {
+    this.convertPriceFeedDecimals = (number) => {
       // Converts price result to wei
       // returns price conversion to correct decimals as a big number.
       // Note: Must ensure that `number` has no more decimal places than `priceFeedDecimals`.
@@ -66,7 +66,7 @@ class CoinMarketCapPriceFeed extends PriceFeedInterface {
         message: "Update skipped because the last one was too recent",
         currentTime: currentTime,
         lastUpdateTimestamp: this.lastUpdateTime,
-        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime
+        timeRemainingUntilUpdate: this.lastUpdateTimes + this.minTimeBetweenUpdates - currentTime,
       });
       return;
     }
@@ -75,7 +75,7 @@ class CoinMarketCapPriceFeed extends PriceFeedInterface {
       at: "CoinMarketCapPriceFeed",
       message: "Updating CoinMarketCapPriceFeed",
       currentTime: currentTime,
-      lastUpdateTimestamp: this.lastUpdateTime
+      lastUpdateTimestamp: this.lastUpdateTime,
     });
 
     // 1. Construct URL.
@@ -160,15 +160,11 @@ class CoinMarketCapPriceFeed extends PriceFeedInterface {
 
   _invertPriceSafely(priceBN) {
     if (priceBN && !priceBN.isZero()) {
-      return this.convertPriceFeedDecimals("1")
-        .mul(this.convertPriceFeedDecimals("1"))
-        .div(priceBN);
+      return this.convertPriceFeedDecimals("1").mul(this.convertPriceFeedDecimals("1")).div(priceBN);
     } else {
       return undefined;
     }
   }
 }
 
-module.exports = {
-  CoinMarketCapPriceFeed
-};
+module.exports = { CoinMarketCapPriceFeed };

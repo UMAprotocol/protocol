@@ -3,9 +3,10 @@ const Voting = artifacts.require("Voting");
 const VotingToken = artifacts.require("VotingToken");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Timer = artifacts.require("Timer");
-const { getKeysForNetwork, deploy, enableControllableTiming, interfaceName } = require("@uma/common");
+const { interfaceName } = require("@uma/common");
+const { getKeysForNetwork, deploy, enableControllableTiming } = require("./MigrationUtils");
 
-module.exports = async function(deployer, network, accounts) {
+module.exports = async function (deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
   const controllableTiming = enableControllableTiming(network);
 
@@ -16,7 +17,7 @@ module.exports = async function(deployer, network, accounts) {
 
   // Deploy whitelist of identifiers
   const { contract: identifierWhitelist } = await deploy(deployer, network, IdentifierWhitelist, {
-    from: keys.deployer
+    from: keys.deployer,
   });
 
   // Set the GAT percentage to 5%
@@ -50,14 +51,12 @@ module.exports = async function(deployer, network, accounts) {
   );
 
   await finder.changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle), voting.address, {
-    from: keys.deployer
+    from: keys.deployer,
   });
   await finder.changeImplementationAddress(
     web3.utils.utf8ToHex(interfaceName.IdentifierWhitelist),
     identifierWhitelist.address,
-    {
-      from: keys.deployer
-    }
+    { from: keys.deployer }
   );
 
   // Corresponds to VotingToken.Roles.Minter.

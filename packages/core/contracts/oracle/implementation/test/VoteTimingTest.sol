@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
 import "../../interfaces/VotingInterface.sol";
 import "../VoteTiming.sol";
@@ -10,7 +10,7 @@ contract VoteTimingTest {
 
     VoteTiming.Data public voteTiming;
 
-    constructor(uint256 phaseLength) public {
+    constructor(uint256 phaseLength) {
         wrapInit(phaseLength);
     }
 

@@ -7,8 +7,8 @@ const { Logger, waitForLogger, delay, OptimisticOracleClient, GasEstimator } = r
 const { OptimisticOracleProposer } = require("./src/proposer");
 
 // Contract ABIs and network Addresses.
-const { getAbi, getAddress } = require("@uma/core");
 const { getWeb3 } = require("@uma/common");
+const { getAbi, getAddress } = require("@uma/contracts-node");
 
 /**
  * @notice Runs strategies that propose and dispute prices for any price identifier serviced by the Optimistic Oracle.
@@ -20,6 +20,7 @@ const { getWeb3 } = require("@uma/common");
  * @param {Number} errorRetriesTimeout The amount of milliseconds to wait between re-try iterations on failed loops.
  * @param {Object} [commonPriceFeedConfig] Common configuration to pass to all PriceFeeds constructed by proposer.
  * @param {Object} [optimisticOracleProposerConfig] Configuration to construct the OptimisticOracle proposer.
+ * @param {String} [oracleType] Type of "Oracle" for this network, defaults to "Votng"
  * @return None or throws an Error.
  */
 async function run({
@@ -29,12 +30,12 @@ async function run({
   errorRetries,
   errorRetriesTimeout,
   commonPriceFeedConfig,
-  optimisticOracleProposerConfig
+  optimisticOracleProposerConfig,
+  oracleType = "Voting",
 }) {
   try {
-    const [networkId, accounts] = await Promise.all([web3.eth.net.getId(), web3.eth.getAccounts()]);
-    const optimisticOracleAddress = getAddress("OptimisticOracle", networkId);
-    const votingAddress = getAddress("Voting", networkId);
+    const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
+    const optimisticOracleAddress = await getAddress("OptimisticOracle", networkId);
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.
     // Else, if running in loop mode (pollingDelay != 0), then it should send a `info` level log.
     logger[pollingDelay === 0 ? "debug" : "info"]({
@@ -45,7 +46,8 @@ async function run({
       errorRetries,
       errorRetriesTimeout,
       commonPriceFeedConfig,
-      optimisticOracleProposerConfig
+      optimisticOracleProposerConfig,
+      oracleType,
     });
 
     // Create the OptimisticOracleClient to query on-chain information, GasEstimator to get latest gas prices and an
@@ -53,12 +55,12 @@ async function run({
     const optimisticOracleClient = new OptimisticOracleClient(
       logger,
       getAbi("OptimisticOracle"),
-      getAbi("Voting"),
+      getAbi(oracleType),
       web3,
       optimisticOracleAddress,
-      votingAddress
+      await getAddress(oracleType, networkId)
     );
-    const gasEstimator = new GasEstimator(logger);
+    const gasEstimator = new GasEstimator(logger, 60, networkId);
 
     // Construct default price feed config passed to all pricefeeds constructed by the proposer.
     // The proposer needs to query prices for any identifier approved to use the Optimistic Oracle,
@@ -70,7 +72,7 @@ async function run({
       gasEstimator,
       account: accounts[0],
       commonPriceFeedConfig,
-      optimisticOracleProposerConfig
+      optimisticOracleProposerConfig,
     });
 
     // Create a execution loop that will run indefinitely (or yield early if in serverless mode)
@@ -87,28 +89,29 @@ async function run({
           retries: errorRetries,
           minTimeout: errorRetriesTimeout * 1000, // delay between retries in ms
           randomize: false,
-          onRetry: error => {
+          onRetry: (error) => {
             logger.debug({
               at: "OptimisticOracle#index",
               message: "An error was thrown in the execution loop - retrying",
-              error: typeof error === "string" ? new Error(error) : error
+              error: typeof error === "string" ? new Error(error) : error,
             });
-          }
+          },
         }
       );
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (pollingDelay === 0) {
         logger.debug({
           at: "OptimisticOracle#index",
-          message: "End of serverless execution loop - terminating process"
+          message: "End of serverless execution loop - terminating process",
         });
         await waitForLogger(logger);
+        await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
         break;
       }
       logger.debug({
         at: "OptimisticOracle#index",
         message: "End of execution loop - waiting polling delay",
-        pollingDelay: `${pollingDelay} (s)`
+        pollingDelay: `${pollingDelay} (s)`,
       });
       await delay(Number(pollingDelay));
     }
@@ -126,23 +129,25 @@ async function Poll(callback) {
       // Default to 1 minute delay. If set to 0 in env variables then the script will exit after full execution.
       pollingDelay: process.env.POLLING_DELAY ? Number(process.env.POLLING_DELAY) : 60,
       // Default to 3 re-tries on error within the execution loop.
-      errorRetries: process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 5,
+      errorRetries: process.env.ERROR_RETRIES ? Number(process.env.ERROR_RETRIES) : 3,
       // Default to 10 seconds in between error re-tries.
-      errorRetriesTimeout: process.env.ERROR_RETRIES_TIMEOUT ? Number(process.env.ERROR_RETRIES_TIMEOUT) : 10,
+      errorRetriesTimeout: process.env.ERROR_RETRIES_TIMEOUT ? Number(process.env.ERROR_RETRIES_TIMEOUT) : 1,
       // Common price feed configuration passed along to all those constructed by proposer.
       commonPriceFeedConfig: process.env.COMMON_PRICE_FEED_CONFIG
         ? JSON.parse(process.env.COMMON_PRICE_FEED_CONFIG)
-        : { lookback: 7200 },
+        : {},
       // If there is an optimistic oracle config, add it. Else, set to null. Example config:
       // {
       //   "disputePriceErrorPercent":0.05 -> Proposal prices that do not equal the dispute price
       //                                      within this error % will be disputed.
       //                                      e.g. 0.05 implies 5% margin of error.
-      //   "txnGasLimit":9000000 -> Gas limit to set for sending on-chain transactions.
       //  }
       optimisticOracleProposerConfig: process.env.OPTIMISTIC_ORACLE_PROPOSER_CONFIG
         ? JSON.parse(process.env.OPTIMISTIC_ORACLE_PROPOSER_CONFIG)
-        : {}
+        : {},
+      // Type of "Oracle" set for this network's Finder, default is "Voting". Other possible types include "SinkOracle",
+      //  "OracleChildTunnel", and "MockOracleAncillary"
+      oracleType: process.env.ORACLE_TYPE ? process.env.ORACLE_TYPE : "Voting",
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
@@ -150,7 +155,8 @@ async function Poll(callback) {
     Logger.error({
       at: "OptimisticOracle#index",
       message: "OO proposer execution error🚨",
-      error: typeof error === "string" ? new Error(error) : error
+      error: typeof error === "string" ? new Error(error) : error,
+      notificationPath: "infrastructure-error",
     });
     await waitForLogger(Logger);
     callback(error);

@@ -1,10 +1,13 @@
-const { toWei, utf8ToHex, padRight } = web3.utils;
+const { toBN, toWei, utf8ToHex, padRight } = web3.utils;
+const { assert } = require("chai");
+
 const {
   MAX_UINT_VAL,
   interfaceName,
   addGlobalHardhatTestingAddress,
   createConstructorParamsForContractVersion,
-  TESTED_CONTRACT_VERSIONS
+  TESTED_CONTRACT_VERSIONS,
+  createContractObjectFromJson,
 } = require("@uma/common");
 
 const { getTruffleContract } = require("@uma/core");
@@ -13,6 +16,11 @@ const { getTruffleContract } = require("@uma/core");
 const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport, spyLogLevel, spyLogIncludes, FinancialContractClient } = require("@uma/financial-templates-lib");
+
+// Uniswap related contracts
+const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json");
+const IUniswapV2Pair = require("@uniswap/v2-core/build/IUniswapV2Pair.json");
+const UniswapV2Router02 = require("@uniswap/v2-periphery/build/UniswapV2Router02.json");
 
 // Script to test
 const Poll = require("../index.js");
@@ -32,21 +40,22 @@ let defaultPriceFeedConfig;
 let constructorParams;
 let spy;
 let spyLogger;
+let dsProxyFactory;
 
 let pollingDelay = 0; // 0 polling delay creates a serverless bot that yields after one full execution.
 let errorRetries = 1;
-let errorRetriesTimeout = 0.1; // 100 milliseconds between preforming retries
+let errorRetriesTimeout = 0.1; // 100 milliseconds between performing retries
 let identifier = "TEST_IDENTIFIER";
-let fundingRateIdentifier = "TEST_FUNDiNG_IDENTIFIER";
+let fundingRateIdentifier = "TEST_FUNDING";
 
-contract("index.js", function(accounts) {
+contract("index.js", function (accounts) {
   const contractCreator = accounts[0];
   const sponsorUndercollateralized = accounts[1];
   const sponsorOvercollateralized = accounts[2];
   const liquidator = contractCreator;
   const disputer = accounts[4];
 
-  TESTED_CONTRACT_VERSIONS.forEach(function(contractVersion) {
+  TESTED_CONTRACT_VERSIONS.forEach(function (contractVersion) {
     // Import the tested versions of contracts. Note that financialContract is either an ExpiringMultiParty or the perp
     // depending on the current iteration version.
     const FinancialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
@@ -57,13 +66,14 @@ contract("index.js", function(accounts) {
     const Token = getTruffleContract("ExpandedERC20", web3, contractVersion.contractVersion);
     const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
     const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
-    const UniswapMock = getTruffleContract("UniswapMock", web3, "latest");
+    const UniswapMock = getTruffleContract("UniswapV2Mock", web3);
     const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
     const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
+    const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);
 
-    describe(`Tests running on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function() {
-      before(async function() {
+    describe(`Tests running for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
+      before(async function () {
         finder = await Finder.new();
         // Create identifier whitelist and register the price tracking ticker with it.
         identifierWhitelist = await IdentifierWhitelist.new();
@@ -75,9 +85,7 @@ contract("index.js", function(accounts) {
 
         timer = await Timer.new();
 
-        mockOracle = await MockOracle.new(finder.address, timer.address, {
-          from: contractCreator
-        });
+        mockOracle = await MockOracle.new(finder.address, timer.address, { from: contractCreator });
         await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
         // Set the address in the global name space to enable disputer's index.js to access it.
         addGlobalHardhatTestingAddress("Voting", mockOracle.address);
@@ -87,19 +95,23 @@ contract("index.js", function(accounts) {
 
         // Make the contract creator the admin to enable emergencyshutdown in tests.
         await finder.changeImplementationAddress(utf8ToHex(interfaceName.FinancialContractsAdmin), contractCreator);
+
+        dsProxyFactory = await DSProxyFactory.new();
+        addGlobalHardhatTestingAddress("DSProxyFactory", dsProxyFactory.address);
       });
 
-      beforeEach(async function() {
+      beforeEach(async function () {
         // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
         spy = sinon.spy(); // Create a new spy for each test.
         spyLogger = winston.createLogger({
           level: "info",
-          transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+          transports: [new SpyTransport({ level: "info" }, { spy: spy })],
         });
 
         // Create a new synthetic token & collateral token.
         syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractCreator });
         collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
+        await collateralToken.addMember(1, contractCreator, { from: contractCreator });
 
         collateralWhitelist = await AddressWhitelist.new();
         await finder.changeImplementationAddress(
@@ -116,7 +128,7 @@ contract("index.js", function(accounts) {
               proposerBondPercentage: { rawValue: "0" },
               maxFundingRate: { rawValue: toWei("0.00001") },
               minFundingRate: { rawValue: toWei("-0.00001") },
-              proposalTimePastLimit: 0
+              proposalTimePastLimit: 0,
             },
             timer.address
           );
@@ -129,7 +141,7 @@ contract("index.js", function(accounts) {
         constructorParams = await createConstructorParamsForContractVersion(
           contractVersion,
           {
-            convertSynthetic: toWei, // These tests do not use convertSynthetic. Override this with toWei
+            convertDecimals: toWei, // These tests do not use convertSynthetic. Override this with toWei
             finder,
             collateralToken,
             syntheticToken,
@@ -137,7 +149,7 @@ contract("index.js", function(accounts) {
             fundingRateIdentifier,
             timer,
             store,
-            configStore: configStore || {} // if the contract type is not a perp this will be null.
+            configStore: configStore || {}, // if the contract type is not a perp this will be null.
           },
           { expirationTimestamp: (await timer.getCurrentTime()).toNumber() + 100 } // config override expiration time.
         );
@@ -147,23 +159,17 @@ contract("index.js", function(accounts) {
 
         syntheticToken = await Token.at(await financialContract.tokenCurrency());
 
-        defaultPriceFeedConfig = {
-          type: "test",
-          currentPrice: "1",
-          historicalPrice: "1"
-        };
+        defaultPriceFeedConfig = { type: "test", currentPrice: "1", historicalPrice: "1" };
       });
 
-      it("Detects price feed, collateral and synthetic decimals", async function() {
+      it("Detects price feed, collateral and synthetic decimals", async function () {
         spy = sinon.spy();
         spyLogger = winston.createLogger({
           level: "debug",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
 
-        collateralToken = await Token.new("BTC", "BTC", 8, {
-          from: contractCreator
-        });
+        collateralToken = await Token.new("BTC", "BTC", 8, { from: contractCreator });
         syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractCreator });
         // For this test we are using a lower decimal identifier, USDBTC. First we need to add it to the whitelist.
         await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex("USDBTC"), 64));
@@ -172,7 +178,7 @@ contract("index.js", function(accounts) {
             ...constructorParams,
             collateralAddress: collateralToken.address,
             tokenAddress: syntheticToken.address,
-            priceFeedIdentifier: padRight(utf8ToHex("USDBTC"), 64)
+            priceFeedIdentifier: padRight(utf8ToHex("USDBTC"), 64),
           })
         );
         financialContract = await FinancialContract.new(decimalTestConstructorParams);
@@ -186,22 +192,22 @@ contract("index.js", function(accounts) {
           financialContractAddress: financialContract.address,
           pollingDelay,
           errorRetries,
-          errorRetriesTimeout
+          errorRetriesTimeout,
         });
 
         // Sixth log, which prints the decimal info, should include # of decimals for the price feed, collateral and synthetic.
-        // The "6th" log is pretty arbitrary. This is simply the log message that is produced at the end of initialization
+        // The "7th" log is pretty arbitrary. This is simply the log message that is produced at the end of initialization
         // under `Liquidator initialized`. It does however contain the decimal info, which is what we really care about.
-        assert.isTrue(spyLogIncludes(spy, 6, '"collateralDecimals":8'));
-        assert.isTrue(spyLogIncludes(spy, 6, '"syntheticDecimals":18'));
-        assert.isTrue(spyLogIncludes(spy, 6, '"priceFeedDecimals":8'));
+        assert.isTrue(spyLogIncludes(spy, 7, '"collateralDecimals":8'));
+        assert.isTrue(spyLogIncludes(spy, 7, '"syntheticDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 7, '"priceFeedDecimals":8'));
       });
 
-      it("Financial Contract is expired or emergency shutdown, liquidator exits early without throwing", async function() {
+      it("Financial Contract is expired or emergency shutdown, liquidator exits early without throwing", async function () {
         spy = sinon.spy(); // Create a new spy for each test.
         spyLogger = winston.createLogger({
           level: "info",
-          transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+          transports: [new SpyTransport({ level: "info" }, { spy: spy })],
         });
 
         if (contractVersion.contractType == "ExpiringMultiParty")
@@ -215,7 +221,7 @@ contract("index.js", function(accounts) {
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
-          priceFeedConfig: defaultPriceFeedConfig
+          priceFeedConfig: defaultPriceFeedConfig,
         });
 
         for (let i = 0; i < spy.callCount; i++) {
@@ -234,19 +240,16 @@ contract("index.js", function(accounts) {
           );
       });
 
-      it("Post Financial Contract expiry or emergency shutdown, liquidator can withdraw rewards but will not attempt to liquidate any undercollateralized positions", async function() {
+      it("Post Financial Contract expiry or emergency shutdown, liquidator can withdraw rewards but will not attempt to liquidate any undercollateralized positions", async function () {
         spy = sinon.spy(); // Create a new spy for each test.
         spyLogger = winston.createLogger({
           level: "info",
-          transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+          transports: [new SpyTransport({ level: "info" }, { spy: spy })],
         });
 
         // Create 2 positions, 1 undercollateralized and 1 sufficiently collateralized.
         // Liquidate the sufficiently collateralized one, and dispute the liquidation.
         // We'll assume that the dispute will resolve to a price of 1, so there must be 1.2 units of collateral for every 1 unit of synthetic.
-        await collateralToken.addMember(1, contractCreator, {
-          from: contractCreator
-        });
         await collateralToken.mint(sponsorUndercollateralized, toWei("110"), { from: contractCreator });
         await collateralToken.mint(sponsorOvercollateralized, toWei("130"), { from: contractCreator });
         await collateralToken.approve(financialContract.address, toWei("110"), { from: sponsorUndercollateralized });
@@ -270,7 +273,7 @@ contract("index.js", function(accounts) {
         const empClientSpy = sinon.spy();
         const empClientSpyLogger = winston.createLogger({
           level: "info",
-          transports: [new SpyTransport({ level: "info" }, { spy: empClientSpy })]
+          transports: [new SpyTransport({ level: "info" }, { spy: empClientSpy })],
         });
         const financialContractClient = new FinancialContractClient(
           empClientSpyLogger,
@@ -283,12 +286,13 @@ contract("index.js", function(accounts) {
           [
             {
               sponsor: sponsorUndercollateralized,
+              adjustedTokens: toWei("100"),
               numTokens: toWei("100"),
               amountCollateral: toWei("110"),
               hasPendingWithdrawal: false,
               withdrawalRequestPassTimestamp: "0",
-              withdrawalRequestAmount: "0"
-            }
+              withdrawalRequestAmount: "0",
+            },
           ],
           financialContractClient.getUnderCollateralizedPositions(toWei("1"))
         );
@@ -310,13 +314,9 @@ contract("index.js", function(accounts) {
         if (contractVersion.contractType == "Perpetual") await financialContract.emergencyShutdown();
 
         // Dispute & push a dispute resolution price.
-        await collateralToken.mint(disputer, toWei("13"), {
-          from: contractCreator
-        });
+        await collateralToken.mint(disputer, toWei("13"), { from: contractCreator });
         await collateralToken.approve(financialContract.address, toWei("13"), { from: disputer });
-        await financialContract.dispute(0, sponsorOvercollateralized, {
-          from: disputer
-        });
+        await financialContract.dispute(0, sponsorOvercollateralized, { from: disputer });
         await mockOracle.pushPrice(utf8ToHex("TEST_IDENTIFIER"), liquidationTime, toWei("1"));
 
         // Running the liquidator now should settle and withdraw rewards from the successful dispute,
@@ -328,7 +328,7 @@ contract("index.js", function(accounts) {
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
-          priceFeedConfig: defaultPriceFeedConfig
+          priceFeedConfig: defaultPriceFeedConfig,
         });
 
         // Financial Contract client should still detect an undercollateralized position and one disputed liquidation with some unwithdrawn rewards.
@@ -337,12 +337,13 @@ contract("index.js", function(accounts) {
           [
             {
               sponsor: sponsorUndercollateralized,
+              adjustedTokens: toWei("100"),
               numTokens: toWei("100"),
               amountCollateral: toWei("110"),
               hasPendingWithdrawal: false,
               withdrawalRequestPassTimestamp: "0",
-              withdrawalRequestAmount: "0"
-            }
+              withdrawalRequestAmount: "0",
+            },
           ],
           financialContractClient.getUnderCollateralizedPositions(toWei("1"))
         );
@@ -353,10 +354,10 @@ contract("index.js", function(accounts) {
         if (contractVersion.contractType == "ExpiringMultiParty") assert.isTrue(spyLogIncludes(spy, 2, "expired"));
         if (contractVersion.contractType == "Perpetual") assert.isTrue(spyLogIncludes(spy, 2, "shutdown"));
         assert.isTrue(spyLogIncludes(spy, -1, "Liquidation withdrawn"));
-        assert.equal(spy.getCall(-1).lastArg.amountWithdrawn, toWei("80")); // Amount withdrawn by liquidator minus dispute rewards.
+        assert.equal(spy.getCall(-1).lastArg.liquidationResult.paidToLiquidator, toWei("80")); // Amount withdrawn by liquidator minus dispute rewards.
       });
 
-      it("Allowances are set", async function() {
+      it("Allowances are set", async function () {
         await Poll.run({
           logger: spyLogger,
           web3,
@@ -364,7 +365,7 @@ contract("index.js", function(accounts) {
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
-          priceFeedConfig: defaultPriceFeedConfig
+          priceFeedConfig: defaultPriceFeedConfig,
         });
 
         const collateralAllowance = await collateralToken.allowance(contractCreator, financialContract.address);
@@ -373,11 +374,11 @@ contract("index.js", function(accounts) {
         assert.equal(syntheticAllowance.toString(), MAX_UINT_VAL);
       });
 
-      it("Completes one iteration without logging any errors", async function() {
+      it("Completes one iteration without logging any errors", async function () {
         spy = sinon.spy();
         spyLogger = winston.createLogger({
           level: "debug",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
 
         await Poll.run({
@@ -387,23 +388,23 @@ contract("index.js", function(accounts) {
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
-          priceFeedConfig: defaultPriceFeedConfig
+          priceFeedConfig: defaultPriceFeedConfig,
         });
 
         for (let i = 0; i < spy.callCount; i++) {
           assert.notEqual(spyLogLevel(spy, i), "error");
         }
 
-        // To verify contract type detection is correct for a standard feed, check the third log to see it matches expected.
-        assert.isTrue(spyLogIncludes(spy, 3, '"collateralDecimals":18'));
-        assert.isTrue(spyLogIncludes(spy, 3, '"syntheticDecimals":18'));
-        assert.isTrue(spyLogIncludes(spy, 3, '"priceFeedDecimals":18'));
+        // To verify contract type detection is correct for a standard feed, check the fifth log to see it matches expected.
+        assert.isTrue(spyLogIncludes(spy, 5, '"collateralDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 5, '"syntheticDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 5, '"priceFeedDecimals":18'));
       });
-      it("Correctly detects contract type and rejects unknown contract types", async function() {
+      it("Correctly detects contract type and rejects unknown contract types", async function () {
         spy = sinon.spy();
         spyLogger = winston.createLogger({
           level: "debug",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
 
         await Poll.run({
@@ -413,23 +414,123 @@ contract("index.js", function(accounts) {
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
-          priceFeedConfig: defaultPriceFeedConfig
+          priceFeedConfig: defaultPriceFeedConfig,
         });
 
         for (let i = 0; i < spy.callCount; i++) {
           assert.notEqual(spyLogLevel(spy, i), "error");
         }
 
-        // To verify decimal detection is correct for a standard feed, check the third log to see it matches expected.
-        assert.isTrue(spyLogIncludes(spy, 3, `"contractVersion":"${contractVersion.contractVersion}"`));
-        assert.isTrue(spyLogIncludes(spy, 3, `"contractType":"${contractVersion.contractType}"`));
+        // To verify decimal detection is correct for a standard feed, check the fifth log to see it matches expected.
+        assert.isTrue(spyLogIncludes(spy, 5, `"contractVersion":"${contractVersion.contractVersion}"`));
+        assert.isTrue(spyLogIncludes(spy, 5, `"contractType":"${contractVersion.contractType}"`));
+
+        // There should be no DSProxy deployed as we did not parametrize the bot to use one.
+        assert.equal((await dsProxyFactory.getPastEvents("Created")).length, 0);
       });
-      it("Correctly rejects unknown contract types", async function() {
+      it("Can correctly initialize using a DSProxy", async function () {
+        // Deploy a reserve currency token.
+        const reserveToken = await Token.new("Reserve Token", "RTKN", 18);
+        await reserveToken.addMember(1, contractCreator);
+        // deploy Uniswap V2 Factory & router.
+        const factory = await createContractObjectFromJson(UniswapV2Factory, web3).new(contractCreator);
+        const router = await createContractObjectFromJson(UniswapV2Router02, web3).new(
+          factory.address,
+          collateralToken.address
+        );
+
+        // initialize the pair
+        await factory.createPair(reserveToken.address, collateralToken.address);
+        const pairAddress = await factory.getPair(reserveToken.address, collateralToken.address);
+        const pair = await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress);
+
+        await reserveToken.mint(pairAddress, toBN(toWei("1000")).muln(10000000));
+        await collateralToken.mint(pairAddress, toBN(toWei("1")).muln(10000000));
+        await pair.sync();
+
+        spy = sinon.spy();
+        spyLogger = winston.createLogger({
+          level: "debug",
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
+        });
+
+        // In order for some of the proxy transaction methods to work correctly, we require that the contract has a PFC
+        // and some amount of tokens outstanding. Mint a position to enable this.
+        await collateralToken.mint(sponsorOvercollateralized, toWei("130"), { from: contractCreator });
+        await collateralToken.approve(financialContract.address, toWei("130"), { from: sponsorOvercollateralized });
+        await financialContract.create(
+          { rawValue: toWei("130") },
+          { rawValue: toWei("100") },
+          { from: sponsorOvercollateralized }
+        );
+
+        await Poll.run({
+          logger: spyLogger,
+          web3,
+          financialContractAddress: financialContract.address,
+          pollingDelay,
+          errorRetries,
+          errorRetriesTimeout,
+          priceFeedConfig: defaultPriceFeedConfig,
+          proxyTransactionWrapperConfig: {
+            useDsProxyToLiquidate: true,
+            liquidatorReserveCurrencyAddress: reserveToken.address,
+            uniswapRouterAddress: router.address,
+            uniswapFactoryAddress: factory.address,
+          },
+        });
+
+        for (let i = 0; i < spy.callCount; i++) {
+          assert.notEqual(spyLogLevel(spy, i), "error");
+        }
+
+        // A log of a deployed DSProxy should be included.
+        assert.isTrue(spyLogIncludes(spy, 6, "No DSProxy found for EOA. Deploying new DSProxy"));
+        assert.isTrue(spyLogIncludes(spy, 8, "DSProxy deployed for your EOA"));
+        const createdEvents = await dsProxyFactory.getPastEvents("Created", { fromBlock: 0 });
+
+        assert.equal(createdEvents.length, 1);
+        assert.equal(createdEvents[0].returnValues.owner, liquidator);
+        // To verify contract type detection is correct for a standard feed, check the fifth log to see it matches expected.
+        assert.isTrue(spyLogIncludes(spy, 9, '"collateralDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 9, '"syntheticDecimals":18'));
+        assert.isTrue(spyLogIncludes(spy, 9, '"priceFeedDecimals":18'));
+      });
+      it("Correctly detects contract type and rejects unknown contract types", async function () {
+        spy = sinon.spy();
+        spyLogger = winston.createLogger({
+          level: "debug",
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
+        });
+
+        await Poll.run({
+          logger: spyLogger,
+          web3,
+          financialContractAddress: financialContract.address,
+          pollingDelay,
+          errorRetries,
+          errorRetriesTimeout,
+          priceFeedConfig: defaultPriceFeedConfig,
+        });
+
+        for (let i = 0; i < spy.callCount; i++) {
+          assert.notEqual(spyLogLevel(spy, i), "error");
+        }
+
+        // To verify decimal detection is correct for a standard feed, check the fifth log to see it matches expected.
+        assert.isTrue(spyLogIncludes(spy, 5, `"contractVersion":"${contractVersion.contractVersion}"`));
+        assert.isTrue(spyLogIncludes(spy, 5, `"contractType":"${contractVersion.contractType}"`));
+
+        // There should be no DSProxy deployed as we did not parametrize the bot to use one.
+        assert.equal((await dsProxyFactory.getPastEvents("Created")).length, 0);
+      });
+
+      it("Correctly rejects unknown contract types", async function () {
         // Should produce an error on a contract type that is unknown. set the financialContract as the finder, for example
         spy = sinon.spy();
         spyLogger = winston.createLogger({
           level: "debug",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
         let didThrowError = false;
         let errorString;
@@ -441,7 +542,7 @@ contract("index.js", function(accounts) {
             pollingDelay,
             errorRetries,
             errorRetriesTimeout,
-            priceFeedConfig: defaultPriceFeedConfig
+            priceFeedConfig: defaultPriceFeedConfig,
           });
         } catch (error) {
           didThrowError = true;
@@ -451,7 +552,7 @@ contract("index.js", function(accounts) {
         assert.isTrue(didThrowError);
         assert.isTrue(errorString.includes("Contract version specified or inferred is not supported by this bot"));
       });
-      it("Correctly re-tries after failed execution loop", async function() {
+      it("Correctly re-tries after failed execution loop", async function () {
         // To create an error within the liquidator bot we can create a price feed that we know will throw an error.
         // Specifically, creating a uniswap feed with no `sync` events will generate an error. We can then check
         // the execution loop re-tries an appropriate number of times and that the associated logs are generated.
@@ -463,7 +564,7 @@ contract("index.js", function(accounts) {
         // We will also create a new spy logger, listening for debug events to validate the re-tries.
         spyLogger = winston.createLogger({
           level: "debug",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
 
         defaultPriceFeedConfig = {
@@ -471,7 +572,7 @@ contract("index.js", function(accounts) {
           uniswapAddress: uniswap.address,
           twapLength: 1,
           lookback: 1,
-          getTimeOverride: { useBlockTime: true } // enable tests to run in hardhat
+          getTimeOverride: { useBlockTime: true }, // enable tests to run in hardhat
         };
 
         errorRetries = 3; // set execution retries to 3 to validate.
@@ -484,7 +585,7 @@ contract("index.js", function(accounts) {
             pollingDelay,
             errorRetries,
             errorRetriesTimeout,
-            priceFeedConfig: defaultPriceFeedConfig
+            priceFeedConfig: defaultPriceFeedConfig,
           });
         } catch (error) {
           errorThrown = true;
@@ -492,11 +593,7 @@ contract("index.js", function(accounts) {
 
         // Iterate over all log events and count the number of empStateUpdates, liquidator check for liquidation events
         // execution loop errors and finally liquidator polling errors.
-        let reTryCounts = {
-          empStateUpdates: 0,
-          checkingForLiquidatable: 0,
-          executionLoopErrors: 0
-        };
+        let reTryCounts = { empStateUpdates: 0, checkingForLiquidatable: 0, executionLoopErrors: 0 };
         for (let i = 0; i < spy.callCount; i++) {
           if (spyLogIncludes(spy, i, "Financial Contract state updated")) reTryCounts.empStateUpdates += 1;
           if (spyLogIncludes(spy, i, "Checking for liquidatable positions")) reTryCounts.checkingForLiquidatable += 1;
@@ -508,11 +605,8 @@ contract("index.js", function(accounts) {
         assert.equal(reTryCounts.executionLoopErrors, 3); // Each re-try create a log. These only occur on re-try and so expect 3 logs.
         assert.isTrue(errorThrown); // An error should have been thrown after the 3 execution re-tries.
       });
-      it("starts with wdf params and runs without errors", async function() {
-        const liquidatorConfig = {
-          whaleDefenseFundWei: "1000000",
-          defenseActivationPercent: 50
-        };
+      it("starts with wdf params and runs without errors", async function () {
+        const liquidatorConfig = { whaleDefenseFundWei: "1000000", defenseActivationPercent: 50 };
         await Poll.run({
           logger: spyLogger,
           web3,
@@ -521,27 +615,24 @@ contract("index.js", function(accounts) {
           errorRetries,
           errorRetriesTimeout,
           priceFeedConfig: defaultPriceFeedConfig,
-          liquidatorConfig
+          liquidatorConfig,
         });
         for (let i = 0; i < spy.callCount; i++) {
           assert.notEqual(spyLogLevel(spy, i), "error");
         }
       });
 
-      it("Liquidator config packed correctly", async function() {
+      it("Liquidator config packed correctly", async function () {
         // We will also create a new spy logger, listening for debug events to validate the liquidatorConfig.
         spy = sinon.spy();
         spyLogger = winston.createLogger({
           level: "debug",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })]
+          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
 
         // We test that startingBlock and endingBlock params get packed into
         // the liquidatorConfig correctly by the Liquidator bot.
-        const liquidatorConfig = {
-          whaleDefenseFundWei: "1000000",
-          defenseActivationPercent: 50
-        };
+        const liquidatorConfig = { whaleDefenseFundWei: "1000000", defenseActivationPercent: 50 };
         const startingBlock = 9;
         const endingBlock = 10;
         await Poll.run({
@@ -554,12 +645,12 @@ contract("index.js", function(accounts) {
           priceFeedConfig: defaultPriceFeedConfig,
           liquidatorConfig,
           startingBlock,
-          endingBlock
+          endingBlock,
         });
 
-        // 3rd log should list the liquidatorConfig with the expected starting and ending block.
-        assert.equal(spy.getCall(3).lastArg.liquidatorConfig.startingBlock, startingBlock);
-        assert.equal(spy.getCall(3).lastArg.liquidatorConfig.endingBlock, endingBlock);
+        // 5th log should list the liquidatorConfig with the expected starting and ending block.
+        assert.equal(spy.getCall(5).lastArg.liquidatorConfig.startingBlock, startingBlock);
+        assert.equal(spy.getCall(5).lastArg.liquidatorConfig.endingBlock, endingBlock);
       });
     });
   });

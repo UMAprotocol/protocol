@@ -9,7 +9,7 @@ function createJsonTransport() {
     handleExceptions: true,
     format: combine(
       timestamp(),
-      printf(info => {
+      printf((info) => {
         let { timestamp, level, error, ...args } = info;
         if (error) {
           // If there is an error then strip out all punctuation to make it easily consumable by GCP within a log json
@@ -24,7 +24,7 @@ function createJsonTransport() {
         }
         return JSON.stringify(info);
       })
-    )
+    ),
   });
 }
 

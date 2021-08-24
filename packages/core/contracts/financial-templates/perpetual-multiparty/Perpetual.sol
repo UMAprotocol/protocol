@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 import "./PerpetualLiquidatable.sol";
 
@@ -15,7 +14,6 @@ contract Perpetual is PerpetualLiquidatable {
      * are fed directly into the PositionManager's constructor within the inheritance tree.
      */
     constructor(ConstructorParams memory params)
-        public
         PerpetualLiquidatable(params)
     // Note: since there is no logic here, there is no need to add a re-entrancy guard.
     {

@@ -8,7 +8,7 @@
 const assert = require("assert").strict;
 const argv = require("minimist")(process.argv.slice(), { string: ["votingAddress"] });
 
-const { getTruffleContract } = require("../../index");
+const { getTruffleContract } = require("../../dist/index");
 const Finder = getTruffleContract("Finder", web3, "1.1.0");
 const Voting = getTruffleContract("Voting", web3, "1.1.0");
 const Governor = getTruffleContract("Governor", web3, "1.1.0");
@@ -58,7 +58,7 @@ async function runExport() {
   console.log("✅ Old Voting & finder correctly transferred ownership back to governor!");
 }
 
-const run = async function(callback) {
+const run = async function (callback) {
   try {
     await runExport();
   } catch (err) {

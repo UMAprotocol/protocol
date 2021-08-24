@@ -12,9 +12,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Registry = artifacts.require("Registry");
 const Store = artifacts.require("Store");
 
-const collateral = {
-  "Kovan DAI": "0x08ae34860fbfe73e223596e65663683973c72dd3"
-};
+const collateral = { "Kovan DAI": "0x08ae34860fbfe73e223596e65663683973c72dd3" };
 
 const expiration = {
   "5/1/2020": "1588291200",
@@ -24,10 +22,10 @@ const expiration = {
   "9/1/2020": "1598918400",
   "10/1/2020": "1601510400",
   "11/1/2020": "1604188800",
-  "12/1/2020": "1606780800"
+  "12/1/2020": "1606780800",
 };
 
-const parseLine = line => {
+const parseLine = (line) => {
   // This script hardcodes the order of the fields:
   // 0. tokenName, "UMA GOLD"
   // 1. tokenSymbol, "UMA_GLD"
@@ -50,19 +48,15 @@ const parseLine = line => {
     sponsorDisputeReward: fields[7],
     disputeReward: fields[8],
     // Hardcode min sponsor tokens. Most users of this script aren't interested in configuring this value.
-    minSponsorTokens: "0.01"
+    minSponsorTokens: "0.01",
   };
 };
 
-const percentToFixedPoint = percent => {
-  return {
-    rawValue: toBN(toWei(percent))
-      .divn(100)
-      .toString()
-  };
+const percentToFixedPoint = (percent) => {
+  return { rawValue: toBN(toWei(percent)).divn(100).toString() };
 };
 
-const actualDeploy = async inputCsv => {
+const actualDeploy = async (inputCsv) => {
   const expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
   const identifierWhitelist = await IdentifierWhitelist.deployed();
   const store = await Store.deployed();
@@ -101,7 +95,7 @@ const actualDeploy = async inputCsv => {
       sponsorDisputeRewardPercentage: percentToFixedPoint(params.sponsorDisputeReward),
       disputerDisputeRewardPercentage: percentToFixedPoint(params.disputeReward),
       minSponsorTokens: percentToFixedPoint(params.minSponsorTokens),
-      excessTokenBeneficiary: store.address
+      excessTokenBeneficiary: store.address,
     };
     const address = await expiringMultiPartyCreator.createExpiringMultiParty.call(constructorParams);
     await expiringMultiPartyCreator.createExpiringMultiParty(constructorParams);
@@ -109,7 +103,7 @@ const actualDeploy = async inputCsv => {
   }
 };
 
-const deploySyntheticTokens = async callback => {
+const deploySyntheticTokens = async (callback) => {
   try {
     await actualDeploy(argv.input_csv);
   } catch (err) {

@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./PerpetualPositionManager.sol";
 
@@ -25,6 +24,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
+    using SafeERC20 for ExpandedIERC20;
 
     /****************************************
      *     LIQUIDATION DATA STRUCTURES      *
@@ -172,7 +172,6 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
      * are fed directly into the PositionManager's constructor within the inheritance tree.
      */
     constructor(ConstructorParams memory params)
-        public
         PerpetualPositionManager(
             params.withdrawalLiveness,
             params.collateralAddress,
@@ -235,7 +234,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
         )
     {
         // Check that this transaction was mined pre-deadline.
-        require(getCurrentTime() <= deadline, "Mined after deadline");
+        require(getCurrentTime() <= deadline);
 
         // Retrieve Position data for sponsor
         PositionData storage positionToLiquidate = _getPositionData(sponsor);
@@ -256,15 +255,9 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
             FixedPoint.Unsigned memory startTokens = positionToLiquidate.tokensOutstanding;
 
             // The Position's collateralization ratio must be between [minCollateralPerToken, maxCollateralPerToken].
-            require(
-                maxCollateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal),
-                "CR is more than max liq. price"
-            );
+            require(maxCollateralPerToken.mul(startTokens).isGreaterThanOrEqual(startCollateralNetOfWithdrawal));
             // minCollateralPerToken >= startCollateralNetOfWithdrawal / startTokens.
-            require(
-                minCollateralPerToken.mul(startTokens).isLessThanOrEqual(startCollateralNetOfWithdrawal),
-                "CR is less than min liq. price"
-            );
+            require(minCollateralPerToken.mul(startTokens).isLessThanOrEqual(startCollateralNetOfWithdrawal));
         }
 
         // Compute final fee at time of liquidation.
@@ -585,10 +578,7 @@ contract PerpetualLiquidatable is PerpetualPositionManager {
     // source: https://blog.polymath.network/solidity-tips-and-tricks-to-save-gas-and-reduce-bytecode-size-c44580b218e6
     function _disputable(uint256 liquidationId, address sponsor) internal view {
         LiquidationData storage liquidation = _getLiquidationData(sponsor, liquidationId);
-        require(
-            (getCurrentTime() < _getLiquidationExpiry(liquidation)) && (liquidation.state == Status.NotDisputed),
-            "Liquidation not disputable"
-        );
+        require((getCurrentTime() < _getLiquidationExpiry(liquidation)) && (liquidation.state == Status.NotDisputed));
     }
 
     function _withdrawable(uint256 liquidationId, address sponsor) internal view {

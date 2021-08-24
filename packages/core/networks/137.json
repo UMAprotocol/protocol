@@ -1,0 +1,74 @@
+[
+  {
+    "contractName": "Finder",
+    "address": "0x09aea4b2242abC8bb4BB78D537A67a245A7bEC64"
+  },
+  {
+    "contractName": "Registry",
+    "address": "0x5f25b1647fa8eaea0e15edd413c7afcbe613b6f4"
+  },
+  {
+    "contractName": "IdentifierWhitelist",
+    "address": "0x2271a5E74eA8A29764ab10523575b41AA52455f0"
+  },
+  {
+    "contractName": "AddressWhitelist",
+    "address": "0x1020Ae36548ab28Bc0c41Fd2a08D24132C82cc55"
+  },
+  {
+    "contractName": "FinancialContractsAdmin",
+    "address": "0xd8866E76441df243fc98B892362Fc6264dC3ca80"
+  },
+  {
+    "contractName": "Store",
+    "address": "0xE58480CA74f1A819faFd777BEDED4E2D5629943d"
+  },
+  {
+    "contractName": "OptimisticOracle",
+    "address": "0xBb1A8db2D4350976a11cdfA60A1d43f97710Da49"
+  },
+  {
+    "contractName": "OracleChildTunnel",
+    "address": "0x7f08B770E52e80ad418A90038FbcDf10DC7CD62F"
+  },
+  {
+    "contractName": "TokenFactory",
+    "address": "0xE20FCDA4981c8A58417C5A2EF6804b0835faA0eC"
+  },
+  {
+    "contractName": "ExpiringMultiPartyLib",
+    "address": "0x35b7b0b2A7c545e6E8b944AaD07fD0F4dee8B4e1"
+  },
+  {
+    "contractName": "ExpiringMultiPartyCreator",
+    "address": "0xe3254a3aFce425fC7114B231b39C97ABa6a919D7"
+  },
+  {
+    "contractName": "GovernorChildTunnel",
+    "address": "0xb4AeaD497FCbEAA3C37919032d42C29682f46376"
+  },
+  {
+    "contractName": "MockOracleAncillary",
+    "address": "0x0AD3176133d9C693217B8F8FF32e03C38CD8fA88"
+  },
+  {
+    "contractName": "LongShortPairCreator",
+    "address": "0x5Fd7FFF20Ee851cD7bEE72fB3C6d324e4C104c9f"
+  },
+  {
+    "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
+    "address": "0xda768D869f1e89ea005cde7e1dBf630ff9307F33"
+  },
+  {
+    "contractName": "CoveredCallLongShortPairFinancialProductLibrary",
+    "address": "0x3F62D7F4Be7671cc93BCDFE7A3Dd900FEC4b5025"
+  },
+  {
+    "contractName": "LinearLongShortPairFinancialProductLibrary",
+    "address": "0xcFF28e9E83cEc1BCa8D8619dC7eA60244b433502"
+  },
+  {
+    "contractName": "RangeBondLongShortPairFinancialProductLibrary",
+    "address": "0x8245545845a664f25cE407ee2EFe73CE6b14a837"
+  }
+]

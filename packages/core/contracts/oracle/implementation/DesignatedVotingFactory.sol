@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 import "../../common/implementation/Withdrawable.sol";
 import "./DesignatedVoting.sol";
@@ -25,7 +24,7 @@ contract DesignatedVotingFactory is Withdrawable {
      * @notice Construct the DesignatedVotingFactory contract.
      * @param finderAddress keeps track of all contracts within the system based on their interfaceName.
      */
-    constructor(address finderAddress) public {
+    constructor(address finderAddress) {
         finder = finderAddress;
 
         _createWithdrawRole(uint256(Roles.Withdrawer), uint256(Roles.Withdrawer), msg.sender);
@@ -37,8 +36,6 @@ contract DesignatedVotingFactory is Withdrawable {
      * @return designatedVoting a new DesignatedVoting contract.
      */
     function newDesignatedVoting(address ownerAddress) external returns (DesignatedVoting) {
-        require(address(designatedVotingContracts[msg.sender]) == address(0), "Duplicate hot key not permitted");
-
         DesignatedVoting designatedVoting = new DesignatedVoting(finder, ownerAddress, msg.sender);
         designatedVotingContracts[msg.sender] = designatedVoting;
         return designatedVoting;
@@ -51,7 +48,6 @@ contract DesignatedVotingFactory is Withdrawable {
      * address and wants that reflected here.
      */
     function setDesignatedVoting(address designatedVotingAddress) external {
-        require(address(designatedVotingContracts[msg.sender]) == address(0), "Duplicate hot key not permitted");
         designatedVotingContracts[msg.sender] = DesignatedVoting(designatedVotingAddress);
     }
 }

@@ -2,13 +2,11 @@
 // Script can be run as: node ./liquidity-mining/FindBlockAtTimeStamp.js --dateTime="2020-05-05 00:00" --network mainnet_mnemonic
 
 const moment = require("moment");
-const argv = require("minimist")(process.argv.slice(), {
-  string: ["dateTime"]
-});
+const argv = require("minimist")(process.argv.slice(), { string: ["dateTime"] });
 const { getWeb3 } = require("@uma/common");
 const web3 = getWeb3();
 
-const FindBlockAtTimeStamp = async callback => {
+const FindBlockAtTimeStamp = async (callback) => {
   try {
     const dateTime = moment.utc(argv.dateTime, "YYYY-MM-DD  HH:mm Z");
     if (!dateTime.isValid()) {

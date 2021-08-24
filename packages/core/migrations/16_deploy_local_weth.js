@@ -1,8 +1,9 @@
 const WETH9 = artifacts.require("WETH9");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
-const { deploy, setToExistingAddress, getKeysForNetwork, PublicNetworks } = require("@uma/common");
+const { PublicNetworks } = require("@uma/common");
+const { deploy, setToExistingAddress, getKeysForNetwork } = require("./MigrationUtils");
 
-module.exports = async function(deployer, network, accounts) {
+module.exports = async function (deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
 
   let wethTokenAddress = null;
@@ -18,7 +19,7 @@ module.exports = async function(deployer, network, accounts) {
   if (!wethTokenAddress) {
     // Deploy if the network isn't public or if there was no listed WETH address.
     ({
-      contract: { address: wethTokenAddress }
+      contract: { address: wethTokenAddress },
     } = await deploy(deployer, network, WETH9, { from: keys.deployer }));
   }
 

@@ -5,9 +5,7 @@
 // Example execution command (from packages/core):
 // - yarn truffle exec ./packages/core/scripts/mainnet/ProposeAdmin.js --network mainnet_gckms --keys deployer --gasPrice 200 --nonce 303
 
-const argv = require("minimist")(process.argv.slice(), {
-  string: ["gasPrice", "nonce"]
-});
+const argv = require("minimist")(process.argv.slice(), { string: ["gasPrice", "nonce"] });
 
 async function cancelPendingTransaction(callback) {
   try {
@@ -27,13 +25,7 @@ async function cancelPendingTransaction(callback) {
       throw new Error("Please specify a --gasPrice (denominated in gwei), for example: --gasPrice 150");
     }
     const gasPrice = web3.utils.toWei(argv.gasPrice, "gwei");
-    const txnConfig = {
-      from: signingAccount,
-      to: signingAccount,
-      value: 0,
-      gasPrice: gasPrice,
-      nonce: nonce
-    };
+    const txnConfig = { from: signingAccount, to: signingAccount, value: 0, gasPrice: gasPrice, nonce: nonce };
     console.log("- Transaction Config: ", txnConfig);
 
     /** *******************************
@@ -43,10 +35,10 @@ async function cancelPendingTransaction(callback) {
      *********************************/
     await web3.eth
       .sendTransaction(txnConfig)
-      .on("transactionHash", function(hash) {
+      .on("transactionHash", function (hash) {
         console.log(`- Pending transaction hash: ${hash}`);
       })
-      .on("receipt", function(receipt) {
+      .on("receipt", function (receipt) {
         console.log("- Successfully sent:", receipt);
       })
       .on("error", console.error);

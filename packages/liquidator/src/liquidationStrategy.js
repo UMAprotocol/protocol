@@ -45,7 +45,7 @@ module.exports = (
     withdrawLiveness,
     // financialContract contracts min sponsor size, specified in tokens, also the minimum amount of tokens to liquidate with
     // resetting timer
-    minSponsorSize
+    minSponsorSize,
   } = {},
   // These could probably be pulled in from web3, but the pattern is here to add
   // Any additional library dependencies if needed
@@ -53,7 +53,7 @@ module.exports = (
   // Experimental emit function to allow the module to push data out to parent. In
   // this case its only logs in the form of emit(logSeverity,logData)
   // A default function is added so that passing in the logging function is optional.
-  emit = x => x
+  emit = (x) => x
 ) => {
   assert(liquidationDeadline >= 0, "liquidationDeadline must be 0 or higher");
   assert(minSponsorSize, "requires minSponsorSize");
@@ -75,11 +75,11 @@ module.exports = (
     assert(currentBlockTime >= 0, "requires currentBlockTime");
     assert(maxCollateralPerToken, "requires maxCollateralPerToken");
     return [
-      sponsor,
-      { rawValue: liquidationMinPrice.toString() },
-      { rawValue: maxCollateralPerToken.toString() },
-      { rawValue: tokensToLiquidate.toString() },
-      parseInt(currentBlockTime) + liquidationDeadline
+      sponsor, // sponsor
+      { rawValue: liquidationMinPrice.toString() }, // minCollateralPerToken
+      { rawValue: maxCollateralPerToken.toString() }, // maxCollateralPerToken
+      { rawValue: tokensToLiquidate.toString() }, // maxTokensToLiquidate
+      parseInt(currentBlockTime) + liquidationDeadline, // deadline
     ];
   }
 
@@ -140,14 +140,14 @@ module.exports = (
       tokensToLiquidate = calculateTokensToLiquidate({
         syntheticTokenBalance,
         positionTokens: position.numTokens,
-        maxTokensToLiquidateWei
+        maxTokensToLiquidateWei,
       });
     } else if (canLiquidateFully({ position, syntheticTokenBalance })) {
       // 2) If you can fully liquidate, do it, regardless of whether WDF is activated.
       tokensToLiquidate = calculateTokensToLiquidate({
         syntheticTokenBalance,
         positionTokens: position.numTokens,
-        maxTokensToLiquidateWei
+        maxTokensToLiquidateWei,
       });
     } else if (
       wdfActive &&
@@ -163,7 +163,7 @@ module.exports = (
         syntheticTokenBalance: syntheticTokenBalance.toString(),
         maxTokensToLiquidateWei: maxTokensToLiquidateWei ? maxTokensToLiquidateWei.toString() : null,
         currentBlockTime,
-        ...logInfo
+        ...logInfo,
       });
       tokensToLiquidate = minSponsorSize;
     }
@@ -183,7 +183,7 @@ module.exports = (
           currentBlockTime,
           withdrawLiveness,
           defenseActivationPercent,
-          ...logInfo
+          ...logInfo,
         });
       }
       // Case 2: Liquidator doesn't have enough balance to liquidate the minimum sponsor size
@@ -194,7 +194,7 @@ module.exports = (
           syntheticTokenBalance: syntheticTokenBalance.toString(),
           maxTokensToLiquidateWei: maxTokensToLiquidateWei ? maxTokensToLiquidateWei.toString() : null,
           currentBlockTime,
-          ...logInfo
+          ...logInfo,
         });
       }
       // Case 3: Unknown
@@ -206,7 +206,7 @@ module.exports = (
           syntheticTokenBalance: syntheticTokenBalance.toString(),
           maxTokensToLiquidateWei: maxTokensToLiquidateWei ? maxTokensToLiquidateWei.toString() : null,
           currentBlockTime,
-          ...logInfo
+          ...logInfo,
         });
       }
     } else {
@@ -214,7 +214,7 @@ module.exports = (
         sponsor: position.sponsor,
         tokensToLiquidate,
         currentBlockTime,
-        maxCollateralPerToken
+        maxCollateralPerToken,
       });
     }
   }
@@ -262,12 +262,7 @@ module.exports = (
     // our synthetic balance is less than the amount required to extend deadline
     if (syntheticTokenBalance.lt(financialContractMinSponsorSize)) return false;
     // position cant go below the minimum emp sponsor size
-    if (
-      toBN(position.numTokens)
-        .sub(financialContractMinSponsorSize)
-        .lt(financialContractMinSponsorSize)
-    )
-      return false;
+    if (toBN(position.numTokens).sub(financialContractMinSponsorSize).lt(financialContractMinSponsorSize)) return false;
     // all conditions passed and we should minimally liquidate to extend timer as long as the
     // liveness timer on withdraw has passed the activation threshold.
     return true;
@@ -276,8 +271,7 @@ module.exports = (
   return {
     // Main function
     processPosition,
-    // Utility calls exposed for testing or other use
-    // Not really needed outside this module
+    // Utility calls exposed for testing or other use. Not really needed outside this module
     utils: {
       canLiquidateFully,
       canLiquidateMinimum,
@@ -285,7 +279,7 @@ module.exports = (
       hasWithdrawRequestPending,
       passedDefenseActivationPercent,
       withdrawProgressPercent,
-      calculateTokensToLiquidate
-    }
+      calculateTokensToLiquidate,
+    },
   };
 };

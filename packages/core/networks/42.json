@@ -29,11 +29,11 @@
   },
   {
     "contractName": "DesignatedVotingFactory",
-    "address": "0xF988f9f62f355966a758c5936C9080183C176585"
+    "address": "0xe6614f50Ea93A2497ae7a392E0BC36239845b9a4"
   },
   {
     "contractName": "TokenFactory",
-    "address": "0xe7e87f89e3D15617261Fd52188Ca64803165f8Af"
+    "address": "0x29aBe06dB681c0effB6C8892E0028cfe24baAfdf"
   },
   {
     "contractName": "WETH9",
@@ -49,15 +49,15 @@
   },
   {
     "contractName": "IdentifierWhitelist",
-    "address": "0xeF9c374b7976941fCAf5e501eaB531E430463fC6"
+    "address": "0x7b3c4D3B6a4eB3259DAfc8416981131E870f85a7"
   },
   {
     "contractName": "Voting",
-    "address": "0x08f5728338de40a7b6fc35d30b0ca7cc622be6f3"
+    "address": "0x0740C93a3D2B6088d0E345Da47c3B412b9874562"
   },
   {
     "contractName": "OptimisticOracle",
-    "address": "0x4107851478431d4f0462d145888772329a2dD208"
+    "address": "0xB1d3A89333BBC3F5e98A991d6d4C1910802986BC"
   },
   {
     "contractName": "ExpiringMultiPartyLib",
@@ -69,10 +69,34 @@
   },
   {
     "contractName": "PerpetualLib",
-    "address": "0x1Bd1eBD8E11D0a92954bF8fE255035d489041a5F"
+    "address": "0x3B18e629C56F496B0E4C156150eFAc16f2ccd1D9"
   },
   {
     "contractName": "PerpetualCreator",
-    "address": "0x211aAB73C56fef9314fB0889e4f045B5F27cDB3F"
+    "address": "0x6b876861d2F15616a6C8ed8a3E3BAD071EAD3DDE"
+  },
+  {
+    "contractName": "DSProxyFactory",
+    "address": "0xFB8da0B386F2Ab00B04c7f01f9faC19E21ECC405"
+  },
+  {
+    "contractName": "LongShortPairCreator",
+    "address": "0x25E2b2068567397f2d4118DAE436780822F66b48"
+  },
+  {
+    "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
+    "address": "0x78DA11E049f21563824784126DfbF7B80d9A4B0d"
+  },
+  {
+    "contractName": "CoveredCallLongShortPairFinancialProductLibrary",
+    "address": "0x914F9acDfB2231912AA43d30509A5Db27fdeD3CE"
+  },
+  {
+    "contractName": "LinearLongShortPairFinancialProductLibrary",
+    "address": "0x3EE1EA84ad75913E02B341FE09630bAedca0658D"
+  },
+  {
+    "contractName": "RangeBondLongShortPairFinancialProductLibrary",
+    "address": "0x09381C827438605B5ea3e760A27666Be3497602C"
   }
 ]

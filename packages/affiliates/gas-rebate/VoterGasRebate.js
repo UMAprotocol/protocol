@@ -30,10 +30,18 @@ const fetch = require("node-fetch");
 const cliProgress = require("cli-progress");
 const argv = require("minimist")(process.argv.slice(), {
   string: ["start", "end", "rebateNumber", "start-block", "end-block"],
-  boolean: ["reveal-only", "claim-only"]
+  boolean: ["reveal-only", "claim-only"],
 });
 const fs = require("fs");
 const path = require("path");
+
+// Locally stored list of DesignatedVoting wallets to substitute with their hot wallets:
+let addressesToReplace = [];
+try {
+  addressesToReplace = require("./2KEY_ADDRESS_OVERRIDE.json").map((a) => a.toLowerCase());
+} catch (err) {
+  // Do nothing, file doesn't exist.
+}
 
 const FindBlockAtTimestamp = require("../liquidity-mining/FindBlockAtTimeStamp");
 const { getAbi, getAddress } = require("@uma/core");
@@ -51,7 +59,7 @@ const multibar = new cliProgress.MultiBar(
     format: "{label} [{bar}] {percentage}% | ⏳ ETA: {eta}s | events parsed: {value}/{total}",
     hideCursor: true,
     clearOnComplete: false,
-    stopOnComplete: true
+    stopOnComplete: true,
   },
   cliProgress.Presets.shades_classic
 );
@@ -93,70 +101,74 @@ async function parseRevealEvents({ committedVotes, revealedVotes, priceData, reb
   }
 
   for (let i = 0; i < revealedVotes.length; i++) {
-    const reveal = revealedVotes[i];
+    try {
+      const reveal = revealedVotes[i];
 
-    const voter = reveal.returnValues.voter;
-    const roundId = reveal.returnValues.roundId;
-    const identifier = web3.utils.hexToUtf8(reveal.returnValues.identifier);
-    const requestTime = reveal.returnValues.time;
-    const [transactionBlock, transactionReceipt] = await Promise.all([
-      web3.eth.getBlock(reveal.blockNumber),
-      web3.eth.getTransactionReceipt(reveal.transactionHash)
-    ]);
-
-    // Metrics:
-    const uniqueVoteKey = `${identifier}-${requestTime}`;
-    if (metrics.identifiers.indexOf(uniqueVoteKey) === -1) metrics.identifiers.push(uniqueVoteKey);
-
-    const key = `${voter}-${roundId}-${identifier}-${requestTime}`;
-    const val = {
-      voter,
-      roundId,
-      identifier,
-      requestTime,
-      reveal: {
-        transactionBlock: transactionBlock.number,
-        hash: transactionReceipt.transactionHash,
-        gasUsed: parseInt(transactionReceipt.gasUsed),
-        txnTimestamp: transactionBlock.timestamp
-      }
-    };
-
-    // Try to find associated commit with this reveal
-    const latestCommitEvent = committedVotes.find(e => {
-      return (
-        e.returnValues.voter === voter &&
-        e.returnValues.roundId === roundId &&
-        e.returnValues.identifier === reveal.returnValues.identifier &&
-        e.returnValues.time === requestTime
-      );
-    });
-    if (latestCommitEvent) {
-      const [commitBlock, commitReceipt] = await Promise.all([
-        web3.eth.getBlock(latestCommitEvent.blockNumber),
-        web3.eth.getTransactionReceipt(latestCommitEvent.transactionHash)
+      const voter = reveal.returnValues.voter;
+      const roundId = reveal.returnValues.roundId;
+      const identifier = web3.utils.hexToUtf8(reveal.returnValues.identifier);
+      const requestTime = reveal.returnValues.time;
+      const [transactionBlock, transactionReceipt] = await Promise.all([
+        web3.eth.getBlock(reveal.blockNumber),
+        web3.eth.getTransactionReceipt(reveal.transactionHash),
       ]);
-      val.commit = {
-        transactionBlock: commitBlock.number,
-        hash: commitReceipt.transactionHash,
-        gasUsed: parseInt(commitReceipt.gasUsed),
-        txnTimestamp: commitBlock.timestamp
+
+      // Metrics:
+      const uniqueVoteKey = `${identifier}-${requestTime}`;
+      if (metrics.identifiers.indexOf(uniqueVoteKey) === -1) metrics.identifiers.push(uniqueVoteKey);
+
+      const key = `${voter}-${roundId}-${identifier}-${requestTime}`;
+      const val = {
+        voter,
+        roundId,
+        identifier,
+        requestTime,
+        reveal: {
+          transactionBlock: transactionBlock.number,
+          hash: transactionReceipt.transactionHash,
+          gasUsed: parseInt(transactionReceipt.gasUsed),
+          txnTimestamp: transactionBlock.timestamp,
+        },
       };
-    } else {
-      console.error(
-        `Could not find VoteCommitted event matching the reveal event: ${JSON.stringify(reveal.returnValues)}`
-      );
-    }
 
-    // Save and continue to lookup txn data for next event. Skip this reveal if it was already included as
-    // part of a batch transaction.
-    if (!batchTxns[transactionReceipt.transactionHash]) {
-      batchTxns[transactionReceipt.transactionHash] = true;
-      revealVotersToRebate[key] = val;
-    }
+      // Try to find associated commit with this reveal
+      const latestCommitEvent = committedVotes.find((e) => {
+        return (
+          e.returnValues.voter === voter &&
+          e.returnValues.roundId === roundId &&
+          e.returnValues.identifier === reveal.returnValues.identifier &&
+          e.returnValues.time === requestTime
+        );
+      });
+      if (latestCommitEvent) {
+        const [commitBlock, commitReceipt] = await Promise.all([
+          web3.eth.getBlock(latestCommitEvent.blockNumber),
+          web3.eth.getTransactionReceipt(latestCommitEvent.transactionHash),
+        ]);
+        val.commit = {
+          transactionBlock: commitBlock.number,
+          hash: commitReceipt.transactionHash,
+          gasUsed: parseInt(commitReceipt.gasUsed),
+          txnTimestamp: commitBlock.timestamp,
+        };
+      } else {
+        console.error(
+          `Could not find VoteCommitted event matching the reveal event: ${JSON.stringify(reveal.returnValues)}`
+        );
+      }
 
-    if (progressBarReveal) {
-      progressBarReveal.update(i + 1);
+      // Save and continue to lookup txn data for next event. Skip this reveal if it was already included as
+      // part of a batch transaction.
+      if (!batchTxns[transactionReceipt.transactionHash]) {
+        batchTxns[transactionReceipt.transactionHash] = true;
+        revealVotersToRebate[key] = val;
+      }
+
+      if (progressBarReveal) {
+        progressBarReveal.update(i + 1);
+      }
+    } catch (err) {
+      console.error("Failed to query data for reveal", revealedVotes[i], err);
     }
   }
   if (progressBarReveal) {
@@ -217,7 +229,7 @@ async function parseRevealEvents({ committedVotes, revealedVotes, priceData, reb
       commitUmaEthPrice: commitUmaData ? commitUmaData.avgPx : "N/A",
       commitTxn,
       ethToPay: Number(fromWei(ethToPay)),
-      umaToPay: Number(fromWei(umaToPay))
+      umaToPay: Number(fromWei(umaToPay)),
     };
 
     const voter = revealVotersToRebate[voterKey].voter;
@@ -230,11 +242,7 @@ async function parseRevealEvents({ committedVotes, revealedVotes, priceData, reb
 
   return {
     rebateReceipts,
-    totals: {
-      totalGasUsed: totalGasUsed,
-      totalEthSpent: totalEthSpent,
-      totalUmaRepaid: totalUmaRepaid
-    }
+    totals: { totalGasUsed: totalGasUsed, totalEthSpent: totalEthSpent, totalUmaRepaid: totalUmaRepaid },
   };
 }
 
@@ -256,49 +264,59 @@ async function parseClaimEvents({ claimedRewards, priceData, rebateOutput, debug
   }
 
   for (let i = 0; i < claimedRewards.length; i++) {
-    const claim = claimedRewards[i];
-    const [transactionBlock, transactionReceipt] = await Promise.all([
-      web3.eth.getBlock(claim.blockNumber),
-      web3.eth.getTransactionReceipt(claim.transactionHash)
-    ]);
-    // Check if claim txn was sent by an UMA dev batch retrieval.
-    if (toChecksumAddress(transactionReceipt.from) !== toChecksumAddress(UMA_DEV_ACCOUNT)) {
-      const voter = claim.returnValues.voter;
-      const roundId = claim.returnValues.roundId;
-      const identifier = web3.utils.hexToUtf8(claim.returnValues.identifier);
-      const requestTime = claim.returnValues.time;
+    try {
+      const claim = claimedRewards[i];
+      const [transactionBlock, transactionReceipt] = await Promise.all([
+        web3.eth.getBlock(claim.blockNumber),
+        web3.eth.getTransactionReceipt(claim.transactionHash),
+      ]);
+      // Check if claim txn was sent by an UMA dev batch retrieval.
+      if (toChecksumAddress(transactionReceipt.from) !== toChecksumAddress(UMA_DEV_ACCOUNT)) {
+        // To prevent rebating voters who experienced someone else claiming their rewards (and thus
+        // paying gas on the voter's behalf), filter out claim calls that were not instantiated
+        // by the voter. Note that this might have some false negatives for edge case voters
+        // who claim from different accounts.
+        const voter = claim.returnValues.voter;
+        if (toChecksumAddress(voter) === toChecksumAddress(transactionReceipt.from)) {
+          const roundId = claim.returnValues.roundId;
+          const identifier = web3.utils.hexToUtf8(claim.returnValues.identifier);
+          const requestTime = claim.returnValues.time;
 
-      // Metrics.
-      const uniqueVoteKey = `${identifier}-${requestTime}`;
-      if (metrics.identifiers.indexOf(uniqueVoteKey) === -1) metrics.identifiers.push(uniqueVoteKey);
+          // Metrics.
+          const uniqueVoteKey = `${identifier}-${requestTime}`;
+          if (metrics.identifiers.indexOf(uniqueVoteKey) === -1) metrics.identifiers.push(uniqueVoteKey);
 
-      const gasUsed = parseInt(transactionReceipt.gasUsed);
-      const txnTimestamp = transactionBlock.timestamp;
+          const gasUsed = parseInt(transactionReceipt.gasUsed);
+          const txnTimestamp = transactionBlock.timestamp;
 
-      const key = `${voter}-${roundId}-${identifier}-${requestTime}`;
-      const val = {
-        voter,
-        roundId,
-        requestTime,
-        identifier,
-        claim: {
-          transactionBlock: transactionBlock.number,
-          hash: transactionReceipt.transactionHash,
-          gasUsed,
-          txnTimestamp
+          const key = `${voter}-${roundId}-${identifier}-${requestTime}`;
+          const val = {
+            voter,
+            roundId,
+            requestTime,
+            identifier,
+            claim: {
+              transactionBlock: transactionBlock.number,
+              hash: transactionReceipt.transactionHash,
+              gasUsed,
+              txnTimestamp,
+            },
+          };
+
+          // Save and continue to lookup txn data for next event. Skip this claim if it was already included as
+          // part of a batch transaction.
+          if (!batchTxns[transactionReceipt.transactionHash]) {
+            batchTxns[transactionReceipt.transactionHash] = true;
+            rewardedVotersToRebate[key] = val;
+          }
         }
-      };
-
-      // Save and continue to lookup txn data for next event. Skip this claim if it was already included as
-      // part of a batch transaction.
-      if (!batchTxns[transactionReceipt.transactionHash]) {
-        batchTxns[transactionReceipt.transactionHash] = true;
-        rewardedVotersToRebate[key] = val;
       }
-    }
 
-    if (progressBarClaim) {
-      progressBarClaim.update(i + 1);
+      if (progressBarClaim) {
+        progressBarClaim.update(i + 1);
+      }
+    } catch (err) {
+      console.error("Failed to query data for claim", claimedRewards[i], err);
     }
   }
   if (progressBarClaim) {
@@ -330,7 +348,7 @@ async function parseClaimEvents({ claimedRewards, priceData, rebateOutput, debug
       ethToPay: Number(fromWei(ethToPay)),
       umaEthPrice: transactionDayUmaData.avgPx,
       umaToPay: Number(fromWei(umaToPay)),
-      claimTxn
+      claimTxn,
     };
 
     const voter = rewardedVotersToRebate[voterKey].voter;
@@ -343,11 +361,7 @@ async function parseClaimEvents({ claimedRewards, priceData, rebateOutput, debug
 
   return {
     rebateReceipts,
-    totals: {
-      totalGasUsed: totalGasUsed,
-      totalEthSpent: totalEthSpent,
-      totalUmaRepaid: totalUmaRepaid
-    }
+    totals: { totalGasUsed: totalGasUsed, totalEthSpent: totalEthSpent, totalUmaRepaid: totalUmaRepaid },
   };
 }
 
@@ -359,10 +373,11 @@ async function calculateRebate({
   claimOnly,
   dailyAvgGasPrices,
   dailyAvgUmaEthPrices,
-  debug = false
+  debug = false,
 }) {
   try {
     const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", 1));
+    console.log(`Using DVM @ ${voting.options.address}`);
 
     if (!debug) {
       console.log("\n\n*=======================================*");
@@ -375,30 +390,15 @@ async function calculateRebate({
 
     // Query past contract events.
     const [committedVotes, revealedVotes, claimedRewards] = await Promise.all([
-      voting.getPastEvents("VoteCommitted", {
-        fromBlock: startBlock,
-        toBlock: endBlock
-      }),
-      voting.getPastEvents("VoteRevealed", {
-        fromBlock: startBlock,
-        toBlock: endBlock
-      }),
-      voting.getPastEvents("RewardsRetrieved", {
-        fromBlock: startBlock,
-        toBlock: endBlock
-      })
+      voting.getPastEvents("VoteCommitted", { fromBlock: startBlock, toBlock: endBlock }),
+      voting.getPastEvents("VoteRevealed", { fromBlock: startBlock, toBlock: endBlock }),
+      voting.getPastEvents("RewardsRetrieved", { fromBlock: startBlock, toBlock: endBlock }),
     ]);
 
-    const priceData = {
-      dailyAvgGasPrices,
-      dailyAvgUmaEthPrices
-    };
-    const readablePriceData = {
-      dailyAvgGasPrices,
-      dailyAvgUmaEthPrices
-    };
+    const priceData = { dailyAvgGasPrices, dailyAvgUmaEthPrices };
+    const readablePriceData = { dailyAvgGasPrices, dailyAvgUmaEthPrices };
     if (!debug) {
-      Object.keys(readablePriceData).forEach(k => {
+      Object.keys(readablePriceData).forEach((k) => {
         if (typeof readablePriceData[k] !== "object") {
           console.log(`- ${k}: ${readablePriceData[k]}`);
         } else {
@@ -409,11 +409,12 @@ async function calculateRebate({
 
     // Final UMA rebates to send
     const rebateOutput = {
+      votingContractAddress: voting.options.address,
       rebate: rebateNumber,
       fromBlock: startBlock,
       toBlock: endBlock,
       shareHolderPayout: {}, // {[voter:string]: amountUmaToRebate:number}
-      priceData: readablePriceData
+      priceData: readablePriceData,
     };
 
     // Parallelize fetching of event data:
@@ -421,29 +422,14 @@ async function calculateRebate({
 
     // Parse data for vote reveals to rebate.
     if (!claimOnly) {
-      parsePromises.push(
-        parseRevealEvents({
-          committedVotes,
-          revealedVotes,
-          priceData,
-          rebateOutput,
-          debug
-        })
-      );
+      parsePromises.push(parseRevealEvents({ committedVotes, revealedVotes, priceData, rebateOutput, debug }));
     } else {
       parsePromises.push(null);
     }
 
     // Parse data for claimed rewards to rebate
     if (!revealOnly) {
-      parsePromises.push(
-        parseClaimEvents({
-          claimedRewards,
-          priceData,
-          rebateOutput,
-          debug
-        })
-      );
+      parsePromises.push(parseClaimEvents({ claimedRewards, priceData, rebateOutput, debug }));
     } else {
       parsePromises.push(null);
     }
@@ -504,6 +490,27 @@ async function calculateRebate({
         (agg, curr) => agg + rebateOutput.shareHolderPayout[curr],
         0
       );
+
+      // Replace designated voting wallets output file with hot wallets:
+      for (let voterAddress of Object.keys(rebateOutput.shareHolderPayout)) {
+        if (addressesToReplace.includes(voterAddress)) {
+          try {
+            // Get hot wallet
+            const designatedVoting = new web3.eth.Contract(getAbi("DesignatedVoting"), voterAddress);
+            const hotWallet = (await designatedVoting.methods.getMember(1).call()).toLowerCase();
+            // Add hot wallet to output
+            rebateOutput.shareHolderPayout[hotWallet] = rebateOutput.shareHolderPayout[voterAddress];
+            // Remove cold wallet from output
+            delete rebateOutput.shareHolderPayout[voterAddress];
+            console.log(`Replaced [COLD-WALLET] ${voterAddress} with [HOT-WALLET]: ${hotWallet}`);
+          } catch (err) {
+            // Address is not a DesignatedVoting wallet, skip it.
+            console.error(
+              `${voterAddress} found in "2KEY_ADDRESS_OVERRIDE.json" but is not a DesignatedVoting wallet.`
+            );
+          }
+        }
+      }
       // Format output and save to file.
       const savePath = `${path.resolve(__dirname)}/rebates/Rebate_${rebateNumber}.json`;
       fs.writeFileSync(savePath, JSON.stringify(rebateOutput, null, 4));
@@ -511,11 +518,7 @@ async function calculateRebate({
     }
 
     // Return debug and prod outputs for testing
-    return {
-      revealRebates,
-      claimRebates,
-      rebateOutput
-    };
+    return { revealRebates, claimRebates, rebateOutput };
   } catch (err) {
     console.error("calculateRebate ERROR:", err);
     return;
@@ -528,10 +531,7 @@ async function getUmaPriceAtTimestamp(timestamp) {
     const query = `https://api.coingecko.com/api/v3/coins/uma/history?date=${dateFormatted}`;
 
     const response = await fetch(query, {
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json"
-      }
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
     });
 
     let pricesResponse = await response.json();
@@ -550,8 +550,8 @@ async function getHistoricalGasPrice(startBlock, endBlock) {
     return [
       {
         timestamp: 0, // By setting timestamp to 0, this price will apply to all transactions
-        avgGwei: "100"
-      }
+        avgGwei: "100",
+      },
     ];
   } else {
     const startTime = (await web3.eth.getBlock(startBlock)).timestamp;
@@ -561,17 +561,16 @@ async function getHistoricalGasPrice(startBlock, endBlock) {
 
     const query = `https://api.etherscan.io/api?module=stats&action=dailyavggasprice&startdate=${startTimeString}&enddate=${endTimeString}&sort=asc&apikey=${etherscanApiKey}`;
     const response = await fetch(query, {
-      headers: {
-        Accept: "application/json",
-        "Content-Type": "application/json"
-      }
+      headers: { Accept: "application/json", "Content-Type": "application/json" },
     });
 
     let data = (await response.json()).result;
 
+    if (!Array.isArray(data)) throw new Error("Unexpected ETH gas price historical data format", data);
+
     // Return daily gas price (in Gwei) mapped to Unix timestamps so we can best estimate
     // the gas price for each transaction.
-    const dailyPrices = data.map(_data => {
+    const dailyPrices = data.map((_data) => {
       return { timestamp: Number(_data.unixTimeStamp), avgGwei: fromWei(_data.avgGasPrice_Wei, "gwei") };
     });
     return dailyPrices;
@@ -592,7 +591,8 @@ async function getHistoricalUmaEthPrice(dailyPrices) {
   for (let i = 0; i < dailyPrices.length; i++) {
     dailyUmaPrices.push({
       timestamp: dailyPrices[i].timestamp,
-      avgPx: umaEthPrices[i].toString()
+      avgPx: umaEthPrices[i].toFixed(18), // Cut off any digits beyond 18th decimal so that we we can parse
+      // this `avgPx` using toWei.
     });
   }
 
@@ -615,6 +615,11 @@ async function Main(callback) {
     console.log("* - Fetching UMA-ETH exchange rates     *");
     console.log("*                                       *");
     console.log("*=======================================*");
+
+    // Make sure user is on Mainnet.
+    const networkId = await web3.eth.net.getId();
+    if (networkId !== 1)
+      throw new Error("You are not using a Mainnet web3 provider, script will produce devastating results 🧟‍♂️");
 
     const rebateNumber = argv.rebateNumber ? argv.rebateNumber : "1";
     // First check if block numbers are passed in, then default to timetamps.
@@ -652,7 +657,7 @@ async function Main(callback) {
       revealOnly: argv["reveal-only"],
       claimOnly: argv["claim-only"],
       dailyAvgGasPrices,
-      dailyAvgUmaEthPrices
+      dailyAvgUmaEthPrices,
     });
   } catch (error) {
     console.error(error);

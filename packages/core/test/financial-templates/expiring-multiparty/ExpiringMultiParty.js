@@ -1,50 +1,57 @@
+const hre = require("hardhat");
+const { runDefaultFixture } = require("@uma/common");
+const { getContract } = hre;
 const { ZERO_ADDRESS } = require("@uma/common");
-const { toWei } = web3.utils;
+const { toWei, padRight, utf8ToHex } = web3.utils;
 
 // Tested Contract
-const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
+const ExpiringMultiParty = getContract("ExpiringMultiParty");
 
 // Helper Contracts
-const Finder = artifacts.require("Finder");
-const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const Token = artifacts.require("ExpandedERC20");
-const Timer = artifacts.require("Timer");
+const Finder = getContract("Finder");
+const IdentifierWhitelist = getContract("IdentifierWhitelist");
+const Token = getContract("ExpandedERC20");
+const Timer = getContract("Timer");
 
-contract("ExpiringMultiParty", function(accounts) {
+describe("ExpiringMultiParty", function () {
   let finder, timer;
+  let accounts;
 
-  beforeEach(async () => {
+  before(async () => {
+    // Accounts.
+    accounts = await web3.eth.getAccounts();
+    await runDefaultFixture(hre);
     timer = await Timer.deployed();
     finder = await Finder.deployed();
   });
 
-  it("Can deploy", async function() {
-    const collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: accounts[0] });
-    const syntheticToken = await Token.new("Test Synthetic Token", "SYNTH", 18, { from: accounts[0] });
-    const currentTime = (await timer.getCurrentTime()).toNumber();
+  it("Can deploy", async function () {
+    const collateralToken = await Token.new("Wrapped Ether", "WETH", 18).send({ from: accounts[0] });
+    const syntheticToken = await Token.new("Test Synthetic Token", "SYNTH", 18).send({ from: accounts[0] });
+    const currentTime = Number(await timer.methods.getCurrentTime().call());
 
     const constructorParams = {
       expirationTimestamp: (currentTime + 1000).toString(),
       withdrawalLiveness: "1000",
-      collateralAddress: collateralToken.address,
-      tokenAddress: syntheticToken.address,
-      finderAddress: finder.address,
-      priceFeedIdentifier: web3.utils.utf8ToHex("TEST_IDENTIFIER"),
+      collateralAddress: collateralToken.options.address,
+      tokenAddress: syntheticToken.options.address,
+      finderAddress: finder.options.address,
+      priceFeedIdentifier: padRight(utf8ToHex("TEST_IDENTIFIER"), 64),
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.5") },
       disputeBondPercentage: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
       disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: timer.address,
-      financialProductLibraryAddress: ZERO_ADDRESS
+      timerAddress: timer.options.address,
+      financialProductLibraryAddress: ZERO_ADDRESS,
     };
 
     const identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
-      from: accounts[0]
-    });
+    await identifierWhitelist.methods
+      .addSupportedIdentifier(constructorParams.priceFeedIdentifier)
+      .send({ from: accounts[0] });
 
-    await ExpiringMultiParty.new(constructorParams);
+    await ExpiringMultiParty.new(constructorParams).send({ from: accounts[0] });
   });
 });

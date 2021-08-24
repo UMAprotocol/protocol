@@ -10,14 +10,14 @@ function DesignatedVotingDeployment({ votingAccount }) {
   const { web3 } = drizzle;
   const classes = useTableStyles();
 
-  const { account } = drizzleReactHooks.useDrizzleState(drizzleState => ({
-    account: drizzleState.accounts[0]
+  const { account } = drizzleReactHooks.useDrizzleState((drizzleState) => ({
+    account: drizzleState.accounts[0],
   }));
 
   // A text field to hold an address.
   const [voterAddress, setVoterAddress] = useState("");
   const [errorText, setErrorText] = useState("");
-  const editAddress = event => {
+  const editAddress = (event) => {
     if (event.target.value !== "" && !web3.utils.isAddress(event.target.value)) {
       setErrorText("Invalid address");
     } else {
@@ -53,7 +53,11 @@ function DesignatedVotingDeployment({ votingAccount }) {
       <strong>The two key voting contract is completely optional.</strong>
       <br />
       To deploy one, enter your cold key address. To learn more about the 2 key voting system see our{" "}
-      <a href="https://docs.umaproject.org/uma/oracle/voting_with_UMA_2-key_contract.html" target="_blank">
+      <a
+        href="https://docs.umaproject.org/uma/oracle/voting_with_UMA_2-key_contract.html"
+        rel="noopener noreferrer"
+        target="_blank"
+      >
         docs
       </a>
       .
@@ -65,7 +69,7 @@ function DesignatedVotingDeployment({ votingAccount }) {
           helperText={errorText}
           label="Cold wallet address"
           error={errorText !== ""}
-          onChange={event => editAddress(event)}
+          onChange={(event) => editAddress(event)}
           disabled={hasPendingTransactions}
           style={{ width: 500 }}
         />

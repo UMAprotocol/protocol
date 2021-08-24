@@ -108,14 +108,7 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
     for (let j = 0; j < numVoters; j++) {
       const salt = getRandomUnsignedInt();
       const voter = getVoter(accounts, j);
-      const hash = computeVoteHash({
-        price,
-        salt,
-        account: voter,
-        time: time + i,
-        roundId,
-        identifier
-      });
+      const hash = computeVoteHash({ price, salt, account: voter, time: time + i, roundId, identifier });
 
       const result = await voting.commitVote(identifier, time + i, hash, { from: voter });
       const gasUsed = result.receipt.gasUsed;
@@ -156,7 +149,7 @@ const cycleRound = async (voting, votingToken, identifier, time, accounts) => {
   console.groupEnd();
 };
 
-module.exports = async function(cb) {
+module.exports = async function (cb) {
   try {
     await run();
   } catch (err) {

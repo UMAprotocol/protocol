@@ -1,0 +1,74 @@
+[
+  {
+    "contractName": "Finder",
+    "address": "0xb22033fF04AD01fbE8d78ef4622a20626834271B"
+  },
+  {
+    "contractName": "Registry",
+    "address": "0x52313039f1b849B49dce4bdf6a43AC76995bE366"
+  },
+  {
+    "contractName": "IdentifierWhitelist",
+    "address": "0xA011B82880D0235f845c9d1EA5610b965e0CD759"
+  },
+  {
+    "contractName": "AddressWhitelist",
+    "address": "0xa59E59112e3a0e96c97e2109004434C4125db80E"
+  },
+  {
+    "contractName": "FinancialContractsAdmin",
+    "address": "0xA4E6061cE6C6743839a24eE4b4FD0D9A0E377691"
+  },
+  {
+    "contractName": "Store",
+    "address": "0xce9Cf0C8f8121b573f6212344F53BC7746846e71"
+  },
+  {
+    "contractName": "OptimisticOracle",
+    "address": "0xAB75727d4e89A7f7F04f57C00234a35950527115"
+  },
+  {
+    "contractName": "TokenFactory",
+    "address": "0x56f2c8353049270d3553773E680B0d6c632544b6"
+  },
+  {
+    "contractName": "ExpiringMultiPartyLib",
+    "address": "0x7825c24e94bD06B3CA5d08b75Dcb1786Ac34bAd0"
+  },
+  {
+    "contractName": "ExpiringMultiPartyCreator",
+    "address": "0xF0E8EFFDb48f09e91D2d9124a7D8c327CaD94f30"
+  },
+  {
+    "contractName": "OracleChildTunnel",
+    "address": "0xAb955711ECd766Ce70dc2DbF2D9e0E8e4b431232"
+  },
+  {
+    "contractName": "GovernorChildTunnel",
+    "address": "0x9dd627a6FDeF9B5fB9E29edCC7EB75d6D79dC480"
+  },
+  {
+    "contractName": "LongShortPairCreator",
+    "address": "0x57EE47829369e2EF62fBb423648bec70d0366204"
+  },
+  {
+    "contractName": "BinaryOptionLongShortPairFinancialProductLibrary",
+    "address": "0x9a5de999108042946F59848E083e12690ff018C6"
+  },
+  {
+    "contractName": "CoveredCallLongShortPairFinancialProductLibrary",
+    "address": "0xc6aFa90Ebf5F7eC9Ce0409a0B2bF7b0E6E81b5F6"
+  },
+  {
+    "contractName": "LinearLongShortPairFinancialProductLibrary",
+    "address": "0xC7B7029373f504949553106c9eb2dAfDd48eF086"
+  },
+  {
+    "contractName": "RangeBondLongShortPairFinancialProductLibrary",
+    "address": "0xbe96050668dECb6FA0ef5Af919f37221658cfbEf"
+  },
+  {
+    "contractName": "MockOracleAncillary",
+    "address": "0xe1C367e2b576Ac421a9f46C9cC624935730c36aa"
+  }
+]

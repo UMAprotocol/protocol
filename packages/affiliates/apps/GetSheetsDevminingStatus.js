@@ -22,11 +22,13 @@ const SHEET_COLUMNS = [
   ["identifier", 1],
   ["payoutAddress", 2, parseAddress],
   ["empAddress", 4, parseAddressFromEtherscan],
-  ["enabled", 5, isEnabled]
+  ["enabled", 5, isEnabled],
+  ["empVersion", 6],
+  ["fallbackValue", 7],
 ];
 
-function getRangeString(rows = 100, tab = "Developer Mining") {
-  return `${tab}!1:${rows}`;
+function getRangeString(rows = 100, tab = "Developer Mining", skipRow = 2) {
+  return `${tab}!${skipRow}:${rows}`;
 }
 
 // GDrive Specific: have to use oauth credentials.
@@ -47,10 +49,7 @@ function readObject(path) {
 
 async function getNewToken(oAuth2Client) {
   assert(oAuth2Client, "requires oath2client");
-  const authUrl = oAuth2Client.generateAuthUrl({
-    access_type: "offline",
-    scope: SCOPES
-  });
+  const authUrl = oAuth2Client.generateAuthUrl({ access_type: "offline", scope: SCOPES });
   console.log("Authorize this app by visiting this url:", authUrl);
   prompt.start();
   const { code } = await prompt.get(["code"]);
@@ -82,7 +81,8 @@ function parseSheet(sheet, columns = SHEET_COLUMNS) {
       try {
         result[name] = map ? map(row[index]) : row[index];
       } catch (err) {
-        console.log("error in row:" + row, err);
+        // These errors can be distracting, and we really just ignore them for now.
+        // console.error("error in row:" + row, err);
       }
       return result;
     }, {});
@@ -93,7 +93,7 @@ function parseSheet(sheet, columns = SHEET_COLUMNS) {
 
 // Filters out inactive emp addresses
 function filterActive(list) {
-  return list.filter(data => {
+  return list.filter((data) => {
     return data.empAddress && data.empAddress.length && data.payoutAddress && data.payoutAddress.length && data.enabled;
   });
 }
@@ -115,12 +115,10 @@ async function run() {
   const request = {
     spreadsheetId: process.env.SHEET_ID,
     // / Get 100 rows. Skips first row which is header info.
-    range: getRangeString(100)
+    range: getRangeString(100, process.env.SHEET_TAB),
   };
   const result = await sheets.spreadsheets.values.get(request);
-  return filterActive(parseSheet(result.data));
+  return JSON.stringify(filterActive(parseSheet(result.data)), null, 2);
 }
 
-run()
-  .then(console.log)
-  .catch(console.log);
+run().then(console.log).catch(console.log);

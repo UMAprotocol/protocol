@@ -33,7 +33,7 @@ function spyLogIncludes(spy, messageIndex, value) {
   try {
     const lastLogMessage = JSON.stringify([
       spy.getCall(messageIndex).lastArg,
-      spy.getCall(messageIndex).lastArg.error ? spy.getCall(messageIndex).lastArg.error.message : "" // If there is an error, add its message.
+      spy.getCall(messageIndex).lastArg.error ? spy.getCall(messageIndex).lastArg.error.message : "", // If there is an error, add its message.
     ]);
     return lastLogMessage.indexOf(value) !== -1;
   } catch {

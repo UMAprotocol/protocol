@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
 /**
  * @title Universal store of current contract time for testing environments.
@@ -7,8 +7,8 @@ pragma solidity ^0.6.0;
 contract Timer {
     uint256 private currentTime;
 
-    constructor() public {
-        currentTime = now; // solhint-disable-line not-rely-on-time
+    constructor() {
+        currentTime = block.timestamp; // solhint-disable-line not-rely-on-time
     }
 
     /**
@@ -21,8 +21,7 @@ contract Timer {
     }
 
     /**
-     * @notice Gets the current time. Will return the last time set in `setCurrentTime` if running in test mode.
-     * Otherwise, it will return the block timestamp.
+     * @notice Gets the currentTime variable set in the Timer.
      * @return uint256 for the current Testable timestamp.
      */
     function getCurrentTime() public view returns (uint256) {

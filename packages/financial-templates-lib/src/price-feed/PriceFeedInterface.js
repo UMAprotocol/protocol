@@ -49,6 +49,4 @@ class PriceFeedInterface {
   }
 }
 
-module.exports = {
-  PriceFeedInterface
-};
+module.exports = { PriceFeedInterface };

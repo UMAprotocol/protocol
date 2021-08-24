@@ -1,6 +1,25 @@
 const assert = require("assert");
 const lodash = require("lodash");
 
+// static helper functions
+function percent(val, sum, scale = 10n ** 18n) {
+  return (BigInt(val) * scale) / BigInt(sum);
+}
+
+function calculateShares(contributions = {}, sum, scale = 10n ** 18n) {
+  sum =
+    sum ||
+    Object.values(contributions).reduce((sum, val) => {
+      return sum + BigInt(val);
+    }, 0n);
+
+  if (sum == 0n) return {};
+
+  return Object.entries(contributions).reduce((result, [key, value]) => {
+    result[key] = percent(value, sum, scale).toString();
+    return result;
+  }, {});
+}
 // assumes sorted oldest to newest
 // always return price equal to or earlier than requested time
 // prices are input directly from coingecko api / price feed.
@@ -31,10 +50,115 @@ function Prices(prices = []) {
     });
   }
 
+  return { lookup, prices, closest };
+}
+
+// Keeps track of all attributions for a particular user. This also allows a lookup to calculate
+// who has attributed what amount based on an arbitrary balance passed in for that user.
+function AttributionLookback({ scale = 10n ** 18n } = {}) {
+  // maps user addresses to an array of tagged attribution events
+  const addresses = new Map();
+  function create(user) {
+    assert(!addresses.has(user), "Already has user");
+    return set(user, []);
+  }
+  function get(user) {
+    assert(addresses.has(user), "User does not exist");
+    return addresses.get(user);
+  }
+  function set(user, data) {
+    addresses.set(user, data);
+    return data;
+  }
+  function getOrCreate(user) {
+    if (addresses.has(user)) return get(user);
+    return create(user);
+  }
+  function attribute(user, affiliate, amount) {
+    assert(user, "requires user");
+    assert(affiliate, "requires affiliate");
+    assert(amount, "requires amount");
+    const history = getOrCreate(user);
+    // keep youngest attributions at the start of history
+    history.unshift({ user, affiliate, amount });
+    return set(user, history);
+  }
+  function getByIndex(user, index) {
+    const history = getOrCreate(user);
+    assert(history[index], "Index has not been set: " + index);
+    return history[index];
+  }
+  function setByIndex(user, index, data) {
+    const history = get(user);
+    history[index] = data;
+    return set(user, history);
+  }
+
+  function getAttributionPercents(user, amount) {
+    const attributions = getAttributions(user, amount);
+    return calculateShares(attributions, amount, scale);
+  }
+  // search through a users attribution events and return the tags which attributed up to that amount.
+  // This goes through youngest attributions first, and accumulates attributions until the amount passed in
+  // is consumed. Its possible the last attribution may accumulate to more than the amount requested in that
+  // case it should be truncated. This returns an object keyed by tag address:
+  // {
+  //    tagA: amount,
+  //    tagB: amount,
+  // }
+  function getAttributions(user, amount) {
+    const history = get(user);
+    const { attributions, amountRemaining } = history.reduce(
+      ({ attributions, amountRemaining }, next) => {
+        // We have reached the amount needed to ignore rest of attributions
+        if (amountRemaining <= 0n) return { attributions, amountRemaining };
+        // We have not  reached amount needed, therefore initialize this affiliate if not already
+        if (attributions[next.affiliate] == null) attributions[next.affiliate] = 0n;
+
+        let attributionUsed;
+        // the sum does not reach the required amount with this attribution, so record it all
+        if (amountRemaining >= next.amount) {
+          attributionUsed = BigInt(next.amount);
+        } else {
+          // the sum surasses the amount required, we only can go up to sum, so calculate only amount needed from attribution
+          attributionUsed = amountRemaining;
+        }
+        attributions[next.affiliate] += attributionUsed;
+        amountRemaining -= attributionUsed;
+
+        return { attributions, amountRemaining };
+      },
+      { attributions: {}, amountRemaining: BigInt(amount) }
+    );
+
+    assert(amountRemaining === 0n, "Too few attribution events to sum to amount");
+    return attributions;
+  }
+
+  function forEach(cb) {
+    addresses.forEach((history, userid) => {
+      history.forEach(({ affiliate, amount }, index) => {
+        cb(userid, affiliate, amount, index);
+      });
+    });
+  }
+
+  function getTable() {
+    return addresses;
+  }
+
   return {
-    lookup,
-    prices,
-    closest
+    get,
+    set,
+    setByIndex,
+    getByIndex,
+    create,
+    getOrCreate,
+    attribute,
+    getAttributionPercents,
+    getAttributions,
+    forEach,
+    getTable,
   };
 }
 
@@ -118,18 +242,7 @@ function SharedAttributions({ scale = 10n ** 18n } = {}) {
     });
   }
 
-  return {
-    get,
-    set,
-    create,
-    getOrCreate,
-    attribute,
-    calculateShare,
-    snapshot,
-    addresses,
-    forEach,
-    getAttribution
-  };
+  return { get, set, create, getOrCreate, attribute, calculateShare, snapshot, addresses, forEach, getAttribution };
 }
 
 // Table of address balances. Option to allow negative balances.
@@ -199,21 +312,7 @@ function Balances({ allowNegative = false } = {}) {
     balances.forEach(cb);
   }
 
-  return {
-    get,
-    set,
-    has,
-    create,
-    getOrCreate,
-    sub,
-    add,
-    snapshot,
-    keys,
-    getTotal,
-    getPercent,
-    forEach,
-    balances
-  };
+  return { get, set, has, create, getOrCreate, sub, add, snapshot, keys, getTotal, getPercent, forEach, balances };
 }
 
 // hold any kind of data which can have a history by block number
@@ -240,29 +339,17 @@ function History() {
   }
   // get exact block number
   function get(blockNumber) {
-    const result = history.find(x => x.blockNumber == blockNumber);
+    const result = history.find((x) => x.blockNumber == blockNumber);
     assert(result, "Not found in history: " + blockNumber);
     return result;
   }
   function has(blockNumber) {
-    return !!history.find(x => x.blockNumber == blockNumber);
+    return !!history.find((x) => x.blockNumber == blockNumber);
   }
   function length() {
     return history.length;
   }
-  return {
-    get,
-    has,
-    insert,
-    lookup,
-    history,
-    length
-  };
+  return { get, has, insert, lookup, history, length };
 }
 
-module.exports = {
-  SharedAttributions,
-  History,
-  Balances,
-  Prices
-};
+module.exports = { SharedAttributions, AttributionLookback, History, Balances, Prices };

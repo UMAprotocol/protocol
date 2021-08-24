@@ -1,7 +1,8 @@
 const TestnetERC20 = artifacts.require("TestnetERC20");
-const { deploy, setToExistingAddress, getKeysForNetwork, PublicNetworks } = require("@uma/common");
+const { PublicNetworks } = require("@uma/common");
+const { deploy, setToExistingAddress, getKeysForNetwork } = require("./MigrationUtils");
 
-module.exports = async function(deployer, network, accounts) {
+module.exports = async function (deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
 
   let testnetERC20Address = null;
@@ -17,7 +18,7 @@ module.exports = async function(deployer, network, accounts) {
   if (!testnetERC20Address) {
     // Deploy if the network isn't public or if there was no listed DAI address.
     ({
-      contract: { address: testnetERC20Address }
+      contract: { address: testnetERC20Address },
     } = await deploy(deployer, network, TestnetERC20, "Dai Stable Coin", "DAI", 18, { from: keys.deployer }));
   }
 };

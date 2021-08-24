@@ -1,4 +1,4 @@
-const { toWei, utf8ToHex } = web3.utils;
+const { toWei, utf8ToHex, padRight } = web3.utils;
 
 // Enables testing http requests to an express server.
 const request = require("supertest");
@@ -7,7 +7,7 @@ const request = require("supertest");
 const hub = require("../src/ServerlessHub");
 const spoke = require("../src/ServerlessSpoke");
 
-// Helper scripts to test different kind of rejection behaviou.
+// Helper scripts to test different kind of rejection behaviour.
 const timeoutSpoke = require("../test-helpers/TimeoutSpokeMock.js");
 
 // Contracts and helpers
@@ -17,7 +17,7 @@ const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const TokenFactory = artifacts.require("TokenFactory");
 const Token = artifacts.require("ExpandedERC20");
 const Timer = artifacts.require("Timer");
-const UniswapMock = artifacts.require("UniswapMock");
+const UniswapV2Mock = artifacts.require("UniswapV2Mock");
 const SyntheticToken = artifacts.require("SyntheticToken");
 
 // Custom winston transport module to monitor winston log outputs
@@ -26,7 +26,11 @@ const sinon = require("sinon");
 const { SpyTransport, lastSpyLogIncludes, spyLogIncludes, lastSpyLogLevel } = require("@uma/financial-templates-lib");
 const { ZERO_ADDRESS } = require("@uma/common");
 
-contract("ServerlessHub.js", function(accounts) {
+// Use Ganache to create additional web3 providers with different chain ID's
+const ganache = require("ganache-core");
+const Web3 = require("web3");
+
+contract("ServerlessHub.js", function (accounts) {
   const contractDeployer = accounts[0];
 
   let collateralToken;
@@ -46,6 +50,8 @@ contract("ServerlessHub.js", function(accounts) {
   let spokeTestPort = 8081;
   let spokeInstance;
 
+  let defaultChainId;
+
   let setEnvironmentVariableKes = []; // record all envs set within a test to unset them after in the afterEach block
   const setEnvironmentVariable = (key, value) => {
     assert(key && value, "Must provide both a key and value to set an environment variable");
@@ -60,34 +66,31 @@ contract("ServerlessHub.js", function(accounts) {
   };
 
   const sendHubRequest = (body, port = hubTestPort) => {
-    return request(`http://localhost:${port}`)
-      .post("/")
-      .send(body)
-      .set("Accept", "application/json");
+    return request(`http://localhost:${port}`).post("/").send(body).set("Accept", "application/json");
   };
 
-  before(async function() {
+  before(async function () {
+    defaultChainId = await web3.eth.getChainId();
+
     collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractDeployer });
-    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, {
-      from: contractDeployer
-    });
+    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractDeployer });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     identifierWhitelist = await IdentifierWhitelist.deployed();
     await identifierWhitelist.addSupportedIdentifier(utf8ToHex("ETH/BTC"));
   });
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
     hubSpy = sinon.spy(); // Create a new spy for each test.
     hubSpyLogger = winston.createLogger({
       level: "info",
-      transports: [new SpyTransport({ level: "debug" }, { spy: hubSpy })]
+      transports: [new SpyTransport({ level: "debug" }, { spy: hubSpy })],
     });
     spokeSpy = sinon.spy();
     spokeSpyLogger = winston.createLogger({
       level: "info",
-      transports: [new SpyTransport({ level: "debug" }, { spy: spokeSpy })]
+      transports: [new SpyTransport({ level: "debug" }, { spy: spokeSpy })],
     });
 
     // Start the serverless spoke instance with the spy logger injected.
@@ -97,7 +100,8 @@ contract("ServerlessHub.js", function(accounts) {
       hubSpyLogger, // injected spy logger
       hubTestPort, // port to run the hub on
       `http://localhost:${spokeTestPort}`, // URL to execute spokes on
-      web3.currentProvider.host // custom node URL to enable the hub to query block numbers.
+      web3.currentProvider.host, // custom node URL to enable the hub to query block numbers.
+      { printHubConfig: true } // set hub config to print config before execution.
     );
 
     const constructorParams = {
@@ -107,40 +111,35 @@ contract("ServerlessHub.js", function(accounts) {
       tokenAddress: syntheticToken.address,
       finderAddress: (await Finder.deployed()).address,
       tokenFactoryAddress: (await TokenFactory.deployed()).address,
-      priceFeedIdentifier: utf8ToHex("ETH/BTC"),
+      priceFeedIdentifier: padRight(utf8ToHex("ETH/BTC"), 64),
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.2") },
-      disputeBondPct: { rawValue: toWei("0.1") },
-      sponsorDisputeRewardPct: { rawValue: toWei("0.1") },
-      disputerDisputeRewardPct: { rawValue: toWei("0.1") },
+      disputeBondPercentage: { rawValue: toWei("0.1") },
+      sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
+      disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
       timerAddress: (await Timer.deployed()).address,
-      excessTokenBeneficiary: ZERO_ADDRESS,
-      financialProductLibraryAddress: ZERO_ADDRESS
+      financialProductLibraryAddress: ZERO_ADDRESS,
     };
 
     // Deploy a new expiring multi party
     emp = await ExpiringMultiParty.new(constructorParams);
 
-    uniswap = await UniswapMock.new();
+    uniswap = await UniswapV2Mock.new();
 
-    defaultPricefeedConfig = {
-      type: "test",
-      currentPrice: "1",
-      historicalPrice: "1"
-    };
+    defaultPricefeedConfig = { type: "test", currentPrice: "1", historicalPrice: "1" };
 
     // Set two uniswap prices to give it a little history.
     await uniswap.setPrice(toWei("1"), toWei("1"));
     await uniswap.setPrice(toWei("1"), toWei("1"));
   });
-  afterEach(async function() {
+  afterEach(async function () {
     hubInstance.close();
     spokeInstance.close();
     unsetEnvironmentVariables();
   });
 
-  it("ServerlessHub rejects empty json request bodies", async function() {
+  it("ServerlessHub rejects empty json request bodies", async function () {
     // empty body.
     const emptyBody = {};
     const emptyBodyResponse = await sendHubRequest(emptyBody);
@@ -152,7 +151,7 @@ contract("ServerlessHub.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(hubSpy, "A fatal error occurred in the hub"));
     assert.isTrue(lastSpyLogIncludes(hubSpy, "Body missing json bucket or file parameters"));
   });
-  it("ServerlessHub rejects invalid json request bodies", async function() {
+  it("ServerlessHub rejects invalid json request bodies", async function () {
     // body missing serverless command.
     const invalidBody = { someRandomKey: "random input" };
     const invalidBodyResponse = await sendHubRequest(invalidBody);
@@ -164,7 +163,7 @@ contract("ServerlessHub.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(hubSpy, "A fatal error occurred in the hub"));
     assert.isTrue(lastSpyLogIncludes(hubSpy, "Body missing json bucket or file parameters"));
   });
-  it("ServerlessHub can correctly execute bot logic with valid body and config", async function() {
+  it("ServerlessHub can correctly execute bot logic with valid body and config", async function () {
     // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
     // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be
     // used by a user running the hub-spoke on their local machine.
@@ -180,12 +179,12 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "latest", contractType: "ExpiringMultiParty" }
-        }
-      }
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
-    setEnvironmentVariable(`lastQueriedBlockNumber-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
     setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
 
     const validBody = { bucket: testBucket, configFile: testConfigFile };
@@ -194,12 +193,15 @@ contract("ServerlessHub.js", function(accounts) {
     assert.equal(validResponse.res.statusCode, 200); // no error code
     assert.isTrue(validResponse.res.text.includes("All calls returned correctly")); // Final text in monitor loop.
     assert.isTrue(lastSpyLogIncludes(hubSpy, "All calls returned correctly")); // The hub should have exited correctly.
-    assert.isTrue(spyLogIncludes(hubSpy, -2, `"botsExecuted":${JSON.stringify(Object.keys(hubConfig))}`)); // all bots within the config should have been reported to be executed.
     assert.isTrue(lastSpyLogIncludes(spokeSpy, "Process exited with no error")); // The spoke should have exited correctly.
     assert.isTrue(lastSpyLogIncludes(spokeSpy, `${startingBlockNumber + 1}`)); // The spoke should have the correct starting block number.
+    assert.isTrue(spyLogIncludes(hubSpy, -3, startingBlockNumber), "should return block information for chain");
+    assert.isTrue(spyLogIncludes(hubSpy, -3, defaultChainId), "should return chain ID");
+    assert.isTrue(spyLogIncludes(hubSpy, -3, startingBlockNumber), "should return block information for chain");
+    assert.isTrue(spyLogIncludes(hubSpy, -3, defaultChainId), "should return chain ID");
+    assert.isTrue(spyLogIncludes(hubSpy, -4, `"botsExecuted":${JSON.stringify(Object.keys(hubConfig))}`)); // all bots within the config should have been reported to be executed.
   });
-
-  it("ServerlessHub correctly deals with rejected spoke calls", async function() {
+  it("ServerlessHub correctly deals with rejected spoke calls", async function () {
     // valid config to send but set the spoke to be off-line
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
@@ -213,18 +215,15 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "latest", contractType: "ExpiringMultiParty" }
-        }
-      }
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
-    setEnvironmentVariable(`lastQueriedBlockNumber-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
     setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
 
-    const validBody = {
-      bucket: testBucket,
-      configFile: testConfigFile
-    };
+    const validBody = { bucket: testBucket, configFile: testConfigFile };
 
     const testHubPort = 8082; // create a separate port to run this specific test on.
     // Create a hub instance with invalid spoke port. This will force the spoke to reject
@@ -247,7 +246,7 @@ contract("ServerlessHub.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(hubSpy, "Some spoke calls returned errors"));
     assert.isTrue(lastSpyLogIncludes(hubSpy, "rejected"));
   });
-  it("ServerlessHub correctly deals with timeout spoke calls", async function() {
+  it("ServerlessHub correctly deals with timeout spoke calls", async function () {
     // valid config to send but set the spoke to be off-line.
     const testBucket = "test-bucket"; // name of the config bucket.
     const testConfigFile = "test-config-file"; // name of the config file.
@@ -261,18 +260,15 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "latest", contractType: "ExpiringMultiParty" }
-        }
-      }
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
-    setEnvironmentVariable(`lastQueriedBlockNumber-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
     setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
 
-    const validBody = {
-      bucket: testBucket,
-      configFile: testConfigFile
-    };
+    const validBody = { bucket: testBucket, configFile: testConfigFile };
 
     // start the timoutSpokemock on a new port. Set the timeout for the response to be 5 seconds.
     const timeoutSpokeInstance = await timeoutSpoke.Poll(8083, 5);
@@ -302,7 +298,7 @@ contract("ServerlessHub.js", function(accounts) {
 
     timeoutSpokeInstance.close();
   });
-  it("ServerlessHub can correctly execute multiple bots in parallel", async function() {
+  it("ServerlessHub can correctly execute multiple bots in parallel", async function () {
     // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
     // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be
     // used by a user running the hub-spoke on their local machine.
@@ -318,8 +314,8 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "latest", contractType: "ExpiringMultiParty" }
-        }
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
       },
       testServerlessLiquidator: {
         serverlessCommand: "yarn --silent liquidator --network test",
@@ -328,8 +324,8 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          LIQUIDATOR_CONFIG: { contractVersion: "latest", contractType: "ExpiringMultiParty" }
-        }
+          LIQUIDATOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
       },
       testServerlessDisputer: {
         serverlessCommand: "yarn --silent disputer --network test",
@@ -338,18 +334,15 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          DISPUTER_CONFIG: { contractVersion: "latest", contractType: "ExpiringMultiParty" }
-        }
-      }
+          DISPUTER_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
-    setEnvironmentVariable(`lastQueriedBlockNumber-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
     setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
 
-    const validBody = {
-      bucket: testBucket,
-      configFile: testConfigFile
-    };
+    const validBody = { bucket: testBucket, configFile: testConfigFile };
 
     const validResponse = await sendHubRequest(validBody);
     assert.equal(validResponse.res.statusCode, 200); // no error code
@@ -363,7 +356,7 @@ contract("ServerlessHub.js", function(accounts) {
     // Check hub has correct logs.
     assert.isTrue(lastSpyLogIncludes(hubSpy, "All calls returned correctly")); // The hub should have exited correctly.
     assert.equal(lastSpyLogLevel(hubSpy), "debug"); // most recent log level should be "debug" (no error)
-    assert.isTrue(spyLogIncludes(hubSpy, -2, `"botsExecuted":${JSON.stringify(Object.keys(hubConfig))}`)); // all bots within the config should have been reported to be executed.
+    assert.isTrue(spyLogIncludes(hubSpy, -4, `"botsExecuted":${JSON.stringify(Object.keys(hubConfig))}`)); // all bots within the config should have been reported to be executed.
 
     // Check that each bot identifier returned the correct exit code within the final hub log.
     const lastSpyHubLog = hubSpy.getCall(-1).lastArg;
@@ -371,7 +364,7 @@ contract("ServerlessHub.js", function(accounts) {
       assert.isTrue(logObject.indexOf("End of serverless execution loop - terminating process") != 0);
     }
   });
-  it("ServerlessHub can correctly deal with some bots erroring out in execution", async function() {
+  it("ServerlessHub can correctly deal with some bots erroring out in execution", async function () {
     // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
     // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be
     // used by a user running the hub-spoke on their local machine.
@@ -388,8 +381,8 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
           TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "latest", contractType: "ExpiringMultiParty" }
-        }
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
       },
       testServerlessMonitorError: {
         // Create an error in the execution path. Child process spoke will crash.
@@ -398,8 +391,8 @@ contract("ServerlessHub.js", function(accounts) {
           CUSTOM_NODE_URL: web3.currentProvider.host,
           POLLING_DELAY: 0,
           EMP_ADDRESS: emp.address,
-          PRICE_FEED_CONFIG: defaultPricefeedConfig
-        }
+          PRICE_FEED_CONFIG: defaultPricefeedConfig,
+        },
       },
       testServerlessMonitorError2: {
         // Create an error in the execution path. Child process will run but will throw an error.
@@ -409,12 +402,12 @@ contract("ServerlessHub.js", function(accounts) {
           POLLING_DELAY: 0,
           EMP_ADDRESS: "0x0000000000000000000000000000000000000000",
           PRICE_FEED_CONFIG: defaultPricefeedConfig,
-          MONITOR_CONFIG: { contractVersion: "latest", contractType: "ExpiringMultiParty" }
-        }
-      }
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
     };
     // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
-    setEnvironmentVariable(`lastQueriedBlockNumber-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
     setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
 
     const errorBody = { bucket: testBucket, configFile: testConfigFile };
@@ -456,9 +449,239 @@ contract("ServerlessHub.js", function(accounts) {
     assert.isTrue(lastSpyLogIncludes(hubSpy, "error Command INVALID not found"));
     assert.isTrue(
       responseObject.output.errorOutputs["testServerlessMonitorError2"].execResponse.stderr.includes(
-        "Returned values aren't valid, did it run Out of Gas?"
+        "Contract code hash is null"
       )
     ); // invalid emp error
-    assert.isTrue(lastSpyLogIncludes(hubSpy, "Returned values aren't valid, did it run Out of Gas?"));
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "Contract code hash is null"));
+  });
+  it("ServerlessHub can correctly inject common config into child configs", async function () {
+    const testBucket = "test-bucket"; // name of the config bucket.
+    const testConfigFile = "test-config-file"; // name of the config file.
+    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+
+    const hubConfig = {
+      commonConfig: {
+        environmentVariables: {
+          SOME_TEST_ENV: "some value", // a unique env that should be appended to all.
+          MONITOR_CONFIG: { contractType: "Perpetual" }, // a repeated key and a repeated child key. should ignore
+          TOKEN_PRICE_FEED_CONFIG: { someKey: "shouldAppend" }, // a clashing parent with a unique child. should append.
+        },
+      },
+      testServerlessMonitor: {
+        serverlessCommand: "yarn --silent monitors --network test",
+        environmentVariables: {
+          CUSTOM_NODE_URL: web3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
+      testServerlessLiquidator: {
+        serverlessCommand: "yarn --silent liquidator --network test",
+        environmentVariables: {
+          CUSTOM_NODE_URL: web3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          PRICE_FEED_CONFIG: defaultPricefeedConfig,
+          LIQUIDATOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
+      testServerlessDisputer: {
+        serverlessCommand: "yarn --silent disputer --network test",
+        environmentVariables: {
+          CUSTOM_NODE_URL: web3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          PRICE_FEED_CONFIG: defaultPricefeedConfig,
+          DISPUTER_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
+    };
+    // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
+    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
+
+    const body = { bucket: testBucket, configFile: testConfigFile };
+
+    await sendHubRequest(body);
+
+    // Check that the concatenated log was correctly constructed.
+    const spyHubExecution = hubSpy.getCall(2).lastArg;
+
+    // validate that the appending worked as expected.
+    // Monitor config applied to the monitor should NOT have changed the contract type as the monitor config should take preference.
+    assert.equal(
+      spyHubExecution.configObject.testServerlessMonitor.environmentVariables.MONITOR_CONFIG.contractType,
+      "ExpiringMultiParty"
+    );
+
+    // All objects should correctly append the "SOME_TEST_ENV".
+    for (const botKey in spyHubExecution.configObject) {
+      const botConfig = spyHubExecution.configObject[botKey].environmentVariables;
+      assert.equal(botConfig.SOME_TEST_ENV, "some value");
+      // The TOKEN_PRICE_FEED_CONFIG should correctly merge in the monitor case and append in the other bots.
+      if (botKey == "testServerlessMonitor") {
+        const expectedConfig = { ...defaultPricefeedConfig, someKey: "shouldAppend" };
+        assert.equal(
+          JSON.stringify(botConfig.TOKEN_PRICE_FEED_CONFIG, Object.keys(botConfig.TOKEN_PRICE_FEED_CONFIG).sort()),
+          JSON.stringify(expectedConfig, Object.keys(expectedConfig).sort())
+        );
+      } else {
+        const expectedConfig = { someKey: "shouldAppend" };
+        assert.equal(
+          JSON.stringify(botConfig.TOKEN_PRICE_FEED_CONFIG, Object.keys(botConfig.TOKEN_PRICE_FEED_CONFIG).sort()),
+          JSON.stringify(expectedConfig, Object.keys(expectedConfig).sort())
+        );
+      }
+    }
+  });
+  it("ServerlessHub can correctly deal with multiple providers", async function () {
+    const testBucket = "test-bucket"; // name of the config bucket.
+    const testConfigFile = "test-config-file"; // name of the config file.
+    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+
+    // Temporarily spin up a new web3 provider with an overridden chain ID. The hub should be able to detect the
+    // alternative node URL and fetch its chain ID.
+    const alternateChainId = 666;
+    const alternateNode = ganache.server({ _chainIdRpc: alternateChainId });
+    const alternateNodePort = 7777;
+    alternateNode.listen(alternateNodePort);
+    // This server should automatically tear down after the test.
+    const alternateWeb3 = new Web3("http://127.0.0.1:" + alternateNodePort);
+
+    const hubConfig = {
+      testServerlessMonitor: {
+        serverlessCommand: "yarn --silent monitors --network test",
+        environmentVariables: {
+          CUSTOM_NODE_URL: web3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
+      testServerlessMonitor2: {
+        serverlessCommand: "yarn --silent monitors --network test",
+        environmentVariables: {
+          CUSTOM_NODE_URL: alternateWeb3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          PRICE_FEED_CONFIG: defaultPricefeedConfig,
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
+      testServerlessMonitor3: {
+        serverlessCommand: "yarn --silent monitors --network test",
+        environmentVariables: {
+          CUSTOM_NODE_URL: alternateWeb3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          PRICE_FEED_CONFIG: defaultPricefeedConfig,
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
+    };
+
+    // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
+    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
+    setEnvironmentVariable(`lastQueriedBlockNumber-${666}-${testConfigFile}`, startingBlockNumber);
+
+    const validBody = { bucket: testBucket, configFile: testConfigFile };
+
+    const validResponse = await sendHubRequest(validBody);
+    assert.equal(validResponse.res.statusCode, 200); // no error code
+
+    // Check for two hub logs caching each unique chain ID seen:
+    assert.isTrue(spyLogIncludes(hubSpy, 3, defaultChainId));
+    assert.isTrue(spyLogIncludes(hubSpy, 3, alternateChainId));
+  });
+
+  it("ServerlessHub can detects errors if the spoke process has a blank stdout or missing `started`", async function () {
+    // Set up the environment for testing. For these tests the hub is tested in `localStorage` mode where it will
+    // read in hub configs and previous block numbers from the local storage of machine. This execution mode would be
+    // used by a user running the hub-spoke on their local machine.
+    const testBucket = "test-bucket"; // name of the config bucket.
+    const testConfigFile = "test-config-file"; // name of the config file.
+    const startingBlockNumber = await web3.eth.getBlockNumber(); // block number to search from for monitor
+
+    const hubConfig = {
+      testServerlessMonitor: {
+        // Creates no error.
+        serverlessCommand: "yarn --silent monitors --network test",
+        environmentVariables: {
+          CUSTOM_NODE_URL: web3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
+      testServerlessMonitorError: {
+        // Create an error in the execution path. Child process spoke will crash.
+        serverlessCommand: "echo ''",
+        environmentVariables: {
+          CUSTOM_NODE_URL: web3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: emp.address,
+          PRICE_FEED_CONFIG: defaultPricefeedConfig,
+        },
+      },
+      testServerlessMonitorError2: {
+        // Create an error in the execution path. Child process will run but will throw an error.
+        serverlessCommand: "echo 'something random but not the magic bot start key word'",
+        environmentVariables: {
+          CUSTOM_NODE_URL: web3.currentProvider.host,
+          POLLING_DELAY: 0,
+          EMP_ADDRESS: "0x0000000000000000000000000000000000000000",
+          PRICE_FEED_CONFIG: defaultPricefeedConfig,
+          MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
+        },
+      },
+    };
+    // Set env variables for the hub to pull from. Add the startingBlockNumber and the hubConfig.
+    setEnvironmentVariable(`lastQueriedBlockNumber-${defaultChainId}-${testConfigFile}`, startingBlockNumber);
+    setEnvironmentVariable(`${testBucket}-${testConfigFile}`, JSON.stringify(hubConfig));
+
+    const errorBody = { bucket: testBucket, configFile: testConfigFile };
+
+    const errorResponse = await sendHubRequest(errorBody);
+
+    assert.equal(errorResponse.res.statusCode, 500); // error code
+    const responseObject = JSON.parse(errorResponse.res.text); // extract json response
+
+    // Check that the http response contains correct logs
+    assert.equal(responseObject.message, "Some spoke calls returned errors"); // Final text in monitor loop.
+    assert.isTrue(lastSpyLogIncludes(hubSpy, "Some spoke calls returned errors")); // The hub should have exited correctly.
+    assert.equal(lastSpyLogLevel(hubSpy), "error"); // most recent log level should be "error"
+    assert.equal(Object.keys(responseObject.output.errorOutputs).length, 2); // should be 2 errors
+    assert.equal(Object.keys(responseObject.output.validOutputs).length, 1); // should be 1 valid output
+
+    // Check the valid outputs.
+    assert.equal(responseObject.output.validOutputs["testServerlessMonitor"].botIdentifier, "testServerlessMonitor"); // Check that the valid output is the expected bot
+    assert.isTrue(
+      responseObject.output.validOutputs["testServerlessMonitor"].execResponse.stdout.includes(
+        "End of serverless execution loop - terminating process"
+      )
+    );
+
+    // Check the error outputs form the hub logger and the hub response.
+    assert.equal(
+      responseObject.output.errorOutputs["testServerlessMonitorError"].botIdentifier,
+      "testServerlessMonitorError"
+    ); // Check that the valid output is the expected bot
+    assert.equal(
+      responseObject.output.errorOutputs["testServerlessMonitorError2"].botIdentifier,
+      "testServerlessMonitorError2"
+    ); // Check that the valid output is the expected bot
+    assert.isTrue(
+      JSON.stringify(responseObject.output.errorOutputs["testServerlessMonitorError"]).includes("empty stdout")
+    ); // check that the catcher for empty standouts correctly caught the error
+    assert.isTrue(
+      JSON.stringify(responseObject.output.errorOutputs["testServerlessMonitorError2"]).includes(
+        "missing `Started` keyword"
+      )
+    ); // check the catcher for missing `Started` key words, sent at the booting sequency of all bots, is captured correctly.
   });
 });

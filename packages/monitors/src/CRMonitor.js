@@ -4,7 +4,7 @@ const {
   ConvertDecimals,
   createFormatFunction,
   createEtherscanLinkMarkdown,
-  createObjectFromDefaultProps
+  createObjectFromDefaultProps,
 } = require("@uma/common");
 
 class CRMonitor {
@@ -51,10 +51,10 @@ class CRMonitor {
       // By default monitor no wallets for correct collateralization ratio.
       walletsToMonitor: {
         value: [],
-        isValid: x => {
+        isValid: (x) => {
           return (
             Array.isArray(x) && // the value of `walletsToMonitor` must be an array of objects.
-            x.every(y => {
+            x.every((y) => {
               // Each object within the array must have the following keys.
               return (
                 Object.keys(y).includes("name") &&
@@ -66,18 +66,18 @@ class CRMonitor {
               );
             })
           );
-        }
+        },
       },
       logOverrides: {
         // Specify an override object to change default logging behaviour. Defaults to no overrides. If specified, this
         // object is structured to contain key for the log to override and value for the logging level. EG:
         // { crThreshold:'error' } would override the default `warn` behaviour for CR threshold events.
         value: {},
-        isValid: overrides => {
+        isValid: (overrides) => {
           // Override must be one of the default logging levels: ['error','warn','info','http','verbose','debug','silly']
-          return Object.values(overrides).every(param => Object.keys(this.logger.levels).includes(param));
-        }
-      }
+          return Object.values(overrides).every((param) => Object.keys(this.logger.levels).includes(param));
+        },
+      },
     };
 
     Object.assign(this, createObjectFromDefaultProps(monitorConfig, defaultConfig));
@@ -86,7 +86,7 @@ class CRMonitor {
     const defaultFinancialContractProps = {
       financialContractProps: {
         value: {},
-        isValid: x => {
+        isValid: (x) => {
           // The config must contain the following keys and types:
           return (
             Object.keys(x).includes("priceIdentifier") &&
@@ -100,8 +100,8 @@ class CRMonitor {
             Object.keys(x).includes("networkId") &&
             typeof x.networkId === "number"
           );
-        }
-      }
+        },
+      },
     };
     Object.assign(this, createObjectFromDefaultProps({ financialContractProps }, defaultFinancialContractProps));
 
@@ -112,7 +112,7 @@ class CRMonitor {
     this.fixedPointAdjustment = this.toBN(this.toWei("1"));
   }
 
-  // Queries all monitored wallet ballance for collateralization ratio against a given threshold.
+  // Queries all monitored wallet balance for collateralization ratio against a given threshold.
   async checkWalletCrRatio() {
     if (this.walletsToMonitor.length == 0) return; // If there are no wallets to monitor exit early
     // yield the price feed at the current time.
@@ -122,7 +122,7 @@ class CRMonitor {
     if (!price) {
       this.logger.warn({
         at: "CRMonitor",
-        message: "Cannot compute wallet collateralization ratio because price feed returned invalid value"
+        message: "Cannot compute wallet collateralization ratio because price feed returned invalid value",
       });
       return;
     }
@@ -130,7 +130,7 @@ class CRMonitor {
     this.logger.debug({
       at: "CRMonitor",
       message: "Checking wallet collateralization ratios",
-      price: price.toString()
+      price: price.toString(),
     });
     // For each monitored wallet check if the current collaterlization ratio is below the monitored threshold.
     // If it is, then send an alert of formatted markdown text.
@@ -147,7 +147,7 @@ class CRMonitor {
       // No additional calculation should be required as a result.
       const collateral = positionInformation.amountCollateral;
       const withdrawalRequestAmount = positionInformation.withdrawalRequestAmount;
-      const tokensOutstanding = positionInformation.numTokens;
+      const tokensOutstanding = positionInformation.adjustedTokens;
 
       // If the values for collateral or price have yet to resolve, dont push a notification.
       if (collateral == null || tokensOutstanding == null) {
@@ -155,9 +155,7 @@ class CRMonitor {
       }
 
       // Subtract requested withdrawal amount from position
-      const backingCollateral = this.toBN(collateral)
-        .sub(this.toBN(withdrawalRequestAmount))
-        .toString();
+      const backingCollateral = this.toBN(collateral).sub(this.toBN(withdrawalRequestAmount)).toString();
 
       // If CR = null then there are no tokens outstanding and so dont push a notification.
       const positionCR = this._calculatePositionCR(backingCollateral, tokensOutstanding, price);
@@ -200,14 +198,15 @@ class CRMonitor {
         this.logger[this.logOverrides.crThreshold || "warn"]({
           at: "CRMonitor",
           message: "Collateralization ratio alert 🙅‍♂️!",
-          mrkdwn: mrkdwn
+          mrkdwn,
+          notificationPath: "risk-management",
         });
       }
     }
   }
 
   _getPositionInformation(address) {
-    return this.financialContractClient.getAllPositions().find(position => position.sponsor === address);
+    return this.financialContractClient.getAllPositions().find((position) => position.sponsor === address);
   }
 
   // Checks if a big number value is below a given threshold.

@@ -7,7 +7,7 @@
 const assert = require("assert").strict;
 
 // Use the same ABI's as deployed contracts:
-const { getTruffleContract } = require("../../index");
+const { getTruffleContract } = require("../../dist/index");
 const Governor = getTruffleContract("Governor", web3, "1.1.0");
 const Finder = getTruffleContract("Finder", web3, "1.1.0");
 const Registry = getTruffleContract("Registry", web3, "1.1.0");
@@ -37,15 +37,15 @@ async function runExport() {
 
   console.log("Verifying that the OptimisticOracle is registered with the Finder...");
   assert.equal(
-    await finder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.OptimisticOracle)),
-    argv.deployedAddress
+    (await finder.getImplementationAddress(web3.utils.utf8ToHex(interfaceName.OptimisticOracle))).toLowerCase(),
+    argv.deployedAddress.toLowerCase()
   );
   console.log("Verified!");
 
   console.log("Upgrade Verified!");
 }
 
-const run = async function(callback) {
+const run = async function (callback) {
   try {
     await runExport();
   } catch (err) {

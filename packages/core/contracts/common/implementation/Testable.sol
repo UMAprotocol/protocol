@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
 import "./Timer.sol";
 
@@ -7,7 +7,7 @@ import "./Timer.sol";
  * @title Base class that provides time overrides, but only if being run in test mode.
  */
 abstract contract Testable {
-    // If the contract is being run on the test network, then `timerAddress` will be the 0x0 address.
+    // If the contract is being run in production, then `timerAddress` will be the 0x0 address.
     // Note: this variable should be set on construction and never modified.
     address public timerAddress;
 
@@ -16,7 +16,7 @@ abstract contract Testable {
      * @param _timerAddress Contract that stores the current time in a testing environment.
      * Must be set to 0x0 for production environments that use live time.
      */
-    constructor(address _timerAddress) internal {
+    constructor(address _timerAddress) {
         timerAddress = _timerAddress;
     }
 
@@ -46,7 +46,7 @@ abstract contract Testable {
         if (timerAddress != address(0x0)) {
             return Timer(timerAddress).getCurrentTime();
         } else {
-            return now; // solhint-disable-line not-rely-on-time
+            return block.timestamp; // solhint-disable-line not-rely-on-time
         }
     }
 }

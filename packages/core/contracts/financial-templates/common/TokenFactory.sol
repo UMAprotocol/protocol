@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
 import "./SyntheticToken.sol";
 import "../../common/interfaces/ExpandedIERC20.sol";
@@ -24,8 +24,6 @@ contract TokenFactory is Lockable {
         uint8 tokenDecimals
     ) external nonReentrant() returns (ExpandedIERC20 newToken) {
         SyntheticToken mintableToken = new SyntheticToken(tokenName, tokenSymbol, tokenDecimals);
-        mintableToken.addMinter(msg.sender);
-        mintableToken.addBurner(msg.sender);
         mintableToken.resetOwner(msg.sender);
         newToken = ExpandedIERC20(address(mintableToken));
     }

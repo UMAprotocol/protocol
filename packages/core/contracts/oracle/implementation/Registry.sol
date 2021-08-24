@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 import "../../common/implementation/MultiRole.sol";
 import "../interfaces/RegistryInterface.sol";
 
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 
 /**
  * @title Registry for financial contracts and approved financial contract creators.
@@ -60,7 +59,7 @@ contract Registry is RegistryInterface, MultiRole {
     /**
      * @notice Construct the Registry contract.
      */
-    constructor() public {
+    constructor() {
         _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), msg.sender);
         // Start with no contract creators registered.
         _createSharedRole(uint256(Roles.ContractCreator), uint256(Roles.Owner), new address[](0));

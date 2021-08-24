@@ -2,6 +2,7 @@
 // trading off peg 2) there is high volatility in the synthetic price or 3) there is high volatility in the reference price.
 
 const { ConvertDecimals, createFormatFunction, formatHours, createObjectFromDefaultProps } = require("@uma/common");
+const { calculateDeviationError } = require("@uma/financial-templates-lib");
 
 // TODO: Rename "medianizerPriceFeed" ==> "pegPriceFeed" and "uniswapPriceFeed" ==> "syntheticPriceFeed"
 class SyntheticPegMonitor {
@@ -24,6 +25,7 @@ class SyntheticPegMonitor {
    *      { syntheticSymbol:"ETHBTC",
             priceIdentifier: "ETH/BTC",
             priceFeedDecimals: 18, }
+   * @param {Object} financialContractClient Client used to query Financial Contract state.
    */
   constructor({
     logger,
@@ -32,7 +34,8 @@ class SyntheticPegMonitor {
     medianizerPriceFeed,
     denominatorPriceFeed,
     monitorConfig,
-    financialContractProps
+    financialContractProps,
+    financialContractClient,
   }) {
     this.logger = logger;
 
@@ -42,6 +45,9 @@ class SyntheticPegMonitor {
     this.denominatorPriceFeed = denominatorPriceFeed;
 
     this.web3 = web3;
+
+    // We'll use this to fetch the contract's funding rate multiplier if possible.
+    this.financialContractClient = financialContractClient;
 
     this.normalizePriceFeedDecimals = ConvertDecimals(financialContractProps.priceFeedDecimals, 18, this.web3);
 
@@ -56,41 +62,41 @@ class SyntheticPegMonitor {
         // `deviationAlertThreshold`: Error threshold used to compare observed and expected token prices.
         // If the deviation in token price exceeds this value an alert is fired. If set to zero then fire no logs.
         value: uniswapPriceFeed && medianizerPriceFeed ? 0.2 : 0,
-        isValid: x => {
+        isValid: (x) => {
           return typeof x === "number" && x < 1 && x >= 0;
-        }
+        },
       },
       volatilityWindow: {
         // `volatilityWindow`: Length of time (in seconds) to snapshot volatility.
         value: uniswapPriceFeed || medianizerPriceFeed ? 60 * 10 : 0, // 10 minutes
-        isValid: x => {
+        isValid: (x) => {
           return typeof x === "number" && x >= 0;
-        }
+        },
       },
       pegVolatilityAlertThreshold: {
         // `pegVolatilityAlertThreshold`: Error threshold for synthetic peg price volatility over `volatilityWindow`.
         value: uniswapPriceFeed ? 0.1 : 0,
-        isValid: x => {
+        isValid: (x) => {
           return typeof x === "number" && x < 1 && x >= 0;
-        }
+        },
       },
       syntheticVolatilityAlertThreshold: {
         // `syntheticVolatilityAlertThreshold`: Error threshold for synthetic price volatility over `volatilityWindow`.
         value: medianizerPriceFeed ? 0.1 : 0,
-        isValid: x => {
+        isValid: (x) => {
           return typeof x === "number" && x < 1 && x >= 0;
-        }
+        },
       },
       logOverrides: {
         // Specify an override object to change default logging behaviour. Defaults to no overrides. If specified, this
         // object is structured to contain key for the log to override and value for the logging level. EG:
         // { deviation:'error' } would override the default `warn` behaviour for synthetic-peg deviation events.
         value: {},
-        isValid: overrides => {
+        isValid: (overrides) => {
           // Override must be one of the default logging levels: ['error','warn','info','http','verbose','debug','silly']
-          return Object.values(overrides).every(param => Object.keys(this.logger.levels).includes(param));
-        }
-      }
+          return Object.values(overrides).every((param) => Object.keys(this.logger.levels).includes(param));
+        },
+      },
     };
     Object.assign(this, createObjectFromDefaultProps(monitorConfig, defaultConfig));
 
@@ -98,7 +104,7 @@ class SyntheticPegMonitor {
     const defaultFinancialContractProps = {
       financialContractProps: {
         value: {},
-        isValid: x => {
+        isValid: (x) => {
           // The config must contain the following keys and types:
           return (
             Object.keys(x).includes("priceIdentifier") &&
@@ -108,8 +114,8 @@ class SyntheticPegMonitor {
             Object.keys(x).includes("priceFeedDecimals") &&
             typeof x.priceFeedDecimals === "number"
           );
-        }
-      }
+        },
+      },
     };
     Object.assign(this, createObjectFromDefaultProps({ financialContractProps }, defaultFinancialContractProps));
 
@@ -124,14 +130,20 @@ class SyntheticPegMonitor {
     if (this.deviationAlertThreshold === 0) return; // return early if the threshold is zero.
     // Get the latest prices from the two price feeds.
     let uniswapTokenPrice = this.uniswapPriceFeed.getCurrentPrice();
-    const cryptoWatchTokenPrice = this.medianizerPriceFeed.getCurrentPrice();
+    let cryptoWatchTokenPrice = this.medianizerPriceFeed.getCurrentPrice();
+    // Multiply identifier price by funding rate multiplier to get its adjusted price:
+    if (this.financialContractClient?.latestCumulativeFundingRateMultiplier) {
+      cryptoWatchTokenPrice = this.toBN(cryptoWatchTokenPrice.toString())
+        .mul(this.financialContractClient.latestCumulativeFundingRateMultiplier)
+        .div(this.toBN(this.toWei("1"))); // We can assume that the CFRM is in 18 decimal precision.
+    }
 
     if (!uniswapTokenPrice || !cryptoWatchTokenPrice) {
       this.logger.warn({
         at: "SyntheticPegMonitor",
         message: "Unable to get price",
         uniswapTokenPrice: uniswapTokenPrice ? uniswapTokenPrice.toString() : "N/A",
-        cryptoWatchTokenPrice: cryptoWatchTokenPrice ? cryptoWatchTokenPrice.toString() : "N/A"
+        cryptoWatchTokenPrice: cryptoWatchTokenPrice ? cryptoWatchTokenPrice.toString() : "N/A",
       });
       return;
     }
@@ -158,7 +170,7 @@ class SyntheticPegMonitor {
       at: "SyntheticPegMonitor",
       message: "Checking price deviation",
       uniswapTokenPrice: uniswapTokenPrice.toString(),
-      cryptoWatchTokenPrice: cryptoWatchTokenPrice.toString()
+      cryptoWatchTokenPrice: cryptoWatchTokenPrice.toString(),
     });
 
     const deviationError = this._calculateDeviationError(uniswapTokenPrice, cryptoWatchTokenPrice);
@@ -176,7 +188,8 @@ class SyntheticPegMonitor {
           this.formatDecimalString(this.normalizePriceFeedDecimals(cryptoWatchTokenPrice)) +
           ". Error of " +
           this.formatDecimalString(deviationError.muln(100)) + // multiply by 100 to make the error a percentage
-          "%."
+          "%.",
+        notificationPath: "risk-management",
       });
     }
   }
@@ -197,7 +210,7 @@ class SyntheticPegMonitor {
         at: "SyntheticPegMonitor",
         message: "Unable to get volatility data, missing historical price data",
         error,
-        lookback: this.volatilityWindow
+        lookback: this.volatilityWindow,
       });
       return;
     }
@@ -213,7 +226,7 @@ class SyntheticPegMonitor {
       pricefeedVolatility: pricefeedVolatility.toString(),
       pricefeedLatestPrice: pricefeedLatestPrice.toString(),
       minPrice: min.toString(),
-      maxPrice: max.toString()
+      maxPrice: max.toString(),
     });
 
     // If the volatility percentage is greater than (gt) the threshold send a message.
@@ -232,7 +245,8 @@ class SyntheticPegMonitor {
           formatHours(this.volatilityWindow) +
           " hour(s). Threshold is " +
           this.pegVolatilityAlertThreshold * 100 +
-          "%."
+          "%.",
+        notificationPath: "risk-management",
       });
     }
   }
@@ -251,7 +265,7 @@ class SyntheticPegMonitor {
         at: "SyntheticPegMonitor",
         message: "Unable to get volatility data, missing historical price data",
         error,
-        lookback: this.volatilityWindow
+        lookback: this.volatilityWindow,
       });
       return;
     }
@@ -267,7 +281,7 @@ class SyntheticPegMonitor {
       pricefeedVolatility: pricefeedVolatility.toString(),
       pricefeedLatestPrice: pricefeedLatestPrice.toString(),
       minPrice: min.toString(),
-      maxPrice: max.toString()
+      maxPrice: max.toString(),
     });
 
     // If the volatility percentage is greater than (gt) the threshold send a message.
@@ -286,7 +300,8 @@ class SyntheticPegMonitor {
           formatHours(this.volatilityWindow) +
           " hour(s). Threshold is " +
           this.syntheticVolatilityAlertThreshold * 100 +
-          "%."
+          "%.",
+        notificationPath: "risk-management",
       });
     }
   }
@@ -298,34 +313,29 @@ class SyntheticPegMonitor {
     // record the minimum and maximum.
     const latestTime = pricefeed.getLastUpdateTime();
 
+    // @dev: This might mean that the current price reported is a bit after the volatility window, but the error
+    // should be small enough that it shouldn't impact the results. Furthermore, the price is not used in the vol
+    // computation (which depends on the min/max), it only is reported alongside it as a reference point.
+    let pricefeedLatestPrice;
+    try {
+      pricefeedLatestPrice = pricefeed.getCurrentPrice();
+    } catch (error) {
+      this.logger.debug({ at: "SyntheticPegMonitor", message: "Issue getting current price", error });
+      pricefeedLatestPrice = null;
+    }
+
     // `_calculateHistoricalVolatility` will throw an error if it does not return successfully.
     const volData = await this._calculateHistoricalVolatility(pricefeed, latestTime, this.volatilityWindow);
 
-    // @dev: This is not `getCurrentTime` in order to enforce that the volatility calculation is counting back from
-    // precisely the same timestamp as the "latest price". This would prevent inaccurate volatility readings where
-    // `currentTime` differs from `lastUpdateTime`.
-
-    const pricefeedLatestPrice = await pricefeed.getHistoricalPrice(latestTime);
-
-    return {
-      pricefeedVolatility: volData.volatility,
-      pricefeedLatestPrice,
-      min: volData.min,
-      max: volData.max
-    };
+    return { pricefeedVolatility: volData.volatility, pricefeedLatestPrice, min: volData.min, max: volData.max };
   }
 
-  // Takes in two big numbers and returns the error between them. using: δ = (observed - expected) / expected
-  // For example an observed price of 1.2 with an expected price of 1.0 will return (1.2 - 1.0) / 1.0 = 0.20
-  // This is equivalent of a 20 percent deviation between the numbers.
-  // Note 1) this logger can return negative error if the deviation is in a negative direction. 2) Regarding scaling,
-  // prices can be scaled arbitrarily but this function always returns 1e18 scaled number as a deviation error is
-  // a unitless number.
   _calculateDeviationError(observedValue, expectedValue) {
-    return this.normalizePriceFeedDecimals(observedValue)
-      .sub(this.normalizePriceFeedDecimals(expectedValue))
-      .mul(this.toBN(this.toWei("1"))) // Scale the numerator before division
-      .div(this.normalizePriceFeedDecimals(expectedValue));
+    return calculateDeviationError(
+      this.normalizePriceFeedDecimals(observedValue),
+      this.normalizePriceFeedDecimals(expectedValue),
+      this.toBN(this.toWei("1")) // We want deviation expressed in 18 decimal precision.
+    );
   }
 
   // Find difference between minimum and maximum prices for given pricefeed from `lookback` seconds in the past
@@ -387,11 +397,9 @@ class SyntheticPegMonitor {
     return {
       min: min,
       max: max,
-      volatility: this._calculateDeviationError(max, min).mul(this.toBN(volatilityDirection))
+      volatility: this._calculateDeviationError(max, min).mul(this.toBN(volatilityDirection)),
     };
   }
 }
 
-module.exports = {
-  SyntheticPegMonitor
-};
+module.exports = { SyntheticPegMonitor };

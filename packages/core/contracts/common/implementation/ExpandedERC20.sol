@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "./MultiRole.sol";
@@ -19,6 +19,8 @@ contract ExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
         Burner
     }
 
+    uint8 _decimals;
+
     /**
      * @notice Constructs the ExpandedERC20.
      * @param _tokenName The name which describes the new token.
@@ -29,11 +31,15 @@ contract ExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
         string memory _tokenName,
         string memory _tokenSymbol,
         uint8 _tokenDecimals
-    ) public ERC20(_tokenName, _tokenSymbol) {
-        _setupDecimals(_tokenDecimals);
+    ) ERC20(_tokenName, _tokenSymbol) {
+        _decimals = _tokenDecimals;
         _createExclusiveRole(uint256(Roles.Owner), uint256(Roles.Owner), msg.sender);
         _createSharedRole(uint256(Roles.Minter), uint256(Roles.Owner), new address[](0));
         _createSharedRole(uint256(Roles.Burner), uint256(Roles.Owner), new address[](0));
+    }
+
+    function decimals() public view virtual override(ERC20) returns (uint8) {
+        return _decimals;
     }
 
     /**
@@ -58,6 +64,22 @@ contract ExpandedERC20 is ExpandedIERC20, ERC20, MultiRole {
      */
     function burn(uint256 value) external override onlyRoleHolder(uint256(Roles.Burner)) {
         _burn(msg.sender, value);
+    }
+
+    /**
+     * @dev Burns `value` tokens owned by `recipient`.
+     * @param recipient address to burn tokens from.
+     * @param value amount of tokens to burn.
+     * @return True if the burn succeeded, or False.
+     */
+    function burnFrom(address recipient, uint256 value)
+        external
+        override
+        onlyRoleHolder(uint256(Roles.Burner))
+        returns (bool)
+    {
+        _burn(recipient, value);
+        return true;
     }
 
     /**

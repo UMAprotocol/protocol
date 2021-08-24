@@ -14,7 +14,7 @@ const {
   encryptMessage,
   deriveKeyPairFromSignatureTruffle,
   getKeyGenMessage,
-  computeVoteHash
+  computeVoteHash,
 } = require("@uma/common");
 const { moveToNextRound, moveToNextPhase } = require("../../utils/Voting.js");
 
@@ -133,14 +133,7 @@ const cycleCommit = async (voting, identifier, time, requestNum, registeredContr
   // Create the batch of commitments.
   for (var i = 0; i < requestNum; i++) {
     const salt = getRandomUnsignedInt();
-    const hash = computeVoteHash({
-      price,
-      salt,
-      account: voter,
-      time: time + i,
-      roundId,
-      identifier
-    });
+    const hash = computeVoteHash({ price, salt, account: voter, time: time + i, roundId, identifier });
     salts[i] = salt;
 
     // Generate encrypted vote to store on chain.
@@ -172,14 +165,7 @@ const cycleReveal = async (voting, identifier, time, requestNum, registeredContr
   // Generate Commitments. We will use single commit so no upper bound from the previous test
   for (let i = 0; i < requestNum; i++) {
     const salt = getRandomUnsignedInt();
-    const hash = computeVoteHash({
-      price,
-      salt,
-      account: voter,
-      time: time + i,
-      roundId,
-      identifier
-    });
+    const hash = computeVoteHash({ price, salt, account: voter, time: time + i, roundId, identifier });
     await voting.commitVote(identifier, time + i, hash, { from: voter });
     salts[i] = salt;
   }
@@ -211,14 +197,7 @@ const cycleClaim = async (voting, identifier, time, requestNum, registeredContra
 
   for (let i = 0; i < requestNum; i++) {
     const salt = getRandomUnsignedInt();
-    const hash = computeVoteHash({
-      price,
-      salt,
-      account: voter,
-      time: time + i,
-      roundId,
-      identifier
-    });
+    const hash = computeVoteHash({ price, salt, account: voter, time: time + i, roundId, identifier });
     await voting.commitVote(identifier, time + i, hash, { from: voter });
     salts[i] = salt;
   }
@@ -246,7 +225,7 @@ const cycleClaim = async (voting, identifier, time, requestNum, registeredContra
   results["retrieveRewards"] = { number: requestNum, gasUsed: result.receipt.gasUsed };
 };
 
-module.exports = async function(cb) {
+module.exports = async function (cb) {
   try {
     await run();
   } catch (err) {

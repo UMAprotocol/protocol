@@ -33,7 +33,7 @@ const MockOracle = artifacts.require("MockOracle");
 const Store = artifacts.require("Store");
 const Timer = artifacts.require("Timer");
 
-contract("IntegrationTest", function(accounts) {
+contract("IntegrationTest", function (accounts) {
   let contractCreator = accounts[0];
   let liquidator = accounts[1];
   let disputer = accounts[2];
@@ -61,19 +61,15 @@ contract("IntegrationTest", function(accounts) {
 
   beforeEach(async () => {
     collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
-    await collateralToken.addMember(1, contractCreator, {
-      from: contractCreator
-    });
+    await collateralToken.addMember(1, contractCreator, { from: contractCreator });
     registry = await Registry.deployed();
     expiringMultiPartyCreator = await ExpiringMultiPartyCreator.deployed();
     await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, expiringMultiPartyCreator.address, {
-      from: contractCreator
+      from: contractCreator,
     });
 
     collateralTokenWhitelist = await AddressWhitelist.at(await expiringMultiPartyCreator.collateralTokenWhitelist());
-    await collateralTokenWhitelist.addToWhitelist(collateralToken.address, {
-      from: contractCreator
-    });
+    await collateralTokenWhitelist.addToWhitelist(collateralToken.address, { from: contractCreator });
 
     startingTime = await expiringMultiPartyCreator.getCurrentTime();
     expirationTime = startingTime.add(toBN(60 * 60 * 24 * 30 * 3)); // Three month in the future
@@ -92,26 +88,22 @@ contract("IntegrationTest", function(accounts) {
       disputeBondPercentage: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
       disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
-      minSponsorTokens: { rawValue: toWei("0") }
+      minSponsorTokens: { rawValue: toWei("0") },
     };
 
     // register the price identifer within the identifer whitelist
     const identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, {
-      from: contractCreator
-    });
+    await identifierWhitelist.addSupportedIdentifier(constructorParams.priceFeedIdentifier, { from: contractCreator });
 
     const finder = await Finder.deployed();
 
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
-    mockOracle = await MockOracle.new(finder.address, Timer.address, {
-      from: contractCreator
-    });
+    mockOracle = await MockOracle.new(finder.address, Timer.address, { from: contractCreator });
 
     store = await Store.deployed();
 
     await finder.changeImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle), mockOracle.address, {
-      from: contractCreator
+      from: contractCreator,
     });
 
     expiringMultiParty = await ExpiringMultiParty.new(constructorParams);
@@ -120,18 +112,14 @@ contract("IntegrationTest", function(accounts) {
 
     for (const account of accounts) {
       // approve the tokens
-      await collateralToken.approve(expiringMultiParty.address, mintAndApprove, {
-        from: account
-      });
-      await syntheticToken.approve(expiringMultiParty.address, mintAndApprove, {
-        from: account
-      });
+      await collateralToken.approve(expiringMultiParty.address, mintAndApprove, { from: account });
+      await syntheticToken.approve(expiringMultiParty.address, mintAndApprove, { from: account });
 
       // mint collateral for all accounts
       await collateralToken.mint(account, mintAndApprove, { from: contractCreator });
     }
   });
-  it("Iterative full life cycle test with friendly numbers", async function() {
+  it("Iterative full life cycle test with friendly numbers", async function () {
     /**
      * @notice Iterative test with sponsors, liquidations and disputes.
      * Number of positions to create and liquidate. The following process is followed to
@@ -213,9 +201,7 @@ contract("IntegrationTest", function(accounts) {
 
       // STEP 2: transferring tokens to the token holder
       if (i % 2 == 1) {
-        await syntheticToken.transfer(tokenHolder, baseNumTokens.toString(), {
-          from: sponsor
-        });
+        await syntheticToken.transfer(tokenHolder, baseNumTokens.toString(), { from: sponsor });
         tokenTransfers++;
       }
 
@@ -243,14 +229,14 @@ contract("IntegrationTest", function(accounts) {
         liquidationsObject.push({
           sponsor: liquidationEvent.sponsor,
           id: liquidationEvent.liquidationId.toString(),
-          disputed: false
+          disputed: false,
         });
 
         // STEP 4.b) Chance to dispute the liquidation. 1 in 2 liquidations will get disputed
         if (i % 2 == 1 && runDisputes) {
           // Create the dispute request for the liquidation
           await expiringMultiParty.dispute(liquidationEvent.liquidationId.toString(), liquidationEvent.sponsor, {
-            from: disputer
+            from: disputer,
           });
 
           // Push a price into the oracle. This will enable resolution later on when the disputer
@@ -288,7 +274,7 @@ contract("IntegrationTest", function(accounts) {
         if (liquidation.disputed) {
           // sponsor and disputer should only withdraw if the liquidation was disputed
           await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, {
-            from: liquidation.sponsor
+            from: liquidation.sponsor,
           });
 
           await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, { from: disputer });
@@ -338,8 +324,8 @@ contract("IntegrationTest", function(accounts) {
       additionalDepositsMade: depositsMade,
       redemptionsMade: redemptionsMade,
       liquidations: liquidationsObject.length,
-      disputedLiquidations: liquidationsObject.filter(liquidation => liquidation.disputed).length,
-      finalBalanceDrift: (await collateralToken.balanceOf(expiringMultiParty.address)).toString()
+      disputedLiquidations: liquidationsObject.filter((liquidation) => liquidation.disputed).length,
+      finalBalanceDrift: (await collateralToken.balanceOf(expiringMultiParty.address)).toString(),
     });
 
     // STEP 11): ensure all funds were taken from the contract.
@@ -349,7 +335,7 @@ contract("IntegrationTest", function(accounts) {
     assert.equal((await collateralToken.balanceOf(expiringMultiParty.address)).toString(), "0");
   });
 
-  it("Iterative full life cycle test with unfriendly numbers and seeded liquidator", async function() {
+  it("Iterative full life cycle test with unfriendly numbers and seeded liquidator", async function () {
     // This test follows the exact same pattern as before except the input params are less friendly.
     // As before the liquidator is seeded with one large oversize position which is used to execute
     // liquidations.
@@ -418,9 +404,7 @@ contract("IntegrationTest", function(accounts) {
 
       // STEP 2: transferring tokens to the token holder
       if (i % 2 == 1) {
-        await syntheticToken.transfer(tokenHolder, baseNumTokens.toString(), {
-          from: sponsor
-        });
+        await syntheticToken.transfer(tokenHolder, baseNumTokens.toString(), { from: sponsor });
         tokenTransfers++;
       }
 
@@ -448,14 +432,14 @@ contract("IntegrationTest", function(accounts) {
         liquidationsObject.push({
           sponsor: liquidationEvent.sponsor,
           id: liquidationEvent.liquidationId.toString(),
-          disputed: false
+          disputed: false,
         });
 
         // STEP 4.b) Chance to dispute the liquidation. 1 in 2 liquidations will get disputed
         if (i % 2 == 1 && runDisputes) {
           // Create the dispute request for the liquidation
           await expiringMultiParty.dispute(liquidationEvent.liquidationId.toString(), liquidationEvent.sponsor, {
-            from: disputer
+            from: disputer,
           });
 
           // Push a price into the oracle. This will enable resolution later on when the disputer
@@ -498,7 +482,7 @@ contract("IntegrationTest", function(accounts) {
           // sponsor and disputer should only withdraw if the liquidation was disputed
 
           await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, {
-            from: liquidation.sponsor
+            from: liquidation.sponsor,
           });
 
           await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, { from: disputer });
@@ -553,16 +537,16 @@ contract("IntegrationTest", function(accounts) {
       additionalDepositsMade: depositsMade,
       redemptionsMade: redemptionsMade,
       liquidations: liquidationsObject.length,
-      disputedLiquidations: liquidationsObject.filter(liquidation => liquidation.disputed).length,
+      disputedLiquidations: liquidationsObject.filter((liquidation) => liquidation.disputed).length,
       finalBalanceDrift: finalBalanceDrift.toNumber(),
-      driftAsFracOfTotalDeposit: finalBalanceDriftFrac.toString() + " e-18 %"
+      driftAsFracOfTotalDeposit: finalBalanceDriftFrac.toString() + " e-18 %",
     });
 
     // STEP 11): ensure all funds were taken from the contract.
     // However due to drift from the unfriendly numbers we cant assert this! print the error in the output table.
   });
 
-  it("Iterative full life cycle test with unfriendly numbers and efficient liquidator seeding", async function() {
+  it("Iterative full life cycle test with unfriendly numbers and efficient liquidator seeding", async function () {
     // This test follows the exact same pattern as before except the input params are less friendly
     // and the liquidator is not seeded before hand. Rather, the liquidator creates a position right
     // before creating the liquidation. In this way all positions within the contract hold similar size
@@ -629,9 +613,7 @@ contract("IntegrationTest", function(accounts) {
 
       // STEP 2: transferring tokens to the token holder
       if (i % 2 == 1) {
-        await syntheticToken.transfer(tokenHolder, baseNumTokens.toString(), {
-          from: sponsor
-        });
+        await syntheticToken.transfer(tokenHolder, baseNumTokens.toString(), { from: sponsor });
         tokenTransfers++;
       }
 
@@ -652,9 +634,7 @@ contract("IntegrationTest", function(accounts) {
           .div(toBN(toWei("1")))
           .add(toBN("100000"));
         await expiringMultiParty.create(
-          {
-            rawValue: liquidatorSeedCollateral.toString()
-          },
+          { rawValue: liquidatorSeedCollateral.toString() },
           { rawValue: positionTokensOutstanding.toString() },
           { from: liquidator }
         );
@@ -675,14 +655,14 @@ contract("IntegrationTest", function(accounts) {
         liquidationsObject.push({
           sponsor: liquidationEvent.sponsor,
           id: liquidationEvent.liquidationId.toString(),
-          disputed: false
+          disputed: false,
         });
 
         // STEP 4.b) Chance to dispute the liquidation. 1 in 2 liquidations will get disputed
         if (i % 2 == 1 && runDisputes) {
           // Create the dispute request for the liquidation
           await expiringMultiParty.dispute(liquidationEvent.liquidationId.toString(), liquidationEvent.sponsor, {
-            from: disputer
+            from: disputer,
           });
 
           // Push a price into the oracle. This will enable resolution later on when the disputer
@@ -725,7 +705,7 @@ contract("IntegrationTest", function(accounts) {
           // sponsor and disputer should only withdraw if the liquidation was disputed
 
           await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, {
-            from: liquidation.sponsor
+            from: liquidation.sponsor,
           });
 
           await expiringMultiParty.withdrawLiquidation(liquidation.id, liquidation.sponsor, { from: disputer });
@@ -780,9 +760,9 @@ contract("IntegrationTest", function(accounts) {
       additionalDepositsMade: depositsMade,
       redemptionsMade: redemptionsMade,
       liquidations: liquidationsObject.length,
-      disputedLiquidations: liquidationsObject.filter(liquidation => liquidation.disputed).length,
+      disputedLiquidations: liquidationsObject.filter((liquidation) => liquidation.disputed).length,
       finalBalanceDrift: finalBalanceDrift.toNumber(),
-      driftAsFracOfTotalDeposit: finalBalanceDriftFrac.toString() + " e-18 %"
+      driftAsFracOfTotalDeposit: finalBalanceDriftFrac.toString() + " e-18 %",
     });
 
     // STEP 11): ensure all funds were taken from the contract.

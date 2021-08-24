@@ -10,3 +10,7 @@ build
 dist
 .github
 cache
+types
+contract-types
+generated
+typechain

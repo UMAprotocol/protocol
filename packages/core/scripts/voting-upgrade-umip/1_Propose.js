@@ -1,12 +1,12 @@
 // This script generates and submits an an upgrade to the DVM to swap out the Voting contract with an updated version as
-// part of UMIP-15. It can be run on a local ganache fork of the main net or can be run directly on the main net to
-// execute the upgrade transactions. To run this on the localhost first fork main net into Ganache with the
+// part of UMIP-15. It can be run on a local ganache fork of the mainnet or can be run directly on the mainnet to
+// execute the upgrade transactions. To run this on the localhost first fork mainnet into Ganache with the
 // proposerWallet unlocked as follows: ganache-cli --fork https://mainnet.infura.io/v3/d70106f59aef456c9e5bfbb0c2cc7164 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25 --unlock 0x7a3a1c2de64f20eb5e916f40d11b01c441b2a8dc --port 9545
 // Then execute the script as: yarn truffle exec ./scripts/voting-upgrade-umip/1_Propose.js --network mainnet-fork from core
 
 const argv = require("minimist")(process.argv.slice(), { boolean: ["revert"] });
 
-const { getTruffleContract } = require("../../index");
+const { getTruffleContract } = require("../../dist/index");
 const Finder = getTruffleContract("Finder", web3, "1.1.0");
 const Registry = getTruffleContract("Registry", web3, "1.1.0");
 const Voting = getTruffleContract("Voting", web3, "1.1.0");
@@ -14,7 +14,7 @@ const VotingToken = getTruffleContract("VotingToken", web3, "1.1.0");
 const Governor = getTruffleContract("Governor", web3, "1.1.0");
 
 // Use latest bytecode for any contract that we're deploying in-script.
-const VotingUpgrader = getTruffleContract("VotingUpgrader", web3, "latest");
+const VotingUpgrader = getTruffleContract("VotingUpgrader", web3);
 
 const { takeSnapshot, revertToSnapshot } = require("@uma/common");
 
@@ -80,9 +80,7 @@ async function runExport() {
     newVoting.address,
     finder.address,
     proposerWallet, // Pass proposer wallet as the "migrated" address.
-    {
-      from: proposerWallet
-    }
+    { from: proposerWallet }
   );
 
   console.log("Deployed VotingUpgrader\t", votingUpgrader.address);
@@ -118,26 +116,10 @@ async function runExport() {
   // Send the proposal to governor
   await governor.propose(
     [
-      {
-        to: votingToken.address,
-        value: 0,
-        data: addVotingAsTokenMinterTx
-      },
-      {
-        to: finder.address,
-        value: 0,
-        data: transferFinderOwnershipTx
-      },
-      {
-        to: existingVoting.address,
-        value: 0,
-        data: transferExistingVotingOwnershipTx
-      },
-      {
-        to: votingUpgrader.address,
-        value: 0,
-        data: upgraderExecuteUpgradeTx
-      }
+      { to: votingToken.address, value: 0, data: addVotingAsTokenMinterTx },
+      { to: finder.address, value: 0, data: transferFinderOwnershipTx },
+      { to: existingVoting.address, value: 0, data: transferExistingVotingOwnershipTx },
+      { to: votingUpgrader.address, value: 0, data: upgraderExecuteUpgradeTx },
     ],
     { from: proposerWallet, gas: 2000000 }
   );
@@ -150,7 +132,7 @@ async function runExport() {
   }
 }
 
-const run = async function(callback) {
+const run = async function (callback) {
   try {
     await runExport();
   } catch (err) {

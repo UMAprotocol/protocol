@@ -1,7 +1,7 @@
 const Voting = artifacts.require("Voting");
 const { signMessage } = require("@uma/common");
 
-const snapshotRound = async callback => {
+const snapshotRound = async (callback) => {
   try {
     const voting = await Voting.deployed();
     const accounts = await web3.eth.getAccounts();

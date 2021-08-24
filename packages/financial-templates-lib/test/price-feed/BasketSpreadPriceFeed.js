@@ -6,20 +6,17 @@ const { MedianizerPriceFeed } = require("../../src/price-feed/MedianizerPriceFee
 const { BasketSpreadPriceFeed } = require("../../src/price-feed/BasketSpreadPriceFeed");
 const { PriceFeedMock } = require("../../src/price-feed/PriceFeedMock");
 
-contract("BasketSpreadPriceFeed.js", function() {
+contract("BasketSpreadPriceFeed.js", function () {
   let baselinePriceFeeds;
   let experimentalPriceFeeds;
   let denominatorPriceFeed;
   let dummyLogger;
   let basketSpreadPriceFeed;
 
-  beforeEach(async function() {
-    dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()]
-    });
+  beforeEach(async function () {
+    dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
   });
-  it("Update", async function() {
+  it("Update", async function () {
     const priceFeeds = [new PriceFeedMock()];
     baselinePriceFeeds = [new MedianizerPriceFeed(priceFeeds), new MedianizerPriceFeed(priceFeeds)];
     experimentalPriceFeeds = [new MedianizerPriceFeed(priceFeeds), new MedianizerPriceFeed(priceFeeds)];
@@ -41,7 +38,7 @@ contract("BasketSpreadPriceFeed.js", function() {
     // Check work: 2x for baseline update, 2x experimental udpate, 1x for denominator = 5 total.
     assert.equal(priceFeeds[0].updateCalled, 5);
   });
-  describe("Computing basket spreads when the spread is within the range [0,2]", function() {
+  describe("Computing basket spreads when the spread is within the range [0,2]", function () {
     function _constructPriceFeedsWithPrecision(precision, noDenominator = false) {
       // First let's construct the constituent pricefeeds of the baskets.
       const baselineFeeds1 = new MedianizerPriceFeed(
@@ -64,7 +61,7 @@ contract("BasketSpreadPriceFeed.js", function() {
             toBN(toWei("2")).div(toBN(10).pow(toBN(18 - precision))),
             50,
             precision
-          )
+          ),
         ],
         false
       );
@@ -91,7 +88,7 @@ contract("BasketSpreadPriceFeed.js", function() {
             toBN(toWei("2.2")).div(toBN(10).pow(toBN(18 - precision))),
             50,
             precision
-          )
+          ),
         ],
         true
       );
@@ -124,7 +121,7 @@ contract("BasketSpreadPriceFeed.js", function() {
             toBN(toWei("66")).div(toBN(10).pow(toBN(18 - precision))),
             100,
             precision
-          )
+          ),
         ],
         false
       );
@@ -151,7 +148,7 @@ contract("BasketSpreadPriceFeed.js", function() {
             toBN(toWei("2")).div(toBN(10).pow(toBN(18 - precision))),
             200,
             precision
-          )
+          ),
         ],
         true
       );
@@ -177,7 +174,7 @@ contract("BasketSpreadPriceFeed.js", function() {
           toBN(toWei("12")).div(toBN(10).pow(toBN(18 - precision))),
           7,
           precision
-        )
+        ),
       ]);
       // Computes the median:
       // current: 5
@@ -190,7 +187,7 @@ contract("BasketSpreadPriceFeed.js", function() {
         noDenominator ? null : denominatorPriceFeed
       );
     }
-    it("Default price precision", async function() {
+    it("Default price precision", async function () {
       _constructPriceFeedsWithPrecision(18);
 
       // Current price calculation:
@@ -216,7 +213,7 @@ contract("BasketSpreadPriceFeed.js", function() {
       assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), 650000);
       assert.equal(basketSpreadPriceFeed.getLookback(), 3600);
     });
-    it("Custom price precision", async function() {
+    it("Custom price precision", async function () {
       // (same calculations and results as previous test, but precision should be different)
       _constructPriceFeedsWithPrecision(8);
 
@@ -235,7 +232,7 @@ contract("BasketSpreadPriceFeed.js", function() {
       );
       assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), 650000);
     });
-    it("Skipping denominator price feed", async function() {
+    it("Skipping denominator price feed", async function () {
       // Same computation as first test except for last step where you divide by denominator, this
       // should skip that step. Recall that the denominator's current and historical price are:
       // 5 and 10 respectively.
@@ -257,7 +254,7 @@ contract("BasketSpreadPriceFeed.js", function() {
       assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), 650000);
     });
   });
-  describe("Returns floored value when spread is below 0", function() {
+  describe("Returns floored value when spread is below 0", function () {
     // Basket averaged prices:
     // - baseline = 2.1
     // - experimental = 1
@@ -273,7 +270,7 @@ contract("BasketSpreadPriceFeed.js", function() {
           toBN(toWei("2.1")).div(toBN(10).pow(toBN(18 - precision))),
           200,
           precision
-        )
+        ),
       ]);
       baselinePriceFeeds = [baselineFeeds1];
       // Average basket price = 2.1
@@ -285,7 +282,7 @@ contract("BasketSpreadPriceFeed.js", function() {
           toBN(toWei("1")).div(toBN(10).pow(toBN(18 - precision))),
           400,
           precision
-        )
+        ),
       ]);
       experimentalPriceFeeds = [experimentalFeeds1];
       // Average basket price = 1
@@ -303,7 +300,7 @@ contract("BasketSpreadPriceFeed.js", function() {
           toBN(toWei("12")).div(toBN(10).pow(toBN(18 - precision))),
           7,
           precision
-        )
+        ),
       ]);
       // Computes the median:
       // current: 5
@@ -317,7 +314,7 @@ contract("BasketSpreadPriceFeed.js", function() {
         precision
       );
     }
-    it("Default price precision", async function() {
+    it("Default price precision", async function () {
       _constructPriceFeedsWithPrecision(18);
 
       // Should return 0
@@ -330,7 +327,7 @@ contract("BasketSpreadPriceFeed.js", function() {
       // Should return the *maximum* lastUpdatedTime.
       assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), 400);
     });
-    it("Custom price precision", async function() {
+    it("Custom price precision", async function () {
       _constructPriceFeedsWithPrecision(8);
 
       // Should return the basket spread price divided by denominator
@@ -344,7 +341,7 @@ contract("BasketSpreadPriceFeed.js", function() {
       assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), 400);
     });
   });
-  describe("Returns ceiling value when spread is above 2 0", function() {
+  describe("Returns ceiling value when spread is above 2 0", function () {
     // Basket averaged prices:
     // - baseline = 1
     // - experimental = 2.1
@@ -360,7 +357,7 @@ contract("BasketSpreadPriceFeed.js", function() {
           toBN(toWei("1")).div(toBN(10).pow(toBN(18 - precision))),
           200,
           precision
-        )
+        ),
       ]);
       baselinePriceFeeds = [baselineFeeds1];
       // Average basket price = 1
@@ -372,7 +369,7 @@ contract("BasketSpreadPriceFeed.js", function() {
           toBN(toWei("2.1")).div(toBN(10).pow(toBN(18 - precision))),
           400,
           precision
-        )
+        ),
       ]);
       experimentalPriceFeeds = [experimentalFeeds1];
       // Average basket price = 2.1
@@ -390,7 +387,7 @@ contract("BasketSpreadPriceFeed.js", function() {
           toBN(toWei("12")).div(toBN(10).pow(toBN(18 - precision))),
           7,
           precision
-        )
+        ),
       ]); // Computes the median: 5
       basketSpreadPriceFeed = new BasketSpreadPriceFeed(
         web3,
@@ -401,7 +398,7 @@ contract("BasketSpreadPriceFeed.js", function() {
         precision
       );
     }
-    it("Default price precision", async function() {
+    it("Default price precision", async function () {
       _constructPriceFeedsWithPrecision(18);
 
       // Should return 0.4
@@ -414,7 +411,7 @@ contract("BasketSpreadPriceFeed.js", function() {
       // Should return the *maximum* lastUpdatedTime.
       assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), 400);
     });
-    it("Custom price precision", async function() {
+    it("Custom price precision", async function () {
       _constructPriceFeedsWithPrecision(8);
 
       // Should return 0.4 in desired precision
@@ -439,7 +436,7 @@ contract("BasketSpreadPriceFeed.js", function() {
       assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), 400);
     });
   });
-  it("Constituent price feeds fail to return price", async function() {
+  it("Constituent price feeds fail to return price", async function () {
     const priceFeeds = [new PriceFeedMock()];
     baselinePriceFeeds = [new MedianizerPriceFeed(priceFeeds), new MedianizerPriceFeed(priceFeeds)];
     experimentalPriceFeeds = [new MedianizerPriceFeed(priceFeeds), new MedianizerPriceFeed(priceFeeds)];
@@ -473,7 +470,7 @@ contract("BasketSpreadPriceFeed.js", function() {
     // Should return null.
     assert.equal(basketSpreadPriceFeed.getLastUpdateTime(), null);
   });
-  it("Validates constituent price feed decimals", async function() {
+  it("Validates constituent price feed decimals", async function () {
     // Test that the BasketSpreadPriceFeed rejects any constituent price feeds where the decimals do not match up with the
     // denominator price feed.
     const priceFeeds = [new PriceFeedMock()];
@@ -502,7 +499,7 @@ contract("BasketSpreadPriceFeed.js", function() {
 
     const invalidExperimentalPriceFeeds = [
       new MedianizerPriceFeed(differentPrecisionPriceFeeds),
-      new MedianizerPriceFeed(differentPrecisionPriceFeeds)
+      new MedianizerPriceFeed(differentPrecisionPriceFeeds),
     ];
     const invalidBasketPriceFeed = new BasketSpreadPriceFeed(
       web3,

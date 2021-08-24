@@ -1,7 +1,7 @@
 const {
   PostWithdrawLiquidationRewardsStatusTranslations,
-  revertWrapper,
-  createObjectFromDefaultProps
+  createObjectFromDefaultProps,
+  runTransaction,
 } = require("@uma/common");
 
 class Disputer {
@@ -9,7 +9,7 @@ class Disputer {
    * @notice Constructs new Disputer bot.
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} financialContractClient Module used to query Financial Contract information on-chain.
-   * @param {Object} votingContract DVM to query price requests.
+   * @param {Object} proxyTransactionWrapper Module enable the disputer to send transactions via a DSProxy.
    * @param {Object} gasEstimator Module used to estimate optimal gas price with which to send txns.
    * @param {Object} priceFeed Module used to get the current or historical token price.
    * @param {String} account Ethereum account from which to send txns.
@@ -20,15 +20,17 @@ class Disputer {
   constructor({
     logger,
     financialContractClient,
-    votingContract,
+    proxyTransactionWrapper,
     gasEstimator,
     priceFeed,
     account,
     financialContractProps,
-    disputerConfig
+    disputerConfig,
   }) {
     this.logger = logger;
     this.account = account;
+
+    this.proxyTransactionWrapper = proxyTransactionWrapper;
 
     // Expiring multiparty contract to read contract state
     this.financialContractClient = financialContractClient;
@@ -42,12 +44,12 @@ class Disputer {
 
     // Instance of the expiring multiparty to perform on-chain disputes
     this.financialContract = this.financialContractClient.financialContract;
-    this.votingContract = votingContract;
 
     this.financialContractIdentifier = financialContractProps.priceIdentifier;
 
     // Helper functions from web3.
     this.fromWei = this.web3.utils.fromWei;
+    this.toWei = this.web3.utils.toWei;
     this.toBN = this.web3.utils.toBN;
     this.utf8ToHex = this.web3.utils.utf8ToHex;
 
@@ -58,33 +60,48 @@ class Disputer {
     // values via the `disputerConfig` input object. The `isValid` property is a function that should be called
     // before resetting any config settings. `isValid` must return a Boolean.
     const defaultConfig = {
+      crThreshold: {
+        // `crThreshold`: If collateral falls more than `crThreshold` % below the min collateral requirement,
+        // then it will be liquidated. For example: If the minimum collateralization ratio is 120% and the TRV is 100,
+        // then the minimum collateral requirement is 120. However, if `crThreshold = 0.02`, then the minimum
+        // collateral requirement is 120 * (1-0.02) = 117.6, or 2% below 120. This parallels the config variable of the
+        // same name for the `liquidator`. However, the disputer uses the inverse of this variable because disputes
+        // should only be sent if the price that the disputer sees is lower than the liquidation price. (If collateral
+        // falls more than `crThreshold` % below the min collateral requirement, then it will be liquidated) So we
+        // multiply the price that the disputer sees by (1+crThreshold) to give the disputer some threshold before it
+        // submits disputes.
+        value: 0.02,
+        isValid: (x) => {
+          return x < 1 && x >= 0;
+        },
+      },
       disputeDelay: {
         // `disputeDelay`: Amount of time to wait after the request timestamp of the liquidation to be disputed.
         // This makes the reading of the historical price more reliable. Denominated in seconds.
         value: 60,
-        isValid: x => {
+        isValid: (x) => {
           return x >= 0;
-        }
+        },
       },
       txnGasLimit: {
         // `txnGasLimit`: Gas limit to set for sending on-chain transactions.
         value: 9000000, // Can see recent averages here: https://etherscan.io/chart/gaslimit
-        isValid: x => {
+        isValid: (x) => {
           return x >= 6000000 && x < 15000000;
-        }
+        },
       },
       contractType: {
         value: undefined,
-        isValid: x => {
+        isValid: (x) => {
           return x === "ExpiringMultiParty" || x === "Perpetual";
-        }
+        },
       },
       contractVersion: {
         value: undefined,
-        isValid: x => {
-          return x === "1.2.0" || x === "1.2.1" || x === "1.2.2" || x === "latest";
-        }
-      }
+        isValid: (x) => {
+          return x === "2.0.1";
+        },
+      },
     };
 
     // Validate and set config settings to class state.
@@ -99,16 +116,13 @@ class Disputer {
   // Queries disputable liquidations and disputes any that were incorrectly liquidated. If `disputerOverridePrice` is
   // provided then the disputer will ignore the price feed and use the override price instead for all undisputed liquidations.
   async dispute(disputerOverridePrice) {
-    this.logger.debug({
-      at: "Disputer",
-      message: "Checking for any disputable liquidations"
-    });
+    this.logger.debug({ at: "Disputer", message: "Checking for any disputable liquidations" });
 
     // Get the latest disputable liquidations from the client.
     const undisputedLiquidations = this.financialContractClient.getUndisputedLiquidations();
     const disputableLiquidationsWithPrices = (
       await Promise.all(
-        undisputedLiquidations.map(async liquidation => {
+        undisputedLiquidations.map(async (liquidation) => {
           // If liquidation time is before the price feed's lookback window, then we can skip this liquidation
           // because we will not be able to get a historical price. If a dispute override price is provided then
           // we can ignore this check.
@@ -120,7 +134,7 @@ class Disputer {
               at: "Disputer",
               message: "Cannot dispute: liquidation time before earliest price feed historical timestamp",
               liquidationTime,
-              historicalLookbackWindow
+              historicalLookbackWindow,
             });
             return null;
           }
@@ -136,127 +150,93 @@ class Disputer {
               this.logger.error({
                 at: "Disputer",
                 message: "Cannot dispute: price feed returned invalid value",
-                error
+                error,
               });
             }
           }
+
+          if (!price) return null;
+
+          // The `price` is a BN that is used to determine if a position is correctly collateralized. The higher the
+          // `price` value, the more collateral that the position is required to have to be correctly collateralized.
+          // Therefore, if the price is lower than the liquidation price, then the liquidation is disputable
+          // because the position was correctly collateralized.
+          // We add a buffer by deriving scaledPrice = price * (1 + crThreshold)
+          const scaledPrice = price
+            .mul(this.toBN(this.toWei("1")).add(this.toBN(this.toWei(this.crThreshold.toString()))))
+            .div(this.toBN(this.toWei("1")));
+
           // Price is available, use it to determine if the liquidation is disputable
           if (
-            price &&
-            this.financialContractClient.isDisputable(liquidation, price) &&
+            scaledPrice &&
+            this.financialContractClient.isDisputable(liquidation, scaledPrice) &&
             this.financialContractClient.getLastUpdateTime() >= Number(liquidationTime) + this.disputeDelay
           ) {
             this.logger.debug({
               at: "Disputer",
               message: "Detected a disputable liquidation",
               price: price.toString(),
-              liquidation: JSON.stringify(liquidation)
+              scaledPrice: scaledPrice.toString(),
+              liquidation: liquidation,
             });
-
-            return { ...liquidation, price };
+            return { ...liquidation, price: scaledPrice.toString() };
           }
 
           return null;
         })
       )
-    ).filter(liquidation => liquidation !== null);
+    ).filter((liquidation) => liquidation !== null);
 
     if (disputableLiquidationsWithPrices.length === 0) {
-      this.logger.debug({
-        at: "Disputer",
-        message: "No disputable liquidations"
-      });
+      this.logger.debug({ at: "Disputer", message: "No disputable liquidations" });
       return;
     }
 
     for (const disputeableLiquidation of disputableLiquidationsWithPrices) {
-      // Create the transaction.
-      const dispute = this.financialContract.methods.dispute(disputeableLiquidation.id, disputeableLiquidation.sponsor);
+      this.logger.debug({ at: "Disputer", message: "Disputing liquidation", liquidation: disputeableLiquidation });
 
-      // Simple version of inventory management: simulate the transaction and assume that if it fails, the caller didn't have enough collateral.
-      let totalPaid, gasEstimation;
-      try {
-        [totalPaid, gasEstimation] = await Promise.all([
-          dispute.call({ from: this.account }),
-          dispute.estimateGas({ from: this.account })
-        ]);
-      } catch (error) {
+      // Submit the dispute transaction. This will use the DSProxy if configured or will send the tx with the unlocked EOA.
+      const logResult = await this.proxyTransactionWrapper.submitDisputeTransaction([
+        disputeableLiquidation.id,
+        disputeableLiquidation.sponsor,
+      ]);
+
+      if (logResult instanceof Error || !logResult)
         this.logger.error({
           at: "Disputer",
-          message: "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute✋",
-          disputer: this.account,
-          sponsor: disputeableLiquidation.sponsor,
+          message:
+            logResult.type === "call"
+              ? "Cannot dispute liquidation: not enough collateral (or large enough approval) to initiate dispute✋"
+              : "Failed to dispute liquidation🚨",
           liquidation: disputeableLiquidation,
-          totalPaid,
-          error
+          logResult,
         });
-        continue;
-      }
-
-      const txnConfig = {
-        from: this.account,
-        gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
-        gasPrice: this.gasEstimator.getCurrentFastPrice()
-      };
-
-      const inputPrice = disputeableLiquidation.price;
-
-      this.logger.debug({
-        at: "Disputer",
-        message: "Disputing liquidation",
-        liquidation: disputeableLiquidation,
-        inputPrice,
-        txnConfig
-      });
-
-      // Send the transaction or report failure.
-      let receipt;
-      try {
-        receipt = await dispute.send(txnConfig);
-      } catch (error) {
-        this.logger.error({
+      else
+        this.logger.info({
           at: "Disputer",
-          message: "Failed to dispute liquidation🚨",
-          error
+          message: "Liquidation has been disputed!👮‍♂️",
+          liquidation: disputeableLiquidation,
+          logResult,
         });
-        continue;
-      }
-
-      const logResult = {
-        tx: receipt.transactionHash,
-        sponsor: receipt.events.LiquidationDisputed.returnValues.sponsor,
-        liquidator: receipt.events.LiquidationDisputed.returnValues.liquidator,
-        id: receipt.events.LiquidationDisputed.returnValues.liquidationId,
-        disputeBondPaid: receipt.events.LiquidationDisputed.returnValues.disputeBondAmount
-      };
-      this.logger.info({
-        at: "Disputer",
-        message: "Position has been disputed!👮‍♂️",
-        liquidation: disputeableLiquidation,
-        inputPrice,
-        txnConfig,
-        disputeResult: logResult
-      });
     }
   }
 
   // Queries ongoing disputes and attempts to withdraw any pending rewards from them.
   async withdrawRewards() {
-    this.logger.debug({
-      at: "Disputer",
-      message: "Checking for disputed liquidations that may have resolved"
-    });
+    this.logger.debug({ at: "Disputer", message: "Checking for disputed liquidations that may have resolved" });
+
+    // The disputer address is either the DSProxy (if using a DSProxy to dispute) or the unlocked account.
+    const disputerAddress = this.proxyTransactionWrapper.useDsProxyToDispute
+      ? this.proxyTransactionWrapper.dsProxyManager.getDSProxyAddress()
+      : this.account;
 
     // Can only derive rewards from disputed liquidations that this account disputed.
     const disputedLiquidations = this.financialContractClient
       .getDisputedLiquidations()
-      .filter(liquidation => liquidation.disputer === this.account);
+      .filter((liquidation) => liquidation.disputer === disputerAddress);
 
     if (disputedLiquidations.length === 0) {
-      this.logger.debug({
-        at: "Disputer",
-        message: "No withdrawable disputes"
-      });
+      this.logger.debug({ at: "Disputer", message: "No withdrawable disputes" });
       return;
     }
 
@@ -264,105 +244,55 @@ class Disputer {
       this.logger.debug({
         at: "Disputer",
         message: "Detected a disputed liquidation",
-        liquidation: JSON.stringify(liquidation)
+        liquidation: JSON.stringify(liquidation),
       });
 
       // Construct transaction.
       const withdraw = this.financialContract.methods.withdrawLiquidation(liquidation.id, liquidation.sponsor);
 
-      // Confirm that dispute has eligible rewards to be withdrawn.
-      let withdrawalCallResponse, paidToDisputer, gasEstimation;
+      this.logger.debug({ at: "Disputer", message: "Withdrawing dispute", liquidation: liquidation });
       try {
-        [withdrawalCallResponse, gasEstimation] = await Promise.all([
-          withdraw.call({ from: this.account }),
-          withdraw.estimateGas({ from: this.account })
-        ]);
-        // Mainnet view/pure functions sometimes don't revert, even if a require is not met. The revertWrapper ensures this
-        // caught correctly. see https://forum.openzeppelin.com/t/require-in-view-pure-functions-dont-revert-on-public-networks/1211
+        // Get successful transaction receipt and return value or error.
+        const { receipt, transactionConfig } = await runTransaction({
+          web3: this.web3,
+          transaction: withdraw,
+          transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice(), from: this.account },
+        });
+        let logResult = {
+          tx: receipt.transactionHash,
+          caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
+          settlementPrice: receipt.events.LiquidationWithdrawn.returnValues.settlementPrice,
+          liquidationStatus:
+            PostWithdrawLiquidationRewardsStatusTranslations[
+              receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
+            ],
+        };
 
-        // In contract version 1.2.2 and below this function returns one value: the amount withdrawn by the function caller.
-        // In later versions it returns an object containing all payouts.
-        paidToDisputer =
-          this.contractVersion === "1.2.0" || this.contractVersion === "1.2.0" || this.contractVersion === "1.2.2"
-            ? withdrawalCallResponse.rawValue.toString()
-            : withdrawalCallResponse.paidToDisputer.rawValue.toString();
+        // Returns an object containing all payouts.
+        logResult.paidToLiquidator = receipt.events.LiquidationWithdrawn.returnValues.paidToLiquidator;
+        logResult.paidToDisputer = receipt.events.LiquidationWithdrawn.returnValues.paidToDisputer;
+        logResult.paidToSponsor = receipt.events.LiquidationWithdrawn.returnValues.paidToSponsor;
 
-        // If the call would revert OR the disputer would get nothing for withdrawing then throw and continue.
-        if (revertWrapper(withdrawalCallResponse) === null || paidToDisputer === "0") {
-          throw new Error("Simulated reward withdrawal failed");
-        }
-      } catch (error) {
-        this.logger.debug({
+        this.logger.info({
           at: "Disputer",
-          message: "No rewards to withdraw",
+          message: "Dispute withdrawn🤑",
           liquidation: liquidation,
-          error
+          liquidationResult: logResult,
+          transactionConfig,
         });
-        continue;
-      }
-
-      const txnConfig = {
-        from: this.account,
-        gas: Math.min(Math.floor(gasEstimation * this.GAS_LIMIT_BUFFER), this.txnGasLimit),
-        gasPrice: this.gasEstimator.getCurrentFastPrice()
-      };
-      this.logger.debug({
-        at: "Liquidator",
-        message: "Withdrawing dispute",
-        liquidation: liquidation,
-        paidToDisputer,
-        txnConfig
-      });
-
-      // Before submitting transaction, store liquidation timestamp before it is potentially deleted if this is the final reward to be withdrawn.
-      // We can be confident that `liquidationTime` property is available and accurate because the liquidation has not been deleted yet if we `withdrawLiquidation()`
-      // is callable.
-      const requestTimestamp = liquidation.liquidationTime;
-
-      // Send the transaction or report failure.
-      let receipt;
-      try {
-        receipt = await withdraw.send(txnConfig);
       } catch (error) {
-        this.logger.error({
-          at: "Disputer",
-          message: "Failed to withdraw dispute rewards🚨",
-          error
-        });
+        // If the withdrawal simulation fails, then it is likely that the dispute has not resolved yet, and we don't
+        // want to emit a high level log about this:
+        if (error.type === "call") {
+          this.logger.debug({ at: "Disputer", message: "No rewards to withdraw", liquidation: liquidation });
+        } else {
+          const message = "Failed to withdraw dispute rewards🚨";
+          this.logger.error({ at: "Disputer", message, disputer: this.account, liquidation: liquidation, error });
+        }
         continue;
       }
-
-      // Get resolved price request for dispute. `getPrice()` should not fail since the dispute price request must have settled in order for `withdrawLiquidation()`
-      // to be callable.
-      let resolvedPrice = await this.votingContract.methods
-        .getPrice(this.financialContractIdentifier, requestTimestamp)
-        .call({
-          from: this.financialContract.options.address
-        });
-
-      const logResult = {
-        tx: receipt.transactionHash,
-        caller: receipt.events.LiquidationWithdrawn.returnValues.caller,
-        withdrawalAmount: receipt.events.LiquidationWithdrawn.returnValues.withdrawalAmount,
-        liquidationStatus:
-          PostWithdrawLiquidationRewardsStatusTranslations[
-            receipt.events.LiquidationWithdrawn.returnValues.liquidationStatus
-          ],
-        resolvedPrice: resolvedPrice.toString()
-      };
-
-      this.logger.info({
-        at: "Disputer",
-        message: "Dispute withdrawn🤑",
-        liquidation: liquidation,
-        paidToDisputer,
-        txnConfig,
-        liquidationResult: logResult
-      });
     }
   }
 }
 
-module.exports = {
-  Disputer
-};
+module.exports = { Disputer };

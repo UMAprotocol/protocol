@@ -1,7 +1,10 @@
 const winston = require("winston");
 const sinon = require("sinon");
+const hre = require("hardhat");
+const { getContract } = hre;
+const { assert } = require("chai");
 
-const { toWei, hexToUtf8, utf8ToHex, soliditySha3 } = web3.utils;
+const { toWei, hexToUtf8, utf8ToHex, toBN, padRight } = web3.utils;
 
 const {
   OptimisticOracleClient,
@@ -9,30 +12,33 @@ const {
   SpyTransport,
   lastSpyLogLevel,
   spyLogIncludes,
-  PriceFeedMockScaled
+  PriceFeedMockScaled,
 } = require("@uma/financial-templates-lib");
 const { OptimisticOracleProposer } = require("../src/proposer");
-const { interfaceName, getPrecisionForIdentifier, OptimisticOracleRequestStatesEnum } = require("@uma/common");
-const { getTruffleContract } = require("@uma/core");
+const {
+  interfaceName,
+  getPrecisionForIdentifier,
+  OptimisticOracleRequestStatesEnum,
+  OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY,
+  OPTIMISTIC_ORACLE_IGNORE,
+} = require("@uma/common");
 
-const CONTRACT_VERSION = "latest";
+const OptimisticOracle = getContract("OptimisticOracle");
+const OptimisticRequesterTest = getContract("OptimisticRequesterTest");
+const Finder = getContract("Finder");
+const IdentifierWhitelist = getContract("IdentifierWhitelist");
+const Token = getContract("ExpandedERC20");
+const AddressWhitelist = getContract("AddressWhitelist");
+const Store = getContract("Store");
+const MockOracle = getContract("MockOracleAncillary");
+const Timer = getContract("Timer");
 
-const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, CONTRACT_VERSION);
-const OptimisticRequesterTest = getTruffleContract("OptimisticRequesterTest", web3, CONTRACT_VERSION);
-const Finder = getTruffleContract("Finder", web3, CONTRACT_VERSION);
-const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, CONTRACT_VERSION);
-const Token = getTruffleContract("ExpandedERC20", web3, CONTRACT_VERSION);
-const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, CONTRACT_VERSION);
-const Timer = getTruffleContract("Timer", web3, CONTRACT_VERSION);
-const Store = getTruffleContract("Store", web3, CONTRACT_VERSION);
-const MockOracle = getTruffleContract("MockOracleAncillary", web3, CONTRACT_VERSION);
-
-contract("OptimisticOracle: proposer.js", function(accounts) {
-  const owner = accounts[0];
-  const requester = accounts[1];
-  const randoProposer = accounts[2]; // Used when testing disputes
-  const disputer = accounts[3];
-  const botRunner = accounts[5];
+describe("OptimisticOracle: proposer.js", function () {
+  let owner;
+  let requester;
+  let randoProposer;
+  let disputer;
+  let botRunner;
 
   // Contracts
   let optimisticRequester;
@@ -66,74 +72,93 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
   // a pricefeed that returns prices in 8 decimals. This is useful for testing that a bot is
   // constructing the right type of pricefeed by default. This mapping is stored in @uma/common/PriceIdentifierUtils.js
   const identifiersToTest = [
-    web3.utils.utf8ToHex("TEST8DECIMALS"),
-    web3.utils.utf8ToHex("TEST6DECIMALS"),
-    web3.utils.utf8ToHex("TEST18DECIMALS"),
-    web3.utils.utf8ToHex("TEST18DECIMALS")
+    padRight(utf8ToHex("TEST8DECIMALS"), 64),
+    padRight(utf8ToHex("TEST6DECIMALS"), 64),
+    padRight(utf8ToHex("TEST18DECIMALS"), 64),
+    padRight(utf8ToHex("TEST18DECIMALS"), 64),
   ];
   let collateralCurrenciesForIdentifier;
 
   const verifyState = async (state, identifier, ancillaryData = "0x") => {
     assert.equal(
-      (await optimisticOracle.getState(optimisticRequester.address, identifier, requestTime, ancillaryData)).toString(),
+      (
+        await optimisticOracle.methods
+          .getState(optimisticRequester.options.address, identifier, requestTime, ancillaryData)
+          .call()
+      ).toString(),
       state
     );
   };
 
-  const pushPrice = async price => {
-    const [lastQuery] = (await mockOracle.getPendingQueries()).slice(-1);
-    await mockOracle.pushPrice(lastQuery.identifier, lastQuery.time, lastQuery.ancillaryData, price);
+  const pushPrice = async (price) => {
+    const [lastQuery] = (await mockOracle.methods.getPendingQueries().call()).slice(-1);
+    await mockOracle.methods
+      .pushPrice(lastQuery.identifier, lastQuery.time, lastQuery.ancillaryData, price)
+      .send({ from: owner });
   };
 
-  before(async function() {
-    finder = await Finder.new();
-    timer = await Timer.new();
+  before(async function () {
+    [owner, requester, randoProposer, disputer, botRunner] = await web3.eth.getAccounts();
+
+    finder = await Finder.new().send({ from: owner });
+    timer = await Timer.new().send({ from: owner });
+    identifierWhitelist = await IdentifierWhitelist.new().send({ from: owner });
+    collateralWhitelist = await AddressWhitelist.new().send({ from: owner });
+    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.options.address).send({ from: owner });
+    mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({ from: owner });
 
     // Whitelist test identifiers we can use to make default price requests.
-    identifierWhitelist = await IdentifierWhitelist.new();
     for (let i = 0; i < identifiersToTest.length; i++) {
-      await identifierWhitelist.addSupportedIdentifier(identifiersToTest[i]);
+      await identifierWhitelist.methods.addSupportedIdentifier(identifiersToTest[i]).send({ from: owner });
     }
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address);
 
-    collateralWhitelist = await AddressWhitelist.new();
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.address);
-
-    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
-
-    mockOracle = await MockOracle.new(finder.address, timer.address);
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
+    // Add deployed contracts to finder.
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address)
+      .send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.options.address)
+      .send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.AddressWhitelist), collateralWhitelist.options.address)
+      .send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
+      .send({ from: owner });
   });
 
-  beforeEach(async function() {
+  beforeEach(async function () {
     // Create and save a new collateral token for each request so we can test
     // that proposer can use different currencies for each request to post bonds.
     collateralCurrenciesForIdentifier = [];
     for (let i = 0; i < identifiersToTest.length; i++) {
-      let collateral = await Token.new("Wrapped Ether", "WETH", getPrecisionForIdentifier(identifiersToTest[i]));
-      await collateral.addMember(1, owner);
-      await collateral.mint(botRunner, initialUserBalance);
-      await collateral.mint(requester, initialUserBalance);
-      await collateral.mint(disputer, initialUserBalance);
-      await collateral.mint(randoProposer, initialUserBalance);
-      await collateralWhitelist.addToWhitelist(collateral.address);
-      await store.setFinalFee(collateral.address, { rawValue: finalFee });
+      let collateral = await Token.new("Wrapped Ether", "WETH", getPrecisionForIdentifier(identifiersToTest[i])).send({
+        from: owner,
+      });
+      await collateral.methods.addMember(1, owner).send({ from: owner });
+      await collateral.methods.mint(botRunner, initialUserBalance).send({ from: owner });
+      await collateral.methods.mint(requester, initialUserBalance).send({ from: owner });
+      await collateral.methods.mint(disputer, initialUserBalance).send({ from: owner });
+      await collateral.methods.mint(randoProposer, initialUserBalance).send({ from: owner });
+      await collateralWhitelist.methods.addToWhitelist(collateral.options.address).send({ from: owner });
+      await store.methods.setFinalFee(collateral.options.address, { rawValue: finalFee }).send({ from: owner });
       collateralCurrenciesForIdentifier[i] = collateral;
     }
 
-    optimisticOracle = await OptimisticOracle.new(liveness, finder.address, timer.address);
+    optimisticOracle = await OptimisticOracle.new(liveness, finder.options.address, timer.options.address).send({
+      from: owner,
+    });
 
     // Contract used to make price requests
-    optimisticRequester = await OptimisticRequesterTest.new(optimisticOracle.address);
+    optimisticRequester = await OptimisticRequesterTest.new(optimisticOracle.options.address).send({ from: owner });
 
-    startTime = (await optimisticOracle.getCurrentTime()).toNumber();
+    startTime = Number(await optimisticOracle.methods.getCurrentTime().call());
     requestTime = startTime - 10;
 
     spy = sinon.spy();
     spyLogger = winston.createLogger({
       level: "info",
-      transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+      transports: [new SpyTransport({ level: "info" }, { spy: spy })],
     });
 
     client = new OptimisticOracleClient(
@@ -141,59 +166,63 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       OptimisticOracle.abi,
       MockOracle.abi,
       web3,
-      optimisticOracle.address,
-      mockOracle.address
+      optimisticOracle.options.address,
+      mockOracle.options.address
     );
 
     gasEstimator = new GasEstimator(spyLogger);
   });
 
-  describe("Valid price identifiers", function() {
+  describe("Valid price identifiers", function () {
     // Test using packed token address as ancillary data to better simulate what will
     // happen with financial contracts
     let ancillaryDataAddresses = [];
 
-    beforeEach(async function() {
+    let commonPriceFeedConfig;
+
+    beforeEach(async function () {
       // Make a new price request for each identifier, each of which should cause the keeper bot to
       // construct a pricefeed with a new precision.
       for (let i = 0; i < identifiersToTest.length; i++) {
-        let ancillaryData = soliditySha3({ t: "address", v: collateralCurrenciesForIdentifier[i].address });
+        // To simulate a requested price from the EMP, the collateral currency should be in
+        // lower case since the EMP contract will convert from address to bytes.
+        let ancillaryData = collateralCurrenciesForIdentifier[i].options.address.toLowerCase();
         ancillaryDataAddresses[i] = ancillaryData;
 
-        await optimisticRequester.requestPrice(
-          identifiersToTest[i],
-          requestTime,
-          ancillaryData,
-          collateralCurrenciesForIdentifier[i].address,
-          0
-        );
+        await optimisticRequester.methods
+          .requestPrice(
+            identifiersToTest[i],
+            requestTime,
+            ancillaryData,
+            collateralCurrenciesForIdentifier[i].options.address,
+            0
+          )
+          .send({ from: owner });
       }
 
       // Construct OO Proposer using a valid default price feed config containing any additional properties
       // not set in DefaultPriceFeedConfig
-      let commonPriceFeedConfig = {
+      commonPriceFeedConfig = {
         currentPrice: "1.2", // Mocked current price. This will be scaled to the identifier's precision.
-        historicalPrice: "2.4" // Mocked historical price. This will be scaled to the identifier's precision.
+        historicalPrice: "2.4", // Mocked historical price. This will be scaled to the identifier's precision.
       };
       // For this test, we'll dispute any proposals that are not equal to historical price up to a
       // 10% margin of error
-      let optimisticOracleProposerConfig = {
-        disputePriceErrorPercent: 0.1
-      };
+      let optimisticOracleProposerConfig = { disputePriceErrorPercent: 0.1 };
       proposer = new OptimisticOracleProposer({
         logger: spyLogger,
         optimisticOracleClient: client,
         gasEstimator,
         account: botRunner,
         commonPriceFeedConfig,
-        optimisticOracleProposerConfig
+        optimisticOracleProposerConfig,
       });
 
       // Update the bot to read the new OO state.
       await proposer.update();
     });
 
-    it("_setAllowances", async function() {
+    it("_setAllowances", async function () {
       // Calling it once should set allowances
       await proposer._setAllowances();
 
@@ -210,18 +239,18 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       assert.equal(totalCalls, spy.callCount);
     });
 
-    it("Can send proposals to new price requests", async function() {
+    it("Can send proposals to new price requests", async function () {
       // Should have one price request for each identifier.
       let expectedResults = [];
       for (let i = 0; i < identifiersToTest.length; i++) {
         expectedResults.push({
-          requester: optimisticRequester.address,
+          requester: optimisticRequester.options.address,
           identifier: hexToUtf8(identifiersToTest[i]),
           ancillaryData: ancillaryDataAddresses[i],
           timestamp: requestTime.toString(),
-          currency: collateralCurrenciesForIdentifier[i].address,
+          currency: collateralCurrenciesForIdentifier[i].options.address,
           reward: "0",
-          finalFee
+          finalFee,
         });
       }
       let result = client.getUnproposedPriceRequests();
@@ -238,6 +267,8 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       // Check for the successful INFO log emitted by the proposer.
       assert.equal(lastSpyLogLevel(spy), "info");
       assert.isTrue(spyLogIncludes(spy, -1, "Proposed price"));
+      assert.equal(spy.getCall(-1).lastArg.proposalBond, totalDefaultBond);
+      assert.ok(spy.getCall(-1).lastArg.proposalResult.tx);
       let spyCallCount = spy.callCount;
 
       // After one run, the pricefeed classes should all be cached in the proposer bot's state:
@@ -253,18 +284,18 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       assert.equal(spy.callCount, spyCallCount);
     });
 
-    it("Can send disputes to proposals", async function() {
+    it("Can send disputes to proposals", async function () {
       // Should have one price request for each identifier.
       let expectedRequests = [];
       for (let i = 0; i < identifiersToTest.length; i++) {
         expectedRequests.push({
-          requester: optimisticRequester.address,
+          requester: optimisticRequester.options.address,
           identifier: hexToUtf8(identifiersToTest[i]),
           ancillaryData: ancillaryDataAddresses[i],
           timestamp: requestTime.toString(),
-          currency: collateralCurrenciesForIdentifier[i].address,
+          currency: collateralCurrenciesForIdentifier[i].options.address,
           reward: "0",
-          finalFee
+          finalFee,
         });
       }
       let result = client.getUnproposedPriceRequests();
@@ -290,32 +321,33 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
         "2650000000000000000",
         // 2.63e18
         // - NOT DISPUTED
-        "2640000000000000000"
+        "2640000000000000000",
       ];
       // Should have one proposal for each identifier
       let expectedProposals = [];
       for (let i = 0; i < identifiersToTest.length; i++) {
         let collateralCurrency = collateralCurrenciesForIdentifier[i];
-        await collateralCurrency.approve(optimisticOracle.address, totalDefaultBond, { from: randoProposer });
-        await optimisticOracle.proposePrice(
-          optimisticRequester.address,
-          identifiersToTest[i],
-          requestTime,
-          ancillaryDataAddresses[i],
-          disputablePrices[i],
-          {
-            from: randoProposer
-          }
-        );
+        await collateralCurrency.methods
+          .approve(optimisticOracle.options.address, totalDefaultBond)
+          .send({ from: randoProposer });
+        await optimisticOracle.methods
+          .proposePrice(
+            optimisticRequester.options.address,
+            identifiersToTest[i],
+            requestTime,
+            ancillaryDataAddresses[i],
+            disputablePrices[i]
+          )
+          .send({ from: randoProposer });
         expectedProposals.push({
-          requester: optimisticRequester.address,
+          requester: optimisticRequester.options.address,
           identifier: hexToUtf8(identifiersToTest[i]),
           ancillaryData: ancillaryDataAddresses[i],
           timestamp: requestTime.toString(),
           proposer: randoProposer,
           proposedPrice: disputablePrices[i],
           expirationTimestamp: (startTime + liveness).toString(),
-          currency: collateralCurrenciesForIdentifier[i].address
+          currency: collateralCurrenciesForIdentifier[i].options.address,
         });
       }
       await proposer.update();
@@ -340,6 +372,8 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       // Check for the successful INFO log emitted by the proposer.
       assert.equal(lastSpyLogLevel(spy), "info");
       assert.isTrue(spyLogIncludes(spy, -1, "Disputed proposal"));
+      assert.equal(spy.getCall(-1).lastArg.disputeBond, totalDefaultBond);
+      assert.ok(spy.getCall(-1).lastArg.disputeResult.tx);
       let spyCallCount = spy.callCount;
 
       // After one run, the pricefeed classes should all be cached in the proposer bot's state:
@@ -355,18 +389,18 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       assert.equal(spy.callCount, spyCallCount);
     });
 
-    it("Can settle proposals and disputes", async function() {
+    it("Can settle proposals and disputes", async function () {
       // Should have one price request for each identifier.
       let expectedRequests = [];
       for (let i = 0; i < identifiersToTest.length; i++) {
         expectedRequests.push({
-          requester: optimisticRequester.address,
+          requester: optimisticRequester.options.address,
           identifier: hexToUtf8(identifiersToTest[i]),
           ancillaryData: ancillaryDataAddresses[i],
           timestamp: requestTime.toString(),
-          currency: collateralCurrenciesForIdentifier[i].address,
+          currency: collateralCurrenciesForIdentifier[i].options.address,
           reward: "0",
-          finalFee
+          finalFee,
         });
       }
       let result = client.getUnproposedPriceRequests();
@@ -374,17 +408,18 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
 
       // Make one proposal for bot to dispute:
       let collateralCurrency = collateralCurrenciesForIdentifier[0];
-      await collateralCurrency.approve(optimisticOracle.address, totalDefaultBond, { from: randoProposer });
-      await optimisticOracle.proposePrice(
-        optimisticRequester.address,
-        identifiersToTest[0],
-        requestTime,
-        ancillaryDataAddresses[0],
-        "1", // Arbitrary price that bot will dispute
-        {
-          from: randoProposer
-        }
-      );
+      await collateralCurrency.methods
+        .approve(optimisticOracle.options.address, totalDefaultBond)
+        .send({ from: randoProposer });
+      await optimisticOracle.methods
+        .proposePrice(
+          optimisticRequester.options.address,
+          identifiersToTest[0],
+          requestTime,
+          ancillaryDataAddresses[0],
+          "1" // Arbitrary price that bot will dispute
+        )
+        .send({ from: randoProposer });
 
       // Now make the bot propose to the remaining requests.
       await proposer.update();
@@ -401,7 +436,7 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       }
 
       // Now, advance time so that the proposals expire and check that the bot can settle the proposals
-      await optimisticOracle.setCurrentTime((Number(startTime) + liveness).toString());
+      await optimisticOracle.methods.setCurrentTime((Number(startTime) + liveness).toString()).send({ from: owner });
       await proposer.update();
       let spyCountPreSettle = spy.callCount;
       await proposer.settleRequests();
@@ -412,6 +447,8 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       }
       assert.equal(lastSpyLogLevel(spy), "info");
       assert.isTrue(spyLogIncludes(spy, -1, "Settled proposal or dispute"));
+      assert.equal(spy.getCall(-1).lastArg.payout, totalDefaultBond);
+      assert.ok(spy.getCall(-1).lastArg.settleResult.tx);
       assert.equal(spy.callCount, spyCountPreSettle + (identifiersToTest.length - 1));
 
       // Finally resolve the dispute and check that the bot settles the dispute.
@@ -425,10 +462,13 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       await verifyState(OptimisticOracleRequestStatesEnum.SETTLED, identifiersToTest[0], ancillaryDataAddresses[0]);
       assert.equal(lastSpyLogLevel(spy), "info");
       assert.isTrue(spyLogIncludes(spy, -1, "Settled proposal or dispute"));
+      // Note: payout is equal to original default bond + 1/2 of loser's dispute bond (not including loser's final fee)
+      assert.equal(spy.getCall(-1).lastArg.payout, toBN(totalDefaultBond).add(toBN(finalFee).divn(2)));
+      assert.ok(spy.getCall(-1).lastArg.settleResult.tx);
       assert.equal(spy.callCount, spyCountPreSettle + 1);
     });
 
-    it("Correctly caches created price feeds", async function() {
+    it("Correctly caches created price feeds", async function () {
       // Call `sendProposals` which should create a new pricefeed for each identifier.
       await proposer.sendProposals();
 
@@ -442,15 +482,11 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
     });
   });
 
-  it("Skip price requests with identifiers that proposer cannot construct a price feed for", async function() {
+  it("Skip price requests with identifiers that proposer cannot construct a price feed for", async function () {
     // Request a valid identifier but set an invalid price feed config:
-    await optimisticRequester.requestPrice(
-      identifiersToTest[0],
-      requestTime,
-      "0x",
-      collateralCurrenciesForIdentifier[0].address,
-      0
-    );
+    await optimisticRequester.methods
+      .requestPrice(identifiersToTest[0], requestTime, "0x", collateralCurrenciesForIdentifier[0].options.address, 0)
+      .send({ from: owner });
 
     // This pricefeed config will cause the proposer to fail to construct a price feed because the
     // PriceFeedMock type requires a `currentPrice` and a `historicalPrice` to be specified, which are missing
@@ -461,7 +497,7 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
       optimisticOracleClient: client,
       gasEstimator,
       account: botRunner,
-      commonPriceFeedConfig: invalidPriceFeedConfig
+      commonPriceFeedConfig: invalidPriceFeedConfig,
     });
     await proposer.update();
 
@@ -473,10 +509,12 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
 
     // Manually send proposal.
     const collateralCurrency = collateralCurrenciesForIdentifier[0];
-    await collateralCurrency.approve(optimisticOracle.address, totalDefaultBond, { from: randoProposer });
-    await optimisticOracle.proposePrice(optimisticRequester.address, identifiersToTest[0], requestTime, "0x", "1", {
-      from: randoProposer
-    });
+    await collateralCurrency.methods
+      .approve(optimisticOracle.options.address, totalDefaultBond)
+      .send({ from: randoProposer });
+    await optimisticOracle.methods
+      .proposePrice(optimisticRequester.options.address, identifiersToTest[0], requestTime, "0x", "1")
+      .send({ from: randoProposer });
 
     // `sendDisputes`: Should throw another error
     await proposer.update();
@@ -486,24 +524,26 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
     assert.isTrue(spyLogIncludes(spy, -1, "sendDisputes"));
   });
 
-  it("Skip price requests with historical prices that proposer fails to fetch", async function() {
+  it("Skip price requests with historical prices that proposer fails to fetch", async function () {
     // Request a valid identifier that is getting bad data from the data source.
     // Note: "INVALID" maps specifically to the InvalidPriceFeedMock in the DefaultPriceFeedConfig.js file.
-    const invalidPriceFeedIdentifier = web3.utils.utf8ToHex("INVALID");
-    await identifierWhitelist.addSupportedIdentifier(invalidPriceFeedIdentifier);
-    await optimisticRequester.requestPrice(
-      invalidPriceFeedIdentifier,
-      requestTime,
-      "0x",
-      collateralCurrenciesForIdentifier[0].address,
-      // collateral token doesn't matter as the error should log before its used
-      0
-    );
+    const invalidPriceFeedIdentifier = padRight(utf8ToHex("INVALID"), 64);
+    await identifierWhitelist.methods.addSupportedIdentifier(invalidPriceFeedIdentifier).send({ from: owner });
+    await optimisticRequester.methods
+      .requestPrice(
+        invalidPriceFeedIdentifier,
+        requestTime,
+        "0x",
+        collateralCurrenciesForIdentifier[0].options.address,
+        // collateral token doesn't matter as the error should log before its used
+        0
+      )
+      .send({ from: owner });
     proposer = new OptimisticOracleProposer({
       logger: spyLogger,
       optimisticOracleClient: client,
       gasEstimator,
-      account: botRunner
+      account: botRunner,
     });
     await proposer.update();
     await proposer.sendProposals();
@@ -516,17 +556,12 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
 
     // Manually send proposal.
     const collateralCurrency = collateralCurrenciesForIdentifier[0];
-    await collateralCurrency.approve(optimisticOracle.address, totalDefaultBond, { from: randoProposer });
-    await optimisticOracle.proposePrice(
-      optimisticRequester.address,
-      invalidPriceFeedIdentifier,
-      requestTime,
-      "0x",
-      "1",
-      {
-        from: randoProposer
-      }
-    );
+    await collateralCurrency.methods
+      .approve(optimisticOracle.options.address, totalDefaultBond)
+      .send({ from: randoProposer });
+    await optimisticOracle.methods
+      .proposePrice(optimisticRequester.options.address, invalidPriceFeedIdentifier, requestTime, "0x", "1")
+      .send({ from: randoProposer });
 
     // `sendDisputes`: Should throw another error
     await proposer.update();
@@ -536,30 +571,133 @@ contract("OptimisticOracle: proposer.js", function(accounts) {
     assert.isTrue(spyLogIncludes(spy, -1, "sendDisputes"));
   });
 
-  it("Cannot set disputePriceErrorPercent < 0 or >= 1", async function() {
-    try {
-      new OptimisticOracleProposer({
-        logger: spyLogger,
-        optimisticOracleClient: client,
-        gasEstimator,
-        account: botRunner,
-        optimisticOracleProposerConfig: { disputePriceErrorPercent: -0.1 }
-      });
-      assert(false);
-    } catch (err) {
-      assert.isTrue(err.message.includes("invalid value on disputePriceErrorPercent"));
-    }
-    try {
-      new OptimisticOracleProposer({
-        logger: spyLogger,
-        optimisticOracleClient: client,
-        gasEstimator,
-        account: botRunner,
-        optimisticOracleProposerConfig: { disputePriceErrorPercent: 1 }
-      });
-      assert(false);
-    } catch (err) {
-      assert.isTrue(err.message.includes("invalid value on disputePriceErrorPercent"));
-    }
+  it("Skips expiry price requests for expiry-blacklisted identifiers", async function () {
+    // Set requester's expiration timestamp to be equal to the price request timestamp to simulate expiry:
+    await optimisticRequester.methods.setExpirationTimestamp(requestTime).send({ from: owner });
+
+    const collateralCurrency = collateralCurrenciesForIdentifier[0];
+    const ancillaryData = collateralCurrency.options.address.toLowerCase();
+    const ancillaryDataAddress = ancillaryData;
+
+    // Use the test blacklisted identifier, which we assume to be at index 0 in `OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY`:
+    const identifierToIgnore = padRight(utf8ToHex(OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY[0]), 64);
+    await identifierWhitelist.methods.addSupportedIdentifier(identifierToIgnore).send({ from: owner });
+
+    await optimisticRequester.methods
+      .requestPrice(identifierToIgnore, requestTime, ancillaryData, collateralCurrency.options.address, 0)
+      .send({ from: owner });
+
+    // Use debug spy to catch "skip" log.
+    spyLogger = winston.createLogger({
+      level: "debug",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
+    });
+    proposer = new OptimisticOracleProposer({
+      logger: spyLogger,
+      optimisticOracleClient: client,
+      gasEstimator,
+      account: botRunner,
+      commonPriceFeedConfig: { currentPrice: "1", historicalPrice: "2" },
+    });
+
+    // Update the bot to read the new OO state.
+    await proposer.update();
+
+    // Client should still see the unproposed price request:
+    assert.deepStrictEqual(client.getUnproposedPriceRequests(), [
+      {
+        requester: optimisticRequester.options.address,
+        identifier: hexToUtf8(identifierToIgnore),
+        ancillaryData: ancillaryDataAddress,
+        timestamp: requestTime.toString(),
+        currency: collateralCurrency.options.address,
+        reward: "0",
+        finalFee,
+      },
+    ]);
+
+    // Running the bot's sendProposals method should skip the price request which it sees as an expiry request:
+    await proposer.sendProposals();
+    assert.equal(lastSpyLogLevel(spy), "debug");
+    assert.isTrue(
+      spyLogIncludes(spy, -1, "EMP contract has expired and identifier's price resolution logic transforms post-expiry")
+    );
+    assert.equal(spy.getCall(-1).lastArg.expirationTimestamp, requestTime);
+
+    // Show that if the contract's expiration timestamp were 1 second later, then the bot would not interpret the price
+    // request as an expiry one and would propose
+    await optimisticRequester.methods.setExpirationTimestamp(Number(requestTime) + 1).send({ from: owner });
+    await proposer.update();
+    await proposer.sendProposals();
+
+    await verifyState(OptimisticOracleRequestStatesEnum.PROPOSED, identifierToIgnore, ancillaryDataAddress);
+    assert.equal(lastSpyLogLevel(spy), "info");
+    assert.isTrue(spyLogIncludes(spy, -1, "Proposed price"));
+    assert.ok(spy.getCall(-1).lastArg.proposalResult.tx);
+
+    // Resetting the expiration timestamp should make sendDispute to skip the price request:
+    await optimisticRequester.methods.setExpirationTimestamp(requestTime).send({ from: owner });
+    await proposer.update();
+    await proposer.sendDisputes();
+    assert.equal(lastSpyLogLevel(spy), "debug");
+    assert.isTrue(
+      spyLogIncludes(spy, -1, "EMP contract has expired and identifier's price resolution logic transforms post-expiry")
+    );
+    assert.equal(spy.getCall(-1).lastArg.expirationTimestamp, requestTime);
+
+    // Finally, if the contract's expiration timestamp is set 1 second later, then the bot would not interpret the price
+    // request as an expiry one and could dispute (but won't dispute because the dispute price equals the proposed one).
+    await optimisticRequester.methods.setExpirationTimestamp(Number(requestTime) + 1).send({ from: owner });
+    await proposer.update();
+    await proposer.sendDisputes();
+    assert.isTrue(spyLogIncludes(spy, -1, "Skipping dispute because proposal price is within allowed margin of error"));
+  });
+
+  it("Skips all price requests for master-blacklisted identifiers", async function () {
+    const collateralCurrency = collateralCurrenciesForIdentifier[0];
+    const ancillaryData = collateralCurrency.options.address.toLowerCase();
+    const ancillaryDataAddress = ancillaryData;
+
+    const identifierToIgnore = padRight(utf8ToHex(OPTIMISTIC_ORACLE_IGNORE[0]), 64);
+    await identifierWhitelist.methods.addSupportedIdentifier(identifierToIgnore).send({ from: owner });
+
+    await optimisticRequester.methods
+      .requestPrice(identifierToIgnore, requestTime, ancillaryData, collateralCurrency.options.address, 0)
+      .send({ from: owner });
+
+    // Use debug spy to catch "skip" log.
+    spyLogger = winston.createLogger({
+      level: "debug",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
+    });
+    proposer = new OptimisticOracleProposer({
+      logger: spyLogger,
+      optimisticOracleClient: client,
+      gasEstimator,
+      account: botRunner,
+      commonPriceFeedConfig: { currentPrice: "1", historicalPrice: "2" },
+    });
+
+    // Update the bot to read the new OO state.
+    await proposer.update();
+
+    // Client should still see the unproposed price request:
+    assert.deepStrictEqual(client.getUnproposedPriceRequests(), [
+      {
+        requester: optimisticRequester.options.address,
+        identifier: hexToUtf8(identifierToIgnore),
+        ancillaryData: ancillaryDataAddress,
+        timestamp: requestTime.toString(),
+        currency: collateralCurrency.options.address,
+        reward: "0",
+        finalFee,
+      },
+    ]);
+
+    // Running the bot's sendProposals method should skip the price request:
+    await proposer.sendProposals();
+    assert.equal(lastSpyLogLevel(spy), "debug");
+    assert.isTrue(spyLogIncludes(spy, -1, "Identifier is blacklisted"));
+    await verifyState(OptimisticOracleRequestStatesEnum.REQUESTED, identifierToIgnore, ancillaryDataAddress);
   });
 });

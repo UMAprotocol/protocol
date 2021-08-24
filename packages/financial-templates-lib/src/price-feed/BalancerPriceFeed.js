@@ -38,13 +38,13 @@ class BalancerPriceFeed extends PriceFeedInterface {
     this.tokenOut = tokenOut;
     this.lookback = lookback;
     this.twapLength = twapLength;
-    this.getLatestBlock = number => web3.eth.getBlock(number >= 0 ? number : "latest");
+    this.getLatestBlock = (number) => web3.eth.getBlock(number >= 0 ? number : "latest");
     // Provide a getblock function which returns the latest value if no number provided.
     this.blockHistory = BlockHistory(this.getLatestBlock);
 
     // Add a callback to get price, error can be thrown from web3 disconection or maybe something else
     // which affects the update call.
-    this.priceHistory = PriceHistory(async number => {
+    this.priceHistory = PriceHistory(async (number) => {
       try {
         let bPoolPrice = this.toBN(
           await this.contract.methods.getSpotPriceSansFee(this.tokenIn, this.tokenOut).call(number)
@@ -140,7 +140,7 @@ class BalancerPriceFeed extends PriceFeedInterface {
     this.logger.debug({
       at: "BalancerPriceFeed",
       message: "Updating BalancerPriceFeed",
-      lastUpdateTimestamp: currentTime
+      lastUpdateTimestamp: currentTime,
     });
     let blocks = [];
     // disabled lookback by setting it to 0
@@ -168,6 +168,4 @@ class BalancerPriceFeed extends PriceFeedInterface {
   }
 }
 
-module.exports = {
-  BalancerPriceFeed
-};
+module.exports = { BalancerPriceFeed };

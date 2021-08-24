@@ -61,14 +61,14 @@ class OptimisticOracleClient {
   // Returns an array of expired Price Proposals that can be settled and that involved
   // the caller as the proposer
   getSettleableProposals(caller) {
-    return this.expiredProposals.filter(event => {
+    return this.expiredProposals.filter((event) => {
       return event.proposer === caller;
     });
   }
 
   // Returns disputes that can be settled and that involved the caller as the disputer
   getSettleableDisputes(caller) {
-    return this.settleableDisputes.filter(event => {
+    return this.settleableDisputes.filter((event) => {
       return event.disputer === caller;
     });
   }
@@ -86,7 +86,7 @@ class OptimisticOracleClient {
     // Determine earliest block to query events for based on lookback window:
     const [averageBlockTime, currentBlock] = await Promise.all([
       averageBlockTimeSeconds(),
-      this.web3.eth.getBlock("latest")
+      this.web3.eth.getBlock("latest"),
     ]);
     const lookbackBlocks = Math.ceil(this.lookback / averageBlockTime);
     const earliestBlockToQuery = Math.max(currentBlock.number - lookbackBlocks, 0);
@@ -96,16 +96,16 @@ class OptimisticOracleClient {
       this.oracle.getPastEvents("RequestPrice", { fromBlock: earliestBlockToQuery }),
       this.oracle.getPastEvents("ProposePrice", { fromBlock: earliestBlockToQuery }),
       this.oracle.getPastEvents("DisputePrice", { fromBlock: earliestBlockToQuery }),
-      this.oracle.methods.getCurrentTime().call()
+      this.oracle.methods.getCurrentTime().call(),
     ]);
 
     // Store price requests that have NOT been proposed to yet:
-    const unproposedPriceRequests = requestEvents.filter(event => {
+    const unproposedPriceRequests = requestEvents.filter((event) => {
       const key = this._getPriceRequestKey(event);
-      const hasProposal = proposalEvents.find(proposalEvent => this._getPriceRequestKey(proposalEvent) === key);
+      const hasProposal = proposalEvents.find((proposalEvent) => this._getPriceRequestKey(proposalEvent) === key);
       return hasProposal === undefined;
     });
-    this.unproposedPriceRequests = unproposedPriceRequests.map(event => {
+    this.unproposedPriceRequests = unproposedPriceRequests.map((event) => {
       return {
         requester: event.returnValues.requester,
         identifier: this.hexToUtf8(event.returnValues.identifier),
@@ -113,18 +113,18 @@ class OptimisticOracleClient {
         timestamp: event.returnValues.timestamp,
         currency: event.returnValues.currency,
         reward: event.returnValues.reward,
-        finalFee: event.returnValues.finalFee
+        finalFee: event.returnValues.finalFee,
       };
     });
 
     // Store proposals that have NOT been disputed and have NOT been settled, and reformat data.
-    const undisputedProposals = proposalEvents.filter(event => {
+    const undisputedProposals = proposalEvents.filter((event) => {
       const key = this._getPriceRequestKey(event);
-      const hasDispute = disputeEvents.find(disputeEvent => this._getPriceRequestKey(disputeEvent) === key);
+      const hasDispute = disputeEvents.find((disputeEvent) => this._getPriceRequestKey(disputeEvent) === key);
       return hasDispute === undefined;
     });
     const unsettledProposals = await Promise.all(
-      undisputedProposals.map(async event => {
+      undisputedProposals.map(async (event) => {
         const state = await this.oracle.methods
           .getState(
             event.returnValues.requester,
@@ -144,22 +144,22 @@ class OptimisticOracleClient {
             timestamp: event.returnValues.timestamp,
             proposedPrice: event.returnValues.proposedPrice,
             expirationTimestamp: event.returnValues.expirationTimestamp,
-            currency: event.returnValues.currency
+            currency: event.returnValues.currency,
           };
         }
       })
-    ).filter(event => event !== undefined);
+    ).filter((event) => event !== undefined);
 
     // Filter proposals based on their expiration timestamp:
-    const isExpired = proposal => {
+    const isExpired = (proposal) => {
       return Number(proposal.expirationTimestamp) <= Number(currentTime);
     };
-    this.expiredProposals = unsettledProposals.filter(proposal => isExpired(proposal));
-    this.undisputedProposals = unsettledProposals.filter(proposal => !isExpired(proposal));
+    this.expiredProposals = unsettledProposals.filter((proposal) => isExpired(proposal));
+    this.undisputedProposals = unsettledProposals.filter((proposal) => !isExpired(proposal));
 
     // Store disputes that were resolved and can be settled:
     let resolvedDisputeEvents = await Promise.all(
-      disputeEvents.map(async disputeEvent => {
+      disputeEvents.map(async (disputeEvent) => {
         try {
           // When someone disputes an OO proposal, the OO requests a price to the DVM with a re-formatted
           // ancillary data packet that includes the original requester's information:
@@ -175,9 +175,7 @@ class OptimisticOracleClient {
           let resolvedPrice = revertWrapper(
             await this.voting.methods
               .getPrice(disputeEvent.returnValues.identifier, disputeEvent.returnValues.timestamp, stampedAncillaryData)
-              .call({
-                from: this.oracle.options.address
-              })
+              .call({ from: this.oracle.options.address })
           );
           if (resolvedPrice !== null) {
             return disputeEvent;
@@ -187,11 +185,11 @@ class OptimisticOracleClient {
         }
       })
       // Remove undefined entries, marking disputes that did not have resolved prices
-    ).filter(event => event !== undefined);
+    ).filter((event) => event !== undefined);
 
     // Filter out disputes that were already settled and reformat data.
     let unsettledResolvedDisputeEvents = await Promise.all(
-      resolvedDisputeEvents.map(async event => {
+      resolvedDisputeEvents.map(async (event) => {
         const state = await this.oracle.methods
           .getState(
             event.returnValues.requester,
@@ -209,11 +207,11 @@ class OptimisticOracleClient {
             disputer: event.returnValues.disputer,
             identifier: this.hexToUtf8(event.returnValues.identifier),
             ancillaryData: event.returnValues.ancillaryData ? event.returnValues.ancillaryData : "0x",
-            timestamp: event.returnValues.timestamp
+            timestamp: event.returnValues.timestamp,
           };
         }
       })
-    ).filter(event => event !== undefined);
+    ).filter((event) => event !== undefined);
     this.settleableDisputes = unsettledResolvedDisputeEvents;
 
     // Update timestamp and end update.
@@ -221,11 +219,9 @@ class OptimisticOracleClient {
     this.logger.debug({
       at: "OptimisticOracleClient",
       message: "Optimistic Oracle state updated",
-      lastUpdateTimestamp: this.lastUpdateTimestamp
+      lastUpdateTimestamp: this.lastUpdateTimestamp,
     });
   }
 }
 
-module.exports = {
-  OptimisticOracleClient
-};
+module.exports = { OptimisticOracleClient };

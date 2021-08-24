@@ -20,7 +20,7 @@ function Queries({ blocks = [], logs = {} }) {
   }
   function getLogsByContract(address, start, end) {
     assert(logs[address], "no logs for address: " + address);
-    return logs[address].filter(x => {
+    return logs[address].filter((x) => {
       return x.block_timestamp >= start && x.block_timestamp <= end;
     });
   }
@@ -28,7 +28,7 @@ function Queries({ blocks = [], logs = {} }) {
     return highland(getBlocks(start, end));
   }
   function getBlocks(start, end) {
-    return blocks.filter(x => {
+    return blocks.filter((x) => {
       return x.timestamp >= start && x.timestamp <= end;
     });
   }
@@ -38,17 +38,17 @@ function Queries({ blocks = [], logs = {} }) {
     streamBlocks,
     getBlocks,
     getLogsByContract,
-    getAllLogsByContract
+    getAllLogsByContract,
   };
 }
 function Coingecko({ prices = {} }) {
   return {
     getHistoricContractPrices(address, currency, start, end) {
       assert(prices[address], "no prices found for address: " + address);
-      return prices[address].filter(x => {
+      return prices[address].filter((x) => {
         return x[0] >= start && x[0] <= end;
       });
-    }
+    },
   };
 }
 
@@ -56,15 +56,11 @@ function SynthPrices({ prices = {} }) {
   return {
     getHistoricSynthPrices(address, start, end) {
       assert(prices[address], "no prices found for address: " + address);
-      return prices[address].filter(x => {
+      return prices[address].filter((x) => {
         return x[0] >= start && x[0] <= end;
       });
-    }
+    },
   };
 }
 
-module.exports = {
-  Coingecko,
-  SynthPrices,
-  Queries
-};
+module.exports = { Coingecko, SynthPrices, Queries };

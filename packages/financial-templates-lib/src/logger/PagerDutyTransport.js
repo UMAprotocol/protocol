@@ -10,9 +10,12 @@ const pdClient = require("node-pagerduty");
 module.exports = class PagerDutyTransport extends Transport {
   constructor(winstonOpts, pagerDutyOptions) {
     super(winstonOpts);
-    this.serviceId = pagerDutyOptions.pdServiceId;
-    this.fromEmail = pagerDutyOptions.fromEmail;
+
     this.pd = new pdClient(pagerDutyOptions.pdApiToken);
+
+    this.fromEmail = pagerDutyOptions.fromEmail;
+    this.defaultServiceId = pagerDutyOptions.defaultServiceId;
+    this.customServices = pagerDutyOptions.customServices || {};
   }
 
   async log(info, callback) {
@@ -20,20 +23,18 @@ module.exports = class PagerDutyTransport extends Transport {
       // If the message has markdown then add it and the bot-identifer field. Else put the whole info object as a string
       const logMessage = info.mrkdwn ? info.mrkdwn + `\n${info["bot-identifier"]}` : JSON.stringify(info);
 
+      // If the log contains a notification path then use a custom PagerDuty service. This lets the transport route to
+      // different pagerduty escilation paths depending on the context of the log.
+      const serviceId = this.customServices[info.notificationPath] ?? this.defaultServiceId;
+
       await this.pd.incidents.createIncident(this.fromEmail, {
         incident: {
           type: "incident",
           title: `${info.level}: ${info.at} ⭢ ${info.message}`,
-          service: {
-            id: this.serviceId,
-            type: "service_reference"
-          },
+          service: { id: serviceId, type: "service_reference" },
           urgency: info.level == "warn" ? "low" : "high", // If level is warn then urgency is low. If level is error then urgency is high.
-          body: {
-            type: "incident_body",
-            details: logMessage
-          }
-        }
+          body: { type: "incident_body", details: logMessage },
+        },
       });
     } catch (error) {
       console.error("PagerDuty error", error);

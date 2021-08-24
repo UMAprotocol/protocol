@@ -12,21 +12,15 @@ class Networker {
     this.logger = logger;
   }
 
-  async getJson(url) {
-    const response = await fetch(url);
+  async getJson(url, options) {
+    const response = await fetch(url, options);
     const json = await response.json();
     if (!json) {
-      this.logger.error({
-        at: "Networker",
-        message: "Failed to get json response🚨",
-        url: url,
-        error: new Error(response)
-      });
+      // Throw if no error. Will result in a retry upstream.
+      throw new Error(`Networker failed to get json response. Response: ${response}`);
     }
     return json;
   }
 }
 
-module.exports = {
-  Networker
-};
+module.exports = { Networker };

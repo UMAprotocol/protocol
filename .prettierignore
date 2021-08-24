@@ -9,3 +9,7 @@ dist
 artifacts
 cache
 .github
+types
+contract-types
+generated
+typechain

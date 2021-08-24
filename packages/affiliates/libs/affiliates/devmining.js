@@ -4,7 +4,7 @@ const Promise = require("bluebird");
 const assert = require("assert");
 const lodash = require("lodash");
 
-const { getWeb3 } = require("@uma/common");
+const { getWeb3, ConvertDecimals } = require("@uma/common");
 const web3 = getWeb3();
 const { toWei, toBN, fromWei } = web3.utils;
 
@@ -12,16 +12,17 @@ const { EmpBalancesHistory } = require("../processors");
 const { Prices } = require("../models");
 const { DecodeLog } = require("../contracts");
 
-module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => {
+module.exports = ({ queries, coingecko, synthPrices, firstEmpDate }) => {
   assert(queries, "requires queries class");
-  assert(empAbi, "requires empAbi");
   assert(coingecko, "requires coingecko api");
   assert(synthPrices, "requires synthPrices api");
 
   // use firstEmpDate as a history cutoff when querying for events. We can safely say no emps were deployed before Jan of 2020.
   firstEmpDate = firstEmpDate || moment("2020-01-01", "YYYY-MM-DD").valueOf();
 
-  async function getBalanceHistory(empAddress, start, end) {
+  async function getBalanceHistory(empAddress, start, end, empAbi) {
+    assert(empAddress, "requires empAddress");
+    assert(empAbi, "requires empAbi");
     // stream is a bit more optimal than waiting for entire query to return as array
     // We need all logs from beginning of time. This could be optimized by deducing or supplying
     // the specific emp start time to narrow down the query.
@@ -29,14 +30,14 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
     const decode = DecodeLog(empAbi);
     const balancesHistory = EmpBalancesHistory();
     await highland(stream)
-      .map(log => {
+      .map((log) => {
         return decode(log, {
           blockNumber: log.block_number,
           blockTimestamp: moment(log.block_timestamp.value).valueOf(),
-          ...log
+          ...log,
         });
       })
-      .doto(log => balancesHistory.handleEvent(log.blockNumber, log))
+      .doto((log) => balancesHistory.handleEvent(log.blockNumber, log))
       .last()
       .toPromise(Promise);
 
@@ -45,11 +46,15 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
 
     return balancesHistory;
   }
+  // This now requires an array of tuples in order to handle varying versions of the EMP
+  // [
+  //   [empAddress, empAbi]
+  // ]
   async function getAllBalanceHistories(empAddresses = [], start, end) {
     return Promise.reduce(
       empAddresses,
-      async (result, empAddress) => {
-        result.push([empAddress, await getBalanceHistory(empAddress, start, end)]);
+      async (result, [empAddress, empAbi]) => {
+        result.push([empAddress, await getBalanceHistory(empAddress, start, end, empAbi)]);
         return result;
       },
       []
@@ -74,7 +79,7 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
     try {
       return [await getSyntheticPriceHistory(empAddress, start, end), calculateValue];
     } catch (err) {
-      console.error(empAddress, "synthetic price failed", err);
+      console.error(empAddress, "synthetic price failed", err.message);
     }
     try {
       if (fallbackPrice) {
@@ -83,39 +88,26 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
       }
       return [await getCoingeckoPriceHistory(syntheticAddress, "usd", start, end), calculateValueFromUsd];
     } catch (err) {
-      console.error(empAddress, "coingecko price failed", err);
+      console.error(empAddress, "coingecko price failed", err.message);
     }
+    throw new Error(`Unable to get a price for EMP: ${empAddress} and Synth: ${syntheticAddress}`);
   }
 
-  function decodeMedianizerPrice(input) {
+  // Need to convert seconds to MS
+  function decodePrice(input) {
     return [input[0] * 1000, input[1]];
-  }
-  function decodeOtherPrice(input) {
-    return [input.closeTime * 1000, input.closePrice.toString()];
-  }
-  function isMedianizerPrice(input) {
-    return input.length === 2;
   }
   // Gets the value of synthetics in collateral currency.
   async function getSyntheticPriceHistory(address, start, end) {
     const result = await synthPrices.getHistoricSynthPrices(address, start, end);
-    // Turns out getHistoricPriceFeed differs between price feed classes.
-    // This needs to be fixed but for now we will detect it and switch between decodings.
-    // TODO: Fix this behavior, see issue #2461
-    const fixedPrices = result.map(price => {
-      if (isMedianizerPrice(price)) return decodeMedianizerPrice(price);
-      return decodeOtherPrice(price);
-    });
+    const fixedPrices = result.map(decodePrice);
     return Prices(fixedPrices);
   }
 
   async function getBlocks(start, end) {
     const blocks = await queries.getBlocks(start, end, ["timestamp", "number"]);
-    return blocks.map(block => {
-      return {
-        ...block,
-        timestamp: moment(block.timestamp.value).valueOf()
-      };
+    return blocks.map((block) => {
+      return { ...block, timestamp: moment(block.timestamp.value).valueOf() };
     });
   }
 
@@ -138,10 +130,10 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
   function calculateValueFromUsd(...args) {
     // have to do this because eslint wont pass and wont ignore unused vars. These params need to be
     // identical to calculateValue so the calls can be interchangeable.
-    const [tokens, , syntheticPrice] = args;
-    return toBN(tokens.toString())
-      .mul(toBN(toWei(syntheticPrice.toFixed(18))))
-      .div(toBN(toWei("1")));
+    const [tokens, , syntheticPrice, , syntheticTokenDecimal] = args;
+    // EMP API has changed, now synthetics are not always 18 decimals. We have to normalize them to 18 before value calc.
+    const tokensNormalized = ConvertDecimals(syntheticTokenDecimal, 18, web3)(tokens.toString());
+    return tokensNormalized.mul(toBN(toWei(syntheticPrice.toFixed(18)))).div(toBN(toWei("1")));
   }
 
   function toChecksumAddress(address) {
@@ -152,11 +144,11 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
   function validateEmpInput(empValue) {
     assert(
       lodash.isArray(empValue),
-      "Each EMP whitelisted is expected to be an array in the form [empAddress, rewardAddress]"
+      "Each EMP whitelisted is expected to be an array in the form [empAddress, rewardAddress, empAbi]"
     );
     assert(
-      empValue.length === 2,
-      "Each EMP whitelisted is expected to be an array in the form [empAddress, rewardAddress]"
+      empValue.length >= 3,
+      "Each EMP whitelisted is expected to be an array in the form [empAddress, rewardAddress, empAbi]"
     );
     return empValue;
   }
@@ -172,7 +164,7 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
     syntheticTokenPricesWithValueCalculation,
     syntheticTokenDecimals,
     blocks,
-    balanceHistories
+    balanceHistories,
   }) {
     assert(empWhitelist, "requires empWhitelist");
     assert(collateralTokenPrices, "requires collateral token prices prices");
@@ -221,6 +213,7 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
           if (err.message.includes("history does not go back far enough") || err.message.includes("history is empty")) {
             result.push([empAddress, "0"]);
           } else {
+            console.error("error with emp", empAddress);
             throw err;
           }
         }
@@ -273,12 +266,7 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
       finalPayouts.empPayouts[address] = fromWei(finalPayouts.empPayouts[address]);
     }
 
-    return {
-      startBlock,
-      endBlock,
-      empToDeployer,
-      ...finalPayouts
-    };
+    return { startBlock, endBlock, empToDeployer, ...finalPayouts };
   }
 
   async function getRewards({
@@ -291,7 +279,7 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
     syntheticTokens = [],
     syntheticTokenDecimals = [],
     snapshotSteps = 1,
-    fallbackPrices = []
+    fallbackPrices = [],
   }) {
     // API has changed, we need to validate input. Emps will be required to include payout address.
     // Want to give additional direction to user if this function is called directly.
@@ -304,13 +292,13 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
       collateralTokenPrices,
       syntheticTokenPricesWithValueCalculation,
       blocks,
-      balanceHistories
+      balanceHistories,
     ] = await Promise.all([
       Promise.map(
         collateralTokens,
-        async address => await getCoingeckoPriceHistory(address, "usd", startTime, endTime)
+        async (address) => await getCoingeckoPriceHistory(address, "usd", startTime, endTime)
       ),
-      Promise.map(
+      Promise.mapSeries(
         empWhitelist,
         // each empwhitelist contains, [empaddress,deployeraddres], so we only care about empaddress
         async ([empAddress], i) =>
@@ -325,10 +313,10 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
       getBlocks(startTime, endTime),
       // Each empwhitelist contains, [empaddress,deployeraddres], balance histories expects array of just emp addresses
       getAllBalanceHistories(
-        empWhitelist.map(([empaddress]) => empaddress),
+        empWhitelist.map(([empaddress, , empAbi]) => [empaddress, empAbi]),
         firstEmpDate,
         endTime
-      )
+      ),
     ]);
 
     return calculateRewards({
@@ -342,7 +330,7 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
       syntheticTokenPricesWithValueCalculation,
       syntheticTokenDecimals,
       blocks,
-      balanceHistories
+      balanceHistories,
     });
   }
 
@@ -358,7 +346,7 @@ module.exports = ({ queries, empAbi, coingecko, synthPrices, firstEmpDate }) => 
       calculateValue,
       calculateValueFromUsd,
       validateEmpInput,
-      toChecksumAddress
-    }
+      toChecksumAddress,
+    },
   };
 };

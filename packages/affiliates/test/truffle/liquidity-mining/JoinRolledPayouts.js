@@ -3,8 +3,8 @@ const { toWei, toBN, fromWei } = web3.utils;
 // Script to test.
 const { _joinPayouts } = require("../../../liquidity-mining/JoinRolledPayouts");
 
-contract("JoinRolledPayouts.js", function(accounts) {
-  it("Correctly joins balances between weekly and rolled payouts", async function() {
+contract("JoinRolledPayouts.js", function (accounts) {
+  it("Correctly joins balances between weekly and rolled payouts", async function () {
     // create two payout objects that are formatted with the same structure as the scripts output. Create a spread of
     // sponsors; some are only in the weekly rewards, some are only in the rolled rewards and some are in both. Then,
     // use this to validate that all sponsors are correctly added during the join and that their balances are preserved.
@@ -20,8 +20,8 @@ contract("JoinRolledPayouts.js", function(accounts) {
       shareHolderPayout: {
         [accounts[0]]: "0.733264950109564979",
         [accounts[1]]: "12.325527829074857455",
-        [accounts[2]]: "386.654545825648555491"
-      }
+        [accounts[2]]: "386.654545825648555491",
+      },
     };
 
     // Create a sample payout for the rolled weeks payout. Add accounts 1, 2, 3 for rewards.
@@ -36,8 +36,8 @@ contract("JoinRolledPayouts.js", function(accounts) {
       shareHolderPayout: {
         [accounts[1]]: "111.766401376681396497",
         [accounts[2]]: "0.961997253854479237",
-        [accounts[3]]: "6.637050228881641885"
-      }
+        [accounts[3]]: "6.637050228881641885",
+      },
     };
     // Generate a joined output from the two weekly payouts.
     const joinedOutput = _joinPayouts(sampleWeeklyPayout, sampleRolledPayout);

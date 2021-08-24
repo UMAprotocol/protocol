@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-only
-pragma solidity ^0.6.0;
-pragma experimental ABIEncoderV2;
+pragma solidity ^0.8.0;
 
 import "./Liquidatable.sol";
 
@@ -15,7 +14,6 @@ contract ExpiringMultiParty is Liquidatable {
      * are fed directly into the PricelessPositionManager's constructor within the inheritance tree.
      */
     constructor(ConstructorParams memory params)
-        public
         Liquidatable(params)
     // Note: since there is no logic here, there is no need to add a re-entrancy guard.
     {

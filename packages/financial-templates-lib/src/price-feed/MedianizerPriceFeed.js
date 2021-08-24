@@ -16,14 +16,15 @@ class MedianizerPriceFeed extends PriceFeedInterface {
       throw new Error("MedianizerPriceFeed cannot be constructed with no constituent price feeds.");
     }
 
+    this.toBN = priceFeeds[0].toBN;
     this.priceFeeds = priceFeeds;
     this.computeMean = computeMean;
   }
 
   // Takes the median of all of the constituent price feeds' currentPrices.
   getCurrentPrice() {
-    const currentPrices = this.priceFeeds.map(priceFeed => priceFeed.getCurrentPrice());
-    if (currentPrices.some(element => element === undefined || element === null)) {
+    const currentPrices = this.priceFeeds.map((priceFeed) => priceFeed.getCurrentPrice());
+    if (currentPrices.some((element) => element === undefined || element === null)) {
       return null;
     }
 
@@ -40,8 +41,8 @@ class MedianizerPriceFeed extends PriceFeedInterface {
     // array of errors.
     let errors = [];
     let historicalPrices = await Promise.all(
-      this.priceFeeds.map(priceFeed => {
-        return priceFeed.getHistoricalPrice(time, verbose).catch(err => errors.push(err));
+      this.priceFeeds.map((priceFeed) => {
+        return priceFeed.getHistoricalPrice(time, verbose).catch((err) => errors.push(err));
       })
     );
 
@@ -60,21 +61,24 @@ class MedianizerPriceFeed extends PriceFeedInterface {
   // is basically every price feed except for the CryptoWatchPriceFeed.
   getHistoricalPricePeriods() {
     // Fetch all historical price data for all price feeds within the medianizer set.
-    const historicalPricePeriods = this.priceFeeds.map(priceFeed => priceFeed.getHistoricalPricePeriods());
+    const historicalPricePeriods = this.priceFeeds.map((priceFeed) => priceFeed.getHistoricalPricePeriods());
 
     let processedMedianHistoricalPricePeriods = [];
 
     // For each discrete point in time within the set of price feeds iterate over and compute the median.
     for (let pricePointIndex = 0; pricePointIndex < historicalPricePeriods[0].length; pricePointIndex++) {
       // Create an array of prices at the pricePointIndex for each price feed. The median is taken over this set.
-      const periodPrices = historicalPricePeriods.map(historicalPrice => {
+      const periodPrices = historicalPricePeriods.map((historicalPrice) => {
+        // this is meant to process historicalPrices in the form of [timestamp,price]. Some older price feeds may
+        // not conform to this, as this api has changed recently, though the medianizer has always conformed to this.
+        // TODO: updated any non conforming price feeds to return getHistoricalPricePeriods as an array of [time,price].
         return historicalPrice[pricePointIndex]
-          ? historicalPrice[pricePointIndex].closePrice
+          ? this.toBN(historicalPrice[pricePointIndex][1])
           : this.priceFeeds[0].toBN("0");
       });
       processedMedianHistoricalPricePeriods[pricePointIndex] = [
-        historicalPricePeriods[0][pricePointIndex].closeTime,
-        this.computeMean ? this._computeMean(periodPrices).toString() : this._computeMedian(periodPrices).toString()
+        historicalPricePeriods[0][pricePointIndex][0],
+        this.computeMean ? this._computeMean(periodPrices).toString() : this._computeMedian(periodPrices).toString(),
       ];
     }
     return processedMedianHistoricalPricePeriods;
@@ -82,9 +86,9 @@ class MedianizerPriceFeed extends PriceFeedInterface {
 
   // Gets the *most recent* update time for all constituent price feeds.
   getLastUpdateTime() {
-    const lastUpdateTimes = this.priceFeeds.map(priceFeed => priceFeed.getLastUpdateTime());
+    const lastUpdateTimes = this.priceFeeds.map((priceFeed) => priceFeed.getLastUpdateTime());
 
-    if (lastUpdateTimes.some(element => element === undefined || element === null)) {
+    if (lastUpdateTimes.some((element) => element === undefined || element === null)) {
       return null;
     }
 
@@ -94,9 +98,9 @@ class MedianizerPriceFeed extends PriceFeedInterface {
 
   // Gets the decimals of the medianized price feeds. Errors out if any price feed had a different number of decimals.
   getPriceFeedDecimals() {
-    const priceFeedDecimals = this.priceFeeds.map(priceFeed => priceFeed.getPriceFeedDecimals());
+    const priceFeedDecimals = this.priceFeeds.map((priceFeed) => priceFeed.getPriceFeedDecimals());
     // Check that every price feeds decimals match the 0th price feeds decimals.
-    if (!priceFeedDecimals[0] || !priceFeedDecimals.every(feedDecimals => feedDecimals === priceFeedDecimals[0])) {
+    if (!priceFeedDecimals[0] || !priceFeedDecimals.every((feedDecimals) => feedDecimals === priceFeedDecimals[0])) {
       throw new Error("MedianizerPriceFeed's feeds do not all have the same decimals or invalid decimals!");
     }
 
@@ -105,8 +109,8 @@ class MedianizerPriceFeed extends PriceFeedInterface {
 
   // Returns the shortest lookback window of the constituent price feeds.
   getLookback() {
-    const lookbacks = this.priceFeeds.map(priceFeed => priceFeed.getLookback());
-    if (lookbacks.some(element => element === undefined || element === null)) {
+    const lookbacks = this.priceFeeds.map((priceFeed) => priceFeed.getLookback());
+    if (lookbacks.some((element) => element === undefined || element === null)) {
       return null;
     }
     return Math.min(...lookbacks);
@@ -114,7 +118,7 @@ class MedianizerPriceFeed extends PriceFeedInterface {
 
   // Updates all constituent price feeds.
   async update() {
-    await Promise.all(this.priceFeeds.map(priceFeed => priceFeed.update()));
+    await Promise.all(this.priceFeeds.map((priceFeed) => priceFeed.update()));
   }
 
   // Inputs are expected to be BNs.
@@ -144,6 +148,4 @@ class MedianizerPriceFeed extends PriceFeedInterface {
   }
 }
 
-module.exports = {
-  MedianizerPriceFeed
-};
+module.exports = { MedianizerPriceFeed };

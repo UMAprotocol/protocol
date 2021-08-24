@@ -6,7 +6,7 @@ const {
   createFormatFunction,
   createEtherscanLinkMarkdown,
   revertWrapper,
-  createObjectFromDefaultProps
+  createObjectFromDefaultProps,
 } = require("@uma/common");
 
 class ContractMonitor {
@@ -34,7 +34,7 @@ class ContractMonitor {
     priceFeed,
     monitorConfig,
     financialContractProps,
-    votingContract
+    votingContract,
   }) {
     this.logger = logger;
 
@@ -54,6 +54,7 @@ class ContractMonitor {
     this.lastDisputeBlockNumber = 0;
     this.lastDisputeSettlementBlockNumber = 0;
     this.lastNewSponsorBlockNumber = 0;
+    this.lastFundingRateUpdatedBlockNumber = 0;
 
     // Define a set of normalization functions. These Convert a number delimited with given base number of decimals to a
     // number delimited with a given number of decimals (18). For example, consider normalizeCollateralDecimals. 100 BTC
@@ -70,28 +71,28 @@ class ContractMonitor {
       // By default monitor no liquidator bots (empty array).
       monitoredLiquidators: {
         value: [],
-        isValid: x => {
+        isValid: (x) => {
           // For the config to be valid it must be an array of address.
-          return Array.isArray(x) && x.every(y => this.web3.utils.isAddress(y));
-        }
+          return Array.isArray(x) && x.every((y) => this.web3.utils.isAddress(y));
+        },
       },
       monitoredDisputers: {
         value: [],
-        isValid: x => {
+        isValid: (x) => {
           // For the config to be valid it must be an array of address.
-          return Array.isArray(x) && x.every(y => this.web3.utils.isAddress(y));
-        }
+          return Array.isArray(x) && x.every((y) => this.web3.utils.isAddress(y));
+        },
       },
       logOverrides: {
         // Specify an override object to change default logging behaviour. Defaults to no overrides. If specified, this
         // object is structured to contain key for the log to override and value for the logging level. EG:
         // { newPositionCreated:'debug' } would override the default `info` behaviour for newPositionCreated.
         value: {},
-        isValid: overrides => {
+        isValid: (overrides) => {
           // Override must be one of the default logging levels: ['error','warn','info','http','verbose','debug','silly']
-          return Object.values(overrides).every(param => Object.keys(this.logger.levels).includes(param));
-        }
-      }
+          return Object.values(overrides).every((param) => Object.keys(this.logger.levels).includes(param));
+        },
+      },
     };
 
     Object.assign(this, createObjectFromDefaultProps(monitorConfig, defaultConfig));
@@ -100,7 +101,7 @@ class ContractMonitor {
     const defaultFinancialContractProps = {
       financialContractProps: {
         value: {},
-        isValid: x => {
+        isValid: (x) => {
           // The config must contain the following keys and types:
           return (
             Object.keys(x).includes("collateralSymbol") &&
@@ -118,13 +119,14 @@ class ContractMonitor {
             Object.keys(x).includes("networkId") &&
             typeof x.networkId === "number"
           );
-        }
-      }
+        },
+      },
     };
     Object.assign(this, createObjectFromDefaultProps({ financialContractProps }, defaultFinancialContractProps));
 
     // Helper functions from web3.
     this.toWei = this.web3.utils.toWei;
+    this.fromWei = this.web3.utils.fromWei;
     this.toBN = this.web3.utils.toBN;
     this.utf8ToHex = this.web3.utils.utf8ToHex;
 
@@ -136,14 +138,14 @@ class ContractMonitor {
     this.logger.debug({
       at: "ContractMonitor",
       message: "Checking for new sponsor events",
-      lastNewSponsorBlockNumber: this.lastNewSponsorBlockNumber
+      lastNewSponsorBlockNumber: this.lastNewSponsorBlockNumber,
     });
 
     // Get the latest new sponsor information.
     let latestNewSponsorEvents = this.financialContractEventClient.getAllNewSponsorEvents();
 
     // Get events that are newer than the last block number we've seen
-    let newSponsorEvents = latestNewSponsorEvents.filter(event => event.blockNumber > this.lastNewSponsorBlockNumber);
+    let newSponsorEvents = latestNewSponsorEvents.filter((event) => event.blockNumber > this.lastNewSponsorBlockNumber);
 
     for (let event of newSponsorEvents) {
       // Check if new sponsor is UMA bot.
@@ -171,7 +173,8 @@ class ContractMonitor {
       this.logger[this.logOverrides.newPositionCreated || "info"]({
         at: "ContractMonitor",
         message: "New Sponsor Alert 🐣!",
-        mrkdwn: mrkdwn
+        mrkdwn,
+        notificationPath: "risk-management",
       });
     }
     this.lastNewSponsorBlockNumber = this._getLastSeenBlockNumber(latestNewSponsorEvents);
@@ -182,7 +185,7 @@ class ContractMonitor {
     this.logger.debug({
       at: "ContractMonitor",
       message: "Checking for new liquidation events",
-      lastLiquidationBlockNumber: this.lastLiquidationBlockNumber
+      lastLiquidationBlockNumber: this.lastLiquidationBlockNumber,
     });
 
     // Get the latest liquidation information.
@@ -190,7 +193,7 @@ class ContractMonitor {
 
     // Get liquidation events that are newer than the last block number we've seen
     let newLiquidationEvents = latestLiquidationEvents.filter(
-      event => event.blockNumber > this.lastLiquidationBlockNumber
+      (event) => event.blockNumber > this.lastLiquidationBlockNumber
     );
 
     for (let event of newLiquidationEvents) {
@@ -205,7 +208,7 @@ class ContractMonitor {
           at: "ContractMonitor",
           message: "Cannot get historical price: liquidation time before earliest price feed historical timestamp",
           liquidationTime,
-          historicalLookbackWindow
+          historicalLookbackWindow,
         });
         continue;
       }
@@ -217,7 +220,7 @@ class ContractMonitor {
           at: "ContractMonitor",
           message: "Cannot get historical price: liquidation time before earliest price feed historical timestamp",
           liquidationTime,
-          priceFeedEarliestTime: this.priceFeed.getLastUpdateTime() - this.priceFeed.getLookback()
+          priceFeedEarliestTime: this.priceFeed.getLastUpdateTime() - this.priceFeed.getLookback(),
         });
         continue;
       }
@@ -242,7 +245,7 @@ class ContractMonitor {
           at: "ContractMonitor",
           message: "Could not get historical price for liquidation",
           price,
-          liquidationTime: liquidationTime.toString()
+          liquidationTime: liquidationTime.toString(),
         });
         collateralizationString = "[Invalid]";
         maxPriceToBeDisputableString = "[Invalid]";
@@ -288,7 +291,8 @@ class ContractMonitor {
       this.logger.info({
         at: "ContractMonitor",
         message: "Liquidation Alert 🧙‍♂️!",
-        mrkdwn: mrkdwn
+        mrkdwn,
+        notificationPath: "risk-management",
       });
     }
     this.lastLiquidationBlockNumber = this._getLastSeenBlockNumber(latestLiquidationEvents);
@@ -298,13 +302,13 @@ class ContractMonitor {
     this.logger.debug({
       at: "ContractMonitor",
       message: "Checking for new dispute events",
-      lastDisputeBlockNumber: this.lastDisputeBlockNumber
+      lastDisputeBlockNumber: this.lastDisputeBlockNumber,
     });
 
     // Get the latest dispute information.
     let latestDisputeEvents = this.financialContractEventClient.getAllDisputeEvents();
 
-    let newDisputeEvents = latestDisputeEvents.filter(event => event.blockNumber > this.lastDisputeBlockNumber);
+    let newDisputeEvents = latestDisputeEvents.filter((event) => event.blockNumber > this.lastDisputeBlockNumber);
 
     for (let event of newDisputeEvents) {
       // Sample message:
@@ -326,7 +330,8 @@ class ContractMonitor {
       this.logger.info({
         at: "ContractMonitor",
         message: "Dispute Alert 👻!",
-        mrkdwn: mrkdwn
+        mrkdwn,
+        notificationPath: "risk-management",
       });
     }
     this.lastDisputeBlockNumber = this._getLastSeenBlockNumber(latestDisputeEvents);
@@ -336,14 +341,14 @@ class ContractMonitor {
     this.logger.debug({
       at: "ContractMonitor",
       message: "Checking for new dispute settlement events",
-      lastDisputeSettlementBlockNumber: this.lastDisputeSettlementBlockNumber
+      lastDisputeSettlementBlockNumber: this.lastDisputeSettlementBlockNumber,
     });
 
     // Get the latest disputeSettlement information.
     let latestDisputeSettlementEvents = this.financialContractEventClient.getAllDisputeSettlementEvents();
 
     let newDisputeSettlementEvents = latestDisputeSettlementEvents.filter(
-      event => event.blockNumber > this.lastDisputeSettlementBlockNumber
+      (event) => event.blockNumber > this.lastDisputeSettlementBlockNumber
     );
 
     for (let event of newDisputeSettlementEvents) {
@@ -354,16 +359,14 @@ class ContractMonitor {
         // the case if the Financial Contract contract is using the Timer contract for example.
         liquidationEvent = this.financialContractEventClient
           .getAllLiquidationEvents()
-          .find(_event => _event.sponsor === event.sponsor && _event.liquidationId === event.liquidationId);
+          .find((_event) => _event.sponsor === event.sponsor && _event.liquidationId === event.liquidationId);
         liquidationTimestamp = (await this.web3.eth.getBlock(liquidationEvent.blockNumber)).timestamp;
 
         resolvedPrice = revertWrapper(
           await this.votingContract.getPrice(
             this.utf8ToHex(this.financialContractProps.priceIdentifier),
             liquidationTimestamp,
-            {
-              from: this.financialContract.options.address
-            }
+            { from: this.financialContract.options.address }
           )
         );
       } catch (error) {
@@ -373,7 +376,8 @@ class ContractMonitor {
           message: "A dispute settlement event was found but no matching price or liquidation is available",
           resolvedPrice,
           liquidationEvent,
-          liquidationTimestamp
+          liquidationTimestamp,
+          notificationPath: "risk-management",
         });
       }
 
@@ -404,10 +408,46 @@ class ContractMonitor {
       this.logger.info({
         at: "ContractMonitor",
         message: "Dispute Settlement Alert 👮‍♂️!",
-        mrkdwn: mrkdwn
+        mrkdwn,
+        notificationPath: "risk-management",
       });
     }
     this.lastDisputeSettlementBlockNumber = this._getLastSeenBlockNumber(latestDisputeSettlementEvents);
+  }
+
+  async checkForNewFundingRateUpdatedEvents() {
+    this.logger.debug({
+      at: "ContractMonitor",
+      message: "Checking for new funding rate updated events",
+      lastFundingRateUpdatedBlockNumber: this.lastFundingRateUpdatedBlockNumber,
+    });
+
+    // Get the latest funding rate information.
+    let latestFundingRateUpdatedEvents = this.financialContractEventClient.getAllFundingRateUpdatedEvents();
+
+    let newFundingRateEvents = latestFundingRateUpdatedEvents.filter(
+      (event) => event.blockNumber > this.lastFundingRateUpdatedBlockNumber
+    );
+
+    for (let event of newFundingRateEvents) {
+      // Sample message:
+      // Funding Rate Update alert: New funding rate published: [rate]. Original proposal time was
+      // [proposalTime] and the proposer received a reward of [reward].
+      let mrkdwn =
+        `New funding rate published: ${this.fromWei(event.newFundingRate)}/second. ` +
+        `Original proposal time was ${
+          event.updateTime
+        } and the proposer received a reward of ${this.normalizeCollateralDecimals(event.reward)}. `;
+      // Add etherscan link.
+      mrkdwn += `Tx: ${createEtherscanLinkMarkdown(event.transactionHash, this.financialContractProps.networkId)}`;
+      this.logger.info({
+        at: "ContractMonitor",
+        message: "Funding Rate Update Alert 🏵!",
+        mrkdwn,
+        notificationPath: "risk-management",
+      });
+    }
+    this.lastFundingRateUpdatedBlockNumber = this._getLastSeenBlockNumber(latestFundingRateUpdatedEvents);
   }
 
   // Calculate the collateralization Ratio from the collateral, token amount and token price.
@@ -438,6 +478,4 @@ class ContractMonitor {
   }
 }
 
-module.exports = {
-  ContractMonitor
-};
+module.exports = { ContractMonitor };

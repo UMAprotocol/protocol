@@ -3,7 +3,8 @@ const { toWei, toBN } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
 
-const { parseFixed } = require("@uma/common");
+const { parseFixed, TEST_DECIMAL_COMBOS } = require("@uma/common");
+const { getTruffleContract } = require("@uma/core");
 
 // Tested module
 const { SyntheticPegMonitor } = require("../src/SyntheticPegMonitor");
@@ -14,21 +15,17 @@ const {
   SpyTransport,
   lastSpyLogIncludes,
   lastSpyLogLevel,
-  InvalidPriceFeedMock
+  InvalidPriceFeedMock,
+  FinancialContractClient,
 } = require("@uma/financial-templates-lib");
 
-// Run the tests against 2 diffrent price feed scaling combinations. Note these tests differ from the other monitor tests
-// as the Synthetic peg monitor is only dependent on price feeds. No need to test different decimal or collateral combinations.
-// 1) 18 decimal price feed.
-// 2) 8 decimal price feed.
-// 3) matching 8 collateral & 8 synthetic for current UMA synthetics.
-const configs = [{ priceFeedDecimals: 18 }, { priceFeedDecimals: 8 }];
+const PerpetualMock = getTruffleContract("PerpetualMock", web3);
 
-const Convert = decimals => number => toBN(parseFixed(number.toString(), decimals).toString());
+const Convert = (decimals) => (number) => toBN(parseFixed(number.toString(), decimals).toString());
 
-contract("SyntheticPegMonitor", function() {
-  for (let testConfig of configs) {
-    describe(`${testConfig.priceFeedDecimals} pricefeed decimals`, function() {
+contract("SyntheticPegMonitor", function () {
+  for (let testConfig of TEST_DECIMAL_COMBOS) {
+    describe(`${testConfig.priceFeedDecimals} pricefeed decimals`, function () {
       let uniswapPriceFeedMock;
       let medianizerPriceFeedMock;
       let invalidPriceFeedMock;
@@ -43,7 +40,7 @@ contract("SyntheticPegMonitor", function() {
 
       let convertPrice;
 
-      beforeEach(async function() {
+      beforeEach(async function () {
         convertPrice = Convert(testConfig.priceFeedDecimals);
 
         uniswapPriceFeedMock = new PriceFeedMock(undefined, undefined, undefined, testConfig.priceFeedDecimals);
@@ -54,7 +51,7 @@ contract("SyntheticPegMonitor", function() {
         financialContractProps = {
           syntheticSymbol: "SYNTH",
           priceIdentifier: "TEST_IDENTIFIER",
-          priceFeedDecimals: testConfig.priceFeedDecimals
+          priceFeedDecimals: testConfig.priceFeedDecimals,
         };
 
         // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
@@ -62,15 +59,15 @@ contract("SyntheticPegMonitor", function() {
         spy = sinon.spy(); // Create a new spy for each test.
         spyLogger = winston.createLogger({
           level: "info",
-          transports: [new SpyTransport({ level: "info" }, { spy: spy })]
+          transports: [new SpyTransport({ level: "info" }, { spy: spy })],
         });
       });
 
-      describe("Synthetic price deviation from peg", function() {
-        beforeEach(async function() {
+      describe("Synthetic price deviation from peg", function () {
+        beforeEach(async function () {
           // Tested module that uses the two price feeds.
           monitorConfig = {
-            deviationAlertThreshold: 0.2 // Any deviation larger than 0.2 should fire an alert
+            deviationAlertThreshold: 0.2, // Any deviation larger than 0.2 should fire an alert
           };
 
           syntheticPegMonitor = new SyntheticPegMonitor({
@@ -79,11 +76,11 @@ contract("SyntheticPegMonitor", function() {
             uniswapPriceFeed: uniswapPriceFeedMock,
             medianizerPriceFeed: medianizerPriceFeedMock,
             monitorConfig,
-            financialContractProps
+            financialContractProps,
           });
         });
 
-        it("Calculate percentage error returns expected values", async function() {
+        it("Calculate percentage error returns expected values", async function () {
           // Test with simple values with know percentage error. Note that the output is scaled according to toWei (1e18).// This is because a deviation error is a unitless number and is scaled independently of the price scalling.
           assert.equal(
             syntheticPegMonitor._calculateDeviationError(convertPrice("1"), convertPrice("1")).toString(),
@@ -109,7 +106,7 @@ contract("SyntheticPegMonitor", function() {
           );
         });
 
-        it("Correctly emits messages", async function() {
+        it("Correctly emits messages", async function () {
           // Zero price deviation should not emit any events.
           // Inject prices to feeds
           medianizerPriceFeedMock.setCurrentPrice(convertPrice("1"));
@@ -159,9 +156,9 @@ contract("SyntheticPegMonitor", function() {
           assert.equal(lastSpyLogLevel(spy), "warn");
         });
 
-        it("Does not track price deviation if threshold set to zero", async function() {
+        it("Does not track price deviation if threshold set to zero", async function () {
           monitorConfig = {
-            deviationAlertThreshold: 0 // No alerts should be fired, irrespective of the current price deviation.
+            deviationAlertThreshold: 0, // No alerts should be fired, irrespective of the current price deviation.
           };
 
           syntheticPegMonitor = new SyntheticPegMonitor({
@@ -170,7 +167,7 @@ contract("SyntheticPegMonitor", function() {
             uniswapPriceFeed: uniswapPriceFeedMock,
             medianizerPriceFeed: medianizerPriceFeedMock,
             monitorConfig,
-            financialContractProps
+            financialContractProps,
           });
 
           await syntheticPegMonitor.checkPriceDeviation();
@@ -183,7 +180,7 @@ contract("SyntheticPegMonitor", function() {
           assert.equal(spy.callCount, 0); // There should be no messages sent.
         });
 
-        it("Divides by denominator price feed", async function() {
+        it("Divides by denominator price feed", async function () {
           // Create a new monitor with the denominatorPriceFeed set
           syntheticPegMonitor = new SyntheticPegMonitor({
             logger: spyLogger,
@@ -192,7 +189,7 @@ contract("SyntheticPegMonitor", function() {
             medianizerPriceFeed: medianizerPriceFeedMock,
             denominatorPriceFeed: denominatorPriceFeedMock,
             monitorConfig,
-            financialContractProps
+            financialContractProps,
           });
 
           // Denominator price set to 1, should produce 0 deviation.
@@ -214,17 +211,70 @@ contract("SyntheticPegMonitor", function() {
           assert.isTrue(lastSpyLogIncludes(spy, "-50.00")); // percentage error
           assert.equal(lastSpyLogLevel(spy), "warn");
         });
+
+        it("Adjusts for CFRM if financial contract client is passed in and connected to a Perpetual contract", async function () {
+          const perpetualMock = await PerpetualMock.new();
+          const createFundingRateStructWithMultiplier = (multiplier, rate = "0") => {
+            return {
+              rate: { rawValue: rate },
+              identifier: web3.utils.padRight("0x1234", 64),
+              cumulativeMultiplier: { rawValue: multiplier },
+              updateTime: "0",
+              applicationTime: "0",
+              proposalTime: "0",
+              value: "0",
+            };
+          };
+
+          const financialContractClient = new FinancialContractClient(
+            spyLogger,
+            perpetualMock.abi,
+            web3,
+            perpetualMock.address,
+            null,
+            18,
+            18,
+            18,
+            "Perpetual"
+          );
+
+          // Create a new monitor with the FinancialContractClient set
+          syntheticPegMonitor = new SyntheticPegMonitor({
+            logger: spyLogger,
+            web3,
+            uniswapPriceFeed: uniswapPriceFeedMock,
+            medianizerPriceFeed: medianizerPriceFeedMock,
+            monitorConfig,
+            financialContractProps,
+            financialContractClient,
+          });
+
+          // Set CFRM to 2, should produce 50% deviation with the two price feeds being otherwise equal:
+          await perpetualMock.setFundingRate(createFundingRateStructWithMultiplier(toWei("2")));
+          medianizerPriceFeedMock.setCurrentPrice(convertPrice("1"));
+          uniswapPriceFeedMock.setCurrentPrice(convertPrice("1"));
+          await financialContractClient.update();
+
+          await syntheticPegMonitor.checkPriceDeviation();
+
+          assert.equal(spy.callCount, 1); // There should be one message sent at this point.
+          assert.isTrue(lastSpyLogIncludes(spy, "off peg alert"));
+          assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // uniswap price
+          assert.isTrue(lastSpyLogIncludes(spy, "2.00")); // expected price
+          assert.isTrue(lastSpyLogIncludes(spy, "-50.00")); // percentage error
+          assert.equal(lastSpyLogLevel(spy), "warn");
+        });
       });
 
-      describe("Pricefeed volatility", function() {
-        beforeEach(async function() {
+      describe("Pricefeed volatility", function () {
+        beforeEach(async function () {
           // Tested module that uses the two price feeds.
           monitorConfig = {
             volatilityWindow: 3650,
             // Not divisible by 3600 in order to test that "volatility window in hours" is printed
             // correctly by Logger.
             pegVolatilityAlertThreshold: 0.3,
-            syntheticVolatilityAlertThreshold: 0.3
+            syntheticVolatilityAlertThreshold: 0.3,
           };
 
           syntheticPegMonitor = new SyntheticPegMonitor({
@@ -233,11 +283,11 @@ contract("SyntheticPegMonitor", function() {
             uniswapPriceFeed: uniswapPriceFeedMock,
             medianizerPriceFeed: medianizerPriceFeedMock,
             monitorConfig,
-            financialContractProps
+            financialContractProps,
           });
         });
 
-        it("Calculate price volatility returns expected values", async function() {
+        it("Calculate price volatility returns expected values", async function () {
           // Inject prices into pricefeed. Null prices are ignored.
           const historicalPrices = [
             { timestamp: 99, price: null },
@@ -250,9 +300,10 @@ contract("SyntheticPegMonitor", function() {
             { timestamp: 106, price: convertPrice("16") },
             { timestamp: 107, price: null },
             { timestamp: 108, price: convertPrice("17") },
-            { timestamp: 109, price: null }
+            { timestamp: 109, price: null },
           ];
           medianizerPriceFeedMock.setHistoricalPrices(historicalPrices);
+          medianizerPriceFeedMock.setCurrentPrice(convertPrice("17"));
 
           // Volatility window is 5, so historical volatility will be calculated 5 timestamps back of the last update time.
           const volatilityWindow = 5;
@@ -300,7 +351,7 @@ contract("SyntheticPegMonitor", function() {
           );
         });
 
-        it("Correctly emits messages", async function() {
+        it("Correctly emits messages", async function () {
           // Inject prices into pricefeed.
           const historicalPrices = [
             { timestamp: 100, price: convertPrice("10") },
@@ -311,10 +362,13 @@ contract("SyntheticPegMonitor", function() {
             { timestamp: 105, price: convertPrice("13") },
             { timestamp: 106, price: convertPrice("12") },
             { timestamp: 107, price: convertPrice("11") },
-            { timestamp: 108, price: convertPrice("10") } // Decreasing price until timestamp 108
+            { timestamp: 108, price: convertPrice("10") }, // Decreasing price until timestamp 108
           ];
           medianizerPriceFeedMock.setHistoricalPrices(historicalPrices);
           uniswapPriceFeedMock.setHistoricalPrices(historicalPrices);
+
+          medianizerPriceFeedMock.setCurrentPrice(convertPrice("13"));
+          uniswapPriceFeedMock.setCurrentPrice(convertPrice("13"));
 
           // Test when volatility is under threshold. Monitor should not emit any events.
           // Min/Max from time 103 should be 10/13, so volatility should be 3/10 = 30%, which is
@@ -330,6 +384,7 @@ contract("SyntheticPegMonitor", function() {
           // Test when volatility is over threshold. Monitor should emit an error message.
           // Min/Max from time 104 is 10/14, so volatility is 4/10 = 40%.
           medianizerPriceFeedMock.setLastUpdateTime(104);
+          medianizerPriceFeedMock.setCurrentPrice(convertPrice("14"));
           await syntheticPegMonitor.checkPegVolatility();
           assert.equal(spy.callCount, 1);
           assert.isTrue(lastSpyLogIncludes(spy, "Peg price volatility alert"));
@@ -339,6 +394,7 @@ contract("SyntheticPegMonitor", function() {
           assert.isTrue(lastSpyLogIncludes(spy, "30")); // volatility threshold parameter
 
           uniswapPriceFeedMock.setLastUpdateTime(104);
+          uniswapPriceFeedMock.setCurrentPrice(convertPrice("14"));
           await syntheticPegMonitor.checkSyntheticVolatility();
           assert.equal(spy.callCount, 2);
           assert.isTrue(lastSpyLogIncludes(spy, "Synthetic price volatility alert"));
@@ -350,6 +406,7 @@ contract("SyntheticPegMonitor", function() {
           // Correctly reports negative volatility. The last 4 sets of time series data move in the opposite direction.
           // Logger should correctly report the negative swing.
           medianizerPriceFeedMock.setLastUpdateTime(108);
+          medianizerPriceFeedMock.setCurrentPrice(convertPrice("10"));
           await syntheticPegMonitor.checkPegVolatility();
           assert.equal(spy.callCount, 3);
           assert.isTrue(lastSpyLogIncludes(spy, "Peg price volatility alert"));
@@ -359,6 +416,7 @@ contract("SyntheticPegMonitor", function() {
           assert.isTrue(lastSpyLogIncludes(spy, "30")); // volatility threshold parameter
 
           uniswapPriceFeedMock.setLastUpdateTime(108);
+          uniswapPriceFeedMock.setCurrentPrice(convertPrice("10"));
           await syntheticPegMonitor.checkSyntheticVolatility();
           assert.equal(spy.callCount, 4);
           assert.isTrue(lastSpyLogIncludes(spy, "Synthetic price volatility alert"));
@@ -368,7 +426,7 @@ contract("SyntheticPegMonitor", function() {
           assert.isTrue(lastSpyLogIncludes(spy, "30")); // volatility threshold parameter
         });
 
-        it("Sends detailed error message when missing volatility data", async function() {
+        it("Sends detailed error message when missing volatility data", async function () {
           // Test that the SyntheticPegMonitor correctly bubbles up PriceFeed errors.
           syntheticPegMonitor = new SyntheticPegMonitor({
             logger: spyLogger,
@@ -376,8 +434,12 @@ contract("SyntheticPegMonitor", function() {
             uniswapPriceFeed: invalidPriceFeedMock,
             medianizerPriceFeed: invalidPriceFeedMock,
             monitorConfig: {},
-            financialContractProps
+            financialContractProps,
           });
+
+          // Set current prices.
+          medianizerPriceFeedMock.setCurrentPrice(convertPrice("14"));
+          uniswapPriceFeedMock.setCurrentPrice(convertPrice("14"));
 
           // Test when no update time in the price feed is set.
           await syntheticPegMonitor.checkPegVolatility();
@@ -404,7 +466,7 @@ contract("SyntheticPegMonitor", function() {
           assert.ok(spy.getCall(-1).lastArg.error); // error logs should not be undefined.
         });
 
-        it("Stress testing with a lot of historical price data points", async function() {
+        it("Stress testing with a lot of historical price data points", async function () {
           // Inject prices into pricefeed.
           const historicalPrices = [];
           for (let i = 0; i < 10000; i++) {
@@ -412,6 +474,9 @@ contract("SyntheticPegMonitor", function() {
           }
           medianizerPriceFeedMock.setHistoricalPrices(historicalPrices);
           uniswapPriceFeedMock.setHistoricalPrices(historicalPrices);
+
+          medianizerPriceFeedMock.setCurrentPrice(convertPrice("9999"));
+          uniswapPriceFeedMock.setCurrentPrice(convertPrice("9999"));
 
           medianizerPriceFeedMock.setLastUpdateTime(historicalPrices.length - 1);
           uniswapPriceFeedMock.setLastUpdateTime(historicalPrices.length - 1);
@@ -434,11 +499,11 @@ contract("SyntheticPegMonitor", function() {
           assert.isTrue(lastSpyLogIncludes(spy, "1.01")); // volatility window in hours (i.e. 3650/3600)
           assert.isTrue(lastSpyLogIncludes(spy, "57.46")); // actual volatility
         });
-        it("Does not track price volatility if threshold set to zero", async function() {
+        it("Does not track price volatility if threshold set to zero", async function () {
           monitorConfig = {
             volatilityWindow: 60,
             pegVolatilityAlertThreshold: 0,
-            syntheticVolatilityAlertThreshold: 0
+            syntheticVolatilityAlertThreshold: 0,
           };
 
           syntheticPegMonitor = new SyntheticPegMonitor({
@@ -447,7 +512,7 @@ contract("SyntheticPegMonitor", function() {
             uniswapPriceFeed: uniswapPriceFeedMock,
             medianizerPriceFeed: medianizerPriceFeedMock,
             monitorConfig,
-            financialContractProps
+            financialContractProps,
           });
 
           // Inject prices into pricefeed.
@@ -456,10 +521,13 @@ contract("SyntheticPegMonitor", function() {
             { timestamp: 101, price: convertPrice("11") },
             { timestamp: 102, price: convertPrice("12") },
             { timestamp: 103, price: convertPrice("13") },
-            { timestamp: 104, price: convertPrice("14") } // Increasing price until timestamp 104
+            { timestamp: 104, price: convertPrice("14") }, // Increasing price until timestamp 104
           ];
           medianizerPriceFeedMock.setHistoricalPrices(historicalPrices);
           uniswapPriceFeedMock.setHistoricalPrices(historicalPrices);
+
+          medianizerPriceFeedMock.setCurrentPrice(convertPrice("14"));
+          uniswapPriceFeedMock.setCurrentPrice(convertPrice("14"));
 
           // Test when volatility is over threshold. Monitor should emit an no error message as threshold set to 0.
           // Min/Max from time 104 is 10/14, so volatility is 4/10 = 40%. First test peg volatility.
@@ -472,8 +540,8 @@ contract("SyntheticPegMonitor", function() {
           assert.equal(spy.callCount, 0); // No longs should be sent as monitor threshold set to 0.
         });
       });
-      describe("Overrides the default monitor configuration settings", function() {
-        it("Cannot set invalid config", async function() {
+      describe("Overrides the default monitor configuration settings", function () {
+        it("Cannot set invalid config", async function () {
           let errorThrown1;
           try {
             // Create an invalid config. A valid config expects  1 > deviationAlertThreshold >=0, volatilityWindow >=0,
@@ -483,7 +551,7 @@ contract("SyntheticPegMonitor", function() {
               deviationAlertThreshold: 1.5,
               volatilityWindow: 0,
               pegVolatilityAlertThreshold: 0,
-              syntheticVolatilityAlertThreshold: 0
+              syntheticVolatilityAlertThreshold: 0,
             };
             syntheticPegMonitor = new SyntheticPegMonitor({
               logger: spyLogger,
@@ -491,7 +559,7 @@ contract("SyntheticPegMonitor", function() {
               uniswapPriceFeed: uniswapPriceFeedMock,
               medianizerPriceFeed: medianizerPriceFeedMock,
               monitorConfig: invalidConfig1,
-              financialContractProps
+              financialContractProps,
             });
             errorThrown1 = false;
           } catch (err) {
@@ -506,7 +574,7 @@ contract("SyntheticPegMonitor", function() {
               deviationAlertThreshold: 0,
               volatilityWindow: -1,
               pegVolatilityAlertThreshold: null,
-              syntheticVolatilityAlertThreshold: 0
+              syntheticVolatilityAlertThreshold: 0,
             };
             syntheticPegMonitor = new SyntheticPegMonitor({
               logger: spyLogger,
@@ -514,7 +582,7 @@ contract("SyntheticPegMonitor", function() {
               uniswapPriceFeed: uniswapPriceFeedMock,
               medianizerPriceFeed: medianizerPriceFeedMock,
               monitorConfig: invalidConfig2,
-              financialContractProps
+              financialContractProps,
             });
             errorThrown2 = false;
           } catch (err) {
@@ -522,7 +590,7 @@ contract("SyntheticPegMonitor", function() {
           }
           assert.isTrue(errorThrown2);
         });
-        it("Can correctly create synthetic peg monitor with no config provided", async function() {
+        it("Can correctly create synthetic peg monitor with no config provided", async function () {
           let errorThrown;
           try {
             // Create an invalid config. A valid config expects two arrays of addresses.
@@ -533,7 +601,7 @@ contract("SyntheticPegMonitor", function() {
               uniswapPriceFeed: uniswapPriceFeedMock,
               medianizerPriceFeed: medianizerPriceFeedMock,
               monitorConfig: emptyConfig,
-              financialContractProps
+              financialContractProps,
             });
             await syntheticPegMonitor.checkPriceDeviation();
             await syntheticPegMonitor.checkPegVolatility();
@@ -544,7 +612,7 @@ contract("SyntheticPegMonitor", function() {
           }
           assert.isFalse(errorThrown);
         });
-        it("Cannot set invalid alerting overrides", async function() {
+        it("Cannot set invalid alerting overrides", async function () {
           let errorThrown;
           try {
             // Create an invalid log level override. This should be rejected.
@@ -555,7 +623,7 @@ contract("SyntheticPegMonitor", function() {
               uniswapPriceFeed: uniswapPriceFeedMock,
               medianizerPriceFeed: medianizerPriceFeedMock,
               monitorConfig: invalidConfig,
-              financialContractProps
+              financialContractProps,
             });
 
             errorThrown = false;
@@ -564,7 +632,7 @@ contract("SyntheticPegMonitor", function() {
           }
           assert.isTrue(errorThrown);
         });
-        it("Overriding threshold correctly effects generated logs", async function() {
+        it("Overriding threshold correctly effects generated logs", async function () {
           const alertOverrideConfig = { logOverrides: { deviation: "error" } };
           syntheticPegMonitor = new SyntheticPegMonitor({
             logger: spyLogger,
@@ -572,7 +640,7 @@ contract("SyntheticPegMonitor", function() {
             uniswapPriceFeed: uniswapPriceFeedMock,
             medianizerPriceFeed: medianizerPriceFeedMock,
             monitorConfig: alertOverrideConfig,
-            financialContractProps
+            financialContractProps,
           });
 
           // Price deviation above the threshold of 20% should send a message.

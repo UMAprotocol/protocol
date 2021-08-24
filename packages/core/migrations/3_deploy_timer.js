@@ -1,7 +1,7 @@
 const Timer = artifacts.require("Timer");
-const { getKeysForNetwork, deploy, enableControllableTiming } = require("@uma/common");
+const { getKeysForNetwork, deploy, enableControllableTiming } = require("./MigrationUtils");
 
-module.exports = async function(deployer, network, accounts) {
+module.exports = async function (deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
   const controllableTiming = enableControllableTiming(network);
 

@@ -22,7 +22,7 @@ const { toWei, toBN, fromWei } = web3.utils;
 
 const argv = require("minimist")(process.argv.slice(), {
   string: ["poolAddress", "tokenName"],
-  integer: ["fromBlock", "toBlock", "week", "umaPerWeek", "blocksPerSnapshot"]
+  integer: ["fromBlock", "toBlock", "week", "umaPerWeek", "blocksPerSnapshot"],
 });
 
 async function calculateBalancerLPRewards(
@@ -60,7 +60,7 @@ async function calculateBalancerLPRewards(
   const poolInfo = await _fetchBalancerPoolInfo(poolAddress);
 
   // Extract the addresses of all historic shareholders.
-  const shareHolders = poolInfo.shares.flatMap(a => a.userAddress.id);
+  const shareHolders = poolInfo.shares.flatMap((a) => a.userAddress.id);
   console.log("🏖  Number of historic liquidity providers:", shareHolders.length);
 
   let bPool = new web3.eth.Contract(getAbi("ERC20"), poolAddress);
@@ -109,9 +109,7 @@ async function _calculatePayoutsBetweenBlocks(
 
   // create new progress bar to show the status of blocks traversed.
   const progressBar = new cliProgress.SingleBar(
-    {
-      format: "[{bar}] {percentage}% | snapshots traversed: {value}/{total}"
-    },
+    { format: "[{bar}] {percentage}% | snapshots traversed: {value}/{total}" },
     cliProgress.Presets.shades_classic
   );
   progressBar.start(snapshotsToTake, 0);
@@ -133,20 +131,18 @@ async function _updatePayoutAtBlock(bPool, blockNumber, shareHolderPayout, umaPe
   // Get the given holders balance at the given block. Generate an array of promises to resolve in parallel.
   const balanceResults = await Promise.map(
     Object.keys(shareHolderPayout),
-    shareHolder => bPool.methods.balanceOf(shareHolder).call(undefined, blockNumber),
+    (shareHolder) => bPool.methods.balanceOf(shareHolder).call(undefined, blockNumber),
     {
-      concurrency: 50 // Keep infura happy about the number of incoming requests.
+      concurrency: 50, // Keep infura happy about the number of incoming requests.
     }
   );
   // For each balance result, calculate their associated payment addition.
-  balanceResults.forEach(function(balanceResult, index) {
+  balanceResults.forEach(function (balanceResult, index) {
     // If the given shareholder had no BLP tokens at the given block, skip them.
     if (balanceResult === "0") return;
     // The holders fraction is the number of BPTs at the block divided by the total supply at that block.
     const shareHolderBalanceAtSnapshot = toBN(balanceResult);
-    const shareHolderFractionAtSnapshot = toBN(toWei("1"))
-      .mul(shareHolderBalanceAtSnapshot)
-      .div(bptSupplyAtSnapshot);
+    const shareHolderFractionAtSnapshot = toBN(toWei("1")).mul(shareHolderBalanceAtSnapshot).div(bptSupplyAtSnapshot);
 
     // The payout at the snapshot for the holder is their pro-rata fraction of per-snapshot rewards.
     const shareHolderPayoutAtSnapshot = shareHolderFractionAtSnapshot.mul(toBN(umaPerSnapshot)).div(toBN(toWei("1")));
@@ -200,11 +196,8 @@ async function _fetchBalancerPoolInfo(poolAddress) {
 
   const response = await fetch(SUBGRAPH_URL, {
     method: "POST",
-    headers: {
-      Accept: "application/json",
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({ query })
+    headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: JSON.stringify({ query }),
   });
   const data = (await response.json()).data;
   if (data.pools.length > 0) {

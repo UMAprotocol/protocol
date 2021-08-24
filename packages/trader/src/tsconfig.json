@@ -1,9 +1,10 @@
 {
   "extends": "@tsconfig/node14/tsconfig.json",
-  "include": ["./**/*.ts"],
+  "include": ["./**/*.ts", "exchange-adapters/ExchangeAdapterInterface.ts"],
   "compilerOptions": {
     "outDir": "../dist",
     "rootDir": "../",
-    "composite": true
+    "composite": true,
+    "resolveJsonModule": true
   }
 }

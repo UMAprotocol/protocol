@@ -1,12 +1,15 @@
 const { Balances, History, SharedAttributions } = require("./models");
 const assert = require("assert");
-const { DecodeAttribution, isAddress } = require("./contracts");
+const { DecodeAttribution, isAddress, toChecksumAddress } = require("./contracts");
 
-function EmpAttributions(empAbi, defaultAddress) {
+// Requires empAbi and a defaultAddress to set un attributed tags to
+// Optionally include the attributions model, which is required to have a single function:
+// "attribute(userAddress,tagAddress,tokenAmount)". By default this will be a SharedAttributions model.
+function EmpAttributions(empAbi, defaultAddress, attributions) {
   assert(empAbi, "requires empAbi");
   assert(defaultAddress, "requires defaultAddress");
   // stores complete balances for all events
-  const attributions = SharedAttributions();
+  attributions = attributions || SharedAttributions();
   const decoder = DecodeAttribution(empAbi);
 
   function handleTransaction(transaction) {
@@ -16,16 +19,14 @@ function EmpAttributions(empAbi, defaultAddress) {
     let attributionAddress = defaultAddress;
     // validate the tag is an address, otherwise fallback to default address
     // currently we will only accept valid addresses as a tag, this may change in future.
-    if (isAddress(tag)) attributionAddress = tag;
+    // Tagged addresses unfortunately always come in lower cased. We cast it to a checksum address if valid.
+    if (isAddress(tag)) attributionAddress = toChecksumAddress(tag);
     const user = transaction.from_address;
     const [, tokenAmount] = transaction.args;
     attributions.attribute(user, attributionAddress, tokenAmount.toString());
   }
 
-  return {
-    handleTransaction,
-    attributions
-  };
+  return { handleTransaction, attributions };
 }
 
 function EmpBalancesHistory() {
@@ -48,7 +49,7 @@ function EmpBalancesHistory() {
         blockTimestamp: event.blockTimestamp,
         tokens: balances.tokens.snapshot(),
         collateral: balances.collateral.snapshot(),
-        isExpired: balances.isExpired()
+        isExpired: balances.isExpired(),
       });
       lastBlockNumber = blockNumber;
       lastBlockTimestamp = event.blockTimestamp;
@@ -58,22 +59,20 @@ function EmpBalancesHistory() {
 
   // function to snapshot the final balance
   function finalize() {
+    // No balance history was updated. returning without error.
+    if (lastBlockNumber === undefined) return;
+    // history happened to end on last block number, nothing else needed.
     if (history.has(lastBlockNumber)) return;
     history.insert({
       blockNumber: lastBlockNumber,
       blockTimestamp: lastBlockTimestamp,
       tokens: balances.tokens.snapshot(),
       collateral: balances.collateral.snapshot(),
-      isExpired: balances.isExpired()
+      isExpired: balances.isExpired(),
     });
   }
 
-  return {
-    finalize,
-    balances,
-    history,
-    handleEvent
-  };
+  return { finalize, balances, history, handleEvent };
 }
 
 function EmpBalances(handlers = {}, { collateral, tokens } = {}) {
@@ -132,7 +131,7 @@ function EmpBalances(handlers = {}, { collateral, tokens } = {}) {
     },
     Redeem(sponsor, collateralAmount, tokenAmount) {
       collateral.sub(sponsor, collateralAmount.toString());
-      tokens.sub(sponsor, tokenAmount).toString();
+      tokens.sub(sponsor, tokenAmount.toString());
     },
     ContractExpired(/* caller*/) {
       expired = true;
@@ -168,8 +167,11 @@ function EmpBalances(handlers = {}, { collateral, tokens } = {}) {
     FinalFeesPaid() {
       // nothing
     },
+    Repay(sender, numTokens) {
+      tokens.sub(sender, numTokens.toString());
+    },
     // override defaults
-    ...handlers
+    ...handlers,
   };
 
   function handleEvent({ name, args = [] }) {
@@ -181,16 +183,7 @@ function EmpBalances(handlers = {}, { collateral, tokens } = {}) {
     }
   }
 
-  return {
-    handleEvent,
-    collateral,
-    tokens,
-    isExpired
-  };
+  return { handleEvent, collateral, tokens, isExpired };
 }
 
-module.exports = {
-  EmpBalances,
-  EmpBalancesHistory,
-  EmpAttributions
-};
+module.exports = { EmpBalances, EmpBalancesHistory, EmpAttributions };

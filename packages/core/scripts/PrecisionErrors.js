@@ -107,21 +107,12 @@ async function createTestEnvironment() {
     sponsorDisputeRewardPercentage: { rawValue: sponsorDisputeRewardPercentage },
     disputerDisputeRewardPercentage: { rawValue: disputerDisputeRewardPercentage },
     minSponsorTokens: { rawValue: "0" },
-    timerAddress: Timer.address
+    timerAddress: Timer.address,
   };
   emp = await ExpiringMultiParty.new(constructorParams, { from: contractDeployer });
   synthetic = await SyntheticToken.at(await emp.tokenCurrency());
 
-  return {
-    collateral,
-    synthetic,
-    emp,
-    store,
-    mockOracle,
-    sponsor,
-    contractDeployer,
-    other
-  };
+  return { collateral, synthetic, emp, store, mockOracle, sponsor, contractDeployer, other };
 }
 
 /**
@@ -227,7 +218,7 @@ async function runExport() {
     startCollateralAmount: toWei("1"),
     feeRatePerSecond: "0." + "9".repeat(17), // Used to set initial fee multiplier
     modifiedFeeRatePerSecond: "0.01", // Used to charge additional fees
-    expectedFeesCollected: "9".repeat(17) + "0" // Amount of fees collected total
+    expectedFeesCollected: "9".repeat(17) + "0", // Amount of fees collected total
   };
 
   /**
@@ -409,7 +400,7 @@ async function runExport() {
     sponsorCollateralAmount: toWei("0.1"),
     expectedFeeMultiplier: toWei("0.3"), // Division by this produces precision loss, tune this.
     feePerSecond: toWei("0.7"),
-    amountToDeposit: "1"
+    amountToDeposit: "1",
   };
 
   /**
@@ -569,7 +560,7 @@ async function runExport() {
     sponsorCollateralAmount: toWei("1"),
     feePerSecond: toWei("0.7"),
     expectedFeeMultiplier: toWei("0.3"), // Division by this produces precision loss, tune this.
-    amountToWithdraw: "1"
+    amountToWithdraw: "1",
   };
 
   /**
@@ -728,11 +719,7 @@ async function runExport() {
   /**
    * @notice TEST PARAMETERS
    */
-  testConfig = {
-    tokensOutstanding: toWei("9"),
-    sponsorCollateralAmount: toWei("9"),
-    amountToRedeem: toWei("8")
-  };
+  testConfig = { tokensOutstanding: toWei("9"), sponsorCollateralAmount: toWei("9"), amountToRedeem: toWei("8") };
 
   /**
    * @notice SETUP THE TEST
@@ -839,7 +826,7 @@ async function runExport() {
     tokensOutstanding: "1",
     amountToSettle: "1",
     sponsorCollateralAmount: "1",
-    settlementPrice: toWei("0.5") // Collateral per Synthetic
+    settlementPrice: toWei("0.5"), // Collateral per Synthetic
   };
 
   /**
@@ -999,7 +986,7 @@ async function runExport() {
     sponsorCollateralAmount: toWei("9"),
     sponsorSyntheticAmount: toWei("9"),
     collateralRatio: toWei("1.5"),
-    amountToLiquidate: toWei("3")
+    amountToLiquidate: toWei("3"),
   };
 
   /**
@@ -1045,7 +1032,7 @@ async function runExport() {
   contractCollateral = await emp.totalPositionCollateral();
 
   // Test 1) Liquidation emits correctly with slightly less collateral than expected.
-  truffleAssert.eventEmitted(createLiquidationResult, "LiquidationCreated", ev => {
+  truffleAssert.eventEmitted(createLiquidationResult, "LiquidationCreated", (ev) => {
     return (
       ev.sponsor == sponsor,
       ev.liquidator == sponsor,
@@ -1078,7 +1065,7 @@ async function runExport() {
   contractCollateral = await emp.totalPositionCollateral();
 
   // Test 1) Liquidation emits correctly with slightly less collateral than expected.
-  truffleAssert.eventEmitted(createLiquidationResult, "LiquidationCreated", ev => {
+  truffleAssert.eventEmitted(createLiquidationResult, "LiquidationCreated", (ev) => {
     return (
       ev.sponsor == sponsor,
       ev.liquidator == sponsor,
@@ -1111,7 +1098,7 @@ async function runExport() {
   contractCollateral = await emp.totalPositionCollateral();
 
   // Test 1) Liquidation emits correctly with slightly less collateral than expected.
-  truffleAssert.eventEmitted(createLiquidationResult, "LiquidationCreated", ev => {
+  truffleAssert.eventEmitted(createLiquidationResult, "LiquidationCreated", (ev) => {
     return (
       ev.sponsor == sponsor,
       ev.liquidator == sponsor,
@@ -1144,7 +1131,7 @@ async function runExport() {
    *****************************************************************************/
 }
 
-const run = async function(callback) {
+const run = async function (callback) {
   try {
     await runExport();
   } catch (err) {

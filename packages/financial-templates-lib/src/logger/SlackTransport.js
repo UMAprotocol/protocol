@@ -23,9 +23,21 @@
 //    The amount is a string value. This is shown as a bullet point item.
 const Transport = require("winston-transport");
 const axios = require("axios").default;
-const { createEtherscanLinkMarkdown } = require("@uma/common");
+const { createEtherscanLinkMarkdown, getWeb3 } = require("@uma/common");
 
 function slackFormatter(info) {
+  // Try and fetch injected web3 which we can use to customize the transaction receipt hyperlink:
+  let networkId = 1;
+  try {
+    getWeb3()
+      .eth.net.getId()
+      .then((_netId) => {
+        if (_netId) networkId = _netId;
+      });
+  } catch (err) {
+    // Do nothing, use default "EtherscanLinkMarkdown"
+  }
+
   try {
     if (!("level" in info) || !("at" in info) || !("message" in info))
       throw new Error("WINSTON MESSAGE INCORRECTLY CONFIGURED");
@@ -37,114 +49,82 @@ function slackFormatter(info) {
       blocks: [
         {
           type: "section",
-          text: {
-            type: "mrkdwn",
-            text: `[${info.level}] *${info["bot-identifier"]}* (${info.at})⭢${info.message}\n`
-          }
-        }
-      ]
+          text: { type: "mrkdwn", text: `[${info.level}] *${info["bot-identifier"]}* (${info.at})⭢${info.message}\n` },
+        },
+      ],
     };
     // All messages from winston come in as a Json object. The loop below expands this object and adds mrkdwn sections
     // for each key value pair with a bullet point. If the section is an object then it was passed containing multiple
     // sub points. This is also expanded as a sub indented section.
     for (const key in info) {
-      // these keys have been printed in the previous block.
-      if (key == "at" || key == "level" || key == "message" || key == "bot-identifier") {
+      // these keys have been printed in the previous block or should not be included in slack messages.
+      if (key == "at" || key == "level" || key == "message" || key == "bot-identifier" || key == "notificationPath")
         continue;
-      }
+
       // If the key is `mrkdwn` then simply return only the markdown as the txt object. This assumes all formatting has
       // been applied in the bot itself. For example the monitor bots which conform to strict formatting rules.
       if (key == "mrkdwn") {
-        formattedResponse.blocks.push({
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: ` ${info[key]}`
-          }
-        });
+        formattedResponse.blocks.push({ type: "section", text: { type: "mrkdwn", text: ` ${info[key]}` } });
       }
       // If the value in the message is an object then spread each key value pair within the object.
       else if (typeof info[key] === "object" && info[key] !== null) {
-        formattedResponse.blocks.push({
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: ` • _${key}_:\n`
-          }
-        });
+        formattedResponse.blocks.push({ type: "section", text: { type: "mrkdwn", text: ` • _${key}_:\n` } });
         // For each key value pair within the object, spread the object out for formatting.
         for (const subKey in info[key]) {
           // If the length of the value is 66 then we know this is a transaction hash. Format accordingly.
-          if (info[key][subKey].length == 66) {
+          if (info[key][subKey]?.length == 66) {
             formattedResponse.blocks[
               formattedResponse.blocks.length - 1
-            ].text.text += `    - _tx_: ${createEtherscanLinkMarkdown(info[key][subKey])}\n`;
+            ].text.text += `    - _tx_: ${createEtherscanLinkMarkdown(info[key][subKey], networkId)}\n`;
           }
           // If the length of the value is 42 then we know this is an address. Format accordingly.
-          else if (info[key][subKey].length == 42) {
+          else if (info[key][subKey]?.length == 42) {
             formattedResponse.blocks[
               formattedResponse.blocks.length - 1
-            ].text.text += `    - _${subKey}_: ${createEtherscanLinkMarkdown(info[key][subKey])}\n`;
+            ].text.text += `    - _${subKey}_: ${createEtherscanLinkMarkdown(info[key][subKey], networkId)}\n`;
           }
           // If the value within the object itself is an object we dont want to spread it any further. Rather,
           // convert the object to a string and print it along side it's key value pair.
           else if (typeof info[key][subKey] === "object" && info[key][subKey] !== null) {
             formattedResponse.blocks.push({
               type: "section",
-              text: {
-                type: "mrkdwn",
-                text: `    - _${subKey}_: ${JSON.stringify(info[key][subKey])}\n`
-              }
+              text: { type: "mrkdwn", text: `    - _${subKey}_: ${JSON.stringify(info[key][subKey])}\n` },
             });
             // Else if not a address, transaction or object then print as ` - key: value`
           } else {
             formattedResponse.blocks.push({
               type: "section",
-              text: {
-                type: "mrkdwn",
-                text: `    - _${subKey}_: ${info[key][subKey]}\n`
-              }
+              text: { type: "mrkdwn", text: `    - _${subKey}_: ${info[key][subKey]}\n` },
             });
           }
         }
         // Else, if the input is not an object then print the values as key value pairs. First check for addresses or txs
       } else if (info[key]) {
         // like with the previous level, if there is a value that is a transaction or an address format accordingly
-        if (info[key].length == 66) {
+        if (info[key]?.length == 66) {
           formattedResponse.blocks[
             formattedResponse.blocks.length - 1
-          ].text.text += ` • _tx_: ${createEtherscanLinkMarkdown(info[key])}\n`;
+          ].text.text += ` • _tx_: ${createEtherscanLinkMarkdown(info[key], networkId)}\n`;
         }
         // If the length of the value is 42 then we know this is an address. Format accordingly.
-        else if (info[key].length == 42) {
+        else if (info[key]?.length == 42) {
           formattedResponse.blocks[
             formattedResponse.blocks.length - 1
-          ].text.text += ` • _${key}_: ${createEtherscanLinkMarkdown(info[key])}\n`;
+          ].text.text += ` • _${key}_: ${createEtherscanLinkMarkdown(info[key], networkId)}\n`;
         } else {
           formattedResponse.blocks.push({
             type: "section",
-            text: {
-              type: "mrkdwn",
-              text: ` • _${key}_: ${info[key]}\n`
-            }
+            text: { type: "mrkdwn", text: ` • _${key}_: ${info[key]}\n` },
           });
         }
         // Else, if the value from the key value pair is null still show the key in the log. For example if a param is
         // logged but empty we still want to see the key.
       } else if (info[key] == null) {
-        formattedResponse.blocks.push({
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: ` • _${key}_: null`
-          }
-        });
+        formattedResponse.blocks.push({ type: "section", text: { type: "mrkdwn", text: ` • _${key}_: null` } });
       }
     }
     // Add a divider to the end of the message to help distinguish messages in long lists.
-    formattedResponse.blocks.push({
-      type: "divider"
-    });
+    formattedResponse.blocks.push({ type: "divider" });
     return formattedResponse;
   } catch (error) {
     return {
@@ -155,10 +135,10 @@ function slackFormatter(info) {
             type: "mrkdwn",
             text: `*Something went wrong in the winston formatter!*\n\nError:${error}\n\nlogInfo:${JSON.stringify(
               info
-            )}`
-          }
-        }
-      ]
+            )}`,
+          },
+        },
+      ],
     };
   }
 }
@@ -169,20 +149,20 @@ class SlackHook extends Transport {
     opts = opts || {};
     this.name = opts.name || "slackWebhook";
     this.level = opts.level || undefined;
-    this.webhookUrl = opts.webhookUrl;
+    this.escalationPathWebhookUrls = opts.transportConfig.escalationPathWebhookUrls || {};
+    this.defaultWebHookUrl = opts.transportConfig.defaultWebHookUrl;
     this.formatter = opts.formatter || undefined;
     this.mrkdwn = opts.mrkdwn || false;
 
-    this.axiosInstance = axios.create({
-      proxy: opts.proxy || undefined
-    });
+    this.axiosInstance = axios.create({ proxy: opts.proxy || undefined });
   }
 
   async log(info, callback) {
-    let payload = {
-      mrkdwn: this.mrkdwn
-    };
+    // If the log contains a notification path then use a custom slack webhook service. This lets the transport route to
+    // diffrent slack channels depending on the context of the log.
+    const webhookUrl = this.escalationPathWebhookUrls[info.notificationPath] ?? this.defaultWebHookUrl;
 
+    let payload = { mrkdwn: this.mrkdwn };
     let layout = this.formatter(info);
     payload.text = layout.text || undefined;
     payload.attachments = layout.attachments || undefined;
@@ -190,7 +170,7 @@ class SlackHook extends Transport {
     let errorThrown = false;
     // If the overall payload is less than 3000 chars then we can send it all in one go to the slack API.
     if (JSON.stringify(payload).length < 3000) {
-      let response = await this.axiosInstance.post(this.webhookUrl, payload);
+      let response = await this.axiosInstance.post(webhookUrl, payload);
       if (response.status != 200) errorThrown = true;
     } else {
       // If it's more than 3000 chars then we need to split the message sent to slack API into multiple calls.
@@ -218,24 +198,23 @@ class SlackHook extends Transport {
       // Iterate over each message to send and generate a axios call for each message.
       for (const processedBlock of processedBlocks) {
         payload.blocks = processedBlock;
-        let response = await this.axiosInstance.post(this.webhookUrl, payload);
+        let response = await this.axiosInstance.post(webhookUrl, payload);
         if (response.status != 200) errorThrown = true;
       }
     }
     callback();
-    if (!errorThrown) this.emit("logged", info);
-    else this.emit("error", errorThrown);
+    if (errorThrown) console.error("slack transport error!");
   }
 }
 
-function createSlackTransport(webHookUrl) {
+function createSlackTransport(transportConfig) {
   return new SlackHook({
     level: "info",
-    webhookUrl: webHookUrl,
-    formatter: info => {
+    transportConfig,
+    formatter: (info) => {
       return slackFormatter(info);
-    }
+    },
   });
 }
 
-module.exports = { createSlackTransport };
+module.exports = { createSlackTransport, SlackHook };

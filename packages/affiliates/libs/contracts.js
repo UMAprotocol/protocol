@@ -4,6 +4,8 @@ const { getAbi } = require("@uma/core");
 const Web3 = require("web3");
 const web3 = new Web3();
 
+const { toWei, toBN } = web3.utils;
+
 function toChecksumAddress(addr) {
   return web3.utils.toChecksumAddress(addr);
 }
@@ -15,22 +17,14 @@ function DecodeLog(abi, meta = {}) {
   assert(abi, "requires abi");
   const iface = new ethers.utils.Interface(abi);
   return (log, props = {}) => {
-    return {
-      ...iface.parseLog(log),
-      ...meta,
-      ...props
-    };
+    return { ...iface.parseLog(log), ...meta, ...props };
   };
 }
 function DecodeTransaction(abi, meta = {}) {
   assert(abi, "requires abi");
   const iface = new ethers.utils.Interface(abi);
   return (transaction, props = {}) => {
-    return {
-      ...iface.parseTransaction({ data: transaction.input }),
-      ...meta,
-      ...props
-    };
+    return { ...iface.parseTransaction({ data: transaction.input }), ...meta, ...props };
   };
 }
 
@@ -60,8 +54,8 @@ function GetInputLength(abi) {
       return sum + componentLength(component);
     }, 0);
   }
-  return name => {
-    const find = abi.find(x => x.name === name);
+  return (name) => {
+    const find = abi.find((x) => x.name === name);
     assert(find, "unable to find name in abi: " + name);
     if (find.inputs == null || find.inputs.length == 0) return 0;
     return find.inputs.reduce((length, input) => {
@@ -74,7 +68,7 @@ function GetInputLength(abi) {
 const DecodeAttribution = (abi, name = "create") => {
   // convert bits to hex (div by 4) and add 2 for 0x
   const inputLength = GetInputLength(abi)(name) / 4 + 2;
-  return transaction => {
+  return (transaction) => {
     // tagged transactions are assumed to exist when there is more data than the required inputLength
     // in this case we may return nothing if no tag was added
     return transaction.input.slice(inputLength);
@@ -89,7 +83,7 @@ const encodeAttribution = (data, tag) => {
 };
 
 // Utility for encoding data for a transaction
-const EncodeCallData = abi => {
+const EncodeCallData = (abi) => {
   const contract = new web3.eth.Contract(abi);
   return (name, ...args) => {
     return contract.methods[name](...args).encodeABI();
@@ -105,9 +99,7 @@ function Erc20({ abi = getAbi("ERC20"), web3 }) {
     contract.options.address = tokenAddress;
     return contract.methods.decimals().call();
   }
-  return {
-    decimals
-  };
+  return { decimals };
 }
 
 // Wrapper for some basic emp functionality.  Currently we just need token and collateral info Lookup by emp address
@@ -127,32 +119,32 @@ function Emp({ abi = getAbi("ExpiringMultiParty"), web3 } = {}) {
   }
   async function tokenInfo(empAddress) {
     const tokenAddress = await tokenCurrency(empAddress);
-    return {
-      address: tokenAddress,
-      decimals: await erc20.decimals(tokenAddress)
-    };
+    return { address: tokenAddress, decimals: await erc20.decimals(tokenAddress) };
   }
   async function collateralInfo(empAddress) {
     const tokenAddress = await collateralCurrency(empAddress);
-    return {
-      address: tokenAddress,
-      decimals: await erc20.decimals(tokenAddress)
-    };
+    return { address: tokenAddress, decimals: await erc20.decimals(tokenAddress) };
   }
   async function info(empAddress) {
-    return {
-      address: empAddress,
-      token: await tokenInfo(empAddress),
-      collateral: await collateralInfo(empAddress)
-    };
+    return { address: empAddress, token: await tokenInfo(empAddress), collateral: await collateralInfo(empAddress) };
   }
-  return {
-    tokenCurrency,
-    collateralCurrency,
-    collateralInfo,
-    tokenInfo,
-    info
-  };
+  return { tokenCurrency, collateralCurrency, collateralInfo, tokenInfo, info };
+}
+
+// web3s fromWei does not allow you to specify numeric decimal conversion, it has to be mapped to a name
+function fromWei(amount, decimals = 18) {
+  const denominator = toBN("10").pow(toBN(decimals.toString()));
+  return toBN(amount.toString()).div(denominator);
+}
+// calculate a value given token amount, price and decimals
+// amount: amount of token in wei
+// price: price as a float
+// decimals: decimal value for the token
+// returns value in wei 18 decimals
+function calculateValue(amount, price, decimals) {
+  price = toBN(toWei(price.toString()));
+  amount = toBN(amount);
+  return fromWei(amount.mul(price), decimals);
 }
 
 module.exports = {
@@ -165,5 +157,6 @@ module.exports = {
   GetInputLength,
   toChecksumAddress,
   isAddress,
-  EncodeCallData
+  EncodeCallData,
+  calculateValue,
 };

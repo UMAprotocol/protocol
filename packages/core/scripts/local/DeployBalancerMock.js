@@ -14,7 +14,7 @@ let balancer;
 /** ***************************************************
  * Main Script
  /*****************************************************/
-const deployBalancerMock = async callback => {
+const deployBalancerMock = async (callback) => {
   try {
     balancer = await BalancerMock.new();
     console.log(`Deployed new BalancerMock @ ${balancer.address}`);

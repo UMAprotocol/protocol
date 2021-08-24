@@ -20,7 +20,7 @@ class TokenBalanceClient {
     this.collateralToken = new web3.eth.Contract(erc20abi, collateralTokenAddress);
     this.syntheticToken = new web3.eth.Contract(erc20abi, syntheticTokenAddress);
 
-    // Token balances to enable synchronous return of the latest token ballance cashed in the client.
+    // Token balances to enable synchronous return of the latest token balance cashed in the client.
     this.tokenBalances = { collateralBalances: {}, syntheticBalances: {}, etherBalances: {} };
 
     // Array of balances to monitor. Updated when a new addresses balance is requested.
@@ -71,10 +71,7 @@ class TokenBalanceClient {
       this.tokenBalances.etherBalances[account] = tokenBalancesObject.etherBalance;
     }
 
-    this.logger.debug({
-      at: "TokenBalanceClient",
-      message: "Token balance storage updated"
-    });
+    this.logger.debug({ at: "TokenBalanceClient", message: "Token balance storage updated" });
   }
 
   // Async function to get the three token balances directly. Does not store balances for later retrieval.
@@ -82,7 +79,7 @@ class TokenBalanceClient {
     const [collateralBalance, syntheticBalance, etherBalance] = await Promise.all([
       this.collateralToken.methods.balanceOf(account).call(),
       this.syntheticToken.methods.balanceOf(account).call(),
-      this.web3.eth.getBalance(account)
+      this.web3.eth.getBalance(account),
     ]);
     return { collateralBalance, syntheticBalance, etherBalance };
   }
@@ -98,12 +95,10 @@ class TokenBalanceClient {
       this.logger.debug({
         at: "TokenBalanceClient",
         message: "New address requested, adding address to monitor list.",
-        address: address
+        address: address,
       });
     }
   }
 }
 
-module.exports = {
-  TokenBalanceClient
-};
+module.exports = { TokenBalanceClient };

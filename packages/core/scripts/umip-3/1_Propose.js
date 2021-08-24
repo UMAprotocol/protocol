@@ -1,6 +1,6 @@
 // This script generates and submits UMIP-3 upgrade transactions to the DVM. It can be run on a local ganache
-// fork of the main net or can be run directly on the main net to execute the upgrade transactions.
-// To run this on the localhost first fork main net into Ganache with the proposerWallet unlocked as follows:
+// fork of the mainnet or can be run directly on the mainnet to execute the upgrade transactions.
+// To run this on the localhost first fork mainnet into Ganache with the proposerWallet unlocked as follows:
 // ganache-cli --fork https://mainnet.infura.io/v3/d70106f59aef456c9e5bfbb0c2cc7164 --unlock 0x2bAaA41d155ad8a4126184950B31F50A1513cE25
 // Then execute the script as: truffle exec ./scripts/umip-3/1_Propose.js --network mainnet-fork from core
 
@@ -89,9 +89,7 @@ async function runExport() {
 
   console.log("Deploying new FinancialContractsAdmin contract.");
 
-  const financialContractsAdmin = await FinancialContractsAdmin.new({
-    from: proposerWallet
-  });
+  const financialContractsAdmin = await FinancialContractsAdmin.new({ from: proposerWallet });
 
   /** *****************************************
    * 5) upgrade IdentifierWhitelist.sol *
@@ -99,9 +97,7 @@ async function runExport() {
 
   console.log("Deploying new IdentifierWhitelist contract.");
 
-  const identifierWhitelist = await IdentifierWhitelist.new({
-    from: proposerWallet
-  });
+  const identifierWhitelist = await IdentifierWhitelist.new({ from: proposerWallet });
 
   /** *****************************************
    * 6) deploy Governor.sol *
@@ -206,31 +202,11 @@ async function runExport() {
 
   await governor.propose(
     [
-      {
-        to: votingToken.address,
-        value: 0,
-        data: addVotingAsTokenMinterTx
-      },
-      {
-        to: votingToken.address,
-        value: 0,
-        data: changeVotingTokenOwnerTx
-      },
-      {
-        to: finder.address,
-        value: 0,
-        data: setUmip3UpgraderFinderOwnerTx
-      },
-      {
-        to: existingVoting.address,
-        value: 0,
-        data: setUmip3UpgraderVotingOwnerTx
-      },
-      {
-        to: umip3Upgrader.address,
-        value: 0,
-        data: executeUmip3UpgraderTx
-      }
+      { to: votingToken.address, value: 0, data: addVotingAsTokenMinterTx },
+      { to: votingToken.address, value: 0, data: changeVotingTokenOwnerTx },
+      { to: finder.address, value: 0, data: setUmip3UpgraderFinderOwnerTx },
+      { to: existingVoting.address, value: 0, data: setUmip3UpgraderVotingOwnerTx },
+      { to: umip3Upgrader.address, value: 0, data: executeUmip3UpgraderTx },
     ],
     { from: proposerWallet }
   );
@@ -257,7 +233,7 @@ Governor:                ${newGovernor.address}
 `);
 }
 
-const run = async function(callback) {
+const run = async function (callback) {
   try {
     await runExport();
   } catch (err) {
