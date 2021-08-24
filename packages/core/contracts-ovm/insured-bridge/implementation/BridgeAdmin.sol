@@ -175,7 +175,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
      * whitelist the token mapping.
      * @param _l1Token Address of L1 token that can be used to relay L2 token deposits.
      * @param _l2Token Address of L2 token whose deposits are fulfilled by `_l1Token`.
-     * @param _bridgePool Address of BridgePool which manages liquidity to filfill L2-->L1 relays.
+     * @param _bridgePool Address of BridgePool which manages liquidity to fulfill L2-->L1 relays.
      * @param _l2Gas Gas limit to set for relayed message on L2
      */
     function whitelistToken(
