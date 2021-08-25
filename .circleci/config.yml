@@ -106,9 +106,6 @@ workflows:
       - test:
           requires:
             - build
-      - dapp_build:
-          requires:
-            - build
       - publish:
           context: api_keys
           requires:
