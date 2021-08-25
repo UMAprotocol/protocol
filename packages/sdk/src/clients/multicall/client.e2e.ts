@@ -11,7 +11,6 @@ const empAddress = "0xd81028a6fbAAaf604316F330b20D24bFbFd14478";
 describe("multicall", function () {
   let client: Client.Instance;
   let empClient: emp.Instance;
-
   test("inits", function () {
     const provider = ethers.providers.getDefaultProvider(process.env.CUSTOM_NODE_URL);
     client = Client.connect(address, provider);
