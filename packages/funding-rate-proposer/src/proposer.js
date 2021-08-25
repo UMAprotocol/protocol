@@ -6,7 +6,7 @@ const {
   aggregateTransactionsAndCall,
 } = require("@uma/financial-templates-lib");
 const { createObjectFromDefaultProps, runTransaction } = require("@uma/common");
-const { getAbi } = require("@uma/core");
+const { getAbi } = require("@uma/contracts-node");
 const Promise = require("bluebird");
 const assert = require("assert");
 
