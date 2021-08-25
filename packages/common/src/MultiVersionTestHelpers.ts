@@ -18,6 +18,21 @@ export const TESTED_CONTRACT_VERSIONS = [
   { contractType: "Perpetual", contractVersion: "2.0.1" },
 ];
 
+export const CORE_CONTRACTS_NODE_VERSION_MAPPING = {
+  "2.0.1": "0.1.0",
+};
+
+// Assumes that the contracts-node package alias is @uma/contracts-node-X-Y-Z.
+// Typical workflow is:
+// const { getAbi, getBytecode } = require(getContractsNodePackageAliasForVersion(versionString));
+export function getContractsNodePackageAliasForVerion(version: string): string {
+  if (version === "latest") return "@uma/contracts-node";
+  const isKey = (input: string): input is keyof typeof CORE_CONTRACTS_NODE_VERSION_MAPPING =>
+    input in CORE_CONTRACTS_NODE_VERSION_MAPPING;
+  if (!isKey(version)) throw new Error("Unkown version!");
+  return `@uma/contracts-node-${CORE_CONTRACTS_NODE_VERSION_MAPPING[version].split(".").join("-")}`;
+}
+
 interface Version {
   contractType: string;
   contractVersion: string;
@@ -129,10 +144,3 @@ export async function createConstructorParamsForContractVersion(
 
   return { ...constructorParams, ...overrideConstructorParams };
 }
-
-module.exports = {
-  runTestForVersion,
-  createConstructorParamsForContractVersion,
-  SUPPORTED_CONTRACT_VERSIONS,
-  TESTED_CONTRACT_VERSIONS,
-};

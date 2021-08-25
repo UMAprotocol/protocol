@@ -29,7 +29,8 @@
     "web3-utils": "^1.5.1",
     "web3-eth-contract": "^1.5.1",
     "web3-core": "^1.5.1",
-    "sinon": "^9.0.2"
+    "sinon": "^9.0.2",
+    "@uma/contracts-node-0-1-0": "npm:@uma/contracts-node@0.1.0"
   },
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",

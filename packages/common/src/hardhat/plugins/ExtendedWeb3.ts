@@ -52,7 +52,10 @@ type FindEventFunction = (
 
 export interface Extension {
   _artifactCache: { [name: string]: Artifact };
-  getContract: (name: string) => ContractFactory;
+  getContract: (
+    name: string,
+    artifactOverrides?: { abi?: any[]; bytecode?: string; [key: string]: any }
+  ) => ContractFactory;
   findEvent: FindEventFunction;
   assertEventEmitted: (...args: Parameters<FindEventFunction>) => void;
   assertEventNotEmitted: (...args: Parameters<FindEventFunction>) => void;
@@ -68,9 +71,9 @@ type HRE = Extension & OtherExtensions & HardhatRuntimeEnvironment;
 extendEnvironment((_hre) => {
   const hre = _hre as HRE;
   hre._artifactCache = {};
-  hre.getContract = (name) => {
+  hre.getContract = (name, artifactOverrides = {}) => {
     if (!hre._artifactCache[name]) hre._artifactCache[name] = hre.artifacts.readArtifactSync(name);
-    const artifact = hre._artifactCache[name];
+    const artifact = { ...hre._artifactCache[name], ...artifactOverrides };
 
     const deployed = async () => {
       const deployment = await hre.deployments.get(name);
