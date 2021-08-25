@@ -345,7 +345,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
                 relay.priceRequestTime,
                 getRelayAncillaryData(_depositData, relay)
             ) == int256(1e18), // Canonical value representing "True"; i.e. the proposed relay is valid.
-            "Proposed relay request did not resolve to Valid"
+            "Relay request was not valid"
         );
 
         // Update the relay state to Finalized. This prevents any re-settling of a relay.
