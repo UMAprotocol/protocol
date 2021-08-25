@@ -41,6 +41,7 @@ export const OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY = [
   "GASETH-TWAP-1Mx1M",
   "uSTONKS_JUN21",
   "uSTONKS_0921",
+  "GASETH-0921",
 ];
 
 // Any identifier on this list
