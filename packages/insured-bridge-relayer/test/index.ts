@@ -1,7 +1,8 @@
 import winston from "winston";
-import { web3 } from "hardhat";
 import sinon from "sinon";
 import { run } from "../src/index";
+
+const { web3 } = require("hardhat");
 
 import { SpyTransport } from "@uma/financial-templates-lib";
 
