@@ -20,21 +20,21 @@ const {
   createReferencePriceFeedForFinancialContract,
   createUniswapPriceFeedForFinancialContract,
   createTokenPriceFeedForFinancialContract,
-} = require("../../src/price-feed/CreatePriceFeed");
-const { CryptoWatchPriceFeed } = require("../../src/price-feed/CryptoWatchPriceFeed");
-const { UniswapV2PriceFeed, UniswapV3PriceFeed } = require("../../src/price-feed/UniswapPriceFeed");
-const { BalancerPriceFeed } = require("../../src/price-feed/BalancerPriceFeed");
-const { BasketSpreadPriceFeed } = require("../../src/price-feed/BasketSpreadPriceFeed");
-const { MedianizerPriceFeed } = require("../../src/price-feed/MedianizerPriceFeed");
-const { FallBackPriceFeed } = require("../../src/price-feed/FallBackPriceFeed");
-const { CoinMarketCapPriceFeed } = require("../../src/price-feed/CoinMarketCapPriceFeed");
-const { CoinGeckoPriceFeed } = require("../../src/price-feed/CoinGeckoPriceFeed");
-const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
-const { DefiPulsePriceFeed } = require("../../src/price-feed/DefiPulsePriceFeed");
-const { ETHVIXPriceFeed } = require("../../src/price-feed/EthVixPriceFeed");
-const { ForexDailyPriceFeed } = require("../../src/price-feed/ForexDailyPriceFeed");
-const { QuandlPriceFeed } = require("../../src/price-feed/QuandlPriceFeed");
-const { SpyTransport } = require("../../src/logger/SpyTransport");
+} = require("../../dist/price-feed/CreatePriceFeed");
+const { CryptoWatchPriceFeed } = require("../../dist/price-feed/CryptoWatchPriceFeed");
+const { UniswapV2PriceFeed, UniswapV3PriceFeed } = require("../../dist/price-feed/UniswapPriceFeed");
+const { BalancerPriceFeed } = require("../../dist/price-feed/BalancerPriceFeed");
+const { BasketSpreadPriceFeed } = require("../../dist/price-feed/BasketSpreadPriceFeed");
+const { MedianizerPriceFeed } = require("../../dist/price-feed/MedianizerPriceFeed");
+const { FallBackPriceFeed } = require("../../dist/price-feed/FallBackPriceFeed");
+const { CoinMarketCapPriceFeed } = require("../../dist/price-feed/CoinMarketCapPriceFeed");
+const { CoinGeckoPriceFeed } = require("../../dist/price-feed/CoinGeckoPriceFeed");
+const { NetworkerMock } = require("../../dist/price-feed/NetworkerMock");
+const { DefiPulsePriceFeed } = require("../../dist/price-feed/DefiPulsePriceFeed");
+const { ETHVIXPriceFeed } = require("../../dist/price-feed/EthVixPriceFeed");
+const { ForexDailyPriceFeed } = require("../../dist/price-feed/ForexDailyPriceFeed");
+const { QuandlPriceFeed } = require("../../dist/price-feed/QuandlPriceFeed");
+const { SpyTransport } = require("../../dist/logger/SpyTransport");
 
 const winston = require("winston");
 const sinon = require("sinon");

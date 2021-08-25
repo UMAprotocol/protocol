@@ -1,6 +1,6 @@
 const { toWei } = web3.utils;
 
-const { GasEstimator, SpyTransport, spyLogIncludes } = require("../../index");
+const { GasEstimator, SpyTransport, spyLogIncludes } = require("../../dist/index");
 
 const { getTruffleContract } = require("@uma/core");
 
@@ -8,7 +8,7 @@ const winston = require("winston");
 const sinon = require("sinon");
 
 // Script to test
-const { DSProxyManager } = require("../../src/proxy-transaction-handler/DSProxyManager.js");
+const { DSProxyManager } = require("../../dist/proxy-transaction-handler/DSProxyManager.js");
 
 const TokenSender = getTruffleContract("TokenSender", web3);
 const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);

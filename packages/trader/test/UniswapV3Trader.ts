@@ -186,11 +186,16 @@ describe("uniswapV3Trader.js", function () {
 
     referencePriceFeed.setCurrentPrice(toWei("1000"));
 
+    // Literals are not inferred from JSON.
+    type UniswapAbiElement = typeof UniswapV3Pool.abi[number] & { type: "event" | "function" } & {
+      stateMutability?: "view" | "payable" | "pure";
+    };
+
     // Create the components needed for the RangeTrader. Create a "real" uniswap price feed, with the twapLength &
     // historicalLookback set to 1 such the the twap will update very quickly.
     tokenPriceFeed = new UniswapV3PriceFeed(
       spyLogger,
-      UniswapV3Pool.abi,
+      UniswapV3Pool.abi as UniswapAbiElement[],
       Token.abi,
       web3,
       poolAddress,
