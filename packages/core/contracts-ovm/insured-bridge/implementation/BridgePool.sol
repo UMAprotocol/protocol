@@ -291,8 +291,15 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     }
 
     /**
-     * @notice Instantly relay a deposit amount minus fees. Instant relayer earns a reward following the pending relay
-     * challenge period.
+     * @notice Instantly relay a deposit amount minus fees to the recipient. Instant relayer earns a reward following
+     * the pending relay challenge period.
+     * @dev We assume that the caller has performed an off-chain check that the deposit data they are attempting to
+     * relay is valid. If the deposit data is invalid, then the instant relayer has no recourse
+     * to receive their funds back after the invalid deposit data is disputed. Moreover, no one will be able to
+     * resubmit a relay for the invalid deposit data because they know it will get disputed again. On the other hand,
+     * if the deposit data is valid, then even if it is falsely disputed, the instant relayer will eventually get
+     * reimbursed because someone else will be incentivized to resubmit the relay to earn slow relayer rewards. Once the
+     * valid relay is finalized, the instant relayer will be reimbursed.
      * @dev Caller must have approved this contract to spend the deposit amount of L1 tokens to relay. There can only
      * be one instant relayer per relay attempt and disputed relays cannot be sped up.
      * @param _depositData Unique set of L2 deposit data that caller is trying to instantly relay.
@@ -326,24 +333,20 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         bytes32 depositHash = _getDepositHash(_depositData);
         RelayData storage relay = relays[depositHash];
 
-        // Note `hasPrice` will return false if liveness has not been passed in the optimistic oracle.
-        require(
-            relays[depositHash].relayState == RelayState.Pending &&
-                _getOptimisticOracle().hasPrice(
-                    address(this),
-                    bridgeAdmin.identifier(),
-                    relay.priceRequestTime,
-                    getRelayAncillaryData(_depositData, relay)
-                ),
-            "Relay not settleable"
-        );
+        // If relay was disputed, then parties in dispute need to go through OptimisticOracle to resolve dispute.
+        require(relays[depositHash].relayState == RelayState.Pending, "Relay not settleable");
 
-        // Note: Why don't we have to check the value of the price?
-        // - If the OptimisticOracle has a price and the relayState is PENDING, then we can safely assume that the relay
-        // was validated. This is because this contract proposes a price of 1e18, or "YES" to the identifier posing the
-        // question "Is this relay valid for the associated deposit?". If the proposal is disputed, then the relayState
-        // will be reset to UNINITIALIZED. If the proposal is not disputed, and there is a price available, then the
-        // proposal must have passed the dispute period, assuming the proposal passed optimistic oracle liveness.
+        // Attempt to settle OptimisticOracle price as a convenience for the slow relayer who will receive their
+        // dispute bond back. If the price is not settleable, then this call will revert. If the price has already
+        // been settled, then this will not revert and still return the price.
+        require(
+            _getOptimisticOracle().settleAndGetPrice(
+                bridgeAdmin.identifier(),
+                relay.priceRequestTime,
+                getRelayAncillaryData(_depositData, relay)
+            ) == int256(1e18), // Canonical value representing "True"; i.e. the proposed relay is valid.
+            "Relay request was not valid"
+        );
 
         // Update the relay state to Finalized. This prevents any re-settling of a relay.
         relay.relayState = RelayState.Finalized;
