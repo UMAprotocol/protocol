@@ -337,23 +337,16 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         require(relays[depositHash].relayState == RelayState.Pending, "Relay not settleable");
 
         // Attempt to settle OptimisticOracle price as a convenience for the slow relayer who will receive their
-        // dispute bond back. This doubles as a check that the optimistic price request has resolved because this will
-        // revert if the price has not resolved yet.
-        _getOptimisticOracle().settle(
-            address(this),
-            bridgeAdmin.identifier(),
-            relay.priceRequestTime,
-            getRelayAncillaryData(_depositData, relay)
+        // dispute bond back. If the price is not settleable, then this call will revert. If the price has already
+        // been settled, then this will not revert and still return the price.
+        require(
+            _getOptimisticOracle().settleAndGetPrice(
+                bridgeAdmin.identifier(),
+                relay.priceRequestTime,
+                getRelayAncillaryData(_depositData, relay)
+            ) == int256(1e18), // Canonical value representing "True"; i.e. the proposed relay is valid.
+            "Proposed relay request did not resolve to Valid"
         );
-
-        // We don't need to check that the optimistic price request has a price, because if it doesn't then the above
-        // settle call will revert. Moreover, we don't need to check whether the optimistic price request was resolved
-        // via a dispute to the DVM because of the above check that the RelayState is PENDING. If the OptimisticOracle
-        // has a price and the relayState is PENDING, then we can safely assume that the relay was validated. This is
-        // because this contract proposes a price of 1e18, or "YES" to the identifier posing the question
-        // "Is this relay valid for the associated deposit?". If the proposal is disputed, then the relayState
-        // will be reset to DISPUTED. If the proposal is not disputed, and there is a price available, then the
-        // proposal must have passed the dispute period, assuming the proposal passed optimistic oracle liveness.
 
         // Update the relay state to Finalized. This prevents any re-settling of a relay.
         relay.relayState = RelayState.Finalized;
