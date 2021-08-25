@@ -442,7 +442,7 @@ describe("Insured bridge e2e tests", () => {
           );
         });
         it("instant relay", async () => {
-          // At the enf of the before each block we advanced time half way through the OO liveness (1 hour). Now we will
+          // At the end of the before each block we advanced time half way through the OO liveness (1 hour). Now we will
           // try to speed up the relay then settle.Use the liquidity provider as fast relayer.
           // Mint the Liquidity provider enough for the speed up. this is equal to the exact amount the recipient will
           // get as the bridged amount - the LP fee, - slow relay fee, - instant relay fee equalling 10-1-0.1-0.1=8.8
@@ -490,10 +490,13 @@ describe("Insured bridge e2e tests", () => {
         // particular, validate exchange rates and token bridging actions.
         afterEach(async () => {
           // Pending LP fees should be updated accordingly to 10% of 10.
-          assert.equal((await l1BridgePool.undistributedLpFees()).toString(), ethers.utils.parseEther("1"));
+          assert.equal((await l1BridgePool.undistributedLpFees()).toString(), ethers.utils.parseEther("1").toString());
 
           // As no time has advanced from the relay settlement time the exchange rate on the pool should still be 1.
-          assert.equal((await l1BridgePool.callStatic.exchangeRateCurrent()).toString(), ethers.utils.parseEther("1"));
+          assert.equal(
+            (await l1BridgePool.callStatic.exchangeRateCurrent()).toString(),
+            ethers.utils.parseEther("1").toString()
+          );
 
           // Advance some time and check that the exchange rate increments as expected. By adding 2 days (172800s) we
           // should expect 172800 * 0.0000015 * 1 = 0.2592 fees to accumulate resulting in an exchange rate of
