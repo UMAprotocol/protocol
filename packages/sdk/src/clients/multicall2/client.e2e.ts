@@ -54,17 +54,24 @@ describe("multicall2", function () {
 
   test("multicall2 on emp with errors", async function () {
     const calls = ["priceIdentifier", "tokenCurrency", "disputeBondPercentage"];
-    const multicalls = calls.map((call) => {
-      return {
-        target: empAddress,
-        callData: empClient.interface.encodeFunctionData(call as any),
-      };
-    });
+    const multicalls = calls.map((call) => ({
+      target: empAddress,
+      callData: empClient.interface.encodeFunctionData(call as any),
+    }));
     const response = await client.callStatic.tryBlockAndAggregate(false, multicalls);
-    const decoded = calls.map((call: any, i: number) => {
+    const decoded: ethers.utils.Result[] = [];
+    const failedCalls: string[] = [];
+
+    for (let i = 0; i < calls.length; i++) {
       const result = response.returnData[i].returnData;
-      return response.returnData[i].success ? empClient.interface.decodeFunctionResult(call, result) : {};
-    });
-    assert.equal(decoded.length, calls.length);
+      const call = calls[i];
+
+      if (response.returnData[i].success) {
+        decoded.push(empClient.interface.decodeFunctionResult(call as any, result));
+      } else {
+        failedCalls.push(call);
+      }
+    }
+    assert.ok(decoded.length === 2 && failedCalls.length == 1);
   });
 });
