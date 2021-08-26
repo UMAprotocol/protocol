@@ -1,9 +1,10 @@
-require("dotenv").config();
 import assert from "assert";
 import * as Client from "./client";
 import { ethers } from "ethers";
 import { emp } from "..";
+import dotenv from "dotenv";
 
+dotenv.config();
 // multicall contract deployed to mainnet
 const address = "0x5ba1e12693dc8f9c48aad8770482f4739beed696";
 const empAddress = "0x4E3168Ea1082f3dda1694646B5EACdeb572009F1";

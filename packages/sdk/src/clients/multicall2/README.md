@@ -5,7 +5,7 @@ reducing api calls to infura when reading many properties from contracts.
 
 ## Usage
 
-```js
+```ts
 import { ethers } from "ethers"
 import * as uma from "@uma/sdk"
 
