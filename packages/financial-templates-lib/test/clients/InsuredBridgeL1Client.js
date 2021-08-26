@@ -81,8 +81,8 @@ describe("InsuredBridgeL1Client", function () {
       [
         depositData.depositId,
         depositData.depositTimestamp,
-        depositData.l2Sender,
         depositData.recipient,
+        depositData.l2Sender,
         depositData.l1Token,
         depositData.amount,
         depositData.slowRelayFeePct,
