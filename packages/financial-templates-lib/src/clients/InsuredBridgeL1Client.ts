@@ -79,17 +79,15 @@ export class InsuredBridgeL1Client {
     return Object.values(this.relays[l1Token]);
   }
 
-  async _initialSetup(fromBlock: number): Promise<void> {
-    const whitelistedTokenEvents = await this.bridgeAdmin.getPastEvents("WhitelistToken", { fromBlock });
-    for (const whitelistedTokenEvent of whitelistedTokenEvents) {
-      const l1Token = whitelistedTokenEvent.returnValues.l1Token;
-      this.bridgePools[l1Token] = (new this.l1Web3.eth.Contract(
-        this.bridgePoolAbi,
-        whitelistedTokenEvent.returnValues.bridgePool
-      ) as unknown) as BridgePoolWeb3;
-      this.relays[l1Token] = {};
-    }
+  getPendingRelayedDeposits() {
+    return this.getAllRelayedDeposits().filter((relay: Relay) => relay.relayState === relayState.Pending);
   }
+
+  getPendingRelayedDepositsForL1Token(l1Token: string) {
+    return this.getRelayedDepositsForL1Token(l1Token).filter((relay: Relay) => relay.relayState === relayState.Pending);
+  }
+
+  // TODO: we might want to add other accessors that do other forms of filtering.
 
   async update(): Promise<void> {
     // Define a config to bound the queries by.
@@ -98,7 +96,20 @@ export class InsuredBridgeL1Client {
       toBlock: this.endingBlockNumber || (await this.l1Web3.eth.getBlockNumber()),
     };
 
-    if (!this._isClientInitialized()) await this._initialSetup(blockSearchConfig.fromBlock);
+    // Check for new bridgePools deployed. This acts as the initial setup and acts to more pools if they are deployed
+    // while the bot is running.
+    const whitelistedTokenEvents = await this.bridgeAdmin.getPastEvents("WhitelistToken", blockSearchConfig);
+    for (const whitelistedTokenEvent of whitelistedTokenEvents) {
+      const l1Token = whitelistedTokenEvent.returnValues.l1Token;
+      // If the data structure already contains information on this l1Token( re-whitelist of an existing token) continue.
+      if (this.bridgePools[l1Token]) continue;
+      // Else, we set the bridge pool to be a contract instance at the address of the bridge pool.
+      this.bridgePools[l1Token] = (new this.l1Web3.eth.Contract(
+        this.bridgePoolAbi,
+        whitelistedTokenEvent.returnValues.bridgePool
+      ) as unknown) as BridgePoolWeb3;
+      this.relays[l1Token] = {};
+    }
 
     // Fetch event information
     // TODO: consider optimizing this further. Right now it will make a series of sequential BlueBird calls for each pool.
@@ -147,7 +158,7 @@ export class InsuredBridgeL1Client {
         else this.relays[l1Token][relayData.depositHash] = relayData;
       }
 
-      // For all RelaySpedUp, set the instant relayer. Note that if a relay action was disputed the instant
+      // For all RelaySpedUp, set the instant relayer and set the state to SpedUp.
       for (const relaySpedUpEvent of relaySpedUpEvents) {
         this.relays[l1Token][relaySpedUpEvent.returnValues.depositHash].instantRelayer =
           relaySpedUpEvent.returnValues.instantRelayer;
@@ -170,12 +181,9 @@ export class InsuredBridgeL1Client {
       message: "Insured bridge l1 client updated",
     });
   }
-  _isClientInitialized() {
-    return Object.keys(this.bridgePools).length > 0;
-  }
 
   _throwIfNotInitialized() {
-    if (!this._isClientInitialized())
+    if (Object.keys(this.bridgePools).length == 0)
       throw new Error("InsuredBridgeClient method called before initialization! Call `update` first.");
   }
 }
