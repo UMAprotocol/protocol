@@ -1,8 +1,8 @@
 const winston = require("winston");
 
-const { VaultPriceFeed } = require("../../src/price-feed/VaultPriceFeed");
+const { VaultPriceFeed } = require("../../dist/price-feed/VaultPriceFeed");
 const { advanceBlockAndSetTime, parseFixed } = require("@uma/common");
-const { BlockFinder } = require("../../src/price-feed/utils");
+const { BlockFinder } = require("../../dist/price-feed/utils");
 const { getTruffleContract } = require("@uma/core");
 
 const VaultMock = getTruffleContract("VaultMock", web3);

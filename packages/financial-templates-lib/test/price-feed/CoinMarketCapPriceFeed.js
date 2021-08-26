@@ -1,5 +1,5 @@
-const { CoinMarketCapPriceFeed } = require("../../src/price-feed/CoinMarketCapPriceFeed");
-const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
+const { CoinMarketCapPriceFeed } = require("../../dist/price-feed/CoinMarketCapPriceFeed");
+const { NetworkerMock } = require("../../dist/price-feed/NetworkerMock");
 const winston = require("winston");
 const { parseFixed } = require("@uma/common");
 

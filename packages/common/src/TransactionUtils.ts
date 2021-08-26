@@ -32,7 +32,7 @@ export const runTransaction = async ({
   web3: Web3;
   transaction: ContractSendMethod;
   transactionConfig: AugmentedSendOptions;
-  availableAccounts: number;
+  availableAccounts?: number;
 }): Promise<{
   receipt: TransactionReceipt;
   returnValue: CallReturnValue;

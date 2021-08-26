@@ -1,5 +1,5 @@
-const { CoinGeckoPriceFeed } = require("../../src/price-feed/CoinGeckoPriceFeed");
-const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
+const { CoinGeckoPriceFeed } = require("../../dist/price-feed/CoinGeckoPriceFeed");
+const { NetworkerMock } = require("../../dist/price-feed/NetworkerMock");
 const winston = require("winston");
 const { parseFixed } = require("@uma/common");
 

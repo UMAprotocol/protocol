@@ -54,8 +54,14 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
         _;
     }
 
-    // TODO: Consider switching to hardcoded OVM_L1CrossDomainMessenger:
-    // https://github.com/ethereum-optimism/optimism/blob/develop/packages/contracts/deployments/README.md
+    /**
+     * @notice Construct the Bridge Admin
+     * @param _finder DVM finder to find other UMA ecosystem contracts.
+     * @param _crossDomainMessenger Optimism messenger contract used to send messages to L2.
+     * @param _optimisticOracleLiveness Timeout that all bridging actions from L2->L1 must wait for a OptimisticOracle response.
+     * @param _proposerBondPct Percentage of the bridged amount that a relayer must put up as a bond.
+     * @param _identifier Identifier used when querying the OO for a cross bridge transfer action.
+     */
     constructor(
         address _finder,
         address _crossDomainMessenger,
@@ -75,8 +81,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
      **************************************/
 
     /**
-     * @notice Sets new price identifier to use for relayed deposits. BridgePools will read the identifier from this
-     * contract.
+     * @notice Sets a price identifier to use for relayed deposits. BridgePools reads the identifier from this contract.
      * @dev Can only be called by the current owner.
      * @param _identifier New identifier to set.
      */
@@ -85,8 +90,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
     }
 
     /**
-     * @notice Sets challenge period for relayed deposits. BridgePools will read this value from this
-     * contract.
+     * @notice Sets challenge period for relayed deposits. BridgePools will read this value from this contract.
      * @dev Can only be called by the current owner.
      * @param _liveness New OptimisticOracle liveness period to set for relay price requests.
      */
@@ -95,8 +99,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
     }
 
     /**
-     * @notice Sets challenge pereiod for relayed deposits. BridgePools will read this value from this
-     * contract.
+     * @notice Sets challenge period for relayed deposits. BridgePools will read this value from this contract.
      * @dev Can only be called by the current owner.
      * @param _proposerBondPct New OptimisticOracle proposer bond % to set for relay price requests. 1e18 = 100%.
      */
@@ -105,8 +108,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
     }
 
     /**
-     * @notice Privileged account can set L2 deposit contract that originates deposit orders to be fulfilled by this
-     * contract.
+     * @notice Sets the L2 deposit contract that originates deposit orders to be fulfilled by this bridgePool contracts.
      * @dev Only callable by the current owner.
      * @param _depositContract Address of L2 deposit contract.
      */
@@ -149,7 +151,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
 
     /**
      * @notice Owner can pause/unpause L2 deposits for a tokens.
-     * @dev Only callable by the current owner. Will set the same setting in the L2 Deposit contract via the cross
+     * @dev Only callable by Owner of this contract. Will set the same setting in the L2 Deposit contract via the cross
      * domain messenger.
      * @param _l2Token address of L2 token to enable/disable deposits for.
      * @param _depositsEnabled bool to set if the deposit box should accept/reject deposits.
