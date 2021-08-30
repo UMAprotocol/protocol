@@ -45,4 +45,13 @@ export const OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY = [
 ];
 
 // Any identifier on this list
-export const OPTIMISTIC_ORACLE_IGNORE = ["SPACEXLAUNCH", "uTVL_KPI_UMA"];
+export const OPTIMISTIC_ORACLE_IGNORE = [
+  "SPACEXLAUNCH",
+  "uTVL_KPI_UMA",
+  "DIGG_Positive_Rebases",
+  "uDAO_KPI_UMA",
+  "YES_OR_NO_QUERY",
+  "XSUSHI_APY",
+  "V2migration_KPI_Aragon",
+  "General_KPI",
+];
