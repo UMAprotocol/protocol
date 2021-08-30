@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # download pre-builted images
-repo="ethereumoptimism"
-for image in {builder,l2geth,deployer,data-transport-layer,hardhat,batch-submitter,message-relayer};do docker pull $repo/$image; done
+# repo="ethereumoptimism"
+# for image in {builder,l2geth,deployer,data-transport-layer,hardhat,batch-submitter,message-relayer};do docker pull $repo/$image; done
 
 # # build in 2 steps
 # function build_images() {
