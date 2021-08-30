@@ -1,4 +1,4 @@
-const { PriceHistory, BlockHistory, computeTWAP, BlockFinder } = require("../../src/price-feed/utils");
+const { PriceHistory, BlockHistory, computeTWAP, BlockFinder } = require("../../dist/price-feed/utils");
 const { averageBlockTimeSeconds } = require("@uma/common");
 const { toBN } = web3.utils;
 

@@ -1,6 +1,6 @@
 const { parseFixed } = require("@uma/common");
-const { DefiPulsePriceFeed } = require("../../src/price-feed/DefiPulsePriceFeed");
-const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
+const { DefiPulsePriceFeed } = require("../../dist/price-feed/DefiPulsePriceFeed");
+const { NetworkerMock } = require("../../dist/price-feed/NetworkerMock");
 const winston = require("winston");
 
 contract("DefiPulsePriceFeed.js", function () {

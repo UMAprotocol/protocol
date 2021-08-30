@@ -2,7 +2,7 @@ const winston = require("winston");
 
 const { toWei, utf8ToHex, padRight } = web3.utils;
 
-const { FinancialContractFactoryClient } = require("../../src/clients/FinancialContractFactoryClient");
+const { FinancialContractFactoryClient } = require("../../dist/clients/FinancialContractFactoryClient");
 const { interfaceName, advanceBlockAndSetTime, ZERO_ADDRESS, RegistryRolesEnum } = require("@uma/common");
 const { getTruffleContract } = require("@uma/core");
 

@@ -894,6 +894,16 @@ describe("BridgePool", () => {
         .send({ from: disputer });
 
       assert(await didContractThrow(bridgePool.methods.settleRelay(depositData).send({ from: relayer })));
+
+      // Cannot settle even if disputed price was resolved.
+      const price = toWei("1");
+      const stampedDisputeAncillaryData = await optimisticOracle.methods
+        .stampAncillaryData(relayAncillaryData, bridgePool.options.address)
+        .call();
+      await mockOracle.methods
+        .pushPrice(defaultIdentifier, relayStatus.priceRequestTime.toString(), stampedDisputeAncillaryData, price)
+        .send({ from: owner });
+      assert(await didContractThrow(bridgePool.methods.settleRelay(depositData).send({ from: relayer })));
     });
     it("Can settle pending relays that passed challenge period", async () => {
       // Cache price request timestamp.
@@ -931,41 +941,8 @@ describe("BridgePool", () => {
       );
       assert(await didContractThrow(bridgePool.methods.settleRelay(depositData).send({ from: relayer })));
 
-      // Expire and settle proposal on the OptimisticOracle.
+      // Set time such that optimistic price request is settleable.
       await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
-      await optimisticOracle.methods
-        .settle(
-          bridgePool.options.address,
-          defaultIdentifier,
-          relayStatus.priceRequestTime.toString(),
-          relayAncillaryData
-        )
-        .send({ from: relayer });
-
-      // Verify price is available.
-      assert.equal(
-        await optimisticOracle.methods
-          .hasPrice(
-            bridgePool.options.address,
-            defaultIdentifier,
-            relayStatus.priceRequestTime.toString(),
-            relayAncillaryData
-          )
-          .call(),
-        true
-      );
-
-      // If the relay status is PENDING and the price is available, then the value must match the original proposal:
-      // 1e18.
-      assert.equal(relayStatus.relayState, InsuredBridgeRelayStateEnum.PENDING);
-      assert.equal(
-        (
-          await optimisticOracle.methods
-            .settleAndGetPrice(defaultIdentifier, relayStatus.priceRequestTime.toString(), relayAncillaryData)
-            .call({ from: bridgePool.options.address })
-        ).toString(),
-        toWei("1")
-      );
 
       // Settle relay and check event logs.
       const settleTxn = await bridgePool.methods.settleRelay(depositData).send({ from: rando });
@@ -1029,22 +1006,13 @@ describe("BridgePool", () => {
           relayData.realizedLpFeePct
         )
         .send({ from: relayer });
-      const relayStatus = await bridgePool.methods.relays(depositHash).call();
 
       // Speed up relay.
       await l1Token.methods.approve(bridgePool.options.address, slowRelayAmountSubFee).send({ from: instantRelayer });
       await bridgePool.methods.speedUpRelay(depositData).send({ from: instantRelayer });
 
-      // Expire and settle proposal on the OptimisticOracle.
+      // Set time such that optimistic price request is settleable.
       await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
-      await optimisticOracle.methods
-        .settle(
-          bridgePool.options.address,
-          defaultIdentifier,
-          relayStatus.priceRequestTime.toString(),
-          relayAncillaryData
-        )
-        .send({ from: relayer });
 
       const relayerBalanceBefore = await l1Token.methods.balanceOf(relayer).call();
       const instantRelayerBalanceBefore = await l1Token.methods.balanceOf(instantRelayer).call();
@@ -1059,8 +1027,8 @@ describe("BridgePool", () => {
         toBN(await l1Token.methods.balanceOf(relayer).call())
           .sub(toBN(relayerBalanceBefore))
           .toString(),
-        realizedSlowRelayFeeAmount.toString(),
-        "Slow relayer should receive proposal slow relay reward"
+        toBN(totalRelayBond).add(realizedSlowRelayFeeAmount).toString(),
+        "Slow relayer should receive proposal bond + slow relay reward"
       );
       assert.equal(
         toBN(await l1Token.methods.balanceOf(instantRelayer).call())
@@ -1081,6 +1049,42 @@ describe("BridgePool", () => {
           .toString(),
         "BridgePool should have balance reduced by relayed amount to recipient"
       );
+    });
+    it("Does not revert if price was already settled on OptimisticOracle", async () => {
+      // Cache price request timestamp.
+      const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
+      const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
+
+      // Proposer approves pool to withdraw total bond.
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      await bridgePool.methods
+        .relayDeposit(
+          depositData.depositId,
+          depositData.depositTimestamp,
+          depositData.recipient,
+          depositData.l2Sender,
+          depositData.amount,
+          depositData.slowRelayFeePct,
+          depositData.instantRelayFeePct,
+          depositData.quoteTimestamp,
+          relayData.realizedLpFeePct
+        )
+        .send({ from: relayer });
+      const relayStatus = await bridgePool.methods.relays(depositHash).call();
+
+      // Settle price directly via optimistic oracle
+      await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
+      await optimisticOracle.methods
+        .settle(
+          bridgePool.options.address,
+          defaultIdentifier,
+          relayStatus.priceRequestTime.toString(),
+          relayAncillaryData
+        )
+        .send({ from: rando });
+
+      // Settle relay and check event logs.
+      assert.ok(await bridgePool.methods.settleRelay(depositData).send({ from: rando }), "SettleRelay reverted");
     });
   });
   describe("Liquidity provision", () => {
@@ -1129,6 +1133,83 @@ describe("BridgePool", () => {
       assert.equal((await bridgePool.methods.utilizedReserves().call()).toString(), toWei("0"));
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1"));
     });
+    it("Withdraw liquidity is blocked when utilization is too high", async () => {
+      // Approve funds and add to liquidity.
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: liquidityProvider });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
+
+      // Initiate a relay. The relay amount is 10% of the total pool liquidity.
+      await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: relayer });
+      await bridgePool.methods
+        .relayDeposit(
+          depositData.depositId,
+          depositData.depositTimestamp,
+          depositData.recipient,
+          depositData.l2Sender,
+          depositData.amount,
+          depositData.slowRelayFeePct,
+          depositData.instantRelayFeePct,
+          depositData.quoteTimestamp,
+          relayData.realizedLpFeePct
+        )
+        .send({ from: relayer });
+      assert.equal(await bridgePool.methods.pendingReserves().call(), depositData.amount);
+
+      // If the LP tries to pull out anything more than 90% of the pool funds this should revert. The 10% of the funds
+      // are allocated for the deposit and the contract should prevent any additional amount over this from being removed.
+      assert(
+        await didContractThrow(
+          bridgePool.methods
+            .removeLiquidity(
+              toBN(initialPoolLiquidity)
+                .mul(toBN(toWei("0.90"))) // try withdrawing 95%. should fail
+                .div(toBN(toWei("1")))
+                .addn(1) // 90% + 1 we
+                .toString()
+            )
+            .send({ from: liquidityProvider })
+        )
+      );
+
+      // Should be able to withdraw 90% exactly, leaving the exact amount of liquidity in the pool to finalize the relay.
+      await bridgePool.methods
+        .removeLiquidity(
+          toBN(initialPoolLiquidity)
+            .mul(toBN(toWei("0.9"))) // try withdrawing 95%. should fail
+            .div(toBN(toWei("1")))
+            .toString()
+        )
+        .send({ from: liquidityProvider });
+
+      // As we've removed all free liquidity the liquid reserves should now be zero.
+      await bridgePool.methods.exchangeRateCurrent().send({ from: rando });
+
+      // Next, finalize the bridging action. This should reset the pendingReserves to 0 and increment the utilizedReserves.
+      // Expire and settle proposal on the OptimisticOracle.
+      await timer.methods
+        .setCurrentTime(Number(await bridgePool.methods.getCurrentTime().call()) + defaultLiveness)
+        .send({ from: owner });
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+
+      // Check the balances have updated correctly. Pending should be 0 (funds are actually utilized now), liquid should
+      // be equal to the LP fee of 10 and the utilized should equal the total bridged amount (100).
+      assert.equal(await bridgePool.methods.pendingReserves().call(), "0");
+      assert.equal(await bridgePool.methods.liquidReserves().call(), toWei("10"));
+      assert.equal(await bridgePool.methods.utilizedReserves().call(), depositData.amount);
+
+      // The LP should be able to withdraw exactly 10 tokens (they still have 100 tokens in the contract). Anything
+      // more than this is not possible as the remaining funds are in transit from L2.
+      assert(
+        await didContractThrow(
+          bridgePool.methods.removeLiquidity(toBN(toWei("10")).addn(1).toString()).send({ from: liquidityProvider })
+        )
+      );
+      await bridgePool.methods.removeLiquidity(toWei("10")).send({ from: liquidityProvider });
+
+      assert.equal(await bridgePool.methods.pendingReserves().call(), "0");
+      assert.equal(await bridgePool.methods.liquidReserves().call(), "0");
+      assert.equal(await bridgePool.methods.utilizedReserves().call(), depositData.amount);
+    });
   });
   describe("Virtual balance accounting", () => {
     beforeEach(async function () {
@@ -1161,20 +1242,10 @@ describe("BridgePool", () => {
         .send({ from: relayer });
 
       // Expire and settle proposal on the OptimisticOracle.
-      const relayStatus = await bridgePool.methods.relays(depositHash).call();
       await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
-      await optimisticOracle.methods
-        .settle(
-          bridgePool.options.address,
-          defaultIdentifier,
-          relayStatus.priceRequestTime.toString(),
-          relayAncillaryData
-        )
-        .send({ from: relayer });
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
     });
     it("SettleRelay modifies virtual balances", async () => {
-      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
-
       // Exchange rate should still be 1, no fees accumulated yet as no time has passed from the settlement. Pool
       // balance, liquidReserves and utilizedReserves should update accordingly. Calculate the bridge tokens used as
       // the amount sent to the receiver+the bond.
@@ -1196,8 +1267,6 @@ describe("BridgePool", () => {
       );
     });
     it("Fees correctly accumulate to LPs over the one week loan interval", async () => {
-      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
-
       await bridgePool.methods.exchangeRateCurrent().send({ from: rando }); // force sync
 
       // As no time has elapsed, no fees should be earned and the exchange rate should still be 1.
@@ -1254,8 +1323,6 @@ describe("BridgePool", () => {
       assert.equal((await bridgePool.methods.undistributedLpFees().call()).toString(), toWei("2.607616"));
     });
     it("Fees correctly accumulate with multiple relays", async () => {
-      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
-
       // Advance time by a 2 days (172800s) and check that the exchange rate increments accordingly. Expected exchange rate is (910+90+10-(10-0.0000015*172800*10))/1000=1.002592.
       await advanceTime(172800);
 
@@ -1305,18 +1372,9 @@ describe("BridgePool", () => {
       depositHash = soliditySha3(depositDataAbiEncoded);
 
       // Expire and settle proposal on the OptimisticOracle.
-      const relayStatus = await bridgePool.methods.relays(depositHash).call();
       await advanceTime(defaultLiveness);
 
       relayAncillaryData = await bridgePool.methods.getRelayAncillaryData(depositData, relayData).call();
-      await optimisticOracle.methods
-        .settle(
-          bridgePool.options.address,
-          defaultIdentifier,
-          relayStatus.priceRequestTime.toString(),
-          relayAncillaryData
-        )
-        .send({ from: relayer });
 
       // Settle the relay action.
       await bridgePool.methods.settleRelay(depositData).send({ from: rando });
@@ -1391,8 +1449,6 @@ describe("BridgePool", () => {
       assert.equal((await bridgePool.methods.undistributedLpFees().call()).toString(), toWei("0"));
     });
     it("Adding/removing impact exchange rate accumulation as expected", async () => {
-      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
-
       // Advance time by a 2 days (172800s). Exchange rate should be (1000+10*172800*0.0000015)/1000=1.002592
       await advanceTime(172800);
       assert.equal((await bridgePool.methods.exchangeRateCurrent().call()).toString(), toWei("1.002592"));
@@ -1436,9 +1492,8 @@ describe("BridgePool", () => {
     });
     it("Fees & Exchange rate can correctly handel gifted tokens", async () => {
       // We cant control when funds are sent to the contract, just like we cant control when the bridging action
-      // concludes. If someone was to randomly send the contract tokens the exchange rate should ignore this. The contract should ignore the exchange rate if someone was to randomly send tokens.
-
-      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+      // concludes. If someone was to randomly send the contract tokens the exchange rate should ignore this. The
+      // contract should ignore the exchange rate if someone was to randomly send tokens.
 
       // Advance time by a 2 days (172800s). Exchange rate should be (1000+10*172800*0.0000015)/1000=1.002592
       await advanceTime(172800);
