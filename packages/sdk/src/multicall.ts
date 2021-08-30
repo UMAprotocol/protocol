@@ -1,4 +1,4 @@
-import { multicall } from "./clients";
+import { multicall, multicall2 } from "./clients";
 import { Contract } from "ethers";
 import type { SignerOrProvider } from ".";
 import { zip } from "lodash";
@@ -18,16 +18,16 @@ export type EncodedRequest = {
   callData: string;
 };
 
-interface State {
+export interface State {
   requests: Request[];
-  multicallClient: multicall.Instance;
+  multicallClient: multicall.Instance | multicall2.Instance;
 }
 
 // Multicall class that exposes public functions to the user and recursively chains itself.  Acts immutable
 // if you store reference to the parent intsance. Children will contain mutated state.
-class Multicall implements State {
+export class Multicall implements State {
   public requests: Request[];
-  public multicallClient: multicall.Instance;
+  public multicallClient: multicall.Instance | multicall2.Instance;
   constructor(state: State) {
     // make a copy of this so we dont mutate the original
     this.requests = [...state.requests];
@@ -35,12 +35,12 @@ class Multicall implements State {
   }
 
   // internally add requests to queue. Only called by parent for chaining.
-  private push(contractInstance: Contract, call: Call) {
+  protected push(contractInstance: Contract, call: Call) {
     this.requests.push({ contractInstance, call });
   }
 
   // encode requests to multicall contract
-  private encodeRequest(request: Request) {
+  protected encodeRequest(request: Request) {
     const { contractInstance, call } = request;
     return {
       target: contractInstance.address,
@@ -49,7 +49,7 @@ class Multicall implements State {
   }
 
   // decode response from multicall contract
-  private decodeResponse(request: Request, response: EncodedResponse) {
+  protected decodeResponse(request: Request, response: EncodedResponse) {
     const { contractInstance, call } = request;
     return contractInstance.interface.decodeFunctionResult(call.method, response);
   }
@@ -57,6 +57,7 @@ class Multicall implements State {
   // adds a new request to the queue, to be executed when read is called. Returns an instance of this class so you can chain.
   public add(contractInstance: Contract, call: Call) {
     const child = new Multicall(this);
+    // const child = new (<any>this.constructor)(this);
     child.push(contractInstance, call);
     return child;
   }
