@@ -57,7 +57,6 @@ export class Multicall implements State {
   // adds a new request to the queue, to be executed when read is called. Returns an instance of this class so you can chain.
   public add(contractInstance: Contract, call: Call) {
     const child = new Multicall(this);
-    // const child = new (<any>this.constructor)(this);
     child.push(contractInstance, call);
     return child;
   }
