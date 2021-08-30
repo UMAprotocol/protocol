@@ -33,3 +33,4 @@ export type GetEventType<ContractType extends Contract, EventName extends string
 > extends TypedEventFilter<infer T, infer S>
   ? TypedEvent<T & S extends Result ? T & S : never>
   : never;
+// comment for CI
