@@ -27,20 +27,12 @@ class Multicall2 extends Multicall<multicall2.Instance> {
 
   // adds a new request to the queue, to be executed when read is called. Returns an instance of this class so you can chain.
   public add(contractInstance: Contract, call: Call) {
-    const multicall = super.add(contractInstance, call);
-    return new Multicall2({
-      multicallClient: multicall.multicallClient,
-      requests: multicall.requests,
-    });
+    return new Multicall2(super.add(contractInstance, call));
   }
 
   // adds a list of requests to the queue, to be executed when read is called. Returns an instance of this class so you can chain.
   public batch(contractInstance: Contract, calls: Call[]) {
-    const multicall = super.batch(contractInstance, calls);
-    return new Multicall2({
-      multicallClient: multicall.multicallClient,
-      requests: multicall.requests,
-    });
+    return new Multicall2(super.batch(contractInstance, calls));
   }
 }
 
