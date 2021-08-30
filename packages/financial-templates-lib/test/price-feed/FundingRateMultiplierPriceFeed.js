@@ -1,8 +1,8 @@
 const winston = require("winston");
 
-const { FundingRateMultiplierPriceFeed } = require("../../src/price-feed/FundingRateMultiplierPriceFeed");
+const { FundingRateMultiplierPriceFeed } = require("../../dist/price-feed/FundingRateMultiplierPriceFeed");
 const { advanceBlockAndSetTime, parseFixed } = require("@uma/common");
-const { BlockFinder } = require("../../src/price-feed/utils");
+const { BlockFinder } = require("../../dist/price-feed/utils");
 const { getTruffleContract } = require("@uma/core");
 
 const PerpetualMock = getTruffleContract("PerpetualMock", web3);

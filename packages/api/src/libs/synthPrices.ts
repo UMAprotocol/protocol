@@ -30,7 +30,7 @@ export default (config: Config = {}, web3: Web3) => {
       logger,
       web3,
       networker,
-      () => Math.floor(now / 1000), // starting time in seconds
+      async () => Math.floor(now / 1000), // starting time in seconds
       empAddress,
       {
         // default to 18 decimals
