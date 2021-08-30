@@ -4,18 +4,15 @@ import { zip } from "lodash";
 import { SignerOrProvider } from ".";
 import { Contract } from "ethers";
 
-class Multicall2 extends Multicall {
-  constructor(state: State) {
+class Multicall2 extends Multicall<multicall2.Instance> {
+  constructor(state: State<multicall2.Instance>) {
     super(state);
   }
 
   // reads from the contract, returns the read and error results in order that requests were queued.
   public async readWithErrors(_requests: Request[] = this.requests) {
     const encodedRequests = _requests.map((request) => this.encodeRequest(request));
-    const [, , returnData] = await (this.multicallClient as multicall2.Instance).callStatic.tryBlockAndAggregate(
-      false,
-      encodedRequests
-    );
+    const [, , returnData] = await this.multicallClient.callStatic.tryBlockAndAggregate(false, encodedRequests);
     const zipped = zip(_requests, returnData);
     return zipped.map(([request, response]) => {
       if (request && response) {
