@@ -1,27 +1,35 @@
+const { web3, getContract, network } = require("hardhat");
+const { assert } = require("chai");
 const { toWei, toBN } = web3.utils;
 const winston = require("winston");
 
-const { UniswapV2PriceFeed } = require("../dist/price-feed/UniswapPriceFeed");
-const { mineTransactionsAtTime, MAX_SAFE_JS_INT, parseFixed } = require("@uma/common");
-const { delay } = require("../dist/helpers/delay.js");
-const { getTruffleContract } = require("@uma/core");
+const { UniswapV2PriceFeed } = require("../../dist/price-feed/UniswapPriceFeed");
+const { mineTransactionsAtTimeHardhat, MAX_SAFE_JS_INT, parseFixed } = require("@uma/common");
+const { delay } = require("../../dist/helpers/delay.js");
 
-const UniswapMock = getTruffleContract("UniswapV2Mock", web3);
-const Uniswap = getTruffleContract("UniswapV2", web3);
-const Token = getTruffleContract("ExpandedERC20", web3);
+const UniswapMock = getContract("UniswapV2Mock");
+const Uniswap = getContract("UniswapV2");
+const Token = getContract("ExpandedERC20");
 
 const Convert = (decimals) => (number) => (number ? parseFixed(number.toString(), decimals).toString() : number);
 
-contract("UniswapV2PriceFeed", function (accounts) {
-  const owner = accounts[0];
+const getFutureTime = async () => Number((await web3.eth.getBlock("latest")).timestamp) + 10000;
+
+describe("UniswapV2PriceFeed", function () {
+  let owner, accounts;
 
   let uniswapMock;
   let uniswapPriceFeed;
   let mockTime = 0;
   let dummyLogger;
 
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+    [owner] = accounts;
+  });
+
   beforeEach(async function () {
-    uniswapMock = await UniswapMock.new({ from: owner });
+    uniswapMock = await UniswapMock.new().send({ from: owner });
 
     // The UniswapPriceFeed does not emit any info `level` events.  Therefore no need to test Winston outputs.
     // DummyLogger will not print anything to console as only capture `info` level events.
@@ -32,7 +40,7 @@ contract("UniswapV2PriceFeed", function (accounts) {
       Uniswap.abi,
       Token.abi,
       web3,
-      uniswapMock.address,
+      uniswapMock.options.address,
       3600,
       3600,
       () => mockTime,
@@ -40,14 +48,14 @@ contract("UniswapV2PriceFeed", function (accounts) {
     );
 
     // By default, token0 and token1 use 18 decimal precision
-    const token0 = await Token.new("Uni Token0", "U0", 18, { from: owner });
-    const token1 = await Token.new("Uni Token1", "U1", 18, { from: owner });
-    await uniswapMock.setTokens(token0.address, token1.address);
+    const token0 = await Token.new("Uni Token0", "U0", 18).send({ from: owner });
+    const token1 = await Token.new("Uni Token1", "U1", 18).send({ from: owner });
+    await uniswapMock.methods.setTokens(token0.options.address, token1.options.address).send({ from: owner });
     await uniswapPriceFeed.update();
   });
 
   it("Basic current price", async function () {
-    await uniswapMock.setPrice(toWei("2"), toWei("1"));
+    await uniswapMock.methods.setPrice(toWei("2"), toWei("1")).send({ from: owner });
     await uniswapPriceFeed.update();
 
     assert.equal(uniswapPriceFeed.getLastBlockPrice().toString(), toWei("0.5"));
@@ -56,11 +64,11 @@ contract("UniswapV2PriceFeed", function (accounts) {
   });
 
   it("Correctly selects most recent price", async function () {
-    await uniswapMock.setPrice(toWei("1"), toWei("1"));
-    await uniswapMock.setPrice(toWei("2"), toWei("1"));
-    await uniswapMock.setPrice(toWei("4"), toWei("1"));
+    await uniswapMock.methods.setPrice(toWei("1"), toWei("1")).send({ from: owner });
+    await uniswapMock.methods.setPrice(toWei("2"), toWei("1")).send({ from: owner });
+    await uniswapMock.methods.setPrice(toWei("4"), toWei("1")).send({ from: owner });
     // Add an invalid price as the most recent price, which should be ignored.
-    await uniswapMock.setPrice(toWei("0"), toWei("1"));
+    await uniswapMock.methods.setPrice(toWei("0"), toWei("1")).send({ from: owner });
     await uniswapPriceFeed.update();
 
     assert.equal(uniswapPriceFeed.getLastBlockPrice().toString(), toWei("0.25"));
@@ -68,16 +76,16 @@ contract("UniswapV2PriceFeed", function (accounts) {
 
   it("Selects most recent price in same block", async function () {
     // Just use current system time because the time doesn't matter.
-    const time = Math.round(new Date().getTime() / 1000);
+    const time = await getFutureTime();
 
     const transactions = [
-      uniswapMock.contract.methods.setPrice(toWei("1"), toWei("1")),
-      uniswapMock.contract.methods.setPrice(toWei("2"), toWei("1")),
-      uniswapMock.contract.methods.setPrice(toWei("4"), toWei("1")),
+      uniswapMock.methods.setPrice(toWei("1"), toWei("1")),
+      uniswapMock.methods.setPrice(toWei("2"), toWei("1")),
+      uniswapMock.methods.setPrice(toWei("4"), toWei("1")),
     ];
 
     // Ensure all are included in the same block
-    const [receipt1, receipt2, receipt3] = await mineTransactionsAtTime(web3, transactions, time, owner);
+    const [receipt1, receipt2, receipt3] = await mineTransactionsAtTimeHardhat(network, transactions, time, owner);
     assert.equal(receipt2.blockNumber, receipt1.blockNumber);
     assert.equal(receipt3.blockNumber, receipt1.blockNumber);
 
@@ -92,7 +100,7 @@ contract("UniswapV2PriceFeed", function (accounts) {
     assert.equal(uniswapPriceFeed.getLastBlockPrice(), null);
     assert.equal(uniswapPriceFeed.getCurrentPrice(), null);
 
-    await uniswapMock.setPrice(toWei("0"), toWei("1"));
+    await uniswapMock.methods.setPrice(toWei("0"), toWei("1")).send({ from: owner });
     assert.equal(uniswapPriceFeed.getLastBlockPrice(), null);
     assert.equal(uniswapPriceFeed.getCurrentPrice(), null);
   });
@@ -100,14 +108,14 @@ contract("UniswapV2PriceFeed", function (accounts) {
   // Basic test to verify TWAP (non simulated time).
   it("Basic 2-price TWAP", async function () {
     // Update the prices with a small amount of time between.
-    const result1 = await uniswapMock.setPrice(toWei("1"), toWei("1"));
+    const result1 = await uniswapMock.methods.setPrice(toWei("1"), toWei("1")).send({ from: owner });
     await delay(1);
     // Invalid price should be ignored.
-    await uniswapMock.setPrice(toWei("0"), toWei("1"));
-    const result2 = await uniswapMock.setPrice(toWei("2"), toWei("1"));
+    await uniswapMock.methods.setPrice(toWei("0"), toWei("1")).send({ from: owner });
+    const result2 = await uniswapMock.methods.setPrice(toWei("2"), toWei("1")).send({ from: owner });
 
     const getBlockTime = async (result) => {
-      return (await web3.eth.getBlock(result.receipt.blockNumber)).timestamp;
+      return (await web3.eth.getBlock(result.blockNumber)).timestamp;
     };
 
     // Grab the exact blocktimes.
@@ -130,9 +138,9 @@ contract("UniswapV2PriceFeed", function (accounts) {
   });
 
   it("All events before window", async function () {
-    await uniswapMock.setPrice(toWei("1"), toWei("1"));
-    await uniswapMock.setPrice(toWei("2"), toWei("1"));
-    await uniswapMock.setPrice(toWei("4"), toWei("1"));
+    await uniswapMock.methods.setPrice(toWei("1"), toWei("1")).send({ from: owner });
+    await uniswapMock.methods.setPrice(toWei("2"), toWei("1")).send({ from: owner });
+    await uniswapMock.methods.setPrice(toWei("4"), toWei("1")).send({ from: owner });
 
     // Set the mock time to very far in the future.
     mockTime = MAX_SAFE_JS_INT;
@@ -144,9 +152,9 @@ contract("UniswapV2PriceFeed", function (accounts) {
   });
 
   it("All events after window", async function () {
-    await uniswapMock.setPrice(toWei("1"), toWei("1"));
-    await uniswapMock.setPrice(toWei("2"), toWei("1"));
-    await uniswapMock.setPrice(toWei("4"), toWei("1"));
+    await uniswapMock.methods.setPrice(toWei("1"), toWei("1")).send({ from: owner });
+    await uniswapMock.methods.setPrice(toWei("2"), toWei("1")).send({ from: owner });
+    await uniswapMock.methods.setPrice(toWei("4"), toWei("1")).send({ from: owner });
 
     // Set the mock time to very far in the past.
     mockTime = 5000;
@@ -159,34 +167,34 @@ contract("UniswapV2PriceFeed", function (accounts) {
 
   it("One event within window, several before", async function () {
     // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
-    const currentTime = Math.round(new Date().getTime() / 1000);
+    const currentTime = await getFutureTime();
 
     // Set prices before the T-3600 window; only the most recent one should be counted.
-    await mineTransactionsAtTime(
-      web3,
-      [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("4"))],
+    await mineTransactionsAtTimeHardhat(
+      network,
+      [uniswapMock.methods.setPrice(toWei("1"), toWei("4"))],
       currentTime - 7300,
       owner
     );
-    await mineTransactionsAtTime(
-      web3,
-      [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("2"))],
+    await mineTransactionsAtTimeHardhat(
+      network,
+      [uniswapMock.methods.setPrice(toWei("1"), toWei("2"))],
       currentTime - 7200,
       owner
     );
 
     // Set a price within the T-3600 window
-    await mineTransactionsAtTime(
-      web3,
-      [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("1"))],
+    await mineTransactionsAtTimeHardhat(
+      network,
+      [uniswapMock.methods.setPrice(toWei("1"), toWei("1"))],
       currentTime - 1800,
       owner
     );
 
     // Prices after the TWAP window should be ignored.
-    await mineTransactionsAtTime(
-      web3,
-      [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("8"))],
+    await mineTransactionsAtTimeHardhat(
+      network,
+      [uniswapMock.methods.setPrice(toWei("1"), toWei("8"))],
       currentTime + 1,
       owner
     );
@@ -204,44 +212,44 @@ contract("UniswapV2PriceFeed", function (accounts) {
 
   it("Basic historical TWAP", async function () {
     // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
-    const currentTime = Math.round(new Date().getTime() / 1000);
+    const currentTime = await getFutureTime();
 
     // Historical window starts 2 hours ago. Set the price to 100 before the beginning of the window (2.5 hours before currentTime)
-    await mineTransactionsAtTime(
-      web3,
-      [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("100"))],
+    await mineTransactionsAtTimeHardhat(
+      network,
+      [uniswapMock.methods.setPrice(toWei("1"), toWei("100"))],
       currentTime - 7200,
       owner
     );
 
     // At an hour and a half ago, set the price to 90.
-    await mineTransactionsAtTime(
-      web3,
-      [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("90"))],
+    await mineTransactionsAtTimeHardhat(
+      network,
+      [uniswapMock.methods.setPrice(toWei("1"), toWei("90"))],
       currentTime - 5400,
       owner
     );
 
     // At an hour and a half ago - 1 second, set the price to an invalid one. This should be ignored.
-    await mineTransactionsAtTime(
-      web3,
-      [uniswapMock.contract.methods.setPrice(toWei("0"), toWei("1"))],
+    await mineTransactionsAtTimeHardhat(
+      network,
+      [uniswapMock.methods.setPrice(toWei("0"), toWei("1"))],
       currentTime - 5399,
       owner
     );
 
     // At an hour ago, set the price to 80.
-    await mineTransactionsAtTime(
-      web3,
-      [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("80"))],
+    await mineTransactionsAtTimeHardhat(
+      network,
+      [uniswapMock.methods.setPrice(toWei("1"), toWei("80"))],
       currentTime - 3600,
       owner
     );
 
     // At half an hour ago, set the price to 70.
-    await mineTransactionsAtTime(
-      web3,
-      [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("70"))],
+    await mineTransactionsAtTimeHardhat(
+      network,
+      [uniswapMock.methods.setPrice(toWei("1"), toWei("70"))],
       currentTime - 1800,
       owner
     );
@@ -267,14 +275,14 @@ contract("UniswapV2PriceFeed", function (accounts) {
   });
 
   it("Historical time earlier than TWAP window", async function () {
-    const currentTime = Math.round(new Date().getTime() / 1000);
+    const currentTime = await getFutureTime();
     mockTime = currentTime;
 
     // Set a price within the TWAP window so that if the historical time requested were within
     // the window, then there wouldn't be an error.
-    await mineTransactionsAtTime(
-      web3,
-      [uniswapMock.contract.methods.setPrice(toWei("1"), toWei("1"))],
+    await mineTransactionsAtTimeHardhat(
+      network,
+      [uniswapMock.methods.setPrice(toWei("1"), toWei("1"))],
       currentTime - 3600,
       owner
     );
@@ -291,14 +299,14 @@ contract("UniswapV2PriceFeed", function (accounts) {
       Uniswap.abi,
       Token.abi,
       web3,
-      uniswapMock.address,
+      uniswapMock.options.address,
       3600,
       3600,
       () => mockTime,
       true
     );
 
-    await uniswapMock.setPrice(toWei("2"), toWei("1"));
+    await uniswapMock.methods.setPrice(toWei("2"), toWei("1")).send({ from: owner });
     await uniswapPriceFeed.update();
 
     assert.equal(uniswapPriceFeed.getLastBlockPrice().toString(), toWei("2"));
@@ -315,9 +323,9 @@ contract("UniswapV2PriceFeed", function (accounts) {
       // This UniswapPriceFeed's _getPriceFromSyncEvent will return prices in same precision as
       // token1. But we also change the token0 precision to test that the
       // UniswapPriceFeed correctly handles it.
-      let token0 = await Token.new("Uni Token 0", "T0", token0Precision, { from: owner });
-      let token1 = await Token.new("Uni Token 1", "T1", token1Precision, { from: owner });
-      await uniswapMock.setTokens(token0.address, token1.address);
+      let token0 = await Token.new("Uni Token 0", "T0", token0Precision).send({ from: owner });
+      let token1 = await Token.new("Uni Token 1", "T1", token1Precision).send({ from: owner });
+      await uniswapMock.methods.setTokens(token0.options.address, token1.options.address).send({ from: owner });
 
       // Since the price is not inverted for this pricefeed, the `_getPriceFromSyncEvent()` method
       // will return prices using the same precision as token1, which is 6 for these tests.
@@ -330,7 +338,7 @@ contract("UniswapV2PriceFeed", function (accounts) {
         Uniswap.abi,
         Token.abi,
         web3,
-        uniswapMock.address,
+        uniswapMock.options.address,
         3600,
         3600,
         () => mockTime,
@@ -346,7 +354,7 @@ contract("UniswapV2PriceFeed", function (accounts) {
         Uniswap.abi,
         Token.abi,
         web3,
-        uniswapMock.address,
+        uniswapMock.options.address,
         3600,
         3600,
         () => mockTime,
@@ -359,12 +367,12 @@ contract("UniswapV2PriceFeed", function (accounts) {
     });
     it("Basic 2 price TWAP", async function () {
       // Update the prices with a small amount of time between
-      const result1 = await uniswapMock.setPrice(convertToken0("1"), convertToken1("1"));
+      const result1 = await uniswapMock.methods.setPrice(convertToken0("1"), convertToken1("1")).send({ from: owner });
       await delay(1);
-      const result2 = await uniswapMock.setPrice(convertToken0("2"), convertToken1("1"));
+      const result2 = await uniswapMock.methods.setPrice(convertToken0("2"), convertToken1("1")).send({ from: owner });
 
       const getBlockTime = async (result) => {
-        return (await web3.eth.getBlock(result.receipt.blockNumber)).timestamp;
+        return (await web3.eth.getBlock(result.blockNumber)).timestamp;
       };
 
       // Grab the exact blocktimes.
@@ -401,36 +409,36 @@ contract("UniswapV2PriceFeed", function (accounts) {
     });
     it("Basic historical TWAP", async function () {
       // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
-      const currentTime = Math.round(new Date().getTime() / 1000);
+      const currentTime = await getFutureTime();
 
       // Historical window starts 2 hours ago. Set the price to 100 before the beginning of the window (2.5 hours before currentTime)
-      await mineTransactionsAtTime(
-        web3,
-        [uniswapMock.contract.methods.setPrice(convertToken0("1"), convertToken1("100"))],
+      await mineTransactionsAtTimeHardhat(
+        network,
+        [uniswapMock.methods.setPrice(convertToken0("1"), convertToken1("100"))],
         currentTime - 7200,
         owner
       );
 
       // At an hour and a half ago, set the price to 90.
-      await mineTransactionsAtTime(
-        web3,
-        [uniswapMock.contract.methods.setPrice(convertToken0("1"), convertToken1("90"))],
+      await mineTransactionsAtTimeHardhat(
+        network,
+        [uniswapMock.methods.setPrice(convertToken0("1"), convertToken1("90"))],
         currentTime - 5400,
         owner
       );
 
       // At an hour ago, set the price to 80.
-      await mineTransactionsAtTime(
-        web3,
-        [uniswapMock.contract.methods.setPrice(convertToken0("1"), convertToken1("80"))],
+      await mineTransactionsAtTimeHardhat(
+        network,
+        [uniswapMock.methods.setPrice(convertToken0("1"), convertToken1("80"))],
         currentTime - 3600,
         owner
       );
 
       // At half an hour ago, set the price to 70.
-      await mineTransactionsAtTime(
-        web3,
-        [uniswapMock.contract.methods.setPrice(convertToken0("1"), convertToken1("70"))],
+      await mineTransactionsAtTimeHardhat(
+        network,
+        [uniswapMock.methods.setPrice(convertToken0("1"), convertToken1("70"))],
         currentTime - 1800,
         owner
       );

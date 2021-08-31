@@ -1,6 +1,8 @@
+const { getContract, web3 } = require("hardhat");
 const { toWei, toBN, utf8ToHex, padRight } = web3.utils;
 const { parseFixed } = require("@ethersproject/bignumber");
 const winston = require("winston");
+const { assert } = require("chai");
 
 const {
   interfaceName,
@@ -11,7 +13,6 @@ const {
   getContractsNodePackageAliasForVerion,
   TEST_DECIMAL_COMBOS,
 } = require("@uma/common");
-const { getContract } = require("hardhat");
 
 // Script to test
 const { FinancialContractClient } = require("../../dist/clients/FinancialContractClient");
@@ -55,9 +56,11 @@ const updateAndVerify = async (client, expectedSponsors, expectedPositions) => {
 
 // Set the funding rate and advances time by 10k seconds.
 const _setFundingRateAndAdvanceTime = async (fundingRate) => {
-  const currentTime = (await financialContract.getCurrentTime().call()).toNumber();
-  await financialContract.proposeFundingRate({ rawValue: fundingRate }, currentTime).send({ from: accounts[0] });
-  await financialContract.setCurrentTime(currentTime + 10000);
+  const currentTime = parseInt(await financialContract.methods.getCurrentTime().call());
+  await financialContract.methods
+    .proposeFundingRate({ rawValue: fundingRate }, currentTime)
+    .send({ from: accounts[0] });
+  await financialContract.methods.setCurrentTime(currentTime + 10000).send({ from: accounts[0] });
 };
 
 // If the current version being executed is part of the `supportedVersions` array then return `it` to run the test.
@@ -129,31 +132,36 @@ describe("FinancialContractClient.js", function () {
           await collateralToken.methods.mint(sponsor2, convertDecimals("1000000000")).send({ from: sponsor1 });
 
           identifierWhitelist = await IdentifierWhitelist.new().send({ from: accounts[0] });
-          await identifierWhitelist.addSupportedIdentifier(utf8ToHex(identifier)).send({ from: accounts[0] });
+          await identifierWhitelist.methods.addSupportedIdentifier(utf8ToHex(identifier)).send({ from: accounts[0] });
 
           finder = await Finder.new().send({ from: accounts[0] });
           timer = await Timer.new().send({ from: accounts[0] });
-          store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address).send({ from: accounts[0] });
+          store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.options.address).send({
+            from: accounts[0],
+          });
           await finder.methods
-            .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address)
+            .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
             .send({ from: accounts[0] });
 
           collateralWhitelist = await AddressWhitelist.new().send({ from: accounts[0] });
           await finder.methods
             .changeImplementationAddress(
               web3.utils.utf8ToHex(interfaceName.CollateralWhitelist),
-              collateralWhitelist.address
+              collateralWhitelist.options.address
             )
             .send({ from: accounts[0] });
-          await collateralWhitelist.addToWhitelist(collateralToken.address).send({ from: accounts[0] });
+          await collateralWhitelist.methods.addToWhitelist(collateralToken.options.address).send({ from: accounts[0] });
 
           await finder.methods
-            .changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address)
+            .changeImplementationAddress(
+              utf8ToHex(interfaceName.IdentifierWhitelist),
+              identifierWhitelist.options.address
+            )
             .send({ from: accounts[0] });
 
-          mockOracle = await MockOracle.new(finder.address, timer.address);
+          mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({ from: accounts[0] });
           await finder.methods
-            .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address)
+            .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address)
             .send({ from: accounts[0] });
 
           multicallContract = await MulticallMock.new().send({ from: accounts[0] });
@@ -173,17 +181,17 @@ describe("FinancialContractClient.js", function () {
                 minFundingRate: { rawValue: toWei("-0.00001") },
                 proposalTimePastLimit: 0,
               },
-              timer.address
+              timer.options.address
             ).send({ from: accounts[0] });
 
             await identifierWhitelist.methods
               .addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier)))
               .send({ from: accounts[0] });
-            optimisticOracle = await OptimisticOracle.new(7200, finder.address, timer.address).send({
+            optimisticOracle = await OptimisticOracle.new(7200, finder.options.address, timer.options.address).send({
               from: accounts[0],
             });
             await finder.methods
-              .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.address)
+              .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
               .send({ from: accounts[0] });
           }
 
@@ -204,20 +212,20 @@ describe("FinancialContractClient.js", function () {
           );
 
           financialContract = await FinancialContract.new(constructorParams).send({ from: accounts[0] });
-          await syntheticToken.methods.addMinter(financialContract.address).send({ from: accounts[0] });
-          await syntheticToken.methods.addBurner(financialContract.address).send({ from: accounts[0] });
+          await syntheticToken.methods.addMinter(financialContract.options.address).send({ from: accounts[0] });
+          await syntheticToken.methods.addBurner(financialContract.options.address).send({ from: accounts[0] });
 
           await collateralToken.methods
-            .approve(financialContract.address, convertDecimals("1000000"))
+            .approve(financialContract.options.address, convertDecimals("1000000"))
             .send({ from: sponsor1 });
           await collateralToken.methods
-            .approve(financialContract.address, convertDecimals("1000000"))
+            .approve(financialContract.options.address, convertDecimals("1000000"))
             .send({ from: sponsor2 });
           await syntheticToken.methods
-            .approve(financialContract.address, convertDecimals("100000000"))
+            .approve(financialContract.options.address, convertDecimals("100000000"))
             .send({ from: sponsor1 });
           await syntheticToken.methods
-            .approve(financialContract.address, convertDecimals("100000000"))
+            .approve(financialContract.options.address, convertDecimals("100000000"))
             .send({ from: sponsor2 });
 
           // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.
@@ -229,10 +237,10 @@ describe("FinancialContractClient.js", function () {
 
           client = new FinancialContractClient(
             dummyLogger,
-            financialContract.abi,
+            FinancialContract.abi,
             web3,
-            financialContract.address,
-            multicallContract.address,
+            financialContract.options.address,
+            multicallContract.options.address,
             testConfig.collateralDecimals,
             testConfig.syntheticDecimals,
             testConfig.priceFeedDecimals,
@@ -351,7 +359,7 @@ describe("FinancialContractClient.js", function () {
               numTokens: convertDecimals("45"),
               liquidatedCollateral: convertDecimals("100"),
               lockedCollateral: convertDecimals("100"),
-              liquidationTime: (await financialContract.getCurrentTime().call()).toString(),
+              liquidationTime: (await financialContract.methods.getCurrentTime().call()).toString(),
               state: "1",
               liquidator: sponsor1,
               disputer: zeroAddress,
@@ -375,8 +383,8 @@ describe("FinancialContractClient.js", function () {
                 numTokens: convertDecimals("100"),
                 amountCollateral: convertDecimals("20"),
                 hasPendingWithdrawal: true,
-                withdrawalRequestPassTimestamp: (await financialContract.getCurrentTime().call())
-                  .add(await financialContract.withdrawalLiveness())
+                withdrawalRequestPassTimestamp: toBN(await financialContract.methods.getCurrentTime().call())
+                  .add(toBN(await financialContract.methods.withdrawalLiveness().call()))
                   .toString(),
                 withdrawalRequestAmount: convertDecimals("10"),
               },
@@ -406,7 +414,7 @@ describe("FinancialContractClient.js", function () {
           await financialContract.methods
             .create({ rawValue: convertDecimals("100") }, { rawValue: convertDecimals("45") })
             .send({ from: sponsor2 });
-          await financialContract.methods.redeem({ rawValue: convertDecimals("45") }, { from: sponsor2 });
+          await financialContract.methods.redeem({ rawValue: convertDecimals("45") }).send({ from: sponsor2 });
           // as created and redeemed sponsor should not show up in table as they are no longer an active sponsor.
 
           await updateAndVerify(
@@ -428,11 +436,11 @@ describe("FinancialContractClient.js", function () {
           await financialContract.methods
             .create({ rawValue: convertDecimals("100") }, { rawValue: convertDecimals("45") })
             .send({ from: sponsor2 });
-          await financialContract.methods.redeem({ rawValue: convertDecimals("45") }, { from: sponsor2 });
+          await financialContract.methods.redeem({ rawValue: convertDecimals("45") }).send({ from: sponsor2 });
           await financialContract.methods
             .create({ rawValue: convertDecimals("100") }, { rawValue: convertDecimals("45") })
             .send({ from: sponsor2 });
-          await financialContract.methods.redeem({ rawValue: convertDecimals("45") }, { from: sponsor2 });
+          await financialContract.methods.redeem({ rawValue: convertDecimals("45") }).send({ from: sponsor2 });
           await financialContract.methods
             .create({ rawValue: convertDecimals("100") }, { rawValue: convertDecimals("45") })
             .send({ from: sponsor2 });
@@ -526,7 +534,7 @@ describe("FinancialContractClient.js", function () {
             await financialContract.methods
               .create({ rawValue: convertDecimals("150") }, { rawValue: convertDecimals("100") })
               .send({ from: sponsor1 });
-            await syntheticToken.transfer(liquidator, convertDecimals("100")).send({ from: sponsor1 });
+            await syntheticToken.methods.transfer(liquidator, convertDecimals("100")).send({ from: sponsor1 });
 
             // Create a new liquidation for account[0]'s position.
             const { liquidationId } = await financialContract.methods
@@ -739,10 +747,10 @@ describe("FinancialContractClient.js", function () {
             // It should therefore default to the Financial Contract which ensures that packages that are yet to update.
             client = new FinancialContractClient(
               dummyLogger,
-              financialContract.abi,
+              FinancialContract.abi,
               web3,
-              financialContract.address,
-              multicallContract.address,
+              financialContract.options.address,
+              multicallContract.options.address,
               testConfig.collateralDecimals,
               testConfig.syntheticDecimals,
               testConfig.priceFeedDecimals
@@ -759,8 +767,8 @@ describe("FinancialContractClient.js", function () {
                 dummyLogger,
                 financialContract.abi,
                 web3,
-                financialContract.address,
-                multicallContract.address,
+                financialContract.options.address,
+                multicallContract.options.address,
                 testConfig.collateralDecimals,
                 testConfig.syntheticDecimals,
                 testConfig.priceFeedDecimals,
@@ -776,8 +784,8 @@ describe("FinancialContractClient.js", function () {
                 dummyLogger,
                 financialContract.abi,
                 web3,
-                financialContract.address,
-                multicallContract.address,
+                financialContract.options.address,
+                multicallContract.options.address,
                 testConfig.collateralDecimals,
                 testConfig.syntheticDecimals,
                 testConfig.priceFeedDecimals,
@@ -918,7 +926,7 @@ describe("FinancialContractClient.js", function () {
                 unreachableDeadline
               )
               .send({ from: sponsor2 });
-            const currentTime = (await financialContract.methods.getCurrentTime().call()).toNumber();
+            const currentTime = parseInt(await financialContract.methods.getCurrentTime().call());
             // Note: Advance < liquidationLiveness amount of time so that liquidation still appears under
             // undisputedLiquidations struct:
             await financialContract.methods.setCurrentTime(currentTime + 999).send({ from: accounts[0] });

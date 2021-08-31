@@ -1,24 +1,34 @@
+const { web3, getContract, network } = require("hardhat");
+const { assert } = require("chai");
 const { toWei, toBN } = web3.utils;
 const winston = require("winston");
 
-const { BalancerPriceFeed } = require("../dist/price-feed/BalancerPriceFeed");
-const { mineTransactionsAtTime, MAX_SAFE_JS_INT } = require("@uma/common");
-const { delay } = require("../dist/helpers/delay.js");
-const { getTruffleContract } = require("@uma/core");
+const { BalancerPriceFeed } = require("../../dist/price-feed/BalancerPriceFeed");
+const { mineTransactionsAtTimeHardhat, MAX_SAFE_JS_INT } = require("@uma/common");
+const { delay } = require("../../dist/helpers/delay.js");
 
-const BalancerMock = getTruffleContract("BalancerMock", web3);
-const Balancer = getTruffleContract("Balancer", web3);
+const BalancerMock = getContract("BalancerMock");
+const Balancer = getContract("Balancer");
 
-contract("BalancerPriceFeed.js", function (accounts) {
-  const owner = accounts[0];
+const getFutureTimestamp = async () => {
+  return Number((await web3.eth.getBlock("latest")).timestamp) + 10000;
+};
+
+describe("BalancerPriceFeed.js", function () {
+  let owner, accounts;
 
   let dexMock;
   let dexPriceFeed;
   let mockTime = 0;
   let dummyLogger;
 
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+    [owner] = accounts;
+  });
+
   beforeEach(async function () {
-    dexMock = await BalancerMock.new({ from: owner });
+    dexMock = await BalancerMock.new({ from: owner }).send({ from: owner });
 
     // The BalancerPriceFeed does not emit any info `level` events.  Therefore no need to test Winston outputs.
     // DummyLogger will not print anything to console as only capture `info` level events.
@@ -29,7 +39,7 @@ contract("BalancerPriceFeed.js", function (accounts) {
       web3,
       () => mockTime,
       Balancer.abi,
-      dexMock.address,
+      dexMock.options.address,
       // These dont matter in the mock, but would represent the tokenIn and tokenOut for calling price feed.
       accounts[1],
       accounts[2],
@@ -39,7 +49,7 @@ contract("BalancerPriceFeed.js", function (accounts) {
   });
 
   it("Basic current price", async function () {
-    await dexMock.setPrice(toWei("0.5"));
+    await dexMock.methods.setPrice(toWei("0.5")).send({ from: owner });
     await dexPriceFeed.update();
 
     assert.equal(dexPriceFeed.getSpotPrice().toString(), toWei("0.5"));
@@ -48,11 +58,11 @@ contract("BalancerPriceFeed.js", function (accounts) {
   });
 
   it("Correctly selects most recent price", async function () {
-    await dexMock.setPrice(toWei("1"));
-    await dexMock.setPrice(toWei("0.5"));
-    await dexMock.setPrice(toWei("0.25"));
+    await dexMock.methods.setPrice(toWei("1")).send({ from: owner });
+    await dexMock.methods.setPrice(toWei("0.5")).send({ from: owner });
+    await dexMock.methods.setPrice(toWei("0.25")).send({ from: owner });
     // Add an invalid price as the most recent price, which should be ignored.
-    await dexMock.setPrice(toWei("0"));
+    await dexMock.methods.setPrice(toWei("0")).send({ from: owner });
     await dexPriceFeed.update();
 
     assert.equal(dexPriceFeed.getSpotPrice().toString(), toWei("0.25"));
@@ -60,16 +70,16 @@ contract("BalancerPriceFeed.js", function (accounts) {
 
   it("Selects most recent price in same block", async function () {
     // Just use current system time because the time doesn't matter.
-    const time = Math.round(new Date().getTime() / 1000);
+    const time = await getFutureTimestamp();
 
     const transactions = [
-      dexMock.contract.methods.setPrice(toWei("1")),
-      dexMock.contract.methods.setPrice(toWei("0.5")),
-      dexMock.contract.methods.setPrice(toWei("0.25")),
+      dexMock.methods.setPrice(toWei("1")),
+      dexMock.methods.setPrice(toWei("0.5")),
+      dexMock.methods.setPrice(toWei("0.25")),
     ];
 
     // Ensure all are included in the same block
-    const [receipt1, receipt2, receipt3] = await mineTransactionsAtTime(web3, transactions, time, owner);
+    const [receipt1, receipt2, receipt3] = await mineTransactionsAtTimeHardhat(network, transactions, time, owner);
     assert.equal(receipt2.blockNumber, receipt1.blockNumber);
     assert.equal(receipt3.blockNumber, receipt1.blockNumber);
 
@@ -84,7 +94,7 @@ contract("BalancerPriceFeed.js", function (accounts) {
     assert.equal(dexPriceFeed.getSpotPrice(), null);
     assert.equal(dexPriceFeed.getCurrentPrice(), null);
 
-    await dexMock.setPrice(toWei("0"));
+    await dexMock.methods.setPrice(toWei("0")).send({ from: owner });
     assert.equal(dexPriceFeed.getSpotPrice(), null);
     assert.equal(dexPriceFeed.getCurrentPrice(), null);
   });
@@ -92,14 +102,14 @@ contract("BalancerPriceFeed.js", function (accounts) {
   // Basic test to verify TWAP (non simulated time).
   it("Basic 2-price TWAP", async function () {
     // Update the prices with a small amount of time between.
-    const result1 = await dexMock.setPrice(toWei("1"));
+    const result1 = await dexMock.methods.setPrice(toWei("1")).send({ from: owner });
     await delay(1);
     // Invalid price should be ignored.
-    await dexMock.setPrice(toWei("0"));
-    const result2 = await dexMock.setPrice(toWei("0.5"));
+    await dexMock.methods.setPrice(toWei("0")).send({ from: owner });
+    const result2 = await dexMock.methods.setPrice(toWei("0.5")).send({ from: owner });
 
     const getBlockTime = async (result) => {
-      return (await web3.eth.getBlock(result.receipt.blockNumber)).timestamp;
+      return (await web3.eth.getBlock(result.blockNumber)).timestamp;
     };
 
     // Grab the exact blocktimes.
@@ -122,9 +132,9 @@ contract("BalancerPriceFeed.js", function (accounts) {
   });
 
   it("All events before window", async function () {
-    await dexMock.setPrice(toWei("1"));
-    await dexMock.setPrice(toWei("0.5"));
-    await dexMock.setPrice(toWei("0.25"));
+    await dexMock.methods.setPrice(toWei("1")).send({ from: owner });
+    await dexMock.methods.setPrice(toWei("0.5")).send({ from: owner });
+    await dexMock.methods.setPrice(toWei("0.25")).send({ from: owner });
 
     // Set the mock time to very far in the future.
     mockTime = MAX_SAFE_JS_INT;
@@ -136,9 +146,9 @@ contract("BalancerPriceFeed.js", function (accounts) {
   });
 
   it("All events after window", async function () {
-    await dexMock.setPrice(toWei("1"));
-    await dexMock.setPrice(toWei("0.5"));
-    await dexMock.setPrice(toWei("0.25"));
+    await dexMock.methods.setPrice(toWei("1")).send({ from: owner });
+    await dexMock.methods.setPrice(toWei("0.5")).send({ from: owner });
+    await dexMock.methods.setPrice(toWei("0.25")).send({ from: owner });
 
     // Set the mock time to very far in the past.
     mockTime = 5000;
@@ -151,17 +161,17 @@ contract("BalancerPriceFeed.js", function (accounts) {
 
   it("One event within window, several before", async function () {
     // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
-    const currentTime = Math.round(new Date().getTime() / 1000);
+    const currentTime = await getFutureTimestamp();
 
     // Set prices before the T-3600 window; only the most recent one should be counted.
-    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("4"))], currentTime - 7300, owner);
-    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("2"))], currentTime - 7200, owner);
+    await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("4"))], currentTime - 7300, owner);
+    await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("2"))], currentTime - 7200, owner);
 
     // Set a price within the T-3600 window
-    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("1"))], currentTime - 1800, owner);
+    await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("1"))], currentTime - 1800, owner);
 
     // Prices after the TWAP window should be ignored.
-    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("8"))], currentTime + 1, owner);
+    await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("8"))], currentTime + 1, owner);
 
     mockTime = currentTime;
     await dexPriceFeed.update();
@@ -176,22 +186,22 @@ contract("BalancerPriceFeed.js", function (accounts) {
 
   it("Basic historical TWAP", async function () {
     // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
-    const currentTime = Math.round(new Date().getTime() / 1000);
+    const currentTime = await getFutureTimestamp();
 
     // Historical window starts 2 hours ago. Set the price to 100 before the beginning of the window (2.5 hours before currentTime)
-    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("100"))], currentTime - 7200, owner);
+    await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("100"))], currentTime - 7200, owner);
 
     // At an hour and a half ago, set the price to 90.
-    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("90"))], currentTime - 5400, owner);
+    await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("90"))], currentTime - 5400, owner);
 
     // At an hour and a half ago - 1 second, set the price to an invalid one. This should be ignored.
-    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("0"))], currentTime - 5399, owner);
+    await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("0"))], currentTime - 5399, owner);
 
     // At an hour ago, set the price to 80.
-    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("80"))], currentTime - 3600, owner);
+    await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("80"))], currentTime - 3600, owner);
 
     // At half an hour ago, set the price to 70.
-    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("70"))], currentTime - 1800, owner);
+    await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("70"))], currentTime - 1800, owner);
 
     mockTime = currentTime;
 
@@ -214,12 +224,12 @@ contract("BalancerPriceFeed.js", function (accounts) {
   });
 
   it("Historical time earlier than TWAP window", async function () {
-    const currentTime = Math.round(new Date().getTime() / 1000);
+    const currentTime = await getFutureTimestamp();
     mockTime = currentTime;
 
     // Set a price within the TWAP window so that if the historical time requested were within
     // the window, then there wouldn't be an error.
-    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("1"))], currentTime - 3600, owner);
+    await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("1"))], currentTime - 3600, owner);
     await dexPriceFeed.update();
 
     // The TWAP lookback is 1 hour (3600 seconds). The price feed should return null if we attempt to go any further back than that.
@@ -232,7 +242,7 @@ contract("BalancerPriceFeed.js", function (accounts) {
       web3,
       () => mockTime,
       Balancer.abi,
-      dexMock.address,
+      dexMock.options.address,
       // These dont matter in the mock, but would represent the tokenIn and tokenOut for calling price feed.
       accounts[1],
       accounts[2],
@@ -241,13 +251,13 @@ contract("BalancerPriceFeed.js", function (accounts) {
     );
 
     // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
-    const currentTime = Math.round(new Date().getTime() / 1000);
+    const currentTime = await getFutureTimestamp();
 
     // Same test scenario as the Basic Historical TWAP test to illustrate what setting twapLength to 0 does.
-    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("100"))], currentTime - 7200, owner);
-    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("90"))], currentTime - 5400, owner);
-    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("80"))], currentTime - 3600, owner);
-    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("70"))], currentTime - 1800, owner);
+    await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("100"))], currentTime - 7200, owner);
+    await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("90"))], currentTime - 5400, owner);
+    await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("80"))], currentTime - 3600, owner);
+    await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("70"))], currentTime - 1800, owner);
 
     mockTime = currentTime;
 
@@ -265,7 +275,7 @@ contract("BalancerPriceFeed.js", function (accounts) {
       web3,
       () => mockTime,
       Balancer.abi,
-      dexMock.address,
+      dexMock.options.address,
       // These dont matter in the mock, but would represent the tokenIn and tokenOut for calling price feed.
       accounts[1],
       accounts[2],
@@ -274,13 +284,13 @@ contract("BalancerPriceFeed.js", function (accounts) {
     );
 
     // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
-    const currentTime = Math.round(new Date().getTime() / 1000);
+    const currentTime = await getFutureTimestamp();
 
     // Same test scenario as the Basic Historical TWAP test to illustrate what setting twapLength to 0 does.
-    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("100"))], currentTime - 7200, owner);
-    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("90"))], currentTime - 5400, owner);
-    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("80"))], currentTime - 3600, owner);
-    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("70"))], currentTime - 1800, owner);
+    await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("100"))], currentTime - 7200, owner);
+    await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("90"))], currentTime - 5400, owner);
+    await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("80"))], currentTime - 3600, owner);
+    await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("70"))], currentTime - 1800, owner);
 
     mockTime = currentTime;
 
@@ -300,7 +310,7 @@ contract("BalancerPriceFeed.js", function (accounts) {
       web3,
       () => mockTime,
       Balancer.abi,
-      dexMock.address,
+      dexMock.options.address,
       // These dont matter in the mock, but would represent the tokenIn and tokenOut for calling price feed.
       accounts[1],
       accounts[2],
@@ -309,13 +319,13 @@ contract("BalancerPriceFeed.js", function (accounts) {
     );
 
     // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
-    const currentTime = Math.round(new Date().getTime() / 1000);
+    const currentTime = await getFutureTimestamp();
 
     // Same test scenario as the Basic Historical TWAP test to illustrate what setting twapLength to 0 does.
-    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("100"))], currentTime - 7200, owner);
-    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("90"))], currentTime - 5400, owner);
-    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("80"))], currentTime - 3600, owner);
-    await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("70"))], currentTime - 1800, owner);
+    await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("100"))], currentTime - 7200, owner);
+    await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("90"))], currentTime - 5400, owner);
+    await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("80"))], currentTime - 3600, owner);
+    await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("70"))], currentTime - 1800, owner);
 
     mockTime = currentTime;
 
@@ -340,7 +350,7 @@ contract("BalancerPriceFeed.js", function (accounts) {
         web3,
         () => mockTime,
         Balancer.abi,
-        dexMock.address,
+        dexMock.options.address,
         // These dont matter in the mock, but would represent the tokenIn and tokenOut for calling price feed.
         accounts[1],
         accounts[2],
@@ -356,7 +366,7 @@ contract("BalancerPriceFeed.js", function (accounts) {
         web3,
         () => mockTime,
         Balancer.abi,
-        dexMock.address,
+        dexMock.options.address,
         // These dont matter in the mock, but would represent the tokenIn and tokenOut for calling price feed.
         accounts[1],
         accounts[2],
@@ -368,12 +378,12 @@ contract("BalancerPriceFeed.js", function (accounts) {
     });
     it("Basic 2 price TWAP", async function () {
       // Update the prices with a small amount of time between.
-      const result1 = await dexMock.setPrice(toWei("1"));
+      const result1 = await dexMock.methods.setPrice(toWei("1")).send({ from: owner });
       await delay(1);
-      const result2 = await dexMock.setPrice(toWei("0.5"));
+      const result2 = await dexMock.methods.setPrice(toWei("0.5")).send({ from: owner });
 
       const getBlockTime = async (result) => {
-        return (await web3.eth.getBlock(result.receipt.blockNumber)).timestamp;
+        return (await web3.eth.getBlock(result.blockNumber)).timestamp;
       };
 
       // Grab the exact blocktimes.
@@ -409,19 +419,19 @@ contract("BalancerPriceFeed.js", function (accounts) {
     });
     it("Basic historical TWAP", async function () {
       // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
-      const currentTime = Math.round(new Date().getTime() / 1000);
+      const currentTime = await getFutureTimestamp();
 
       // Historical window starts 2 hours ago. Set the price to 100 before the beginning of the window (2.5 hours before currentTime)
-      await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("100"))], currentTime - 7200, owner);
+      await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("100"))], currentTime - 7200, owner);
 
       // At an hour and a half ago, set the price to 90.
-      await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("90"))], currentTime - 5400, owner);
+      await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("90"))], currentTime - 5400, owner);
 
       // At an hour ago, set the price to 80.
-      await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("80"))], currentTime - 3600, owner);
+      await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("80"))], currentTime - 3600, owner);
 
       // At half an hour ago, set the price to 70.
-      await mineTransactionsAtTime(web3, [dexMock.contract.methods.setPrice(toWei("70"))], currentTime - 1800, owner);
+      await mineTransactionsAtTimeHardhat(network, [dexMock.methods.setPrice(toWei("70"))], currentTime - 1800, owner);
 
       mockTime = currentTime;
 

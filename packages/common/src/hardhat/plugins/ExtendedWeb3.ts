@@ -33,6 +33,29 @@ import type { ContractSendMethod, Contract, EventData } from "web3-eth-contract"
 import type Web3 from "web3";
 import type { DeploymentsExtension } from "hardhat-deploy/types";
 
+// Copied from https://ethereum.stackexchange.com/a/85110/47801.
+function linkBytecode(artifact: Artifact, libraries: { [libraryName: string]: string }) {
+  let bytecode = artifact.bytecode;
+
+  for (const [, fileReferences] of Object.entries(artifact.linkReferences)) {
+    for (const [libName, fixups] of Object.entries(fileReferences)) {
+      const addr = libraries[libName];
+      if (addr === undefined) {
+        continue;
+      }
+
+      for (const fixup of fixups) {
+        bytecode =
+          bytecode.substr(0, 2 + fixup.start * 2) +
+          addr.substr(2) +
+          bytecode.substr(2 + (fixup.start + fixup.length) * 2);
+      }
+    }
+  }
+
+  return bytecode;
+}
+
 export interface ContractFactory extends Artifact {
   deployed: () => Promise<Contract>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -80,12 +103,17 @@ extendEnvironment((_hre) => {
       return new hre.web3.eth.Contract(artifact.abi, deployment.address);
     };
 
+    const link = (libraries: { [libraryName: string]: string }): string => {
+      artifact.bytecode = linkBytecode(artifact, libraries);
+      return artifact.bytecode;
+    };
+
     const newProp = (...args: any[]) =>
       new hre.web3.eth.Contract(artifact.abi, undefined).deploy({ data: artifact.bytecode, arguments: args });
 
     const at = (address: string) => new hre.web3.eth.Contract(artifact.abi, address);
 
-    return { ...artifact, deployed, new: newProp, at };
+    return { ...artifact, deployed, link, new: newProp, at };
   };
 
   hre.findEvent = async (

@@ -26,6 +26,8 @@
     "@openzeppelin/contracts": "4.1.0",
     "@tsconfig/node14": "^1.0.0",
     "bignumber.js": "^9.0.1",
+    "chai": "^4.3.4",
+    "mocha": "^9.1.1",
     "web3-utils": "^1.5.1",
     "web3-eth-contract": "^1.5.1",
     "web3-core": "^1.5.1",
@@ -49,7 +51,7 @@
     "/dist/**/*"
   ],
   "scripts": {
-    "test": "hardhat test ./test/clients/* ./test/helpers/* ./test/price-feed/* ./test/proxy-transaction-handler/* && truffle test ./test/truffle/*",
+    "test": "mocha 'test/**/*.js'",
     "build": "tsc"
   },
   "bugs": {
