@@ -1,22 +1,24 @@
 import winston from "winston";
-import { assert, web3 } from "hardhat";
+import { assert } from "chai";
 import { Contract } from "web3-eth-contract";
 import sinon from "sinon";
 import { run } from "../src/index";
-import { getTruffleContract } from "@uma/core";
-import { addGlobalHardhatTestingAddress, interfaceName, ZERO_ADDRESS, RegistryRolesEnum } from "@uma/common";
+import { interfaceName, ZERO_ADDRESS, RegistryRolesEnum } from "@uma/common";
 
 import { SpyTransport } from "@uma/financial-templates-lib";
+import { getAbi } from "@uma/contracts-node";
+
+const { getContract, deployments, web3 } = require("hardhat");
 
 const { utf8ToHex } = web3.utils;
-const Finder = getTruffleContract("Finder", web3);
-const OracleChildTunnel = getTruffleContract("OracleChildTunnel", web3);
-const Registry = getTruffleContract("Registry", web3);
-const OracleRootTunnel = getTruffleContract("OracleRootTunnelMock", web3);
-const MockOracle = getTruffleContract("MockOracleAncillary", web3);
-const StateSync = getTruffleContract("StateSyncMock", web3);
-const FxChild = getTruffleContract("FxChildMock", web3);
-const FxRoot = getTruffleContract("FxRootMock", web3);
+const Finder = getContract("Finder");
+const OracleChildTunnel = getContract("OracleChildTunnel");
+const Registry = getContract("Registry");
+const OracleRootTunnel = getContract("OracleRootTunnelMock");
+const MockOracle = getContract("MockOracleAncillary");
+const StateSync = getContract("StateSyncMock");
+const FxChild = getContract("FxChildMock");
+const FxRoot = getContract("FxRootMock");
 
 let spyLogger: any;
 let spy: any;
@@ -46,34 +48,37 @@ describe("index.ts", function () {
     // Note: We deploy all contracts on local hardhat network to make testing more convenient.
 
     // Set up mocked Fx tunnel:
-    stateSync = await StateSync.new();
-    fxRoot = await FxRoot.new(stateSync.address);
-    fxChild = await FxChild.new(systemSuperUser);
-    await fxChild.setFxRoot(fxRoot.address, { from: owner });
-    await fxRoot.setFxChild(fxChild.address, { from: owner });
+    stateSync = await StateSync.new().send({ from: owner });
+    fxRoot = await FxRoot.new(stateSync.options.address).send({ from: owner });
+    fxChild = await FxChild.new(systemSuperUser).send({ from: owner });
+    await fxChild.methods.setFxRoot(fxRoot.options.address).send({ from: owner });
+    await fxRoot.methods.setFxChild(fxChild.options.address).send({ from: owner });
 
     // Set up mocked Oracle infrastructure
-    finder = await Finder.new();
-    mockOracle = await MockOracle.new(finder.address, ZERO_ADDRESS);
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
-    registry = await Registry.new();
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.address);
-    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner, { from: owner });
-    await registry.registerContract([], owner, { from: owner });
+    finder = await Finder.new().send({ from: owner });
+    mockOracle = await MockOracle.new(finder.options.address, ZERO_ADDRESS).send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address)
+      .send({ from: owner });
+    registry = await Registry.new().send({ from: owner });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.options.address)
+      .send({ from: owner });
+    await registry.methods.addMember(RegistryRolesEnum.CONTRACT_CREATOR, owner).send({ from: owner });
+    await registry.methods.registerContract([], owner).send({ from: owner });
   });
   beforeEach(async function () {
     // Deploy new tunnel contracts so that event logs are fresh for each test
-    const _oracleChild = await OracleChildTunnel.new(fxChild.address, finder.address);
-    const _oracleRoot = await OracleRootTunnel.new(checkpointManager, fxRoot.address, finder.address);
-    await _oracleChild.setFxRootTunnel(_oracleRoot.address, { from: owner });
-    await _oracleRoot.setFxChildTunnel(_oracleChild.address, { from: owner });
+    oracleChild = await OracleChildTunnel.new(fxChild.options.address, finder.options.address).send({ from: owner });
+    oracleRoot = await OracleRootTunnel.new(checkpointManager, fxRoot.options.address, finder.options.address).send({
+      from: owner,
+    });
+    await oracleChild.methods.setFxRootTunnel(oracleRoot.options.address).send({ from: owner });
+    await oracleRoot.methods.setFxChildTunnel(oracleChild.options.address).send({ from: owner });
 
-    // Create Web3.eth.Contract versions of Tunnel contracts so that we can interact with them the same way
-    // that the relayer bot does.
-    oracleChild = new web3.eth.Contract(OracleChildTunnel.abi, _oracleChild.address);
-    addGlobalHardhatTestingAddress("OracleChildTunnel", oracleChild.options.address);
-    oracleRoot = new web3.eth.Contract(OracleRootTunnel.abi, _oracleRoot.address);
-    addGlobalHardhatTestingAddress("OracleRootTunnel", oracleRoot.options.address);
+    // Save to hre.deployments so that client can fetch contract addresses via getAddress.
+    deployments.save("OracleChildTunnel", { address: oracleChild.options.address, abi: getAbi("OracleChildTunnel") });
+    deployments.save("OracleRootTunnel", { address: oracleChild.options.address, abi: getAbi("OracleRootTunnel") });
 
     spy = sinon.spy();
     spyLogger = winston.createLogger({

@@ -14,7 +14,7 @@ const {
 const { FundingRateProposer } = require("./src/proposer");
 
 // Contract ABIs and network Addresses.
-const { getAbi, getAddress } = require("@uma/core");
+const { getAbi, getAddress } = require("@uma/contracts-node");
 const { getWeb3, PublicNetworks } = require("@uma/common");
 
 /**
@@ -68,7 +68,7 @@ async function run({
       logger,
       getAbi("PerpetualCreator"),
       web3,
-      getAddress("PerpetualCreator", networkId),
+      await getAddress("PerpetualCreator", networkId),
       0 // Force startingBlock=0 so we can get ALL deployed contracts.
       // Leave endingBlock=null so that we can get all events up to latest block.
     );

@@ -3,27 +3,30 @@ const Main = require("../index.js");
 const winston = require("winston");
 const sinon = require("sinon");
 
+const { SpyTransport, spyLogIncludes, spyLogLevel } = require("@uma/financial-templates-lib");
+const { interfaceName, RegistryRolesEnum } = require("@uma/common");
+const { getAddress } = require("@uma/contracts-node");
+const { assert } = require("chai");
+const { deployments, getContract, web3, getChainId } = require("hardhat");
+
 const { toWei, utf8ToHex, padRight } = web3.utils;
 
-const { SpyTransport, spyLogIncludes, spyLogLevel } = require("@uma/financial-templates-lib");
-const { addGlobalHardhatTestingAddress, interfaceName, RegistryRolesEnum } = require("@uma/common");
-const { getTruffleContract } = require("@uma/core");
+const PerpetualLib = getContract("PerpetualLib");
+const PerpetualCreator = getContract("PerpetualCreator");
+const IdentifierWhitelist = getContract("IdentifierWhitelist");
+const Token = getContract("ExpandedERC20");
+const AddressWhitelist = getContract("AddressWhitelist");
+const Timer = getContract("Timer");
+const TokenFactory = getContract("TokenFactory");
+const Finder = getContract("Finder");
+const Registry = getContract("Registry");
+const OptimisticOracle = getContract("OptimisticOracle");
+const Store = getContract("Store");
+const MulticallMock = getContract("MulticallMock");
 
-const PerpetualLib = getTruffleContract("PerpetualLib", web3);
-const PerpetualCreator = getTruffleContract("PerpetualCreator", web3);
-const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3);
-const Token = getTruffleContract("ExpandedERC20", web3);
-const AddressWhitelist = getTruffleContract("AddressWhitelist", web3);
-const Timer = getTruffleContract("Timer", web3);
-const TokenFactory = getTruffleContract("TokenFactory", web3);
-const Finder = getTruffleContract("Finder", web3);
-const Registry = getTruffleContract("Registry", web3);
-const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
-const Store = getTruffleContract("Store", web3);
-const MulticallMock = getTruffleContract("MulticallMock", web3);
-
-contract("index.js", function (accounts) {
-  const deployer = accounts[0];
+describe("index.js", function () {
+  // Accounts
+  let deployer;
 
   // Contracts
   let perpFactory;
@@ -71,63 +74,93 @@ contract("index.js", function (accounts) {
   const optimisticOracleLiveness = 100;
 
   before(async function () {
-    const timer = await Timer.new();
-    const tokenFactory = await TokenFactory.new();
-    const finder = await Finder.new();
-    multicall = await MulticallMock.new();
+    [deployer] = await web3.eth.getAccounts();
+
+    const timer = await Timer.new().send({ from: deployer });
+    const tokenFactory = await TokenFactory.new().send({ from: deployer });
+    const finder = await Finder.new().send({ from: deployer });
+    multicall = await MulticallMock.new().send({ from: deployer });
 
     // Whitelist an initial identifier so we can deploy.
-    identifierWhitelist = await IdentifierWhitelist.new();
-    await identifierWhitelist.addSupportedIdentifier(defaultCreationParams.priceFeedIdentifier);
-    await identifierWhitelist.addSupportedIdentifier(defaultCreationParams.fundingRateIdentifier);
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address);
+    identifierWhitelist = await IdentifierWhitelist.new().send({ from: deployer });
+    await identifierWhitelist.methods
+      .addSupportedIdentifier(defaultCreationParams.priceFeedIdentifier)
+      .send({ from: deployer });
+    await identifierWhitelist.methods
+      .addSupportedIdentifier(defaultCreationParams.fundingRateIdentifier)
+      .send({ from: deployer });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.options.address)
+      .send({ from: deployer });
 
     // Deploy new registry so perp factory can register contracts.
-    const registry = await Registry.new();
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.address);
+    const registry = await Registry.new().send({ from: deployer });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.options.address)
+      .send({ from: deployer });
 
     // Store is neccessary to set up because contracts will need to read final fees before allowing
     // a proposal.
-    const store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
+    const store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.options.address).send({ from: deployer });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
+      .send({ from: deployer });
 
     // Funding rates are proposed to an OptimisticOracle.
-    const optimisticOracle = await OptimisticOracle.new(optimisticOracleLiveness, finder.address, timer.address);
-    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, optimisticOracle.address);
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.address);
+    const optimisticOracle = await OptimisticOracle.new(
+      optimisticOracleLiveness,
+      finder.options.address,
+      timer.options.address
+    ).send({ from: deployer });
+    await registry.methods
+      .addMember(RegistryRolesEnum.CONTRACT_CREATOR, optimisticOracle.options.address)
+      .send({ from: deployer });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
+      .send({ from: deployer });
 
     // Whitelist collateral and use the same collateral for all contracts.
-    collateral = await Token.new("Wrapped Ether", "WETH", "18");
-    collateralWhitelist = await AddressWhitelist.new();
-    await collateralWhitelist.addToWhitelist(collateral.address);
-    defaultCreationParams = { ...defaultCreationParams, collateralAddress: collateral.address };
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.address);
+    collateral = await Token.new("Wrapped Ether", "WETH", "18").send({ from: deployer });
+    collateralWhitelist = await AddressWhitelist.new().send({ from: deployer });
+    await collateralWhitelist.methods.addToWhitelist(collateral.options.address).send({ from: deployer });
+    defaultCreationParams = { ...defaultCreationParams, collateralAddress: collateral.options.address };
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.options.address)
+      .send({ from: deployer });
 
-    await PerpetualCreator.link(await PerpetualLib.new());
-    perpFactory = await PerpetualCreator.new(finder.address, tokenFactory.address, timer.address);
-    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, perpFactory.address);
-    // Set the address in the global name space to enable proposer's index.js to access it via `core/getAddressTest`.
-    addGlobalHardhatTestingAddress("PerpetualCreator", perpFactory.address);
+    // Deploy new Perpetual factory such that it is retrievable by the client via getAddress
+    // Note: use hre.deployments.deploy method to link libraries.
+    const perpetualLib = await PerpetualLib.new().send({ from: deployer });
+    await deployments.deploy("PerpetualCreator", {
+      from: deployer,
+      args: [finder.options.address, tokenFactory.options.address, timer.options.address],
+      libraries: { PerpetualLib: perpetualLib.options.address },
+    });
+    perpFactory = await PerpetualCreator.at(await getAddress("PerpetualCreator", parseInt(await getChainId())));
+    await registry.methods
+      .addMember(RegistryRolesEnum.CONTRACT_CREATOR, perpFactory.options.address)
+      .send({ from: deployer });
 
     // Deploy new Perp
-    const perpAddress = await perpFactory.createPerpetual.call(defaultCreationParams, configStoreParams, {
-      from: deployer,
-    });
-    const perpCreation = await perpFactory.createPerpetual(defaultCreationParams, configStoreParams, {
-      from: deployer,
-    });
+    const perpAddress = await perpFactory.methods
+      .createPerpetual(defaultCreationParams, configStoreParams)
+      .call({ from: deployer });
+    const perpCreation = await perpFactory.methods
+      .createPerpetual(defaultCreationParams, configStoreParams)
+      .send({ from: deployer });
     perpsCreated.push({ transaction: perpCreation, address: perpAddress });
+
     // This is the time that the funding rate applier's update time is initialized to:
-    let contractStartTime = await timer.getCurrentTime();
+    let contractStartTime = await timer.methods.getCurrentTime().call({ from: deployer });
 
     // Set the pricefeed's latestUpdateTime to be +1 second from the funding rate applier's
     // initialized update time, otherwise any proposals will fail because the new proposal timestamp
     // must always be > than the last update time.
-    let lastUpdateTime = contractStartTime.toNumber() + 1;
+    let lastUpdateTime = parseInt(contractStartTime) + 1;
     commonPriceFeedConfig = { ...commonPriceFeedConfig, lastUpdateTime };
     // Advance the perpetual contract forward in time to match pricefeed's update time, otherwise
     // the proposal will fail because it is "in the future".
-    await timer.setCurrentTime(lastUpdateTime);
+    await timer.methods.setCurrentTime(lastUpdateTime).send({ from: deployer });
   });
   it("Completes one iteration without logging any errors", async function () {
     // We will create a new spy logger, listening for debug events because success logs are tagged with the
@@ -145,7 +178,7 @@ contract("index.js", function (accounts) {
       errorRetries,
       errorRetriesTimeout,
       commonPriceFeedConfig,
-      multicallAddress: multicall.address,
+      multicallAddress: multicall.options.address,
       isTest: true, // Need to set this to true so that proposal uses correct request timestamp for test environment
     });
 
