@@ -27,9 +27,8 @@ export function parseAncillaryData(ancillaryData: string): Record<string, unknow
 
 // Parses ancillary data string to object.
 function parseAncillaryString(ancillaryString: string): Record<string, unknown> {
-  const stringObject: CharObject[] = [];
   const ancillaryObject: Record<string, unknown> = {};
-  const stringObject = Array.from(ancillaryString).map((character) => ({ character, escape: false, skip: false}));
+  const stringObject = Array.from(ancillaryString).map((character) => ({ character, escape: false, skip: false }));
   markEscapes(stringObject);
   const keyValues = splitKeyValues(stringObject);
   keyValues.forEach((keyValue: CharObject[]) => {
