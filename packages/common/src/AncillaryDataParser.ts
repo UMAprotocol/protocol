@@ -20,7 +20,7 @@ export function parseAncillaryData(ancillaryData: string): Record<string, unknow
   try {
     ancillaryString = Web3.utils.hexToUtf8(ancillaryData);
   } catch (err) {
-    throw "Cannot parse ancillary data bytes to UTF-8!";
+    throw new Error("Cannot parse ancillary data bytes to UTF-8!");
   }
   return parseAncillaryString(ancillaryString);
 }
@@ -29,9 +29,7 @@ export function parseAncillaryData(ancillaryData: string): Record<string, unknow
 function parseAncillaryString(ancillaryString: string): Record<string, unknown> {
   const stringObject: CharObject[] = [];
   const ancillaryObject: Record<string, unknown> = {};
-  Array.from(ancillaryString).forEach((character) => {
-    stringObject.push({ character: character, escape: false, skip: false });
-  });
+  const stringObject = Array.from(ancillaryString).map((character) => ({ character, escape: false, skip: false}));
   markEscapes(stringObject);
   const keyValues = splitKeyValues(stringObject);
   keyValues.forEach((keyValue: CharObject[]) => {
@@ -95,10 +93,7 @@ function splitKeyValues(stringObject: CharObject[]): CharObject[][] {
   }
 
   // Remove enclosing double quotes.
-  keyValues.forEach((keyValue: CharObject[], index: number) => {
-    keyValues[index] = keyValue.filter(removeDoubleQuotes);
-  });
-  return keyValues;
+  return keyValues.map((keyValue: CharObject[]) => keyValue.filter(removeDoubleQuotes));
 }
 
 // Tries to parse key:value pair.
