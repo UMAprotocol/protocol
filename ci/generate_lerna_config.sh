@@ -39,7 +39,7 @@ else
   if [[ " ${PACKAGES_ARRAY[@]} " =~ " @uma/financial-templates-lib " ]]; then
     REMOVE=@uma/financial-templates-lib
     PACKAGES_ARRAY=( "${PACKAGES_ARRAY[@]/$REMOVE}" )
-    PACKAGES_ARRAY+=("@uma/financial-templates-lib-hardhat" "@uma/financial-templates-lib-truffle")
+    PACKAGES_ARRAY+=("@uma/financial-templates-lib-hardhat")
   fi
 
   if [[ " ${PACKAGES_ARRAY[@]} " =~ " @uma/liquidator " ]]; then
