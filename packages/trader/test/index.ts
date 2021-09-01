@@ -1,12 +1,17 @@
 import winston from "winston";
 import sinon from "sinon";
 import { run } from "../src/index";
-import { web3 } from "hardhat";
+import hre from "hardhat";
+
+import {
+  interfaceName,
+  addGlobalHardhatTestingAddress,
+  createConstructorParamsForContractVersion,
+  HRE,
+} from "@uma/common";
+
+const { web3, getContract } = hre as HRE;
 const { toWei, utf8ToHex, padRight } = web3.utils;
-
-import { interfaceName, addGlobalHardhatTestingAddress, createConstructorParamsForContractVersion } from "@uma/common";
-
-import { getTruffleContract } from "@uma/core";
 
 import { SpyTransport } from "@uma/financial-templates-lib";
 
@@ -36,19 +41,19 @@ describe("index.js", function () {
   const identifier = "TEST_IDENTIFIER";
   const fundingRateIdentifier = "TEST_FUNDING";
 
-  const FinancialContract = getTruffleContract("Perpetual", web3 as any);
-  const Finder = getTruffleContract("Finder", web3 as any);
-  const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3 as any);
-  const AddressWhitelist = getTruffleContract("AddressWhitelist", web3 as any);
-  const MockOracle = getTruffleContract("MockOracle", web3 as any);
-  const Token = getTruffleContract("ExpandedERC20", web3 as any);
-  const SyntheticToken = getTruffleContract("SyntheticToken", web3 as any);
-  const Timer = getTruffleContract("Timer", web3 as any);
-  const UniswapMock = getTruffleContract("UniswapV2Mock", web3 as any);
-  const Store = getTruffleContract("Store", web3 as any);
-  const ConfigStore = getTruffleContract("ConfigStore", web3 as any);
-  const OptimisticOracle = getTruffleContract("OptimisticOracle", web3 as any);
-  const DSProxyFactory = getTruffleContract("DSProxyFactory", web3 as any);
+  const FinancialContract = getContract("Perpetual");
+  const Finder = getContract("Finder");
+  const IdentifierWhitelist = getContract("IdentifierWhitelist");
+  const AddressWhitelist = getContract("AddressWhitelist");
+  const MockOracle = getContract("MockOracle");
+  const Token = getContract("ExpandedERC20");
+  const SyntheticToken = getContract("SyntheticToken");
+  const Timer = getContract("Timer");
+  const UniswapMock = getContract("UniswapV2Mock");
+  const Store = getContract("Store");
+  const ConfigStore = getContract("ConfigStore");
+  const OptimisticOracle = getContract("OptimisticOracle");
+  const DSProxyFactory = getContract("DSProxyFactory");
 
   after(async function () {
     process.env = originalEnv;
@@ -56,32 +61,40 @@ describe("index.js", function () {
   before(async function () {
     originalEnv = process.env;
     accounts = await web3.eth.getAccounts();
-    const contractCreator = accounts[0];
-    finder = await Finder.new();
+    contractCreator = accounts[0];
+    finder = await Finder.new().send({ from: accounts[0] });
     // Create identifier whitelist and register the price tracking ticker with it.
-    identifierWhitelist = await IdentifierWhitelist.new();
-    await identifierWhitelist.addSupportedIdentifier(utf8ToHex(identifier));
-    await finder.changeImplementationAddress(
-      web3.utils.utf8ToHex(interfaceName.IdentifierWhitelist),
-      identifierWhitelist.address
-    );
+    identifierWhitelist = await IdentifierWhitelist.new().send({ from: accounts[0] });
+    await identifierWhitelist.methods.addSupportedIdentifier(utf8ToHex(identifier)).send({ from: accounts[0] });
+    await finder.methods
+      .changeImplementationAddress(
+        web3.utils.utf8ToHex(interfaceName.IdentifierWhitelist),
+        identifierWhitelist.options.address
+      )
+      .send({ from: accounts[0] });
 
-    timer = await Timer.new();
+    timer = await Timer.new().send({ from: accounts[0] });
 
-    mockOracle = await MockOracle.new(finder.address, timer.address, {
+    mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({
       from: contractCreator,
     });
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address)
+      .send({ from: accounts[0] });
     // Set the address in the global name space to enable disputer's index.js to access it.
-    addGlobalHardhatTestingAddress("Voting", mockOracle.address);
+    addGlobalHardhatTestingAddress("Voting", mockOracle.options.address);
 
-    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
+    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.options.address).send({ from: accounts[0] });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
+      .send({ from: accounts[0] });
 
     // Make the contract creator the admin to enable emergencyshutdown in tests.
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.FinancialContractsAdmin), contractCreator);
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.FinancialContractsAdmin), contractCreator)
+      .send({ from: accounts[0] });
 
-    dsProxyFactory = await DSProxyFactory.new();
+    dsProxyFactory = await DSProxyFactory.new().send({ from: accounts[0] });
   });
 
   beforeEach(async function () {
@@ -93,15 +106,17 @@ describe("index.js", function () {
     });
 
     // Create a new synthetic token & collateral token.
-    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractCreator });
-    collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
+    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18).send({ from: contractCreator });
+    collateralToken = await Token.new("Wrapped Ether", "WETH", 18).send({ from: contractCreator });
 
-    collateralWhitelist = await AddressWhitelist.new();
-    await finder.changeImplementationAddress(
-      web3.utils.utf8ToHex(interfaceName.CollateralWhitelist),
-      collateralWhitelist.address
-    );
-    await collateralWhitelist.addToWhitelist(collateralToken.address);
+    collateralWhitelist = await AddressWhitelist.new().send({ from: accounts[0] });
+    await finder.methods
+      .changeImplementationAddress(
+        web3.utils.utf8ToHex(interfaceName.CollateralWhitelist),
+        collateralWhitelist.options.address
+      )
+      .send({ from: accounts[0] });
+    await collateralWhitelist.methods.addToWhitelist(collateralToken.options.address).send({ from: accounts[0] });
 
     configStore = await ConfigStore.new(
       {
@@ -112,12 +127,18 @@ describe("index.js", function () {
         minFundingRate: { rawValue: toWei("-0.00001") },
         proposalTimePastLimit: 0,
       },
-      timer.address
-    );
+      timer.options.address
+    ).send({ from: accounts[0] });
 
-    await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier), 32));
-    optimisticOracle = await OptimisticOracle.new(7200, finder.address, timer.address);
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.address);
+    await identifierWhitelist.methods
+      .addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier), 32))
+      .send({ from: accounts[0] });
+    optimisticOracle = await OptimisticOracle.new(7200, finder.options.address, timer.options.address).send({
+      from: accounts[0],
+    });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
+      .send({ from: accounts[0] });
 
     // Deploy a new expiring multi party OR perpetual.
     constructorParams = await createConstructorParamsForContractVersion(
@@ -133,41 +154,43 @@ describe("index.js", function () {
         store,
         configStore: configStore || {}, // if the contract type is not a perp this will be null.
       },
-      { expirationTimestamp: (await timer.getCurrentTime()).toNumber() + 100 } // config override expiration time.
+      { expirationTimestamp: parseInt(await timer.methods.getCurrentTime().call()) + 100 } // config override expiration time.
     );
-    financialContract = await FinancialContract.new(constructorParams);
-    await syntheticToken.addMinter(financialContract.address);
-    await syntheticToken.addBurner(financialContract.address);
+    financialContract = await FinancialContract.new(constructorParams).send({ from: accounts[0] });
+    await syntheticToken.methods.addMinter(financialContract.options.address).send({ from: accounts[0] });
+    await syntheticToken.methods.addBurner(financialContract.options.address).send({ from: accounts[0] });
 
-    syntheticToken = await Token.at(await financialContract.tokenCurrency());
+    syntheticToken = await Token.at(await financialContract.methods.tokenCurrency().call());
 
-    uniswap = await UniswapMock.new();
-    await uniswap.setTokens(syntheticToken.address, collateralToken.address);
+    uniswap = await UniswapMock.new().send({ from: accounts[0] });
+    await uniswap.methods
+      .setTokens(syntheticToken.options.address, collateralToken.options.address)
+      .send({ from: accounts[0] });
 
     defaultPriceFeedConfig = {
       type: "uniswap",
-      uniswapAddress: uniswap.address,
+      uniswapAddress: uniswap.options.address,
       twapLength: 1,
       lookback: 1,
       getTimeOverride: { useBlockTime: true }, // enable tests to run in hardhat
     };
 
     // Set two uniswap prices to give it a little history.
-    await uniswap.setPrice(toWei("1"), toWei("1"));
-    await uniswap.setPrice(toWei("1"), toWei("1"));
-    await uniswap.setPrice(toWei("1"), toWei("1"));
-    await uniswap.setPrice(toWei("1"), toWei("1"));
+    await uniswap.methods.setPrice(toWei("1"), toWei("1")).send({ from: accounts[0] });
+    await uniswap.methods.setPrice(toWei("1"), toWei("1")).send({ from: accounts[0] });
+    await uniswap.methods.setPrice(toWei("1"), toWei("1")).send({ from: accounts[0] });
+    await uniswap.methods.setPrice(toWei("1"), toWei("1")).send({ from: accounts[0] });
   });
 
   it("Runs with no errors", async function () {
-    process.env.EMP_ADDRESS = financialContract.address;
+    process.env.EMP_ADDRESS = financialContract.options.address;
     process.env.REFERENCE_PRICE_FEED_CONFIG = JSON.stringify(defaultPriceFeedConfig);
     process.env.TOKEN_PRICE_FEED_CONFIG = JSON.stringify(defaultPriceFeedConfig);
-    process.env.DSPROXY_CONFIG = JSON.stringify({ dsProxyFactoryAddress: dsProxyFactory.address });
+    process.env.DSPROXY_CONFIG = JSON.stringify({ dsProxyFactoryAddress: dsProxyFactory.options.address });
     process.env.EXCHANGE_ADAPTER_CONFIG = JSON.stringify({
       type: "uniswap-v2",
-      tokenAAddress: syntheticToken.address,
-      tokenBAddress: collateralToken.address,
+      tokenAAddress: syntheticToken.options.address,
+      tokenBAddress: collateralToken.options.address,
     });
     process.env.POLLING_DELAY = "0";
 
