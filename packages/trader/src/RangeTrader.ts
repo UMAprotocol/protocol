@@ -141,7 +141,7 @@ export class RangeTrader {
     }
 
     // Wait exactly one block to fetch events. This ensures that the events have been indexed by your node.
-    await blockUntilBlockMined(this.web3, (await this.web3.eth.getBlockNumber()) + 1);
+    await blockUntilBlockMined(this.web3, tradeExecutionTransaction.blockNumber);
 
     // Get the post trade spot price to double check deviation error.
     await this.tokenPriceFeed.update();

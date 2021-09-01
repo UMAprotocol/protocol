@@ -246,9 +246,12 @@ describe("UniswapV2Trader.js", function () {
     assert.equal(parseFloat(latestWinstonLog.postTradePriceDeviationError.replace("%", "")).toFixed(0), "5");
     // The default configuration for the range trader bot is to trade the price back to 5% off the current reference price.
     // Seeing the reference price is set to 1000, the pool price should now be set to 1050 exactly after the correcting trade.
+
     assert.equal(Number(await getPoolSpotPrice()).toFixed(0), "1050");
     // Equally, the price in the uniswap feed should report a price of 1050.
+
     mockTime = Number((await web3.eth.getBlock("latest")).timestamp) + 1;
+
     await tokenPriceFeed.update();
     assert.equal(Number(fromWei(tokenPriceFeed.getLastBlockPrice())).toFixed(4), await getPoolSpotPrice());
 
