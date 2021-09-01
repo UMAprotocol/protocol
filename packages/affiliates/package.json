@@ -30,7 +30,7 @@
     "access": "public"
   },
   "scripts": {
-    "test": "yarn test-local&& yarn test-mainnet",
+    "test": "yarn test-local && yarn test-mainnet",
     "test-mainnet": "mocha 'test/mocha-mainnet/**/*.js' --network mainnet_mnemonic --exit",
     "test-local": "mocha 'test/mocha-local/**/*.js'",
     "test-e2e": "mocha 'test/e2e/*.js' --network=mainnet_mnemonic --exit",
