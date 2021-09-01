@@ -317,8 +317,9 @@ describe("OptimisticOracleClient.js", function () {
 
     // Mine two blocks to move past the lookback window, and make sure the shorter lookback client
     // ignores the price request.
-    await advanceBlockAndSetTime(web3, new Date().getTime());
-    await advanceBlockAndSetTime(web3, new Date().getTime());
+    const currentTime = Number((await web3.eth.getBlock("latest")).timestamp);
+    await advanceBlockAndSetTime(web3, currentTime + 1);
+    await advanceBlockAndSetTime(web3, currentTime + 2);
 
     await clientShortLookback.update();
     result = clientShortLookback.getUnproposedPriceRequests();
