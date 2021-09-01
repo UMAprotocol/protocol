@@ -147,7 +147,7 @@ async function run() {
   await web3.eth.sendTransaction({
     from: accounts[0],
     to: REQUIRED_SIGNER_ADDRESSES["foundation"],
-    value: web3.utils.toWei("1"),
+    value: web3.utils.toWei("10"),
     gasPrice: gasEstimator.getCurrentFastPrice(),
   });
   for (let i = 0; i < requestsToVoteOn.length; i++) {
@@ -202,16 +202,23 @@ async function run() {
   if (!argv.skipExecute) {
     // Execute the most recent admin votes that we just passed through.
     console.group("\n📢 Executing Governor Proposals");
+    console.group("\nNumber of proposals:", requestsToVoteOn.length);
     for (let i = requestsToVoteOn.length; i > 0; i--) {
       // Set `proposalId` to index of most recent proposal in voting.sol
       const proposalId = Number(await governor.methods.numProposals().call()) - i;
+      console.group("\nProposal ID:", proposalId.toString());
       const proposal = await governor.methods.getProposal(proposalId.toString()).call();
       for (let j = 0; j < proposal.transactions.length; j++) {
-        console.log(`- Submitting transaction #${j + 1} from proposal #${i}`);
-        let txn = await governor.methods
-          .executeProposal(proposalId.toString(), j.toString())
-          .send({ from: REQUIRED_SIGNER_ADDRESSES["foundation"], gasPrice: gasEstimator.getCurrentFastPrice() });
-        console.log(`    - Success, receipt: ${txn.transactionHash}`);
+        console.log(`- Submitting transaction #${j + 1} from proposal #${proposalId}`);
+        try {
+          let txn = await governor.methods
+            .executeProposal(proposalId.toString(), j.toString())
+            .send({ from: accounts[0], gasPrice: gasEstimator.getCurrentFastPrice() });
+          console.log(`    - Success, receipt: ${txn.transactionHash}`);
+        } catch (err) {
+          console.error("    - Failure: Txn was likely executed previously, skipping to next one");
+          continue;
+        }
       }
     }
     console.groupEnd();
