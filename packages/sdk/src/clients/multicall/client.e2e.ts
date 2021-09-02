@@ -18,6 +18,7 @@ describe("multicall", function () {
     assert.ok(client);
     assert.ok(empClient);
   });
+
   test("multicall on emp", async function () {
     const calls = ["priceIdentifier", "tokenCurrency", "collateralCurrency"];
     const multicalls = calls.map((call: any) => {

@@ -958,6 +958,12 @@ export const defaultConfigs: { [name: string]: { type: string; [key: string]: an
   "BTC/ibBTC": { type: "expression", expression: "1 / ibBTC\\/BTC" },
   "ibBTC/USD": { type: "expression", expression: "ibBTC\\/BTC * BTCUSD" },
   "USD/ibBTC": { type: "expression", expression: "1 / ibBTC\\/USD" },
+  "GASETH-0921": {
+    type: "uniswap",
+    uniswapAddress: "0x5CCD155ad26B74913ed6266A516A085A2343D426",
+    twapLength: 7200,
+    invertPrice: true,
+  },
 };
 
 // Pull in the number of decimals for each identifier from the common getPrecisionForIdentifier. This is used within the
