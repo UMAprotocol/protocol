@@ -34,7 +34,7 @@ export default async (env: ProcessEnv) => {
   // default to 10 days worth of blocks
   const oldestBlock = Number(env.OLDEST_BLOCK_MS || 10 * 60 * 60 * 24 * 1000);
 
-  assert(updateRateS > 1, "UPDATE_RATE_S must be 1 or higher");
+  assert(updateRateS >= 1, "UPDATE_RATE_S must be 1 or higher");
 
   // state shared between services
   const appState: AppState = {
@@ -207,7 +207,6 @@ export default async (env: ProcessEnv) => {
 
   // break all state updates by block events into a cleaner function
   async function updateByBlock(blockNumber: number) {
-    const end = profile("Updating state from block event");
     await services.blocks.handleNewBlock(blockNumber);
     // update everyting
     await services.registry(appState.lastBlockUpdate, blockNumber);
@@ -217,7 +216,6 @@ export default async (env: ProcessEnv) => {
     await services.erc20s.update();
     appState.lastBlockUpdate = blockNumber;
     await services.blocks.cleanBlocks(oldestBlock);
-    end();
   }
   // separate out price updates into a different loop to query every few minutes
   async function updatePrices() {
@@ -237,8 +235,8 @@ export default async (env: ProcessEnv) => {
   // main update loop for all state, executes immediately and waits for updateRateS
   utils.loop(async () => {
     const block = await provider.getBlock("latest");
-    console.log("Running state updates");
-    const end = profile("Block event starting");
+    console.log("Running state updates", block.number, appState.lastBlockUpdate);
+    const end = profile("Updating state from block event");
     updateByBlock(block.number).catch(console.error).finally(end);
   }, updateRateS * 1000);
 
