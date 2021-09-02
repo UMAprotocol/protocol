@@ -4,8 +4,6 @@ import type { BridgeAdminWeb3, BridgePoolWeb3 } from "@uma/contracts-node";
 import Web3 from "web3";
 import type { Logger } from "winston";
 
-import BluebirdPromise from "bluebird";
-
 enum relayState {
   Pending,
   SpedUp,
@@ -46,7 +44,7 @@ export class InsuredBridgeL1Client {
     readonly bridgePoolAbi: Abi,
     readonly l1Web3: Web3,
     readonly bridgeAdminAddress: string,
-    readonly startingBlockNumber: number = 0,
+    readonly startingBlockNumber = 0,
     readonly endingBlockNumber: number | null = null
   ) {
     this.bridgeAdmin = (new l1Web3.eth.Contract(
@@ -113,17 +111,12 @@ export class InsuredBridgeL1Client {
 
     // Fetch event information
     // TODO: consider optimizing this further. Right now it will make a series of sequential BlueBird calls for each pool.
-    for (const l1Token of Object.keys(this.bridgePools)) {
-      const [
-        depositRelayedEvents,
-        relaySpedUpEvents,
-        relayDisputedEvents,
-        relaySettledEvents,
-      ] = await BluebirdPromise.all([
-        this.bridgePools[l1Token].getPastEvents("DepositRelayed", blockSearchConfig),
-        this.bridgePools[l1Token].getPastEvents("RelaySpedUp", blockSearchConfig),
-        this.bridgePools[l1Token].getPastEvents("RelayDisputed", blockSearchConfig),
-        this.bridgePools[l1Token].getPastEvents("RelaySettled", blockSearchConfig),
+    for (const [l1Token, bridgePool] of Object.entries(this.bridgePools)) {
+      const [depositRelayedEvents, relaySpedUpEvents, relayDisputedEvents, relaySettledEvents] = await Promise.all([
+        bridgePool.getPastEvents("DepositRelayed", blockSearchConfig),
+        bridgePool.getPastEvents("RelaySpedUp", blockSearchConfig),
+        bridgePool.getPastEvents("RelayDisputed", blockSearchConfig),
+        bridgePool.getPastEvents("RelaySettled", blockSearchConfig),
       ]);
 
       for (const depositRelayedEvent of depositRelayedEvents) {
@@ -182,7 +175,7 @@ export class InsuredBridgeL1Client {
     });
   }
 
-  _throwIfNotInitialized() {
+  private _throwIfNotInitialized() {
     if (Object.keys(this.bridgePools).length == 0)
       throw new Error("InsuredBridgeClient method called before initialization! Call `update` first.");
   }
