@@ -1,6 +1,6 @@
 const ethers = require("ethers");
 const assert = require("assert");
-const { getAbi } = require("@uma/core");
+const { getAbi } = require("@uma/contracts-node");
 const Web3 = require("web3");
 const web3 = new Web3();
 
