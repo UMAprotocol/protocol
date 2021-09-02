@@ -6,7 +6,6 @@ chai.use(solidity);
 const { assert, expect } = require("chai");
 
 const { ethers } = require("hardhat");
-const { parseEthers, formatBytes32String } = ethers.utils;
 
 const { Watcher } = require("@eth-optimism/watcher");
 const { getContractInterface, predeploys } = require("@eth-optimism/contracts");
@@ -140,15 +139,15 @@ describe("Insured bridge e2e tests", () => {
   describe("Insured bridge functionality", async () => {
     // Bridge variables
     let optimisticOracleLiveness = 7200;
-    let proposerBondPct = parseEthers("0.10");
-    let identifier = formatBytes32String("BRIDGE_TRANSFER_TEST");
-    let lpFeeRatePerSecond = parseEthers("0.0000015");
+    let proposerBondPct = ethers.utils.parseEthers("0.10");
+    let identifier = ethers.utils.formatBytes32String("BRIDGE_TRANSFER_TEST");
+    let lpFeeRatePerSecond = ethers.utils.parseEthers("0.0000015");
     let minimumBridgingDelay = 60;
-    let slowRelayFeePct = parseEthers("0.01");
-    let instantRelayFeePct = parseEthers("0.01");
-    let realizedLpFee = parseEthers("0.1");
-    let depositAmount = parseEthers("10");
-    let liquidityProvided = parseEthers("100");
+    let slowRelayFeePct = ethers.utils.parseEthers("0.01");
+    let instantRelayFeePct = ethers.utils.parseEthers("0.01");
+    let realizedLpFee = ethers.utils.parseEthers("0.1");
+    let depositAmount = ethers.utils.parseEthers("10");
+    let liquidityProvided = ethers.utils.parseEthers("100");
     let depositData;
 
     // End to end tested contracts
@@ -380,7 +379,7 @@ describe("Insured bridge e2e tests", () => {
           // TODO: consider if we should change this behaviour. perhaps the reward should be 0 to make the cost of this
           // call equal to the bond.
 
-          const bondAmount = parseEthers("2");
+          const bondAmount = ethers.utils.parseEthers("2");
           await l1Token.mint(l1LiquidityProvider.address, bondAmount);
           await (await l1Token.deployed()).connect(l1LiquidityProvider).approve(l1BridgePool.address, bondAmount);
 
@@ -425,13 +424,13 @@ describe("Insured bridge e2e tests", () => {
           await l1BridgePool.settleRelay(depositData);
 
           // l1Wallet should have 10 tokens - 10% LP fee - 1% relayer fee - 8.9 tokens.
-          assert.equal((await l1Token.balanceOf(l1Wallet.address)).toString(), parseEthers("8.9"));
+          assert.equal((await l1Token.balanceOf(l1Wallet.address)).toString(), ethers.utils.parseEthers("8.9"));
 
           // Bridge pool balance should be 100 minus bridge amount + LP fee 100-10+1=91
-          assert.equal((await l1Token.balanceOf(l1BridgePool.address)).toString(), parseEthers("91"));
+          assert.equal((await l1Token.balanceOf(l1BridgePool.address)).toString(), ethers.utils.parseEthers("91"));
 
           // The relayer should receive the relay reward of 1% of 10 tokens or 0.1 tokens. Store this for later
-          relayerBalanceAfterTest = parseEthers("0.1");
+          relayerBalanceAfterTest = ethers.utils.parseEthers("0.1");
           assert.equal(
             (await l1Token.balanceOf(l1LiquidityProvider.address)).toString(),
             relayerBalanceAfterTest.toString()
@@ -443,7 +442,7 @@ describe("Insured bridge e2e tests", () => {
           // Mint the Liquidity provider enough for the speed up. this is equal to the exact amount the recipient will
           // get as the bridged amount - the LP fee, - slow relay fee, - instant relay fee equalling 10-1-0.1-0.1=8.8
 
-          const instantRelayerAmount = parseEthers("8.8");
+          const instantRelayerAmount = ethers.utils.parseEthers("8.8");
           await l1Token.mint(l1LiquidityProvider.address, instantRelayerAmount);
           await (await l1Token.deployed())
             .connect(l1LiquidityProvider)
@@ -456,21 +455,27 @@ describe("Insured bridge e2e tests", () => {
           assert.equal((await l1Token.balanceOf(l1Wallet.address)).toString(), instantRelayerAmount);
 
           // As no time has advanced from the relay settlement time the exchange rate on the pool should still be 1.
-          assert.equal((await l1BridgePool.callStatic.exchangeRateCurrent()).toString(), parseEthers("1"));
+          assert.equal((await l1BridgePool.callStatic.exchangeRateCurrent()).toString(), ethers.utils.parseEthers("1"));
 
           // Advance the time until after liveness and settle.
           await l1Timer.setCurrentTime(Number(await l1Timer.getCurrentTime()) + optimisticOracleLiveness / 2);
           await l1BridgePool.settleRelay(depositData);
 
           // The recipients balance should not have changed (they were paid out when the relay was sped up).
-          assert.equal((await l1Token.balanceOf(l1Wallet.address)).toString(), parseEthers("8.8").toString());
+          assert.equal(
+            (await l1Token.balanceOf(l1Wallet.address)).toString(),
+            ethers.utils.parseEthers("8.8").toString()
+          );
 
           // Bridge pool balance should be 100 minus bridge amount + LP fee 100-10+1=91
-          assert.equal((await l1Token.balanceOf(l1BridgePool.address)).toString(), parseEthers("91").toString());
+          assert.equal(
+            (await l1Token.balanceOf(l1BridgePool.address)).toString(),
+            ethers.utils.parseEthers("91").toString()
+          );
 
           // The relayer should receive the slow relay reward of 1%, instant relay reward of 1% full instantRelayerAmount
           // i.e this should be 8.8+0.1+0.1=9. Set this in a variable to use after the test.
-          relayerBalanceAfterTest = parseEthers("9");
+          relayerBalanceAfterTest = ethers.utils.parseEthers("9");
           assert.equal(
             (await l1Token.balanceOf(l1LiquidityProvider.address)).toString(),
             relayerBalanceAfterTest.toString()
@@ -480,10 +485,13 @@ describe("Insured bridge e2e tests", () => {
         // particular, validate exchange rates and token bridging actions.
         afterEach(async () => {
           // Pending LP fees should be updated accordingly to 10% of 10.
-          assert.equal((await l1BridgePool.undistributedLpFees()).toString(), parseEthers("1").toString());
+          assert.equal((await l1BridgePool.undistributedLpFees()).toString(), ethers.utils.parseEthers("1").toString());
 
           // As no time has advanced from the relay settlement time the exchange rate on the pool should still be 1.
-          assert.equal((await l1BridgePool.callStatic.exchangeRateCurrent()).toString(), parseEthers("1").toString());
+          assert.equal(
+            (await l1BridgePool.callStatic.exchangeRateCurrent()).toString(),
+            ethers.utils.parseEthers("1").toString()
+          );
 
           // Advance some time and check that the exchange rate increments as expected. By adding 2 days (172800s) we
           // should expect 172800 * 0.0000015 * 1 = 0.2592 fees to accumulate resulting in an exchange rate of
@@ -491,7 +499,7 @@ describe("Insured bridge e2e tests", () => {
           await l1Timer.setCurrentTime(Number(await l1Timer.getCurrentTime()) + 172800);
           assert.equal(
             (await l1BridgePool.callStatic.exchangeRateCurrent()).toString(),
-            parseEthers("1.002592").toString()
+            ethers.utils.parseEthers("1.002592").toString()
           );
 
           // Advance time by a lot (say 100 days). After this, all fees should be accumulated in the exchange
@@ -499,7 +507,7 @@ describe("Insured bridge e2e tests", () => {
           await l1Timer.setCurrentTime(Number(await l1Timer.getCurrentTime()) + 8640000);
           assert.equal(
             (await l1BridgePool.callStatic.exchangeRateCurrent()).toString(),
-            parseEthers("1.01").toString()
+            ethers.utils.parseEthers("1.01").toString()
           );
 
           // Finally, settle the L2->L1 Token transfers.
@@ -514,18 +522,24 @@ describe("Insured bridge e2e tests", () => {
 
           // The pool balance should equal the initial liquidity of 100 + the 10% fee of 10 equalling 101 tokens.
 
-          assert.equal((await l1Token.balanceOf(l1BridgePool.address)).toString(), parseEthers("101").toString());
+          assert.equal(
+            (await l1Token.balanceOf(l1BridgePool.address)).toString(),
+            ethers.utils.parseEthers("101").toString()
+          );
 
           // Finally, if the LP redeems all their LP tokens they should get back their initial liquidity + LP fee + the
           // associated relayer fee. relayerBalanceAfterTest represents the relayer balance after the previous test
           // before any liquidity has been removed. in the slow case this is 0.1 (slow relay reward). in the fast
           // relay case this is 9 (slow relay reward + fast relay reward + instant bridged amount).
           await (await l1BridgePool.deployed()).connect(l1LiquidityProvider).removeLiquidity(liquidityProvided);
-          assert.equal((await l1Token.balanceOf(l1BridgePool.address)).toString(), parseEthers("0").toString());
+          assert.equal(
+            (await l1Token.balanceOf(l1BridgePool.address)).toString(),
+            ethers.utils.parseEthers("0").toString()
+          );
 
           assert.equal(
             (await l1Token.balanceOf(l1LiquidityProvider.address)).toString(),
-            parseEthers("101").add(relayerBalanceAfterTest).toString()
+            ethers.utils.parseEthers("101").add(relayerBalanceAfterTest).toString()
           );
         });
       });
