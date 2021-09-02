@@ -2,13 +2,7 @@
 
 # download pre-builted images
 repo="ethereumoptimism"
-for image in {builder,l2geth,deployer};do docker pull $repo/$image; done
-
-# build in 2 steps
-function build_images() {
-  docker-compose build --parallel -- dtl l1_chain
-  docker-compose build --parallel -- batch_submitter relayer
-}
+for image in {builder,l2geth,deployer,data-transport-layer,hardhat,batch-submitter,message-relayer};do docker pull $repo/$image; done
 
 # clones /optimism to current directory
 git clone https://github.com/ethereum-optimism/optimism.git
@@ -23,6 +17,7 @@ export COMPOSE_DOCKER_CLI_BUILD=1
 export DOCKER_BUILDKIT=1
 
 # build_images. This will take a long time!
+docker-compose build
 docker-compose up -d
 
 # Optionally print logs:

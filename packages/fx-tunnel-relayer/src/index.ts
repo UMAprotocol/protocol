@@ -4,7 +4,7 @@ import retry from "async-retry";
 import { config } from "dotenv";
 import MaticJs from "@maticnetwork/maticjs";
 import { averageBlockTimeSeconds, getWeb3 } from "@uma/common";
-import { getAddress, getAbi } from "@uma/core";
+import { getAddress, getAbi } from "@uma/contracts-node";
 import { GasEstimator, Logger, waitForLogger, delay } from "@uma/financial-templates-lib";
 
 import { Relayer } from "./Relayer";
@@ -47,11 +47,11 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
     // Construct contracts that we'll pass to the Relayer bot.
     const oracleChildTunnel = new polygonWeb3.eth.Contract(
       getAbi("OracleChildTunnel"),
-      getAddress("OracleChildTunnel", polygonNetworkId) || undefined
+      await getAddress("OracleChildTunnel", polygonNetworkId)
     );
     const oracleRootTunnel = new web3.eth.Contract(
       getAbi("OracleRootTunnel"),
-      getAddress("OracleRootTunnel", ethNetworkId) || undefined
+      await getAddress("OracleRootTunnel", ethNetworkId)
     );
 
     // If pollingDelay === 0 then the bot is running in serverless mode and should send a `debug` level log.

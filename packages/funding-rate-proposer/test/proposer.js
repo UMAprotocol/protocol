@@ -1,8 +1,6 @@
 const winston = require("winston");
 const sinon = require("sinon");
 
-const { toWei, utf8ToHex, hexToUtf8, padRight } = web3.utils;
-
 const { FundingRateProposer } = require("../src/proposer");
 const {
   FinancialContractFactoryClient,
@@ -13,25 +11,30 @@ const {
   PriceFeedMockScaled,
 } = require("@uma/financial-templates-lib");
 const { interfaceName, OptimisticOracleRequestStatesEnum, RegistryRolesEnum } = require("@uma/common");
-const { getTruffleContract } = require("@uma/core");
+const { deployments, getContract, web3, getChainId } = require("hardhat");
+const { getAddress, getAbi } = require("@uma/contracts-node");
+const { assert } = require("chai");
 
-const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
-const PerpetualCreator = getTruffleContract("PerpetualCreator", web3);
-const PerpetualLib = getTruffleContract("PerpetualLib", web3);
-const Perpetual = getTruffleContract("Perpetual", web3);
-const Finder = getTruffleContract("Finder", web3);
-const Store = getTruffleContract("Store", web3);
-const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3);
-const Token = getTruffleContract("ExpandedERC20", web3);
-const AddressWhitelist = getTruffleContract("AddressWhitelist", web3);
-const Timer = getTruffleContract("Timer", web3);
-const TokenFactory = getTruffleContract("TokenFactory", web3);
-const Registry = getTruffleContract("Registry", web3);
-const MulticallMock = getTruffleContract("MulticallMock", web3);
+const { toWei, utf8ToHex, hexToUtf8, padRight } = web3.utils;
 
-contract("Perpetual: proposer.js", function (accounts) {
-  const deployer = accounts[0];
-  const botRunner = accounts[5];
+const OptimisticOracle = getContract("OptimisticOracle");
+const PerpetualCreator = getContract("PerpetualCreator");
+const PerpetualLib = getContract("PerpetualLib");
+const Perpetual = getContract("Perpetual");
+const Finder = getContract("Finder");
+const Store = getContract("Store");
+const IdentifierWhitelist = getContract("IdentifierWhitelist");
+const Token = getContract("ExpandedERC20");
+const AddressWhitelist = getContract("AddressWhitelist");
+const Timer = getContract("Timer");
+const TokenFactory = getContract("TokenFactory");
+const Registry = getContract("Registry");
+const MulticallMock = getContract("MulticallMock");
+
+describe("Perpetual: proposer.js", function () {
+  // Accounts
+  let deployer;
+  let botRunner;
 
   // Contracts
   let optimisticOracle;
@@ -93,83 +96,113 @@ contract("Perpetual: proposer.js", function (accounts) {
 
   const verifyOracleState = async (state, perpetualAddress, identifier, requestTime, ancillaryData) => {
     assert.equal(
-      (await optimisticOracle.getState(perpetualAddress, identifier, requestTime, ancillaryData)).toString(),
+      (
+        await optimisticOracle.methods
+          .getState(perpetualAddress, identifier, requestTime, ancillaryData)
+          .call({ from: deployer })
+      ).toString(),
       state
     );
   };
 
   before(async function () {
-    finder = await Finder.new();
-    timer = await Timer.new();
-    multicall = await MulticallMock.new();
+    [deployer, botRunner] = await web3.eth.getAccounts();
+    finder = await Finder.new().send({ from: deployer });
+    timer = await Timer.new().send({ from: deployer });
+    multicall = await MulticallMock.new().send({ from: deployer });
 
     // Whitelist an price identifier so we can deploy.
-    identifierWhitelist = await IdentifierWhitelist.new();
-    await identifierWhitelist.addSupportedIdentifier(defaultCreationParams.priceFeedIdentifier);
+    identifierWhitelist = await IdentifierWhitelist.new().send({ from: deployer });
+    await identifierWhitelist.methods
+      .addSupportedIdentifier(defaultCreationParams.priceFeedIdentifier)
+      .send({ from: deployer });
     // Whitelist funding rate identifiers:
     fundingRateIdentifiersToTest.forEach(async (id) => {
-      await identifierWhitelist.addSupportedIdentifier(id);
+      await identifierWhitelist.methods.addSupportedIdentifier(id).send({ from: deployer });
     });
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address);
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.options.address)
+      .send({ from: deployer });
 
     // Store is neccessary to set up because contracts will need to read final fees before allowing
     // a proposal.
-    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
-
-    // Link libraries once so we can deploy new factories.
-    await PerpetualCreator.link(await PerpetualLib.new());
+    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.options.address).send({ from: deployer });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
+      .send({ from: deployer });
   });
 
   beforeEach(async function () {
-    // Deploy new factory.
-    const tokenFactory = await TokenFactory.new();
-    perpFactory = await PerpetualCreator.new(finder.address, tokenFactory.address, timer.address);
+    const tokenFactory = await TokenFactory.new().send({ from: deployer });
+
+    // Deploy new Perpetual factory such that it is retrievable by the client via getAddress
+    // Note: use hre.deployments.deploy method to link libraries.
+    const perpetualLib = await PerpetualLib.new().send({ from: deployer });
+    await deployments.deploy("PerpetualCreator", {
+      from: deployer,
+      args: [finder.options.address, tokenFactory.options.address, timer.options.address],
+      libraries: { PerpetualLib: perpetualLib.options.address },
+    });
+    perpFactory = await PerpetualCreator.at(await getAddress("PerpetualCreator", parseInt(await getChainId())));
 
     // Deploy new registry so perp factory can register contracts.
-    const registry = await Registry.new();
-    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, perpFactory.address);
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.address);
+    const registry = await Registry.new().send({ from: deployer });
+    await registry.methods
+      .addMember(RegistryRolesEnum.CONTRACT_CREATOR, perpFactory.options.address)
+      .send({ from: deployer });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Registry), registry.options.address)
+      .send({ from: deployer });
 
     // Set up new OO with custom settings.
-    optimisticOracle = await OptimisticOracle.new(optimisticOracleProposalLiveness, finder.address, timer.address);
-    await registry.addMember(RegistryRolesEnum.CONTRACT_CREATOR, optimisticOracle.address);
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.address);
+    optimisticOracle = await OptimisticOracle.new(
+      optimisticOracleProposalLiveness,
+      finder.options.address,
+      timer.options.address
+    ).send({ from: deployer });
+    await registry.methods
+      .addMember(RegistryRolesEnum.CONTRACT_CREATOR, optimisticOracle.options.address)
+      .send({ from: deployer });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
+      .send({ from: deployer });
 
     // Whitelist and use same collateral for all perps.
-    collateral = await Token.new("Wrapped Ether", "WETH", "18");
-    await collateral.addMember(1, deployer);
-    await collateral.mint(deployer, initialProposerBalance);
-    await collateral.mint(botRunner, initialProposerBalance);
-    collateralWhitelist = await AddressWhitelist.new();
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.address);
-    await collateralWhitelist.addToWhitelist(collateral.address);
+    collateral = await Token.new("Wrapped Ether", "WETH", "18").send({ from: deployer });
+    await collateral.methods.addMember(1, deployer).send({ from: deployer });
+    await collateral.methods.mint(deployer, initialProposerBalance).send({ from: deployer });
+    await collateral.methods.mint(botRunner, initialProposerBalance).send({ from: deployer });
+    collateralWhitelist = await AddressWhitelist.new().send({ from: deployer });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.options.address)
+      .send({ from: deployer });
+    await collateralWhitelist.methods.addToWhitelist(collateral.options.address).send({ from: deployer });
 
     // Set non-0 final fee to test that bot can stake proposer bond.
-    await store.setFinalFee(collateral.address, { rawValue: finalFee });
-    let customCreationParams = { ...defaultCreationParams, collateralAddress: collateral.address };
+    await store.methods.setFinalFee(collateral.options.address, { rawValue: finalFee }).send({ from: deployer });
+    let customCreationParams = { ...defaultCreationParams, collateralAddress: collateral.options.address };
 
     // Before creating new perps, save the current contract time because this gets initialized as the
     // "last update time" for the perps. This is important to track because new proposals can only
     // come after the last update time.
-    startTime = await timer.getCurrentTime();
-
+    startTime = await timer.methods.getCurrentTime().call({ from: deployer });
     // Use a different funding rate identifier for each perpetual.
     perpsCreated = [];
     for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
       customCreationParams = { ...customCreationParams, fundingRateIdentifier: fundingRateIdentifiersToTest[i] };
 
       // Deploy new Perp
-      const perpAddress = await perpFactory.createPerpetual.call(customCreationParams, configStoreParams, {
-        from: deployer,
-      });
-      const perpCreation = await perpFactory.createPerpetual(customCreationParams, configStoreParams, {
-        from: deployer,
-      });
+      const perpAddress = await perpFactory.methods
+        .createPerpetual(customCreationParams, configStoreParams)
+        .call({ from: deployer });
+      const perpCreation = await perpFactory.methods
+        .createPerpetual(customCreationParams, configStoreParams)
+        .send({ from: deployer });
+
       const perpContract = await Perpetual.at(perpAddress);
-      const tokenAddress = await perpContract.tokenCurrency();
+      const tokenAddress = await perpContract.methods.tokenCurrency().call({ from: deployer });
       const ancillaryData = utf8ToHex(`tokenAddress:${tokenAddress.substr(2).toLowerCase()}`);
-      perpsCreated.push({ transaction: perpCreation, address: perpContract.address, ancillaryData });
+      perpsCreated.push({ transaction: perpCreation, address: perpContract.options.address, ancillaryData });
     }
 
     // Construct helper classes for proposer bot
@@ -180,9 +213,9 @@ contract("Perpetual: proposer.js", function (accounts) {
     });
     factoryClient = new FinancialContractFactoryClient(
       spyLogger,
-      PerpetualCreator.abi,
+      getAbi("PerpetualCreator"),
       web3,
-      perpFactory.address,
+      perpFactory.options.address,
       0, // startingBlockNumber
       null // endingBlockNumber
     );
@@ -190,7 +223,7 @@ contract("Perpetual: proposer.js", function (accounts) {
 
     // Construct FundingRateProposer using a valid default price feed config containing any additional properties
     // not set in DefaultPriceFeedConfig
-    latestProposalTime = startTime.toNumber() + 1;
+    latestProposalTime = parseInt(startTime) + 1;
     commonPriceFeedConfig = {
       historicalPrice: "0.000005",
       // Mocked historical price. This will be scaled to the identifier's precision. 1/2 of max funding rate
@@ -203,14 +236,14 @@ contract("Perpetual: proposer.js", function (accounts) {
     };
     // Additionally, advance the perpetual contract forward in time to match pricefeed's update time, otherwise
     // the proposal will fail because it is "in the future".
-    await timer.setCurrentTime(latestProposalTime);
+    await timer.methods.setCurrentTime(latestProposalTime).send({ from: deployer });
     // For this test, we'll dispute any proposals that are not equal to historical price up to a
     // 10% margin of error
     let optimisticOracleProposerConfig = { fundingRateErrorPercent: 0.1 };
     proposer = new FundingRateProposer({
       logger: spyLogger,
       perpetualFactoryClient: factoryClient,
-      multicallContractAddress: multicall.address,
+      multicallContractAddress: multicall.options.address,
       gasEstimator: gasEstimator,
       account: botRunner,
       commonPriceFeedConfig,
@@ -321,7 +354,7 @@ contract("Perpetual: proposer.js", function (accounts) {
         // rate has meaningful diverged from the newly published rate:
         const originalProposalTime = latestProposalTime;
         latestProposalTime += optimisticOracleProposalLiveness;
-        await timer.setCurrentTime(latestProposalTime);
+        await timer.methods.setCurrentTime(latestProposalTime).send({ from: deployer });
         // All proposals should be expired, but not settled:
         for (let i = 0; i < fundingRateIdentifiersToTest.length; i++) {
           await verifyOracleState(
@@ -372,9 +405,9 @@ contract("Perpetual: proposer.js", function (accounts) {
         beforeEach(async function () {
           // Advance time and publish proposals so that current funding rate gets set to 0.000005.
           latestProposalTime += optimisticOracleProposalLiveness;
-          await timer.setCurrentTime(latestProposalTime);
+          await timer.methods.setCurrentTime(latestProposalTime).send({ from: deployer });
           for (let i = 0; i < perpsCreated.length; i++) {
-            await (await Perpetual.at(perpsCreated[i].address)).applyFundingRate();
+            await (await Perpetual.at(perpsCreated[i].address)).methods.applyFundingRate().send({ from: deployer });
           }
         });
         it("Skips updating funding rates that are within delta margin", async function () {
@@ -444,7 +477,7 @@ contract("Perpetual: proposer.js", function (accounts) {
     proposer = new FundingRateProposer({
       logger: spyLogger,
       perpetualFactoryClient: factoryClient,
-      multicallContractAddress: multicall.address,
+      multicallContractAddress: multicall.options.address,
       gasEstimator: gasEstimator,
       account: botRunner,
       commonPriceFeedConfig: invalidPriceFeedConfig,
