@@ -1,6 +1,6 @@
-const { QuandlPriceFeed } = require("../../src/price-feed/QuandlPriceFeed");
-const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
-const { spyLogIncludes, SpyTransport } = require("../../src/logger/SpyTransport");
+const { QuandlPriceFeed } = require("../../dist/price-feed/QuandlPriceFeed");
+const { NetworkerMock } = require("../../dist/price-feed/NetworkerMock");
+const { spyLogIncludes, SpyTransport } = require("../../dist/logger/SpyTransport");
 const winston = require("winston");
 const moment = require("moment");
 const { parseFixed } = require("@uma/common");

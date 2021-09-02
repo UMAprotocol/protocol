@@ -1,6 +1,6 @@
 const { toWei } = web3.utils;
 
-const { GasEstimator, SpyTransport, spyLogIncludes } = require("../../index");
+const { GasEstimator, SpyTransport, spyLogIncludes } = require("../../dist/index");
 
 const { getTruffleContract } = require("@uma/core");
 
@@ -8,7 +8,7 @@ const winston = require("winston");
 const sinon = require("sinon");
 
 // Script to test
-const { DSProxyManager } = require("../../src/proxy-transaction-handler/DSProxyManager.js");
+const { DSProxyManager } = require("../../dist/proxy-transaction-handler/DSProxyManager.js");
 
 const TokenSender = getTruffleContract("TokenSender", web3);
 const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);
@@ -144,7 +144,7 @@ contract("DSProxyManager", function (accounts) {
 
     const dsProxyCallReturn = await dsProxyManager.callFunctionOnNewlyDeployedLibrary(callCode, callData);
 
-    // We can get the events to double check token transferers were correct.
+    // We can get the events to double check token transferrers were correct.
     let tokenEvents = await testToken.getPastEvents("Transfer");
 
     // The transaction hash should equal that in the transaction from the dsProxyManager.

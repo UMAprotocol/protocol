@@ -103,11 +103,16 @@ describe("UniswapV2Trader.js", function () {
       transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
     });
 
+    // Literals are not inferred from JSON.
+    type UniswapAbiElement = typeof IUniswapV2Pair.abi[number] & { type: "event" | "function" } & {
+      stateMutability?: "view" | "payable" | "pure";
+    };
+
     // Create the components needed for the RangeTrader. Create a "real" uniswap price feed, with the twapLength &
     // historicalLookback set to 1 such the the twap will update very quickly.
     tokenPriceFeed = new UniswapV2PriceFeed(
       spyLogger, // logger
-      IUniswapV2Pair.abi, // uniswapABI
+      IUniswapV2Pair.abi as UniswapAbiElement[], // uniswapABI
       Token.abi, // erc20Abi
       web3,
       pairAddress,
