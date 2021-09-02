@@ -6,8 +6,6 @@ import type { OVMBridgeDepositBoxWeb3 } from "@uma/contracts-node";
 import Web3 from "web3";
 import type { Logger } from "winston";
 
-import BluebirdPromise from "bluebird";
-
 interface Deposit {
   depositId: number;
   timestamp: number;
@@ -48,7 +46,7 @@ export class InsuredBridgeL2Client {
   }
 
   getDepositByID(depositId: string | number) {
-    return this.deposits[String(depositId)];
+    return this.deposits[depositId.toString()];
   }
 
   async update(): Promise<void> {
@@ -59,7 +57,7 @@ export class InsuredBridgeL2Client {
     };
     // TODO: update this state retrieval to include looking for L2 liquidity in the deposit box that can be sent over
     // the bridge. This should consider the minimumBridgingDelay and the lastBridgeTime for a respective L2Token.
-    const [depositRelayedEvents] = await BluebirdPromise.all([
+    const [depositRelayedEvents] = await Promise.all([
       this.bridgeDepositBox.getPastEvents("FundsDeposited", blockSearchConfig),
     ]);
 
