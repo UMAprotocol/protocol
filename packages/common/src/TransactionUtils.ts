@@ -7,8 +7,10 @@ import type { ContractSendMethod, SendOptions } from "web3-eth-contract";
 
 type CallReturnValue = ReturnType<ContractSendMethod["call"]>;
 interface AugmentedSendOptions extends SendOptions {
-  chainId?: string;
+  chainId?: number;
   usingOffSetDSProxyAccount?: boolean;
+  maxFeePerGas?: string;
+  maxPriorityFeePerGas?: string;
 }
 
 const argv = minimist(process.argv.slice(), {});
@@ -41,7 +43,7 @@ export const runTransaction = async ({
 }> => {
   // Add chainId in case RPC enforces transactions to be replay-protected, (i.e. enforced in geth v1.10,
   // https://blog.ethereum.org/2021/03/03/geth-v1-10-0/).
-  transactionConfig.chainId = web3.utils.toHex(await web3.eth.getChainId());
+  transactionConfig.chainId = await web3.eth.getChainId();
 
   // Multiplier applied to Truffle's estimated gas limit for a transaction to send.
   const GAS_LIMIT_BUFFER = 1.25;
@@ -85,23 +87,44 @@ export const runTransaction = async ({
   try {
     transactionConfig = { ...transactionConfig, gas: Math.floor(estimatedGas * GAS_LIMIT_BUFFER) };
 
-    // ynatm doubles gasPrice every retry. Tries every minute (and increases gas price according to DOUBLE method) if tx
-    // hasn't mined. Min Gas price starts at caller's transactionConfig.gasPrice, with a max gasPrice of x6.
+    // ynatm doubles gasPrice or maxPriorityFeePerGas every retry depending if the transaction is a legacy or London.
+    // Tries every minute(and increases gas price according to DOUBLE method) if tx hasn't mined. Min Gas price starts
+    // at caller's transactionConfig.gasPrice or, with transactionConfig.maxPriorityFeePerGas a max gasPrice of x6.
     const gasPriceScalingFunction = ynatm.DOUBLES;
     const retryDelay = 60000;
-    if (!transactionConfig.gasPrice) throw new Error("No gas price provided");
-    const minGasPrice = transactionConfig.gasPrice;
-    const maxGasPrice = 2 * 3 * parseInt(minGasPrice);
+    if (!transactionConfig.gasPrice || (!transactionConfig.maxFeePerGas && transactionConfig.maxPriorityFeePerGas))
+      throw new Error("No gas information provided");
 
-    // TODO: this method will need to be updated once we have updated ynatm to work with EIP1559.
-    const receipt = await ynatm.send({
-      sendTransactionFunction: (gasPrice: number) =>
-        transaction.send({ ...transactionConfig, gasPrice: gasPrice.toString() }),
-      minGasPrice,
-      maxGasPrice,
-      gasPriceScalingFunction,
-      delay: retryDelay,
-    });
+    let receipt;
+    // Sending a legacy transaction (pre-London)
+    if (transactionConfig.gasPrice) {
+      const minGasPrice = transactionConfig.gasPrice;
+      const maxGasPrice = 2 * 3 * parseInt(minGasPrice);
+
+      receipt = await ynatm.send({
+        sendTransactionFunction: (gasPrice: number) =>
+          transaction.send({ ...transactionConfig, gasPrice: gasPrice.toString() }),
+        minGasPrice,
+        maxGasPrice,
+        gasPriceScalingFunction,
+        delay: retryDelay,
+      });
+    }
+    // Else, send a London transaction. To do this we override how ynatm deals with minGasPrice/maxGasPrice to use
+    // the priority fee values.
+    else {
+      const minPriorityFeePerGas = transactionConfig.maxPriorityFeePerGas || (1e9).toString();
+      const maxPriorityFeePerGas = 2 * 3 * parseInt(minPriorityFeePerGas);
+
+      receipt = await ynatm.send({
+        sendTransactionFunction: (maxPriorityFeePerGas: number) =>
+          transaction.send({ ...transactionConfig, maxPriorityFeePerGas: maxPriorityFeePerGas.toString() } as any),
+        minGasPrice: minPriorityFeePerGas,
+        maxGasPrice: maxPriorityFeePerGas,
+        gasPriceScalingFunction,
+        delay: retryDelay,
+      });
+    }
 
     // Note: cast is due to an incorrect type in the web3 declarations that assumes send returns a contract.
     return { receipt: (receipt as unknown) as TransactionReceipt, returnValue, transactionConfig };
