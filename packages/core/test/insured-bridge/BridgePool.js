@@ -16,8 +16,10 @@ const { deployOptimismContractMock } = require("./helpers/SmockitHelper");
 const { assert } = require("chai");
 
 // Tested contracts
-const BridgeAdmin = getContract("BridgeAdmin");
 const BridgePool = getContract("BridgePool");
+
+// Helper contracts
+const BridgeAdmin = getContract("BridgeAdmin");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
@@ -50,7 +52,7 @@ const lpFeeRatePerSecond = toWei("0.0000015");
 const defaultProposerBondPct = toWei("0.05");
 const defaultSlowRelayFeePct = toWei("0.01");
 const defaultInstantRelayFeePct = toWei("0.01");
-const defaultQuoteTimestamp = 100000; // no validation of this happens on L1.
+const defaultQuoteTimestamp = "100000"; // no validation of this happens on L1.
 const defaultRealizedLpFee = toWei("0.1");
 const finalFee = toWei("1");
 const initialPoolLiquidity = toWei("1000");
@@ -180,7 +182,7 @@ describe("BridgePool", () => {
       .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address)
       .send({ from: owner });
 
-    // Deploy and setup BridgeFactory:
+    // Deploy and setup BridgeAdmin:
     l1CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L1CrossDomainMessenger");
     bridgeAdmin = await BridgeAdmin.new(
       finder.options.address,
@@ -191,7 +193,7 @@ describe("BridgePool", () => {
     ).send({ from: owner });
     await bridgeAdmin.methods.setDepositContract(depositContractImpersonator).send({ from: owner });
 
-    // New BridgePool linked to BridgeFactory
+    // New BridgePool linked to BridgeAdmin
     bridgePool = await BridgePool.new(
       "LP Token",
       "LPT",
@@ -432,11 +434,15 @@ describe("BridgePool", () => {
         return (
           ev.depositId.toString() === depositData.depositId.toString() &&
           ev.sender === depositData.l2Sender &&
+          ev.slowRelayer === relayer &&
           ev.depositTimestamp === depositData.depositTimestamp &&
           ev.recipient === depositData.recipient &&
           ev.l1Token === depositData.l1Token &&
           ev.amount === depositData.amount &&
-          ev.maxFeePct === depositData.maxFeePct &&
+          ev.slowRelayFeePct === depositData.slowRelayFeePct &&
+          ev.instantRelayFeePct === depositData.instantRelayFeePct &&
+          ev.quoteTimestamp === depositData.quoteTimestamp &&
+          ev.realizedLpFeePct === relayData.realizedLpFeePct &&
           ev.priceRequestAncillaryDataHash === relayAncillaryDataHash &&
           ev.depositHash === depositHash &&
           ev.depositContract === depositContractImpersonator
@@ -946,7 +952,7 @@ describe("BridgePool", () => {
 
       // Settle relay and check event logs.
       const settleTxn = await bridgePool.methods.settleRelay(depositData).send({ from: rando });
-      await assertEventEmitted(settleTxn, bridgePool, "SettledRelay", (ev) => {
+      await assertEventEmitted(settleTxn, bridgePool, "RelaySettled", (ev) => {
         return (
           ev.depositHash === depositHash &&
           ev.priceRequestAncillaryDataHash === relayAncillaryDataHash &&
