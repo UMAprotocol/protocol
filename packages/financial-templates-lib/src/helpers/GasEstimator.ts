@@ -38,7 +38,7 @@ interface MaticResponse {
   blockNumber: number;
 }
 
-export const GAS_ESTIMATOR_MAPPING_BY_NETWORK: GasEstimatorMapping = {
+export const MAPPING_BY_NETWORK: GasEstimatorMapping = {
   // Expected shape:
   // <netId>: {
   //     url: <primary-gas-station-url>,
@@ -57,15 +57,16 @@ export const GAS_ESTIMATOR_MAPPING_BY_NETWORK: GasEstimatorMapping = {
 
 const DEFAULT_NETWORK_ID = 1; // Ethereum Mainnet.
 export class GasEstimator {
-  private lastUpdateTimestamp: undefined | number;
   private readonly networkId: number;
+
+  private lastUpdateTimestamp: undefined | number;
   private lastFastPriceGwei = 0;
   private latestMaxFeePerGasGwei: number;
   private latestMaxPriorityFeePerGasGwei: number;
 
-  private defaultFastPriceGwei: number;
-  private defaultMaxFeePerGasGwei: number;
-  private defaultMaxPriorityFeePerGasGwei: number;
+  private defaultFastPriceGwei = 0;
+  private defaultMaxFeePerGasGwei = 0;
+  private defaultMaxPriorityFeePerGasGwei = 0;
 
   private type: NetworkType;
 
@@ -78,18 +79,19 @@ export class GasEstimator {
    */
 
   constructor(private readonly logger: Logger, private readonly updateThreshold = 60, networkId = DEFAULT_NETWORK_ID) {
-    // If networkId is not found in GAS_ESTIMATOR_MAPPING_BY_NETWORK, then default to 1.
-    if (!Object.keys(GAS_ESTIMATOR_MAPPING_BY_NETWORK).includes(networkId.toString()))
-      this.networkId = DEFAULT_NETWORK_ID;
+    // If networkId is not found in MAPPING_BY_NETWORK, then default to 1.
+    if (!Object.keys(MAPPING_BY_NETWORK).includes(networkId.toString())) this.networkId = DEFAULT_NETWORK_ID;
     else this.networkId = networkId;
 
-    // If the script fails or the API response fails default to these value.
-    this.defaultFastPriceGwei = GAS_ESTIMATOR_MAPPING_BY_NETWORK[this.networkId].defaultFastPriceGwei || 0;
-    this.defaultMaxFeePerGasGwei = GAS_ESTIMATOR_MAPPING_BY_NETWORK[this.networkId].defaultMaxFeePerGasGwei || 0;
-    this.defaultMaxPriorityFeePerGasGwei =
-      GAS_ESTIMATOR_MAPPING_BY_NETWORK[this.networkId].defaultMaxPriorityFeePerGasGwei || 0;
-    this.type = GAS_ESTIMATOR_MAPPING_BY_NETWORK[this.networkId].type;
+    // If the script fails or the API response fails default to these value. If the network ID provided is not in the
+    // mapping, then use the default ID.
+    if (!Object.keys(MAPPING_BY_NETWORK).includes(networkId.toString())) this.networkId = DEFAULT_NETWORK_ID;
+    this.defaultFastPriceGwei = MAPPING_BY_NETWORK[this.networkId].defaultFastPriceGwei || 0;
+    this.defaultMaxFeePerGasGwei = MAPPING_BY_NETWORK[this.networkId].defaultMaxFeePerGasGwei || 0;
+    this.defaultMaxPriorityFeePerGasGwei = MAPPING_BY_NETWORK[this.networkId].defaultMaxPriorityFeePerGasGwei || 0;
+    this.type = MAPPING_BY_NETWORK[this.networkId].type;
 
+    // Set the initial values to the defaults.
     this.lastFastPriceGwei = this.defaultFastPriceGwei;
     this.latestMaxFeePerGasGwei = this.defaultMaxFeePerGasGwei;
     this.latestMaxPriorityFeePerGasGwei = this.defaultMaxPriorityFeePerGasGwei;
@@ -129,7 +131,8 @@ export class GasEstimator {
   // Returns the current fast maxFeePerGas and maxPriorityFeePerGas OR gasPrice depending on the connected network.
   getCurrentFastPrice(): LondonGasData | LegacyGasData {
     // Sometimes the multiplication by 1e9 introduces some error into the resulting number, so we'll conservatively ceil
-    // the result before returning.This output is usually passed into a web3 contract call so it MUST be an integer.
+    // the result before returning. This output is usually passed into a web3 contract call so it MUST be an integer.
+    console.log("latestMaxFeePerGasGwei", this.latestMaxFeePerGasGwei);
     if (this.type == NetworkType.London) {
       return {
         maxFeePerGas: Math.ceil(this.latestMaxFeePerGasGwei * 1e9),
@@ -147,13 +150,13 @@ export class GasEstimator {
   }
 
   async _getPrice(_networkId: number): Promise<LondonGasData | LegacyGasData> {
-    const url = GAS_ESTIMATOR_MAPPING_BY_NETWORK[_networkId].url;
-    const backupUrl = GAS_ESTIMATOR_MAPPING_BY_NETWORK[_networkId].backupUrl;
+    const url = MAPPING_BY_NETWORK[_networkId].url;
+    const backupUrl = MAPPING_BY_NETWORK[_networkId].backupUrl;
 
     if (!url) throw new Error(`Missing URL for network ID ${_networkId}`);
 
     try {
-      // Primary URL expected response structure for London
+      // Primary URL expected response structure for 'London
       // {
       //    safeLow: 1, // slow maxPriorityFeePerGas
       //    standard: 1.5, // standard maxPriorityFeePerGas

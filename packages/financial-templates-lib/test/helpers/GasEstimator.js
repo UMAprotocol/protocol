@@ -3,7 +3,7 @@ const winston = require("winston");
 const { delay } = require("../../dist/helpers/delay");
 
 // Script to test
-const { GasEstimator, GAS_ESTIMATOR_MAPPING_BY_NETWORK } = require("../../dist/helpers/GasEstimator");
+const { GasEstimator, MAPPING_BY_NETWORK } = require("../../dist/helpers/GasEstimator");
 
 contract("GasEstimator.js", function () {
   let gasEstimator;
@@ -19,12 +19,12 @@ contract("GasEstimator.js", function () {
       assert(gasEstimator.updateThreshold > 0);
       assert.equal(
         gasEstimator.defaultMaxFeePerGasGwei,
-        GAS_ESTIMATOR_MAPPING_BY_NETWORK[1].defaultMaxFeePerGasGwei,
+        MAPPING_BY_NETWORK[1].defaultMaxFeePerGasGwei,
         "defaultMaxFeePerGasGwei for networkId 1 incorrect"
       );
       assert.equal(
         gasEstimator.defaultMaxPriorityFeePerGas,
-        GAS_ESTIMATOR_MAPPING_BY_NETWORK[1].defaultMaxPriorityFeePerGas,
+        MAPPING_BY_NETWORK[1].defaultMaxPriorityFeePerGas,
         "defaultMaxPriorityFeePerGas for networkId 1 incorrect"
       );
       assert.equal(gasEstimator.networkId, 1, "default networkId should be 1");
@@ -63,7 +63,7 @@ contract("GasEstimator.js", function () {
 
   describe("Construction with custom config (legacy)", () => {
     // These tests validate the legacy (pre EIP-1559) setup on custom network IDs
-    // Choose a network ID specified in GAS_ESTIMATOR_MAPPING_BY_NETWORK.
+    // Choose a network ID specified in MAPPING_BY_NETWORK.
     const customNetworkId = 137;
 
     beforeEach(() => {
@@ -75,7 +75,7 @@ contract("GasEstimator.js", function () {
       assert.equal(gasEstimator.updateThreshold, 2);
       assert.equal(
         gasEstimator.defaultFastPriceGwei,
-        GAS_ESTIMATOR_MAPPING_BY_NETWORK[customNetworkId].defaultFastPriceGwei,
+        MAPPING_BY_NETWORK[customNetworkId].defaultFastPriceGwei,
         `defaultFastPriceGwei for networkId ${customNetworkId} incorrect`
       );
       assert.equal(gasEstimator.networkId, customNetworkId);
@@ -87,18 +87,11 @@ contract("GasEstimator.js", function () {
       await gasEstimator.update();
       assert(lastUpdateTimestamp < gasEstimator.lastUpdateTimestamp);
     });
-    it("Defaults network ID if GAS_ESTIMATOR_MAPPING_BY_NETWORK missing network ID", async () => {
+    it("Defaults network ID if MAPPING_BY_NETWORK missing network ID", async () => {
       const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
-      gasEstimator = new GasEstimator(
-        dummyLogger,
-        60,
-        999 /* networkId that doesn't exist in GAS_ESTIMATOR_MAPPING_BY_NETWORK */
-      );
-      assert.equal(
-        gasEstimator.defaultFastPriceGwei,
-        GAS_ESTIMATOR_MAPPING_BY_NETWORK[1].defaultFastPriceGwei,
-        "Should default to defaultFastPriceGwei for networkId 1"
-      );
+      gasEstimator = new GasEstimator(dummyLogger, 60, 999 /* networkId that doesn't exist in MAPPING_BY_NETWORK */);
+      assert.equal(gasEstimator.defaultMaxFeePerGasGwei, MAPPING_BY_NETWORK[1].defaultMaxFeePerGasGwei);
+      assert.equal(gasEstimator.defaultMaxPriorityFeePerGasGwei, MAPPING_BY_NETWORK[1].defaultMaxPriorityFeePerGasGwei);
       assert.equal(gasEstimator.networkId, 1);
     });
   });
