@@ -18,29 +18,29 @@ export type EncodedRequest = {
   callData: string;
 };
 
-interface State {
+export interface State<MulticallType> {
   requests: Request[];
-  multicallClient: multicall.Instance;
+  multicallClient: MulticallType;
 }
 
 // Multicall class that exposes public functions to the user and recursively chains itself.  Acts immutable
 // if you store reference to the parent intsance. Children will contain mutated state.
-class Multicall implements State {
+export class Multicall<MulticallType extends multicall.Instance> implements State<multicall.Instance> {
   public requests: Request[];
-  public multicallClient: multicall.Instance;
-  constructor(state: State) {
+  public multicallClient: MulticallType;
+  constructor(state: State<MulticallType>) {
     // make a copy of this so we dont mutate the original
     this.requests = [...state.requests];
     this.multicallClient = state.multicallClient;
   }
 
   // internally add requests to queue. Only called by parent for chaining.
-  private push(contractInstance: Contract, call: Call) {
+  protected push(contractInstance: Contract, call: Call) {
     this.requests.push({ contractInstance, call });
   }
 
   // encode requests to multicall contract
-  private encodeRequest(request: Request) {
+  protected encodeRequest(request: Request) {
     const { contractInstance, call } = request;
     return {
       target: contractInstance.address,
@@ -49,7 +49,7 @@ class Multicall implements State {
   }
 
   // decode response from multicall contract
-  private decodeResponse(request: Request, response: EncodedResponse) {
+  protected decodeResponse(request: Request, response: EncodedResponse) {
     const { contractInstance, call } = request;
     return contractInstance.interface.decodeFunctionResult(call.method, response);
   }
@@ -82,7 +82,7 @@ class Multicall implements State {
 }
 
 // Factory that alters construction of multicall to be more friendly for end user
-export default class Factory extends Multicall {
+export default class Factory extends Multicall<multicall.Instance> {
   constructor(address: string, provider: SignerOrProvider) {
     const multicallClient = multicall.connect(address, provider);
     super({ multicallClient, requests: [] });

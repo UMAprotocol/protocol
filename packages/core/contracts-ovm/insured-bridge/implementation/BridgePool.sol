@@ -94,13 +94,14 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     event DepositRelayed(
         uint64 depositId,
         address indexed sender,
+        address slowRelayer,
         uint64 depositTimestamp,
         address recipient,
         address l1Token,
         uint256 amount,
         uint64 slowRelayFeePct,
         uint64 instantRelayFeePct,
-        uint64 maxLpFeePct,
+        uint64 quoteTimestamp,
         uint64 realizedLpFeePct,
         bytes32 indexed priceRequestAncillaryDataHash,
         bytes32 indexed depositHash,
@@ -108,7 +109,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     );
     event RelaySpedUp(bytes32 indexed depositHash, address indexed instantRelayer);
     event RelayDisputed(bytes32 indexed depositHash, bytes32 indexed priceRequestAncillaryDataHash);
-    event SettledRelay(
+    event RelaySettled(
         bytes32 indexed depositHash,
         bytes32 indexed priceRequestAncillaryDataHash,
         address indexed caller
@@ -247,7 +248,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         );
 
         // If no pending relay for this deposit, then associate the caller's relay attempt with it. Copy over the
-        // instant relayer so that the recipient cannot receive double payments.
+        // instant relayer so that the recipient cannot receive double payments. This means that once a relay is
+        // disputed, it cant be sped up a second time (must finalize via the slow relay).
         uint256 priceRequestTime = getCurrentTime();
         RelayData memory relayData =
             RelayData({
@@ -382,7 +384,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         updateAccumulatedLpFees();
         allocateLpFees(_getAmountFromPct(relay.realizedLpFeePct, _depositData.amount));
 
-        emit SettledRelay(depositHash, keccak256(getRelayAncillaryData(_depositData, relay)), msg.sender);
+        emit RelaySettled(depositHash, keccak256(getRelayAncillaryData(_depositData, relay)), msg.sender);
     }
 
     /**
@@ -688,6 +690,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         emit DepositRelayed(
             _depositData.depositId,
             _depositData.l2Sender,
+            msg.sender,
             _depositData.depositTimestamp,
             _depositData.recipient,
             _depositData.l1Token,
