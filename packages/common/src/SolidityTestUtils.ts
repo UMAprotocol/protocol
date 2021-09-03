@@ -153,8 +153,6 @@ export async function mineTransactionsAtTime(
     await advanceBlockAndSetTime(web3, time);
     const receipts = await Promise.all(receiptPromises);
     return receipts;
-  } catch (err) {
-    throw new Error(err.message);
   } finally {
     // We need to restart Ganache's mining no matter what, otherwise the caller would have to restart their Ganache instance.
     await startMining(web3);
@@ -192,8 +190,6 @@ export async function mineTransactionsAtTimeHardhat(
     await network.provider.send("evm_mine", [time]);
     const receipts = await Promise.all(receiptPromises);
     return receipts;
-  } catch (err) {
-    throw new Error(err.message);
   } finally {
     // Restart automine.
     await network.provider.send("evm_setAutomine", [true]);
