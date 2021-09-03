@@ -74,6 +74,15 @@ describe("InsuredBridgeL1Client", function () {
     disputer,
     rando;
 
+  const generateRelayParams = (depositDataOverride = {}, relayDataOverride = {}) => {
+    const _depositData = { ...depositData, ...depositDataOverride };
+    const _relayData = { ...relayData, ...relayDataOverride };
+    // Remove the l1Token. This is part of the deposit data (hash) but is not part of the params for relayDeposit.
+    // eslint-disable-next-line no-unused-vars
+    const { l1Token, ...params } = _depositData;
+    return [...Object.values(params), _relayData.realizedLpFeePct];
+  };
+
   const generateRelayData = async (depositData, relayData, bridgePool) => {
     // Save other reused values.
     depositDataAbiEncoded = web3.eth.abi.encodeParameters(
@@ -81,8 +90,8 @@ describe("InsuredBridgeL1Client", function () {
       [
         depositData.depositId,
         depositData.depositTimestamp,
-        depositData.l2Sender,
         depositData.recipient,
+        depositData.l2Sender,
         depositData.l1Token,
         depositData.amount,
         depositData.slowRelayFeePct,
@@ -225,8 +234,8 @@ describe("InsuredBridgeL1Client", function () {
     depositData = {
       depositId: 1,
       depositTimestamp: (await optimisticOracle.methods.getCurrentTime().call()).toString(),
-      l2Sender: depositor,
       recipient: recipient,
+      l2Sender: depositor,
       l1Token: l1Token.options.address,
       amount: relayAmount,
       slowRelayFeePct: defaultSlowRelayFeePct,
@@ -267,19 +276,7 @@ describe("InsuredBridgeL1Client", function () {
 
       await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
-      await bridgePool.methods
-        .relayDeposit(
-          depositData.depositId,
-          depositData.depositTimestamp,
-          depositData.recipient,
-          depositData.l2Sender,
-          depositData.amount,
-          depositData.slowRelayFeePct,
-          depositData.instantRelayFeePct,
-          depositData.quoteTimestamp,
-          relayData.realizedLpFeePct
-        )
-        .send({ from: relayer });
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
       const relayStatus = await bridgePool.methods.relays(depositHash).call();
 
@@ -367,19 +364,7 @@ describe("InsuredBridgeL1Client", function () {
 
       await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
-      await bridgePool.methods
-        .relayDeposit(
-          depositData.depositId,
-          depositData.depositTimestamp,
-          depositData.recipient,
-          depositData.l2Sender,
-          depositData.amount,
-          depositData.slowRelayFeePct,
-          depositData.instantRelayFeePct,
-          depositData.quoteTimestamp,
-          relayData.realizedLpFeePct
-        )
-        .send({ from: relayer });
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
       const relayStatus = await bridgePool.methods.relays(depositHash).call();
 
@@ -454,19 +439,7 @@ describe("InsuredBridgeL1Client", function () {
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
       // Cache price request timestamp.
 
-      await bridgePool.methods
-        .relayDeposit(
-          depositData.depositId,
-          depositData.depositTimestamp,
-          depositData.recipient,
-          depositData.l2Sender,
-          depositData.amount,
-          depositData.slowRelayFeePct,
-          depositData.instantRelayFeePct,
-          depositData.quoteTimestamp,
-          relayData.realizedLpFeePct
-        )
-        .send({ from: rando });
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
 
       // Check the client updated accordingly. Importantly there should be a new slow relayer, the disputed slow relayers
       // should contain the previous relayer.
@@ -520,19 +493,7 @@ describe("InsuredBridgeL1Client", function () {
       const totalRelayBond = toBN(relayAmount).mul(toBN(defaultProposerBondPct));
       await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
-      await bridgePool.methods
-        .relayDeposit(
-          depositData.depositId,
-          depositData.depositTimestamp,
-          depositData.recipient,
-          depositData.l2Sender,
-          depositData.amount,
-          depositData.slowRelayFeePct,
-          depositData.instantRelayFeePct,
-          depositData.quoteTimestamp,
-          relayData.realizedLpFeePct
-        )
-        .send({ from: relayer });
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
       // Next, advance time and settle the relay. State should update accordingly.
       await timer.methods
@@ -564,19 +525,7 @@ describe("InsuredBridgeL1Client", function () {
       relayData.slowRelayer = rando;
       await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
-      await bridgePool.methods
-        .relayDeposit(
-          depositData.depositId,
-          depositData.depositTimestamp,
-          depositData.recipient,
-          depositData.l2Sender,
-          depositData.amount,
-          depositData.slowRelayFeePct,
-          depositData.instantRelayFeePct,
-          depositData.quoteTimestamp,
-          relayData.realizedLpFeePct
-        )
-        .send({ from: rando });
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
 
       // Sync the modified deposit and relay data with the expected returned data and store it.
       syncExpectedRelayedDepositInformation();
@@ -605,19 +554,7 @@ describe("InsuredBridgeL1Client", function () {
       await bridgePool2.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
       await l1Token2.methods.mint(relayer, totalRelayBond).send({ from: owner });
       await l1Token2.methods.approve(bridgePool2.options.address, totalRelayBond).send({ from: relayer });
-      await bridgePool2.methods
-        .relayDeposit(
-          depositData.depositId,
-          depositData.depositTimestamp,
-          depositData.recipient,
-          depositData.l2Sender,
-          depositData.amount,
-          depositData.slowRelayFeePct,
-          depositData.instantRelayFeePct,
-          depositData.quoteTimestamp,
-          relayData.realizedLpFeePct
-        )
-        .send({ from: relayer });
+      await bridgePool2.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
       // Sync the modified deposit and relay data with the expected returned data and store it.
       syncExpectedRelayedDepositInformation();
