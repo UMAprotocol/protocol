@@ -4,6 +4,7 @@
 require("dotenv").config();
 const assert = require("assert");
 const { getAbi } = require("@uma/contracts-node");
+const { getContractsNodePackageAliasForVerion } = require("@uma/common");
 const { BigQuery } = require("@google-cloud/bigquery");
 const Promise = require("bluebird");
 const Web3 = require("web3");
@@ -19,12 +20,6 @@ const { makeUnixPipe } = require("../libs/affiliates/utils");
 // dont know why, but the common getWeb3 is causing contract calls to fail
 function getWeb3() {
   return new Web3(process.env.CUSTOM_NODE_URL);
-}
-
-// TODO: stub. There is a function being introduced in another PR in common that will do this for us.
-// eslint-disable-next-line no-unused-vars
-function getContractsNodePackageAliasForVerion(_version) {
-  return "@uma/contracts-node";
 }
 
 function getEmpAbiForVersion(version) {
