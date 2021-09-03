@@ -43,7 +43,7 @@
     "/src/**/*.js"
   ],
   "scripts": {
-    "test": "yarn truffle test test/*.js"
+    "test": "HARDHAT_NETWORK=localhost yarn mocha 'test/**/*.js'"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
