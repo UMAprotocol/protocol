@@ -37,7 +37,7 @@
     }
   ],
   "dependencies": {
-    "@uma/core": "^2.7.0",
+    "@uma/contracts-node": "^0.1.0",
     "ethers": "^5.4.2",
     "highland": "^2.13.5"
   },

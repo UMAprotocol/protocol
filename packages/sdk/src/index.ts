@@ -6,7 +6,7 @@ export { default as Coingecko } from "./coingecko";
 export { default as Multicall } from "./multicall";
 
 // types
-import type { TypedEventFilter, TypedEvent } from "@uma/core/types/contract-types/ethers/commons";
+import type { TypedEventFilterEthers as TypedEventFilter, TypedEventEthers as TypedEvent } from "@uma/contracts-node";
 import { Contract } from "ethers";
 import { Result } from "@ethersproject/abi";
 import { Signer } from "@ethersproject/abstract-signer";
