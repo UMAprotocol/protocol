@@ -63,7 +63,7 @@ interface OtherExtensions {
   deployments: DeploymentsExtension;
 }
 
-type HRE = Extension & OtherExtensions & HardhatRuntimeEnvironment;
+export type HRE = Extension & OtherExtensions & HardhatRuntimeEnvironment;
 
 extendEnvironment((_hre) => {
   const hre = _hre as HRE;
