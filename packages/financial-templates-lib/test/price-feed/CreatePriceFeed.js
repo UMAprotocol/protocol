@@ -67,7 +67,8 @@ contract("CreatePriceFeed.js", function (accounts) {
   const contractAddress = "test-address";
   const forexBase = "EUR";
   const forexSymbol = "USD";
-  const nodeUrlEnvVar = "ALT_NODE_URL";
+  const nodeUrlEnvVar = "NODE_URL_1";
+  const chainId = 1;
 
   before(async function () {
     identifierWhitelist = await IdentifierWhitelist.new();
@@ -297,7 +298,7 @@ contract("CreatePriceFeed.js", function (accounts) {
   });
 
   it("Valid Uniswap config with alternate node", async function () {
-    const config = { type: "uniswap", uniswapAddress, twapLength, lookback, nodeUrlEnvVar };
+    const config = { type: "uniswap", uniswapAddress, twapLength, lookback, chainId };
 
     const validUniswapFeed = await createPriceFeed(logger, web3, networker, getTime, config);
 
@@ -431,7 +432,7 @@ contract("CreatePriceFeed.js", function (accounts) {
       balancerTokenOut: accounts[2],
       lookback: 7200,
       twapLength: 7200,
-      nodeUrlEnvVar,
+      chainId,
     };
 
     const balancerFeed = await createPriceFeed(logger, web3, networker, getTime, config);
@@ -448,7 +449,7 @@ contract("CreatePriceFeed.js", function (accounts) {
   });
 
   it("Valid Uniswap v3 config with alternate node", async function () {
-    const config = { type: "uniswap", uniswapAddress, twapLength, lookback, version: "v3", nodeUrlEnvVar };
+    const config = { type: "uniswap", uniswapAddress, twapLength, lookback, version: "v3", chainId };
 
     const validUniswapFeed = await createPriceFeed(logger, web3, networker, getTime, config);
 
@@ -599,7 +600,7 @@ contract("CreatePriceFeed.js", function (accounts) {
       uniswapAddress,
       twapLength,
       medianizedFeeds: [{ type: "cryptowatch" }, { type: "uniswap" }],
-      nodeUrlEnvVar,
+      chainId,
     };
 
     const validMedianizerFeed = await createPriceFeed(logger, web3, networker, getTime, config);
@@ -778,7 +779,7 @@ contract("CreatePriceFeed.js", function (accounts) {
       lookback,
       minTimeBetweenUpdates,
       customFeeds: { mysymbol: { type: "cryptowatch" } },
-      nodeUrlEnvVar,
+      chainId,
     };
 
     const expressionPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
@@ -836,7 +837,7 @@ contract("CreatePriceFeed.js", function (accounts) {
   });
 
   it("VaultPriceFeed: valid config with alternate node", async function () {
-    const config = { type: "vault", address: web3.utils.randomHex(20), nodeUrlEnvVar };
+    const config = { type: "vault", address: web3.utils.randomHex(20), chainId };
 
     const vaultPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
 
@@ -885,7 +886,7 @@ contract("CreatePriceFeed.js", function (accounts) {
       type: "lp",
       poolAddress: web3.utils.randomHex(20),
       tokenAddress: web3.utils.randomHex(20),
-      nodeUrlEnvVar,
+      chainId,
     };
 
     const lpPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
@@ -952,7 +953,7 @@ contract("CreatePriceFeed.js", function (accounts) {
   it("FundingRateMultiplierPriceFeed: creation succeeds with alternate node", async function () {
     const perpetualAddress = web3.utils.randomHex(20);
     const multicallAddress = web3.utils.randomHex(20);
-    const config = { type: "frm", perpetualAddress, multicallAddress, nodeUrlEnvVar };
+    const config = { type: "frm", perpetualAddress, multicallAddress, chainId };
 
     const frmPriceFeed = await createPriceFeed(logger, web3, networker, getTime, config);
     assert.notEqual(frmPriceFeed.web3, web3);

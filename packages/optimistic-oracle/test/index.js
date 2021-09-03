@@ -4,7 +4,7 @@ const Main = require("../index.js");
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
 const sinon = require("sinon");
-const assert = require("chai").assert;
+const { assert } = require("chai");
 
 const hre = require("hardhat");
 const { getContract, deployments } = hre;

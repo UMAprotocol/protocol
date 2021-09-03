@@ -94,13 +94,14 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     event DepositRelayed(
         uint64 depositId,
         address indexed sender,
+        address slowRelayer,
         uint64 depositTimestamp,
         address recipient,
         address l1Token,
         uint256 amount,
         uint64 slowRelayFeePct,
         uint64 instantRelayFeePct,
-        uint64 maxLpFeePct,
+        uint64 quoteTimestamp,
         uint64 realizedLpFeePct,
         bytes32 indexed priceRequestAncillaryDataHash,
         bytes32 indexed depositHash,
@@ -108,7 +109,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     );
     event RelaySpedUp(bytes32 indexed depositHash, address indexed instantRelayer);
     event RelayDisputed(bytes32 indexed depositHash, bytes32 indexed priceRequestAncillaryDataHash);
-    event SettledRelay(
+    event RelaySettled(
         bytes32 indexed depositHash,
         bytes32 indexed priceRequestAncillaryDataHash,
         address indexed caller
@@ -247,7 +248,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         );
 
         // If no pending relay for this deposit, then associate the caller's relay attempt with it. Copy over the
-        // instant relayer so that the recipient cannot receive double payments.
+        // instant relayer so that the recipient cannot receive double payments. This means that once a relay is
+        // disputed, it cant be sped up a second time (must finalize via the slow relay).
         uint256 priceRequestTime = getCurrentTime();
         RelayData memory relayData =
             RelayData({
@@ -307,8 +309,10 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     function speedUpRelay(DepositData memory _depositData) public {
         bytes32 depositHash = _getDepositHash(_depositData);
         RelayData storage relay = relays[depositHash];
-        require(relays[depositHash].relayState == RelayState.Pending, "Can only speed up slow relay");
-        require(relays[depositHash].instantRelayer == address(0), "Instant relayer already set");
+        require(
+            relays[depositHash].relayState == RelayState.Pending && relays[depositHash].instantRelayer == address(0),
+            "Relay can not be sped up"
+        );
         relay.instantRelayer = msg.sender;
 
         // Pull relay amount minus fees from caller and send to the deposit recipient. The total fees paid is the sum
@@ -382,7 +386,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         updateAccumulatedLpFees();
         allocateLpFees(_getAmountFromPct(relay.realizedLpFeePct, _depositData.amount));
 
-        emit SettledRelay(depositHash, keccak256(getRelayAncillaryData(_depositData, relay)), msg.sender);
+        emit RelaySettled(depositHash, keccak256(getRelayAncillaryData(_depositData, relay)), msg.sender);
     }
 
     /**
@@ -391,7 +395,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
      * @param identifier Price identifier used when requesting OO price. Unused.
      * @param timestamp Unix timestamp of the price request. Unused.
      * @param ancillaryData AncillaryData of the price request. Use to find the associated disputed relay action.
-     * @param refund Amound refunded for the dispute. Unused.
+     * @param refund Amount refunded for the dispute. Unused.
      */
     function priceDisputed(
         bytes32 identifier,
@@ -495,13 +499,13 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         );
         intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
             intermediateAncillaryData,
-            "l2Sender",
-            _depositData.l2Sender
+            "recipient",
+            _depositData.recipient
         );
         intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
             intermediateAncillaryData,
-            "recipient",
-            _depositData.recipient
+            "l2Sender",
+            _depositData.l2Sender
         );
         intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
             intermediateAncillaryData,
@@ -606,8 +610,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
                 abi.encode(
                     _depositData.depositId,
                     _depositData.depositTimestamp,
-                    _depositData.l2Sender,
                     _depositData.recipient,
+                    _depositData.l2Sender,
                     _depositData.l1Token,
                     _depositData.amount,
                     _depositData.slowRelayFeePct,
@@ -688,6 +692,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         emit DepositRelayed(
             _depositData.depositId,
             _depositData.l2Sender,
+            msg.sender,
             _depositData.depositTimestamp,
             _depositData.recipient,
             _depositData.l1Token,

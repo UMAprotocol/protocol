@@ -140,6 +140,8 @@ export default (config: Config, appState: Dependencies) => {
         staticState = await readEmpStaticState(instance, address);
         // create active emp with static/dynamic state
         await emps.active.create({ ...staticState, ...dynamicState });
+      } else {
+        await emps.active.update(address, dynamicState);
       }
       // add any new sponsors
       await emps.active.addSponsors(address, eventState.sponsors || []);
@@ -157,7 +159,7 @@ export default (config: Config, appState: Dependencies) => {
 
   async function updateAll(addresses: string[], startBlock?: number | "latest", endBlock?: number) {
     await Promise.mapSeries(addresses, async (address: string) => {
-      const end = profile(`Emp state for ${address}`);
+      const end = profile(`Update Emp state for ${address}`);
       try {
         return await updateOne(address, startBlock, endBlock);
       } catch (err) {
