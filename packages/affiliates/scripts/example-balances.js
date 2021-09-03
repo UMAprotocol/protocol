@@ -2,7 +2,7 @@ const { BigQuery } = require("@google-cloud/bigquery");
 const Queries = require("../libs/bigquery");
 const highland = require("highland");
 const { DecodeLog } = require("../libs/contracts");
-const { getAbi } = require("@uma/core");
+const { getAbi } = require("@uma/contracts-node");
 const { EmpBalancesHistory, EmpBalances } = require("../libs/processors");
 const { empContracts } = require("../test/datasets/set1");
 
