@@ -1,5 +1,3 @@
-// zz
-
 import { SpyTransport } from "@uma/financial-templates-lib";
 import winston from "winston";
 import sinon from "sinon";
