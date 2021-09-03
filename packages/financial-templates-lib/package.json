@@ -51,7 +51,7 @@
     "/dist/**/*"
   ],
   "scripts": {
-    "test": "mocha 'test/**/*.js'",
+    "test": "mocha 'test/**/*.js' 'test/**/*.ts'",
     "build": "tsc"
   },
   "bugs": {
