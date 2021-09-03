@@ -29,7 +29,7 @@ export function getContractsNodePackageAliasForVerion(version: string): string {
   if (version === "latest") return "@uma/contracts-node";
   const isKey = (input: string): input is keyof typeof CORE_CONTRACTS_NODE_VERSION_MAPPING =>
     input in CORE_CONTRACTS_NODE_VERSION_MAPPING;
-  if (!isKey(version)) throw new Error("Unkown version!");
+  if (!isKey(version)) throw new Error("Unknown version!");
   return `@uma/contracts-node-${CORE_CONTRACTS_NODE_VERSION_MAPPING[version].split(".").join("-")}`;
 }
 

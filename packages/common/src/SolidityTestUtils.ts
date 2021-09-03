@@ -138,10 +138,10 @@ export async function mineTransactionsAtTime(
 
       // Awaits the transactionHash, which signifies the transaction was sent, but not necessarily mined.
       await new Promise<void>((resolve, reject) => {
-        result.on("transactionHash", function () {
+        result.once("transactionHash", function () {
           resolve();
         });
-        result.on("error", function (error) {
+        result.once("error", function (error) {
           reject(error);
         });
       });
@@ -177,10 +177,10 @@ export async function mineTransactionsAtTimeHardhat(
 
       // Awaits the transactionHash, which signifies the transaction was sent, but not necessarily mined.
       await new Promise<void>((resolve, reject) => {
-        result.on("transactionHash", function () {
+        result.once("transactionHash", function () {
           resolve();
         });
-        result.on("error", function (error) {
+        result.once("error", function (error) {
           reject(error);
         });
       });

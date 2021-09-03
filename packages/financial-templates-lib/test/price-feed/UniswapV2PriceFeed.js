@@ -13,6 +13,8 @@ const Token = getContract("ExpandedERC20");
 
 const Convert = (decimals) => (number) => (number ? parseFixed(number.toString(), decimals).toString() : number);
 
+// This is needed to get a timestamp sufficiently in the future that mining blocks a few hours before this will not
+// cause any block timestamp ordering issues. Note: this sort of block mining is used often in this test.
 const getFutureTime = async () => Number((await web3.eth.getBlock("latest")).timestamp) + 10000;
 
 describe("UniswapV2PriceFeed", function () {
@@ -75,7 +77,7 @@ describe("UniswapV2PriceFeed", function () {
   });
 
   it("Selects most recent price in same block", async function () {
-    // Just use current system time because the time doesn't matter.
+    // Get a far future timestamp to not interfere with any existing blocks.
     const time = await getFutureTime();
 
     const transactions = [
@@ -166,7 +168,7 @@ describe("UniswapV2PriceFeed", function () {
   });
 
   it("One event within window, several before", async function () {
-    // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
+    // Get a far future timestamp to not interfere with any existing blocks.
     const currentTime = await getFutureTime();
 
     // Set prices before the T-3600 window; only the most recent one should be counted.
@@ -211,7 +213,7 @@ describe("UniswapV2PriceFeed", function () {
   });
 
   it("Basic historical TWAP", async function () {
-    // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
+    // Get a far future timestamp to not interfere with any existing blocks.
     const currentTime = await getFutureTime();
 
     // Historical window starts 2 hours ago. Set the price to 100 before the beginning of the window (2.5 hours before currentTime)
@@ -408,7 +410,7 @@ describe("UniswapV2PriceFeed", function () {
       );
     });
     it("Basic historical TWAP", async function () {
-      // Offset all times from the current wall clock time so we don't mess up ganache future block times too badly.
+      // Get a far future timestamp to not interfere with any existing blocks.
       const currentTime = await getFutureTime();
 
       // Historical window starts 2 hours ago. Set the price to 100 before the beginning of the window (2.5 hours before currentTime)

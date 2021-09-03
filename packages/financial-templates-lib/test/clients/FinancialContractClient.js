@@ -46,6 +46,7 @@ let configStore;
 let optimisticOracle;
 let fundingRateIdentifier;
 let accounts;
+let sponsor1, sponsor2;
 
 // Helper functions
 const updateAndVerify = async (client, expectedSponsors, expectedPositions) => {
@@ -81,8 +82,6 @@ describe("FinancialContractClient.js", function () {
     accounts = await web3.eth.getAccounts();
     [sponsor1, sponsor2] = accounts;
   });
-
-  let sponsor1, sponsor2;
 
   TESTED_CONTRACT_VERSIONS.forEach(function (contractVersion) {
     // Store the contractVersion.contractVersion, type and version being tested

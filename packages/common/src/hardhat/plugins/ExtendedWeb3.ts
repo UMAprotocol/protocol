@@ -61,6 +61,7 @@ export interface ContractFactory extends Artifact {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   new: (...args: any[]) => ContractSendMethod;
   at: (address: string) => Contract;
+  link: (libraries: { [libraryName: string]: string }) => string;
 }
 
 type FindEventFunction = (
