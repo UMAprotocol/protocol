@@ -12,9 +12,7 @@ import {
   InsuredBridgeL1Client,
   InsuredBridgeL2Client,
 } from "@uma/financial-templates-lib";
-import { getAbi, getBytecode } from "@uma/contracts-node";
-import type { DSProxyManager } from "@uma/financial-templates-lib";
-import type { TransactionReceipt } from "web3-core";
+import { getAbi } from "@uma/contracts-node";
 
 import { Relayer } from "./Relayer";
 import { RelayerConfig } from "./RelayerConfig";
@@ -55,17 +53,15 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       .depositContract()
       .call();
 
-    console.log("bridgeDepositBoxAddress", bridgeDepositBoxAddress);
-
     const l2Client = new InsuredBridgeL2Client(logger, getAbi("OVM_BridgeDepositBox"), web3, bridgeDepositBoxAddress);
 
-    const relayer = new Relayer(logger, web3);
+    const relayer = new Relayer(logger, web3, l1Client, l2Client);
 
     for (;;) {
       await retry(
         async () => {
           // Update state.
-          await Promise.all([gasEstimator.update()]);
+          await Promise.all([gasEstimator.update(), l1Client.update(), l2Client.update()]);
 
           await relayer.relayPendingDeposits();
         },
