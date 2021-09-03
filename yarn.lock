@@ -6108,6 +6108,11 @@
     truffle-deploy-registry "^0.5.1"
     web3 "1.2.11"
 
+"@uma/contracts-node-0-1-0@npm:@uma/contracts-node@0.1.0":
+  version "0.1.0"
+  resolved "https://registry.yarnpkg.com/@uma/contracts-node/-/contracts-node-0.1.0.tgz#17106ca42a5f5caac8f63b444ad3f8fe82183254"
+  integrity sha512-JDRjrNt90lpY9R/bha4H9ZNQyt1oj663ZTKmhuS5lODBX9nOtG3y6GOujpszqnhlCh97IOkBh1mz71uwMnUoBA==
+
 "@uma/core-1-1-0@npm:@uma/core@1.1.0":
   version "1.1.0"
   resolved "https://registry.yarnpkg.com/@uma/core/-/core-1.1.0.tgz#81c23f67c3b8bc1b39877dd4084d697753582e67"

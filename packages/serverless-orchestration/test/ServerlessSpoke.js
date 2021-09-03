@@ -1,3 +1,6 @@
+const hre = require("hardhat");
+const { assert } = require("chai");
+const { web3, getContract } = hre;
 const { toWei, utf8ToHex, padRight } = web3.utils;
 
 // Enables testing http requests to an express spoke.
@@ -7,23 +10,23 @@ const request = require("supertest");
 const spoke = require("../src/ServerlessSpoke");
 
 // Contracts and helpers
-const ExpiringMultiParty = artifacts.require("ExpiringMultiParty");
-const Finder = artifacts.require("Finder");
-const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const TokenFactory = artifacts.require("TokenFactory");
-const Token = artifacts.require("ExpandedERC20");
-const Timer = artifacts.require("Timer");
-const UniswapV2Mock = artifacts.require("UniswapV2Mock");
-const SyntheticToken = artifacts.require("SyntheticToken");
+const ExpiringMultiParty = getContract("ExpiringMultiParty");
+const Finder = getContract("Finder");
+const IdentifierWhitelist = getContract("IdentifierWhitelist");
+const TokenFactory = getContract("TokenFactory");
+const Token = getContract("ExpandedERC20");
+const Timer = getContract("Timer");
+const UniswapV2Mock = getContract("UniswapV2Mock");
+const SyntheticToken = getContract("SyntheticToken");
 
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
 const sinon = require("sinon");
 const { SpyTransport, lastSpyLogIncludes } = require("@uma/financial-templates-lib");
-const { ZERO_ADDRESS } = require("@uma/common");
+const { ZERO_ADDRESS, runDefaultFixture } = require("@uma/common");
 
-contract("ServerlessSpoke.js", function (accounts) {
-  const contractDeployer = accounts[0];
+describe("ServerlessSpoke.js", function () {
+  let contractDeployer, accounts;
 
   let collateralToken;
   let syntheticToken;
@@ -41,12 +44,15 @@ contract("ServerlessSpoke.js", function (accounts) {
   };
 
   before(async function () {
-    collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractDeployer });
-    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractDeployer });
+    accounts = await web3.eth.getAccounts();
+    [contractDeployer] = accounts;
+    await runDefaultFixture(hre);
+    collateralToken = await Token.new("Wrapped Ether", "WETH", 18).send({ from: contractDeployer });
+    syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18).send({ from: contractDeployer });
 
     // Create identifier whitelist and register the price tracking ticker with it.
     const identifierWhitelist = await IdentifierWhitelist.deployed();
-    await identifierWhitelist.addSupportedIdentifier(utf8ToHex("ETH/BTC"));
+    await identifierWhitelist.methods.addSupportedIdentifier(utf8ToHex("ETH/BTC")).send({ from: contractDeployer });
   });
 
   beforeEach(async function () {
@@ -63,31 +69,31 @@ contract("ServerlessSpoke.js", function (accounts) {
     const constructorParams = {
       expirationTimestamp: "12345678900",
       withdrawalLiveness: "1000",
-      collateralAddress: collateralToken.address,
-      finderAddress: (await Finder.deployed()).address,
-      tokenFactoryAddress: (await TokenFactory.deployed()).address,
+      collateralAddress: collateralToken.options.address,
+      finderAddress: (await Finder.deployed()).options.address,
+      tokenFactoryAddress: (await TokenFactory.deployed()).options.address,
       priceFeedIdentifier: padRight(utf8ToHex("ETH/BTC"), 64), // Note: an identifier which is part of the default config is required for this test.
-      tokenAddress: syntheticToken.address,
+      tokenAddress: syntheticToken.options.address,
       liquidationLiveness: "1000",
       collateralRequirement: { rawValue: toWei("1.2") },
       disputeBondPercentage: { rawValue: toWei("0.1") },
       sponsorDisputeRewardPercentage: { rawValue: toWei("0.1") },
       disputerDisputeRewardPercentage: { rawValue: toWei("0.1") },
       minSponsorTokens: { rawValue: toWei("1") },
-      timerAddress: (await Timer.deployed()).address,
+      timerAddress: (await Timer.deployed()).options.address,
       financialProductLibraryAddress: ZERO_ADDRESS,
     };
 
     // Deploy a new expiring multi party
-    emp = await ExpiringMultiParty.new(constructorParams);
+    emp = await ExpiringMultiParty.new(constructorParams).send({ from: contractDeployer });
 
-    uniswap = await UniswapV2Mock.new();
+    uniswap = await UniswapV2Mock.new().send({ from: contractDeployer });
 
     defaultPricefeedConfig = { type: "test", currentPrice: "1", historicalPrice: "1" };
 
     // Set two uniswap prices to give it a little history.
-    await uniswap.setPrice(toWei("1"), toWei("1"));
-    await uniswap.setPrice(toWei("1"), toWei("1"));
+    await uniswap.methods.setPrice(toWei("1"), toWei("1")).send({ from: contractDeployer });
+    await uniswap.methods.setPrice(toWei("1"), toWei("1")).send({ from: contractDeployer });
   });
   afterEach(async function () {
     spokeInstance.close();
@@ -119,7 +125,7 @@ contract("ServerlessSpoke.js", function (accounts) {
       environmentVariables: {
         CUSTOM_NODE_URL: web3.currentProvider.host, // ensures that script runs correctly in tests & CI.
         POLLING_DELAY: 0,
-        EMP_ADDRESS: emp.address,
+        EMP_ADDRESS: emp.options.address,
         TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
         MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
       },
@@ -139,7 +145,7 @@ contract("ServerlessSpoke.js", function (accounts) {
       environmentVariables: {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
-        EMP_ADDRESS: emp.address,
+        EMP_ADDRESS: emp.options.address,
         TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig, // invalid config that should generate an error
       },
     };
@@ -187,7 +193,7 @@ contract("ServerlessSpoke.js", function (accounts) {
       environmentVariables: {
         CUSTOM_NODE_URL: web3.currentProvider.host,
         POLLING_DELAY: 0,
-        EMP_ADDRESS: emp.address,
+        EMP_ADDRESS: emp.options.address,
         TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
         MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
       },
