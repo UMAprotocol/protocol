@@ -4,10 +4,17 @@ import retry from "async-retry";
 import { config } from "dotenv";
 
 import { getWeb3 } from "@uma/common";
-import { GasEstimator, Logger, waitForLogger, delay } from "@uma/financial-templates-lib";
+import {
+  GasEstimator,
+  Logger,
+  waitForLogger,
+  delay,
+  InsuredBridgeL1Client,
+  InsuredBridgeL2Client,
+} from "@uma/financial-templates-lib";
+import { getAbi } from "@uma/contracts-node";
 
 import { Relayer } from "./Relayer";
-
 import { RelayerConfig } from "./RelayerConfig";
 config();
 
@@ -20,7 +27,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
     logger[config.pollingDelay === 0 ? "debug" : "info"]({
       at: "InsuredBridgeRelayer#index",
       message: "Relayer started 🌉",
-      bridgePoolFactoryAddress: config.bridgePoolFactoryAddress,
+      bridgePoolFactoryAddress: config.bridgeAdminAddress,
     });
 
     const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
@@ -28,13 +35,33 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
 
     const gasEstimator = new GasEstimator(logger);
 
-    const relayer = new Relayer(logger, web3);
+    // Create L1/L2 clients to pull data to inform the relayer.
+    // todo: add in start and ending block numbers (if need be).
+    const l1Client = new InsuredBridgeL1Client(
+      logger,
+      getAbi("BridgeAdmin"),
+      getAbi("BridgePool"),
+      web3,
+      config.bridgeAdminAddress
+    );
+
+    // Fetch the deposit contract address from the bridge admin.
+    const bridgeDepositBoxAddress = await new web3.eth.Contract(
+      getAbi("BridgeAdmin"),
+      config.bridgeAdminAddress
+    ).methods
+      .depositContract()
+      .call();
+
+    const l2Client = new InsuredBridgeL2Client(logger, getAbi("OVM_BridgeDepositBox"), web3, bridgeDepositBoxAddress);
+
+    const relayer = new Relayer(logger, web3, l1Client, l2Client);
 
     for (;;) {
       await retry(
         async () => {
           // Update state.
-          await Promise.all([gasEstimator.update()]);
+          await Promise.all([gasEstimator.update(), l1Client.update(), l2Client.update()]);
 
           await relayer.relayPendingDeposits();
         },
