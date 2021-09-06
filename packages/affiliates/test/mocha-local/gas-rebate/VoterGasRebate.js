@@ -4,9 +4,16 @@
 // 1) Truffle test:
 //     - yarn truffle test ./packages/affiliates/test/truffle/gas-rebate/VoterGasRebate.js
 
+const hre = require("hardhat");
+
+// This signals to some of our infrastructure that this is a test environment.
+global.web3 = hre.web3;
+global.hre = hre;
+
+const { assert } = require("chai");
 const Main = require("../../../gas-rebate/VoterGasRebate");
 
-contract("Gas Rebate: index.js", function () {
+describe("Gas Rebate: index.js", function () {
   // Oct-13-2020, early in the Commit period for Admin 16 vote
   const TEST_START_BLOCK = 11045000;
   // Oct-16-2020, 1 full day after reveal period ends for Admin 16, so it contains some claim-rewards events

@@ -5,7 +5,7 @@ const { DecodeLog } = require("../libs/contracts");
 const Path = require("path");
 const datasetPath = Path.join(__dirname, "../test/datasets/set1");
 const params = require(Path.join(datasetPath, "/config.json"));
-const { getAbi } = require("@uma/core");
+const { getAbi } = require("@uma/contracts-node");
 
 const { Queries } = Datasets.mocks;
 const queries = Queries(datasetPath);
