@@ -179,8 +179,7 @@ export default (config: Config, appState: Dependencies) => {
     await Promise.mapSeries(addresses, async (address: string) => {
       const end = profile(`Update Emp state for ${address}`);
       try {
-        const result = await updateOne(address, startBlock, endBlock);
-        return result;
+        return await updateOne(address, startBlock, endBlock);
       } catch (err) {
         console.error(err);
       } finally {
