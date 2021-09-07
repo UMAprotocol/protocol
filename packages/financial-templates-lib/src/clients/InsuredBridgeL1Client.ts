@@ -12,6 +12,8 @@ enum relayState {
 }
 
 interface Relay {
+  bridgePoolAddress: string;
+  quoteTimestamp: number;
   relayTimestamp: number;
   depositId: number;
   sender: string;
@@ -126,6 +128,8 @@ export class InsuredBridgeL1Client {
           .relays(depositRelayedEvent.returnValues.depositHash)
           .call();
         const relayData = {
+          bridgePoolAddress: depositRelayedEvent.address,
+          quoteTimestamp: Number(depositRelayedEvent.returnValues.quoteTimestamp),
           relayTimestamp: Number(relayDataForDeposit.priceRequestTime.toString()),
           depositId: Number(depositRelayedEvent.returnValues.depositId),
           sender: depositRelayedEvent.returnValues.sender,

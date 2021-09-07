@@ -106,8 +106,10 @@ describe("InsuredBridgeL1Client", function () {
   };
 
   // Returns expected relay information for the relay that occurred at `relayTime`.
-  const syncExpectedRelayedDepositInformation = (relayTime) => {
+  const syncExpectedRelayedDepositInformation = (bridgePoolAddress, relayTime) => {
     expectedRelayedDepositInformation = {
+      bridgePoolAddress,
+      quoteTimestamp: Number(depositData.quoteTimestamp),
       relayTimestamp: Number(relayTime),
       depositId: depositData.depositId,
       sender: depositData.l2Sender,
@@ -258,7 +260,10 @@ describe("InsuredBridgeL1Client", function () {
       bridgePool
     ));
 
-    syncExpectedRelayedDepositInformation((await optimisticOracle.methods.getCurrentTime().call()).toString());
+    syncExpectedRelayedDepositInformation(
+      bridgePool.options.address,
+      (await optimisticOracle.methods.getCurrentTime().call()).toString()
+    );
   });
   it("Client initial setup", async function () {
     // Before the client is updated, client should error out.
@@ -530,7 +535,10 @@ describe("InsuredBridgeL1Client", function () {
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
 
       // Sync the modified deposit and relay data with the expected returned data and store it.
-      syncExpectedRelayedDepositInformation((await optimisticOracle.methods.getCurrentTime().call()).toString());
+      syncExpectedRelayedDepositInformation(
+        bridgePool.options.address,
+        (await optimisticOracle.methods.getCurrentTime().call()).toString()
+      );
 
       ({ depositHash, relayAncillaryData, relayAncillaryDataHash } = await generateRelayData(
         depositData,
@@ -560,7 +568,10 @@ describe("InsuredBridgeL1Client", function () {
       await bridgePool2.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
       // Sync the modified deposit and relay data with the expected returned data and store it.
-      syncExpectedRelayedDepositInformation((await optimisticOracle.methods.getCurrentTime().call()).toString());
+      syncExpectedRelayedDepositInformation(
+        bridgePool2.options.address,
+        (await optimisticOracle.methods.getCurrentTime().call()).toString()
+      );
       ({ depositHash, relayAncillaryData, relayAncillaryDataHash } = await generateRelayData(
         depositData,
         relayData,

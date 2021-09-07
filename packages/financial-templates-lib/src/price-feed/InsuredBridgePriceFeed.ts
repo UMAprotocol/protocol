@@ -1,7 +1,7 @@
 import assert from "assert";
 import { PriceFeedInterface } from "./PriceFeedInterface";
 import Web3 from "web3";
-// import { parseAncillaryData } from "@uma/common";
+import { parseAncillaryData } from "@uma/common";
 import { getAbi } from "@uma/contracts-node";
 import { BN } from "../types";
 import type { Logger } from "winston";
@@ -29,6 +29,8 @@ interface Params {
 }
 
 interface Relay {
+  bridgePoolAddress: string;
+  quoteTimestamp: number;
   depositId: number;
   sender: string;
   slowRelayer: string;
@@ -97,10 +99,39 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
     const matchedRelays = this.relays.filter((relay: Relay) => relay.relayTimestamp === time);
     if (matchedRelays.length > 1) throw new Error("TODO: Handle multiple relays for same price request timestamp");
     if (matchedRelays.length === 0) throw new Error("No price request for time");
+    const relay = matchedRelays[0];
 
-    // TODO: Reconstruct relay ancillary data
-    console.log(matchedRelays);
+    // TODO: Reconstruct relay ancillary data. Is there a better way to do this using only the data in `relay`, where
+    // we don't have to call the `bridgePool` contract?
+    const depositData = {
+      depositId: relay.depositId,
+      depositTimestamp: relay.depositTimestamp,
+      recipient: relay.recipient,
+      l2Sender: relay.sender,
+      l1Token: relay.l1Token,
+      amount: relay.amount,
+      slowRelayFeePct: relay.slowRelayFeePct,
+      instantRelayFeePct: relay.instantRelayFeePct,
+      quoteTimestamp: relay.quoteTimestamp,
+    };
+    const relayData = {
+      relayState: relay.relayState,
+      priceRequestTime: relay.relayTimestamp,
+      realizedLpFeePct: relay.realizedLpFeePct,
+      slowRelayer: relay.slowRelayer,
+      instantRelayer: relay.instantRelayer,
+    };
+    const bridgePool = new this.web3.eth.Contract(getAbi("BridgePool"), relay.bridgePoolAddress);
+    const relayAncillaryData = await bridgePool.methods.getRelayAncillaryData(depositData, relayData).call();
+    const parsedAncillaryData = parseAncillaryData(relayAncillaryData);
 
+    // Placeholder validation that the ancillary data correctly corresponds to this relay event
+    assert(Object.keys(parsedAncillaryData).length > 0);
+
+    console.log(relay);
+    console.log(parseAncillaryData(relayAncillaryData));
+
+    // TODO: Using ancillary data for relay, validate that it matches with deposit.
     return toBN(isRelayValid.Yes);
   }
 
