@@ -41,7 +41,17 @@ export const OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY = [
   "GASETH-TWAP-1Mx1M",
   "uSTONKS_JUN21",
   "uSTONKS_0921",
+  "GASETH-0921",
 ];
 
 // Any identifier on this list
-export const OPTIMISTIC_ORACLE_IGNORE = ["SPACEXLAUNCH", "uTVL_KPI_UMA"];
+export const OPTIMISTIC_ORACLE_IGNORE = [
+  "SPACEXLAUNCH",
+  "uTVL_KPI_UMA",
+  "DIGG_Positive_Rebases",
+  "uDAO_KPI_UMA",
+  "YES_OR_NO_QUERY",
+  "XSUSHI_APY",
+  "V2migration_KPI_Aragon",
+  "General_KPI",
+];

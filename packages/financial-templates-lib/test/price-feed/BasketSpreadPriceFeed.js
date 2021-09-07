@@ -1,3 +1,5 @@
+const { assert } = require("chai");
+const { web3 } = require("hardhat");
 const winston = require("winston");
 
 const { toWei, toBN } = web3.utils;
@@ -6,7 +8,7 @@ const { MedianizerPriceFeed } = require("../../dist/price-feed/MedianizerPriceFe
 const { BasketSpreadPriceFeed } = require("../../dist/price-feed/BasketSpreadPriceFeed");
 const { PriceFeedMock } = require("../../dist/price-feed/PriceFeedMock");
 
-contract("BasketSpreadPriceFeed.js", function () {
+describe("BasketSpreadPriceFeed.js", function () {
   let baselinePriceFeeds;
   let experimentalPriceFeeds;
   let denominatorPriceFeed;

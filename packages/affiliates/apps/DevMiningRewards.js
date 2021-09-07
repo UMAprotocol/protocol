@@ -3,7 +3,8 @@
 // example: node apps/DevMiningRewards ./config.example.js --network=mainnet_mnemonic >> output.json
 require("dotenv").config();
 const assert = require("assert");
-const { getAbi } = require("@uma/core");
+const { getAbi } = require("@uma/contracts-node");
+const { getContractsNodePackageAliasForVerion } = require("@uma/common");
 const { BigQuery } = require("@google-cloud/bigquery");
 const Promise = require("bluebird");
 const Web3 = require("web3");
@@ -19,6 +20,12 @@ const { makeUnixPipe } = require("../libs/affiliates/utils");
 // dont know why, but the common getWeb3 is causing contract calls to fail
 function getWeb3() {
   return new Web3(process.env.CUSTOM_NODE_URL);
+}
+
+function getEmpAbiForVersion(version) {
+  const packageName = getContractsNodePackageAliasForVerion(version);
+  const { getAbi } = require(packageName);
+  return getAbi("ExpiringMultiParty");
 }
 
 const v1 = async (env, params, DevMining) => {
@@ -58,7 +65,7 @@ const v1 = async (env, params, DevMining) => {
 
     // this converts a version number from the config into an abi which gets passed into the calculator
     // so each emp contract will have the correct abi passed along with it.
-    const empAbi = empVersion ? getAbi("ExpiringMultiParty", empVersion) : defaultEmpAbi;
+    const empAbi = empVersion ? getEmpAbiForVersion(empVersion) : defaultEmpAbi;
 
     return [empAddress, payoutAddress, empAbi];
   });
@@ -137,7 +144,7 @@ const v2 = async (env, params, DevMining) => {
 
     // this converts a version number from the config into an abi which gets passed into the calculator
     // so each emp contract will have the correct abi passed along with it.
-    const empAbi = empVersion ? getAbi("ExpiringMultiParty", empVersion) : defaultEmpAbi;
+    const empAbi = empVersion ? getEmpAbiForVersion(empVersion) : defaultEmpAbi;
 
     return [empAddress, payoutAddress, empAbi];
   });

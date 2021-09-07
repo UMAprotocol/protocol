@@ -950,7 +950,7 @@ export const defaultConfigs: { [name: string]: { type: string; [key: string]: an
       { type: "uniswap", uniswapAddress: "0x18d98D452072Ac2EB7b74ce3DB723374360539f1" },
       {
         type: "uniswap",
-        nodeUrlEnvVar: "POLYGON_NODE_URL",
+        chainId: 137,
         uniswapAddress: "0x8F8e95Ff4B4c5E354ccB005c6B0278492D7B5907",
       },
     ],
@@ -958,6 +958,12 @@ export const defaultConfigs: { [name: string]: { type: string; [key: string]: an
   "BTC/ibBTC": { type: "expression", expression: "1 / ibBTC\\/BTC" },
   "ibBTC/USD": { type: "expression", expression: "ibBTC\\/BTC * BTCUSD" },
   "USD/ibBTC": { type: "expression", expression: "1 / ibBTC\\/USD" },
+  "GASETH-0921": {
+    type: "uniswap",
+    uniswapAddress: "0x5CCD155ad26B74913ed6266A516A085A2343D426",
+    twapLength: 7200,
+    invertPrice: true,
+  },
 };
 
 // Pull in the number of decimals for each identifier from the common getPrecisionForIdentifier. This is used within the

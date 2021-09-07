@@ -50,9 +50,9 @@ export async function createPriceFeed(
   config: any
 ): Promise<PriceFeedInterface | null> {
   let providedWeb3: Web3;
-  if (config.nodeUrlEnvVar) {
-    const nodeUrl = process.env[config.nodeUrlEnvVar];
-    if (!nodeUrl) throw Error(`Expected node url to be provided in env variable ${config.nodeUrlEnvVar}`);
+  if (config.chainId && Number.isInteger(Number(config.chainId))) {
+    const nodeUrl = process.env[`NODE_URL_${config.chainId}`];
+    if (!nodeUrl) throw Error(`Expected node url to be provided in env variable NODE_URL_${config.chainId}`);
     providedWeb3 = new Web3(nodeUrl);
   } else {
     providedWeb3 = web3;

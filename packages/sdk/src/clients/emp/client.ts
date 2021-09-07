@@ -1,10 +1,10 @@
-import { EthersContracts } from "@uma/core";
+import { ExpiringMultiPartyEthers, ExpiringMultiPartyEthers__factory } from "@uma/contracts-node";
 import type { SignerOrProvider, GetEventType } from "../..";
 import { Event } from "ethers";
 import { Balances } from "../../utils";
 
-export type Instance = EthersContracts.ExpiringMultiParty;
-const Factory = EthersContracts.ExpiringMultiParty__factory;
+export type Instance = ExpiringMultiPartyEthers;
+const Factory = ExpiringMultiPartyEthers__factory;
 
 export function connect(address: string, provider: SignerOrProvider): Instance {
   return Factory.connect(address, provider);
