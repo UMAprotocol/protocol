@@ -101,6 +101,8 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
     if (matchedRelays.length === 0) throw new Error("No price request for time");
     const relay = matchedRelays[0];
 
+    // TODO: Not 100% sure we should reconstruct the relay ancillary data using deposit/relay data from the L2/L1
+    // clients but if we do so, then this would act as a secondary check against the client data.
     // TODO: Reconstruct relay ancillary data. Is there a better way to do this using only the data in `relay`, where
     // we don't have to call the `bridgePool` contract?
     const depositData = {
