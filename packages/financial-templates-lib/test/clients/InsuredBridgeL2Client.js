@@ -34,6 +34,24 @@ const instantRelayFeePct = toWei("0.005");
 const quoteTimestampOffset = 60; // 60 seconds into the past.
 
 describe("InsuredBridgeL2Client", () => {
+  const generateDepositHash = (depositData) => {
+    const depositDataAbiEncoded = web3.eth.abi.encodeParameters(
+      ["uint64", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint64"],
+      [
+        depositData.depositId,
+        depositData.timestamp,
+        depositData.recipient,
+        depositData.sender,
+        depositData.l1Token,
+        depositData.amount,
+        depositData.slowRelayFeePct,
+        depositData.instantRelayFeePct,
+        depositData.quoteTimestamp,
+      ]
+    );
+    return web3.utils.soliditySha3(depositDataAbiEncoded);
+  };
+
   // Account objects
   let accounts, deployer, user1, user2, bridgeAdmin, bridgePool;
 
@@ -69,7 +87,7 @@ describe("InsuredBridgeL2Client", () => {
     // DummyLogger will not print anything to console as only capture `info` level events.
     const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
-    client = new InsuredBridgeL2Client(dummyLogger, BridgeDepositBox.abi, web3, depositBox.options.address);
+    client = new InsuredBridgeL2Client(dummyLogger, web3, depositBox.options.address);
   });
 
   it("Correctly returns deposit event information", async () => {
@@ -92,6 +110,7 @@ describe("InsuredBridgeL2Client", () => {
     let expectedDeposits = [
       {
         depositId: 0,
+        depositHash: "",
         timestamp: depositTimestamp,
         sender: user1,
         recipient: user1,
@@ -102,6 +121,7 @@ describe("InsuredBridgeL2Client", () => {
         quoteTimestamp: quoteTimestamp,
       },
     ];
+    expectedDeposits[0].depositHash = generateDepositHash(expectedDeposits[0]);
     assert.equal(JSON.stringify(client.getAllDeposits()), JSON.stringify(expectedDeposits));
 
     // Updating again should not re-index the same deposit
@@ -122,6 +142,7 @@ describe("InsuredBridgeL2Client", () => {
     await client.update();
     expectedDeposits.push({
       depositId: 1, // ID should increment, as expected.
+      depositHash: "",
       timestamp: depositTimestamp2,
       sender: user1,
       recipient: user2,
@@ -131,7 +152,7 @@ describe("InsuredBridgeL2Client", () => {
       instantRelayFeePct: instantRelayFeePct,
       quoteTimestamp: quoteTimestamp2,
     });
-
+    expectedDeposits[1].depositHash = generateDepositHash(expectedDeposits[1]);
     assert.equal(JSON.stringify(client.getAllDeposits()), JSON.stringify(expectedDeposits));
   });
 });
