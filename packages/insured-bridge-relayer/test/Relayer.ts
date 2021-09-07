@@ -1,19 +1,19 @@
-import { SpyTransport } from "@uma/financial-templates-lib";
+import {
+  SpyTransport,
+  InsuredBridgeL1Client,
+  InsuredBridgeL2Client,
+  lastSpyLogIncludes,
+} from "@uma/financial-templates-lib";
 const { predeploys } = require("@eth-optimism/contracts");
 import winston from "winston";
 import sinon from "sinon";
 import hre from "hardhat";
-import Web3 from "web3";
+const { assert } = require("chai");
 
 import { interfaceName, TokenRolesEnum, HRE } from "@uma/common";
 
 const { web3, getContract } = hre as HRE;
 const { toWei, utf8ToHex } = web3.utils;
-
-// Use Ganache to create additional web3 providers with different chain ID's. This is a work around to prevent us
-// needing to spin up a whole new set of testing environments to mock L2 contracts calls. Note that we ideally would use
-// smockit but smockit at present does not support mocking events emitted from contracts.
-const ganache = require("ganache-core");
 
 const { deployOptimismContractMock } = require("../../core/test/insured-bridge/helpers/SmockitHelper.js");
 
@@ -52,54 +52,36 @@ const defaultLiveness = 100;
 const lpFeeRatePerSecond = toWei("0.0000015");
 const finalFee = toWei("1");
 const defaultProposerBondPct = toWei("0.05");
+const defaultSlowRelayFeePct = toWei("0.05");
+const defaultInstantRelayFeePct = toWei("0.05");
 const minimumBridgingDelay = 60; // L2->L1 token bridging must wait at least this time.
+const initialPoolLiquidity = toWei("100");
+const depositAmount = toWei("1");
 
 // Tested file
-import { run } from "../src/index";
+import { Relayer } from "../src/Relayer";
 
-describe("index.js", function () {
+describe("Relayer.ts", function () {
   let l1Accounts;
   let l1Owner: string;
   let l1CrossDomainMessengerMock: any;
-  let l2CrossDomainMessengerMock: any;
   let l1Relayer: any;
+  let l1LiquidityProvider: any;
 
-  let l2Accounts;
   let l2Owner: any;
   let l2Depositor: any;
+  let l2CrossDomainMessengerMock: any;
 
   let spyLogger: any;
   let spy: any;
-  let l2Web3: any;
 
-  const startGanacheServer = (chainId: number, port: number) => {
-    const node = ganache.server({
-      _chainIdRpc: chainId,
-      blockGasLimit: 15_000_000,
-      gasPrice: "auto",
-      unlocked_accounts: [predeploys.OVM_L2CrossDomainMessenger],
-    });
-    node.listen(port);
-    return new Web3("http://127.0.0.1:" + port);
-  };
-
-  const deployL2Contract = async (contract: any, args: any, from: string) => {
-    return await new l2Web3.eth.Contract(contract.abi, undefined)
-      .deploy({
-        data: contract.bytecode,
-        arguments: args,
-      })
-      .send({ from: from, gas: 5_000_000 });
-  };
-
-  l2Web3 = startGanacheServer(666, 7777);
+  let relayer: any;
+  let l1Client: any;
+  let l2Client: any;
 
   before(async function () {
     l1Accounts = await web3.eth.getAccounts();
-    [l1Owner, l1Relayer] = l1Accounts;
-
-    l2Accounts = await l2Web3.eth.getAccounts();
-    [l2Owner, l2Depositor] = l2Accounts;
+    [l1Owner, l1Relayer, l1LiquidityProvider, l2Owner, l2Depositor] = l1Accounts;
 
     // Deploy or fetch deployed contracts:
     finder = await Finder.new().send({ from: l1Owner });
@@ -158,22 +140,18 @@ describe("index.js", function () {
     ).send({ from: l1Owner });
 
     // Deploy the l2Timer, Deposit box and l2Token on the second web3 instance from ganache.
+    l2Timer = await Timer.new().send({ from: l2Owner });
 
-    console.log("a");
-    l2Timer = await deployL2Contract(Timer, [], l2Owner);
+    bridgeDepositBox = await BridgeDepositBox.new(
+      bridgeAdmin.options.address,
+      minimumBridgingDelay,
+      l2Timer.options.address
+    ).send({ from: l2Owner });
 
-    bridgeDepositBox = await deployL2Contract(
-      BridgeDepositBox,
-      [bridgeAdmin.options.address, minimumBridgingDelay, l2Timer.options.address],
-      l2Owner
-    );
-
-    l2Token = await deployL2Contract(ERC20, ["L2ERC20", "L2ERC20", 18], l2Owner);
-
-    console.log("bridgeDepositBox", bridgeDepositBox.options.address);
+    l2Token = await ERC20.new("L2ERC20", "L2ERC20", 18).send({ from: l2Owner });
+    await l2Token.methods.addMember(TokenRolesEnum.MINTER, l2Owner).send({ from: l2Owner });
 
     await bridgeAdmin.methods.setDepositContract(bridgeDepositBox.options.address).send({ from: l1Owner });
-
     // New BridgePool linked to BridgeAdmin
     bridgePool = await BridgePool.new(
       "LP Token",
@@ -185,39 +163,68 @@ describe("index.js", function () {
     ).send({ from: l1Owner });
 
     // Add L1-L2 token mapping
-    console.log("white", bridgePool.options.address);
     await bridgeAdmin.methods
       .whitelistToken(l1Token.options.address, l2Token.options.address, bridgePool.options.address, defaultGasLimit)
       .send({ from: l1Owner });
 
-    console.log("1");
-    l2CrossDomainMessengerMock = await deployOptimismContractMock(
-      "OVM_L2CrossDomainMessenger",
-      { address: predeploys.OVM_L2CrossDomainMessenger },
-      l2Web3
-    );
-    console.log("2", l2CrossDomainMessengerMock.options.address);
-    console.log("l1", await web3.eth.getCode(l2CrossDomainMessengerMock.options.address));
-    console.log("l2", await l2Web3.eth.getCode(l2CrossDomainMessengerMock.options.address));
-    await l2Web3.eth.sendTransaction({ from: l2Owner, to: predeploys.OVM_L2CrossDomainMessenger, value: toWei("1") });
-    console.log("B");
+    l2CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L2CrossDomainMessenger", {
+      address: predeploys.OVM_L2CrossDomainMessenger,
+    });
+    await web3.eth.sendTransaction({ from: l2Owner, to: predeploys.OVM_L2CrossDomainMessenger, value: toWei("1") });
     l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => bridgeAdmin.options.address);
-    console.log("c", l1Token.options.address);
-    console.log("d", l2Token.options.address);
-    console.log("e", bridgePool.options.address);
     await bridgeDepositBox.methods
       .whitelistToken(l1Token.options.address, l2Token.options.address, bridgePool.options.address)
       .send({ from: predeploys.OVM_L2CrossDomainMessenger });
 
-    console.log("end");
-    // spy = sinon.spy();
-    // spyLogger = winston.createLogger({
-    //   level: "debug",
-    //   transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
-    // });
-  });
+    spy = sinon.spy();
+    spyLogger = winston.createLogger({
+      level: "debug",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
+    });
+    l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address);
+    l2Client = new InsuredBridgeL2Client(spyLogger, web3, bridgeDepositBox.options.address);
 
-  it("Runs with no errors", async function () {
-    console.log("HI");
+    relayer = new Relayer(spyLogger, web3, l1Client, l2Client, [l1Token.options.address], l1Relayer);
+  });
+  it("Initialization is correct", async function () {
+    assert.equal(relayer.l1Client.bridgeAdminAddress, bridgeAdmin.options.address);
+    assert.equal(relayer.l2Client.bridgeDepositAddress, bridgeDepositBox.options.address);
+  });
+  describe("Basic relaying functionality", () => {
+    beforeEach(async function () {
+      // Add liquidity to the L1 pool to facilitate the relay action.
+      await l1Token.methods.mint(l1LiquidityProvider, initialPoolLiquidity).send({ from: l1Owner });
+      await l1Token.methods
+        .approve(bridgePool.options.address, initialPoolLiquidity)
+        .send({ from: l1LiquidityProvider });
+      await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: l1LiquidityProvider });
+
+      // Mint some tokens for the L2 depositor.
+      await l2Token.methods.mint(l2Depositor, depositAmount).send({ from: l2Owner });
+    });
+    it("Can correctly detect relays on L2 and bring them over to L1", async function () {
+      // Before any relays should do nothing and log accordingly.
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await relayer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "No relayable deposits"));
+
+      // Make a deposit on L2 and check the bot relays it accordingly.
+      await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
+      const currentBlockTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount,
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          currentBlockTime
+        )
+        .send({ from: l2Depositor });
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await relayer.checkForPendingDepositsAndRelay();
+
+      assert.isTrue(lastSpyLogIncludes(spy, "Slow relaying deposit"));
+    });
   });
 });
