@@ -65,9 +65,9 @@ export function createBasicProvider(nodeRetryConfig: RetryConfig[]): RetryProvid
   );
 }
 
-export const KEY_TYPES = ["gckms", "mnemonic", "none"] as const;
+const KEY_TYPES = ["gckms", "mnemonic", "none"] as const;
 
-export function getDetaultKeyType(): typeof KEY_TYPES[number] {
+function getDefaultKeyType(): typeof KEY_TYPES[number] {
   if (argv.network) {
     const networkSplit = argv.network.split("_");
     const keyType = networkSplit[networkSplit.length - 1];
@@ -78,7 +78,7 @@ export function getDetaultKeyType(): typeof KEY_TYPES[number] {
   return "none";
 }
 
-export function addMnemonicToProvider(
+function addMnemonicToProvider(
   provider: AbstractProvider,
   mnemonic: string = process.env.MNEMONIC ||
     "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat",
@@ -88,140 +88,43 @@ export function addMnemonicToProvider(
   return new HDWalletProvider(mnemonic, provider, keyOffset, numKeys);
 }
 
-export function addGckmsToProvider(provider: AbstractProvider): ManagedSecretProvider {
+function addGckmsToProvider(provider: AbstractProvider): ManagedSecretProvider {
   const gckmsConfig = getGckmsConfig();
   return new ManagedSecretProvider(gckmsConfig, provider, 0, gckmsConfig.length);
 }
 
-export const PUBLIC_NETWORKS = {
-  mainnet: {
-    chainId: 1,
-    infuraName: "mainnet",
-  },
-  kovan: {
-    chainId: 42,
-    infuraName: "kovan",
-  },
-  goerli: {
-    chainId: 5,
-    infuraName: "goerli",
-  },
-  rinkeby: {
-    chainId: 4,
-    infuraName: "rinkeby",
-  },
-  matic: {
-    chainId: 137,
-    infuraName: "polygon-mainnet",
-  },
-  mumbai: {
-    chainId: 137,
-    infuraName: "polygon-mainnet",
-  },
-  optimism: {
-    chainId: 137,
-    infuraName: "polygon-mainnet",
-  },
-} as const;
-
-export const OTHER_NETWORKS = ["localhost", "hardhat", "test"] as const;
-
-type PublicNetworkName = keyof typeof PUBLIC_NETWORKS;
-type OtherNetworkName = typeof OTHER_NETWORKS[number];
-type NetworkName = PublicNetworkName | OtherNetworkName;
-
-export function isPublicNetwork(network: string): network is keyof typeof PUBLIC_NETWORKS {
-  return Object.keys(PUBLIC_NETWORKS).includes(network);
-}
-
-export function isOtherNetwork(network: string): network is typeof OTHER_NETWORKS[number] {
-  return network in OTHER_NETWORKS;
-}
-
-export function isNetworkName(network: string): network is NetworkName {
-  return isPublicNetwork(network) || network in OTHER_NETWORKS;
-}
-
-export function getDefaultNetwork(): NetworkName {
-  if (!argv.network) return "test";
-  const prefix = argv.network.split("_")[0];
-  if (isPublicNetwork(prefix)) return prefix;
-  if (isNetworkName(argv.network)) return argv.network;
-  throw new Error(`Unrecognized network name ${argv.network}`);
-}
-
-export function getNodeUrl(networkName: string, useHttps = false): string {
-  if (isPublicNetwork(networkName) && !networkName.includes("fork")) {
-    const infuraApiKey = process.env.INFURA_API_KEY || "e34138b2db5b496ab5cc52319d2f0299";
-    const name = networkName.split("_")[0];
-    return (
-      process.env.CUSTOM_NODE_URL ||
-      (useHttps ? `https://${name}.infura.io/v3/${infuraApiKey}` : `wss://${name}.infura.io/ws/v3/${infuraApiKey}`)
-    );
+function addDefaultKeysToProvider(provider: AbstractProvider): AbstractProvider {
+  switch (getDefaultKeyType()) {
+    case "gckms":
+      return addGckmsToProvider(provider);
+    case "mnemonic":
+      return addMnemonicToProvider(provider);
+    case "none":
+    default:
+      return provider;
   }
-
-  const port = process.env.CUSTOM_LOCAL_NODE_PORT || "9545";
-  return `http://127.0.0.1:${port}`;
 }
 
-export function getUrlForPublicNetwork(networkName: PublicNetworkName, useHttps: boolean): string {
-  assert(process.env.INFURA_API_KEY, "No infura key provided");
-  return useHttps
-    ? `https://${PUBLIC_NETWORKS[networkName].infuraName}.infura.io/v3/${process.env.INFURA_API_KEY}`
-    : `wss://${PUBLIC_NETWORKS[networkName].infuraName}.infura.io/ws/v3/${process.env.INFURA_API_KEY}`;
-}
-
-export function constructRetryConfig(urlsOrNetworkNames: (PublicNetworkName | string)[], retryParameters: Omit<RetryConfig, "url"> = { retries: 3, delay: 1 }, useHttps = false): RetryConfig[] {
-  return urlsOrNetworkNames.map(urlOrNetworkName => {
-    const url = isPublicNetwork(urlOrNetworkName) ? getUrlForPublicNetwork(urlOrNetworkName, useHttps) : urlOrNetworkName;
-    return {
-      url,
-      ...retryParameters
-    };
-  })
-}
-
-export function createWeb3Instance(retryConfig?: RetryConfig[], keyType?: typeof KEY_TYPES[number]): Web3;
-export function createWeb3Instance(
-  urlOrNetworkName?: string | NetworkName,
-  keyType?: typeof KEY_TYPES[number],
-  useHttps?: boolean
-): Web3;
-
-// Implementation
-export function createWeb3Instance(
-  retryConfigOrUrlOrName: RetryConfig[] | string | NetworkName = getDefaultNetwork(),
-  keyType = getDetaultKeyType(),
-  useHttps = false
-): Web3 {
+/**
+ * @notice Creates a web3 instance for a particular chain.
+ * @param chainId the chain id for the network the user wants to connect to.
+ * @returns new Web3 instance.
+ */
+export function getWeb3ByChainId(chainId: number): Web3 {
+  const retryConfigJson = process.env[`RETRY_CONFIG_${chainId}`];
+  const nodeUrl = process.env[`NODE_URL_${chainId}`];
   let retryConfig: RetryConfig[];
-  if (typeof retryConfigOrUrlOrName === "string") {
-    if (isOtherNetwork(netowrk)) 
-  }
-  const retryConfig: RetryConfig[] =
-    typeof retryConfigOrNodeUrl === "string" ? [{ url: retryConfigOrNodeUrl, retries: 0 }] : retryConfigOrNodeUrl;
-
-  const basicProvider = createBasicProvider(retryConfig);
-
-  // Use the basic provider to create a provider with an unlocked wallet. This piggybacks off the UMA common TruffleConfig
-  // implementing all networks & wallet types. EG: mainnet_mnemonic, kovan_gckms. If no argv.network, assume mnemonic.
-  // Note: the network itself is inconsequential since we're injecting our own url. The only thing that matters is how
-  // the keys are provided. So, in effect, only the mnemonic or gckms portion really matters here.
-  const providerName = argv.network || "mainnet_mnemonic";
-  const provider = getTruffleConfig().networks[providerName].provider;
-
-  function isCallable(
-    input: typeof provider
-  ): input is (inputProviderOrUrl?: AbstractProvider | string) => AbstractProvider {
-    return input instanceof Function;
+  if (retryConfigJson) retryConfig = JSON.parse(retryConfigJson);
+  else {
+    assert(nodeUrl, `NODE_URL_${chainId} or RETRY_CONFIG_${chainId} must be provided!`);
+    // Special case: if the user supplies a node url of "test", just return the global web3 object.
+    if (nodeUrl === "test") return ((global as unknown) as { web3: Web3 }).web3;
+    retryConfig = [{ url: nodeUrl, retries: 2, delay: 1 }];
   }
 
-  if (!isCallable(provider)) throw new Error(`Null or string provider for network ${providerName}`);
-  const providerWithWallet = provider(basicProvider);
-
-  // Lastly, create a web3 instance with the wallet-based provider. This can be used to query the chain via the
-  // a basic web3 provider & has access to the users wallet based on the kind of connection they created.
-  return new Web3(providerWithWallet);
+  const keylessProvider = createBasicProvider(retryConfig);
+  const keyedProvider = addDefaultKeysToProvider(keylessProvider);
+  return new Web3(keyedProvider);
 }
 
 /**
