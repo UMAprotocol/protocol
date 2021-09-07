@@ -12,6 +12,7 @@ enum relayState {
 }
 
 interface Relay {
+  relayTimestamp: number;
   depositId: number;
   sender: string;
   slowRelayer: string;
@@ -120,7 +121,11 @@ export class InsuredBridgeL1Client {
       ]);
 
       for (const depositRelayedEvent of depositRelayedEvents) {
+        const relayDataForDeposit = await this.bridgePools[depositRelayedEvent.returnValues.l1Token].methods
+          .relays(depositRelayedEvent.returnValues.depositHash)
+          .call();
         const relayData = {
+          relayTimestamp: Number(relayDataForDeposit.priceRequestTime.toString()),
           depositId: Number(depositRelayedEvent.returnValues.depositId),
           sender: depositRelayedEvent.returnValues.sender,
           slowRelayer: depositRelayedEvent.returnValues.slowRelayer,

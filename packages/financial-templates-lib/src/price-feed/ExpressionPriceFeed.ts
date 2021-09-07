@@ -46,7 +46,7 @@ export class ExpressionPriceFeed extends PriceFeedInterface {
   private readonly expressionCode: math.EvalFunction;
 
   /**
-   * @notice Constructs the DominationFinancePriceFeed.
+   * @notice Constructs the ExpressionPriceFeed.
    * @param {Object} priceFeedMap an object mapping from price feed names to the price feed objects.
    *                 Ex:
    *                 {
