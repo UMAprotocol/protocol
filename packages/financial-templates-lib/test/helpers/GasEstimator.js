@@ -1,3 +1,4 @@
+const { assert } = require("chai");
 const winston = require("winston");
 // Helper
 const { delay } = require("../../dist/helpers/delay");
@@ -5,7 +6,7 @@ const { delay } = require("../../dist/helpers/delay");
 // Script to test
 const { GasEstimator, GAS_ESTIMATOR_MAPPING_BY_NETWORK } = require("../../dist/helpers/GasEstimator");
 
-contract("GasEstimator.js", function () {
+describe("GasEstimator.js", function () {
   let gasEstimator;
 
   describe("Construction with default config", () => {

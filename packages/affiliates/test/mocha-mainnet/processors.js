@@ -2,7 +2,7 @@
 const Path = require("path");
 const { assert } = require("chai");
 
-const { getAbi } = require("@uma/core");
+const { getAbi } = require("@uma/core-1-2-0");
 const { getWeb3 } = require("@uma/common");
 
 const { EmpAttributions, EmpBalances, EmpBalancesHistory } = require("../../libs/processors");
