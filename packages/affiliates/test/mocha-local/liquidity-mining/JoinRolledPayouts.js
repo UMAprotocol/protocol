@@ -1,9 +1,18 @@
+const hre = require("hardhat");
+const { assert } = require("chai");
+const { web3 } = hre;
+global.web3 = web3;
+global.hre = hre;
 const { toWei, toBN, fromWei } = web3.utils;
 
 // Script to test.
 const { _joinPayouts } = require("../../../liquidity-mining/JoinRolledPayouts");
 
-contract("JoinRolledPayouts.js", function (accounts) {
+describe("JoinRolledPayouts.js", function () {
+  let accounts;
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+  });
   it("Correctly joins balances between weekly and rolled payouts", async function () {
     // create two payout objects that are formatted with the same structure as the scripts output. Create a spread of
     // sponsors; some are only in the weekly rewards, some are only in the rolled rewards and some are in both. Then,

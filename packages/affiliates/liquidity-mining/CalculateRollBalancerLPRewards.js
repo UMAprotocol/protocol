@@ -21,7 +21,7 @@ const { getWeb3 } = require("@uma/common");
 const { _fetchBalancerPoolInfo } = require("./CalculateBalancerLPRewards"); // re-use balancer query function.
 const { delay } = require("@uma/financial-templates-lib");
 
-const { getAbi } = require("@uma/core");
+const { getAbi } = require("@uma/contracts-node");
 const web3 = getWeb3();
 
 const { toWei, toBN, fromWei, isAddress } = web3.utils;

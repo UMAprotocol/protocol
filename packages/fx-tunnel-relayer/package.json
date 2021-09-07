@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "Relayer bot to support UMA's Polygon-Ethereum oracle bridge",
   "dependencies": {
-    "@maticnetwork/maticjs": "^2.0.40",
+    "@maticnetwork/maticjs": "^2.0.45",
     "@uma/common": "^2.6.0",
     "@uma/contracts-node": "^0.1.0",
     "@uma/financial-templates-lib": "^2.6.1",

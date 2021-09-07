@@ -10,8 +10,8 @@ Add these to a .env file in the root of the `protocol/packages/api` folder.
 CUSTOM_NODE_URL=wss://mainnet.infura.io/ws/v3/${your project key}
 EXPRESS_PORT=8282
 
-# defaults to 1: represents the number of block elapsed before rechecking contract states
-UPDATE_BLOCKS=1
+# Optional, defaults to 600 (10 minutes): number of seconds before rechecking contract states
+UPDATE_RATE_S=600
 
 # defaults to 864,000,000 ( 10 days): represents the max age a block will stay cached
 OLDEST_BLOCK_MS=1

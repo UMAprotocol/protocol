@@ -1,3 +1,5 @@
+const { web3 } = require("hardhat");
+const { assert } = require("chai");
 const { TraderMadePriceFeed } = require("../../dist/price-feed/TraderMadePriceFeed");
 const { NetworkerMock } = require("../../dist/price-feed/NetworkerMock");
 const { spyLogIncludes, SpyTransport } = require("../../dist/logger/SpyTransport");
@@ -5,7 +7,7 @@ const winston = require("winston");
 const sinon = require("sinon");
 const moment = require("moment");
 
-contract("TraderMadePriceFeed.js", function () {
+describe("TraderMadePriceFeed.js", function () {
   let traderMadePriceFeed;
   let mockTime = 1614314000;
   let networker;

@@ -1,7 +1,7 @@
 const { DevMining } = require("../../libs/affiliates");
 const lodash = require("lodash");
 const { assert } = require("chai");
-const { getAbi } = require("@uma/core");
+const { getAbi } = require("@uma/core-1-2-0");
 const { Prices } = require("../../libs/models");
 // Dataset based mocks that know how to load data from files. This is not the same as the libs/mocks file.
 const { mocks } = require("../../libs/datasets");

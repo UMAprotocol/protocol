@@ -33,11 +33,35 @@ import type { ContractSendMethod, Contract, EventData } from "web3-eth-contract"
 import type Web3 from "web3";
 import type { DeploymentsExtension } from "hardhat-deploy/types";
 
+// Copied from https://ethereum.stackexchange.com/a/85110/47801.
+function linkBytecode(artifact: Artifact, libraries: { [libraryName: string]: string }) {
+  let bytecode = artifact.bytecode;
+
+  for (const [, fileReferences] of Object.entries(artifact.linkReferences)) {
+    for (const [libName, fixups] of Object.entries(fileReferences)) {
+      const addr = libraries[libName];
+      if (addr === undefined) {
+        continue;
+      }
+
+      for (const fixup of fixups) {
+        bytecode =
+          bytecode.substr(0, 2 + fixup.start * 2) +
+          addr.substr(2) +
+          bytecode.substr(2 + (fixup.start + fixup.length) * 2);
+      }
+    }
+  }
+
+  return bytecode;
+}
+
 export interface ContractFactory extends Artifact {
   deployed: () => Promise<Contract>;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   new: (...args: any[]) => ContractSendMethod;
   at: (address: string) => Contract;
+  link: (libraries: { [libraryName: string]: string }) => string;
 }
 
 type FindEventFunction = (
@@ -52,7 +76,10 @@ type FindEventFunction = (
 
 export interface Extension {
   _artifactCache: { [name: string]: Artifact };
-  getContract: (name: string) => ContractFactory;
+  getContract: (
+    name: string,
+    artifactOverrides?: { abi?: any[]; bytecode?: string; [key: string]: any }
+  ) => ContractFactory;
   findEvent: FindEventFunction;
   assertEventEmitted: (...args: Parameters<FindEventFunction>) => void;
   assertEventNotEmitted: (...args: Parameters<FindEventFunction>) => void;
@@ -63,18 +90,23 @@ interface OtherExtensions {
   deployments: DeploymentsExtension;
 }
 
-type HRE = Extension & OtherExtensions & HardhatRuntimeEnvironment;
+export type HRE = Extension & OtherExtensions & HardhatRuntimeEnvironment;
 
 extendEnvironment((_hre) => {
   const hre = _hre as HRE;
   hre._artifactCache = {};
-  hre.getContract = (name) => {
+  hre.getContract = (name, artifactOverrides = {}) => {
     if (!hre._artifactCache[name]) hre._artifactCache[name] = hre.artifacts.readArtifactSync(name);
-    const artifact = hre._artifactCache[name];
+    const artifact = { ...hre._artifactCache[name], ...artifactOverrides };
 
     const deployed = async () => {
       const deployment = await hre.deployments.get(name);
       return new hre.web3.eth.Contract(artifact.abi, deployment.address);
+    };
+
+    const link = (libraries: { [libraryName: string]: string }): string => {
+      artifact.bytecode = linkBytecode(artifact, libraries);
+      return artifact.bytecode;
     };
 
     const newProp = (...args: any[]) =>
@@ -82,7 +114,7 @@ extendEnvironment((_hre) => {
 
     const at = (address: string) => new hre.web3.eth.Contract(artifact.abi, address);
 
-    return { ...artifact, deployed, new: newProp, at };
+    return { ...artifact, deployed, link, new: newProp, at };
   };
 
   hre.findEvent = async (

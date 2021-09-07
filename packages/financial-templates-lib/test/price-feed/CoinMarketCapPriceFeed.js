@@ -1,3 +1,5 @@
+const { web3 } = require("hardhat");
+const { assert } = require("chai");
 const { CoinMarketCapPriceFeed } = require("../../dist/price-feed/CoinMarketCapPriceFeed");
 const { NetworkerMock } = require("../../dist/price-feed/NetworkerMock");
 const winston = require("winston");
@@ -5,7 +7,7 @@ const { parseFixed } = require("@uma/common");
 
 const Convert = (decimals) => (number) => parseFixed(number.toString().substring(0, decimals), decimals).toString();
 
-contract("CoinMarketCapPriceFeed.js", function () {
+describe("CoinMarketCapPriceFeed.js", function () {
   let coinMarketCapPriceFeed;
   let networker;
   let mockTime;
