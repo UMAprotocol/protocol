@@ -119,7 +119,7 @@ export default async (env: ProcessEnv) => {
     // these services can optionally be configured with a config object, but currently they are undefined or have defaults
     blocks: Services.Blocks(undefined, appState),
     emps: Services.EmpState({ debug }, appState),
-    registry: Services.Registry({ debug }, appState),
+    registry: await Services.Registry({ debug }, appState),
     collateralPrices: Services.CollateralPrices({ debug }, appState),
     syntheticPrices: Services.SyntheticPrices(
       {
@@ -134,7 +134,7 @@ export default async (env: ProcessEnv) => {
     erc20s: Services.Erc20s({ debug }, appState),
     empStats: Services.stats.Emp({ debug }, appState),
     marketPrices: Services.MarketPrices({ debug }, appState),
-    lspCreator: Services.MultiLspCreator({ debug, addresses: lspCreatorAddresses }, appState),
+    lspCreator: await Services.MultiLspCreator({ debug, addresses: lspCreatorAddresses }, appState),
     lsps: Services.LspState({ debug }, appState),
     lspStats: Services.stats.Lsp({ debug }, appState),
     globalStats: Services.stats.Global({ debug }, appState),
