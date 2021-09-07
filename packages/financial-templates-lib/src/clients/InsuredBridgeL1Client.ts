@@ -121,6 +121,7 @@ export class InsuredBridgeL1Client {
       ]);
 
       for (const depositRelayedEvent of depositRelayedEvents) {
+        // TODO: Pull this async function call into above Promise.all if possible.
         const relayDataForDeposit = await this.bridgePools[depositRelayedEvent.returnValues.l1Token].methods
           .relays(depositRelayedEvent.returnValues.depositHash)
           .call();
