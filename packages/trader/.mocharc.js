@@ -1,5 +1,5 @@
 module.exports = {
-  timeout: 100000,
+  timeout: 10000,
   require: "ts-node/register",
   exit: true,
 };
