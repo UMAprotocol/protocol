@@ -101,6 +101,8 @@ export class InsuredBridgeL2Client {
         depositData.quoteTimestamp,
       ]
     );
-    return this.l2Web3.utils.soliditySha3(depositDataAbiEncoded) || "";
+    const depositHash = this.l2Web3.utils.soliditySha3(depositDataAbiEncoded);
+    if (depositHash == "" || depositHash == null) throw new Error("Bad deposit hash");
+    return depositHash;
   };
 }
