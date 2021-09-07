@@ -10,11 +10,11 @@ type Instance = uma.clients.emp.Instance;
 type Config = BaseConfig;
 type Dependencies = Pick<
   AppState,
-  "registeredEmps" | "provider" | "emps" | "collateralAddresses" | "syntheticAddresses"
+  "registeredEmps" | "provider" | "emps" | "collateralAddresses" | "syntheticAddresses" | "registeredEmpsMetadata"
 >;
 
 export default (config: Config, appState: Dependencies) => {
-  const { registeredEmps, provider, emps, collateralAddresses, syntheticAddresses } = appState;
+  const { registeredEmps, registeredEmpsMetadata, provider, emps, collateralAddresses, syntheticAddresses } = appState;
   const profile = Profile(config.debug);
 
   async function readEmpDynamicState(instance: Instance, address: string) {
@@ -133,6 +133,9 @@ export default (config: Config, appState: Dependencies) => {
         await emps.expired.create({ ...staticState, ...dynamicState, sponsors: eventState.sponsors, expired: true });
       }
       // handle the case wehre emp is not yet expired
+
+      // set created timestamp if needed
+      await updateCreatedTimestamp(address, emps.expired);
     } else {
       // if it doesnt exist we need to create it
       if (!(await emps.active.has(address))) {
@@ -145,6 +148,21 @@ export default (config: Config, appState: Dependencies) => {
       }
       // add any new sponsors
       await emps.active.addSponsors(address, eventState.sponsors || []);
+
+      // set created timestamp if needed
+      await updateCreatedTimestamp(address, emps.active);
+    }
+  }
+
+  async function updateCreatedTimestamp(address: string, table: uma.tables.emps.JsMap) {
+    if (registeredEmpsMetadata.has(address)) {
+      const emp = await table.get(address);
+      const blockMetadata = registeredEmpsMetadata.get(address);
+
+      if (!emp.createdTimestamp && blockMetadata) {
+        const block = await provider.getBlock(blockMetadata.blockNumber);
+        await table.setTimestamp(address, block.timestamp);
+      }
     }
   }
 
@@ -161,7 +179,8 @@ export default (config: Config, appState: Dependencies) => {
     await Promise.mapSeries(addresses, async (address: string) => {
       const end = profile(`Update Emp state for ${address}`);
       try {
-        return await updateOne(address, startBlock, endBlock);
+        const result = await updateOne(address, startBlock, endBlock);
+        return result;
       } catch (err) {
         console.error(err);
       } finally {

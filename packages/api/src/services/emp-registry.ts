@@ -7,11 +7,11 @@ const { registry } = clients;
 interface Config extends BaseConfig {
   network?: number;
 }
-type Dependencies = Pick<AppState, "registeredEmps" | "provider">;
+type Dependencies = Pick<AppState, "registeredEmps" | "provider" | "registeredEmpsMetadata">;
 
 export default (config: Config, appState: Dependencies) => {
   const { network = 1 } = config;
-  const { registeredEmps, provider } = appState;
+  const { registeredEmps, provider, registeredEmpsMetadata } = appState;
   const address = registry.getAddress(network);
   const contract = registry.connect(address, provider);
 
@@ -22,8 +22,10 @@ export default (config: Config, appState: Dependencies) => {
       endBlock
     );
     const { contracts } = registry.getEventState(events);
-    await Promise.map(Object.keys(contracts || {}), (x) => {
-      return registeredEmps.add(x);
+    await Promise.map(Object.keys(contracts || {}), (address) => {
+      const blockNumber = (contracts as any)[address]["blockNumber"];
+      registeredEmpsMetadata.set(address, { blockNumber });
+      return registeredEmps.add(address);
     });
   }
 
