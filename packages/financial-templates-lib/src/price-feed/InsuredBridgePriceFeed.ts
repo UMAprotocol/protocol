@@ -20,7 +20,7 @@ interface Params {
 }
 
 // Allows user to respond to a "relay" price request that was sent in response to a "deposit" on a InsuredBridge
-// deployed to an L2 network. The relay price request is submitted on L1. This pricefeed will respond True or False
+// deployed to an L2 network. The relay price request is submitted on L1. This pricefeed will respond "Yes" or "No"
 // based on whether the relay was correctly constructed to match a deposit. The price request includes parameters in
 // its ancillary data that must be parsed from the hex ancillary data.
 export class InsuredBridgePriceFeed extends PriceFeedInterface {
