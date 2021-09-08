@@ -6,7 +6,7 @@ import type { OVMBridgeDepositBoxWeb3 } from "@uma/contracts-node";
 import Web3 from "web3";
 import type { Logger } from "winston";
 
-interface Deposit {
+export interface Deposit {
   depositId: number;
   timestamp: number;
   sender: string;

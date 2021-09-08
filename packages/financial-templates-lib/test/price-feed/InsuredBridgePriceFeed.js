@@ -24,12 +24,16 @@ const Timer = getContract("Timer");
 
 // Pricefeed to test
 const { InsuredBridgePriceFeed } = require("../../dist/price-feed/InsuredBridgePriceFeed");
+const { InsuredBridgeL1Client } = require("../../dist/clients/InsuredBridgeL1Client");
+const { InsuredBridgeL2Client } = require("../../dist/clients/InsuredBridgeL2Client");
 
 // Contract objects
 let bridgeAdmin, bridgePool;
 
-// Tested client
+// Tested clients
 let pricefeed;
+let l1Client;
+let l2Client;
 
 let finder,
   store,
@@ -204,12 +208,18 @@ describe("InsuredBridgePriceFeed", function () {
     // DummyLogger will not print anything to console as only capture `info` level events.
     const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
-    // Create the InsuredBridgePriceFeed to be tested:
-    pricefeed = new InsuredBridgePriceFeed({
-      logger: dummyLogger,
+    // Construct L1 and L2 clients that we'll need to construct the pricefeed:
+    l1Client = new InsuredBridgeL1Client(
+      dummyLogger,
+      BridgeAdmin.abi,
+      BridgePool.abi,
       web3,
-      bridgeAdminAddress: bridgeAdmin.options.address,
-    });
+      bridgeAdmin.options.address
+    );
+    l2Client = new InsuredBridgeL2Client(dummyLogger, BridgeDepositBox.abi, web3, depositBox.options.address);
+
+    // Create the InsuredBridgePriceFeed to be tested:
+    pricefeed = new InsuredBridgePriceFeed({ logger: dummyLogger, web3, l1Client, l2Client });
 
     // Create some data for initial relay.
 
@@ -240,11 +250,7 @@ describe("InsuredBridgePriceFeed", function () {
     ));
   });
   it("Pricefeed initial setup", async function () {
-    // Before the pricefeed is updated, there should be no initialized L1/L2 clients.
-    assert.isNull(pricefeed.l1Client);
-    assert.isNull(pricefeed.l2Client);
-
-    // After updating the client it should construct the appropriate clients.
+    // Updating the pricefeed should also update the L1/L2 clients.
     await pricefeed.update();
     assert.equal(
       JSON.stringify(pricefeed.l1Client.getBridgePoolsAddresses()),

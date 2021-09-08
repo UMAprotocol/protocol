@@ -11,7 +11,7 @@ enum relayState {
   Finalized,
 }
 
-interface Relay {
+export interface Relay {
   bridgePoolAddress: string;
   quoteTimestamp: number;
   relayTimestamp: number;
