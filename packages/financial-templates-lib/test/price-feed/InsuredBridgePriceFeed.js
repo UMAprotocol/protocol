@@ -287,8 +287,38 @@ describe("InsuredBridgePriceFeed", function () {
 
       // Update pricefeed and get price for relay request:
       await pricefeed.update();
-      const price = await pricefeed.getHistoricalPrice(relayTime);
+      const price = await pricefeed.getHistoricalPrice(relayTime, false, relayAncillaryData);
       assert.equal(price, toWei("1"));
+    });
+    it("Pricefeed returns 0 if incorrect ancillary data is passed into getPrice method", async function () {
+      // Deposit some tokens.
+      await l2Token.methods.mint(depositor, toWei("200")).send({ from: owner });
+      await l2Token.methods.approve(depositBox.options.address, toWei("200")).send({ from: depositor });
+      const depositTimestamp = Number(await timer.methods.getCurrentTime().call());
+      const quoteTimestamp = depositTimestamp + quoteTimestampOffset;
+      await depositBox.methods
+        .deposit(
+          recipient,
+          l2Token.options.address,
+          relayAmount,
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          quoteTimestamp
+        )
+        .send({ from: depositor });
+
+      // Relay the deposit.
+      const totalRelayBond = toBN(relayAmount).mul(toBN(defaultProposerBondPct));
+      const relayTime = Number((await optimisticOracle.methods.getCurrentTime().call()).toString());
+      await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+
+      // Update pricefeed and get price for relay request:
+      await pricefeed.update();
+      const price = await pricefeed.getHistoricalPrice(relayTime, false, utf8ToHex("message:invalid_ancillary_data"));
+      assert.equal(price, toWei("0"));
+      assert.isTrue(lastSpyLogIncludes(spy, "No relay event found for price request time"));
     });
     it("Pricefeed returns 0 if relay request can't be found for request timestamp", async function () {
       // Deposit some tokens.
@@ -316,7 +346,7 @@ describe("InsuredBridgePriceFeed", function () {
 
       // Update pricefeed and get price for relay request:
       await pricefeed.update();
-      const price = await pricefeed.getHistoricalPrice(relayTime + 1);
+      const price = await pricefeed.getHistoricalPrice(relayTime + 1, false, relayAncillaryData);
       assert.equal(price, toWei("0"));
       assert.isTrue(lastSpyLogIncludes(spy, "No relay event found for price request time"));
     });
@@ -332,7 +362,7 @@ describe("InsuredBridgePriceFeed", function () {
 
       // Update pricefeed and get price for relay request:
       await pricefeed.update();
-      const price = await pricefeed.getHistoricalPrice(relayTime);
+      const price = await pricefeed.getHistoricalPrice(relayTime, false, relayAncillaryData);
       assert.equal(price, toWei("0"));
       assert.isTrue(lastSpyLogIncludes(spy, "No deposit event matching relay attempt"));
     });
@@ -364,10 +394,13 @@ describe("InsuredBridgePriceFeed", function () {
           ...generateRelayParams({}, { realizedLpFeePct: toWei("0.49") })
         )
         .send({ from: relayer });
-
+      const modifiedRelayData = { ...relayData, realizedLpFeePct: toWei("0.49") };
+      const modifiedRelayAncillaryData = await bridgePool.methods
+        .getRelayAncillaryData(depositData, modifiedRelayData)
+        .call();
       // Update pricefeed and get price for relay request:
       await pricefeed.update();
-      const price = await pricefeed.getHistoricalPrice(relayTime);
+      const price = await pricefeed.getHistoricalPrice(relayTime, false, modifiedRelayAncillaryData);
       assert.equal(price, toWei("0"));
       assert.isTrue(lastSpyLogIncludes(spy, "Matched deposit with relay but realized fee % is incorrect"));
     });

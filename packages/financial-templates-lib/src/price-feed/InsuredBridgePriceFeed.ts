@@ -1,5 +1,6 @@
 import { PriceFeedInterface } from "./PriceFeedInterface";
 import Web3 from "web3";
+import { parseAncillaryData } from "@uma/common";
 import { BN } from "../types";
 import type { Logger } from "winston";
 import { InsuredBridgeL1Client, Relay } from "../clients/InsuredBridgeL1Client";
@@ -60,16 +61,30 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
   // For example, if a malicious actor were to submit a price request directly to the Optimistic
   // Oracle using the Insured Bridge identifier, then this method would return a price of 0 since there was no
   // associated relay for the price request.
-  public async getHistoricalPrice(time: number | string): Promise<BN> {
+  public async getHistoricalPrice(time: number | string, verbose: boolean, ancillaryData: string): Promise<BN> {
+    // First get all relay events emitted at the request timestamp.
     const matchedRelays = this.relays.filter((relay: Relay) => relay.relayTimestamp === time);
-    if (matchedRelays.length > 1) {
-      this.logger.error({
-        at: "InsuredBridgePriceFeed",
-        message: "TODO: Handle multiple relays for same price request timestamp",
-        priceRequestTime: time,
-      });
-      throw new Error("TODO: Handle multiple relays for same price request timestamp");
-    } else if (matchedRelays.length === 0) {
+
+    // Next, Parse ancillary data for relay request and find relay if possible with matching params.
+    const parsedAncillaryData: any = parseAncillaryData(ancillaryData);
+    const matchedRelay = matchedRelays.filter(
+      (relay: Relay) =>
+        relay.depositId === parsedAncillaryData.depositId &&
+        relay.depositTimestamp === parsedAncillaryData.depositTimestamp &&
+        relay.recipient.substr(2).toLowerCase() === parsedAncillaryData.recipient &&
+        relay.sender.substr(2).toLowerCase() === parsedAncillaryData.l2Sender &&
+        relay.l1Token.substr(2).toLowerCase() === parsedAncillaryData.l1Token &&
+        relay.amount === parsedAncillaryData.amount.toString() &&
+        relay.slowRelayFeePct === parsedAncillaryData.slowRelayFeePct.toString() &&
+        relay.instantRelayFeePct === parsedAncillaryData.instantRelayFeePct.toString() &&
+        relay.quoteTimestamp === parsedAncillaryData.quoteTimestamp &&
+        relay.realizedLpFeePct === parsedAncillaryData.realizedLpFeePct.toString() &&
+        relay.slowRelayer.substr(2).toLowerCase() === parsedAncillaryData.slowRelayer &&
+        relay.depositContract.substr(2).toLowerCase() === parsedAncillaryData.depositContract
+    );
+
+    // TODO: Do we need to handle the case where all of these params are matched and matchedRelay.length > 1?
+    if (matchedRelay.length === 0) {
       this.logger.debug({
         at: "InsuredBridgePriceFeed",
         message: "No relay event found for price request time",
@@ -78,7 +93,7 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
       return this.toBNWei(isRelayValid.No);
     }
 
-    const relay = matchedRelays[0];
+    const relay = matchedRelay[0];
 
     // Validate that relay matches a deposit struct exactly.
     const matchedDeposits = this.deposits.filter(

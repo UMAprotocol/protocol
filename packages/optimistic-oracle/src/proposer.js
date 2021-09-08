@@ -185,7 +185,9 @@ class OptimisticOracleProposer {
     await priceFeed.update();
     let proposalPrice;
     try {
-      proposalPrice = (await priceFeed.getHistoricalPrice(Number(priceRequest.timestamp))).toString();
+      proposalPrice = (
+        await priceFeed.getHistoricalPrice(Number(priceRequest.timestamp), false, priceRequest.ancillaryData)
+      ).toString();
     } catch (error) {
       this.logger.error({
         at: "OptimisticOracleProposer#sendProposals",

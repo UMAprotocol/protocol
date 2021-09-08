@@ -12,14 +12,14 @@ export abstract class PriceFeedInterface {
   // Note: derived classes *must* override this method.
   public abstract getCurrentPrice(): BN | null;
 
-  // Gets the price (as a BN) for the time specified. Similar to `getCurrentPrice()`, the price is derived from the
-  // in-memory state of the price feed object, so this method is syncrhonous. This price should be up-to-date as of the
-  // last time `update()` was called. If `update()` has never been called, this should throw. If
+  // Gets the price (as a BN) for the time (+ ancillary data) specified. Similar to `getCurrentPrice()`, the price is
+  // derived from the in-memory state of the price feed object, so this method is synchronous. This price should be
+  // up-to-date as of the last time `update()` was called. If `update()` has never been called, this should throw. If
   // the time is before the pre-determined historical lookback window of this PriceFeed object, then this method should
   // throw. If the historical price could not be computed for any other reason, this method
   // should throw.
   // Note: derived classes *must* override this method.
-  public abstract getHistoricalPrice(time: number, verbose?: boolean): Promise<BN | null>;
+  public abstract getHistoricalPrice(time: number, verbose?: boolean, ancillaryData?: string): Promise<BN | null>;
 
   // This returns the last time that the `update()` method was called. If it hasn't been called, this method should
   // return `null` or `undefined`.
