@@ -31,7 +31,7 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
   private readonly l2Client: InsuredBridgeL2Client;
   private relays: Relay[] = [];
   private deposits: Deposit[] = [];
-  private readonly convertPrice: (_number: number) => BN;
+  private readonly toBNWei: (_number: number) => BN;
 
   /**
    * @notice Constructs the InsuredBridgePriceFeed.
@@ -48,7 +48,7 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
     this.web3 = web3;
     this.l1Client = l1Client;
     this.l2Client = l2Client;
-    this.convertPrice = (_number) => toBN(toWei(_number.toString()));
+    this.toBNWei = (_number) => toBN(toWei(_number.toString()));
   }
 
   // This method returns the validity of a relay price request attempt. The relay request was valid if and only if it
@@ -75,7 +75,7 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
         message: "No relay event found for price request time",
         priceRequestTime: time,
       });
-      return this.convertPrice(isRelayValid.No);
+      return this.toBNWei(isRelayValid.No);
     }
 
     const relay = matchedRelays[0];
@@ -105,7 +105,7 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
         at: "InsuredBridgePriceFeed",
         message: "No deposit event matching relay attempt",
       });
-      return this.convertPrice(isRelayValid.No);
+      return this.toBNWei(isRelayValid.No);
     }
 
     // Validate relays proposed realized fee percentage.
@@ -115,14 +115,14 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
         at: "InsuredBridgePriceFeed",
         message: "Matched deposit with relay but realized fee % is incorrect",
       });
-      return this.convertPrice(isRelayValid.No);
+      return this.toBNWei(isRelayValid.No);
     }
 
     // TODO: Do we need to check other parameters like slow relayer address and deposit box contract address? These
     // are the other params included in the ancillary data by the BridgePool contract.
 
     // Passed all checks, relay is valid!
-    return this.convertPrice(isRelayValid.Yes);
+    return this.toBNWei(isRelayValid.Yes);
   }
 
   public getLastUpdateTime(): number | null {
