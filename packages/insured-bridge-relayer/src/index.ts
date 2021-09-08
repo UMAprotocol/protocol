@@ -37,13 +37,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
 
     // Create L1/L2 clients to pull data to inform the relayer.
     // todo: add in start and ending block numbers (if need be).
-    const l1Client = new InsuredBridgeL1Client(
-      logger,
-      getAbi("BridgeAdmin"),
-      getAbi("BridgePool"),
-      web3,
-      config.bridgeAdminAddress
-    );
+    const l1Client = new InsuredBridgeL1Client(logger, web3, config.bridgeAdminAddress);
 
     // Fetch the deposit contract address from the bridge admin.
     const bridgeDepositBoxAddress = await new web3.eth.Contract(
@@ -53,9 +47,12 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       .depositContract()
       .call();
 
-    const l2Client = new InsuredBridgeL2Client(logger, getAbi("OVM_BridgeDepositBox"), web3, bridgeDepositBoxAddress);
+    // TODO: this is right now using the same web3 object. this is wrong. it should use an L2web3 object.ƒ
+    const l2Client = new InsuredBridgeL2Client(logger, web3, bridgeDepositBoxAddress);
 
-    const relayer = new Relayer(logger, web3, l1Client, l2Client);
+    // TODO: pull this from env
+    const whitelistedRelayL1Tokens: string[] = [];
+    const relayer = new Relayer(logger, web3, l1Client, l2Client, whitelistedRelayL1Tokens, accounts[0]);
 
     for (;;) {
       await retry(
@@ -63,7 +60,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
           // Update state.
           await Promise.all([gasEstimator.update(), l1Client.update(), l2Client.update()]);
 
-          await relayer.relayPendingDeposits();
+          await relayer.checkForPendingDepositsAndRelay();
         },
         {
           retries: config.errorRetries,
