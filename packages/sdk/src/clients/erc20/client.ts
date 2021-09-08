@@ -1,11 +1,11 @@
-import { EthersContracts } from "@uma/core";
+import { ERC20Ethers, ERC20Ethers__factory } from "@uma/contracts-node";
 import type { SignerOrProvider, GetEventType } from "../..";
 import { Event } from "ethers";
 import { Balances } from "../../utils";
 import { set } from "lodash";
 
-export type Instance = EthersContracts.ERC20;
-const Factory = EthersContracts.ERC20__factory;
+export type Instance = ERC20Ethers;
+const Factory = ERC20Ethers__factory;
 
 export function connect(address: string, provider: SignerOrProvider): Instance {
   return Factory.connect(address, provider);

@@ -9,10 +9,10 @@ interface Config extends BaseConfig {
 }
 type Dependencies = Pick<AppState, "registeredEmps" | "provider" | "registeredEmpsMetadata">;
 
-export default (config: Config, appState: Dependencies) => {
+export default async (config: Config, appState: Dependencies) => {
   const { network = 1 } = config;
   const { registeredEmps, provider, registeredEmpsMetadata } = appState;
-  const address = registry.getAddress(network);
+  const address = await registry.getAddress(network);
   const contract = registry.connect(address, provider);
 
   async function update(startBlock?: number | "latest", endBlock?: number) {

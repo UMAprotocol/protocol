@@ -10,8 +10,8 @@ interface Config extends BaseConfig {
 }
 type Dependencies = Pick<AppState, "registeredLsps" | "provider">;
 
-export default (config: Config, appState: Dependencies) => {
-  const { network = 1, address = lspCreator.getAddress(network) } = config;
+export default async (config: Config, appState: Dependencies) => {
+  const { network = 1, address = await lspCreator.getAddress(network) } = config;
   const { registeredLsps, provider } = appState;
 
   const contract = lspCreator.connect(address, provider);

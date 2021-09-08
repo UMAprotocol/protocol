@@ -1,10 +1,10 @@
-import { EthersContracts } from "@uma/core";
+import { LongShortPairEthers, LongShortPairEthers__factory } from "@uma/contracts-node";
 import type { SignerOrProvider, GetEventType } from "../..";
 import { Event } from "ethers";
 import { Balances } from "../../utils";
 
-export type Instance = EthersContracts.LongShortPair;
-const Factory = EthersContracts.LongShortPair__factory;
+export type Instance = LongShortPairEthers;
+const Factory = LongShortPairEthers__factory;
 
 export function connect(address: string, provider: SignerOrProvider): Instance {
   return Factory.connect(address, provider);

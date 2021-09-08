@@ -226,7 +226,7 @@ describe("InsuredBridgeL1Client", function () {
     // DummyLogger will not print anything to console as only capture `info` level events.
     const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
-    client = new InsuredBridgeL1Client(dummyLogger, BridgeAdmin.abi, BridgePool.abi, web3, bridgeAdmin.options.address);
+    client = new InsuredBridgeL1Client(dummyLogger, web3, bridgeAdmin.options.address);
 
     // Create some data for relay the initial relay action.
 
