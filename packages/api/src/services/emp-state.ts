@@ -155,15 +155,14 @@ export default (config: Config, appState: Dependencies) => {
   }
 
   async function updateCreatedTimestamp(address: string, table: uma.tables.emps.JsMap) {
-    if (registeredEmpsMetadata.has(address)) {
-      const emp = await table.get(address);
-      const blockMetadata = registeredEmpsMetadata.get(address);
+    const emp = await table.get(address);
+    if (emp.createdTimestamp) return;
 
-      if (!emp.createdTimestamp && blockMetadata) {
-        const block = await provider.getBlock(blockMetadata.blockNumber);
-        await table.setCreatedTimestamp(address, block.timestamp);
-      }
-    }
+    const blockMetadata = registeredEmpsMetadata.get(address);
+    if (!blockMetadata) return;
+
+    const block = await provider.getBlock(blockMetadata.blockNumber);
+    await table.setCreatedTimestamp(address, block.timestamp);
   }
 
   // add a set of all collateral addresses
