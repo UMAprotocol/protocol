@@ -165,12 +165,12 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
   }
 
   public getCurrentPrice(): BN | null {
-    // TODO. This doesn't seem appropriate for this pricefeed, perhaps it should always return null.
+    // TODO. This doesn't seem appropriate for this pricefeed, perhaps it should always return null. Or, it could
+    // re-use the `getHistoricalPrice` logic and for the current timestamp.
     return null;
   }
 
   public getPriceFeedDecimals(): number {
-    // TODO.
     return this.decimals;
   }
 
