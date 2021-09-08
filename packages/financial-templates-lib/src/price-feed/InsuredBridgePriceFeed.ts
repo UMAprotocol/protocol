@@ -55,7 +55,7 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
   // (1) corresponds with an L1 relay transaction submitted to the appropriate BridgePool contract and
   // (2) the L1 relay corresponds with an L2 deposit transaction submitted to the appropriate DepositBox contract.
   // If the relay request does not meet these conditions, then this method will return a price of 0, implying "No, the
-  // relay was not valid".
+  // relay was not valid" and the relay action will be disputed.
 
   // For example, if a malicious actor were to submit a price request directly to the Optimistic
   // Oracle using the Insured Bridge identifier, then this method would return a price of 0 since there was no
