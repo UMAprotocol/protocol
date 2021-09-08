@@ -110,10 +110,6 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
         deposit.quoteTimestamp === relay.quoteTimestamp
     );
     if (matchedDeposits.length > 1) {
-      this.logger.error({
-        at: "InsuredBridgePriceFeed",
-        message: "TODO: Handle multiple deposits associated with same relay attempt",
-      });
       throw new Error("TODO: Handle multiple relays for same price request timestamp");
     } else if (matchedDeposits.length === 0) {
       this.logger.debug({
@@ -126,7 +122,7 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
     // Validate relays proposed realized fee percentage.
     const expectedRealizedFeePct = this.l1Client.calculateRealizedLpFeesPctForDeposit(/* matchedDeposits[0] */);
     if (expectedRealizedFeePct !== relay.realizedLpFeePct) {
-      this.logger.error({
+      this.logger.debug({
         at: "InsuredBridgePriceFeed",
         message: "Matched deposit with relay but realized fee % is incorrect",
       });
