@@ -82,7 +82,7 @@ function addMnemonicToProvider(
   provider: AbstractProvider,
   mnemonic: string = process.env.MNEMONIC ||
     "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat",
-  numKeys = parseInt(process.env.NUM_KEYS || 2),
+  numKeys = parseInt(process.env.NUM_KEYS || "2"),
   keyOffset = process.env.KEY_OFFSET ? parseInt(process.env.KEY_OFFSET) : 0
 ): HDWalletProvider {
   return new HDWalletProvider(mnemonic, provider, keyOffset, numKeys);
