@@ -44,7 +44,7 @@ async function startOptimismRelayer() {
 
 async function isOptimismRelayerRunning() {
   const output = await execShellCommand(`docker inspect -f '{{.State.Running}}' ${relayerContainerName}`);
-  return output.stdout.includes("true"); //stdout will contain true or false if the relayerContainerName is running
+  return output.stdout.includes("true"); // stdout will contain true or false if the relayerContainerName is running
 }
 
 async function relayMessageFromL2ToL1(transactionHash, l1Messenger, l1Wallet) {
