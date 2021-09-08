@@ -209,14 +209,8 @@ describe("InsuredBridgePriceFeed", function () {
     const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
     // Construct L1 and L2 clients that we'll need to construct the pricefeed:
-    l1Client = new InsuredBridgeL1Client(
-      dummyLogger,
-      BridgeAdmin.abi,
-      BridgePool.abi,
-      web3,
-      bridgeAdmin.options.address
-    );
-    l2Client = new InsuredBridgeL2Client(dummyLogger, BridgeDepositBox.abi, web3, depositBox.options.address);
+    l1Client = new InsuredBridgeL1Client(dummyLogger, web3, bridgeAdmin.options.address);
+    l2Client = new InsuredBridgeL2Client(dummyLogger, web3, depositBox.options.address);
 
     // Create the InsuredBridgePriceFeed to be tested:
     pricefeed = new InsuredBridgePriceFeed({ logger: dummyLogger, web3, l1Client, l2Client });
