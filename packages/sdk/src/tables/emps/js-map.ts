@@ -11,14 +11,14 @@ export const Table = (type = "Emp") => {
     return table.update(id, { sponsors: Array.from(set.values()) });
   }
 
-  async function setTimestamp(id: string, timestamp: number) {
+  async function setCreatedTimestamp(id: string, timestamp: number) {
     return table.update(id, { createdTimestamp: timestamp });
   }
 
   return {
     ...table,
     addSponsors,
-    setTimestamp,
+    setCreatedTimestamp,
   };
 };
 // want to export the type as the same name

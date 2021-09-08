@@ -161,7 +161,7 @@ export default (config: Config, appState: Dependencies) => {
 
       if (!emp.createdTimestamp && blockMetadata) {
         const block = await provider.getBlock(blockMetadata.blockNumber);
-        await table.setTimestamp(address, block.timestamp);
+        await table.setCreatedTimestamp(address, block.timestamp);
       }
     }
   }
