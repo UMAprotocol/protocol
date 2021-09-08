@@ -13,7 +13,7 @@ enum RelayerMode {
 enum RelayType {
   Slow,
   Fast,
-  No,
+  IgnoreRelay,
 }
 
 export class Relayer {
@@ -59,7 +59,7 @@ export class Relayer {
         const botL1TokenBalance = await this.fetchBotL1TokenBalance(l1Token);
         const relayType = this.shouldRelay(relayableDeposit, botL1TokenBalance);
         switch (relayType) {
-          case RelayType.No:
+          case RelayType.IgnoreRelay:
             this.logger.info({
               at: "Relayer",
               message: "Not relaying deposit 😖",
