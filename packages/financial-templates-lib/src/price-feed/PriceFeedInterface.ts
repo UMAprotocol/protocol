@@ -19,7 +19,7 @@ export abstract class PriceFeedInterface {
   // throw. If the historical price could not be computed for any other reason, this method
   // should throw.
   // Note: derived classes *must* override this method.
-  public abstract getHistoricalPrice(time: number, verbose?: boolean, ancillaryData?: string): Promise<BN | null>;
+  public abstract getHistoricalPrice(time: number, ancillaryData?: string, verbose?: boolean): Promise<BN | null>;
 
   // This returns the last time that the `update()` method was called. If it hasn't been called, this method should
   // return `null` or `undefined`.

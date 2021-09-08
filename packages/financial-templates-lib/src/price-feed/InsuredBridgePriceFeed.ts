@@ -61,7 +61,7 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
   // For example, if a malicious actor were to submit a price request directly to the Optimistic
   // Oracle using the Insured Bridge identifier, then this method would return a price of 0 since there was no
   // associated relay for the price request.
-  public async getHistoricalPrice(time: number | string, verbose: boolean, ancillaryData: string): Promise<BN> {
+  public async getHistoricalPrice(time: number | string, ancillaryData: string): Promise<BN> {
     // First get all relay events emitted at the request timestamp.
     const matchedRelays = this.relays.filter((relay: Relay) => relay.relayTimestamp === time);
 

@@ -287,7 +287,7 @@ describe("InsuredBridgePriceFeed", function () {
 
       // Update pricefeed and get price for relay request:
       await pricefeed.update();
-      const price = await pricefeed.getHistoricalPrice(relayTime, false, relayAncillaryData);
+      const price = await pricefeed.getHistoricalPrice(relayTime, relayAncillaryData);
       assert.equal(price, toWei("1"));
     });
     it("Pricefeed returns 0 if incorrect ancillary data is passed into getPrice method", async function () {
@@ -316,7 +316,7 @@ describe("InsuredBridgePriceFeed", function () {
 
       // Update pricefeed and get price for relay request:
       await pricefeed.update();
-      const price = await pricefeed.getHistoricalPrice(relayTime, false, utf8ToHex("message:invalid_ancillary_data"));
+      const price = await pricefeed.getHistoricalPrice(relayTime, utf8ToHex("message:invalid_ancillary_data"));
       assert.equal(price, toWei("0"));
       assert.isTrue(lastSpyLogIncludes(spy, "No relay event found for price request time"));
     });
@@ -346,7 +346,7 @@ describe("InsuredBridgePriceFeed", function () {
 
       // Update pricefeed and get price for relay request:
       await pricefeed.update();
-      const price = await pricefeed.getHistoricalPrice(relayTime + 1, false, relayAncillaryData);
+      const price = await pricefeed.getHistoricalPrice(relayTime + 1, relayAncillaryData);
       assert.equal(price, toWei("0"));
       assert.isTrue(lastSpyLogIncludes(spy, "No relay event found for price request time"));
     });
@@ -362,7 +362,7 @@ describe("InsuredBridgePriceFeed", function () {
 
       // Update pricefeed and get price for relay request:
       await pricefeed.update();
-      const price = await pricefeed.getHistoricalPrice(relayTime, false, relayAncillaryData);
+      const price = await pricefeed.getHistoricalPrice(relayTime, relayAncillaryData);
       assert.equal(price, toWei("0"));
       assert.isTrue(lastSpyLogIncludes(spy, "No deposit event matching relay attempt"));
     });
@@ -400,7 +400,7 @@ describe("InsuredBridgePriceFeed", function () {
         .call();
       // Update pricefeed and get price for relay request:
       await pricefeed.update();
-      const price = await pricefeed.getHistoricalPrice(relayTime, false, modifiedRelayAncillaryData);
+      const price = await pricefeed.getHistoricalPrice(relayTime, modifiedRelayAncillaryData);
       assert.equal(price, toWei("0"));
       assert.isTrue(lastSpyLogIncludes(spy, "Matched deposit with relay but realized fee % is incorrect"));
     });

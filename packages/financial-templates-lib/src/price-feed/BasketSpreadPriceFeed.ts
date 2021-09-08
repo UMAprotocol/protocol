@@ -119,13 +119,13 @@ export class BasketSpreadPriceFeed extends PriceFeedInterface {
     }
   }
 
-  public async getHistoricalPrice(time: number, verbose = false) {
+  public async getHistoricalPrice(time: number, ancillaryData: string, verbose = false) {
     // If failure to fetch any constituent historical prices, then throw
     // array of errors.
     const errors: any[] = [];
     const experimentalPrices = await Promise.all(
       this.experimentalPriceFeeds.map((priceFeed) => {
-        return priceFeed.getHistoricalPrice(time, verbose).catch((err) => {
+        return priceFeed.getHistoricalPrice(time, ancillaryData, verbose).catch((err) => {
           errors.push(err);
           return null;
         });
@@ -133,7 +133,7 @@ export class BasketSpreadPriceFeed extends PriceFeedInterface {
     );
     const baselinePrices = await Promise.all(
       this.baselinePriceFeeds.map((priceFeed) => {
-        return priceFeed.getHistoricalPrice(time, verbose).catch((err) => {
+        return priceFeed.getHistoricalPrice(time, ancillaryData, verbose).catch((err) => {
           errors.push(err);
           return null;
         });
@@ -141,10 +141,12 @@ export class BasketSpreadPriceFeed extends PriceFeedInterface {
     );
     let denominatorPrice;
     if (this.denominatorPriceFeed) {
-      denominatorPrice = await this.denominatorPriceFeed.getHistoricalPrice(time, verbose).catch((err) => {
-        errors.push(err);
-        return null;
-      });
+      denominatorPrice = await this.denominatorPriceFeed
+        .getHistoricalPrice(time, ancillaryData, verbose)
+        .catch((err) => {
+          errors.push(err);
+          return null;
+        });
     }
 
     if (errors.length > 0) {

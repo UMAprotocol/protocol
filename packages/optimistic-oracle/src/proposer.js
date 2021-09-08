@@ -186,7 +186,7 @@ class OptimisticOracleProposer {
     let proposalPrice;
     try {
       proposalPrice = (
-        await priceFeed.getHistoricalPrice(Number(priceRequest.timestamp), false, priceRequest.ancillaryData)
+        await priceFeed.getHistoricalPrice(Number(priceRequest.timestamp), priceRequest.ancillaryData)
       ).toString();
     } catch (error) {
       this.logger.error({

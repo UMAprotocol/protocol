@@ -65,7 +65,7 @@ export class PriceFeedMockScaled extends PriceFeedInterface {
     return this.currentPrice;
   }
 
-  public async getHistoricalPrice(time: number, verbose: boolean, ancillaryData: string): Promise<BN | null> {
+  public async getHistoricalPrice(time: number, ancillaryData: string): Promise<BN | null> {
     // To implement the PriceFeedInterface properly, this method must either return a valid price
     // or throw.
     if (!this.historicalPrice && !(time in this.historicalPrices) && !ancillaryData) {
