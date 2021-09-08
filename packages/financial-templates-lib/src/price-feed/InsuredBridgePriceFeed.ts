@@ -52,8 +52,16 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
     this.l2Client = l2Client;
   }
 
+  // This method returns the validity of a relay price request attempt. The relay request was valid if and only if it
+  // (1) corresponds with an L1 relay transaction submitted to the appropriate BridgePool contract and
+  // (2) the L1 relay corresponds with an L2 deposit transaction submitted to the appropriate DepositBox contract.
+  // If the relay request does not meet these conditions, then this method will return a price of 0, implying "No, the
+  // relay was not valid".
+
+  // For example, if a malicious actor were to submit a price request directly to the Optimistic
+  // Oracle using the Insured Bridge identifier, then this method would return a price of 0 since there was no
+  // associated relay for the price request.
   public async getHistoricalPrice(time: number | string): Promise<BN> {
-    // Grab price request for a timestamp and parse the ancillary data for the request.
     const matchedRelays = this.relays.filter((relay: Relay) => relay.relayTimestamp === time);
     if (matchedRelays.length > 1) {
       this.logger.error({
