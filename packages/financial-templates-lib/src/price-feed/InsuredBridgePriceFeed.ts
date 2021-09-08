@@ -51,7 +51,7 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
     this.toBNWei = (_number) => toBN(toWei(_number.toString()));
   }
 
-  // This method returns the validity of a relay price request attempt. The relay request was valid if and only if it
+  // This method returns the validity of a relay price request attempt. The relay request was valid if and only if it:
   // (1) corresponds with an L1 relay transaction submitted to the appropriate BridgePool contract and
   // (2) the L1 relay corresponds with an L2 deposit transaction submitted to the appropriate DepositBox contract.
   // If the relay request does not meet these conditions, then this method will return a price of 0, implying "No, the
