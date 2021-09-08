@@ -185,7 +185,7 @@ class ProxyTransactionWrapper {
     const liquidation = this.financialContract.methods.createLiquidation(...liquidationArgs);
 
     // Send the transaction or report failure.
-
+    console.log("config", { ...this.gasEstimator.getCurrentFastPrice(), from: this.account });
     try {
       const { receipt, returnValue, transactionConfig } = await runTransaction({
         web3: this.web3,

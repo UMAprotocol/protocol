@@ -32,7 +32,7 @@
     "@google-cloud/kms": "^2.3.1",
     "@google-cloud/storage": "^5.8.5",
     "@maticnetwork/maticjs": "^2.0.40",
-    "@truffle/hdwallet-provider": "^1.2.3",
+    "@truffle/hdwallet-provider": "^1.5.0",
     "@umaprotocol/truffle-ledger-provider": "^1.0.5",
     "@umaprotocol/ynatm": "^0.0.1",
     "abi-decoder": "github:UMAprotocol/abi-decoder",

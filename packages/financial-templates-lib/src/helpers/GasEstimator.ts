@@ -79,6 +79,7 @@ export class GasEstimator {
    */
 
   constructor(private readonly logger: Logger, private readonly updateThreshold = 60, networkId = DEFAULT_NETWORK_ID) {
+    console.log("HI", networkId);
     // If networkId is not found in MAPPING_BY_NETWORK, then default to 1.
     if (!Object.keys(MAPPING_BY_NETWORK).includes(networkId.toString())) this.networkId = DEFAULT_NETWORK_ID;
     else this.networkId = networkId;
@@ -86,6 +87,7 @@ export class GasEstimator {
     // If the script fails or the API response fails default to these value. If the network ID provided is not in the
     // mapping, then use the default ID.
     if (!Object.keys(MAPPING_BY_NETWORK).includes(networkId.toString())) this.networkId = DEFAULT_NETWORK_ID;
+
     this.defaultFastPriceGwei = MAPPING_BY_NETWORK[this.networkId].defaultFastPriceGwei || 0;
     this.defaultMaxFeePerGasGwei = MAPPING_BY_NETWORK[this.networkId].defaultMaxFeePerGasGwei || 0;
     this.defaultMaxPriorityFeePerGasGwei = MAPPING_BY_NETWORK[this.networkId].defaultMaxPriorityFeePerGasGwei || 0;
@@ -132,7 +134,6 @@ export class GasEstimator {
   getCurrentFastPrice(): LondonGasData | LegacyGasData {
     // Sometimes the multiplication by 1e9 introduces some error into the resulting number, so we'll conservatively ceil
     // the result before returning. This output is usually passed into a web3 contract call so it MUST be an integer.
-    console.log("latestMaxFeePerGasGwei", this.latestMaxFeePerGasGwei);
     if (this.type == NetworkType.London) {
       return {
         maxFeePerGas: Math.ceil(this.latestMaxFeePerGasGwei * 1e9),

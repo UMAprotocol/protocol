@@ -60,8 +60,6 @@ export function getHardhatConfig(
     networks: {
       hardhat: {
         hardfork: "london",
-        gasPrice: "auto",
-        initialBaseFeePerGas: 1_000_000_000,
         gas: 11500000,
         blockGasLimit: 15_000_000,
         timeout: 1800000,
