@@ -950,7 +950,7 @@ export const defaultConfigs: { [name: string]: { type: string; [key: string]: an
       { type: "uniswap", uniswapAddress: "0x18d98D452072Ac2EB7b74ce3DB723374360539f1" },
       {
         type: "uniswap",
-        nodeUrlEnvVar: "POLYGON_NODE_URL",
+        chainId: 137,
         uniswapAddress: "0x8F8e95Ff4B4c5E354ccB005c6B0278492D7B5907",
       },
     ],

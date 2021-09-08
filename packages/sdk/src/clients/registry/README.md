@@ -12,7 +12,7 @@ import uma from "@uma/sdk"
 const provider = new ethers.providers.WebSocketProvider(env.CUSTOM_NODE_URL)
 
 // get the contract instance, address lookup happens based on network (1)
-const registryAddress = uma.clients.registry.getAddress("1")
+const registryAddress = await uma.clients.registry.getAddress("1")
 const registryInstance: uma.clients.registry.Instance = uma.clients.registry.connect(address, provider)
 // get all contract registered events, using standard ethers API
 const registryEvents = await registryInstance.queryFilter(

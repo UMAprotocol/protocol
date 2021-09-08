@@ -1,8 +1,9 @@
 import { ZERO_ADDRESS } from "@uma/common";
-import { Abi } from "../types";
+import { getAbi } from "@uma/contracts-node";
 import type { BridgeAdminWeb3, BridgePoolWeb3 } from "@uma/contracts-node";
 import Web3 from "web3";
 import type { Logger } from "winston";
+import { Deposit } from "./InsuredBridgeL2Client";
 
 enum relayState {
   Pending,
@@ -41,19 +42,20 @@ export class InsuredBridgeL1Client {
 
   private firstBlockToSearch: number;
 
+  // Helper functions.
+  private readonly toWei = Web3.utils.toWei;
+
   constructor(
     private readonly logger: Logger,
-    readonly bridgeAdminAbi: Abi,
-    readonly bridgePoolAbi: Abi,
     readonly l1Web3: Web3,
     readonly bridgeAdminAddress: string,
     readonly startingBlockNumber = 0,
     readonly endingBlockNumber: number | null = null
   ) {
     this.bridgeAdmin = (new l1Web3.eth.Contract(
-      bridgeAdminAbi,
+      getAbi("BridgeAdmin"),
       bridgeAdminAddress
-    ) as unknown) as InsuredBridgeL1Client["bridgeAdmin"]; // Cast to web3-specific type
+    ) as unknown) as BridgeAdminWeb3; // Cast to web3-specific type
 
     this.bridgePools = {}; // Initialize the bridgePools with no pools yet. Will be populated in the _initialSetup.
 
@@ -61,12 +63,12 @@ export class InsuredBridgeL1Client {
   }
 
   // Return an array of all bridgePool addresses
-  getBridgePoolsAddresses() {
+  getBridgePoolsAddresses(): string[] {
     this._throwIfNotInitialized();
     return Object.values(this.bridgePools).map((bridgePool: BridgePoolWeb3) => bridgePool.options.address);
   }
 
-  getAllRelayedDeposits() {
+  getAllRelayedDeposits(): Relay[] {
     this._throwIfNotInitialized();
     return Object.keys(this.relays)
       .map((l1Token: string) =>
@@ -75,20 +77,28 @@ export class InsuredBridgeL1Client {
       .flat();
   }
 
-  getRelayedDepositsForL1Token(l1Token: string) {
+  getRelayedDepositsForL1Token(l1Token: string): Relay[] {
     this._throwIfNotInitialized();
     return Object.values(this.relays[l1Token]);
   }
 
-  getPendingRelayedDeposits() {
+  getPendingRelayedDeposits(): Relay[] {
     return this.getAllRelayedDeposits().filter((relay: Relay) => relay.relayState === relayState.Pending);
   }
 
-  getPendingRelayedDepositsForL1Token(l1Token: string) {
+  getPendingRelayedDepositsForL1Token(l1Token: string): Relay[] {
     return this.getRelayedDepositsForL1Token(l1Token).filter((relay: Relay) => relay.relayState === relayState.Pending);
   }
 
   // TODO: we might want to add other accessors that do other forms of filtering.
+
+  calculateRealizedLpFeesPctForDeposit(/* deposit: any*/): string {
+    return this.toWei("0.05");
+  }
+
+  hasL2DepositBeenRelayed(l2Deposit: Deposit): boolean {
+    return this.relays[l2Deposit.l1Token][l2Deposit.depositHash] != undefined;
+  }
 
   async update(): Promise<void> {
     // Define a config to bound the queries by.
@@ -106,7 +116,7 @@ export class InsuredBridgeL1Client {
       if (this.bridgePools[l1Token]) continue;
       // Else, we set the bridge pool to be a contract instance at the address of the bridge pool.
       this.bridgePools[l1Token] = (new this.l1Web3.eth.Contract(
-        this.bridgePoolAbi,
+        getAbi("BridgePool"),
         whitelistedTokenEvent.returnValues.bridgePool
       ) as unknown) as BridgePoolWeb3;
       this.relays[l1Token] = {};
@@ -179,10 +189,7 @@ export class InsuredBridgeL1Client {
     }
     this.firstBlockToSearch = blockSearchConfig.toBlock + 1;
 
-    this.logger.debug({
-      at: "InsuredBridgeL1Client",
-      message: "Insured bridge l1 client updated",
-    });
+    this.logger.debug({ at: "InsuredBridgeL1Client", message: "Insured bridge l1 client updated" });
   }
 
   private _throwIfNotInitialized() {
