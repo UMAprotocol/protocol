@@ -137,7 +137,7 @@ export class InsuredBridgeL1Client {
         const relayDataForDeposit = await this.bridgePools[depositRelayedEvent.returnValues.l1Token].methods
           .relays(depositRelayedEvent.returnValues.depositHash)
           .call();
-        const relayData = {
+        const relayData: Relay = {
           bridgePoolAddress: depositRelayedEvent.address,
           quoteTimestamp: Number(depositRelayedEvent.returnValues.quoteTimestamp),
           relayTimestamp: Number(relayDataForDeposit.priceRequestTime.toString()),
@@ -146,7 +146,7 @@ export class InsuredBridgeL1Client {
           slowRelayer: depositRelayedEvent.returnValues.slowRelayer,
           disputedSlowRelayers: [],
           instantRelayer: ZERO_ADDRESS,
-          depositTimestamp: depositRelayedEvent.returnValues.depositTimestamp,
+          depositTimestamp: Number(depositRelayedEvent.returnValues.depositTimestamp),
           recipient: depositRelayedEvent.returnValues.recipient,
           l1Token: depositRelayedEvent.returnValues.l1Token,
           amount: depositRelayedEvent.returnValues.amount,

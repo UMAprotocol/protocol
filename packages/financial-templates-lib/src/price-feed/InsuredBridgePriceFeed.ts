@@ -1,18 +1,15 @@
-import assert from "assert";
 import { PriceFeedInterface } from "./PriceFeedInterface";
 import Web3 from "web3";
-import { parseAncillaryData } from "@uma/common";
-import { getAbi } from "@uma/contracts-node";
 import { BN } from "../types";
 import type { Logger } from "winston";
 import { InsuredBridgeL1Client, Relay } from "../clients/InsuredBridgeL1Client";
 import { InsuredBridgeL2Client, Deposit } from "../clients/InsuredBridgeL2Client";
 
-const { toBN } = Web3.utils;
+const { toBN, toWei } = Web3.utils;
 
 enum isRelayValid {
-  Yes,
-  No,
+  No, // Should be 0
+  Yes, // Should be 1
 }
 
 interface Params {
@@ -34,6 +31,7 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
   private readonly l2Client: InsuredBridgeL2Client;
   private relays: Relay[] = [];
   private deposits: Deposit[] = [];
+  private readonly convertPrice: (_number: number) => BN;
 
   /**
    * @notice Constructs the InsuredBridgePriceFeed.
@@ -50,6 +48,7 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
     this.web3 = web3;
     this.l1Client = l1Client;
     this.l2Client = l2Client;
+    this.convertPrice = (_number) => toBN(toWei(_number.toString()));
   }
 
   // This method returns the validity of a relay price request attempt. The relay request was valid if and only if it
@@ -76,45 +75,54 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
         message: "No relay event found for price request time",
         priceRequestTime: time,
       });
-      return toBN(isRelayValid.No);
+      return this.convertPrice(isRelayValid.No);
     }
 
     const relay = matchedRelays[0];
 
-    // TODO: Not 100% sure we should reconstruct the relay ancillary data using deposit/relay data from the L2/L1
-    // clients but if we do so, then this would act as a secondary check against the client data.
-    // TODO: Reconstruct relay ancillary data. Is there a better way to do this using only the data in `relay`, where
-    // we don't have to call the `bridgePool` contract?
-    const depositData = {
-      depositId: relay.depositId,
-      depositTimestamp: relay.depositTimestamp,
-      recipient: relay.recipient,
-      l2Sender: relay.sender,
-      l1Token: relay.l1Token,
-      amount: relay.amount,
-      slowRelayFeePct: relay.slowRelayFeePct,
-      instantRelayFeePct: relay.instantRelayFeePct,
-      quoteTimestamp: relay.quoteTimestamp,
-    };
-    const relayData = {
-      relayState: relay.relayState,
-      priceRequestTime: relay.relayTimestamp,
-      realizedLpFeePct: relay.realizedLpFeePct,
-      slowRelayer: relay.slowRelayer,
-      instantRelayer: relay.instantRelayer,
-    };
-    const bridgePool = new this.web3.eth.Contract(getAbi("BridgePool"), relay.bridgePoolAddress);
-    const relayAncillaryData = await bridgePool.methods.getRelayAncillaryData(depositData, relayData).call();
-    const parsedAncillaryData = parseAncillaryData(relayAncillaryData);
+    // Validate that relay matches a deposit struct exactly.
+    const matchedDeposits = this.deposits.filter(
+      (deposit: Deposit) =>
+        deposit.depositId === relay.depositId &&
+        deposit.depositHash === relay.depositHash &&
+        deposit.timestamp === relay.depositTimestamp &&
+        deposit.sender === relay.sender &&
+        deposit.recipient === relay.recipient &&
+        deposit.l1Token === relay.l1Token &&
+        deposit.amount === relay.amount &&
+        deposit.slowRelayFeePct === relay.slowRelayFeePct &&
+        deposit.instantRelayFeePct === relay.instantRelayFeePct &&
+        deposit.quoteTimestamp === relay.quoteTimestamp
+    );
+    if (matchedDeposits.length > 1) {
+      this.logger.error({
+        at: "InsuredBridgePriceFeed",
+        message: "TODO: Handle multiple deposits associated with same relay attempt",
+      });
+      throw new Error("TODO: Handle multiple relays for same price request timestamp");
+    } else if (matchedDeposits.length === 0) {
+      this.logger.debug({
+        at: "InsuredBridgePriceFeed",
+        message: "No deposit event matching relay attempt",
+      });
+      return this.convertPrice(isRelayValid.No);
+    }
 
-    // Placeholder validation that the ancillary data correctly corresponds to this relay event
-    assert(Object.keys(parsedAncillaryData).length > 0);
+    // Validate relays proposed realized fee percentage.
+    const expectedRealizedFeePct = this.l1Client.calculateRealizedLpFeesPctForDeposit(/* matchedDeposits[0] */);
+    if (expectedRealizedFeePct !== relay.realizedLpFeePct) {
+      this.logger.error({
+        at: "InsuredBridgePriceFeed",
+        message: "Matched deposit with relay but realized fee % is incorrect",
+      });
+      return this.convertPrice(isRelayValid.No);
+    }
 
-    console.log(relay);
-    console.log(parseAncillaryData(relayAncillaryData));
+    // TODO: Do we need to check other parameters like slow relayer address and deposit box contract address? These
+    // are the other params included in the ancillary data by the BridgePool contract.
 
-    // TODO: Using ancillary data for relay, validate that it matches with deposit.
-    return toBN(isRelayValid.Yes);
+    // Passed all checks, relay is valid!
+    return this.convertPrice(isRelayValid.Yes);
   }
 
   public getLastUpdateTime(): number | null {
@@ -128,8 +136,7 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
   }
 
   public getCurrentPrice(): BN | null {
-    // TODO. This should probably return the same thing as `getHistoricalPrice`? Not sure if there is a different
-    // between historical and current prices for this pricefeed.
+    // TODO. This doesn't seem appropriate for this pricefeed, perhaps it should always return null.
     return null;
   }
 
@@ -145,5 +152,6 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
     // Store all deposit and relay data.
     this.deposits = this.l2Client.getAllDeposits();
     this.relays = this.l1Client.getAllRelayedDeposits();
+    // TODO: This returns all relayed deposits including already disputed and settled ones. We should filter those out.
   }
 }

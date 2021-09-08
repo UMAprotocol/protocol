@@ -2,6 +2,8 @@ const hre = require("hardhat");
 const { web3 } = require("hardhat");
 const { predeploys } = require("@eth-optimism/contracts");
 const { interfaceName, TokenRolesEnum, InsuredBridgeRelayStateEnum, ZERO_ADDRESS } = require("@uma/common");
+const { SpyTransport, lastSpyLogIncludes } = require("../../dist/logger/SpyTransport");
+const sinon = require("sinon");
 const { getContract } = hre;
 const { utf8ToHex, toWei, toBN, soliditySha3 } = web3.utils;
 
@@ -34,6 +36,7 @@ let bridgeAdmin, bridgePool;
 let pricefeed;
 let l1Client;
 let l2Client;
+let spy;
 
 let finder,
   store,
@@ -60,9 +63,7 @@ const initialPoolLiquidity = toWei("100");
 const relayAmount = toWei("10");
 const defaultProposerBondPct = toWei("0.05");
 const defaultSlowRelayFeePct = toWei("0.01");
-const defaultRealizedLpFee = toWei("0.1");
 const defaultInstantRelayFeePct = toWei("0.01");
-const defaultQuoteTimestamp = 100000;
 const lpFeeRatePerSecond = toWei("0.0000015");
 const finalFee = toWei("1");
 const defaultGasLimit = 1_000_000;
@@ -206,33 +207,40 @@ describe("InsuredBridgePriceFeed", function () {
 
     // The InsuredBridgePriceFeed does not emit any info `level` events.  Therefore no need to test Winston outputs.
     // DummyLogger will not print anything to console as only capture `info` level events.
-    const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
+    spy = sinon.spy();
+    const spyLogger = winston.createLogger({
+      level: "info",
+      transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
+    });
 
     // Construct L1 and L2 clients that we'll need to construct the pricefeed:
-    l1Client = new InsuredBridgeL1Client(dummyLogger, web3, bridgeAdmin.options.address);
-    l2Client = new InsuredBridgeL2Client(dummyLogger, web3, depositBox.options.address);
+    l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address);
+    l2Client = new InsuredBridgeL2Client(spyLogger, web3, depositBox.options.address);
 
     // Create the InsuredBridgePriceFeed to be tested:
-    pricefeed = new InsuredBridgePriceFeed({ logger: dummyLogger, web3, l1Client, l2Client });
+    pricefeed = new InsuredBridgePriceFeed({ logger: spyLogger, web3, l1Client, l2Client });
 
     // Create some data for initial relay.
 
     // Store expected relay data that we'll use to verify contract state:
+    const expectedDepositTimestamp = Number(await optimisticOracle.methods.getCurrentTime().call());
     depositData = {
-      depositId: 1,
-      depositTimestamp: (await optimisticOracle.methods.getCurrentTime().call()).toString(),
+      depositId: 0,
+      depositTimestamp: expectedDepositTimestamp,
       recipient: recipient,
       l2Sender: depositor,
       l1Token: l1Token.options.address,
       amount: relayAmount,
       slowRelayFeePct: defaultSlowRelayFeePct,
       instantRelayFeePct: defaultInstantRelayFeePct,
-      quoteTimestamp: defaultQuoteTimestamp,
+      quoteTimestamp: expectedDepositTimestamp + quoteTimestampOffset,
     };
     relayData = {
       relayState: InsuredBridgeRelayStateEnum.UNINITIALIZED,
       priceRequestTime: 0,
-      realizedLpFeePct: defaultRealizedLpFee,
+      // This should match the realized fee % that the L1 client computes, otherwise the pricefeed will determine the
+      // relay to be invalid.
+      realizedLpFeePct: l1Client.calculateRealizedLpFeesPctForDeposit(/* depositData */),
       slowRelayer: relayer,
       instantRelayer: ZERO_ADDRESS,
     };
@@ -253,7 +261,7 @@ describe("InsuredBridgePriceFeed", function () {
     assert.equal(JSON.stringify(pricefeed.l2Client.getAllDeposits()), JSON.stringify([]));
   });
   describe("Lifecycle tests", function () {
-    it("Pricefeed can parse ancillary data from relay price request", async function () {
+    it("Pricefeed returns 1 if the relay correctly matches a deposit", async function () {
       // Deposit some tokens.
       await l2Token.methods.mint(depositor, toWei("200")).send({ from: owner });
       await l2Token.methods.approve(depositBox.options.address, toWei("200")).send({ from: depositor });
@@ -279,10 +287,89 @@ describe("InsuredBridgePriceFeed", function () {
 
       // Update pricefeed and get price for relay request:
       await pricefeed.update();
-      await pricefeed.getHistoricalPrice(relayTime);
+      const price = await pricefeed.getHistoricalPrice(relayTime);
+      assert.equal(price, toWei("1"));
+    });
+    it("Pricefeed returns 0 if relay request can't be found for request timestamp", async function () {
+      // Deposit some tokens.
+      await l2Token.methods.mint(depositor, toWei("200")).send({ from: owner });
+      await l2Token.methods.approve(depositBox.options.address, toWei("200")).send({ from: depositor });
+      const depositTimestamp = Number(await timer.methods.getCurrentTime().call());
+      const quoteTimestamp = depositTimestamp + quoteTimestampOffset;
+      await depositBox.methods
+        .deposit(
+          recipient,
+          l2Token.options.address,
+          relayAmount,
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          quoteTimestamp
+        )
+        .send({ from: depositor });
 
-      // Throw error if request can't be found:
-      // assert.throws(await pricefeed.getHistoricalPrice(relayTime+1))
+      // Relay the deposit.
+      const totalRelayBond = toBN(relayAmount).mul(toBN(defaultProposerBondPct));
+      const relayTime = Number((await optimisticOracle.methods.getCurrentTime().call()).toString());
+      await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+
+      // Update pricefeed and get price for relay request:
+      await pricefeed.update();
+      const price = await pricefeed.getHistoricalPrice(relayTime + 1);
+      assert.equal(price, toWei("0"));
+      assert.isTrue(lastSpyLogIncludes(spy, "No relay event found for price request time"));
+    });
+    it("Pricefeed returns 0 if there is no matching deposit for relay", async function () {
+      // Skip the deposit for this test.
+
+      // Relay a deposit that doesn't exist.
+      const totalRelayBond = toBN(relayAmount).mul(toBN(defaultProposerBondPct));
+      const relayTime = Number((await optimisticOracle.methods.getCurrentTime().call()).toString());
+      await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
+
+      // Update pricefeed and get price for relay request:
+      await pricefeed.update();
+      const price = await pricefeed.getHistoricalPrice(relayTime);
+      assert.equal(price, toWei("0"));
+      assert.isTrue(lastSpyLogIncludes(spy, "No deposit event matching relay attempt"));
+    });
+    it("Pricefeed returns 0 if the relay realized fee % is invalid", async function () {
+      // Deposit some tokens.
+      await l2Token.methods.mint(depositor, toWei("200")).send({ from: owner });
+      await l2Token.methods.approve(depositBox.options.address, toWei("200")).send({ from: depositor });
+      const depositTimestamp = Number(await timer.methods.getCurrentTime().call());
+      const quoteTimestamp = depositTimestamp + quoteTimestampOffset;
+      await depositBox.methods
+        .deposit(
+          recipient,
+          l2Token.options.address,
+          relayAmount,
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          quoteTimestamp
+        )
+        .send({ from: depositor });
+
+      // Relay the deposit but modify the realized fee % to be incorrect.
+      const totalRelayBond = toBN(relayAmount).mul(toBN(defaultProposerBondPct));
+      const relayTime = Number((await optimisticOracle.methods.getCurrentTime().call()).toString());
+      await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      await bridgePool.methods
+        .relayDeposit(
+          // Note: Look at BridgePool contract for max allowable realizedLpFeePct, current max is 0.5e18
+          ...generateRelayParams({}, { realizedLpFeePct: toWei("0.49") })
+        )
+        .send({ from: relayer });
+
+      // Update pricefeed and get price for relay request:
+      await pricefeed.update();
+      const price = await pricefeed.getHistoricalPrice(relayTime);
+      assert.equal(price, toWei("0"));
+      assert.isTrue(lastSpyLogIncludes(spy, "Matched deposit with relay but realized fee % is incorrect"));
     });
   });
 });
