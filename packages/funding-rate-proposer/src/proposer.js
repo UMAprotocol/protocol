@@ -161,7 +161,10 @@ class FundingRateProposer {
       : (await this.web3.eth.getBlock("latest")).timestamp;
     let pricefeedPrice;
     try {
-      pricefeedPrice = (await priceFeed.getHistoricalPrice(Number(requestTimestamp))).toString();
+      // Note: The ancillary data field is unused by the FundingRateMultiplierPriceFeed so we'll fallback to passing in
+      // 0x as the ancillary data for now. This ensures that this file can be unit tested using the PriceFeedMockScaled
+      // feed which requires ancillary data to be passed.
+      pricefeedPrice = (await priceFeed.getHistoricalPrice(Number(requestTimestamp), false, "0x")).toString();
     } catch (error) {
       this.logger.error({
         at: "PerpetualProposer",
