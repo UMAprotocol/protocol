@@ -20,6 +20,21 @@ interface Params {
   l2Client: InsuredBridgeL2Client;
 }
 
+interface RelayAncillaryData {
+  depositId: number;
+  depositTimestamp: number;
+  recipient: string;
+  l2Sender: string;
+  l1Token: string;
+  amount: number;
+  slowRelayFeePct: number;
+  instantRelayFeePct: number;
+  quoteTimestamp: number;
+  realizedLpFeePct: number;
+  slowRelayer: string;
+  depositContract: string;
+}
+
 // Allows user to respond to a "relay" price request that was sent in response to a "deposit" on a InsuredBridge
 // deployed to an L2 network. The relay price request is submitted on L1. This pricefeed will respond "Yes" or "No"
 // based on whether the relay was correctly constructed to match a deposit. The price request includes parameters in
@@ -66,7 +81,9 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
     const matchedRelays = this.relays.filter((relay: Relay) => relay.relayTimestamp === time);
 
     // Next, Parse ancillary data for relay request and find relay if possible with matching params.
-    const parsedAncillaryData: any = parseAncillaryData(ancillaryData);
+    const parsedAncillaryData: RelayAncillaryData = (parseAncillaryData(
+      ancillaryData
+    ) as unknown) as RelayAncillaryData;
     const matchedRelay = matchedRelays.filter(
       (relay: Relay) =>
         relay.depositId === parsedAncillaryData.depositId &&
