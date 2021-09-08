@@ -1,6 +1,6 @@
 const { BigQuery } = require("@google-cloud/bigquery");
 const { getWeb3 } = require("@uma/common");
-const { getAbi } = require("@uma/core");
+const { getAbi } = require("@uma/contracts-node");
 const { DappMining } = require("../libs/affiliates");
 const Queries = require("../libs/bigquery");
 

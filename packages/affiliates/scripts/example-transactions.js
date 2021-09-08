@@ -2,7 +2,7 @@ const { BigQuery } = require("@google-cloud/bigquery");
 const highland = require("highland");
 const Queries = require("../libs/bigquery");
 const moment = require("moment");
-const { getAbi } = require("@uma/core");
+const { getAbi } = require("@uma/contracts-node");
 const { DecodeTransaction, GetInputLength } = require("../libs/contracts");
 
 // uGAS-MAR21

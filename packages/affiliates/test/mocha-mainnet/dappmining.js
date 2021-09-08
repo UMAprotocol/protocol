@@ -4,7 +4,7 @@ const highland = require("highland");
 
 const { DappMining } = require("../../libs/affiliates");
 const { getWeb3 } = require("@uma/common");
-const { getAbi } = require("@uma/core");
+const { getAbi } = require("@uma/core-1-2-0");
 const { mocks } = require("../../libs/datasets");
 const { SharedAttributions, Balances, AttributionLookback } = require("../../libs/models");
 const { EmpAttributions } = require("../../libs/processors");

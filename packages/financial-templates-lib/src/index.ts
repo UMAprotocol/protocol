@@ -4,6 +4,8 @@ export * from "./clients/FinancialContractFactoryClient";
 export * from "./clients/OptimisticOracleClient";
 export * from "./clients/OptimisticOracleEventClient";
 export * from "./clients/TokenBalanceClient";
+export * from "./clients/InsuredBridgeL1Client";
+export * from "./clients/InsuredBridgeL2Client";
 export * from "./helpers/delay";
 export * from "./helpers/multicall";
 export * from "./helpers/allowances";

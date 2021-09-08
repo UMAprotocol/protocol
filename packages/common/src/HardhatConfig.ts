@@ -1,6 +1,8 @@
 import { HardhatConfig } from "hardhat/types";
 
 const { getNodeUrl, mnemonic } = require("./TruffleConfig");
+import { HRE } from "./hardhat/plugins/ExtendedWeb3";
+export type { HRE };
 
 export function getHardhatConfig(
   configOverrides: any,

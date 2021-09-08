@@ -12,11 +12,11 @@ interface Config extends BaseConfig {
 }
 type Dependencies = Pick<AppState, "registeredLsps" | "provider">;
 
-export default (config: Config, appState: Dependencies) => {
+export default async (config: Config, appState: Dependencies) => {
   const { addresses = [], network = 1 } = config;
 
   // always include latest known address
-  const latestAddress = lspCreator.getAddress(network);
+  const latestAddress = await lspCreator.getAddress(network);
 
   // make sure we dont have duplicate addresses ( case sensitive)
   const allAddresses = Array.from(new Set([...addresses, latestAddress]));

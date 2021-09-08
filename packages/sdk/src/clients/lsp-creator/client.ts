@@ -1,23 +1,24 @@
-import assert from "assert";
-import { EthersContracts } from "@uma/core";
-import Artifacts from "@uma/core/build/contracts/LongShortPairCreator.json";
+import {
+  LongShortPairCreatorEthers,
+  LongShortPairCreatorEthers__factory,
+  getAbi as getAbiForContract,
+  getAddress as getAddressForContract,
+} from "@uma/contracts-node";
 import type { SignerOrProvider, GetEventType } from "../..";
 import { Event } from "ethers";
 
 // exporting Registry type in case its needed
-export type Instance = EthersContracts.LongShortPairCreator;
-const Factory = EthersContracts.LongShortPairCreator__factory;
+export type Instance = LongShortPairCreatorEthers;
+const Factory = LongShortPairCreatorEthers__factory;
 
-export type Network = keyof typeof Artifacts.networks;
+export type Network = string | number;
 
-export function getAddress(network: Network): string {
-  const address = Artifacts?.networks?.[network]?.address;
-  assert(address, "no address found for network: " + network);
-  return address;
+export function getAddress(network: Network): Promise<string> {
+  return getAddressForContract("LongShortPairCreator", Number(network));
 }
 
 export function getAbi() {
-  return Artifacts?.abi;
+  return getAbiForContract("LongShortPairCreator");
 }
 
 export function connect(address: string, provider: SignerOrProvider): Instance {

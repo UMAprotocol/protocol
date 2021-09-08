@@ -7,7 +7,7 @@ export class Relayer {
    * @param {Object} logger Module used to send logs.
    * @param {Object} web3 Provider from Truffle/node to connect to Ethereum network.
    */
-  constructor(readonly logger: winston.Logger, readonly web3: Web3) {}
+  constructor(readonly logger: winston.Logger, readonly web3: Web3, readonly l1Client: any, readonly l2Client: any) {}
 
   async relayPendingDeposits() {
     this.logger.debug({

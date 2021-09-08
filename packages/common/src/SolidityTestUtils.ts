@@ -1,4 +1,6 @@
 import type Web3 from "web3";
+import type HRE from "hardhat";
+type HardhatNetwork = typeof HRE["network"];
 
 // Attempts to execute a promise and returns false if no error is thrown,
 // or an Array of the error messages
@@ -136,10 +138,10 @@ export async function mineTransactionsAtTime(
 
       // Awaits the transactionHash, which signifies the transaction was sent, but not necessarily mined.
       await new Promise<void>((resolve, reject) => {
-        result.on("transactionHash", function () {
+        result.once("transactionHash", function () {
           resolve();
         });
-        result.on("error", function (error) {
+        result.once("error", function (error) {
           reject(error);
         });
       });
@@ -151,10 +153,45 @@ export async function mineTransactionsAtTime(
     await advanceBlockAndSetTime(web3, time);
     const receipts = await Promise.all(receiptPromises);
     return receipts;
-  } catch (err) {
-    throw new Error(err.message);
   } finally {
     // We need to restart Ganache's mining no matter what, otherwise the caller would have to restart their Ganache instance.
     await startMining(web3);
+  }
+}
+
+// Very similar to the function above, but uses a hardhat network to send hardhat node compatible RPC methods.
+export async function mineTransactionsAtTimeHardhat(
+  network: HardhatNetwork,
+  transactions: Transaction[],
+  time: number,
+  sender: string
+): Promise<Contract[]> {
+  await network.provider.send("evm_setAutomine", [false]);
+
+  try {
+    const receiptPromises = [];
+    for (const transaction of transactions) {
+      const result = transaction.send({ from: sender });
+
+      // Awaits the transactionHash, which signifies the transaction was sent, but not necessarily mined.
+      await new Promise<void>((resolve, reject) => {
+        result.once("transactionHash", function () {
+          resolve();
+        });
+        result.once("error", function (error) {
+          reject(error);
+        });
+      });
+
+      // result, itself, is a promise that will resolve to the receipt.
+      receiptPromises.push(result);
+    }
+
+    await network.provider.send("evm_mine", [time]);
+    const receipts = await Promise.all(receiptPromises);
+    return receipts;
+  } finally {
+    // Restart automine.
+    await network.provider.send("evm_setAutomine", [true]);
   }
 }
