@@ -156,7 +156,8 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
   }
 
   public getLookback(): number | null {
-    // TODO.
+    // TODO. We could use the L1/L2 client's starting block number and network average block propagation time to
+    // determine this value.
     return null;
   }
 
