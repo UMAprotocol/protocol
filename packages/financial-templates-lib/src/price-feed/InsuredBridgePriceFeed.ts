@@ -90,9 +90,6 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
         time === parsedAncillaryData.priceRequestTime
     );
 
-    // TODO: Currently, the `time` param is unused as the `relayTime` is not included in the ancillary data. Should we
-    // add it? Does it add anything to this feed?
-
     // TODO: Do we need to handle the case where all of these params are matched and matchedDeposit.length > 1?
     if (matchedDeposit.length === 0) {
       this.logger.debug({
