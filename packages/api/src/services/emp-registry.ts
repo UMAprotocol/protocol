@@ -22,8 +22,10 @@ export default async (config: Config, appState: Dependencies) => {
       endBlock
     );
     const { contracts } = registry.getEventState(events);
-    await Promise.map(Object.keys(contracts || {}), (address) => {
-      const blockNumber = (contracts as any)[address]["blockNumber"];
+    if (!contracts) return;
+
+    await Promise.map(Object.keys(contracts), (address) => {
+      const blockNumber = contracts[address].blockNumber;
       registeredEmpsMetadata.set(address, { blockNumber });
       return registeredEmps.add(address);
     });
