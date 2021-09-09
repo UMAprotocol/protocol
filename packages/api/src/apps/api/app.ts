@@ -101,6 +101,7 @@ export default async (env: ProcessEnv) => {
     },
     lastBlockUpdate: 0,
     registeredEmps: new Set<string>(),
+    registeredEmpsMetadata: new Map(),
     registeredLsps: new Set<string>(),
     collateralAddresses: new Set<string>(),
     syntheticAddresses: new Set<string>(),
