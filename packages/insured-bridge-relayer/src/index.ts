@@ -12,8 +12,8 @@ import {
   InsuredBridgeL1Client,
   InsuredBridgeL2Client,
 } from "@uma/financial-templates-lib";
-import { getAbi } from "@uma/contracts-node";
 
+import { approveL1Tokens, getL2DepositBoxAddress } from "./RelayerHelpers";
 import { Relayer } from "./Relayer";
 import { RelayerConfig } from "./RelayerConfig";
 config();
@@ -27,7 +27,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
     logger[config.pollingDelay === 0 ? "debug" : "info"]({
       at: "InsuredBridgeRelayer#index",
       message: "Relayer started 🌉",
-      bridgePoolFactoryAddress: config.bridgeAdminAddress,
+      bridgePoolFactoryAddress: config.bridgeAdmin,
     });
 
     const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
@@ -37,22 +37,16 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
 
     // Create L1/L2 clients to pull data to inform the relayer.
     // todo: add in start and ending block numbers (if need be).
-    const l1Client = new InsuredBridgeL1Client(logger, web3, config.bridgeAdminAddress);
-
-    // Fetch the deposit contract address from the bridge admin.
-    const bridgeDepositBoxAddress = await new web3.eth.Contract(
-      getAbi("BridgeAdmin"),
-      config.bridgeAdminAddress
-    ).methods
-      .depositContract()
-      .call();
+    const l1Client = new InsuredBridgeL1Client(logger, web3, config.bridgeAdmin);
 
     // TODO: this is right now using the same web3 object. this is wrong. it should use an L2web3 object.ƒ
-    const l2Client = new InsuredBridgeL2Client(logger, web3, bridgeDepositBoxAddress);
+    const l2Client = new InsuredBridgeL2Client(logger, web3, await getL2DepositBoxAddress(web3, config.bridgeAdmin));
 
-    // TODO: pull this from env
-    const whitelistedRelayL1Tokens: string[] = [];
-    const relayer = new Relayer(logger, web3, l1Client, l2Client, whitelistedRelayL1Tokens, accounts[0]);
+    // For all specified whitelisted L1 tokens that this relayer supports, approve the bridge pool to spend them. This
+    // method will error if the bot runner has specified a L1 tokens that is not part of the Bridge Admin whitelist.
+    await approveL1Tokens(logger, web3, gasEstimator, accounts[0], config.bridgeAdmin, config.whitelistedRelayL1Tokens);
+
+    const relayer = new Relayer(logger, web3, l1Client, l2Client, config.whitelistedRelayL1Tokens, accounts[0]);
 
     for (;;) {
       await retry(
