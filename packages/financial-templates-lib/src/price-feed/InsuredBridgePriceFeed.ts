@@ -31,7 +31,6 @@ interface RelayAncillaryData {
   instantRelayFeePct: number;
   quoteTimestamp: number;
   realizedLpFeePct: number;
-  slowRelayer: string;
   depositContract: string;
   priceRequestTime: string;
 }
