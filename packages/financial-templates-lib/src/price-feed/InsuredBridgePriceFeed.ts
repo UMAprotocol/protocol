@@ -33,6 +33,7 @@ interface RelayAncillaryData {
   realizedLpFeePct: number;
   slowRelayer: string;
   depositContract: string;
+  priceRequestTime: string;
 }
 
 // Allows user to respond to a "relay" price request that was sent in response to a "deposit" on a InsuredBridge
@@ -68,80 +69,46 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
   }
 
   // This method returns the validity of a relay price request attempt. The relay request was valid if and only if it:
-  // (1) corresponds with an L1 relay transaction submitted to the appropriate BridgePool contract and
-  // (2) the L1 relay corresponds with an L2 deposit transaction submitted to the appropriate DepositBox contract.
-  // If the relay request does not meet these conditions, then this method will return a price of 0, implying "No, the
-  // relay was not valid" and the relay action will be disputed.
-
-  // For example, if a malicious actor were to submit a price request directly to the Optimistic
-  // Oracle using the Insured Bridge identifier, then this method would return a price of 0 since there was no
-  // associated relay for the price request.
+  // The price request's ancillary data contains parameters that match with an L2 deposit event.
   public async getHistoricalPrice(time: number | string, ancillaryData: string): Promise<BN> {
-    // First get all relay events emitted at the request timestamp.
-    const matchedRelays = this.relays.filter((relay: Relay) => relay.relayTimestamp === time);
-
-    // Next, Parse ancillary data for relay request and find relay if possible with matching params.
+    // Parse ancillary data for relay request and find deposit if possible with matching params.
     const parsedAncillaryData: RelayAncillaryData = (parseAncillaryData(
       ancillaryData
     ) as unknown) as RelayAncillaryData;
-    const matchedRelay = matchedRelays.filter(
-      (relay: Relay) =>
-        relay.depositId === parsedAncillaryData.depositId &&
-        relay.depositTimestamp === parsedAncillaryData.depositTimestamp &&
-        relay.recipient.substr(2).toLowerCase() === parsedAncillaryData.recipient &&
-        relay.sender.substr(2).toLowerCase() === parsedAncillaryData.l2Sender &&
-        relay.l1Token.substr(2).toLowerCase() === parsedAncillaryData.l1Token &&
-        relay.amount === parsedAncillaryData.amount.toString() &&
-        relay.slowRelayFeePct === parsedAncillaryData.slowRelayFeePct.toString() &&
-        relay.instantRelayFeePct === parsedAncillaryData.instantRelayFeePct.toString() &&
-        relay.quoteTimestamp === parsedAncillaryData.quoteTimestamp &&
-        relay.realizedLpFeePct === parsedAncillaryData.realizedLpFeePct.toString() &&
-        relay.slowRelayer.substr(2).toLowerCase() === parsedAncillaryData.slowRelayer &&
-        relay.depositContract.substr(2).toLowerCase() === parsedAncillaryData.depositContract
-    );
-
-    // TODO: Do we need to handle the case where all of these params are matched and matchedRelay.length > 1?
-    if (matchedRelay.length === 0) {
-      this.logger.debug({
-        at: "InsuredBridgePriceFeed",
-        message: "No relay event found for price request time",
-        priceRequestTime: time,
-      });
-      return this.toBNWei(isRelayValid.No);
-    }
-
-    const relay = matchedRelay[0];
-
-    // Validate that relay matches a deposit struct exactly.
-    const matchedDeposits = this.deposits.filter(
+    const matchedDeposit = this.deposits.filter(
       (deposit: Deposit) =>
-        deposit.depositId === relay.depositId &&
-        deposit.depositHash === relay.depositHash &&
-        deposit.timestamp === relay.depositTimestamp &&
-        deposit.sender === relay.sender &&
-        deposit.recipient === relay.recipient &&
-        deposit.l1Token === relay.l1Token &&
-        deposit.amount === relay.amount &&
-        deposit.slowRelayFeePct === relay.slowRelayFeePct &&
-        deposit.instantRelayFeePct === relay.instantRelayFeePct &&
-        deposit.quoteTimestamp === relay.quoteTimestamp
+        deposit.depositId === parsedAncillaryData.depositId &&
+        deposit.timestamp === parsedAncillaryData.depositTimestamp &&
+        deposit.recipient.substr(2).toLowerCase() === parsedAncillaryData.recipient &&
+        deposit.sender.substr(2).toLowerCase() === parsedAncillaryData.l2Sender &&
+        deposit.l1Token.substr(2).toLowerCase() === parsedAncillaryData.l1Token &&
+        deposit.amount === parsedAncillaryData.amount.toString() &&
+        deposit.slowRelayFeePct === parsedAncillaryData.slowRelayFeePct.toString() &&
+        deposit.instantRelayFeePct === parsedAncillaryData.instantRelayFeePct.toString() &&
+        deposit.quoteTimestamp === parsedAncillaryData.quoteTimestamp &&
+        this.l2Client.bridgeDepositAddress.substr(2).toLowerCase() === parsedAncillaryData.depositContract &&
+        time === parsedAncillaryData.priceRequestTime
     );
-    if (matchedDeposits.length > 1) {
-      throw new Error("TODO: Handle multiple relays for same price request timestamp");
-    } else if (matchedDeposits.length === 0) {
+
+    // TODO: Currently, the `time` param is unused as the `relayTime` is not included in the ancillary data. Should we
+    // add it? Does it add anything to this feed?
+
+    // TODO: Do we need to handle the case where all of these params are matched and matchedDeposit.length > 1?
+    if (matchedDeposit.length === 0) {
       this.logger.debug({
         at: "InsuredBridgePriceFeed",
-        message: "No deposit event matching relay attempt",
+        message: "No deposit event found matching relay request ancillary data and time",
+        parsedAncillaryData,
       });
       return this.toBNWei(isRelayValid.No);
     }
 
     // Validate relays proposed realized fee percentage.
-    const expectedRealizedFeePct = this.l1Client.calculateRealizedLpFeesPctForDeposit(/* matchedDeposits[0] */);
-    if (expectedRealizedFeePct !== relay.realizedLpFeePct) {
+    const expectedRealizedFeePct = this.l1Client.calculateRealizedLpFeesPctForDeposit(/* matchedDeposit[0] */);
+    if (expectedRealizedFeePct !== parsedAncillaryData.realizedLpFeePct.toString()) {
       this.logger.debug({
         at: "InsuredBridgePriceFeed",
-        message: "Matched deposit with relay but realized fee % is incorrect",
+        message: "Matched deposit realized fee % is incorrect",
       });
       return this.toBNWei(isRelayValid.No);
     }
@@ -177,7 +144,5 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
 
     // Store all deposit and relay data.
     this.deposits = this.l2Client.getAllDeposits();
-    this.relays = this.l1Client.getAllRelayedDeposits();
-    // TODO: This returns all relayed deposits including already disputed and settled ones. We should filter those out.
   }
 }
