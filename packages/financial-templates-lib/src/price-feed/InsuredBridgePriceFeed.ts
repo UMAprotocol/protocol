@@ -146,10 +146,6 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
       return this.toBNWei(isRelayValid.No);
     }
 
-    // TODO: Do we need to the deposit box contract address? This is the only param in the RelayAncillaryData that isn't
-    // checked against the l1Client's returned relay data. We should consider including this in the `BridgePool`'s Relay
-    // struct so that we can easily return it in the l1Client's relay data.
-
     // Passed all checks, relay is valid!
     return this.toBNWei(isRelayValid.Yes);
   }
