@@ -261,7 +261,7 @@ describe("BridgePool", () => {
     };
     relayData = {
       relayState: InsuredBridgeRelayStateEnum.UNINITIALIZED,
-      priceRequestTime: (await optimisticOracle.methods.getCurrentTime().call()).toString(),
+      priceRequestTime: 0,
       realizedLpFeePct: defaultRealizedLpFee,
       slowRelayer: relayer,
       instantRelayer: ZERO_ADDRESS,
@@ -312,7 +312,7 @@ describe("BridgePool", () => {
     });
     Object.keys(relayData).forEach((key) => {
       // Skip relayData params that are not used by the contract to construct ancillary data,
-      if (key !== "instantRelayer" && key !== "relayState") {
+      if (key !== "instantRelayer" && key !== "relayState" && key !== "priceRequestTime") {
         // Set addresses to lower case and strip leading "0x"'s in order to recreate how Solidity encodes addresses
         // to utf8.
         if (relayData[key].toString().startsWith("0x")) {

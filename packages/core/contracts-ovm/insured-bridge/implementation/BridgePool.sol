@@ -536,11 +536,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         // Add relay data.
         intermediateAncillaryData = AncillaryData.appendKeyValueUint(
             intermediateAncillaryData,
-            "priceRequestTime",
-            uint256(_relayData.priceRequestTime)
-        );
-        intermediateAncillaryData = AncillaryData.appendKeyValueUint(
-            intermediateAncillaryData,
             "realizedLpFeePct",
             uint256(_relayData.realizedLpFeePct)
         );

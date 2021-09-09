@@ -71,6 +71,8 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
   // This method returns the validity of a relay price request attempt. The relay request was valid if and only if it:
   // The price request's ancillary data contains parameters that match with an L2 deposit event.
   public async getHistoricalPrice(time: number | string, ancillaryData: string): Promise<BN> {
+    // Note: `time` is unused in this method because it is not included in the relay ancillary data.
+
     // Parse ancillary data for relay request and find deposit if possible with matching params.
     const parsedAncillaryData: RelayAncillaryData = (parseAncillaryData(
       ancillaryData
@@ -86,8 +88,7 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
         deposit.slowRelayFeePct === parsedAncillaryData.slowRelayFeePct.toString() &&
         deposit.instantRelayFeePct === parsedAncillaryData.instantRelayFeePct.toString() &&
         deposit.quoteTimestamp === parsedAncillaryData.quoteTimestamp &&
-        this.l2Client.bridgeDepositAddress.substr(2).toLowerCase() === parsedAncillaryData.depositContract &&
-        time === parsedAncillaryData.priceRequestTime
+        this.l2Client.bridgeDepositAddress.substr(2).toLowerCase() === parsedAncillaryData.depositContract
     );
 
     // TODO: Do we need to handle the case where all of these params are matched and matchedDeposit.length > 1?
