@@ -54,7 +54,7 @@ const lpFeeRatePerSecond = toWei("0.0000015");
 const finalFee = toWei("1");
 const defaultProposerBondPct = toWei("0.05");
 const defaultSlowRelayFeePct = toWei("0.05");
-// const defaultInstantRelayFeePct = toWei("0.05");
+const defaultInstantRelayFeePct = "0";
 const minimumBridgingDelay = 60; // L2->L1 token bridging must wait at least this time.
 const initialPoolLiquidity = toWei("100");
 const depositAmount = toWei("1");
@@ -221,7 +221,7 @@ describe("Relayer.ts", function () {
           l2Token.options.address,
           depositAmount,
           defaultSlowRelayFeePct,
-          "0", // set to zero to force the relayer to slow relay only
+          defaultInstantRelayFeePct,
           currentBlockTime
         )
         .send({ from: l2Depositor });
