@@ -106,10 +106,10 @@ export type AppState = {
     };
   };
   registeredEmps: Set<string>;
+  registeredEmpsMetadata: Map<string, { blockNumber: number }>;
   registeredLsps: Set<string>;
   provider: Provider;
   web3: Web3;
-  lastBlock: number;
   lastBlockUpdate: number;
   collateralAddresses: Set<string>;
   syntheticAddresses: Set<string>;

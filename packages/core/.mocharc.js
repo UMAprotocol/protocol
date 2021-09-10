@@ -4,11 +4,19 @@
 // There are other mocha tests in this package, such as those that test the index.js files. To make this config compatible
 // with the existing tests, you must append `-e2e` to your mocha test command to run these tests. Else, simply run the
 // `index.js` tests. This defaults these tests to be skipped in CI unless explicitly enabled with the flag.
+
+let commonExport = {
+  require: ["ts-node/register/transpile-only"],
+  extension: ["js"],
+  watchExtensions: ["js"],
+  timeout: 100000,
+};
+
 if (!process.argv.includes("--e2e")) {
   console.log(
     "Running mocha tests but skipping e2e tests. To run e2e tests with mocha, append `--e2e` to the mocha test command."
   );
-  module.exports = {};
+  module.exports = commonExport;
 } else {
   const path = require("path");
   const { getAllFilesInPath } = require("@uma/common");
@@ -25,10 +33,7 @@ if (!process.argv.includes("--e2e")) {
   const endToEndTests = allTestFiles.filter((path) => path.endsWith(".e2e.js"));
 
   module.exports = {
-    require: ["ts-node/register/transpile-only"],
-    extension: ["js"],
-    watchExtensions: ["js"],
-    spec: endToEndTests, // mocha will run this sent of test files defined in this array.
-    timeout: 100000,
+    ...commonExport,
+    spec: endToEndTests, // mocha will run the set of test files defined in this array.
   };
 }

@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity >=0.7.6;
 
-import "./OVM_Testable.sol"; //TODO: replace this with the normal UMA Testable once we can use 0.8 solidity.
+import "../external/OVM_Testable.sol"; //TODO: replace this with the normal UMA Testable once we can use 0.8 solidity.
 
 import { OVM_CrossDomainEnabled } from "@eth-optimism/contracts/libraries/bridge/OVM_CrossDomainEnabled.sol";
 import { Lib_PredeployAddresses } from "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
 
-// Define some interfaces and helper libraries. This is temporary until we can bump the solidity
-// version in these contracts to 0.8.x and import the rest of these libs from other UMA contracts in the repo.
+// Define some interfaces and helper libraries. This is temporary until we can bump the solidity version in these
+// contracts to 0.8.x and import the rest of these libs from other UMA contracts in the repo.
 library TokenHelper {
     function safeTransferFrom(
         address token,
@@ -40,7 +40,7 @@ interface StandardBridgeLike {
 
 /**
  * @title OVM Bridge Deposit Box.
- * @notice Accepts deposits on Optimism L2 to relay to Ethereum L1 as part of the UMA insured relayer system.
+ * @notice Accepts deposits on Optimism L2 to relay to Ethereum L1 as part of the UMA insured bridge system.
  */
 
 contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
@@ -76,6 +76,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
     event SetMinimumBridgingDelay(uint64 newMinimumBridgingDelay);
     event WhitelistToken(address l1Token, address l2Token, uint64 lastBridgeTime, address bridgePool);
     event DepositsEnabled(address l2Token, bool depositsEnabled);
+    // TODO: change the order of these to match the way they are used in the bridge pool.
     event FundsDeposited(
         uint256 depositId,
         uint256 timestamp,
@@ -101,7 +102,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
     /**
      * @notice Construct the OVM Bridge Deposit Box
      * @param _bridgeAdmin Address of the cross-chain administrator on L1. This contract deploys new BridgePool
-     * contracts that facilitate withdrawals, and can call permissioned functions on this contract.
+     *    contracts that facilitate withdrawals, and can call permissioned functions on this contract.
      * @param _minimumBridgingDelay Minimum second that must elapse between L2->L1 token transfer to prevent dos.
      * @param timerAddress Timer used to synchronize contract time in testing. Set to 0x000... in production.
      */
@@ -120,7 +121,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
      **************************************/
 
     /**
-     * @notice Changes the L1 administrator associated with this L2 deposit box.
+     * @notice Changes the L1 administrator associated with this L2 deposit deposit box.
      * @dev Only callable by the existing bridgeAdmin via the optimism cross domain messenger.
      * @param _bridgeAdmin address of the new L1 admin contract.
      */
@@ -159,9 +160,6 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
         emit WhitelistToken(l1Token, l2Token, uint64(getCurrentTime()), l1BridgePool);
     }
 
-    // TODO: Also provide method to blanket enable/disable entire contract? We might want both that functionality
-    // along with the ability to enable/disable individual L2 tokens.
-
     /**
      * @notice L1 owner can enable/disable deposits for a whitelisted tokens.
      * @dev Only callable by the existing bridgeAdmin via the optimism cross domain messenger.
@@ -180,7 +178,6 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
     /**
      * @notice Called by L2 user to bridge funds between L2 and L1.
      * @dev Emits the `FundsDeposited` event which relayers listen for as part of the bridging action.
-     * @dev Max fee Pct
      * @dev The caller must first approve this contract to spend `amount` of `l2Token`.
      * @param recipient L1 address that should receive the tokens.
      * @param l2Token L2 token to deposit.
@@ -199,6 +196,8 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
         uint64 quoteTimestamp
     ) public onlyIfDepositsEnabled(l2Token) {
         require(isWhitelistToken(l2Token), "deposit token not whitelisted");
+        // We limit the sum of slow and instant relay fees to 50% to prevent the user spending all their funds on fees.
+        // The realizedLPFeePct on L1 is limited to 50% so the total spent on fees does not ever exceed 100%.
         require(slowRelayFeePct <= 0.25e18, "slowRelayFeePct can not exceed 25%");
         require(instantRelayFeePct <= 0.25e18, "instantRelayFeePct can not exceed 25%");
 

@@ -1,9 +1,10 @@
-const { ETHVIXPriceFeed } = require("../../src/price-feed/EthVixPriceFeed");
-const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
+const { web3 } = require("hardhat");
+const { assert } = require("chai");
+const { ETHVIXPriceFeed } = require("../../dist/price-feed/EthVixPriceFeed");
+const { NetworkerMock } = require("../../dist/price-feed/NetworkerMock");
 const { parseFixed } = require("@uma/common");
 const moment = require("moment");
 const winston = require("winston");
-const { assert } = require("hardhat");
 
 describe("EthVixPriceFeed.js", () => {
   let networker;
@@ -112,7 +113,7 @@ describe("EthVixPriceFeed.js", () => {
 
   describe("Before an initial update has been performed", () => {
     it("does not have a last update time", () => {
-      assert.isUndefined(priceFeed.getLastUpdateTime());
+      assert.isNull(priceFeed.getLastUpdateTime());
     });
 
     it("throws when the ethVIX price is requested", () => {

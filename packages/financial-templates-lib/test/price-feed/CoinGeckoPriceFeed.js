@@ -1,11 +1,14 @@
-const { CoinGeckoPriceFeed } = require("../../src/price-feed/CoinGeckoPriceFeed");
-const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
+const { web3 } = require("hardhat");
+const { assert } = require("chai");
+
+const { CoinGeckoPriceFeed } = require("../../dist/price-feed/CoinGeckoPriceFeed");
+const { NetworkerMock } = require("../../dist/price-feed/NetworkerMock");
 const winston = require("winston");
 const { parseFixed } = require("@uma/common");
 
 const Convert = (decimals) => (number) => parseFixed(number.toString().substring(0, decimals), decimals).toString();
 
-contract("CoinGeckoPriceFeed.js", function () {
+describe("CoinGeckoPriceFeed.js", function () {
   let coinGeckoPriceFeed;
   let networker;
   let mockTime;

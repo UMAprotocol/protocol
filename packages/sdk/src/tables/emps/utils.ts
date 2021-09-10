@@ -25,4 +25,5 @@ export type Data = {
   sponsors?: string[] | null;
   gcr?: string | null;
   expired?: boolean | null;
+  createdTimestamp?: number | null;
 };

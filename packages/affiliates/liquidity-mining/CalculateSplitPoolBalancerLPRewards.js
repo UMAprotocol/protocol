@@ -1,7 +1,7 @@
 require("dotenv").config();
 const fs = require("fs");
 const path = require("path");
-const { getAbi } = require("@uma/core");
+const { getAbi } = require("@uma/contracts-node");
 const { getWeb3 } = require("@uma/common");
 const web3 = getWeb3();
 const { _fetchBalancerPoolInfo, _calculatePayoutsBetweenBlocks } = require("./CalculateBalancerLPRewards"); // re-use balancer query function.

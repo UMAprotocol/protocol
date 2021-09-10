@@ -11,10 +11,10 @@ const func = async function (hre) {
   const Finder = await deployments.get("Finder");
 
   // Set the GAT percentage to 5%
-  const gatPercentage = { rawValue: web3.utils.toWei("0.05", "ether") };
+  const gatPercentage = { rawValue: hre.web3.utils.toWei("0.05", "ether") };
 
   // Set the inflation rate.
-  const inflationRate = { rawValue: web3.utils.toWei("0.0005", "ether") };
+  const inflationRate = { rawValue: hre.web3.utils.toWei("0.0005", "ether") };
 
   // Set the rewards expiration timeout.
   const rewardsExpirationTimeout = 60 * 60 * 24 * 14; // Two weeks.

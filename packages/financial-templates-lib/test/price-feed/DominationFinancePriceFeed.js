@@ -1,8 +1,10 @@
-const { DominationFinancePriceFeed } = require("../../src/price-feed/DominationFinancePriceFeed");
-const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
+const { web3 } = require("hardhat");
+const { assert } = require("chai");
+const { DominationFinancePriceFeed } = require("../../dist/price-feed/DominationFinancePriceFeed");
+const { NetworkerMock } = require("../../dist/price-feed/NetworkerMock");
 const winston = require("winston");
 
-contract("DominationFinancePriceFeed.js", function () {
+describe("DominationFinancePriceFeed.js", function () {
   let priceFeed;
   let invertedPriceFeed;
   let mockTime = 1588376548;

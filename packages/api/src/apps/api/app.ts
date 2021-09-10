@@ -29,12 +29,12 @@ export default async (env: ProcessEnv) => {
   // we need web3 for syth price feeds
   const web3 = new Web3(env.CUSTOM_NODE_URL);
 
-  // how many blocks to skip before running updates on contract state
-  const updateBlocks = Number(env.UPDATE_BLOCKS || 1);
+  // how often to run expensive state updates, defaults to 10 minutes
+  const updateRateS = Number(env.UPDATE_RATE_S || 10 * 60);
   // default to 10 days worth of blocks
   const oldestBlock = Number(env.OLDEST_BLOCK_MS || 10 * 60 * 60 * 24 * 1000);
 
-  assert(updateBlocks > 0, "updateBlocks must be 1 or higher");
+  assert(updateRateS >= 1, "UPDATE_RATE_S must be 1 or higher");
 
   // state shared between services
   const appState: AppState = {
@@ -99,9 +99,9 @@ export default async (env: ProcessEnv) => {
         },
       },
     },
-    lastBlock: 0,
     lastBlockUpdate: 0,
     registeredEmps: new Set<string>(),
+    registeredEmpsMetadata: new Map(),
     registeredLsps: new Set<string>(),
     collateralAddresses: new Set<string>(),
     syntheticAddresses: new Set<string>(),
@@ -120,7 +120,7 @@ export default async (env: ProcessEnv) => {
     // these services can optionally be configured with a config object, but currently they are undefined or have defaults
     blocks: Services.Blocks(undefined, appState),
     emps: Services.EmpState({ debug }, appState),
-    registry: Services.Registry({ debug }, appState),
+    registry: await Services.Registry({ debug }, appState),
     collateralPrices: Services.CollateralPrices({ debug }, appState),
     syntheticPrices: Services.SyntheticPrices(
       {
@@ -135,24 +135,29 @@ export default async (env: ProcessEnv) => {
     erc20s: Services.Erc20s({ debug }, appState),
     empStats: Services.stats.Emp({ debug }, appState),
     marketPrices: Services.MarketPrices({ debug }, appState),
-    lspCreator: Services.MultiLspCreator({ debug, addresses: lspCreatorAddresses }, appState),
+    lspCreator: await Services.MultiLspCreator({ debug, addresses: lspCreatorAddresses }, appState),
     lsps: Services.LspState({ debug }, appState),
     lspStats: Services.stats.Lsp({ debug }, appState),
     globalStats: Services.stats.Global({ debug }, appState),
   };
 
+  const initBlock = await provider.getBlock("latest");
+
   // warm caches
-  await services.registry();
+  await services.registry(appState.lastBlockUpdate, initBlock.number);
   console.log("Got all EMP addresses");
 
-  await services.lspCreator.update();
+  await services.lspCreator.update(appState.lastBlockUpdate, initBlock.number);
   console.log("Got all LSP addresses");
 
-  await services.emps(0);
+  await services.emps(appState.lastBlockUpdate, initBlock.number);
   console.log("Updated EMP state");
 
-  await services.lsps.update(0);
+  await services.lsps.update(appState.lastBlockUpdate, initBlock.number);
   console.log("Updated LSP state");
+
+  // we've update our state based on latest block we queried
+  appState.lastBlockUpdate = initBlock.number;
 
   await services.erc20s.update();
   console.log("Updated tokens");
@@ -199,33 +204,20 @@ export default async (env: ProcessEnv) => {
   ];
 
   await Express({ port: Number(env.EXPRESS_PORT), debug }, channels)();
+  console.log("Started Express Server, API accessible");
 
   // break all state updates by block events into a cleaner function
   async function updateByBlock(blockNumber: number) {
     await services.blocks.handleNewBlock(blockNumber);
-    // dont do update if this number or blocks hasnt passed
-    if (blockNumber - appState.lastBlockUpdate >= updateBlocks) {
-      const end = profile("Updating state from block event");
-      // update everyting
-      await services.registry(appState.lastBlock, blockNumber);
-      await services.lspCreator.update(appState.lastBlock, blockNumber);
-      await services.emps(appState.lastBlock, blockNumber);
-      await services.lsps.update(appState.lastBlock, blockNumber);
-      await services.erc20s.update();
-
-      end();
-      appState.lastBlockUpdate = blockNumber;
-    }
-    appState.lastBlock = blockNumber;
+    // update everyting
+    await services.registry(appState.lastBlockUpdate, blockNumber);
+    await services.lspCreator.update(appState.lastBlockUpdate, blockNumber);
+    await services.emps(appState.lastBlockUpdate, blockNumber);
+    await services.lsps.update(appState.lastBlockUpdate, blockNumber);
+    await services.erc20s.update();
+    appState.lastBlockUpdate = blockNumber;
     await services.blocks.cleanBlocks(oldestBlock);
   }
-
-  // main update loop, update every block
-  provider.on("block", (blockNumber: number) => {
-    const end = profile("Block event starting");
-    updateByBlock(blockNumber).catch(console.error).finally(end);
-  });
-
   // separate out price updates into a different loop to query every few minutes
   async function updatePrices() {
     await services.collateralPrices.update();
@@ -235,6 +227,19 @@ export default async (env: ProcessEnv) => {
     await services.lspStats.update();
     await services.globalStats.update();
   }
+
+  // wait update rate before running loops, since all state was just updated on init
+  await new Promise((res) => setTimeout(res, updateRateS * 1000));
+
+  console.log("Starting API update loops");
+
+  // main update loop for all state, executes immediately and waits for updateRateS
+  utils.loop(async () => {
+    const block = await provider.getBlock("latest");
+    console.log("Running state updates", block.number, appState.lastBlockUpdate);
+    const end = profile("Updating state from block event");
+    updateByBlock(block.number).catch(console.error).finally(end);
+  }, updateRateS * 1000);
 
   // coingeckos prices don't update very fast, so set it on an interval every few minutes
   utils.loop(async () => {

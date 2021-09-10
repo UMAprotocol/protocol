@@ -1,6 +1,6 @@
 require("dotenv").config();
 const { Emp } = require("../libs/contracts");
-const { getAbi } = require("@uma/core");
+const { getAbi } = require("@uma/contracts-node");
 const address = "0x45788a369f3083c02b942aEa02DBa25C466a773F";
 const Web3 = require("web3");
 // this was added to figure out why contract calls were failing. it turns out it was due to importing web3 from getWeb3 in common

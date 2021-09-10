@@ -1,9 +1,11 @@
-const { toWei, toBN } = web3.utils;
+const Web3 = require("web3");
+const { assert } = require("chai");
+const { toWei, toBN } = Web3.utils;
 
-const { MedianizerPriceFeed } = require("../../src/price-feed/MedianizerPriceFeed");
-const { PriceFeedMock } = require("../../src/price-feed/PriceFeedMock");
+const { MedianizerPriceFeed } = require("../../dist/price-feed/MedianizerPriceFeed");
+const { PriceFeedMock } = require("../../dist/price-feed/PriceFeedMock");
 
-contract("MedianizerPriceFeed.js", function () {
+describe("MedianizerPriceFeed.js", function () {
   it("Update", async function () {
     const priceFeeds = [new PriceFeedMock()];
 
