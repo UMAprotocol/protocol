@@ -3,6 +3,7 @@ import {
   InsuredBridgeL1Client,
   InsuredBridgeL2Client,
   lastSpyLogIncludes,
+  GasEstimator,
 } from "@uma/financial-templates-lib";
 const { predeploys } = require("@eth-optimism/contracts");
 import winston from "winston";
@@ -13,7 +14,7 @@ const { assert } = require("chai");
 import { interfaceName, TokenRolesEnum, HRE } from "@uma/common";
 
 const { web3, getContract } = hre as HRE;
-const { toWei, utf8ToHex } = web3.utils;
+const { toWei, toBN, utf8ToHex } = web3.utils;
 
 const { deployOptimismContractMock } = require("../../core/test/insured-bridge/helpers/SmockitHelper.js");
 
@@ -53,7 +54,7 @@ const lpFeeRatePerSecond = toWei("0.0000015");
 const finalFee = toWei("1");
 const defaultProposerBondPct = toWei("0.05");
 const defaultSlowRelayFeePct = toWei("0.05");
-const defaultInstantRelayFeePct = toWei("0.05");
+// const defaultInstantRelayFeePct = toWei("0.05");
 const minimumBridgingDelay = 60; // L2->L1 token bridging must wait at least this time.
 const initialPoolLiquidity = toWei("100");
 const depositAmount = toWei("1");
@@ -78,6 +79,7 @@ describe("Relayer.ts", function () {
   let relayer: any;
   let l1Client: any;
   let l2Client: any;
+  let gasEstimator: any;
 
   before(async function () {
     l1Accounts = await web3.eth.getAccounts();
@@ -184,7 +186,9 @@ describe("Relayer.ts", function () {
     l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address);
     l2Client = new InsuredBridgeL2Client(spyLogger, web3, bridgeDepositBox.options.address);
 
-    relayer = new Relayer(spyLogger, web3, l1Client, l2Client, [l1Token.options.address], l1Relayer);
+    gasEstimator = new GasEstimator(spyLogger);
+
+    relayer = new Relayer(spyLogger, gasEstimator, l1Client, l2Client, [l1Token.options.address], l1Relayer);
   });
   it("Initialization is correct", async function () {
     assert.equal(relayer.l1Client.bridgeAdminAddress, bridgeAdmin.options.address);
@@ -217,14 +221,20 @@ describe("Relayer.ts", function () {
           l2Token.options.address,
           depositAmount,
           defaultSlowRelayFeePct,
-          defaultInstantRelayFeePct,
+          "0", // set to zero to force the relayer to slow relay only
           currentBlockTime
         )
         .send({ from: l2Depositor });
       await Promise.all([l1Client.update(), l2Client.update()]);
+      // As the relayer does not have enough token balance to do the relay (0 minted) should do nothing .
       await relayer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "Not relaying deposit"));
 
-      assert.isTrue(lastSpyLogIncludes(spy, "Slow relaying deposit"));
+      // Mint the relayer some tokens and try again.
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      await relayer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "Slow Relay executed"));
     });
   });
 });

@@ -1,18 +1,28 @@
+import Web3 from "web3";
+const { toBN } = Web3.utils;
+
 import { ZERO_ADDRESS } from "@uma/common";
 import { getAbi } from "@uma/contracts-node";
-import type { BridgeAdminWeb3, BridgePoolWeb3 } from "@uma/contracts-node";
-import Web3 from "web3";
-import type { Logger } from "winston";
 import { Deposit } from "./InsuredBridgeL2Client";
 
-enum relayState {
+import type { BridgeAdminWeb3, BridgePoolWeb3 } from "@uma/contracts-node";
+import type { BN } from "@uma/common";
+import type { Logger } from "winston";
+
+enum RelayState {
   Pending,
   SpedUp,
   Disputed,
   Finalized,
 }
 
-interface Relay {
+export enum RelayAbility {
+  Any, // Deposit on L2, nothing yet on L1. Can be slow relayed and can be sped up.
+  SpeedUpOnly, // Deposit on L2 and has been slow relayed on L1. Can be sped up to instantly relay.
+  None, // Relay has been finalized through slow relay passed liveness or instantly relayed. Cant do anything.
+}
+
+export interface Relay {
   depositId: number;
   sender: string;
   slowRelayer: string;
@@ -28,7 +38,7 @@ interface Relay {
   priceRequestAncillaryDataHash: string;
   depositHash: string;
   depositContract: string;
-  relayState: relayState;
+  relayState: RelayState;
 }
 
 export class InsuredBridgeL1Client {
@@ -39,7 +49,6 @@ export class InsuredBridgeL1Client {
 
   private firstBlockToSearch: number;
 
-  // Helper functions.
   private readonly toWei = Web3.utils.toWei;
 
   constructor(
@@ -80,21 +89,34 @@ export class InsuredBridgeL1Client {
   }
 
   getPendingRelayedDeposits(): Relay[] {
-    return this.getAllRelayedDeposits().filter((relay: Relay) => relay.relayState === relayState.Pending);
+    return this.getAllRelayedDeposits().filter((relay: Relay) => relay.relayState === RelayState.Pending);
   }
 
   getPendingRelayedDepositsForL1Token(l1Token: string): Relay[] {
-    return this.getRelayedDepositsForL1Token(l1Token).filter((relay: Relay) => relay.relayState === relayState.Pending);
+    return this.getRelayedDepositsForL1Token(l1Token).filter((relay: Relay) => relay.relayState === RelayState.Pending);
   }
 
-  // TODO: we might want to add other accessors that do other forms of filtering.
-
-  calculateRealizedLpFeesPctForDeposit(/* deposit: any*/): string {
-    return this.toWei("0.05");
+  async calculateRealizedLpFeePctForDeposit(deposit: Deposit): Promise<BN> {
+    console.log(deposit);
+    return toBN(this.toWei("0.05"));
   }
 
-  hasL2DepositBeenRelayed(l2Deposit: Deposit): boolean {
-    return this.relays[l2Deposit.l1Token][l2Deposit.depositHash] != undefined;
+  getDepositRelayAbility(l2Deposit: Deposit): RelayAbility {
+    const relay = this.relays[l2Deposit.l1Token][l2Deposit.depositHash];
+    // If the relay is undefined then the deposit has not yet been sent on L1 and can be relayed.
+    if (relay === undefined) return RelayAbility.Any;
+    // Else, if the relatable state is "Pending" then the deposit can be sped up to an instant relay.
+    else if (relay.relayState === RelayState.Pending) return RelayAbility.SpeedUpOnly;
+    // If neither condition is met then the relay is finalized.
+    return RelayAbility.None;
+  }
+
+  getBridgePoolForDeposit(l2Deposit: Deposit): BridgePoolWeb3 {
+    return this.bridgePools[l2Deposit.l1Token];
+  }
+
+  async getProposerBondPct(): Promise<BN> {
+    return toBN(await this.bridgeAdmin.methods.proposerBondPct().call());
   }
 
   async update(): Promise<void> {
@@ -146,7 +168,7 @@ export class InsuredBridgeL1Client {
           priceRequestAncillaryDataHash: depositRelayedEvent.returnValues.priceRequestAncillaryDataHash,
           depositHash: depositRelayedEvent.returnValues.depositHash,
           depositContract: depositRelayedEvent.returnValues.depositContract,
-          relayState: relayState.Pending,
+          relayState: RelayState.Pending,
         };
 
         // If the local data contains this deposit ID then this is a re-relay of a disputed relay. In this case, we need
@@ -165,16 +187,16 @@ export class InsuredBridgeL1Client {
       for (const relaySpedUpEvent of relaySpedUpEvents) {
         this.relays[l1Token][relaySpedUpEvent.returnValues.depositHash].instantRelayer =
           relaySpedUpEvent.returnValues.instantRelayer;
-        this.relays[l1Token][relaySpedUpEvent.returnValues.depositHash].relayState = relayState.SpedUp;
+        this.relays[l1Token][relaySpedUpEvent.returnValues.depositHash].relayState = RelayState.SpedUp;
       }
 
       // For all RelayDisputed, set the state of the relay to disputed.
       for (const relayDisputedEvent of relayDisputedEvents) {
-        this.relays[l1Token][relayDisputedEvent.returnValues.depositHash].relayState = relayState.Disputed;
+        this.relays[l1Token][relayDisputedEvent.returnValues.depositHash].relayState = RelayState.Disputed;
       }
 
       for (const relaySettledEvent of relaySettledEvents) {
-        this.relays[l1Token][relaySettledEvent.returnValues.depositHash].relayState = relayState.Finalized;
+        this.relays[l1Token][relaySettledEvent.returnValues.depositHash].relayState = RelayState.Finalized;
       }
     }
     this.firstBlockToSearch = blockSearchConfig.toBlock + 1;
