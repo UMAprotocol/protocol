@@ -105,11 +105,8 @@ describe("InsuredBridgeL1Client", function () {
     return { depositHash, relayAncillaryData, relayAncillaryDataHash };
   };
 
-  // Returns expected relay information for the relay that occurred at `relayTime`.
-  const syncExpectedRelayedDepositInformation = (relayTime) => {
+  const syncExpectedRelayedDepositInformation = () => {
     expectedRelayedDepositInformation = {
-      quoteTimestamp: Number(depositData.quoteTimestamp),
-      relayTimestamp: Number(relayTime),
       depositId: depositData.depositId,
       sender: depositData.l2Sender,
       slowRelayer: relayData.slowRelayer,
@@ -259,7 +256,7 @@ describe("InsuredBridgeL1Client", function () {
       bridgePool
     ));
 
-    syncExpectedRelayedDepositInformation((await optimisticOracle.methods.getCurrentTime().call()).toString());
+    syncExpectedRelayedDepositInformation();
   });
   it("Client initial setup", async function () {
     // Before the client is updated, client should error out.
@@ -531,7 +528,7 @@ describe("InsuredBridgeL1Client", function () {
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
 
       // Sync the modified deposit and relay data with the expected returned data and store it.
-      syncExpectedRelayedDepositInformation((await optimisticOracle.methods.getCurrentTime().call()).toString());
+      syncExpectedRelayedDepositInformation();
 
       ({ depositHash, relayAncillaryData, relayAncillaryDataHash } = await generateRelayData(
         depositData,
@@ -561,7 +558,7 @@ describe("InsuredBridgeL1Client", function () {
       await bridgePool2.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
       // Sync the modified deposit and relay data with the expected returned data and store it.
-      syncExpectedRelayedDepositInformation((await optimisticOracle.methods.getCurrentTime().call()).toString());
+      syncExpectedRelayedDepositInformation();
       ({ depositHash, relayAncillaryData, relayAncillaryDataHash } = await generateRelayData(
         depositData,
         relayData,

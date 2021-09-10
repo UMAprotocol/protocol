@@ -3,10 +3,11 @@ import Web3 from "web3";
 import { parseAncillaryData } from "@uma/common";
 import { BN } from "../types";
 import type { Logger } from "winston";
-import { InsuredBridgeL1Client, Relay } from "../clients/InsuredBridgeL1Client";
+import { InsuredBridgeL1Client } from "../clients/InsuredBridgeL1Client";
 import { InsuredBridgeL2Client, Deposit } from "../clients/InsuredBridgeL2Client";
 
-const { toBN, toWei } = Web3.utils;
+const { toBN, toWei, toChecksumAddress } = Web3.utils;
+const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 
 enum isRelayValid {
   No, // Should be 0
@@ -42,29 +43,23 @@ interface RelayAncillaryData {
 export class InsuredBridgePriceFeed extends PriceFeedInterface {
   private readonly decimals: number;
   private readonly logger: Logger;
-  private readonly web3: Web3;
   private readonly l1Client: InsuredBridgeL1Client;
   private readonly l2Client: InsuredBridgeL2Client;
-  private relays: Relay[] = [];
   private deposits: Deposit[] = [];
-  private readonly toBNWei: (_number: number) => BN;
 
   /**
    * @notice Constructs the InsuredBridgePriceFeed.
    * @param {Object} logger Winston module used to send logs.
-   * @param {Object} web3 Provider to connect to Ethereum network.
    * @param {Object} l1Client Fetches and returns latest state of L1 pool and admin contracts.
    * @param {Object} l2Client Fetches and returns latest state of L2 deposit contract.
    */
-  constructor({ logger, web3, l1Client, l2Client }: Params) {
+  constructor({ logger, l1Client, l2Client }: Params) {
     super();
 
     this.decimals = 18;
     this.logger = logger;
-    this.web3 = web3;
     this.l1Client = l1Client;
     this.l2Client = l2Client;
-    this.toBNWei = (_number) => toBN(toWei(_number.toString()));
   }
 
   // This method returns the validity of a relay price request attempt. The relay request was valid if and only if it:
@@ -80,14 +75,14 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
       (deposit: Deposit) =>
         deposit.depositId === parsedAncillaryData.depositId &&
         deposit.timestamp === parsedAncillaryData.depositTimestamp &&
-        deposit.recipient.substr(2).toLowerCase() === parsedAncillaryData.recipient &&
-        deposit.sender.substr(2).toLowerCase() === parsedAncillaryData.l2Sender &&
-        deposit.l1Token.substr(2).toLowerCase() === parsedAncillaryData.l1Token &&
+        deposit.recipient === toChecksumAddress("0x" + parsedAncillaryData.recipient) &&
+        deposit.sender === toChecksumAddress("0x" + parsedAncillaryData.l2Sender) &&
+        deposit.l1Token === toChecksumAddress("0x" + parsedAncillaryData.l1Token) &&
         deposit.amount === parsedAncillaryData.amount.toString() &&
         deposit.slowRelayFeePct === parsedAncillaryData.slowRelayFeePct.toString() &&
         deposit.instantRelayFeePct === parsedAncillaryData.instantRelayFeePct.toString() &&
         deposit.quoteTimestamp === parsedAncillaryData.quoteTimestamp &&
-        this.l2Client.bridgeDepositAddress.substr(2).toLowerCase() === parsedAncillaryData.depositContract
+        this.l2Client.bridgeDepositAddress === toChecksumAddress("0x" + parsedAncillaryData.depositContract)
     );
 
     // TODO: Do we need to handle the case where all of these params are matched and matchedDeposit.length > 1?
@@ -97,7 +92,7 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
         message: "No deposit event found matching relay request ancillary data and time",
         parsedAncillaryData,
       });
-      return this.toBNWei(isRelayValid.No);
+      return toBNWei(isRelayValid.No);
     }
 
     // Validate relays proposed realized fee percentage.
@@ -107,11 +102,11 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
         at: "InsuredBridgePriceFeed",
         message: "Matched deposit realized fee % is incorrect",
       });
-      return this.toBNWei(isRelayValid.No);
+      return toBNWei(isRelayValid.No);
     }
 
     // Passed all checks, relay is valid!
-    return this.toBNWei(isRelayValid.Yes);
+    return toBNWei(isRelayValid.Yes);
   }
 
   public getLastUpdateTime(): number | null {

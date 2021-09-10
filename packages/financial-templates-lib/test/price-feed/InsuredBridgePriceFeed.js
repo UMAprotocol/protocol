@@ -222,7 +222,7 @@ describe("InsuredBridgePriceFeed", function () {
     l2Client = new InsuredBridgeL2Client(spyLogger, web3, depositBox.options.address);
 
     // Create the InsuredBridgePriceFeed to be tested:
-    pricefeed = new InsuredBridgePriceFeed({ logger: spyLogger, web3, l1Client, l2Client });
+    pricefeed = new InsuredBridgePriceFeed({ logger: spyLogger, l1Client, l2Client });
 
     // Create some data for initial relay.
 
