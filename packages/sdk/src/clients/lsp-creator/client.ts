@@ -29,7 +29,7 @@ export type CreatedLongShortPair = GetEventType<Instance, "CreatedLongShortPair"
 
 export interface EventState {
   contracts?: {
-    [lspAddress: string]: CreatedLongShortPair["args"];
+    [lspAddress: string]: CreatedLongShortPair;
   };
 }
 
@@ -42,7 +42,7 @@ export function reduceEvents(state: EventState, event: Event): EventState {
         ...state,
         contracts: {
           ...contracts,
-          [typedEvent.args.longShortPair]: typedEvent.args,
+          [typedEvent.args.longShortPair]: typedEvent,
         },
       };
     }

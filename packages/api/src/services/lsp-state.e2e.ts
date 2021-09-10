@@ -11,7 +11,14 @@ import "mocha";
 
 type Dependencies = Pick<
   AppState,
-  "lsps" | "registeredLsps" | "provider" | "collateralAddresses" | "shortAddresses" | "longAddresses" | "multicall"
+  | "lsps"
+  | "registeredLsps"
+  | "provider"
+  | "collateralAddresses"
+  | "shortAddresses"
+  | "longAddresses"
+  | "multicall"
+  | "registeredLspsMetadata"
 >;
 
 // this contract updated to have pairName                                 // does not have pairname
@@ -37,6 +44,7 @@ describe("lsp-state service", function () {
         active: lsps.JsMap("Active LSP"),
         expired: lsps.JsMap("Expired LSP"),
       },
+      registeredLspsMetadata: new Map(),
     };
   });
   it("init", async function () {
