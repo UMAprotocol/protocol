@@ -51,7 +51,7 @@ async function getHistoricalPrice(callback) {
     let queryAncillaryData;
     if (!argv.ancillaryData) {
       queryAncillaryData = "0x";
-      console.log(`Optional '--ancillaryData' flag not specified, defaulting to: ${queryIdentifier}`);
+      console.log(`Optional '--ancillaryData' flag not specified, defaulting to: ${queryAncillaryData}`);
     } else {
       queryAncillaryData = argv.ancillaryData;
     }
