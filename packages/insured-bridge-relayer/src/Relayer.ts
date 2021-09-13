@@ -1,21 +1,21 @@
 import winston from "winston";
 import Web3 from "web3";
-const { toWei, fromWei, toBN } = Web3.utils;
-const fromWeiToBN = (number: BN) => toBN(fromWei(number).toString());
+const { toWei, toBN } = Web3.utils;
+const fixedPointAdjustment = toBN(toWei("1"));
 
 import { runTransaction } from "@uma/common";
 import {
   InsuredBridgeL1Client,
   InsuredBridgeL2Client,
-  Deposit,
   GasEstimator,
+  Deposit,
   RelayAbility,
 } from "@uma/financial-templates-lib";
 import { getTokenBalance } from "./RelayerHelpers";
 
 import type { BN, TransactionType } from "@uma/common";
 
-enum RelayType {
+export enum RelayType {
   Slow,
   SpeedUp,
   Instant,
@@ -117,37 +117,39 @@ export class Relayer {
       getTokenBalance(this.l1Client.l1Web3, deposit.l1Token, this.account),
       this.l1Client.getProposerBondPct(),
     ]);
-    console.log("l1TokenBalance", l1TokenBalance);
-    console.log("l1TokenBalance", l1TokenBalance.toString());
     const relayTokenRequirement = this.getRelayTokenRequirement(deposit, proposerBondPct, realizedLpFeePct);
 
+    // There are three different kinds of profits that the bot can produce:
     let slowProfit = toBN("0");
     let speedUpProfit = toBN("0");
     let instantProfit = toBN("0");
-    // Balance is large enough to do a slow relay. No relay action has happened on L1 yet for this deposit.
-    if (l1TokenBalance.gt(relayTokenRequirement.slow) && relayAbility === RelayAbility.Any)
-      slowProfit = toBN(deposit.amount).mul(toBN(deposit.slowRelayFeePct));
+    // Based on the bots token balance, and the relay state we can compute the profitability of each action.
 
-    // Balance is large enough to speed up. Deposit has been relayed but not sped up yet.
-    if (l1TokenBalance.gt(relayTokenRequirement.instant) && relayAbility != RelayAbility.SpeedUpOnly)
-      speedUpProfit = toBN(deposit.amount).mul(toBN(deposit.instantRelayFeePct));
+    // a) Balance is large enough to do a slow relay. No relay action has happened on L1 yet for this deposit.
+    if (l1TokenBalance.gte(relayTokenRequirement.slow) && relayAbility === RelayAbility.Any)
+      slowProfit = toBN(deposit.amount).mul(toBN(deposit.slowRelayFeePct)).div(fixedPointAdjustment);
 
-    // Balance is large enough to slow relay and then speed up. Only considered if no L1 action has happened yet.
+    // b) Balance is large enough to instant relay. Deposit is in any state except finalized (i.e can be slow relayed
+    // and sped up or only sped up.)
+    if (l1TokenBalance.gte(relayTokenRequirement.instant) && relayAbility !== RelayAbility.None)
+      speedUpProfit = toBN(deposit.amount).mul(toBN(deposit.instantRelayFeePct)).div(fixedPointAdjustment);
+
+    // c) Balance is large enough to slow relay and then speed up. Only considered if no L1 action has happened yet as
+    // wont be able to do an instant relay if the relay has already been slow relayed. In that case, should speedUp.
     if (
-      l1TokenBalance.gt(relayTokenRequirement.slow.add(relayTokenRequirement.instant)) &&
+      l1TokenBalance.gte(relayTokenRequirement.slow.add(relayTokenRequirement.instant)) &&
       relayAbility == RelayAbility.Any
     )
       instantProfit = slowProfit.add(speedUpProfit);
 
+    // Finally, decide what action to do based on the relative profits.
     if (instantProfit.gt(speedUpProfit) && instantProfit.gt(slowProfit)) return RelayType.Instant;
     if (speedUpProfit.gt(slowProfit)) return RelayType.SpeedUp;
     if (slowProfit.gt(toBN("0"))) return RelayType.Slow;
     return RelayType.Ignore;
   }
 
-  // TODO: implement these methods.
   private async slowRelay(deposit: Deposit, realizedLpFee: BN) {
-    console.log(deposit);
     const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit);
     const slowRelayTx = bridgePool.methods.relayDeposit(
       deposit.depositId,
@@ -193,19 +195,16 @@ export class Relayer {
         });
       else throw receipt;
     } catch (error) {
-      console.log("ERROR", error);
       this.logger.error({ at: "InsuredBridgeRelayer#Relayer", type: "Something went wrong slow relaying!", error });
     }
   }
 
-  private async speedUpRelay(deposit: Deposit) {
+  private async speedUpRelay(/* deposit: Deposit*/) {
     // TODO: implement
-    console.log(deposit);
   }
 
-  private async instantRelay(deposit: Deposit) {
+  private async instantRelay(/* deposit: Deposit*/) {
     // TODO: implement
-    console.log(deposit);
   }
 
   private getRelayTokenRequirement(
@@ -215,16 +214,15 @@ export class Relayer {
   ): { slow: BN; instant: BN } {
     // bridged amount - the LP fee, - slow relay fee, - instant relay fee
     return {
-      slow: fromWeiToBN(toBN(deposit.amount).mul(proposerBondPct).muln(2)),
-      instant: fromWeiToBN(
-        toBN(deposit.amount).mul(
+      slow: toBN(deposit.amount).mul(proposerBondPct).muln(2).div(fixedPointAdjustment),
+      instant: toBN(deposit.amount)
+        .mul(
           toBN(toWei("1"))
             .sub(realizedLpFeePct)
             .sub(toBN(deposit.slowRelayFeePct))
             .sub(toBN(deposit.instantRelayFeePct))
         )
-      ),
+        .div(fixedPointAdjustment),
     };
   }
 }
-module.exports = { Relayer };

@@ -4,6 +4,8 @@ import {
   InsuredBridgeL2Client,
   lastSpyLogIncludes,
   GasEstimator,
+  Deposit,
+  RelayAbility,
 } from "@uma/financial-templates-lib";
 const { predeploys } = require("@eth-optimism/contracts");
 import winston from "winston";
@@ -54,13 +56,14 @@ const lpFeeRatePerSecond = toWei("0.0000015");
 const finalFee = toWei("1");
 const defaultProposerBondPct = toWei("0.05");
 const defaultSlowRelayFeePct = toWei("0.05");
-const defaultInstantRelayFeePct = "0";
+const defaultInstantRelayFeePct = toWei("0.05");
+const defaultRealizedLpFeePct = toWei("0.05");
 const minimumBridgingDelay = 60; // L2->L1 token bridging must wait at least this time.
 const initialPoolLiquidity = toWei("100");
 const depositAmount = toWei("1");
 
 // Tested file
-import { Relayer } from "../src/Relayer";
+import { Relayer, RelayType } from "../src/Relayer";
 
 describe("Relayer.ts", function () {
   let l1Accounts;
@@ -194,7 +197,128 @@ describe("Relayer.ts", function () {
     assert.equal(relayer.l1Client.bridgeAdminAddress, bridgeAdmin.options.address);
     assert.equal(relayer.l2Client.bridgeDepositAddress, bridgeDepositBox.options.address);
   });
-  describe("Basic relaying functionality", () => {
+  describe("Should relay logic", () => {
+    let deposit: Deposit;
+    let relayAbility: RelayAbility;
+    beforeEach(async function () {
+      // Create a sample deposit with default data.
+      deposit = {
+        depositId: 0,
+        depositHash: "0x123",
+        timestamp: 420,
+        sender: l2Depositor,
+        recipient: l2Depositor,
+        l1Token: l1Token.options.address,
+        amount: depositAmount,
+        slowRelayFeePct: defaultSlowRelayFeePct,
+        instantRelayFeePct: defaultInstantRelayFeePct,
+        quoteTimestamp: 1,
+      };
+
+      // Set the relay ability to any. This represents a deposit that has not had any data brought to L1 yet.
+      relayAbility = RelayAbility.Any;
+    });
+    it("Correctly decides when to do nothing relay", async function () {
+      // There are two cases where the relayer should do nothing: a) it does not have enough token balance and b) when
+      // the relay is already finalized. test each:
+
+      // a) Dont add any tokens to the relayer. The relayer does not have enough to do any action and should do nothing.
+      assert.equal(await relayer.shouldRelay(deposit, relayAbility, toBN(defaultRealizedLpFeePct)), RelayType.Ignore);
+
+      // b) Mint tokens to the relayer BUT set the RelayAbility to None. This is the case once the Relay has already been
+      // finalized by another relayer and there is nothing to do. Again, the return should be Ignore.
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      relayAbility = RelayAbility.None;
+      assert.equal(await relayer.shouldRelay(deposit, relayAbility, toBN(defaultRealizedLpFeePct)), RelayType.Ignore);
+    });
+    it("Correctly decides when to slow relay", async function () {
+      // The only time the relayer should decide to do a slow relay is when: a) the relayer has enough tokens, b) the
+      // deposit has had no other relayer pick it up and c) the deposit contains a instantRelayFeePct set to 0.
+
+      // Mint tokens, set RelayAbility to Any and update instantRelayFeePct.
+      await l1Token.methods.mint(l1Relayer, toBN(defaultProposerBondPct).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      relayAbility = RelayAbility.Any;
+      deposit.instantRelayFeePct = "0";
+      assert.equal(await relayer.shouldRelay(deposit, relayAbility, toBN(defaultRealizedLpFeePct)), RelayType.Slow);
+
+      // Validate the negative cases.
+
+      // a) The amount minted to the relayer is enough to cover the proposer bond but not the instant relay. Therefore
+      // even if the relay is instantly profitable the relayer should choose to slow relay as it's all it can afford.
+      deposit.instantRelayFeePct = toWei("0.05");
+      assert.equal(await relayer.shouldRelay(deposit, relayAbility, toBN(defaultRealizedLpFeePct)), RelayType.Slow);
+
+      // b) If the relayer is sent more tokens and instantRelayFeePct is anything greater than zero with the relay this.state.// set to any then the relayer should not propose a slow relay.
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      assert.notEqual(await relayer.shouldRelay(deposit, relayAbility, toBN(defaultRealizedLpFeePct)), RelayType.Slow);
+    });
+    it("Correctly decides when to instant relay", async function () {
+      // The relayer should instant relay when: a) the relay has not yet been brought onto L1 (uninitialized), b) the
+      // profit from instant relaying is more than the profit from slow relaying(i.e instantRelayFeePct > 0) and c) the
+      // bot has enough token balance to front both the slow relay token requirement AND instant token requirement and
+      // c) the profit from instant relaying is more than the profit from slow relaying (i.e instantRelayFeePct>0).
+
+      // Mint tokens and set RelayAbility to any.
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      relayAbility = RelayAbility.Any;
+      assert.equal(await relayer.shouldRelay(deposit, relayAbility, toBN(defaultRealizedLpFeePct)), RelayType.Instant);
+
+      // Modifying any of the above 3 conditions should make the bot not instant relay.
+
+      // a) RelayAbility set to SpeedUpOnly
+      relayAbility = RelayAbility.SpeedUpOnly;
+      assert.notEqual(
+        await relayer.shouldRelay(deposit, relayAbility, toBN(defaultRealizedLpFeePct)),
+        RelayType.Instant
+      );
+
+      // b) RelayAbility set to SpeedUpOnly back to Any and profit set to something that makes instant relay less profit
+      relayAbility = RelayAbility.Any;
+      deposit.instantRelayFeePct = "0";
+      assert.notEqual(
+        await relayer.shouldRelay(deposit, relayAbility, toBN(defaultRealizedLpFeePct)),
+        RelayType.Instant
+      );
+
+      // c) reset the instantRelayFeePct and set the token balance of the relayer to something too little to instant
+      deposit.instantRelayFeePct = defaultInstantRelayFeePct;
+      await l1Token.methods.transfer(l1Owner, toBN(depositAmount).muln(1.5)).send({ from: l1Relayer });
+      assert.notEqual(
+        await relayer.shouldRelay(deposit, relayAbility, toBN(defaultRealizedLpFeePct)),
+        RelayType.Instant
+      );
+    });
+    it("Correctly decides when to speedup relay", async function () {
+      // The relayer should only speed up if the relay is: a) already relayed by another relayer (in SpeedUpOnly) state
+      // and b) the relayer has enough balance. Under all other conditions it should not do this action.
+
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      relayAbility = RelayAbility.SpeedUpOnly;
+      assert.equal(await relayer.shouldRelay(deposit, relayAbility, toBN(defaultRealizedLpFeePct)), RelayType.SpeedUp);
+
+      // Modify above conditions:
+
+      // a) not in SpeedUpOnly State
+      relayAbility = RelayAbility.Any;
+      assert.notEqual(
+        await relayer.shouldRelay(deposit, relayAbility, toBN(defaultRealizedLpFeePct)),
+        RelayType.SpeedUp
+      );
+
+      // b) reset in  RelayAbility and bot does not have enough balance.
+      relayAbility = RelayAbility.SpeedUpOnly;
+      await l1Token.methods.transfer(l1Owner, toBN(depositAmount).muln(1.5)).send({ from: l1Relayer });
+      assert.notEqual(
+        await relayer.shouldRelay(deposit, relayAbility, toBN(defaultRealizedLpFeePct)),
+        RelayType.SpeedUp
+      );
+    });
+  });
+  describe("Relay transaction execution functionality", () => {
     beforeEach(async function () {
       // Add liquidity to the L1 pool to facilitate the relay action.
       await l1Token.methods.mint(l1LiquidityProvider, initialPoolLiquidity).send({ from: l1Owner });
@@ -206,7 +330,7 @@ describe("Relayer.ts", function () {
       // Mint some tokens for the L2 depositor.
       await l2Token.methods.mint(l2Depositor, depositAmount).send({ from: l2Owner });
     });
-    it("Can correctly detect relays on L2 and bring them over to L1", async function () {
+    it("Can correctly detect and produce slow relays", async function () {
       // Before any relays should do nothing and log accordingly.
       await Promise.all([l1Client.update(), l2Client.update()]);
       await relayer.checkForPendingDepositsAndRelay();
@@ -221,7 +345,7 @@ describe("Relayer.ts", function () {
           l2Token.options.address,
           depositAmount,
           defaultSlowRelayFeePct,
-          defaultInstantRelayFeePct,
+          "0", // set to zero to force slow relay for this test.
           currentBlockTime
         )
         .send({ from: l2Depositor });
