@@ -46,7 +46,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
     // method will error if the bot runner has specified a L1 tokens that is not part of the Bridge Admin whitelist.
     await approveL1Tokens(logger, web3, gasEstimator, accounts[0], config.bridgeAdmin, config.whitelistedRelayL1Tokens);
 
-    const relayer = new Relayer(logger, web3, l1Client, l2Client, config.whitelistedRelayL1Tokens, accounts[0]);
+    const relayer = new Relayer(logger, gasEstimator, l1Client, l2Client, config.whitelistedRelayL1Tokens, accounts[0]);
 
     for (;;) {
       await retry(
