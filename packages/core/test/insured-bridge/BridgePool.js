@@ -383,6 +383,9 @@ describe("BridgePool", () => {
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
       const txn = await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
+      // Relay count increments.
+      assert.equal(await bridgePool.methods.numberOfRelays().call(), "1");
+
       // Check L1 token balances.
       assert.equal(
         (await l1Token.methods.balanceOf(relayer).call()).toString(),
