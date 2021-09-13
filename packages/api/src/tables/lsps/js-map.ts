@@ -12,9 +12,14 @@ export const Table = (type = "LSP") => {
     return table.update(id, { sponsors: Array.from(set.values()) });
   }
 
+  async function setCreatedTimestamp(id: string, timestamp: number) {
+    return table.update(id, { createdTimestamp: timestamp });
+  }
+
   return {
     ...table,
     addSponsors,
+    setCreatedTimestamp,
   };
 };
 // want to export the type as the same name
