@@ -37,14 +37,14 @@ export class MedianizerPriceFeed extends PriceFeedInterface {
   }
 
   // Takes the median of all of the constituent price feeds' historical prices.
-  public async getHistoricalPrice(time: number, verbose = false): Promise<BN> {
+  public async getHistoricalPrice(time: number, ancillaryData: string, verbose = false): Promise<BN> {
     // If failure to fetch any constituent historical prices, then throw
     // array of errors.
     const errors: any[] = [];
     const historicalPrices = await Promise.all(
       this.priceFeeds.map((priceFeed) => {
         return priceFeed
-          .getHistoricalPrice(time, verbose)
+          .getHistoricalPrice(time, ancillaryData, verbose)
           .then((result) => {
             if (!result) throw new Error(`null return value`);
             return result;

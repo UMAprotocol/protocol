@@ -76,6 +76,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
     event SetMinimumBridgingDelay(uint64 newMinimumBridgingDelay);
     event WhitelistToken(address l1Token, address l2Token, uint64 lastBridgeTime, address bridgePool);
     event DepositsEnabled(address l2Token, bool depositsEnabled);
+    // TODO: Should we include a `chainId` in the deposited event?
     // TODO: change the order of these to match the way they are used in the bridge pool.
     event FundsDeposited(
         uint256 depositId,

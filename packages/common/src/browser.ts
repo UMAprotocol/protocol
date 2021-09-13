@@ -1,5 +1,6 @@
 // Only the browser-safe modules.
 export * from "./AbiUtils";
+export * from "./AncillaryDataParser";
 export * from "./AdminUtils";
 export * from "./Constants";
 export * from "./Constants";

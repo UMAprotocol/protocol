@@ -484,6 +484,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         view
         returns (bytes memory)
     {
+        // TODO: Consider adding `chainId` and `relayNonce` to establish relay uniqueness, and removing unneccessary
+        // params.
         bytes memory intermediateAncillaryData = "";
 
         // Add data inferred from the original deposit on L2:
@@ -538,11 +540,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
             intermediateAncillaryData,
             "realizedLpFeePct",
             uint256(_relayData.realizedLpFeePct)
-        );
-        intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
-            intermediateAncillaryData,
-            "slowRelayer",
-            _relayData.slowRelayer
         );
 
         // Add global state data stored by this contract:

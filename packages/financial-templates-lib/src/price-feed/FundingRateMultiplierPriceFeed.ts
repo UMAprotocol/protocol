@@ -45,7 +45,7 @@ export class FundingRateMultiplierPriceFeed extends PriceFeedInterface {
    * @notice Constructs new price feed object that tracks the funding rate multiplier in a particular perpetual contract.
    * @param {Object} logger Winston module used to send logs.
    * @param {Object} perpetualAbi Perpetual abi object to create a contract instance.
-   * @param {Object} web3 Provider from Truffle instance to connect to Ethereum network.
+   * @param {Object} web3 Provider to connect to Ethereum network.
    * @param {String} perpetualAddress Ethereum address of the perpetual to monitor.
    * @param {String} multicallAddress Ethereum address of the multicall contract.
    * @param {Function} getTime Returns the current time.
