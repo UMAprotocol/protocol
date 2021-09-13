@@ -13,17 +13,18 @@ enum relayState {
 }
 
 export interface Relay {
+  chainId: number;
   depositId: number;
   sender: string;
   slowRelayer: string;
   disputedSlowRelayers: string[];
   instantRelayer: string;
-  depositTimestamp: number;
   recipient: string;
   l1Token: string;
   amount: string;
   slowRelayFeePct: string;
   instantRelayFeePct: string;
+  quoteTimestamp: number;
   realizedLpFeePct: string;
   priceRequestAncillaryDataHash: string;
   depositHash: string;
@@ -131,17 +132,18 @@ export class InsuredBridgeL1Client {
 
       for (const depositRelayedEvent of depositRelayedEvents) {
         const relayData: Relay = {
+          chainId: Number(depositRelayedEvent.returnValues.chainId),
           depositId: Number(depositRelayedEvent.returnValues.depositId),
           sender: depositRelayedEvent.returnValues.sender,
           slowRelayer: depositRelayedEvent.returnValues.slowRelayer,
           disputedSlowRelayers: [],
           instantRelayer: ZERO_ADDRESS,
-          depositTimestamp: Number(depositRelayedEvent.returnValues.depositTimestamp),
           recipient: depositRelayedEvent.returnValues.recipient,
           l1Token: depositRelayedEvent.returnValues.l1Token,
           amount: depositRelayedEvent.returnValues.amount,
           slowRelayFeePct: depositRelayedEvent.returnValues.slowRelayFeePct,
           instantRelayFeePct: depositRelayedEvent.returnValues.instantRelayFeePct,
+          quoteTimestamp: Number(depositRelayedEvent.returnValues.quoteTimestamp),
           realizedLpFeePct: depositRelayedEvent.returnValues.realizedLpFeePct,
           priceRequestAncillaryDataHash: depositRelayedEvent.returnValues.priceRequestAncillaryDataHash,
           depositHash: depositRelayedEvent.returnValues.depositHash,

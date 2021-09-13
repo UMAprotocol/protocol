@@ -7,9 +7,9 @@ import Web3 from "web3";
 import type { Logger } from "winston";
 
 export interface Deposit {
+  chainId: number;
   depositId: number;
   depositHash: string;
-  timestamp: number;
   sender: string;
   recipient: string;
   l1Token: string;
@@ -66,9 +66,9 @@ export class InsuredBridgeL2Client {
 
     for (const depositRelayedEvent of depositRelayedEvents) {
       const depositData = {
+        chainId: Number(depositRelayedEvent.returnValues.chainId),
         depositId: Number(depositRelayedEvent.returnValues.depositId),
         depositHash: "", // Filled in after initialization of the remaining variables.
-        timestamp: Number(depositRelayedEvent.returnValues.timestamp),
         sender: depositRelayedEvent.returnValues.sender,
         recipient: depositRelayedEvent.returnValues.recipient,
         l1Token: depositRelayedEvent.returnValues.l1Token,
@@ -88,10 +88,10 @@ export class InsuredBridgeL2Client {
 
   generateDepositHash = (depositData: Deposit): string => {
     const depositDataAbiEncoded = this.l2Web3.eth.abi.encodeParameters(
-      ["uint64", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint64"],
+      ["uint8", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint64"],
       [
+        depositData.chainId,
         depositData.depositId,
-        depositData.timestamp,
         depositData.recipient,
         depositData.sender,
         depositData.l1Token,

@@ -221,11 +221,10 @@ describe("OVM_BridgeDepositBox", () => {
 
       assert.equal((await l2Token.methods.balanceOf(depositBox.options.address).call()).toString(), depositAmount);
 
-      const expectedDepositTimestamp = await timer.methods.getCurrentTime().call();
       await assertEventEmitted(tx, depositBox, "FundsDeposited", (ev) => {
         return (
+          ev.chainId == "69" &&
           ev.depositId == "0" &&
-          ev.timestamp == expectedDepositTimestamp &&
           ev.sender == user1 &&
           ev.recipient == user1 &&
           ev.l1Token == l1TokenAddress &&

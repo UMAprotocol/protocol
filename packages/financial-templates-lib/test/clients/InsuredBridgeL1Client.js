@@ -86,10 +86,10 @@ describe("InsuredBridgeL1Client", function () {
   const generateRelayData = async (depositData, relayData, bridgePool) => {
     // Save other reused values.
     depositDataAbiEncoded = web3.eth.abi.encodeParameters(
-      ["uint64", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint64"],
+      ["uint8", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint64"],
       [
+        depositData.chainId,
         depositData.depositId,
-        depositData.depositTimestamp,
         depositData.recipient,
         depositData.l2Sender,
         depositData.l1Token,
@@ -107,17 +107,18 @@ describe("InsuredBridgeL1Client", function () {
 
   const syncExpectedRelayedDepositInformation = () => {
     expectedRelayedDepositInformation = {
+      chainId: depositData.chainId,
       depositId: depositData.depositId,
       sender: depositData.l2Sender,
       slowRelayer: relayData.slowRelayer,
       disputedSlowRelayers: [],
       instantRelayer: relayData.instantRelayer, // not sped up so should be 0x000...
-      depositTimestamp: Number(depositData.depositTimestamp),
       recipient: depositData.recipient,
       l1Token: depositData.l1Token,
       amount: depositData.amount,
       slowRelayFeePct: depositData.slowRelayFeePct,
       instantRelayFeePct: depositData.instantRelayFeePct,
+      quoteTimestamp: Number(depositData.quoteTimestamp),
       realizedLpFeePct: relayData.realizedLpFeePct,
       priceRequestAncillaryDataHash: relayAncillaryDataHash,
       depositHash: depositHash,
@@ -232,8 +233,8 @@ describe("InsuredBridgeL1Client", function () {
 
     // Store expected relay data that we'll use to verify contract state:
     depositData = {
+      chainId: 69,
       depositId: 1,
-      depositTimestamp: (await optimisticOracle.methods.getCurrentTime().call()).toString(),
       recipient: recipient,
       l2Sender: depositor,
       l1Token: l1Token.options.address,

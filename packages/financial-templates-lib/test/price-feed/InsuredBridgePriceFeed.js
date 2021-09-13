@@ -89,10 +89,10 @@ describe("InsuredBridgePriceFeed", function () {
   const generateRelayData = async (depositData, relayData, bridgePool) => {
     // Save other reused values.
     depositDataAbiEncoded = web3.eth.abi.encodeParameters(
-      ["uint64", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint64"],
+      ["uint8", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint64"],
       [
+        depositData.chainId,
         depositData.depositId,
-        depositData.depositTimestamp,
         depositData.recipient,
         depositData.l2Sender,
         depositData.l1Token,
@@ -229,8 +229,8 @@ describe("InsuredBridgePriceFeed", function () {
     // Store expected relay data that we'll use to verify contract state:
     const expectedDepositTimestamp = Number(await optimisticOracle.methods.getCurrentTime().call());
     depositData = {
+      chainId: 69,
       depositId: 0,
-      depositTimestamp: expectedDepositTimestamp,
       recipient: recipient,
       l2Sender: depositor,
       l1Token: l1Token.options.address,
@@ -269,8 +269,7 @@ describe("InsuredBridgePriceFeed", function () {
       // Deposit some tokens.
       await l2Token.methods.mint(depositor, toWei("200")).send({ from: owner });
       await l2Token.methods.approve(depositBox.options.address, toWei("200")).send({ from: depositor });
-      const depositTimestamp = Number(await timer.methods.getCurrentTime().call());
-      const quoteTimestamp = depositTimestamp + quoteTimestampOffset;
+      const quoteTimestamp = Number(await timer.methods.getCurrentTime().call()) + quoteTimestampOffset;
       await depositBox.methods
         .deposit(
           recipient,
@@ -298,8 +297,7 @@ describe("InsuredBridgePriceFeed", function () {
       // Deposit some tokens.
       await l2Token.methods.mint(depositor, toWei("200")).send({ from: owner });
       await l2Token.methods.approve(depositBox.options.address, toWei("200")).send({ from: depositor });
-      const depositTimestamp = Number(await timer.methods.getCurrentTime().call());
-      const quoteTimestamp = depositTimestamp + quoteTimestampOffset;
+      const quoteTimestamp = Number(await timer.methods.getCurrentTime().call()) + quoteTimestampOffset;
       await depositBox.methods
         .deposit(
           recipient,
@@ -324,11 +322,7 @@ describe("InsuredBridgePriceFeed", function () {
       assert.equal(
         await pricefeed.getHistoricalPrice(
           1,
-          await generateRelayAncillaryData(
-            { ...depositData, depositId: depositData.depositId + 1 },
-            relayData,
-            bridgePool
-          )
+          await generateRelayAncillaryData({ ...depositData, chainId: depositData.chainId + 1 }, relayData, bridgePool)
         ),
         toWei("0")
       );
@@ -336,7 +330,7 @@ describe("InsuredBridgePriceFeed", function () {
         await pricefeed.getHistoricalPrice(
           1,
           await generateRelayAncillaryData(
-            { ...depositData, depositTimestamp: depositTimestamp + 1 },
+            { ...depositData, depositId: depositData.depositId + 1 },
             relayData,
             bridgePool
           )
@@ -402,8 +396,7 @@ describe("InsuredBridgePriceFeed", function () {
       // Deposit some tokens.
       await l2Token.methods.mint(depositor, toWei("200")).send({ from: owner });
       await l2Token.methods.approve(depositBox.options.address, toWei("200")).send({ from: depositor });
-      const depositTimestamp = Number(await timer.methods.getCurrentTime().call());
-      const quoteTimestamp = depositTimestamp + quoteTimestampOffset;
+      const quoteTimestamp = Number(await timer.methods.getCurrentTime().call()) + quoteTimestampOffset;
       await depositBox.methods
         .deposit(
           recipient,

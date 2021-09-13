@@ -135,10 +135,10 @@ describe("BridgePool", () => {
   // Generate ABI encoded deposit data and deposit data hash.
   const generateDepositHash = (depositData) => {
     const depositDataAbiEncoded = web3.eth.abi.encodeParameters(
-      ["uint64", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint64"],
+      ["uint8", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint64"],
       [
+        depositData.chainId,
         depositData.depositId,
-        depositData.depositTimestamp,
         depositData.recipient,
         depositData.l2Sender,
         depositData.l1Token,
@@ -249,8 +249,8 @@ describe("BridgePool", () => {
 
     // Store expected relay data that we'll use to verify contract state:
     depositData = {
+      chainId: 69,
       depositId: 1,
-      depositTimestamp: (await optimisticOracle.methods.getCurrentTime().call()).toString(),
       recipient: recipient,
       l2Sender: depositor,
       l1Token: l1Token.options.address,
@@ -407,10 +407,10 @@ describe("BridgePool", () => {
       // Check event is logged correctly and emits all information needed to recreate the relay and associated deposit.
       await assertEventEmitted(txn, bridgePool, "DepositRelayed", (ev) => {
         return (
+          ev.chainId.toString() === depositData.chainId.toString() &&
           ev.depositId.toString() === depositData.depositId.toString() &&
           ev.sender === depositData.l2Sender &&
           ev.slowRelayer === relayer &&
-          ev.depositTimestamp === depositData.depositTimestamp &&
           ev.recipient === depositData.recipient &&
           ev.l1Token === depositData.l1Token &&
           ev.amount === depositData.amount &&
@@ -457,8 +457,8 @@ describe("BridgePool", () => {
         await didContractThrow(
           bridgePool.methods
             .relayDeposit(
+              depositData.chainId,
               depositData.depositId,
-              depositData.depositTimestamp,
               depositData.recipient,
               depositData.l2Sender,
               depositData.amount,
@@ -610,8 +610,7 @@ describe("BridgePool", () => {
       await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
 
-      // The exact same relay params will fail since the params will produce ancillary data that collides with an
-      // existing OO dispute.
+      // TODO: Relaying again with the exact same relay params will succeed because the relay nonce increments.
       assert(await didContractThrow(bridgePool.methods.relayDeposit(...generateRelayParams()).call({ from: relayer })));
       // Slightly changing the relay params will work.
       assert.ok(
@@ -1134,7 +1133,6 @@ describe("BridgePool", () => {
       // Next, bridge another relay. This time for 50 L1 tokens. Keep the fee percentages at the same size: 10% LP fee
       // 1% slow and 1% instant relay fees. Update the existing data structures to simplify the process.
       depositData.depositId = depositData.depositId + 1;
-      depositData.depositTimestamp = depositData.depositTimestamp + 172800;
       depositData.amount = toWei("50");
       depositData.recipient = rando;
       depositData.quoteTimestamp = depositData.quoteTimestamp + 172800;
