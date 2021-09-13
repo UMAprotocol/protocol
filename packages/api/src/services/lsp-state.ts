@@ -8,11 +8,27 @@ type Instance = uma.clients.lsp.Instance;
 type Config = BaseConfig;
 type Dependencies = Pick<
   AppState,
-  "lsps" | "registeredLsps" | "provider" | "collateralAddresses" | "shortAddresses" | "longAddresses" | "multicall"
+  | "lsps"
+  | "registeredLsps"
+  | "provider"
+  | "collateralAddresses"
+  | "shortAddresses"
+  | "longAddresses"
+  | "multicall"
+  | "registeredLspsMetadata"
 >;
 
 export default (config: Config, appState: Dependencies) => {
-  const { lsps, registeredLsps, provider, collateralAddresses, shortAddresses, longAddresses, multicall } = appState;
+  const {
+    lsps,
+    registeredLsps,
+    registeredLspsMetadata,
+    provider,
+    collateralAddresses,
+    shortAddresses,
+    longAddresses,
+    multicall,
+  } = appState;
   const profile = Profile(config.debug);
 
   // default props we want to query on contract
@@ -120,6 +136,9 @@ export default (config: Config, appState: Dependencies) => {
         });
       }
       // handle the case wehre lsp is not yet expired
+
+      // set created timestamp if needed
+      await updateCreatedTimestamp(address, lsps.expired);
     } else {
       // if it doesnt exist we need to create it
       if (!(await lsps.active.has(address))) {
@@ -142,7 +161,20 @@ export default (config: Config, appState: Dependencies) => {
       }
       // add any new sponsors
       await lsps.active.addSponsors(address, eventState.sponsors || []);
+
+      // set created timestamp if needed
+      await updateCreatedTimestamp(address, lsps.active);
     }
+  }
+  async function updateCreatedTimestamp(address: string, table: lsps.JsMap) {
+    const lsp = await table.get(address);
+    if (lsp.createdTimestamp) return;
+
+    const blockMetadata = registeredLspsMetadata.get(address);
+    if (!blockMetadata) return;
+
+    const block = await provider.getBlock(blockMetadata.blockNumber);
+    await table.setCreatedTimestamp(address, block.timestamp);
   }
   async function updateLsps(addresses: string[], startBlock?: number | "latest", endBlock?: number) {
     return Promise.allSettled(

@@ -112,7 +112,7 @@ describe("InsuredBridgeL1Client", function () {
       slowRelayer: relayData.slowRelayer,
       disputedSlowRelayers: [],
       instantRelayer: relayData.instantRelayer, // not sped up so should be 0x000...
-      depositTimestamp: depositData.depositTimestamp,
+      depositTimestamp: Number(depositData.depositTimestamp),
       recipient: depositData.recipient,
       l1Token: depositData.l1Token,
       amount: depositData.amount,
@@ -529,6 +529,7 @@ describe("InsuredBridgeL1Client", function () {
 
       // Sync the modified deposit and relay data with the expected returned data and store it.
       syncExpectedRelayedDepositInformation();
+
       ({ depositHash, relayAncillaryData, relayAncillaryDataHash } = await generateRelayData(
         depositData,
         relayData,

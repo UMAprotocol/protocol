@@ -152,13 +152,13 @@ export class InsuredBridgeL1Client {
       ]);
 
       for (const depositRelayedEvent of depositRelayedEvents) {
-        const relayData = {
+        const relayData: Relay = {
           depositId: Number(depositRelayedEvent.returnValues.depositId),
           sender: depositRelayedEvent.returnValues.sender,
           slowRelayer: depositRelayedEvent.returnValues.slowRelayer,
           disputedSlowRelayers: [],
           instantRelayer: ZERO_ADDRESS,
-          depositTimestamp: depositRelayedEvent.returnValues.depositTimestamp,
+          depositTimestamp: Number(depositRelayedEvent.returnValues.depositTimestamp),
           recipient: depositRelayedEvent.returnValues.recipient,
           l1Token: depositRelayedEvent.returnValues.l1Token,
           amount: depositRelayedEvent.returnValues.amount,

@@ -4,11 +4,13 @@ import BigNumber from "bignumber.js";
 
 import { MAX_UINT_VAL } from "@uma/common";
 import ExchangeAdapterInterface from "./ExchangeAdapterInterface";
-import { getTruffleContract } from "@uma/core";
+import { getAbi, getBytecode } from "@uma/contracts-node";
+import type { DSProxyManager } from "@uma/financial-templates-lib";
+import type { TransactionReceipt } from "web3-core";
 
 export class UniswapV2Trader implements ExchangeAdapterInterface {
   readonly tradeDeadline: number;
-  readonly UniswapV2Broker: any;
+  readonly UniswapV2Broker: { abi: any; bytecode: string };
   uniswapPair: any;
 
   constructor(
@@ -18,13 +20,13 @@ export class UniswapV2Trader implements ExchangeAdapterInterface {
     readonly uniswapFactoryAddress: string,
     readonly tokenAAddress: string,
     readonly tokenBAddress: string,
-    readonly dsProxyManager: any
+    readonly dsProxyManager: DSProxyManager
   ) {
     this.tradeDeadline = 10 * 60 * 60;
 
-    this.UniswapV2Broker = getTruffleContract("UniswapV2Broker", this.web3 as any);
+    this.UniswapV2Broker = { abi: getAbi("UniswapV2Broker"), bytecode: getBytecode("UniswapV2Broker") };
   }
-  async tradeMarketToDesiredPrice(desiredPrice: BigNumber) {
+  async tradeMarketToDesiredPrice(desiredPrice: BigNumber): Promise<Error | TransactionReceipt> {
     const callCode = this.UniswapV2Broker.bytecode;
 
     const contract = new this.web3.eth.Contract(this.UniswapV2Broker.abi);
