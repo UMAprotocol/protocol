@@ -107,6 +107,7 @@ describe("InsuredBridgeL1Client", function () {
 
   const syncExpectedRelayedDepositInformation = () => {
     expectedRelayedDepositInformation = {
+      relayId: relayData.relayId,
       chainId: depositData.chainId,
       depositId: depositData.depositId,
       sender: depositData.l2Sender,
@@ -120,7 +121,6 @@ describe("InsuredBridgeL1Client", function () {
       instantRelayFeePct: depositData.instantRelayFeePct,
       quoteTimestamp: Number(depositData.quoteTimestamp),
       realizedLpFeePct: relayData.realizedLpFeePct,
-      priceRequestAncillaryDataHash: relayAncillaryDataHash,
       depositHash: depositHash,
       depositContract: depositContractImpersonator,
       relayState: 0, // pending
@@ -244,6 +244,7 @@ describe("InsuredBridgeL1Client", function () {
       quoteTimestamp: defaultQuoteTimestamp,
     };
     relayData = {
+      relayId: 0,
       relayState: InsuredBridgeRelayStateEnum.UNINITIALIZED,
       priceRequestTime: 0,
       realizedLpFeePct: defaultRealizedLpFee,
@@ -524,6 +525,7 @@ describe("InsuredBridgeL1Client", function () {
       depositData.amount = toWei("4.2");
       relayData.realizedLpFeePct = toWei("0.11");
       relayData.slowRelayer = rando;
+      relayData.relayId = 1;
       await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
@@ -538,10 +540,9 @@ describe("InsuredBridgeL1Client", function () {
       ));
       expectedRelayedDepositInformation.relayState = 0; // Pending
       expectedRelayedDepositInformation.depositHash = depositHash;
-      expectedRelayedDepositInformation.priceRequestAncillaryDataHash = relayAncillaryDataHash;
       expectedBridgePool1Relays.push(JSON.parse(JSON.stringify(expectedRelayedDepositInformation)));
 
-      // Again, change some ore variable and relay something on the second bridgePool
+      // Again, change some more variable and relay something on the second bridgePool
       depositData.depositId = 3;
       depositData.recipient = recipient;
       depositData.l2Sender = depositor;
@@ -549,6 +550,7 @@ describe("InsuredBridgeL1Client", function () {
       depositData.amount = toWei("4.21");
       relayData.slowRelayer = relayer;
       relayData.realizedLpFeePct = toWei("0.13");
+      relayData.relayId = 0; // First relay on new Bridge
       await l1Token2.methods.mint(liquidityProvider, initialPoolLiquidity).send({ from: owner });
       await l1Token2.methods
         .approve(bridgePool2.options.address, initialPoolLiquidity)
@@ -566,7 +568,6 @@ describe("InsuredBridgeL1Client", function () {
         bridgePool
       ));
       expectedRelayedDepositInformation.depositHash = depositHash;
-      expectedRelayedDepositInformation.priceRequestAncillaryDataHash = relayAncillaryDataHash;
       let expectedBridgePool2Relays = [expectedRelayedDepositInformation];
 
       await client.update();
