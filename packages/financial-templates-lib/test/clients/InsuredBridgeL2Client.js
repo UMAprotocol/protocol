@@ -39,9 +39,9 @@ describe("InsuredBridgeL2Client", () => {
       ["uint64", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint64"],
       [
         depositData.depositId,
-        depositData.timestamp,
-        depositData.recipient,
-        depositData.sender,
+        depositData.depositTimestamp,
+        depositData.l1Recipient,
+        depositData.l2Sender,
         depositData.l1Token,
         depositData.amount,
         depositData.slowRelayFeePct,
@@ -111,14 +111,14 @@ describe("InsuredBridgeL2Client", () => {
       {
         depositId: 0,
         depositHash: "",
-        timestamp: depositTimestamp,
-        sender: user1,
-        recipient: user1,
+        depositTimestamp,
+        l1Recipient: user1,
+        l2Sender: user1,
         l1Token: l1TokenAddress,
         amount: depositAmount,
-        slowRelayFeePct: slowRelayFeePct,
-        instantRelayFeePct: instantRelayFeePct,
-        quoteTimestamp: quoteTimestamp,
+        slowRelayFeePct,
+        instantRelayFeePct,
+        quoteTimestamp,
       },
     ];
     expectedDeposits[0].depositHash = generateDepositHash(expectedDeposits[0]);
@@ -143,16 +143,69 @@ describe("InsuredBridgeL2Client", () => {
     expectedDeposits.push({
       depositId: 1, // ID should increment, as expected.
       depositHash: "",
-      timestamp: depositTimestamp2,
-      sender: user1,
-      recipient: user2,
+      depositTimestamp: depositTimestamp2,
+      l1Recipient: user2,
+      l2Sender: user1,
       l1Token: l1TokenAddress,
       amount: depositAmount,
-      slowRelayFeePct: slowRelayFeePct,
-      instantRelayFeePct: instantRelayFeePct,
+      slowRelayFeePct,
+      instantRelayFeePct,
       quoteTimestamp: quoteTimestamp2,
     });
     expectedDeposits[1].depositHash = generateDepositHash(expectedDeposits[1]);
     assert.equal(JSON.stringify(client.getAllDeposits()), JSON.stringify(expectedDeposits));
   });
 });
+
+[
+  {
+    depositId: 0,
+    depositHash: "0x0866d3a3c76fdab5ba4d7a60fd47e94d409a0c3aeef1f8c531058648d457f27e",
+    depositTimestamp: 1631549290,
+    l2Sender: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    l1Recipient: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    l1Token: "0xAEcD71E5859dE755268bbA6f240Dd1201c52D4DC",
+    amount: "50000000000000000000",
+    slowRelayFeePct: "5000000000000000",
+    instantRelayFeePct: "5000000000000000",
+    quoteTimestamp: 1631549350,
+  },
+  {
+    depositId: 1,
+    depositHash: "0xec70590dbe5337614d3c6286ad1bfac1692c4db3d3cd63ebca652f4caff59095",
+    depositTimestamp: 1631549310,
+    l2Sender: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+    l1Recipient: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+    l1Token: "0xAEcD71E5859dE755268bbA6f240Dd1201c52D4DC",
+    amount: "50000000000000000000",
+    slowRelayFeePct: "5000000000000000",
+    instantRelayFeePct: "5000000000000000",
+    quoteTimestamp: 1631549370,
+  },
+] +
+  [
+    {
+      depositId: 0,
+      depositHash: "0x0866d3a3c76fdab5ba4d7a60fd47e94d409a0c3aeef1f8c531058648d457f27e",
+      depositTimestamp: 1631549290,
+      l2Sender: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      l1Recipient: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      l1Token: "0xAEcD71E5859dE755268bbA6f240Dd1201c52D4DC",
+      amount: "50000000000000000000",
+      slowRelayFeePct: "5000000000000000",
+      instantRelayFeePct: "5000000000000000",
+      quoteTimestamp: 1631549350,
+    },
+    {
+      depositId: 1,
+      depositHash: "0x9955534fcffc2d8aa5817cb814da5533dde12fedf74f4d28fd06d69f6ae7d8ea",
+      depositTimestamp: 1631549310,
+      l2Sender: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+      l1Recipient: "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
+      l1Token: "0xAEcD71E5859dE755268bbA6f240Dd1201c52D4DC",
+      amount: "50000000000000000000",
+      slowRelayFeePct: "5000000000000000",
+      instantRelayFeePct: "5000000000000000",
+      quoteTimestamp: 1631549370,
+    },
+  ];
