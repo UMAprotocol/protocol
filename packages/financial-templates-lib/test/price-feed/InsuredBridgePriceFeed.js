@@ -240,6 +240,7 @@ describe("InsuredBridgePriceFeed", function () {
       quoteTimestamp: expectedDepositTimestamp + quoteTimestampOffset,
     };
     relayData = {
+      relayId: 0,
       relayState: InsuredBridgeRelayStateEnum.UNINITIALIZED,
       priceRequestTime: expectedDepositTimestamp,
       // This should match the realized fee % that the L1 client computes, otherwise the pricefeed will determine the

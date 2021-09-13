@@ -260,6 +260,7 @@ describe("BridgePool", () => {
       quoteTimestamp: defaultQuoteTimestamp,
     };
     relayData = {
+      relayId: 0,
       relayState: InsuredBridgeRelayStateEnum.UNINITIALIZED,
       priceRequestTime: 0,
       realizedLpFeePct: defaultRealizedLpFee,
@@ -312,7 +313,7 @@ describe("BridgePool", () => {
     });
     Object.keys(relayData).forEach((key) => {
       // Skip relayData params that are not used by the contract to construct ancillary data,
-      if (key === "realizedLpFeePct") {
+      if (key === "realizedLpFeePct" || key === "relayId") {
         // Set addresses to lower case and strip leading "0x"'s in order to recreate how Solidity encodes addresses
         // to utf8.
         if (relayData[key].toString().startsWith("0x")) {
@@ -370,6 +371,8 @@ describe("BridgePool", () => {
             .send({ from: relayer })
         )
       );
+
+      assert.equal(await bridgePool.methods.numberOfRelays().call(), "0"); // Relay index should start at 0.
     });
     it("Requests and proposes optimistic price request", async () => {
       // Cache price request timestamp.
@@ -394,6 +397,7 @@ describe("BridgePool", () => {
 
       // Check RelayData struct is stored correctly and mapped to the deposit hash.
       const relayStatus = await bridgePool.methods.relays(depositHash).call();
+      assert.equal(relayStatus.relayId.toString(), relayData.relayId.toString());
       assert.equal(relayStatus.relayState, InsuredBridgeRelayStateEnum.PENDING);
       assert.equal(relayStatus.priceRequestTime.toString(), requestTimestamp);
       assert.equal(relayStatus.instantRelayer, ZERO_ADDRESS);
@@ -407,6 +411,7 @@ describe("BridgePool", () => {
       // Check event is logged correctly and emits all information needed to recreate the relay and associated deposit.
       await assertEventEmitted(txn, bridgePool, "DepositRelayed", (ev) => {
         return (
+          ev.relayId.toString() === relayData.relayId.toString() &&
           ev.chainId.toString() === depositData.chainId.toString() &&
           ev.depositId.toString() === depositData.depositId.toString() &&
           ev.sender === depositData.l2Sender &&
@@ -418,7 +423,6 @@ describe("BridgePool", () => {
           ev.instantRelayFeePct === depositData.instantRelayFeePct &&
           ev.quoteTimestamp === depositData.quoteTimestamp &&
           ev.realizedLpFeePct === relayData.realizedLpFeePct &&
-          ev.priceRequestAncillaryDataHash === relayAncillaryDataHash &&
           ev.depositHash === depositHash &&
           ev.depositContract === depositContractImpersonator
         );
@@ -610,19 +614,7 @@ describe("BridgePool", () => {
       await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
 
-      // TODO: Relaying again with the exact same relay params will succeed because the relay nonce increments.
-      assert(await didContractThrow(bridgePool.methods.relayDeposit(...generateRelayParams()).call({ from: relayer })));
-      // Slightly changing the relay params will work.
-      assert.ok(
-        await bridgePool.methods
-          .relayDeposit(
-            ...generateRelayParams({}, { realizedLpFeePct: toBN(relayData.realizedLpFeePct).mul(toBN("2")) })
-          )
-          .call({ from: relayer })
-      );
-
-      // The same relay params for a new request time will also succeed.
-      await advanceTime(Number(relayStatus.priceRequestTime.toString()) + 1);
+      // Relaying again with the exact same relay params will succeed because the relay nonce increments.
       assert.ok(await bridgePool.methods.relayDeposit(...generateRelayParams()).call({ from: relayer }));
     });
     it("Instant relayer address persists for subsequent relays after a pending relay is disputed", async () => {

@@ -13,6 +13,7 @@ enum relayState {
 }
 
 export interface Relay {
+  relayId: number;
   chainId: number;
   depositId: number;
   sender: string;
@@ -26,7 +27,6 @@ export interface Relay {
   instantRelayFeePct: string;
   quoteTimestamp: number;
   realizedLpFeePct: string;
-  priceRequestAncillaryDataHash: string;
   depositHash: string;
   depositContract: string;
   relayState: relayState;
@@ -132,6 +132,7 @@ export class InsuredBridgeL1Client {
 
       for (const depositRelayedEvent of depositRelayedEvents) {
         const relayData: Relay = {
+          relayId: Number(depositRelayedEvent.returnValues.relayId),
           chainId: Number(depositRelayedEvent.returnValues.chainId),
           depositId: Number(depositRelayedEvent.returnValues.depositId),
           sender: depositRelayedEvent.returnValues.sender,
@@ -145,7 +146,6 @@ export class InsuredBridgeL1Client {
           instantRelayFeePct: depositRelayedEvent.returnValues.instantRelayFeePct,
           quoteTimestamp: Number(depositRelayedEvent.returnValues.quoteTimestamp),
           realizedLpFeePct: depositRelayedEvent.returnValues.realizedLpFeePct,
-          priceRequestAncillaryDataHash: depositRelayedEvent.returnValues.priceRequestAncillaryDataHash,
           depositHash: depositRelayedEvent.returnValues.depositHash,
           depositContract: depositRelayedEvent.returnValues.depositContract,
           relayState: relayState.Pending,

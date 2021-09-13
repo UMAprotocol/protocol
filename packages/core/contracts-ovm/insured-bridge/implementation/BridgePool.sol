@@ -32,6 +32,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     // Token that this contract receives as LP deposits.
     IERC20 public override l1Token;
 
+    // Track the total number of relays and uniquely identifies relays.
+    uint256 public numberOfRelays;
+
     // Reserves that are unutilized and withdrawable.
     uint256 public liquidReserves;
 
@@ -71,6 +74,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
 
     // A Relay is linked to a L2 Deposit.
     struct RelayData {
+        uint256 relayId;
         RelayState relayState;
         uint256 priceRequestTime;
         uint64 realizedLpFeePct;
@@ -94,9 +98,10 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     event LiquidityAdded(address indexed token, uint256 amount, uint256 lpTokensMinted, address liquidityProvider);
     event LiquidityRemoved(address indexed token, uint256 amount, uint256 lpTokensBurnt, address liquidityProvider);
     event DepositRelayed(
+        uint256 indexed relayId,
         uint8 chainId,
-        uint64 depositId,
-        address indexed sender,
+        uint64 indexed depositId,
+        address sender,
         address slowRelayer,
         address recipient,
         address l1Token,
@@ -105,7 +110,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         uint64 instantRelayFeePct,
         uint64 quoteTimestamp,
         uint64 realizedLpFeePct,
-        bytes32 indexed priceRequestAncillaryDataHash,
         bytes32 indexed depositHash,
         address depositContract
     );
@@ -255,6 +259,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         uint256 priceRequestTime = getCurrentTime();
         RelayData memory relayData =
             RelayData({
+                relayId: numberOfRelays,
                 relayState: RelayState.Pending,
                 priceRequestTime: priceRequestTime,
                 realizedLpFeePct: realizedLpFeePct,
@@ -286,12 +291,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         pendingReserves += amount; // Book off maximum liquidity used by this relay in the pending reserves.
 
         // We use an internal method to emit this event to overcome Solidity's "stack too deep" error.
-        _emitDepositRelayedEvent(
-            depositData,
-            realizedLpFeePct,
-            keccak256(getRelayAncillaryData(depositData, relayData)),
-            depositHash
-        );
+        _emitDepositRelayedEvent(depositData, realizedLpFeePct, depositHash);
+
+        numberOfRelays += 1;
     }
 
     /**
@@ -540,6 +542,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         // Add relay data.
         intermediateAncillaryData = AncillaryData.appendKeyValueUint(
             intermediateAncillaryData,
+            "relayId",
+            uint256(_relayData.relayId)
+        );
+        intermediateAncillaryData = AncillaryData.appendKeyValueUint(
+            intermediateAncillaryData,
             "realizedLpFeePct",
             uint256(_relayData.realizedLpFeePct)
         );
@@ -683,12 +690,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     function _emitDepositRelayedEvent(
         DepositData memory _depositData,
         uint64 realizedLpFeePct,
-        bytes32 _ancillaryDataHash,
         bytes32 _depositHash
     ) private {
         // Emit only information that is not stored in this contract. The relay data associated with the `_depositHash`
         // can be queried on-chain via the `relays` mapping keyed by `_depositHash`.
         emit DepositRelayed(
+            numberOfRelays,
             _depositData.chainId,
             _depositData.depositId,
             _depositData.l2Sender,
@@ -700,7 +707,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
             _depositData.instantRelayFeePct,
             _depositData.quoteTimestamp,
             realizedLpFeePct,
-            _ancillaryDataHash,
             _depositHash,
             bridgeAdmin.depositContract()
         );
