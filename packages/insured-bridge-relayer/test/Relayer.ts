@@ -423,7 +423,7 @@ describe("Relayer.ts", function () {
       // Now, run the relayer. the bot should detect that a relay has been created but not yet sped up. It should
       // correctly detect this and submit the relay speed up transaction.
       await Promise.all([l1Client.update(), l2Client.update()]);
-      // As the relayer does not have enough token balance to do the relay (0 minted) should do nothing .
+      // As the relayer does not have enough token balance to do the relay (0 minted) should do nothing.
       await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Not relaying deposit"));
 
