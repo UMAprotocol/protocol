@@ -199,7 +199,7 @@ export class Relayer {
       if (receipt.events)
         this.logger.info({
           at: "InsuredBridgeRelayer#Relayer",
-          type: "Slow relay sped up 🚀",
+          type: "Slow relay sped up 🏇",
           tx: receipt.transactionHash,
           depositHash: receipt.events.RelaySpedUp.returnValues.depositHash,
           instantRelayer: receipt.events.RelaySpedUp.returnValues.instantRelayer,
