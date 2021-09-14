@@ -69,7 +69,7 @@ export function getHardhatConfig(
         timeout: 1800000,
         testBlacklist,
       },
-      localhost: { url: "http://127.0.0.1:9545", testBlacklist },
+      localhost: { url: "http://127.0.0.1:9545", timeout: 1800000, testBlacklist },
       rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true), accounts: { mnemonic } },
       kovan: { chainId: 42, url: getNodeUrl("kovan", true), accounts: { mnemonic } },
       goerli: { chainId: 5, url: getNodeUrl("goerli", true), accounts: { mnemonic } },
