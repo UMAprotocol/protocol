@@ -12,6 +12,7 @@ import "../../../contracts/oracle/implementation/Constants.sol";
 import "../../../contracts/common/implementation/AncillaryData.sol";
 import "../../../contracts/common/implementation/Testable.sol";
 import "../../../contracts/common/implementation/FixedPoint.sol";
+import "../../../contracts/common/implementation/MultiCaller.sol";
 import "../../../contracts/common/implementation/ExpandedERC20.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -25,7 +26,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * to post collateral by earning a fee per fulfilled deposit order.
  * @dev A "Deposit" is an order to send capital from L2 to L1, and a "Relay" is a fulfillment attempt of that order.
  */
-contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
+contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller {
     using SafeERC20 for IERC20;
     using FixedPoint for FixedPoint.Unsigned;
 

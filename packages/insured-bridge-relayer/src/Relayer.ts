@@ -105,7 +105,7 @@ export class Relayer {
               realizedLpFeePct,
               relayableDeposit,
             });
-            // await this.instantRelay(relayableDeposit.deposit);
+            await this.instantRelay(relayableDeposit.deposit, realizedLpFeePct);
             break;
         }
       }
@@ -149,25 +149,12 @@ export class Relayer {
     return RelayType.Ignore;
   }
 
-  private async slowRelay(deposit: Deposit, realizedLpFee: BN) {
-    const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit);
-    const slowRelayTx = bridgePool.methods.relayDeposit(
-      deposit.depositId,
-      deposit.depositTimestamp,
-      deposit.l1Recipient,
-      deposit.l2Sender,
-      deposit.amount,
-      deposit.slowRelayFeePct,
-      deposit.instantRelayFeePct,
-      deposit.quoteTimestamp,
-      realizedLpFee
-    );
-
+  private async slowRelay(deposit: Deposit, realizedLpFeePct: BN) {
     await this.gasEstimator.update();
     try {
       const { receipt, transactionConfig } = await runTransaction({
         web3: this.l1Client.l1Web3,
-        transaction: (slowRelayTx as unknown) as TransactionType,
+        transaction: (this.generateSlowRelayTx(deposit, realizedLpFeePct) as unknown) as TransactionType,
         transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
         availableAccounts: 1,
       });
@@ -200,15 +187,11 @@ export class Relayer {
   }
 
   private async speedUpRelay(deposit: Deposit) {
-    const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit);
-    console.log("deposit", deposit);
-    const SpeedUpRelayTx = bridgePool.methods.speedUpRelay(deposit as any);
-
     await this.gasEstimator.update();
     try {
       const { receipt, transactionConfig } = await runTransaction({
         web3: this.l1Client.l1Web3,
-        transaction: (SpeedUpRelayTx as unknown) as TransactionType,
+        transaction: this.generateSpeedUpRelayTx(deposit),
         transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
         availableAccounts: 1,
       });
@@ -216,7 +199,7 @@ export class Relayer {
       if (receipt.events)
         this.logger.info({
           at: "InsuredBridgeRelayer#Relayer",
-          type: "Relay instantly sped up 🚀",
+          type: "Slow relay sped up 🚀",
           tx: receipt.transactionHash,
           depositHash: receipt.events.RelaySpedUp.returnValues.depositHash,
           instantRelayer: receipt.events.RelaySpedUp.returnValues.instantRelayer,
@@ -224,13 +207,63 @@ export class Relayer {
         });
       else throw receipt;
     } catch (error) {
-      console.log("error", error);
       this.logger.error({ at: "InsuredBridgeRelayer#Relayer", type: "Something errored instantly relaying!", error });
     }
   }
 
-  private async instantRelay(/* deposit: Deposit*/) {
-    // TODO: implement
+  private async instantRelay(deposit: Deposit, realizedLpFeePct: BN) {
+    await this.gasEstimator.update();
+    try {
+      const { receipt, transactionConfig } = await runTransaction({
+        web3: this.l1Client.l1Web3,
+        transaction: this.generateInstantRelayTx(deposit, realizedLpFeePct),
+        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
+        availableAccounts: 1,
+      });
+      if (receipt.events)
+        this.logger.info({
+          at: "InsuredBridgeRelayer#Relayer",
+          type: "Relay instantly sent 🚀",
+          tx: receipt.transactionHash,
+          depositHash: receipt.events.RelaySpedUp.returnValues.depositHash,
+          instantRelayer: receipt.events.RelaySpedUp.returnValues.instantRelayer,
+          transactionConfig,
+        });
+      else throw receipt;
+    } catch (error) {
+      this.logger.error({ at: "InsuredBridgeRelayer#Relayer", type: "Something errored instantly relaying!", error });
+    }
+  }
+
+  private generateSlowRelayTx(deposit: Deposit, realizedLpFeePct: BN): TransactionType {
+    const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit);
+    return (bridgePool.methods.relayDeposit(
+      deposit.depositId,
+      deposit.depositTimestamp,
+      deposit.l1Recipient,
+      deposit.l2Sender,
+      deposit.amount,
+      deposit.slowRelayFeePct,
+      deposit.instantRelayFeePct,
+      deposit.quoteTimestamp,
+      realizedLpFeePct
+    ) as unknown) as TransactionType;
+  }
+
+  private generateSpeedUpRelayTx(deposit: Deposit): TransactionType {
+    const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit);
+    return (bridgePool.methods.speedUpRelay(deposit as any) as unknown) as TransactionType;
+  }
+
+  private generateInstantRelayTx(deposit: Deposit, realizedLpFeePct: BN): TransactionType {
+    const slowRelayTx = this.generateSlowRelayTx(deposit, realizedLpFeePct);
+    const instantRelayTx = this.generateSpeedUpRelayTx(deposit);
+
+    const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit);
+    return (bridgePool.methods.multicall([
+      slowRelayTx.encodeABI(),
+      instantRelayTx.encodeABI(),
+    ]) as unknown) as TransactionType;
   }
 
   private getRelayTokenRequirement(
@@ -238,9 +271,10 @@ export class Relayer {
     proposerBondPct: BN,
     realizedLpFeePct: BN
   ): { slow: BN; instant: BN } {
-    // bridged amount - the LP fee, - slow relay fee, - instant relay fee
     return {
-      slow: toBN(deposit.amount).mul(proposerBondPct).muln(2).div(fixedPointAdjustment),
+      // slow relay: proposer bond = amount * proposerBondPct
+      slow: toBN(deposit.amount).mul(proposerBondPct).div(fixedPointAdjustment),
+      // instant relay :amount - LP fee, - slow fee, - instant fee = amount * (1-lpFeePct+slowRelayFeePct+instantRelayFeePct)
       instant: toBN(deposit.amount)
         .mul(
           toBN(toWei("1"))
