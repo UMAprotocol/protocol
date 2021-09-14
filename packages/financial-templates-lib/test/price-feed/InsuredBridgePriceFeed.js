@@ -244,11 +244,10 @@ describe("InsuredBridgePriceFeed", function () {
       priceRequestTime: expectedDepositTimestamp,
       // This should match the realized fee % that the L1 client computes, otherwise the pricefeed will determine the
       // relay to be invalid.
-      realizedLpFeePct: l1Client.calculateRealizedLpFeesPctForDeposit(/* depositData */),
+      realizedLpFeePct: (await l1Client.calculateRealizedLpFeePctForDeposit(depositData)).toString(),
       slowRelayer: relayer,
       instantRelayer: ZERO_ADDRESS,
     };
-
     ({ depositHash, relayAncillaryData, relayAncillaryDataHash } = await generateRelayData(
       depositData,
       relayData,
