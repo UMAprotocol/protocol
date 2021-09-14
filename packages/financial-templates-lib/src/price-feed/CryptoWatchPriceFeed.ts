@@ -78,7 +78,7 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
     }
   }
 
-  public async getHistoricalPrice(time: number, verbose = false): Promise<BN> {
+  public async getHistoricalPrice(time: number, ancillaryData: string, verbose = false): Promise<BN> {
     if (this.lastUpdateTime === undefined) {
       throw new Error(`${this.uuid}: undefined lastUpdateTime`);
     }

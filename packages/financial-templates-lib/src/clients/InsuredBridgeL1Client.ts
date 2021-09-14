@@ -16,10 +16,10 @@ enum RelayState {
   Finalized,
 }
 
-export enum RelayAbility {
-  Any, // Deposit on L2, nothing yet on L1. Can be slow relayed and can be sped up.
-  SpeedUpOnly, // Deposit on L2 and has been slow relayed on L1. Can be sped up to instantly relay.
-  None, // Relay has been finalized through slow relay passed liveness or instantly relayed. Cant do anything.
+export enum ClientRelayState {
+  Uninitialized, // Deposit on L2, nothing yet on L1. Can be slow relayed and can be sped up to instantly relay.
+  Pending, // Deposit on L2 and has been slow relayed on L1. Can be sped up to instantly relay.
+  Finalized, // Relay has been finalized through slow relay passed liveness or instantly relayed. Cant do anything.
 }
 
 export interface Relay {
@@ -101,14 +101,14 @@ export class InsuredBridgeL1Client {
     return toBN(this.toWei("0.05"));
   }
 
-  getDepositRelayAbility(l2Deposit: Deposit): RelayAbility {
+  getDepositRelayState(l2Deposit: Deposit): ClientRelayState {
     const relay = this.relays[l2Deposit.l1Token][l2Deposit.depositHash];
     // If the relay is undefined then the deposit has not yet been sent on L1 and can be relayed.
-    if (relay === undefined) return RelayAbility.Any;
+    if (relay === undefined) return ClientRelayState.Uninitialized;
     // Else, if the relatable state is "Pending" then the deposit can be sped up to an instant relay.
-    else if (relay.relayState === RelayState.Pending) return RelayAbility.SpeedUpOnly;
+    else if (relay.relayState === RelayState.Pending) return ClientRelayState.Pending;
     // If neither condition is met then the relay is finalized.
-    return RelayAbility.None;
+    return ClientRelayState.Finalized;
   }
 
   getBridgePoolForDeposit(l2Deposit: Deposit): BridgePoolWeb3 {
@@ -152,7 +152,7 @@ export class InsuredBridgeL1Client {
       ]);
 
       for (const depositRelayedEvent of depositRelayedEvents) {
-        const relayData = {
+        const relayData: Relay = {
           depositId: Number(depositRelayedEvent.returnValues.depositId),
           l2Sender: depositRelayedEvent.returnValues.l2Sender,
           slowRelayer: depositRelayedEvent.returnValues.slowRelayer,

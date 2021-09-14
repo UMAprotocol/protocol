@@ -65,10 +65,10 @@ export class PriceFeedMockScaled extends PriceFeedInterface {
     return this.currentPrice;
   }
 
-  public async getHistoricalPrice(time: number): Promise<BN | null> {
+  public async getHistoricalPrice(time: number, ancillaryData: string): Promise<BN | null> {
     // To implement the PriceFeedInterface properly, this method must either return a valid price
     // or throw.
-    if (!this.historicalPrice && !(time in this.historicalPrices)) {
+    if (!this.historicalPrice && !(time in this.historicalPrices) && !ancillaryData) {
       throw new Error("PriceFeedMock expected error thrown");
     } else {
       // If a price for `time` was set via `setHistoricalPrices`, then return that price, otherwise return the mocked

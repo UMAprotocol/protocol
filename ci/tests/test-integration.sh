@@ -5,6 +5,7 @@ cat << EOF
     machine:
       image: ubuntu-2004:202010-01
     working_directory: ~/protocol
+    resource_class: xlarge
     steps:
       - restore_cache:
           key: protocol-completed-build-{{ .Environment.CIRCLE_SHA1 }}

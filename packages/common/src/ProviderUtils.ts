@@ -8,6 +8,11 @@ import minimist from "minimist";
 import Url from "url";
 import { RetryProvider, RetryConfig } from "./RetryProvider";
 import { AbstractProvider } from "web3-core";
+import HDWalletProvider from "@truffle/hdwallet-provider";
+import { ManagedSecretProvider } from "./gckms/ManagedSecretProvider";
+import { getGckmsConfig } from "./gckms/GckmsConfig";
+import assert from "assert";
+
 const argv = minimist(process.argv.slice(), { string: ["network"] });
 
 // NODE_RETRY_CONFIG should be a JSON of the form (retries and delay are optional, they default to 1 and 0 respectively):
@@ -58,6 +63,68 @@ export function createBasicProvider(nodeRetryConfig: RetryConfig[]): RetryProvid
       }
     )
   );
+}
+
+const KEY_TYPES = ["gckms", "mnemonic", "none"] as const;
+
+function getDefaultKeyType(): typeof KEY_TYPES[number] {
+  if (argv.network) {
+    const networkSplit = argv.network.split("_");
+    const keyType = networkSplit[networkSplit.length - 1];
+    if (KEY_TYPES.includes(keyType)) {
+      return keyType;
+    }
+  }
+  return "none";
+}
+
+function addMnemonicToProvider(
+  provider: AbstractProvider,
+  mnemonic: string = process.env.MNEMONIC ||
+    "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat",
+  numKeys = parseInt(process.env.NUM_KEYS || "2"),
+  keyOffset = process.env.KEY_OFFSET ? parseInt(process.env.KEY_OFFSET) : 0
+): HDWalletProvider {
+  return new HDWalletProvider(mnemonic, provider, keyOffset, numKeys);
+}
+
+function addGckmsToProvider(provider: AbstractProvider): ManagedSecretProvider {
+  const gckmsConfig = getGckmsConfig();
+  return new ManagedSecretProvider(gckmsConfig, provider, 0, gckmsConfig.length);
+}
+
+function addDefaultKeysToProvider(provider: AbstractProvider): AbstractProvider {
+  switch (getDefaultKeyType()) {
+    case "gckms":
+      return addGckmsToProvider(provider);
+    case "mnemonic":
+      return addMnemonicToProvider(provider);
+    case "none":
+    default:
+      return provider;
+  }
+}
+
+/**
+ * @notice Creates a web3 instance for a particular chain.
+ * @param chainId the chain id for the network the user wants to connect to.
+ * @returns new Web3 instance.
+ */
+export function getWeb3ByChainId(chainId: number): Web3 {
+  const retryConfigJson = process.env[`RETRY_CONFIG_${chainId}`];
+  const nodeUrl = process.env[`NODE_URL_${chainId}`];
+  let retryConfig: RetryConfig[];
+  if (retryConfigJson) retryConfig = JSON.parse(retryConfigJson);
+  else {
+    assert(nodeUrl, `NODE_URL_${chainId} or RETRY_CONFIG_${chainId} must be provided!`);
+    // Special case: if the user supplies a node url of "test", just return the global web3 object.
+    if (nodeUrl === "test") return ((global as unknown) as { web3: Web3 }).web3;
+    retryConfig = [{ url: nodeUrl, retries: 2, delay: 1 }];
+  }
+
+  const keylessProvider = createBasicProvider(retryConfig);
+  const keyedProvider = addDefaultKeysToProvider(keylessProvider);
+  return new Web3(keyedProvider);
 }
 
 /**

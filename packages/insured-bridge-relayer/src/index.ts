@@ -39,7 +39,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
     // todo: add in start and ending block numbers (if need be).
     const l1Client = new InsuredBridgeL1Client(logger, web3, config.bridgeAdmin);
 
-    // TODO: this is right now using the same web3 object. this is wrong. it should use an L2web3 object.ƒ
+    // TODO: this is right now using the same web3 object. this is wrong. it should use an L2web3 object.
     const l2Client = new InsuredBridgeL2Client(logger, web3, await getL2DepositBoxAddress(web3, config.bridgeAdmin));
 
     // For all specified whitelisted L1 tokens that this relayer supports, approve the bridge pool to spend them. This

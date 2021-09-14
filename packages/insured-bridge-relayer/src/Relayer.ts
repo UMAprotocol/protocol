@@ -9,13 +9,13 @@ import {
   InsuredBridgeL2Client,
   GasEstimator,
   Deposit,
-  RelayAbility,
+  ClientRelayState,
 } from "@uma/financial-templates-lib";
 import { getTokenBalance } from "./RelayerHelpers";
 
 import type { BN, TransactionType } from "@uma/common";
 
-export enum RelayType {
+export enum ShouldRelay {
   Slow,
   SpeedUp,
   Instant,
@@ -44,14 +44,14 @@ export class Relayer {
   // that processes relayableDeposits and calls respective relaying functions.
   async checkForPendingDepositsAndRelay() {
     this.logger.debug({ at: "Relayer", message: "Checking for pending deposits and relaying" });
-    const relayableDeposits: { [key: string]: [{ status: RelayAbility; deposit: Deposit }] } = {};
+    const relayableDeposits: { [key: string]: [{ status: ClientRelayState; deposit: Deposit }] } = {};
     for (const l1Token of this.whitelistedRelayL1Tokens) {
       this.logger.debug({ at: "Relayer", message: "Checking relays for token", l1Token });
       // TODO: consider limiting how far back we look in this call size.
       const l2Deposits = this.l2Client.getAllDeposits();
       l2Deposits.forEach((deposit) => {
-        const status = this.l1Client.getDepositRelayAbility(deposit);
-        if (status != RelayAbility.None) {
+        const status = this.l1Client.getDepositRelayState(deposit);
+        if (status != ClientRelayState.Finalized) {
           if (!relayableDeposits[l1Token]) relayableDeposits[l1Token] = [{ status, deposit }];
           else relayableDeposits[l1Token].push({ status, deposit });
         }
@@ -65,13 +65,9 @@ export class Relayer {
       this.logger.debug({ at: "Relayer", message: "Processing relayable deposits for L1Token", l1Token });
       for (const relayableDeposit of relayableDeposits[l1Token]) {
         const realizedLpFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(relayableDeposit.deposit);
-        const desiredRelayType = await this.shouldRelay(
-          relayableDeposit.deposit,
-          relayableDeposit.status,
-          realizedLpFeePct
-        );
-        switch (desiredRelayType) {
-          case RelayType.Ignore:
+        const shouldRelay = await this.shouldRelay(relayableDeposit.deposit, relayableDeposit.status, realizedLpFeePct);
+        switch (shouldRelay) {
+          case ShouldRelay.Ignore:
             this.logger.warn({
               at: "InsuredBridgeRelayer#Relayer",
               message: "Not relaying deposit 😖",
@@ -79,7 +75,7 @@ export class Relayer {
               relayableDeposit,
             });
             break;
-          case RelayType.Slow:
+          case ShouldRelay.Slow:
             this.logger.debug({
               at: "InsuredBridgeRelayer#Relayer",
               message: "Slow relaying deposit",
@@ -89,16 +85,16 @@ export class Relayer {
             await this.slowRelay(relayableDeposit.deposit, realizedLpFeePct);
             break;
 
-          case RelayType.SpeedUp:
+          case ShouldRelay.SpeedUp:
             this.logger.debug({
               at: "InsuredBridgeRelayer#Relayer",
               message: "Speeding up existing relayed deposit",
               realizedLpFeePct,
               relayableDeposit,
             });
-            await this.speedUpRelay(relayableDeposit.deposit);
+            // await this.speedUpRelay(relayableDeposit.deposit);
             break;
-          case RelayType.Instant:
+          case ShouldRelay.Instant:
             this.logger.debug({
               at: "InsuredBridgeRelayer#Relayer",
               message: "Instant relaying deposit",
@@ -112,7 +108,11 @@ export class Relayer {
     }
   }
 
-  private async shouldRelay(deposit: Deposit, relayAbility: RelayAbility, realizedLpFeePct: BN): Promise<RelayType> {
+  private async shouldRelay(
+    deposit: Deposit,
+    clientRelayState: ClientRelayState,
+    realizedLpFeePct: BN
+  ): Promise<ShouldRelay> {
     const [l1TokenBalance, proposerBondPct] = await Promise.all([
       getTokenBalance(this.l1Client.l1Web3, deposit.l1Token, this.account),
       this.l1Client.getProposerBondPct(),
@@ -126,27 +126,28 @@ export class Relayer {
     // Based on the bots token balance, and the relay state we can compute the profitability of each action.
 
     // a) Balance is large enough to do a slow relay. No relay action has happened on L1 yet for this deposit.
-    if (l1TokenBalance.gte(relayTokenRequirement.slow) && relayAbility === RelayAbility.Any)
+    if (l1TokenBalance.gte(relayTokenRequirement.slow) && clientRelayState === ClientRelayState.Uninitialized)
       slowProfit = toBN(deposit.amount).mul(toBN(deposit.slowRelayFeePct)).div(fixedPointAdjustment);
 
     // b) Balance is large enough to instant relay. Deposit is in any state except finalized (i.e can be slow relayed
     // and sped up or only sped up.)
-    if (l1TokenBalance.gte(relayTokenRequirement.instant) && relayAbility !== RelayAbility.None)
+    if (l1TokenBalance.gte(relayTokenRequirement.instant) && clientRelayState !== ClientRelayState.Finalized)
       speedUpProfit = toBN(deposit.amount).mul(toBN(deposit.instantRelayFeePct)).div(fixedPointAdjustment);
 
     // c) Balance is large enough to slow relay and then speed up. Only considered if no L1 action has happened yet as
     // wont be able to do an instant relay if the relay has already been slow relayed. In that case, should speedUp.
     if (
       l1TokenBalance.gte(relayTokenRequirement.slow.add(relayTokenRequirement.instant)) &&
-      relayAbility == RelayAbility.Any
+      clientRelayState == ClientRelayState.Uninitialized
     )
       instantProfit = slowProfit.add(speedUpProfit);
 
     // Finally, decide what action to do based on the relative profits.
-    if (instantProfit.gt(speedUpProfit) && instantProfit.gt(slowProfit)) return RelayType.Instant;
-    if (speedUpProfit.gt(slowProfit)) return RelayType.SpeedUp;
-    if (slowProfit.gt(toBN("0"))) return RelayType.Slow;
-    return RelayType.Ignore;
+    if (instantProfit.gt(speedUpProfit) && instantProfit.gt(slowProfit)) return ShouldRelay.Instant;
+
+    if (speedUpProfit.gt(slowProfit)) return ShouldRelay.SpeedUp;
+    if (slowProfit.gt(toBN("0"))) return ShouldRelay.Slow;
+    return ShouldRelay.Ignore;
   }
 
   private async slowRelay(deposit: Deposit, realizedLpFee: BN) {
@@ -238,9 +239,8 @@ export class Relayer {
     proposerBondPct: BN,
     realizedLpFeePct: BN
   ): { slow: BN; instant: BN } {
-    // bridged amount - the LP fee, - slow relay fee, - instant relay fee
     return {
-      slow: toBN(deposit.amount).mul(proposerBondPct).muln(2).div(fixedPointAdjustment),
+      slow: toBN(deposit.amount).mul(proposerBondPct).div(fixedPointAdjustment),
       instant: toBN(deposit.amount)
         .mul(
           toBN(toWei("1"))
