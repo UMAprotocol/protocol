@@ -2,6 +2,7 @@ import { SpyTransport } from "@uma/financial-templates-lib";
 import winston from "winston";
 import sinon from "sinon";
 import hre from "hardhat";
+const { assert } = require("chai");
 
 import { interfaceName, TokenRolesEnum, HRE } from "@uma/common";
 
@@ -143,12 +144,15 @@ describe("index.js", function () {
     });
   });
 
-  it("Runs with no errors", async function () {
+  it("Runs with no errors and correctly sets approvals for whitelisted L1 tokens", async function () {
     process.env.BRIDGE_ADMIN_ADDRESS = bridgeAdmin.options.address;
-
     process.env.POLLING_DELAY = "0";
+    process.env.WHITELISTED_L1_TOKENS = JSON.stringify([l1Token.options.address]);
 
     // Must not throw.
     await run(spyLogger, web3);
+
+    // Approvals are set correctly
+    assert.notEqual((await l1Token.methods.allowance(owner, bridgePool.options.address)).toString(), "0");
   });
 });

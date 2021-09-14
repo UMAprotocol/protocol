@@ -137,8 +137,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         uint256 _lpFeeRatePerSecond,
         address _timer
     ) Testable(_timer) ExpandedERC20(_lpTokenName, _lpTokenSymbol, 18) {
-        require(bytes(_lpTokenName).length != 0, "Missing LP token name");
-        require(bytes(_lpTokenSymbol).length != 0, "Missing LP token symbol");
+        require(bytes(_lpTokenName).length != 0 && bytes(_lpTokenSymbol).length != 0, "Bad LP token name or symbol");
         bridgeAdmin = BridgeAdminInterface(_bridgeAdmin);
 
         l1Token = IERC20(_l1Token);
