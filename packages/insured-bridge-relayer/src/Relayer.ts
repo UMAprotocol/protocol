@@ -92,7 +92,7 @@ export class Relayer {
               realizedLpFeePct,
               relayableDeposit,
             });
-            // await this.speedUpRelay(relayableDeposit.deposit);
+            await this.speedUpRelay(relayableDeposit.deposit);
             break;
           case ShouldRelay.Instant:
             this.logger.debug({
@@ -202,7 +202,6 @@ export class Relayer {
 
   private async speedUpRelay(deposit: Deposit) {
     const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit);
-    console.log("deposit", deposit);
     const SpeedUpRelayTx = bridgePool.methods.speedUpRelay(deposit as any);
 
     await this.gasEstimator.update();
@@ -225,7 +224,6 @@ export class Relayer {
         });
       else throw receipt;
     } catch (error) {
-      console.log("error", error);
       this.logger.error({ at: "InsuredBridgeRelayer#Relayer", type: "Something errored instantly relaying!", error });
     }
   }
