@@ -1,7 +1,7 @@
 const assert = require("assert");
 
 const { createObjectFromDefaultProps, runTransaction, blockUntilBlockMined, MAX_UINT_VAL } = require("@uma/common");
-const { getAbi, getTruffleContract } = require("@uma/core");
+const { getAbi, getBytecode } = require("@uma/contracts-node");
 
 class ProxyTransactionWrapper {
   /**
@@ -85,7 +85,8 @@ class ProxyTransactionWrapper {
     }
 
     this.reserveToken = new this.web3.eth.Contract(getAbi("ExpandedERC20"), this.disputerReserveCurrencyAddress);
-    this.ReserveCurrencyDisputer = getTruffleContract("ReserveCurrencyDisputer", this.web3);
+    this.ReserveCurrencyDisputer = {abi: getAbi("ReserveCurrencyDisputer"),
+      bytecode: getBytecode("ReserveCurrencyDisputer"),};
   }
 
   // Main entry point for submitting a dispute. If the bot is not using a DSProxy then simply send a normal EOA tx.
