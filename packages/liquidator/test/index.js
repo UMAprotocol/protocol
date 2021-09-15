@@ -46,7 +46,7 @@ let pollingDelay = 0; // 0 polling delay creates a serverless bot that yields af
 let errorRetries = 1;
 let errorRetriesTimeout = 0.1; // 100 milliseconds between performing retries
 let identifier = "TEST_IDENTIFIER";
-let fundingRateIdentifier = "TEST_FUNDiNG_IDENTIFIER";
+let fundingRateIdentifier = "TEST_FUNDING";
 
 contract("index.js", function (accounts) {
   const contractCreator = accounts[0];
@@ -72,7 +72,7 @@ contract("index.js", function (accounts) {
     const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
     const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);
 
-    describe(`Tests running on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
+    describe(`Tests running for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
       before(async function () {
         finder = await Finder.new();
         // Create identifier whitelist and register the price tracking ticker with it.
@@ -85,9 +85,7 @@ contract("index.js", function (accounts) {
 
         timer = await Timer.new();
 
-        mockOracle = await MockOracle.new(finder.address, timer.address, {
-          from: contractCreator,
-        });
+        mockOracle = await MockOracle.new(finder.address, timer.address, { from: contractCreator });
         await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
         // Set the address in the global name space to enable disputer's index.js to access it.
         addGlobalHardhatTestingAddress("Voting", mockOracle.address);
@@ -161,11 +159,7 @@ contract("index.js", function (accounts) {
 
         syntheticToken = await Token.at(await financialContract.tokenCurrency());
 
-        defaultPriceFeedConfig = {
-          type: "test",
-          currentPrice: "1",
-          historicalPrice: "1",
-        };
+        defaultPriceFeedConfig = { type: "test", currentPrice: "1", historicalPrice: "1" };
       });
 
       it("Detects price feed, collateral and synthetic decimals", async function () {
@@ -175,9 +169,7 @@ contract("index.js", function (accounts) {
           transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
 
-        collateralToken = await Token.new("BTC", "BTC", 8, {
-          from: contractCreator,
-        });
+        collateralToken = await Token.new("BTC", "BTC", 8, { from: contractCreator });
         syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractCreator });
         // For this test we are using a lower decimal identifier, USDBTC. First we need to add it to the whitelist.
         await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex("USDBTC"), 64));
@@ -322,13 +314,9 @@ contract("index.js", function (accounts) {
         if (contractVersion.contractType == "Perpetual") await financialContract.emergencyShutdown();
 
         // Dispute & push a dispute resolution price.
-        await collateralToken.mint(disputer, toWei("13"), {
-          from: contractCreator,
-        });
+        await collateralToken.mint(disputer, toWei("13"), { from: contractCreator });
         await collateralToken.approve(financialContract.address, toWei("13"), { from: disputer });
-        await financialContract.dispute(0, sponsorOvercollateralized, {
-          from: disputer,
-        });
+        await financialContract.dispute(0, sponsorOvercollateralized, { from: disputer });
         await mockOracle.pushPrice(utf8ToHex("TEST_IDENTIFIER"), liquidationTime, toWei("1"));
 
         // Running the liquidator now should settle and withdraw rewards from the successful dispute,
@@ -605,11 +593,7 @@ contract("index.js", function (accounts) {
 
         // Iterate over all log events and count the number of empStateUpdates, liquidator check for liquidation events
         // execution loop errors and finally liquidator polling errors.
-        let reTryCounts = {
-          empStateUpdates: 0,
-          checkingForLiquidatable: 0,
-          executionLoopErrors: 0,
-        };
+        let reTryCounts = { empStateUpdates: 0, checkingForLiquidatable: 0, executionLoopErrors: 0 };
         for (let i = 0; i < spy.callCount; i++) {
           if (spyLogIncludes(spy, i, "Financial Contract state updated")) reTryCounts.empStateUpdates += 1;
           if (spyLogIncludes(spy, i, "Checking for liquidatable positions")) reTryCounts.checkingForLiquidatable += 1;
@@ -622,10 +606,7 @@ contract("index.js", function (accounts) {
         assert.isTrue(errorThrown); // An error should have been thrown after the 3 execution re-tries.
       });
       it("starts with wdf params and runs without errors", async function () {
-        const liquidatorConfig = {
-          whaleDefenseFundWei: "1000000",
-          defenseActivationPercent: 50,
-        };
+        const liquidatorConfig = { whaleDefenseFundWei: "1000000", defenseActivationPercent: 50 };
         await Poll.run({
           logger: spyLogger,
           web3,
@@ -651,10 +632,7 @@ contract("index.js", function (accounts) {
 
         // We test that startingBlock and endingBlock params get packed into
         // the liquidatorConfig correctly by the Liquidator bot.
-        const liquidatorConfig = {
-          whaleDefenseFundWei: "1000000",
-          defenseActivationPercent: 50,
-        };
+        const liquidatorConfig = { whaleDefenseFundWei: "1000000", defenseActivationPercent: 50 };
         const startingBlock = 9;
         const endingBlock = 10;
         await Poll.run({

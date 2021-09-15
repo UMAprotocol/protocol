@@ -1,31 +1,32 @@
 import assert from "assert";
 import SynthPrices from "../libs/synthPrices";
-import { AppState, PriceSample, Currencies } from "..";
+import { AppState, PriceSample, Currencies, BaseConfig } from "..";
 import * as uma from "@uma/sdk";
 import bluebird from "bluebird";
-import Queries from "../libs/queries";
-import { calcSyntheticPrice } from "../libs/utils";
+import * as Queries from "../libs/queries";
+import { calcSyntheticPrice, Profile } from "../libs/utils";
 
-type Config = {
+interface Config extends BaseConfig {
   cryptowatchApiKey?: string;
   tradermadeApiKey?: string;
   quandlApiKey?: string;
   defipulseApiKey?: string;
   priceFeedDecimals?: number;
   currency?: Currencies;
-};
+}
 
 type Dependencies = Pick<
   AppState,
-  "web3" | "emps" | "synthPrices" | "erc20s" | "prices" | "stats" | "registeredEmps" | "marketPrices"
+  "web3" | "emps" | "synthPrices" | "erc20s" | "prices" | "stats" | "registeredEmps" | "marketPrices" | "lsps"
 >;
 
 export default function (config: Config, appState: Dependencies) {
-  const { currency = "usd" } = config;
+  const { currency = "usd", debug } = config;
   const { web3, emps, synthPrices, prices } = appState;
   const getSynthPrices = SynthPrices(config, web3);
 
-  const queries = Queries(appState);
+  const queries = Queries.Emp(appState);
+  const profile = Profile(debug);
 
   // get or create a history table by an erc20 token address. this might be a bit confusing because we also have a
   // synthPrices table which store raw synth price queried from bot. This table stores the currency converted price over time.
@@ -72,6 +73,7 @@ export default function (config: Config, appState: Dependencies) {
   async function updateLatestSynthPrices(empAddresses: string[]) {
     // slow down updates by running them serially to prevent rate limits, conform to Promise.allSettled
     return bluebird.mapSeries(empAddresses, async (empAddress) => {
+      const end = profile(`Synth price for ${empAddress}`);
       try {
         return {
           status: "fulfilled",
@@ -82,14 +84,16 @@ export default function (config: Config, appState: Dependencies) {
           status: "rejected",
           reason: err,
         };
+      } finally {
+        end();
       }
     });
   }
 
   async function getFullEmpState(empAddress: string) {
-    const emp = await queries.getAnyEmp(empAddress);
+    const emp = await queries.getAny(empAddress);
     // the full state has collateral decimals, pulled from erc20 state
-    return queries.getFullEmpState(emp);
+    return queries.getFullState(emp);
   }
 
   // gets any price from table, synthetic or collateral. Synthetics go into this table once converted to usd
@@ -106,7 +110,7 @@ export default function (config: Config, appState: Dependencies) {
 
   // convert synth price to {currency} which is typically usd, based on the current collateral price
   async function updateLatestPrice(empAddress: string) {
-    const emp = await queries.getAnyEmp(empAddress);
+    const emp = await queries.getAny(empAddress);
 
     assert(uma.utils.exists(emp.collateralCurrency), "Requires contract collateralCurrency: " + empAddress);
     assert(uma.utils.exists(emp.tokenCurrency), "Requires contract tokenCurrency: " + empAddress);
@@ -126,6 +130,7 @@ export default function (config: Config, appState: Dependencies) {
   async function updateLatestPrices(empAddresses: string[]) {
     // slow down updates by running them serially to prevent rate limits, conform to Promise.allSettled
     return bluebird.mapSeries(empAddresses, async (empAddress) => {
+      const end = profile(`Update Synth to USD for ${empAddress}`);
       try {
         return {
           status: "fulfilled",
@@ -136,6 +141,8 @@ export default function (config: Config, appState: Dependencies) {
           status: "rejected",
           reason: err,
         };
+      } finally {
+        end();
       }
     });
   }

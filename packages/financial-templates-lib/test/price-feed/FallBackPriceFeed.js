@@ -1,10 +1,12 @@
+const { web3 } = require("hardhat");
+const { assert } = require("chai");
 const { toWei, toBN } = web3.utils;
 
-const { FallBackPriceFeed } = require("../../src/price-feed/FallBackPriceFeed");
-const { PriceFeedMock } = require("../../src/price-feed/PriceFeedMock");
-const { InvalidPriceFeedMock } = require("../../src/price-feed/InvalidPriceFeedMock");
+const { FallBackPriceFeed } = require("../../dist/price-feed/FallBackPriceFeed");
+const { PriceFeedMock } = require("../../dist/price-feed/PriceFeedMock");
+const { InvalidPriceFeedMock } = require("../../dist/price-feed/InvalidPriceFeedMock");
 
-contract("FallBackPriceFeed.js", function () {
+describe("FallBackPriceFeed.js", function () {
   let fallBackPriceFeed;
   describe("First pricefeed is valid", function () {
     let priceFeeds, fallBackPriceFeed;

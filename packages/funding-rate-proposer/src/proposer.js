@@ -6,7 +6,7 @@ const {
   aggregateTransactionsAndCall,
 } = require("@uma/financial-templates-lib");
 const { createObjectFromDefaultProps, runTransaction } = require("@uma/common");
-const { getAbi } = require("@uma/core");
+const { getAbi } = require("@uma/contracts-node");
 const Promise = require("bluebird");
 const assert = require("assert");
 
@@ -161,7 +161,10 @@ class FundingRateProposer {
       : (await this.web3.eth.getBlock("latest")).timestamp;
     let pricefeedPrice;
     try {
-      pricefeedPrice = (await priceFeed.getHistoricalPrice(Number(requestTimestamp))).toString();
+      // Note: The ancillary data field is unused by the FundingRateMultiplierPriceFeed so we'll fallback to passing in
+      // 0x as the ancillary data for now. This ensures that this file can be unit tested using the PriceFeedMockScaled
+      // feed which requires ancillary data to be passed.
+      pricefeedPrice = (await priceFeed.getHistoricalPrice(Number(requestTimestamp), "0x")).toString();
     } catch (error) {
       this.logger.error({
         at: "PerpetualProposer",
@@ -260,12 +263,7 @@ class FundingRateProposer {
           error.type === "call"
             ? "Cannot propose funding rate: not enough collateral (or large enough approval)✋"
             : "Failed to propose funding rate🚨";
-        this.logger.error({
-          at: "PerpetualProposer#updateFundingRate",
-          message,
-          fundingRateIdentifier,
-          error,
-        });
+        this.logger.error({ at: "PerpetualProposer#updateFundingRate", message, fundingRateIdentifier, error });
         return;
       }
     } else {
@@ -356,10 +354,7 @@ class FundingRateProposer {
         // Fetch contract state that we won't need to refresh, such as collateral currency:
         const collateralAddress = await perpetualContract.methods.collateralCurrency().call();
 
-        this.contractCache[contractAddress] = {
-          contract: perpetualContract,
-          collateralAddress,
-        };
+        this.contractCache[contractAddress] = { contract: perpetualContract, collateralAddress };
       }
       // For this contract, load state.
       await this._getContractState(contractAddress);
@@ -376,10 +371,7 @@ class FundingRateProposer {
       target: contractAddress,
       callData: perpetualContract.methods.applyFundingRate().encodeABI(),
     };
-    const fundingRateCall = {
-      target: contractAddress,
-      callData: perpetualContract.methods.fundingRate().encodeABI(),
-    };
+    const fundingRateCall = { target: contractAddress, callData: perpetualContract.methods.fundingRate().encodeABI() };
     // `aggregateTransactionsAndCall` returns an array of decoded return data bytes corresponding to the transactions
     // passed to the multicall aggregate method. Therefore, `fundingRate()`'s return output is the second element.
     const [[, fundingRateData], configStoreAddress] = await Promise.all([
@@ -394,14 +386,9 @@ class FundingRateProposer {
     // Save contract state to cache:
     this.contractCache[contractAddress] = {
       ...this.contractCache[contractAddress],
-      state: {
-        currentFundingRateData: fundingRateData,
-        currentConfig,
-      },
+      state: { currentFundingRateData: fundingRateData, currentConfig },
     };
   }
 }
 
-module.exports = {
-  FundingRateProposer,
-};
+module.exports = { FundingRateProposer };

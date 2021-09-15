@@ -1,7 +1,7 @@
 require("dotenv").config();
 const assert = require("assert");
 const { getWeb3 } = require("@uma/common");
-const { getAbi } = require("@uma/core");
+const { getAbi } = require("@uma/contracts-node");
 const { BigQuery } = require("@google-cloud/bigquery");
 
 const { DappMining } = require("../libs/affiliates");
@@ -61,11 +61,10 @@ const App = async (params) => {
   let empAbi;
   switch (version) {
     case "v1": {
-      empAbi = getAbi("ExpiringMultiParty", "1.0.2");
-      break;
+      throw new Error("No longer supports v1!");
     }
     case "v2": {
-      empAbi = getAbi("ExpiringMultiParty", "2.0.1");
+      empAbi = getAbi("ExpiringMultiParty");
       break;
     }
     default:
@@ -77,10 +76,7 @@ const App = async (params) => {
   const dappmining = DappMining[version]({ empAbi, queries, web3 });
   const result = await dappmining.getRewards(config);
 
-  return {
-    ...params,
-    result,
-  };
+  return { ...params, result };
 };
 
 makeUnixPipe(App)

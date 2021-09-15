@@ -105,45 +105,44 @@ describe("Liquidator.js", function () {
 
     // Import the tested versions of contracts. note that financialContract is either an ExpiringMultiParty or a
     // Perpetual depending on the current iteration version.
-    const FinancialContract = getContract(contractVersion.contractType, web3, contractVersion.contractVersion);
-    const Finder = getContract("Finder", web3, contractVersion.contractVersion);
-    const IdentifierWhitelist = getContract("IdentifierWhitelist", web3, contractVersion.contractVersion);
-    const AddressWhitelist = getContract("AddressWhitelist", web3, contractVersion.contractVersion);
-    const MockOracle = getContract("MockOracle", web3, contractVersion.contractVersion);
-    const Token = getContract("ExpandedERC20", web3, contractVersion.contractVersion);
-    const SyntheticToken = getContract("SyntheticToken", web3, contractVersion.contractVersion);
-    const Timer = getContract("Timer", web3, contractVersion.contractVersion);
-    const Store = getContract("Store", web3, contractVersion.contractVersion);
-    const ConfigStore = getContract("ConfigStore", web3);
-    const OptimisticOracle = getContract("OptimisticOracle", web3);
-    const MulticallMock = getContract("MulticallMock", web3);
+    const FinancialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
+    const Finder = getTruffleContract("Finder", web3, contractVersion.contractVersion);
+    const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, contractVersion.contractVersion);
+    const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, contractVersion.contractVersion);
+    const MockOracle = getTruffleContract("MockOracle", web3, contractVersion.contractVersion);
+    const Token = getTruffleContract("ExpandedERC20", web3, contractVersion.contractVersion);
+    const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
+    const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
+    const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
+    const ConfigStore = getTruffleContract("ConfigStore", web3);
+    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
+    const MulticallMock = getTruffleContract("MulticallMock", web3);
 
     for (let testConfig of TEST_DECIMAL_COMBOS) {
-      describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
+      describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
         before(async function () {
           accounts = await web3.eth.getAccounts();
           [liquidatorBot, sponsor1, sponsor2, sponsor3, contractCreator, liquidityProvider] = accounts;
 
           identifier = `${testConfig.tokenName}TEST`;
-          fundingRateIdentifier = `${testConfig.tokenName}_FUNDING_IDENTIFIER`;
+          fundingRateIdentifier = `${testConfig.tokenName}_FUNDING`;
           convertDecimals = Convert(testConfig.collateralDecimals);
           collateralToken = await Token.new(
             testConfig.tokenSymbol + " Token", // Construct the token name.
             testConfig.tokenSymbol,
-            testConfig.collateralDecimals
-          ).send({ from: contractCreator });
-          await collateralToken.methods.addMember(1, contractCreator).send({ from: contractCreator });
+            testConfig.collateralDecimals,
+            { from: contractCreator }
+          );
+          await collateralToken.addMember(1, contractCreator, { from: contractCreator });
 
           // Seed the sponsors accounts.
-          await collateralToken.methods.mint(sponsor1, convertDecimals("100000")).send({ from: contractCreator });
-          await collateralToken.methods.mint(sponsor2, convertDecimals("100000")).send({ from: contractCreator });
-          await collateralToken.methods.mint(sponsor3, convertDecimals("100000")).send({ from: contractCreator });
-          await collateralToken.methods
-            .mint(liquidityProvider, convertDecimals("1000000"))
-            .send({ from: contractCreator });
+          await collateralToken.mint(sponsor1, convertDecimals("100000"), { from: contractCreator });
+          await collateralToken.mint(sponsor2, convertDecimals("100000"), { from: contractCreator });
+          await collateralToken.mint(sponsor3, convertDecimals("100000"), { from: contractCreator });
+          await collateralToken.mint(liquidityProvider, convertDecimals("1000000"), { from: contractCreator });
 
           // seed the liquidatorBot's wallet so it can perform liquidations.
-          await collateralToken.methods.mint(liquidatorBot, convertDecimals("100000")).send({ from: contractCreator });
+          await collateralToken.mint(liquidatorBot, convertDecimals("100000"), { from: contractCreator });
 
           // Create identifier whitelist and register the price tracking ticker with it.
           identifierWhitelist = await IdentifierWhitelist.new().send({ from: contractCreator });
@@ -182,15 +181,9 @@ describe("Liquidator.js", function () {
         });
 
         beforeEach(async function () {
-          console.log("ACC", await web3.eth.getAccounts());
-          console.log("contractCreator", contractCreator);
-          await timer.methods.setCurrentTime(startTime - 1).send({ from: contractCreator });
-          mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({
-            from: contractCreator,
-          });
-          await finder.methods
-            .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address)
-            .send({ from: contractCreator });
+          await timer.setCurrentTime(startTime - 1);
+          mockOracle = await MockOracle.new(finder.address, timer.address, { from: contractCreator });
+          await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
 
           // Create a new synthetic token
           syntheticToken = await SyntheticToken.new(
@@ -237,40 +230,28 @@ describe("Liquidator.js", function () {
           });
 
           // Deploy a new expiring multi party OR perpetual, depending on the test version.
-          financialContract = await FinancialContract.new(constructorParams).send({ from: contractCreator });
-          await syntheticToken.methods.addMinter(financialContract.options.address).send({ from: contractCreator });
-          await syntheticToken.methods.addBurner(financialContract.options.address).send({ from: contractCreator });
+          financialContract = await FinancialContract.new(constructorParams);
+          await syntheticToken.addMinter(financialContract.address);
+          await syntheticToken.addBurner(financialContract.address);
 
-          await collateralToken.methods
-            .approve(financialContract.options.address, convertDecimals("100000000"))
-            .send({ from: sponsor1 });
-          await collateralToken.methods
-            .approve(financialContract.options.address, convertDecimals("100000000"))
-            .send({ from: sponsor2 });
-          await collateralToken.methods
-            .approve(financialContract.options.address, convertDecimals("100000000"))
-            .send({ from: sponsor3 });
-          await collateralToken.methods.approve(financialContract.options.address, convertDecimals("100000000")).send({
+          await collateralToken.approve(financialContract.address, convertDecimals("10000000"), { from: sponsor1 });
+          await collateralToken.approve(financialContract.address, convertDecimals("10000000"), { from: sponsor2 });
+          await collateralToken.approve(financialContract.address, convertDecimals("10000000"), { from: sponsor3 });
+          await collateralToken.approve(financialContract.address, convertDecimals("100000000"), {
             from: liquidatorBot,
           });
-          await collateralToken.methods.approve(financialContract.options.address, convertDecimals("100000000")).send({
+          await collateralToken.approve(financialContract.address, convertDecimals("100000000"), {
             from: liquidityProvider,
           });
 
-          syntheticToken = await Token.at(await financialContract.methods.tokenCurrency().call());
-          await syntheticToken.methods
-            .approve(financialContract.options.address, convertDecimals("100000000"))
-            .send({ from: sponsor1 });
-          await syntheticToken.methods
-            .approve(financialContract.options.address, convertDecimals("100000000"))
-            .send({ from: sponsor2 });
-          await syntheticToken.methods
-            .approve(financialContract.options.address, convertDecimals("100000000"))
-            .send({ from: sponsor3 });
-          await syntheticToken.methods.approve(financialContract.options.address, convertDecimals("100000000")).send({
+          syntheticToken = await Token.at(await financialContract.tokenCurrency());
+          await syntheticToken.approve(financialContract.address, convertDecimals("100000000"), { from: sponsor1 });
+          await syntheticToken.approve(financialContract.address, convertDecimals("100000000"), { from: sponsor2 });
+          await syntheticToken.approve(financialContract.address, convertDecimals("100000000"), { from: sponsor3 });
+          await syntheticToken.approve(financialContract.address, convertDecimals("100000000"), {
             from: liquidatorBot,
           });
-          await syntheticToken.methods.approve(financialContract.options.address, convertDecimals("100000000")).send({
+          await syntheticToken.approve(financialContract.address, convertDecimals("100000000"), {
             from: liquidityProvider,
           });
 
@@ -346,24 +327,32 @@ describe("Liquidator.js", function () {
           "Can correctly detect undercollateralized positions and liquidate them",
           async function () {
             // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
-            await financialContract.methods
-              .create({ rawValue: convertDecimals("125") }, { rawValue: convertDecimals("100") })
-              .send({ from: sponsor1 });
+            await financialContract.create(
+              { rawValue: convertDecimals("125") },
+              { rawValue: convertDecimals("100") },
+              { from: sponsor1 }
+            );
 
             // sponsor2 creates a position with 150 units of collateral, creating 100 synthetic tokens.
-            await financialContract.methods
-              .create({ rawValue: convertDecimals("150") }, { rawValue: convertDecimals("100") })
-              .send({ from: sponsor2 });
+            await financialContract.create(
+              { rawValue: convertDecimals("150") },
+              { rawValue: convertDecimals("100") },
+              { from: sponsor2 }
+            );
 
             // sponsor3 creates a position with 175 units of collateral, creating 100 synthetic tokens.
-            await financialContract.methods
-              .create({ rawValue: convertDecimals("175") }, { rawValue: convertDecimals("100") })
-              .send({ from: sponsor3 });
+            await financialContract.create(
+              { rawValue: convertDecimals("175") },
+              { rawValue: convertDecimals("100") },
+              { from: sponsor3 }
+            );
 
             // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
-            await financialContract.methods
-              .create({ rawValue: convertDecimals("1000") }, { rawValue: convertDecimals("500") })
-              .send({ liquidatorBot });
+            await financialContract.create(
+              { rawValue: convertDecimals("1000") },
+              { rawValue: convertDecimals("500") },
+              { from: liquidatorBot }
+            );
 
             // Start with a mocked price of 1 usd per token.
             // This puts both sponsors over collateralized so no liquidations should occur.
@@ -374,14 +363,8 @@ describe("Liquidator.js", function () {
             assert.equal(spy.callCount, 0); // No info level logs should be sent.
 
             // Both token sponsors should still have their positions with full collateral.
-            assert.equal(
-              (await financialContract.methods.getCollateral(sponsor1).call()).rawValue,
-              convertDecimals("125")
-            );
-            assert.equal(
-              (await financialContract.methods.getCollateral(sponsor2).call()).rawValue,
-              convertDecimals("150")
-            );
+            assert.equal((await financialContract.getCollateral(sponsor1)).rawValue, convertDecimals("125"));
+            assert.equal((await financialContract.getCollateral(sponsor2)).rawValue, convertDecimals("150"));
 
             // Liquidator throws an error if the price feed returns an invalid value.
             priceFeedMock.setCurrentPrice(null);
@@ -433,11 +416,8 @@ describe("Liquidator.js", function () {
             assert.equal((await financialContract.methods.getCollateral(sponsor2).call()).rawValue, 0);
 
             // Sponsor3 should have all their collateral left and no liquidations.
-            assert.deepStrictEqual(await financialContract.methods.getLiquidations(sponsor3).call(), []);
-            assert.equal(
-              (await financialContract.methods.getCollateral(sponsor3).call()).rawValue,
-              convertDecimals("175")
-            );
+            assert.deepStrictEqual(await financialContract.getLiquidations(sponsor3), []);
+            assert.equal((await financialContract.getCollateral(sponsor3)).rawValue, convertDecimals("175"));
 
             // Another query at the same price should execute no new liquidations.
             priceFeedMock.setCurrentPrice(toWei("1.3"));
@@ -450,19 +430,25 @@ describe("Liquidator.js", function () {
           "Can correctly detect invalid withdrawals and liquidate them",
           async function () {
             // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
-            await financialContract.methods
-              .create({ rawValue: convertDecimals("125") }, { rawValue: convertDecimals("100") })
-              .send({ from: sponsor1 });
+            await financialContract.create(
+              { rawValue: convertDecimals("125") },
+              { rawValue: convertDecimals("100") },
+              { from: sponsor1 }
+            );
 
             // sponsor2 creates a position with 150 units of collateral, creating 100 synthetic tokens.
-            await financialContract.methods
-              .create({ rawValue: convertDecimals("150") }, { rawValue: convertDecimals("100") })
-              .send({ from: sponsor2 });
+            await financialContract.create(
+              { rawValue: convertDecimals("150") },
+              { rawValue: convertDecimals("100") },
+              { from: sponsor2 }
+            );
 
             // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
-            await financialContract.methods
-              .create({ rawValue: convertDecimals("1000") }, { rawValue: convertDecimals("500") })
-              .send({ liquidatorBot });
+            await financialContract.create(
+              { rawValue: convertDecimals("1000") },
+              { rawValue: convertDecimals("500") },
+              { from: liquidatorBot }
+            );
 
             // Start with a mocked price of 1 usd per token.
             // This puts both sponsors over collateralized so no liquidations should occur.
@@ -476,14 +462,8 @@ describe("Liquidator.js", function () {
             assert.deepStrictEqual(await financialContract.methods.getLiquidations(sponsor2).call(), []);
 
             // Both token sponsors should still have their positions with full collateral.
-            assert.equal(
-              (await financialContract.methods.getCollateral(sponsor1).call()).rawValue,
-              convertDecimals("125")
-            );
-            assert.equal(
-              (await financialContract.methods.getCollateral(sponsor2).call()).rawValue,
-              convertDecimals("150")
-            );
+            assert.equal((await financialContract.getCollateral(sponsor1)).rawValue, convertDecimals("125"));
+            assert.equal((await financialContract.getCollateral(sponsor2)).rawValue, convertDecimals("150"));
 
             // If sponsor1 requests a withdrawal of any amount of collateral above 5 units at the given price of 1 usd per token
             // their remaining position becomes undercollateralized. Say they request to withdraw 10 units of collateral.
@@ -541,14 +521,18 @@ describe("Liquidator.js", function () {
           "Can withdraw rewards from expired liquidations",
           async function () {
             // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
-            await financialContract.methods
-              .create({ rawValue: convertDecimals("125") }, { rawValue: convertDecimals("100") })
-              .send({ from: sponsor1 });
+            await financialContract.create(
+              { rawValue: convertDecimals("125") },
+              { rawValue: convertDecimals("100") },
+              { from: sponsor1 }
+            );
 
             // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
-            await financialContract.methods
-              .create({ rawValue: convertDecimals("1000") }, { rawValue: convertDecimals("500") })
-              .send({ liquidatorBot });
+            await financialContract.create(
+              { rawValue: convertDecimals("1000") },
+              { rawValue: convertDecimals("500") },
+              { from: liquidatorBot }
+            );
 
             // Next, the liquidator believes the price to be 1.3, which would make the position undercollateralized,
             // and liquidates the position.
@@ -593,14 +577,18 @@ describe("Liquidator.js", function () {
           "Can withdraw rewards from liquidations that were disputed unsuccessfully",
           async function () {
             // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
-            await financialContract.methods
-              .create({ rawValue: convertDecimals("125") }, { rawValue: convertDecimals("100") })
-              .send({ from: sponsor1 });
+            await financialContract.create(
+              { rawValue: convertDecimals("125") },
+              { rawValue: convertDecimals("100") },
+              { from: sponsor1 }
+            );
 
             // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
-            await financialContract.methods
-              .create({ rawValue: convertDecimals("1000") }, { rawValue: convertDecimals("500") })
-              .send({ liquidatorBot });
+            await financialContract.create(
+              { rawValue: convertDecimals("1000") },
+              { rawValue: convertDecimals("500") },
+              { from: liquidatorBot }
+            );
 
             // Next, the liquidator believes the price to be 1.3, which would make the position undercollateralized,
             // and liquidates the position.
@@ -621,8 +609,7 @@ describe("Liquidator.js", function () {
             // Simulate a failed dispute by pushing a price to the oracle, at the time of the liquidation request, such that
             // the position was truly undercollateralized. In other words, the liquidator was liquidating at the correct price.
             const disputePrice = toWei("1.3");
-            const liquidationTime = (await financialContract.methods.getLiquidations(sponsor1).call())[0]
-              .liquidationTime;
+            const liquidationTime = (await financialContract.getLiquidations(sponsor1))[0].liquidationTime;
             await mockOracle.pushPrice(utf8ToHex(`${testConfig.tokenName}TEST`), liquidationTime, disputePrice);
 
             // The liquidator can now settle the dispute by calling `withdrawRewards()` because the oracle has a price
@@ -676,14 +663,18 @@ describe("Liquidator.js", function () {
           "Can withdraw rewards from liquidations that were disputed successfully",
           async function () {
             // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
-            await financialContract.methods
-              .create({ rawValue: convertDecimals("125") }, { rawValue: convertDecimals("100") })
-              .send({ from: sponsor1 });
+            await financialContract.create(
+              { rawValue: convertDecimals("125") },
+              { rawValue: convertDecimals("100") },
+              { from: sponsor1 }
+            );
 
             // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
-            await financialContract.methods
-              .create({ rawValue: convertDecimals("1000") }, { rawValue: convertDecimals("500") })
-              .send({ liquidatorBot });
+            await financialContract.create(
+              { rawValue: convertDecimals("1000") },
+              { rawValue: convertDecimals("500") },
+              { from: liquidatorBot }
+            );
 
             // Next, the liquidator believes the price to be 1.3, which would make the position undercollateralized,
             // and liquidates the position.
@@ -704,8 +695,7 @@ describe("Liquidator.js", function () {
             // Simulate a successful dispute by pushing a price to the oracle, at the time of the liquidation request, such that
             // the position was not undercollateralized. In other words, the liquidator was liquidating at the incorrect price.
             const disputePrice = toWei("1");
-            const liquidationTime = (await financialContract.methods.getLiquidations(sponsor1).call())[0]
-              .liquidationTime;
+            const liquidationTime = (await financialContract.getLiquidations(sponsor1))[0].liquidationTime;
             await mockOracle.pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice);
 
             // The liquidator can now settle the dispute by calling `withdrawRewards()` because the oracle has a price
@@ -752,9 +742,11 @@ describe("Liquidator.js", function () {
           "Detect if the liquidator cannot liquidate due to capital constraints",
           async function () {
             // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
-            await financialContract.methods
-              .create({ rawValue: convertDecimals("125") }, { rawValue: convertDecimals("100") })
-              .send({ from: sponsor1 });
+            await financialContract.create(
+              { rawValue: convertDecimals("125") },
+              { rawValue: convertDecimals("100") },
+              { from: sponsor1 }
+            );
 
             // Next, the liquidator believes the price to be 1.3, which would make the position undercollateralized,
             // and liquidates the position.
@@ -770,9 +762,11 @@ describe("Liquidator.js", function () {
             assert.equal((await financialContract.methods.getLiquidations(sponsor1).call()).length, 0);
 
             // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
-            await financialContract.methods
-              .create({ rawValue: convertDecimals("1000") }, { rawValue: convertDecimals("500") })
-              .send({ liquidatorBot });
+            await financialContract.create(
+              { rawValue: convertDecimals("1000") },
+              { rawValue: convertDecimals("500") },
+              { from: liquidatorBot }
+            );
             // No need to force update the `financialContractClient` here since we are not interested in detecting the `liquidatorBot`'s new
             // position, but now when we try to liquidate the position the liquidation will go through because the bot will have
             // the requisite balance.
@@ -852,19 +846,25 @@ describe("Liquidator.js", function () {
             });
 
             // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
-            await financialContract.methods
-              .create({ rawValue: convertDecimals("115") }, { rawValue: convertDecimals("100") })
-              .send({ from: sponsor1 });
+            await financialContract.create(
+              { rawValue: convertDecimals("115") },
+              { rawValue: convertDecimals("100") },
+              { from: sponsor1 }
+            );
 
             // sponsor2 creates a position with 118 units of collateral, creating 100 synthetic tokens.
-            await financialContract.methods
-              .create({ rawValue: convertDecimals("118") }, { rawValue: convertDecimals("100") })
-              .send({ from: sponsor2 });
+            await financialContract.create(
+              { rawValue: convertDecimals("118") },
+              { rawValue: convertDecimals("100") },
+              { from: sponsor2 }
+            );
 
             // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
-            await financialContract.methods
-              .create({ rawValue: convertDecimals("1000") }, { rawValue: convertDecimals("500") })
-              .send({ liquidatorBot });
+            await financialContract.create(
+              { rawValue: convertDecimals("1000") },
+              { rawValue: convertDecimals("500") },
+              { from: liquidatorBot }
+            );
 
             // Next, assume that the price feed has moved such that both sponsors are technically undercollateralized.
             // However, the price threshold provides just enough buffer for sponsor2 to avoid liquidation.
@@ -894,11 +894,8 @@ describe("Liquidator.js", function () {
             assert.equal((await financialContract.methods.getCollateral(sponsor1).call()).rawValue, 0);
 
             // Sponsor2 should have all their collateral left and no liquidations.
-            assert.deepStrictEqual(await financialContract.methods.getLiquidations(sponsor2).call(), []);
-            assert.equal(
-              (await financialContract.methods.getCollateral(sponsor2).call()).rawValue,
-              convertDecimals("118")
-            );
+            assert.deepStrictEqual(await financialContract.getLiquidations(sponsor2), []);
+            assert.equal((await financialContract.getCollateral(sponsor2)).rawValue, convertDecimals("118"));
           });
           versionedIt([{ contractType: "any", contractVersion: "any" }])(
             "Cannot set invalid alerting overrides",
@@ -934,19 +931,19 @@ describe("Liquidator.js", function () {
               // We'll attempt to liquidate 10 tokens, but we will only have enough balance to complete the first liquidation.
               const amountToLiquidate = toWei("10");
 
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("100") },
                 { rawValue: convertDecimals("12") },
                 { from: sponsor1 }
               );
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("100") },
                 { rawValue: convertDecimals("8") },
                 { from: sponsor2 }
               );
 
               // liquidatorBot creates a position with enough tokens to liquidate all positions.
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("10000") },
                 { rawValue: convertDecimals("10") },
                 { from: liquidatorBot }
@@ -989,12 +986,12 @@ describe("Liquidator.js", function () {
               // Sponsor1 should have some collateral and tokens left in their position from the liquidation.
               if (testConfig.collateralDecimals == 18) {
                 assert.equal(
-                  (await financialContract.methods.getCollateral(sponsor1).call()).rawValue,
+                  (await financialContract.getCollateral(sponsor1)).rawValue,
                   convertDecimals("41.6666666666666667")
                 );
               } else if (testConfig.collateralDecimals == 8) {
                 assert.equal(
-                  (await financialContract.methods.getCollateral(sponsor1).call()).rawValue,
+                  (await financialContract.getCollateral(sponsor1)).rawValue,
                   convertDecimals("41.66666667")
                 );
               }
@@ -1005,10 +1002,7 @@ describe("Liquidator.js", function () {
               // Bot has 3 tokens left after first liquidation, and this brings position
               // to just at the min sponsor size of 5.
               // (8-3)/8 = 5/8, 5/8 * 100 = 62.5
-              assert.equal(
-                (await financialContract.methods.getCollateral(sponsor2).call()).rawValue,
-                convertDecimals("62.5")
-              );
+              assert.equal((await financialContract.getCollateral(sponsor2)).rawValue, convertDecimals("62.5"));
               positionObject = await financialContract.positions(sponsor2);
               assert.equal(positionObject.tokensOutstanding.rawValue, convertDecimals("5"));
             }
@@ -1017,14 +1011,14 @@ describe("Liquidator.js", function () {
             "Liquidator will not liquidate itself with EOA sponsor",
             async function () {
               // liquidator creates a position with 125 units of collateral, creating 100 synthetic tokens.
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("125") },
                 { rawValue: convertDecimals("100") },
                 { from: liquidatorBot }
               );
 
               // sponsor2 creates a position with 150 units of collateral, creating 100 synthetic tokens.
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("150") },
                 { rawValue: convertDecimals("100") },
                 { from: sponsor1 }
@@ -1045,18 +1039,12 @@ describe("Liquidator.js", function () {
               assert.isTrue(spyLogIncludes(spy, 0, "The liquidator has an open position that is liquidatable"));
 
               // liquidatorBot should have all their collateral left and no liquidations.
-              assert.deepStrictEqual(await financialContract.methods.getLiquidations(liquidatorBot).call(), []);
-              assert.equal(
-                (await financialContract.methods.getCollateral(liquidatorBot).call()).rawValue,
-                convertDecimals("125")
-              );
+              assert.deepStrictEqual(await financialContract.getLiquidations(liquidatorBot), []);
+              assert.equal((await financialContract.getCollateral(liquidatorBot)).rawValue, convertDecimals("125"));
 
               // Sponsor1 should have all their collateral left and no liquidations.
-              assert.deepStrictEqual(await financialContract.methods.getLiquidations(sponsor1).call(), []);
-              assert.equal(
-                (await financialContract.methods.getCollateral(sponsor1).call()).rawValue,
-                convertDecimals("150")
-              );
+              assert.deepStrictEqual(await financialContract.getLiquidations(sponsor1), []);
+              assert.equal((await financialContract.getCollateral(sponsor1)).rawValue, convertDecimals("150"));
 
               // Run the liquidator again but this time at a price that will liquidatoe the sponsor. The liquidator
               // should still not liquidate itself, but should take out the underwater sponsor.
@@ -1066,11 +1054,8 @@ describe("Liquidator.js", function () {
               assert.equal(spy.callCount, 3);
 
               // liquidatorBot should have all their collateral left and no liquidations.
-              assert.deepStrictEqual(await financialContract.methods.getLiquidations(liquidatorBot).call(), []);
-              assert.equal(
-                (await financialContract.methods.getCollateral(liquidatorBot).call()).rawValue,
-                convertDecimals("125")
-              );
+              assert.deepStrictEqual(await financialContract.getLiquidations(liquidatorBot), []);
+              assert.equal((await financialContract.getCollateral(liquidatorBot)).rawValue, convertDecimals("125"));
 
               // Sponsor1 should be in a liquidation state with the bot as the liquidator.
               let liquidationObject = (await financialContract.methods.getLiquidations(sponsor1).call())[0];
@@ -1091,7 +1076,7 @@ describe("Liquidator.js", function () {
                 // 1. (tokens-outstanding - amount-to-liquidate) > min-sponsor-tokens, and amount-to-liquidate < tokens-outstanding
                 //     - The bot will be able to liquidate its desired amount, leaving the position above the minimum token threshold.
                 //     - Example: (12 - 6) > 5, new position will have 6 tokens remaining.
-                await financialContract.methods.create(
+                await financialContract.create(
                   { rawValue: convertDecimals("100") },
                   { rawValue: convertDecimals("12") },
                   { from: sponsor1 }
@@ -1100,7 +1085,7 @@ describe("Liquidator.js", function () {
                 //     - The bot will NOT be able to liquidate its desired amount. It will liquidate a reduced amount and
                 //       reduce the position exactly to the minimum.
                 //     - Example: (8 - 6) <= 5, so instead the bot will liquidate (8 - 5) = 3 tokens to leave the position with (8 - 3) = 5 tokens remaining.
-                await financialContract.methods.create(
+                await financialContract.create(
                   { rawValue: convertDecimals("100") },
                   { rawValue: convertDecimals("8") },
                   { from: sponsor2 }
@@ -1108,12 +1093,14 @@ describe("Liquidator.js", function () {
                 // 3. amount-to-liquidate > tokens-outstanding
                 //     - The bot will liquidate the full position.
                 //     - Example: 6 > 5, so the bot will liquidate 5 tokens.
-                await financialContract.methods
-                  .create({ rawValue: convertDecimals("100") }, { rawValue: convertDecimals("5") })
-                  .send({ from: sponsor3 });
+                await financialContract.create(
+                  { rawValue: convertDecimals("100") },
+                  { rawValue: convertDecimals("5") },
+                  { from: sponsor3 }
+                );
 
                 // liquidatorBot creates a position with enough tokens to liquidate all positions.
-                await financialContract.methods.create(
+                await financialContract.create(
                   { rawValue: convertDecimals("10000") },
                   { rawValue: convertDecimals("50") },
                   { from: liquidatorBot }
@@ -1169,18 +1156,12 @@ describe("Liquidator.js", function () {
                 assert.equal(liquidationObject.tokensOutstanding, convertDecimals("5"));
 
                 // Sponsor1 should have some collateral and tokens left in their position from the liquidation.
-                assert.equal(
-                  (await financialContract.methods.getCollateral(sponsor1).call()).rawValue,
-                  convertDecimals("50")
-                );
+                assert.equal((await financialContract.getCollateral(sponsor1)).rawValue, convertDecimals("50"));
                 let positionObject = await financialContract.positions(sponsor1);
                 assert.equal(positionObject.tokensOutstanding.rawValue, convertDecimals("6"));
 
                 // Sponsor2 should have some collateral and tokens left in their position from the liquidation.
-                assert.equal(
-                  (await financialContract.methods.getCollateral(sponsor2).call()).rawValue,
-                  convertDecimals("62.5")
-                );
+                assert.equal((await financialContract.getCollateral(sponsor2)).rawValue, convertDecimals("62.5"));
                 positionObject = await financialContract.positions(sponsor2);
                 assert.equal(positionObject.tokensOutstanding.rawValue, convertDecimals("5"));
 
@@ -1199,7 +1180,7 @@ describe("Liquidator.js", function () {
                 // 1. (tokens-outstanding - amount-to-liquidate) > min-sponsor-tokens, and amount-to-liquidate < tokens-outstanding.
                 //     - The bot will be able to liquidate its desired amount, leaving the position above the minimum token threshold.
                 //     - Example: (12 - 4) > 5, new position will have 8 tokens remaining.
-                await financialContract.methods.create(
+                await financialContract.create(
                   { rawValue: convertDecimals("100") },
                   { rawValue: convertDecimals("12") },
                   { from: sponsor1 }
@@ -1208,19 +1189,21 @@ describe("Liquidator.js", function () {
                 //     - The bot will NOT be able to liquidate its desired amount. It will liquidate a reduced amount and
                 //       reduce the position exactly to the minimum.
                 //     - Example: (8 - 4) <= 5, so instead the bot will liquidate (8 - 5) = 3 tokens to leave the position with (8 - 3) = 5 tokens remaining.
-                await financialContract.methods.create(
+                await financialContract.create(
                   { rawValue: convertDecimals("100") },
                   { rawValue: convertDecimals("8") },
                   { from: sponsor2 }
                 );
                 // 3. amount-to-liquidate < tokens-outstanding, and amount-to-liquidate < min-sponsor-tokens.
                 //     - The bot does not have enough balance to send a full liquidation, and partials are not allowed since 5 >= 5.
-                await financialContract.methods
-                  .create({ rawValue: convertDecimals("100") }, { rawValue: convertDecimals("5") })
-                  .send({ from: sponsor3 });
+                await financialContract.create(
+                  { rawValue: convertDecimals("100") },
+                  { rawValue: convertDecimals("5") },
+                  { from: sponsor3 }
+                );
 
                 // liquidatorBot creates a position with enough tokens to liquidate all positions.
-                await financialContract.methods.create(
+                await financialContract.create(
                   { rawValue: convertDecimals("10000") },
                   { rawValue: convertDecimals("50") },
                   { from: liquidatorBot }
@@ -1279,12 +1262,12 @@ describe("Liquidator.js", function () {
                 // Dont know how to generalize this check for multi decimal paradigms
                 if (testConfig.collateralDecimals == 18) {
                   assert.equal(
-                    (await financialContract.methods.getCollateral(sponsor1).call()).rawValue,
+                    (await financialContract.getCollateral(sponsor1)).rawValue,
                     convertDecimals("66.6666666666666667")
                   );
                 } else if (testConfig.collateralDecimals == 8) {
                   assert.equal(
-                    (await financialContract.methods.getCollateral(sponsor1).call()).rawValue,
+                    (await financialContract.getCollateral(sponsor1)).rawValue,
                     convertDecimals("66.66666667")
                   );
                 }
@@ -1292,18 +1275,12 @@ describe("Liquidator.js", function () {
                 assert.equal(positionObject.tokensOutstanding.rawValue, convertDecimals("8"));
 
                 // Sponsor2 should have some collateral and tokens left in their position from the liquidation.
-                assert.equal(
-                  (await financialContract.methods.getCollateral(sponsor2).call()).rawValue,
-                  convertDecimals("62.5")
-                );
+                assert.equal((await financialContract.getCollateral(sponsor2)).rawValue, convertDecimals("62.5"));
                 positionObject = await financialContract.positions(sponsor2);
                 assert.equal(positionObject.tokensOutstanding.rawValue, convertDecimals("5"));
 
                 // Sponsor3 should have its full position remaining.
-                assert.equal(
-                  (await financialContract.methods.getCollateral(sponsor3).call()).rawValue,
-                  convertDecimals("100")
-                );
+                assert.equal((await financialContract.getCollateral(sponsor3)).rawValue, convertDecimals("100"));
                 positionObject = await financialContract.positions(sponsor3);
                 assert.equal(positionObject.tokensOutstanding.rawValue, convertDecimals("5"));
               }
@@ -1328,21 +1305,21 @@ describe("Liquidator.js", function () {
                 });
 
                 // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
-                await financialContract.methods.create(
+                await financialContract.create(
                   { rawValue: convertDecimals("115") },
                   { rawValue: convertDecimals("100") },
                   { from: sponsor1 }
                 );
 
                 // sponsor2 creates a position with 125 units of collateral, creating 100 synthetic tokens.
-                await financialContract.methods.create(
+                await financialContract.create(
                   { rawValue: convertDecimals("125") },
                   { rawValue: convertDecimals("100") },
                   { from: sponsor2 }
                 );
 
                 // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
-                await financialContract.methods.create(
+                await financialContract.create(
                   { rawValue: convertDecimals("1000") },
                   { rawValue: convertDecimals("500") },
                   { from: liquidatorBot }
@@ -1361,21 +1338,21 @@ describe("Liquidator.js", function () {
               "Can correctly override price feed input",
               async function () {
                 // sponsor1 creates a position with 115 units of collateral, creating 100 synthetic tokens.
-                await financialContract.methods.create(
+                await financialContract.create(
                   { rawValue: convertDecimals("115") },
                   { rawValue: convertDecimals("100") },
                   { from: sponsor1 }
                 );
 
                 // sponsor2 creates a position with 125 units of collateral, creating 100 synthetic tokens.
-                await financialContract.methods.create(
+                await financialContract.create(
                   { rawValue: convertDecimals("125") },
                   { rawValue: convertDecimals("100") },
                   { from: sponsor2 }
                 );
 
                 // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
-                await financialContract.methods.create(
+                await financialContract.create(
                   { rawValue: convertDecimals("1000") },
                   { rawValue: convertDecimals("500") },
                   { from: liquidatorBot }
@@ -1451,18 +1428,18 @@ describe("Liquidator.js", function () {
                 financialContractProps,
                 liquidatorConfig,
               });
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("120") },
                 { rawValue: convertDecimals("100") },
                 { from: sponsor1 }
               );
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("120") },
                 { rawValue: convertDecimals("100") },
                 { from: sponsor2 }
               );
               // we will have enough to fully liquidate sponsor1, then we have to extend the other
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("1000") },
                 { rawValue: convertDecimals("150") },
                 { from: liquidatorBot }
@@ -1553,10 +1530,7 @@ describe("Liquidator.js", function () {
             async () => {
               // If there is no withdrawal liveness that can be extended, either because its absent or it has expired
               // already, then liquidate using as many funds as the bot owns.
-              liquidatorConfig = {
-                ...liquidatorConfig,
-                defenseActivationPercent: 50,
-              };
+              liquidatorConfig = { ...liquidatorConfig, defenseActivationPercent: 50 };
               const liquidator = new Liquidator({
                 logger: spyLogger,
                 financialContractClient,
@@ -1569,7 +1543,7 @@ describe("Liquidator.js", function () {
                 liquidatorConfig,
               });
               // sponsor1 creates a position with 120 units of collateral, creating 100 synthetic tokens.
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("120") },
                 { rawValue: convertDecimals("100") },
                 { from: sponsor1 }
@@ -1577,7 +1551,7 @@ describe("Liquidator.js", function () {
 
               // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
               // does not have enough to liquidate entire position
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("1000") },
                 { rawValue: convertDecimals("70") },
                 { from: liquidatorBot }
@@ -1607,8 +1581,8 @@ describe("Liquidator.js", function () {
               let nextTime = Math.ceil(
                 Number(sponsor1Positions.withdrawalRequestPassTimestamp) - withdrawLiveness * 0.5
               );
-              await financialContract.methods.setCurrentTime(nextTime).send({ from: contractCreator });
-              await financialContract.methods.create(
+              await financialContract.setCurrentTime(nextTime);
+              await financialContract.create(
                 { rawValue: convertDecimals("1000") },
                 { rawValue: convertDecimals("29") },
                 { from: liquidatorBot }
@@ -1627,28 +1601,28 @@ describe("Liquidator.js", function () {
             "Can correctly detect invalid positions and liquidate them",
             async function () {
               // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("125") },
                 { rawValue: convertDecimals("100") },
                 { from: sponsor1 }
               );
 
               // sponsor2 creates a position with 150 units of collateral, creating 100 synthetic tokens.
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("150") },
                 { rawValue: convertDecimals("100") },
                 { from: sponsor2 }
               );
 
               // sponsor3 creates a position with 175 units of collateral, creating 100 synthetic tokens.
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("175") },
                 { rawValue: convertDecimals("100") },
                 { from: sponsor3 }
               );
 
               // liquidatorBot creates a position to have synthetic tokens to pay off debt upon liquidation.
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("1000") },
                 { rawValue: convertDecimals("500") },
                 { from: liquidatorBot }
@@ -1667,18 +1641,9 @@ describe("Liquidator.js", function () {
               assert.deepStrictEqual(await financialContract.methods.getLiquidations(sponsor3).call(), []);
 
               // Both token sponsors should still have their positions with full collateral.
-              assert.equal(
-                (await financialContract.methods.getCollateral(sponsor1).call()).rawValue,
-                convertDecimals("125")
-              );
-              assert.equal(
-                (await financialContract.methods.getCollateral(sponsor2).call()).rawValue,
-                convertDecimals("150")
-              );
-              assert.equal(
-                (await financialContract.methods.getCollateral(sponsor3).call()).rawValue,
-                convertDecimals("175")
-              );
+              assert.equal((await financialContract.getCollateral(sponsor1)).rawValue, convertDecimals("125"));
+              assert.equal((await financialContract.getCollateral(sponsor2)).rawValue, convertDecimals("150"));
+              assert.equal((await financialContract.getCollateral(sponsor3)).rawValue, convertDecimals("175"));
 
               // Next, introduce some funding rate. Setting the funding rate multiplier to 1.04, results in modifying
               // sponsor's debt. This becomes 100*1.04 = 104. All this debt, with a price of 1, both sponsors are
@@ -1702,18 +1667,9 @@ describe("Liquidator.js", function () {
               assert.deepStrictEqual(await financialContract.methods.getLiquidations(sponsor3).call(), []);
 
               // Both token sponsors should still have their positions with full collateral.
-              assert.equal(
-                (await financialContract.methods.getCollateral(sponsor1).call()).rawValue,
-                convertDecimals("125")
-              );
-              assert.equal(
-                (await financialContract.methods.getCollateral(sponsor2).call()).rawValue,
-                convertDecimals("150")
-              );
-              assert.equal(
-                (await financialContract.methods.getCollateral(sponsor3).call()).rawValue,
-                convertDecimals("175")
-              );
+              assert.equal((await financialContract.getCollateral(sponsor1)).rawValue, convertDecimals("125"));
+              assert.equal((await financialContract.getCollateral(sponsor2)).rawValue, convertDecimals("150"));
+              assert.equal((await financialContract.getCollateral(sponsor3)).rawValue, convertDecimals("175"));
 
               // If either the price increase, funding rate multiplier increase or the sponsors collateral decrease they
               // will be at risk of being liquidated. Say that the funding rate has another 0.01 added to it. The cumulative
@@ -1812,11 +1768,9 @@ describe("Liquidator.js", function () {
           let dsProxy;
 
           const getPoolSpotPrice = async () => {
-            const poolTokenABallance = await reserveToken.methods.balanceOf(pairAddress).call();
-            const poolTokenBBallance = await collateralToken.methods.balanceOf(pairAddress).call();
-            return Number(fromWei(poolTokenABallance.mul(toBN(convertDecimals("1"))).div(poolTokenBBallance))).toFixed(
-              4
-            );
+            const poolTokenABalance = await reserveToken.balanceOf(pairAddress);
+            const poolTokenBBalance = await collateralToken.balanceOf(pairAddress);
+            return Number(fromWei(poolTokenABalance.mul(toBN(convertDecimals("1"))).div(poolTokenBBalance))).toFixed(4);
           };
 
           beforeEach(async () => {
@@ -2025,21 +1979,21 @@ describe("Liquidator.js", function () {
             "Correctly liquidates positions using DSProxy",
             async function () {
               // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("125") },
                 { rawValue: convertDecimals("100") },
                 { from: sponsor1 }
               );
 
               // sponsor2 creates a position with 150 units of collateral, creating 100 synthetic tokens.
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("150") },
                 { rawValue: convertDecimals("100") },
                 { from: sponsor2 }
               );
 
               // sponsor3 creates a position with 175 units of collateral, creating 100 synthetic tokens.
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("175") },
                 { rawValue: convertDecimals("100") },
                 { from: sponsor3 }
@@ -2058,18 +2012,9 @@ describe("Liquidator.js", function () {
               assert.equal(spy.callCount, 1); // 1 log level event from deploying the DSProxy for the liquidator.
 
               // All three token sponsors should still have their positions with full collateral.
-              assert.equal(
-                (await financialContract.methods.getCollateral(sponsor1).call()).rawValue,
-                convertDecimals("125")
-              );
-              assert.equal(
-                (await financialContract.methods.getCollateral(sponsor2).call()).rawValue,
-                convertDecimals("150")
-              );
-              assert.equal(
-                (await financialContract.methods.getCollateral(sponsor3).call()).rawValue,
-                convertDecimals("175")
-              );
+              assert.equal((await financialContract.getCollateral(sponsor1)).rawValue, convertDecimals("125"));
+              assert.equal((await financialContract.getCollateral(sponsor2)).rawValue, convertDecimals("150"));
+              assert.equal((await financialContract.getCollateral(sponsor3)).rawValue, convertDecimals("175"));
 
               // There should be no liquidations created from any sponsor account
               assert.deepStrictEqual(await financialContract.methods.getLiquidations(sponsor1).call(), []);
@@ -2111,11 +2056,8 @@ describe("Liquidator.js", function () {
               assert.equal((await financialContract.methods.getCollateral(sponsor2).call()).rawValue, 0);
 
               // Sponsor3 should have all their collateral left and no liquidations.
-              assert.deepStrictEqual(await financialContract.methods.getLiquidations(sponsor3).call(), []);
-              assert.equal(
-                (await financialContract.methods.getCollateral(sponsor3).call()).rawValue,
-                convertDecimals("175")
-              );
+              assert.deepStrictEqual(await financialContract.getLiquidations(sponsor3), []);
+              assert.equal((await financialContract.getCollateral(sponsor3)).rawValue, convertDecimals("175"));
 
               // Another query at the same price should execute no new liquidations.
               priceFeedMock.setCurrentPrice(toWei("1.3"));
@@ -2129,21 +2071,18 @@ describe("Liquidator.js", function () {
               assert.equal(spy.callCount, 5);
 
               // Advance after liveness and withdraw.
-              const liquidationTime = (await financialContract.methods.getLiquidations(sponsor1).call())[0]
-                .liquidationTime;
+              const liquidationTime = (await financialContract.getLiquidations(sponsor1))[0].liquidationTime;
               const liquidationLiveness = 1000;
-              await financialContract.methods
-                .setCurrentTime(Number(liquidationTime) + liquidationLiveness)
-                .send({ from: contractCreator });
+              await financialContract.setCurrentTime(Number(liquidationTime) + liquidationLiveness);
 
               // Now that the liquidation has expired, the liquidator can withdraw rewards.
-              const collateralPreWithdraw = await collateralToken.methods.balanceOf(dsProxy.options.address).call();
+              const collateralPreWithdraw = await collateralToken.balanceOf(dsProxy.address);
               await liquidator.update();
               await liquidator.withdrawRewards();
               assert.equal(spy.callCount, 7); // 7 new info level events should be sent at the conclusion of the 2 withdrawals
 
               // Liquidator should have their collateral increased by Sponsor1 + sponsor2 collateral.
-              const collateralPostWithdraw = await collateralToken.methods.balanceOf(dsProxy.options.address).call();
+              const collateralPostWithdraw = await collateralToken.balanceOf(dsProxy.address);
               assert.equal(
                 toBN(collateralPreWithdraw)
                   .add(toBN(convertDecimals("125")))
@@ -2154,11 +2093,11 @@ describe("Liquidator.js", function () {
 
               // Liquidation data should have been deleted.
               assert.deepStrictEqual(
-                (await financialContract.methods.getLiquidations(sponsor1).call())[0].state,
+                (await financialContract.getLiquidations(sponsor1))[0].state,
                 LiquidationStatesEnum.UNINITIALIZED
               );
               assert.deepStrictEqual(
-                (await financialContract.methods.getLiquidations(sponsor2).call())[0].state,
+                (await financialContract.getLiquidations(sponsor2))[0].state,
                 LiquidationStatesEnum.UNINITIALIZED
               );
             }
@@ -2194,20 +2133,18 @@ describe("Liquidator.js", function () {
                 financialContractProps,
                 liquidatorConfig,
               });
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("120") },
                 { rawValue: convertDecimals("100") },
                 { from: sponsor1 }
               );
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("175") },
                 { rawValue: convertDecimals("100") },
                 { from: sponsor2 }
               );
               // Seed the DSProxy with some collateral tokens (this is the same as the reserve token).
-              await collateralToken.methods
-                .mint(dsProxy.options.address, convertDecimals("150"))
-                .send({ from: contractCreator });
+              await collateralToken.mint(dsProxy.address, convertDecimals("150"), { from: contractCreator });
 
               // Liquidator should correctly liquidate both positions and have done no trades in the process as it
               // used the reserve as collateral. Assume the price feed given to the liquidator has moved such one of the
@@ -2232,11 +2169,8 @@ describe("Liquidator.js", function () {
               assert.equal((await financialContract.methods.getCollateral(sponsor1).call()).rawValue, 0);
 
               // Sponsor2 should not have any liquidations and should have all their collateral.
-              assert.deepStrictEqual(await financialContract.methods.getLiquidations(sponsor2).call(), []);
-              assert.equal(
-                (await financialContract.methods.getCollateral(sponsor2).call()).rawValue,
-                convertDecimals("175")
-              );
+              assert.deepStrictEqual(await financialContract.getLiquidations(sponsor2), []);
+              assert.equal((await financialContract.getCollateral(sponsor2)).rawValue, convertDecimals("175"));
 
               // Next, try another liquidation. This time around the bot does not have enough collateral to mint enough
               // to liquidate the min sponsor size. The bot should correctly report this without generating any errors
@@ -2261,14 +2195,14 @@ describe("Liquidator.js", function () {
             "Correctly respects existing collateral balances when using DSProxy",
             async function () {
               // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("125") },
                 { rawValue: convertDecimals("100") },
                 { from: sponsor1 }
               );
 
               // sponsor2 creates a position with 200 units of collateral, creating 100 synthetic tokens.
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("200") },
                 { rawValue: convertDecimals("100") },
                 { from: sponsor2 }
@@ -2295,7 +2229,7 @@ describe("Liquidator.js", function () {
               // There should be no swaps on Uniswap as the contract already had enough collateral to mint and liquidate.
               assert.equal((await pair.getPastEvents("Swap")).length, 0);
               // The DSProxy should have a position with debt equal to the liquidated position.
-              const dsProxyPosition = await financialContract.positions(dsProxy.options.address);
+              const dsProxyPosition = await financialContract.positions(dsProxy.address);
               assert.equal(dsProxyPosition.tokensOutstanding.rawValue, convertDecimals("100"));
               // The DSProxy reserve tokens should not have decreased as it had enough collateral to mint without swap.
               assert.equal(
@@ -2329,12 +2263,12 @@ describe("Liquidator.js", function () {
                 financialContractProps,
                 liquidatorConfig,
               });
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("120") },
                 { rawValue: convertDecimals("100") },
                 { from: sponsor1 }
               );
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("120") },
                 { rawValue: convertDecimals("100") },
                 { from: sponsor2 }
@@ -2454,21 +2388,21 @@ describe("Liquidator.js", function () {
               );
 
               // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("125") },
                 { rawValue: convertDecimals("100") },
                 { from: sponsor1 }
               );
 
               // sponsor2 creates a position with 175 units of collateral, creating 100 synthetic tokens.
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("175") },
                 { rawValue: convertDecimals("100") },
                 { from: sponsor2 }
               );
 
               // sponsor3 creates a position with 200 units of collateral, creating 100 synthetic tokens.
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("200") },
                 { rawValue: convertDecimals("100") },
                 { from: sponsor3 }
@@ -2587,14 +2521,14 @@ describe("Liquidator.js", function () {
             "Liquidator will not liquidate itself with DSProxy sponsor",
             async function () {
               // sponsor1 creates a position with 125 units of collateral, creating 100 synthetic tokens.
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("125") },
                 { rawValue: convertDecimals("100") },
                 { from: sponsor1 }
               );
 
               // sponsor2 creates a position with 150 units of collateral, creating 100 synthetic tokens.
-              await financialContract.methods.create(
+              await financialContract.create(
                 { rawValue: convertDecimals("150") },
                 { rawValue: convertDecimals("100") },
                 { from: sponsor2 }
@@ -2637,22 +2571,13 @@ describe("Liquidator.js", function () {
               // Should emit the right log message
               assert.isTrue(spyLogIncludes(spy, -1, "The liquidator has an open position that is liquidatable"));
 
-              // dsProxy.options.address should have all their collateral left and no liquidations.
-              assert.deepStrictEqual(
-                await financialContract.methods.getLiquidations(dsProxy.options.address).call(),
-                []
-              );
-              assert.equal(
-                (await financialContract.methods.getCollateral(dsProxy.options.address).call()).rawValue,
-                convertDecimals("137.5")
-              );
+              // dsProxy.address should have all their collateral left and no liquidations.
+              assert.deepStrictEqual(await financialContract.getLiquidations(dsProxy.address), []);
+              assert.equal((await financialContract.getCollateral(dsProxy.address)).rawValue, convertDecimals("137.5"));
 
               // Sponsor2 should have all their collateral left and no liquidations.
-              assert.deepStrictEqual(await financialContract.methods.getLiquidations(sponsor2).call(), []);
-              assert.equal(
-                (await financialContract.methods.getCollateral(sponsor2).call()).rawValue,
-                convertDecimals("250")
-              );
+              assert.deepStrictEqual(await financialContract.getLiquidations(sponsor2), []);
+              assert.equal((await financialContract.getCollateral(sponsor2)).rawValue, convertDecimals("250"));
             }
           );
         });

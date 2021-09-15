@@ -151,9 +151,7 @@ async function claimRewards() {
   const transactionBatcher = await TransactionBatcher.at(argv.batcherAddress);
 
   const gasEstimator = new GasEstimator(
-    winston.createLogger({
-      silent: true,
-    }),
+    winston.createLogger({ silent: true }),
     60, // Time between updates.
     networkId
   );

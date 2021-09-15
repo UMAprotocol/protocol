@@ -162,10 +162,7 @@ class ProxyTransactionWrapper {
       disputer: DisputeEvent.returnValues.disputer,
       liquidationId: DisputeEvent.returnValues.liquidationId,
       disputeBondAmount: DisputeEvent.returnValues.disputeBondAmount,
-      txnConfig: {
-        from: dsProxyCallReturn.from,
-        gas: dsProxyCallReturn.gasUsed,
-      },
+      txnConfig: { from: dsProxyCallReturn.from, gas: dsProxyCallReturn.gasUsed },
     };
   }
 }

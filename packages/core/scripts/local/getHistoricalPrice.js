@@ -11,11 +11,12 @@
  *         --network mainnet_mnemonic
  *         --identifier USDBTC
  *         --time 1601503200
+ *         --ancillaryData 0x123abc
  */
 const { fromWei } = web3.utils;
 const { createReferencePriceFeedForFinancialContract, Networker } = require("@uma/financial-templates-lib");
 const winston = require("winston");
-const argv = require("minimist")(process.argv.slice(), { string: ["identifier", "time"] });
+const argv = require("minimist")(process.argv.slice(), { string: ["identifier", "time", "ancillaryData"] });
 require("dotenv").config();
 
 const UMIP_PRECISION = {
@@ -46,6 +47,15 @@ async function getHistoricalPrice(callback) {
       queryIdentifier = argv.identifier;
     }
 
+    // If user did not specify ancillary data, provide a default value.
+    let queryAncillaryData;
+    if (!argv.ancillaryData) {
+      queryAncillaryData = "0x";
+      console.log(`Optional '--ancillaryData' flag not specified, defaulting to: ${queryAncillaryData}`);
+    } else {
+      queryAncillaryData = argv.ancillaryData;
+    }
+
     // Function to get the current time.
     const getTime = () => Math.round(new Date().getTime() / 1000);
 
@@ -63,9 +73,7 @@ async function getHistoricalPrice(callback) {
     const lookback = Math.round(Math.max(getTime() - queryTime, 1800));
 
     // Create and update a new default price feed.
-    let dummyLogger = winston.createLogger({
-      silent: true,
-    });
+    let dummyLogger = winston.createLogger({ silent: true });
     let priceFeedConfig = {
       // Empirically, Cryptowatch API only returns data up to ~4 days back so that's why we default the lookback
       // 1800.
@@ -91,7 +99,7 @@ async function getHistoricalPrice(callback) {
 
     // The default exchanges to fetch prices for (and from which the median is derived) are based on UMIP's and can be found in:
     // protocol/financial-templates-lib/src/price-feed/CreatePriceFeed.js
-    const queryPrice = await defaultPriceFeed.getHistoricalPrice(queryTime, true);
+    const queryPrice = await defaultPriceFeed.getHistoricalPrice(queryTime, queryAncillaryData, true);
     const precisionToUse = UMIP_PRECISION[queryIdentifier] ? UMIP_PRECISION[queryIdentifier] : DEFAULT_PRECISION;
     console.log(`\n⚠️ Truncating price to ${precisionToUse} decimals (default: 18)`);
     const [predec, postdec] = fromWei(queryPrice.toString()).split(".");

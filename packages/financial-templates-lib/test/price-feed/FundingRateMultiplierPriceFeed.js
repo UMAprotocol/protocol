@@ -1,21 +1,23 @@
+const { web3, getContract } = require("hardhat");
+const { assert } = require("chai");
 const winston = require("winston");
 
-const { FundingRateMultiplierPriceFeed } = require("../../src/price-feed/FundingRateMultiplierPriceFeed");
+const { FundingRateMultiplierPriceFeed } = require("../../dist/price-feed/FundingRateMultiplierPriceFeed");
 const { advanceBlockAndSetTime, parseFixed } = require("@uma/common");
-const { BlockFinder } = require("../../src/price-feed/utils");
-const { getTruffleContract } = require("@uma/core");
+const { BlockFinder } = require("../../dist/price-feed/utils");
 
-const PerpetualMock = getTruffleContract("PerpetualMock", web3);
-const Perpetual = getTruffleContract("Perpetual", web3);
-const MulticallMock = getTruffleContract("MulticallMock", web3);
+const PerpetualMock = getContract("PerpetualMock");
+const Perpetual = getContract("Perpetual");
+const MulticallMock = getContract("MulticallMock");
 
-contract("FundingRateMultiplierPriceFeed.js", function () {
+describe("FundingRateMultiplierPriceFeed.js", function () {
   let perpetualMock;
   let multicallMock;
   let fundingRateMultiplierPriceFeed;
   let mockTime = 0;
   let dummyLogger;
   let priceFeedDecimals = 8;
+  let accounts;
 
   const createFundingRateStructWithMultiplier = (multiplier, rate = "0") => {
     return {
@@ -29,20 +31,21 @@ contract("FundingRateMultiplierPriceFeed.js", function () {
     };
   };
 
-  beforeEach(async function () {
-    perpetualMock = await PerpetualMock.new();
-    multicallMock = await MulticallMock.new();
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+  });
 
-    dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+  beforeEach(async function () {
+    perpetualMock = await PerpetualMock.new().send({ from: accounts[0] });
+    multicallMock = await MulticallMock.new().send({ from: accounts[0] });
+
+    dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
     fundingRateMultiplierPriceFeed = new FundingRateMultiplierPriceFeed({
       logger: dummyLogger,
       perpetualAbi: Perpetual.abi,
-      perpetualAddress: perpetualMock.address,
-      multicallAddress: multicallMock.address,
+      perpetualAddress: perpetualMock.options.address,
+      multicallAddress: multicallMock.options.address,
       web3,
       getTime: () => mockTime,
       priceFeedDecimals,
@@ -50,7 +53,9 @@ contract("FundingRateMultiplierPriceFeed.js", function () {
   });
 
   it("Basic current price", async function () {
-    await perpetualMock.setFundingRate(createFundingRateStructWithMultiplier(parseFixed("0.9", 18).toString()));
+    await perpetualMock.methods
+      .setFundingRate(createFundingRateStructWithMultiplier(parseFixed("0.9", 18).toString()))
+      .send({ from: accounts[0] });
     await fundingRateMultiplierPriceFeed.update();
 
     assert.equal(
@@ -60,9 +65,15 @@ contract("FundingRateMultiplierPriceFeed.js", function () {
   });
 
   it("Correctly selects most recent price", async function () {
-    await perpetualMock.setFundingRate(createFundingRateStructWithMultiplier(parseFixed("0.9", 18).toString()));
-    await perpetualMock.setFundingRate(createFundingRateStructWithMultiplier(parseFixed("0.7", 18).toString()));
-    await perpetualMock.setFundingRate(createFundingRateStructWithMultiplier(parseFixed("0.05", 18).toString()));
+    await perpetualMock.methods
+      .setFundingRate(createFundingRateStructWithMultiplier(parseFixed("0.9", 18).toString()))
+      .send({ from: accounts[0] });
+    await perpetualMock.methods
+      .setFundingRate(createFundingRateStructWithMultiplier(parseFixed("0.7", 18).toString()))
+      .send({ from: accounts[0] });
+    await perpetualMock.methods
+      .setFundingRate(createFundingRateStructWithMultiplier(parseFixed("0.05", 18).toString()))
+      .send({ from: accounts[0] });
     await fundingRateMultiplierPriceFeed.update();
 
     assert.equal(
@@ -74,13 +85,17 @@ contract("FundingRateMultiplierPriceFeed.js", function () {
   it("Historical Price", async function () {
     await fundingRateMultiplierPriceFeed.update();
 
-    await perpetualMock.setFundingRate(createFundingRateStructWithMultiplier(parseFixed("0.9", 18).toString()));
+    await perpetualMock.methods
+      .setFundingRate(createFundingRateStructWithMultiplier(parseFixed("0.9", 18).toString()))
+      .send({ from: accounts[0] });
 
     // Ensure that the next block is mined at a later time.
     const { timestamp: firstPriceTimestamp } = await web3.eth.getBlock("latest");
     await advanceBlockAndSetTime(web3, firstPriceTimestamp + 10);
 
-    await perpetualMock.setFundingRate(createFundingRateStructWithMultiplier(parseFixed("0.7", 18).toString()));
+    await perpetualMock.methods
+      .setFundingRate(createFundingRateStructWithMultiplier(parseFixed("0.7", 18).toString()))
+      .send({ from: accounts[0] });
 
     const { timestamp: secondPriceTimestamp } = await web3.eth.getBlock("latest");
 
@@ -103,7 +118,9 @@ contract("FundingRateMultiplierPriceFeed.js", function () {
   });
 
   it("Update Frequency", async function () {
-    await perpetualMock.setFundingRate(createFundingRateStructWithMultiplier(parseFixed("0.9", 18).toString()));
+    await perpetualMock.methods
+      .setFundingRate(createFundingRateStructWithMultiplier(parseFixed("0.9", 18).toString()))
+      .send({ from: accounts[0] });
     await fundingRateMultiplierPriceFeed.update();
     assert.equal(
       fundingRateMultiplierPriceFeed.getCurrentPrice().toString(),
@@ -114,7 +131,9 @@ contract("FundingRateMultiplierPriceFeed.js", function () {
 
     // Increment time to just under the 1 minute default threshold and push a new price.
     mockTime += 59;
-    await perpetualMock.setFundingRate(createFundingRateStructWithMultiplier(parseFixed("0.7", 18).toString()));
+    await perpetualMock.methods
+      .setFundingRate(createFundingRateStructWithMultiplier(parseFixed("0.7", 18).toString()))
+      .send({ from: accounts[0] });
     await fundingRateMultiplierPriceFeed.update();
     assert.equal(fundingRateMultiplierPriceFeed.getLastUpdateTime(), initialTime); // No change in update time.
 
@@ -147,8 +166,8 @@ contract("FundingRateMultiplierPriceFeed.js", function () {
       web3,
       getTime: () => mockTime,
       perpetualAbi: Perpetual.abi,
-      perpetualAddress: perpetualMock.address,
-      multicallAddress: multicallMock.address,
+      perpetualAddress: perpetualMock.options.address,
+      multicallAddress: multicallMock.options.address,
       priceFeedDecimals,
       blockFinder,
     });
@@ -160,9 +179,9 @@ contract("FundingRateMultiplierPriceFeed.js", function () {
 
   it("Multicall", async function () {
     // Funding rate multiplier starts at one, but should be multiplied by 0.8 on a call to applyFundingRate.
-    await perpetualMock.setFundingRate(
-      createFundingRateStructWithMultiplier(parseFixed("1", 18).toString(), web3.utils.toWei("-.2"))
-    );
+    await perpetualMock.methods
+      .setFundingRate(createFundingRateStructWithMultiplier(parseFixed("1", 18).toString(), web3.utils.toWei("-.2")))
+      .send({ from: accounts[0] });
     await fundingRateMultiplierPriceFeed.update();
 
     assert.equal(

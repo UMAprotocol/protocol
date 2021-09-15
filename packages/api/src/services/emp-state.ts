@@ -3,18 +3,19 @@ import Promise from "bluebird";
 const { emp } = uma.clients;
 import { BigNumber, utils } from "ethers";
 const { parseBytes32String } = utils;
-import { asyncValues } from "../libs/utils";
-import { AppState } from "..";
+import { asyncValues, Profile } from "../libs/utils";
+import { AppState, BaseConfig } from "..";
 
 type Instance = uma.clients.emp.Instance;
-type Config = undefined;
+type Config = BaseConfig;
 type Dependencies = Pick<
   AppState,
-  "registeredEmps" | "provider" | "emps" | "collateralAddresses" | "syntheticAddresses"
+  "registeredEmps" | "provider" | "emps" | "collateralAddresses" | "syntheticAddresses" | "registeredEmpsMetadata"
 >;
 
 export default (config: Config, appState: Dependencies) => {
-  const { registeredEmps, provider, emps, collateralAddresses, syntheticAddresses } = appState;
+  const { registeredEmps, registeredEmpsMetadata, provider, emps, collateralAddresses, syntheticAddresses } = appState;
+  const profile = Profile(config.debug);
 
   async function readEmpDynamicState(instance: Instance, address: string) {
     return asyncValues<uma.tables.emps.Data>({
@@ -26,7 +27,7 @@ export default (config: Config, appState: Dependencies) => {
         .catch(() => null),
       totalPositionCollateral: instance
         .totalPositionCollateral()
-        .then((x) => x.rawValue.toString())
+        .then((x: any) => x.rawValue.toString())
         .catch(() => null),
       rawTotalPositionCollateral: instance
         .rawTotalPositionCollateral()
@@ -132,6 +133,9 @@ export default (config: Config, appState: Dependencies) => {
         await emps.expired.create({ ...staticState, ...dynamicState, sponsors: eventState.sponsors, expired: true });
       }
       // handle the case wehre emp is not yet expired
+
+      // set created timestamp if needed
+      await updateCreatedTimestamp(address, emps.expired);
     } else {
       // if it doesnt exist we need to create it
       if (!(await emps.active.has(address))) {
@@ -139,10 +143,26 @@ export default (config: Config, appState: Dependencies) => {
         staticState = await readEmpStaticState(instance, address);
         // create active emp with static/dynamic state
         await emps.active.create({ ...staticState, ...dynamicState });
+      } else {
+        await emps.active.update(address, dynamicState);
       }
       // add any new sponsors
       await emps.active.addSponsors(address, eventState.sponsors || []);
+
+      // set created timestamp if needed
+      await updateCreatedTimestamp(address, emps.active);
     }
+  }
+
+  async function updateCreatedTimestamp(address: string, table: uma.tables.emps.JsMap) {
+    const emp = await table.get(address);
+    if (emp.createdTimestamp) return;
+
+    const blockMetadata = registeredEmpsMetadata.get(address);
+    if (!blockMetadata) return;
+
+    const block = await provider.getBlock(blockMetadata.blockNumber);
+    await table.setCreatedTimestamp(address, block.timestamp);
   }
 
   // add a set of all collateral addresses
@@ -154,9 +174,22 @@ export default (config: Config, appState: Dependencies) => {
     });
   }
 
+  async function updateAll(addresses: string[], startBlock?: number | "latest", endBlock?: number) {
+    await Promise.mapSeries(addresses, async (address: string) => {
+      const end = profile(`Update Emp state for ${address}`);
+      try {
+        return await updateOne(address, startBlock, endBlock);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        end();
+      }
+    });
+  }
+
   async function update(startBlock?: number | "latest", endBlock?: number) {
     const addresses = Array.from(await registeredEmps.values());
-    await Promise.mapSeries(addresses, (address: string) => updateOne(address, startBlock, endBlock));
+    await updateAll(addresses, startBlock, endBlock);
     await updateTokenAddresses();
   }
 

@@ -1,3 +1,5 @@
+const { web3, getContract } = require("hardhat");
+const { assert } = require("chai");
 const { toWei, utf8ToHex, padRight } = web3.utils;
 const winston = require("winston");
 
@@ -8,13 +10,13 @@ const {
   advanceBlockAndSetTime,
   runTestForVersion,
   createConstructorParamsForContractVersion,
+  getContractsNodePackageAliasForVerion,
   TESTED_CONTRACT_VERSIONS,
   TEST_DECIMAL_COMBOS,
 } = require("@uma/common");
-const { getTruffleContract } = require("@uma/core");
 
 // Script to test
-const { FinancialContractEventClient } = require("../../src/clients/FinancialContractEventClient");
+const { FinancialContractEventClient } = require("../../dist/clients/FinancialContractEventClient");
 
 const startTime = "15798990420";
 const unreachableDeadline = MAX_UINT_VAL;
@@ -39,6 +41,7 @@ let client;
 let convertDecimals;
 let dummyLogger;
 let expirationTime;
+let accounts;
 
 // Perpetual
 let configStore;
@@ -63,96 +66,114 @@ const versionedIt = function (supportedVersions, shouldBeItOnly = false) {
   return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it : () => {};
 };
 
-contract("FinancialContractEventClient.js", function (accounts) {
+const objectsInArrayInclude = (subset, superset) => {
+  assert.equal(superset.length, subset.length);
+  for (let i = 0; i < superset.length; i++) assert.deepInclude(superset[i], subset[i]);
+};
+
+describe("FinancialContractEventClient.js", function () {
+  let tokenSponsor, liquidator, sponsor1, sponsor2, sponsor3;
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+    [tokenSponsor, liquidator, sponsor1, sponsor2, sponsor3] = accounts;
+  });
+
   for (let tokenConfig of TEST_DECIMAL_COMBOS) {
     describe(`${tokenConfig.collateralDecimals} decimals`, function () {
-      const tokenSponsor = accounts[0];
-      const liquidator = accounts[1];
-      const sponsor1 = accounts[2];
-      const sponsor2 = accounts[3];
-      const sponsor3 = accounts[4];
-
       TESTED_CONTRACT_VERSIONS.forEach(function (contractVersion) {
         // Store the contractVersion.contractVersion, type and version being tested
         iterationTestVersion = contractVersion;
 
+        const { getAbi, getBytecode } = require(getContractsNodePackageAliasForVerion(contractVersion.contractVersion));
+
+        const createContract = (name) => {
+          const abi = getAbi(name);
+          const bytecode = getBytecode(name);
+          return getContract(name, { abi, bytecode });
+        };
+
         // Import the tested versions of contracts. note that financialContract is either an ExpiringMultiParty or a
         // Perpetual depending on the current iteration version.
-        const FinancialContract = getTruffleContract(
-          contractVersion.contractType,
-          web3,
-          contractVersion.contractVersion
-        );
-        const Finder = getTruffleContract("Finder", web3, contractVersion.contractVersion);
-        const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, contractVersion.contractVersion);
-        const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, contractVersion.contractVersion);
-        const MockOracle = getTruffleContract("MockOracle", web3, contractVersion.contractVersion);
-        const Token = getTruffleContract("ExpandedERC20", web3, contractVersion.contractVersion);
-        const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
-        const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
-        const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
-        const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
-        const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
+        const FinancialContract = createContract(contractVersion.contractType);
+        const Finder = createContract("Finder");
+        const IdentifierWhitelist = createContract("IdentifierWhitelist");
+        const AddressWhitelist = createContract("AddressWhitelist");
+        const MockOracle = createContract("MockOracle");
+        const Token = createContract("ExpandedERC20");
+        const SyntheticToken = createContract("SyntheticToken");
+        const Timer = createContract("Timer");
+        const Store = createContract("Store");
+        const ConfigStore = createContract("ConfigStore");
+        const OptimisticOracle = createContract("OptimisticOracle");
 
         for (let testConfig of TEST_DECIMAL_COMBOS) {
-          describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
+          describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
             before(async function () {
               identifier = `${testConfig.tokenName}TEST`;
-              fundingRateIdentifier = `${testConfig.tokenName}_FUNDING_IDENTIFIER`;
+              fundingRateIdentifier = `${testConfig.tokenName}_FUNDING`;
               convertDecimals = Convert(testConfig.collateralDecimals);
               collateralToken = await Token.new(
                 testConfig.tokenSymbol + " Token", // Construct the token name.,
                 testConfig.tokenSymbol,
-                tokenConfig.collateralDecimals,
-                {
-                  from: tokenSponsor,
-                }
-              );
-              await collateralToken.addMember(1, tokenSponsor, { from: tokenSponsor });
-              await collateralToken.mint(liquidator, convertDecimals("100000"), { from: tokenSponsor });
-              await collateralToken.mint(sponsor1, convertDecimals("100000"), { from: tokenSponsor });
-              await collateralToken.mint(sponsor2, convertDecimals("100000"), { from: tokenSponsor });
-              await collateralToken.mint(sponsor3, convertDecimals("100000"), { from: tokenSponsor });
+                tokenConfig.collateralDecimals
+              ).send({ from: tokenSponsor });
+              await collateralToken.methods.addMember(1, tokenSponsor).send({ from: tokenSponsor });
+              await collateralToken.methods.mint(liquidator, convertDecimals("100000")).send({ from: tokenSponsor });
+              await collateralToken.methods.mint(sponsor1, convertDecimals("100000")).send({ from: tokenSponsor });
+              await collateralToken.methods.mint(sponsor2, convertDecimals("100000")).send({ from: tokenSponsor });
+              await collateralToken.methods.mint(sponsor3, convertDecimals("100000")).send({ from: tokenSponsor });
 
-              identifierWhitelist = await IdentifierWhitelist.new();
-              await identifierWhitelist.addSupportedIdentifier(utf8ToHex(identifier));
+              identifierWhitelist = await IdentifierWhitelist.new().send({ from: accounts[0] });
+              await identifierWhitelist.methods
+                .addSupportedIdentifier(utf8ToHex(identifier))
+                .send({ from: accounts[0] });
+              finder = await Finder.new().send({ from: accounts[0] });
+              timer = await Timer.new().send({ from: accounts[0] });
 
-              finder = await Finder.new();
-              timer = await Timer.new();
+              store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.options.address).send({
+                from: accounts[0],
+              });
+              await finder.methods
+                .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
+                .send({ from: accounts[0] });
 
-              store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
-              await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
+              collateralWhitelist = await AddressWhitelist.new().send({ from: accounts[0] });
+              await finder.methods
+                .changeImplementationAddress(
+                  web3.utils.utf8ToHex(interfaceName.CollateralWhitelist),
+                  collateralWhitelist.options.address
+                )
+                .send({ from: accounts[0] });
+              await collateralWhitelist.methods
+                .addToWhitelist(collateralToken.options.address)
+                .send({ from: accounts[0] });
 
-              collateralWhitelist = await AddressWhitelist.new();
-              await finder.changeImplementationAddress(
-                web3.utils.utf8ToHex(interfaceName.CollateralWhitelist),
-                collateralWhitelist.address
-              );
-              await collateralWhitelist.addToWhitelist(collateralToken.address);
-
-              await finder.changeImplementationAddress(
-                utf8ToHex(interfaceName.IdentifierWhitelist),
-                identifierWhitelist.address
-              );
+              await finder.methods
+                .changeImplementationAddress(
+                  utf8ToHex(interfaceName.IdentifierWhitelist),
+                  identifierWhitelist.options.address
+                )
+                .send({ from: accounts[0] });
             });
 
             beforeEach(async function () {
-              mockOracle = await MockOracle.new(finder.address, timer.address);
-              await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
+              mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({
+                from: accounts[0],
+              });
+              await finder.methods
+                .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address)
+                .send({ from: accounts[0] });
 
-              await timer.setCurrentTime(startTime - 1);
-              const currentTime = await mockOracle.getCurrentTime.call();
-              expirationTime = currentTime.toNumber() + 100; // 100 seconds in the future
+              await timer.methods.setCurrentTime(startTime - 1).send({ from: accounts[0] });
+              const currentTime = await mockOracle.methods.getCurrentTime().call();
+              expirationTime = parseInt(currentTime) + 100; // 100 seconds in the future
 
               // Create a new synthetic token
               syntheticToken = await SyntheticToken.new(
                 "Test Synthetic Token",
                 "SYNTH",
-                tokenConfig.syntheticDecimals,
-                {
-                  from: tokenSponsor,
-                }
-              );
+                tokenConfig.syntheticDecimals
+              ).send({ from: tokenSponsor });
 
               // If we are testing a perpetual then we need to also deploy a config store, an optimistic oracle and set the funding rate identifier.
               if (contractVersion.contractType == "Perpetual") {
@@ -165,15 +186,23 @@ contract("FinancialContractEventClient.js", function (accounts) {
                     minFundingRate: { rawValue: toWei("-0.00001") },
                     proposalTimePastLimit: 0,
                   },
-                  timer.address
-                );
+                  timer.options.address
+                ).send({ from: accounts[0] });
 
-                await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier)));
-                optimisticOracle = await OptimisticOracle.new(optimisticOracleLiveness, finder.address, timer.address);
-                await finder.changeImplementationAddress(
-                  utf8ToHex(interfaceName.OptimisticOracle),
-                  optimisticOracle.address
-                );
+                await identifierWhitelist.methods
+                  .addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier)))
+                  .send({ from: accounts[0] });
+                optimisticOracle = await OptimisticOracle.new(
+                  optimisticOracleLiveness,
+                  finder.options.address,
+                  timer.options.address
+                ).send({ from: accounts[0] });
+                await finder.methods
+                  .changeImplementationAddress(
+                    utf8ToHex(interfaceName.OptimisticOracle),
+                    optimisticOracle.options.address
+                  )
+                  .send({ from: accounts[0] });
               }
 
               constructorParams = await createConstructorParamsForContractVersion(
@@ -196,73 +225,65 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 }
               );
 
-              financialContract = await FinancialContract.new(constructorParams);
+              financialContract = await FinancialContract.new(constructorParams).send({ from: accounts[0] });
 
-              await syntheticToken.addMinter(financialContract.address);
-              await syntheticToken.addBurner(financialContract.address);
+              await syntheticToken.methods.addMinter(financialContract.options.address).send({ from: accounts[0] });
+              await syntheticToken.methods.addBurner(financialContract.options.address).send({ from: accounts[0] });
 
               // The FinancialContractEventClient does not emit any info level events. Therefore no need to test Winston outputs.
-              dummyLogger = winston.createLogger({
-                level: "info",
-                transports: [new winston.transports.Console()],
-              });
+              dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
-              // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.
-              await financialContract.setCurrentTime(startTime);
-              if (contractVersion.contractType == "Perpetual") await financialContract.applyFundingRate();
+              // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.methods.
+              await financialContract.methods.setCurrentTime(startTime).send({ from: accounts[0] });
+              if (contractVersion.contractType == "Perpetual")
+                await financialContract.methods.applyFundingRate().send({ from: accounts[0] });
 
               client = new FinancialContractEventClient(
                 dummyLogger,
-                financialContract.abi,
+                FinancialContract.abi,
                 web3,
-                financialContract.address,
+                financialContract.options.address,
                 0, // startingBlockNumber
                 null, // endingBlockNumber
                 contractVersion.contractType,
                 contractVersion.contractVersion
               );
-              await collateralToken.approve(financialContract.address, convertDecimals("1000000"), {
-                from: sponsor1,
-              });
-              await collateralToken.approve(financialContract.address, convertDecimals("1000000"), {
-                from: sponsor2,
-              });
-              await collateralToken.approve(financialContract.address, convertDecimals("1000000"), {
-                from: sponsor3,
-              });
+              await collateralToken.methods
+                .approve(financialContract.options.address, convertDecimals("1000000"))
+                .send({ from: sponsor1 });
+              await collateralToken.methods
+                .approve(financialContract.options.address, convertDecimals("1000000"))
+                .send({ from: sponsor2 });
+              await collateralToken.methods
+                .approve(financialContract.options.address, convertDecimals("1000000"))
+                .send({ from: sponsor3 });
 
-              syntheticToken = await Token.at(await financialContract.tokenCurrency());
-              await syntheticToken.approve(financialContract.address, convertDecimals("100000000"), {
-                from: sponsor1,
-              });
-              await syntheticToken.approve(financialContract.address, convertDecimals("100000000"), {
-                from: sponsor2,
-              });
+              syntheticToken = await Token.at(await financialContract.methods.tokenCurrency().call());
+              await syntheticToken.methods
+                .approve(financialContract.options.address, convertDecimals("100000000"))
+                .send({ from: sponsor1 });
+              await syntheticToken.methods
+                .approve(financialContract.options.address, convertDecimals("100000000"))
+                .send({ from: sponsor2 });
 
               // Create two positions
-              newSponsorTxObj1 = await financialContract.create(
-                { rawValue: convertDecimals("10") },
-                { rawValue: convertDecimals("50") },
-                { from: sponsor1 }
-              );
-              newSponsorTxObj2 = await financialContract.create(
-                { rawValue: convertDecimals("100") },
-                { rawValue: convertDecimals("45") },
-                { from: sponsor2 }
-              );
+              newSponsorTxObj1 = await financialContract.methods
+                .create({ rawValue: convertDecimals("10") }, { rawValue: convertDecimals("50") })
+                .send({ from: sponsor1 });
+              newSponsorTxObj2 = await financialContract.methods
+                .create({ rawValue: convertDecimals("100") }, { rawValue: convertDecimals("45") })
+                .send({ from: sponsor2 });
 
               // Seed the liquidator position
-              await collateralToken.approve(financialContract.address, convertDecimals("1000000"), {
-                from: liquidator,
-              });
-              await syntheticToken.approve(financialContract.address, convertDecimals("100000000"), {
-                from: liquidator,
-              });
-              newSponsorTxObj3 = await financialContract.create(
-                { rawValue: convertDecimals("500") },
-                { rawValue: convertDecimals("200") },
-                { from: liquidator }
-              );
+              await collateralToken.methods
+                .approve(financialContract.options.address, convertDecimals("1000000"))
+                .send({ from: liquidator });
+              await syntheticToken.methods
+                .approve(financialContract.options.address, convertDecimals("100000000"))
+                .send({ from: liquidator });
+              newSponsorTxObj3 = await financialContract.methods
+                .create({ rawValue: convertDecimals("500") }, { rawValue: convertDecimals("200") })
+                .send({ from: liquidator });
             });
 
             versionedIt([{ contractType: "any", contractVersion: "any" }])(
@@ -272,30 +293,30 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 await client.clearState();
 
                 // State is empty before update().
-                assert.deepStrictEqual([], client.getAllNewSponsorEvents());
+                objectsInArrayInclude([], client.getAllNewSponsorEvents());
 
                 await client.update();
 
                 // Compare with expected processed event objects
-                assert.deepStrictEqual(
+                objectsInArrayInclude(
                   [
                     {
-                      transactionHash: newSponsorTxObj1.tx,
-                      blockNumber: newSponsorTxObj1.receipt.blockNumber,
+                      transactionHash: newSponsorTxObj1.transactionHash,
+                      blockNumber: newSponsorTxObj1.blockNumber,
                       sponsor: sponsor1,
                       collateralAmount: convertDecimals("10"),
                       tokenAmount: convertDecimals("50"),
                     },
                     {
-                      transactionHash: newSponsorTxObj2.tx,
-                      blockNumber: newSponsorTxObj2.receipt.blockNumber,
+                      transactionHash: newSponsorTxObj2.transactionHash,
+                      blockNumber: newSponsorTxObj2.blockNumber,
                       sponsor: sponsor2,
                       collateralAmount: convertDecimals("100"),
                       tokenAmount: convertDecimals("45"),
                     },
                     {
-                      transactionHash: newSponsorTxObj3.tx,
-                      blockNumber: newSponsorTxObj3.receipt.blockNumber,
+                      transactionHash: newSponsorTxObj3.transactionHash,
+                      blockNumber: newSponsorTxObj3.blockNumber,
                       sponsor: liquidator,
                       collateralAmount: convertDecimals("500"),
                       tokenAmount: convertDecimals("200"),
@@ -305,19 +326,17 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 );
 
                 // Correctly adds only new events after last query
-                const newSponsorTxObj4 = await financialContract.create(
-                  { rawValue: convertDecimals("10") },
-                  { rawValue: convertDecimals("1") },
-                  { from: sponsor3 }
-                );
+                const newSponsorTxObj4 = await financialContract.methods
+                  .create({ rawValue: convertDecimals("10") }, { rawValue: convertDecimals("1") })
+                  .send({ from: sponsor3 });
                 await client.clearState();
                 await client.update();
 
-                assert.deepStrictEqual(
+                objectsInArrayInclude(
                   [
                     {
-                      transactionHash: newSponsorTxObj4.tx,
-                      blockNumber: newSponsorTxObj4.receipt.blockNumber,
+                      transactionHash: newSponsorTxObj4.transactionHash,
+                      blockNumber: newSponsorTxObj4.blockNumber,
                       sponsor: sponsor3,
                       collateralAmount: convertDecimals("10"),
                       tokenAmount: convertDecimals("1"),
@@ -333,30 +352,30 @@ contract("FinancialContractEventClient.js", function (accounts) {
               await client.clearState();
 
               // State is empty before update().
-              assert.deepStrictEqual([], client.getAllCreateEvents());
+              objectsInArrayInclude([], client.getAllCreateEvents());
 
               await client.update();
 
               // Compare with expected processed event objects
-              assert.deepStrictEqual(
+              objectsInArrayInclude(
                 [
                   {
-                    transactionHash: newSponsorTxObj1.tx,
-                    blockNumber: newSponsorTxObj1.receipt.blockNumber,
+                    transactionHash: newSponsorTxObj1.transactionHash,
+                    blockNumber: newSponsorTxObj1.blockNumber,
                     sponsor: sponsor1,
                     collateralAmount: convertDecimals("10"),
                     tokenAmount: convertDecimals("50"),
                   },
                   {
-                    transactionHash: newSponsorTxObj2.tx,
-                    blockNumber: newSponsorTxObj2.receipt.blockNumber,
+                    transactionHash: newSponsorTxObj2.transactionHash,
+                    blockNumber: newSponsorTxObj2.blockNumber,
                     sponsor: sponsor2,
                     collateralAmount: convertDecimals("100"),
                     tokenAmount: convertDecimals("45"),
                   },
                   {
-                    transactionHash: newSponsorTxObj3.tx,
-                    blockNumber: newSponsorTxObj3.receipt.blockNumber,
+                    transactionHash: newSponsorTxObj3.transactionHash,
+                    blockNumber: newSponsorTxObj3.blockNumber,
                     sponsor: liquidator,
                     collateralAmount: convertDecimals("500"),
                     tokenAmount: convertDecimals("200"),
@@ -366,19 +385,17 @@ contract("FinancialContractEventClient.js", function (accounts) {
               );
 
               // Correctly adds only new events after last query
-              const newSponsorTxObj4 = await financialContract.create(
-                { rawValue: convertDecimals("10") },
-                { rawValue: convertDecimals("1") },
-                { from: sponsor3 }
-              );
+              const newSponsorTxObj4 = await financialContract.methods
+                .create({ rawValue: convertDecimals("10") }, { rawValue: convertDecimals("1") })
+                .send({ from: sponsor3 });
               await client.clearState();
               await client.update();
 
-              assert.deepStrictEqual(
+              objectsInArrayInclude(
                 [
                   {
-                    transactionHash: newSponsorTxObj4.tx,
-                    blockNumber: newSponsorTxObj4.receipt.blockNumber,
+                    transactionHash: newSponsorTxObj4.transactionHash,
+                    blockNumber: newSponsorTxObj4.blockNumber,
                     sponsor: sponsor3,
                     collateralAmount: convertDecimals("10"),
                     tokenAmount: convertDecimals("1"),
@@ -393,21 +410,20 @@ contract("FinancialContractEventClient.js", function (accounts) {
               await client.clearState();
 
               // State is empty before update().
-              assert.deepStrictEqual([], client.getAllDepositEvents());
+              objectsInArrayInclude([], client.getAllDepositEvents());
 
-              const depositTxObj1 = await financialContract.deposit(
-                { rawValue: convertDecimals("5") },
-                { from: sponsor1 }
-              );
+              const depositTxObj1 = await financialContract.methods
+                .deposit({ rawValue: convertDecimals("5") })
+                .send({ from: sponsor1 });
 
               await client.update();
 
               // Compare with expected processed event objects
-              assert.deepStrictEqual(
+              objectsInArrayInclude(
                 [
                   {
-                    transactionHash: depositTxObj1.tx,
-                    blockNumber: depositTxObj1.receipt.blockNumber,
+                    transactionHash: depositTxObj1.transactionHash,
+                    blockNumber: depositTxObj1.blockNumber,
                     sponsor: sponsor1,
                     collateralAmount: convertDecimals("5"),
                   },
@@ -416,18 +432,17 @@ contract("FinancialContractEventClient.js", function (accounts) {
               );
 
               // Correctly adds only new events after last query
-              const depositTxObj2 = await financialContract.deposit(
-                { rawValue: convertDecimals("3") },
-                { from: sponsor2 }
-              );
+              const depositTxObj2 = await financialContract.methods
+                .deposit({ rawValue: convertDecimals("3") })
+                .send({ from: sponsor2 });
               await client.clearState();
               await client.update();
 
-              assert.deepStrictEqual(
+              objectsInArrayInclude(
                 [
                   {
-                    transactionHash: depositTxObj2.tx,
-                    blockNumber: depositTxObj2.receipt.blockNumber,
+                    transactionHash: depositTxObj2.transactionHash,
+                    blockNumber: depositTxObj2.blockNumber,
                     sponsor: sponsor2,
                     collateralAmount: convertDecimals("3"),
                   },
@@ -441,22 +456,21 @@ contract("FinancialContractEventClient.js", function (accounts) {
               await client.clearState();
 
               // State is empty before update().
-              assert.deepStrictEqual([], client.getAllWithdrawEvents());
+              objectsInArrayInclude([], client.getAllWithdrawEvents());
 
               // GCR is ~2.0, so sponsor2 and liquidator should be able to withdraw small amounts while keeping their CR above GCR.
-              const withdrawTxObj1 = await financialContract.withdraw(
-                { rawValue: convertDecimals("1") },
-                { from: liquidator }
-              );
+              const withdrawTxObj1 = await financialContract.methods
+                .withdraw({ rawValue: convertDecimals("1") })
+                .send({ from: liquidator });
 
               await client.update();
 
               // Compare with expected processed event objects
-              assert.deepStrictEqual(
+              objectsInArrayInclude(
                 [
                   {
-                    transactionHash: withdrawTxObj1.tx,
-                    blockNumber: withdrawTxObj1.receipt.blockNumber,
+                    transactionHash: withdrawTxObj1.transactionHash,
+                    blockNumber: withdrawTxObj1.blockNumber,
                     sponsor: liquidator,
                     collateralAmount: convertDecimals("1"),
                   },
@@ -465,18 +479,17 @@ contract("FinancialContractEventClient.js", function (accounts) {
               );
 
               // Correctly adds only new events after last query
-              const withdrawTxObj2 = await financialContract.withdraw(
-                { rawValue: convertDecimals("2") },
-                { from: sponsor2 }
-              );
+              const withdrawTxObj2 = await financialContract.methods
+                .withdraw({ rawValue: convertDecimals("2") })
+                .send({ from: sponsor2 });
               await client.clearState();
               await client.update();
 
-              assert.deepStrictEqual(
+              objectsInArrayInclude(
                 [
                   {
-                    transactionHash: withdrawTxObj2.tx,
-                    blockNumber: withdrawTxObj2.receipt.blockNumber,
+                    transactionHash: withdrawTxObj2.transactionHash,
+                    blockNumber: withdrawTxObj2.blockNumber,
                     sponsor: sponsor2,
                     collateralAmount: convertDecimals("2"),
                   },
@@ -490,22 +503,21 @@ contract("FinancialContractEventClient.js", function (accounts) {
               await client.clearState();
 
               // State is empty before update().
-              assert.deepStrictEqual([], client.getAllRedeemEvents());
+              objectsInArrayInclude([], client.getAllRedeemEvents());
 
               // Redeem from liquidator who has many more than the min token amount
-              const redeemTxObj1 = await financialContract.redeem(
-                { rawValue: convertDecimals("1") },
-                { from: liquidator }
-              );
+              const redeemTxObj1 = await financialContract.methods
+                .redeem({ rawValue: convertDecimals("1") })
+                .send({ from: liquidator });
 
               await client.update();
 
               // Compare with expected processed event objects
-              assert.deepStrictEqual(
+              objectsInArrayInclude(
                 [
                   {
-                    transactionHash: redeemTxObj1.tx,
-                    blockNumber: redeemTxObj1.receipt.blockNumber,
+                    transactionHash: redeemTxObj1.transactionHash,
+                    blockNumber: redeemTxObj1.blockNumber,
                     sponsor: liquidator,
                     collateralAmount: convertDecimals("2.5"),
                     tokenAmount: convertDecimals("1"),
@@ -515,18 +527,17 @@ contract("FinancialContractEventClient.js", function (accounts) {
               );
 
               // Correctly adds only new events after last query
-              const redeemTxObj2 = await financialContract.redeem(
-                { rawValue: convertDecimals("1") },
-                { from: sponsor1 }
-              );
+              const redeemTxObj2 = await financialContract.methods
+                .redeem({ rawValue: convertDecimals("1") })
+                .send({ from: sponsor1 });
               await client.clearState();
               await client.update();
 
-              assert.deepStrictEqual(
+              objectsInArrayInclude(
                 [
                   {
-                    transactionHash: redeemTxObj2.tx,
-                    blockNumber: redeemTxObj2.receipt.blockNumber,
+                    transactionHash: redeemTxObj2.transactionHash,
+                    blockNumber: redeemTxObj2.blockNumber,
                     sponsor: sponsor1,
                     collateralAmount: convertDecimals("0.2"),
                     tokenAmount: convertDecimals("1"),
@@ -542,22 +553,26 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 await client.clearState();
 
                 // State is empty before update()
-                assert.deepStrictEqual([], client.getAllRegularFeeEvents());
+                objectsInArrayInclude([], client.getAllRegularFeeEvents());
 
                 // Set fees to 1% per second and advance 1 second.
-                await store.setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.01") });
-                await timer.setCurrentTime((await store.getCurrentTime()).toNumber() + 1);
-                const regularFeeTxObj1 = await financialContract.payRegularFees();
+                await store.methods
+                  .setFixedOracleFeePerSecondPerPfc({ rawValue: toWei("0.01") })
+                  .send({ from: accounts[0] });
+                await timer.methods
+                  .setCurrentTime(parseInt(await store.methods.getCurrentTime().call()) + 1)
+                  .send({ from: accounts[0] });
+                const regularFeeTxObj1 = await financialContract.methods.payRegularFees().send({ from: accounts[0] });
 
                 await client.update();
 
                 // Compare with expected processed event objects.
                 // The starting collateral is 610 so 6.1 are paid in fees.
-                assert.deepStrictEqual(
+                objectsInArrayInclude(
                   [
                     {
-                      transactionHash: regularFeeTxObj1.tx,
-                      blockNumber: regularFeeTxObj1.receipt.blockNumber,
+                      transactionHash: regularFeeTxObj1.transactionHash,
+                      blockNumber: regularFeeTxObj1.blockNumber,
                       regularFee: convertDecimals("6.1"),
                       lateFee: convertDecimals("0"),
                     },
@@ -567,16 +582,18 @@ contract("FinancialContractEventClient.js", function (accounts) {
 
                 // Correctly adds only new events after last query.
                 // 1% of (610-6.1) = 603.9 is 6.039
-                await timer.setCurrentTime((await timer.getCurrentTime()).toNumber() + 1);
-                const regularFeeTxObj2 = await financialContract.payRegularFees();
+                await timer.methods
+                  .setCurrentTime(parseInt(await timer.methods.getCurrentTime().call()) + 1)
+                  .send({ from: accounts[0] });
+                const regularFeeTxObj2 = await financialContract.methods.payRegularFees().send({ from: accounts[0] });
                 await client.clearState();
                 await client.update();
 
-                assert.deepStrictEqual(
+                objectsInArrayInclude(
                   [
                     {
-                      transactionHash: regularFeeTxObj2.tx,
-                      blockNumber: regularFeeTxObj2.receipt.blockNumber,
+                      transactionHash: regularFeeTxObj2.transactionHash,
+                      blockNumber: regularFeeTxObj2.blockNumber,
                       regularFee: convertDecimals("6.039"),
                       lateFee: convertDecimals("0"),
                     },
@@ -585,7 +602,7 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 );
 
                 // Reset fees
-                await store.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" });
+                await store.methods.setFixedOracleFeePerSecondPerPfc({ rawValue: "0" }).send({ from: accounts[0] });
               }
             );
 
@@ -593,29 +610,30 @@ contract("FinancialContractEventClient.js", function (accounts) {
               "Return Liquidation Events",
               async function () {
                 // Create liquidation to liquidate sponsor2 from sponsor1
-                const txObject1 = await financialContract.createLiquidation(
-                  sponsor1,
-                  { rawValue: "0" },
-                  { rawValue: toWei("99999") },
-                  { rawValue: convertDecimals("100") },
-                  unreachableDeadline,
-                  { from: liquidator }
-                );
+                const txObject1 = await financialContract.methods
+                  .createLiquidation(
+                    sponsor1,
+                    { rawValue: "0" },
+                    { rawValue: toWei("99999") },
+                    { rawValue: convertDecimals("100") },
+                    unreachableDeadline
+                  )
+                  .send({ from: liquidator });
 
                 // Update the client and check it has the liquidation event stored correctly
                 await client.clearState();
 
                 // State is empty before update().
-                assert.deepStrictEqual([], client.getAllLiquidationEvents());
+                objectsInArrayInclude([], client.getAllLiquidationEvents());
 
                 await client.update();
 
                 // Compare with expected processed event object
-                assert.deepStrictEqual(
+                objectsInArrayInclude(
                   [
                     {
-                      transactionHash: txObject1.tx,
-                      blockNumber: txObject1.receipt.blockNumber,
+                      transactionHash: txObject1.transactionHash,
+                      blockNumber: txObject1.blockNumber,
                       sponsor: sponsor1,
                       liquidator: liquidator,
                       liquidationId: "0",
@@ -628,21 +646,22 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 );
 
                 // Correctly adds a second event after creating a new liquidation
-                const txObject2 = await financialContract.createLiquidation(
-                  sponsor2,
-                  { rawValue: "0" },
-                  { rawValue: toWei("99999") },
-                  { rawValue: convertDecimals("100") },
-                  unreachableDeadline,
-                  { from: liquidator }
-                );
+                const txObject2 = await financialContract.methods
+                  .createLiquidation(
+                    sponsor2,
+                    { rawValue: "0" },
+                    { rawValue: toWei("99999") },
+                    { rawValue: convertDecimals("100") },
+                    unreachableDeadline
+                  )
+                  .send({ from: liquidator });
                 await client.clearState();
                 await client.update();
-                assert.deepStrictEqual(
+                objectsInArrayInclude(
                   [
                     {
-                      transactionHash: txObject2.tx,
-                      blockNumber: txObject2.receipt.blockNumber,
+                      transactionHash: txObject2.transactionHash,
+                      blockNumber: txObject2.blockNumber,
                       sponsor: sponsor2,
                       liquidator: liquidator,
                       liquidationId: "0",
@@ -658,31 +677,32 @@ contract("FinancialContractEventClient.js", function (accounts) {
 
             versionedIt([{ contractType: "any", contractVersion: "any" }])("Return Dispute Events", async function () {
               // Create liquidation to liquidate sponsor2 from sponsor1
-              await financialContract.createLiquidation(
-                sponsor1,
-                { rawValue: "0" },
-                { rawValue: toWei("99999") },
-                { rawValue: convertDecimals("100") },
-                unreachableDeadline,
-                { from: liquidator }
-              );
+              await financialContract.methods
+                .createLiquidation(
+                  sponsor1,
+                  { rawValue: "0" },
+                  { rawValue: toWei("99999") },
+                  { rawValue: convertDecimals("100") },
+                  unreachableDeadline
+                )
+                .send({ from: liquidator });
 
-              const txObject = await financialContract.dispute("0", sponsor1, { from: sponsor2 });
+              const txObject = await financialContract.methods.dispute("0", sponsor1).send({ from: sponsor2 });
 
               // Update the client and check it has the dispute event stored correctly
               await client.clearState();
 
               // State is empty before update().
-              assert.deepStrictEqual([], client.getAllDisputeEvents());
+              objectsInArrayInclude([], client.getAllDisputeEvents());
 
               await client.update();
 
               // Compare with expected processed event object
-              assert.deepStrictEqual(
+              objectsInArrayInclude(
                 [
                   {
-                    transactionHash: txObject.tx,
-                    blockNumber: txObject.receipt.blockNumber,
+                    transactionHash: txObject.transactionHash,
+                    blockNumber: txObject.blockNumber,
                     sponsor: sponsor1,
                     liquidator: liquidator,
                     disputer: sponsor2,
@@ -698,46 +718,53 @@ contract("FinancialContractEventClient.js", function (accounts) {
               "Return Dispute Settlement Events",
               async function () {
                 // Create liquidation to liquidate sponsor2 from sponsor1
-                const liquidationTime = (await financialContract.getCurrentTime()).toNumber();
-                await financialContract.createLiquidation(
-                  sponsor1,
-                  { rawValue: "0" },
-                  { rawValue: toWei("99999") },
-                  { rawValue: convertDecimals("100") },
-                  unreachableDeadline,
-                  { from: liquidator }
-                );
+                const liquidationTime = parseInt(await financialContract.methods.getCurrentTime().call());
+                await financialContract.methods
+                  .createLiquidation(
+                    sponsor1,
+                    { rawValue: "0" },
+                    { rawValue: toWei("99999") },
+                    { rawValue: convertDecimals("100") },
+                    unreachableDeadline
+                  )
+                  .send({ from: liquidator });
 
                 // Dispute the position from the second sponsor
-                await financialContract.dispute("0", sponsor1, {
-                  from: sponsor2,
-                });
+                await financialContract.methods.dispute("0", sponsor1).send({ from: sponsor2 });
 
                 // Advance time and settle
                 const timeAfterLiquidationLiveness = liquidationTime + 10;
-                await mockOracle.setCurrentTime(timeAfterLiquidationLiveness.toString());
-                await financialContract.setCurrentTime(timeAfterLiquidationLiveness.toString());
+                await mockOracle.methods
+                  .setCurrentTime(timeAfterLiquidationLiveness.toString())
+                  .send({ from: accounts[0] });
+                await financialContract.methods
+                  .setCurrentTime(timeAfterLiquidationLiveness.toString())
+                  .send({ from: accounts[0] });
 
                 // Force a price such that the dispute fails, and then withdraw from the unsuccessfully
                 // disputed liquidation.
                 const disputePrice = toWei("1.6");
-                await mockOracle.pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice);
+                await mockOracle.methods
+                  .pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice)
+                  .send({ from: accounts[0] });
 
-                const txObject = await financialContract.withdrawLiquidation("0", sponsor1, { from: liquidator });
+                const txObject = await financialContract.methods
+                  .withdrawLiquidation("0", sponsor1)
+                  .send({ from: liquidator });
                 await client.clearState();
 
                 // State is empty before update().
-                assert.deepStrictEqual([], client.getAllDisputeSettlementEvents());
+                objectsInArrayInclude([], client.getAllDisputeSettlementEvents());
 
                 // Update the client and check it has the dispute event stored correctly
                 await client.update();
 
                 // Compare with expected processed event object
-                assert.deepStrictEqual(
+                objectsInArrayInclude(
                   [
                     {
-                      transactionHash: txObject.tx,
-                      blockNumber: txObject.receipt.blockNumber,
+                      transactionHash: txObject.transactionHash,
+                      blockNumber: txObject.blockNumber,
                       caller: liquidator,
                       sponsor: sponsor1,
                       liquidator: liquidator,
@@ -755,46 +782,53 @@ contract("FinancialContractEventClient.js", function (accounts) {
               "Return Liquidation Withdrawn Events",
               async function () {
                 // Create liquidation to liquidate sponsor1
-                const liquidationTime = (await financialContract.getCurrentTime()).toNumber();
-                await financialContract.createLiquidation(
-                  sponsor1,
-                  { rawValue: "0" },
-                  { rawValue: toWei("99999") },
-                  { rawValue: convertDecimals("100") },
-                  unreachableDeadline,
-                  { from: liquidator }
-                );
+                const liquidationTime = parseInt(await financialContract.methods.getCurrentTime().call());
+                await financialContract.methods
+                  .createLiquidation(
+                    sponsor1,
+                    { rawValue: "0" },
+                    { rawValue: toWei("99999") },
+                    { rawValue: convertDecimals("100") },
+                    unreachableDeadline
+                  )
+                  .send({ from: liquidator });
 
                 // Dispute the position from the second sponsor
-                await financialContract.dispute("0", sponsor1, {
-                  from: sponsor2,
-                });
+                await financialContract.methods.dispute("0", sponsor1).send({ from: sponsor2 });
 
                 // Advance time and settle
                 const timeAfterLiquidationLiveness = liquidationTime + 10;
-                await mockOracle.setCurrentTime(timeAfterLiquidationLiveness.toString());
-                await financialContract.setCurrentTime(timeAfterLiquidationLiveness.toString());
+                await mockOracle.methods
+                  .setCurrentTime(timeAfterLiquidationLiveness.toString())
+                  .send({ from: accounts[0] });
+                await financialContract.methods
+                  .setCurrentTime(timeAfterLiquidationLiveness.toString())
+                  .send({ from: accounts[0] });
 
                 // Force a price such that the dispute succeeds, and then withdraw from the successfully
                 // disputed liquidation.
                 const disputePrice = toWei("0.1");
-                await mockOracle.pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice);
+                await mockOracle.methods
+                  .pushPrice(utf8ToHex(identifier), liquidationTime, disputePrice)
+                  .send({ from: accounts[0] });
 
-                const txObject = await financialContract.withdrawLiquidation("0", sponsor1, { from: liquidator });
+                const txObject = await financialContract.methods
+                  .withdrawLiquidation("0", sponsor1)
+                  .send({ from: liquidator });
                 await client.clearState();
 
                 // State is empty before update().
-                assert.deepStrictEqual([], client.getAllLiquidationWithdrawnEvents());
+                objectsInArrayInclude([], client.getAllLiquidationWithdrawnEvents());
 
                 // Update the client and check it has the liquidation withdrawn event stored correctly
                 await client.update();
 
                 // Compare with expected processed event object
-                assert.deepStrictEqual(
+                objectsInArrayInclude(
                   [
                     {
-                      transactionHash: txObject.tx,
-                      blockNumber: txObject.receipt.blockNumber,
+                      transactionHash: txObject.transactionHash,
+                      blockNumber: txObject.blockNumber,
                       caller: liquidator,
                       withdrawalAmount: convertDecimals("4"), // On successful disputes, liquidator gets TRV - dispute rewards. TRV = (50 * 0.1 = 5), and rewards = (TRV * 0.1 = 5 * 0.1 = 0.5).
                       liquidationStatus: "3", // Settlement price makes dispute successful
@@ -811,21 +845,23 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 await client.clearState();
 
                 // State is empty before update()
-                assert.deepStrictEqual([], client.getAllFundingRateUpdatedEvents());
+                objectsInArrayInclude([], client.getAllFundingRateUpdatedEvents());
 
                 // Propose new funding rate.
                 const proposeAndPublishNewRate = async (newRateWei) => {
                   // Advance time forward by 1 to guarantee that proposal time > last update time.
-                  let currentTime = await timer.getCurrentTime();
-                  await timer.setCurrentTime(currentTime.toNumber() + 1);
-                  let proposalTime = currentTime.toNumber() + 1;
-                  await financialContract.proposeFundingRate({ rawValue: newRateWei }, proposalTime);
+                  let currentTime = await timer.methods.getCurrentTime().call();
+                  await timer.methods.setCurrentTime(parseInt(currentTime) + 1).send({ from: accounts[0] });
+                  let proposalTime = parseInt(currentTime) + 1;
+                  await financialContract.methods
+                    .proposeFundingRate({ rawValue: newRateWei }, proposalTime)
+                    .send({ from: accounts[0] });
                   // Advance timer far enough such that funding rate proposal can be published,
                   // and publish it.
                   const proposalExpiry = proposalTime + optimisticOracleLiveness;
-                  await timer.setCurrentTime(proposalExpiry);
+                  await timer.methods.setCurrentTime(proposalExpiry).send({ from: accounts[0] });
                   return {
-                    txObject: await financialContract.applyFundingRate(),
+                    txObject: await financialContract.methods.applyFundingRate().send({ from: accounts[0] }),
                     proposalTime,
                   };
                 };
@@ -834,11 +870,11 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 await client.update();
 
                 // Compare with expected processed event objects.
-                assert.deepStrictEqual(
+                objectsInArrayInclude(
                   [
                     {
-                      transactionHash: txObject.tx,
-                      blockNumber: txObject.receipt.blockNumber,
+                      transactionHash: txObject.transactionHash,
+                      blockNumber: txObject.blockNumber,
                       newFundingRate: toWei("-0.00001"),
                       updateTime: proposalTime.toString(),
                       reward: "0",
@@ -853,11 +889,11 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 );
                 await client.clearState();
                 await client.update();
-                assert.deepStrictEqual(
+                objectsInArrayInclude(
                   [
                     {
-                      transactionHash: txObject2.tx,
-                      blockNumber: txObject2.receipt.blockNumber,
+                      transactionHash: txObject2.transactionHash,
+                      blockNumber: txObject2.blockNumber,
                       newFundingRate: toWei("0.00001"),
                       updateTime: proposalTime2.toString(),
                       reward: "0",
@@ -875,22 +911,23 @@ contract("FinancialContractEventClient.js", function (accounts) {
                 // generated before the creation of the client should not be included. Rather, only subsequent logs should be reported.
 
                 // Create liquidation (in the past)
-                await financialContract.createLiquidation(
-                  sponsor1,
-                  { rawValue: "0" },
-                  { rawValue: toWei("99999") },
-                  { rawValue: convertDecimals("100") },
-                  unreachableDeadline,
-                  { from: liquidator }
-                );
+                await financialContract.methods
+                  .createLiquidation(
+                    sponsor1,
+                    { rawValue: "0" },
+                    { rawValue: toWei("99999") },
+                    { rawValue: convertDecimals("100") },
+                    unreachableDeadline
+                  )
+                  .send({ from: liquidator });
 
                 // Start the liquidator bot from current time stamp (liquidation in the past)
                 const currentBlockNumber = await web3.eth.getBlockNumber();
                 const offSetClient = new FinancialContractEventClient(
                   dummyLogger,
-                  financialContract.abi,
+                  FinancialContract.abi,
                   web3,
-                  financialContract.address,
+                  financialContract.options.address,
                   currentBlockNumber + 1, // Start the bot one block after the liquidation event
                   null, // ending block number
                   contractVersion.contractType,
@@ -903,9 +940,9 @@ contract("FinancialContractEventClient.js", function (accounts) {
 
                 await offSetClient.update();
 
-                assert.deepStrictEqual([], offSetClient.getAllLiquidationEvents()); // Created liquidation should not be captured
-                assert.deepStrictEqual([], offSetClient.getAllDisputeEvents());
-                assert.deepStrictEqual([], offSetClient.getAllDisputeSettlementEvents());
+                objectsInArrayInclude([], offSetClient.getAllLiquidationEvents()); // Created liquidation should not be captured
+                objectsInArrayInclude([], offSetClient.getAllDisputeEvents());
+                objectsInArrayInclude([], offSetClient.getAllDisputeSettlementEvents());
               }
             );
           });

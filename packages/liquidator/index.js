@@ -169,11 +169,7 @@ async function run({
     };
 
     // Add block window into `liquidatorConfig`
-    liquidatorConfig = {
-      ...liquidatorConfig,
-      startingBlock,
-      endingBlock,
-    };
+    liquidatorConfig = { ...liquidatorConfig, startingBlock, endingBlock };
 
     // Load unlocked web3 accounts, get the networkId and set up price feed.
     const priceFeed = await createReferencePriceFeedForFinancialContract(
@@ -323,10 +319,7 @@ async function run({
       );
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (pollingDelay === 0) {
-        logger.debug({
-          at: "Liquidator#index",
-          message: "End of serverless execution loop - terminating process",
-        });
+        logger.debug({ at: "Liquidator#index", message: "End of serverless execution loop - terminating process" });
         await waitForLogger(logger);
         await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
         break;

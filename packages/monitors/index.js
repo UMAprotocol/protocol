@@ -26,7 +26,8 @@ const { CRMonitor } = require("./src/CRMonitor");
 const { SyntheticPegMonitor } = require("./src/SyntheticPegMonitor");
 
 // Contract ABIs and network Addresses.
-const { getAbi, getAddress, findContractVersion } = require("@uma/core");
+const { findContractVersion } = require("@uma/core");
+const { getAbi, getAddress } = require("@uma/contracts-node");
 const { getWeb3, SUPPORTED_CONTRACT_VERSIONS, PublicNetworks } = require("@uma/common");
 
 /**
@@ -130,7 +131,7 @@ async function run({
         );
 
       // Setup contract instances.
-      const voting = new web3.eth.Contract(getAbi("Voting", "1.2.2"), getAddress("Voting", networkId));
+      const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
       const financialContract = new web3.eth.Contract(
         getAbi(monitorConfig.contractType, monitorConfig.contractVersion),
         financialContractAddress
@@ -230,12 +231,7 @@ async function run({
         syntheticTokenAddress
       );
 
-      const balanceMonitor = new BalanceMonitor({
-        logger,
-        tokenBalanceClient,
-        monitorConfig,
-        financialContractProps,
-      });
+      const balanceMonitor = new BalanceMonitor({ logger, tokenBalanceClient, monitorConfig, financialContractProps });
 
       // 3. Collateralization Ratio monitor.
       const financialContractClient = new FinancialContractClient(
@@ -328,9 +324,7 @@ async function run({
         endingBlock
       );
 
-      const contractProps = {
-        networkId,
-      };
+      const contractProps = { networkId };
       const contractMonitor = new OptimisticOracleContractMonitor({
         logger,
         optimisticOracleContractEventClient,
@@ -378,18 +372,12 @@ async function run({
       );
       // If the polling delay is set to 0 then the script will terminate the bot after one full run.
       if (pollingDelay === 0) {
-        logger.debug({
-          at: "Monitor#index",
-          message: "End of serverless execution loop - terminating process",
-        });
+        logger.debug({ at: "Monitor#index", message: "End of serverless execution loop - terminating process" });
         await waitForLogger(logger);
         await delay(2); // waitForLogger does not always work 100% correctly in serverless. add a delay to ensure logs are captured upstream.
         break;
       }
-      logger.debug({
-        at: "Monitor#index",
-        message: "End of execution loop - waiting polling delay",
-      });
+      logger.debug({ at: "Monitor#index", message: "End of execution loop - waiting polling delay" });
       await delay(Number(pollingDelay));
     }
   } catch (error) {

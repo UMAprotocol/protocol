@@ -116,10 +116,7 @@ module.exports = ({ queries, empAbi, web3 }) => {
   async function getStartBlock(start) {
     const blocks = await queries.getBlocksAscending(start, 1, ["timestamp", "number"]);
     const [result] = blocks.map((block) => {
-      return {
-        ...block,
-        timestamp: moment(block.timestamp.value).valueOf(),
-      };
+      return { ...block, timestamp: moment(block.timestamp.value).valueOf() };
     });
     return result;
   }
@@ -127,10 +124,7 @@ module.exports = ({ queries, empAbi, web3 }) => {
   async function getEndBlock(end) {
     const blocks = await queries.getBlocksDescending(end, 1, ["timestamp", "number"]);
     const [result] = blocks.map((block) => {
-      return {
-        ...block,
-        timestamp: moment(block.timestamp.value).valueOf(),
-      };
+      return { ...block, timestamp: moment(block.timestamp.value).valueOf() };
     });
     return result;
   }
@@ -197,11 +191,7 @@ module.exports = ({ queries, empAbi, web3 }) => {
   // Helper function to process rewards. Use this for testing business logic with custom data.
   async function processRewardData({ attributions, balances, whitelist, totalRewards }) {
     assert(totalRewards, "requires total rewards");
-    const percentages = calculateBlockReward({
-      attributions,
-      balances,
-      whitelist,
-    });
+    const percentages = calculateBlockReward({ attributions, balances, whitelist });
 
     return Object.entries(percentages).reduce((result, [key, value]) => {
       if (value == 0) return result;
@@ -254,11 +244,7 @@ module.exports = ({ queries, empAbi, web3 }) => {
       totalRewards,
     });
 
-    return {
-      startBlock,
-      endBlock,
-      rewards,
-    };
+    return { startBlock, endBlock, rewards };
   }
 
   return {

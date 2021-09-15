@@ -3,6 +3,21 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.6.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.5.0...@uma/common@2.6.0) (2021-07-19)
+
+### Features
+
+- Update OptimisticOracle and Polygon Tunnel Addresses ([#3209](https://github.com/UMAprotocol/protocol/issues/3209)) ([6593fe5](https://github.com/UMAprotocol/protocol/commit/6593fe5aa1980c45ab570da049a9373e8f172c11))
+
+# [2.5.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.4.0...@uma/common@2.5.0) (2021-07-15)
+
+### Features
+
+- **common:** add compiler overrides to allow most contracts to be gas optimized ([#3214](https://github.com/UMAprotocol/protocol/issues/3214)) ([0f82473](https://github.com/UMAprotocol/protocol/commit/0f8247337098e61a06ee8f5e303805198e63d767))
+- **core:** refactor core tests to no longer use truffle ([#3202](https://github.com/UMAprotocol/protocol/issues/3202)) ([349401a](https://github.com/UMAprotocol/protocol/commit/349401a869e89f9b5583d34c1f282407dca021ac))
+- **linter:** proposal to minimize object sizing ([#3222](https://github.com/UMAprotocol/protocol/issues/3222)) ([c925524](https://github.com/UMAprotocol/protocol/commit/c925524e888f73e1f694c4f9bf4ad1fb31e456bc))
+- **liquidator,disputer,monitor:** deprecate legacy tests ([#3212](https://github.com/UMAprotocol/protocol/issues/3212)) ([498ecfc](https://github.com/UMAprotocol/protocol/commit/498ecfcfd3d767ceeb28e37f42ee5a1b7d4f0c83))
+
 # [2.4.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.3.0...@uma/common@2.4.0) (2021-07-07)
 
 ### Bug Fixes

@@ -4,9 +4,9 @@
   "description": "UMA monorepo containing protocol packages",
   "private": true,
   "scripts": {
-    "bootstrap": "npx lerna bootstrap",
-    "lint": "npm run eslint && npm run prettier -- --list-different",
-    "lint-fix": "npm run eslint -- --fix && npm run prettier -- --write",
+    "bootstrap": "yarn",
+    "lint": "yarn eslint && yarn prettier --list-different",
+    "lint-fix": "yarn eslint --fix && yarn prettier --write",
     "eslint": "eslint './**/*.js' './**/*.ts'",
     "prettier": "prettier './**/*.js' './**/*.sol' './**/*.md' './**/*.ts'",
     "test": "lerna run --stream --concurrency=4 test",
@@ -16,9 +16,11 @@
     "create-release": "lerna version --no-git-tag-version --conventional-commits --no-push",
     "publish-release": "./scripts/run_release.sh",
     "qbuild": "yarn workspace @uma/common build && yarn workspace @uma/core build && yarn lerna run build --stream --ignore '*/*dapp*' --ignore '@uma/common' --ignore '@uma/core'",
-    "build": "yarn workspace @uma/common build && yarn workspace @uma/core build && yarn lerna run build --stream --ignore '@uma/common' --ignore '@uma/core'",
+    "build": "yarn qbuild",
     "clean": "yarn lerna run clean --stream",
-    "clean-packages": "yarn lerna clean --yes && rm -rf node_modules"
+    "clean-packages": "yarn lerna clean --yes && rm -rf node_modules",
+    "optimism-up": "./scripts/ovm/run-optimism.sh",
+    "optimism-down": "cd optimism/ops && docker-compose down -v"
   },
   "author": "UMA Team",
   "license": "AGPL-3.0",
@@ -29,7 +31,7 @@
   "devDependencies": {
     "@antora/cli": "^2.1.2",
     "@antora/site-generator-default": "^2.1.2",
-    "@typechain/ethers-v5": "^6.0.5",
+    "@typechain/ethers-v5": "^7.0.1",
     "@typescript-eslint/eslint-plugin": "^4.14.1",
     "@typescript-eslint/parser": "^4.14.1",
     "babel-eslint": "10.0.1",
@@ -44,18 +46,19 @@
     "eslint-plugin-react": "^7.19.0",
     "eslint-plugin-react-hooks": "^3.0.0",
     "ganache-cli": "^6.12.2",
-    "hardhat": "^2.4.0",
+    "hardhat": "^2.5.0",
     "husky": "^4.2.3",
     "lerna": "^3.22.1",
     "lint-staged": "^10.1.3",
     "lodash.startcase": "^4.4.0",
     "prettier": "2.2.1",
-    "prettier-plugin-solidity": "^1.0.0-beta.10",
+    "prettier-plugin-solidity": "1.0.0-beta.10",
     "pretty-quick": "^2.0.1",
     "secp256k1": "^3.7.1",
     "solc-0.8": "npm:solc@^0.8.4",
     "truffle": "^5.2.3",
-    "web3": "^1.3.5"
+    "typescript": "^4.3.5",
+    "web3": "^1.5.0"
   },
   "resolutions": {
     "sse4_crc32": "npm:@node-rs/crc32@1.0.0"
@@ -68,7 +71,9 @@
   "lint-staged": {
     "*.{js,ts,tsx}": "eslint --cache --fix"
   },
-  "workspaces": [
-    "packages/**"
-  ]
+  "workspaces": {
+    "packages": [
+      "packages/*"
+    ]
+  }
 }

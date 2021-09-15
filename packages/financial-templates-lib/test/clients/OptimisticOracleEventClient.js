@@ -1,26 +1,30 @@
+const { web3, getContract } = require("hardhat");
+const { assert } = require("chai");
+
 const winston = require("winston");
 
 const { toWei, hexToUtf8, utf8ToHex, toBN } = web3.utils;
 
-const { OptimisticOracleEventClient } = require("../../src/clients/OptimisticOracleEventClient");
+const { OptimisticOracleEventClient } = require("../../dist/clients/OptimisticOracleEventClient");
 const { interfaceName, advanceBlockAndSetTime, MAX_UINT_VAL, ZERO_ADDRESS } = require("@uma/common");
-const { getTruffleContract } = require("@uma/core");
 
-const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
-const OptimisticRequesterTest = getTruffleContract("OptimisticRequesterTest", web3);
-const Finder = getTruffleContract("Finder", web3);
-const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3);
-const Token = getTruffleContract("ExpandedERC20", web3);
-const AddressWhitelist = getTruffleContract("AddressWhitelist", web3);
-const Timer = getTruffleContract("Timer", web3);
-const Store = getTruffleContract("Store", web3);
-const MockOracle = getTruffleContract("MockOracleAncillary", web3);
+const OptimisticOracle = getContract("OptimisticOracle");
+const OptimisticRequesterTest = getContract("OptimisticRequesterTest");
+const Finder = getContract("Finder");
+const IdentifierWhitelist = getContract("IdentifierWhitelist");
+const Token = getContract("ExpandedERC20");
+const AddressWhitelist = getContract("AddressWhitelist");
+const Timer = getContract("Timer");
+const Store = getContract("Store");
+const MockOracle = getContract("MockOracleAncillary");
 
-contract("OptimisticOracleEventClient.js", function (accounts) {
-  const owner = accounts[0];
-  const requester = accounts[1];
-  const proposer = accounts[2];
-  const disputer = accounts[3];
+const objectsInArrayInclude = (superset, subset) => {
+  assert.equal(superset.length, subset.length);
+  for (let i = 0; i < superset.length; i++) assert.deepInclude(superset[i], subset[i]);
+};
+
+describe("OptimisticOracleEventClient.js", function () {
+  let owner, requester, proposer, disputer, accounts;
 
   // Contracts
   let optimisticRequester;
@@ -55,197 +59,179 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
   const defaultAncillaryData = "0x";
 
   const pushPrice = async (price) => {
-    const [lastQuery] = (await mockOracle.getPendingQueries()).slice(-1);
-    await mockOracle.pushPrice(lastQuery.identifier, lastQuery.time, lastQuery.ancillaryData, price);
+    const [lastQuery] = (await mockOracle.methods.getPendingQueries().call()).slice(-1);
+    await mockOracle.methods
+      .pushPrice(lastQuery.identifier, lastQuery.time, lastQuery.ancillaryData, price)
+      .send({ from: accounts[0] });
   };
 
   before(async function () {
-    finder = await Finder.new();
-    timer = await Timer.new();
+    accounts = await web3.eth.getAccounts();
+    [owner, requester, proposer, disputer] = accounts;
+
+    finder = await Finder.new().send({ from: accounts[0] });
+    timer = await Timer.new().send({ from: accounts[0] });
 
     // Whitelist an initial identifier we can use to make default price requests.
-    identifierWhitelist = await IdentifierWhitelist.new();
-    await identifierWhitelist.addSupportedIdentifier(identifier);
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.address);
+    identifierWhitelist = await IdentifierWhitelist.new().send({ from: accounts[0] });
+    await identifierWhitelist.methods.addSupportedIdentifier(identifier).send({ from: accounts[0] });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.IdentifierWhitelist), identifierWhitelist.options.address)
+      .send({ from: accounts[0] });
 
-    collateralWhitelist = await AddressWhitelist.new();
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.address);
+    collateralWhitelist = await AddressWhitelist.new().send({ from: accounts[0] });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.CollateralWhitelist), collateralWhitelist.options.address)
+      .send({ from: accounts[0] });
 
-    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
+    store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.options.address).send({ from: accounts[0] });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
+      .send({ from: accounts[0] });
 
-    mockOracle = await MockOracle.new(finder.address, timer.address);
-    await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
+    mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({ from: accounts[0] });
+    await finder.methods
+      .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address)
+      .send({ from: accounts[0] });
   });
 
   let requestTxn1, requestTxn2, proposalTxn1, proposalTxn2, disputeTxn1, disputeTxn2, settlementTxn1, settlementTxn2;
   beforeEach(async function () {
     // Deploy and whitelist a new collateral currency that we will use to pay oracle fees.
-    collateral = await Token.new("Wrapped Ether", "WETH", 18);
-    await collateral.addMember(1, owner);
-    await collateral.mint(owner, initialUserBalance);
-    await collateral.mint(proposer, initialUserBalance);
-    await collateral.mint(requester, initialUserBalance);
-    await collateral.mint(disputer, initialUserBalance);
-    await collateralWhitelist.addToWhitelist(collateral.address);
+    collateral = await Token.new("Wrapped Ether", "WETH", 18).send({ from: accounts[0] });
+    await collateral.methods.addMember(1, owner).send({ from: accounts[0] });
+    await collateral.methods.mint(owner, initialUserBalance).send({ from: accounts[0] });
+    await collateral.methods.mint(proposer, initialUserBalance).send({ from: accounts[0] });
+    await collateral.methods.mint(requester, initialUserBalance).send({ from: accounts[0] });
+    await collateral.methods.mint(disputer, initialUserBalance).send({ from: accounts[0] });
+    await collateralWhitelist.methods.addToWhitelist(collateral.options.address).send({ from: accounts[0] });
 
     // Set a non-0 final fee for the collateral currency.
-    await store.setFinalFee(collateral.address, { rawValue: finalFee });
+    await store.methods.setFinalFee(collateral.options.address, { rawValue: finalFee }).send({ from: accounts[0] });
 
-    optimisticOracle = await OptimisticOracle.new(liveness, finder.address, timer.address);
+    optimisticOracle = await OptimisticOracle.new(liveness, finder.options.address, timer.options.address).send({
+      from: accounts[0],
+    });
 
     // Contract used to make price requests
-    optimisticRequester = await OptimisticRequesterTest.new(optimisticOracle.address);
+    optimisticRequester = await OptimisticRequesterTest.new(optimisticOracle.options.address).send({
+      from: accounts[0],
+    });
 
-    startTime = (await optimisticOracle.getCurrentTime()).toNumber();
+    startTime = parseInt(await optimisticOracle.methods.getCurrentTime().call());
     requestTime = startTime - 10;
 
     // The Event client does not emit any info `level` events.  Therefore no need to test Winston outputs.
     // DummyLogger will not print anything to console as only capture `info` level events.
-    dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+    dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
     client = new OptimisticOracleEventClient(
       dummyLogger,
       OptimisticOracle.abi,
       web3,
-      optimisticOracle.address,
+      optimisticOracle.options.address,
       0, // startingBlockNumber
       null // endingBlockNumber
     );
 
     // Make price requests
-    requestTxn1 = await optimisticRequester.requestPrice(
-      identifier,
-      requestTime,
-      defaultAncillaryData,
-      collateral.address,
-      0
-    );
-    requestTxn2 = await optimisticRequester.requestPrice(
-      identifier,
-      requestTime + 1,
-      defaultAncillaryData,
-      collateral.address,
-      0
-    );
+    requestTxn1 = await optimisticRequester.methods
+      .requestPrice(identifier, requestTime, defaultAncillaryData, collateral.options.address, 0)
+      .send({ from: accounts[0] });
+    requestTxn2 = await optimisticRequester.methods
+      .requestPrice(identifier, requestTime + 1, defaultAncillaryData, collateral.options.address, 0)
+      .send({ from: accounts[0] });
 
     // Make proposals
-    await collateral.approve(optimisticOracle.address, MAX_UINT_VAL, { from: proposer });
-    proposalTime = await optimisticOracle.getCurrentTime();
-    proposalTxn1 = await optimisticOracle.proposePrice(
-      optimisticRequester.address,
-      identifier,
-      requestTime,
-      defaultAncillaryData,
-      correctPrice,
-      {
-        from: proposer,
-      }
-    );
-    proposalTxn2 = await optimisticOracle.proposePrice(
-      optimisticRequester.address,
-      identifier,
-      requestTime + 1,
-      defaultAncillaryData,
-      correctPrice,
-      {
-        from: proposer,
-      }
-    );
+    await collateral.methods.approve(optimisticOracle.options.address, MAX_UINT_VAL).send({ from: proposer });
+    proposalTime = await optimisticOracle.methods.getCurrentTime().call();
+    proposalTxn1 = await optimisticOracle.methods
+      .proposePrice(optimisticRequester.options.address, identifier, requestTime, defaultAncillaryData, correctPrice)
+      .send({ from: proposer });
+    proposalTxn2 = await optimisticOracle.methods
+      .proposePrice(
+        optimisticRequester.options.address,
+        identifier,
+        requestTime + 1,
+        defaultAncillaryData,
+        correctPrice
+      )
+      .send({ from: proposer });
 
     // Make disputes and resolve them
-    await collateral.approve(optimisticOracle.address, MAX_UINT_VAL, { from: disputer });
-    disputeTxn1 = await optimisticOracle.disputePrice(
-      optimisticRequester.address,
-      identifier,
-      requestTime,
-      defaultAncillaryData,
-      {
-        from: disputer,
-      }
-    );
+    await collateral.methods.approve(optimisticOracle.options.address, MAX_UINT_VAL).send({ from: disputer });
+    disputeTxn1 = await optimisticOracle.methods
+      .disputePrice(optimisticRequester.options.address, identifier, requestTime, defaultAncillaryData)
+      .send({ from: disputer });
     await pushPrice(correctPrice);
-    disputeTxn2 = await optimisticOracle.disputePrice(
-      optimisticRequester.address,
-      identifier,
-      requestTime + 1,
-      defaultAncillaryData,
-      {
-        from: disputer,
-      }
-    );
+    disputeTxn2 = await optimisticOracle.methods
+      .disputePrice(optimisticRequester.options.address, identifier, requestTime + 1, defaultAncillaryData)
+      .send({ from: disputer });
     await pushPrice(correctPrice);
 
     // Settle expired proposals and resolved disputes
-    settlementTxn1 = await optimisticOracle.settle(
-      optimisticRequester.address,
-      identifier,
-      requestTime,
-      defaultAncillaryData
-    );
-    settlementTxn2 = await optimisticOracle.settle(
-      optimisticRequester.address,
-      identifier,
-      requestTime + 1,
-      defaultAncillaryData
-    );
+    settlementTxn1 = await optimisticOracle.methods
+      .settle(optimisticRequester.options.address, identifier, requestTime, defaultAncillaryData)
+      .send({ from: accounts[0] });
+    settlementTxn2 = await optimisticOracle.methods
+      .settle(optimisticRequester.options.address, identifier, requestTime + 1, defaultAncillaryData)
+      .send({ from: accounts[0] });
   });
 
   it("Return RequestPrice events", async function () {
     await client.clearState();
     // State is empty before update().
-    assert.deepStrictEqual([], client.getAllRequestPriceEvents());
+    objectsInArrayInclude([], client.getAllRequestPriceEvents());
     await client.update();
-    assert.deepStrictEqual(client.getAllRequestPriceEvents(), [
+    objectsInArrayInclude(client.getAllRequestPriceEvents(), [
       {
-        transactionHash: requestTxn1.tx,
-        blockNumber: requestTxn1.receipt.blockNumber,
-        requester: optimisticRequester.address,
+        transactionHash: requestTxn1.transactionHash,
+        blockNumber: requestTxn1.blockNumber,
+        requester: optimisticRequester.options.address,
         identifier: hexToUtf8(identifier),
         ancillaryData: defaultAncillaryData,
         timestamp: requestTime.toString(),
-        currency: collateral.address,
+        currency: collateral.options.address,
         reward: "0",
         finalFee,
       },
       {
-        transactionHash: requestTxn2.tx,
-        blockNumber: requestTxn2.receipt.blockNumber,
-        requester: optimisticRequester.address,
+        transactionHash: requestTxn2.transactionHash,
+        blockNumber: requestTxn2.blockNumber,
+        requester: optimisticRequester.options.address,
         identifier: hexToUtf8(identifier),
         ancillaryData: defaultAncillaryData,
         timestamp: (requestTime + 1).toString(),
-        currency: collateral.address,
+        currency: collateral.options.address,
         reward: "0",
         finalFee,
       },
     ]);
 
     // Correctly adds only new events after last query
-    const newTxn = await optimisticRequester.requestPrice(
-      identifier,
-      requestTime,
-      // Note: we're using collateral address as ancillary data here to test with more entropy.
-      collateral.address,
-      collateral.address,
-      0
-    );
+    const newTxn = await optimisticRequester.methods
+      .requestPrice(
+        identifier,
+        requestTime,
+        // Note: we're using collateral address as ancillary data here to test with more entropy.
+        collateral.options.address,
+        collateral.options.address,
+        0
+      )
+      .send({ from: accounts[0] });
     await client.clearState();
     await client.update();
-    assert.deepStrictEqual(client.getAllRequestPriceEvents(), [
+    objectsInArrayInclude(client.getAllRequestPriceEvents(), [
       {
-        transactionHash: newTxn.tx,
-        blockNumber: newTxn.receipt.blockNumber,
-        requester: optimisticRequester.address,
+        transactionHash: newTxn.transactionHash,
+        blockNumber: newTxn.blockNumber,
+        requester: optimisticRequester.options.address,
         identifier: hexToUtf8(identifier),
         // Note: Convert contract address to lowercase to adjust for how Solidity casts addresses to bytes.
         // This is important because `requestPrice` expects `ancillaryData` to be of type bytes,
-        ancillaryData: collateral.address.toLowerCase(),
+        ancillaryData: collateral.options.address.toLowerCase(),
         timestamp: requestTime.toString(),
-        currency: collateral.address,
+        currency: collateral.options.address,
         reward: "0",
         finalFee,
       },
@@ -254,62 +240,63 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
   it("Return ProposePrice events", async function () {
     await client.clearState();
     // State is empty before update().
-    assert.deepStrictEqual([], client.getAllProposePriceEvents());
+    objectsInArrayInclude([], client.getAllProposePriceEvents());
     await client.update();
-    assert.deepStrictEqual(client.getAllProposePriceEvents(), [
+    objectsInArrayInclude(client.getAllProposePriceEvents(), [
       {
-        transactionHash: proposalTxn1.tx,
-        blockNumber: proposalTxn1.receipt.blockNumber,
-        requester: optimisticRequester.address,
+        transactionHash: proposalTxn1.transactionHash,
+        blockNumber: proposalTxn1.blockNumber,
+        requester: optimisticRequester.options.address,
         proposer,
         identifier: hexToUtf8(identifier),
         ancillaryData: defaultAncillaryData,
         timestamp: requestTime.toString(),
-        currency: collateral.address,
+        currency: collateral.options.address,
         proposedPrice: correctPrice,
         expirationTimestamp: (Number(proposalTime) + liveness).toString(),
       },
       {
-        transactionHash: proposalTxn2.tx,
-        blockNumber: proposalTxn2.receipt.blockNumber,
-        requester: optimisticRequester.address,
+        transactionHash: proposalTxn2.transactionHash,
+        blockNumber: proposalTxn2.blockNumber,
+        requester: optimisticRequester.options.address,
         proposer,
         identifier: hexToUtf8(identifier),
         ancillaryData: defaultAncillaryData,
         timestamp: (requestTime + 1).toString(),
-        currency: collateral.address,
+        currency: collateral.options.address,
         proposedPrice: correctPrice,
         expirationTimestamp: (Number(proposalTime) + liveness).toString(),
       },
     ]);
 
     // Correctly adds only new events after last query
-    await optimisticRequester.requestPrice(identifier, requestTime, collateral.address, collateral.address, 0);
-    const newProposalTime = await optimisticOracle.getCurrentTime();
-    const newTxn = await optimisticOracle.proposePrice(
-      optimisticRequester.address,
-      identifier,
-      requestTime,
-      // Note: Convert contract address to lowercase to adjust for how Solidity casts addresses to bytes.
-      // This is important because `requestPrice` expects `ancillaryData` to be of type bytes,
-      collateral.address.toLowerCase(),
-      correctPrice,
-      {
-        from: proposer,
-      }
-    );
+    await optimisticRequester.methods
+      .requestPrice(identifier, requestTime, collateral.options.address, collateral.options.address, 0)
+      .send({ from: accounts[0] });
+    const newProposalTime = await optimisticOracle.methods.getCurrentTime().call();
+    const newTxn = await optimisticOracle.methods
+      .proposePrice(
+        optimisticRequester.options.address,
+        identifier,
+        requestTime,
+        // Note: Convert contract address to lowercase to adjust for how Solidity casts addresses to bytes.
+        // This is important because `requestPrice` expects `ancillaryData` to be of type bytes,
+        collateral.options.address.toLowerCase(),
+        correctPrice
+      )
+      .send({ from: proposer });
     await client.clearState();
     await client.update();
-    assert.deepStrictEqual(client.getAllProposePriceEvents(), [
+    objectsInArrayInclude(client.getAllProposePriceEvents(), [
       {
-        transactionHash: newTxn.tx,
-        blockNumber: newTxn.receipt.blockNumber,
-        requester: optimisticRequester.address,
+        transactionHash: newTxn.transactionHash,
+        blockNumber: newTxn.blockNumber,
+        requester: optimisticRequester.options.address,
         proposer,
         identifier: hexToUtf8(identifier),
-        ancillaryData: collateral.address.toLowerCase(),
+        ancillaryData: collateral.options.address.toLowerCase(),
         timestamp: requestTime.toString(),
-        currency: collateral.address,
+        currency: collateral.options.address,
         proposedPrice: correctPrice,
         expirationTimestamp: (Number(newProposalTime) + liveness).toString(),
       },
@@ -318,83 +305,85 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
   it("Return DisputePrice events", async function () {
     await client.clearState();
     // State is empty before update().
-    assert.deepStrictEqual([], client.getAllDisputePriceEvents());
+    objectsInArrayInclude([], client.getAllDisputePriceEvents());
     await client.update();
-    assert.deepStrictEqual(client.getAllDisputePriceEvents(), [
+    objectsInArrayInclude(client.getAllDisputePriceEvents(), [
       {
-        transactionHash: disputeTxn1.tx,
-        blockNumber: disputeTxn1.receipt.blockNumber,
-        requester: optimisticRequester.address,
+        transactionHash: disputeTxn1.transactionHash,
+        blockNumber: disputeTxn1.blockNumber,
+        requester: optimisticRequester.options.address,
         proposer,
         disputer,
         identifier: hexToUtf8(identifier),
         ancillaryData: defaultAncillaryData,
         timestamp: requestTime.toString(),
         proposedPrice: correctPrice,
-        currency: collateral.address,
+        currency: collateral.options.address,
       },
       {
-        transactionHash: disputeTxn2.tx,
-        blockNumber: disputeTxn2.receipt.blockNumber,
-        requester: optimisticRequester.address,
+        transactionHash: disputeTxn2.transactionHash,
+        blockNumber: disputeTxn2.blockNumber,
+        requester: optimisticRequester.options.address,
         proposer,
         disputer,
         identifier: hexToUtf8(identifier),
         ancillaryData: defaultAncillaryData,
         timestamp: (requestTime + 1).toString(),
         proposedPrice: correctPrice,
-        currency: collateral.address,
+        currency: collateral.options.address,
       },
     ]);
 
     // Correctly adds only new events after last query
-    await optimisticRequester.requestPrice(identifier, requestTime, collateral.address, collateral.address, 0);
-    await optimisticOracle.proposePrice(
-      optimisticRequester.address,
-      identifier,
-      requestTime,
-      collateral.address.toLowerCase(),
-      correctPrice,
-      {
-        from: proposer,
-      }
-    );
-    const newTxn = await optimisticOracle.disputePrice(
-      optimisticRequester.address,
-      identifier,
-      requestTime,
-      collateral.address.toLowerCase(),
-      { from: disputer }
-    );
+    await optimisticRequester.methods
+      .requestPrice(identifier, requestTime, collateral.options.address, collateral.options.address, 0)
+      .send({ from: accounts[0] });
+    await optimisticOracle.methods
+      .proposePrice(
+        optimisticRequester.options.address,
+        identifier,
+        requestTime,
+        collateral.options.address.toLowerCase(),
+        correctPrice
+      )
+      .send({ from: proposer });
+    const newTxn = await optimisticOracle.methods
+      .disputePrice(
+        optimisticRequester.options.address,
+        identifier,
+        requestTime,
+        collateral.options.address.toLowerCase()
+      )
+      .send({ from: disputer });
     await client.clearState();
     await client.update();
-    assert.deepStrictEqual(client.getAllDisputePriceEvents(), [
+    objectsInArrayInclude(client.getAllDisputePriceEvents(), [
       {
-        transactionHash: newTxn.tx,
-        blockNumber: newTxn.receipt.blockNumber,
-        requester: optimisticRequester.address,
+        transactionHash: newTxn.transactionHash,
+        blockNumber: newTxn.blockNumber,
+        requester: optimisticRequester.options.address,
         proposer,
         disputer,
         identifier: hexToUtf8(identifier),
         // Note: Convert contract address to lowercase to adjust for how Solidity casts addresses to bytes.
         // This is important because `requestPrice` expects `ancillaryData` to be of type bytes,
-        ancillaryData: collateral.address.toLowerCase(),
+        ancillaryData: collateral.options.address.toLowerCase(),
         timestamp: requestTime.toString(),
         proposedPrice: correctPrice,
-        currency: collateral.address,
+        currency: collateral.options.address,
       },
     ]);
   });
   it("Return Settlement events", async function () {
     await client.clearState();
     // State is empty before update().
-    assert.deepStrictEqual([], client.getAllSettlementEvents());
+    objectsInArrayInclude([], client.getAllSettlementEvents());
     await client.update();
-    assert.deepStrictEqual(client.getAllSettlementEvents(), [
+    objectsInArrayInclude(client.getAllSettlementEvents(), [
       {
-        transactionHash: settlementTxn1.tx,
-        blockNumber: settlementTxn1.receipt.blockNumber,
-        requester: optimisticRequester.address,
+        transactionHash: settlementTxn1.transactionHash,
+        blockNumber: settlementTxn1.blockNumber,
+        requester: optimisticRequester.options.address,
         proposer,
         disputer,
         identifier: hexToUtf8(identifier),
@@ -402,12 +391,12 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
         timestamp: requestTime.toString(),
         price: correctPrice,
         payout: disputePayout,
-        currency: collateral.address,
+        currency: collateral.options.address,
       },
       {
-        transactionHash: settlementTxn2.tx,
-        blockNumber: settlementTxn2.receipt.blockNumber,
-        requester: optimisticRequester.address,
+        transactionHash: settlementTxn2.transactionHash,
+        blockNumber: settlementTxn2.blockNumber,
+        requester: optimisticRequester.options.address,
         proposer,
         disputer,
         identifier: hexToUtf8(identifier),
@@ -415,47 +404,47 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
         timestamp: (requestTime + 1).toString(),
         price: correctPrice,
         payout: disputePayout,
-        currency: collateral.address,
+        currency: collateral.options.address,
       },
     ]);
 
     // Correctly adds only new events after last query
-    await optimisticRequester.requestPrice(identifier, requestTime, collateral.address, collateral.address, 0);
-    const newProposalTime = await optimisticOracle.getCurrentTime();
-    await optimisticOracle.proposePrice(
-      optimisticRequester.address,
-      identifier,
-      requestTime,
-      collateral.address.toLowerCase(),
-      correctPrice,
-      {
-        from: proposer,
-      }
-    );
-    await optimisticOracle.setCurrentTime((Number(newProposalTime) + liveness).toString());
-    const newTxn = await optimisticOracle.settle(
-      optimisticRequester.address,
-      identifier,
-      requestTime,
-      collateral.address.toLowerCase()
-    );
+    await optimisticRequester.methods
+      .requestPrice(identifier, requestTime, collateral.options.address, collateral.options.address, 0)
+      .send({ from: accounts[0] });
+    const newProposalTime = await optimisticOracle.methods.getCurrentTime().call();
+    await optimisticOracle.methods
+      .proposePrice(
+        optimisticRequester.options.address,
+        identifier,
+        requestTime,
+        collateral.options.address.toLowerCase(),
+        correctPrice
+      )
+      .send({ from: proposer });
+    await optimisticOracle.methods
+      .setCurrentTime((Number(newProposalTime) + liveness).toString())
+      .send({ from: accounts[0] });
+    const newTxn = await optimisticOracle.methods
+      .settle(optimisticRequester.options.address, identifier, requestTime, collateral.options.address.toLowerCase())
+      .send({ from: accounts[0] });
     await client.clearState();
     await client.update();
-    assert.deepStrictEqual(client.getAllSettlementEvents(), [
+    objectsInArrayInclude(client.getAllSettlementEvents(), [
       {
-        transactionHash: newTxn.tx,
-        blockNumber: newTxn.receipt.blockNumber,
-        requester: optimisticRequester.address,
+        transactionHash: newTxn.transactionHash,
+        blockNumber: newTxn.blockNumber,
+        requester: optimisticRequester.options.address,
         proposer,
         disputer: ZERO_ADDRESS,
         identifier: hexToUtf8(identifier),
         // Note: Convert contract address to lowercase to adjust for how Solidity casts addresses to bytes.
         // This is important because `requestPrice` expects `ancillaryData` to be of type bytes,
-        ancillaryData: collateral.address.toLowerCase(),
+        ancillaryData: collateral.options.address.toLowerCase(),
         timestamp: requestTime.toString(),
         price: correctPrice,
         payout: totalDefaultBond,
-        currency: collateral.address,
+        currency: collateral.options.address,
       },
     ]);
   });
@@ -466,9 +455,9 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
     const currentBlockNumber = await web3.eth.getBlockNumber();
     const offSetClient = new OptimisticOracleEventClient(
       dummyLogger,
-      optimisticOracle.abi,
+      OptimisticOracle.abi,
       web3,
-      optimisticOracle.address,
+      optimisticOracle.options.address,
       currentBlockNumber + 1, // Start the bot one block after the latest event
       null // ending block number
     );
@@ -479,9 +468,9 @@ contract("OptimisticOracleEventClient.js", function (accounts) {
 
     await offSetClient.update();
 
-    assert.deepStrictEqual([], offSetClient.getAllRequestPriceEvents());
-    assert.deepStrictEqual([], offSetClient.getAllProposePriceEvents());
-    assert.deepStrictEqual([], offSetClient.getAllDisputePriceEvents());
-    assert.deepStrictEqual([], offSetClient.getAllSettlementEvents());
+    objectsInArrayInclude([], offSetClient.getAllRequestPriceEvents());
+    objectsInArrayInclude([], offSetClient.getAllProposePriceEvents());
+    objectsInArrayInclude([], offSetClient.getAllDisputePriceEvents());
+    objectsInArrayInclude([], offSetClient.getAllSettlementEvents());
   });
 });

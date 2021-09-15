@@ -30,9 +30,9 @@ contract LongShortPair is Testable, Lockable {
     using FixedPoint for FixedPoint.Unsigned;
     using SafeERC20 for IERC20;
 
-    /*********************************************
+    /*************************************
      *  LONG SHORT PAIR DATA STRUCTURES  *
-     *********************************************/
+     *************************************/
 
     // Define the contract's constructor parameters as a struct to enable more variables to be specified.
     struct ConstructorParams {
@@ -117,20 +117,20 @@ contract LongShortPair is Testable, Lockable {
     /**
      * @notice Construct the LongShortPair
      * @param params Constructor params used to initialize the LSP. Key-valued object with the following structure:
-     *    pairName: Name of the long short pair contract.
-     *    expirationTimestamp: Unix timestamp of when the contract will expire.
-     *    collateralPerPair: How many units of collateral are required to mint one pair of synthetic tokens.
-     *    priceIdentifier: Price identifier, registered in the DVM for the long short pair.
-     *    longToken: Token used as long in the LSP. Mint and burn rights needed by this contract.
-     *    shortToken: Token used as short in the LSP. Mint and burn rights needed by this contract.
-     *    collateralToken: Collateral token used to back LSP synthetics.
-     *    financialProductLibrary: Contract providing settlement payout logic.
-     *    customAncillaryData: Custom ancillary data to be passed along with the price request to the OO.
-     *    prepaidProposerReward: Preloaded reward to incentivize settlement price proposals.
-     *    optimisticOracleLivenessTime: OO liveness time for price requests.
-     *    optimisticOracleProposerBond: OO proposer bond for price requests.
-     *    finder: DVM finder to find other UMA ecosystem contracts.
-     *    timerAddress: Timer used to synchronize contract time in testing. Set to 0x000... in production.
+     *    - `pairName`: Name of the long short pair contract.
+     *    - `expirationTimestamp`: Unix timestamp of when the contract will expire.
+     *    - `collateralPerPair`: How many units of collateral are required to mint one pair of synthetic tokens.
+     *    - `priceIdentifier`: Price identifier, registered in the DVM for the long short pair.
+     *    - `longToken`: Token used as long in the LSP. Mint and burn rights needed by this contract.
+     *    - `shortToken`: Token used as short in the LSP. Mint and burn rights needed by this contract.
+     *    - `collateralToken`: Collateral token used to back LSP synthetics.
+     *    - `financialProductLibrary`: Contract providing settlement payout logic.
+     *    - `customAncillaryData`: Custom ancillary data to be passed along with the price request to the OO.
+     *    - `prepaidProposerReward`: Preloaded reward to incentivize settlement price proposals.
+     *    - `optimisticOracleLivenessTime`: OO liveness time for price requests.
+     *    - `optimisticOracleProposerBond`: OO proposer bond for price requests.
+     *    - `finder`: DVM finder to find other UMA ecosystem contracts.
+     *    - `timerAddress`: Timer used to synchronize contract time in testing. Set to 0x000... in production.
      */
     constructor(ConstructorParams memory params) Testable(params.timerAddress) {
         finder = params.finder;

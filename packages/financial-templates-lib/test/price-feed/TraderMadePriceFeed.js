@@ -1,11 +1,13 @@
-const { TraderMadePriceFeed } = require("../../src/price-feed/TraderMadePriceFeed");
-const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
-const { spyLogIncludes, SpyTransport } = require("../../src/logger/SpyTransport");
+const { web3 } = require("hardhat");
+const { assert } = require("chai");
+const { TraderMadePriceFeed } = require("../../dist/price-feed/TraderMadePriceFeed");
+const { NetworkerMock } = require("../../dist/price-feed/NetworkerMock");
+const { spyLogIncludes, SpyTransport } = require("../../dist/logger/SpyTransport");
 const winston = require("winston");
 const sinon = require("sinon");
 const moment = require("moment");
 
-contract("TraderMadePriceFeed.js", function () {
+describe("TraderMadePriceFeed.js", function () {
   let traderMadePriceFeed;
   let mockTime = 1614314000;
   let networker;
@@ -32,53 +34,26 @@ contract("TraderMadePriceFeed.js", function () {
   // Fake data to inject.
   // Note: the first element is the live pice, the second is the ohlc minute price, and the third is ohlc hourly price.
   const validResponses = [
+    { quotes: [{ ask: 0.1553 }] },
     {
       quotes: [
-        {
-          ask: 0.1553,
-        },
+        { close: 0.1543, date: "2021-01-25 21:00:00" },
+        { close: 0.1533, date: "2021-01-25 21:10:00" },
+        { close: 0.1523, date: "2021-01-25 21:20:00" },
       ],
     },
     {
       quotes: [
-        {
-          close: 0.1543,
-          date: "2021-01-25 21:00:00",
-        },
-        {
-          close: 0.1533,
-          date: "2021-01-25 21:10:00",
-        },
-        {
-          close: 0.1523,
-          date: "2021-01-25 21:20:00",
-        },
-      ],
-    },
-    {
-      quotes: [
-        {
-          close: 0.1543,
-          date: "2021-01-25 21:00:00",
-        },
-        {
-          close: 0.1533,
-          date: "2021-01-25 22:00:00",
-        },
-        {
-          close: 0.1523,
-          date: "2021-01-25 23:00:00",
-        },
+        { close: 0.1543, date: "2021-01-25 21:00:00" },
+        { close: 0.1533, date: "2021-01-25 22:00:00" },
+        { close: 0.1523, date: "2021-01-25 23:00:00" },
       ],
     },
   ];
 
   beforeEach(async function () {
     networker = new NetworkerMock();
-    const dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+    const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
     traderMadePriceFeed = new TraderMadePriceFeed(
       dummyLogger,
       web3,
@@ -134,18 +109,9 @@ contract("TraderMadePriceFeed.js", function () {
     );
 
     const expectOhlcHourlyPrices = [
-      {
-        closeTime: 1611608400,
-        openTime: 1611604800,
-      },
-      {
-        closeTime: 1611612000,
-        openTime: 1611608400,
-      },
-      {
-        closeTime: 1611615600,
-        openTime: 1611612000,
-      },
+      { closeTime: 1611608400, openTime: 1611604800 },
+      { closeTime: 1611612000, openTime: 1611608400 },
+      { closeTime: 1611615600, openTime: 1611612000 },
     ];
     const actualOhlcHourlyPrices = traderMadePriceFeed.getHistoricalPricePeriods();
     for (let i = 0; i < expectOhlcHourlyPrices.length; i++) {
@@ -179,34 +145,13 @@ contract("TraderMadePriceFeed.js", function () {
       // Missing minute interval historical ohlc response. Fallback to hourly interval succeeds,
       // so historical price is available.
       networker.getJsonReturns = [
+        { quotes: [{ ask: 0.1553 }] },
+        { quotes: [{ error: "test" }] },
         {
           quotes: [
-            {
-              ask: 0.1553,
-            },
-          ],
-        },
-        {
-          quotes: [
-            {
-              error: "test",
-            },
-          ],
-        },
-        {
-          quotes: [
-            {
-              close: 0.1543,
-              date: "2021-01-25 21:00:00",
-            },
-            {
-              close: 0.1533,
-              date: "2021-01-25 22:00:00",
-            },
-            {
-              close: 0.1523,
-              date: "2021-01-25 23:00:00",
-            },
+            { close: 0.1543, date: "2021-01-25 21:00:00" },
+            { close: 0.1533, date: "2021-01-25 22:00:00" },
+            { close: 0.1523, date: "2021-01-25 23:00:00" },
           ],
         },
       ];
@@ -214,10 +159,7 @@ contract("TraderMadePriceFeed.js", function () {
       // Create spy to listen for debug level events to catch fallback log.
       spy = sinon.spy();
       traderMadePriceFeed = new TraderMadePriceFeed(
-        winston.createLogger({
-          level: "info",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
-        }),
+        winston.createLogger({ level: "info", transports: [new SpyTransport({ level: "debug" }, { spy: spy })] }),
         web3,
         apiKey,
         pair,
@@ -244,34 +186,13 @@ contract("TraderMadePriceFeed.js", function () {
     it("Fallback to hourly interval DISABLED, failure to fetch minute interval fails", async function () {
       // Missing minute interval historical ohlc response.
       networker.getJsonReturns = [
+        { quotes: [{ ask: 0.1553 }] },
+        { quotes: [{ error: "test" }] },
         {
           quotes: [
-            {
-              ask: 0.1553,
-            },
-          ],
-        },
-        {
-          quotes: [
-            {
-              error: "test",
-            },
-          ],
-        },
-        {
-          quotes: [
-            {
-              close: 0.1543,
-              date: "2021-01-25 21:00:00",
-            },
-            {
-              close: 0.1533,
-              date: "2021-01-25 22:00:00",
-            },
-            {
-              close: 0.1523,
-              date: "2021-01-25 23:00:00",
-            },
+            { close: 0.1543, date: "2021-01-25 21:00:00" },
+            { close: 0.1533, date: "2021-01-25 22:00:00" },
+            { close: 0.1523, date: "2021-01-25 23:00:00" },
           ],
         },
       ];
@@ -279,10 +200,7 @@ contract("TraderMadePriceFeed.js", function () {
       // Create spy to make sure no "fallback" logs are emitted
       spy = sinon.spy();
       traderMadePriceFeed = new TraderMadePriceFeed(
-        winston.createLogger({
-          level: "info",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
-        }),
+        winston.createLogger({ level: "info", transports: [new SpyTransport({ level: "debug" }, { spy: spy })] }),
         web3,
         apiKey,
         pair,
@@ -303,48 +221,24 @@ contract("TraderMadePriceFeed.js", function () {
       assert.isTrue(
         await traderMadePriceFeed.getHistoricalPrice(1611608300 - timezeoneOffsetSeconds).catch(() => true)
       );
-      assert.equal(traderMadePriceFeed.getHistoricalPricePeriods(), undefined);
+      assert.equal(traderMadePriceFeed.getHistoricalPricePeriods().length, 0);
     });
     it("Fallback to hourly interval ENABLED, latest, minute and hourly intervals all fail to respond", async function () {
       // Bad current price response causes update() to throw regardless of historical data.
       networker.getJsonReturns = [
+        { quotes: [{ error: "test" }] },
         {
           quotes: [
-            {
-              error: "test",
-            },
+            { close: 0.1543, date: "2021-01-26 00:00:00" },
+            { close: 0.1533, date: "2021-01-26 00:00:00" },
+            { close: 0.1523, date: "2021-01-26 00:00:00" },
           ],
         },
         {
           quotes: [
-            {
-              close: 0.1543,
-              date: "2021-01-26 00:00:00",
-            },
-            {
-              close: 0.1533,
-              date: "2021-01-26 00:00:00",
-            },
-            {
-              close: 0.1523,
-              date: "2021-01-26 00:00:00",
-            },
-          ],
-        },
-        {
-          quotes: [
-            {
-              close: 0.1543,
-              date: "2021-01-26 00:00:00",
-            },
-            {
-              close: 0.1533,
-              date: "2021-01-26 00:00:00",
-            },
-            {
-              close: 0.1523,
-              date: "2021-01-26 00:00:00",
-            },
+            { close: 0.1543, date: "2021-01-26 00:00:00" },
+            { close: 0.1533, date: "2021-01-26 00:00:00" },
+            { close: 0.1523, date: "2021-01-26 00:00:00" },
           ],
         },
       ];
@@ -352,45 +246,24 @@ contract("TraderMadePriceFeed.js", function () {
       // Update should throw errors in both cases because the `updateLatest` method throws.
       assert.isTrue(await traderMadePriceFeed.update().catch(() => true), "Update didn't throw");
 
-      assert.equal(traderMadePriceFeed.getCurrentPrice(), undefined);
+      assert.equal(traderMadePriceFeed.getCurrentPrice(), null);
       assert.isTrue(
         await traderMadePriceFeed.getHistoricalPrice(1614319100 - timezeoneOffsetSeconds).catch(() => true)
       );
-      assert.equal(traderMadePriceFeed.getHistoricalPricePeriods(), undefined);
+      assert.equal(traderMadePriceFeed.getHistoricalPricePeriods().length, 0);
 
       // Missing minute and hourly interval historical ohlc response. Minute interval and subsequent
       // fallback to hourly interval fail.
       networker.getJsonReturns = [
-        {
-          quotes: [
-            {
-              ask: 0.1553,
-            },
-          ],
-        },
-        {
-          quotes: [
-            {
-              error: "test",
-            },
-          ],
-        },
-        {
-          quotes: [
-            {
-              error: "test",
-            },
-          ],
-        },
+        { quotes: [{ ask: 0.1553 }] },
+        { quotes: [{ error: "test" }] },
+        { quotes: [{ error: "test" }] },
       ];
 
       // Create spy to listen for fallback failure
       spy = sinon.spy();
       traderMadePriceFeed = new TraderMadePriceFeed(
-        winston.createLogger({
-          level: "info",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
-        }),
+        winston.createLogger({ level: "info", transports: [new SpyTransport({ level: "debug" }, { spy: spy })] }),
         web3,
         apiKey,
         pair,
@@ -410,47 +283,23 @@ contract("TraderMadePriceFeed.js", function () {
       assert.isTrue(
         await traderMadePriceFeed.getHistoricalPrice(1614319100 - timezeoneOffsetSeconds).catch(() => true)
       );
-      assert.equal(traderMadePriceFeed.getHistoricalPricePeriods(), undefined);
+      assert.equal(traderMadePriceFeed.getHistoricalPricePeriods().length, 0);
     });
     it("minuteLookback is undefined, only need to fetch hourly interval data", async function () {
       // Missing minute interval historical ohlc response is not a problem if minuteLookback is not set.
       networker.getJsonReturns = [
+        { quotes: [{ ask: 0.1553 }] },
+        { quotes: [{ error: "test" }] },
         {
           quotes: [
-            {
-              ask: 0.1553,
-            },
-          ],
-        },
-        {
-          quotes: [
-            {
-              error: "test",
-            },
-          ],
-        },
-        {
-          quotes: [
-            {
-              close: 0.1543,
-              date: "2021-01-25 21:00:00",
-            },
-            {
-              close: 0.1533,
-              date: "2021-01-25 22:00:00",
-            },
-            {
-              close: 0.1523,
-              date: "2021-01-25 23:00:00",
-            },
+            { close: 0.1543, date: "2021-01-25 21:00:00" },
+            { close: 0.1533, date: "2021-01-25 22:00:00" },
+            { close: 0.1523, date: "2021-01-25 23:00:00" },
           ],
         },
       ];
       traderMadePriceFeed = new TraderMadePriceFeed(
-        winston.createLogger({
-          level: "info",
-          transports: [new winston.transports.Console()],
-        }),
+        winston.createLogger({ level: "info", transports: [new winston.transports.Console()] }),
         web3,
         apiKey,
         pair,
@@ -469,7 +318,7 @@ contract("TraderMadePriceFeed.js", function () {
       assert.isTrue(
         await traderMadePriceFeed.getHistoricalPrice(1611608300 - timezeoneOffsetSeconds).catch(() => true)
       );
-      assert.equal(traderMadePriceFeed.getHistoricalPricePeriods(), undefined);
+      assert.equal(traderMadePriceFeed.getHistoricalPricePeriods().length, 0);
     });
   });
 

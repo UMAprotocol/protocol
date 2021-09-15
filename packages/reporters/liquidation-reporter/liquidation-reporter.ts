@@ -239,7 +239,7 @@ export async function fetchUmaEcosystemData() {
     // expired, having no sponsors or having no graph data.
     const builtUpExistingCollaterals: any = [];
 
-    uniqueCollateralTypes[collateralAddress].activeFinancialContracts.forEach((activeFinancialContractInfo, index) => {
+    uniqueCollateralTypes[collateralAddress].activeFinancialContracts.forEach((activeFinancialContractInfo) => {
       if (activeFinancialContractInfo.contractExpirationTime)
         builtUpExistingCollaterals.push(activeFinancialContractInfo);
     });

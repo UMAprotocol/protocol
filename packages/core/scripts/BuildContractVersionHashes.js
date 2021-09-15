@@ -1,3 +1,4 @@
+const { getContract, web3 } = require("hardhat");
 const assert = require("assert");
 const path = require("path");
 const fs = require("fs");
@@ -9,8 +10,11 @@ const { getTruffleContract } = require("../dist/index.js");
 
 const buildVersion = "2.0.1"; // this is the version that will be built and appended to the FindContractVersion util.
 
-async function buildHashes(contractType) {
+async function buildHashes(contractType, hardhat = false) {
   assert(contractType == "Perpetual" || contractType == "ExpiringMultiParty", "Invalid contract type defined!");
+
+  // We can drop the rest of this script once we no longer have truffle-hardhat fusion tests.
+  if (hardhat) return soliditySha3(getContract(contractType).deployedBytecode);
 
   const contractCreator = (await web3.eth.getAccounts())[0];
 
@@ -27,7 +31,7 @@ async function buildHashes(contractType) {
   const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, buildVersion);
 
   const identifier = "TEST_IDENTIFIER";
-  const fundingRateIdentifier = "TEST_FUNDING_IDENTIFIER";
+  const fundingRateIdentifier = "TEST_FUNDING";
 
   const finder = await Finder.new({ from: contractCreator });
 
@@ -117,8 +121,10 @@ async function main() {
   const contractHashesToGenerate = ["Perpetual", "ExpiringMultiParty"];
   let versionMap = {};
   for (const contractType of contractHashesToGenerate) {
-    const contractHash = await buildHashes(contractType);
-    versionMap[contractHash] = { contractType, contractVersion: buildVersion };
+    const truffleContractHash = await buildHashes(contractType);
+    versionMap[truffleContractHash] = { contractType, contractVersion: buildVersion };
+    const hardhatContractHash = await buildHashes(contractType, true);
+    versionMap[hardhatContractHash] = { contractType, contractVersion: buildVersion };
   }
   console.log("versionMap", versionMap);
   saveContractHashArtifacts(versionMap);

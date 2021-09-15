@@ -1,15 +1,16 @@
+const { web3, getContract } = require("hardhat");
+const { assert } = require("chai");
 const winston = require("winston");
 
-const { LPPriceFeed } = require("../../src/price-feed/LPPriceFeed");
+const { LPPriceFeed } = require("../../dist/price-feed/LPPriceFeed");
 const { advanceBlockAndSetTime, parseFixed } = require("@uma/common");
-const { BlockFinder } = require("../../src/price-feed/utils");
-const { getTruffleContract } = require("@uma/core");
+const { BlockFinder } = require("../../dist/price-feed/utils");
 
-const ERC20Interface = getTruffleContract("IERC20Standard", web3);
-const ERC20 = getTruffleContract("ExpandedERC20", web3);
+const ERC20Interface = getContract("IERC20Standard");
+const ERC20 = getContract("ExpandedERC20");
 
-contract("LPPriceFeed.js", function (accounts) {
-  const owner = accounts[0];
+describe("LPPriceFeed.js", function () {
+  let owner, accounts;
 
   let pool;
   let token;
@@ -20,48 +21,50 @@ contract("LPPriceFeed.js", function (accounts) {
   let tokenDecimals = 8;
   let priceFeedDecimals = 12;
 
-  beforeEach(async function () {
-    pool = await ERC20.new("LP Pool", "LP", poolDecimals, { from: owner });
-    token = await ERC20.new("Test Token", "TT", tokenDecimals, { from: owner });
-    pool.addMinter(owner);
-    token.addMinter(owner);
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+    [owner] = accounts;
+  });
 
-    dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+  beforeEach(async function () {
+    pool = await ERC20.new("LP Pool", "LP", poolDecimals).send({ from: owner });
+    token = await ERC20.new("Test Token", "TT", tokenDecimals).send({ from: owner });
+    pool.methods.addMinter(owner).send({ from: owner });
+    token.methods.addMinter(owner).send({ from: owner });
+
+    dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
     lpPriceFeed = new LPPriceFeed({
       logger: dummyLogger,
       web3,
       getTime: () => mockTime,
       erc20Abi: ERC20Interface.abi,
-      tokenAddress: token.address,
-      poolAddress: pool.address,
+      tokenAddress: token.options.address,
+      poolAddress: pool.options.address,
       priceFeedDecimals,
     });
   });
 
   it("Basic current price", async function () {
-    await pool.mint(owner, parseFixed("100", poolDecimals));
-    await token.mint(pool.address, parseFixed("25", tokenDecimals));
+    await pool.methods.mint(owner, parseFixed("100", poolDecimals)).send({ from: owner });
+    await token.methods.mint(pool.options.address, parseFixed("25", tokenDecimals)).send({ from: owner });
     await lpPriceFeed.update();
 
     assert.equal(lpPriceFeed.getCurrentPrice().toString(), parseFixed("0.25", priceFeedDecimals).toString());
   });
 
   it("Correctly selects most recent price", async function () {
-    await pool.mint(owner, parseFixed("100", poolDecimals));
-    await token.mint(pool.address, parseFixed("25", tokenDecimals));
-    await pool.mint(owner, parseFixed("100", poolDecimals));
+    await pool.methods.mint(owner, parseFixed("100", poolDecimals)).send({ from: owner });
+    await token.methods.mint(pool.options.address, parseFixed("25", tokenDecimals)).send({ from: owner });
+    await pool.methods.mint(owner, parseFixed("100", poolDecimals)).send({ from: owner });
     await lpPriceFeed.update();
 
     assert.equal(lpPriceFeed.getCurrentPrice().toString(), parseFixed("0.125", priceFeedDecimals).toString());
   });
 
   it("Historical Price", async function () {
-    await pool.mint(owner, parseFixed("100", poolDecimals));
-    await token.mint(pool.address, parseFixed("25", tokenDecimals));
+    await pool.methods.mint(owner, parseFixed("100", poolDecimals)).send({ from: owner });
+    await token.methods.mint(pool.options.address, parseFixed("25", tokenDecimals)).send({ from: owner });
 
     await lpPriceFeed.update();
 
@@ -69,7 +72,7 @@ contract("LPPriceFeed.js", function (accounts) {
     const { timestamp: firstPriceTimestamp } = await web3.eth.getBlock("latest");
     await advanceBlockAndSetTime(web3, firstPriceTimestamp + 10);
 
-    await pool.mint(owner, parseFixed("100", poolDecimals));
+    await pool.methods.mint(owner, parseFixed("100", poolDecimals)).send({ from: owner });
 
     const { timestamp: secondPriceTimestamp } = await web3.eth.getBlock("latest");
 
@@ -92,7 +95,7 @@ contract("LPPriceFeed.js", function (accounts) {
   });
 
   it("Zero LP shares", async function () {
-    await token.mint(pool.address, parseFixed("25", tokenDecimals));
+    await token.methods.mint(pool.options.address, parseFixed("25", tokenDecimals)).send({ from: owner });
 
     await lpPriceFeed.update();
 
@@ -100,8 +103,8 @@ contract("LPPriceFeed.js", function (accounts) {
   });
 
   it("Update Frequency", async function () {
-    await pool.mint(owner, parseFixed("1", poolDecimals));
-    await token.mint(pool.address, parseFixed("50", tokenDecimals));
+    await pool.methods.mint(owner, parseFixed("1", poolDecimals)).send({ from: owner });
+    await token.methods.mint(pool.options.address, parseFixed("50", tokenDecimals)).send({ from: owner });
     await lpPriceFeed.update();
     assert.equal(lpPriceFeed.getCurrentPrice().toString(), parseFixed("50", priceFeedDecimals).toString());
     const initialTime = mockTime;
@@ -109,7 +112,7 @@ contract("LPPriceFeed.js", function (accounts) {
 
     // Increment time to just under the 1 minute default threshold and push a new price.
     mockTime += 59;
-    await pool.mint(owner, parseFixed("4", poolDecimals));
+    await pool.methods.mint(owner, parseFixed("4", poolDecimals)).send({ from: owner });
     await lpPriceFeed.update();
     assert.equal(lpPriceFeed.getLastUpdateTime(), initialTime); // No change in update time.
 
@@ -137,8 +140,8 @@ contract("LPPriceFeed.js", function (accounts) {
       web3,
       getTime: () => mockTime,
       erc20Abi: ERC20Interface.abi,
-      tokenAddress: token.address,
-      poolAddress: pool.address,
+      tokenAddress: token.options.address,
+      poolAddress: pool.options.address,
       priceFeedDecimals,
       blockFinder,
     });

@@ -128,7 +128,7 @@ describe("PerpetualLiquidatable", function () {
     // Register the price tracking tickers.
     priceFeedIdentifier = padRight(utf8ToHex("TEST_IDENTIFIER"), 64);
     await identifierWhitelist.methods.addSupportedIdentifier(priceFeedIdentifier).send({ from: contractDeployer });
-    fundingRateIdentifier = padRight(utf8ToHex("TEST_FUNDING_IDENTIFIER"), 64);
+    fundingRateIdentifier = padRight(utf8ToHex("TEST_FUNDING"), 64);
     await identifierWhitelist.methods.addSupportedIdentifier(fundingRateIdentifier).send({ from: contractDeployer });
 
     // Create a mockOracle and get the deployed finder. Register the mockMoracle with the finder.
@@ -201,9 +201,7 @@ describe("PerpetualLiquidatable", function () {
     // Set allowance for contract to pull dispute bond and final fee from disputer
     await collateralToken.methods
       .increaseAllowance(liquidationContract.options.address, disputeBond.add(finalFeeAmount))
-      .send({
-        from: disputer,
-      });
+      .send({ from: disputer });
 
     // Set allowance for contract to pull the final fee from the liquidator
     await collateralToken.methods

@@ -1,9 +1,11 @@
+const { web3 } = require("hardhat");
+const { assert } = require("chai");
 const { parseFixed } = require("@uma/common");
-const { DefiPulsePriceFeed } = require("../../src/price-feed/DefiPulsePriceFeed");
-const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
+const { DefiPulsePriceFeed } = require("../../dist/price-feed/DefiPulsePriceFeed");
+const { NetworkerMock } = require("../../dist/price-feed/NetworkerMock");
 const winston = require("winston");
 
-contract("DefiPulsePriceFeed.js", function () {
+describe("DefiPulsePriceFeed.js", function () {
   let defiPulsePriceFeed;
   let mockTime = 1611583300;
   let networker;
@@ -28,10 +30,7 @@ contract("DefiPulsePriceFeed.js", function () {
 
   beforeEach(async function () {
     networker = new NetworkerMock();
-    const dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+    const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
     defiPulsePriceFeed = new DefiPulsePriceFeed(
       dummyLogger,
@@ -103,10 +102,7 @@ contract("DefiPulsePriceFeed.js", function () {
   });
 
   it("Bad project name", async function () {
-    const dummyLogger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+    const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
     let errorThrown = false;
     try {

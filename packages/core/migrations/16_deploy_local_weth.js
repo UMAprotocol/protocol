@@ -1,6 +1,7 @@
 const WETH9 = artifacts.require("WETH9");
 const AddressWhitelist = artifacts.require("AddressWhitelist");
-const { deploy, setToExistingAddress, getKeysForNetwork, PublicNetworks } = require("@uma/common");
+const { PublicNetworks } = require("@uma/common");
+const { deploy, setToExistingAddress, getKeysForNetwork } = require("./MigrationUtils");
 
 module.exports = async function (deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);

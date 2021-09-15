@@ -41,7 +41,7 @@ export class RangeTrader {
     assert(tokenPriceFeed.getPriceFeedDecimals() === referencePriceFeed.getPriceFeedDecimals(), "decimals must match");
     assert(exchangeAdapter, "Exchange adapter must be initialized");
 
-    this.normalizePriceFeedDecimals = ConvertDecimals(tokenPriceFeed.getPriceFeedDecimals(), 18, this.web3);
+    this.normalizePriceFeedDecimals = ConvertDecimals(tokenPriceFeed.getPriceFeedDecimals(), 18);
 
     // Formats an 18 decimal point string with a define number of decimals and precision for use in message generation.
     this.formatDecimalString = createFormatFunction(this.web3, 2, 6, false);
@@ -141,7 +141,7 @@ export class RangeTrader {
     }
 
     // Wait exactly one block to fetch events. This ensures that the events have been indexed by your node.
-    await blockUntilBlockMined(this.web3, (await this.web3.eth.getBlockNumber()) + 1);
+    await blockUntilBlockMined(this.web3, Number(tradeExecutionTransaction.blockNumber) + 1);
 
     // Get the post trade spot price to double check deviation error.
     await this.tokenPriceFeed.update();

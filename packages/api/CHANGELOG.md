@@ -3,6 +3,30 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.4.1](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.4.0...@uma/api@0.4.1) (2021-07-19)
+
+### Bug Fixes
+
+- **api:** fix tvl showing 0 ([#3238](https://github.com/UMAprotocol/protocol/issues/3238)) ([e9c8286](https://github.com/UMAprotocol/protocol/commit/e9c82860146b2fac987ffffcd8f2f21a8deef114))
+
+# [0.4.0](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.3.0...@uma/api@0.4.0) (2021-07-15)
+
+### Bug Fixes
+
+- **api:** ignore tvm calculations if no collateral is locked in contract ([#3227](https://github.com/UMAprotocol/protocol/issues/3227)) ([e8bd071](https://github.com/UMAprotocol/protocol/commit/e8bd07167eb35028fcd9d5a0630c83818b02ccc4))
+
+### Features
+
+- **api:** 0x api client to fetch prices based on token name ([#3203](https://github.com/UMAprotocol/protocol/issues/3203)) ([0cceb70](https://github.com/UMAprotocol/protocol/commit/0cceb707f01e08c278c7d7b496f59cb04787e30d))
+- **api:** 1445 add lsp state ingestion service ([#3231](https://github.com/UMAprotocol/protocol/issues/3231)) ([cc2f326](https://github.com/UMAprotocol/protocol/commit/cc2f326cc49d47abb11e69d6b97d54e937f19e7f))
+- **api:** 1464 backfill tvl history ([#3172](https://github.com/UMAprotocol/protocol/issues/3172)) ([288ea9f](https://github.com/UMAprotocol/protocol/commit/288ea9f6c2acf3dee2d11806edb4581de984586c))
+- **api:** 1523 add market prices to emp state and call to list known market prices ([#3206](https://github.com/UMAprotocol/protocol/issues/3206)) ([254d8da](https://github.com/UMAprotocol/protocol/commit/254d8daff9748cd6661ba589ebbd6b9e2e2f119f))
+- **api:** 1680 cache global tvl rather than compute it for every query ([#3223](https://github.com/UMAprotocol/protocol/issues/3223)) ([1e215f8](https://github.com/UMAprotocol/protocol/commit/1e215f81824358d0d3b0c54f587c59314d2f47f8))
+- **api:** 1728 add profiling that can be disabled through env ([#3233](https://github.com/UMAprotocol/protocol/issues/3233)) ([c5bf79c](https://github.com/UMAprotocol/protocol/commit/c5bf79c73d3b6fc01904b54837b9c944d9480aa6))
+- **api:** add global tvl history and api calls ([#3224](https://github.com/UMAprotocol/protocol/issues/3224)) ([0d97d7e](https://github.com/UMAprotocol/protocol/commit/0d97d7e3a069fbf919879cfcfc2e3196e1adeaf0))
+- **api:** add historical market prices and expose in api ([#3218](https://github.com/UMAprotocol/protocol/issues/3218)) ([db861ea](https://github.com/UMAprotocol/protocol/commit/db861ea1f8d064bcfd1129ab6f6a9a3bd9cb09ed))
+- **api:** add symbol names and identifier price to emp state ([#3205](https://github.com/UMAprotocol/protocol/issues/3205)) ([51c013e](https://github.com/UMAprotocol/protocol/commit/51c013eb1067aa7ca625f33740a62d1e7ce0eb1b))
+
 # [0.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.2.0...@uma/api@0.3.0) (2021-07-07)
 
 ### Features

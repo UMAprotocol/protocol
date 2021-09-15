@@ -1,9 +1,11 @@
-const { PriceHistory, BlockHistory, computeTWAP, BlockFinder } = require("../../src/price-feed/utils");
+const Web3 = require("web3");
+const { assert } = require("chai");
+const { PriceHistory, BlockHistory, computeTWAP, BlockFinder } = require("../../dist/price-feed/utils");
 const { averageBlockTimeSeconds } = require("@uma/common");
-const { toBN } = web3.utils;
+const { toBN } = Web3.utils;
 
 // Moved this into same file to see if there are issues with 2 tests files mining blocks
-contract("Price Feed Utils", async function () {
+describe("Price Feed Utils", async function () {
   let blockHistory, priceHistory;
   const blockCount = 10;
   const lookback = 7200;
@@ -14,10 +16,7 @@ contract("Price Feed Utils", async function () {
   // assumiung block number and block times are the same here
   async function getBlock(number) {
     number = number === undefined ? blockCount : number;
-    return {
-      timestamp: number,
-      number,
-    };
+    return { timestamp: number, number };
   }
 
   before(async function () {

@@ -63,8 +63,4 @@ function SynthPrices({ prices = {} }) {
   };
 }
 
-module.exports = {
-  Coingecko,
-  SynthPrices,
-  Queries,
-};
+module.exports = { Coingecko, SynthPrices, Queries };

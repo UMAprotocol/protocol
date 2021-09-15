@@ -9,7 +9,7 @@ const {
   createFormatFunction,
   ConvertDecimals,
 } = require("@uma/common");
-const { getAbi } = require("@uma/core");
+const { getAbi } = require("@uma/contracts-node");
 
 class OptimisticOracleContractMonitor {
   /**
@@ -235,6 +235,4 @@ class OptimisticOracleContractMonitor {
   }
 }
 
-module.exports = {
-  OptimisticOracleContractMonitor,
-};
+module.exports = { OptimisticOracleContractMonitor };

@@ -1,3 +1,5 @@
+const { web3, getContract } = require("hardhat");
+const { assert } = require("chai");
 const { toWei, hexToUtf8, utf8ToHex, padRight } = web3.utils;
 const winston = require("winston");
 const sinon = require("sinon");
@@ -8,8 +10,8 @@ const {
   createConstructorParamsForContractVersion,
   TESTED_CONTRACT_VERSIONS,
   TEST_DECIMAL_COMBOS,
+  getContractsNodePackageAliasForVerion,
 } = require("@uma/common");
-const { getTruffleContract } = require("@uma/core");
 
 // Script to test
 const { CRMonitor } = require("../src/CRMonitor");
@@ -56,11 +58,16 @@ let crMonitor;
 
 let convertDecimals;
 
+let accounts;
+let owner;
+let monitoredTrader;
+let monitoredSponsor;
+
 // Set the funding rate and advances time by 10k seconds.
 const _setFundingRateAndAdvanceTime = async (fundingRate) => {
-  currentTime = (await financialContract.getCurrentTime()).toNumber();
-  await financialContract.proposeFundingRate({ rawValue: fundingRate }, currentTime);
-  await financialContract.setCurrentTime(currentTime + 10000);
+  currentTime = parseInt(await financialContract.methods.getCurrentTime().call());
+  await financialContract.methods.proposeFundingRate({ rawValue: fundingRate }, currentTime).send({ from: owner });
+  await financialContract.methods.setCurrentTime(currentTime + 10000).send({ from: owner });
 };
 
 // If the current version being executed is part of the `supportedVersions` array then return `it` to run the test.
@@ -76,80 +83,100 @@ const versionedIt = function (supportedVersions, shouldBeItOnly = false) {
 
 const Convert = (decimals) => (number) => parseFixed(number.toString(), decimals).toString();
 
-contract("CRMonitor.js", function (accounts) {
-  const tokenSponsor = accounts[0];
-  const monitoredTrader = accounts[1];
-  const monitoredSponsor = accounts[2];
+describe("CRMonitor.js", function () {
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+    [owner, monitoredTrader, monitoredSponsor] = accounts;
+  });
 
   TESTED_CONTRACT_VERSIONS.forEach(function (contractVersion) {
     // Store the contractVersion.contractVersion, type and version being tested
     iterationTestVersion = contractVersion;
 
+    const { getAbi, getBytecode } = require(getContractsNodePackageAliasForVerion(contractVersion.contractVersion));
+
+    const createContract = (name) => {
+      const abi = getAbi(name);
+      const bytecode = getBytecode(name);
+      return getContract(name, { abi, bytecode });
+    };
+
     // Import the tested versions of contracts. note that financialContract is either an ExpiringMultiParty or a
     // Perpetual depending on the current iteration version.
-    const FinancialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
-    const Finder = getTruffleContract("Finder", web3, contractVersion.contractVersion);
-    const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, contractVersion.contractVersion);
-    const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, contractVersion.contractVersion);
-    const MockOracle = getTruffleContract("MockOracle", web3, contractVersion.contractVersion);
-    const Token = getTruffleContract("ExpandedERC20", web3, contractVersion.contractVersion);
-    const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
-    const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
-    const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
-    const ConfigStore = getTruffleContract("ConfigStore", web3);
-    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
-    const MulticallMock = getTruffleContract("MulticallMock", web3);
+    const FinancialContract = createContract(contractVersion.contractType);
+    const Finder = createContract("Finder");
+    const IdentifierWhitelist = createContract("IdentifierWhitelist");
+    const AddressWhitelist = createContract("AddressWhitelist");
+    const MockOracle = createContract("MockOracle");
+    const Token = createContract("ExpandedERC20");
+    const SyntheticToken = createContract("SyntheticToken");
+    const Timer = createContract("Timer");
+    const Store = createContract("Store");
+    const ConfigStore = createContract("ConfigStore");
+    const OptimisticOracle = createContract("OptimisticOracle");
+    const MulticallMock = createContract("MulticallMock");
 
     for (let testConfig of TEST_DECIMAL_COMBOS) {
-      describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, on for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
+      describe(`${testConfig.collateralDecimals} collateral, ${testConfig.syntheticDecimals} synthetic & ${testConfig.priceFeedDecimals} pricefeed decimals, for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
         before(async function () {
           identifier = `${testConfig.tokenSymbol}TEST`;
-          fundingRateIdentifier = `${testConfig.tokenName}_FUNDING_IDENTIFIER`;
+          fundingRateIdentifier = `${testConfig.tokenName}_FUNDING`;
           convertDecimals = Convert(testConfig.collateralDecimals);
           collateralToken = await Token.new(
             testConfig.tokenSymbol + " Token",
             testConfig.tokenSymbol,
-            testConfig.collateralDecimals,
-            { from: tokenSponsor }
-          );
+            testConfig.collateralDecimals
+          ).send({ from: owner });
 
-          identifierWhitelist = await IdentifierWhitelist.new();
-          await identifierWhitelist.addSupportedIdentifier(utf8ToHex(identifier));
+          identifierWhitelist = await IdentifierWhitelist.new().send({ from: owner });
+          await identifierWhitelist.methods.addSupportedIdentifier(utf8ToHex(identifier)).send({ from: owner });
 
-          finder = await Finder.new();
-          timer = await Timer.new();
-          store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
-          await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
+          finder = await Finder.new().send({ from: owner });
+          timer = await Timer.new().send({ from: owner });
+          store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.options.address).send({ from: owner });
+          await finder.methods
+            .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
+            .send({ from: owner });
 
-          await finder.changeImplementationAddress(
-            utf8ToHex(interfaceName.IdentifierWhitelist),
-            identifierWhitelist.address
-          );
-          await identifierWhitelist.addSupportedIdentifier(utf8ToHex(testConfig.tokenSymbol + " Identifier"));
+          await finder.methods
+            .changeImplementationAddress(
+              utf8ToHex(interfaceName.IdentifierWhitelist),
+              identifierWhitelist.options.address
+            )
+            .send({ from: owner });
+          await identifierWhitelist.methods
+            .addSupportedIdentifier(utf8ToHex(testConfig.tokenSymbol + " Identifier"))
+            .send({ from: owner });
 
           // Create a mockOracle and finder. Register the mockOracle with the finder.
-          mockOracle = await MockOracle.new(finder.address, timer.address);
+          mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({ from: owner });
           const mockOracleInterfaceName = utf8ToHex(interfaceName.Oracle);
-          await finder.changeImplementationAddress(mockOracleInterfaceName, mockOracle.address);
+          await finder.methods
+            .changeImplementationAddress(mockOracleInterfaceName, mockOracle.options.address)
+            .send({ from: owner });
 
-          collateralWhitelist = await AddressWhitelist.new();
-          await finder.changeImplementationAddress(
-            utf8ToHex(interfaceName.CollateralWhitelist),
-            collateralWhitelist.address
-          );
-          await collateralWhitelist.addToWhitelist(collateralToken.address);
+          collateralWhitelist = await AddressWhitelist.new().send({ from: owner });
+          await finder.methods
+            .changeImplementationAddress(
+              utf8ToHex(interfaceName.CollateralWhitelist),
+              collateralWhitelist.options.address
+            )
+            .send({ from: owner });
+          await collateralWhitelist.methods.addToWhitelist(collateralToken.options.address).send({ from: owner });
 
-          multicall = await MulticallMock.new();
+          multicall = await MulticallMock.new().send({ from: owner });
         });
 
         beforeEach(async function () {
-          await timer.setCurrentTime(startTime - 1);
-          currentTime = await mockOracle.getCurrentTime.call();
+          await timer.methods.setCurrentTime(startTime - 1).send({ from: owner });
+          currentTime = await mockOracle.methods.getCurrentTime().call();
 
           // Create a new synthetic token
-          syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", testConfig.syntheticDecimals, {
-            from: tokenSponsor,
-          });
+          syntheticToken = await SyntheticToken.new(
+            "Test Synthetic Token",
+            "SYNTH",
+            testConfig.syntheticDecimals
+          ).send({ from: owner });
 
           // If we are testing a perpetual then we need to also deploy a config store, an optimistic oracle and set the funding rate identifier.
           if (contractVersion.contractType == "Perpetual") {
@@ -162,15 +189,18 @@ contract("CRMonitor.js", function (accounts) {
                 minFundingRate: { rawValue: toWei("-0.00001") },
                 proposalTimePastLimit: 0,
               },
-              timer.address
-            );
+              timer.options.address
+            ).send({ from: owner });
 
-            await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier)));
-            optimisticOracle = await OptimisticOracle.new(7200, finder.address, timer.address);
-            await finder.changeImplementationAddress(
-              utf8ToHex(interfaceName.OptimisticOracle),
-              optimisticOracle.address
-            );
+            await identifierWhitelist.methods
+              .addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier)))
+              .send({ from: owner });
+            optimisticOracle = await OptimisticOracle.new(7200, finder.options.address, timer.options.address).send({
+              from: owner,
+            });
+            await finder.methods
+              .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
+              .send({ from: owner });
           }
 
           const constructorParams = await createConstructorParamsForContractVersion(
@@ -194,10 +224,10 @@ contract("CRMonitor.js", function (accounts) {
             }
           );
           // Deploy a new expiring multi party OR perpetual, depending on the test version.
-          financialContract = await FinancialContract.new(constructorParams);
+          financialContract = await FinancialContract.new(constructorParams).send({ from: owner });
 
           // If we are testing a perpetual then we need to apply the initial funding rate to start the timer.
-          await financialContract.setCurrentTime(startTime);
+          await financialContract.methods.setCurrentTime(startTime).send({ from: owner });
 
           // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston
           // logs the correct text based on interactions with the financialContract. Note that only `info` level messages are captured.
@@ -207,14 +237,14 @@ contract("CRMonitor.js", function (accounts) {
             transports: [new SpyTransport({ level: "info" }, { spy: spy })],
           });
 
-          await syntheticToken.addMinter(financialContract.address);
-          await syntheticToken.addBurner(financialContract.address);
+          await syntheticToken.methods.addMinter(financialContract.options.address).send({ from: owner });
+          await syntheticToken.methods.addBurner(financialContract.options.address).send({ from: owner });
           financialContractClient = new FinancialContractClient(
             spyLogger,
             FinancialContract.abi,
             web3,
-            financialContract.address,
-            multicall.address,
+            financialContract.options.address,
+            multicall.options.address,
             testConfig.collateralDecimals,
             testConfig.syntheticDecimals,
             testConfig.priceFeedDecimals,
@@ -236,15 +266,15 @@ contract("CRMonitor.js", function (accounts) {
               },
             ],
           };
-          syntheticToken = await Token.at(await financialContract.tokenCurrency());
+          syntheticToken = await Token.at(await financialContract.methods.tokenCurrency().call());
 
           financialContractProps = {
-            collateralSymbol: await collateralToken.symbol(),
+            collateralSymbol: await collateralToken.methods.symbol().call(),
             collateralDecimals: testConfig.collateralDecimals,
             syntheticDecimals: testConfig.syntheticDecimals,
             priceFeedDecimals: testConfig.priceFeedDecimals,
-            syntheticSymbol: await syntheticToken.symbol(),
-            priceIdentifier: hexToUtf8(await financialContract.priceIdentifier()),
+            syntheticSymbol: await syntheticToken.methods.symbol().call(),
+            priceIdentifier: hexToUtf8(await financialContract.methods.priceIdentifier().call()),
             networkId: await web3.eth.net.getId(),
           };
 
@@ -256,32 +286,26 @@ contract("CRMonitor.js", function (accounts) {
             financialContractProps,
           });
 
-          await collateralToken.addMember(1, tokenSponsor, {
-            from: tokenSponsor,
-          });
+          await collateralToken.methods.addMember(1, owner).send({ from: owner });
 
           //   Bulk mint and approve for all wallets
           for (let i = 1; i < 3; i++) {
-            await collateralToken.mint(accounts[i], convertDecimals("100000000"), { from: tokenSponsor });
-            await collateralToken.approve(financialContract.address, convertDecimals("100000000"), {
-              from: accounts[i],
-            });
-            await syntheticToken.approve(financialContract.address, convertDecimals("100000000"), {
-              from: accounts[i],
-            });
+            await collateralToken.methods.mint(accounts[i], convertDecimals("100000000")).send({ from: owner });
+            await collateralToken.methods
+              .approve(financialContract.options.address, convertDecimals("100000000"))
+              .send({ from: accounts[i] });
+            await syntheticToken.methods
+              .approve(financialContract.options.address, convertDecimals("100000000"))
+              .send({ from: accounts[i] });
           }
 
           // Create positions for the monitoredTrader and monitoredSponsor accounts
-          await financialContract.create(
-            { rawValue: convertDecimals("250") },
-            { rawValue: convertDecimals("100") },
-            { from: monitoredTrader }
-          );
-          await financialContract.create(
-            { rawValue: convertDecimals("300") },
-            { rawValue: convertDecimals("100") },
-            { from: monitoredSponsor }
-          );
+          await financialContract.methods
+            .create({ rawValue: convertDecimals("250") }, { rawValue: convertDecimals("100") })
+            .send({ from: monitoredTrader });
+          await financialContract.methods
+            .create({ rawValue: convertDecimals("300") }, { rawValue: convertDecimals("100") })
+            .send({ from: monitoredSponsor });
         });
 
         versionedIt([{ contractType: "any", contractVersion: "any" }])(
@@ -306,7 +330,7 @@ contract("CRMonitor.js", function (accounts) {
             assert.isTrue(lastSpyLogIncludes(spy, "192.30%")); // calculated CR ratio for this position
             assert.isTrue(lastSpyLogIncludes(spy, "200%")); // calculated CR ratio threshold for this address
             assert.isTrue(lastSpyLogIncludes(spy, "1.30")); // Current price of the identifer
-            assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(await financialContract.priceIdentifier()))); // Synthetic identifier
+            assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(await financialContract.methods.priceIdentifier().call()))); // Synthetic identifier
             assert.isTrue(lastSpyLogIncludes(spy, "150.00%")); // Collateralization requirement
             assert.isTrue(lastSpyLogIncludes(spy, "1.66")); // Liquidation price
             assert.equal(lastSpyLogLevel(spy), "warn");
@@ -345,7 +369,9 @@ contract("CRMonitor.js", function (accounts) {
             // withdrawal liveness they can place their position's collateralization under the threshold. Say monitoredTrader
             // withdraws 75 units of collateral. Given price is 1 unit of synthetic for each unit of debt. This would place
             // their position at a collateralization ratio of 175/(100*1)=1.75. monitoredSponsor is at 300/(100*1)=3.00.
-            await financialContract.requestWithdrawal({ rawValue: convertDecimals("75") }, { from: monitoredTrader });
+            await financialContract.methods
+              .requestWithdrawal({ rawValue: convertDecimals("75") })
+              .send({ from: monitoredTrader });
 
             // The wallet CR should reflect the requested withdrawal amount.
             await financialContractClient.update();
@@ -358,12 +384,12 @@ contract("CRMonitor.js", function (accounts) {
             assert.isTrue(lastSpyLogIncludes(spy, "175.00%")); // calculated CR ratio for this position
             assert.isTrue(lastSpyLogIncludes(spy, "200%")); // calculated CR ratio threshold for this address
             assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // Current price of the identifer
-            assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(await financialContract.priceIdentifier()))); // Synthetic identifier
+            assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(await financialContract.methods.priceIdentifier().call()))); // Synthetic identifier
 
             // Advance time after withdrawal liveness. Check that CR detected is the same post withdrawal execution
-            currentTime = await timer.getCurrentTime.call();
-            await timer.setCurrentTime(currentTime.toNumber() + 11);
-            await financialContract.withdrawPassedRequest({ from: monitoredTrader });
+            currentTime = await timer.methods.getCurrentTime().call();
+            await timer.methods.setCurrentTime(parseInt(currentTime) + 11).send({ from: owner });
+            await financialContract.methods.withdrawPassedRequest().send({ from: monitoredTrader });
 
             await financialContractClient.update();
             await crMonitor.checkWalletCrRatio();
@@ -374,7 +400,7 @@ contract("CRMonitor.js", function (accounts) {
             assert.isTrue(lastSpyLogIncludes(spy, "175.00%")); // calculated CR ratio for this position
             assert.isTrue(lastSpyLogIncludes(spy, "200%")); // calculated CR ratio threshold for this address
             assert.isTrue(lastSpyLogIncludes(spy, "1.00")); // Current price of the identifer
-            assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(await financialContract.priceIdentifier()))); // Synthetic identifier
+            assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(await financialContract.methods.priceIdentifier().call()))); // Synthetic identifier
           }
         );
         versionedIt([{ contractType: "Perpetual", contractVersion: "2.0.1" }])(
@@ -417,7 +443,7 @@ contract("CRMonitor.js", function (accounts) {
             assert.isTrue(lastSpyLogIncludes(spy, "196.77%")); // calculated CR ratio for this position
             assert.isTrue(lastSpyLogIncludes(spy, "200%")); // calculated CR ratio threshold for this address
             assert.isTrue(lastSpyLogIncludes(spy, "1.10")); // Current price of the identifer
-            assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(await financialContract.priceIdentifier()))); // Synthetic identifier
+            assert.isTrue(lastSpyLogIncludes(spy, hexToUtf8(await financialContract.methods.priceIdentifier().call()))); // Synthetic identifier
             assert.isTrue(lastSpyLogIncludes(spy, "150.00%")); // Collateralization requirement
             assert.isTrue(lastSpyLogIncludes(spy, "1.44")); // Liquidation price
             assert.isTrue(lastSpyLogIncludes(spy, "cumulative funding rate multiplier is 1.15")); // correctly reports funding rate multiplier.
@@ -431,12 +457,7 @@ contract("CRMonitor.js", function (accounts) {
             // and `crAlert`.
             const invalidMonitorConfig1 = {
               // Config missing `crAlert`.
-              walletsToMonitor: [
-                {
-                  name: "Sponsor wallet",
-                  address: tokenSponsor,
-                },
-              ],
+              walletsToMonitor: [{ name: "Sponsor wallet", address: owner }],
             };
 
             crMonitor = new CRMonitor({
@@ -458,13 +479,7 @@ contract("CRMonitor.js", function (accounts) {
             // `collateralThreshold`, `etherThreshold`. The value of `address` must be of type address.
             const invalidMonitorConfig2 = {
               // Config has an invalid address for the monitored bot.
-              walletsToMonitor: [
-                {
-                  name: "Sponsor wallet",
-                  address: "INVALID_ADDRESS",
-                  crAlert: 1.5,
-                },
-              ],
+              walletsToMonitor: [{ name: "Sponsor wallet", address: "INVALID_ADDRESS", crAlert: 1.5 }],
             };
 
             crMonitor = new CRMonitor({

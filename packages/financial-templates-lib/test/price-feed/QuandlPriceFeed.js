@@ -1,12 +1,14 @@
-const { QuandlPriceFeed } = require("../../src/price-feed/QuandlPriceFeed");
-const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
-const { spyLogIncludes, SpyTransport } = require("../../src/logger/SpyTransport");
+const { web3 } = require("hardhat");
+const { assert } = require("chai");
+const { QuandlPriceFeed } = require("../../dist/price-feed/QuandlPriceFeed");
+const { NetworkerMock } = require("../../dist/price-feed/NetworkerMock");
+const { spyLogIncludes, SpyTransport } = require("../../dist/logger/SpyTransport");
 const winston = require("winston");
 const moment = require("moment");
 const { parseFixed } = require("@uma/common");
 const sinon = require("sinon");
 
-contract("QuandlPriceFeed.js", function () {
+describe("QuandlPriceFeed.js", function () {
   let quandlPriceFeed;
   // Keep test timezone consistent with price feed's. Set mock time equal to
   // close of the most recent day.
@@ -62,10 +64,7 @@ contract("QuandlPriceFeed.js", function () {
     spy = sinon.spy();
     networker = new NetworkerMock();
     quandlPriceFeed = new QuandlPriceFeed(
-      winston.createLogger({
-        level: "info",
-        transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
-      }),
+      winston.createLogger({ level: "info", transports: [new SpyTransport({ level: "debug" }, { spy: spy })] }),
       web3,
       apiKey,
       datasetCode,
@@ -170,9 +169,7 @@ contract("QuandlPriceFeed.js", function () {
           // Missing data array
         },
       },
-      {
-        error: "test",
-      },
+      { error: "test" },
     ];
 
     // Update should throw errors in all cases.

@@ -4,16 +4,19 @@ import cors from "cors";
 import bodyParser from "body-parser";
 import assert from "assert";
 import type { Request, Response, NextFunction } from "express";
-import { Json } from "..";
+import { Json, BaseConfig } from "..";
+import { Profile } from "../libs/utils";
 
-type Config = {
+interface Config extends BaseConfig {
   port: number;
-};
+}
 // represents the actions service, a single function which maps to different callable functions
 type Actions = (action: string, ...args: Json[]) => Promise<Json>;
 
 export default async (config: Config, actions: Actions) => {
   assert(config.port, "requires express port");
+
+  const profile = Profile(config.debug);
   const app = Express();
 
   app.use(cors());
@@ -27,9 +30,11 @@ export default async (config: Config, actions: Actions) => {
   app.post("/:action", (req: Request, res: Response, next: NextFunction) => {
     const action = req?.params?.action;
 
+    const end = profile(`action: ${action}`);
     actions(action, ...lodash.castArray(req.body))
       .then(res.json.bind(res))
-      .catch(next);
+      .catch(next)
+      .finally(end);
   });
 
   app.use(cors());
@@ -40,7 +45,7 @@ export default async (config: Config, actions: Actions) => {
 
   // this is an error handler, express knows this because the function has 4 parameters rather than 3
   // cant remove the "next" parameter, even though linting complains
-  app.use(function (err: Error, req: Request, res: Response, next: NextFunction) {
+  app.use(function (err: Error, req: Request, res: Response) {
     res.status(500).send(err.message || err);
   });
 

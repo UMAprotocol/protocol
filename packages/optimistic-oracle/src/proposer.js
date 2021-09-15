@@ -10,7 +10,7 @@ const {
   OPTIMISTIC_ORACLE_IGNORE_POST_EXPIRY,
   OPTIMISTIC_ORACLE_IGNORE,
 } = require("@uma/common");
-const { getAbi } = require("@uma/core");
+const { getAbi } = require("@uma/contracts-node");
 
 class OptimisticOracleProposer {
   /**
@@ -185,7 +185,9 @@ class OptimisticOracleProposer {
     await priceFeed.update();
     let proposalPrice;
     try {
-      proposalPrice = (await priceFeed.getHistoricalPrice(Number(priceRequest.timestamp))).toString();
+      proposalPrice = (
+        await priceFeed.getHistoricalPrice(Number(priceRequest.timestamp), priceRequest.ancillaryData)
+      ).toString();
     } catch (error) {
       this.logger.error({
         at: "OptimisticOracleProposer#sendProposals",
@@ -242,12 +244,7 @@ class OptimisticOracleProposer {
         error.type === "call"
           ? "Cannot propose price: not enough collateral (or large enough approval)✋"
           : "Failed to propose price🚨";
-      this.logger.error({
-        at: "OptimisticOracleProposer#sendProposals",
-        message,
-        priceRequest,
-        error,
-      });
+      this.logger.error({ at: "OptimisticOracleProposer#sendProposals", message, priceRequest, error });
       return;
     }
   }
@@ -342,12 +339,7 @@ class OptimisticOracleProposer {
           error.type === "call"
             ? "Cannot dispute price: not enough collateral (or large enough approval)✋"
             : "Failed to dispute proposal🚨";
-        this.logger.error({
-          at: "OptimisticOracleProposer#sendDisputes",
-          message,
-          priceRequest,
-          error,
-        });
+        this.logger.error({ at: "OptimisticOracleProposer#sendDisputes", message, priceRequest, error });
         return;
       }
     } else {
@@ -404,12 +396,7 @@ class OptimisticOracleProposer {
     } catch (error) {
       const message =
         error.type === "call" ? "Cannot settle for unknown reason☹️" : "Failed to settle proposal or dispute🚨";
-      this.logger.error({
-        at: "OptimisticOracleProposer#settleRequests",
-        message,
-        priceRequest,
-        error,
-      });
+      this.logger.error({ at: "OptimisticOracleProposer#settleRequests", message, priceRequest, error });
       return;
     }
   }
@@ -474,6 +461,4 @@ class OptimisticOracleProposer {
   }
 }
 
-module.exports = {
-  OptimisticOracleProposer,
-};
+module.exports = { OptimisticOracleProposer };

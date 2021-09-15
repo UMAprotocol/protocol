@@ -44,7 +44,7 @@ let pollingDelay = 0; // 0 polling delay creates a serverless bot that yields af
 let errorRetries = 1;
 let errorRetriesTimeout = 0.1; // 100 milliseconds between performing retries
 let identifier = "TEST_IDENTIFIER";
-let fundingRateIdentifier = "TEST_FUNDING_IDENTIFIER";
+let fundingRateIdentifier = "TEST_FUNDING";
 
 contract("index.js", function (accounts) {
   const contractCreator = accounts[0];
@@ -78,9 +78,7 @@ contract("index.js", function (accounts) {
           identifierWhitelist.address
         );
 
-        mockOracle = await MockOracle.new(finder.address, timer.address, {
-          from: contractCreator,
-        });
+        mockOracle = await MockOracle.new(finder.address, timer.address, { from: contractCreator });
         await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
         // Set the address in the global name space to enable disputer's index.js to access it.
         addGlobalHardhatTestingAddress("Voting", mockOracle.address);
@@ -150,11 +148,7 @@ contract("index.js", function (accounts) {
         await syntheticToken.addMinter(financialContract.address);
         await syntheticToken.addBurner(financialContract.address);
 
-        defaultPriceFeedConfig = {
-          type: "test",
-          currentPrice: "1",
-          historicalPrice: "1",
-        };
+        defaultPriceFeedConfig = { type: "test", currentPrice: "1", historicalPrice: "1" };
       });
 
       it("Detects price feed, collateral and synthetic decimals", async function () {
@@ -425,10 +419,7 @@ contract("index.js", function (accounts) {
 
         // Iterate over all log events and count the number of gasEstimatorUpdate, disputer check for liquidation events
         // execution loop errors and finally disputer polling errors.
-        let reTryCounts = {
-          gasEstimatorUpdate: 0,
-          executionLoopErrors: 0,
-        };
+        let reTryCounts = { gasEstimatorUpdate: 0, executionLoopErrors: 0 };
         for (let i = 0; i < spy.callCount; i++) {
           if (spyLogIncludes(spy, i, "Gas estimator update skipped")) reTryCounts.gasEstimatorUpdate += 1;
           if (spyLogIncludes(spy, i, "An error was thrown in the execution loop")) reTryCounts.executionLoopErrors += 1;

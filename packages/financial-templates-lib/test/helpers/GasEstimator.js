@@ -1,19 +1,17 @@
+const { assert } = require("chai");
 const winston = require("winston");
 // Helper
-const { delay } = require("../../src/helpers/delay");
+const { delay } = require("../../dist/helpers/delay");
 
 // Script to test
-const { GasEstimator, GAS_ESTIMATOR_MAPPING_BY_NETWORK } = require("../../src/helpers/GasEstimator");
+const { GasEstimator, GAS_ESTIMATOR_MAPPING_BY_NETWORK } = require("../../dist/helpers/GasEstimator");
 
-contract("GasEstimator.js", function () {
+describe("GasEstimator.js", function () {
   let gasEstimator;
 
   describe("Construction with default config", () => {
     beforeEach(() => {
-      const dummyLogger = winston.createLogger({
-        level: "info",
-        transports: [new winston.transports.Console()],
-      });
+      const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
       gasEstimator = new GasEstimator(dummyLogger);
     });
 
@@ -51,10 +49,7 @@ contract("GasEstimator.js", function () {
     const customNetworkId = 137;
 
     beforeEach(() => {
-      const dummyLogger = winston.createLogger({
-        level: "info",
-        transports: [new winston.transports.Console()],
-      });
+      const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
       gasEstimator = new GasEstimator(dummyLogger, /* updateThreshold */ 2, /* networkId */ customNetworkId);
     });
 
@@ -75,10 +70,7 @@ contract("GasEstimator.js", function () {
       assert(lastUpdateTimestamp < gasEstimator.lastUpdateTimestamp);
     });
     it("Defaults network ID if GAS_ESTIMATOR_MAPPING_BY_NETWORK missing network ID", async () => {
-      const dummyLogger = winston.createLogger({
-        level: "info",
-        transports: [new winston.transports.Console()],
-      });
+      const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
       gasEstimator = new GasEstimator(
         dummyLogger,
         60,

@@ -1,5 +1,5 @@
 const Web3 = require("web3");
-const { getAbi } = require("@uma/core");
+const { getAbi } = require("@uma/contracts-node");
 const argv = require("minimist")(process.argv.slice(), { string: ["emp", "tag", "tokens", "collateral"] });
 
 const web3 = new Web3();
@@ -32,21 +32,12 @@ function tagData(data, tag) {
 
 // Example of how you would construct the transaction with data field to be signed by private key
 function makeTransaction(data) {
-  return {
-    from: tag,
-    to: emp,
-    data,
-  };
+  return { from: tag, to: emp, data };
 }
 
 function runExample() {
   console.log("Running example with the following parameters:");
-  console.table({
-    emp,
-    tag,
-    tokens,
-    collateral,
-  });
+  console.table({ emp, tag, tokens, collateral });
   const data = createData(emp, collateral, tokens);
   const taggedData = tagData(data, tag);
   const transaction = makeTransaction(taggedData);

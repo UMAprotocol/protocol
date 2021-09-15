@@ -3,7 +3,8 @@ const Voting = artifacts.require("Voting");
 const VotingToken = artifacts.require("VotingToken");
 const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
 const Timer = artifacts.require("Timer");
-const { getKeysForNetwork, deploy, enableControllableTiming, interfaceName } = require("@uma/common");
+const { interfaceName } = require("@uma/common");
+const { getKeysForNetwork, deploy, enableControllableTiming } = require("./MigrationUtils");
 
 module.exports = async function (deployer, network, accounts) {
   const keys = getKeysForNetwork(network, accounts);
@@ -55,9 +56,7 @@ module.exports = async function (deployer, network, accounts) {
   await finder.changeImplementationAddress(
     web3.utils.utf8ToHex(interfaceName.IdentifierWhitelist),
     identifierWhitelist.address,
-    {
-      from: keys.deployer,
-    }
+    { from: keys.deployer }
   );
 
   // Corresponds to VotingToken.Roles.Minter.

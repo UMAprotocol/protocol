@@ -1,12 +1,14 @@
+const { web3, getContract } = require("hardhat");
+const { assert } = require("chai");
+
 const { toWei, utf8ToHex, padRight } = web3.utils;
 const {
   interfaceName,
   addGlobalHardhatTestingAddress,
   createConstructorParamsForContractVersion,
   TESTED_CONTRACT_VERSIONS,
+  getContractsNodePackageAliasForVerion,
 } = require("@uma/common");
-
-const { getTruffleContract } = require("@uma/core");
 
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
@@ -42,53 +44,79 @@ let toBlock = null; // setting the to block to 0 will query up to the latest blo
 let errorRetries = 1; // setting execution re-tried to 0 will exit as soon as the process encounters an error.
 let errorRetriesTimeout = 0.1; // 100 milliseconds between performing retries
 let identifier = "TEST_IDENTIFIER";
-let fundingRateIdentifier = "TEST_FUNDiNG_IDENTIFIER";
+let fundingRateIdentifier = "TEST_FUNDING";
 
-contract("index.js", function (accounts) {
-  const contractCreator = accounts[0];
+describe("index.js", function () {
+  let accounts;
+  let contractCreator;
+
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+    [contractCreator] = accounts;
+  });
 
   TESTED_CONTRACT_VERSIONS.forEach(function (contractVersion) {
+    const { getAbi, getBytecode } = require(getContractsNodePackageAliasForVerion(contractVersion.contractVersion));
+
+    const createContract = (name) => {
+      const abi = getAbi(name);
+      const bytecode = getBytecode(name);
+      return getContract(name, { abi, bytecode });
+    };
+
     // Import the tested versions of contracts. note that FinancialContract is either an ExpiringMultiParty or the perp
     // depending on the current iteration version.
-    const FinancialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
-    const Finder = getTruffleContract("Finder", web3, contractVersion.contractVersion);
-    const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, contractVersion.contractVersion);
-    const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, contractVersion.contractVersion);
-    const MockOracle = getTruffleContract("MockOracle", web3, contractVersion.contractVersion);
-    const Token = getTruffleContract("ExpandedERC20", web3, contractVersion.contractVersion);
-    const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
-    const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
-    const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
-    const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
+    const FinancialContract = createContract(contractVersion.contractType);
+    const Finder = createContract("Finder");
+    const IdentifierWhitelist = createContract("IdentifierWhitelist");
+    const AddressWhitelist = createContract("AddressWhitelist");
+    const MockOracle = createContract("MockOracle");
+    const Token = createContract("ExpandedERC20");
+    const SyntheticToken = createContract("SyntheticToken");
+    const Timer = createContract("Timer");
+    const Store = createContract("Store");
+    const ConfigStore = createContract("ConfigStore");
     // Note: OptimisticOracle always uses "2.0.1"
-    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
+    const OptimisticOracle = createContract("OptimisticOracle");
 
     describe(`Tests running on smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
       before(async function () {
-        collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
+        collateralToken = await Token.new("Wrapped Ether", "WETH", 18).send({ from: contractCreator });
 
-        identifierWhitelist = await IdentifierWhitelist.new();
-        await identifierWhitelist.addSupportedIdentifier(utf8ToHex("TEST_IDENTIFIER"));
-        await identifierWhitelist.addSupportedIdentifier(utf8ToHex("ETH/BTC"));
+        identifierWhitelist = await IdentifierWhitelist.new().send({ from: contractCreator });
+        await identifierWhitelist.methods
+          .addSupportedIdentifier(utf8ToHex("TEST_IDENTIFIER"))
+          .send({ from: contractCreator });
+        await identifierWhitelist.methods.addSupportedIdentifier(utf8ToHex("ETH/BTC")).send({ from: contractCreator });
 
         // Create identifier whitelist and register the price tracking ticker with it.
-        finder = await Finder.new();
-        timer = await Timer.new();
-        store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
-        await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
-
-        await finder.changeImplementationAddress(
-          utf8ToHex(interfaceName.IdentifierWhitelist),
-          identifierWhitelist.address
-        );
-        await identifierWhitelist.addSupportedIdentifier(utf8ToHex("TEST_IDENTIFIER"));
-
-        mockOracle = await MockOracle.new(finder.address, timer.address, {
+        finder = await Finder.new().send({ from: contractCreator });
+        timer = await Timer.new().send({ from: contractCreator });
+        store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.options.address).send({
           from: contractCreator,
         });
-        await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
+        await finder.methods
+          .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
+          .send({ from: contractCreator });
+
+        await finder.methods
+          .changeImplementationAddress(
+            utf8ToHex(interfaceName.IdentifierWhitelist),
+            identifierWhitelist.options.address
+          )
+          .send({ from: contractCreator });
+        await identifierWhitelist.methods
+          .addSupportedIdentifier(utf8ToHex("TEST_IDENTIFIER"))
+          .send({ from: contractCreator });
+
+        mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({
+          from: contractCreator,
+        });
+        await finder.methods
+          .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address)
+          .send({ from: contractCreator });
         // Set the address in the global name space to enable disputer's index.js to access it.
-        addGlobalHardhatTestingAddress("Voting", mockOracle.address);
+        addGlobalHardhatTestingAddress("Voting", mockOracle.options.address);
       });
 
       beforeEach(async function () {
@@ -100,17 +128,25 @@ contract("index.js", function (accounts) {
         });
 
         // Create a new synthetic token
-        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractCreator });
+        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18).send({ from: contractCreator });
 
-        collateralWhitelist = await AddressWhitelist.new();
-        await finder.changeImplementationAddress(
-          web3.utils.utf8ToHex(interfaceName.CollateralWhitelist),
-          collateralWhitelist.address
-        );
-        await collateralWhitelist.addToWhitelist(collateralToken.address);
+        collateralWhitelist = await AddressWhitelist.new().send({ from: contractCreator });
+        await finder.methods
+          .changeImplementationAddress(
+            web3.utils.utf8ToHex(interfaceName.CollateralWhitelist),
+            collateralWhitelist.options.address
+          )
+          .send({ from: contractCreator });
+        await collateralWhitelist.methods
+          .addToWhitelist(collateralToken.options.address)
+          .send({ from: contractCreator });
 
-        optimisticOracle = await OptimisticOracle.new(7200, finder.address, timer.address);
-        await finder.changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.address);
+        optimisticOracle = await OptimisticOracle.new(7200, finder.options.address, timer.options.address).send({
+          from: contractCreator,
+        });
+        await finder.methods
+          .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
+          .send({ from: contractCreator });
 
         if (contractVersion.contractType == "Perpetual") {
           configStore = await ConfigStore.new(
@@ -122,9 +158,11 @@ contract("index.js", function (accounts) {
               minFundingRate: { rawValue: toWei("-0.00001") },
               proposalTimePastLimit: 0,
             },
-            timer.address
-          );
-          await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier)));
+            timer.options.address
+          ).send({ from: contractCreator });
+          await identifierWhitelist.methods
+            .addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier)))
+            .send({ from: contractCreator });
         }
         // Deploy a new expiring multi party OR perpetual.
         constructorParams = await createConstructorParamsForContractVersion(
@@ -143,16 +181,12 @@ contract("index.js", function (accounts) {
           // Note: an identifier which is part of the default config is required for this test.
           { priceFeedIdentifier: padRight(utf8ToHex("ETH/BTC"), 64) }
         );
-        financialContract = await FinancialContract.new(constructorParams);
-        await syntheticToken.addMinter(financialContract.address);
-        await syntheticToken.addBurner(financialContract.address);
+        financialContract = await FinancialContract.new(constructorParams).send({ from: contractCreator });
+        await syntheticToken.methods.addMinter(financialContract.options.address).send({ from: contractCreator });
+        await syntheticToken.methods.addBurner(financialContract.options.address).send({ from: contractCreator });
 
         defaultMonitorConfig = {};
-        defaultTokenPricefeedConfig = {
-          type: "test",
-          currentPrice: "1",
-          historicalPrice: "1",
-        };
+        defaultTokenPricefeedConfig = { type: "test", currentPrice: "1", historicalPrice: "1" };
         defaultMedianizerPricefeedConfig = {};
       });
 
@@ -162,7 +196,7 @@ contract("index.js", function (accounts) {
         await Poll.run({
           logger: spyLogger,
           web3,
-          financialContractAddress: financialContract.address,
+          financialContractAddress: financialContract.options.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
@@ -180,7 +214,7 @@ contract("index.js", function (accounts) {
         await Poll.run({
           logger: spyLogger,
           web3,
-          optimisticOracleAddress: optimisticOracle.address,
+          optimisticOracleAddress: optimisticOracle.options.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
@@ -198,8 +232,8 @@ contract("index.js", function (accounts) {
         await Poll.run({
           logger: spyLogger,
           web3,
-          financialContractAddress: financialContract.address,
-          optimisticOracleAddress: optimisticOracle.address,
+          financialContractAddress: financialContract.options.address,
+          optimisticOracleAddress: optimisticOracle.options.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
@@ -220,21 +254,21 @@ contract("index.js", function (accounts) {
           transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
 
-        collateralToken = await Token.new("USDC", "USDC", 6, { from: contractCreator });
-        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 6, { from: contractCreator });
+        collateralToken = await Token.new("USDC", "USDC", 6).send({ from: contractCreator });
+        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 6).send({ from: contractCreator });
         constructorParams = {
           ...constructorParams,
-          collateralAddress: collateralToken.address,
-          tokenAddress: syntheticToken.address,
+          collateralAddress: collateralToken.options.address,
+          tokenAddress: syntheticToken.options.address,
         };
-        financialContract = await FinancialContract.new(constructorParams);
-        await syntheticToken.addMinter(financialContract.address);
-        await syntheticToken.addBurner(financialContract.address);
+        financialContract = await FinancialContract.new(constructorParams).send({ from: contractCreator });
+        await syntheticToken.methods.addMinter(financialContract.options.address);
+        await syntheticToken.methods.addBurner(financialContract.options.address);
 
         await Poll.run({
           logger: spyLogger,
           web3,
-          financialContractAddress: financialContract.address,
+          financialContractAddress: financialContract.options.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
@@ -264,7 +298,7 @@ contract("index.js", function (accounts) {
         await Poll.run({
           logger: spyLogger,
           web3,
-          financialContractAddress: financialContract.address,
+          financialContractAddress: financialContract.options.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
@@ -297,7 +331,7 @@ contract("index.js", function (accounts) {
           await Poll.run({
             logger: spyLogger,
             web3,
-            financialContractAddress: finder.address,
+            financialContractAddress: finder.options.address,
             pollingDelay,
             errorRetries,
             errorRetriesTimeout,
@@ -325,9 +359,9 @@ contract("index.js", function (accounts) {
         // and excludes any liquidation logic. As a result, calling `getLiquidations` in the Financial Contract contract will error out.
 
         // Need to give an unknown identifier to get past the `createReferencePriceFeedForFinancialContract` & `createUniswapPriceFeedForFinancialContract`
-        await identifierWhitelist.addSupportedIdentifier(utf8ToHex("UNKNOWN"));
+        await identifierWhitelist.methods.addSupportedIdentifier(utf8ToHex("UNKNOWN")).send({ from: contractCreator });
 
-        const PricelessPositionManager = getTruffleContract("PricelessPositionManager", web3, "1.2.2");
+        const PricelessPositionManager = getContract("PricelessPositionManager");
         const invalidFinancialContract = await PricelessPositionManager.new(
           constructorParams.expirationTimestamp,
           constructorParams.withdrawalLiveness,
@@ -337,9 +371,8 @@ contract("index.js", function (accounts) {
           utf8ToHex("UNKNOWN"),
           constructorParams.minSponsorTokens,
           constructorParams.timerAddress,
-          constructorParams.excessTokenBeneficiary,
           constructorParams.excessTokenBeneficiary
-        );
+        ).send({ from: contractCreator });
 
         // Create a spy logger to catch all log messages to validate re-try attempts.
         spyLogger = winston.createLogger({
@@ -359,7 +392,7 @@ contract("index.js", function (accounts) {
           await Poll.run({
             logger: spyLogger,
             web3,
-            financialContractAddress: invalidFinancialContract.address,
+            financialContractAddress: invalidFinancialContract.options.address,
             pollingDelay,
             errorRetries: errorRetries,
             errorRetriesTimeout,
@@ -374,9 +407,7 @@ contract("index.js", function (accounts) {
         }
         // Iterate over all log events and count the number of
         // execution loop errors.
-        let reTryCounts = {
-          executionLoopErrors: 0,
-        };
+        let reTryCounts = { executionLoopErrors: 0 };
         for (let i = 0; i < spy.callCount; i++) {
           if (spyLogIncludes(spy, i, "An error was thrown in the execution loop")) reTryCounts.executionLoopErrors += 1;
         }

@@ -1,12 +1,14 @@
-const { ForexDailyPriceFeed } = require("../../src/price-feed/ForexDailyPriceFeed");
-const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
-const { spyLogIncludes, SpyTransport } = require("../../src/logger/SpyTransport");
+const { web3 } = require("hardhat");
+const { assert } = require("chai");
+const { ForexDailyPriceFeed } = require("../../dist/price-feed/ForexDailyPriceFeed");
+const { NetworkerMock } = require("../../dist/price-feed/NetworkerMock");
+const { spyLogIncludes, SpyTransport } = require("../../dist/logger/SpyTransport");
 const winston = require("winston");
 const moment = require("moment-timezone");
 const { parseFixed } = require("@uma/common");
 const sinon = require("sinon");
 
-contract("ForexDailyPriceFeed.js", function () {
+describe("ForexDailyPriceFeed.js", function () {
   let forexPriceFeed;
   // Keep test timezone consistent with price feed's. The API uses data published daily by the
   // ECB at 16:00 CET. Therefore, to convert from datestring to unix,
@@ -33,18 +35,10 @@ contract("ForexDailyPriceFeed.js", function () {
   const validResponses = [
     {
       rates: {
-        "2021-03-09": {
-          USD: 1.1933333333333333,
-        },
-        "2021-03-10": {
-          USD: 1.1923333333333333,
-        },
-        "2021-03-11": {
-          USD: 1.19263333333333333,
-        },
-        "2021-03-12": {
-          USD: 1.19163333333333333,
-        },
+        "2021-03-09": { USD: 1.1933333333333333 },
+        "2021-03-10": { USD: 1.1923333333333333 },
+        "2021-03-11": { USD: 1.19263333333333333 },
+        "2021-03-12": { USD: 1.19163333333333333 },
       },
       start_at: "2021-03-10",
       base: "EUR",
@@ -56,10 +50,7 @@ contract("ForexDailyPriceFeed.js", function () {
     spy = sinon.spy();
     networker = new NetworkerMock();
     forexPriceFeed = new ForexDailyPriceFeed(
-      winston.createLogger({
-        level: "info",
-        transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
-      }),
+      winston.createLogger({ level: "info", transports: [new SpyTransport({ level: "debug" }, { spy: spy })] }),
       web3,
       base,
       symbol,
@@ -81,10 +72,7 @@ contract("ForexDailyPriceFeed.js", function () {
     let errorThrown = false;
     try {
       forexPriceFeed = new ForexDailyPriceFeed(
-        winston.createLogger({
-          level: "info",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
-        }),
+        winston.createLogger({ level: "info", transports: [new SpyTransport({ level: "debug" }, { spy: spy })] }),
         web3,
         "invalid",
         symbol,
@@ -101,10 +89,7 @@ contract("ForexDailyPriceFeed.js", function () {
     errorThrown = false;
     try {
       forexPriceFeed = new ForexDailyPriceFeed(
-        winston.createLogger({
-          level: "info",
-          transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
-        }),
+        winston.createLogger({ level: "info", transports: [new SpyTransport({ level: "debug" }, { spy: spy })] }),
         web3,
         base,
         "invalid",
@@ -188,12 +173,8 @@ contract("ForexDailyPriceFeed.js", function () {
           "2021-03-09": {},
         },
       },
-      {
-        rates: {},
-      },
-      {
-        error: "test",
-      },
+      { rates: {} },
+      { error: "test" },
     ];
 
     // Update should throw errors in all cases.

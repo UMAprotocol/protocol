@@ -1,6 +1,9 @@
 import winston from "winston";
 import sinon from "sinon";
-import { web3, assert } from "hardhat";
+import hre from "hardhat";
+import type { HRE } from "@uma/common";
+const { web3, getContract } = hre as HRE;
+import { assert } from "chai";
 const { toWei, toBN, fromWei } = web3.utils;
 
 import {
@@ -11,7 +14,6 @@ import {
   GasEstimator,
   UniswapV2PriceFeed,
 } from "@uma/financial-templates-lib";
-import { getTruffleContract } from "@uma/core";
 import { createContractObjectFromJson } from "@uma/common";
 
 // Script to test
@@ -20,10 +22,10 @@ import { RangeTrader } from "../src/RangeTrader";
 // Helper scripts
 import { createExchangeAdapter } from "../src/exchange-adapters/CreateExchangeAdapter";
 
-const Token = getTruffleContract("ExpandedERC20", web3 as any);
-const WETH9 = getTruffleContract("WETH9", web3 as any);
-const DSProxyFactory = getTruffleContract("DSProxyFactory", web3 as any);
-const DSProxy = getTruffleContract("DSProxy", web3 as any);
+const Token = getContract("ExpandedERC20");
+const WETH9 = getContract("WETH9");
+const DSProxyFactory = getContract("DSProxyFactory");
+const DSProxy = getContract("DSProxy");
 
 // Helper Contracts
 import UniswapV2Factory from "@uniswap/v2-core/build/UniswapV2Factory.json";
@@ -56,9 +58,9 @@ let dsProxyFactory: any;
 
 // Returns the current spot price of a uniswap pool, scaled to 4 decimal points.
 const getPoolSpotPrice = async () => {
-  const poolTokenABallance = await tokenA.balanceOf(pairAddress);
-  const poolTokenBBallance = await tokenB.balanceOf(pairAddress);
-  return Number(fromWei(poolTokenABallance.mul(toBN(toWei("1"))).div(poolTokenBBallance))).toFixed(4);
+  const poolTokenABalance = toBN(await tokenA.methods.balanceOf(pairAddress).call());
+  const poolTokenBBalance = toBN(await tokenB.methods.balanceOf(pairAddress).call());
+  return Number(fromWei(poolTokenABalance.mul(toBN(toWei("1"))).div(poolTokenBBalance))).toFixed(4);
 };
 
 describe("UniswapV2Trader.js", function () {
@@ -68,33 +70,37 @@ describe("UniswapV2Trader.js", function () {
     trader = accounts[1];
     externalTrader = accounts[2];
 
-    dsProxyFactory = await DSProxyFactory.new();
+    dsProxyFactory = await DSProxyFactory.new().send({ from: deployer });
 
-    WETH = await WETH9.new();
+    WETH = await WETH9.new().send({ from: deployer });
     // deploy Uniswap V2 Factory & router.
-    uniswapFactory = await createContractObjectFromJson(UniswapV2Factory, web3).new(deployer, { from: deployer });
-    uniswapRouter = await createContractObjectFromJson(UniswapV2Router02, web3).new(
-      uniswapFactory.address,
-      WETH.address,
-      {
-        from: deployer,
-      }
-    );
+    uniswapFactory = (await createContractObjectFromJson(UniswapV2Factory, web3).new(deployer, { from: deployer }))
+      .contract;
+    uniswapRouter = (
+      await createContractObjectFromJson(UniswapV2Router02, web3).new(
+        uniswapFactory.options.address,
+        WETH.options.address,
+        {
+          from: deployer,
+        }
+      )
+    ).contract;
   });
 
   beforeEach(async function () {
     // deploy traded tokens
-    tokenA = await Token.new("TokenA", "TA", 18);
-    tokenB = await Token.new("TokenB", "TB", 18);
-    if (tokenA.address.toLowerCase() < tokenB.address.toLowerCase()) [tokenA, tokenB] = [tokenB, tokenA];
+    tokenA = await Token.new("TokenA", "TA", 18).send({ from: deployer });
+    tokenB = await Token.new("TokenB", "TB", 18).send({ from: deployer });
+    if (tokenA.options.address.toLowerCase() < tokenB.options.address.toLowerCase())
+      [tokenA, tokenB] = [tokenB, tokenA];
 
-    await tokenA.addMember(1, deployer, { from: deployer });
-    await tokenB.addMember(1, deployer, { from: deployer });
+    await tokenA.methods.addMember(1, deployer).send({ from: deployer });
+    await tokenB.methods.addMember(1, deployer).send({ from: deployer });
 
     // initialize the Uniswap pair
-    await uniswapFactory.createPair(tokenA.address, tokenB.address, { from: deployer });
-    pairAddress = await uniswapFactory.getPair(tokenA.address, tokenB.address);
-    pair = await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress);
+    await uniswapFactory.methods.createPair(tokenA.options.address, tokenB.options.address).send({ from: deployer });
+    pairAddress = await uniswapFactory.methods.getPair(tokenA.options.address, tokenB.options.address).call();
+    pair = (await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress)).contract;
 
     // Create a sinon spy and give it to the SpyTransport as the winston logger. Use this to check all winston logs.
     spy = sinon.spy(); // Create a new spy for each test.
@@ -103,11 +109,16 @@ describe("UniswapV2Trader.js", function () {
       transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
     });
 
+    // Literals are not inferred from JSON.
+    type UniswapAbiElement = typeof IUniswapV2Pair.abi[number] & { type: "event" | "function" } & {
+      stateMutability?: "view" | "payable" | "pure";
+    };
+
     // Create the components needed for the RangeTrader. Create a "real" uniswap price feed, with the twapLength &
     // historicalLookback set to 1 such the the twap will update very quickly.
     tokenPriceFeed = new UniswapV2PriceFeed(
       spyLogger, // logger
-      IUniswapV2Pair.abi, // uniswapABI
+      IUniswapV2Pair.abi as UniswapAbiElement[], // uniswapABI
       Token.abi, // erc20Abi
       web3,
       pairAddress,
@@ -125,7 +136,7 @@ describe("UniswapV2Trader.js", function () {
       web3,
       gasEstimator,
       account: trader,
-      dsProxyFactoryAddress: dsProxyFactory.address,
+      dsProxyFactoryAddress: dsProxyFactory.options.address,
       dsProxyFactoryAbi: DSProxyFactory.abi,
       dsProxyAbi: DSProxy.abi,
     });
@@ -137,10 +148,10 @@ describe("UniswapV2Trader.js", function () {
 
     const exchangeAdapterConfig = {
       type: "uniswap-v2",
-      tokenAAddress: tokenA.address,
-      tokenBAddress: tokenB.address,
-      uniswapRouterAddress: uniswapRouter.address,
-      uniswapFactoryAddress: uniswapFactory.address,
+      tokenAAddress: tokenA.options.address,
+      tokenBAddress: tokenB.options.address,
+      uniswapRouterAddress: uniswapRouter.options.address,
+      uniswapFactoryAddress: uniswapFactory.options.address,
     };
 
     exchangeAdapter = await createExchangeAdapter(spyLogger, web3, dsProxyManager, exchangeAdapterConfig, 0);
@@ -149,24 +160,24 @@ describe("UniswapV2Trader.js", function () {
     rangeTrader = new RangeTrader(spyLogger, web3, tokenPriceFeed, referencePriceFeed, exchangeAdapter, {});
 
     // Seed the dsProxy wallet.
-    await tokenA.mint(traderDSProxyAddress, toWei("100000000000000"));
-    await tokenB.mint(traderDSProxyAddress, toWei("100000000000000"));
+    await tokenA.methods.mint(traderDSProxyAddress, toWei("100000000000000")).send({ from: deployer });
+    await tokenB.methods.mint(traderDSProxyAddress, toWei("100000000000000")).send({ from: deployer });
 
     // Seed the externalTrader who is used to move the market around.
-    await tokenA.mint(externalTrader, toWei("100000000000000"));
-    await tokenB.mint(externalTrader, toWei("100000000000000"));
-    await tokenA.approve(uniswapRouter.address, toWei("100000000000000"), {
+    await tokenA.methods.mint(externalTrader, toWei("100000000000000")).send({ from: deployer });
+    await tokenB.methods.mint(externalTrader, toWei("100000000000000")).send({ from: deployer });
+    await tokenA.methods.approve(uniswapRouter.options.address, toWei("100000000000000")).send({
       from: externalTrader,
     });
-    await tokenB.approve(uniswapRouter.address, toWei("100000000000000"), {
+    await tokenB.methods.approve(uniswapRouter.options.address, toWei("100000000000000")).send({
       from: externalTrader,
     });
 
     // For these test, say the synthetic starts trading at uniswap at 1000 TokenA/TokenB. To set this up we will seed the
     // pair with 1000x units of TokenA, relative to TokenB.
-    await tokenA.mint(pairAddress, toBN(toWei("1000")).muln(10000000));
-    await tokenB.mint(pairAddress, toBN(toWei("1")).muln(10000000));
-    await pair.sync({ from: deployer });
+    await tokenA.methods.mint(pairAddress, toBN(toWei("1000")).muln(10000000)).send({ from: deployer });
+    await tokenB.methods.mint(pairAddress, toBN(toWei("1")).muln(10000000)).send({ from: deployer });
+    await pair.methods.sync().send({ from: deployer });
     mockTime = Number((await web3.eth.getBlock("latest")).timestamp) + 1;
     referencePriceFeed.setCurrentPrice(toWei("1000"));
     await tokenPriceFeed.update();
@@ -194,14 +205,15 @@ describe("UniswapV2Trader.js", function () {
 
     // For this trade, swap a large number of tokenA into the pool for token B. This should push up the price. A trade of
     // 1.5 billion token B should increase the price by ~ 321 USD, resiting in a price of ~1351
-    await uniswapRouter.swapExactTokensForTokens(
-      toBN(toWei("1500000000")), // amountIn. We are selling tokenA for tokenB, therefore tokenA is "in" and tokenB is "out"
-      0, // amountOutMin
-      [tokenA.address, tokenB.address], // path. We are trading from tokenA to tokenB (selling A for B)
-      externalTrader, // recipient of the trade
-      Number((await web3.eth.getBlock("latest")).timestamp) + 10, // deadline
-      { from: externalTrader }
-    );
+    await uniswapRouter.methods
+      .swapExactTokensForTokens(
+        toBN(toWei("1500000000")), // amountIn. We are selling tokenA for tokenB, therefore tokenA is "in" and tokenB is "out"
+        0, // amountOutMin
+        [tokenA.options.address, tokenB.options.address], // path. We are trading from tokenA to tokenB (selling A for B)
+        externalTrader, // recipient of the trade
+        Number((await web3.eth.getBlock("latest")).timestamp) + 10 // deadline
+      )
+      .send({ from: externalTrader });
 
     // Double check the market moved correctly and that the uniswap Price feed correctly reports the price.
     const currentSpotPrice = Number(await getPoolSpotPrice());
@@ -234,9 +246,12 @@ describe("UniswapV2Trader.js", function () {
     assert.equal(parseFloat(latestWinstonLog.postTradePriceDeviationError.replace("%", "")).toFixed(0), "5");
     // The default configuration for the range trader bot is to trade the price back to 5% off the current reference price.
     // Seeing the reference price is set to 1000, the pool price should now be set to 1050 exactly after the correcting trade.
+
     assert.equal(Number(await getPoolSpotPrice()).toFixed(0), "1050");
     // Equally, the price in the uniswap feed should report a price of 1050.
+
     mockTime = Number((await web3.eth.getBlock("latest")).timestamp) + 1;
+
     await tokenPriceFeed.update();
     assert.equal(Number(fromWei(tokenPriceFeed.getLastBlockPrice())).toFixed(4), await getPoolSpotPrice());
 

@@ -1,9 +1,10 @@
-const { ETHVIXPriceFeed } = require("../../src/price-feed/EthVixPriceFeed");
-const { NetworkerMock } = require("../../src/price-feed/NetworkerMock");
+const { web3 } = require("hardhat");
+const { assert } = require("chai");
+const { ETHVIXPriceFeed } = require("../../dist/price-feed/EthVixPriceFeed");
+const { NetworkerMock } = require("../../dist/price-feed/NetworkerMock");
 const { parseFixed } = require("@uma/common");
 const moment = require("moment");
 const winston = require("winston");
-const { assert } = require("hardhat");
 
 describe("EthVixPriceFeed.js", () => {
   let networker;
@@ -15,34 +16,13 @@ describe("EthVixPriceFeed.js", () => {
   const minTimeBetweenUpdates = 60;
 
   const historicalResponse = [
-    {
-      currency: "ETH",
-      timestamp: "2021-03-24T14:30:00.000Z",
-      spotPrice: "1737.04",
-      vix: "88.47",
-      iVix: "113.04",
-    },
-    {
-      currency: "ETH",
-      timestamp: "2021-03-24T14:45:00.000Z",
-      spotPrice: "1738.36",
-      vix: "88.78",
-      iVix: "112.62",
-    },
-    {
-      currency: "ETH",
-      timestamp: "2021-03-24T15:00:00.000Z",
-      spotPrice: "1740.26",
-      vix: "70.2",
-      iVix: "142.44",
-    },
+    { currency: "ETH", timestamp: "2021-03-24T14:30:00.000Z", spotPrice: "1737.04", vix: "88.47", iVix: "113.04" },
+    { currency: "ETH", timestamp: "2021-03-24T14:45:00.000Z", spotPrice: "1738.36", vix: "88.78", iVix: "112.62" },
+    { currency: "ETH", timestamp: "2021-03-24T15:00:00.000Z", spotPrice: "1740.26", vix: "70.2", iVix: "142.44" },
   ];
 
   beforeEach(() => {
-    const logger = winston.createLogger({
-      level: "info",
-      transports: [new winston.transports.Console()],
-    });
+    const logger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
     networker = new NetworkerMock();
     priceFeed = new ETHVIXPriceFeed(logger, web3, false, networker, getTime, minTimeBetweenUpdates, 18);
     inversePriceFeed = new ETHVIXPriceFeed(logger, web3, true, networker, getTime, minTimeBetweenUpdates, 18);
@@ -133,7 +113,7 @@ describe("EthVixPriceFeed.js", () => {
 
   describe("Before an initial update has been performed", () => {
     it("does not have a last update time", () => {
-      assert.isUndefined(priceFeed.getLastUpdateTime());
+      assert.isNull(priceFeed.getLastUpdateTime());
     });
 
     it("throws when the ethVIX price is requested", () => {

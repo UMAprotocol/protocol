@@ -1,22 +1,22 @@
+const { web3, getContract } = require("hardhat");
+const { assert } = require("chai");
 const { toWei } = web3.utils;
 
-const { GasEstimator, SpyTransport, spyLogIncludes } = require("../../index");
-
-const { getTruffleContract } = require("@uma/core");
+const { GasEstimator, SpyTransport, spyLogIncludes } = require("../../dist/index");
 
 const winston = require("winston");
 const sinon = require("sinon");
 
 // Script to test
-const { DSProxyManager } = require("../../src/proxy-transaction-handler/DSProxyManager.js");
+const { DSProxyManager } = require("../../dist/proxy-transaction-handler/DSProxyManager.js");
 
-const TokenSender = getTruffleContract("TokenSender", web3);
-const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);
-const DSProxy = getTruffleContract("DSProxy", web3);
-const Token = getTruffleContract("ExpandedERC20", web3);
+const TokenSender = getContract("TokenSender");
+const DSProxyFactory = getContract("DSProxyFactory");
+const DSProxy = getContract("DSProxy");
+const Token = getContract("ExpandedERC20");
 
-contract("DSProxyManager", function (accounts) {
-  let contractCreator = accounts[0];
+describe("DSProxyManager", function () {
+  let contractCreator, accounts;
 
   // Common contract objects.
   let tokenSender;
@@ -29,8 +29,13 @@ contract("DSProxyManager", function (accounts) {
   let spyLogger;
   let gasEstimator;
 
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+    [contractCreator] = accounts;
+  });
+
   beforeEach(async () => {
-    dsProxyFactory = await DSProxyFactory.new();
+    dsProxyFactory = await DSProxyFactory.new().send({ from: contractCreator });
 
     spy = sinon.spy();
 
@@ -46,13 +51,13 @@ contract("DSProxyManager", function (accounts) {
       web3,
       gasEstimator,
       account: contractCreator,
-      dsProxyFactoryAddress: dsProxyFactory.address,
+      dsProxyFactoryAddress: dsProxyFactory.options.address,
       dsProxyFactoryAbi: DSProxyFactory.abi,
       dsProxyAbi: DSProxy.abi,
     });
 
-    testToken = await Token.new("Wrapped Ether", "WETH", 18);
-    await testToken.addMember(1, contractCreator, { from: contractCreator });
+    testToken = await Token.new("Wrapped Ether", "WETH", 18).send({ from: contractCreator });
+    await testToken.methods.addMember(1, contractCreator).send({ from: contractCreator });
   });
   it("Can reject invalid constructor params correctly construct DSProxyManager", async function () {
     // should throw with invalid addresses
@@ -62,7 +67,7 @@ contract("DSProxyManager", function (accounts) {
         web3,
         gasEstimator,
         account: "not an address",
-        dsProxyFactoryAddress: dsProxyFactory.address,
+        dsProxyFactoryAddress: dsProxyFactory.options.address,
         dsProxyFactoryAbi: DSProxyFactory.abi,
         dsProxyAbi: DSProxy.abi,
       });
@@ -79,7 +84,7 @@ contract("DSProxyManager", function (accounts) {
 
     assert.equal(logs.length, 1);
     assert.equal(logs[0].returnValues.owner, contractCreator);
-    assert.equal(await (await DSProxy.at(logs[0].returnValues.proxy)).owner(), contractCreator);
+    assert.equal(await (await DSProxy.at(logs[0].returnValues.proxy)).methods.owner().call(), contractCreator);
 
     assert.isTrue(spyLogIncludes(spy, -1, "DSProxy deployed for your EOA"));
     assert.isTrue(spyLogIncludes(spy, -1, contractCreator));
@@ -87,32 +92,35 @@ contract("DSProxyManager", function (accounts) {
   });
 
   it("Initialization correctly detects an existing DSProxy if the user has one already", async function () {
-    const createDSProxyTx = await dsProxyFactory.build();
+    const createDSProxyTx = await dsProxyFactory.methods.build().send({ from: contractCreator });
     await dsProxyManager.initializeDSProxy();
     assert.isTrue(spyLogIncludes(spy, -1, "DSProxy has been loaded in for the EOA"));
     assert.isTrue(spyLogIncludes(spy, -1, contractCreator)); // The EOA should be included.
-    assert.isTrue(spyLogIncludes(spy, -1, createDSProxyTx.logs[0].args.proxy)); // The log should contain our previous DSProxy.
+    assert.isTrue(spyLogIncludes(spy, -1, createDSProxyTx.events["Created"].returnValues.proxy)); // The log should contain our previous DSProxy.
   });
 
   it("Can send functions to DSProxy using an existing deployed library", async function () {
     await dsProxyManager.initializeDSProxy();
     const dsProxyAddress = dsProxyManager.getDSProxyAddress();
 
-    await testToken.mint(dsProxyAddress, toWei("1000"), { from: contractCreator });
+    await testToken.methods.mint(dsProxyAddress, toWei("1000")).send({ from: contractCreator });
 
     // Deploy a tokenSender contract containing library code for the tx. the TokenSender contract enables a DSProxy to send
     // any tokens that it might have within it's wallet. It is used to showcase how a more complex transaction would occur
     // with the DSProxy acting in place of an EOA.
-    tokenSender = await TokenSender.new();
+    tokenSender = await TokenSender.new().send({ from: contractCreator });
 
     // Encode the send transaction. This is what will be executed within the DSProxy.
-    const sendTokenTx = tokenSender.contract.methods
-      .transferERC20(testToken.address, contractCreator, toWei("10"))
+    const sendTokenTx = tokenSender.methods
+      .transferERC20(testToken.options.address, contractCreator, toWei("10"))
       .encodeABI();
 
     // Call the method on the tokenSender(library) with the sendTokenTxData. Note this is called from the perspective
     // of the DSProxy and should send some of the DSProxy tokens.
-    const dsProxyCallReturn = await dsProxyManager.callFunctionOnExistingLibrary(tokenSender.address, sendTokenTx);
+    const dsProxyCallReturn = await dsProxyManager.callFunctionOnExistingLibrary(
+      tokenSender.options.address,
+      sendTokenTx
+    );
 
     // We can get the events to double check token transferers were correct.
     let tokenEvents = await testToken.getPastEvents("Transfer");
@@ -121,8 +129,8 @@ contract("DSProxyManager", function (accounts) {
     assert.equal(tokenEvents[0].transactionHash, dsProxyCallReturn.transactionHash);
 
     // The tokens should have been transferred out of the DSProxy wallet ant to the contractCreator.
-    assert.equal((await testToken.balanceOf(contractCreator)).toString(), toWei("10"));
-    assert.equal((await testToken.balanceOf(dsProxyAddress)).toString(), toWei("990"));
+    assert.equal((await testToken.methods.balanceOf(contractCreator).call()).toString(), toWei("10"));
+    assert.equal((await testToken.methods.balanceOf(dsProxyAddress).call()).toString(), toWei("990"));
     assert.isTrue(spyLogIncludes(spy, -1, "Executed function on deployed library"));
     assert.isTrue(spyLogIncludes(spy, -1, tokenEvents[0].transactionHash)); // The transaction hash should be included.
   });
@@ -133,11 +141,13 @@ contract("DSProxyManager", function (accounts) {
     await dsProxyManager.initializeDSProxy();
     const dsProxyAddress = dsProxyManager.getDSProxyAddress();
 
-    await testToken.mint(dsProxyAddress, toWei("1000"), { from: contractCreator });
+    await testToken.methods.mint(dsProxyAddress, toWei("1000")).send({ from: contractCreator });
 
     // As before we encode the tx to send to the library.
     const contract = new web3.eth.Contract(TokenSender.abi);
-    const callData = contract.methods.transferERC20(testToken.address, contractCreator, toWei("10")).encodeABI();
+    const callData = contract.methods
+      .transferERC20(testToken.options.address, contractCreator, toWei("10"))
+      .encodeABI();
 
     // The library also needs to code of the contract to deploy.
     const callCode = TokenSender.bytecode;
@@ -151,8 +161,8 @@ contract("DSProxyManager", function (accounts) {
     assert.equal(tokenEvents[0].transactionHash, dsProxyCallReturn.transactionHash);
 
     // The tokens should have been transferred out of the DSProxy wallet ant to the contractCreator.
-    assert.equal((await testToken.balanceOf(contractCreator)).toString(), toWei("10"));
-    assert.equal((await testToken.balanceOf(dsProxyAddress)).toString(), toWei("990"));
+    assert.equal((await testToken.methods.balanceOf(contractCreator).call()).toString(), toWei("10"));
+    assert.equal((await testToken.methods.balanceOf(dsProxyAddress).call()).toString(), toWei("990"));
     assert.isTrue(spyLogIncludes(spy, -1, "Executed function on a freshly deployed library"));
     assert.isTrue(spyLogIncludes(spy, -1, tokenEvents[0].transactionHash)); // The transaction hash should be included.
   });
