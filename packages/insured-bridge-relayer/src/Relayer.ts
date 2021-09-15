@@ -155,7 +155,7 @@ export class Relayer {
     try {
       const { receipt, transactionConfig } = await runTransaction({
         web3: this.l1Client.l1Web3,
-        transaction: (this.generateSlowRelayTx(deposit, realizedLpFeePct) as unknown) as TransactionType,
+        transaction: this.generateSlowRelayTx(deposit, realizedLpFeePct),
         transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
         availableAccounts: 1,
       });
