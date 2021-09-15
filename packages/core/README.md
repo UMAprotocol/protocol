@@ -175,23 +175,31 @@ process is faily simple, as a result.
 To deploy the entire UMA system on a network of your choice:
 
 ```sh
-MNEMONIC="Your 12-word phrase here" CUSTOM_NODE_URL="Your node url here" yarn hardhat deploy --network kovan
+export MNEMONIC="Your 12-word phrase here"
+export CUSTOM_NODE_URL="Your node url here"
+yarn hardhat deploy --network kovan
 ```
 
 To deploy a particular contract (along with any dependencies that haven't been deployed on this network):
 
 ```sh
-MNEMONIC="Your 12-word phrase here" CUSTOM_NODE_URL="Your node url here" yarn hardhat deploy --network kovan --tags LongShortPairCreator
+export MNEMONIC="Your 12-word phrase here"
+export CUSTOM_NODE_URL="Your node url here"
+yarn hardhat deploy --network kovan --tags LongShortPairCreator
 ```
 
 To perform an etherscan verification on a particular contract address that you have deployed on a public network:
 
 ```sh
-CUSTOM_NODE_URL="Your node url here" ETHERSCAN_API_KEY="Your etherscan api key here" yarn hardhat verify "Your contract address here" --network kovan
+export ETHERSCAN_API_KEY="Your etherscan api key here"
+export CUSTOM_NODE_URL="Your node url here"
+yarn hardhat verify "Your contract address here" --network kovan
 ```
 
 To perform a verification on all the contracts you have deployed on a particular network:
 
 ```sh
-CUSTOM_NODE_URL="Your node url here" ETHERSCAN_API_KEY="Your etherscan api key here" yarn hardhat etherscan-verify --network kovan --license AGPL-3.0 --force-license
+export CUSTOM_NODE_URL="Your node url here"
+export ETHERSCAN_API_KEY="Your etherscan api key here"
+yarn hardhat etherscan-verify --network kovan --license AGPL-3.0 --force-license
 ```
