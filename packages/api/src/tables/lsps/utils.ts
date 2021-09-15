@@ -32,4 +32,5 @@ export type Data = {
   collateralDecimals?: number | null;
   longTokenDecimals?: number | null;
   shortTokenDecimals?: number | null;
+  createdTimestamp?: number | null;
 };

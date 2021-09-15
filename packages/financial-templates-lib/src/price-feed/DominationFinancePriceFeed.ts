@@ -67,7 +67,7 @@ export class DominationFinancePriceFeed extends PriceFeedInterface {
     return this.invertPrice ? this._invertPriceSafely(this.currentPrice) : this.currentPrice;
   }
 
-  public async getHistoricalPrice(time: number, verbose = false): Promise<BN | null> {
+  public async getHistoricalPrice(time: number, ancillaryData: string, verbose = false): Promise<BN | null> {
     if (this.lastUpdateTime === undefined) {
       throw new Error(`${this.uuid}: undefined lastUpdateTime`);
     }

@@ -529,6 +529,7 @@ describe("InsuredBridgeL1Client", function () {
 
       // Sync the modified deposit and relay data with the expected returned data and store it.
       syncExpectedRelayedDepositInformation();
+
       ({ depositHash, relayAncillaryData, relayAncillaryDataHash } = await generateRelayData(
         depositData,
         relayData,

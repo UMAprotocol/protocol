@@ -72,7 +72,7 @@ export class QuandlPriceFeed extends PriceFeedInterface {
     return this.currentPrice;
   }
 
-  public async getHistoricalPrice(time: number, verbose = false): Promise<BN> {
+  public async getHistoricalPrice(time: number, ancillaryData: string, verbose = false): Promise<BN> {
     if (this.lastUpdateTime === undefined) {
       throw new Error(`${this.uuid}: undefined lastUpdateTime`);
     }

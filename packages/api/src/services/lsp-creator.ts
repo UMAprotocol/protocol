@@ -8,11 +8,11 @@ interface Config extends BaseConfig {
   network?: number;
   address?: string;
 }
-type Dependencies = Pick<AppState, "registeredLsps" | "provider">;
+type Dependencies = Pick<AppState, "registeredLsps" | "provider" | "registeredLspsMetadata">;
 
 export default async (config: Config, appState: Dependencies) => {
   const { network = 1, address = await lspCreator.getAddress(network) } = config;
-  const { registeredLsps, provider } = appState;
+  const { registeredLsps, provider, registeredLspsMetadata } = appState;
 
   const contract = lspCreator.connect(address, provider);
 
@@ -23,8 +23,11 @@ export default async (config: Config, appState: Dependencies) => {
       endBlock
     );
     const { contracts } = lspCreator.getEventState(events);
-    await bluebird.map(Object.keys(contracts || {}), (x) => {
-      return registeredLsps.add(x);
+    if (!contracts) return;
+    await bluebird.map(Object.keys(contracts), (address) => {
+      const blockNumber = contracts[address].blockNumber;
+      registeredLspsMetadata.set(address, { blockNumber });
+      return registeredLsps.add(address);
     });
   }
 

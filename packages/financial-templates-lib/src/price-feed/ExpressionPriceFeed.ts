@@ -46,7 +46,7 @@ export class ExpressionPriceFeed extends PriceFeedInterface {
   private readonly expressionCode: math.EvalFunction;
 
   /**
-   * @notice Constructs the DominationFinancePriceFeed.
+   * @notice Constructs the ExpressionPriceFeed.
    * @param {Object} priceFeedMap an object mapping from price feed names to the price feed objects.
    *                 Ex:
    *                 {
@@ -69,13 +69,13 @@ export class ExpressionPriceFeed extends PriceFeedInterface {
     this.decimals = decimals;
   }
 
-  public async getHistoricalPrice(time: number | string, verbose = false): Promise<BN> {
+  public async getHistoricalPrice(time: number | string, ancillaryData: string, verbose = false): Promise<BN> {
     const historicalPrices: { [name: string]: math.BigNumber } = {};
     const errors: any[] = [];
     await Promise.all(
       Object.entries(this.priceFeedMap).map(async ([name, pf]) => {
         const price = await pf
-          .getHistoricalPrice(Number(time), verbose)
+          .getHistoricalPrice(Number(time), ancillaryData, verbose)
           .then((value) => {
             if (!value) throw new Error(`Price feed ${name} returned null when calling getHistoricalPrice`);
             return value;

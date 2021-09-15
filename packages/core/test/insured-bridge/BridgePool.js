@@ -312,7 +312,7 @@ describe("BridgePool", () => {
     });
     Object.keys(relayData).forEach((key) => {
       // Skip relayData params that are not used by the contract to construct ancillary data,
-      if (key !== "instantRelayer" && key !== "relayState" && key !== "priceRequestTime") {
+      if (key === "realizedLpFeePct") {
         // Set addresses to lower case and strip leading "0x"'s in order to recreate how Solidity encodes addresses
         // to utf8.
         if (relayData[key].toString().startsWith("0x")) {
@@ -504,10 +504,12 @@ describe("BridgePool", () => {
         .send({ from: disputer });
       assert(await didContractThrow(bridgePool.methods.speedUpRelay(depositData).call({ from: instantRelayer })));
 
-      // Submit another relay and check that speed up transaction will succeed.
+      // Submit another relay and check that speed up transaction will succeed. Advance time so that
+      // price request data is different.
       await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
       // Cache price request timestamp.
+      await advanceTime(1);
       const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
 
@@ -649,9 +651,11 @@ describe("BridgePool", () => {
         .send({ from: disputer });
 
       // Mint another relayer a bond to relay again and check that the instant relayer address is migrated:
+      // Advance time so that price request is different.
       await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
       // Cache price request timestamp.
+      await advanceTime(1);
       const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
 
