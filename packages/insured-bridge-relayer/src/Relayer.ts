@@ -92,7 +92,7 @@ export class Relayer {
               realizedLpFeePct,
               relayableDeposit,
             });
-            // await this.speedUpRelay(relayableDeposit.deposit);
+            await this.speedUpRelay(relayableDeposit.deposit);
             break;
           case ShouldRelay.Instant:
             this.logger.debug({
@@ -154,9 +154,9 @@ export class Relayer {
     const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit);
     const slowRelayTx = bridgePool.methods.relayDeposit(
       deposit.depositId,
-      deposit.timestamp,
-      deposit.recipient,
-      deposit.sender,
+      deposit.depositTimestamp,
+      deposit.l1Recipient,
+      deposit.l2Sender,
       deposit.amount,
       deposit.slowRelayFeePct,
       deposit.instantRelayFeePct,
@@ -196,12 +196,36 @@ export class Relayer {
         });
       else throw receipt;
     } catch (error) {
-      this.logger.error({ at: "InsuredBridgeRelayer#Relayer", type: "Something went wrong slow relaying!", error });
+      this.logger.error({ at: "InsuredBridgeRelayer#Relayer", type: "Something errored slow relaying!", error });
     }
   }
 
-  private async speedUpRelay(/* deposit: Deposit*/) {
-    // TODO: implement
+  private async speedUpRelay(deposit: Deposit) {
+    const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit);
+    const SpeedUpRelayTx = bridgePool.methods.speedUpRelay(deposit as any);
+
+    await this.gasEstimator.update();
+    try {
+      const { receipt, transactionConfig } = await runTransaction({
+        web3: this.l1Client.l1Web3,
+        transaction: (SpeedUpRelayTx as unknown) as TransactionType,
+        transactionConfig: { gasPrice: this.gasEstimator.getCurrentFastPrice().toString(), from: this.account },
+        availableAccounts: 1,
+      });
+
+      if (receipt.events)
+        this.logger.info({
+          at: "InsuredBridgeRelayer#Relayer",
+          type: "Relay instantly sped up 🚀",
+          tx: receipt.transactionHash,
+          depositHash: receipt.events.RelaySpedUp.returnValues.depositHash,
+          instantRelayer: receipt.events.RelaySpedUp.returnValues.instantRelayer,
+          transactionConfig,
+        });
+      else throw receipt;
+    } catch (error) {
+      this.logger.error({ at: "InsuredBridgeRelayer#Relayer", type: "Something errored instantly relaying!", error });
+    }
   }
 
   private async instantRelay(/* deposit: Deposit*/) {

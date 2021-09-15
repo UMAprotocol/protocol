@@ -24,12 +24,12 @@ export enum ClientRelayState {
 
 export interface Relay {
   depositId: number;
-  sender: string;
+  l2Sender: string;
   slowRelayer: string;
   disputedSlowRelayers: string[];
   instantRelayer: string;
   depositTimestamp: number;
-  recipient: string;
+  l1Recipient: string;
   l1Token: string;
   amount: string;
   slowRelayFeePct: string;
@@ -154,12 +154,12 @@ export class InsuredBridgeL1Client {
       for (const depositRelayedEvent of depositRelayedEvents) {
         const relayData: Relay = {
           depositId: Number(depositRelayedEvent.returnValues.depositId),
-          sender: depositRelayedEvent.returnValues.sender,
+          l2Sender: depositRelayedEvent.returnValues.l2Sender,
           slowRelayer: depositRelayedEvent.returnValues.slowRelayer,
           disputedSlowRelayers: [],
           instantRelayer: ZERO_ADDRESS,
-          depositTimestamp: Number(depositRelayedEvent.returnValues.depositTimestamp),
-          recipient: depositRelayedEvent.returnValues.recipient,
+          depositTimestamp: depositRelayedEvent.returnValues.depositTimestamp,
+          l1Recipient: depositRelayedEvent.returnValues.l1Recipient,
           l1Token: depositRelayedEvent.returnValues.l1Token,
           amount: depositRelayedEvent.returnValues.amount,
           slowRelayFeePct: depositRelayedEvent.returnValues.slowRelayFeePct,

@@ -110,7 +110,7 @@ describe("BridgePool", () => {
     depositor,
     relayer,
     liquidityProvider,
-    recipient,
+    l1Recipient,
     instantRelayer,
     disputer,
     rando;
@@ -139,7 +139,7 @@ describe("BridgePool", () => {
       [
         depositData.depositId,
         depositData.depositTimestamp,
-        depositData.recipient,
+        depositData.l1Recipient,
         depositData.l2Sender,
         depositData.l1Token,
         depositData.amount,
@@ -160,7 +160,7 @@ describe("BridgePool", () => {
       depositor,
       relayer,
       liquidityProvider,
-      recipient,
+      l1Recipient,
       l2Token,
       instantRelayer,
       disputer,
@@ -251,7 +251,7 @@ describe("BridgePool", () => {
     depositData = {
       depositId: 1,
       depositTimestamp: (await optimisticOracle.methods.getCurrentTime().call()).toString(),
-      recipient: recipient,
+      l1Recipient: l1Recipient,
       l2Sender: depositor,
       l1Token: l1Token.options.address,
       amount: relayAmount,
@@ -408,10 +408,10 @@ describe("BridgePool", () => {
       await assertEventEmitted(txn, bridgePool, "DepositRelayed", (ev) => {
         return (
           ev.depositId.toString() === depositData.depositId.toString() &&
-          ev.sender === depositData.l2Sender &&
+          ev.l2Sender === depositData.l2Sender &&
           ev.slowRelayer === relayer &&
           ev.depositTimestamp === depositData.depositTimestamp &&
-          ev.recipient === depositData.recipient &&
+          ev.l1Recipient === depositData.l1Recipient &&
           ev.l1Token === depositData.l1Token &&
           ev.amount === depositData.amount &&
           ev.slowRelayFeePct === depositData.slowRelayFeePct &&
@@ -459,7 +459,7 @@ describe("BridgePool", () => {
             .relayDeposit(
               depositData.depositId,
               depositData.depositTimestamp,
-              depositData.recipient,
+              depositData.l1Recipient,
               depositData.l2Sender,
               depositData.amount,
               depositData.slowRelayFeePct,
@@ -535,7 +535,7 @@ describe("BridgePool", () => {
         "Instant Relayer should transfer relay amount"
       );
       assert.equal(
-        (await l1Token.methods.balanceOf(depositData.recipient).call()).toString(),
+        (await l1Token.methods.balanceOf(depositData.l1Recipient).call()).toString(),
         instantRelayAmountSubFee,
         "Recipient should receive the full amount, minus slow & instant fees"
       );
@@ -822,7 +822,7 @@ describe("BridgePool", () => {
         "OptimisticOracle should refund proposal bond"
       );
 
-      // - Bridge pool should have the amount original pool liquidity minus the amount sent to recipient and amount
+      // - Bridge pool should have the amount original pool liquidity minus the amount sent to l1Recipient and amount
       // sent to slow relayer. This is equivalent to the initial pool liquidity - the relay amount + realized LP fee.
       assert.equal(
         (await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(),
@@ -832,7 +832,7 @@ describe("BridgePool", () => {
 
       // - Recipient should receive the bridged amount minus the slow relay fee and the LP fee.
       assert.equal(
-        (await l1Token.methods.balanceOf(recipient).call()).toString(),
+        (await l1Token.methods.balanceOf(l1Recipient).call()).toString(),
         slowRelayAmountSubFee,
         "Recipient should have bridged amount minus fees"
       );
@@ -861,7 +861,7 @@ describe("BridgePool", () => {
       // Check token balances.
       // - Slow relayer should get back their proposal bond from OO and reward from BridgePool.
       // - Fast relayer should get reward from BridgePool and the relayed amount, minus LP and slow withdraw fee. This
-      // is equivalent to what the recipient received + the instant relayer fee.
+      // is equivalent to what the l1Recipient received + the instant relayer fee.
       assert.equal(
         toBN(await l1Token.methods.balanceOf(relayer).call())
           .sub(toBN(relayerBalanceBefore))
@@ -886,7 +886,7 @@ describe("BridgePool", () => {
         toBN(initialPoolLiquidity)
           .sub(toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount).add(realizedSlowRelayFeeAmount))
           .toString(),
-        "BridgePool should have balance reduced by relayed amount to recipient"
+        "BridgePool should have balance reduced by relayed amount to l1Recipient"
       );
     });
     it("Does not revert if price was already settled on OptimisticOracle", async () => {
@@ -1097,7 +1097,7 @@ describe("BridgePool", () => {
 
       // Next, To simulate finalization of L2->L1 token transfers due to bridging (via the canonical bridge) send tokens
       // directly to the bridgePool. Note that on L1 this is exactly how this will happen as the finalization of bridging
-      // occurs without informing the recipient (tokens are just "sent"). Validate the sync method updates correctly.
+      // occurs without informing the l1Recipient (tokens are just "sent"). Validate the sync method updates correctly.
       // Also increment time such that we are past the 1 week liveness from OO. increment by 5 days (432000s).
       await advanceTime(432000);
 
@@ -1136,7 +1136,7 @@ describe("BridgePool", () => {
       depositData.depositId = depositData.depositId + 1;
       depositData.depositTimestamp = depositData.depositTimestamp + 172800;
       depositData.amount = toWei("50");
-      depositData.recipient = rando;
+      depositData.l1Recipient = rando;
       depositData.quoteTimestamp = depositData.quoteTimestamp + 172800;
 
       await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });

@@ -24,7 +24,7 @@ interface Params {
 interface RelayAncillaryData {
   depositId: number;
   depositTimestamp: number;
-  recipient: string;
+  l1Recipient: string;
   l2Sender: string;
   l1Token: string;
   amount: number;
@@ -74,9 +74,9 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
     const matchedDeposit = this.deposits.filter(
       (deposit: Deposit) =>
         deposit.depositId === parsedAncillaryData.depositId &&
-        deposit.timestamp === parsedAncillaryData.depositTimestamp &&
-        deposit.recipient === toChecksumAddress("0x" + parsedAncillaryData.recipient) &&
-        deposit.sender === toChecksumAddress("0x" + parsedAncillaryData.l2Sender) &&
+        deposit.depositTimestamp === parsedAncillaryData.depositTimestamp &&
+        deposit.l1Recipient === toChecksumAddress("0x" + parsedAncillaryData.l1Recipient) &&
+        deposit.l2Sender === toChecksumAddress("0x" + parsedAncillaryData.l2Sender) &&
         deposit.l1Token === toChecksumAddress("0x" + parsedAncillaryData.l1Token) &&
         deposit.amount === parsedAncillaryData.amount.toString() &&
         deposit.slowRelayFeePct === parsedAncillaryData.slowRelayFeePct.toString() &&

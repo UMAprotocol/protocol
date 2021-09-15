@@ -61,8 +61,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         uint64 depositId;
         uint64 depositTimestamp;
         address l2Sender;
-        address recipient;
-        address l1Token;
+        address l1Recipient;
+        address l1Token; // todo: we can remove this prop. it's not needed as this contract has a unique l1 token.
         uint256 amount;
         uint64 slowRelayFeePct;
         uint64 instantRelayFeePct;
@@ -93,10 +93,10 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     event LiquidityRemoved(address indexed token, uint256 amount, uint256 lpTokensBurnt, address liquidityProvider);
     event DepositRelayed(
         uint64 depositId,
-        address indexed sender,
+        address indexed l2Sender,
         address slowRelayer,
         uint64 depositTimestamp,
-        address recipient,
+        address l1Recipient,
         address l1Token,
         uint256 amount,
         uint64 slowRelayFeePct,
@@ -200,7 +200,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
      * @dev Caller must have approved this contract to spend the total bond for `l1Token`.
      * @param depositId Unique ID corresponding to deposit order that caller wants to relay.
      * @param depositTimestamp Timestamp of Deposit emitted by L2 contract when order was initiated.
-     * @param recipient Address on this network who should receive the relayed deposit.
+     * @param l1Recipient Address on this network who should receive the relayed deposit.
      * @param l2Sender Address on the L2 network of depositor.
      * @param amount Amount deposited on L2 to be brought over to L1.
      * @param slowRelayFeePct Max fraction of `amount` that the depositor is willing to pay as a slow relay fee.
@@ -212,7 +212,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     function relayDeposit(
         uint64 depositId,
         uint64 depositTimestamp,
-        address recipient,
+        address l1Recipient,
         address l2Sender,
         uint256 amount,
         uint64 slowRelayFeePct,
@@ -232,7 +232,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
                 depositId: depositId,
                 depositTimestamp: depositTimestamp,
                 l2Sender: l2Sender,
-                recipient: recipient,
+                l1Recipient: l1Recipient,
                 l1Token: address(l1Token),
                 amount: amount,
                 slowRelayFeePct: slowRelayFeePct,
@@ -247,7 +247,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         );
 
         // If no pending relay for this deposit, then associate the caller's relay attempt with it. Copy over the
-        // instant relayer so that the recipient cannot receive double payments. This means that once a relay is
+        // instant relayer so that the l1Recipient cannot receive double payments. This means that once a relay is
         // disputed, it cant be sped up a second time (must finalize via the slow relay).
         uint256 priceRequestTime = getCurrentTime();
         RelayData memory relayData =
@@ -292,7 +292,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
     }
 
     /**
-     * @notice Instantly relay a deposit amount minus fees to the recipient. Instant relayer earns a reward following
+     * @notice Instantly relay a deposit amount minus fees to the l1Recipient. Instant relayer earns a reward following
      * the pending relay challenge period.
      * @dev We assume that the caller has performed an off-chain check that the deposit data they are attempting to
      * relay is valid. If the deposit data is invalid, then the instant relayer has no recourse
@@ -314,7 +314,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         );
         relay.instantRelayer = msg.sender;
 
-        // Pull relay amount minus fees from caller and send to the deposit recipient. The total fees paid is the sum
+        // Pull relay amount minus fees from caller and send to the deposit l1Recipient. The total fees paid is the sum
         // of the LP fees, the relayer fees and the instant relay fee.
         uint256 feesTotal =
             _getAmountFromPct(
@@ -322,7 +322,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
                 _depositData.amount
             );
 
-        l1Token.safeTransferFrom(msg.sender, _depositData.recipient, _depositData.amount - feesTotal);
+        l1Token.safeTransferFrom(msg.sender, _depositData.l1Recipient, _depositData.amount - feesTotal);
 
         emit RelaySpedUp(depositHash, msg.sender);
     }
@@ -354,9 +354,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         // Update the relay state to Finalized. This prevents any re-settling of a relay.
         relay.relayState = RelayState.Finalized;
 
-        // Reward relayers and pay out recipient.
+        // Reward relayers and pay out l1Recipient.
         // At this point there are two possible cases:
-        // - This was a slow relay: In this case, a) pay the slow relayer their reward and b) pay the recipient of the
+        // - This was a slow relay: In this case, a) pay the slow relayer their reward and b) pay the l1Recipient of the
         //      amount minus the realized LP fee and the slow Relay fee. The transfer was not sped up so no instant fee.
         // - This was a instant relay: In this case, a) pay the slow relayer their reward and b) pay the instant relayer
         //      the full bridging amount, minus the realized LP fee and minus the slow relay fee. When the instant
@@ -368,7 +368,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
                 _getAmountFromPct(relay.realizedLpFeePct + _depositData.slowRelayFeePct, _depositData.amount);
 
         l1Token.safeTransfer(
-            relay.instantRelayer != address(0) ? relay.instantRelayer : _depositData.recipient,
+            relay.instantRelayer != address(0) ? relay.instantRelayer : _depositData.l1Recipient,
             instantRelayerOrRecipientAmount
         );
 
@@ -500,8 +500,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         );
         intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
             intermediateAncillaryData,
-            "recipient",
-            _depositData.recipient
+            "l1Recipient",
+            _depositData.l1Recipient
         );
         intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
             intermediateAncillaryData,
@@ -606,7 +606,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
                 abi.encode(
                     _depositData.depositId,
                     _depositData.depositTimestamp,
-                    _depositData.recipient,
+                    _depositData.l1Recipient,
                     _depositData.l2Sender,
                     _depositData.l1Token,
                     _depositData.amount,
@@ -690,7 +690,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
             _depositData.l2Sender,
             msg.sender,
             _depositData.depositTimestamp,
-            _depositData.recipient,
+            _depositData.l1Recipient,
             _depositData.l1Token,
             _depositData.amount,
             _depositData.slowRelayFeePct,

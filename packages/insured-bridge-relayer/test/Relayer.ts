@@ -205,9 +205,9 @@ describe("Relayer.ts", function () {
       deposit = {
         depositId: 0,
         depositHash: "0x123",
-        timestamp: 420,
-        sender: l2Depositor,
-        recipient: l2Depositor,
+        depositTimestamp: 420,
+        l2Sender: l2Depositor,
+        l1Recipient: l2Depositor,
         l1Token: l1Token.options.address,
         amount: depositAmount,
         slowRelayFeePct: defaultSlowRelayFeePct,
@@ -380,6 +380,51 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Slow Relay executed"));
+    });
+    it("Can correctly detect and produce speedup relays", async function () {
+      // Make a deposit on L2 and relay it. Then, check the relayer picks this up and speeds up the relay.
+      await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
+      const currentBlockTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount,
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          currentBlockTime
+        )
+        .send({ from: l2Depositor });
+
+      // Relay it from the tests to mimic someone else doing the slow relay.
+      await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await bridgePool.methods
+        .relayDeposit(
+          "0",
+          currentBlockTime,
+          l2Depositor,
+          l2Depositor,
+          depositAmount,
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          currentBlockTime,
+          defaultRealizedLpFeePct
+        )
+        .send({ from: l1Owner });
+
+      // Now, run the relayer. the bot should detect that a relay has been created but not yet sped up. It should
+      // correctly detect this and submit the relay speed up transaction.
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      // As the relayer does not have enough token balance to do the relay (0 minted) should do nothing .
+      await relayer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "Not relaying deposit"));
+
+      // Mint the relayer some tokens and try again.
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      await relayer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "Relay instantly sped up"));
     });
   });
 });
