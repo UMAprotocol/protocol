@@ -3,6 +3,7 @@ import { Obj } from "..";
 import * as uma from "@uma/sdk";
 import { utils, BigNumber, Contract } from "ethers";
 import assert from "assert";
+import Web3 from "web3";
 const { parseUnits, parseBytes32String } = utils;
 
 export const SCALING_MULTIPLIER: BigNumber = parseUnits("1");
@@ -147,4 +148,31 @@ export function parseEnvArray(str: string, delimiter = ","): string[] {
   if (str.length == 0) return [];
   if (!str.includes(delimiter)) return [];
   return str.split(delimiter).map((x) => x.trim());
+}
+
+export function getWeb3Websocket(url: string, options: Obj = {}) {
+  // pulled from common/src/ProviderUtils.ts
+  const defaults = {
+    clientConfig: {
+      maxReceivedFrameSize: 100000000, // Useful if requests result are large bytes - default: 1MiB
+      maxReceivedMessageSize: 100000000, // bytes - default: 8MiB
+    },
+    reconnect: {
+      auto: true, // Enable auto reconnection
+      delay: 5000, // ms
+      maxAttempts: 10,
+      onTimeout: false,
+    },
+  };
+  return new Web3(
+    new Web3.providers.WebsocketProvider(url, {
+      ...options,
+      ...defaults,
+    })
+  );
+}
+
+export function getWeb3(url: string, options: Obj = {}) {
+  if (url.startsWith("ws")) return getWeb3Websocket(url, options);
+  throw new Error("Only supporting websocket provider URLs for Web3");
 }

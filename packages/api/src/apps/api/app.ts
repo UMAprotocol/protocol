@@ -1,5 +1,4 @@
 import assert from "assert";
-import Web3 from "web3";
 import { ethers } from "ethers";
 import moment from "moment";
 
@@ -11,7 +10,7 @@ import * as Actions from "../../services/actions";
 import { ProcessEnv, AppState, Channels } from "../..";
 import { empStats, empStatsHistory, lsps } from "../../tables";
 import Zrx from "../../libs/zrx";
-import { Profile, parseEnvArray } from "../../libs/utils";
+import { Profile, parseEnvArray, getWeb3 } from "../../libs/utils";
 
 export default async (env: ProcessEnv) => {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
@@ -27,7 +26,7 @@ export default async (env: ProcessEnv) => {
   const provider = new ethers.providers.WebSocketProvider(env.CUSTOM_NODE_URL);
 
   // we need web3 for syth price feeds
-  const web3 = new Web3(env.CUSTOM_NODE_URL);
+  const web3 = getWeb3(env.CUSTOM_NODE_URL);
 
   // how often to run expensive state updates, defaults to 10 minutes
   const updateRateS = Number(env.UPDATE_RATE_S || 10 * 60);
