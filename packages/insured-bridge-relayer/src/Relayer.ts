@@ -153,8 +153,8 @@ export class Relayer {
   private async slowRelay(deposit: Deposit, realizedLpFee: BN) {
     const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit);
     const slowRelayTx = bridgePool.methods.relayDeposit(
+      deposit.chainId,
       deposit.depositId,
-      deposit.depositTimestamp,
       deposit.l1Recipient,
       deposit.l2Sender,
       deposit.amount,
@@ -178,10 +178,10 @@ export class Relayer {
           at: "InsuredBridgeRelayer#Relayer",
           type: "Slow Relay executed  🐌",
           tx: receipt.transactionHash,
+          chainId: receipt.events.DepositRelayed.returnValues.chainId,
           depositId: receipt.events.DepositRelayed.returnValues.depositId,
           sender: receipt.events.DepositRelayed.returnValues.sender,
           slowRelayer: receipt.events.DepositRelayed.returnValues.slowRelayer,
-          depositTimestamp: receipt.events.DepositRelayed.returnValues.depositTimestamp,
           recipient: receipt.events.DepositRelayed.returnValues.recipient,
           l1Token: receipt.events.DepositRelayed.returnValues.l1Token,
           amount: receipt.events.DepositRelayed.returnValues.amount,
@@ -189,7 +189,6 @@ export class Relayer {
           instantRelayFeePct: receipt.events.DepositRelayed.returnValues.instantRelayFeePct,
           quoteTimestamp: receipt.events.DepositRelayed.returnValues.quoteTimestamp,
           realizedLpFeePct: receipt.events.DepositRelayed.returnValues.realizedLpFeePct,
-          priceRequestAncillaryDataHash: receipt.events.DepositRelayed.returnValues.priceRequestAncillaryDataHash,
           depositHash: receipt.events.DepositRelayed.returnValues.depositHash,
           depositContract: receipt.events.DepositRelayed.returnValues.depositContract,
           transactionConfig,
