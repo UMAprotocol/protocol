@@ -418,7 +418,7 @@ describe("InsuredBridgeL1Client", function () {
       assert.equal(JSON.stringify(client.getAllRelayedDeposits()), JSON.stringify([expectedRelayedDepositInformation]));
       assert.equal(JSON.stringify(client.getPendingRelayedDeposits()), JSON.stringify([]));
 
-      // Next, dispute the relay. The state should update accordingly in the client.
+      // Next, dispute the relay.
       await timer.methods.setCurrentTime(Number(await timer.methods.getCurrentTime().call()) + 1).send({ from: owner });
       await l1Token.methods.mint(disputer, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(optimisticOracle.options.address, totalRelayBond).send({ from: disputer });
@@ -430,11 +430,6 @@ describe("InsuredBridgeL1Client", function () {
           relayAncillaryData
         )
         .send({ from: disputer });
-
-      await client.update();
-      expectedRelayedDepositInformation.relayState = 2; // disputed
-      assert.equal(JSON.stringify(client.getAllRelayedDeposits()), JSON.stringify([expectedRelayedDepositInformation]));
-      assert.equal(JSON.stringify(client.getPendingRelayedDeposits()), JSON.stringify([]));
 
       // Can re-relay the deposit.
       await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
