@@ -2,7 +2,7 @@ import assert from "assert";
 import { ethers } from "ethers";
 import moment from "moment";
 
-import { tables, Coingecko, utils, Multicall } from "@uma/sdk";
+import { tables, Coingecko, utils, Multicall, Multicall2 } from "@uma/sdk";
 
 import * as Services from "../../services";
 import Express from "../../services/express-channels";
@@ -17,6 +17,7 @@ export default async (env: ProcessEnv) => {
   assert(env.EXPRESS_PORT, "requires EXPRESS_PORT");
   assert(env.zrxBaseUrl, "requires zrxBaseUrl");
   assert(env.MULTI_CALL_ADDRESS, "requires MULTI_CALL_ADDRESS");
+  assert(env.MULTI_CALL_2_ADDRESS, "requires MULTI_CALL_2_ADDRESS");
   const lspCreatorAddresses = parseEnvArray(env.lspCreatorAddresses || "");
 
   // debug flag for more verbose logs
@@ -109,6 +110,7 @@ export default async (env: ProcessEnv) => {
     longAddresses: new Set<string>(),
     shortAddresses: new Set<string>(),
     multicall: new Multicall(env.MULTI_CALL_ADDRESS, provider),
+    multicall2: new Multicall2(env.MULTI_CALL_2_ADDRESS, provider),
     lsps: {
       active: lsps.JsMap("Active LSP"),
       expired: lsps.JsMap("Expired LSP"),

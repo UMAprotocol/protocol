@@ -131,6 +131,28 @@ export const BatchRead = (multicall: uma.Multicall) => async (
   );
 };
 
+export const BatchReadWithErrors = (multicall2: uma.Multicall2) => async (
+  calls: [string, (x: any) => any][],
+  contract: Contract
+) => {
+  // multicall batch takes array of {method} objects
+  const results = await multicall2
+    .batch(
+      contract,
+      calls.map(([method]) => ({ method }))
+    )
+    .readWithErrors();
+  // convert results of multicall, an array of responses, into a key value, keyed by contract method
+  return Object.fromEntries(
+    lodash.zip(calls, results).map(([method, result]) => {
+      if (method == null) return [];
+      const [key, map] = method;
+      if (!result?.result) return [key, undefined];
+      return [key, map(result.result)];
+    })
+  );
+};
+
 export const Profile = (enabled: boolean | undefined) => {
   return (msg: string) => {
     // if not enabled, dont do anything

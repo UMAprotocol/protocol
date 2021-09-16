@@ -117,4 +117,5 @@ export type AppState = {
   longAddresses: Set<string>;
   shortAddresses: Set<string>;
   multicall: uma.Multicall;
+  multicall2: uma.Multicall2;
 };
