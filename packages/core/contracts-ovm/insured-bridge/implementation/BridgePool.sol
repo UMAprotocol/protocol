@@ -302,21 +302,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
      * reimbursed because someone else will be incentivized to resubmit the relay to earn slow relayer rewards. Once the
      * valid relay is finalized, the instant relayer will be reimbursed.
      * @dev Caller must have approved this contract to spend the deposit amount of L1 tokens to relay. There can only
-     * be one instant relayer per relay attempt and disputed relays cannot be sped up.
+     * be one instant relayer per relay attempt.
      * @param _depositData Unique set of L2 deposit data that caller is trying to instantly relay.
      */
     function speedUpRelay(DepositData memory _depositData) public {
         bytes32 depositHash = _getDepositHash(_depositData);
         RelayData storage relay = relays[depositHash];
-        require(
-            _getOptimisticOracle().getState(
-                address(this),
-                bridgeAdmin.identifier(),
-                relay.priceRequestTime,
-                getRelayAncillaryData(_depositData, relay)
-            ) != OptimisticOracleInterface.State.Disputed,
-            "Cannot speed up disputed relay"
-        );
         require(
             relays[depositHash].relayState == RelayState.Pending && relays[depositHash].instantRelayer == address(0),
             "Relay can not be sped up"
