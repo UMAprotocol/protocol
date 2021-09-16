@@ -210,7 +210,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
         );
 
         emit FundsDeposited(
-            69, // In Solidity v8 can use chainId: https://docs.soliditylang.org/en/v0.8.0/units-and-global-variables.html
+            10, // In Solidity v8 can use chainId: https://docs.soliditylang.org/en/v0.8.0/units-and-global-variables.html
             numberOfDeposits, // depositId: the current number of deposits acts as a deposit ID (nonce).
             l1Recipient,
             msg.sender,

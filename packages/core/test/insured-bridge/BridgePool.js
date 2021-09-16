@@ -249,7 +249,7 @@ describe("BridgePool", () => {
 
     // Store expected relay data that we'll use to verify contract state:
     depositData = {
-      chainId: 69,
+      chainId: 10,
       depositId: 1,
       l1Recipient: l1Recipient,
       l2Sender: depositor,

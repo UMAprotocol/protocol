@@ -97,8 +97,7 @@ export class InsuredBridgeL1Client {
     return this.getRelayedDepositsForL1Token(l1Token).filter((relay: Relay) => relay.relayState === RelayState.Pending);
   }
 
-  async calculateRealizedLpFeePctForDeposit(deposit: Deposit): Promise<BN> {
-    console.log(deposit);
+  async calculateRealizedLpFeePctForDeposit(/* deposit: Deposit*/): Promise<BN> {
     return toBN(this.toWei("0.05"));
   }
 

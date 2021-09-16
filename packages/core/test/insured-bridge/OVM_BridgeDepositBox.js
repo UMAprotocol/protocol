@@ -223,7 +223,7 @@ describe("OVM_BridgeDepositBox", () => {
 
       await assertEventEmitted(tx, depositBox, "FundsDeposited", (ev) => {
         return (
-          ev.chainId == "69" &&
+          ev.chainId == "10" &&
           ev.depositId == "0" &&
           ev.l1Recipient == user1 &&
           ev.l2Sender == user1 &&

@@ -229,7 +229,7 @@ describe("InsuredBridgePriceFeed", function () {
     // Store expected relay data that we'll use to verify contract state:
     const expectedDepositTimestamp = Number(await optimisticOracle.methods.getCurrentTime().call());
     depositData = {
-      chainId: 69,
+      chainId: 10,
       depositId: 0,
       l1Recipient: l1Recipient,
       l2Sender: depositor,
