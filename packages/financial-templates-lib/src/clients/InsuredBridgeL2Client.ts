@@ -10,8 +10,8 @@ export interface Deposit {
   chainId: number;
   depositId: number;
   depositHash: string;
-  sender: string;
-  recipient: string;
+  l1Recipient: string;
+  l2Sender: string;
   l1Token: string;
   amount: string;
   slowRelayFeePct: string;
@@ -65,12 +65,13 @@ export class InsuredBridgeL2Client {
     ]);
 
     for (const depositRelayedEvent of depositRelayedEvents) {
+      console.log("depositRelayedEvent", depositRelayedEvent);
       const depositData = {
         chainId: Number(depositRelayedEvent.returnValues.chainId),
         depositId: Number(depositRelayedEvent.returnValues.depositId),
         depositHash: "", // Filled in after initialization of the remaining variables.
-        sender: depositRelayedEvent.returnValues.sender,
-        recipient: depositRelayedEvent.returnValues.recipient,
+        l1Recipient: depositRelayedEvent.returnValues.l1Recipient,
+        l2Sender: depositRelayedEvent.returnValues.l2Sender,
         l1Token: depositRelayedEvent.returnValues.l1Token,
         amount: depositRelayedEvent.returnValues.amount,
         slowRelayFeePct: depositRelayedEvent.returnValues.slowRelayFeePct,
@@ -87,13 +88,14 @@ export class InsuredBridgeL2Client {
   }
 
   generateDepositHash = (depositData: Deposit): string => {
+    console.log("depositData", depositData);
     const depositDataAbiEncoded = this.l2Web3.eth.abi.encodeParameters(
       ["uint8", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint64"],
       [
         depositData.chainId,
         depositData.depositId,
-        depositData.recipient,
-        depositData.sender,
+        depositData.l1Recipient,
+        depositData.l2Sender,
         depositData.l1Token,
         depositData.amount,
         depositData.slowRelayFeePct,

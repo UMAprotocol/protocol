@@ -24,7 +24,7 @@ interface Params {
 interface RelayAncillaryData {
   chainId: number;
   depositId: number;
-  recipient: string;
+  l1Recipient: string;
   l2Sender: string;
   l1Token: string;
   amount: number;
@@ -75,8 +75,8 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
       (deposit: Deposit) =>
         deposit.chainId === parsedAncillaryData.chainId &&
         deposit.depositId === parsedAncillaryData.depositId &&
-        deposit.recipient === toChecksumAddress("0x" + parsedAncillaryData.recipient) &&
-        deposit.sender === toChecksumAddress("0x" + parsedAncillaryData.l2Sender) &&
+        deposit.l1Recipient === toChecksumAddress("0x" + parsedAncillaryData.l1Recipient) &&
+        deposit.l2Sender === toChecksumAddress("0x" + parsedAncillaryData.l2Sender) &&
         deposit.l1Token === toChecksumAddress("0x" + parsedAncillaryData.l1Token) &&
         deposit.amount === parsedAncillaryData.amount.toString() &&
         deposit.slowRelayFeePct === parsedAncillaryData.slowRelayFeePct.toString() &&
@@ -97,12 +97,9 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
     }
 
     // Validate relays proposed realized fee percentage.
-    const expectedRealizedFeePct = this.l1Client.calculateRealizedLpFeesPctForDeposit(/* matchedDeposit[0] */);
-    if (expectedRealizedFeePct !== parsedAncillaryData.realizedLpFeePct.toString()) {
-      this.logger.debug({
-        at: "InsuredBridgePriceFeed",
-        message: "Matched deposit realized fee % is incorrect",
-      });
+    const expectedRealizedFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(matchedDeposit[0]);
+    if (expectedRealizedFeePct.toString() !== parsedAncillaryData.realizedLpFeePct.toString()) {
+      this.logger.debug({ at: "InsuredBridgePriceFeed", message: "Matched deposit realized fee % is incorrect" });
       return toBNWei(isRelayValid.No);
     }
 

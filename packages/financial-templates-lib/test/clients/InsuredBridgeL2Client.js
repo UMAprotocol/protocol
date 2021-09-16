@@ -40,8 +40,8 @@ describe("InsuredBridgeL2Client", () => {
       [
         depositData.chainId,
         depositData.depositId,
-        depositData.recipient,
-        depositData.sender,
+        depositData.l1Recipient,
+        depositData.l2Sender,
         depositData.l1Token,
         depositData.amount,
         depositData.slowRelayFeePct,
@@ -112,13 +112,13 @@ describe("InsuredBridgeL2Client", () => {
         chainId: 69,
         depositId: 0,
         depositHash: "",
-        sender: user1,
-        recipient: user1,
+        l1Recipient: user1,
+        l2Sender: user1,
         l1Token: l1TokenAddress,
         amount: depositAmount,
-        slowRelayFeePct: slowRelayFeePct,
-        instantRelayFeePct: instantRelayFeePct,
-        quoteTimestamp: quoteTimestamp,
+        slowRelayFeePct,
+        instantRelayFeePct,
+        quoteTimestamp,
       },
     ];
     expectedDeposits[0].depositHash = generateDepositHash(expectedDeposits[0]);
@@ -144,12 +144,12 @@ describe("InsuredBridgeL2Client", () => {
       chainId: 69,
       depositId: 1, // ID should increment, as expected.
       depositHash: "",
-      sender: user1,
-      recipient: user2,
+      l1Recipient: user2,
+      l2Sender: user1,
       l1Token: l1TokenAddress,
       amount: depositAmount,
-      slowRelayFeePct: slowRelayFeePct,
-      instantRelayFeePct: instantRelayFeePct,
+      slowRelayFeePct,
+      instantRelayFeePct,
       quoteTimestamp: quoteTimestamp2,
     });
     expectedDeposits[1].depositHash = generateDepositHash(expectedDeposits[1]);

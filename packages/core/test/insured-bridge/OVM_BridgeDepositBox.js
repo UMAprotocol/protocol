@@ -225,8 +225,8 @@ describe("OVM_BridgeDepositBox", () => {
         return (
           ev.chainId == "69" &&
           ev.depositId == "0" &&
-          ev.sender == user1 &&
-          ev.recipient == user1 &&
+          ev.l1Recipient == user1 &&
+          ev.l2Sender == user1 &&
           ev.l1Token == l1TokenAddress &&
           ev.amount == depositAmount &&
           ev.slowRelayFeePct == slowRelayFeePct &&
@@ -342,7 +342,7 @@ describe("OVM_BridgeDepositBox", () => {
       });
 
       // We should be able to check the mock L2 Standard bridge and see that there was a function call to the withdrawTo
-      // method called by the Deposit box for the correct token, amount and recipient.
+      // method called by the Deposit box for the correct token, amount and l1Recipient.
       const tokenBridgingCallsToBridge = l2StandardBridge.smocked.withdrawTo.calls;
       assert.equal(tokenBridgingCallsToBridge.length, 1); // only 1 call
       const call = tokenBridgingCallsToBridge[0];

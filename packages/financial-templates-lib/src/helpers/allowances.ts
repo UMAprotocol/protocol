@@ -7,9 +7,8 @@ import type { GasEstimator } from "./GasEstimator";
 
 type ContractSendMethod = Parameters<typeof runTransaction>[0]["transaction"];
 
-// Sets `owner` allowance for `spender` to MAX_UINT_VAL, unless `spender` already has
-// an allowance > MAX_SAFE_ALLOWANCE. Return successful approval transaction data, or undefined
-// for skipped approvals.
+// Sets `owner` allowance for `spender` to MAX_UINT_VAL, unless `spender` already has an allowance > MAX_SAFE_ALLOWANCE.
+// Return successful approval transaction data, or undefined for skipped approvals.
 export const setAllowance = async (
   web3: Web3,
   gasEstimator: GasEstimator,

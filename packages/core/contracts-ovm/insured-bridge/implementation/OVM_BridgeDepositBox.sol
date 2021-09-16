@@ -80,8 +80,8 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
     event FundsDeposited(
         uint8 chainId,
         uint256 depositId,
-        address sender,
-        address recipient,
+        address l1Recipient,
+        address l2Sender,
         address l1Token,
         uint256 amount,
         uint64 slowRelayFeePct,
@@ -179,7 +179,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
      * @notice Called by L2 user to bridge funds between L2 and L1.
      * @dev Emits the `FundsDeposited` event which relayers listen for as part of the bridging action.
      * @dev The caller must first approve this contract to spend `amount` of `l2Token`.
-     * @param recipient L1 address that should receive the tokens.
+     * @param l1Recipient L1 address that should receive the tokens.
      * @param l2Token L2 token to deposit.
      * @param amount How many L2 tokens should be deposited.
      * @param slowRelayFeePct Max fraction of `amount` that the depositor is willing to pay as a slow relay fee.
@@ -188,7 +188,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
      *    depositor to know the L1 fees before submitting their deposit. Must be within 10 mins of the current time.
      */
     function deposit(
-        address recipient,
+        address l1Recipient,
         address l2Token,
         uint256 amount,
         uint64 slowRelayFeePct,
@@ -211,9 +211,9 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
 
         emit FundsDeposited(
             69, // In Solidity v8 can use chainId: https://docs.soliditylang.org/en/v0.8.0/units-and-global-variables.html
-            numberOfDeposits, // the current number of deposits acts as a deposit ID (nonce).
+            numberOfDeposits, // depositId: the current number of deposits acts as a deposit ID (nonce).
+            l1Recipient,
             msg.sender,
-            recipient,
             whitelistedTokens[l2Token].l1Token,
             amount,
             slowRelayFeePct,

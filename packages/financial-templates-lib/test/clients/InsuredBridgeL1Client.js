@@ -69,7 +69,7 @@ describe("InsuredBridgeL1Client", function () {
     relayer,
     instantRelayer,
     liquidityProvider,
-    recipient,
+    l1Recipient,
     l2Token,
     disputer,
     rando;
@@ -90,7 +90,7 @@ describe("InsuredBridgeL1Client", function () {
       [
         depositData.chainId,
         depositData.depositId,
-        depositData.recipient,
+        depositData.l1Recipient,
         depositData.l2Sender,
         depositData.l1Token,
         depositData.amount,
@@ -110,11 +110,11 @@ describe("InsuredBridgeL1Client", function () {
       relayId: relayData.relayId,
       chainId: depositData.chainId,
       depositId: depositData.depositId,
-      sender: depositData.l2Sender,
+      l2Sender: depositData.l2Sender,
       slowRelayer: relayData.slowRelayer,
       disputedSlowRelayers: [],
       instantRelayer: relayData.instantRelayer, // not sped up so should be 0x000...
-      recipient: depositData.recipient,
+      l1Recipient: depositData.l1Recipient,
       l1Token: depositData.l1Token,
       amount: depositData.amount,
       slowRelayFeePct: depositData.slowRelayFeePct,
@@ -136,7 +136,7 @@ describe("InsuredBridgeL1Client", function () {
       relayer,
       instantRelayer,
       liquidityProvider,
-      recipient,
+      l1Recipient,
       l2Token,
       disputer,
       rando,
@@ -235,7 +235,7 @@ describe("InsuredBridgeL1Client", function () {
     depositData = {
       chainId: 69,
       depositId: 1,
-      recipient: recipient,
+      l1Recipient: l1Recipient,
       l2Sender: depositor,
       l1Token: l1Token.options.address,
       amount: relayAmount,
@@ -521,7 +521,7 @@ describe("InsuredBridgeL1Client", function () {
       // Change some of the variables and and re-relay.
       depositData.depositId = 2;
       depositData.l2Sender = rando;
-      depositData.recipient = rando;
+      depositData.l1Recipient = rando;
       depositData.amount = toWei("4.2");
       relayData.realizedLpFeePct = toWei("0.11");
       relayData.slowRelayer = rando;
@@ -544,7 +544,7 @@ describe("InsuredBridgeL1Client", function () {
 
       // Again, change some more variable and relay something on the second bridgePool
       depositData.depositId = 3;
-      depositData.recipient = recipient;
+      depositData.l1Recipient = l1Recipient;
       depositData.l2Sender = depositor;
       depositData.l1Token = l1Token2.options.address;
       depositData.amount = toWei("4.21");

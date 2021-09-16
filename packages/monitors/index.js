@@ -26,7 +26,8 @@ const { CRMonitor } = require("./src/CRMonitor");
 const { SyntheticPegMonitor } = require("./src/SyntheticPegMonitor");
 
 // Contract ABIs and network Addresses.
-const { getAbi, getAddress, findContractVersion } = require("@uma/core");
+const { findContractVersion } = require("@uma/core");
+const { getAbi, getAddress } = require("@uma/contracts-node");
 const { getWeb3, SUPPORTED_CONTRACT_VERSIONS, PublicNetworks } = require("@uma/common");
 
 /**
@@ -130,7 +131,7 @@ async function run({
         );
 
       // Setup contract instances.
-      const voting = new web3.eth.Contract(getAbi("Voting", "1.2.2"), getAddress("Voting", networkId));
+      const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
       const financialContract = new web3.eth.Contract(
         getAbi(monitorConfig.contractType, monitorConfig.contractVersion),
         financialContractAddress

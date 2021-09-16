@@ -71,7 +71,7 @@ const minimumBridgingDelay = 60; // L2->L1 token bridging must wait at least thi
 const quoteTimestampOffset = 60; // 60 seconds into the past.
 
 describe("InsuredBridgePriceFeed", function () {
-  let accounts, owner, depositor, relayer, liquidityProvider, recipient;
+  let accounts, owner, depositor, relayer, liquidityProvider, l1Recipient;
 
   const generateRelayParams = (depositDataOverride = {}, relayDataOverride = {}) => {
     const _depositData = { ...depositData, ...depositDataOverride };
@@ -93,7 +93,7 @@ describe("InsuredBridgePriceFeed", function () {
       [
         depositData.chainId,
         depositData.depositId,
-        depositData.recipient,
+        depositData.l1Recipient,
         depositData.l2Sender,
         depositData.l1Token,
         depositData.amount,
@@ -110,7 +110,7 @@ describe("InsuredBridgePriceFeed", function () {
 
   before(async function () {
     accounts = await web3.eth.getAccounts();
-    [owner, depositor, relayer, liquidityProvider, recipient] = accounts;
+    [owner, depositor, relayer, liquidityProvider, l1Recipient] = accounts;
 
     finder = await Finder.new().send({ from: owner });
     collateralWhitelist = await AddressWhitelist.new().send({ from: owner });
@@ -231,7 +231,7 @@ describe("InsuredBridgePriceFeed", function () {
     depositData = {
       chainId: 69,
       depositId: 0,
-      recipient: recipient,
+      l1Recipient: l1Recipient,
       l2Sender: depositor,
       l1Token: l1Token.options.address,
       amount: relayAmount,
@@ -245,11 +245,10 @@ describe("InsuredBridgePriceFeed", function () {
       priceRequestTime: expectedDepositTimestamp,
       // This should match the realized fee % that the L1 client computes, otherwise the pricefeed will determine the
       // relay to be invalid.
-      realizedLpFeePct: l1Client.calculateRealizedLpFeesPctForDeposit(/* depositData */),
+      realizedLpFeePct: (await l1Client.calculateRealizedLpFeePctForDeposit(depositData)).toString(),
       slowRelayer: relayer,
       instantRelayer: ZERO_ADDRESS,
     };
-
     ({ depositHash, relayAncillaryData, relayAncillaryDataHash } = await generateRelayData(
       depositData,
       relayData,
@@ -273,7 +272,7 @@ describe("InsuredBridgePriceFeed", function () {
       const quoteTimestamp = Number(await timer.methods.getCurrentTime().call()) + quoteTimestampOffset;
       await depositBox.methods
         .deposit(
-          recipient,
+          l1Recipient,
           l2Token.options.address,
           relayAmount,
           defaultSlowRelayFeePct,
@@ -301,7 +300,7 @@ describe("InsuredBridgePriceFeed", function () {
       const quoteTimestamp = Number(await timer.methods.getCurrentTime().call()) + quoteTimestampOffset;
       await depositBox.methods
         .deposit(
-          recipient,
+          l1Recipient,
           l2Token.options.address,
           relayAmount,
           defaultSlowRelayFeePct,
@@ -341,7 +340,7 @@ describe("InsuredBridgePriceFeed", function () {
       assert.equal(
         await pricefeed.getHistoricalPrice(
           1,
-          await generateRelayAncillaryData({ ...depositData, recipient: ZERO_ADDRESS }, relayData, bridgePool)
+          await generateRelayAncillaryData({ ...depositData, l1Recipient: ZERO_ADDRESS }, relayData, bridgePool)
         ),
         toWei("0")
       );
@@ -400,7 +399,7 @@ describe("InsuredBridgePriceFeed", function () {
       const quoteTimestamp = Number(await timer.methods.getCurrentTime().call()) + quoteTimestampOffset;
       await depositBox.methods
         .deposit(
-          recipient,
+          l1Recipient,
           l2Token.options.address,
           relayAmount,
           defaultSlowRelayFeePct,
