@@ -23,19 +23,20 @@ export enum ClientRelayState {
 }
 
 export interface Relay {
+  relayId: number;
+  chainId: number;
   depositId: number;
   l2Sender: string;
   slowRelayer: string;
   disputedSlowRelayers: string[];
   instantRelayer: string;
-  depositTimestamp: number;
   l1Recipient: string;
   l1Token: string;
   amount: string;
   slowRelayFeePct: string;
   instantRelayFeePct: string;
+  quoteTimestamp: number;
   realizedLpFeePct: string;
-  priceRequestAncillaryDataHash: string;
   depositHash: string;
   depositContract: string;
   relayState: RelayState;
@@ -153,19 +154,20 @@ export class InsuredBridgeL1Client {
 
       for (const depositRelayedEvent of depositRelayedEvents) {
         const relayData: Relay = {
+          relayId: Number(depositRelayedEvent.returnValues.relayId),
+          chainId: Number(depositRelayedEvent.returnValues.chainId),
           depositId: Number(depositRelayedEvent.returnValues.depositId),
           l2Sender: depositRelayedEvent.returnValues.l2Sender,
           slowRelayer: depositRelayedEvent.returnValues.slowRelayer,
           disputedSlowRelayers: [],
           instantRelayer: ZERO_ADDRESS,
-          depositTimestamp: depositRelayedEvent.returnValues.depositTimestamp,
           l1Recipient: depositRelayedEvent.returnValues.l1Recipient,
           l1Token: depositRelayedEvent.returnValues.l1Token,
           amount: depositRelayedEvent.returnValues.amount,
           slowRelayFeePct: depositRelayedEvent.returnValues.slowRelayFeePct,
           instantRelayFeePct: depositRelayedEvent.returnValues.instantRelayFeePct,
+          quoteTimestamp: Number(depositRelayedEvent.returnValues.quoteTimestamp),
           realizedLpFeePct: depositRelayedEvent.returnValues.realizedLpFeePct,
-          priceRequestAncillaryDataHash: depositRelayedEvent.returnValues.priceRequestAncillaryDataHash,
           depositHash: depositRelayedEvent.returnValues.depositHash,
           depositContract: depositRelayedEvent.returnValues.depositContract,
           relayState: RelayState.Pending,
