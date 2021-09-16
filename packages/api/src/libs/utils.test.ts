@@ -99,4 +99,17 @@ describe("utils", function () {
     });
     assert.equal(plan, 0);
   });
+  it("BlockInterval", async function () {
+    let plan = 1;
+    async function update(start: number, end: number) {
+      plan--;
+      assert.equal(start, 1);
+      assert.equal(end, 10);
+    }
+    const tick = utils.BlockInterval(update, 1);
+    const result = await tick(10);
+    assert.equal(result.startBlock, 1);
+    assert.equal(result.endBlock, 10);
+    assert.equal(plan, 0);
+  });
 });

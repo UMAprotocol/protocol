@@ -25,7 +25,7 @@ export default async (config: Config, appState: Dependencies) => {
   const creatorServices = allAddresses.map((address) => LspCreator({ address, ...config }, appState));
 
   // run update on all creator services
-  async function update(startBlock?: number | "latest", endBlock?: number) {
+  async function update(startBlock?: number, endBlock?: number) {
     await bluebird.mapSeries(creatorServices, (service) => service.update(startBlock, endBlock));
   }
 

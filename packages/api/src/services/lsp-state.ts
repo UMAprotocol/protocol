@@ -91,7 +91,7 @@ export default (config: Config, appState: Dependencies) => {
       .catch(() => "0");
   }
 
-  async function updateLsp(address: string, startBlock?: number | "latest", endBlock?: number) {
+  async function updateLsp(address: string, startBlock?: number, endBlock?: number) {
     // ignored expired lsps
     if (await lsps.expired.has(address)) return;
     const instance = uma.clients.lsp.connect(address, provider);
@@ -176,7 +176,7 @@ export default (config: Config, appState: Dependencies) => {
     const block = await provider.getBlock(blockMetadata.blockNumber);
     await table.setCreatedTimestamp(address, block.timestamp);
   }
-  async function updateLsps(addresses: string[], startBlock?: number | "latest", endBlock?: number) {
+  async function updateLsps(addresses: string[], startBlock?: number, endBlock?: number) {
     return Promise.allSettled(
       addresses.map(async (address) => {
         const end = profile(`Update LSP state for ${address}`);
@@ -197,7 +197,7 @@ export default (config: Config, appState: Dependencies) => {
     });
   }
 
-  async function update(startBlock?: number | "latest", endBlock?: number) {
+  async function update(startBlock?: number, endBlock?: number) {
     const addresses = Array.from(await registeredLsps.values());
     await updateLsps(addresses, startBlock, endBlock).then((results) => {
       results.forEach((result) => {

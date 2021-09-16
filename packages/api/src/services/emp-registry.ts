@@ -15,7 +15,7 @@ export default async (config: Config, appState: Dependencies) => {
   const address = await registry.getAddress(network);
   const contract = registry.connect(address, provider);
 
-  async function update(startBlock?: number | "latest", endBlock?: number) {
+  async function update(startBlock?: number, endBlock?: number) {
     const events = await contract.queryFilter(
       contract.filters.NewContractRegistered(null, null, null),
       startBlock,

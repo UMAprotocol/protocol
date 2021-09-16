@@ -10,7 +10,7 @@ import * as Actions from "../../services/actions";
 import { ProcessEnv, AppState, Channels } from "../..";
 import { empStats, empStatsHistory, lsps } from "../../tables";
 import Zrx from "../../libs/zrx";
-import { Profile, parseEnvArray, getWeb3 } from "../../libs/utils";
+import { Profile, parseEnvArray, getWeb3, BlockInterval, expirePromise } from "../../libs/utils";
 
 export default async (env: ProcessEnv) => {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
@@ -30,10 +30,16 @@ export default async (env: ProcessEnv) => {
 
   // how often to run expensive state updates, defaults to 10 minutes
   const updateRateS = Number(env.UPDATE_RATE_S || 10 * 60);
+  // Defaults to 60 seconds, since this is i think a pretty cheap call, and we want to see new contracts quickly
+  const detectContractsUpdateRateS = Number(env.DETECT_CONTRACTS_UPDATE_RATE_S || 60);
+  // Defaults to 15 minutes, prices dont update in coingecko or other calls very fast
+  const priceUpdateRateS = Number(env.PRICE_UPDATE_RATE_S || 15 * 60);
   // default to 10 days worth of blocks
   const oldestBlock = Number(env.OLDEST_BLOCK_MS || 10 * 60 * 60 * 24 * 1000);
 
   assert(updateRateS >= 1, "UPDATE_RATE_S must be 1 or higher");
+  assert(detectContractsUpdateRateS >= 1, "DETECT_CONTRACTS_UPDATE_RATE_S must be 1 or higher");
+  assert(priceUpdateRateS >= 1, "PRICE_UPDATE_RATE_S must be 1 or higher");
 
   // state shared between services
   const appState: AppState = {
@@ -206,18 +212,22 @@ export default async (env: ProcessEnv) => {
   await Express({ port: Number(env.EXPRESS_PORT), debug }, channels)();
   console.log("Started Express Server, API accessible");
 
-  // break all state updates by block events into a cleaner function
-  async function updateByBlock(blockNumber: number) {
-    await services.blocks.handleNewBlock(blockNumber);
-    // update everyting
-    await services.registry(appState.lastBlockUpdate, blockNumber);
-    await services.lspCreator.update(appState.lastBlockUpdate, blockNumber);
-    await services.emps(appState.lastBlockUpdate, blockNumber);
-    await services.lsps.update(appState.lastBlockUpdate, blockNumber);
-    await services.erc20s.update();
-    appState.lastBlockUpdate = blockNumber;
-    await services.blocks.cleanBlocks(oldestBlock);
+  async function detectNewContracts(startBlock: number, endBlock: number) {
+    await services.registry(startBlock, endBlock);
+    await services.lspCreator.update(startBlock, endBlock);
   }
+
+  // break all state updates by block events into a cleaner function
+  async function updateContractState(startBlock: number, endBlock: number) {
+    await services.blocks.handleNewBlock(endBlock);
+    // update everyting
+    await services.emps(startBlock, endBlock);
+    await services.lsps.update(startBlock, endBlock);
+    await services.erc20s.update();
+    await services.blocks.cleanBlocks(oldestBlock);
+    appState.lastBlockUpdate = endBlock;
+  }
+
   // separate out price updates into a different loop to query every few minutes
   async function updatePrices() {
     await services.collateralPrices.update();
@@ -233,17 +243,51 @@ export default async (env: ProcessEnv) => {
 
   console.log("Starting API update loops");
 
+  async function getLatestBlockNumber() {
+    const block = await provider.getBlock("latest");
+    return block.number;
+  }
+
+  const newContractBlockTick = BlockInterval(detectNewContracts, initBlock.number);
+  const updateContractStateTick = BlockInterval(updateContractState, initBlock.number);
+
+  // detect contract loop
+  utils.loop(async () => {
+    const end = profile("Detecting New Contracts");
+    // adding in a timeout rejection if the update takes too long
+    await expirePromise(
+      async () => {
+        const { startBlock, endBlock } = await newContractBlockTick(await getLatestBlockNumber());
+        console.log("Checked for new contracts between blocks", startBlock, endBlock);
+        // error out if this fails to complete in 5 minutes
+      },
+      5 * 60 * 1000,
+      "Detecting new contracts timed out"
+    )
+      .catch(console.error)
+      .finally(end);
+  }, detectContractsUpdateRateS * 1000);
+
   // main update loop for all state, executes immediately and waits for updateRateS
   utils.loop(async () => {
-    const block = await provider.getBlock("latest");
-    console.log("Running state updates", block.number, appState.lastBlockUpdate);
-    const end = profile("Updating state from block event");
-    updateByBlock(block.number).catch(console.error).finally(end);
+    const end = profile("Running contract state updates");
+    // adding in a timeout rejection if the update takes too long
+    await expirePromise(
+      async () => {
+        const { startBlock, endBlock } = await updateContractStateTick(await getLatestBlockNumber());
+        console.log("Updated Contract state between blocks", startBlock, endBlock);
+        // throw an error if this fails to process in 15 minutes
+      },
+      15 * 60 * 1000,
+      "Contract state updates timed out"
+    )
+      .catch(console.error)
+      .finally(end);
   }, updateRateS * 1000);
 
   // coingeckos prices don't update very fast, so set it on an interval every few minutes
   utils.loop(async () => {
     const end = profile("Update all prices");
-    updatePrices().catch(console.error).finally(end);
-  }, 10 * 60 * 1000);
+    await updatePrices().catch(console.error).finally(end);
+  }, priceUpdateRateS * 1000);
 };

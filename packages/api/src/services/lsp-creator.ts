@@ -16,7 +16,7 @@ export default async (config: Config, appState: Dependencies) => {
 
   const contract = lspCreator.connect(address, provider);
 
-  async function update(startBlock?: number | "latest", endBlock?: number) {
+  async function update(startBlock?: number, endBlock?: number) {
     const events = await contract.queryFilter(
       contract.filters.CreatedLongShortPair(null, null, null, null),
       startBlock,
