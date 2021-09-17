@@ -65,7 +65,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         uint64 depositId;
         address l2Sender;
         address l1Recipient;
-        address l1Token; // todo: we can remove this prop. it's not needed as this contract has a unique l1 token.
         uint256 amount;
         uint64 slowRelayFeePct;
         uint64 instantRelayFeePct;
@@ -230,7 +229,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
                 depositId: depositId,
                 l2Sender: l2Sender,
                 l1Recipient: l1Recipient,
-                l1Token: address(l1Token),
                 amount: amount,
                 slowRelayFeePct: slowRelayFeePct,
                 instantRelayFeePct: instantRelayFeePct,
@@ -459,6 +457,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         view
         returns (bytes memory)
     {
+        // TODO: Consider adding BridgePool address to the ancillary data packet.
         // TODO: Consider hashing all of the params that can be compared against the L2 Deposit contract into a single
         // "relay ancillary data hash" to reduce storage costs.
         bytes memory intermediateAncillaryData = "";
@@ -483,11 +482,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
             intermediateAncillaryData,
             "l2Sender",
             _depositData.l2Sender
-        );
-        intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
-            intermediateAncillaryData,
-            "l1Token",
-            _depositData.l1Token
         );
         intermediateAncillaryData = AncillaryData.appendKeyValueUint(
             intermediateAncillaryData,
@@ -523,6 +517,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         );
 
         // Add global state data stored by this contract:
+        intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
+            intermediateAncillaryData,
+            "l1Token",
+            address(l1Token)
+        );
         intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
             intermediateAncillaryData,
             "depositContract",
@@ -581,7 +580,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
         return _getAmountFromPct(bridgeAdmin.proposerBondPct(), amount);
     }
 
-    function _getDepositHash(DepositData memory _depositData) private pure returns (bytes32) {
+    function _getDepositHash(DepositData memory _depositData) private view returns (bytes32) {
         return
             keccak256(
                 abi.encode(
@@ -589,7 +588,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
                     _depositData.depositId,
                     _depositData.l1Recipient,
                     _depositData.l2Sender,
-                    _depositData.l1Token,
+                    address(l1Token),
                     _depositData.amount,
                     _depositData.slowRelayFeePct,
                     _depositData.instantRelayFeePct,
@@ -672,7 +671,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20 {
             _depositData.l2Sender,
             msg.sender,
             _depositData.l1Recipient,
-            _depositData.l1Token,
+            address(l1Token),
             _depositData.amount,
             _depositData.slowRelayFeePct,
             _depositData.instantRelayFeePct,

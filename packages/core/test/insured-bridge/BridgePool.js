@@ -141,7 +141,7 @@ describe("BridgePool", () => {
         depositData.depositId,
         depositData.l1Recipient,
         depositData.l2Sender,
-        depositData.l1Token,
+        l1Token.options.address,
         depositData.amount,
         depositData.slowRelayFeePct,
         depositData.instantRelayFeePct,
@@ -253,7 +253,6 @@ describe("BridgePool", () => {
       depositId: 1,
       l1Recipient: l1Recipient,
       l2Sender: depositor,
-      l1Token: l1Token.options.address,
       amount: relayAmount,
       slowRelayFeePct: defaultSlowRelayFeePct,
       instantRelayFeePct: defaultInstantRelayFeePct,
@@ -323,6 +322,7 @@ describe("BridgePool", () => {
         }
       }
     });
+    expectedAncillaryDataUtf8 += `l1Token:${l1Token.options.address.substr(2).toLowerCase()},`;
     expectedAncillaryDataUtf8 += `depositContract:${depositContractImpersonator.substr(2).toLowerCase()}`;
     assert.equal(hexToUtf8(relayAncillaryData), expectedAncillaryDataUtf8);
   });
@@ -416,7 +416,7 @@ describe("BridgePool", () => {
           ev.l2Sender === depositData.l2Sender &&
           ev.slowRelayer === relayer &&
           ev.l1Recipient === depositData.l1Recipient &&
-          ev.l1Token === depositData.l1Token &&
+          ev.l1Token === l1Token.options.address &&
           ev.amount === depositData.amount &&
           ev.slowRelayFeePct === depositData.slowRelayFeePct &&
           ev.instantRelayFeePct === depositData.instantRelayFeePct &&

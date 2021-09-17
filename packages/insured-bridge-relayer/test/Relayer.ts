@@ -213,6 +213,7 @@ describe("Relayer.ts", function () {
         slowRelayFeePct: defaultSlowRelayFeePct,
         instantRelayFeePct: defaultInstantRelayFeePct,
         quoteTimestamp: 1,
+        depositContract: bridgeDepositBox.options.address,
       };
 
       // Set the relay ability to any. This represents a deposit that has not had any data brought to L1 yet.

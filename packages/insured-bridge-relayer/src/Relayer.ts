@@ -128,7 +128,8 @@ export class Relayer {
   private async isRelayValid(relay: Relay, deposit: Deposit): Promise<boolean> {
     return (
       relay.realizedLpFeePct.toString() ===
-      (await this.l1Client.calculateRealizedLpFeePctForDeposit(deposit)).toString()
+        (await this.l1Client.calculateRealizedLpFeePctForDeposit(deposit)).toString() &&
+      relay.depositContract === deposit.depositContract
     );
   }
 

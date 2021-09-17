@@ -119,6 +119,7 @@ describe("InsuredBridgeL2Client", () => {
         slowRelayFeePct,
         instantRelayFeePct,
         quoteTimestamp,
+        depositContract: depositBox.options.address,
       },
     ];
     expectedDeposits[0].depositHash = generateDepositHash(expectedDeposits[0]);
@@ -151,6 +152,7 @@ describe("InsuredBridgeL2Client", () => {
       slowRelayFeePct,
       instantRelayFeePct,
       quoteTimestamp: quoteTimestamp2,
+      depositContract: depositBox.options.address,
     });
     expectedDeposits[1].depositHash = generateDepositHash(expectedDeposits[1]);
     assert.equal(JSON.stringify(client.getAllDeposits()), JSON.stringify(expectedDeposits));
