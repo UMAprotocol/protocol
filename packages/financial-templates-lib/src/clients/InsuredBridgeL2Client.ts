@@ -65,7 +65,6 @@ export class InsuredBridgeL2Client {
     ]);
 
     for (const depositRelayedEvent of depositRelayedEvents) {
-      console.log("depositRelayedEvent", depositRelayedEvent);
       const depositData = {
         depositId: Number(depositRelayedEvent.returnValues.depositId),
         depositHash: "", // Filled in after initialization of the remaining variables.
@@ -88,7 +87,6 @@ export class InsuredBridgeL2Client {
   }
 
   generateDepositHash = (depositData: Deposit): string => {
-    console.log("depositData", depositData);
     const depositDataAbiEncoded = this.l2Web3.eth.abi.encodeParameters(
       ["uint64", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint64"],
       [

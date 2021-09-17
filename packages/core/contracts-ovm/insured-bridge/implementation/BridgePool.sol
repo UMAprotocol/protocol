@@ -373,7 +373,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             instantRelayerOrRecipientAmount
         );
 
-        // The slow relayer gets paid the slow relay fee. This is the same irrespective if the relay was sped up or not.
+        // The slow relayer gets paid the slow relay fee. This is the same irrespective if the relay was sped or not.
         uint256 slowRelayerAmount = _getAmountFromPct(_depositData.slowRelayFeePct, _depositData.amount);
         l1Token.safeTransfer(relay.slowRelayer, slowRelayerAmount);
 
@@ -450,6 +450,29 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         if (utilizedReserves > 0) numerator = numerator.add(FixedPoint.Unsigned(uint256(utilizedReserves)));
         else numerator = numerator.sub(FixedPoint.Unsigned(uint256(utilizedReserves * -1)));
         return numerator.div(FixedPoint.Unsigned(totalSupply())).rawValue;
+    }
+
+    /**
+     * @notice Computes the current liquidity utilization ratio.
+     * @dev Used in computing realizedLpFeePct off-chain.
+     */
+    function liquidityUtilizationCurrent() public returns (uint256) {
+        return liquidityUtilizationPostRelay(0);
+    }
+
+    /**
+     * @notice Computes the liquidity utilization ratio post a relay of known size.
+     * @dev Used in computing realizedLpFeePct off-chain.
+     * @param relayedAmount Size of the relayed deposit to factor into the utilization calculation.
+     */
+    function liquidityUtilizationPostRelay(uint256 relayedAmount) public returns (uint256) {
+        sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
+
+        FixedPoint.Unsigned memory numerator =
+            FixedPoint.Unsigned(pendingReserves).add(FixedPoint.Unsigned(relayedAmount));
+        if (utilizedReserves > 0) numerator = numerator.add(FixedPoint.Unsigned(uint256(utilizedReserves)));
+        else numerator = numerator.sub(FixedPoint.Unsigned(uint256(utilizedReserves * -1)));
+        return numerator.div(FixedPoint.Unsigned(liquidReserves)).rawValue;
     }
 
     /************************************

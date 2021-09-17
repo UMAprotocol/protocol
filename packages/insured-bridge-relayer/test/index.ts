@@ -10,7 +10,8 @@ import { interfaceName, TokenRolesEnum, HRE } from "@uma/common";
 const { deployOptimismContractMock } = require("../../core/test/insured-bridge/helpers/SmockitHelper.js");
 
 const { web3, getContract } = hre as HRE;
-const { toWei, utf8ToHex } = web3.utils;
+const { toWei, toBN, utf8ToHex } = web3.utils;
+const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 
 // Helper contracts
 const BridgePool = getContract("BridgePool");
@@ -147,7 +148,14 @@ describe("index.js", function () {
   it("Runs with no errors and correctly sets approvals for whitelisted L1 tokens", async function () {
     process.env.BRIDGE_ADMIN_ADDRESS = bridgeAdmin.options.address;
     process.env.POLLING_DELAY = "0";
-    process.env.WHITELISTED_L1_TOKENS = JSON.stringify([l1Token.options.address]);
+    process.env.RATE_MODELS = JSON.stringify({
+      [l1Token.options.address]: {
+        UBar: toBNWei("0.65"),
+        R0: toBNWei("0.00"),
+        R1: toBNWei("0.08"),
+        R2: toBNWei("1.00"),
+      },
+    });
 
     // Must not throw.
     await run(spyLogger, web3);

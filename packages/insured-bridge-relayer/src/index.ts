@@ -37,7 +37,7 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
 
     // Create L1/L2 clients to pull data to inform the relayer.
     // todo: add in start and ending block numbers (if need be).
-    const l1Client = new InsuredBridgeL1Client(logger, web3, config.bridgeAdmin);
+    const l1Client = new InsuredBridgeL1Client(logger, web3, config.bridgeAdmin, config.rateModels);
 
     // TODO: this is right now using the same web3 object. this is wrong. it should use an L2web3 object.
     const l2Client = new InsuredBridgeL2Client(logger, web3, await getL2DepositBoxAddress(web3, config.bridgeAdmin));
