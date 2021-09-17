@@ -22,8 +22,8 @@ interface Params {
 }
 
 interface RelayAncillaryData {
+  chainId: number;
   depositId: number;
-  depositTimestamp: number;
   l1Recipient: string;
   l2Sender: string;
   l1Token: string;
@@ -73,8 +73,8 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
     ) as unknown) as RelayAncillaryData;
     const matchedDeposit = this.deposits.filter(
       (deposit: Deposit) =>
+        deposit.chainId === parsedAncillaryData.chainId &&
         deposit.depositId === parsedAncillaryData.depositId &&
-        deposit.depositTimestamp === parsedAncillaryData.depositTimestamp &&
         deposit.l1Recipient === toChecksumAddress("0x" + parsedAncillaryData.l1Recipient) &&
         deposit.l2Sender === toChecksumAddress("0x" + parsedAncillaryData.l2Sender) &&
         deposit.l1Token === toChecksumAddress("0x" + parsedAncillaryData.l1Token) &&
@@ -84,6 +84,7 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
         deposit.quoteTimestamp === parsedAncillaryData.quoteTimestamp &&
         this.l2Client.bridgeDepositAddress === toChecksumAddress("0x" + parsedAncillaryData.depositContract)
     );
+    // TODO: Do we need to check the `relayId` at all thats included in ancillary data?
 
     // TODO: Do we need to handle the case where all of these params are matched and matchedDeposit.length > 1?
     if (matchedDeposit.length === 0) {

@@ -33,6 +33,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     // Token that this contract receives as LP deposits.
     IERC20 public override l1Token;
 
+    // Track the total number of relays and uniquely identifies relays.
+    uint256 public numberOfRelays;
+
     // Reserves that are unutilized and withdrawable.
     uint256 public liquidReserves;
 
@@ -59,8 +62,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
     // Data from L2 deposit transaction.
     struct DepositData {
+        uint8 chainId;
         uint64 depositId;
-        uint64 depositTimestamp;
         address l2Sender;
         address l1Recipient;
         address l1Token; // todo: we can remove this prop. it's not needed as this contract has a unique l1 token.
@@ -72,6 +75,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
     // A Relay is linked to a L2 Deposit.
     struct RelayData {
+        uint256 relayId;
         RelayState relayState;
         uint256 priceRequestTime;
         uint64 realizedLpFeePct;
@@ -84,6 +88,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     // "Uninitialized" state when they are disputed on the OptimisticOracle.
     mapping(bytes32 => RelayData) public relays;
 
+    // TODO: Consider removing this reverse lookup in favor of directly checking the dispute status of relay price
+    // requests from the Optimistic Oracle.
     // Associates ancillary data related to relay price request with the deposit hash that the relay is attempting to
     // fulfill. We need to key by the ancillary data so that the OptimisticOracle can locate relays on callbacks using
     // only price requests' ancillary data. The ancillary data should contain all information required by off-chain
@@ -93,10 +99,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     event LiquidityAdded(address indexed token, uint256 amount, uint256 lpTokensMinted, address liquidityProvider);
     event LiquidityRemoved(address indexed token, uint256 amount, uint256 lpTokensBurnt, address liquidityProvider);
     event DepositRelayed(
+        uint256 indexed relayId,
+        uint8 chainId,
         uint64 depositId,
         address indexed l2Sender,
         address slowRelayer,
-        uint64 depositTimestamp,
         address l1Recipient,
         address l1Token,
         uint256 amount,
@@ -104,7 +111,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         uint64 instantRelayFeePct,
         uint64 quoteTimestamp,
         uint64 realizedLpFeePct,
-        bytes32 indexed priceRequestAncillaryDataHash,
         bytes32 indexed depositHash,
         address depositContract
     );
@@ -199,8 +205,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      * @notice Called by Relayer to execute a slow relay from L2 to L1, fulfilling a corresponding deposit order.
      * @dev There can only be one pending relay for a deposit.
      * @dev Caller must have approved this contract to spend the total bond for `l1Token`.
+     * @param chainId Unique network ID on which deposit event occurred.
      * @param depositId Unique ID corresponding to deposit order that caller wants to relay.
-     * @param depositTimestamp Timestamp of Deposit emitted by L2 contract when order was initiated.
      * @param l1Recipient Address on this network who should receive the relayed deposit.
      * @param l2Sender Address on the L2 network of depositor.
      * @param amount Amount deposited on L2 to be brought over to L1.
@@ -211,8 +217,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      *      quoteTimestamp. The OO acts to verify the correctness of this realized fee. Can not exceed 50%.
      */
     function relayDeposit(
+        uint8 chainId,
         uint64 depositId,
-        uint64 depositTimestamp,
         address l1Recipient,
         address l2Sender,
         uint256 amount,
@@ -230,8 +236,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         // Check if there is a pending undisputed relay for this deposit.
         DepositData memory depositData =
             DepositData({
+                chainId: chainId,
                 depositId: depositId,
-                depositTimestamp: depositTimestamp,
                 l2Sender: l2Sender,
                 l1Recipient: l1Recipient,
                 l1Token: address(l1Token),
@@ -253,6 +259,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         uint256 priceRequestTime = getCurrentTime();
         RelayData memory relayData =
             RelayData({
+                relayId: numberOfRelays,
                 relayState: RelayState.Pending,
                 priceRequestTime: priceRequestTime,
                 realizedLpFeePct: realizedLpFeePct,
@@ -284,12 +291,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         pendingReserves += amount; // Book off maximum liquidity used by this relay in the pending reserves.
 
         // We use an internal method to emit this event to overcome Solidity's "stack too deep" error.
-        _emitDepositRelayedEvent(
-            depositData,
-            realizedLpFeePct,
-            keccak256(getRelayAncillaryData(depositData, relayData)),
-            depositHash
-        );
+        _emitDepositRelayedEvent(depositData, realizedLpFeePct, depositHash);
+
+        numberOfRelays += 1;
     }
 
     /**
@@ -507,20 +511,20 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         view
         returns (bytes memory)
     {
-        // TODO: Consider adding `chainId` and `relayNonce` to establish relay uniqueness, and removing unneccessary
-        // params.
+        // TODO: Consider hashing all of the params that can be compared against the L2 Deposit contract into a single
+        // "relay ancillary data hash" to reduce storage costs.
         bytes memory intermediateAncillaryData = "";
 
         // Add data inferred from the original deposit on L2:
         intermediateAncillaryData = AncillaryData.appendKeyValueUint(
             intermediateAncillaryData,
-            "depositId",
-            uint256(_depositData.depositId)
+            "chainId",
+            uint256(_depositData.chainId)
         );
         intermediateAncillaryData = AncillaryData.appendKeyValueUint(
             intermediateAncillaryData,
-            "depositTimestamp",
-            uint256(_depositData.depositTimestamp)
+            "depositId",
+            uint256(_depositData.depositId)
         );
         intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
             intermediateAncillaryData,
@@ -559,6 +563,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         );
 
         // Add relay data.
+        intermediateAncillaryData = AncillaryData.appendKeyValueUint(
+            intermediateAncillaryData,
+            "relayId",
+            uint256(_relayData.relayId)
+        );
         intermediateAncillaryData = AncillaryData.appendKeyValueUint(
             intermediateAncillaryData,
             "realizedLpFeePct",
@@ -628,8 +637,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         return
             keccak256(
                 abi.encode(
+                    _depositData.chainId,
                     _depositData.depositId,
-                    _depositData.depositTimestamp,
                     _depositData.l1Recipient,
                     _depositData.l2Sender,
                     _depositData.l1Token,
@@ -704,16 +713,16 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     function _emitDepositRelayedEvent(
         DepositData memory _depositData,
         uint64 realizedLpFeePct,
-        bytes32 _ancillaryDataHash,
         bytes32 _depositHash
     ) private {
         // Emit only information that is not stored in this contract. The relay data associated with the `_depositHash`
         // can be queried on-chain via the `relays` mapping keyed by `_depositHash`.
         emit DepositRelayed(
+            numberOfRelays,
+            _depositData.chainId,
             _depositData.depositId,
             _depositData.l2Sender,
             msg.sender,
-            _depositData.depositTimestamp,
             _depositData.l1Recipient,
             _depositData.l1Token,
             _depositData.amount,
@@ -721,7 +730,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             _depositData.instantRelayFeePct,
             _depositData.quoteTimestamp,
             realizedLpFeePct,
-            _ancillaryDataHash,
             _depositHash,
             bridgeAdmin.depositContract()
         );
