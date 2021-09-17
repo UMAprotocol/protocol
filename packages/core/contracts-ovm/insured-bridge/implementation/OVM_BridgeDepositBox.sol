@@ -76,11 +76,10 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
     event SetMinimumBridgingDelay(uint64 newMinimumBridgingDelay);
     event WhitelistToken(address l1Token, address l2Token, uint64 lastBridgeTime, address bridgePool);
     event DepositsEnabled(address l2Token, bool depositsEnabled);
-    // TODO: Should we include a `chainId` in the deposited event?
     // TODO: change the order of these to match the way they are used in the bridge pool.
     event FundsDeposited(
+        uint8 chainId,
         uint256 depositId,
-        uint256 depositTimestamp,
         address l1Recipient,
         address l2Sender,
         address l1Token,
@@ -211,8 +210,8 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
         );
 
         emit FundsDeposited(
+            10, // In Solidity v8 can use chainId: https://docs.soliditylang.org/en/v0.8.0/units-and-global-variables.html
             numberOfDeposits, // depositId: the current number of deposits acts as a deposit ID (nonce).
-            getCurrentTime(),
             l1Recipient,
             msg.sender,
             whitelistedTokens[l2Token].l1Token,

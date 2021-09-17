@@ -203,9 +203,9 @@ describe("Relayer.ts", function () {
     beforeEach(async function () {
       // Create a sample deposit with default data.
       deposit = {
+        chainId: 10,
         depositId: 0,
         depositHash: "0x123",
-        depositTimestamp: 420,
         l2Sender: l2Depositor,
         l1Recipient: l2Depositor,
         l1Token: l1Token.options.address,
@@ -401,8 +401,8 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await bridgePool.methods
         .relayDeposit(
+          "10",
           "0",
-          currentBlockTime,
           l2Depositor,
           l2Depositor,
           depositAmount,
