@@ -1,4 +1,4 @@
-const { web3, getContract } = require("hardhat");
+const { web3, getContract, network } = require("hardhat");
 const { assert } = require("chai");
 const { toWei, toBN, utf8ToHex, padRight, isAddress } = web3.utils;
 const winston = require("winston");
@@ -65,11 +65,22 @@ let disputer;
 let dsProxyManager;
 let proxyTransactionWrapper;
 
+let accounts;
+let disputeBot;
+let sponsor1;
+let sponsor2;
+let sponsor3;
+let liquidator;
+let contractCreator;
+let rando;
+
 // Set the funding rate and advances time by 10k seconds.
 const _setFundingRateAndAdvanceTime = async (fundingRate) => {
-  const currentTime = (await financialContract.methods.getCurrentTime()).toNumber();
-  await financialContract.methods.proposeFundingRate({ rawValue: fundingRate }, currentTime);
-  await financialContract.methods.setCurrentTime(currentTime + 10000);
+  const currentTime = parseInt(await financialContract.methods.getCurrentTime().call());
+  await financialContract.methods
+    .proposeFundingRate({ rawValue: fundingRate }, currentTime)
+    .send({ from: contractCreator });
+  await financialContract.methods.setCurrentTime(currentTime + 10000).send({ from: contractCreator });
 };
 
 // If the current version being executed is part of the `supportedVersions` array then return `it` to run the test.
@@ -83,18 +94,14 @@ const versionedIt = function (supportedVersions, shouldBeItOnly = false) {
   return runTestForVersion(supportedVersions, TESTED_CONTRACT_VERSIONS, iterationTestVersion) ? it : () => {};
 };
 
+const startTimedMine = (blockTimeMs = 50) =>
+  setInterval(async () => await network.provider.request({ method: "evm_mine" }), blockTimeMs);
+
+const stopTimedMine = (intervalObject) => clearInterval(intervalObject);
+
 const Convert = (decimals) => (number) => (number ? parseFixed(number.toString(), decimals).toString() : number);
 
 describe("Disputer.js", function () {
-  let accounts;
-  let disputeBot;
-  let sponsor1;
-  let sponsor2;
-  let sponsor3;
-  let liquidator;
-  let contractCreator;
-  let rando;
-
   before(async function () {
     accounts = await web3.eth.getAccounts();
     [disputeBot, sponsor1, sponsor2, sponsor3, liquidator, contractCreator, rando] = accounts;
@@ -610,7 +617,7 @@ describe("Disputer.js", function () {
             // sponsor2's dispute was successful, and the disputeBot should've called the withdraw method.
             assert.equal((await financialContract.methods.getLiquidations(sponsor2).call())[0].disputer, ZERO_ADDRESS);
             assert.equal(
-              (await financialContract.methods.getLiquidations(sponsor2))[0].state,
+              (await financialContract.methods.getLiquidations(sponsor2).call())[0].state,
               LiquidationStatesEnum.UNINITIALIZED
             );
 
@@ -1105,7 +1112,7 @@ describe("Disputer.js", function () {
                 await _setFundingRateAndAdvanceTime(toWei("-0.00001"));
                 await financialContract.methods.applyFundingRate().send({ from: contractCreator });
                 assert.equal(
-                  (await financialContract.methods.fundingRate()).cumulativeMultiplier.toString(),
+                  (await financialContract.methods.fundingRate().call()).cumulativeMultiplier.toString(),
                   toWei("0.8748")
                 );
 
@@ -1148,14 +1155,14 @@ describe("Disputer.js", function () {
                   .send({ from: contractCreator });
 
                 // Now that the liquidation has expired, the disputer can withdraw rewards.
-                const collateralPreWithdraw = await collateralToken.methods.balanceOf(disputeBot).call();
+                const collateralPreWithdraw = toBN(await collateralToken.methods.balanceOf(disputeBot).call());
                 await disputer.update();
                 await disputer.withdrawRewards();
 
                 assert.equal(spy.callCount, 4); // 2 new info level events should be sent for withdrawing the two liquidations.
 
                 // Disputer should have their collateral increased from the two rewards.
-                const collateralPostWithdraw = await collateralToken.methods.balanceOf(disputeBot).call();
+                const collateralPostWithdraw = toBN(await collateralToken.methods.balanceOf(disputeBot).call());
                 assert.isTrue(collateralPostWithdraw.gt(collateralPreWithdraw));
 
                 // Liquidation data should have been deleted.
@@ -1273,7 +1280,7 @@ describe("Disputer.js", function () {
             async function () {
               // The initialization in the before-each should be correct.
               assert.isTrue(isAddress(dsProxy.options.address));
-              assert.equal(await dsProxy.methods.owner(), disputeBot);
+              assert.equal(await dsProxy.methods.owner().call(), disputeBot);
               assert.isTrue(disputer.proxyTransactionWrapper.useDsProxyToDispute);
               assert.equal(disputer.proxyTransactionWrapper.uniswapRouterAddress, uniswapRouter.options.address);
               assert.equal(
@@ -1337,7 +1344,7 @@ describe("Disputer.js", function () {
                 });
               });
               // Invalid invocation should reject. DSProxy Manager not yet initalized.
-              dsProxyFactory = await DSProxyFactory.new({ from: contractCreator });
+              dsProxyFactory = await DSProxyFactory.new().send({ from: contractCreator });
 
               dsProxyManager = new DSProxyManager({
                 logger: spyLogger,
@@ -1442,7 +1449,9 @@ describe("Disputer.js", function () {
               // Set lookback such that the liquidation timestamp is captured and the dispute should go through.
               priceFeedMock.setLookback(2);
               await disputer.update();
+              const intervalObj = startTimedMine();
               await disputer.dispute();
+              stopTimedMine(intervalObj);
               assert.equal(spy.callCount, 5); // info level logs should be sent at the conclusion of the disputes.
 
               // Sponsor2 and sponsor3 should be disputed.
@@ -1477,17 +1486,17 @@ describe("Disputer.js", function () {
 
               // rewards should be withdrawn and the DSProxy collateral balance should increase.
 
-              const dsProxyCollateralBalanceBefore = await collateralToken.methods
-                .balanceOf(dsProxy.options.address)
-                .call();
+              const dsProxyCollateralBalanceBefore = toBN(
+                await collateralToken.methods.balanceOf(dsProxy.options.address).call()
+              );
 
               await disputer.update();
               await disputer.withdrawRewards();
               assert.equal(spy.callCount, 7); // two new info after withdrawing the two disputes.
 
-              const dsProxyCollateralBalanceAfter = await collateralToken.methods
-                .balanceOf(dsProxy.options.address)
-                .call();
+              const dsProxyCollateralBalanceAfter = toBN(
+                await collateralToken.methods.balanceOf(dsProxy.options.address).call()
+              );
               assert.isTrue(dsProxyCollateralBalanceAfter.gt(dsProxyCollateralBalanceBefore));
 
               // Pre-dispute as nothing should have change and rewards by liquidator are not withdrawn.
@@ -1568,7 +1577,11 @@ describe("Disputer.js", function () {
               // Set lookback such that the liquidation timestamp is captured and the dispute should go through.
               priceFeedMock.setLookback(2);
               await disputer.update();
+
+              // Logic to automatically mine a block just after the dispute mines so the test won't hang.
+              const interval = startTimedMine();
               await disputer.dispute();
+              stopTimedMine(interval);
 
               // Sponsor1 and  should be disputed.
               assert.equal(
@@ -1626,7 +1639,9 @@ describe("Disputer.js", function () {
               // Set lookback such that the liquidation timestamp is captured and the dispute should go through.
               priceFeedMock.setLookback(2);
               await disputer.update();
+              const interval = startTimedMine();
               await disputer.dispute();
+              stopTimedMine(interval);
 
               // Sponsor1 and  should be disputed.
               assert.equal(
@@ -1641,7 +1656,7 @@ describe("Disputer.js", function () {
               );
 
               // There should be 1 swap events as the DSProxy had to buy the token shortfall in collateral.
-              assert.equal((await pair.getPastEvents("Swap")).length, 1);
+              assert.equal((await pair.getPastEvents("Swap", { fromBlock: 0 })).length, 1);
 
               // There should be no collateral left as it was all used in the dispute.
               assert.equal((await collateralToken.methods.balanceOf(dsProxy.options.address).call()).toString(), "0");

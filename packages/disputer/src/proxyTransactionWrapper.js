@@ -85,8 +85,10 @@ class ProxyTransactionWrapper {
     }
 
     this.reserveToken = new this.web3.eth.Contract(getAbi("ExpandedERC20"), this.disputerReserveCurrencyAddress);
-    this.ReserveCurrencyDisputer = {abi: getAbi("ReserveCurrencyDisputer"),
-      bytecode: getBytecode("ReserveCurrencyDisputer"),};
+    this.ReserveCurrencyDisputer = {
+      abi: getAbi("ReserveCurrencyDisputer"),
+      bytecode: getBytecode("ReserveCurrencyDisputer"),
+    };
   }
 
   // Main entry point for submitting a dispute. If the bot is not using a DSProxy then simply send a normal EOA tx.
@@ -142,14 +144,13 @@ class ProxyTransactionWrapper {
     const callCode = this.ReserveCurrencyDisputer.bytecode;
 
     const dsProxyCallReturn = await this.dsProxyManager.callFunctionOnNewlyDeployedLibrary(callCode, callData);
-    const blockAfterDispute = await this.web3.eth.getBlockNumber();
 
     // Wait exactly one block to fetch events. This ensures that the events have been indexed by your node.
-    await blockUntilBlockMined(this.web3, blockAfterDispute + 1);
+    await blockUntilBlockMined(this.web3, dsProxyCallReturn.blockNumber + 1);
 
     const DisputeEvent = (
       await this.financialContract.getPastEvents("LiquidationDisputed", {
-        fromBlock: blockAfterDispute - 1,
+        fromBlock: dsProxyCallReturn.blockNumber,
         filter: { disputer: this.dsProxyManager.getDSProxyAddress() },
       })
     )[0];
