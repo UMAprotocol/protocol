@@ -68,7 +68,7 @@ export class Relayer {
         // If deposit has a pending relay, then validate its relay params (i.e. any data not included in the deposit
         // hash). If relay params are invalid, then we should skip it so that we don't speed up an invalid relay.
         // If we cannot find the relay, then we should not skip it because we can still slow/instant relay it.
-        const pendingRelay: Relay = this.l1Client.getRelayForDeposit(l1Token, relayableDeposit.deposit);
+        const pendingRelay: Relay | undefined = this.l1Client.getRelayForDeposit(l1Token, relayableDeposit.deposit);
         if (pendingRelay && !(await this.isRelayValid(pendingRelay, relayableDeposit.deposit))) {
           this.logger.debug({
             at: "Relayer",
