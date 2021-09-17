@@ -6,6 +6,7 @@ const { SpyTransport, lastSpyLogIncludes } = require("../../dist/logger/SpyTrans
 const sinon = require("sinon");
 const { getContract } = hre;
 const { utf8ToHex, toWei, toBN, soliditySha3 } = web3.utils;
+const toBNWei = (number) => toBN(toWei(number.toString()).toString());
 
 // TODO: refactor to common util
 const { deployOptimismContractMock } = require("../../../core/test/insured-bridge/helpers/SmockitHelper");
@@ -218,7 +219,15 @@ describe("InsuredBridgePriceFeed", function () {
     });
 
     // Construct L1 and L2 clients that we'll need to construct the pricefeed:
-    l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address);
+    let rateModels = {
+      [l1Token.options.address]: {
+        UBar: toBNWei("0.65"),
+        R0: toBNWei("0.00"),
+        R1: toBNWei("0.08"),
+        R2: toBNWei("1.00"),
+      },
+    };
+    l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address, rateModels);
     l2Client = new InsuredBridgeL2Client(spyLogger, web3, depositBox.options.address);
 
     // Create the InsuredBridgePriceFeed to be tested:
@@ -237,7 +246,7 @@ describe("InsuredBridgePriceFeed", function () {
       amount: relayAmount,
       slowRelayFeePct: defaultSlowRelayFeePct,
       instantRelayFeePct: defaultInstantRelayFeePct,
-      quoteTimestamp: expectedDepositTimestamp + quoteTimestampOffset,
+      quoteTimestamp: expectedDepositTimestamp - quoteTimestampOffset,
     };
     relayData = {
       relayState: InsuredBridgeRelayStateEnum.UNINITIALIZED,
@@ -268,8 +277,6 @@ describe("InsuredBridgePriceFeed", function () {
       // Deposit some tokens.
       await l2Token.methods.mint(depositor, toWei("200")).send({ from: owner });
       await l2Token.methods.approve(depositBox.options.address, toWei("200")).send({ from: depositor });
-      const depositTimestamp = Number(await timer.methods.getCurrentTime().call());
-      const quoteTimestamp = depositTimestamp + quoteTimestampOffset;
       await depositBox.methods
         .deposit(
           l1Recipient,
@@ -277,7 +284,7 @@ describe("InsuredBridgePriceFeed", function () {
           relayAmount,
           defaultSlowRelayFeePct,
           defaultInstantRelayFeePct,
-          quoteTimestamp
+          Number(await timer.methods.getCurrentTime().call())
         )
         .send({ from: depositor });
 
@@ -298,7 +305,6 @@ describe("InsuredBridgePriceFeed", function () {
       await l2Token.methods.mint(depositor, toWei("200")).send({ from: owner });
       await l2Token.methods.approve(depositBox.options.address, toWei("200")).send({ from: depositor });
       const depositTimestamp = Number(await timer.methods.getCurrentTime().call());
-      const quoteTimestamp = depositTimestamp + quoteTimestampOffset;
       await depositBox.methods
         .deposit(
           l1Recipient,
@@ -306,7 +312,7 @@ describe("InsuredBridgePriceFeed", function () {
           relayAmount,
           defaultSlowRelayFeePct,
           defaultInstantRelayFeePct,
-          quoteTimestamp
+          Number(await timer.methods.getCurrentTime().call())
         )
         .send({ from: depositor });
 
@@ -401,8 +407,6 @@ describe("InsuredBridgePriceFeed", function () {
       // Deposit some tokens.
       await l2Token.methods.mint(depositor, toWei("200")).send({ from: owner });
       await l2Token.methods.approve(depositBox.options.address, toWei("200")).send({ from: depositor });
-      const depositTimestamp = Number(await timer.methods.getCurrentTime().call());
-      const quoteTimestamp = depositTimestamp + quoteTimestampOffset;
       await depositBox.methods
         .deposit(
           l1Recipient,
@@ -410,7 +414,7 @@ describe("InsuredBridgePriceFeed", function () {
           relayAmount,
           defaultSlowRelayFeePct,
           defaultInstantRelayFeePct,
-          quoteTimestamp
+          Number(await timer.methods.getCurrentTime().call())
         )
         .send({ from: depositor });
 
