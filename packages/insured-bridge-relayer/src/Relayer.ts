@@ -239,7 +239,6 @@ export class Relayer {
     const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit);
     return (bridgePool.methods.relayDeposit(
       deposit.depositId,
-      deposit.depositTimestamp,
       deposit.l1Recipient,
       deposit.l2Sender,
       deposit.amount,
