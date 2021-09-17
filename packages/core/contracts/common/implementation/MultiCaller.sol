@@ -2,8 +2,6 @@
 // and was modified to be solidity 0.8 compatible. No other changes were made.
 pragma solidity ^0.8.0;
 
-// pragma abicoder v2;
-
 /// @title MultiCaller
 /// @notice Enables calling multiple methods in a single call to the contract
 contract MultiCaller {
