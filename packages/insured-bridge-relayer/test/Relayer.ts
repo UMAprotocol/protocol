@@ -424,7 +424,35 @@ describe("Relayer.ts", function () {
       await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingDepositsAndRelay();
-      assert.isTrue(lastSpyLogIncludes(spy, "Relay instantly sped up"));
+      assert.isTrue(lastSpyLogIncludes(spy, "Slow relay sped up"));
+    });
+    it("Can correctly instantly relay deposits", async function () {
+      // Make a deposit on L2 and see that the relayer correctly sends a slow relay and speedup it in the same tx.
+      await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
+      const currentBlockTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount,
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          currentBlockTime
+        )
+        .send({ from: l2Depositor });
+
+      // Now, run the relayer. the bot should detect that a relay has been created but not yet sped up. It should
+      // correctly detect this and submit the relay speed up transaction.
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      // As the relayer does not have enough token balance to do the relay (0 minted) should do nothing.
+      await relayer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "Not relaying deposit"));
+
+      // Mint the relayer some tokens and try again.
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      await relayer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "Relay instantly sent"));
     });
   });
 });
