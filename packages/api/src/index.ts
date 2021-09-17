@@ -116,6 +116,5 @@ export type AppState = {
   syntheticAddresses: Set<string>;
   longAddresses: Set<string>;
   shortAddresses: Set<string>;
-  multicall: uma.Multicall;
   multicall2: uma.Multicall2;
 };

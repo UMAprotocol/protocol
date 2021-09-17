@@ -107,7 +107,7 @@ export function parseBytes(x: any) {
   return parseBytes32String(x);
 }
 
-export const BatchRead = (multicall: uma.Multicall) => async (
+export const BatchRead = (multicall: uma.Multicall2) => async (
   calls: [string, (x: any) => any][],
   contract: Contract
 ) => {

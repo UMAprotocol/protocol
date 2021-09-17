@@ -4,7 +4,7 @@ import assert from "assert";
 import { ethers } from "ethers";
 import Service from "./lsp-state";
 import type { AppState } from "../";
-import { Multicall } from "@uma/sdk";
+import { Multicall2 } from "@uma/sdk";
 import { lsps } from "../tables";
 // this fixes usage of "this" as any
 import "mocha";
@@ -17,7 +17,7 @@ type Dependencies = Pick<
   | "collateralAddresses"
   | "shortAddresses"
   | "longAddresses"
-  | "multicall"
+  | "multicall2"
   | "registeredLspsMetadata"
 >;
 
@@ -31,11 +31,11 @@ describe("lsp-state service", function () {
   let appState: Dependencies;
   before(async function () {
     assert(process.env.CUSTOM_NODE_URL);
-    assert(process.env.MULTI_CALL_ADDRESS);
+    assert(process.env.MULTI_CALL_2_ADDRESS);
     const provider = new ethers.providers.WebSocketProvider(process.env.CUSTOM_NODE_URL);
     appState = {
       provider,
-      multicall: new Multicall(process.env.MULTI_CALL_ADDRESS, provider),
+      multicall2: new Multicall2(process.env.MULTI_CALL_2_ADDRESS, provider),
       registeredLsps: new Set<string>(registeredContracts),
       collateralAddresses: new Set<string>(),
       longAddresses: new Set<string>(),
