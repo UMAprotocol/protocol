@@ -312,7 +312,7 @@ describe("InsuredBridgePriceFeed", function () {
           relayAmount,
           defaultSlowRelayFeePct,
           defaultInstantRelayFeePct,
-          Number(await timer.methods.getCurrentTime().call())
+          depositTimestamp
         )
         .send({ from: depositor });
 
