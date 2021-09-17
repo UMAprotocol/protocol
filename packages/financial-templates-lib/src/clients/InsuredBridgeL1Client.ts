@@ -89,6 +89,11 @@ export class InsuredBridgeL1Client {
     return Object.values(this.relays[l1Token]);
   }
 
+  getRelayForDeposit(l1Token: string, deposit: Deposit): Relay {
+    this._throwIfNotInitialized();
+    return this.relays[l1Token][deposit.depositHash];
+  }
+
   getPendingRelayedDeposits(): Relay[] {
     return this.getAllRelayedDeposits().filter((relay: Relay) => relay.relayState === RelayState.Pending);
   }

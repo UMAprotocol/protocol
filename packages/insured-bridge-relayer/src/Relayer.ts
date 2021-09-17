@@ -9,6 +9,7 @@ import {
   InsuredBridgeL2Client,
   GasEstimator,
   Deposit,
+  Relay,
   ClientRelayState,
 } from "@uma/financial-templates-lib";
 import { getTokenBalance } from "./RelayerHelpers";
@@ -64,6 +65,22 @@ export class Relayer {
     for (const l1Token of Object.keys(relayableDeposits)) {
       this.logger.debug({ at: "Relayer", message: "Processing relayable deposits for L1Token", l1Token });
       for (const relayableDeposit of relayableDeposits[l1Token]) {
+        // If deposit has a pending relay, then validate its relay params (i.e. any data not included in the deposit
+        // hash). If relay params are invalid, then we should skip it so that we don't speed up an invalid relay.
+        // If we cannot find the relay, then we should not skip it because we can still slow/instant relay it.
+        const pendingRelay: Relay = this.l1Client.getRelayForDeposit(l1Token, relayableDeposit.deposit);
+        if (pendingRelay !== undefined) {
+          if (!(await this.isRelayValid(pendingRelay, relayableDeposit.deposit))) {
+            this.logger.debug({
+              at: "Relayer",
+              message: "Pending relay is invalid, ignoring",
+              pendingRelay,
+              relayableDeposit,
+            });
+            return;
+          }
+        }
+        // If relay is valid, then account for profitability and bot token balance when deciding how to relay.
         const realizedLpFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(relayableDeposit.deposit);
         const shouldRelay = await this.shouldRelay(relayableDeposit.deposit, relayableDeposit.status, realizedLpFeePct);
         switch (shouldRelay) {
@@ -71,7 +88,7 @@ export class Relayer {
             this.logger.warn({
               at: "InsuredBridgeRelayer#Relayer",
               message: "Not relaying deposit 😖",
-              realizedLpFeePct,
+              realizedLpFeePct: realizedLpFeePct.toString(),
               relayableDeposit,
             });
             break;
@@ -79,7 +96,7 @@ export class Relayer {
             this.logger.debug({
               at: "InsuredBridgeRelayer#Relayer",
               message: "Slow relaying deposit",
-              realizedLpFeePct,
+              realizedLpFeePct: realizedLpFeePct.toString(),
               relayableDeposit,
             });
             await this.slowRelay(relayableDeposit.deposit, realizedLpFeePct);
@@ -89,7 +106,7 @@ export class Relayer {
             this.logger.debug({
               at: "InsuredBridgeRelayer#Relayer",
               message: "Speeding up existing relayed deposit",
-              realizedLpFeePct,
+              realizedLpFeePct: realizedLpFeePct.toString(),
               relayableDeposit,
             });
             await this.speedUpRelay(relayableDeposit.deposit);
@@ -98,7 +115,7 @@ export class Relayer {
             this.logger.debug({
               at: "InsuredBridgeRelayer#Relayer",
               message: "Instant relaying deposit",
-              realizedLpFeePct,
+              realizedLpFeePct: realizedLpFeePct.toString(),
               relayableDeposit,
             });
             // await this.instantRelay(relayableDeposit.deposit);
@@ -106,6 +123,13 @@ export class Relayer {
         }
       }
     }
+  }
+
+  private async isRelayValid(relay: Relay, deposit: Deposit): Promise<boolean> {
+    return (
+      relay.realizedLpFeePct.toString() ===
+      (await this.l1Client.calculateRealizedLpFeePctForDeposit(deposit)).toString()
+    );
   }
 
   private async shouldRelay(
