@@ -28,7 +28,6 @@ describe("CryptoWatchPriceFeed.js", function () {
       result: {
         60: [
           [
-            // 1588376339
             1588376400, // CloseTime
             1.1, // OpenPrice
             1.7, // HighPrice

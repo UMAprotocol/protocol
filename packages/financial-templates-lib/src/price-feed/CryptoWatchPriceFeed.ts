@@ -109,7 +109,7 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
     // If the time is before the first piece of data in the set, return null because
     // the price is before the lookback window.
     if (time < firstPricePeriod.openTime - this.historicalTimestampBuffer) {
-      throw new Error(`${this.uuid}: time ${time} is before firstPricePeriod.openTime`);
+      throw new Error(`${this.uuid}: time ${time} is before firstPricePeriod.openTime minus historicalTimestampBuffer`);
     }
 
     // historicalPricePeriods are ordered from oldest to newest.
