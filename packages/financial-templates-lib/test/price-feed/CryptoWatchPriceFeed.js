@@ -189,11 +189,18 @@ describe("CryptoWatchPriceFeed.js", function () {
 
     await cryptoWatchPriceFeed.update();
 
-    // Before period 1 should succeed when accounting for historical timestamp buffer.
-    assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376339)).toString(), toWei("1.1"));
+    // An input timestamp before period 1 should succeed when accounting for backwards historical timestamp buffer.
+    // This will return the close price of the period that matches the timestamp when accounting for the buffer.
+    assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376339)).toString(), toWei("1.2"));
 
-    // After period 3 should succeed for same reason.
-    assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376521)).toString(), toWei("1.3"));
+    // An input timestamp that falls within period 1 without accounting for the historical timestamp buffer should
+    // return the open price of the period.
+    assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376340)).toString(), toWei("1.1"));
+
+    // An input timestamp after period 3 should also succeed when accounting for backwards historical timestamp buffer.
+    // This will return the close price of the last period, which was previously "too early" for the target time, but
+    // when accounting for the buffer now matches the target time.
+    assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376521)).toString(), toWei("1.4"));
   });
 
   it("Missing historical data", async function () {
