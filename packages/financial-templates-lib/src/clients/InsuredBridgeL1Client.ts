@@ -89,7 +89,7 @@ export class InsuredBridgeL1Client {
     return Object.values(this.relays[l1Token]);
   }
 
-  getRelayForDeposit(l1Token: string, deposit: Deposit): Relay {
+  getRelayForDeposit(l1Token: string, deposit: Deposit): Relay | undefined {
     this._throwIfNotInitialized();
     return this.relays[l1Token][deposit.depositHash];
   }

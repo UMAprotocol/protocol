@@ -69,16 +69,14 @@ export class Relayer {
         // hash). If relay params are invalid, then we should skip it so that we don't speed up an invalid relay.
         // If we cannot find the relay, then we should not skip it because we can still slow/instant relay it.
         const pendingRelay: Relay = this.l1Client.getRelayForDeposit(l1Token, relayableDeposit.deposit);
-        if (pendingRelay !== undefined) {
-          if (!(await this.isRelayValid(pendingRelay, relayableDeposit.deposit))) {
-            this.logger.debug({
-              at: "Relayer",
-              message: "Pending relay is invalid, ignoring",
-              pendingRelay,
-              relayableDeposit,
-            });
-            return;
-          }
+        if (pendingRelay && !(await this.isRelayValid(pendingRelay, relayableDeposit.deposit))) {
+          this.logger.debug({
+            at: "Relayer",
+            message: "Pending relay is invalid, ignoring",
+            pendingRelay,
+            relayableDeposit,
+          });
+          return;
         }
         // If relay is valid, then account for profitability and bot token balance when deciding how to relay.
         const realizedLpFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(relayableDeposit.deposit);
