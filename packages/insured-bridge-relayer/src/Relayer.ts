@@ -238,6 +238,7 @@ export class Relayer {
   private generateSlowRelayTx(deposit: Deposit, realizedLpFeePct: BN): TransactionType {
     const bridgePool = this.l1Client.getBridgePoolForDeposit(deposit);
     return (bridgePool.methods.relayDeposit(
+      deposit.chainId,
       deposit.depositId,
       deposit.l1Recipient,
       deposit.l2Sender,
