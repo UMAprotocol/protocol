@@ -142,13 +142,13 @@ export const BatchReadWithErrors = (multicall2: uma.Multicall2) => async (
       calls.map(([method]) => ({ method }))
     )
     .readWithErrors();
-  // convert results of multicall, an array of responses, into a key value, keyed by contract method
+  // convert results of multicall, an array of responses, into an object keyed by contract method
   return Object.fromEntries(
-    lodash.zip(calls, results).map(([method, result]) => {
-      if (method == null) return [];
-      const [key, map] = method;
-      if (!result?.result) return [key, undefined];
-      return [key, map(result.result)];
+    lodash.zip(calls, results).map(([call, result]) => {
+      if (call == null) return [];
+      const [method, cb] = call;
+      if (!result?.result) return [method, undefined];
+      return [method, cb(result.result)];
     })
   );
 };
