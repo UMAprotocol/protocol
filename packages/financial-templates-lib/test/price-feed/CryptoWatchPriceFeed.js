@@ -28,6 +28,7 @@ describe("CryptoWatchPriceFeed.js", function () {
       result: {
         60: [
           [
+            // 1588376339
             1588376400, // CloseTime
             1.1, // OpenPrice
             1.7, // HighPrice
@@ -194,6 +195,11 @@ describe("CryptoWatchPriceFeed.js", function () {
 
     // After period 3 should succeed for same reason.
     assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376521)).toString(), toWei("1.3"));
+
+    // Between period 1 and period 1 should return period 2 price, even if subtracting the historical buffer time would
+    // return period 1. This tests that the CW pricefeed first tries to match a price period without resorting to the
+    // buffer.
+    assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376400)).toString(), toWei("1.2"));
   });
 
   it("Missing historical data", async function () {
