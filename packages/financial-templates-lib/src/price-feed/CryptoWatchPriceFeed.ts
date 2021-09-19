@@ -115,7 +115,6 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
 
     // historicalPricePeriods are ordered from oldest to newest.
     // This finds the first pricePeriod whose closeTime is after the provided time.
-    // console.log(this.historicalPricePeriods[this.historicalPricePeriods.length-11, this.historicalPricePeriods.length-1])
     const match = this.historicalPricePeriods.find((pricePeriod) => {
       return time <= pricePeriod.closeTime && time >= pricePeriod.openTime;
     });
