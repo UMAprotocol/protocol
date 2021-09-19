@@ -124,10 +124,15 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
     let returnPrice;
     if (match === undefined) {
       // Accounting for the buffer, find the price periods before and after the target time. These will be undefined if
-      // not found.
-      const before = this.historicalPricePeriods.find(
-        (pricePeriod) => time <= pricePeriod.closeTime + this.historicalTimestampBuffer && time >= pricePeriod.openTime
-      );
+      // not found. Reverse the search for the period so that we match the latest period that encompasses the target
+      // time.
+      const before = this.historicalPricePeriods
+        .slice()
+        .reverse()
+        .find(
+          (pricePeriod) =>
+            time <= pricePeriod.closeTime + this.historicalTimestampBuffer && time >= pricePeriod.openTime
+        );
       const after = this.historicalPricePeriods.find(
         (pricePeriod) => time >= pricePeriod.openTime - this.historicalTimestampBuffer && time <= pricePeriod.closeTime
       );

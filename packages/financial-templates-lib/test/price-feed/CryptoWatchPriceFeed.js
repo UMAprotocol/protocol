@@ -176,7 +176,7 @@ describe("CryptoWatchPriceFeed.js", function () {
     assert.isTrue(await cryptoWatchPriceFeed.getHistoricalPrice(1588376521).catch(() => true));
   });
 
-  it("Basic historical price with historicalTimestampBuffer > 0", async function () {
+  it("Basic historical price with historicalTimestampBuffer > 0: matching single price period", async function () {
     // Create new pricefeed with 60 second buffer.
     cryptoWatchPriceFeed = new CryptoWatchPriceFeed(
       spyLogger, // All construction params same as in `beforeEach` statement unless specifically commented.
@@ -261,6 +261,55 @@ describe("CryptoWatchPriceFeed.js", function () {
 
     // An input timestamp more than the buffer length after the last period should throw an error.
     assert.isTrue(await cryptoWatchPriceFeed.getHistoricalPrice(1588376761).catch(() => true));
+  });
+
+  it("Basic historical price with historicalTimestampBuffer > 0: matching multiple price periods", async function () {
+    // Create new pricefeed with 120 second buffer.
+    cryptoWatchPriceFeed = new CryptoWatchPriceFeed(
+      spyLogger, // All construction params same as in the previous test statement unless specifically commented.
+      web3,
+      apiKey,
+      exchange,
+      pair,
+      lookback,
+      networker,
+      getTime,
+      minTimeBetweenUpdates,
+      false, // Price not inverted
+      18, // Default decimals
+      60, // Default OHLC period
+      0, // Default TWAP length
+      120 // Overridden historicalTimestampBuffer of 120 seconds.
+    );
+    // Inject data with a missing data point.
+    networker.getJsonReturns = [
+      {
+        result: {
+          60: [
+            [1588376460, 1.2, 1, 1, 1.3, 1, 1],
+            [1588376520, 1.3, 1, 1, 1.4, 1, 1],
+            // Missing time chunk:
+            [1588376800, 1.7, 1, 1, 1.8, 1, 1],
+            [1588376860, 1.8, 1, 1, 1.9, 1, 1],
+          ],
+        },
+      },
+      { result: { price: 1.5 } },
+    ];
+
+    await cryptoWatchPriceFeed.update();
+
+    // An input timestamp that matches two periods as "before" periods (period 1 and period 2) should use the later
+    // close price.
+    assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376521)).toString(), toWei("1.4"));
+    assert.notEqual(spy.getCall(-1).lastArg.before, undefined);
+    assert.equal(spy.getCall(-1).lastArg.after, undefined);
+
+    // An input timestamp that matches two periods as "after" periods (period 3 and period 4) should use the earlier
+    // open price.
+    assert.equal((await cryptoWatchPriceFeed.getHistoricalPrice(1588376739)).toString(), toWei("1.7"));
+    assert.equal(spy.getCall(-1).lastArg.before, undefined);
+    assert.notEqual(spy.getCall(-1).lastArg.after, undefined);
   });
 
   it("Missing historical data", async function () {
