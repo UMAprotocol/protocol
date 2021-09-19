@@ -6,6 +6,12 @@ import Web3 from "web3";
 import { NetworkerInterface } from "./Networker";
 import { BN } from "../types";
 
+interface PricePeriod {
+  openTime: number;
+  closeTime: number;
+  openPrice: BN;
+  closePrice: BN;
+}
 // An implementation of PriceFeedInterface that uses CryptoWatch to retrieve prices.
 export class CryptoWatchPriceFeed extends PriceFeedInterface {
   private readonly uuid: string;
@@ -13,12 +19,7 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
   private readonly convertPriceFeedDecimals: (number: number | string | BN) => BN;
   private currentPrice: null | BN = null;
   private lastUpdateTime: null | number = null;
-  private historicalPricePeriods: {
-    openTime: number;
-    closeTime: number;
-    openPrice: BN;
-    closePrice: BN;
-  }[] = [];
+  private historicalPricePeriods: PricePeriod[] = [];
 
   /**
    * @notice Constructs the CryptoWatchPriceFeed.
@@ -114,56 +115,61 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
 
     // historicalPricePeriods are ordered from oldest to newest.
     // This finds the first pricePeriod whose closeTime is after the provided time.
+    // console.log(this.historicalPricePeriods[this.historicalPricePeriods.length-11, this.historicalPricePeriods.length-1])
     const match = this.historicalPricePeriods.find((pricePeriod) => {
-      return time < pricePeriod.closeTime && time >= pricePeriod.openTime;
+      return time <= pricePeriod.closeTime && time >= pricePeriod.openTime;
     });
 
     // If match doesn't succeed, then we can still try to find the nearest price and use it if its within the caller's
     // allowed margin of error.
     let returnPrice;
     if (match === undefined) {
-      // Reverse sort the historical price periods from newest to oldest. Find the first time period whose open time,
-      // minus the buffer, is before the target time. Use this matched period's close time.
-      const before = this.historicalPricePeriods
-        .slice()
-        .reverse()
-        .find((pricePeriod) => time >= pricePeriod.openTime - this.historicalTimestampBuffer);
+      // Accounting for the buffer, find the price periods before and after the target time. These will be undefined if
+      // not found.
+      const before = this.historicalPricePeriods.find(
+        (pricePeriod) => time <= pricePeriod.closeTime + this.historicalTimestampBuffer && time >= pricePeriod.openTime
+      );
+      const after = this.historicalPricePeriods.find(
+        (pricePeriod) => time >= pricePeriod.openTime - this.historicalTimestampBuffer && time <= pricePeriod.closeTime
+      );
 
-      // If the closest price period before the desired timestamp is within the historical timestamp buffer,
-      // then use its close price.
-      if (before && before.closeTime >= time - this.historicalTimestampBuffer) {
+      this.logger.debug({
+        at: "CryptoWatchPriceFeed",
+        message: "Using historical timestamp buffer to match time",
+        historicalTimestampBuffer: this.historicalTimestampBuffer,
+        time: time,
+        before: before
+          ? `openTime: ${before?.openTime}, closeTime: ${
+              before?.closeTime
+            }, openPrice: ${before?.openPrice.toString()}, closePrice: ${before?.closePrice.toString()}`
+          : before,
+        after: after
+          ? `openTime: ${after?.openTime}, closeTime: ${
+              after?.closeTime
+            }, openPrice: ${after?.openPrice.toString()}, closePrice: ${after?.closePrice.toString()}`
+          : after,
+      });
+
+      // If there is a `before` period, then use its close time, otherwise use the `after` period's open time.
+      if (before) {
         returnPrice = this.invertPrice ? this._invertPriceSafely(before.closePrice) : before.closePrice;
         if (!returnPrice) throw new Error(`${this.uuid} -- invalid price returned`);
-        if (verbose) await this._printVerbose(before.closeTime, returnPrice);
-      }
-      // If before is still not within the buffer, then return the user a detailed error message.
-      else {
-        const after = this.historicalPricePeriods.find(
-          (pricePeriod) => time < pricePeriod.closeTime + this.historicalTimestampBuffer
+        if (verbose) await this._printVerbose(before, returnPrice);
+      } else if (after) {
+        returnPrice = this.invertPrice ? this._invertPriceSafely(after.openPrice) : after.openPrice;
+        if (!returnPrice) throw new Error(`${this.uuid} -- invalid price returned`);
+        if (verbose) await this._printVerbose(after, returnPrice);
+      } else {
+        throw new Error(
+          `${this.uuid}: could not match a price period with time ${time} after accounting for the historical timestamp buffer of ${this.historicalTimestampBuffer}`
         );
-        const format = (value: BN | null | undefined) => {
-          const unformattedValue = value && (this.invertPrice ? this._invertPriceSafely(value) : value);
-          if (!unformattedValue) return "[no value found]";
-          return formatFixed(unformattedValue.toString(), this.priceFeedDecimals);
-        };
-        throw new Error(`
-          Cryptowatch price feed ${this.uuid} didn't return an ohlc for time ${time}.
-          Closest price point before is close time: ${before?.closeTime} (- buffer of ${
-          this.historicalTimestampBuffer
-        } seconds), close price: ${format(before?.closePrice)}.
-            Closest price point after is open time: ${after?.openTime} (+ buffer of ${
-          this.historicalTimestampBuffer
-        } seconds), open price: ${format(after?.openPrice)}.
-            To see these prices, make a GET request to:
-            https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/ohlc?after=${
-          (before?.openTime || 0) + this.ohlcPeriod
-        }&before=${after?.closeTime}&periods=60
-        `);
       }
-    } else {
+    }
+    // If we did find a match, then by default use the matched period's open price.
+    else {
       returnPrice = this.invertPrice ? this._invertPriceSafely(match.openPrice) : match.openPrice;
       if (!returnPrice) throw new Error(`${this.uuid} -- invalid price returned`);
-      if (verbose) await this._printVerbose(match.openTime, returnPrice);
+      if (verbose) await this._printVerbose(match, returnPrice);
     }
 
     return returnPrice;
@@ -229,18 +235,22 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
     this.lastUpdateTime = currentTime;
   }
 
-  private async _printVerbose(matchTime: number, returnPrice: BN) {
-    console.group(`\n(${this.exchange}:${this.pair}) Historical OHLC @ ${matchTime}`);
-    console.log(`- ✅ Open Price: ${formatFixed(returnPrice.toString(), this.priceFeedDecimals)}`);
+  private async _printVerbose(pricePeriod: PricePeriod, returnPrice: BN) {
+    console.group(`\n(${this.exchange}:${this.pair}) Historical OHLC:`);
     console.log(
-      `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n- https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/ohlc?after=${matchTime}&before=${matchTime}&periods=60`
+      `- openTime: ${pricePeriod.openTime}, closeTime: ${
+        pricePeriod.closeTime
+      }, openPrice: ${pricePeriod.openPrice.toString()}, closePrice: ${pricePeriod.closePrice.toString()}`
+    );
+    console.log(`- historicalTimestampBuffer: ${this.historicalTimestampBuffer}`);
+    console.log(`- ✅ Matched Price: ${formatFixed(returnPrice.toString(), this.priceFeedDecimals)}`);
+    console.log(
+      `- ⚠️  If you want to manually verify the specific exchange prices, you can make a GET request to: \n- https://api.cryptowat.ch/markets/${this.exchange}/${this.pair}/ohlc?after=${pricePeriod.openTime}&before=${pricePeriod.closeTime}&periods=60`
     );
     console.log(
       '- This will return an OHLC data packet as "result", which contains in order: \n- [CloseTime, OpenPrice, HighPrice, LowPrice, ClosePrice, Volume, QuoteVolume].'
     );
-    console.log(
-      "- We use the OpenPrice to compute the median. Note that you might need to invert the prices for certain identifiers like USDETH."
-    );
+    console.log("- Note that you might need to invert the prices for certain identifiers like USDETH.");
     console.groupEnd();
     return;
   }
