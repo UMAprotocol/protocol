@@ -1,1 +1,1 @@
-export { default, Table } from "./table";
+export { default } from "./table";

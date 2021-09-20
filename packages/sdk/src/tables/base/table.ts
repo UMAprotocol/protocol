@@ -5,7 +5,7 @@ import type { stores, MakeId, MaybeId, HasId } from "../..";
 export default function Table<I, D, S extends stores.Store<I, D>>(
   config: { makeId: MakeId<I, D>; type: string },
   store: S
-) {
+): Table {
   const { makeId, type } = config;
   async function create(data: D & MaybeId<I>) {
     const id = exists(data.id) ? data.id : makeId(data);

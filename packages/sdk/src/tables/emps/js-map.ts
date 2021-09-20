@@ -1,12 +1,12 @@
 import { Data, makeId } from "./utils";
-import JsMap, { Table as BaseTable } from "../base/";
+import JsMap from "../base/";
 import { Store } from "../../stores";
 
 export const Table = (type = "Emp", store: Store<string, Data>) => {
   const table = JsMap<string, Data, Store<string, Data>>({ type, makeId }, store);
 
   async function addSponsors(id: string, sponsors: string[]) {
-    const data = await (table as BaseTable).get(id);
+    const data = await table.get(id);
     // keep sponsors unique
     const set = new Set([...(data.sponsors || []), ...sponsors]);
     return table.update(id, { sponsors: Array.from(set.values()) });
