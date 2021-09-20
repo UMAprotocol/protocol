@@ -251,7 +251,7 @@ export default async (env: ProcessEnv) => {
 
   // listen for new lsp contracts since after we have started api, and make sure they get state updated asap
   // These events should only be bound after startup, since initialization above takes care of updating all contracts on startup
-  // Because there is now a event driven depdency, the lsp creator and lsp state updater must be in same process
+  // Because there is now a event driven dependency, the lsp creator and lsp state updater must be in same process
   serviceEvents.on("multiLspCreator", (data) => {
     console.log("LspCreator found a new contract", JSON.stringify(data));
     services.lsps.updateLsp(data.address, data.startBlock, data.endBlock);
