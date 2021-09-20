@@ -10,7 +10,14 @@ interface Config extends BaseConfig {
 }
 type Dependencies = Pick<AppState, "registeredLsps" | "provider" | "registeredLspsMetadata">;
 
-export default async (config: Config, appState: Dependencies) => {
+export type EmitData = {
+  blockNumber: number;
+  address: string;
+  startBlock?: number;
+  endBlock?: number;
+};
+
+export default async (config: Config, appState: Dependencies, emit: (data: EmitData) => void) => {
   const { network = 1, address = await lspCreator.getAddress(network) } = config;
   const { registeredLsps, provider, registeredLspsMetadata } = appState;
 
@@ -27,7 +34,9 @@ export default async (config: Config, appState: Dependencies) => {
     await bluebird.map(Object.keys(contracts), (address) => {
       const blockNumber = contracts[address].blockNumber;
       registeredLspsMetadata.set(address, { blockNumber });
-      return registeredLsps.add(address);
+      registeredLsps.add(address);
+      // emit that a new contract was found. Must be done after saving meta data
+      emit({ address, blockNumber, startBlock, endBlock });
     });
   }
 

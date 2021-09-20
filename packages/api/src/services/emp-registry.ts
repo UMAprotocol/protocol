@@ -1,5 +1,5 @@
 import { clients } from "@uma/sdk";
-import Promise from "bluebird";
+import bluebird from "bluebird";
 import { AppState, BaseConfig } from "..";
 
 const { registry } = clients;
@@ -9,7 +9,14 @@ interface Config extends BaseConfig {
 }
 type Dependencies = Pick<AppState, "registeredEmps" | "provider" | "registeredEmpsMetadata">;
 
-export default async (config: Config, appState: Dependencies) => {
+export type EmitData = {
+  blockNumber: number;
+  address: string;
+  startBlock?: number;
+  endBlock?: number;
+};
+
+export default async (config: Config, appState: Dependencies, emit: (data: EmitData) => void) => {
   const { network = 1 } = config;
   const { registeredEmps, provider, registeredEmpsMetadata } = appState;
   const address = await registry.getAddress(network);
@@ -24,10 +31,11 @@ export default async (config: Config, appState: Dependencies) => {
     const { contracts } = registry.getEventState(events);
     if (!contracts) return;
 
-    await Promise.map(Object.keys(contracts), (address) => {
+    await bluebird.map(Object.keys(contracts), (address) => {
       const blockNumber = contracts[address].blockNumber;
       registeredEmpsMetadata.set(address, { blockNumber });
-      return registeredEmps.add(address);
+      registeredEmps.add(address);
+      emit({ address, blockNumber, startBlock, endBlock });
     });
   }
 

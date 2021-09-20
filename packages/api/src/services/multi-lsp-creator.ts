@@ -1,7 +1,7 @@
 import { clients } from "@uma/sdk";
 import bluebird from "bluebird";
 import { AppState, BaseConfig } from "..";
-import LspCreator from "./lsp-creator";
+import LspCreator, { EmitData } from "./lsp-creator";
 
 const { lspCreator } = clients;
 
@@ -11,8 +11,9 @@ interface Config extends BaseConfig {
   debug?: boolean;
 }
 type Dependencies = Pick<AppState, "registeredLsps" | "provider" | "registeredLspsMetadata">;
+export type { EmitData };
 
-export default async (config: Config, appState: Dependencies) => {
+export default async (config: Config, appState: Dependencies, emit: (data: EmitData) => void) => {
   const { addresses = [], network = 1 } = config;
 
   // always include latest known address
@@ -22,7 +23,7 @@ export default async (config: Config, appState: Dependencies) => {
   const allAddresses = Array.from(new Set([...addresses, latestAddress]));
 
   // instantiate individual lsp creator services with a single address
-  const creatorServices = allAddresses.map((address) => LspCreator({ address, ...config }, appState));
+  const creatorServices = allAddresses.map((address) => LspCreator({ address, ...config }, appState, emit));
 
   // run update on all creator services
   async function update(startBlock?: number, endBlock?: number) {

@@ -209,10 +209,10 @@ export default (config: Config, appState: Dependencies) => {
 
   return {
     update,
+    updateLsp,
     utils: {
       updateTokenAddresses,
       updateLsps,
-      updateLsp,
       dynamicProps,
       staticProps,
       batchRead,

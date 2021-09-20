@@ -193,5 +193,8 @@ export default (config: Config, appState: Dependencies) => {
     await updateTokenAddresses();
   }
 
-  return update;
+  return {
+    update,
+    updateOne,
+  };
 };

@@ -1,6 +1,7 @@
 import assert from "assert";
 import { ethers } from "ethers";
 import moment from "moment";
+import Events from "events";
 
 import { tables, Coingecko, utils, Multicall } from "@uma/sdk";
 
@@ -40,6 +41,9 @@ export default async (env: ProcessEnv) => {
   assert(updateRateS >= 1, "UPDATE_RATE_S must be 1 or higher");
   assert(detectContractsUpdateRateS >= 1, "DETECT_CONTRACTS_UPDATE_RATE_S must be 1 or higher");
   assert(priceUpdateRateS >= 1, "PRICE_UPDATE_RATE_S must be 1 or higher");
+
+  // services can emit events when necessary, though for now any services that depend on events must be in same process
+  const serviceEvents = new Events();
 
   // state shared between services
   const appState: AppState = {
@@ -126,7 +130,7 @@ export default async (env: ProcessEnv) => {
     // these services can optionally be configured with a config object, but currently they are undefined or have defaults
     blocks: Services.Blocks(undefined, appState),
     emps: Services.EmpState({ debug }, appState),
-    registry: await Services.Registry({ debug }, appState),
+    registry: await Services.Registry({ debug }, appState, (data) => serviceEvents.emit("empRegistry", data)),
     collateralPrices: Services.CollateralPrices({ debug }, appState),
     syntheticPrices: Services.SyntheticPrices(
       {
@@ -141,7 +145,9 @@ export default async (env: ProcessEnv) => {
     erc20s: Services.Erc20s({ debug }, appState),
     empStats: Services.stats.Emp({ debug }, appState),
     marketPrices: Services.MarketPrices({ debug }, appState),
-    lspCreator: await Services.MultiLspCreator({ debug, addresses: lspCreatorAddresses }, appState),
+    lspCreator: await Services.MultiLspCreator({ debug, addresses: lspCreatorAddresses }, appState, (data) =>
+      serviceEvents.emit("multiLspCreator", data)
+    ),
     lsps: Services.LspState({ debug }, appState),
     lspStats: Services.stats.Lsp({ debug }, appState),
     globalStats: Services.stats.Global({ debug }, appState),
@@ -156,7 +162,7 @@ export default async (env: ProcessEnv) => {
   await services.lspCreator.update(appState.lastBlockUpdate, initBlock.number);
   console.log("Got all LSP addresses");
 
-  await services.emps(appState.lastBlockUpdate, initBlock.number);
+  await services.emps.update(appState.lastBlockUpdate, initBlock.number);
   console.log("Updated EMP state");
 
   await services.lsps.update(appState.lastBlockUpdate, initBlock.number);
@@ -221,7 +227,7 @@ export default async (env: ProcessEnv) => {
   async function updateContractState(startBlock: number, endBlock: number) {
     await services.blocks.handleNewBlock(endBlock);
     // update everyting
-    await services.emps(startBlock, endBlock);
+    await services.emps.update(startBlock, endBlock);
     await services.lsps.update(startBlock, endBlock);
     await services.erc20s.update();
     await services.blocks.cleanBlocks(oldestBlock);
@@ -242,6 +248,20 @@ export default async (env: ProcessEnv) => {
   await new Promise((res) => setTimeout(res, updateRateS * 1000));
 
   console.log("Starting API update loops");
+
+  // listen for new lsp contracts since after we have started api, and make sure they get state updated asap
+  // These events should only be bound after startup, since initialization above takes care of updating all contracts on startup
+  // Because there is now a event driven depdency, the lsp creator and lsp state updater must be in same process
+  serviceEvents.on("multiLspCreator", (data) => {
+    console.log("LspCreator found a new contract", JSON.stringify(data));
+    services.lsps.updateLsp(data.address, data.startBlock, data.endBlock);
+  });
+
+  // listen for new emp contracts since after we start api, make sure they get state updates asap
+  serviceEvents.on("empRegistry", (data) => {
+    console.log("EmpRegistry found a new contract", JSON.stringify(data));
+    services.emps.updateOne(data.address, data.startBlock, data.endBlock);
+  });
 
   async function getLatestBlockNumber() {
     const block = await provider.getBlock("latest");
