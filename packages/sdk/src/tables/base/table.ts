@@ -2,7 +2,10 @@ import assert from "assert";
 import { exists } from "../../utils";
 import type { stores, MakeId, MaybeId, HasId } from "../..";
 
-export default function Table<I, D>(config: { makeId: MakeId<I, D>; type: string }, store: stores.Store<I, D>) {
+export default function Table<I, D, S extends stores.Store<I, D>>(
+  config: { makeId: MakeId<I, D>; type: string },
+  store: S
+) {
   const { makeId, type } = config;
   async function create(data: D & MaybeId<I>) {
     const id = exists(data.id) ? data.id : makeId(data);
@@ -25,6 +28,7 @@ export default function Table<I, D>(config: { makeId: MakeId<I, D>; type: string
     return set({ ...got, ...data });
   }
   return {
+    ...store,
     create,
     set,
     get,
@@ -34,3 +38,5 @@ export default function Table<I, D>(config: { makeId: MakeId<I, D>; type: string
     type,
   };
 }
+
+export type Table = ReturnType<typeof Table>;
