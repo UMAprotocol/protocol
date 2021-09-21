@@ -27,11 +27,13 @@ const { SyntheticPegMonitor } = require("./src/SyntheticPegMonitor");
 
 // Contract ABIs and network Addresses.
 const { findContractVersion } = require("@uma/core");
-const { getAddress } = require("@uma/contracts-node");
-const {getWeb3,
+const { getAddress, getAbi } = require("@uma/contracts-node");
+const {
+  getWeb3,
   SUPPORTED_CONTRACT_VERSIONS,
   PublicNetworks,
-  getContractsNodePackageAliasForVerion,} = require("@uma/common");
+  getContractsNodePackageAliasForVerion,
+} = require("@uma/common");
 
 /**
  * @notice Continuously attempts to monitor contract positions and reports based on monitor modules.
@@ -135,8 +137,11 @@ async function run({
 
       // Setup contract instances.
       const voting = new web3.eth.Contract(getAbi("Voting"), getAddress("Voting", networkId));
-      const { getAbi } = require(getContractsNodePackageAliasForVerion(monitorConfig.contractVersion));
-      const financialContract = new web3.eth.Contract(getAbi(monitorConfig.contractType), financialContractAddress);
+      const { getAbi: getVersionedAbi } = require(getContractsNodePackageAliasForVerion(monitorConfig.contractVersion));
+      const financialContract = new web3.eth.Contract(
+        getVersionedAbi(monitorConfig.contractType),
+        financialContractAddress
+      );
       const networker = new Networker(logger);
 
       // We want to enforce that all pricefeeds return prices in the same precision, so we'll construct one price feed
