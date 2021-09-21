@@ -117,8 +117,8 @@ export type { ${normalizeClassName(contractName)}Web3Events };\n`
       fs.appendFileSync(out, `export function get${contractName}Abi(): any[] { return JSON.parse(\`${abi}\`); }\n`);
     });
     artifacts.forEach(({ contractName, relativePath }) => {
-      const bytecode = JSON.stringify(JSON.parse(fs.readFileSync(relativePath).toString("utf8")).bytecode);
-      fs.appendFileSync(out, `export function get${contractName}Bytecode(): string { return \`${bytecode}\`; }\n`);
+      const bytecode = JSON.parse(fs.readFileSync(relativePath).toString("utf8")).bytecode;
+      fs.appendFileSync(out, `export function get${contractName}Bytecode(): string { return "${bytecode}"; }\n`);
     });
 
     // Creates get[name]Address(chainId) for using switch statements.
