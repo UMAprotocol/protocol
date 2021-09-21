@@ -231,9 +231,14 @@ interface HRE {
 }
 export async function getAddress(name: DeploymentName | ContractName, chainId: number): Promise<string> {
   if (typeof chainId !== "number") throw new Error("chainId must be a number");
-  const hre = (global as unknown as { hre?: HRE }).hre;
-  const hreDeployment = hre && parseInt(await hre.getChainId()) === chainId && await hre.deployments.getOrNull(name);
-  if (hreDeployment) return hreDeployment.address;
+  const { hre, hardhatTestingAddresses } = (global as unknown as { hre?: HRE; hardhatTestingAddresses?: { [name: string]: string } });
+
+  // The HRE address can be set in a few ways:
+  // 1. If a global hre object declared, the global hre object matches the chainId passed in, and the global hre object has a deployment for this name.
+  // 2. If a global hardhatTestingAddresses object is declared with a matching address for this name.
+  // If an address is not set through the HRE (which should only be used in local testing), then it falls back to the addresses from the networks file.
+  const hreAddress = (hre && parseInt(await hre.getChainId()) === chainId && (await hre.deployments.getOrNull(name))?.address) || hardhatTestingAddresses?.[name];
+  if (hreAddress) return hreAddress;
   if (!isDeploymentName(name)) throw new Error(\`No deployments for name: \${name}\`);
   const fn = addressFunctions[name];
   return fn(chainId);
