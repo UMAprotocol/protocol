@@ -246,10 +246,7 @@ export async function getAddress(name: DeploymentName | ContractName, chainId: n
 `
     );
 
-    // Write abi and bytecode for the browser file.
-    // Note: the idea behind writing the functions this way is to make them as optimized as possible for tree-shaking
-    // to remove any unused json files. In modern versions of webpack, this should allow absolutely _no_ artifact
-    // information that isn't needed to be pulled in.
+    // Write abi, bytecode, and address functions to match the contracts-frontend package api.
     artifacts.forEach(({ contractName }) => {
       fs.appendFileSync(
         out,
