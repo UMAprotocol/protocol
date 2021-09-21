@@ -67,7 +67,6 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
   public async getHistoricalPrice(time: number | string, ancillaryData: string): Promise<BN> {
     // Note: `time` is unused in this method because it is not included in the relay ancillary data.
 
-    console.log("this.deposits", this.deposits);
     // Parse ancillary data for relay request and find deposit if possible with matching params.
     const parsedAncillaryData: RelayAncillaryData = (parseAncillaryData(
       ancillaryData
