@@ -198,3 +198,32 @@ export function getWeb3(url: string, options: Obj = {}) {
   if (url.startsWith("ws")) return getWeb3Websocket(url, options);
   throw new Error("Only supporting websocket provider URLs for Web3");
 }
+
+// this just maintains the start/endblock given sporadic updates with a latest block number
+export function BlockInterval(update: (startBlock: number, endBlock: number) => Promise<void>, startBlock = 0) {
+  return async (endBlock: number) => {
+    assert(endBlock > startBlock, "End block must be greater than start block");
+    const params = {
+      startBlock,
+      endBlock,
+    };
+    await update(startBlock, endBlock);
+    startBlock = endBlock;
+    return params;
+  };
+}
+
+// rejects after a timeout period
+export function rejectAfterDelay(ms: number, message = "Call timed out") {
+  return new Promise((res, rej) => {
+    const to = setTimeout(() => {
+      clearTimeout(to);
+      rej(message);
+    }, ms);
+  });
+}
+
+// races a promise against a timeout to reject if it takes too long
+export function expirePromise(promise: () => Promise<any>, timeoutms: number, errorMessage?: string) {
+  return Promise.race([promise(), rejectAfterDelay(timeoutms, errorMessage)]);
+}

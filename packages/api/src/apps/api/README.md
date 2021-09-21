@@ -13,6 +13,12 @@ EXPRESS_PORT=8282
 # Optional, defaults to 600 (10 minutes): number of seconds before rechecking contract states
 UPDATE_RATE_S=600
 
+# Optional update rate for price updates, defaults to 900 (15 minutes)
+PRICE_UPDATE_RATE_S=900
+
+# Optional update rate for detecting new contracts, defaults to 60 (1 minute)
+DETECT_CONTRACTS_UPDATE_RATE_S=60
+
 # defaults to 864,000,000 ( 10 days): represents the max age a block will stay cached
 OLDEST_BLOCK_MS=1
 

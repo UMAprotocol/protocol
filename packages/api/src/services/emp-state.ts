@@ -69,7 +69,7 @@ export default (config: Config, appState: Dependencies) => {
     return batchRead(staticProps, instance, address);
   }
 
-  async function updateOne(address: string, startBlock?: number | "latest", endBlock?: number) {
+  async function updateOne(address: string, startBlock?: number, endBlock?: number) {
     // ignore expired emps
     if (await emps.expired.has(address)) return;
 
@@ -151,7 +151,7 @@ export default (config: Config, appState: Dependencies) => {
     });
   }
 
-  async function updateAll(addresses: string[], startBlock?: number | "latest", endBlock?: number) {
+  async function updateAll(addresses: string[], startBlock?: number, endBlock?: number) {
     await Promise.mapSeries(addresses, async (address: string) => {
       const end = profile(`Update Emp state for ${address}`);
       try {
@@ -164,11 +164,14 @@ export default (config: Config, appState: Dependencies) => {
     });
   }
 
-  async function update(startBlock?: number | "latest", endBlock?: number) {
+  async function update(startBlock?: number, endBlock?: number) {
     const addresses = Array.from(await registeredEmps.values());
     await updateAll(addresses, startBlock, endBlock);
     await updateTokenAddresses();
   }
 
-  return update;
+  return {
+    update,
+    updateAll,
+  };
 };
