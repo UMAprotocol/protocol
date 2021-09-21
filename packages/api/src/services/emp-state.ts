@@ -195,6 +195,6 @@ export default (config: Config, appState: Dependencies) => {
 
   return {
     update,
-    updateOne,
+    updateAll,
   };
 };

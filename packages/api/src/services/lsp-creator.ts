@@ -17,7 +17,9 @@ export type EmitData = {
   endBlock?: number;
 };
 
-export default async (config: Config, appState: Dependencies, emit: (data: EmitData) => void) => {
+export type Events = "created";
+
+export default async (config: Config, appState: Dependencies, emit: (event: Events, data: EmitData) => void) => {
   const { network = 1, address = await lspCreator.getAddress(network) } = config;
   const { registeredLsps, provider, registeredLspsMetadata } = appState;
 
@@ -36,7 +38,7 @@ export default async (config: Config, appState: Dependencies, emit: (data: EmitD
       registeredLspsMetadata.set(address, { blockNumber });
       registeredLsps.add(address);
       // emit that a new contract was found. Must be done after saving meta data
-      emit({ address, blockNumber, startBlock, endBlock });
+      emit("created", { address, blockNumber, startBlock, endBlock });
     });
   }
 

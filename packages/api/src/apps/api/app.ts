@@ -130,7 +130,9 @@ export default async (env: ProcessEnv) => {
     // these services can optionally be configured with a config object, but currently they are undefined or have defaults
     blocks: Services.Blocks(undefined, appState),
     emps: Services.EmpState({ debug }, appState),
-    registry: await Services.Registry({ debug }, appState, (data) => serviceEvents.emit("empRegistry", data)),
+    registry: await Services.Registry({ debug }, appState, (event, data) =>
+      serviceEvents.emit("empRegistry", event, data)
+    ),
     collateralPrices: Services.CollateralPrices({ debug }, appState),
     syntheticPrices: Services.SyntheticPrices(
       {
@@ -145,8 +147,8 @@ export default async (env: ProcessEnv) => {
     erc20s: Services.Erc20s({ debug }, appState),
     empStats: Services.stats.Emp({ debug }, appState),
     marketPrices: Services.MarketPrices({ debug }, appState),
-    lspCreator: await Services.MultiLspCreator({ debug, addresses: lspCreatorAddresses }, appState, (data) =>
-      serviceEvents.emit("multiLspCreator", data)
+    lspCreator: await Services.MultiLspCreator({ debug, addresses: lspCreatorAddresses }, appState, (event, data) =>
+      serviceEvents.emit("multiLspCreator", event, data)
     ),
     lsps: Services.LspState({ debug }, appState),
     lspStats: Services.stats.Lsp({ debug }, appState),
@@ -252,15 +254,21 @@ export default async (env: ProcessEnv) => {
   // listen for new lsp contracts since after we have started api, and make sure they get state updated asap
   // These events should only be bound after startup, since initialization above takes care of updating all contracts on startup
   // Because there is now a event driven dependency, the lsp creator and lsp state updater must be in same process
-  serviceEvents.on("multiLspCreator", (data) => {
-    console.log("LspCreator found a new contract", JSON.stringify(data));
-    services.lsps.updateLsp(data.address, data.startBlock, data.endBlock);
+  serviceEvents.on("multiLspCreator", (event, data) => {
+    // handle created events
+    if (event === "created") {
+      console.log("LspCreator found a new contract", JSON.stringify(data));
+      services.lsps.updateLsps([data.address], data.startBlock, data.endBlock).catch(console.error);
+    }
   });
 
   // listen for new emp contracts since after we start api, make sure they get state updates asap
-  serviceEvents.on("empRegistry", (data) => {
-    console.log("EmpRegistry found a new contract", JSON.stringify(data));
-    services.emps.updateOne(data.address, data.startBlock, data.endBlock);
+  serviceEvents.on("empRegistry", (event, data) => {
+    // handle created events
+    if (event === "created") {
+      console.log("EmpRegistry found a new contract", JSON.stringify(data));
+      services.emps.updateAll([data.address], data.startBlock, data.endBlock).catch(console.error);
+    }
   });
 
   async function getLatestBlockNumber() {
