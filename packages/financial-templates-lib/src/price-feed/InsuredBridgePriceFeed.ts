@@ -67,6 +67,7 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
   public async getHistoricalPrice(time: number | string, ancillaryData: string): Promise<BN> {
     // Note: `time` is unused in this method because it is not included in the relay ancillary data.
 
+    console.log("this.deposits", this.deposits);
     // Parse ancillary data for relay request and find deposit if possible with matching params.
     const parsedAncillaryData: RelayAncillaryData = (parseAncillaryData(
       ancillaryData
@@ -99,7 +100,12 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
     // Validate relays proposed realized fee percentage.
     const expectedRealizedFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(matchedDeposit[0]);
     if (expectedRealizedFeePct.toString() !== parsedAncillaryData.realizedLpFeePct.toString()) {
-      this.logger.debug({ at: "InsuredBridgePriceFeed", message: "Matched deposit realized fee % is incorrect" });
+      this.logger.debug({
+        at: "InsuredBridgePriceFeed",
+        message: "Matched deposit realized fee % is incorrect",
+        expectedRealizedFeePct: expectedRealizedFeePct.toString(),
+        relayRealizedLpFeePct: parsedAncillaryData.realizedLpFeePct.toString(),
+      });
       return toBNWei(isRelayValid.No);
     }
 

@@ -51,8 +51,6 @@ export class InsuredBridgeL1Client {
 
   private firstBlockToSearch: number;
 
-  private readonly toWei = Web3.utils.toWei;
-
   constructor(
     private readonly logger: Logger,
     readonly l1Web3: Web3,
@@ -104,14 +102,11 @@ export class InsuredBridgeL1Client {
       throw new Error("No rate model for l1Token");
 
     const quoteBlockNumber = (await findBlockNumberAtTimestamp(this.l1Web3, deposit.quoteTimestamp)).blockNumber;
-    console.log("quoteBlockNumber", quoteBlockNumber);
-
     const bridgePool = this.getBridgePoolForDeposit(deposit);
     const [liquidityUtilizationCurrent, liquidityUtilizationPostRelay] = await Promise.all([
       bridgePool.methods.liquidityUtilizationCurrent().call(undefined, quoteBlockNumber),
       bridgePool.methods.liquidityUtilizationPostRelay(deposit.amount.toString()).call(undefined, quoteBlockNumber),
     ]);
-
     return calculateRealizedLpFeePct(
       this.rateModels[deposit.l1Token],
       toBN(liquidityUtilizationCurrent),
@@ -130,6 +125,7 @@ export class InsuredBridgeL1Client {
   }
 
   getBridgePoolForDeposit(l2Deposit: Deposit): BridgePoolWeb3 {
+    if (!this.bridgePools[l2Deposit.l1Token]) throw new Error(`No bridge pool initialized for ${l2Deposit.l1Token}`);
     return this.bridgePools[l2Deposit.l1Token];
   }
 

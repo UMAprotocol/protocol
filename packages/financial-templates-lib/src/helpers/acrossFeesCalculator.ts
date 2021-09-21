@@ -1,6 +1,8 @@
-import Web3 from "web3";
 import BN from "bn.js";
-const { toBN, toWei } = Web3.utils;
+// const { toBN, toWei } = Web3.utils;
+
+const toBN = (number: string | number) => new BN(number.toString());
+const toWei = (number: string | number) => new BN(number.toString()).mul(new BN("1e18")).toString();
 const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 const fixedPointAdjustment = toBNWei("1");
 

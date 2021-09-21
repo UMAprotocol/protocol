@@ -201,8 +201,9 @@ export async function findBlockNumberAtTimestamp(
         block = await web3.eth.getBlock(blockNumber);
       }
     }
+    console.log("blockNumber", blockNumber);
 
-    // If we ended up with a block lower than the upper limit  walk block by block to make sure it's the correct one.
+    // If we ended up with a block lower than the upper limit walk block by block to make sure it's the correct one.
     if (block.timestamp < higherLimitStamp) {
       while (block.timestamp < higherLimitStamp) {
         blockNumber += 1;
