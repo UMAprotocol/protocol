@@ -14,7 +14,7 @@ type Dependencies = Pick<
   | "collateralAddresses"
   | "shortAddresses"
   | "longAddresses"
-  | "multicall"
+  | "multicall2"
   | "registeredLspsMetadata"
 >;
 
@@ -27,7 +27,7 @@ export default (config: Config, appState: Dependencies) => {
     collateralAddresses,
     shortAddresses,
     longAddresses,
-    multicall,
+    multicall2,
   } = appState;
   const profile = Profile(config.debug);
 
@@ -52,7 +52,7 @@ export default (config: Config, appState: Dependencies) => {
   ];
 
   async function batchRead(calls: [string, (x: any) => any][], instance: Instance, address: string) {
-    const result = await BatchRead(multicall)(calls, instance);
+    const result = await BatchRead(multicall2)(calls, instance);
     return {
       address,
       updated: nowS(),

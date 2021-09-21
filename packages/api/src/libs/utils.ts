@@ -107,7 +107,7 @@ export function parseBytes(x: any) {
   return parseBytes32String(x);
 }
 
-export const BatchRead = (multicall: uma.Multicall) => async (
+export const BatchRead = (multicall: uma.Multicall2) => async (
   calls: [string, (x: any) => any][],
   contract: Contract
 ) => {
@@ -127,6 +127,28 @@ export const BatchRead = (multicall: uma.Multicall) => async (
       if (result == null) return [];
       const [key, map] = method;
       return [key, map(result)];
+    })
+  );
+};
+
+export const BatchReadWithErrors = (multicall2: uma.Multicall2) => async (
+  calls: [string, (x: any) => any][],
+  contract: Contract
+) => {
+  // multicall batch takes array of {method} objects
+  const results = await multicall2
+    .batch(
+      contract,
+      calls.map(([method]) => ({ method }))
+    )
+    .readWithErrors();
+  // convert results of multicall, an array of responses, into an object keyed by contract method
+  return Object.fromEntries(
+    lodash.zip(calls, results).map(([call, result]) => {
+      if (call == null) return [];
+      const [method, cb] = call;
+      if (!result?.result) return [method, undefined];
+      return [method, cb(result.result)];
     })
   );
 };
