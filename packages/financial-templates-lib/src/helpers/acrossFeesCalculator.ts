@@ -1,5 +1,7 @@
+// This Util calculates the across realized LP fees. TODO: add a link to chase's notebooks once they are production ready
+// to explain how the logic works past the comments included here.
+
 import BN from "bn.js";
-// const { toBN, toWei } = Web3.utils;
 
 const toBN = (number: string | number) => new BN(number.toString());
 const toWei = (number: string | number) => new BN(number.toString()).mul(new BN("1e18")).toString();
