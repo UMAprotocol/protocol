@@ -377,7 +377,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             instantRelayerOrRecipientAmount
         );
 
-        // The slow relayer gets paid the slow relay fee. This is the same irrespective if the relay was sped or not.
+        // The slow relayer gets paid the slow relay fee. This is the same irrespective if the relay was sped up or not.
         uint256 slowRelayerAmount = _getAmountFromPct(_depositData.slowRelayFeePct, _depositData.amount);
         l1Token.safeTransfer(relay.slowRelayer, slowRelayerAmount);
 
