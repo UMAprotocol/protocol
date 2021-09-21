@@ -1,9 +1,9 @@
 import { Data, makeId } from "./utils";
-import JsMap from "../base";
+import BaseTable from "../base";
 import { Store } from "../../stores";
 
 export const Table = (type = "Token", store: Store<string, Data>) => {
-  const table = JsMap<string, Data, Store<string, Data>>({ type, makeId }, store);
+  const table = BaseTable<string, Data, Store<string, Data>>({ type, makeId }, store);
   async function getOrCreate(address: string) {
     if (!(await table.has(makeId({ address })))) return table.create({ address });
     return table.get(makeId({ address }));

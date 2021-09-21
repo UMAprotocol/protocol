@@ -1,9 +1,9 @@
 import { Data, makeId } from "./utils";
-import JsMap from "../base";
+import BaseTable from "../base";
 import { SortedStore } from "../../stores";
 
 export const Table = (type = "Historical Price", store: SortedStore<string, Data>) => {
-  const table = JsMap<string, Data, SortedStore<string, Data>>({ type, makeId }, store);
+  const table = BaseTable<string, Data, SortedStore<string, Data>>({ type, makeId }, store);
   function betweenByTimestamp(a: number, b: number) {
     return table.between(makeId({ timestamp: a }), makeId({ timestamp: b }));
   }

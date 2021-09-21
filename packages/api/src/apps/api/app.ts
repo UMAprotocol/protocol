@@ -3,6 +3,7 @@ import { ethers } from "ethers";
 import moment from "moment";
 
 import { tables, Coingecko, utils, Multicall } from "@uma/sdk";
+import { stores } from "@uma/sdk";
 
 import * as Services from "../../services";
 import Express from "../../services/express-channels";
@@ -34,7 +35,10 @@ export default async (env: ProcessEnv) => {
   const oldestBlock = Number(env.OLDEST_BLOCK_MS || 10 * 60 * 60 * 24 * 1000);
 
   assert(updateRateS >= 1, "UPDATE_RATE_S must be 1 or higher");
-
+  const store = stores.JsMap<string, tables.emps.Data>();
+  const store2 = stores.JsMap<string, tables.emps.Data>();
+  const empsActiveTable = tables.emps.JsMap("Active Emp", store);
+  const empsExpiredTable = tables.emps.JsMap("Expired Emp", store2);
   // state shared between services
   const appState: AppState = {
     provider,
@@ -43,8 +47,8 @@ export default async (env: ProcessEnv) => {
     zrx: new Zrx(env.zrxBaseUrl),
     blocks: tables.blocks.JsMap(),
     emps: {
-      active: tables.emps.JsMap("Active Emp"),
-      expired: tables.emps.JsMap("Expired Emp"),
+      active: empsActiveTable,
+      expired: empsExpiredTable,
     },
     prices: {
       usd: {
