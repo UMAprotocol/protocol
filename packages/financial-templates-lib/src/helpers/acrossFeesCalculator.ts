@@ -7,10 +7,10 @@ const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toStr
 const fixedPointAdjustment = toBNWei("1");
 
 export interface RateModel {
-  UBar: BN;
-  R0: BN;
-  R1: BN;
-  R2: BN;
+  UBar: BN; // denote the utilization kink where the slope of the interest rate model changes.
+  R0: BN; // is the interest rate charged at 0 utilization
+  R1: BN; // R_0+R_1 is the interest rate charged at UBar
+  R2: BN; // R_0+R_1+R_2 is the interest rate charged at 100% utilization
 }
 
 // Calculate the rate for a 0 sized deposit (infinitesimally small).
@@ -23,7 +23,7 @@ function calculateInstantaneousRate(rateModel: RateModel, utilization: BN) {
   return rateModel.R0.add(piece1).add(piece2);
 }
 
-//  Compute area under curve of the piece-wise linear rate model
+//  Compute area under curve of the piece-wise linear rate model.
 function calculateAreaUnderRateCurve(rateModel: RateModel, utilization: BN) {
   // Area under first piecewise component
   const utilizationTilda1 = BN.min(utilization, rateModel.UBar);
