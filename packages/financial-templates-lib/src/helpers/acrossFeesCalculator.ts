@@ -1,6 +1,8 @@
 // This Util calculates the across realized LP fees. TODO: add a link to chase's notebooks once they are production ready
 // to explain how the logic works past the comments included here.
 
+// Note this util is written to be independent of Web3.js to make importing into the UMA-SDK & front end easier.
+
 import BN from "bn.js";
 
 const toBN = (number: string | number) => new BN(number.toString());
