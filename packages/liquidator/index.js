@@ -4,7 +4,12 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers
-const { getWeb3, SUPPORTED_CONTRACT_VERSIONS, PublicNetworks } = require("@uma/common");
+const {
+  getWeb3,
+  SUPPORTED_CONTRACT_VERSIONS,
+  PublicNetworks,
+  getContractsNodePackageAliasForVerion,
+} = require("@uma/common");
 // JS libs
 const { Liquidator } = require("./src/liquidator");
 const { ProxyTransactionWrapper } = require("./src/proxyTransactionWrapper");
@@ -22,7 +27,8 @@ const {
 } = require("@uma/financial-templates-lib");
 
 // Contract ABIs and network Addresses.
-const { getAbi, getAddress, findContractVersion } = require("@uma/core");
+const { findContractVersion } = require("@uma/core");
+const { getAddress } = require("@uma/contracts-node");
 
 /**
  * @notice Continuously attempts to liquidate positions in the Financial Contract contract.
@@ -105,10 +111,8 @@ async function run({
       );
 
     // Setup contract instances. This uses the contract version pulled in from previous step.
-    const financialContract = new web3.eth.Contract(
-      getAbi(liquidatorConfig.contractType, liquidatorConfig.contractVersion),
-      financialContractAddress
-    );
+    const { getAbi } = require(getContractsNodePackageAliasForVerion(liquidatorConfig.contractVersion));
+    const financialContract = new web3.eth.Contract(getAbi(liquidatorConfig.contractType), financialContractAddress);
 
     // Returns whether the Financial Contract has expired yet
     const checkIsExpiredOrShutdownPromise = async () => {
@@ -210,7 +214,7 @@ async function run({
         gasEstimator,
         account: accounts[0],
         dsProxyFactoryAddress:
-          proxyTransactionWrapperConfig?.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
+          proxyTransactionWrapperConfig?.dsProxyFactoryAddress || (await getAddress("DSProxyFactory", networkId)),
         dsProxyFactoryAbi: getAbi("DSProxyFactory"),
         dsProxyAbi: getAbi("DSProxy"),
         availableAccounts: proxyTransactionWrapperConfig.availableAccounts || 1,

@@ -236,9 +236,7 @@ class ProxyTransactionWrapper {
     const dsProxyCallReturn = await this.dsProxyManager.callFunctionOnNewlyDeployedLibrary(callCode, callData);
 
     // Wait exactly one block to fetch events. This ensures that the events have been indexed by your node.
-    console.log("BLICK");
     await blockUntilBlockMined(this.web3, dsProxyCallReturn.blockNumber + 1);
-    console.log("BLICK1");
 
     const liquidationEvent = (
       await this.financialContract.getPastEvents("LiquidationCreated", {
@@ -246,7 +244,6 @@ class ProxyTransactionWrapper {
         filter: { liquidator: this.dsProxyManager.getDSProxyAddress() },
       })
     )[0];
-    console.log("BLICK2");
 
     // Return the same data sent back from the EOA liquidation.
     return {
