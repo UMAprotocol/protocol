@@ -4,24 +4,17 @@
   "description": "UMA smart contracts and unit tests",
   "dependencies": {
     "@openzeppelin/contracts": "4.1.0",
-    "@truffle/contract": "^4.3.15",
     "@uma/common": "^2.6.0",
-    "@uma/core-1-1-0": "npm:@uma/core@1.1.0",
-    "@uma/core-1-2-0": "npm:@uma/core@1.2.0",
-    "@uma/core-1-2-1": "npm:@uma/core@1.2.1",
-    "@uma/core-1-2-2": "npm:@uma/core@1.2.2",
-    "@uma/core-2-0-0": "npm:@uma/core@2.0.0",
-    "@uma/core-2-0-1": "npm:@uma/core@2.0.1",
     "@uniswap/lib": "4.0.1-alpha",
     "@uniswap/v2-core": "1.0.0",
     "@uniswap/v2-periphery": "1.1.0-beta.0",
     "@uniswap/v3-core": "^1.0.0-rc.2",
-    "@uniswap/v3-periphery": "^1.0.0-beta.23",
-    "arb-ts": "^0.0.42",
-    "decimal.js": "^10.2.1",
-    "ethereum-waffle": "^3.4.0"
+    "@uniswap/v3-periphery": "^1.0.0-beta.23"
   },
   "devDependencies": {
+    "arb-ts": "^0.0.42",
+    "decimal.js": "^10.2.1",
+    "ethereum-waffle": "^3.4.0",
     "@awaitjs/express": "^0.3.0",
     "@eth-optimism/contracts": "^0.4.5",
     "@eth-optimism/message-relayer": "^0.1.8",
@@ -71,12 +64,10 @@
     "url": "git+https://github.com/UMAprotocol/protocol.git"
   },
   "main": "dist/index.js",
-  "browser": "dist/browser.js",
   "types": "types/index.d.ts",
   "files": [
     "/contracts/**/*.sol",
-    "/build/contracts/*.json",
-    "/migrations/*.js",
+    "/artifacts/**/*",
     "/config/*.json",
     "/dist/**/*",
     "/types/**/*"
