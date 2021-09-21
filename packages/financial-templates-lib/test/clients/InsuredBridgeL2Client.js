@@ -36,10 +36,10 @@ const quoteTimestampOffset = 60; // 60 seconds into the past.
 describe("InsuredBridgeL2Client", () => {
   const generateDepositHash = (depositData) => {
     const depositDataAbiEncoded = web3.eth.abi.encodeParameters(
-      ["uint64", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint64"],
+      ["uint8", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint64"],
       [
+        depositData.chainId,
         depositData.depositId,
-        depositData.depositTimestamp,
         depositData.l1Recipient,
         depositData.l2Sender,
         depositData.l1Token,
@@ -109,9 +109,9 @@ describe("InsuredBridgeL2Client", () => {
 
     let expectedDeposits = [
       {
+        chainId: 10,
         depositId: 0,
         depositHash: "",
-        depositTimestamp,
         l1Recipient: user1,
         l2Sender: user1,
         l1Token: l1TokenAddress,
@@ -141,9 +141,9 @@ describe("InsuredBridgeL2Client", () => {
 
     await client.update();
     expectedDeposits.push({
+      chainId: 10,
       depositId: 1, // ID should increment, as expected.
       depositHash: "",
-      depositTimestamp: depositTimestamp2,
       l1Recipient: user2,
       l2Sender: user1,
       l1Token: l1TokenAddress,

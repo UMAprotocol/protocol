@@ -301,8 +301,8 @@ describe("Insured bridge e2e tests", () => {
         )
           .to.emit(l2BridgeDepositBox, "FundsDeposited")
           .withArgs(
+            "69", // chainId
             "0", // depositId
-            depositL2Time, // timestamp
             l2Wallet.address, // sender
             l2Wallet.address, // recipient
             l1Token.address, // l1Token
