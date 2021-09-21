@@ -386,8 +386,8 @@ describe("Insured bridge e2e tests", () => {
           const relayTx = await (await l1BridgePool.deployed())
             .connect(l1LiquidityProvider)
             .relayDeposit(
+              depositReceipt.events[1].args.chainId.toString(),
               depositReceipt.events[1].args.depositId.toString(),
-              depositReceipt.events[1].args.timestamp.toString(),
               depositReceipt.events[1].args.recipient,
               depositReceipt.events[1].args.sender,
               depositReceipt.events[1].args.amount.toString(),
@@ -402,8 +402,8 @@ describe("Insured bridge e2e tests", () => {
           assert.equal((await l1Token.balanceOf(l1Wallet.address)).toString(), "0"); // Should have no tokens before
 
           depositData = {
+            chainId: depositReceipt.events[1].args.chainId.toString(),
             depositId: depositReceipt.events[1].args.depositId.toString(),
-            depositTimestamp: depositReceipt.events[1].args.timestamp.toString(),
             l2Sender: depositReceipt.events[1].args.sender,
             recipient: depositReceipt.events[1].args.recipient,
             l1Token: l1Token.address,

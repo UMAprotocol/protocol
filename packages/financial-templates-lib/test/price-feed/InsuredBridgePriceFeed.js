@@ -95,7 +95,7 @@ describe("InsuredBridgePriceFeed", function () {
         depositData.depositId,
         depositData.l1Recipient,
         depositData.l2Sender,
-        depositData.l1Token,
+        l1Token.options.address,
         depositData.amount,
         depositData.slowRelayFeePct,
         depositData.instantRelayFeePct,
@@ -233,7 +233,6 @@ describe("InsuredBridgePriceFeed", function () {
       depositId: 0,
       l1Recipient: l1Recipient,
       l2Sender: depositor,
-      l1Token: l1Token.options.address,
       amount: relayAmount,
       slowRelayFeePct: defaultSlowRelayFeePct,
       instantRelayFeePct: defaultInstantRelayFeePct,
@@ -348,13 +347,6 @@ describe("InsuredBridgePriceFeed", function () {
         await pricefeed.getHistoricalPrice(
           1,
           await generateRelayAncillaryData({ ...depositData, l2Sender: ZERO_ADDRESS }, relayData, bridgePool)
-        ),
-        toWei("0")
-      );
-      assert.equal(
-        await pricefeed.getHistoricalPrice(
-          1,
-          await generateRelayAncillaryData({ ...depositData, l1Token: ZERO_ADDRESS }, relayData, bridgePool)
         ),
         toWei("0")
       );
