@@ -1,9 +1,10 @@
 import { Data, makeId } from "./utils";
 import BaseTable from "../base";
+import { JsMap } from "../../stores";
 import type { Store } from "../../stores";
 
 // personally dont like to have this as a named export, but cannot export both function and type as default
-export const Table = (type = "Block", store: Store<number, Data>) => {
+export const Table = (type = "Block", store: Store<number, Data> = JsMap<number, Data>()) => {
   const table = BaseTable<number, Data, Store<number, Data>>({ type, makeId }, store);
 
   // delete blocks older than timestamp

@@ -1,8 +1,9 @@
 import { Data, makeId } from "./utils";
 import BaseTable from "../base";
-import { Store } from "../../stores";
+import type { Store } from "../../stores";
+import { JsMap } from "../../stores";
 
-export const Table = (type = "Emp", store: Store<string, Data>) => {
+export const Table = (type = "Emp", store: Store<string, Data> = JsMap()) => {
   const table = BaseTable<string, Data, Store<string, Data>>({ type, makeId }, store);
 
   async function addSponsors(id: string, sponsors: string[]) {
