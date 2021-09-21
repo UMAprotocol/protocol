@@ -155,6 +155,8 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
       });
 
       // If there is a `before` period, then use its close time, otherwise use the `after` period's open time.
+      // All things being equal we prefer prices from times before the target time because there are fewer manipulation
+      // opportunities and we are not incorporating information that did not exist at the target time.
       if (before) {
         returnPrice = this.invertPrice ? this._invertPriceSafely(before.closePrice) : before.closePrice;
         if (!returnPrice) throw new Error(`${this.uuid} -- invalid price returned`);
@@ -169,7 +171,9 @@ export class CryptoWatchPriceFeed extends PriceFeedInterface {
         );
       }
     }
-    // If we did find a match, then by default use the matched period's open price.
+    // If we did find a match, then by default use the matched period's open price. See comment in the above block about
+    // why we prefer `before` periods to `after` ones. Similar reasoning is why we default to a period's open price to
+    // its close price. We prefer prices that occurred before the target time.
     else {
       returnPrice = this.invertPrice ? this._invertPriceSafely(match.openPrice) : match.openPrice;
       if (!returnPrice) throw new Error(`${this.uuid} -- invalid price returned`);
