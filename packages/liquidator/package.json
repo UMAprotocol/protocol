@@ -31,7 +31,7 @@
   ],
   "bin": "index.js",
   "scripts": {
-    "test": "yarn mocha-test && yarn hardhat-test",
+    "test": "yarn mocha-test && mocha 'test/**/*.js'",
     "hardhat-test": "hardhat test",
     "mocha-test": "mocha mocha-test",
     "test-log": "truffle test ./test/*.js --network=test logInTest",

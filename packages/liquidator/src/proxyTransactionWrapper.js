@@ -5,7 +5,7 @@ const {
   blockUntilBlockMined,
   createContractObjectFromJson,
 } = require("@uma/common");
-const { getAbi, getTruffleContract } = require("@uma/core");
+const { getAbi, getBytecode } = require("@uma/contracts-node");
 
 const UniswapV2Factory = require("@uniswap/v2-core/build/UniswapV2Factory.json");
 const IUniswapV2Pair = require("@uniswap/v2-core/build/IUniswapV2Pair.json");
@@ -104,7 +104,10 @@ class ProxyTransactionWrapper {
     }
 
     this.reserveToken = new this.web3.eth.Contract(getAbi("ExpandedERC20"), this.liquidatorReserveCurrencyAddress);
-    this.ReserveCurrencyLiquidator = getTruffleContract("ReserveCurrencyLiquidator", this.web3);
+    this.ReserveCurrencyLiquidator = {
+      abi: getAbi("ReserveCurrencyLiquidator"),
+      bytecode: getBytecode("ReserveCurrencyLiquidator"),
+    };
   }
 
   // Get the effective synthetic token balance. If the bot is executing in normal mode (liquidations sent from an EOA)
@@ -231,17 +234,19 @@ class ProxyTransactionWrapper {
     const callCode = this.ReserveCurrencyLiquidator.bytecode;
 
     const dsProxyCallReturn = await this.dsProxyManager.callFunctionOnNewlyDeployedLibrary(callCode, callData);
-    const blockAfterLiquidation = await this.web3.eth.getBlockNumber();
 
     // Wait exactly one block to fetch events. This ensures that the events have been indexed by your node.
-    await blockUntilBlockMined(this.web3, blockAfterLiquidation + 1);
+    console.log("BLICK");
+    await blockUntilBlockMined(this.web3, dsProxyCallReturn.blockNumber + 1);
+    console.log("BLICK1");
 
     const liquidationEvent = (
       await this.financialContract.getPastEvents("LiquidationCreated", {
-        fromBlock: blockAfterLiquidation - 1,
+        fromBlock: dsProxyCallReturn.blockNumber,
         filter: { liquidator: this.dsProxyManager.getDSProxyAddress() },
       })
     )[0];
+    console.log("BLICK2");
 
     // Return the same data sent back from the EOA liquidation.
     return {
