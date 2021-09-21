@@ -164,7 +164,6 @@ export class InsuredBridgeL1Client {
         bridgePool.getPastEvents("RelayDisputed", blockSearchConfig),
         bridgePool.getPastEvents("RelaySettled", blockSearchConfig),
       ]);
-      ("");
 
       for (const depositRelayedEvent of depositRelayedEvents) {
         const relayData: Relay = {
