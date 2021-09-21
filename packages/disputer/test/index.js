@@ -1,6 +1,4 @@
-const hre = require("hardhat");
-const { web3, getContract } = hre;
-global.hre = hre;
+const { web3, getContract } = require("hardhat");
 const { assert } = require("chai");
 const { toWei, utf8ToHex, padRight, toBN } = web3.utils;
 const {
