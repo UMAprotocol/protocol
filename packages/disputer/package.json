@@ -32,7 +32,7 @@
   ],
   "bin": "index.js",
   "scripts": {
-    "test": "hardhat test"
+    "test": "mocha 'test/**/*.js'"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"

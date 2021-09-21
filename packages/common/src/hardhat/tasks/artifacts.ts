@@ -231,9 +231,9 @@ interface HRE {
 }
 export async function getAddress(name: DeploymentName | ContractName, chainId: number): Promise<string> {
   if (typeof chainId !== "number") throw new Error("chainId must be a number");
-  const hre = (global as unknown as { hre?: HRE }).hre;
-  const hreDeployment = hre && parseInt(await hre.getChainId()) === chainId && await hre.deployments.getOrNull(name);
-  if (hreDeployment) return hreDeployment.address;
+  const { hre, hardhatTestingAddresses } = (global as unknown as { hre?: HRE; hardhatTestingAddresses?: { [name: string]: string } });
+  const hreAddress = hre && parseInt(await hre.getChainId()) === chainId && ((await hre.deployments.getOrNull(name))?.address || hardhatTestingAddresses?.[name]);
+  if (hreAddress) return hreAddress;
   if (!isDeploymentName(name)) throw new Error(\`No deployments for name: \${name}\`);
   const fn = addressFunctions[name];
   return fn(chainId);

@@ -158,7 +158,7 @@ async function run({
         gasEstimator,
         account: accounts[0],
         dsProxyFactoryAddress:
-          proxyTransactionWrapperConfig?.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
+          proxyTransactionWrapperConfig?.dsProxyFactoryAddress || (await getAddress("DSProxyFactory", networkId)),
         dsProxyFactoryAbi: getAbi("DSProxyFactory"),
         dsProxyAbi: getAbi("DSProxy"),
         availableAccounts: proxyTransactionWrapperConfig.availableAccounts || 1,

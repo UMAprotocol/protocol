@@ -1,3 +1,7 @@
+const hre = require("hardhat");
+global.hre = hre;
+const { web3, getContract } = hre;
+const { assert } = require("chai");
 const { toWei, utf8ToHex, padRight, toBN } = web3.utils;
 const {
   MAX_UINT_VAL,
@@ -7,8 +11,8 @@ const {
   createConstructorParamsForContractVersion,
   TESTED_CONTRACT_VERSIONS,
   createContractObjectFromJson,
+  getContractsNodePackageAliasForVerion,
 } = require("@uma/common");
-const { getTruffleContract } = require("@uma/core");
 
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
@@ -46,48 +50,71 @@ let errorRetriesTimeout = 0.1; // 100 milliseconds between performing retries
 let identifier = "TEST_IDENTIFIER";
 let fundingRateIdentifier = "TEST_FUNDING";
 
-contract("index.js", function (accounts) {
-  const contractCreator = accounts[0];
-  const disputer = contractCreator;
+describe("index.js", function () {
+  let accounts, disputer, contractCreator;
+
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+    [contractCreator] = accounts;
+    disputer = contractCreator;
+  });
 
   TESTED_CONTRACT_VERSIONS.forEach(function (contractVersion) {
+    const { getAbi, getBytecode } = require(getContractsNodePackageAliasForVerion(contractVersion.contractVersion));
+
+    const createContract = (name) => {
+      const abi = getAbi(name);
+      const bytecode = getBytecode(name);
+      return getContract(name, { abi, bytecode });
+    };
+
     // Import the tested versions of contracts. note that financialContract is either an ExpiringMultiParty or the
     // perp depending on the current iteration version.
-    const FinancialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
-    const Finder = getTruffleContract("Finder", web3, contractVersion.contractVersion);
-    const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, contractVersion.contractVersion);
-    const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, contractVersion.contractVersion);
-    const MockOracle = getTruffleContract("MockOracle", web3, contractVersion.contractVersion);
-    const Token = getTruffleContract("ExpandedERC20", web3, contractVersion.contractVersion);
-    const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
-    const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
-    const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
-    const ConfigStore = getTruffleContract("ConfigStore", web3);
-    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3);
-    const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);
+    const FinancialContract = createContract(contractVersion.contractType);
+    const Finder = createContract("Finder");
+    const IdentifierWhitelist = createContract("IdentifierWhitelist");
+    const AddressWhitelist = createContract("AddressWhitelist");
+    const MockOracle = createContract("MockOracle");
+    const Token = createContract("ExpandedERC20");
+    const SyntheticToken = createContract("SyntheticToken");
+    const Timer = createContract("Timer");
+    const Store = createContract("Store");
+    const ConfigStore = createContract("ConfigStore");
+    const OptimisticOracle = createContract("OptimisticOracle");
+    const DSProxyFactory = createContract("DSProxyFactory");
 
     describe(`Smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
       before(async function () {
-        finder = await Finder.new();
-        timer = await Timer.new();
+        finder = await Finder.new().send({ from: contractCreator });
+        timer = await Timer.new().send({ from: contractCreator });
         // Create identifier whitelist and register the price tracking ticker with it.
-        identifierWhitelist = await IdentifierWhitelist.new();
-        await identifierWhitelist.addSupportedIdentifier(utf8ToHex(identifier));
-        await finder.changeImplementationAddress(
-          web3.utils.utf8ToHex(interfaceName.IdentifierWhitelist),
-          identifierWhitelist.address
-        );
+        identifierWhitelist = await IdentifierWhitelist.new().send({ from: contractCreator });
+        await identifierWhitelist.methods.addSupportedIdentifier(utf8ToHex(identifier)).send({ from: contractCreator });
+        await finder.methods
+          .changeImplementationAddress(
+            web3.utils.utf8ToHex(interfaceName.IdentifierWhitelist),
+            identifierWhitelist.options.address
+          )
+          .send({ from: contractCreator });
 
-        mockOracle = await MockOracle.new(finder.address, timer.address, { from: contractCreator });
-        await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
+        mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({
+          from: contractCreator,
+        });
+        await finder.methods
+          .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address)
+          .send({ from: contractCreator });
         // Set the address in the global name space to enable disputer's index.js to access it.
-        addGlobalHardhatTestingAddress("Voting", mockOracle.address);
+        addGlobalHardhatTestingAddress("Voting", mockOracle.options.address);
 
-        store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
-        await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
+        store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.options.address).send({
+          from: contractCreator,
+        });
+        await finder.methods
+          .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
+          .send({ from: contractCreator });
 
-        dsProxyFactory = await DSProxyFactory.new();
-        addGlobalHardhatTestingAddress("DSProxyFactory", dsProxyFactory.address);
+        dsProxyFactory = await DSProxyFactory.new().send({ from: contractCreator });
+        addGlobalHardhatTestingAddress("DSProxyFactory", dsProxyFactory.options.address);
       });
 
       beforeEach(async function () {
@@ -99,16 +126,20 @@ contract("index.js", function (accounts) {
         });
 
         // Create a new synthetic token
-        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractCreator });
-        collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
-        await collateralToken.addMember(1, contractCreator, { from: contractCreator });
+        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18).send({ from: contractCreator });
+        collateralToken = await Token.new("Wrapped Ether", "WETH", 18).send({ from: contractCreator });
+        await collateralToken.methods.addMember(1, contractCreator).send({ from: contractCreator });
 
-        collateralWhitelist = await AddressWhitelist.new();
-        await finder.changeImplementationAddress(
-          web3.utils.utf8ToHex(interfaceName.CollateralWhitelist),
-          collateralWhitelist.address
-        );
-        await collateralWhitelist.addToWhitelist(collateralToken.address);
+        collateralWhitelist = await AddressWhitelist.new().send({ from: contractCreator });
+        await finder.methods
+          .changeImplementationAddress(
+            web3.utils.utf8ToHex(interfaceName.CollateralWhitelist),
+            collateralWhitelist.options.address
+          )
+          .send({ from: contractCreator });
+        await collateralWhitelist.methods
+          .addToWhitelist(collateralToken.options.address)
+          .send({ from: contractCreator });
 
         if (contractVersion.contractType == "Perpetual") {
           configStore = await ConfigStore.new(
@@ -120,12 +151,18 @@ contract("index.js", function (accounts) {
               minFundingRate: { rawValue: toWei("-0.00001") },
               proposalTimePastLimit: 0,
             },
-            timer.address
-          );
+            timer.options.address
+          ).send({ from: contractCreator });
 
-          await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier)));
-          optimisticOracle = await OptimisticOracle.new(7200, finder.address, timer.address);
-          await finder.changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.address);
+          await identifierWhitelist.methods
+            .addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier)))
+            .send({ from: contractCreator });
+          optimisticOracle = await OptimisticOracle.new(7200, finder.options.address, timer.options.address).send({
+            from: contractCreator,
+          });
+          await finder.methods
+            .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
+            .send({ from: contractCreator });
         }
 
         // Deploy a new expiring multi party OR perpetual.
@@ -142,11 +179,11 @@ contract("index.js", function (accounts) {
             store,
             configStore: configStore || {}, // if the contract type is not a perp this will be null.
           },
-          { expirationTimestamp: (await timer.getCurrentTime()).toNumber() + 100 } // config override expiration time.
+          { expirationTimestamp: parseInt(await timer.methods.getCurrentTime().call()) + 100 } // config override expiration time.
         );
-        financialContract = await FinancialContract.new(constructorParams);
-        await syntheticToken.addMinter(financialContract.address);
-        await syntheticToken.addBurner(financialContract.address);
+        financialContract = await FinancialContract.new(constructorParams).send({ from: contractCreator });
+        await syntheticToken.methods.addMinter(financialContract.options.address).send({ from: contractCreator });
+        await syntheticToken.methods.addBurner(financialContract.options.address).send({ from: contractCreator });
 
         defaultPriceFeedConfig = { type: "test", currentPrice: "1", historicalPrice: "1" };
       });
@@ -158,27 +195,29 @@ contract("index.js", function (accounts) {
           transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
 
-        collateralToken = await Token.new("BTC", "BTC", 8, { from: contractCreator });
-        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractCreator });
+        collateralToken = await Token.new("BTC", "BTC", 8).send({ from: contractCreator });
+        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18).send({ from: contractCreator });
         // For this test we are using a lower decimal identifier, USDBTC. First we need to add it to the whitelist.
-        await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex("USDBTC"), 64));
+        await identifierWhitelist.methods
+          .addSupportedIdentifier(padRight(utf8ToHex("USDBTC"), 64))
+          .send({ from: contractCreator });
         const decimalTestConstructorParams = JSON.parse(
           JSON.stringify({
             ...constructorParams,
-            collateralAddress: collateralToken.address,
-            tokenAddress: syntheticToken.address,
+            collateralAddress: collateralToken.options.address,
+            tokenAddress: syntheticToken.options.address,
             priceFeedIdentifier: padRight(utf8ToHex("USDBTC"), 64),
           })
         );
-        financialContract = await FinancialContract.new(decimalTestConstructorParams);
-        await syntheticToken.addMinter(financialContract.address);
-        await syntheticToken.addBurner(financialContract.address);
+        financialContract = await FinancialContract.new(decimalTestConstructorParams).send({ from: contractCreator });
+        await syntheticToken.methods.addMinter(financialContract.options.address).send({ from: contractCreator });
+        await syntheticToken.methods.addBurner(financialContract.options.address).send({ from: contractCreator });
 
         // Note the execution below does not have a price feed included. It should be pulled from the default USDBTC config.
         await Poll.run({
           logger: spyLogger,
           web3,
-          financialContractAddress: financialContract.address,
+          financialContractAddress: financialContract.options.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
@@ -193,26 +232,36 @@ contract("index.js", function (accounts) {
       });
       it("Can correctly initialize using a DSProxy", async function () {
         // Deploy a reserve currency token.
-        const reserveToken = await Token.new("Reserve Token", "RTKN", 18, { from: contractCreator });
-        await reserveToken.addMember(1, contractCreator, { from: contractCreator });
+        const reserveToken = await Token.new("Reserve Token", "RTKN", 18).send({ from: contractCreator });
+        await reserveToken.methods.addMember(1, contractCreator).send({ from: contractCreator });
         // deploy Uniswap V2 Factory & router.
-        const factory = await createContractObjectFromJson(UniswapV2Factory, web3).new(contractCreator, {
-          from: contractCreator,
-        });
-        const router = await createContractObjectFromJson(UniswapV2Router02, web3).new(
-          factory.address,
-          collateralToken.address,
-          { from: contractCreator }
-        );
+        const factory = (
+          await createContractObjectFromJson(UniswapV2Factory, web3).new(contractCreator, { from: contractCreator })
+        ).contract;
+        const router = (
+          await createContractObjectFromJson(UniswapV2Router02, web3).new(
+            factory.options.address,
+            collateralToken.options.address,
+            { from: contractCreator }
+          )
+        ).contract;
 
         // initialize the pair
-        await factory.createPair(reserveToken.address, collateralToken.address);
-        const pairAddress = await factory.getPair(reserveToken.address, collateralToken.address);
-        const pair = await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress);
+        await factory.methods
+          .createPair(reserveToken.options.address, collateralToken.options.address)
+          .send({ from: contractCreator });
+        const pairAddress = await factory.methods
+          .getPair(reserveToken.options.address, collateralToken.options.address)
+          .call();
+        const pair = (await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress)).contract;
 
-        await reserveToken.mint(pairAddress, toBN(toWei("1000")).muln(10000000), { from: contractCreator });
-        await collateralToken.mint(pairAddress, toBN(toWei("1")).muln(10000000), { from: contractCreator });
-        await pair.sync();
+        await reserveToken.methods
+          .mint(pairAddress, toBN(toWei("1000")).muln(10000000))
+          .send({ from: contractCreator });
+        await collateralToken.methods
+          .mint(pairAddress, toBN(toWei("1")).muln(10000000))
+          .send({ from: contractCreator });
+        await pair.methods.sync().send({ from: contractCreator });
 
         spy = sinon.spy();
         spyLogger = winston.createLogger({
@@ -223,15 +272,15 @@ contract("index.js", function (accounts) {
         await Poll.run({
           logger: spyLogger,
           web3,
-          financialContractAddress: financialContract.address,
+          financialContractAddress: financialContract.options.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
           priceFeedConfig: defaultPriceFeedConfig,
           proxyTransactionWrapperConfig: {
             useDsProxyToDispute: true,
-            disputerReserveCurrencyAddress: reserveToken.address,
-            uniswapRouterAddress: router.address,
+            disputerReserveCurrencyAddress: reserveToken.options.address,
+            uniswapRouterAddress: router.options.address,
           },
         });
 
@@ -257,27 +306,29 @@ contract("index.js", function (accounts) {
           transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
 
-        collateralToken = await Token.new("BTC", "BTC", 8, { from: contractCreator });
-        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractCreator });
+        collateralToken = await Token.new("BTC", "BTC", 8).send({ from: contractCreator });
+        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18).send({ from: contractCreator });
         // For this test we are using a lower decimal identifier, USDBTC. First we need to add it to the whitelist.
-        await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex("USDBTC"), 64));
+        await identifierWhitelist.methods
+          .addSupportedIdentifier(padRight(utf8ToHex("USDBTC"), 64))
+          .send({ from: contractCreator });
         const decimalTestConstructorParams = JSON.parse(
           JSON.stringify({
             ...constructorParams,
-            collateralAddress: collateralToken.address,
-            tokenAddress: syntheticToken.address,
+            collateralAddress: collateralToken.options.address,
+            tokenAddress: syntheticToken.options.address,
             priceFeedIdentifier: padRight(utf8ToHex("USDBTC"), 64),
           })
         );
-        financialContract = await FinancialContract.new(decimalTestConstructorParams);
-        await syntheticToken.addMinter(financialContract.address);
-        await syntheticToken.addBurner(financialContract.address);
+        financialContract = await FinancialContract.new(decimalTestConstructorParams).send({ from: contractCreator });
+        await syntheticToken.methods.addMinter(financialContract.options.address).send({ from: contractCreator });
+        await syntheticToken.methods.addBurner(financialContract.options.address).send({ from: contractCreator });
 
         // Note the execution below does not have a price feed included. It should be pulled from the default USDBTC config.
         await Poll.run({
           logger: spyLogger,
           web3,
-          financialContractAddress: financialContract.address,
+          financialContractAddress: financialContract.options.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
@@ -295,14 +346,16 @@ contract("index.js", function (accounts) {
         await Poll.run({
           logger: spyLogger,
           web3,
-          financialContractAddress: financialContract.address,
+          financialContractAddress: financialContract.options.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
           priceFeedConfig: defaultPriceFeedConfig,
         });
 
-        const collateralAllowance = await collateralToken.allowance(contractCreator, financialContract.address);
+        const collateralAllowance = await collateralToken.methods
+          .allowance(contractCreator, financialContract.options.address)
+          .call();
         assert.equal(collateralAllowance.toString(), MAX_UINT_VAL);
       });
 
@@ -310,7 +363,7 @@ contract("index.js", function (accounts) {
         await Poll.run({
           logger: spyLogger,
           web3,
-          financialContractAddress: financialContract.address,
+          financialContractAddress: financialContract.options.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
@@ -331,7 +384,7 @@ contract("index.js", function (accounts) {
         await Poll.run({
           logger: spyLogger,
           web3,
-          financialContractAddress: financialContract.address,
+          financialContractAddress: financialContract.options.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
@@ -352,7 +405,7 @@ contract("index.js", function (accounts) {
           await Poll.run({
             logger: spyLogger,
             web3,
-            financialContractAddress: finder.address,
+            financialContractAddress: finder.options.address,
             pollingDelay,
             errorRetries,
             errorRetriesTimeout,
@@ -373,9 +426,9 @@ contract("index.js", function (accounts) {
         // and excludes any liquidation logic. As a result, calling `getLiquidations` in the Financial Contract contract will error out.
 
         // Need to give an unknown identifier to get past the `createReferencePriceFeedForFinancialContract` & `createUniswapPriceFeedForFinancialContract`
-        await identifierWhitelist.addSupportedIdentifier(utf8ToHex("UNKNOWN"));
+        await identifierWhitelist.methods.addSupportedIdentifier(utf8ToHex("UNKNOWN")).send({ from: contractCreator });
 
-        const PricelessPositionManager = await getTruffleContract("PricelessPositionManager", web3, "1.2.2");
+        const PricelessPositionManager = await getContract("PricelessPositionManager");
 
         const invalidFinancialContract = await PricelessPositionManager.new(
           constructorParams.expirationTimestamp,
@@ -386,9 +439,8 @@ contract("index.js", function (accounts) {
           utf8ToHex("UNKNOWN"),
           constructorParams.minSponsorTokens,
           constructorParams.timerAddress,
-          contractCreator,
           ZERO_ADDRESS
-        );
+        ).send({ from: contractCreator });
 
         // We will also create a new spy logger, listening for debug events to validate the re-tries.
         spyLogger = winston.createLogger({
@@ -402,7 +454,7 @@ contract("index.js", function (accounts) {
           await Poll.run({
             logger: spyLogger,
             web3,
-            financialContractAddress: invalidFinancialContract.address,
+            financialContractAddress: invalidFinancialContract.options.address,
             pollingDelay,
             errorRetries,
             errorRetriesTimeout,
