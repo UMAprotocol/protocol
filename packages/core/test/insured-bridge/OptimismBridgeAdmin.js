@@ -8,7 +8,7 @@ const { deployOptimismContractMock } = require("./helpers/SmockitHelper");
 const { assert } = require("chai");
 
 // Tested contracts
-const BridgeAdmin = getContract("BridgeAdmin");
+const BridgeAdmin = getContract("OptimismBridgeAdmin");
 const BridgePool = getContract("BridgePool");
 const Timer = getContract("Timer");
 const Finder = getContract("Finder");

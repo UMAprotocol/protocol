@@ -13,7 +13,9 @@ const { deployOptimismContractMock } = require("../../../core/test/insured-bridg
 const winston = require("winston");
 const { assert } = require("chai");
 
-const BridgeAdmin = getContract("BridgeAdmin");
+// Note: This bot should not be opinionated about whether it is connected to Optimism or Arbitrum, so we'll default to
+// the Optimism contracts.
+const BridgeAdmin = getContract("OptimismBridgeAdmin");
 const BridgePool = getContract("BridgePool");
 const BridgeDepositBox = getContract("OVM_BridgeDepositBox");
 const Finder = getContract("Finder");

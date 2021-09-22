@@ -21,8 +21,10 @@ const { toWei, toBN, utf8ToHex } = web3.utils;
 const { deployOptimismContractMock } = require("../../core/test/insured-bridge/helpers/SmockitHelper.js");
 
 // Helper contracts
+// Note: This bot should not be opinionated about whether it is connected to Optimism or Arbitrum, so we'll default to
+// the Optimism contracts.
 const BridgePool = getContract("BridgePool");
-const BridgeAdmin = getContract("BridgeAdmin");
+const BridgeAdmin = getContract("OptimismBridgeAdmin");
 const BridgeDepositBox = getContract("OVM_BridgeDepositBox");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");

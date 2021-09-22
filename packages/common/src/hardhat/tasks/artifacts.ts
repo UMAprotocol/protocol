@@ -188,7 +188,7 @@ export type { ${normalizeClassName(contractName)}Web3Events };\n`
       fs.appendFileSync(out, `  ${contractName}: "${relativePath}",\n`)
     );
     fs.appendFileSync(out, "};\n");
-    fs.appendFileSync(out, "type ContractName = keyof typeof artifactPaths;\n");
+    fs.appendFileSync(out, "export type ContractName = keyof typeof artifactPaths;\n");
 
     // Use object to import the correct artifact for each contract name and return to the user.
     fs.appendFileSync(

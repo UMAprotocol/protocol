@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity >=0.7.6;
 
-import "./BridgeDepositBox.sol";
+import "../BridgeDepositBox.sol";
 
 // TODO: Add Arbitrum specific cross-chain guards to limit who can call cross-chain methods to the L1 admin.
 

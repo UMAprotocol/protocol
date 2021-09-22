@@ -16,6 +16,8 @@ const { deployOptimismContractMock } = require("../../../core/test/insured-bridg
 const { InsuredBridgeL2Client } = require("../../dist/clients/InsuredBridgeL2Client");
 
 // Helper contracts
+// Note: This bot should not be opinionated about whether it is connected to Optimism or Arbitrum, so we'll default to
+// the Optimism contracts.
 const BridgeDepositBox = getContract("OVM_BridgeDepositBox");
 const Token = getContract("ExpandedERC20");
 const Timer = getContract("Legacy_Timer");

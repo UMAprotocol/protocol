@@ -18,7 +18,7 @@ export async function approveL1Tokens(
   bridgeAdminAddress: string,
   whitelistedRelayL1Tokens: string[]
 ): Promise<void> {
-  const bridgeAdmin = new web3.eth.Contract(getAbi("BridgeAdmin"), bridgeAdminAddress);
+  const bridgeAdmin = new web3.eth.Contract(getAbi("BridgeAdminInterface"), bridgeAdminAddress);
 
   for (const whitelistedL1Token of whitelistedRelayL1Tokens) {
     console.log("whitelistedL1Token", whitelistedL1Token);
@@ -38,7 +38,9 @@ export async function approveL1Tokens(
 
 // Returns the L2 Deposit box address for a given bridgeAdmin
 export async function getL2DepositBoxAddress(web3: Web3, bridgeAdminAddress: string): Promise<string> {
-  return await new web3.eth.Contract(getAbi("BridgeAdmin"), bridgeAdminAddress).methods.depositContract().call();
+  return await new web3.eth.Contract(getAbi("BridgeAdminInterface"), bridgeAdminAddress).methods
+    .depositContract()
+    .call();
 }
 
 // Return the ballance of account on tokenAddress for a given web3 network.

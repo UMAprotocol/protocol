@@ -30,11 +30,11 @@ const factory__L1StandardBridge = createOptimismEthersFactory("OVM_L1StandardBri
 const factory__L2StandardBridge = createOptimismEthersFactory("OVM_L2StandardBridge", true);
 
 // Insured bridge contract factories
-const factory__L1_BridgeAdmin = createLocalEthersFactory("BridgeAdmin");
+const factory__L1_BridgeAdmin = createLocalEthersFactory("OptimismBridgeAdmin");
 const factory__L1_BridgePool = createLocalEthersFactory("BridgePool");
 const factory__L2_BridgeDepositBox = createLocalEthersFactory("OVM_BridgeDepositBox", true);
 
-describe("Insured bridge e2e tests", () => {
+describe("Optimism Insured bridge e2e tests", () => {
   // Set up our RPC provider connections.
   const { l1RpcProvider, l2RpcProvider } = getProviders();
 

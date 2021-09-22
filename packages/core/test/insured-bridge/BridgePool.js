@@ -19,7 +19,10 @@ const { assert } = require("chai");
 const BridgePool = getContract("BridgePool");
 
 // Helper contracts
-const BridgeAdmin = getContract("BridgeAdmin");
+// Note: Technically the BridgePool shouldn't care whether its using an Optimism or Arbitrum admin contract, so we'll
+// default to the Optimism one for this test. The only cross domain call we make is `BridgeAdmin.whitelistToken`, whose
+// internal implementation we are not testing.
+const BridgeAdmin = getContract("OptimismBridgeAdmin");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
