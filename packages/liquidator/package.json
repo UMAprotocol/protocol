@@ -31,11 +31,7 @@
   ],
   "bin": "index.js",
   "scripts": {
-    "test": "yarn mocha-test && mocha 'test/**/*.js'",
-    "hardhat-test": "hardhat test",
-    "mocha-test": "mocha mocha-test",
-    "test-log": "truffle test ./test/*.js --network=test logInTest",
-    "test-fork": "truffle test --network mainnet-fork $(find test-fork -name '*.js')"
+    "test": "mocha 'test/**/*.js'"
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
