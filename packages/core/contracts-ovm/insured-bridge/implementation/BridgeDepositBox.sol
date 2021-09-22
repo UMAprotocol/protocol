@@ -2,6 +2,7 @@
 pragma solidity >=0.7.6;
 
 import "../external/Legacy_Testable.sol"; //TODO: replace this with the normal UMA Testable once we can use 0.8 solidity.
+import "../external/Legacy_Lockable.sol"; //TODO: replace this with the normal UMA Lockable once we can use 0.8 solidity.
 
 // Define some interfaces and helper libraries. This is temporary until we can bump the solidity version in these
 // contracts to 0.8.x and import the rest of these libs from other UMA contracts in the repo.
@@ -40,7 +41,7 @@ interface StandardBridgeLike {
  * @notice Accepts deposits on Optimism L2 to relay to Ethereum L1 as part of the UMA insured bridge system.
  */
 
-contract BridgeDepositBox is Legacy_Testable {
+contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
     /*************************************
      *  OVM DEPOSIT BOX DATA STRUCTURES  *
      *************************************/
@@ -175,7 +176,7 @@ contract BridgeDepositBox is Legacy_Testable {
         uint64 slowRelayFeePct,
         uint64 instantRelayFeePct,
         uint64 quoteTimestamp
-    ) public onlyIfDepositsEnabled(l2Token) {
+    ) public onlyIfDepositsEnabled(l2Token) nonReentrant() {
         require(isWhitelistToken(l2Token), "deposit token not whitelisted");
         // We limit the sum of slow and instant relay fees to 50% to prevent the user spending all their funds on fees.
         // The realizedLPFeePct on L1 is limited to 50% so the total spent on fees does not ever exceed 100%.

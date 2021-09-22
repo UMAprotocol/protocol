@@ -13,6 +13,7 @@ import "../../../contracts/common/implementation/AncillaryData.sol";
 import "../../../contracts/common/implementation/Testable.sol";
 import "../../../contracts/common/implementation/FixedPoint.sol";
 import "../../../contracts/common/implementation/MultiCaller.sol";
+import "../../../contracts/common/implementation/Lockable.sol";
 import "../../../contracts/common/implementation/ExpandedERC20.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -26,7 +27,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * to post collateral by earning a fee per fulfilled deposit order.
  * @dev A "Deposit" is an order to send capital from L2 to L1, and a "Relay" is a fulfillment attempt of that order.
  */
-contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller {
+contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller, Lockable {
     using SafeERC20 for IERC20;
     using FixedPoint for FixedPoint.Unsigned;
 
@@ -150,6 +151,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      * @notice Add liquidity to the bridge pool. Pulls l1tokens from the callers wallet. The caller is sent back a
      * commensurate number of LP tokens (minted to their address) at the prevailing exchange rate.
      * @dev The caller must approve this contract to transfer `l1TokenAmount` amount of l1Token.
+     * @dev Reentrancy guard not added to this function because this indirectly calls sync() which is guarded.
      * @param l1TokenAmount Number of l1Token to add as liquidity.
      */
     function addLiquidity(uint256 l1TokenAmount) public {
@@ -169,6 +171,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      * @notice Removes liquidity to the bridge pool. Burns lpTokenAmount LP tokens from the callers wallet. The caller
      * is sent back a commensurate number of l1Tokens at the prevailing exchange rate.
      * @dev The caller does not need to approve the spending of LP tokens as this method directly uses the burn logic.
+     * @dev Reentrancy guard not added to this function because this indirectly calls sync() which is guarded.
      * @param lpTokenAmount Number of lpTokens to redeem for underlying.
      */
     function removeLiquidity(uint256 lpTokenAmount) public {
@@ -216,7 +219,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         uint64 instantRelayFeePct,
         uint64 quoteTimestamp,
         uint64 realizedLpFeePct
-    ) public {
+    ) public nonReentrant() {
         // The realizedLPFeePct should never be greater than 0.5e18 and the slow and instant relay fees should never be
         // more than 0.25e18 each. Therefore, the sum of all fee types can never exceed 1e18 (or 100%).
         require(slowRelayFeePct < 0.25e18);
@@ -307,7 +310,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      * be one instant relayer per relay attempt.
      * @param _depositData Unique set of L2 deposit data that caller is trying to instantly relay.
      */
-    function speedUpRelay(DepositData memory _depositData) public {
+    function speedUpRelay(DepositData memory _depositData) public nonReentrant() {
         bytes32 depositHash = _getDepositHash(_depositData);
         RelayData storage relay = relays[depositHash];
         require(
@@ -334,7 +337,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      * the relay as complete.
      * @param _depositData Unique set of L2 deposit data that caller is trying to settle a relay for.
      */
-    function settleRelay(DepositData memory _depositData) public {
+    function settleRelay(DepositData memory _depositData) public nonReentrant() {
         bytes32 depositHash = _getDepositHash(_depositData);
         RelayData storage relay = relays[depositHash];
 
@@ -396,7 +399,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      * @notice Synchronize any balance changes in this contract with the utilized & liquid reserves. This would be done
      * at the conclusion of an L2->L1 token transfer via the canonical token bridge.
      */
-    function sync() public {
+    function sync() public nonReentrant() {
         // Check if the l1Token balance of the contract is greater than the liquidReserves. If it is then the bridging
         // action from L2->L1 has concluded and the local accounting can be updated.
         uint256 l1TokenBalance = l1Token.balanceOf(address(this));

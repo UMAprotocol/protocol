@@ -82,7 +82,7 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
      * @param l2Token L2 token to relay over the canonical bridge.
      * @param l1Gas Unused by optimism, but included for potential forward compatibility considerations.
      */
-    function bridgeTokens(address l2Token, uint32 l1Gas) public {
+    function bridgeTokens(address l2Token, uint32 l1Gas) public nonReentrant() {
         uint256 bridgeDepositBoxBalance = TokenLike(l2Token).balanceOf(address(this));
         require(bridgeDepositBoxBalance > 0, "can't bridge zero tokens");
         require(isWhitelistToken(l2Token), "can't bridge non-whitelisted token");
