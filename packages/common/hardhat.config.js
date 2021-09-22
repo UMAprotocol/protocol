@@ -10,7 +10,7 @@ const configOverride = {
     sources: `${coreWkdir}/contracts`,
     artifacts: `${coreWkdir}/artifacts`,
     cache: `${coreWkdir}/cache`,
-    tests: `${packageWkdir}/test,
+    tests: `${packageWkdir}/test`,
   },
 };
 
