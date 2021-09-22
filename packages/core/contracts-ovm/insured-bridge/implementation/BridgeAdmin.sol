@@ -12,6 +12,7 @@ import "../../../contracts/oracle/interfaces/IdentifierWhitelistInterface.sol";
 import "../../../contracts/oracle/interfaces/FinderInterface.sol";
 import "../../../contracts/oracle/implementation/Constants.sol";
 import "../../../contracts/common/interfaces/AddressWhitelistInterface.sol";
+import "../../../contracts/common/implementation/Lockable.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -21,7 +22,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * enable relaying of L2 deposits.
  * @dev The owner of this contract can also call permissioned functions on the L2 DepositBox.
  */
-contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
+contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled, Lockable {
     // Finder used to point to latest OptimisticOracle and other DVM contracts.
     address public override finder;
 
@@ -85,7 +86,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
      * @dev Can only be called by the current owner.
      * @param _identifier New identifier to set.
      */
-    function setIdentifier(bytes32 _identifier) public onlyOwner {
+    function setIdentifier(bytes32 _identifier) public onlyOwner nonReentrant() {
         _setIdentifier(_identifier);
     }
 
@@ -94,7 +95,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
      * @dev Can only be called by the current owner.
      * @param _liveness New OptimisticOracle liveness period to set for relay price requests.
      */
-    function setOptimisticOracleLiveness(uint64 _liveness) public onlyOwner {
+    function setOptimisticOracleLiveness(uint64 _liveness) public onlyOwner nonReentrant() {
         _setOptimisticOracleLiveness(_liveness);
     }
 
@@ -103,7 +104,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
      * @dev Can only be called by the current owner.
      * @param _proposerBondPct New OptimisticOracle proposer bond % to set for relay price requests. 1e18 = 100%.
      */
-    function setProposerBondPct(uint64 _proposerBondPct) public onlyOwner {
+    function setProposerBondPct(uint64 _proposerBondPct) public onlyOwner nonReentrant() {
         _setProposerBondPct(_proposerBondPct);
     }
 
@@ -112,7 +113,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
      * @dev Only callable by the current owner.
      * @param _depositContract Address of L2 deposit contract.
      */
-    function setDepositContract(address _depositContract) public onlyOwner {
+    function setDepositContract(address _depositContract) public onlyOwner nonReentrant() {
         _validateDepositContract(_depositContract);
         depositContract = _depositContract;
         emit SetDepositContract(depositContract);
@@ -128,7 +129,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
      * @param _admin New admin address to set on L2.
      * @param _l2Gas Gas limit to set for relayed message on L2.
      */
-    function setBridgeAdmin(address _admin, uint32 _l2Gas) public onlyOwner depositContractSet {
+    function setBridgeAdmin(address _admin, uint32 _l2Gas) public onlyOwner depositContractSet nonReentrant() {
         require(_admin != address(0), "Admin cannot be zero address");
         sendCrossDomainMessage(depositContract, _l2Gas, abi.encodeWithSignature("setBridgeAdmin(address)", _admin));
         emit SetBridgeAdmin(_admin);
@@ -140,7 +141,12 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
      * @param _minimumBridgingDelay the new minimum delay.
      * @param _l2Gas Gas limit to set for relayed message on L2.
      */
-    function setMinimumBridgingDelay(uint64 _minimumBridgingDelay, uint32 _l2Gas) public onlyOwner depositContractSet {
+    function setMinimumBridgingDelay(uint64 _minimumBridgingDelay, uint32 _l2Gas)
+        public
+        onlyOwner
+        depositContractSet
+        nonReentrant()
+    {
         sendCrossDomainMessage(
             depositContract,
             _l2Gas,
@@ -161,7 +167,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
         address _l2Token,
         bool _depositsEnabled,
         uint32 _l2Gas
-    ) public onlyOwner depositContractSet {
+    ) public onlyOwner depositContractSet nonReentrant() {
         sendCrossDomainMessage(
             depositContract,
             _l2Gas,
@@ -185,7 +191,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, OVM_CrossDomainEnabled {
         address _l2Token,
         address _bridgePool,
         uint32 _l2Gas
-    ) public onlyOwner depositContractSet {
+    ) public onlyOwner depositContractSet nonReentrant() {
         require(_bridgePool != address(0), "BridgePool cannot be zero address");
         require(_l2Token != address(0), "L2 token cannot be zero address");
         require(_getCollateralWhitelist().isOnWhitelist(address(_l1Token)), "Payment token not whitelisted");

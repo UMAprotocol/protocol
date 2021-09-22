@@ -2,6 +2,7 @@
 pragma solidity >=0.7.6;
 
 import "../external/OVM_Testable.sol"; //TODO: replace this with the normal UMA Testable once we can use 0.8 solidity.
+import "../external/OVM_Lockable.sol"; //TODO: replace this with the normal UMA Lockable once we can use 0.8 solidity.
 
 import { OVM_CrossDomainEnabled } from "@eth-optimism/contracts/libraries/bridge/OVM_CrossDomainEnabled.sol";
 import { Lib_PredeployAddresses } from "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
@@ -43,7 +44,7 @@ interface StandardBridgeLike {
  * @notice Accepts deposits on Optimism L2 to relay to Ethereum L1 as part of the UMA insured bridge system.
  */
 
-contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
+contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable, OVM_Lockable {
     /*************************************
      *  OVM DEPOSIT BOX DATA STRUCTURES  *
      *************************************/
@@ -125,7 +126,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
      * @dev Only callable by the existing bridgeAdmin via the optimism cross domain messenger.
      * @param _bridgeAdmin address of the new L1 admin contract.
      */
-    function setBridgeAdmin(address _bridgeAdmin) public onlyFromCrossDomainAccount(bridgeAdmin) {
+    function setBridgeAdmin(address _bridgeAdmin) public onlyFromCrossDomainAccount(bridgeAdmin) nonReentrant() {
         _setBridgeAdmin(_bridgeAdmin);
     }
 
@@ -134,7 +135,11 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
      * @dev Only callable by the existing bridgeAdmin via the optimism cross domain messenger.
      * @param _minimumBridgingDelay the new minimum delay.
      */
-    function setMinimumBridgingDelay(uint64 _minimumBridgingDelay) public onlyFromCrossDomainAccount(bridgeAdmin) {
+    function setMinimumBridgingDelay(uint64 _minimumBridgingDelay)
+        public
+        onlyFromCrossDomainAccount(bridgeAdmin)
+        nonReentrant()
+    {
         _setMinimumBridgingDelay(_minimumBridgingDelay);
     }
 
@@ -149,7 +154,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
         address l1Token,
         address l2Token,
         address l1BridgePool
-    ) public onlyFromCrossDomainAccount(bridgeAdmin) {
+    ) public onlyFromCrossDomainAccount(bridgeAdmin) nonReentrant() {
         whitelistedTokens[l2Token] = L2TokenRelationships({
             l1Token: l1Token,
             l1BridgePool: l1BridgePool,
@@ -166,7 +171,11 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
      * @param _l2Token address of L2 token to enable/disable deposits for.
      * @param _depositsEnabled bool to set if the deposit box should accept/reject deposits.
      */
-    function setEnableDeposits(address _l2Token, bool _depositsEnabled) public onlyFromCrossDomainAccount(bridgeAdmin) {
+    function setEnableDeposits(address _l2Token, bool _depositsEnabled)
+        public
+        onlyFromCrossDomainAccount(bridgeAdmin)
+        nonReentrant()
+    {
         whitelistedTokens[_l2Token].depositsEnabled = _depositsEnabled;
         emit DepositsEnabled(_l2Token, _depositsEnabled);
     }
@@ -194,7 +203,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
         uint64 slowRelayFeePct,
         uint64 instantRelayFeePct,
         uint64 quoteTimestamp
-    ) public onlyIfDepositsEnabled(l2Token) {
+    ) public onlyIfDepositsEnabled(l2Token) nonReentrant() {
         require(isWhitelistToken(l2Token), "deposit token not whitelisted");
         // We limit the sum of slow and instant relay fees to 50% to prevent the user spending all their funds on fees.
         // The realizedLPFeePct on L1 is limited to 50% so the total spent on fees does not ever exceed 100%.
@@ -238,7 +247,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable {
      * @param l2Token L2 token to relay over the canonical bridge.
      * @param l1Gas Unused by optimism, but included for potential forward compatibility considerations.
      */
-    function bridgeTokens(address l2Token, uint32 l1Gas) public {
+    function bridgeTokens(address l2Token, uint32 l1Gas) public nonReentrant() {
         uint256 bridgeDepositBoxBalance = TokenLike(l2Token).balanceOf(address(this));
         require(bridgeDepositBoxBalance > 0, "can't bridge zero tokens");
         require(isWhitelistToken(l2Token), "can't bridge non-whitelisted token");
