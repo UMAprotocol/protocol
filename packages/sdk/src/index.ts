@@ -4,6 +4,7 @@ export * as tables from "./tables";
 export * as utils from "./utils";
 export { default as Coingecko } from "./coingecko";
 export { default as Multicall } from "./multicall";
+export { default as Multicall2 } from "./multicall2";
 
 // types
 import type { TypedEventFilterEthers as TypedEventFilter, TypedEventEthers as TypedEvent } from "@uma/contracts-node";

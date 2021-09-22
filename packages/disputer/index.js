@@ -23,8 +23,9 @@ const {
 } = require("@uma/financial-templates-lib");
 
 // Truffle contracts.
-const { getAbi, findContractVersion, getAddress } = require("@uma/core");
-const { getWeb3, PublicNetworks } = require("@uma/common");
+const { findContractVersion } = require("@uma/core");
+const { getAddress } = require("@uma/contracts-node");
+const { getWeb3, PublicNetworks, getContractsNodePackageAliasForVerion } = require("@uma/common");
 
 /**
  * @notice Continuously attempts to dispute liquidations in the Financial Contract contract.
@@ -100,10 +101,8 @@ async function run({
       );
 
     // Setup contract instances.
-    const financialContract = new web3.eth.Contract(
-      getAbi(disputerConfig.contractType, disputerConfig.contractVersion),
-      financialContractAddress
-    );
+    const { getAbi } = require(getContractsNodePackageAliasForVerion(disputerConfig.contractVersion));
+    const financialContract = new web3.eth.Contract(getAbi(disputerConfig.contractType), financialContractAddress);
 
     // Generate Financial Contract properties to inform bot of important on-chain state values that we only want to query once.
     const [collateralTokenAddress, syntheticTokenAddress] = await Promise.all([
@@ -159,7 +158,7 @@ async function run({
         gasEstimator,
         account: accounts[0],
         dsProxyFactoryAddress:
-          proxyTransactionWrapperConfig?.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
+          proxyTransactionWrapperConfig?.dsProxyFactoryAddress || (await getAddress("DSProxyFactory", networkId)),
         dsProxyFactoryAbi: getAbi("DSProxyFactory"),
         dsProxyAbi: getAbi("DSProxy"),
         availableAccounts: proxyTransactionWrapperConfig.availableAccounts || 1,

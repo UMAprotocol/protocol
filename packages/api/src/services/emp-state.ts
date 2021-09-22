@@ -1,98 +1,75 @@
 import * as uma from "@uma/sdk";
 import Promise from "bluebird";
 const { emp } = uma.clients;
-import { BigNumber, utils } from "ethers";
-const { parseBytes32String } = utils;
-import { asyncValues, Profile } from "../libs/utils";
+import { BatchReadWithErrors, nowS, parseBytes, Profile, toNumber, toString } from "../libs/utils";
 import { AppState, BaseConfig } from "..";
 
 type Instance = uma.clients.emp.Instance;
 type Config = BaseConfig;
 type Dependencies = Pick<
   AppState,
-  "registeredEmps" | "provider" | "emps" | "collateralAddresses" | "syntheticAddresses" | "registeredEmpsMetadata"
+  | "registeredEmps"
+  | "provider"
+  | "emps"
+  | "collateralAddresses"
+  | "syntheticAddresses"
+  | "registeredEmpsMetadata"
+  | "multicall2"
 >;
 
 export default (config: Config, appState: Dependencies) => {
-  const { registeredEmps, registeredEmpsMetadata, provider, emps, collateralAddresses, syntheticAddresses } = appState;
+  const {
+    registeredEmps,
+    registeredEmpsMetadata,
+    provider,
+    emps,
+    collateralAddresses,
+    syntheticAddresses,
+    multicall2,
+  } = appState;
   const profile = Profile(config.debug);
+  // default props we want to query on contract
+  const staticProps: [string, (x: any) => any][] = [
+    ["priceIdentifier", parseBytes],
+    ["expirationTimestamp", toNumber],
+    ["withdrawalLiveness", toNumber],
+    ["tokenCurrency", toString],
+    ["collateralCurrency", toString],
+    ["finder", toString],
+    ["minSponsorTokens", toString],
+    ["liquidationLiveness", toNumber],
+    ["collateralRequirement", toString],
+    ["disputeBondPercentage", toNumber],
+    ["sponsorDisputeRewardPercentage", toNumber],
+    ["disputerDisputeRewardPercentage", toNumber],
+    ["cumulativeFeeMultiplier", toString],
+  ];
+
+  const dynamicProps: [string, (x: any) => any][] = [
+    ["totalTokensOutstanding", toString],
+    ["totalPositionCollateral", toString],
+    ["rawTotalPositionCollateral", toString],
+    ["expiryPrice", toString],
+  ];
+
+  async function batchRead(calls: [string, (x: any) => any][], instance: Instance, address: string) {
+    const result = await BatchReadWithErrors(multicall2)(calls, instance);
+    return {
+      address,
+      updated: nowS(),
+      ...result,
+    };
+  }
 
   async function readEmpDynamicState(instance: Instance, address: string) {
-    return asyncValues<uma.tables.emps.Data>({
-      address,
-      updated: Date.now(),
-      totalTokensOutstanding: instance
-        .totalTokensOutstanding()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-      totalPositionCollateral: instance
-        .totalPositionCollateral()
-        .then((x: any) => x.rawValue.toString())
-        .catch(() => null),
-      rawTotalPositionCollateral: instance
-        .rawTotalPositionCollateral()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-      expiryPrice: instance
-        .expiryPrice()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-    });
+    return batchRead(dynamicProps, instance, address);
   }
 
   async function readEmpStaticState(instance: Instance, address: string) {
-    const state = await asyncValues<uma.tables.emps.Data>({
-      address,
-      // position manager
-      priceIdentifier: instance
-        .priceIdentifier()
-        .then(parseBytes32String)
-        .catch(() => null),
-      expirationTimestamp: instance
-        .expirationTimestamp()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-      withdrawLiveness: instance
-        .withdrawalLiveness()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-      tokenCurrency: instance.tokenCurrency().catch(() => null),
-      collateralCurrency: instance.collateralCurrency().catch(() => null),
-      finder: instance.finder().catch(() => null),
-      minSponsorTokens: instance
-        .minSponsorTokens()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-      // liquidatable
-      liquidationLiveness: instance
-        .liquidationLiveness()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-      collateralRequirement: instance
-        .collateralRequirement()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-      disputeBondPercentage: instance
-        .disputeBondPercentage()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-      sponsorDisputeRewardPercentage: instance
-        .sponsorDisputeRewardPercentage()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-      disputerDisputeRewardPercentage: instance
-        .disputerDisputeRewardPercentage()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-      cumulativeFeeMultiplier: instance
-        .cumulativeFeeMultiplier()
-        .then((x: BigNumber) => x.toString())
-        .catch(() => null),
-    });
-    return state;
+    return batchRead(staticProps, instance, address);
   }
 
-  async function updateOne(address: string, startBlock?: number | "latest", endBlock?: number) {
+  async function updateOne(address: string, startBlock?: number, endBlock?: number) {
     // ignore expired emps
     if (await emps.expired.has(address)) return;
 
@@ -174,7 +151,7 @@ export default (config: Config, appState: Dependencies) => {
     });
   }
 
-  async function updateAll(addresses: string[], startBlock?: number | "latest", endBlock?: number) {
+  async function updateAll(addresses: string[], startBlock?: number, endBlock?: number) {
     await Promise.mapSeries(addresses, async (address: string) => {
       const end = profile(`Update Emp state for ${address}`);
       try {
@@ -187,11 +164,14 @@ export default (config: Config, appState: Dependencies) => {
     });
   }
 
-  async function update(startBlock?: number | "latest", endBlock?: number) {
+  async function update(startBlock?: number, endBlock?: number) {
     const addresses = Array.from(await registeredEmps.values());
     await updateAll(addresses, startBlock, endBlock);
     await updateTokenAddresses();
   }
 
-  return update;
+  return {
+    update,
+    updateAll,
+  };
 };

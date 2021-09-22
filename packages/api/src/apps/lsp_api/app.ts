@@ -1,6 +1,5 @@
 import assert from "assert";
 import { ethers } from "ethers";
-import moment from "moment";
 import Events from "events";
 
 import { tables, Coingecko, utils, Multicall2 } from "@uma/sdk";
@@ -13,6 +12,10 @@ import { empStats, empStatsHistory, lsps } from "../../tables";
 import Zrx from "../../libs/zrx";
 import { Profile, parseEnvArray, getWeb3, BlockInterval, expirePromise } from "../../libs/utils";
 
+// This is almost identical to api app, but removes some key services from starting up. Maintains ability to use
+// api for LSP calls only. Express API maintains compatibility with original API but will not populate EMP data.
+// Eventually much of the code in this file could be refactored to deduplicate a lot of the shared code with API
+// but would require more tooling/thought around how to turn this into configuration rather than code.
 export default async (env: ProcessEnv) => {
   assert(env.CUSTOM_NODE_URL, "requires CUSTOM_NODE_URL");
   assert(env.EXPRESS_PORT, "requires EXPRESS_PORT");
@@ -29,14 +32,12 @@ export default async (env: ProcessEnv) => {
   // we need web3 for syth price feeds
   const web3 = getWeb3(env.CUSTOM_NODE_URL);
 
-  // how often to run expensive state updates, defaults to 10 minutes
-  const updateRateS = Number(env.UPDATE_RATE_S || 10 * 60);
+  // how often to run expensive state updates, defaults to 1 minutes since EMP updates are gone
+  const updateRateS = Number(env.UPDATE_RATE_S || 60);
   // Defaults to 60 seconds, since this is i think a pretty cheap call, and we want to see new contracts quickly
   const detectContractsUpdateRateS = Number(env.DETECT_CONTRACTS_UPDATE_RATE_S || 60);
   // Defaults to 15 minutes, prices dont update in coingecko or other calls very fast
   const priceUpdateRateS = Number(env.PRICE_UPDATE_RATE_S || 15 * 60);
-  // default to 10 days worth of blocks
-  const oldestBlock = Number(env.OLDEST_BLOCK_MS || 10 * 60 * 60 * 24 * 1000);
 
   assert(updateRateS >= 1, "UPDATE_RATE_S must be 1 or higher");
   assert(detectContractsUpdateRateS >= 1, "DETECT_CONTRACTS_UPDATE_RATE_S must be 1 or higher");
@@ -130,9 +131,7 @@ export default async (env: ProcessEnv) => {
     // these services can optionally be configured with a config object, but currently they are undefined or have defaults
     blocks: Services.Blocks(undefined, appState),
     emps: Services.EmpState({ debug }, appState),
-    registry: await Services.Registry({ debug }, appState, (event, data) =>
-      serviceEvents.emit("empRegistry", event, data)
-    ),
+    registry: await Services.Registry({ debug }, appState, (data) => serviceEvents.emit("empRegistry", data)),
     collateralPrices: Services.CollateralPrices({ debug }, appState),
     syntheticPrices: Services.SyntheticPrices(
       {
@@ -147,8 +146,8 @@ export default async (env: ProcessEnv) => {
     erc20s: Services.Erc20s({ debug }, appState),
     empStats: Services.stats.Emp({ debug }, appState),
     marketPrices: Services.MarketPrices({ debug }, appState),
-    lspCreator: await Services.MultiLspCreator({ debug, addresses: lspCreatorAddresses }, appState, (event, data) =>
-      serviceEvents.emit("multiLspCreator", event, data)
+    lspCreator: await Services.MultiLspCreator({ debug, addresses: lspCreatorAddresses }, appState, (data) =>
+      serviceEvents.emit("multiLspCreator", data)
     ),
     lsps: Services.LspState({ debug }, appState),
     lspStats: Services.stats.Lsp({ debug }, appState),
@@ -157,15 +156,8 @@ export default async (env: ProcessEnv) => {
 
   const initBlock = await provider.getBlock("latest");
 
-  // warm caches
-  await services.registry(appState.lastBlockUpdate, initBlock.number);
-  console.log("Got all EMP addresses");
-
   await services.lspCreator.update(appState.lastBlockUpdate, initBlock.number);
   console.log("Got all LSP addresses");
-
-  await services.emps.update(appState.lastBlockUpdate, initBlock.number);
-  console.log("Updated EMP state");
 
   await services.lsps.update(appState.lastBlockUpdate, initBlock.number);
   console.log("Updated LSP state");
@@ -176,35 +168,14 @@ export default async (env: ProcessEnv) => {
   await services.erc20s.update();
   console.log("Updated tokens");
 
-  // backfill price histories, disable if not specified in env
-  if (env.backfillDays) {
-    console.log(`Backfilling price history from ${env.backfillDays} days ago`);
-    await services.collateralPrices.backfill(moment().subtract(env.backfillDays, "days").valueOf());
-    console.log("Updated Collateral Prices Backfill");
-    await services.empStats.backfill();
-    console.log("Updated EMP Backfill");
-
-    await services.lspStats.backfill();
-    console.log("Updated LSP Backfill");
-  }
-
   await services.collateralPrices.update();
   console.log("Updated Collateral Prices");
-
-  await services.syntheticPrices.update();
-  console.log("Updated Synthetic Prices");
-
-  await services.empStats.update();
-  console.log("Updated EMP Stats");
 
   await services.lspStats.update();
   console.log("Updated LSP Stats");
 
   await services.globalStats.update();
   console.log("Updated Global Stats");
-
-  await services.marketPrices.update();
-  console.log("Updated Market Prices");
 
   // services consuming data
   const channels: Channels = [
@@ -227,21 +198,15 @@ export default async (env: ProcessEnv) => {
 
   // break all state updates by block events into a cleaner function
   async function updateContractState(startBlock: number, endBlock: number) {
-    await services.blocks.handleNewBlock(endBlock);
-    // update everyting
-    await services.emps.update(startBlock, endBlock);
     await services.lsps.update(startBlock, endBlock);
     await services.erc20s.update();
-    await services.blocks.cleanBlocks(oldestBlock);
     appState.lastBlockUpdate = endBlock;
   }
 
   // separate out price updates into a different loop to query every few minutes
   async function updatePrices() {
     await services.collateralPrices.update();
-    await services.syntheticPrices.update();
     await services.marketPrices.update();
-    await services.empStats.update();
     await services.lspStats.update();
     await services.globalStats.update();
   }
@@ -249,7 +214,7 @@ export default async (env: ProcessEnv) => {
   // wait update rate before running loops, since all state was just updated on init
   await new Promise((res) => setTimeout(res, updateRateS * 1000));
 
-  console.log("Starting API update loops");
+  console.log("Starting LSP API update loops");
 
   // listen for new lsp contracts since after we have started api, and make sure they get state updated asap
   // These events should only be bound after startup, since initialization above takes care of updating all contracts on startup
