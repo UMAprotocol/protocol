@@ -10,32 +10,36 @@ const { toWei, toBN } = web3.utils;
 const toBNWei = (number) => toBN(toWei(number.toString()).toString());
 
 // Function to test
-const { calculateRealizedLpFeePct } = require("../../dist/helpers/acrossFeesCalculator");
+const { calculateApyFromUtilization, calculateRealizedLpFeePct } = require("../../dist/helpers/acrossFeesCalculator");
 
 // sample interest rate model. note these tests are in JS and so we can impose the RateModel type.
 let rateModel = { UBar: toBNWei("0.65"), R0: toBNWei("0.00"), R1: toBNWei("0.08"), R2: toBNWei("1.00") };
 
 describe("Realized liquidity provision calculation", function () {
   it("Realized liquidity provision calculation", async function () {
-    // Define a set of intervals to test over. Each interval contains the expected rate, as generated in the juypter
-    // notebook. This test, therefore, validates the python implementation matches the bots JS implementation.
+    // Define a set of intervals to test over. Each interval contains the utilization at pointA (before deposit), the
+    // utilization at pointB (after the deposit), expected APY rate and the expected weekly rate. The numbers are
+    // generated from the juypter notebook defined in the comments above.
     const testedIntervals = [
-      { utilBefore: toBNWei("0"), utilAfter: toBNWei("0.01"), expectedRate: "615384615384600" },
-      { utilBefore: toBNWei("0"), utilAfter: toBNWei("0.50"), expectedRate: "30769230769230768" },
-      { utilBefore: toBNWei("0.5"), utilAfter: toBNWei("0.51"), expectedRate: "62153846153846200" },
-      { utilBefore: toBNWei("0.5"), utilAfter: toBNWei("0.56"), expectedRate: "65230769230769233" },
-      { utilBefore: toBNWei("0.5"), utilAfter: toBNWei("0.5").addn(100), expectedRate: "60000000000000000" },
-      { utilBefore: toBNWei("0.6"), utilAfter: toBNWei("0.7"), expectedRate: "114175824175824180" },
-      { utilBefore: toBNWei("0.7"), utilAfter: toBNWei("0.75"), expectedRate: "294285714285714280" },
-      { utilBefore: toBNWei("0.7"), utilAfter: toBNWei("0.7").addn(100), expectedRate: "220000000000000000" },
-      { utilBefore: toBNWei("0.95"), utilAfter: toBNWei("1.00"), expectedRate: "1008571428571428580" },
-      { utilBefore: toBNWei("0"), utilAfter: toBNWei("0.99"), expectedRate: "220548340548340547" },
-      { utilBefore: toBNWei("0"), utilAfter: toBNWei("1.00"), expectedRate: "229000000000000000" },
+      { utilA: toBNWei("0"), utilB: toBNWei("0.01"), apy: "615384615384600", wpy: "11830749673498" },
+      { utilA: toBNWei("0"), utilB: toBNWei("0.50"), apy: "30769230769230768", wpy: "582965040710805" },
+      { utilA: toBNWei("0.5"), utilB: toBNWei("0.51"), apy: "62153846153846200", wpy: "1160264449662626" },
+      { utilA: toBNWei("0.5"), utilB: toBNWei("0.56"), apy: "65230769230769233", wpy: "1215959072035989" },
+      { utilA: toBNWei("0.5"), utilB: toBNWei("0.5").addn(100), apy: "60000000000000000", wpy: "1121183982821340" },
+      { utilA: toBNWei("0.6"), utilB: toBNWei("0.7"), apy: "114175824175824180", wpy: "2081296752280018" },
+      { utilA: toBNWei("0.7"), utilB: toBNWei("0.75"), apy: "294285714285714280", wpy: "4973074331615530" },
+      { utilA: toBNWei("0.7"), utilB: toBNWei("0.7").addn(100), apy: "220000000000000000", wpy: "3831376003126766" },
+      { utilA: toBNWei("0.95"), utilB: toBNWei("1.00"), apy: "1008571428571428580", wpy: "13502339199904125" },
+      { utilA: toBNWei("0"), utilB: toBNWei("0.99"), apy: "220548340548340547", wpy: "3840050658887291" },
+      { utilA: toBNWei("0"), utilB: toBNWei("1.00"), apy: "229000000000000000", wpy: "3973273191633388" },
     ];
 
     testedIntervals.forEach((interval) => {
-      const realizedLpFeePct = calculateRealizedLpFeePct(rateModel, interval.utilBefore, interval.utilAfter);
-      assert.equal(realizedLpFeePct.toString(), interval.expectedRate);
+      const apyFeePct = calculateApyFromUtilization(rateModel, interval.utilA, interval.utilB);
+      assert.equal(apyFeePct.toString(), interval.apy);
+
+      const realizedLpFeePct = calculateRealizedLpFeePct(rateModel, interval.utilA, interval.utilB).toString();
+      assert.equal(realizedLpFeePct.toString(), interval.wpy);
     });
   });
 });

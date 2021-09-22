@@ -1,12 +1,12 @@
-// This Util calculates the across realized LP fees. TODO: add a link to chase's notebooks once they are production ready
-// to explain how the logic works past the comments included here.
-
-// Note this util is written to be independent of Web3.js to make importing into the UMA-SDK & front end easier.
+// This Util calculates the across realized LP fees. See https://gist.github.com/chrismaree/a713725e4fe96c531c42ed7b629d4a85
+// gist for a python implementation of the logic in this file.
+// TODO: add a link to chase's notebooks once they are production ready to explain how the logic works past the comments included here.
 
 import BN from "bn.js";
+import Decimal from "decimal.js";
+import Web3 from "web3";
 
-const toBN = (number: string | number) => new BN(number.toString());
-const toWei = (number: string | number) => new BN(number.toString()).mul(new BN("1e18")).toString();
+const { toBN, toWei, fromWei } = Web3.utils;
 const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 const fixedPointAdjustment = toBNWei("1");
 
@@ -50,8 +50,20 @@ function calculateAreaUnderRateCurve(rateModel: RateModel, utilization: BN) {
   return rectangle1Area.add(triangle1Area).add(rectangle2Area).add(triangle2Area);
 }
 
-// Calculate the realized LP Fee Percent for a given rate model, utilization before and after the deposit.
-export function calculateRealizedLpFeePct(
+// converts an APY rate to a one week rate. Uses the Decimal library to take a fractional exponent
+function convertApyToWeeklyFee(apy: BN) {
+  // R_week = (1 + apy)^(1/52) - 1
+  const weeklyFeePct = Decimal.pow(
+    new Decimal("1").plus(fromWei(apy)),
+    new Decimal("1").dividedBy(new Decimal("52"))
+  ).minus(new Decimal("1"));
+
+  // Convert from decimal back to BN, scaled by 1e18.
+  return toBN(weeklyFeePct.times(fixedPointAdjustment.toString()).floor().toString());
+}
+
+// Calculate the realized yearly LP Fee APY Percent for a given rate model, utilization before and after the deposit.
+export function calculateApyFromUtilization(
   rateModel: RateModel,
   utilizationBeforeDeposit: BN,
   utilizationAfterDeposit: BN
@@ -65,4 +77,13 @@ export function calculateRealizedLpFeePct(
   const numerator = areaAfterDeposit.sub(areaBeforeDeposit);
   const denominator = utilizationAfterDeposit.sub(utilizationBeforeDeposit);
   return numerator.mul(fixedPointAdjustment).div(denominator);
+}
+
+export function calculateRealizedLpFeePct(
+  rateModel: RateModel,
+  utilizationBeforeDeposit: BN,
+  utilizationAfterDeposit: BN
+) {
+  const apy = calculateApyFromUtilization(rateModel, utilizationBeforeDeposit, utilizationAfterDeposit);
+  return convertApyToWeeklyFee(apy);
 }
