@@ -414,13 +414,6 @@ describe("InsuredBridgePriceFeed", function () {
       assert.equal(
         await pricefeed.getHistoricalPrice(
           1,
-          await generateRelayAncillaryData({ ...depositData, l1Token: ZERO_ADDRESS }, relayData, bridgePool)
-        ),
-        toWei("0")
-      );
-      assert.equal(
-        await pricefeed.getHistoricalPrice(
-          1,
           await generateRelayAncillaryData({ ...depositData, amount: "0" }, relayData, bridgePool)
         ),
         toWei("0")

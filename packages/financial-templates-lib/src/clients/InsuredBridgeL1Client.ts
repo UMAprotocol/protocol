@@ -89,6 +89,11 @@ export class InsuredBridgeL1Client {
     return Object.values(this.relays[l1Token]);
   }
 
+  getRelayForDeposit(l1Token: string, deposit: Deposit): Relay | undefined {
+    this._throwIfNotInitialized();
+    return this.relays[l1Token][deposit.depositHash];
+  }
+
   getPendingRelayedDeposits(): Relay[] {
     return this.getAllRelayedDeposits().filter((relay: Relay) => relay.relayState === RelayState.Pending);
   }
@@ -158,10 +163,9 @@ export class InsuredBridgeL1Client {
     // Fetch event information
     // TODO: consider optimizing this further. Right now it will make a series of sequential BlueBird calls for each pool.
     for (const [l1Token, bridgePool] of Object.entries(this.bridgePools)) {
-      const [depositRelayedEvents, relaySpedUpEvents, relayDisputedEvents, relaySettledEvents] = await Promise.all([
+      const [depositRelayedEvents, relaySpedUpEvents, relaySettledEvents] = await Promise.all([
         bridgePool.getPastEvents("DepositRelayed", blockSearchConfig),
         bridgePool.getPastEvents("RelaySpedUp", blockSearchConfig),
-        bridgePool.getPastEvents("RelayDisputed", blockSearchConfig),
         bridgePool.getPastEvents("RelaySettled", blockSearchConfig),
       ]);
 
@@ -203,11 +207,6 @@ export class InsuredBridgeL1Client {
         this.relays[l1Token][relaySpedUpEvent.returnValues.depositHash].instantRelayer =
           relaySpedUpEvent.returnValues.instantRelayer;
         this.relays[l1Token][relaySpedUpEvent.returnValues.depositHash].relayState = RelayState.SpedUp;
-      }
-
-      // For all RelayDisputed, set the state of the relay to disputed.
-      for (const relayDisputedEvent of relayDisputedEvents) {
-        this.relays[l1Token][relayDisputedEvent.returnValues.depositHash].relayState = RelayState.Disputed;
       }
 
       for (const relaySettledEvent of relaySettledEvents) {

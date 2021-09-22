@@ -82,7 +82,7 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
         deposit.slowRelayFeePct === parsedAncillaryData.slowRelayFeePct.toString() &&
         deposit.instantRelayFeePct === parsedAncillaryData.instantRelayFeePct.toString() &&
         deposit.quoteTimestamp === parsedAncillaryData.quoteTimestamp &&
-        this.l2Client.bridgeDepositAddress === toChecksumAddress("0x" + parsedAncillaryData.depositContract)
+        deposit.depositContract === toChecksumAddress("0x" + parsedAncillaryData.depositContract)
     );
     // TODO: Do we need to check the `relayId` at all thats included in ancillary data?
 
