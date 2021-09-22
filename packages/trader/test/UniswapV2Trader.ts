@@ -80,9 +80,7 @@ describe("UniswapV2Trader.js", function () {
       await createContractObjectFromJson(UniswapV2Router02, web3).new(
         uniswapFactory.options.address,
         WETH.options.address,
-        {
-          from: deployer,
-        }
+        { from: deployer }
       )
     ).contract;
   });
