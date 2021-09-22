@@ -126,7 +126,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable, OVM_Locka
      * @dev Only callable by the existing bridgeAdmin via the optimism cross domain messenger.
      * @param _bridgeAdmin address of the new L1 admin contract.
      */
-    function setBridgeAdmin(address _bridgeAdmin) public onlyFromCrossDomainAccount(bridgeAdmin) nonReentrant() {
+    function setBridgeAdmin(address _bridgeAdmin) public onlyFromCrossDomainAccount(bridgeAdmin) {
         _setBridgeAdmin(_bridgeAdmin);
     }
 
@@ -135,11 +135,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable, OVM_Locka
      * @dev Only callable by the existing bridgeAdmin via the optimism cross domain messenger.
      * @param _minimumBridgingDelay the new minimum delay.
      */
-    function setMinimumBridgingDelay(uint64 _minimumBridgingDelay)
-        public
-        onlyFromCrossDomainAccount(bridgeAdmin)
-        nonReentrant()
-    {
+    function setMinimumBridgingDelay(uint64 _minimumBridgingDelay) public onlyFromCrossDomainAccount(bridgeAdmin) {
         _setMinimumBridgingDelay(_minimumBridgingDelay);
     }
 
@@ -154,7 +150,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable, OVM_Locka
         address l1Token,
         address l2Token,
         address l1BridgePool
-    ) public onlyFromCrossDomainAccount(bridgeAdmin) nonReentrant() {
+    ) public onlyFromCrossDomainAccount(bridgeAdmin) {
         whitelistedTokens[l2Token] = L2TokenRelationships({
             l1Token: l1Token,
             l1BridgePool: l1BridgePool,
@@ -171,11 +167,7 @@ contract OVM_BridgeDepositBox is OVM_CrossDomainEnabled, OVM_Testable, OVM_Locka
      * @param _l2Token address of L2 token to enable/disable deposits for.
      * @param _depositsEnabled bool to set if the deposit box should accept/reject deposits.
      */
-    function setEnableDeposits(address _l2Token, bool _depositsEnabled)
-        public
-        onlyFromCrossDomainAccount(bridgeAdmin)
-        nonReentrant()
-    {
+    function setEnableDeposits(address _l2Token, bool _depositsEnabled) public onlyFromCrossDomainAccount(bridgeAdmin) {
         whitelistedTokens[_l2Token].depositsEnabled = _depositsEnabled;
         emit DepositsEnabled(_l2Token, _depositsEnabled);
     }
