@@ -203,7 +203,7 @@ export type { ${normalizeClassName(contractName)}Web3Events };\n`
     // Creates get[name]Address(chainId) using switch statements.
     // Note: don't export these functions as they are only used internally.
     for (const [name, addressesByChain] of Object.entries(addresses)) {
-      const declaration = `function get${name}Address(chainId: number): string {\n  switch (chainId.toString()) {\n`;
+      const declaration = `function get${name}StaticAddress(chainId: number): string {\n  switch (chainId.toString()) {\n`;
       const cases = Object.entries(addressesByChain).map(([chainId, address]) => {
         return `    case "${chainId}":\n      return "${address}";\n`;
       });
@@ -213,7 +213,7 @@ export type { ${normalizeClassName(contractName)}Web3Events };\n`
 
     // Constructs a mapping of name to address function for nodejs.
     fs.appendFileSync(out, "const addressFunctions = {\n");
-    Object.keys(addresses).forEach((name) => fs.appendFileSync(out, `  ${name}: get${name}Address,\n`));
+    Object.keys(addresses).forEach((name) => fs.appendFileSync(out, `  ${name}: get${name}StaticAddress,\n`));
     fs.appendFileSync(out, "};\n");
     fs.appendFileSync(out, "type DeploymentName = keyof typeof addressFunctions;\n");
 
@@ -245,6 +245,28 @@ export async function getAddress(name: DeploymentName | ContractName, chainId: n
 }
 `
     );
+
+    // Write abi, bytecode, and address functions to match the contracts-frontend package api.
+    artifacts.forEach(({ contractName }) => {
+      fs.appendFileSync(
+        out,
+        `export function get${contractName}Abi(): any[] { return require(artifactPaths["${contractName}"]).abi; }\n`
+      );
+    });
+    artifacts.forEach(({ contractName }) => {
+      fs.appendFileSync(
+        out,
+        `export function get${contractName}Bytecode(): string { return require(artifactPaths["${contractName}"]).bytecode }\n`
+      );
+    });
+
+    // Creates get[name]Address(chainId) that just calls the getAddress function internally.
+    for (const [name] of Object.entries(addresses)) {
+      fs.appendFileSync(
+        out,
+        `export function get${name}Address(chainId: number): Promise<string> { return getAddress("${name}", chainId); }\n`
+      );
+    }
   });
 
 task("load-addresses", "Load addresses from the networks folder into the hardhat deployments folder").setAction(
