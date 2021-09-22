@@ -28,11 +28,13 @@ import { QuandlPriceFeed } from "./QuandlPriceFeed";
 import { TraderMadePriceFeed } from "./TraderMadePriceFeed";
 import { UniswapV2PriceFeed, UniswapV3PriceFeed } from "./UniswapPriceFeed";
 import { VaultPriceFeed, HarvestVaultPriceFeed } from "./VaultPriceFeed";
+import { InsuredBridgePriceFeed } from "./InsuredBridgePriceFeed";
 
 import type { Logger } from "winston";
 import { NetworkerInterface } from "./Networker";
 import { PriceFeedInterface } from "./PriceFeedInterface";
 import { isDefined } from "../types";
+import { InsuredBridgeL1Client, InsuredBridgeL2Client } from "..";
 
 interface Block {
   number: number;
@@ -459,6 +461,25 @@ export async function createPriceFeed(
       perpetualAbi: getAbi("Perpetual"),
       multicallAddress: multicallAddress,
       blockFinder: getSharedBlockFinder(web3),
+    });
+  } else if (config.type === "insuredbridge") {
+    // TODO: Should we try to detect these addresses automatically via getAddress?
+    const requiredFields = ["bridgeAdminAddress", "depositBoxAddress"];
+
+    if (isMissingField(config, requiredFields, logger)) {
+      return null;
+    }
+
+    logger.debug({ at: "createPriceFeed", message: "Creating InsuredBridgePriceFeed", config });
+
+    // TODO: Set starting block numbers for clients?
+    const l1Client = new InsuredBridgeL1Client(logger, providedWeb3, config.bridgeAdminAddress);
+    const l2Client = new InsuredBridgeL2Client(logger, providedWeb3, config.depositBoxAddress);
+
+    return new InsuredBridgePriceFeed({
+      logger,
+      l1Client,
+      l2Client,
     });
   }
 

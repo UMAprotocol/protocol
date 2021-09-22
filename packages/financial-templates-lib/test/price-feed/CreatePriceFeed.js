@@ -32,7 +32,10 @@ const { DefiPulsePriceFeed } = require("../../dist/price-feed/DefiPulsePriceFeed
 const { ETHVIXPriceFeed } = require("../../dist/price-feed/EthVixPriceFeed");
 const { ForexDailyPriceFeed } = require("../../dist/price-feed/ForexDailyPriceFeed");
 const { QuandlPriceFeed } = require("../../dist/price-feed/QuandlPriceFeed");
+const { InsuredBridgePriceFeed } = require("../../dist/price-feed/InsuredBridgePriceFeed");
 const { SpyTransport } = require("../../dist/logger/SpyTransport");
+const { InsuredBridgeL1Client } = require("../../dist/clients/InsuredBridgeL1Client");
+const { InsuredBridgeL2Client } = require("../../dist/clients/InsuredBridgeL2Client");
 
 const winston = require("winston");
 const sinon = require("sinon");
@@ -1324,5 +1327,17 @@ describe("CreatePriceFeed.js", function () {
         type: "ethvix",
       })) instanceof ETHVIXPriceFeed
     );
+  });
+
+  it("Valid InsuredBridge Config", async function () {
+    const pricefeed = await createPriceFeed(logger, web3, networker, getTime, {
+      bridgeAdminAddress: ZERO_ADDRESS,
+      depositBoxAddress: ZERO_ADDRESS,
+      type: "insuredbridge",
+    });
+
+    assert.isTrue(pricefeed instanceof InsuredBridgePriceFeed);
+    assert.isTrue(pricefeed.l1Client instanceof InsuredBridgeL1Client);
+    assert.isTrue(pricefeed.l2Client instanceof InsuredBridgeL2Client);
   });
 });

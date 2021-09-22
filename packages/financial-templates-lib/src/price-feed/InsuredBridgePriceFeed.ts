@@ -16,7 +16,6 @@ enum isRelayValid {
 
 interface Params {
   logger: Logger;
-  web3: Web3;
   l1Client: InsuredBridgeL1Client;
   l2Client: InsuredBridgeL2Client;
 }
