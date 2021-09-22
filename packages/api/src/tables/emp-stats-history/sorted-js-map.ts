@@ -1,10 +1,12 @@
 import * as uma from "@uma/sdk";
 import { Data, makeId, makeEndId } from "./utils";
-const { SortedJsMap } = uma.tables.generic;
-
+const BaseTable = uma.tables.base;
+const { SortedJsMap } = uma.stores;
 const globalId = "global";
+
 export const Table = (type = "Emp Stat History") => {
-  const table = SortedJsMap<string, Data>(type, makeId);
+  const store = SortedJsMap<string, Data>();
+  const table = BaseTable<string, Data, uma.stores.SortedStore<string, Data>>({ type, makeId }, store);
 
   function hasByAddress(address: string, timestamp: number) {
     return table.has(makeId({ address, timestamp }));
