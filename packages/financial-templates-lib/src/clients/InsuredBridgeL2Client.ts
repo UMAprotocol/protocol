@@ -65,8 +65,6 @@ export class InsuredBridgeL2Client {
       this.bridgeDepositBox.getPastEvents("FundsDeposited", blockSearchConfig),
     ]);
 
-    console.log("fundsDepositedEvents", fundsDepositedEvents);
-
     for (const fundsDepositedEvent of fundsDepositedEvents) {
       const depositData = {
         chainId: Number(fundsDepositedEvent.returnValues.chainId),

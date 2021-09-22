@@ -239,6 +239,7 @@ describe("InsuredBridgeL1Client", function () {
       depositId: 1,
       l1Recipient: l1Recipient,
       l2Sender: depositor,
+      l1Token: l1Token.options.address,
       amount: relayAmount,
       slowRelayFeePct: defaultSlowRelayFeePct,
       instantRelayFeePct: defaultInstantRelayFeePct,
@@ -616,12 +617,12 @@ describe("InsuredBridgeL1Client", function () {
     it("Correctly calculates the realized LP fee for a given deposit", async function () {
       // The before each at the top of this file added 100 units of liquidity to the pool. The deposit data, as created
       // at the top, is for a relay of 10 units. This should increment the pool utilization from 0% to 10%. From the
-      // jupiter notebook, this should be a rate of 0.006153846153846150.
+      // jupiter notebook, this should be a rate of 0.000117987509354032.
 
       await client.update();
       assert.equal(
         (await client.calculateRealizedLpFeePctForDeposit(depositData)).toString(),
-        toWei("0.006153846153846150")
+        toWei("0.000117987509354032")
       );
 
       // Next, relay a large deposit of 60 units. this takes the pool utilization from 0% to 60% (note we did not
@@ -637,7 +638,7 @@ describe("InsuredBridgeL1Client", function () {
       await client.update();
       assert.equal(
         (await client.calculateRealizedLpFeePctForDeposit(depositData)).toString(),
-        toWei("0.114175824175824180")
+        toWei("0.002081296752280018")
       );
     });
   });

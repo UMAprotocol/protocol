@@ -7,6 +7,7 @@ import {
   Deposit,
   ClientRelayState,
   RateModel,
+  calculateRealizedLpFeePct,
 } from "@uma/financial-templates-lib";
 const { predeploys } = require("@eth-optimism/contracts");
 import winston from "winston";
@@ -416,7 +417,7 @@ describe("Relayer.ts", function () {
           defaultSlowRelayFeePct,
           defaultInstantRelayFeePct,
           currentBlockTime,
-          defaultRealizedLpFeePct
+          calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01")) // compute the expected fee for 1% utilization
         )
         .send({ from: l1Owner });
 

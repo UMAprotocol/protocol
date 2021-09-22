@@ -64,8 +64,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     struct DepositData {
         uint8 chainId;
         uint64 depositId;
-        address l2Sender;
         address l1Recipient;
+        address l2Sender;
         uint256 amount;
         uint64 slowRelayFeePct;
         uint64 instantRelayFeePct;
@@ -228,8 +228,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             DepositData({
                 chainId: chainId,
                 depositId: depositId,
-                l2Sender: l2Sender,
                 l1Recipient: l1Recipient,
+                l2Sender: l2Sender,
                 amount: amount,
                 slowRelayFeePct: slowRelayFeePct,
                 instantRelayFeePct: instantRelayFeePct,
