@@ -9,7 +9,7 @@ pragma solidity >=0.7.6;
  * is inspired by https://github.com/OpenZeppelin/openzeppelin-contracts/blob/master/contracts/utils/ReentrancyGuard.sol
  * and https://github.com/balancer-labs/balancer-core/blob/master/contracts/BPool.sol.
  */
-contract OVM_Lockable {
+contract Legacy_Lockable {
     bool private _notEntered;
 
     constructor() {
