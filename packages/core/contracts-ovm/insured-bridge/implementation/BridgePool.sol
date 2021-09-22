@@ -151,9 +151,10 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      * @notice Add liquidity to the bridge pool. Pulls l1tokens from the callers wallet. The caller is sent back a
      * commensurate number of LP tokens (minted to their address) at the prevailing exchange rate.
      * @dev The caller must approve this contract to transfer `l1TokenAmount` amount of l1Token.
+     * @dev Reentrancy guard not added to this function because this indirectly calls sync() which is guarded.
      * @param l1TokenAmount Number of l1Token to add as liquidity.
      */
-    function addLiquidity(uint256 l1TokenAmount) public nonReentrant() {
+    function addLiquidity(uint256 l1TokenAmount) public {
         l1Token.safeTransferFrom(msg.sender, address(this), l1TokenAmount);
 
         uint256 lpTokensToMint =
@@ -170,9 +171,10 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      * @notice Removes liquidity to the bridge pool. Burns lpTokenAmount LP tokens from the callers wallet. The caller
      * is sent back a commensurate number of l1Tokens at the prevailing exchange rate.
      * @dev The caller does not need to approve the spending of LP tokens as this method directly uses the burn logic.
+     * @dev Reentrancy guard not added to this function because this indirectly calls sync() which is guarded.
      * @param lpTokenAmount Number of lpTokens to redeem for underlying.
      */
-    function removeLiquidity(uint256 lpTokenAmount) public nonReentrant() {
+    function removeLiquidity(uint256 lpTokenAmount) public {
         uint256 l1TokensToReturn =
             FixedPoint.Unsigned(lpTokenAmount).mul(FixedPoint.Unsigned(exchangeRateCurrent())).rawValue;
 
@@ -397,7 +399,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      * @notice Synchronize any balance changes in this contract with the utilized & liquid reserves. This would be done
      * at the conclusion of an L2->L1 token transfer via the canonical token bridge.
      */
-    function sync() public {
+    function sync() public nonReentrant() {
         // Check if the l1Token balance of the contract is greater than the liquidReserves. If it is then the bridging
         // action from L2->L1 has concluded and the local accounting can be updated.
         uint256 l1TokenBalance = l1Token.balanceOf(address(this));
