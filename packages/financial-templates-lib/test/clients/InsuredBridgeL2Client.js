@@ -99,7 +99,7 @@ describe("InsuredBridgeL2Client", () => {
 
     let expectedDeposits = [
       {
-        chainId: chainId,
+        chainId,
         depositId: 0,
         depositHash: "",
         l1Recipient: user1,
