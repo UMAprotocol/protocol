@@ -132,7 +132,7 @@ describe("InsuredBridgeL2Client", () => {
 
     await client.update();
     expectedDeposits.push({
-      chainId: chainId,
+      chainId,
       depositId: 1, // ID should increment, as expected.
       depositHash: "",
       l1Recipient: user2,
