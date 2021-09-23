@@ -3,7 +3,7 @@ pragma solidity >=0.7.6;
 
 import "./BridgeDepositBox.sol";
 
-contract OVM_BridgeDepositBox is BridgeDepositBox {
+contract Ownable_BridgeDepositBox is BridgeDepositBox {
     // Address of the L1 contract that acts as the owner of this Bridge deposit box.
     address public bridgeAdmin;
 
