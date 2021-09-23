@@ -21,6 +21,10 @@ const { toWei, toBN, utf8ToHex } = web3.utils;
 const { deployOptimismContractMock } = require("../../core/test/insured-bridge/helpers/SmockitHelper.js");
 
 // Helper contracts
+// Note: This bot should not be opinionated about whether it is connected to Optimism or Arbitrum, so we'll default to
+// the Optimism contracts.
+const chainId = 10;
+const Messenger = getContract("OptimismMessenger");
 const BridgePool = getContract("BridgePool");
 const BridgeAdmin = getContract("BridgeAdmin");
 const BridgeDepositBox = getContract("OVM_BridgeDepositBox");
@@ -34,6 +38,7 @@ const Timer = getContract("Timer");
 const MockOracle = getContract("MockOracleAncillary");
 
 // Contract objects
+let messenger: any;
 let bridgeAdmin: any;
 let bridgePool: any;
 let bridgeDepositBox: any;
@@ -136,9 +141,9 @@ describe("Relayer.ts", function () {
 
     // Deploy and setup BridgeAdmin:
     l1CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L1CrossDomainMessenger");
+    messenger = await Messenger.new(l1CrossDomainMessengerMock.options.address).send({ from: l1Owner });
     bridgeAdmin = await BridgeAdmin.new(
       finder.options.address,
-      l1CrossDomainMessengerMock.options.address,
       defaultLiveness,
       defaultProposerBondPct,
       defaultIdentifier
@@ -156,7 +161,9 @@ describe("Relayer.ts", function () {
     l2Token = await ERC20.new("L2ERC20", "L2ERC20", 18).send({ from: l2Owner });
     await l2Token.methods.addMember(TokenRolesEnum.MINTER, l2Owner).send({ from: l2Owner });
 
-    await bridgeAdmin.methods.setDepositContract(bridgeDepositBox.options.address).send({ from: l1Owner });
+    await bridgeAdmin.methods
+      .setDepositContract(chainId, bridgeDepositBox.options.address, messenger.options.address)
+      .send({ from: l1Owner });
     // New BridgePool linked to BridgeAdmin
     bridgePool = await BridgePool.new(
       "LP Token",
@@ -169,7 +176,13 @@ describe("Relayer.ts", function () {
 
     // Add L1-L2 token mapping
     await bridgeAdmin.methods
-      .whitelistToken(l1Token.options.address, l2Token.options.address, bridgePool.options.address, defaultGasLimit)
+      .whitelistToken(
+        chainId,
+        l1Token.options.address,
+        l2Token.options.address,
+        bridgePool.options.address,
+        defaultGasLimit
+      )
       .send({ from: l1Owner });
 
     l2CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L2CrossDomainMessenger", {
@@ -203,7 +216,7 @@ describe("Relayer.ts", function () {
     beforeEach(async function () {
       // Create a sample deposit with default data.
       deposit = {
-        chainId: 10,
+        chainId: chainId,
         depositId: 0,
         depositHash: "0x123",
         l2Sender: l2Depositor,
@@ -402,7 +415,7 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await bridgePool.methods
         .relayDeposit(
-          "10",
+          chainId,
           "0",
           l2Depositor,
           l2Depositor,
@@ -476,7 +489,7 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await bridgePool.methods
         .relayDeposit(
-          "10",
+          chainId,
           "0",
           l2Depositor,
           l2Depositor,

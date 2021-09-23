@@ -13,6 +13,10 @@ const { web3, getContract } = hre as HRE;
 const { toWei, utf8ToHex } = web3.utils;
 
 // Helper contracts
+// Note: This bot should not be opinionated about whether it is connected to Optimism or Arbitrum, so we'll default to
+// the Optimism contracts.
+const chainId = 10;
+const Messenger = getContract("OptimismMessenger");
 const BridgePool = getContract("BridgePool");
 const BridgeAdmin = getContract("BridgeAdmin");
 const Finder = getContract("Finder");
@@ -25,6 +29,7 @@ const Timer = getContract("Timer");
 const MockOracle = getContract("MockOracleAncillary");
 
 // Contract objects
+let messenger: any;
 let bridgeAdmin: any;
 let bridgePool: any;
 let finder: any;
@@ -113,14 +118,16 @@ describe("index.js", function () {
 
     // Deploy and setup BridgeAdmin:
     l1CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L1CrossDomainMessenger");
+    messenger = await Messenger.new(l1CrossDomainMessengerMock.options.address).send({ from: owner });
     bridgeAdmin = await BridgeAdmin.new(
       finder.options.address,
-      l1CrossDomainMessengerMock.options.address,
       defaultLiveness,
       defaultProposerBondPct,
       defaultIdentifier
     ).send({ from: owner });
-    await bridgeAdmin.methods.setDepositContract(depositContractImpersonator).send({ from: owner });
+    await bridgeAdmin.methods
+      .setDepositContract(chainId, depositContractImpersonator, messenger.options.address)
+      .send({ from: owner });
 
     // New BridgePool linked to BridgeAdmin
     bridgePool = await BridgePool.new(
@@ -134,7 +141,7 @@ describe("index.js", function () {
 
     // Add L1-L2 token mapping
     await bridgeAdmin.methods
-      .whitelistToken(l1Token.options.address, l2Token, bridgePool.options.address, defaultGasLimit)
+      .whitelistToken(chainId, l1Token.options.address, l2Token, bridgePool.options.address, defaultGasLimit)
       .send({ from: owner });
 
     spy = sinon.spy();

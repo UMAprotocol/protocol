@@ -19,6 +19,7 @@ const { assert } = require("chai");
 const BridgePool = getContract("BridgePool");
 
 // Helper contracts
+const OptimismMessenger = getContract("OptimismMessenger");
 const BridgeAdmin = getContract("BridgeAdmin");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
@@ -30,6 +31,7 @@ const Timer = getContract("Timer");
 const MockOracle = getContract("MockOracleAncillary");
 
 // Contract objects
+let optimismMessenger;
 let bridgeAdmin;
 let bridgePool;
 let finder;
@@ -45,6 +47,7 @@ let lpToken;
 let mockOracle;
 
 // Hard-coded test params:
+const chainIds = { optimism: "10" };
 const defaultGasLimit = 1_000_000;
 const defaultIdentifier = utf8ToHex("IS_CROSS_CHAIN_RELAY_VALID");
 const defaultLiveness = 100;
@@ -214,14 +217,16 @@ describe("BridgePool", () => {
 
     // Deploy and setup BridgeAdmin:
     l1CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L1CrossDomainMessenger");
+    optimismMessenger = await OptimismMessenger.new(l1CrossDomainMessengerMock.options.address).send({ from: owner });
     bridgeAdmin = await BridgeAdmin.new(
       finder.options.address,
-      l1CrossDomainMessengerMock.options.address,
       defaultLiveness,
       defaultProposerBondPct,
       defaultIdentifier
     ).send({ from: owner });
-    await bridgeAdmin.methods.setDepositContract(depositContractImpersonator).send({ from: owner });
+    await bridgeAdmin.methods
+      .setDepositContract(chainIds.optimism, depositContractImpersonator, optimismMessenger.options.address)
+      .send({ from: owner });
 
     // New BridgePool linked to BridgeAdmin
     bridgePool = await BridgePool.new(
@@ -238,7 +243,7 @@ describe("BridgePool", () => {
 
     // Add L1-L2 token mapping
     await bridgeAdmin.methods
-      .whitelistToken(l1Token.options.address, l2Token, bridgePool.options.address, defaultGasLimit)
+      .whitelistToken(chainIds.optimism, l1Token.options.address, l2Token, bridgePool.options.address, defaultGasLimit)
       .send({ from: owner });
 
     // Seed relayers, and disputer with tokens.
@@ -249,7 +254,7 @@ describe("BridgePool", () => {
 
     // Store expected relay data that we'll use to verify contract state:
     depositData = {
-      chainId: 10,
+      chainId: chainIds.optimism,
       depositId: 1,
       l1Recipient: l1Recipient,
       l2Sender: depositor,

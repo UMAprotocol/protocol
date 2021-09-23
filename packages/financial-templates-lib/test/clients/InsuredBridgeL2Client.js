@@ -16,6 +16,9 @@ const { deployOptimismContractMock } = require("../../../core/test/insured-bridg
 const { InsuredBridgeL2Client } = require("../../dist/clients/InsuredBridgeL2Client");
 
 // Helper contracts
+// Note: This bot should not be opinionated about whether it is connected to Optimism or Arbitrum, so we'll default to
+// the Optimism contracts.
+const chainId = 10;
 const BridgeDepositBox = getContract("OVM_BridgeDepositBox");
 const Token = getContract("ExpandedERC20");
 const Timer = getContract("Legacy_Timer");
@@ -109,7 +112,7 @@ describe("InsuredBridgeL2Client", () => {
 
     let expectedDeposits = [
       {
-        chainId: 10,
+        chainId: chainId,
         depositId: 0,
         depositHash: "",
         l1Recipient: user1,
@@ -142,7 +145,7 @@ describe("InsuredBridgeL2Client", () => {
 
     await client.update();
     expectedDeposits.push({
-      chainId: 10,
+      chainId: chainId,
       depositId: 1, // ID should increment, as expected.
       depositHash: "",
       l1Recipient: user2,

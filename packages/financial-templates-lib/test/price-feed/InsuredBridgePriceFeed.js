@@ -13,6 +13,10 @@ const { deployOptimismContractMock } = require("../../../core/test/insured-bridg
 const winston = require("winston");
 const { assert } = require("chai");
 
+// Note: This bot should not be opinionated about whether it is connected to Optimism or Arbitrum, so we'll default to
+// the Optimism contracts.
+const chainId = 10;
+const Messenger = getContract("OptimismMessenger");
 const BridgeAdmin = getContract("BridgeAdmin");
 const BridgePool = getContract("BridgePool");
 const BridgeDepositBox = getContract("OVM_BridgeDepositBox");
@@ -30,7 +34,7 @@ const { InsuredBridgeL1Client } = require("../../dist/clients/InsuredBridgeL1Cli
 const { InsuredBridgeL2Client } = require("../../dist/clients/InsuredBridgeL2Client");
 
 // Contract objects
-let bridgeAdmin, bridgePool;
+let messenger, bridgeAdmin, bridgePool;
 
 // Tested clients
 let pricefeed;
@@ -155,9 +159,9 @@ describe("InsuredBridgePriceFeed", function () {
 
     // Deploy and setup BridgeAdmin
     l1CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L1CrossDomainMessenger");
+    messenger = await Messenger.new(l1CrossDomainMessengerMock.options.address).send({ from: owner });
     bridgeAdmin = await BridgeAdmin.new(
       finder.options.address,
-      l1CrossDomainMessengerMock.options.address,
       defaultLiveness,
       defaultProposerBondPct,
       defaultIdentifier
@@ -197,11 +201,19 @@ describe("InsuredBridgePriceFeed", function () {
       .send({ from: predeploys.OVM_L2CrossDomainMessenger });
 
     // Connect L1 and L2 contracts:
-    await bridgeAdmin.methods.setDepositContract(depositBox.options.address).send({ from: owner });
+    await bridgeAdmin.methods
+      .setDepositContract(chainId, depositBox.options.address, messenger.options.address)
+      .send({ from: owner });
 
     // Add L1-L2 token mapping
     await bridgeAdmin.methods
-      .whitelistToken(l1Token.options.address, l2Token.options.address, bridgePool.options.address, defaultGasLimit)
+      .whitelistToken(
+        chainId,
+        l1Token.options.address,
+        l2Token.options.address,
+        bridgePool.options.address,
+        defaultGasLimit
+      )
       .send({ from: owner });
 
     // Add some liquidity to the pool to facilitate bridging actions.
@@ -229,7 +241,7 @@ describe("InsuredBridgePriceFeed", function () {
     // Store expected relay data that we'll use to verify contract state:
     const expectedDepositTimestamp = Number(await optimisticOracle.methods.getCurrentTime().call());
     depositData = {
-      chainId: 10,
+      chainId: chainId,
       depositId: 0,
       l1Recipient: l1Recipient,
       l2Sender: depositor,
