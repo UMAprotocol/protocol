@@ -2,11 +2,12 @@
 pragma solidity ^0.8.0;
 
 import "../external/OVM_CrossDomainEnabled.sol";
+import "../interfaces/MessengerInterface.sol";
 
 /**
  * @notice Sends cross chain messages Optimism L2 network.
  */
-contract OptimismMessenger is OVM_CrossDomainEnabled {
+contract OptimismMessenger is OVM_CrossDomainEnabled, MessengerInterface {
     constructor(address _crossDomainMessenger) OVM_CrossDomainEnabled(_crossDomainMessenger) {}
 
     /**
@@ -20,7 +21,7 @@ contract OptimismMessenger is OVM_CrossDomainEnabled {
         address target,
         uint32 gasLimit,
         bytes memory message
-    ) external {
+    ) external override {
         sendCrossDomainMessage(target, gasLimit, message);
     }
 }
