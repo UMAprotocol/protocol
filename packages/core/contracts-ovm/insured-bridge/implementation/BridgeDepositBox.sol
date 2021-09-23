@@ -26,16 +26,6 @@ interface TokenLike {
     function balanceOf(address guy) external returns (uint256 wad);
 }
 
-interface StandardBridgeLike {
-    function withdrawTo(
-        address _l2Token,
-        address _to,
-        uint256 _amount,
-        uint32 _l1Gas,
-        bytes calldata _data
-    ) external;
-}
-
 /**
  * @title OVM Bridge Deposit Box.
  * @notice Accepts deposits on Optimism L2 to relay to Ethereum L1 as part of the UMA insured bridge system.
