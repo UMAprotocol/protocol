@@ -9,6 +9,13 @@ import "../external/OVM_CrossDomainEnabled.sol";
 contract OptimismMessenger is OVM_CrossDomainEnabled {
     constructor(address _crossDomainMessenger) OVM_CrossDomainEnabled(_crossDomainMessenger) {}
 
+    /**
+     * @notice Sends a message to an account on L2.
+     * @param target The intended recipient on L2.
+     * @param gasLimit The gasLimit for the receipt of the message on L2.
+     * @param message The data to send to the target (usually calldata to a function with
+     *  `onlyFromCrossDomainAccount()`)
+     */
     function relayMessage(
         address target,
         uint32 gasLimit,
