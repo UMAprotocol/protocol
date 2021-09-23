@@ -13,10 +13,8 @@ const { deployOptimismContractMock } = require("../../../core/test/insured-bridg
 const winston = require("winston");
 const { assert } = require("chai");
 
-// Note: This bot should not be opinionated about whether it is connected to Optimism or Arbitrum, so we'll default to
-// the Optimism contracts.
 const chainId = 10;
-const Messenger = getContract("OptimismMessenger");
+const Messenger = getContract("MessengerMock");
 const BridgeAdmin = getContract("BridgeAdmin");
 const BridgePool = getContract("BridgePool");
 const BridgeDepositBox = getContract("OVM_BridgeDepositBox");
@@ -46,7 +44,6 @@ let finder,
   store,
   identifierWhitelist,
   collateralWhitelist,
-  l1CrossDomainMessengerMock,
   l2CrossDomainMessengerMock,
   depositBox,
   timer,
@@ -158,8 +155,7 @@ describe("InsuredBridgePriceFeed", function () {
     // Set up the Insured bridge contracts.
 
     // Deploy and setup BridgeAdmin
-    l1CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L1CrossDomainMessenger");
-    messenger = await Messenger.new(l1CrossDomainMessengerMock.options.address).send({ from: owner });
+    messenger = await Messenger.new().send({ from: owner });
     bridgeAdmin = await BridgeAdmin.new(
       finder.options.address,
       defaultLiveness,

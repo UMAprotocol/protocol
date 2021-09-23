@@ -3,12 +3,10 @@ const { didContractThrow, runDefaultFixture, ZERO_ADDRESS } = require("@uma/comm
 const { getContract, assertEventEmitted } = hre;
 const { hexToUtf8, utf8ToHex, toWei } = web3.utils;
 
-const { deployOptimismContractMock } = require("./helpers/SmockitHelper");
-
 const { assert } = require("chai");
 
 // Tested contracts
-const OptimismMessenger = getContract("OptimismMessenger");
+const MessengerMock = getContract("MessengerMock");
 const BridgeAdmin = getContract("BridgeAdmin");
 const BridgePool = getContract("BridgePool");
 const Timer = getContract("Timer");
@@ -18,10 +16,9 @@ const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
 
 // Contract objects
-let optimismMessenger;
+let messenger;
 let bridgeAdmin;
 let finder;
-let l1CrossDomainMessengerMock;
 let depositBox;
 let identifierWhitelist;
 let collateralWhitelist;
@@ -34,7 +31,7 @@ const defaultLiveness = 7200;
 const defaultProposerBondPct = toWei("0.05");
 const lpFeeRatePerSecond = toWei("0.0000015");
 const defaultBridgingDelay = 60;
-const chainIds = { optimism: "10" };
+const chainId = "111";
 let l1Token;
 let l2Token;
 let bridgePool;
@@ -55,9 +52,7 @@ describe("BridgeAdmin", () => {
     await identifierWhitelist.methods.addSupportedIdentifier(defaultIdentifier).send({ from: owner });
   });
   beforeEach(async function () {
-    l1CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L1CrossDomainMessenger");
-
-    optimismMessenger = await OptimismMessenger.new(l1CrossDomainMessengerMock.options.address).send({ from: owner });
+    messenger = await MessengerMock.new().send({ from: owner });
 
     bridgeAdmin = await BridgeAdmin.new(
       finder.options.address,
@@ -83,7 +78,6 @@ describe("BridgeAdmin", () => {
     it("Set deposit contracts", async () => {
       const newDepositContract = rando;
       const newMessengerContract = rando2;
-      const chainId = "10";
       assert(
         await didContractThrow(
           bridgeAdmin.methods
@@ -167,13 +161,13 @@ describe("BridgeAdmin", () => {
       });
       assert.equal((await bridgeAdmin.methods.proposerBondPct().call()).toString(), newBond.toString());
     });
-    describe("Optimism: Cross domain Admin functions", () => {
+    describe("Cross domain Admin functions", () => {
       describe("Whitelist tokens", () => {
         it("Basic checks", async () => {
           assert(
             await didContractThrow(
               bridgeAdmin.methods
-                .whitelistToken(chainIds.optimism, l1Token, l2Token, bridgePool.options.address, defaultGasLimit)
+                .whitelistToken(chainId, l1Token, l2Token, bridgePool.options.address, defaultGasLimit)
                 .send({ from: rando })
             ),
             "OnlyOwner modifier not enforced"
@@ -183,20 +177,20 @@ describe("BridgeAdmin", () => {
           assert(
             await didContractThrow(
               bridgeAdmin.methods
-                .whitelistToken(chainIds.optimism, l1Token, l2Token, bridgePool.options.address, defaultGasLimit)
+                .whitelistToken(chainId, l1Token, l2Token, bridgePool.options.address, defaultGasLimit)
                 .send({ from: owner })
             ),
             "Deposit contract not set"
           );
           await bridgeAdmin.methods
-            .setDepositContract(chainIds.optimism, depositBoxImpersonator, optimismMessenger.options.address)
+            .setDepositContract(chainId, depositBoxImpersonator, messenger.options.address)
             .send({ from: owner });
 
           // Fails if l1 token is not whitelisted
           assert(
             await didContractThrow(
               bridgeAdmin.methods
-                .whitelistToken(chainIds.optimism, l1Token, l2Token, bridgePool.options.address, defaultGasLimit)
+                .whitelistToken(chainId, l1Token, l2Token, bridgePool.options.address, defaultGasLimit)
                 .send({ from: owner })
             ),
             "L1 token is not whitelisted collateral"
@@ -207,7 +201,7 @@ describe("BridgeAdmin", () => {
           assert(
             await didContractThrow(
               bridgeAdmin.methods
-                .whitelistToken(chainIds.optimism, l1Token, ZERO_ADDRESS, bridgePool.options.address, defaultGasLimit)
+                .whitelistToken(chainId, l1Token, ZERO_ADDRESS, bridgePool.options.address, defaultGasLimit)
                 .send({ from: owner })
             ),
             "L2 token cannot be zero address"
@@ -217,7 +211,7 @@ describe("BridgeAdmin", () => {
           assert(
             await didContractThrow(
               bridgeAdmin.methods
-                .whitelistToken(chainIds.optimism, l1Token, l2Token, ZERO_ADDRESS, defaultGasLimit)
+                .whitelistToken(chainId, l1Token, l2Token, ZERO_ADDRESS, defaultGasLimit)
                 .send({ from: owner })
             ),
             "BridgePool cannot be zero address"
@@ -225,23 +219,22 @@ describe("BridgeAdmin", () => {
 
           // Successful call
           await bridgeAdmin.methods
-            .whitelistToken(chainIds.optimism, l1Token, l2Token, bridgePool.options.address, defaultGasLimit)
+            .whitelistToken(chainId, l1Token, l2Token, bridgePool.options.address, defaultGasLimit)
             .send({ from: owner });
         });
         it("Add token mapping on L1 and sends xchain message", async () => {
           await bridgeAdmin.methods
-            .setDepositContract(chainIds.optimism, depositBoxImpersonator, optimismMessenger.options.address)
+            .setDepositContract(chainId, depositBoxImpersonator, messenger.options.address)
             .send({ from: owner });
           await collateralWhitelist.methods.addToWhitelist(l1Token).send({ from: owner });
           const whitelistTxn = await bridgeAdmin.methods
-            .whitelistToken(chainIds.optimism, l1Token, l2Token, bridgePool.options.address, defaultGasLimit)
+            .whitelistToken(chainId, l1Token, l2Token, bridgePool.options.address, defaultGasLimit)
             .send({ from: owner });
-          const whitelistCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
 
           // Check for L1 logs and state change
           await assertEventEmitted(whitelistTxn, bridgeAdmin, "WhitelistToken", (ev) => {
             return (
-              ev.chainId === chainIds.optimism &&
+              ev.chainId === chainId &&
               ev.l1Token === l1Token &&
               ev.l2Token === l2Token &&
               ev.bridgePool === bridgePool.options.address
@@ -254,35 +247,23 @@ describe("BridgeAdmin", () => {
           );
 
           // Validate xchain message
-          assert.equal(
-            whitelistCallToMessengerCall._target,
-            depositBoxImpersonator,
-            "xchain target should be deposit contract"
-          );
           const expectedAbiData = depositBox.methods
             .whitelistToken(l1Token, l2Token, bridgePool.options.address)
             .encodeABI();
-          assert.equal(whitelistCallToMessengerCall._message, expectedAbiData, "xchain message bytes unexpected");
-          assert.equal(whitelistCallToMessengerCall._gasLimit, defaultGasLimit, "xchain gas limit unexpected");
-        });
-        it("Works with custom gas", async () => {
-          const customGasLimit = 10;
-          await bridgeAdmin.methods
-            .setDepositContract(chainIds.optimism, depositBoxImpersonator, optimismMessenger.options.address)
-            .send({ from: owner });
-          await collateralWhitelist.methods.addToWhitelist(l1Token).send({ from: owner });
-          await bridgeAdmin.methods
-            .whitelistToken(chainIds.optimism, l1Token, l2Token, bridgePool.options.address, customGasLimit)
-            .send({ from: owner });
-          const whitelistCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
-          assert.equal(whitelistCallToMessengerCall._gasLimit, customGasLimit, "xchain gas limit unexpected");
+          await assertEventEmitted(whitelistTxn, messenger, "RelayedMessage", (ev) => {
+            return (
+              ev.target === depositBoxImpersonator &&
+              ev.gasLimit === defaultGasLimit.toString() &&
+              ev.message === expectedAbiData
+            );
+          });
         });
       });
       describe("Set bridge admin", () => {
         it("Basic checks", async () => {
           assert(
             await didContractThrow(
-              bridgeAdmin.methods.setBridgeAdmin(chainIds.optimism, rando, defaultGasLimit).send({ from: rando })
+              bridgeAdmin.methods.setBridgeAdmin(chainId, rando, defaultGasLimit).send({ from: rando })
             ),
             "OnlyOwner modifier not enforced"
           );
@@ -290,60 +271,47 @@ describe("BridgeAdmin", () => {
           // Fails if depositContract not set in BridgeRouter
           assert(
             await didContractThrow(
-              bridgeAdmin.methods.setBridgeAdmin(chainIds.optimism, rando, defaultGasLimit).send({ from: owner })
+              bridgeAdmin.methods.setBridgeAdmin(chainId, rando, defaultGasLimit).send({ from: owner })
             ),
             "Deposit contract not set"
           );
           await bridgeAdmin.methods
-            .setDepositContract(chainIds.optimism, depositBoxImpersonator, optimismMessenger.options.address)
+            .setDepositContract(chainId, depositBoxImpersonator, messenger.options.address)
             .send({ from: owner });
 
           // Admin cannot be 0x0
           assert(
             await didContractThrow(
-              bridgeAdmin.methods.setBridgeAdmin(chainIds.optimism, ZERO_ADDRESS, defaultGasLimit).send({ from: owner })
+              bridgeAdmin.methods.setBridgeAdmin(chainId, ZERO_ADDRESS, defaultGasLimit).send({ from: owner })
             ),
             "Cannot set to 0 address"
           );
 
           // Successful call
-          await bridgeAdmin.methods.setBridgeAdmin(chainIds.optimism, rando, defaultGasLimit).send({ from: owner });
+          await bridgeAdmin.methods.setBridgeAdmin(chainId, rando, defaultGasLimit).send({ from: owner });
         });
         it("Changes admin address", async () => {
           await bridgeAdmin.methods
-            .setDepositContract(chainIds.optimism, depositBoxImpersonator, optimismMessenger.options.address)
+            .setDepositContract(chainId, depositBoxImpersonator, messenger.options.address)
             .send({ from: owner });
           const setAdminTxn = await bridgeAdmin.methods
-            .setBridgeAdmin(chainIds.optimism, rando, defaultGasLimit)
+            .setBridgeAdmin(chainId, rando, defaultGasLimit)
             .send({ from: owner });
-          const setAdminCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
 
           // Check for L1 logs and state change
           await assertEventEmitted(setAdminTxn, bridgeAdmin, "SetBridgeAdmin", (ev) => {
-            return ev.bridgeAdmin === rando && ev.chainId === chainIds.optimism;
+            return ev.bridgeAdmin === rando && ev.chainId === chainId;
           });
 
           // Validate xchain message
-          assert.equal(
-            setAdminCallToMessengerCall._target,
-            depositBoxImpersonator,
-            "xchain target should be deposit contract"
-          );
           const expectedAbiData = depositBox.methods.setBridgeAdmin(rando).encodeABI();
-          assert.equal(setAdminCallToMessengerCall._message, expectedAbiData, "xchain message bytes unexpected");
-          assert.equal(setAdminCallToMessengerCall._gasLimit, defaultGasLimit, "xchain gas limit unexpected");
-        });
-        it("Works with custom gas", async () => {
-          const customGasLimit = 10;
-          await bridgeAdmin.methods
-            .setDepositContract(chainIds.optimism, depositBoxImpersonator, optimismMessenger.options.address)
-            .send({ from: owner });
-          await bridgeAdmin.methods.setBridgeAdmin(chainIds.optimism, rando, customGasLimit).send({ from: owner });
-          assert.equal(
-            l1CrossDomainMessengerMock.smocked.sendMessage.calls[0]._gasLimit,
-            customGasLimit,
-            "xchain gas limit unexpected"
-          );
+          await assertEventEmitted(setAdminTxn, messenger, "RelayedMessage", (ev) => {
+            return (
+              ev.target === depositBoxImpersonator &&
+              ev.gasLimit === defaultGasLimit.toString() &&
+              ev.message === expectedAbiData
+            );
+          });
         });
       });
       describe("Set minimum bridge delay", () => {
@@ -351,7 +319,7 @@ describe("BridgeAdmin", () => {
           assert(
             await didContractThrow(
               bridgeAdmin.methods
-                .setMinimumBridgingDelay(chainIds.optimism, defaultBridgingDelay, defaultGasLimit)
+                .setMinimumBridgingDelay(chainId, defaultBridgingDelay, defaultGasLimit)
                 .send({ from: rando })
             ),
             "OnlyOwner modifier not enforced"
@@ -361,69 +329,49 @@ describe("BridgeAdmin", () => {
           assert(
             await didContractThrow(
               bridgeAdmin.methods
-                .setMinimumBridgingDelay(chainIds.optimism, defaultBridgingDelay, defaultGasLimit)
+                .setMinimumBridgingDelay(chainId, defaultBridgingDelay, defaultGasLimit)
                 .send({ from: owner })
             ),
             "Deposit contract not set"
           );
           await bridgeAdmin.methods
-            .setDepositContract(chainIds.optimism, depositBoxImpersonator, optimismMessenger.options.address)
+            .setDepositContract(chainId, depositBoxImpersonator, messenger.options.address)
             .send({ from: owner });
 
           // Successful call
           await bridgeAdmin.methods
-            .setMinimumBridgingDelay(chainIds.optimism, defaultBridgingDelay, defaultGasLimit)
+            .setMinimumBridgingDelay(chainId, defaultBridgingDelay, defaultGasLimit)
             .send({ from: owner });
         });
         it("Sets delay", async () => {
           await bridgeAdmin.methods
-            .setDepositContract(chainIds.optimism, depositBoxImpersonator, optimismMessenger.options.address)
+            .setDepositContract(chainId, depositBoxImpersonator, messenger.options.address)
             .send({ from: owner });
           const setDelayTxn = await bridgeAdmin.methods
-            .setMinimumBridgingDelay(chainIds.optimism, defaultBridgingDelay, defaultGasLimit)
+            .setMinimumBridgingDelay(chainId, defaultBridgingDelay, defaultGasLimit)
             .send({ from: owner });
-          const setDelayCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
 
           // Check for L1 logs and state change
           await assertEventEmitted(setDelayTxn, bridgeAdmin, "SetMinimumBridgingDelay", (ev) => {
-            return (
-              ev.newMinimumBridgingDelay.toString() === defaultBridgingDelay.toString() &&
-              ev.chainId === chainIds.optimism
-            );
+            return ev.newMinimumBridgingDelay.toString() === defaultBridgingDelay.toString() && ev.chainId === chainId;
           });
 
           // Validate xchain message
-          assert.equal(
-            setDelayCallToMessengerCall._target,
-            depositBoxImpersonator,
-            "xchain target should be deposit contract"
-          );
           const expectedAbiData = depositBox.methods.setMinimumBridgingDelay(defaultBridgingDelay).encodeABI();
-          assert.equal(setDelayCallToMessengerCall._message, expectedAbiData, "xchain message bytes unexpected");
-          assert.equal(setDelayCallToMessengerCall._gasLimit, defaultGasLimit, "xchain gas limit unexpected");
-        });
-        it("Works with custom gas", async () => {
-          const customGasLimit = 10;
-          await bridgeAdmin.methods
-            .setDepositContract(chainIds.optimism, depositBoxImpersonator, optimismMessenger.options.address)
-            .send({ from: owner });
-          await bridgeAdmin.methods
-            .setMinimumBridgingDelay(chainIds.optimism, defaultBridgingDelay, customGasLimit)
-            .send({ from: owner });
-          assert.equal(
-            l1CrossDomainMessengerMock.smocked.sendMessage.calls[0]._gasLimit,
-            customGasLimit,
-            "xchain gas limit unexpected"
-          );
+          await assertEventEmitted(setDelayTxn, messenger, "RelayedMessage", (ev) => {
+            return (
+              ev.target === depositBoxImpersonator &&
+              ev.gasLimit === defaultGasLimit.toString() &&
+              ev.message === expectedAbiData
+            );
+          });
         });
       });
       describe("Pause deposits", () => {
         it("Basic checks", async () => {
           assert(
             await didContractThrow(
-              bridgeAdmin.methods
-                .setEnableDeposits(chainIds.optimism, l2Token, false, defaultGasLimit)
-                .send({ from: rando })
+              bridgeAdmin.methods.setEnableDeposits(chainId, l2Token, false, defaultGasLimit).send({ from: rando })
             ),
             "OnlyOwner modifier not enforced"
           );
@@ -431,63 +379,41 @@ describe("BridgeAdmin", () => {
           // Fails if depositContract not set in BridgeRouter
           assert(
             await didContractThrow(
-              bridgeAdmin.methods
-                .setEnableDeposits(chainIds.optimism, l2Token, false, defaultGasLimit)
-                .send({ from: owner })
+              bridgeAdmin.methods.setEnableDeposits(chainId, l2Token, false, defaultGasLimit).send({ from: owner })
             ),
             "Deposit contract not set"
           );
           await bridgeAdmin.methods
-            .setDepositContract(chainIds.optimism, depositBoxImpersonator, optimismMessenger.options.address)
+            .setDepositContract(chainId, depositBoxImpersonator, messenger.options.address)
             .send({ from: owner });
 
           // Successful call
-          await bridgeAdmin.methods
-            .setEnableDeposits(chainIds.optimism, l2Token, false, defaultGasLimit)
-            .send({ from: owner });
+          await bridgeAdmin.methods.setEnableDeposits(chainId, l2Token, false, defaultGasLimit).send({ from: owner });
         });
         it("Sets boolean value", async () => {
           await bridgeAdmin.methods
-            .setDepositContract(chainIds.optimism, depositBoxImpersonator, optimismMessenger.options.address)
+            .setDepositContract(chainId, depositBoxImpersonator, messenger.options.address)
             .send({ from: owner });
-          const setDelayTxn = await bridgeAdmin.methods
-            .setEnableDeposits(chainIds.optimism, l2Token, false, defaultGasLimit)
+          const pauseTxn = await bridgeAdmin.methods
+            .setEnableDeposits(chainId, l2Token, false, defaultGasLimit)
             .send({ from: owner });
-          const setDelayCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
 
           // Check for L1 logs and state change
-          await assertEventEmitted(setDelayTxn, bridgeAdmin, "DepositsEnabled", (ev) => {
-            return Boolean(ev.depositsEnabled) === false && ev.l2Token === l2Token && ev.chainId === chainIds.optimism;
+          await assertEventEmitted(pauseTxn, bridgeAdmin, "DepositsEnabled", (ev) => {
+            return Boolean(ev.depositsEnabled) === false && ev.l2Token === l2Token && ev.chainId === chainId;
           });
 
           // Validate xchain message
-          assert.equal(
-            setDelayCallToMessengerCall._target,
-            depositBoxImpersonator,
-            "xchain target should be deposit contract"
-          );
           const expectedAbiData = depositBox.methods.setEnableDeposits(l2Token, false).encodeABI();
-          assert.equal(setDelayCallToMessengerCall._message, expectedAbiData, "xchain message bytes unexpected");
-          assert.equal(setDelayCallToMessengerCall._gasLimit, defaultGasLimit, "xchain gas limit unexpected");
-        });
-        it("Works with custom gas", async () => {
-          const customGasLimit = 10;
-          await bridgeAdmin.methods
-            .setDepositContract(chainIds.optimism, depositBoxImpersonator, optimismMessenger.options.address)
-            .send({ from: owner });
-          await bridgeAdmin.methods
-            .setEnableDeposits(chainIds.optimism, l2Token, false, customGasLimit)
-            .send({ from: owner });
-          assert.equal(
-            l1CrossDomainMessengerMock.smocked.sendMessage.calls[0]._gasLimit,
-            customGasLimit,
-            "xchain gas limit unexpected"
-          );
+          await assertEventEmitted(pauseTxn, messenger, "RelayedMessage", (ev) => {
+            return (
+              ev.target === depositBoxImpersonator &&
+              ev.gasLimit === defaultGasLimit.toString() &&
+              ev.message === expectedAbiData
+            );
+          });
         });
       });
-    });
-    describe("Arbitrum: Cross domain admin functions", () => {
-      // TODO:
     });
   });
 });

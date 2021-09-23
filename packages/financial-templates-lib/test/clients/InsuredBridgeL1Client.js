@@ -4,15 +4,10 @@ const { interfaceName, TokenRolesEnum, InsuredBridgeRelayStateEnum, ZERO_ADDRESS
 const { getContract } = hre;
 const { utf8ToHex, toWei, toBN, soliditySha3 } = web3.utils;
 
-// TODO: refactor to common util
-const { deployOptimismContractMock } = require("../../../core/test/insured-bridge/helpers/SmockitHelper");
-
 const winston = require("winston");
 const { assert } = require("chai");
-// Note: This bot should not be opinionated about whether it is connected to Optimism or Arbitrum, so we'll default to
-// the Optimism contracts.
 const chainId = 10;
-const Messenger = getContract("OptimismMessenger");
+const Messenger = getContract("MessengerMock");
 const BridgeAdmin = getContract("BridgeAdmin");
 const BridgePool = getContract("BridgePool");
 const Finder = getContract("Finder");
@@ -37,7 +32,6 @@ let finder,
   store,
   identifierWhitelist,
   collateralWhitelist,
-  l1CrossDomainMessengerMock,
   timer,
   optimisticOracle,
   l1Token,
@@ -193,8 +187,7 @@ describe("InsuredBridgeL1Client", function () {
     // Set up the Insured bridge contracts.
 
     // Deploy and setup BridgeAdmin
-    l1CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L1CrossDomainMessenger");
-    messenger = await Messenger.new(l1CrossDomainMessengerMock.options.address).send({ from: owner });
+    messenger = await Messenger.new().send({ from: owner });
     bridgeAdmin = await BridgeAdmin.new(
       finder.options.address,
       defaultLiveness,

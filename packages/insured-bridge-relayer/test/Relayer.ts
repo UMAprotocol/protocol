@@ -21,10 +21,8 @@ const { toWei, toBN, utf8ToHex } = web3.utils;
 const { deployOptimismContractMock } = require("../../core/test/insured-bridge/helpers/SmockitHelper.js");
 
 // Helper contracts
-// Note: This bot should not be opinionated about whether it is connected to Optimism or Arbitrum, so we'll default to
-// the Optimism contracts.
 const chainId = 10;
-const Messenger = getContract("OptimismMessenger");
+const Messenger = getContract("MessengerMock");
 const BridgePool = getContract("BridgePool");
 const BridgeAdmin = getContract("BridgeAdmin");
 const BridgeDepositBox = getContract("OVM_BridgeDepositBox");
@@ -73,7 +71,6 @@ import { Relayer, ShouldRelay } from "../src/Relayer";
 describe("Relayer.ts", function () {
   let l1Accounts;
   let l1Owner: string;
-  let l1CrossDomainMessengerMock: any;
   let l1Relayer: any;
   let l1LiquidityProvider: any;
 
@@ -140,8 +137,7 @@ describe("Relayer.ts", function () {
       .send({ from: l1Owner });
 
     // Deploy and setup BridgeAdmin:
-    l1CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L1CrossDomainMessenger");
-    messenger = await Messenger.new(l1CrossDomainMessengerMock.options.address).send({ from: l1Owner });
+    messenger = await Messenger.new().send({ from: l1Owner });
     bridgeAdmin = await BridgeAdmin.new(
       finder.options.address,
       defaultLiveness,

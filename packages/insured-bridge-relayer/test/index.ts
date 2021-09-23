@@ -6,17 +6,12 @@ const { assert } = require("chai");
 
 import { interfaceName, TokenRolesEnum, HRE } from "@uma/common";
 
-// TODO: clean up this export/import path
-const { deployOptimismContractMock } = require("../../core/test/insured-bridge/helpers/SmockitHelper.js");
-
 const { web3, getContract } = hre as HRE;
 const { toWei, utf8ToHex } = web3.utils;
 
 // Helper contracts
-// Note: This bot should not be opinionated about whether it is connected to Optimism or Arbitrum, so we'll default to
-// the Optimism contracts.
 const chainId = 10;
-const Messenger = getContract("OptimismMessenger");
+const Messenger = getContract("MessengerMock");
 const BridgePool = getContract("BridgePool");
 const BridgeAdmin = getContract("BridgeAdmin");
 const Finder = getContract("Finder");
@@ -36,7 +31,6 @@ let finder: any;
 let store: any;
 let identifierWhitelist: any;
 let collateralWhitelist: any;
-let l1CrossDomainMessengerMock: any;
 let timer: any;
 let optimisticOracle: any;
 let l1Token: any;
@@ -117,8 +111,7 @@ describe("index.js", function () {
       .send({ from: owner });
 
     // Deploy and setup BridgeAdmin:
-    l1CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L1CrossDomainMessenger");
-    messenger = await Messenger.new(l1CrossDomainMessengerMock.options.address).send({ from: owner });
+    messenger = await Messenger.new().send({ from: owner });
     bridgeAdmin = await BridgeAdmin.new(
       finder.options.address,
       defaultLiveness,
