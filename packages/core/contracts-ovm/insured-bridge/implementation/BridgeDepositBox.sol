@@ -31,7 +31,7 @@ interface TokenLike {
  * @notice Accepts deposits on Optimism L2 to relay to Ethereum L1 as part of the UMA insured bridge system.
  */
 
-contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
+abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
     /*************************************
      *  OVM DEPOSIT BOX DATA STRUCTURES  *
      *************************************/

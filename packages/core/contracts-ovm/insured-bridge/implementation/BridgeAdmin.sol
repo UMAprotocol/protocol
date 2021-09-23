@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 // contracts. These contracts are relatively small and should have no problems porting from 0.7.x to 0.8.x, and
 // changing their version is preferable to changing this contract to 0.7.x and defining compatible interfaces for all
 // of the imported DVM contracts below.
-import "../external/OVM_CrossDomainEnabled.sol";
+import "../external/optimism/OVM_CrossDomainEnabled.sol";
 import "../interfaces//BridgePoolInterface.sol";
 import "../interfaces/BridgeAdminInterface.sol";
 import "../../../contracts/oracle/interfaces/IdentifierWhitelistInterface.sol";
