@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity >=0.7.6;
 
-import "./BridgeDepositBox.sol";
+import "../implementation/BridgeDepositBox.sol";
 
-contract Ownable_BridgeDepositBox is BridgeDepositBox {
+contract BridgeDepositBoxMock is BridgeDepositBox {
     // Address of the L1 contract that acts as the owner of this Bridge deposit box.
     address public bridgeAdmin;
 

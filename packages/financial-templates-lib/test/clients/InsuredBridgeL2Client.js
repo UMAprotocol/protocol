@@ -14,7 +14,7 @@ const { InsuredBridgeL2Client } = require("../../dist/clients/InsuredBridgeL2Cli
 
 // Helper contracts
 const chainId = 10;
-const BridgeDepositBox = getContract("Ownable_BridgeDepositBox");
+const BridgeDepositBox = getContract("BridgeDepositBoxMock");
 const Token = getContract("ExpandedERC20");
 const Timer = getContract("Legacy_Timer");
 

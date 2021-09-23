@@ -13,7 +13,7 @@ const BridgeAdmin = getContract("BridgeAdmin");
 const BridgePool = getContract("BridgePool");
 const Timer = getContract("Timer");
 const Finder = getContract("Finder");
-const BridgeDepositBox = getContract("OVM_BridgeDepositBox");
+const BridgeDepositBox = getContract("BridgeDepositBoxMock");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
 
