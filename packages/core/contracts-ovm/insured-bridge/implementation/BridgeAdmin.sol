@@ -1,10 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-// Importing local copies of OVM contracts is a temporary fix until the @eth-optimism/contracts package exports 0.8.x
-// contracts. These contracts are relatively small and should have no problems porting from 0.7.x to 0.8.x, and
-// changing their version is preferable to changing this contract to 0.7.x and defining compatible interfaces for all
-// of the imported DVM contracts below.
 import "../interfaces//BridgePoolInterface.sol";
 import "../interfaces/BridgeAdminInterface.sol";
 import "../interfaces/MessengerInterface.sol";
@@ -17,7 +13,7 @@ import "../../../contracts/common/implementation/Lockable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
- * @notice Administrative contract deployed on L1 that has implicit references to each L2 DepositBox. This contract is
+ * @notice Administrative contract deployed on L1 that has implicit references to all L2 DepositBoxes. This contract is
  * responsible for making global variables accessible to BridgePool contracts, which house passive liquidity and
  * enable relaying of L2 deposits.
  * @dev The owner of this contract can also call permissioned functions on registered L2 DepositBoxes.
@@ -26,9 +22,10 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
     // Finder used to point to latest OptimisticOracle and other DVM contracts.
     address public override finder;
 
-    // Maps L2 network ID's to Deposit contracts that originate the deposits that can be fulfilled by this contract.
-    // Also stores the address of the contract that we'll use to send a cross chain message to the L2 with the specified
-    // network ID. This is required since L1 --> L2 messaging is non-standard for different L2's
+    // This contract can relay messages to any number of L2 DepositBoxes, one per L2 network, each identified by a
+    // unique network ID. To relay a message, both the deposit box contract address and a messenger contract address
+    // need to be stored. The messenger implementation differs for each L2 beacuse L1 --> L2 messaging is non-standard.
+    // The deposit box contract originate the deposits that can be fulfilled by BridgePool contracts on L1.
     mapping(uint256 => DepositUtilityContracts) private _depositContracts;
 
     // L1 token addresses are mapped to their canonical token address on L2 and the BridgePool contract that houses
@@ -40,7 +37,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
     uint64 public override proposerBondPct;
     bytes32 public override identifier;
 
-    // Add this modifier to methods that are expected to bridge admin functionality to the L2 Deposit contract, which
+    // Add this modifier to methods that are expected to bridge messages to a L2 Deposit contract, which
     // will cause unexpected behavior if the deposit or messenger helper contract isn't set and valid.
     modifier canRelay(uint256 _chainId) {
         _validateDepositContracts(
@@ -102,10 +99,9 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
     }
 
     /**
-     * @notice Sets the L2 deposit contract and messenger helper that originates deposit orders to be fulfilled by
-     * this bridgePool contracts and relays messages to L2, respectively.
+     * @notice Associates the L2 deposit and L1 messenger helper addresses with an L2 network ID.
      * @dev Only callable by the current owner.
-     * @param _chainId L2 network Id to set contract addresses for.
+     * @param _chainId L2 network ID to set addresses for.
      * @param _depositContract Address of L2 deposit contract.
      * @param _messengerContract Address of L1 helper contract that relays messages to L2.
      */
@@ -127,7 +123,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
     /**
      * @notice Set new contract as the admin address in the L2 Deposit contract.
      * @dev Only callable by the current owner.
-     * @param _chainId L2 network Id to relay message to.
+     * @param _chainId L2 network ID where Deposit contract is deployed.
      * @param _admin New admin address to set on L2.
      * @param _l2Gas Gas limit to set for relayed message on L2.
      */
@@ -137,7 +133,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
         uint32 _l2Gas
     ) public onlyOwner canRelay(_chainId) nonReentrant() {
         require(_admin != address(0), "Admin cannot be zero address");
-        MessengerInterface(_depositContracts[_chainId].messengerContract).sendCrossChainMessage(
+        MessengerInterface(_depositContracts[_chainId].messengerContract).relayMessage(
             _depositContracts[_chainId].depositContract,
             _l2Gas,
             abi.encodeWithSignature("setBridgeAdmin(address)", _admin)
@@ -148,7 +144,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
     /**
      * @notice Sets the minimum time between L2-->L1 token withdrawals in the L2 Deposit contract.
      * @dev Only callable by the current owner.
-     * @param _chainId L2 network Id to relay message to.
+     * @param _chainId L2 network ID where Deposit contract is deployed.
      * @param _minimumBridgingDelay the new minimum delay.
      * @param _l2Gas Gas limit to set for relayed message on L2.
      */
@@ -157,7 +153,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
         uint64 _minimumBridgingDelay,
         uint32 _l2Gas
     ) public onlyOwner canRelay(_chainId) nonReentrant() {
-        MessengerInterface(_depositContracts[_chainId].messengerContract).sendCrossChainMessage(
+        MessengerInterface(_depositContracts[_chainId].messengerContract).relayMessage(
             _depositContracts[_chainId].depositContract,
             _l2Gas,
             abi.encodeWithSignature("setMinimumBridgingDelay(uint64)", _minimumBridgingDelay)
@@ -169,7 +165,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
      * @notice Owner can pause/unpause L2 deposits for a tokens.
      * @dev Only callable by Owner of this contract. Will set the same setting in the L2 Deposit contract via the cross
      * domain messenger.
-     * @param _chainId L2 network Id to relay message to.
+     * @param _chainId L2 network ID where Deposit contract is deployed.
      * @param _l2Token address of L2 token to enable/disable deposits for.
      * @param _depositsEnabled bool to set if the deposit box should accept/reject deposits.
      * @param _l2Gas Gas limit to set for relayed message on L2.
@@ -180,7 +176,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
         bool _depositsEnabled,
         uint32 _l2Gas
     ) public onlyOwner canRelay(_chainId) nonReentrant() {
-        MessengerInterface(_depositContracts[_chainId].messengerContract).sendCrossChainMessage(
+        MessengerInterface(_depositContracts[_chainId].messengerContract).relayMessage(
             _depositContracts[_chainId].depositContract,
             _l2Gas,
             abi.encodeWithSignature("setEnableDeposits(address,bool)", _l2Token, _depositsEnabled)
@@ -193,7 +189,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
      * token can thereafter be deposited into the Deposit contract on L2 and relayed via the BridgePool contract.
      * @dev Only callable by Owner of this contract. Also initiates a cross-chain call to the L2 Deposit contract to
      * whitelist the token mapping.
-     * @param _chainId L2 network Id to relay message to.
+     * @param _chainId L2 network ID where Deposit contract is deployed.
      * @param _l1Token Address of L1 token that can be used to relay L2 token deposits.
      * @param _l2Token Address of L2 token whose deposits are fulfilled by `_l1Token`.
      * @param _bridgePool Address of BridgePool which manages liquidity to fulfill L2-->L1 relays.
@@ -214,7 +210,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
 
         _whitelistedTokens[_l1Token] = L1TokenRelationships({ l2Token: _l2Token, bridgePool: _bridgePool });
 
-        MessengerInterface(_depositContracts[_chainId].messengerContract).sendCrossChainMessage(
+        MessengerInterface(_depositContracts[_chainId].messengerContract).relayMessage(
             _depositContracts[_chainId].depositContract,
             _l2Gas,
             abi.encodeWithSignature("whitelistToken(address,address,address)", _l1Token, _l2Token, _bridgePool)
