@@ -1,6 +1,5 @@
 const hre = require("hardhat");
 const { web3 } = require("hardhat");
-const { predeploys } = require("@eth-optimism/contracts");
 
 const { getContract } = hre;
 
@@ -10,21 +9,17 @@ const { toWei } = web3.utils;
 
 const { assert } = require("chai");
 
-const { deployOptimismContractMock } = require("../../../core/test/insured-bridge/helpers/SmockitHelper");
-
 // Client to test
 const { InsuredBridgeL2Client } = require("../../dist/clients/InsuredBridgeL2Client");
 
 // Helper contracts
-// Note: This bot should not be opinionated about whether it is connected to Optimism or Arbitrum, so we'll default to
-// the Optimism contracts.
 const chainId = 10;
-const BridgeDepositBox = getContract("OVM_BridgeDepositBox");
+const BridgeDepositBox = getContract("Ownable_BridgeDepositBox");
 const Token = getContract("ExpandedERC20");
 const Timer = getContract("Legacy_Timer");
 
 // Contract objects
-let depositBox, l2CrossDomainMessengerMock, l1TokenAddress, l2Token, timer, client;
+let depositBox, l1TokenAddress, l2Token, timer, client;
 
 // As these tests are in the context of l2, we dont have the deployed notion of a "L1 Token". The L1 token is within
 // another domain (L1). To represent this, we can generate a random address to represent the L1 token.
@@ -66,13 +61,6 @@ describe("InsuredBridgeL2Client", () => {
   });
 
   beforeEach(async function () {
-    // Initialize the cross domain massager messenger mock at the address of the OVM pre-deploy. The OVM will always use
-    // this address for L1<->L2 messaging. Seed this address with some funds so it can send transactions.
-    l2CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L2CrossDomainMessenger", {
-      address: predeploys.OVM_L2CrossDomainMessenger,
-    });
-    await web3.eth.sendTransaction({ from: deployer, to: predeploys.OVM_L2CrossDomainMessenger, value: toWei("1") });
-
     depositBox = await BridgeDepositBox.new(bridgeAdmin, minimumBridgingDelay, timer.options.address).send({
       from: deployer,
     });
@@ -81,10 +69,9 @@ describe("InsuredBridgeL2Client", () => {
     await l2Token.methods.addMember(1, deployer).send({ from: deployer });
 
     // Whitelist the token in the deposit box.
-    l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => bridgeAdmin);
     await depositBox.methods
       .whitelistToken(l1TokenAddress, l2Token.options.address, bridgePool)
-      .send({ from: predeploys.OVM_L2CrossDomainMessenger });
+      .send({ from: bridgeAdmin });
 
     // The InsuredBridgeL2Client does not emit any info `level` events.  Therefore no need to test Winston outputs.
     // DummyLogger will not print anything to console as only capture `info` level events.

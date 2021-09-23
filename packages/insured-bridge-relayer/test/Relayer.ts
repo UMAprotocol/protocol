@@ -7,7 +7,6 @@ import {
   Deposit,
   ClientRelayState,
 } from "@uma/financial-templates-lib";
-const { predeploys } = require("@eth-optimism/contracts");
 import winston from "winston";
 import sinon from "sinon";
 import hre from "hardhat";
@@ -18,14 +17,12 @@ import { interfaceName, TokenRolesEnum, HRE } from "@uma/common";
 const { web3, getContract } = hre as HRE;
 const { toWei, toBN, utf8ToHex } = web3.utils;
 
-const { deployOptimismContractMock } = require("../../core/test/insured-bridge/helpers/SmockitHelper.js");
-
 // Helper contracts
 const chainId = 10;
 const Messenger = getContract("MessengerMock");
 const BridgePool = getContract("BridgePool");
 const BridgeAdmin = getContract("BridgeAdmin");
-const BridgeDepositBox = getContract("OVM_BridgeDepositBox");
+const BridgeDepositBox = getContract("Ownable_BridgeDepositBox");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
@@ -76,7 +73,7 @@ describe("Relayer.ts", function () {
 
   let l2Owner: any;
   let l2Depositor: any;
-  let l2CrossDomainMessengerMock: any;
+  let l2BridgeAdminImpersonator: any;
 
   let spyLogger: any;
   let spy: any;
@@ -88,7 +85,7 @@ describe("Relayer.ts", function () {
 
   before(async function () {
     l1Accounts = await web3.eth.getAccounts();
-    [l1Owner, l1Relayer, l1LiquidityProvider, l2Owner, l2Depositor] = l1Accounts;
+    [l1Owner, l1Relayer, l1LiquidityProvider, l2Owner, l2Depositor, l2BridgeAdminImpersonator] = l1Accounts;
 
     // Deploy or fetch deployed contracts:
     finder = await Finder.new().send({ from: l1Owner });
@@ -149,7 +146,7 @@ describe("Relayer.ts", function () {
     l2Timer = await Timer.new().send({ from: l2Owner });
 
     bridgeDepositBox = await BridgeDepositBox.new(
-      bridgeAdmin.options.address,
+      l2BridgeAdminImpersonator,
       minimumBridgingDelay,
       l2Timer.options.address
     ).send({ from: l2Owner });
@@ -181,14 +178,9 @@ describe("Relayer.ts", function () {
       )
       .send({ from: l1Owner });
 
-    l2CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L2CrossDomainMessenger", {
-      address: predeploys.OVM_L2CrossDomainMessenger,
-    });
-    await web3.eth.sendTransaction({ from: l2Owner, to: predeploys.OVM_L2CrossDomainMessenger, value: toWei("1") });
-    l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => bridgeAdmin.options.address);
     await bridgeDepositBox.methods
       .whitelistToken(l1Token.options.address, l2Token.options.address, bridgePool.options.address)
-      .send({ from: predeploys.OVM_L2CrossDomainMessenger });
+      .send({ from: l2BridgeAdminImpersonator });
 
     spy = sinon.spy();
     spyLogger = winston.createLogger({

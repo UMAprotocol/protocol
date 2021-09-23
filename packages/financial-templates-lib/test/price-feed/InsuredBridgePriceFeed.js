@@ -1,14 +1,10 @@
 const hre = require("hardhat");
 const { web3 } = require("hardhat");
-const { predeploys } = require("@eth-optimism/contracts");
 const { interfaceName, TokenRolesEnum, InsuredBridgeRelayStateEnum, ZERO_ADDRESS } = require("@uma/common");
 const { SpyTransport, lastSpyLogIncludes } = require("../../dist/logger/SpyTransport");
 const sinon = require("sinon");
 const { getContract } = hre;
 const { utf8ToHex, toWei, toBN, soliditySha3 } = web3.utils;
-
-// TODO: refactor to common util
-const { deployOptimismContractMock } = require("../../../core/test/insured-bridge/helpers/SmockitHelper");
 
 const winston = require("winston");
 const { assert } = require("chai");
@@ -17,7 +13,7 @@ const chainId = 10;
 const Messenger = getContract("MessengerMock");
 const BridgeAdmin = getContract("BridgeAdmin");
 const BridgePool = getContract("BridgePool");
-const BridgeDepositBox = getContract("OVM_BridgeDepositBox");
+const BridgeDepositBox = getContract("Ownable_BridgeDepositBox");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
@@ -42,9 +38,9 @@ let spy;
 
 let finder,
   store,
+  bridgeAdminImpersonator,
   identifierWhitelist,
   collateralWhitelist,
-  l2CrossDomainMessengerMock,
   depositBox,
   timer,
   optimisticOracle,
@@ -111,7 +107,7 @@ describe("InsuredBridgePriceFeed", function () {
 
   before(async function () {
     accounts = await web3.eth.getAccounts();
-    [owner, depositor, relayer, liquidityProvider, l1Recipient] = accounts;
+    [owner, depositor, relayer, liquidityProvider, l1Recipient, bridgeAdminImpersonator] = accounts;
 
     finder = await Finder.new().send({ from: owner });
     collateralWhitelist = await AddressWhitelist.new().send({ from: owner });
@@ -174,27 +170,17 @@ describe("InsuredBridgePriceFeed", function () {
     ).send({ from: owner });
 
     // Deploy L2 deposit contract:
-    // Initialize the cross domain massager messenger mock at the address of the OVM pre-deploy. The OVM will always use
-    // this address for L1<->L2 messaging. Seed this address with some funds so it can send transactions.
-    l2CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L2CrossDomainMessenger", {
-      address: predeploys.OVM_L2CrossDomainMessenger,
+    depositBox = await BridgeDepositBox.new(bridgeAdminImpersonator, minimumBridgingDelay, timer.options.address).send({
+      from: owner,
     });
-    await web3.eth.sendTransaction({ from: owner, to: predeploys.OVM_L2CrossDomainMessenger, value: toWei("1") });
-
-    depositBox = await BridgeDepositBox.new(
-      bridgeAdmin.options.address,
-      minimumBridgingDelay,
-      timer.options.address
-    ).send({ from: owner });
 
     l2Token = await ERC20.new("L2 Wrapped Ether", "WETH", 18).send({ from: owner });
     await l2Token.methods.addMember(TokenRolesEnum.MINTER, owner).send({ from: owner });
 
     // Whitelist the token in the deposit box.
-    l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => bridgeAdmin.options.address);
     await depositBox.methods
       .whitelistToken(l1Token.options.address, l2Token.options.address, bridgePool.options.address)
-      .send({ from: predeploys.OVM_L2CrossDomainMessenger });
+      .send({ from: bridgeAdminImpersonator });
 
     // Connect L1 and L2 contracts:
     await bridgeAdmin.methods
