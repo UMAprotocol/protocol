@@ -11,7 +11,7 @@ const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toStr
 const fixedPointAdjustment = toBNWei("1");
 
 export interface RateModel {
-  UBar: BN; // denote the utilization kink where the slope of the interest rate model changes.
+  UBar: BN; // denote the utilization kink along the rate model where the slope of the interest rate model changes.
   R0: BN; // is the interest rate charged at 0 utilization
   R1: BN; // R_0+R_1 is the interest rate charged at UBar
   R2: BN; // R_0+R_1+R_2 is the interest rate charged at 100% utilization
@@ -19,31 +19,31 @@ export interface RateModel {
 
 // Calculate the rate for a 0 sized deposit (infinitesimally small).
 function calculateInstantaneousRate(rateModel: RateModel, utilization: BN) {
-  const piece1 = BN.min(utilization, rateModel.UBar).mul(rateModel.R1).div(rateModel.UBar);
-  const piece2 = BN.max(toBN("0"), utilization.sub(rateModel.UBar))
+  const beforeKink = BN.min(utilization, rateModel.UBar).mul(rateModel.R1).div(rateModel.UBar);
+  const afterKink = BN.max(toBN("0"), utilization.sub(rateModel.UBar))
     .mul(rateModel.R2)
     .div(toBNWei("1").sub(rateModel.UBar));
 
-  return rateModel.R0.add(piece1).add(piece2);
+  return rateModel.R0.add(beforeKink).add(afterKink);
 }
 
 //  Compute area under curve of the piece-wise linear rate model.
 function calculateAreaUnderRateCurve(rateModel: RateModel, utilization: BN) {
   // Area under first piecewise component
-  const utilizationTilda1 = BN.min(utilization, rateModel.UBar);
-  const rectangle1Area = utilizationTilda1.mul(rateModel.R0).div(fixedPointAdjustment);
+  const utilizationBeforeKink = BN.min(utilization, rateModel.UBar);
+  const rectangle1Area = utilizationBeforeKink.mul(rateModel.R0).div(fixedPointAdjustment);
   const triangle1Area = toBNWei("0.5")
-    .mul(calculateInstantaneousRate(rateModel, utilizationTilda1).sub(rateModel.R0))
-    .mul(utilizationTilda1)
+    .mul(calculateInstantaneousRate(rateModel, utilizationBeforeKink).sub(rateModel.R0))
+    .mul(utilizationBeforeKink)
     .div(fixedPointAdjustment)
     .div(fixedPointAdjustment);
 
   // Area under second piecewise component
-  const utilizationTilda2 = BN.max(toBN("0"), utilization.sub(rateModel.UBar));
-  const rectangle2Area = utilizationTilda2.mul(rateModel.R0.add(rateModel.R1)).div(fixedPointAdjustment);
+  const utilizationAfter = BN.max(toBN("0"), utilization.sub(rateModel.UBar));
+  const rectangle2Area = utilizationAfter.mul(rateModel.R0.add(rateModel.R1)).div(fixedPointAdjustment);
   const triangle2Area = toBNWei("0.5")
     .mul(calculateInstantaneousRate(rateModel, utilization).sub(rateModel.R0.add(rateModel.R1)))
-    .mul(utilizationTilda2)
+    .mul(utilizationAfter)
     .div(fixedPointAdjustment)
     .div(fixedPointAdjustment);
 
