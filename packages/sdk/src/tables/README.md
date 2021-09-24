@@ -7,6 +7,9 @@ give you useful methods for manipulating and querying data in each table. Tables
 
 - [base](./base/README.md) - Some basic table functionality which most tables can inherit from
 - [blocks](./blocks/README.md) - For storing blocks
+- [emps](./emps/README.md) - For storing emp contract state
+- [erc20s](./erc20s/README.md) - For storing erc20 contract state
+- [historical-prices](./historical-prices/README.md) - For storing historical prices.
 
 ## Relationship to Stores
 
