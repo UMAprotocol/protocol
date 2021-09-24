@@ -10,7 +10,7 @@ const { toWei } = web3.utils;
 const { didContractThrow } = require("@uma/common");
 
 // Tested contract
-const BridgeDepositBox = getContract("Ownable_BridgeDepositBox");
+const BridgeDepositBox = getContract("BridgeDepositBoxMock");
 
 // Helper contracts
 const Token = getContract("ExpandedERC20");
@@ -30,11 +30,11 @@ const instantRelayFeePct = toWei("0.005");
 const quoteTimestampOffset = 60; // 60 seconds into the past.
 
 describe("BridgeDepositBox", () => {
-  let accounts, deployer, user1, bridgeAdmin, rando, bridgePool;
+  let accounts, deployer, user1, bridgeAdmin, bridgePool;
 
   before(async function () {
     accounts = await web3.eth.getAccounts();
-    [deployer, user1, bridgeAdmin, rando, bridgePool] = accounts;
+    [deployer, user1, bridgeAdmin, bridgePool] = accounts;
 
     timer = await Timer.new().send({ from: deployer });
   });
