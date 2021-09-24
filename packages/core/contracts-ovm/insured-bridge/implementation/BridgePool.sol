@@ -288,7 +288,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         pendingReserves += amount; // Book off maximum liquidity used by this relay in the pending reserves.
 
         // We use an internal method to emit this event to overcome Solidity's "stack too deep" error.
-        _emitDepositRelayedEvent(depositData, realizedLpFeePct, depositHash);
+        address _depositContract = bridgeAdmin.depositContracts(chainId).depositContract;
+        _emitDepositRelayedEvent(depositData, realizedLpFeePct, depositHash, _depositContract);
 
         numberOfRelays += 1;
     }
@@ -532,7 +533,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
             intermediateAncillaryData,
             "depositContract",
-            bridgeAdmin.depositContract()
+            bridgeAdmin.depositContracts(_depositData.chainId).depositContract
         );
 
         return intermediateAncillaryData;
@@ -667,7 +668,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     function _emitDepositRelayedEvent(
         DepositData memory _depositData,
         uint64 realizedLpFeePct,
-        bytes32 _depositHash
+        bytes32 _depositHash,
+        address _depositContract
     ) private {
         // Emit only information that is not stored in this contract. The relay data associated with the `_depositHash`
         // can be queried on-chain via the `relays` mapping keyed by `_depositHash`.
@@ -685,7 +687,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             _depositData.quoteTimestamp,
             realizedLpFeePct,
             _depositHash,
-            bridgeAdmin.depositContract()
+            _depositContract
         );
     }
 }

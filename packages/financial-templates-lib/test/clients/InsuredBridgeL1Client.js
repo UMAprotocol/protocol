@@ -4,12 +4,10 @@ const { interfaceName, TokenRolesEnum, InsuredBridgeRelayStateEnum, ZERO_ADDRESS
 const { getContract } = hre;
 const { utf8ToHex, toWei, toBN, soliditySha3 } = web3.utils;
 
-// TODO: refactor to common util
-const { deployContractMock } = require("../../../core/test/insured-bridge/helpers/SmockitHelper");
-
 const winston = require("winston");
 const { assert } = require("chai");
-
+const chainId = 10;
+const Messenger = getContract("MessengerMock");
 const BridgeAdmin = getContract("BridgeAdmin");
 const BridgePool = getContract("BridgePool");
 const Finder = getContract("Finder");
@@ -28,13 +26,12 @@ const { InsuredBridgeL1Client } = require("../../dist/clients/InsuredBridgeL1Cli
 let client;
 
 // Contract objects
-let bridgeAdmin, bridgePool;
+let messenger, bridgeAdmin, bridgePool;
 
 let finder,
   store,
   identifierWhitelist,
   collateralWhitelist,
-  l1CrossDomainMessengerMock,
   timer,
   optimisticOracle,
   l1Token,
@@ -190,16 +187,17 @@ describe("InsuredBridgeL1Client", function () {
     // Set up the Insured bridge contracts.
 
     // Deploy and setup BridgeAdmin
-    l1CrossDomainMessengerMock = await deployContractMock("OVM_L1CrossDomainMessenger");
+    messenger = await Messenger.new().send({ from: owner });
     bridgeAdmin = await BridgeAdmin.new(
       finder.options.address,
-      l1CrossDomainMessengerMock.options.address,
       defaultLiveness,
       defaultProposerBondPct,
       defaultIdentifier
     ).send({ from: owner });
 
-    await bridgeAdmin.methods.setDepositContract(depositContractImpersonator).send({ from: owner });
+    await bridgeAdmin.methods
+      .setDepositContract(chainId, depositContractImpersonator, messenger.options.address)
+      .send({ from: owner });
 
     // Deploy a bridgePool and whitelist it.
     bridgePool = await BridgePool.new(
@@ -213,7 +211,7 @@ describe("InsuredBridgeL1Client", function () {
 
     // Add L1-L2 token mapping
     await bridgeAdmin.methods
-      .whitelistToken(l1Token.options.address, l2Token, bridgePool.options.address, defaultGasLimit)
+      .whitelistToken(chainId, l1Token.options.address, l2Token, bridgePool.options.address, defaultGasLimit)
       .send({ from: owner });
 
     // Add some liquidity to the pool to facilitate bridging actions.
@@ -233,7 +231,7 @@ describe("InsuredBridgeL1Client", function () {
 
     // Store expected relay data that we'll use to verify contract state:
     depositData = {
-      chainId: 10,
+      chainId: chainId,
       depositId: 1,
       l1Recipient: l1Recipient,
       l2Sender: depositor,
@@ -467,7 +465,13 @@ describe("InsuredBridgeL1Client", function () {
       // Add L1-L2 token mapping
       const l2Token2Address = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
       await bridgeAdmin.methods
-        .whitelistToken(l1Token2.options.address, l2Token2Address, bridgePool2.options.address, defaultGasLimit)
+        .whitelistToken(
+          chainId,
+          l1Token2.options.address,
+          l2Token2Address,
+          bridgePool2.options.address,
+          defaultGasLimit
+        )
         .send({ from: owner });
 
       // Update the client. should now contain the new bridgepool2 address as well as the original one.

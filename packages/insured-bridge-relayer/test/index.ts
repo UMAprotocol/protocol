@@ -6,13 +6,12 @@ const { assert } = require("chai");
 
 import { interfaceName, TokenRolesEnum, HRE } from "@uma/common";
 
-// TODO: clean up this export/import path
-const { deployContractMock } = require("../../core/test/insured-bridge/helpers/SmockitHelper.js");
-
 const { web3, getContract } = hre as HRE;
 const { toWei, utf8ToHex } = web3.utils;
 
 // Helper contracts
+const chainId = 10;
+const Messenger = getContract("MessengerMock");
 const BridgePool = getContract("BridgePool");
 const BridgeAdmin = getContract("BridgeAdmin");
 const Finder = getContract("Finder");
@@ -25,13 +24,13 @@ const Timer = getContract("Timer");
 const MockOracle = getContract("MockOracleAncillary");
 
 // Contract objects
+let messenger: any;
 let bridgeAdmin: any;
 let bridgePool: any;
 let finder: any;
 let store: any;
 let identifierWhitelist: any;
 let collateralWhitelist: any;
-let l1CrossDomainMessengerMock: any;
 let timer: any;
 let optimisticOracle: any;
 let l1Token: any;
@@ -112,15 +111,16 @@ describe("index.js", function () {
       .send({ from: owner });
 
     // Deploy and setup BridgeAdmin:
-    l1CrossDomainMessengerMock = await deployContractMock("OVM_L1CrossDomainMessenger");
+    messenger = await Messenger.new().send({ from: owner });
     bridgeAdmin = await BridgeAdmin.new(
       finder.options.address,
-      l1CrossDomainMessengerMock.options.address,
       defaultLiveness,
       defaultProposerBondPct,
       defaultIdentifier
     ).send({ from: owner });
-    await bridgeAdmin.methods.setDepositContract(depositContractImpersonator).send({ from: owner });
+    await bridgeAdmin.methods
+      .setDepositContract(chainId, depositContractImpersonator, messenger.options.address)
+      .send({ from: owner });
 
     // New BridgePool linked to BridgeAdmin
     bridgePool = await BridgePool.new(
@@ -134,7 +134,7 @@ describe("index.js", function () {
 
     // Add L1-L2 token mapping
     await bridgeAdmin.methods
-      .whitelistToken(l1Token.options.address, l2Token, bridgePool.options.address, defaultGasLimit)
+      .whitelistToken(chainId, l1Token.options.address, l2Token, bridgePool.options.address, defaultGasLimit)
       .send({ from: owner });
 
     spy = sinon.spy();
