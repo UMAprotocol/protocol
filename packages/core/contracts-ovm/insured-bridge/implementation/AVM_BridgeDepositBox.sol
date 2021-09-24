@@ -23,9 +23,9 @@ contract AVM_BridgeDepositBox is BridgeDepositBox, AVM_CrossDomainEnabled {
     event SetBridgeAdmin(address newBridgeAdmin);
 
     /**
-     * @notice Construct the Abitrum Bridge Deposit Box
+     * @notice Construct the Arbitrum Bridge Deposit Box
      * @param _l2GatewayRouter Address of the Arbitrum L2 token gateway router for sending tokens from L2->L1.
-     * @param _bridgeAdmin Address of the Insured bride L1 admin contract. Acts as the cross-domain owner from L1.
+     * @param _bridgeAdmin Address of the Insured bridge L1 admin contract. Acts as the cross-domain owner from L1.
      * @param _minimumBridgingDelay Minimum second that must elapse between L2->L1 token transfer to prevent dos.
      * @param timerAddress Timer used to synchronize contract time in testing. Set to 0x000... in production.
      */
@@ -110,7 +110,7 @@ contract AVM_BridgeDepositBox is BridgeDepositBox, AVM_CrossDomainEnabled {
             whitelistedTokens[l2Token].l1Token, // _l1Token. Address of the L1 token to bridge over.
             whitelistedTokens[l2Token].l1BridgePool, // _to. Withdraw, over the bridge, to the l1 withdraw contract.
             bridgeDepositBoxBalance, // _amount. Send the full balance of the deposit box to bridge.
-            "" // data. Data include anything.
+            "" // _data. We dont need to send any data for the bridging action.
         );
 
         emit TokensBridged(l2Token, bridgeDepositBoxBalance, l1Gas, msg.sender);

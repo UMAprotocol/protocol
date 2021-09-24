@@ -28,7 +28,7 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
 
     /**
      * @notice Construct the Optimism Bridge Deposit Box
-     * @param _bridgeAdmin Address of the Insured bride L1 admin contract. Acts as the cross-domain owner from L1.
+     * @param _bridgeAdmin Address of the Insured bridge L1 admin contract. Acts as the cross-domain owner from L1.
      * @param _minimumBridgingDelay Minimum second that must elapse between L2->L1 token transfer to prevent dos.
      * @param timerAddress Timer used to synchronize contract time in testing. Set to 0x000... in production.
      */

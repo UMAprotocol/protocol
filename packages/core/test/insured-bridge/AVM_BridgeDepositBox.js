@@ -50,10 +50,7 @@ describe("AVM_BridgeDepositBox", () => {
     // the bridge admin calls methods to L2. See the wallet with some eth. Enable account impersonation in hre.
     bridgeAdminCrossDomainAlias = applyL1ToL2Alias(bridgeAdmin);
     await web3.eth.sendTransaction({ from: deployer, to: bridgeAdminCrossDomainAlias, value: toWei("1") });
-    await hre.network.provider.request({
-      method: "hardhat_impersonateAccount",
-      params: [bridgeAdminCrossDomainAlias],
-    });
+    await hre.network.provider.request({ method: "hardhat_impersonateAccount", params: [bridgeAdminCrossDomainAlias] });
   });
 
   beforeEach(async function () {
@@ -63,7 +60,7 @@ describe("AVM_BridgeDepositBox", () => {
     // Mint tokens to user
     await l2Token.methods.mint(user1, toWei("100")).send({ from: deployer });
 
-    // Setup the Arbitrum bride contracts
+    // Setup the Arbitrum bridge contracts
     l2GatewayRouterMock = await deployContractMock("L2GatewayRouter", {}, L2GatewayRouter__factory);
 
     depositBox = await BridgeDepositBox.new(
