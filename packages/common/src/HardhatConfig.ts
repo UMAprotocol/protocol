@@ -85,7 +85,7 @@ export function getHardhatConfig(
         gasPrice: 0,
         // We use custom logic to only compile contracts within the listed directories, as opposed to choosing which
         // ones to ignore, because there are more contracts to ignore than to include.
-        compileWhitelist: ["OVM_BridgeDepositBox", "OVM_Timer"],
+        compileWhitelist: ["OVM_BridgeDepositBox", "Legacy_Timer"],
         testWhitelist: ["oracle/Finder"],
         testBlacklist,
       },

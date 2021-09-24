@@ -18,7 +18,7 @@ const BridgeDepositBox = getContract("OVM_BridgeDepositBox");
 
 // Helper contracts
 const Token = getContract("ExpandedERC20");
-const Timer = getContract("OVM_Timer");
+const Timer = getContract("Legacy_Timer");
 
 // Contract objects
 let depositBox, l2CrossDomainMessengerMock, l1TokenAddress, l2Token, timer;
