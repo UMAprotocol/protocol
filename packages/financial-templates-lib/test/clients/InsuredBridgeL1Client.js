@@ -57,6 +57,7 @@ const defaultQuoteTimestamp = 100000;
 const lpFeeRatePerSecond = toWei("0.0000015");
 const finalFee = toWei("1");
 const defaultGasLimit = 1_000_000;
+const defaultGasPrice = toWei("1", "gwei");
 
 describe("InsuredBridgeL1Client", function () {
   let accounts,
@@ -211,7 +212,14 @@ describe("InsuredBridgeL1Client", function () {
 
     // Add L1-L2 token mapping
     await bridgeAdmin.methods
-      .whitelistToken(chainId, l1Token.options.address, l2Token, bridgePool.options.address, defaultGasLimit)
+      .whitelistToken(
+        chainId,
+        l1Token.options.address,
+        l2Token,
+        bridgePool.options.address,
+        defaultGasLimit,
+        defaultGasPrice
+      )
       .send({ from: owner });
 
     // Add some liquidity to the pool to facilitate bridging actions.
@@ -470,7 +478,8 @@ describe("InsuredBridgeL1Client", function () {
           l1Token2.options.address,
           l2Token2Address,
           bridgePool2.options.address,
-          defaultGasLimit
+          defaultGasLimit,
+          defaultGasPrice
         )
         .send({ from: owner });
 

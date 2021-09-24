@@ -64,6 +64,7 @@ const defaultInstantRelayFeePct = toWei("0.01");
 const lpFeeRatePerSecond = toWei("0.0000015");
 const finalFee = toWei("1");
 const defaultGasLimit = 1_000_000;
+const defaultGasPrice = toWei("1", "gwei");
 const minimumBridgingDelay = 60; // L2->L1 token bridging must wait at least this time.
 const quoteTimestampOffset = 60; // 60 seconds into the past.
 
@@ -194,7 +195,8 @@ describe("InsuredBridgePriceFeed", function () {
         l1Token.options.address,
         l2Token.options.address,
         bridgePool.options.address,
-        defaultGasLimit
+        defaultGasLimit,
+        defaultGasPrice
       )
       .send({ from: owner });
 

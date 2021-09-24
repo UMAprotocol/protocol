@@ -29,6 +29,7 @@ let timer;
 
 // Test function inputs
 const defaultGasLimit = 1_000_000;
+const defaultGasPrice = toWei("1", "gwei");
 const defaultIdentifier = utf8ToHex("IS_CROSS_CHAIN_RELAY_VALID");
 const defaultLiveness = 7200;
 const defaultProposerBondPct = toWei("0.05");
@@ -87,7 +88,7 @@ describe("OptimismMessenger integration with BridgeAdmin", () => {
           .send({ from: owner });
         await collateralWhitelist.methods.addToWhitelist(l1Token).send({ from: owner });
         await bridgeAdmin.methods
-          .whitelistToken(chainId, l1Token, l2Token, bridgePool.options.address, defaultGasLimit)
+          .whitelistToken(chainId, l1Token, l2Token, bridgePool.options.address, defaultGasLimit, defaultGasPrice)
           .send({ from: owner });
         const whitelistCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
 
@@ -110,7 +111,7 @@ describe("OptimismMessenger integration with BridgeAdmin", () => {
           .send({ from: owner });
         await collateralWhitelist.methods.addToWhitelist(l1Token).send({ from: owner });
         await bridgeAdmin.methods
-          .whitelistToken(chainId, l1Token, l2Token, bridgePool.options.address, customGasLimit)
+          .whitelistToken(chainId, l1Token, l2Token, bridgePool.options.address, customGasLimit, defaultGasPrice)
           .send({ from: owner });
         const whitelistCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
         assert.equal(whitelistCallToMessengerCall._gasLimit, customGasLimit, "xchain gas limit unexpected");
@@ -121,7 +122,9 @@ describe("OptimismMessenger integration with BridgeAdmin", () => {
         await bridgeAdmin.methods
           .setDepositContract(chainId, depositBoxImpersonator, optimismMessenger.options.address)
           .send({ from: owner });
-        await bridgeAdmin.methods.setBridgeAdmin(chainId, rando, defaultGasLimit).send({ from: owner });
+        await bridgeAdmin.methods
+          .setBridgeAdmin(chainId, rando, defaultGasLimit, defaultGasPrice)
+          .send({ from: owner });
         const setAdminCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
 
         // Validate xchain message
@@ -139,7 +142,7 @@ describe("OptimismMessenger integration with BridgeAdmin", () => {
         await bridgeAdmin.methods
           .setDepositContract(chainId, depositBoxImpersonator, optimismMessenger.options.address)
           .send({ from: owner });
-        await bridgeAdmin.methods.setBridgeAdmin(chainId, rando, customGasLimit).send({ from: owner });
+        await bridgeAdmin.methods.setBridgeAdmin(chainId, rando, customGasLimit, defaultGasPrice).send({ from: owner });
         assert.equal(
           l1CrossDomainMessengerMock.smocked.sendMessage.calls[0]._gasLimit,
           customGasLimit,
@@ -153,7 +156,7 @@ describe("OptimismMessenger integration with BridgeAdmin", () => {
           .setDepositContract(chainId, depositBoxImpersonator, optimismMessenger.options.address)
           .send({ from: owner });
         await bridgeAdmin.methods
-          .setMinimumBridgingDelay(chainId, defaultBridgingDelay, defaultGasLimit)
+          .setMinimumBridgingDelay(chainId, defaultBridgingDelay, defaultGasLimit, defaultGasPrice)
           .send({ from: owner });
         const setDelayCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
 
@@ -173,7 +176,7 @@ describe("OptimismMessenger integration with BridgeAdmin", () => {
           .setDepositContract(chainId, depositBoxImpersonator, optimismMessenger.options.address)
           .send({ from: owner });
         await bridgeAdmin.methods
-          .setMinimumBridgingDelay(chainId, defaultBridgingDelay, customGasLimit)
+          .setMinimumBridgingDelay(chainId, defaultBridgingDelay, customGasLimit, defaultGasPrice)
           .send({ from: owner });
         assert.equal(
           l1CrossDomainMessengerMock.smocked.sendMessage.calls[0]._gasLimit,
@@ -187,7 +190,9 @@ describe("OptimismMessenger integration with BridgeAdmin", () => {
         await bridgeAdmin.methods
           .setDepositContract(chainId, depositBoxImpersonator, optimismMessenger.options.address)
           .send({ from: owner });
-        await bridgeAdmin.methods.setEnableDeposits(chainId, l2Token, false, defaultGasLimit).send({ from: owner });
+        await bridgeAdmin.methods
+          .setEnableDeposits(chainId, l2Token, false, defaultGasLimit, defaultGasPrice)
+          .send({ from: owner });
         const setDelayCallToMessengerCall = l1CrossDomainMessengerMock.smocked.sendMessage.calls[0];
 
         // Validate xchain message
@@ -205,7 +210,9 @@ describe("OptimismMessenger integration with BridgeAdmin", () => {
         await bridgeAdmin.methods
           .setDepositContract(chainId, depositBoxImpersonator, optimismMessenger.options.address)
           .send({ from: owner });
-        await bridgeAdmin.methods.setEnableDeposits(chainId, l2Token, false, customGasLimit).send({ from: owner });
+        await bridgeAdmin.methods
+          .setEnableDeposits(chainId, l2Token, false, customGasLimit, defaultGasPrice)
+          .send({ from: owner });
         assert.equal(
           l1CrossDomainMessengerMock.smocked.sendMessage.calls[0]._gasLimit,
           customGasLimit,
