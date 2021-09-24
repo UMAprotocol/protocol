@@ -36,7 +36,7 @@ abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
      *  OVM DEPOSIT BOX DATA STRUCTURES  *
      *************************************/
 
-    uint8 chainId;
+    uint256 chainId;
 
     // Track the total number of deposits. Used as a unique identifier for bridged transfers.
     uint256 public numberOfDeposits;
@@ -64,7 +64,7 @@ abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
     event DepositsEnabled(address l2Token, bool depositsEnabled);
     // TODO: change the order of these to match the way they are used in the bridge pool.
     event FundsDeposited(
-        uint8 chainId,
+        uint256 chainId,
         uint256 depositId,
         address l1Recipient,
         address l2Sender,
@@ -86,13 +86,14 @@ abstract contract BridgeDepositBox is Legacy_Testable, Legacy_Lockable {
     }
 
     /**
-     * @notice Construct the OVM Bridge Deposit Box
+     * @notice Construct the Bridge Deposit Box
      * @param _minimumBridgingDelay Minimum second that must elapse between L2->L1 token transfer to prevent dos.
+     * @param _chainId Chain identifier for the Bridge deposit box.
      * @param timerAddress Timer used to synchronize contract time in testing. Set to 0x000... in production.
      */
     constructor(
         uint64 _minimumBridgingDelay,
-        uint8 _chainId,
+        uint256 _chainId,
         address timerAddress
     ) Legacy_Testable(timerAddress) {
         _setMinimumBridgingDelay(_minimumBridgingDelay);

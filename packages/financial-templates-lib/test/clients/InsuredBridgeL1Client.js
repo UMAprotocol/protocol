@@ -5,7 +5,7 @@ const { getContract } = hre;
 const { utf8ToHex, toWei, toBN, soliditySha3 } = web3.utils;
 
 // TODO: refactor to common util
-const { deployOptimismContractMock } = require("../../../core/test/insured-bridge/helpers/SmockitHelper");
+const { deployContractMock } = require("../../../core/test/insured-bridge/helpers/SmockitHelper");
 
 const winston = require("winston");
 const { assert } = require("chai");
@@ -190,7 +190,7 @@ describe("InsuredBridgeL1Client", function () {
     // Set up the Insured bridge contracts.
 
     // Deploy and setup BridgeAdmin
-    l1CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L1CrossDomainMessenger");
+    l1CrossDomainMessengerMock = await deployContractMock("OVM_L1CrossDomainMessenger");
     bridgeAdmin = await BridgeAdmin.new(
       finder.options.address,
       l1CrossDomainMessengerMock.options.address,

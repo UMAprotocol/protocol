@@ -1654,7 +1654,7 @@
     "@ethersproject/logger" "^5.0.8"
     "@ethersproject/rlp" "^5.0.7"
 
-"@ethersproject/address@5.4.0", "@ethersproject/address@>=5.0.0-beta.128", "@ethersproject/address@^5.0.0", "@ethersproject/address@^5.0.0-beta.134", "@ethersproject/address@^5.0.2", "@ethersproject/address@^5.0.4", "@ethersproject/address@^5.0.9", "@ethersproject/address@^5.3.0", "@ethersproject/address@^5.4.0":
+"@ethersproject/address@5.4.0", "@ethersproject/address@>=5.0.0-beta.128", "@ethersproject/address@^5.0.0", "@ethersproject/address@^5.0.0-beta.134", "@ethersproject/address@^5.0.2", "@ethersproject/address@^5.0.4", "@ethersproject/address@^5.0.8", "@ethersproject/address@^5.0.9", "@ethersproject/address@^5.3.0", "@ethersproject/address@^5.4.0":
   version "5.4.0"
   resolved "https://registry.yarnpkg.com/@ethersproject/address/-/address-5.4.0.tgz#ba2d00a0f8c4c0854933b963b9a3a9f6eb4a37a3"
   integrity sha512-SD0VgOEkcACEG/C6xavlU1Hy3m5DGSXW3CUHkaaEHbAPPsgi0coP5oNPsxau8eTlZOk/bpa/hKeCNoK5IzVI2Q==
@@ -1713,6 +1713,15 @@
     "@ethersproject/logger" "^5.4.0"
     bn.js "^4.11.9"
 
+"@ethersproject/bignumber@^5.1.1":
+  version "5.4.2"
+  resolved "https://registry.yarnpkg.com/@ethersproject/bignumber/-/bignumber-5.4.2.tgz#44232e015ae4ce82ac034de549eb3583c71283d8"
+  integrity sha512-oIBDhsKy5bs7j36JlaTzFgNPaZjiNDOXsdSgSpXRucUl+UA6L/1YLlFeI3cPAoodcenzF4nxNPV13pcy7XbWjA==
+  dependencies:
+    "@ethersproject/bytes" "^5.4.0"
+    "@ethersproject/logger" "^5.4.0"
+    bn.js "^4.11.9"
+
 "@ethersproject/bytes@5.0.11":
   version "5.0.11"
   resolved "https://registry.yarnpkg.com/@ethersproject/bytes/-/bytes-5.0.11.tgz#21118e75b1d00db068984c15530e316021101276"
@@ -1720,7 +1729,7 @@
   dependencies:
     "@ethersproject/logger" "^5.0.8"
 
-"@ethersproject/bytes@5.4.0", "@ethersproject/bytes@>=5.0.0-beta.129", "@ethersproject/bytes@^5.0.0", "@ethersproject/bytes@^5.0.4", "@ethersproject/bytes@^5.0.9", "@ethersproject/bytes@^5.3.0", "@ethersproject/bytes@^5.4.0":
+"@ethersproject/bytes@5.4.0", "@ethersproject/bytes@>=5.0.0-beta.129", "@ethersproject/bytes@^5.0.0", "@ethersproject/bytes@^5.0.4", "@ethersproject/bytes@^5.0.8", "@ethersproject/bytes@^5.0.9", "@ethersproject/bytes@^5.3.0", "@ethersproject/bytes@^5.4.0":
   version "5.4.0"
   resolved "https://registry.yarnpkg.com/@ethersproject/bytes/-/bytes-5.4.0.tgz#56fa32ce3bf67153756dbaefda921d1d4774404e"
   integrity sha512-H60ceqgTHbhzOj4uRc/83SCN9d+BSUnOkrr2intevqdtEMO1JFVZ1XL84OEZV+QjV36OaZYxtnt4lGmxcGsPfA==
@@ -4070,58 +4079,6 @@
   version "4.0.1"
   resolved "https://registry.yarnpkg.com/@multiformats/base-x/-/base-x-4.0.1.tgz#95ff0fa58711789d53aefb2590a8b7a4e715d121"
   integrity sha512-eMk0b9ReBbV23xXU693TAIrLyeO5iTgBZGSJfpqriG8UkYvr/hC9u9pyMlAakDNHWmbhMZCDs6KQO0jzKD8OTw==
-
-"@napi-rs/triples@^1.0.3":
-  version "1.0.3"
-  resolved "https://registry.yarnpkg.com/@napi-rs/triples/-/triples-1.0.3.tgz#76d6d0c3f4d16013c61e45dfca5ff1e6c31ae53c"
-  integrity sha512-jDJTpta+P4p1NZTFVLHJ/TLFVYVcOqv6l8xwOeBKNPMgY/zDYH/YH7SJbvrr/h1RcS9GzbPcLKGzpuK9cV56UA==
-
-"@node-rs/crc32-android-arm64@^1.0.0":
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-android-arm64/-/crc32-android-arm64-1.2.1.tgz#eefa48373e98fe5f592c9d645d06d9adb700ac61"
-  integrity sha512-SWz9X44WQzZqzURYz4DY3DccB97T+aKJl+i6rvREwf1Y5suWiPdxU4xqg9zZ66aG6XeE3ts+WeqKH26bVbZTQA==
-
-"@node-rs/crc32-darwin-arm64@^1.0.0":
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-arm64/-/crc32-darwin-arm64-1.2.1.tgz#a50d6b52f6b4743719b252ceb49e393e6ca361cd"
-  integrity sha512-JKKYEc5YKrZZ0CQ0nXSLCraU+6b9SldGU3/Wf3s4WCzYGkkB4XtMwjx3t7bGZAGmZ2ZcRy9M2EGJ8tUfV8cOOg==
-
-"@node-rs/crc32-darwin-x64@^1.0.0":
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-darwin-x64/-/crc32-darwin-x64-1.2.1.tgz#aede4451147cdc19366af984383237b33ca7da24"
-  integrity sha512-BaWeOdzJ73MyrChWQqQkJEKM9jRUjb19tE7PbFhG8cZPVxBFyxgTFNuBrR0xHOByCHI4QXSBvNCLEfawHbsscQ==
-
-"@node-rs/crc32-linux-arm-gnueabihf@^1.0.0":
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm-gnueabihf/-/crc32-linux-arm-gnueabihf-1.2.1.tgz#fbb569be2a06ef1df1fa08c0ed6cef831a3d87e3"
-  integrity sha512-6nRDyFgGsLc9bqaiK21KANqAdeh+9ZOHf3MY9HWvZoGQnxj2/LwvSHyaeG9ut+TvkL+Ic2hMtjLDNYYBaUcImw==
-
-"@node-rs/crc32-linux-arm64-gnu@^1.0.0":
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-arm64-gnu/-/crc32-linux-arm64-gnu-1.2.1.tgz#101383a5c4c1125bd80a88d82c6d870141e96cea"
-  integrity sha512-ZNluh2Wse68JgLGRl75fkLmVkAPSb1LE/2OdPXKZ85ExGYB5/3el2nE1CnysbqxqzL/Cc6kJ7UnsI/cxSe/D4Q==
-
-"@node-rs/crc32-linux-x64-gnu@^1.0.0":
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-gnu/-/crc32-linux-x64-gnu-1.2.1.tgz#ec7121e79aeae395b8679179419f4d3ab477ba1a"
-  integrity sha512-laJ7cAzYfNk+h3OOSwYsDdxfp1bXnpWqXVObXvylwHZQwIqUqTC5GCOa6kMMz2ElzJ9gDBgVvLplI8QX7BQnwA==
-
-"@node-rs/crc32-linux-x64-musl@^1.0.0":
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-linux-x64-musl/-/crc32-linux-x64-musl-1.2.1.tgz#2ab9da696460e4ad327123cb493cc0a24f5db455"
-  integrity sha512-d6DyJMgIg4E2E+GHeIYMImqDd+iaGQjwGrzLDqO1TaC08yE63chlvCMNNoQ5k2c8mzdWH2VX72IapWT5nArR0A==
-
-"@node-rs/crc32-win32-x64-msvc@^1.0.0":
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32-win32-x64-msvc/-/crc32-win32-x64-msvc-1.2.1.tgz#6df8d9b3d0bc2b2920115ccf3d44cf4902a16872"
-  integrity sha512-BGTEFRdIk6Vq9BSC3VuBVYKadZXOhhtPT8LUfz4s9cK3k8ba6nFzKIbOm5UsPIUSz2lRqlWdHQQWVaCoGAAvbQ==
-
-"@node-rs/helper@^1.0.0":
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/@node-rs/helper/-/helper-1.2.1.tgz#e079b05f21ff4329d82c4e1f71c0290e4ecdc70c"
-  integrity sha512-R5wEmm8nbuQU0YGGmYVjEc0OHtYsuXdpRG+Ut/3wZ9XAvQWyThN08bTh2cBJgoZxHQUPtvRfeQuxcAgLuiBISg==
-  dependencies:
-    "@napi-rs/triples" "^1.0.3"
 
 "@nodefactory/filsnap-adapter@^0.2.1":
   version "0.2.2"
@@ -7445,6 +7402,18 @@ aproba@^1.0.3, aproba@^1.1.1:
   version "2.0.0"
   resolved "https://registry.yarnpkg.com/aproba/-/aproba-2.0.0.tgz#52520b8ae5b569215b354efc0caa3fe1e45a8adc"
   integrity sha512-lYe4Gx7QT+MKGbDsA+Z+he/Wtef0BiwDOlK/XkBrdfsh9J/jPPXbX0tE9x9cl27Tmu5gg3QUbUrQYa/y+KOHPQ==
+
+arb-ts@^0.0.42:
+  version "0.0.42"
+  resolved "https://registry.yarnpkg.com/arb-ts/-/arb-ts-0.0.42.tgz#c29ce19897c636aa7b8fb6f1dbb0076e15eed1e3"
+  integrity sha512-QbUf1iQR9YsuD0RutZD/evRUrIipVPyBegNzjGheEwDtSlZ2djMWKWrvkJnAXnmP5qKjVYLVCeJFxkvORKKPvw==
+  dependencies:
+    "@ethersproject/address" "^5.0.8"
+    "@ethersproject/bignumber" "^5.1.1"
+    "@ethersproject/bytes" "^5.0.8"
+    "@nomiclabs/hardhat-ethers" "^2.0.2"
+    dotenv "^10.0.0"
+    ethers "^5.1.0"
 
 archy@~1.0.0:
   version "1.0.0"
@@ -11533,7 +11502,7 @@ dot-prop@^6.0.0:
   dependencies:
     is-obj "^2.0.0"
 
-dotenv@*:
+dotenv@*, dotenv@^10.0.0:
   version "10.0.0"
   resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-10.0.0.tgz#3d4227b8fb95f81096cdd2b66653fb2c7085ba81"
   integrity sha512-rlBi9d8jpv9Sf1klPjNfFAuWDjKLwTIJJ/VxtoTwIR6hnZxcEOQCZg2oIL3MWBYw5GpUDKOEnND7LXTbIpQ03Q==
@@ -25189,22 +25158,6 @@ sqlite3@^4.0.0:
   dependencies:
     nan "^2.12.1"
     node-pre-gyp "^0.11.0"
-
-"sse4_crc32@npm:@node-rs/crc32@1.0.0":
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/@node-rs/crc32/-/crc32-1.0.0.tgz#b5038542a754f85d340b7c6c316853ee8c76a079"
-  integrity sha512-0Y5VP0f4vFuEujP3G2j+wd5bdTJg/pzj7ILq0K7PyUeGuI0iGQwg1iYSGIjQg0OU+xp987P7XCQaMpNt0+DcDg==
-  dependencies:
-    "@node-rs/helper" "^1.0.0"
-  optionalDependencies:
-    "@node-rs/crc32-android-arm64" "^1.0.0"
-    "@node-rs/crc32-darwin-arm64" "^1.0.0"
-    "@node-rs/crc32-darwin-x64" "^1.0.0"
-    "@node-rs/crc32-linux-arm-gnueabihf" "^1.0.0"
-    "@node-rs/crc32-linux-arm64-gnu" "^1.0.0"
-    "@node-rs/crc32-linux-x64-gnu" "^1.0.0"
-    "@node-rs/crc32-linux-x64-musl" "^1.0.0"
-    "@node-rs/crc32-win32-x64-msvc" "^1.0.0"
 
 sshpk@^1.7.0:
   version "1.16.1"

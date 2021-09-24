@@ -18,7 +18,7 @@ import { interfaceName, TokenRolesEnum, HRE } from "@uma/common";
 const { web3, getContract } = hre as HRE;
 const { toWei, toBN, utf8ToHex } = web3.utils;
 
-const { deployOptimismContractMock } = require("../../core/test/insured-bridge/helpers/SmockitHelper.js");
+const { deployContractMock } = require("../../core/test/insured-bridge/helpers/SmockitHelper.js");
 
 // Helper contracts
 const BridgePool = getContract("BridgePool");
@@ -135,7 +135,7 @@ describe("Relayer.ts", function () {
       .send({ from: l1Owner });
 
     // Deploy and setup BridgeAdmin:
-    l1CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L1CrossDomainMessenger");
+    l1CrossDomainMessengerMock = await deployContractMock("OVM_L1CrossDomainMessenger");
     bridgeAdmin = await BridgeAdmin.new(
       finder.options.address,
       l1CrossDomainMessengerMock.options.address,
@@ -172,7 +172,7 @@ describe("Relayer.ts", function () {
       .whitelistToken(l1Token.options.address, l2Token.options.address, bridgePool.options.address, defaultGasLimit)
       .send({ from: l1Owner });
 
-    l2CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L2CrossDomainMessenger", {
+    l2CrossDomainMessengerMock = await deployContractMock("OVM_L2CrossDomainMessenger", {
       address: predeploys.OVM_L2CrossDomainMessenger,
     });
     await web3.eth.sendTransaction({ from: l2Owner, to: predeploys.OVM_L2CrossDomainMessenger, value: toWei("1") });

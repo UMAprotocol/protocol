@@ -11,7 +11,7 @@ const {
 const { getContract, assertEventEmitted } = hre;
 const { hexToUtf8, utf8ToHex, toWei, toBN, soliditySha3 } = web3.utils;
 
-const { deployOptimismContractMock } = require("./helpers/SmockitHelper");
+const { deployContractMock } = require("./helpers/SmockitHelper");
 
 const { assert } = require("chai");
 
@@ -213,7 +213,7 @@ describe("BridgePool", () => {
       .send({ from: owner });
 
     // Deploy and setup BridgeAdmin:
-    l1CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L1CrossDomainMessenger");
+    l1CrossDomainMessengerMock = await deployContractMock("OVM_L1CrossDomainMessenger");
     bridgeAdmin = await BridgeAdmin.new(
       finder.options.address,
       l1CrossDomainMessengerMock.options.address,

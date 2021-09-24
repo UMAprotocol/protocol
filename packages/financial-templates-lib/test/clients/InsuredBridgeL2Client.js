@@ -10,7 +10,7 @@ const { toWei } = web3.utils;
 
 const { assert } = require("chai");
 
-const { deployOptimismContractMock } = require("../../../core/test/insured-bridge/helpers/SmockitHelper");
+const { deployContractMock } = require("../../../core/test/insured-bridge/helpers/SmockitHelper");
 
 // Client to test
 const { InsuredBridgeL2Client } = require("../../dist/clients/InsuredBridgeL2Client");
@@ -65,7 +65,7 @@ describe("InsuredBridgeL2Client", () => {
   beforeEach(async function () {
     // Initialize the cross domain massager messenger mock at the address of the OVM pre-deploy. The OVM will always use
     // this address for L1<->L2 messaging. Seed this address with some funds so it can send transactions.
-    l2CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L2CrossDomainMessenger", {
+    l2CrossDomainMessengerMock = await deployContractMock("OVM_L2CrossDomainMessenger", {
       address: predeploys.OVM_L2CrossDomainMessenger,
     });
     await web3.eth.sendTransaction({ from: deployer, to: predeploys.OVM_L2CrossDomainMessenger, value: toWei("1") });

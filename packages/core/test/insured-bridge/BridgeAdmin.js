@@ -3,7 +3,7 @@ const { didContractThrow, runDefaultFixture, ZERO_ADDRESS } = require("@uma/comm
 const { getContract, assertEventEmitted } = hre;
 const { hexToUtf8, utf8ToHex, toWei } = web3.utils;
 
-const { deployOptimismContractMock } = require("./helpers/SmockitHelper");
+const { deployContractMock } = require("./helpers/SmockitHelper");
 
 const { assert } = require("chai");
 
@@ -52,7 +52,7 @@ describe("BridgeAdmin", () => {
     await identifierWhitelist.methods.addSupportedIdentifier(defaultIdentifier).send({ from: owner });
   });
   beforeEach(async function () {
-    l1CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L1CrossDomainMessenger");
+    l1CrossDomainMessengerMock = await deployContractMock("OVM_L1CrossDomainMessenger");
 
     bridgeAdmin = await BridgeAdmin.new(
       finder.options.address,

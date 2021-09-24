@@ -7,7 +7,7 @@ const { assert } = require("chai");
 import { interfaceName, TokenRolesEnum, HRE } from "@uma/common";
 
 // TODO: clean up this export/import path
-const { deployOptimismContractMock } = require("../../core/test/insured-bridge/helpers/SmockitHelper.js");
+const { deployContractMock } = require("../../core/test/insured-bridge/helpers/SmockitHelper.js");
 
 const { web3, getContract } = hre as HRE;
 const { toWei, utf8ToHex } = web3.utils;
@@ -112,7 +112,7 @@ describe("index.js", function () {
       .send({ from: owner });
 
     // Deploy and setup BridgeAdmin:
-    l1CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L1CrossDomainMessenger");
+    l1CrossDomainMessengerMock = await deployContractMock("OVM_L1CrossDomainMessenger");
     bridgeAdmin = await BridgeAdmin.new(
       finder.options.address,
       l1CrossDomainMessengerMock.options.address,
