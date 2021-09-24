@@ -25,10 +25,10 @@ pragma solidity ^0.8.0;
 interface iAVM_Inbox {
     function createRetryableTicketNoRefundAliasRewrite(
         address destAddr,
-        uint256 arbTxCallValue,
+        uint256 l2CallValue,
         uint256 maxSubmissionCost,
-        address submissionRefundAddress,
-        address valueRefundAddress,
+        address excessFeeRefundAddress,
+        address callValueRefundAddress,
         uint256 maxGas,
         uint256 gasPriceBid,
         bytes calldata data

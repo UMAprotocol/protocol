@@ -11,7 +11,7 @@ const { toWei } = web3.utils;
 
 const { assert } = require("chai");
 
-const { deployOptimismContractMock } = require("./helpers/SmockitHelper");
+const { deployContractMock } = require("./helpers/SmockitHelper");
 
 // Tested contract
 const BridgeDepositBox = getContract("OVM_BridgeDepositBox");
@@ -47,7 +47,7 @@ describe("OVM_BridgeDepositBox", () => {
   beforeEach(async function () {
     // Initialize the cross domain massager messenger mock at the address of the OVM pre-deploy. The OVM will always use
     // this address for L1<->L2 messaging. Seed this address with some funds so it can send transactions.
-    l2CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L2CrossDomainMessenger", {
+    l2CrossDomainMessengerMock = await deployContractMock("OVM_L2CrossDomainMessenger", {
       address: predeploys.OVM_L2CrossDomainMessenger,
     });
     await web3.eth.sendTransaction({ from: deployer, to: predeploys.OVM_L2CrossDomainMessenger, value: toWei("1") });
@@ -312,9 +312,7 @@ describe("OVM_BridgeDepositBox", () => {
         .send({ from: predeploys.OVM_L2CrossDomainMessenger });
 
       // Setup the l2StandardBridge mock to validate cross-domain bridging occurs as expected.
-      l2StandardBridge = await deployOptimismContractMock("OVM_L2StandardBridge", {
-        address: predeploys.OVM_L2StandardBridge,
-      });
+      l2StandardBridge = await deployContractMock("OVM_L2StandardBridge", { address: predeploys.OVM_L2StandardBridge });
     });
     it("Can initiate cross-domain bridging action", async () => {
       // Deposit tokens as the user.
