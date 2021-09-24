@@ -3,7 +3,7 @@
 
 const hre = require("hardhat");
 const { web3 } = require("hardhat");
-const { predeploys, getContractDefinition } = require("@eth-optimism/contracts");
+const { predeploys } = require("@eth-optimism/contracts");
 const { didContractThrow } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;
 
@@ -209,9 +209,7 @@ describe("OVM_BridgeDepositBox", () => {
         .send({ from: predeploys.OVM_L2CrossDomainMessenger });
 
       // Setup the l2StandardBridge mock to validate cross-domain bridging occurs as expected.
-      l2StandardBridge = await deployContractMock(getContractDefinition("OVM_L2StandardBridge"), {
-        address: predeploys.OVM_L2StandardBridge,
-      });
+      l2StandardBridge = await deployContractMock("OVM_L2StandardBridge", { address: predeploys.OVM_L2StandardBridge });
     });
     it("Can initiate cross-domain bridging action", async () => {
       // Deposit tokens as the user.

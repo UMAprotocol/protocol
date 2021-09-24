@@ -115,7 +115,7 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
             whitelistedTokens[l2Token].l1BridgePool, // _to. Withdraw, over the bridge, to the l1 withdraw contract.
             bridgeDepositBoxBalance, // _amount. Send the full balance of the deposit box to bridge.
             l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
-            "0x" // _data. TODO: add additional info into this data prop this.
+            "" // _data. TODO: add additional info into this data prop this.
         );
 
         emit TokensBridged(l2Token, bridgeDepositBoxBalance, l1Gas, msg.sender);
