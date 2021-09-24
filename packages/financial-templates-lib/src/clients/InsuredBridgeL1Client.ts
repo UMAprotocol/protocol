@@ -6,7 +6,7 @@ import { getAbi } from "@uma/contracts-node";
 import { Deposit } from "./InsuredBridgeL2Client";
 import { RateModel, calculateRealizedLpFeePct } from "../helpers/acrossFeesCalculator";
 
-import type { BridgeAdminWeb3, BridgePoolWeb3 } from "@uma/contracts-node";
+import type { BridgeAdminInterfaceWeb3, BridgePoolWeb3 } from "@uma/contracts-node";
 import type { Logger } from "winston";
 import type { BN } from "@uma/common";
 
@@ -44,7 +44,7 @@ export interface Relay {
 }
 
 export class InsuredBridgeL1Client {
-  public readonly bridgeAdmin: BridgeAdminWeb3;
+  public readonly bridgeAdmin: BridgeAdminInterfaceWeb3;
   public bridgePools: { [key: string]: BridgePoolWeb3 }; // L1TokenAddress=>BridgePoolClient
 
   private relays: { [key: string]: { [key: string]: Relay } } = {}; // L1TokenAddress=>depositHash=>Relay.
@@ -60,9 +60,9 @@ export class InsuredBridgeL1Client {
     readonly endingBlockNumber: number | null = null
   ) {
     this.bridgeAdmin = (new l1Web3.eth.Contract(
-      getAbi("BridgeAdmin"),
+      getAbi("BridgeAdminInterface"),
       bridgeAdminAddress
-    ) as unknown) as BridgeAdminWeb3; // Cast to web3-specific type
+    ) as unknown) as BridgeAdminInterfaceWeb3; // Cast to web3-specific type
 
     this.bridgePools = {}; // Initialize the bridgePools with no pools yet. Will be populated in the _initialSetup.
 

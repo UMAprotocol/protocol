@@ -1,39 +1,28 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity >=0.7.6;
 
-import "./BridgeDepositBox.sol";
+import "../implementation/BridgeDepositBox.sol";
 
-import { OVM_CrossDomainEnabled } from "@eth-optimism/contracts/libraries/bridge/OVM_CrossDomainEnabled.sol";
-import { Lib_PredeployAddresses } from "@eth-optimism/contracts/libraries/constants/Lib_PredeployAddresses.sol";
-
-interface StandardBridgeLike {
-    function withdrawTo(
-        address _l2Token,
-        address _to,
-        uint256 _amount,
-        uint32 _l1Gas,
-        bytes calldata _data
-    ) external;
-}
-
-/**
- * @notice OVM specific bridge deposit box. Uses OVM cross-domain-enabled logic for access control.
- */
-
-contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
+contract BridgeDepositBoxMock is BridgeDepositBox {
     // Address of the L1 contract that acts as the owner of this Bridge deposit box.
     address public bridgeAdmin;
 
     event SetBridgeAdmin(address newBridgeAdmin);
 
+    modifier onlyBridgeAdmin() {
+        require(msg.sender == bridgeAdmin, "Not bridge admin");
+        _;
+    }
+
+    /**
+     * @notice Ownable bridge deposit box. Used for testing environments that don't have specific l1/l2 messaging logic.
+     */
+
     constructor(
         address _bridgeAdmin,
         uint64 _minimumBridgingDelay,
         address timerAddress
-    )
-        OVM_CrossDomainEnabled(Lib_PredeployAddresses.L2_CROSS_DOMAIN_MESSENGER)
-        BridgeDepositBox(_minimumBridgingDelay, 10, timerAddress)
-    {
+    ) BridgeDepositBox(_minimumBridgingDelay, 10, timerAddress) {
         _setBridgeAdmin(_bridgeAdmin);
     }
 
@@ -46,7 +35,7 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
      * @dev Only callable by the existing bridgeAdmin via the optimism cross domain messenger.
      * @param _bridgeAdmin address of the new L1 admin contract.
      */
-    function setBridgeAdmin(address _bridgeAdmin) public onlyFromCrossDomainAccount(bridgeAdmin) {
+    function setBridgeAdmin(address _bridgeAdmin) public onlyBridgeAdmin() {
         _setBridgeAdmin(_bridgeAdmin);
     }
 
@@ -55,7 +44,7 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
      * @dev Only callable by the existing bridgeAdmin via the optimism cross domain messenger.
      * @param _minimumBridgingDelay the new minimum delay.
      */
-    function setMinimumBridgingDelay(uint64 _minimumBridgingDelay) public onlyFromCrossDomainAccount(bridgeAdmin) {
+    function setMinimumBridgingDelay(uint64 _minimumBridgingDelay) public onlyBridgeAdmin() {
         _setMinimumBridgingDelay(_minimumBridgingDelay);
     }
 
@@ -70,7 +59,7 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
         address l1Token,
         address l2Token,
         address l1BridgePool
-    ) public onlyFromCrossDomainAccount(bridgeAdmin) {
+    ) public onlyBridgeAdmin() {
         _whitelistToken(l1Token, l2Token, l1BridgePool);
     }
 
@@ -80,7 +69,7 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
      * @param _l2Token address of L2 token to enable/disable deposits for.
      * @param _depositsEnabled bool to set if the deposit box should accept/reject deposits.
      */
-    function setEnableDeposits(address _l2Token, bool _depositsEnabled) public onlyFromCrossDomainAccount(bridgeAdmin) {
+    function setEnableDeposits(address _l2Token, bool _depositsEnabled) public onlyBridgeAdmin() {
         _setEnableDeposits(_l2Token, _depositsEnabled);
     }
 
@@ -104,12 +93,12 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
 
         whitelistedTokens[l2Token].lastBridgeTime = uint64(getCurrentTime());
 
-        StandardBridgeLike(Lib_PredeployAddresses.L2_STANDARD_BRIDGE).withdrawTo(
-            l2Token, // _l2Token. Address of the L2 token to bridge over.
-            whitelistedTokens[l2Token].l1BridgePool, // _to. Withdraw, over the bridge, to the l1 withdraw contract.
-            bridgeDepositBoxBalance, // _amount. Send the full balance of the deposit box to bridge.
-            l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
-            "0x" // _data. TODO: add additional info into this data prop this.
+        // Note in this test contract we simply send the l2 tokens to the l1BridgePool.
+        TokenHelper.safeTransferFrom(
+            l2Token,
+            address(this),
+            whitelistedTokens[l2Token].l1BridgePool,
+            bridgeDepositBoxBalance
         );
 
         emit TokensBridged(l2Token, bridgeDepositBoxBalance, l1Gas, msg.sender);

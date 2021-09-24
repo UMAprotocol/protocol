@@ -153,7 +153,8 @@ export const getPendingTransactionCount = async (web3: Web3, account: string): P
  * @param {number} blockerBlockNumber block execution until this block number is mined.
  */
 export const blockUntilBlockMined = async (web3: Web3, blockerBlockNumber: number, delay = 500): Promise<void> => {
-  if (argv._.indexOf("test") !== -1) return;
+  // If called from tests, exit early.
+  if (argv._.indexOf("test") !== -1 || argv._.filter((arg) => arg.includes("mocha")).length > 0) return;
   for (;;) {
     const currentBlockNumber = await web3.eth.getBlockNumber();
     if (currentBlockNumber >= blockerBlockNumber) break;

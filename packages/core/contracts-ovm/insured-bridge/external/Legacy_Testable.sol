@@ -4,9 +4,9 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity >=0.7.6;
 
-import "./OVM_Timer.sol";
+import "./Legacy_Timer.sol";
 
-abstract contract OVM_Testable {
+abstract contract Legacy_Testable {
     address public timerAddress;
 
     constructor(address _timerAddress) {
@@ -19,12 +19,12 @@ abstract contract OVM_Testable {
     }
 
     function setCurrentTime(uint256 time) external onlyIfTest {
-        OVM_Timer(timerAddress).setCurrentTime(time);
+        Legacy_Timer(timerAddress).setCurrentTime(time);
     }
 
     function getCurrentTime() public view returns (uint256) {
         if (timerAddress != address(0x0)) {
-            return OVM_Timer(timerAddress).getCurrentTime();
+            return Legacy_Timer(timerAddress).getCurrentTime();
         } else {
             return block.timestamp; // solhint-disable-line not-rely-on-time
         }
