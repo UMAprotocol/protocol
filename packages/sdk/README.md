@@ -35,6 +35,13 @@ const {blocks, base} = tables
 
 ```
 
+## Building
+
+This repo modifies the standard tsdx build process to support builds for frontend and node. Instances of `@uma/contracts-node` will
+be replaced with `@uma/contracts-frontend` when using the `yarn build` command. To build frontend/node independently
+you can run `build:web` or `build:node`. By default `yarn start` will start watching the node version of the sdk, and all
+tests by default will run in the node context.
+
 # TSDX User Guide
 
 Congrats! You just saved yourself hours of work by bootstrapping this project with TSDX. Let’s get you oriented with what’s here and how to use it.

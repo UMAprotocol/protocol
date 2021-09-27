@@ -8,7 +8,7 @@ describe("lsp creator", function () {
   let client: Client.Instance;
   test("inits", async function () {
     const provider = ethers.providers.getDefaultProvider(process.env.CUSTOM_NODE_URL);
-    const address = await Client.getAddress("1");
+    const address = await Client.getAddress(1);
     client = Client.connect(address, provider);
     assert.ok(client);
   });
