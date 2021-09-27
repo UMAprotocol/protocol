@@ -1,17 +1,14 @@
 // Provides convenience methods for interacting with deployed Multicall contract on network.
 import { getAbi } from "@uma/contracts-node";
 import type { MulticallWeb3 } from "@uma/contracts-node";
-import { getAbiDecoder } from "@uma/common";
+import { TransactionDataDecoder } from "./AbiUtils";
 import assert from "assert";
 import type Web3 from "web3";
-
-let cachedAbiDecoder: ReturnType<typeof getAbiDecoder> | undefined;
 
 // Decode `returnData` into Javascript type using known contract ABI informtaion
 // from the `callData` originally used to produce `returnData`.
 function _decodeOutput(callData: string, returnData: string, web3: Web3) {
-  cachedAbiDecoder = cachedAbiDecoder || getAbiDecoder(); // Only load once because it's expensive.
-  const methodAbi = cachedAbiDecoder.getMethodIDs()[callData.slice(2, 10)];
+  const methodAbi = TransactionDataDecoder.getInstance().abiDecoder.getMethodIDs()[callData.slice(2, 10)];
   return web3.eth.abi.decodeParameters(methodAbi.outputs, returnData);
 }
 

@@ -5,12 +5,12 @@
 // Example:
 // ./src/DecodeTransactionData.js --data 0x10a7e2014554482f55534400000000000000000000000000000000000000000000000000
 
-const { getAbiDecoder } = require("@uma/common");
+const { TransactionDataDecoder } = require("@uma/financial-templates-lib");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["data"] });
 
 function _decodeData(data) {
-  return getAbiDecoder().decodeMethod(data);
+  return TransactionDataDecoder.getInstance().decodeTransaction(data);
 }
 
 const _printTransactionDataRecursive = function (txnObj) {
