@@ -74,7 +74,7 @@ export type AppState = {
     emp: {
       usd: {
         latest: {
-          tvl: empStats.TableTable;
+          tvl: empStats.Table;
           tvm: empStats.Table;
         };
         history: {

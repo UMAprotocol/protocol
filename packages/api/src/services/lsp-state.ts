@@ -166,7 +166,7 @@ export default (config: Config, appState: Dependencies) => {
       await updateCreatedTimestamp(address, lsps.active);
     }
   }
-  async function updateCreatedTimestamp(address: string, table: lsps.JsMap) {
+  async function updateCreatedTimestamp(address: string, table: lsps.Table) {
     const lsp = await table.get(address);
     if (lsp.createdTimestamp) return;
 

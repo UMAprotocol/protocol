@@ -32,7 +32,7 @@ export default function (config: Config, appState: Dependencies) {
   // synthPrices table which store raw synth price queried from bot. This table stores the currency converted price over time.
   function getOrCreateHistoryTable(tokenAddress: string) {
     if (prices[currency].history[tokenAddress] == null) {
-      prices[currency].history[tokenAddress] = uma.tables.historicalPrices.SortedJsMap();
+      prices[currency].history[tokenAddress] = uma.tables.historicalPrices.Table();
     }
     return prices[currency].history[tokenAddress];
   }
