@@ -1,4 +1,4 @@
-pragma solidity ^0.7.6;
+pragma solidity ^0.8.0;
 
 abstract contract AVM_CrossDomainEnabled {
     modifier onlyFromCrossDomainAccount(address l1Counterpart) {

@@ -71,21 +71,21 @@ describe("AVM_BridgeDepositBox", () => {
     ).send({ from: deployer });
   });
   describe("Box admin logic", () => {
-    // Only the bridgeAdmin, called via the canonical bridge, can: a) change the L1 withdraw contract,
-    // b) whitelist collateral or c) disable deposits. In production, the bridgeAdmin will be the BridgePoolFactory.
-    // In these tests mock this as being any bridgeAdmin, calling via the l2MessengerImpersonator.
-    it("Change L1 bridge admin contract", async () => {
+    // Only the crossDomainAdmin, called via the canonical bridge, can: a) change the L1 withdraw contract,
+    // b) whitelist collateral or c) disable deposits. In production, the crossDomainAdmin will be the Messenger.
+    // In these tests mock this as being any crossDomainAdmin, calling via the l2MessengerImpersonator.
+    it("Change L1 admin contract", async () => {
       // Owner should start out as the set owner.
-      assert.equal(await depositBox.methods.bridgeAdmin().call(), bridgeAdmin);
+      assert.equal(await depositBox.methods.crossDomainAdmin().call(), bridgeAdmin);
 
       // Trying to transfer ownership from non-cross-domain owner should fail.
-      assert(await didContractThrow(depositBox.methods.setBridgeAdmin(user1).send({ from: rando })));
+      assert(await didContractThrow(depositBox.methods.setCrossDomainAdmin(user1).send({ from: rando })));
 
       // Calling from the correct cross domain aliased address should work.
-      const tx = await depositBox.methods.setBridgeAdmin(user1).send({ from: bridgeAdminCrossDomainAlias });
-      assert.equal(await depositBox.methods.bridgeAdmin().call(), user1);
-      await assertEventEmitted(tx, depositBox, "SetBridgeAdmin", (ev) => {
-        return ev.newBridgeAdmin == user1;
+      const tx = await depositBox.methods.setCrossDomainAdmin(user1).send({ from: bridgeAdminCrossDomainAlias });
+      assert.equal(await depositBox.methods.crossDomainAdmin().call(), user1);
+      await assertEventEmitted(tx, depositBox, "SetXDomainAdmin", (ev) => {
+        return ev.newAdmin == user1;
       });
     });
 
