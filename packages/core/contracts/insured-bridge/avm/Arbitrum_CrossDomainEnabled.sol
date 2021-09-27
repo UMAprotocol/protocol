@@ -1,15 +1,15 @@
 pragma solidity ^0.8.0;
 
-import "../../external/arbitrum/interfaces/iAVM_Inbox.sol";
+import "../../external/arbitrum/interfaces/iArbitrum_Inbox.sol";
 
-abstract contract AVM_L1CrossDomainEnabled {
-    iAVM_Inbox public immutable inbox;
+abstract contract Arbitrum_CrossDomainEnabled {
+    iArbitrum_Inbox public immutable inbox;
 
     /**
      * @param _inbox Contract that sends generalized messages to the Arbitrum chain.
      */
     constructor(address _inbox) {
-        inbox = iAVM_Inbox(_inbox);
+        inbox = iArbitrum_Inbox(_inbox);
     }
 
     // More details about retryable ticket parameters here: https://developer.offchainlabs.com/docs/l1_l2_messages#parameters

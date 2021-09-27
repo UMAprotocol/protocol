@@ -1,7 +1,8 @@
-pragma solidity ^0.8.0;
-import "../../external/arbitrum/interfaces/iAVM_Inbox.sol";
+// SPDX-License-Identifier: Apache-2.0
 
-contract AVM_InboxMock is iAVM_Inbox {
+pragma solidity ^0.8.0;
+
+interface iArbitrum_Inbox {
     function createRetryableTicketNoRefundAliasRewrite(
         address destAddr,
         uint256 l2CallValue,
@@ -11,7 +12,5 @@ contract AVM_InboxMock is iAVM_Inbox {
         uint256 maxGas,
         uint256 gasPriceBid,
         bytes calldata data
-    ) external payable override returns (uint256) {
-        return 1;
-    }
+    ) external payable returns (uint256);
 }

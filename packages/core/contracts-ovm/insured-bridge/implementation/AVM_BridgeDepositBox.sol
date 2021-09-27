@@ -2,7 +2,7 @@
 pragma solidity >=0.7.6;
 
 import "./BridgeDepositBox.sol";
-import "../external/AVM_L2CrossDomainEnabled.sol";
+import "../external/AVM_CrossDomainEnabled.sol";
 
 interface StandardBridgeLike {
     function outboundTransfer(
@@ -13,7 +13,7 @@ interface StandardBridgeLike {
     ) external payable returns (bytes memory);
 }
 
-contract AVM_BridgeDepositBox is BridgeDepositBox, AVM_L2CrossDomainEnabled {
+contract AVM_BridgeDepositBox is BridgeDepositBox, AVM_CrossDomainEnabled {
     // Address of the L1 contract that acts as the owner of this Bridge deposit box.
     address public crossDomainAdmin;
 

@@ -13,7 +13,7 @@ const { applyL1ToL2Alias } = require("./helpers/ArbitrumHelper");
 const { assert } = require("chai");
 
 // Tested contract
-const AVM_InboxMock = getContract("AVM_InboxMock");
+const Arbitrum_InboxMock = getContract("Arbitrum_InboxMock");
 const BridgeDepositBox = getContract("AVM_BridgeDepositBox");
 const { deployContractMock } = require("./helpers/SmockitHelper");
 
@@ -64,7 +64,7 @@ describe("AVM_BridgeDepositBox", () => {
     // Setup the Arbitrum bridge contracts
     l2GatewayRouterMock = await deployContractMock("L2GatewayRouter", {}, L2GatewayRouter__factory);
 
-    inbox = await deployContractMock("AVM_InboxMock", {}, AVM_InboxMock);
+    inbox = await deployContractMock("AVM_InboxMock", {}, Arbitrum_InboxMock);
     depositBox = await BridgeDepositBox.new(
       inbox.options.address,
       l2GatewayRouterMock.options.address,

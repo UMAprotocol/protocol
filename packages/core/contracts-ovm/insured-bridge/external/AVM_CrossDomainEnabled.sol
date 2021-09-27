@@ -1,6 +1,6 @@
 pragma solidity >=0.7.6;
 
-abstract contract AVM_L2CrossDomainEnabled {
+abstract contract AVM_CrossDomainEnabled {
     modifier onlyFromCrossDomainAccount(address l1Counterpart) {
         require(msg.sender == applyL1ToL2Alias(l1Counterpart), "ONLY_COUNTERPART_GATEWAY");
         _;
