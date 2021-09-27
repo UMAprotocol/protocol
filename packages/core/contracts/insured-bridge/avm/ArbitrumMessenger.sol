@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../external/AVM_CrossDomainEnabled.sol";
+import "./AVM_L1CrossDomainEnabled.sol";
 import "../interfaces/MessengerInterface.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
@@ -10,11 +10,11 @@ import "@openzeppelin/contracts/access/Ownable.sol";
  * @dev This contract's owner should be set to the BridgeAdmin deployed on the same L1 network so that only the
  * BridgeAdmin can call cross-chain administrative functions on the L2 DepositBox via this messenger.
  */
-contract ArbitrumMessenger is Ownable, AVM_CrossDomainEnabled, MessengerInterface {
+contract ArbitrumMessenger is Ownable, AVM_L1CrossDomainEnabled, MessengerInterface {
     /**
      * @param _inbox Contract that sends generalized messages to the Arbitrum chain.
      */
-    constructor(address _inbox) AVM_CrossDomainEnabled(_inbox) {}
+    constructor(address _inbox) AVM_L1CrossDomainEnabled(_inbox) {}
 
     /**
      * @notice Sends a message to an account on L2.

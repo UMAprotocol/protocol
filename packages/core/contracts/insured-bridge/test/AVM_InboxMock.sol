@@ -1,5 +1,5 @@
 pragma solidity ^0.8.0;
-import "../external/iAVM_Inbox.sol";
+import "../../external/arbitrum/interfaces/iAVM_Inbox.sol";
 
 contract AVM_InboxMock is iAVM_Inbox {
     function createRetryableTicketNoRefundAliasRewrite(
