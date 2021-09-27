@@ -1,8 +1,8 @@
 import {
   LongShortPairCreatorEthers,
   LongShortPairCreatorEthers__factory,
-  getAbi as getAbiForContract,
-  getAddress as getAddressForContract,
+  getLongShortPairCreatorAbi as getAbi,
+  getLongShortPairCreatorAddress as getAddress,
 } from "@uma/contracts-node";
 import type { SignerOrProvider, GetEventType } from "../..";
 import { Event } from "ethers";
@@ -13,13 +13,7 @@ const Factory = LongShortPairCreatorEthers__factory;
 
 export type Network = string | number;
 
-export function getAddress(network: Network): Promise<string> {
-  return getAddressForContract("LongShortPairCreator", Number(network));
-}
-
-export function getAbi() {
-  return getAbiForContract("LongShortPairCreator");
-}
+export { getAddress, getAbi };
 
 export function connect(address: string, provider: SignerOrProvider): Instance {
   return Factory.connect(address, provider);

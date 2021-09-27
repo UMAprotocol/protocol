@@ -8,11 +8,11 @@ export { default as Multicall2 } from "./multicall2";
 
 // types
 import type { TypedEventFilterEthers as TypedEventFilter, TypedEventEthers as TypedEvent } from "@uma/contracts-node";
-import { Contract } from "ethers";
-import { Result } from "@ethersproject/abi";
-import { Signer } from "@ethersproject/abstract-signer";
-import { Provider } from "@ethersproject/abstract-provider";
-export type SignerOrProvider = Signer | Provider;
+import { Contract, ethers, Signer, providers } from "ethers";
+
+type Result = ethers.utils.Result;
+
+export type SignerOrProvider = providers.BaseProvider | Signer | providers.Provider;
 
 export interface MakeId<I, D> {
   (d: D): I;

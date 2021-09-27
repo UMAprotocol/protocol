@@ -65,8 +65,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     struct DepositData {
         uint8 chainId;
         uint64 depositId;
-        address l2Sender;
         address l1Recipient;
+        address l2Sender;
         uint256 amount;
         uint64 slowRelayFeePct;
         uint64 instantRelayFeePct;
@@ -231,8 +231,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             DepositData({
                 chainId: chainId,
                 depositId: depositId,
-                l2Sender: l2Sender,
                 l1Recipient: l1Recipient,
+                l2Sender: l2Sender,
                 amount: amount,
                 slowRelayFeePct: slowRelayFeePct,
                 instantRelayFeePct: instantRelayFeePct,
@@ -431,6 +431,40 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         if (utilizedReserves > 0) numerator = numerator.add(FixedPoint.Unsigned(uint256(utilizedReserves)));
         else numerator = numerator.sub(FixedPoint.Unsigned(uint256(utilizedReserves * -1)));
         return numerator.div(FixedPoint.Unsigned(totalSupply())).rawValue;
+    }
+
+    /**
+     * @notice Computes the current liquidity utilization ratio.
+     * @dev Used in computing realizedLpFeePct off-chain.
+     */
+    function liquidityUtilizationCurrent() public returns (uint256) {
+        return liquidityUtilizationPostRelay(0);
+    }
+
+    /**
+     * @notice Computes the liquidity utilization ratio post a relay of known size.
+     * @dev Used in computing realizedLpFeePct off-chain.
+     * @param relayedAmount Size of the relayed deposit to factor into the utilization calculation.
+     */
+    function liquidityUtilizationPostRelay(uint256 relayedAmount) public returns (uint256) {
+        sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
+
+        // The liquidity utilization ratio is the ratio of utilized liquidity (pendingReserves + relayedAmount
+        // +utilizedReserves) divided by the liquid reserves.
+        FixedPoint.Unsigned memory numerator =
+            FixedPoint.Unsigned(pendingReserves).add(FixedPoint.Unsigned(relayedAmount));
+        if (utilizedReserves > 0) numerator = numerator.add(FixedPoint.Unsigned(uint256(utilizedReserves)));
+        else numerator = numerator.sub(FixedPoint.Unsigned(uint256(utilizedReserves * -1)));
+
+        // There are two cases where liquid reserves could be zero. Handle accordingly to avoid division by zero:
+        // a) the pool is new and there no funds in it nor any bridging actions have happened. In this case the
+        // numerator is 0 and liquid reserves are 0. The utilization is therefore 0.
+        if (numerator.isEqual(0) && liquidReserves == 0) return 0;
+        // b) the numerator is more than 0 and the liquid reserves are 0. in this case, The pool is at 100% utilization.
+        if (numerator.isGreaterThan(0) && liquidReserves == 0) return 1e18;
+
+        // In all other cases, return the utilization ratio.
+        return numerator.div(FixedPoint.Unsigned(liquidReserves)).rawValue;
     }
 
     /************************************

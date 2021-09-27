@@ -1,13 +1,9 @@
-const hre = require("hardhat");
-const { web3 } = require("hardhat");
-
-const { getContract } = hre;
-
-const winston = require("winston");
-
-const { toWei } = web3.utils;
-
 const { assert } = require("chai");
+const winston = require("winston");
+const hre = require("hardhat");
+const { getContract } = hre;
+const { web3 } = require("hardhat");
+const { toWei } = web3.utils;
 
 // Client to test
 const { InsuredBridgeL2Client } = require("../../dist/clients/InsuredBridgeL2Client");

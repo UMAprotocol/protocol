@@ -8,9 +8,9 @@ with custom data types outside of the sdk if desired.
 See [tests](./base.test.ts) for more example usage.
 
 ```js
-  import uma from '@uma/sdk'
+  import { stores, tables } from '@uma/sdk'
   const Table = uma.tables.base
-  const Store = uma.stores.JsMap
+  const JsMapStore = uma.stores.JsMap
 
   type Data = {
     name:string;
@@ -23,8 +23,8 @@ See [tests](./base.test.ts) for more example usage.
   }
 
   // create a store that accepts a string key and string value
-  const store = Store<string,D>()
-  const table = Table<string,D>({makeId,type:'user'},store)
+  const store = JsMapStore<string,D>()
+  const table = Table<string,D, stores.Store<string,D>>({makeId,type:'user'},store)
 
   let user = await table.create({ name:'john',age:20 })
   // returns {id:'john',name:'john',age:20})

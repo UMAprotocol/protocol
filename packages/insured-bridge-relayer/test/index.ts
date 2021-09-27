@@ -7,7 +7,8 @@ const { assert } = require("chai");
 import { interfaceName, TokenRolesEnum, HRE } from "@uma/common";
 
 const { web3, getContract } = hre as HRE;
-const { toWei, utf8ToHex } = web3.utils;
+const { toWei, toBN, utf8ToHex } = web3.utils;
+const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 
 // Helper contracts
 const chainId = 10;
@@ -39,6 +40,7 @@ let mockOracle: any;
 
 // Hard-coded test params:
 const defaultGasLimit = 1_000_000;
+const defaultGasPrice = toWei("1", "gwei");
 const defaultIdentifier = utf8ToHex("IS_CROSS_CHAIN_RELAY_VALID");
 const defaultLiveness = 100;
 const lpFeeRatePerSecond = toWei("0.0000015");
@@ -134,7 +136,14 @@ describe("index.js", function () {
 
     // Add L1-L2 token mapping
     await bridgeAdmin.methods
-      .whitelistToken(chainId, l1Token.options.address, l2Token, bridgePool.options.address, defaultGasLimit)
+      .whitelistToken(
+        chainId,
+        l1Token.options.address,
+        l2Token,
+        bridgePool.options.address,
+        defaultGasLimit,
+        defaultGasPrice
+      )
       .send({ from: owner });
 
     spy = sinon.spy();
@@ -147,7 +156,14 @@ describe("index.js", function () {
   it("Runs with no errors and correctly sets approvals for whitelisted L1 tokens", async function () {
     process.env.BRIDGE_ADMIN_ADDRESS = bridgeAdmin.options.address;
     process.env.POLLING_DELAY = "0";
-    process.env.WHITELISTED_L1_TOKENS = JSON.stringify([l1Token.options.address]);
+    process.env.RATE_MODELS = JSON.stringify({
+      [l1Token.options.address]: {
+        UBar: toBNWei("0.65"),
+        R0: toBNWei("0.00"),
+        R1: toBNWei("0.08"),
+        R2: toBNWei("1.00"),
+      },
+    });
 
     // Must not throw.
     await run(spyLogger, web3);

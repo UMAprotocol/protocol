@@ -17,14 +17,15 @@
     "@uniswap/v2-periphery": "1.1.0-beta.0",
     "@uniswap/v3-core": "^1.0.0-rc.2",
     "@uniswap/v3-periphery": "^1.0.0-beta.23",
+    "arb-ts": "^0.0.42",
     "decimal.js": "^10.2.1",
     "ethereum-waffle": "^3.4.0"
   },
   "devDependencies": {
     "@awaitjs/express": "^0.3.0",
     "@eth-optimism/contracts": "^0.4.5",
-    "@eth-optimism/smock": "^1.1.9",
     "@eth-optimism/message-relayer": "^0.1.8",
+    "@eth-optimism/smock": "^1.1.9",
     "@eth-optimism/watcher": "^0.0.1-alpha.9",
     "@ethersproject/abi": "^5.4.0",
     "@ethersproject/abstract-provider": "^5.4.0",
