@@ -13,6 +13,7 @@ const { applyL1ToL2Alias } = require("./helpers/ArbitrumHelper");
 const { assert } = require("chai");
 
 // Tested contract
+const AVM_InboxMock = getContract("AVM_InboxMock");
 const BridgeDepositBox = getContract("AVM_BridgeDepositBox");
 const { deployContractMock } = require("./helpers/SmockitHelper");
 
@@ -24,7 +25,7 @@ const Token = getContract("ExpandedERC20");
 const Timer = getContract("Legacy_Timer");
 
 // Contract objects
-let depositBox, l1TokenAddress, l2Token, timer, l2GatewayRouterMock;
+let depositBox, l1TokenAddress, l2Token, timer, l2GatewayRouterMock, inbox;
 
 // As these tests are in the context of l2, we dont have the deployed notion of an "L1 Token". The L1 token is within
 // another domain (L1). To represent this, we can generate a random address to represent the L1 token.
@@ -63,7 +64,9 @@ describe("AVM_BridgeDepositBox", () => {
     // Setup the Arbitrum bridge contracts
     l2GatewayRouterMock = await deployContractMock("L2GatewayRouter", {}, L2GatewayRouter__factory);
 
+    inbox = await deployContractMock("AVM_InboxMock", {}, AVM_InboxMock);
     depositBox = await BridgeDepositBox.new(
+      inbox.options.address,
       l2GatewayRouterMock.options.address,
       bridgeAdmin,
       minimumBridgingDelay,

@@ -6,6 +6,8 @@ import {
   GasEstimator,
   Deposit,
   ClientRelayState,
+  RateModel,
+  calculateRealizedLpFeePct,
 } from "@uma/financial-templates-lib";
 import winston from "winston";
 import sinon from "sinon";
@@ -16,6 +18,7 @@ import { interfaceName, TokenRolesEnum, HRE } from "@uma/common";
 
 const { web3, getContract } = hre as HRE;
 const { toWei, toBN, utf8ToHex } = web3.utils;
+const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
 
 // Helper contracts
 const chainId = 10;
@@ -62,6 +65,7 @@ const defaultRealizedLpFeePct = toWei("0.05");
 const minimumBridgingDelay = 60; // L2->L1 token bridging must wait at least this time.
 const initialPoolLiquidity = toWei("100");
 const depositAmount = toWei("1");
+const rateModel: RateModel = { UBar: toBNWei("0.65"), R0: toBNWei("0.00"), R1: toBNWei("0.08"), R2: toBNWei("1.00") };
 
 // Tested file
 import { Relayer, ShouldRelay } from "../src/Relayer";
@@ -189,7 +193,10 @@ describe("Relayer.ts", function () {
       level: "debug",
       transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
     });
-    l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address);
+
+    // Create the rate models for the one and only l1Token, set to the single rateModel defined in the constants.
+    const rateModels = { [l1Token.options.address]: rateModel };
+    l1Client = new InsuredBridgeL1Client(spyLogger, web3, bridgeAdmin.options.address, rateModels);
     l2Client = new InsuredBridgeL2Client(spyLogger, web3, bridgeDepositBox.options.address);
 
     gasEstimator = new GasEstimator(spyLogger);
@@ -413,7 +420,7 @@ describe("Relayer.ts", function () {
           defaultSlowRelayFeePct,
           defaultInstantRelayFeePct,
           currentBlockTime,
-          defaultRealizedLpFeePct
+          calculateRealizedLpFeePct(rateModel, toBNWei("0"), toBNWei("0.01")) // compute the expected fee for 1% utilization
         )
         .send({ from: l1Owner });
 

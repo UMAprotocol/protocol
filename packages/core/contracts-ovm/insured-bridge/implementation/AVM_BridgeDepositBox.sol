@@ -2,7 +2,7 @@
 pragma solidity >=0.7.6;
 
 import "./BridgeDepositBox.sol";
-import "../external/arbitrum/AVM_CrossDomainEnabled.sol";
+import "../external/AVM_CrossDomainEnabled.sol";
 
 interface StandardBridgeLike {
     function outboundTransfer(
@@ -24,17 +24,19 @@ contract AVM_BridgeDepositBox is BridgeDepositBox, AVM_CrossDomainEnabled {
 
     /**
      * @notice Construct the Arbitrum Bridge Deposit Box
+     * @param _inbox Contract that sends generalized messages to the Arbitrum chain.
      * @param _l2GatewayRouter Address of the Arbitrum L2 token gateway router for sending tokens from L2->L1.
      * @param _crossDomainAdmin Address of the L1 contract that can call admin functions on this contract from L1.
      * @param _minimumBridgingDelay Minimum second that must elapse between L2->L1 token transfer to prevent dos.
      * @param timerAddress Timer used to synchronize contract time in testing. Set to 0x000... in production.
      */
     constructor(
+        address _inbox,
         address _l2GatewayRouter,
         address _crossDomainAdmin,
         uint64 _minimumBridgingDelay,
         address timerAddress
-    ) BridgeDepositBox(_minimumBridgingDelay, 42161, timerAddress) {
+    ) BridgeDepositBox(_minimumBridgingDelay, 42161, timerAddress) AVM_CrossDomainEnabled(_inbox) {
         l2GatewayRouter = _l2GatewayRouter;
         _setCrossDomainAdmin(_crossDomainAdmin);
     }
