@@ -61,26 +61,26 @@ export class InsuredBridgeL2Client {
     };
     // TODO: update this state retrieval to include looking for L2 liquidity in the deposit box that can be sent over
     // the bridge. This should consider the minimumBridgingDelay and the lastBridgeTime for a respective L2Token.
-    const [depositRelayedEvents] = await Promise.all([
+    const [fundsDepositedEvents] = await Promise.all([
       this.bridgeDepositBox.getPastEvents("FundsDeposited", blockSearchConfig),
     ]);
 
-    for (const depositRelayedEvent of depositRelayedEvents) {
+    for (const fundsDepositedEvent of fundsDepositedEvents) {
       const depositData = {
-        chainId: Number(depositRelayedEvent.returnValues.chainId),
-        depositId: Number(depositRelayedEvent.returnValues.depositId),
+        chainId: Number(fundsDepositedEvent.returnValues.chainId),
+        depositId: Number(fundsDepositedEvent.returnValues.depositId),
         depositHash: "", // Filled in after initialization of the remaining variables.
-        l1Recipient: depositRelayedEvent.returnValues.l1Recipient,
-        l2Sender: depositRelayedEvent.returnValues.l2Sender,
-        l1Token: depositRelayedEvent.returnValues.l1Token,
-        amount: depositRelayedEvent.returnValues.amount,
-        slowRelayFeePct: depositRelayedEvent.returnValues.slowRelayFeePct,
-        instantRelayFeePct: depositRelayedEvent.returnValues.instantRelayFeePct,
-        quoteTimestamp: Number(depositRelayedEvent.returnValues.quoteTimestamp),
-        depositContract: depositRelayedEvent.address,
+        l1Recipient: fundsDepositedEvent.returnValues.l1Recipient,
+        l2Sender: fundsDepositedEvent.returnValues.l2Sender,
+        l1Token: fundsDepositedEvent.returnValues.l1Token,
+        amount: fundsDepositedEvent.returnValues.amount,
+        slowRelayFeePct: fundsDepositedEvent.returnValues.slowRelayFeePct,
+        instantRelayFeePct: fundsDepositedEvent.returnValues.instantRelayFeePct,
+        quoteTimestamp: Number(fundsDepositedEvent.returnValues.quoteTimestamp),
+        depositContract: fundsDepositedEvent.address,
       };
       depositData.depositHash = this.generateDepositHash(depositData);
-      this.deposits[depositRelayedEvent.returnValues.depositId] = depositData;
+      this.deposits[fundsDepositedEvent.returnValues.depositId] = depositData;
     }
 
     this.firstBlockToSearch = blockSearchConfig.toBlock + 1;

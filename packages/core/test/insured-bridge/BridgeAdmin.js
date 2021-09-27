@@ -25,6 +25,7 @@ let timer;
 
 // Test function inputs
 const defaultGasLimit = 1_000_000;
+const defaultGasPrice = toWei("1", "gwei");
 const defaultIdentifier = utf8ToHex("IS_CROSS_CHAIN_RELAY_VALID");
 const defaultLiveness = 7200;
 const defaultProposerBondPct = toWei("0.05");
@@ -166,7 +167,7 @@ describe("BridgeAdmin", () => {
           assert(
             await didContractThrow(
               bridgeAdmin.methods
-                .whitelistToken(chainId, l1Token, l2Token, bridgePool.options.address, defaultGasLimit)
+                .whitelistToken(chainId, l1Token, l2Token, bridgePool.options.address, defaultGasLimit, defaultGasPrice)
                 .send({ from: rando })
             ),
             "OnlyOwner modifier not enforced"
@@ -176,7 +177,7 @@ describe("BridgeAdmin", () => {
           assert(
             await didContractThrow(
               bridgeAdmin.methods
-                .whitelistToken(chainId, l1Token, l2Token, bridgePool.options.address, defaultGasLimit)
+                .whitelistToken(chainId, l1Token, l2Token, bridgePool.options.address, defaultGasLimit, defaultGasPrice)
                 .send({ from: owner })
             ),
             "Deposit contract not set"
@@ -189,7 +190,7 @@ describe("BridgeAdmin", () => {
           assert(
             await didContractThrow(
               bridgeAdmin.methods
-                .whitelistToken(chainId, l1Token, l2Token, bridgePool.options.address, defaultGasLimit)
+                .whitelistToken(chainId, l1Token, l2Token, bridgePool.options.address, defaultGasLimit, defaultGasPrice)
                 .send({ from: owner })
             ),
             "L1 token is not whitelisted collateral"
@@ -200,7 +201,14 @@ describe("BridgeAdmin", () => {
           assert(
             await didContractThrow(
               bridgeAdmin.methods
-                .whitelistToken(chainId, l1Token, ZERO_ADDRESS, bridgePool.options.address, defaultGasLimit)
+                .whitelistToken(
+                  chainId,
+                  l1Token,
+                  ZERO_ADDRESS,
+                  bridgePool.options.address,
+                  defaultGasLimit,
+                  defaultGasPrice
+                )
                 .send({ from: owner })
             ),
             "L2 token cannot be zero address"
@@ -210,7 +218,7 @@ describe("BridgeAdmin", () => {
           assert(
             await didContractThrow(
               bridgeAdmin.methods
-                .whitelistToken(chainId, l1Token, l2Token, ZERO_ADDRESS, defaultGasLimit)
+                .whitelistToken(chainId, l1Token, l2Token, ZERO_ADDRESS, defaultGasLimit, defaultGasPrice)
                 .send({ from: owner })
             ),
             "BridgePool cannot be zero address"
@@ -218,7 +226,7 @@ describe("BridgeAdmin", () => {
 
           // Successful call
           await bridgeAdmin.methods
-            .whitelistToken(chainId, l1Token, l2Token, bridgePool.options.address, defaultGasLimit)
+            .whitelistToken(chainId, l1Token, l2Token, bridgePool.options.address, defaultGasLimit, defaultGasPrice)
             .send({ from: owner });
         });
         it("Add token mapping on L1 and sends xchain message", async () => {
@@ -227,7 +235,7 @@ describe("BridgeAdmin", () => {
             .send({ from: owner });
           await collateralWhitelist.methods.addToWhitelist(l1Token).send({ from: owner });
           const whitelistTxn = await bridgeAdmin.methods
-            .whitelistToken(chainId, l1Token, l2Token, bridgePool.options.address, defaultGasLimit)
+            .whitelistToken(chainId, l1Token, l2Token, bridgePool.options.address, defaultGasLimit, defaultGasPrice)
             .send({ from: owner });
 
           // Check for L1 logs and state change
@@ -253,6 +261,7 @@ describe("BridgeAdmin", () => {
             return (
               ev.target === depositBoxImpersonator &&
               ev.gasLimit === defaultGasLimit.toString() &&
+              ev.gasPrice === defaultGasPrice &&
               ev.message === expectedAbiData
             );
           });
@@ -262,7 +271,7 @@ describe("BridgeAdmin", () => {
         it("Basic checks", async () => {
           assert(
             await didContractThrow(
-              bridgeAdmin.methods.setBridgeAdmin(chainId, rando, defaultGasLimit).send({ from: rando })
+              bridgeAdmin.methods.setBridgeAdmin(chainId, rando, defaultGasLimit, defaultGasPrice).send({ from: rando })
             ),
             "OnlyOwner modifier not enforced"
           );
@@ -270,7 +279,7 @@ describe("BridgeAdmin", () => {
           // Fails if depositContract not set in BridgeRouter
           assert(
             await didContractThrow(
-              bridgeAdmin.methods.setBridgeAdmin(chainId, rando, defaultGasLimit).send({ from: owner })
+              bridgeAdmin.methods.setBridgeAdmin(chainId, rando, defaultGasLimit, defaultGasPrice).send({ from: owner })
             ),
             "Deposit contract not set"
           );
@@ -281,20 +290,24 @@ describe("BridgeAdmin", () => {
           // Admin cannot be 0x0
           assert(
             await didContractThrow(
-              bridgeAdmin.methods.setBridgeAdmin(chainId, ZERO_ADDRESS, defaultGasLimit).send({ from: owner })
+              bridgeAdmin.methods
+                .setBridgeAdmin(chainId, ZERO_ADDRESS, defaultGasLimit, defaultGasPrice)
+                .send({ from: owner })
             ),
             "Cannot set to 0 address"
           );
 
           // Successful call
-          await bridgeAdmin.methods.setBridgeAdmin(chainId, rando, defaultGasLimit).send({ from: owner });
+          await bridgeAdmin.methods
+            .setBridgeAdmin(chainId, rando, defaultGasLimit, defaultGasPrice)
+            .send({ from: owner });
         });
         it("Changes admin address", async () => {
           await bridgeAdmin.methods
             .setDepositContract(chainId, depositBoxImpersonator, messenger.options.address)
             .send({ from: owner });
           const setAdminTxn = await bridgeAdmin.methods
-            .setBridgeAdmin(chainId, rando, defaultGasLimit)
+            .setBridgeAdmin(chainId, rando, defaultGasLimit, defaultGasPrice)
             .send({ from: owner });
 
           // Check for L1 logs and state change
@@ -308,6 +321,7 @@ describe("BridgeAdmin", () => {
             return (
               ev.target === depositBoxImpersonator &&
               ev.gasLimit === defaultGasLimit.toString() &&
+              ev.gasPrice === defaultGasPrice &&
               ev.message === expectedAbiData
             );
           });
@@ -318,7 +332,7 @@ describe("BridgeAdmin", () => {
           assert(
             await didContractThrow(
               bridgeAdmin.methods
-                .setMinimumBridgingDelay(chainId, defaultBridgingDelay, defaultGasLimit)
+                .setMinimumBridgingDelay(chainId, defaultBridgingDelay, defaultGasLimit, defaultGasPrice)
                 .send({ from: rando })
             ),
             "OnlyOwner modifier not enforced"
@@ -328,7 +342,7 @@ describe("BridgeAdmin", () => {
           assert(
             await didContractThrow(
               bridgeAdmin.methods
-                .setMinimumBridgingDelay(chainId, defaultBridgingDelay, defaultGasLimit)
+                .setMinimumBridgingDelay(chainId, defaultBridgingDelay, defaultGasLimit, defaultGasPrice)
                 .send({ from: owner })
             ),
             "Deposit contract not set"
@@ -339,7 +353,7 @@ describe("BridgeAdmin", () => {
 
           // Successful call
           await bridgeAdmin.methods
-            .setMinimumBridgingDelay(chainId, defaultBridgingDelay, defaultGasLimit)
+            .setMinimumBridgingDelay(chainId, defaultBridgingDelay, defaultGasLimit, defaultGasPrice)
             .send({ from: owner });
         });
         it("Sets delay", async () => {
@@ -347,7 +361,7 @@ describe("BridgeAdmin", () => {
             .setDepositContract(chainId, depositBoxImpersonator, messenger.options.address)
             .send({ from: owner });
           const setDelayTxn = await bridgeAdmin.methods
-            .setMinimumBridgingDelay(chainId, defaultBridgingDelay, defaultGasLimit)
+            .setMinimumBridgingDelay(chainId, defaultBridgingDelay, defaultGasLimit, defaultGasPrice)
             .send({ from: owner });
 
           // Check for L1 logs and state change
@@ -361,6 +375,7 @@ describe("BridgeAdmin", () => {
             return (
               ev.target === depositBoxImpersonator &&
               ev.gasLimit === defaultGasLimit.toString() &&
+              ev.gasPrice === defaultGasPrice &&
               ev.message === expectedAbiData
             );
           });
@@ -370,7 +385,9 @@ describe("BridgeAdmin", () => {
         it("Basic checks", async () => {
           assert(
             await didContractThrow(
-              bridgeAdmin.methods.setEnableDeposits(chainId, l2Token, false, defaultGasLimit).send({ from: rando })
+              bridgeAdmin.methods
+                .setEnableDeposits(chainId, l2Token, false, defaultGasLimit, defaultGasPrice)
+                .send({ from: rando })
             ),
             "OnlyOwner modifier not enforced"
           );
@@ -378,7 +395,9 @@ describe("BridgeAdmin", () => {
           // Fails if depositContract not set in BridgeRouter
           assert(
             await didContractThrow(
-              bridgeAdmin.methods.setEnableDeposits(chainId, l2Token, false, defaultGasLimit).send({ from: owner })
+              bridgeAdmin.methods
+                .setEnableDeposits(chainId, l2Token, false, defaultGasLimit, defaultGasPrice)
+                .send({ from: owner })
             ),
             "Deposit contract not set"
           );
@@ -387,14 +406,16 @@ describe("BridgeAdmin", () => {
             .send({ from: owner });
 
           // Successful call
-          await bridgeAdmin.methods.setEnableDeposits(chainId, l2Token, false, defaultGasLimit).send({ from: owner });
+          await bridgeAdmin.methods
+            .setEnableDeposits(chainId, l2Token, false, defaultGasLimit, defaultGasPrice)
+            .send({ from: owner });
         });
         it("Sets boolean value", async () => {
           await bridgeAdmin.methods
             .setDepositContract(chainId, depositBoxImpersonator, messenger.options.address)
             .send({ from: owner });
           const pauseTxn = await bridgeAdmin.methods
-            .setEnableDeposits(chainId, l2Token, false, defaultGasLimit)
+            .setEnableDeposits(chainId, l2Token, false, defaultGasLimit, defaultGasPrice)
             .send({ from: owner });
 
           // Check for L1 logs and state change
@@ -408,6 +429,7 @@ describe("BridgeAdmin", () => {
             return (
               ev.target === depositBoxImpersonator &&
               ev.gasLimit === defaultGasLimit.toString() &&
+              ev.gasPrice === defaultGasPrice &&
               ev.message === expectedAbiData
             );
           });

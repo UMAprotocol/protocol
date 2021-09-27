@@ -1,13 +1,14 @@
 import Web3 from "web3";
 const { toBN } = Web3.utils;
 
-import { ZERO_ADDRESS } from "@uma/common";
+import { ZERO_ADDRESS, findBlockNumberAtTimestamp } from "@uma/common";
 import { getAbi } from "@uma/contracts-node";
 import { Deposit } from "./InsuredBridgeL2Client";
+import { RateModel, calculateRealizedLpFeePct } from "../helpers/acrossFeesCalculator";
 
 import type { BridgeAdminInterfaceWeb3, BridgePoolWeb3 } from "@uma/contracts-node";
-import type { BN } from "@uma/common";
 import type { Logger } from "winston";
+import type { BN } from "@uma/common";
 
 enum RelayState {
   Pending,
@@ -50,12 +51,11 @@ export class InsuredBridgeL1Client {
 
   private firstBlockToSearch: number;
 
-  private readonly toWei = Web3.utils.toWei;
-
   constructor(
     private readonly logger: Logger,
     readonly l1Web3: Web3,
     readonly bridgeAdminAddress: string,
+    readonly rateModels: { [key: string]: RateModel },
     readonly startingBlockNumber = 0,
     readonly endingBlockNumber: number | null = null
   ) {
@@ -103,8 +103,20 @@ export class InsuredBridgeL1Client {
   }
 
   async calculateRealizedLpFeePctForDeposit(deposit: Deposit): Promise<BN> {
-    console.log(deposit);
-    return toBN(this.toWei("0.05"));
+    if (this.rateModels === undefined || this.rateModels[deposit.l1Token] === undefined)
+      throw new Error("No rate model for l1Token");
+
+    const quoteBlockNumber = (await findBlockNumberAtTimestamp(this.l1Web3, deposit.quoteTimestamp)).blockNumber;
+    const bridgePool = this.getBridgePoolForDeposit(deposit);
+    const [liquidityUtilizationCurrent, liquidityUtilizationPostRelay] = await Promise.all([
+      bridgePool.methods.liquidityUtilizationCurrent().call(undefined, quoteBlockNumber),
+      bridgePool.methods.liquidityUtilizationPostRelay(deposit.amount.toString()).call(undefined, quoteBlockNumber),
+    ]);
+    return calculateRealizedLpFeePct(
+      this.rateModels[deposit.l1Token],
+      toBN(liquidityUtilizationCurrent),
+      toBN(liquidityUtilizationPostRelay)
+    );
   }
 
   getDepositRelayState(l2Deposit: Deposit): ClientRelayState {
@@ -118,6 +130,7 @@ export class InsuredBridgeL1Client {
   }
 
   getBridgePoolForDeposit(l2Deposit: Deposit): BridgePoolWeb3 {
+    if (!this.bridgePools[l2Deposit.l1Token]) throw new Error(`No bridge pool initialized for ${l2Deposit.l1Token}`);
     return this.bridgePools[l2Deposit.l1Token];
   }
 

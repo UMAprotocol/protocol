@@ -3,6 +3,7 @@ const { web3 } = require("hardhat");
 const { interfaceName, TokenRolesEnum, InsuredBridgeRelayStateEnum, ZERO_ADDRESS } = require("@uma/common");
 const { getContract } = hre;
 const { utf8ToHex, toWei, toBN, soliditySha3 } = web3.utils;
+const toBNWei = (number) => toBN(toWei(number.toString()).toString());
 
 const winston = require("winston");
 const { assert } = require("chai");
@@ -53,10 +54,11 @@ const defaultProposerBondPct = toWei("0.05");
 const defaultSlowRelayFeePct = toWei("0.01");
 const defaultRealizedLpFee = toWei("0.1");
 const defaultInstantRelayFeePct = toWei("0.01");
-const defaultQuoteTimestamp = 100000;
 const lpFeeRatePerSecond = toWei("0.0000015");
 const finalFee = toWei("1");
 const defaultGasLimit = 1_000_000;
+const defaultGasPrice = toWei("1", "gwei");
+const rateModel = { UBar: toBNWei("0.65"), R0: toBNWei("0.00"), R1: toBNWei("0.08"), R2: toBNWei("1.00") };
 
 describe("InsuredBridgeL1Client", function () {
   let accounts,
@@ -211,7 +213,14 @@ describe("InsuredBridgeL1Client", function () {
 
     // Add L1-L2 token mapping
     await bridgeAdmin.methods
-      .whitelistToken(chainId, l1Token.options.address, l2Token, bridgePool.options.address, defaultGasLimit)
+      .whitelistToken(
+        chainId,
+        l1Token.options.address,
+        l2Token,
+        bridgePool.options.address,
+        defaultGasLimit,
+        defaultGasPrice
+      )
       .send({ from: owner });
 
     // Add some liquidity to the pool to facilitate bridging actions.
@@ -225,7 +234,8 @@ describe("InsuredBridgeL1Client", function () {
     // DummyLogger will not print anything to console as only capture `info` level events.
     const dummyLogger = winston.createLogger({ level: "info", transports: [new winston.transports.Console()] });
 
-    client = new InsuredBridgeL1Client(dummyLogger, web3, bridgeAdmin.options.address);
+    const rateModels = { [l1Token.options.address]: rateModel };
+    client = new InsuredBridgeL1Client(dummyLogger, web3, bridgeAdmin.options.address, rateModels);
 
     // Create some data for relay the initial relay action.
 
@@ -235,10 +245,11 @@ describe("InsuredBridgeL1Client", function () {
       depositId: 1,
       l1Recipient: l1Recipient,
       l2Sender: depositor,
+      l1Token: l1Token.options.address,
       amount: relayAmount,
       slowRelayFeePct: defaultSlowRelayFeePct,
       instantRelayFeePct: defaultInstantRelayFeePct,
-      quoteTimestamp: defaultQuoteTimestamp,
+      quoteTimestamp: (await web3.eth.getBlock("latest")).timestamp, // set this to the current block timestamp.
     };
     relayData = {
       relayId: 0,
@@ -470,7 +481,8 @@ describe("InsuredBridgeL1Client", function () {
           l1Token2.options.address,
           l2Token2Address,
           bridgePool2.options.address,
-          defaultGasLimit
+          defaultGasLimit,
+          defaultGasPrice
         )
         .send({ from: owner });
 
@@ -607,6 +619,39 @@ describe("InsuredBridgeL1Client", function () {
       assert.equal(
         JSON.stringify(await client.getPendingRelayedDepositsForL1Token(l1Token2.options.address)),
         JSON.stringify(expectedBridgePool2Relays)
+      );
+    });
+  });
+  describe("Realized liquidity provision calculation", function () {
+    // The tests below do not validate the calculateRealizedLpFeePct logic. This is tested separately in helper unit
+    // tests. See the tests in financial-templates-lib/test/helpers/acrossFeeCalculator.js. Rather, the tests here
+    // validate that with modified liquidity the quoted rates update as expected.
+
+    it("Correctly calculates the realized LP fee for a given deposit", async function () {
+      // The before each at the top of this file added 100 units of liquidity to the pool. The deposit data, as created
+      // at the top, is for a relay of 10 units. This should increment the pool utilization from 0% to 10%. From the
+      // jupiter notebook, this should be a rate of 0.000117987509354032.
+
+      await client.update();
+      assert.equal(
+        (await client.calculateRealizedLpFeePctForDeposit(depositData)).toString(),
+        toWei("0.000117987509354032")
+      );
+
+      // Next, relay a large deposit of 60 units. this takes the pool utilization from 0% to 60% (note we did not
+      // actually relay the relay in `depositData` so utilization is still 0 before this action).
+      const totalRelayBond = toBN(relayAmount).mul(toBN(defaultProposerBondPct)).muln(6);
+      await l1Token.methods.mint(relayer, totalRelayBond).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      await bridgePool.methods.relayDeposit(...generateRelayParams({ amount: toWei("60") })).send({ from: relayer });
+
+      // Now, as the pool utilization has increased, the quote we get from the client should increment accordingly.
+      // The `depositData` should bring the utilization from 60% to 70%. From the notebook, this should be a realize
+      // LP rate of 0.11417582417582407
+      await client.update();
+      assert.equal(
+        (await client.calculateRealizedLpFeePctForDeposit(depositData)).toString(),
+        toWei("0.002081296752280018")
       );
     });
   });

@@ -13,6 +13,7 @@ const { applyL1ToL2Alias } = require("./helpers/ArbitrumHelper");
 const { assert } = require("chai");
 
 // Tested contract
+const AVM_InboxMock = getContract("AVM_InboxMock");
 const BridgeDepositBox = getContract("AVM_BridgeDepositBox");
 const { deployContractMock } = require("./helpers/SmockitHelper");
 
@@ -24,7 +25,7 @@ const Token = getContract("ExpandedERC20");
 const Timer = getContract("Legacy_Timer");
 
 // Contract objects
-let depositBox, l1TokenAddress, l2Token, timer, l2GatewayRouterMock;
+let depositBox, l1TokenAddress, l2Token, timer, l2GatewayRouterMock, inbox;
 
 // As these tests are in the context of l2, we dont have the deployed notion of an "L1 Token". The L1 token is within
 // another domain (L1). To represent this, we can generate a random address to represent the L1 token.
@@ -63,7 +64,9 @@ describe("AVM_BridgeDepositBox", () => {
     // Setup the Arbitrum bridge contracts
     l2GatewayRouterMock = await deployContractMock("L2GatewayRouter", {}, L2GatewayRouter__factory);
 
+    inbox = await deployContractMock("AVM_InboxMock", {}, AVM_InboxMock);
     depositBox = await BridgeDepositBox.new(
+      inbox.options.address,
       l2GatewayRouterMock.options.address,
       bridgeAdmin,
       minimumBridgingDelay,
@@ -71,21 +74,21 @@ describe("AVM_BridgeDepositBox", () => {
     ).send({ from: deployer });
   });
   describe("Box admin logic", () => {
-    // Only the bridgeAdmin, called via the canonical bridge, can: a) change the L1 withdraw contract,
-    // b) whitelist collateral or c) disable deposits. In production, the bridgeAdmin will be the BridgePoolFactory.
-    // In these tests mock this as being any bridgeAdmin, calling via the l2MessengerImpersonator.
-    it("Change L1 bridge admin contract", async () => {
+    // Only the crossDomainAdmin, called via the canonical bridge, can: a) change the L1 withdraw contract,
+    // b) whitelist collateral or c) disable deposits. In production, the crossDomainAdmin will be the Messenger.
+    // In these tests mock this as being any crossDomainAdmin, calling via the l2MessengerImpersonator.
+    it("Change L1 admin contract", async () => {
       // Owner should start out as the set owner.
-      assert.equal(await depositBox.methods.bridgeAdmin().call(), bridgeAdmin);
+      assert.equal(await depositBox.methods.crossDomainAdmin().call(), bridgeAdmin);
 
       // Trying to transfer ownership from non-cross-domain owner should fail.
-      assert(await didContractThrow(depositBox.methods.setBridgeAdmin(user1).send({ from: rando })));
+      assert(await didContractThrow(depositBox.methods.setCrossDomainAdmin(user1).send({ from: rando })));
 
       // Calling from the correct cross domain aliased address should work.
-      const tx = await depositBox.methods.setBridgeAdmin(user1).send({ from: bridgeAdminCrossDomainAlias });
-      assert.equal(await depositBox.methods.bridgeAdmin().call(), user1);
-      await assertEventEmitted(tx, depositBox, "SetBridgeAdmin", (ev) => {
-        return ev.newBridgeAdmin == user1;
+      const tx = await depositBox.methods.setCrossDomainAdmin(user1).send({ from: bridgeAdminCrossDomainAlias });
+      assert.equal(await depositBox.methods.crossDomainAdmin().call(), user1);
+      await assertEventEmitted(tx, depositBox, "SetXDomainAdmin", (ev) => {
+        return ev.newAdmin == user1;
       });
     });
 
