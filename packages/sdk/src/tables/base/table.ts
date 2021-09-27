@@ -50,5 +50,3 @@ export default function Table<I, D, S extends stores.Store<I, D>>(
     type,
   };
 }
-
-export type Table = ReturnType<typeof Table>;
