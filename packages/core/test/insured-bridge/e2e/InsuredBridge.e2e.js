@@ -183,6 +183,7 @@ describe("Insured bridge e2e tests", () => {
         .connect(l1Wallet)
         .deploy(l1Finder.address, optimisticOracleLiveness, proposerBondPct, identifier);
       await l1BridgeAdmin.deployTransaction.wait();
+      await l1OptimismMessenger.transferOwnership(l1BridgeAdmin.address);
 
       l1BridgePool = await factory__L1_BridgePool
         .connect(l1Wallet)
@@ -191,7 +192,7 @@ describe("Insured bridge e2e tests", () => {
 
       l2BridgeDepositBox = await factory__L2_BridgeDepositBox
         .connect(l2Wallet)
-        .deploy(l1BridgeAdmin.address, minimumBridgingDelay, l2Timer.address, OPTIMISM_GAS_OPTS);
+        .deploy(l1OptimismMessenger.address, minimumBridgingDelay, l2Timer.address, OPTIMISM_GAS_OPTS);
       await l2BridgeDepositBox.deployTransaction.wait();
 
       // Set deposit contract on deposit Admin.
