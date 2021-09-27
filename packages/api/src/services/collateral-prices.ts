@@ -18,7 +18,7 @@ export default function (config: Config, appState: Dependencies) {
   // if we have a new emp address, this will create a new price table structure to store historical price data
   function getOrCreateHistoryTable(address: string) {
     if (prices[currency].history[address] == null) {
-      prices[currency].history[address] = uma.tables.historicalPrices.SortedJsMap();
+      prices[currency].history[address] = uma.tables.historicalPrices.Table();
     }
     return prices[currency].history[address];
   }

@@ -131,7 +131,7 @@ export default (config: Config, appState: Dependencies) => {
     }
   }
 
-  async function updateCreatedTimestamp(address: string, table: uma.tables.emps.JsMap) {
+  async function updateCreatedTimestamp(address: string, table: uma.tables.emps.Table) {
     const emp = await table.get(address);
     if (emp.createdTimestamp) return;
 

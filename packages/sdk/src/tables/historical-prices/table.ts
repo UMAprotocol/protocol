@@ -1,8 +1,10 @@
 import { Data, makeId } from "./utils";
-import { SortedJsMap } from "../generic";
+import BaseTable from "../base";
+import { SortedJsMap } from "../../stores";
+import type { SortedStore } from "../../stores";
 
-export const Table = (type = "Historical Price") => {
-  const table = SortedJsMap<string, Data>(type, makeId);
+export const Table = (type = "Historical Price", store: SortedStore<string, Data> = SortedJsMap()) => {
+  const table = BaseTable<string, Data, SortedStore<string, Data>>({ type, makeId }, store);
   function betweenByTimestamp(a: number, b: number) {
     return table.between(makeId({ timestamp: a }), makeId({ timestamp: b }));
   }

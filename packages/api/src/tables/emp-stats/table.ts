@@ -1,10 +1,11 @@
 import * as uma from "@uma/sdk";
 import { Data, makeId } from "./utils";
-const { JsMap } = uma.tables.generic;
-
+const BaseTable = uma.tables.base;
+const { JsMap } = uma.stores;
 const globalId = "global";
 export const Table = (type = "Emp Stat") => {
-  const table = JsMap<string, Data>(type, makeId);
+  const store = JsMap<string, Data>();
+  const table = BaseTable<string, Data, uma.stores.Store<string, Data>>({ type, makeId }, store);
   async function getOrCreate(address: string) {
     if (await table.has(makeId({ address }))) return table.get(makeId({ address }));
     return table.create({ address });

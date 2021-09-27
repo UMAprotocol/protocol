@@ -12,8 +12,8 @@ For this particular table, only timestamp is considered as part of the key. Time
 See [tests](./js-map.test.ts) for more example usage.
 
 ```js
-import uma from "@uma/sdk"
-const Table = uma.tables.prices.SortedJsMap
+import { stores, tables } from "@uma/sdk"
+const Table = tables.prices.Table
 
 const table = Table()
 
@@ -22,7 +22,7 @@ const data = {
   price: "100",
 }
 
-const result: uma.tables.prices.Data = await table.create(data)
+const result: tables.prices.Data = await table.create(data)
 // { id: '000000000000000000000010', timestamp: 10, price: '100' }
 
 // see libs/store/index.ts interface for all calls

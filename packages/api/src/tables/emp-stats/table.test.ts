@@ -1,10 +1,10 @@
 import assert from "assert";
-import { JsMap } from ".";
+import { Table } from ".";
 
 describe("emp stat table", function () {
   let table: any;
   it("init", function () {
-    table = JsMap();
+    table = Table();
     assert.ok(table);
   });
   it("create", async function () {
