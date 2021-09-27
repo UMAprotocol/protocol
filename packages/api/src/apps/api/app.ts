@@ -35,10 +35,12 @@ export default async (env: ProcessEnv) => {
   const oldestBlock = Number(env.OLDEST_BLOCK_MS || 10 * 60 * 60 * 24 * 1000);
 
   assert(updateRateS >= 1, "UPDATE_RATE_S must be 1 or higher");
-  const store = stores.JsMap<string, tables.emps.Data>();
-  const store2 = stores.JsMap<string, tables.emps.Data>();
-  const empsActiveTable = tables.emps.JsMap("Active Emp", store);
-  const empsExpiredTable = tables.emps.JsMap("Expired Emp", store2);
+
+  const empsActiveStore = stores.JsMap<string, tables.emps.Data>();
+  const empsExpiredStore = stores.JsMap<string, tables.emps.Data>();
+  const empsActiveTable = tables.emps.JsMap("Active Emp", empsActiveStore);
+  const empsExpiredTable = tables.emps.JsMap("Expired Emp", empsExpiredStore);
+
   // state shared between services
   const appState: AppState = {
     provider,
