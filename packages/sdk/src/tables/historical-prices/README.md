@@ -12,7 +12,7 @@ For this particular table, only timestamp is considered as part of the key. Time
 See [tests](./js-map.test.ts) for more example usage.
 
 ```js
-import { stores, tables } from '@uma/sdk'
+import { stores, tables } from "@uma/sdk"
 const Table = tables.prices.Table
 
 const table = Table()

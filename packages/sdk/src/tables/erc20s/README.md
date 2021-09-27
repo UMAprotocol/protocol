@@ -7,7 +7,7 @@ Stores basic information for erc20 tokens, keyed by token address.
 See [tests](./js-map.test.ts) for more example usage.
 
 ```js
-import { stores, tables } from '@uma/sdk'
+import { stores, tables } from "@uma/sdk"
 
 const table = tables.erc20s.Table()
 type Data = tables.erc20s.Data

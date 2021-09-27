@@ -7,7 +7,7 @@ Defines an ethereum block type and returns a base table typed to that. Currently
 See [tests](./js-map.test.ts) for more example usage.
 
 ```js
-import { stores, tables } from '@uma/sdk'
+import { stores, tables } from "@uma/sdk"
 const Table = tables.blocks.Table
 
 const table = tables.blocks.Table()
