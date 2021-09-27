@@ -1,3 +1,4 @@
+const { assert } = require("chai");
 const hre = require("hardhat");
 const { web3 } = require("hardhat");
 const {
@@ -10,8 +11,6 @@ const {
 } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;
 const { hexToUtf8, utf8ToHex, toWei, toBN, soliditySha3 } = web3.utils;
-
-const { assert } = require("chai");
 
 // Tested contracts
 const BridgePool = getContract("BridgePool");

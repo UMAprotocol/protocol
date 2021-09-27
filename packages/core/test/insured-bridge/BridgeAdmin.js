@@ -1,9 +1,8 @@
+const { assert } = require("chai");
 const hre = require("hardhat");
 const { didContractThrow, runDefaultFixture, ZERO_ADDRESS } = require("@uma/common");
 const { getContract, assertEventEmitted } = hre;
 const { hexToUtf8, utf8ToHex, toWei } = web3.utils;
-
-const { assert } = require("chai");
 
 // Tested contracts
 const MessengerMock = getContract("MessengerMock");

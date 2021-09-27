@@ -1,3 +1,5 @@
+const winston = require("winston");
+const { assert } = require("chai");
 const hre = require("hardhat");
 const { web3 } = require("hardhat");
 const { interfaceName, TokenRolesEnum, InsuredBridgeRelayStateEnum, ZERO_ADDRESS } = require("@uma/common");
@@ -5,9 +7,6 @@ const { SpyTransport, lastSpyLogIncludes } = require("../../dist/logger/SpyTrans
 const sinon = require("sinon");
 const { getContract } = hre;
 const { utf8ToHex, toWei, toBN, soliditySha3 } = web3.utils;
-
-const winston = require("winston");
-const { assert } = require("chai");
 
 const chainId = 10;
 const Messenger = getContract("MessengerMock");
