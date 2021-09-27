@@ -1,5 +1,5 @@
 import assert from "assert";
-import { JsMap } from ".";
+import { Table } from ".";
 
 const block = {
   number: 0,
@@ -9,7 +9,7 @@ const block = {
 describe("block map table", function () {
   let table: any;
   test("init", function () {
-    table = JsMap();
+    table = Table();
     assert.ok(table);
   });
   test("create", async function () {

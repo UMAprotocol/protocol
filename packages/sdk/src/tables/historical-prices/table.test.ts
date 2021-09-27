@@ -1,5 +1,5 @@
 import assert from "assert";
-import { SortedJsMap, makeId } from ".";
+import { Table, makeId } from ".";
 
 const data = {
   timestamp: 10,
@@ -8,7 +8,7 @@ const data = {
 describe("block map table", function () {
   let table: any;
   test("init", function () {
-    table = SortedJsMap();
+    table = Table();
     assert.ok(table);
   });
   test("create", async function () {
