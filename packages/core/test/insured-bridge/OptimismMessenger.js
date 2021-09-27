@@ -80,17 +80,15 @@ describe("OptimismMessenger integration with BridgeAdmin", () => {
       from: owner,
     });
   });
-  describe("relayMessage only callable by owner", function () {
-    it("Called with arbitrary params", async function () {
-      const relayMessageTxn = optimismMessenger.methods.relayMessage(
-        depositBox.options.address,
-        defaultGasLimit,
-        defaultGasPrice,
-        "0x"
-      );
-      assert(await didContractThrow(relayMessageTxn.send({ from: rando })));
-      assert.ok(await relayMessageTxn.send({ from: owner }));
-    });
+  it("relayMessage only callable by owner", async function () {
+    const relayMessageTxn = optimismMessenger.methods.relayMessage(
+      depositBox.options.address,
+      defaultGasLimit,
+      defaultGasPrice,
+      "0x"
+    );
+    assert(await didContractThrow(relayMessageTxn.send({ from: rando })));
+    assert.ok(await relayMessageTxn.send({ from: owner }));
   });
   describe("Cross domain Admin functions", () => {
     beforeEach(async function () {
