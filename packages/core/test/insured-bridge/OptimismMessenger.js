@@ -3,7 +3,7 @@ const { runDefaultFixture, ZERO_ADDRESS } = require("@uma/common");
 const { getContract } = hre;
 const { utf8ToHex, toWei } = web3.utils;
 
-const { deployOptimismContractMock } = require("./helpers/SmockitHelper");
+const { deployContractMock } = require("./helpers/SmockitHelper");
 
 const { assert } = require("chai");
 
@@ -55,7 +55,7 @@ describe("OptimismMessenger integration with BridgeAdmin", () => {
     await identifierWhitelist.methods.addSupportedIdentifier(defaultIdentifier).send({ from: owner });
   });
   beforeEach(async function () {
-    l1CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L1CrossDomainMessenger");
+    l1CrossDomainMessengerMock = await deployContractMock("OVM_L1CrossDomainMessenger");
 
     optimismMessenger = await OptimismMessenger.new(l1CrossDomainMessengerMock.options.address).send({ from: owner });
 

@@ -5,8 +5,12 @@ const { smockit } = require("@eth-optimism/smock");
 const hre = require("hardhat");
 
 // Deploy contract from @eth-optimism/contracts directory as a smockit
-async function deployOptimismContractMock(name, opts) {
-  const artifact = getContractDefinition(name);
+
+// TODO: this function is now somewhat janky. if an artifact is provided then it ignores the optimism getContractDefinition
+// and uses the provided artifact. else, it looks for an optimism contract matching to `name`. Refactor this to be clear
+// of the optimism dependency. Left for a later PR as this will introduce a meaningful amount of churn.
+async function deployContractMock(name, opts, artifact = null) {
+  if (!artifact) artifact = getContractDefinition(name);
 
   const factory = new hre.ethers.ContractFactory(artifact.abi, artifact.bytecode);
   let mock = await smockit(factory, opts);
@@ -17,4 +21,4 @@ async function deployOptimismContractMock(name, opts) {
   return mock;
 }
 
-module.exports = { deployOptimismContractMock };
+module.exports = { deployContractMock };

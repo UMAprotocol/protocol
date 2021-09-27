@@ -26,6 +26,12 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
 
     event SetBridgeAdmin(address newBridgeAdmin);
 
+    /**
+     * @notice Construct the Optimism Bridge Deposit Box
+     * @param _bridgeAdmin Address of the Insured bridge L1 admin contract. Acts as the cross-domain owner from L1.
+     * @param _minimumBridgingDelay Minimum second that must elapse between L2->L1 token transfer to prevent dos.
+     * @param timerAddress Timer used to synchronize contract time in testing. Set to 0x000... in production.
+     */
     constructor(
         address _bridgeAdmin,
         uint64 _minimumBridgingDelay,
@@ -109,7 +115,7 @@ contract OVM_BridgeDepositBox is BridgeDepositBox, OVM_CrossDomainEnabled {
             whitelistedTokens[l2Token].l1BridgePool, // _to. Withdraw, over the bridge, to the l1 withdraw contract.
             bridgeDepositBoxBalance, // _amount. Send the full balance of the deposit box to bridge.
             l1Gas, // _l1Gas. Unused, but included for potential forward compatibility considerations
-            "0x" // _data. TODO: add additional info into this data prop this.
+            "" // _data. TODO: add additional info into this data prop this.
         );
 
         emit TokensBridged(l2Token, bridgeDepositBoxBalance, l1Gas, msg.sender);
