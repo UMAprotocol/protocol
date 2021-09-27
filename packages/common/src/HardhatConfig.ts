@@ -55,7 +55,7 @@ export function getHardhatConfig(
         "contracts/financial-templates/expiring-multiparty/Liquidatable.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
         "contracts/oracle/implementation/Voting.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
         "contracts/oracle/implementation/test/VotingTest.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
-        "contracts-ovm/insured-bridge/implementation/BridgePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
+        "contracts/insured-bridge/BridgePool.sol": LARGE_CONTRACT_COMPILER_SETTINGS,
       },
     },
     ovm: { solcVersion: "0.7.6" },
