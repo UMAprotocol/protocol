@@ -56,7 +56,6 @@
     "pretty-quick": "^2.0.1",
     "secp256k1": "^3.7.1",
     "solc-0.8": "npm:solc@^0.8.4",
-    "truffle": "^5.2.3",
     "typescript": "^4.3.5",
     "web3": "^1.5.0"
   },

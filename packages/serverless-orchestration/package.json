@@ -3,7 +3,6 @@
   "version": "2.4.1",
   "description": "Serverless orchestration scripts to run a parallel instances of scripts or bots",
   "dependencies": {
-    "@truffle/contract": "^4.2.20",
     "@openzeppelin/contracts": "4.1.0",
     "@uma/common": "^2.6.0",
     "@uma/financial-templates-lib": "^2.6.1",
@@ -25,7 +24,6 @@
     "moment": "^2.24.0",
     "node-fetch": "^2.3.0",
     "supertest": "^4.0.2",
-    "truffle": "^5.2.3",
     "truffle-assertions": "^0.9.2"
   },
   "homepage": "https://umaproject.org",
