@@ -4,7 +4,6 @@ import moment from "moment";
 import Events from "events";
 
 import { tables, Coingecko, utils, Multicall2 } from "@uma/sdk";
-import { stores } from "@uma/sdk";
 
 import * as Services from "../../services";
 import Express from "../../services/express-channels";
@@ -46,19 +45,16 @@ export default async (env: ProcessEnv) => {
   // services can emit events when necessary, though for now any services that depend on events must be in same process
   const serviceEvents = new Events();
 
-  const empsActiveTable = tables.emps.JsMap("Active Emp");
-  const empsExpiredTable = tables.emps.JsMap("Expired Emp");
-
   // state shared between services
   const appState: AppState = {
     provider,
     web3,
     coingecko: new Coingecko(),
     zrx: new Zrx(env.zrxBaseUrl),
-    blocks: tables.blocks.JsMap(),
+    blocks: tables.blocks.Table(),
     emps: {
-      active: empsActiveTable,
-      expired: empsExpiredTable,
+      active: tables.emps.Table("Active Emp"),
+      expired: tables.emps.Table("Expired Emp"),
     },
     prices: {
       usd: {
@@ -73,31 +69,31 @@ export default async (env: ProcessEnv) => {
     marketPrices: {
       usdc: {
         latest: {},
-        history: empStatsHistory.SortedJsMap("Market Price"),
+        history: empStatsHistory.Table("Market Price"),
       },
     },
-    erc20s: tables.erc20s.JsMap(),
+    erc20s: tables.erc20s.Table(),
     stats: {
       emp: {
         usd: {
           latest: {
-            tvm: empStats.JsMap("Latest Tvm"),
-            tvl: empStats.JsMap("Latest Tvl"),
+            tvm: empStats.Table("Latest Tvm"),
+            tvl: empStats.Table("Latest Tvl"),
           },
           history: {
-            tvm: empStatsHistory.SortedJsMap("Tvm History"),
-            tvl: empStatsHistory.SortedJsMap("Tvl History"),
+            tvm: empStatsHistory.Table("Tvm History"),
+            tvl: empStatsHistory.Table("Tvl History"),
           },
         },
       },
       lsp: {
         usd: {
           latest: {
-            tvl: empStats.JsMap("Latest Tvl"),
-            tvm: empStats.JsMap("Latest Tvm"),
+            tvl: empStats.Table("Latest Tvl"),
+            tvm: empStats.Table("Latest Tvm"),
           },
           history: {
-            tvl: empStatsHistory.SortedJsMap("Tvl History"),
+            tvl: empStatsHistory.Table("Tvl History"),
           },
         },
       },
@@ -107,7 +103,7 @@ export default async (env: ProcessEnv) => {
             tvl: [0, "0"],
           },
           history: {
-            tvl: empStatsHistory.SortedJsMap("Tvl Global History"),
+            tvl: empStatsHistory.Table("Tvl Global History"),
           },
         },
       },
@@ -124,8 +120,8 @@ export default async (env: ProcessEnv) => {
     shortAddresses: new Set<string>(),
     multicall2: new Multicall2(env.MULTI_CALL_2_ADDRESS, provider),
     lsps: {
-      active: lsps.JsMap("Active LSP"),
-      expired: lsps.JsMap("Expired LSP"),
+      active: lsps.Table("Active LSP"),
+      expired: lsps.Table("Expired LSP"),
     },
   };
 

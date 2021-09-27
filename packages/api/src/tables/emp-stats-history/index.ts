@@ -1,2 +1,2 @@
-export { Table as SortedJsMap } from "./sorted-js-map";
+export { Table } from "./sorted-js-map";
 export * from "./utils";
