@@ -46,10 +46,8 @@ export default async (env: ProcessEnv) => {
   // services can emit events when necessary, though for now any services that depend on events must be in same process
   const serviceEvents = new Events();
 
-  const empsActiveStore = stores.JsMap<string, tables.emps.Data>();
-  const empsExpiredStore = stores.JsMap<string, tables.emps.Data>();
-  const empsActiveTable = tables.emps.JsMap("Active Emp", empsActiveStore);
-  const empsExpiredTable = tables.emps.JsMap("Expired Emp", empsExpiredStore);
+  const empsActiveTable = tables.emps.JsMap("Active Emp");
+  const empsExpiredTable = tables.emps.JsMap("Expired Emp");
 
   // state shared between services
   const appState: AppState = {
