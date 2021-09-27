@@ -131,7 +131,9 @@ export default async (env: ProcessEnv) => {
     // these services can optionally be configured with a config object, but currently they are undefined or have defaults
     blocks: Services.Blocks(undefined, appState),
     emps: Services.EmpState({ debug }, appState),
-    registry: await Services.Registry({ debug }, appState, (data) => serviceEvents.emit("empRegistry", data)),
+    registry: await Services.Registry({ debug }, appState, (event, data) =>
+      serviceEvents.emit("empRegistry", event, data)
+    ),
     collateralPrices: Services.CollateralPrices({ debug }, appState),
     syntheticPrices: Services.SyntheticPrices(
       {
@@ -146,8 +148,8 @@ export default async (env: ProcessEnv) => {
     erc20s: Services.Erc20s({ debug }, appState),
     empStats: Services.stats.Emp({ debug }, appState),
     marketPrices: Services.MarketPrices({ debug }, appState),
-    lspCreator: await Services.MultiLspCreator({ debug, addresses: lspCreatorAddresses }, appState, (data) =>
-      serviceEvents.emit("multiLspCreator", data)
+    lspCreator: await Services.MultiLspCreator({ debug, addresses: lspCreatorAddresses }, appState, (event, data) =>
+      serviceEvents.emit("multiLspCreator", event, data)
     ),
     lsps: Services.LspState({ debug }, appState),
     lspStats: Services.stats.Lsp({ debug }, appState),
@@ -192,12 +194,18 @@ export default async (env: ProcessEnv) => {
   console.log("Started Express Server, API accessible");
 
   async function detectNewContracts(startBlock: number, endBlock: number) {
+    // ignore case when startblock == endblock, this can happen when loop is run before a new block has changed
+    if (startBlock === endBlock) return;
+    assert(startBlock < endBlock, "Startblock must be lower than endBlock");
     await services.registry(startBlock, endBlock);
     await services.lspCreator.update(startBlock, endBlock);
   }
 
   // break all state updates by block events into a cleaner function
   async function updateContractState(startBlock: number, endBlock: number) {
+    // ignore case when startblock == endblock, this can happen when loop is run before a new block has changed
+    if (startBlock === endBlock) return;
+    assert(startBlock < endBlock, "Startblock must be lower than endBlock");
     await services.lsps.update(startBlock, endBlock);
     await services.erc20s.update();
     appState.lastBlockUpdate = endBlock;
