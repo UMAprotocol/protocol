@@ -1,7 +1,7 @@
 pragma solidity ^0.8.0;
-import "../../external/arbitrum/interfaces/iArbitrum_Inbox.sol";
+import "../../external/avm/interfaces/iArbitrum_Inbox.sol";
 
-contract ArbitrumInboxMock is iArbitrum_Inbox {
+contract Arbitrum_InboxMock is iArbitrum_Inbox {
     function createRetryableTicketNoRefundAliasRewrite(
         address destAddr,
         uint256 l2CallValue,

@@ -1,6 +1,6 @@
 pragma solidity ^0.8.0;
 
-import "../../external/arbitrum/interfaces/iArbitrum_Inbox.sol";
+import "../../external/avm/interfaces/iArbitrum_Inbox.sol";
 
 abstract contract Arbitrum_CrossDomainEnabled {
     iArbitrum_Inbox public immutable inbox;
