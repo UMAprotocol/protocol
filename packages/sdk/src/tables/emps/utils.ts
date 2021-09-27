@@ -8,7 +8,7 @@ export type Data = {
   address: string;
   priceIdentifier?: string | null;
   expirationTimestamp?: string | null;
-  withdrawLiveness?: string | null;
+  withdrawalLiveness?: string | null;
   tokenCurrency?: string | null;
   collateralCurrency?: string | null;
   collateralRequirement?: string | null;

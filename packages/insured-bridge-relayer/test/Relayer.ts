@@ -7,7 +7,6 @@ import {
   Deposit,
   ClientRelayState,
 } from "@uma/financial-templates-lib";
-const { predeploys } = require("@eth-optimism/contracts");
 import winston from "winston";
 import sinon from "sinon";
 import hre from "hardhat";
@@ -18,12 +17,12 @@ import { interfaceName, TokenRolesEnum, HRE } from "@uma/common";
 const { web3, getContract } = hre as HRE;
 const { toWei, toBN, utf8ToHex } = web3.utils;
 
-const { deployOptimismContractMock } = require("../../core/test/insured-bridge/helpers/SmockitHelper.js");
-
 // Helper contracts
+const chainId = 10;
+const Messenger = getContract("MessengerMock");
 const BridgePool = getContract("BridgePool");
 const BridgeAdmin = getContract("BridgeAdmin");
-const BridgeDepositBox = getContract("OVM_BridgeDepositBox");
+const BridgeDepositBox = getContract("BridgeDepositBoxMock");
 const Finder = getContract("Finder");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
 const AddressWhitelist = getContract("AddressWhitelist");
@@ -34,6 +33,7 @@ const Timer = getContract("Timer");
 const MockOracle = getContract("MockOracleAncillary");
 
 // Contract objects
+let messenger: any;
 let bridgeAdmin: any;
 let bridgePool: any;
 let bridgeDepositBox: any;
@@ -68,13 +68,12 @@ import { Relayer, ShouldRelay } from "../src/Relayer";
 describe("Relayer.ts", function () {
   let l1Accounts;
   let l1Owner: string;
-  let l1CrossDomainMessengerMock: any;
   let l1Relayer: any;
   let l1LiquidityProvider: any;
 
   let l2Owner: any;
   let l2Depositor: any;
-  let l2CrossDomainMessengerMock: any;
+  let l2BridgeAdminImpersonator: any;
 
   let spyLogger: any;
   let spy: any;
@@ -86,7 +85,7 @@ describe("Relayer.ts", function () {
 
   before(async function () {
     l1Accounts = await web3.eth.getAccounts();
-    [l1Owner, l1Relayer, l1LiquidityProvider, l2Owner, l2Depositor] = l1Accounts;
+    [l1Owner, l1Relayer, l1LiquidityProvider, l2Owner, l2Depositor, l2BridgeAdminImpersonator] = l1Accounts;
 
     // Deploy or fetch deployed contracts:
     finder = await Finder.new().send({ from: l1Owner });
@@ -135,10 +134,9 @@ describe("Relayer.ts", function () {
       .send({ from: l1Owner });
 
     // Deploy and setup BridgeAdmin:
-    l1CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L1CrossDomainMessenger");
+    messenger = await Messenger.new().send({ from: l1Owner });
     bridgeAdmin = await BridgeAdmin.new(
       finder.options.address,
-      l1CrossDomainMessengerMock.options.address,
       defaultLiveness,
       defaultProposerBondPct,
       defaultIdentifier
@@ -148,7 +146,7 @@ describe("Relayer.ts", function () {
     l2Timer = await Timer.new().send({ from: l2Owner });
 
     bridgeDepositBox = await BridgeDepositBox.new(
-      bridgeAdmin.options.address,
+      l2BridgeAdminImpersonator,
       minimumBridgingDelay,
       l2Timer.options.address
     ).send({ from: l2Owner });
@@ -156,7 +154,9 @@ describe("Relayer.ts", function () {
     l2Token = await ERC20.new("L2ERC20", "L2ERC20", 18).send({ from: l2Owner });
     await l2Token.methods.addMember(TokenRolesEnum.MINTER, l2Owner).send({ from: l2Owner });
 
-    await bridgeAdmin.methods.setDepositContract(bridgeDepositBox.options.address).send({ from: l1Owner });
+    await bridgeAdmin.methods
+      .setDepositContract(chainId, bridgeDepositBox.options.address, messenger.options.address)
+      .send({ from: l1Owner });
     // New BridgePool linked to BridgeAdmin
     bridgePool = await BridgePool.new(
       "LP Token",
@@ -169,17 +169,18 @@ describe("Relayer.ts", function () {
 
     // Add L1-L2 token mapping
     await bridgeAdmin.methods
-      .whitelistToken(l1Token.options.address, l2Token.options.address, bridgePool.options.address, defaultGasLimit)
+      .whitelistToken(
+        chainId,
+        l1Token.options.address,
+        l2Token.options.address,
+        bridgePool.options.address,
+        defaultGasLimit
+      )
       .send({ from: l1Owner });
 
-    l2CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L2CrossDomainMessenger", {
-      address: predeploys.OVM_L2CrossDomainMessenger,
-    });
-    await web3.eth.sendTransaction({ from: l2Owner, to: predeploys.OVM_L2CrossDomainMessenger, value: toWei("1") });
-    l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => bridgeAdmin.options.address);
     await bridgeDepositBox.methods
       .whitelistToken(l1Token.options.address, l2Token.options.address, bridgePool.options.address)
-      .send({ from: predeploys.OVM_L2CrossDomainMessenger });
+      .send({ from: l2BridgeAdminImpersonator });
 
     spy = sinon.spy();
     spyLogger = winston.createLogger({
@@ -203,7 +204,7 @@ describe("Relayer.ts", function () {
     beforeEach(async function () {
       // Create a sample deposit with default data.
       deposit = {
-        chainId: 10,
+        chainId: chainId,
         depositId: 0,
         depositHash: "0x123",
         l2Sender: l2Depositor,
@@ -213,6 +214,7 @@ describe("Relayer.ts", function () {
         slowRelayFeePct: defaultSlowRelayFeePct,
         instantRelayFeePct: defaultInstantRelayFeePct,
         quoteTimestamp: 1,
+        depositContract: bridgeDepositBox.options.address,
       };
 
       // Set the relay ability to any. This represents a deposit that has not had any data brought to L1 yet.
@@ -401,7 +403,7 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
       await bridgePool.methods
         .relayDeposit(
-          "10",
+          chainId,
           "0",
           l2Depositor,
           l2Depositor,
@@ -453,6 +455,49 @@ describe("Relayer.ts", function () {
       await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
       await relayer.checkForPendingDepositsAndRelay();
       assert.isTrue(lastSpyLogIncludes(spy, "Relay instantly sent"));
+    });
+    it("Does not speedup relays with invalid relay data", async function () {
+      // Make a deposit on L2 and relay it with invalid relay params. The relayer should detect that the relay params
+      // are invalid and skip it.
+      await l2Token.methods.approve(bridgeDepositBox.options.address, depositAmount).send({ from: l2Depositor });
+      const currentBlockTime = await bridgeDepositBox.methods.getCurrentTime().call();
+      await bridgeDepositBox.methods
+        .deposit(
+          l2Depositor,
+          l2Token.options.address,
+          depositAmount,
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          currentBlockTime
+        )
+        .send({ from: l2Depositor });
+
+      // Relay it from the tests to mimic someone else doing the slow relay.
+      await l1Token.methods.mint(l1Owner, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await bridgePool.methods
+        .relayDeposit(
+          chainId,
+          "0",
+          l2Depositor,
+          l2Depositor,
+          depositAmount,
+          defaultSlowRelayFeePct,
+          defaultInstantRelayFeePct,
+          currentBlockTime,
+          toBN(defaultRealizedLpFeePct)
+            .mul(toBN(toWei("2")))
+            .div(toBN(toWei("1")))
+            .toString() // Invalid relay param
+        )
+        .send({ from: l1Owner });
+
+      // Now, run the relayer and check that it ignores the relay.
+      await Promise.all([l1Client.update(), l2Client.update()]);
+      await l1Token.methods.mint(l1Relayer, toBN(depositAmount).muln(2)).send({ from: l1Owner });
+      await l1Token.methods.approve(bridgePool.options.address, toBN(depositAmount).muln(2)).send({ from: l1Relayer });
+      await relayer.checkForPendingDepositsAndRelay();
+      assert.isTrue(lastSpyLogIncludes(spy, "Pending relay is invalid, ignoring"));
     });
   });
 });

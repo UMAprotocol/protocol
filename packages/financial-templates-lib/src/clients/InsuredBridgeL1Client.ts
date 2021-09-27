@@ -5,7 +5,7 @@ import { ZERO_ADDRESS } from "@uma/common";
 import { getAbi } from "@uma/contracts-node";
 import { Deposit } from "./InsuredBridgeL2Client";
 
-import type { BridgeAdminWeb3, BridgePoolWeb3 } from "@uma/contracts-node";
+import type { BridgeAdminInterfaceWeb3, BridgePoolWeb3 } from "@uma/contracts-node";
 import type { BN } from "@uma/common";
 import type { Logger } from "winston";
 
@@ -43,7 +43,7 @@ export interface Relay {
 }
 
 export class InsuredBridgeL1Client {
-  public readonly bridgeAdmin: BridgeAdminWeb3;
+  public readonly bridgeAdmin: BridgeAdminInterfaceWeb3;
   public bridgePools: { [key: string]: BridgePoolWeb3 }; // L1TokenAddress=>BridgePoolClient
 
   private relays: { [key: string]: { [key: string]: Relay } } = {}; // L1TokenAddress=>depositHash=>Relay.
@@ -60,9 +60,9 @@ export class InsuredBridgeL1Client {
     readonly endingBlockNumber: number | null = null
   ) {
     this.bridgeAdmin = (new l1Web3.eth.Contract(
-      getAbi("BridgeAdmin"),
+      getAbi("BridgeAdminInterface"),
       bridgeAdminAddress
-    ) as unknown) as BridgeAdminWeb3; // Cast to web3-specific type
+    ) as unknown) as BridgeAdminInterfaceWeb3; // Cast to web3-specific type
 
     this.bridgePools = {}; // Initialize the bridgePools with no pools yet. Will be populated in the _initialSetup.
 
@@ -87,6 +87,11 @@ export class InsuredBridgeL1Client {
   getRelayedDepositsForL1Token(l1Token: string): Relay[] {
     this._throwIfNotInitialized();
     return Object.values(this.relays[l1Token]);
+  }
+
+  getRelayForDeposit(l1Token: string, deposit: Deposit): Relay | undefined {
+    this._throwIfNotInitialized();
+    return this.relays[l1Token][deposit.depositHash];
   }
 
   getPendingRelayedDeposits(): Relay[] {
@@ -145,10 +150,9 @@ export class InsuredBridgeL1Client {
     // Fetch event information
     // TODO: consider optimizing this further. Right now it will make a series of sequential BlueBird calls for each pool.
     for (const [l1Token, bridgePool] of Object.entries(this.bridgePools)) {
-      const [depositRelayedEvents, relaySpedUpEvents, relayDisputedEvents, relaySettledEvents] = await Promise.all([
+      const [depositRelayedEvents, relaySpedUpEvents, relaySettledEvents] = await Promise.all([
         bridgePool.getPastEvents("DepositRelayed", blockSearchConfig),
         bridgePool.getPastEvents("RelaySpedUp", blockSearchConfig),
-        bridgePool.getPastEvents("RelayDisputed", blockSearchConfig),
         bridgePool.getPastEvents("RelaySettled", blockSearchConfig),
       ]);
 
@@ -190,11 +194,6 @@ export class InsuredBridgeL1Client {
         this.relays[l1Token][relaySpedUpEvent.returnValues.depositHash].instantRelayer =
           relaySpedUpEvent.returnValues.instantRelayer;
         this.relays[l1Token][relaySpedUpEvent.returnValues.depositHash].relayState = RelayState.SpedUp;
-      }
-
-      // For all RelayDisputed, set the state of the relay to disputed.
-      for (const relayDisputedEvent of relayDisputedEvents) {
-        this.relays[l1Token][relayDisputedEvent.returnValues.depositHash].relayState = RelayState.Disputed;
       }
 
       for (const relaySettledEvent of relaySettledEvents) {

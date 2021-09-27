@@ -4,12 +4,10 @@ const { interfaceName, TokenRolesEnum, InsuredBridgeRelayStateEnum, ZERO_ADDRESS
 const { getContract } = hre;
 const { utf8ToHex, toWei, toBN, soliditySha3 } = web3.utils;
 
-// TODO: refactor to common util
-const { deployOptimismContractMock } = require("../../../core/test/insured-bridge/helpers/SmockitHelper");
-
 const winston = require("winston");
 const { assert } = require("chai");
-
+const chainId = 10;
+const Messenger = getContract("MessengerMock");
 const BridgeAdmin = getContract("BridgeAdmin");
 const BridgePool = getContract("BridgePool");
 const Finder = getContract("Finder");
@@ -28,13 +26,12 @@ const { InsuredBridgeL1Client } = require("../../dist/clients/InsuredBridgeL1Cli
 let client;
 
 // Contract objects
-let bridgeAdmin, bridgePool;
+let messenger, bridgeAdmin, bridgePool;
 
 let finder,
   store,
   identifierWhitelist,
   collateralWhitelist,
-  l1CrossDomainMessengerMock,
   timer,
   optimisticOracle,
   l1Token,
@@ -83,7 +80,7 @@ describe("InsuredBridgeL1Client", function () {
     return [...Object.values(params), _relayData.realizedLpFeePct];
   };
 
-  const generateRelayData = async (depositData, relayData, bridgePool) => {
+  const generateRelayData = async (depositData, relayData, bridgePool, l1TokenAddress = l1Token.options.address) => {
     // Save other reused values.
     depositDataAbiEncoded = web3.eth.abi.encodeParameters(
       ["uint8", "uint64", "address", "address", "address", "uint256", "uint64", "uint64", "uint64"],
@@ -92,7 +89,7 @@ describe("InsuredBridgeL1Client", function () {
         depositData.depositId,
         depositData.l1Recipient,
         depositData.l2Sender,
-        depositData.l1Token,
+        l1TokenAddress,
         depositData.amount,
         depositData.slowRelayFeePct,
         depositData.instantRelayFeePct,
@@ -105,7 +102,7 @@ describe("InsuredBridgeL1Client", function () {
     return { depositHash, relayAncillaryData, relayAncillaryDataHash };
   };
 
-  const syncExpectedRelayedDepositInformation = () => {
+  const syncExpectedRelayedDepositInformation = (_l1TokenAddress = l1Token.options.address) => {
     expectedRelayedDepositInformation = {
       relayId: relayData.relayId,
       chainId: depositData.chainId,
@@ -115,7 +112,7 @@ describe("InsuredBridgeL1Client", function () {
       disputedSlowRelayers: [],
       instantRelayer: relayData.instantRelayer, // not sped up so should be 0x000...
       l1Recipient: depositData.l1Recipient,
-      l1Token: depositData.l1Token,
+      l1Token: _l1TokenAddress,
       amount: depositData.amount,
       slowRelayFeePct: depositData.slowRelayFeePct,
       instantRelayFeePct: depositData.instantRelayFeePct,
@@ -190,16 +187,17 @@ describe("InsuredBridgeL1Client", function () {
     // Set up the Insured bridge contracts.
 
     // Deploy and setup BridgeAdmin
-    l1CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L1CrossDomainMessenger");
+    messenger = await Messenger.new().send({ from: owner });
     bridgeAdmin = await BridgeAdmin.new(
       finder.options.address,
-      l1CrossDomainMessengerMock.options.address,
       defaultLiveness,
       defaultProposerBondPct,
       defaultIdentifier
     ).send({ from: owner });
 
-    await bridgeAdmin.methods.setDepositContract(depositContractImpersonator).send({ from: owner });
+    await bridgeAdmin.methods
+      .setDepositContract(chainId, depositContractImpersonator, messenger.options.address)
+      .send({ from: owner });
 
     // Deploy a bridgePool and whitelist it.
     bridgePool = await BridgePool.new(
@@ -213,7 +211,7 @@ describe("InsuredBridgeL1Client", function () {
 
     // Add L1-L2 token mapping
     await bridgeAdmin.methods
-      .whitelistToken(l1Token.options.address, l2Token, bridgePool.options.address, defaultGasLimit)
+      .whitelistToken(chainId, l1Token.options.address, l2Token, bridgePool.options.address, defaultGasLimit)
       .send({ from: owner });
 
     // Add some liquidity to the pool to facilitate bridging actions.
@@ -233,11 +231,10 @@ describe("InsuredBridgeL1Client", function () {
 
     // Store expected relay data that we'll use to verify contract state:
     depositData = {
-      chainId: 10,
+      chainId: chainId,
       depositId: 1,
       l1Recipient: l1Recipient,
       l2Sender: depositor,
-      l1Token: l1Token.options.address,
       amount: relayAmount,
       slowRelayFeePct: defaultSlowRelayFeePct,
       instantRelayFeePct: defaultInstantRelayFeePct,
@@ -418,7 +415,7 @@ describe("InsuredBridgeL1Client", function () {
       assert.equal(JSON.stringify(client.getAllRelayedDeposits()), JSON.stringify([expectedRelayedDepositInformation]));
       assert.equal(JSON.stringify(client.getPendingRelayedDeposits()), JSON.stringify([]));
 
-      // Next, dispute the relay. The state should update accordingly in the client.
+      // Next, dispute the relay.
       await timer.methods.setCurrentTime(Number(await timer.methods.getCurrentTime().call()) + 1).send({ from: owner });
       await l1Token.methods.mint(disputer, totalRelayBond).send({ from: owner });
       await l1Token.methods.approve(optimisticOracle.options.address, totalRelayBond).send({ from: disputer });
@@ -430,11 +427,6 @@ describe("InsuredBridgeL1Client", function () {
           relayAncillaryData
         )
         .send({ from: disputer });
-
-      await client.update();
-      expectedRelayedDepositInformation.relayState = 2; // disputed
-      assert.equal(JSON.stringify(client.getAllRelayedDeposits()), JSON.stringify([expectedRelayedDepositInformation]));
-      assert.equal(JSON.stringify(client.getPendingRelayedDeposits()), JSON.stringify([]));
 
       // Can re-relay the deposit.
       await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
@@ -473,7 +465,13 @@ describe("InsuredBridgeL1Client", function () {
       // Add L1-L2 token mapping
       const l2Token2Address = web3.utils.toChecksumAddress(web3.utils.randomHex(20));
       await bridgeAdmin.methods
-        .whitelistToken(l1Token2.options.address, l2Token2Address, bridgePool2.options.address, defaultGasLimit)
+        .whitelistToken(
+          chainId,
+          l1Token2.options.address,
+          l2Token2Address,
+          bridgePool2.options.address,
+          defaultGasLimit
+        )
         .send({ from: owner });
 
       // Update the client. should now contain the new bridgepool2 address as well as the original one.
@@ -546,7 +544,6 @@ describe("InsuredBridgeL1Client", function () {
       depositData.depositId = 3;
       depositData.l1Recipient = l1Recipient;
       depositData.l2Sender = depositor;
-      depositData.l1Token = l1Token2.options.address;
       depositData.amount = toWei("4.21");
       relayData.slowRelayer = relayer;
       relayData.realizedLpFeePct = toWei("0.13");
@@ -561,11 +558,12 @@ describe("InsuredBridgeL1Client", function () {
       await bridgePool2.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
 
       // Sync the modified deposit and relay data with the expected returned data and store it.
-      syncExpectedRelayedDepositInformation();
+      syncExpectedRelayedDepositInformation(l1Token2.options.address);
       ({ depositHash, relayAncillaryData, relayAncillaryDataHash } = await generateRelayData(
         depositData,
         relayData,
-        bridgePool
+        bridgePool,
+        l1Token2.options.address
       ));
       expectedRelayedDepositInformation.depositHash = depositHash;
       let expectedBridgePool2Relays = [expectedRelayedDepositInformation];

@@ -4,7 +4,7 @@
 
 pragma solidity >=0.7.6;
 
-contract OVM_Timer {
+contract Legacy_Timer {
     uint256 private currentTime;
 
     constructor() {

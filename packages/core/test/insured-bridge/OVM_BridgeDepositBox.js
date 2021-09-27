@@ -1,5 +1,5 @@
-// These tests are meant to be run within the `hardhat` network (not OVM) and use smockit to mock L2 contracts
-// such as the cross domain message bridge etc. The context of all calls, tokens and setup are the mocked L2 network.
+// This set of tests validates the BridgeDepositBox OVM (Optimism) specific logic such as L1->L2 function calls and the
+// use of the OVM token bridge. Bridge Deposit logic is not directly tested. For this see the BridgeDepositBox.js tests.
 
 const hre = require("hardhat");
 const { web3 } = require("hardhat");
@@ -11,14 +11,14 @@ const { toWei } = web3.utils;
 
 const { assert } = require("chai");
 
-const { deployOptimismContractMock } = require("./helpers/SmockitHelper");
+const { deployContractMock } = require("./helpers/SmockitHelper");
 
 // Tested contract
 const BridgeDepositBox = getContract("OVM_BridgeDepositBox");
 
 // Helper contracts
 const Token = getContract("ExpandedERC20");
-const Timer = getContract("OVM_Timer");
+const Timer = getContract("Legacy_Timer");
 
 // Contract objects
 let depositBox, l2CrossDomainMessengerMock, l1TokenAddress, l2Token, timer;
@@ -47,7 +47,7 @@ describe("OVM_BridgeDepositBox", () => {
   beforeEach(async function () {
     // Initialize the cross domain massager messenger mock at the address of the OVM pre-deploy. The OVM will always use
     // this address for L1<->L2 messaging. Seed this address with some funds so it can send transactions.
-    l2CrossDomainMessengerMock = await deployOptimismContractMock("OVM_L2CrossDomainMessenger", {
+    l2CrossDomainMessengerMock = await deployContractMock("OVM_L2CrossDomainMessenger", {
       address: predeploys.OVM_L2CrossDomainMessenger,
     });
     await web3.eth.sendTransaction({ from: deployer, to: predeploys.OVM_L2CrossDomainMessenger, value: toWei("1") });
@@ -82,7 +82,7 @@ describe("OVM_BridgeDepositBox", () => {
         )
       );
 
-      // Setting the l2CrossDomainMessengerMock to correctly mock the bridgeAdmin should let the ownership change.
+      // Setting the l2CrossDomainMessengerMock to correctly mock the bridgeAdmin shoZuld let the ownership change.
       l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => bridgeAdmin);
 
       const tx = await depositBox.methods.setBridgeAdmin(user1).send({ from: predeploys.OVM_L2CrossDomainMessenger });
@@ -199,109 +199,6 @@ describe("OVM_BridgeDepositBox", () => {
       });
     });
   });
-  describe("Box deposit logic", () => {
-    beforeEach(async function () {
-      // Whitelist the token in the deposit box.
-      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => bridgeAdmin);
-      await depositBox.methods
-        .whitelistToken(l1TokenAddress, l2Token.options.address, bridgePool)
-        .send({ from: predeploys.OVM_L2CrossDomainMessenger });
-    });
-    it("Token flow, events and actions occur correctly on deposit", async () => {
-      assert.equal(await depositBox.methods.numberOfDeposits().call(), "0"); // Deposit index should start at 0.
-
-      await l2Token.methods.approve(depositBox.options.address, toWei("100")).send({ from: user1 });
-
-      assert.equal((await l2Token.methods.balanceOf(depositBox.options.address).call()).toString(), "0");
-
-      const quoteTimestamp = Number(await timer.methods.getCurrentTime().call()) - quoteTimestampOffset;
-      const tx = await depositBox.methods
-        .deposit(user1, l2Token.options.address, depositAmount, slowRelayFeePct, instantRelayFeePct, quoteTimestamp)
-        .send({ from: user1 });
-
-      assert.equal((await l2Token.methods.balanceOf(depositBox.options.address).call()).toString(), depositAmount);
-
-      await assertEventEmitted(tx, depositBox, "FundsDeposited", (ev) => {
-        return (
-          ev.chainId == "10" &&
-          ev.depositId == "0" &&
-          ev.l1Recipient == user1 &&
-          ev.l2Sender == user1 &&
-          ev.l1Token == l1TokenAddress &&
-          ev.amount == depositAmount &&
-          ev.slowRelayFeePct == slowRelayFeePct &&
-          ev.instantRelayFeePct == instantRelayFeePct &&
-          ev.quoteTimestamp == quoteTimestamp
-        );
-      });
-
-      assert.equal(await depositBox.methods.numberOfDeposits().call(), "1"); // Deposit index should increment to 1.
-    });
-
-    it("Reverts on non-whitelisted token", async () => {
-      const l2Token_nonWhitelisted = await Token.new("L2 Wrapped Ether", "WETH", 18).send({ from: deployer });
-      await l2Token_nonWhitelisted.methods.addMember(1, deployer).send({ from: deployer });
-      await l2Token_nonWhitelisted.methods.mint(user1, toWei("100")).send({ from: deployer });
-
-      await l2Token_nonWhitelisted.methods.approve(depositBox.options.address, toWei("100")).send({ from: user1 });
-
-      const quoteTimestamp = Number(await timer.methods.getCurrentTime().call()) + quoteTimestampOffset;
-      assert(
-        await didContractThrow(
-          depositBox.methods
-            .deposit(
-              user1,
-              l2Token_nonWhitelisted.options.address,
-              depositAmount,
-              slowRelayFeePct,
-              instantRelayFeePct,
-              quoteTimestamp
-            )
-            .send({ from: user1 })
-        )
-      );
-    });
-    it("Reverts if deposits disabled", async () => {
-      // Disable deposits
-      l2CrossDomainMessengerMock.smocked.xDomainMessageSender.will.return.with(() => bridgeAdmin);
-      await depositBox.methods
-        .setEnableDeposits(l2Token.options.address, false)
-        .send({ from: predeploys.OVM_L2CrossDomainMessenger });
-
-      // Try to deposit and check it reverts.
-      await l2Token.methods.approve(depositBox.options.address, toWei("100")).send({ from: user1 });
-      const quoteTimestamp = Number(await timer.methods.getCurrentTime().call()) + quoteTimestampOffset;
-      assert(
-        await didContractThrow(
-          depositBox.methods
-            .deposit(user1, l2Token.options.address, depositAmount, slowRelayFeePct, instantRelayFeePct, quoteTimestamp)
-            .send({ from: user1 })
-        )
-      );
-    });
-    it("Reverts if slow and instant relay fees exceed individually exceed 25%", async () => {
-      // Try to deposit and check it reverts.
-      const quoteTimestamp = Number(await timer.methods.getCurrentTime().call()) + quoteTimestampOffset;
-      await l2Token.methods.approve(depositBox.options.address, toWei("100")).send({ from: user1 });
-      assert(
-        await didContractThrow(
-          depositBox.methods
-            .deposit(user1, l2Token.options.address, depositAmount, toWei("0.24"), toWei("0.26"), quoteTimestamp)
-            .send({ from: user1 })
-        )
-      );
-      assert(
-        await didContractThrow(
-          depositBox.methods
-            .deposit(user1, l2Token.options.address, depositAmount, toWei("0.26"), toWei("0.24"), quoteTimestamp)
-            .send({ from: user1 })
-        )
-      );
-      await depositBox.methods
-        .deposit(user1, l2Token.options.address, depositAmount, toWei("0.24"), toWei("0.24"), quoteTimestamp)
-        .send({ from: user1 });
-    });
-  });
   describe("Box bridging logic", () => {
     let l2StandardBridge;
     beforeEach(async function () {
@@ -312,9 +209,7 @@ describe("OVM_BridgeDepositBox", () => {
         .send({ from: predeploys.OVM_L2CrossDomainMessenger });
 
       // Setup the l2StandardBridge mock to validate cross-domain bridging occurs as expected.
-      l2StandardBridge = await deployOptimismContractMock("OVM_L2StandardBridge", {
-        address: predeploys.OVM_L2StandardBridge,
-      });
+      l2StandardBridge = await deployContractMock("OVM_L2StandardBridge", { address: predeploys.OVM_L2StandardBridge });
     });
     it("Can initiate cross-domain bridging action", async () => {
       // Deposit tokens as the user.
@@ -346,15 +241,15 @@ describe("OVM_BridgeDepositBox", () => {
       const tokenBridgingCallsToBridge = l2StandardBridge.smocked.withdrawTo.calls;
       assert.equal(tokenBridgingCallsToBridge.length, 1); // only 1 call
       const call = tokenBridgingCallsToBridge[0];
-      assert.equal(call._l1Gas.toString(), 0); // right amount. We deposited 50e18.
       assert.equal(call._l2Token, l2Token.options.address); // right token.
+      assert.equal(call._to, bridgePool); // right recipient.
       assert.equal(call._amount.toString(), depositAmount); // right amount. We deposited 50e18.
       assert.equal(call._l1Gas.toString(), 0); // right amount. We deposited 50e18.
+      assert.equal(call._data.toString(), "0x"); // right data.
     });
     it("Reverts if not enough time elapsed", async () => {
       // Deposit tokens as the user.
       await l2Token.methods.approve(depositBox.options.address, toWei("100")).send({ from: user1 });
-
       const quoteTimestamp = Number(await timer.methods.getCurrentTime().call()) + quoteTimestampOffset;
       await depositBox.methods
         .deposit(user1, l2Token.options.address, depositAmount, slowRelayFeePct, instantRelayFeePct, quoteTimestamp)

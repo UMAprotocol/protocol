@@ -1,5 +1,8 @@
-const { toBN, toWei, utf8ToHex, padRight } = web3.utils;
+const hre = require("hardhat");
+const { web3, getContract } = hre;
+global.hre = hre;
 const { assert } = require("chai");
+const { toBN, toWei, utf8ToHex, padRight } = web3.utils;
 
 const {
   MAX_UINT_VAL,
@@ -8,9 +11,8 @@ const {
   createConstructorParamsForContractVersion,
   TESTED_CONTRACT_VERSIONS,
   createContractObjectFromJson,
+  getContractsNodePackageAliasForVerion,
 } = require("@uma/common");
-
-const { getTruffleContract } = require("@uma/core");
 
 // Custom winston transport module to monitor winston log outputs
 const winston = require("winston");
@@ -48,56 +50,78 @@ let errorRetriesTimeout = 0.1; // 100 milliseconds between performing retries
 let identifier = "TEST_IDENTIFIER";
 let fundingRateIdentifier = "TEST_FUNDING";
 
-contract("index.js", function (accounts) {
-  const contractCreator = accounts[0];
-  const sponsorUndercollateralized = accounts[1];
-  const sponsorOvercollateralized = accounts[2];
-  const liquidator = contractCreator;
-  const disputer = accounts[4];
+describe("index.js", function () {
+  let accounts, sponsorUndercollateralized, sponsorOvercollateralized, liquidator, disputer, contractCreator;
+
+  before(async function () {
+    accounts = await web3.eth.getAccounts();
+    [contractCreator, sponsorUndercollateralized, sponsorOvercollateralized, disputer] = accounts;
+    liquidator = contractCreator;
+  });
 
   TESTED_CONTRACT_VERSIONS.forEach(function (contractVersion) {
+    const { getAbi, getBytecode } = require(getContractsNodePackageAliasForVerion(contractVersion.contractVersion));
+
+    const createContract = (name) => {
+      const abi = getAbi(name);
+      const bytecode = getBytecode(name);
+      return getContract(name, { abi, bytecode });
+    };
     // Import the tested versions of contracts. Note that financialContract is either an ExpiringMultiParty or the perp
     // depending on the current iteration version.
-    const FinancialContract = getTruffleContract(contractVersion.contractType, web3, contractVersion.contractVersion);
-    const Finder = getTruffleContract("Finder", web3, contractVersion.contractVersion);
-    const IdentifierWhitelist = getTruffleContract("IdentifierWhitelist", web3, contractVersion.contractVersion);
-    const AddressWhitelist = getTruffleContract("AddressWhitelist", web3, contractVersion.contractVersion);
-    const MockOracle = getTruffleContract("MockOracle", web3, contractVersion.contractVersion);
-    const Token = getTruffleContract("ExpandedERC20", web3, contractVersion.contractVersion);
-    const SyntheticToken = getTruffleContract("SyntheticToken", web3, contractVersion.contractVersion);
-    const Timer = getTruffleContract("Timer", web3, contractVersion.contractVersion);
-    const UniswapMock = getTruffleContract("UniswapV2Mock", web3);
-    const Store = getTruffleContract("Store", web3, contractVersion.contractVersion);
-    const ConfigStore = getTruffleContract("ConfigStore", web3, contractVersion.contractVersion);
-    const OptimisticOracle = getTruffleContract("OptimisticOracle", web3, contractVersion.contractVersion);
-    const DSProxyFactory = getTruffleContract("DSProxyFactory", web3);
+    const FinancialContract = createContract(contractVersion.contractType);
+    const Finder = createContract("Finder");
+    const IdentifierWhitelist = createContract("IdentifierWhitelist");
+    const AddressWhitelist = createContract("AddressWhitelist");
+    const MockOracle = createContract("MockOracle");
+    const Token = createContract("ExpandedERC20");
+    const SyntheticToken = createContract("SyntheticToken");
+    const Timer = createContract("Timer");
+    const UniswapMock = createContract("UniswapV2Mock");
+    const Store = createContract("Store");
+    const ConfigStore = createContract("ConfigStore");
+    const OptimisticOracle = createContract("OptimisticOracle");
+    const DSProxyFactory = createContract("DSProxyFactory");
 
     describe(`Tests running for smart contract version ${contractVersion.contractType} @ ${contractVersion.contractVersion}`, function () {
       before(async function () {
-        finder = await Finder.new();
+        finder = await Finder.new().send({ from: contractCreator });
         // Create identifier whitelist and register the price tracking ticker with it.
-        identifierWhitelist = await IdentifierWhitelist.new();
-        await identifierWhitelist.addSupportedIdentifier(utf8ToHex(identifier));
-        await finder.changeImplementationAddress(
-          web3.utils.utf8ToHex(interfaceName.IdentifierWhitelist),
-          identifierWhitelist.address
-        );
+        identifierWhitelist = await IdentifierWhitelist.new().send({ from: contractCreator });
+        await identifierWhitelist.methods.addSupportedIdentifier(utf8ToHex(identifier)).send({ from: contractCreator });
 
-        timer = await Timer.new();
+        await finder.methods
+          .changeImplementationAddress(
+            utf8ToHex(interfaceName.IdentifierWhitelist),
+            identifierWhitelist.options.address
+          )
+          .send({ from: contractCreator });
 
-        mockOracle = await MockOracle.new(finder.address, timer.address, { from: contractCreator });
-        await finder.changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.address);
+        timer = await Timer.new().send({ from: contractCreator });
+
+        mockOracle = await MockOracle.new(finder.options.address, timer.options.address).send({
+          from: contractCreator,
+        });
+        await finder.methods
+          .changeImplementationAddress(utf8ToHex(interfaceName.Oracle), mockOracle.options.address)
+          .send({ from: contractCreator });
         // Set the address in the global name space to enable disputer's index.js to access it.
-        addGlobalHardhatTestingAddress("Voting", mockOracle.address);
+        addGlobalHardhatTestingAddress("Voting", mockOracle.options.address);
 
-        store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.address);
-        await finder.changeImplementationAddress(utf8ToHex(interfaceName.Store), store.address);
+        store = await Store.new({ rawValue: "0" }, { rawValue: "0" }, timer.options.address).send({
+          from: contractCreator,
+        });
+        await finder.methods
+          .changeImplementationAddress(utf8ToHex(interfaceName.Store), store.options.address)
+          .send({ from: contractCreator });
 
         // Make the contract creator the admin to enable emergencyshutdown in tests.
-        await finder.changeImplementationAddress(utf8ToHex(interfaceName.FinancialContractsAdmin), contractCreator);
+        await finder.methods
+          .changeImplementationAddress(utf8ToHex(interfaceName.FinancialContractsAdmin), contractCreator)
+          .send({ from: contractCreator });
 
-        dsProxyFactory = await DSProxyFactory.new();
-        addGlobalHardhatTestingAddress("DSProxyFactory", dsProxyFactory.address);
+        dsProxyFactory = await DSProxyFactory.new().send({ from: contractCreator });
+        addGlobalHardhatTestingAddress("DSProxyFactory", dsProxyFactory.options.address);
       });
 
       beforeEach(async function () {
@@ -109,16 +133,20 @@ contract("index.js", function (accounts) {
         });
 
         // Create a new synthetic token & collateral token.
-        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractCreator });
-        collateralToken = await Token.new("Wrapped Ether", "WETH", 18, { from: contractCreator });
-        await collateralToken.addMember(1, contractCreator, { from: contractCreator });
+        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18).send({ from: contractCreator });
+        collateralToken = await Token.new("Wrapped Ether", "WETH", 18).send({ from: contractCreator });
+        await collateralToken.methods.addMember(1, contractCreator).send({ from: contractCreator });
 
-        collateralWhitelist = await AddressWhitelist.new();
-        await finder.changeImplementationAddress(
-          web3.utils.utf8ToHex(interfaceName.CollateralWhitelist),
-          collateralWhitelist.address
-        );
-        await collateralWhitelist.addToWhitelist(collateralToken.address);
+        collateralWhitelist = await AddressWhitelist.new().send({ from: contractCreator });
+        await finder.methods
+          .changeImplementationAddress(
+            utf8ToHex(interfaceName.CollateralWhitelist),
+            collateralWhitelist.options.address
+          )
+          .send({ from: contractCreator });
+        await collateralWhitelist.methods
+          .addToWhitelist(collateralToken.options.address)
+          .send({ from: contractCreator });
 
         if (contractVersion.contractType == "Perpetual") {
           configStore = await ConfigStore.new(
@@ -130,12 +158,18 @@ contract("index.js", function (accounts) {
               minFundingRate: { rawValue: toWei("-0.00001") },
               proposalTimePastLimit: 0,
             },
-            timer.address
-          );
+            timer.options.address
+          ).send({ from: contractCreator });
 
-          await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier)));
-          optimisticOracle = await OptimisticOracle.new(7200, finder.address, timer.address);
-          await finder.changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.address);
+          await identifierWhitelist.methods
+            .addSupportedIdentifier(padRight(utf8ToHex(fundingRateIdentifier)))
+            .send({ from: contractCreator });
+          optimisticOracle = await OptimisticOracle.new(7200, finder.options.address, timer.options.address).send({
+            from: contractCreator,
+          });
+          await finder.methods
+            .changeImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle), optimisticOracle.options.address)
+            .send({ from: contractCreator });
         }
         // Deploy a new expiring multi party OR perpetual.
         constructorParams = await createConstructorParamsForContractVersion(
@@ -151,13 +185,13 @@ contract("index.js", function (accounts) {
             store,
             configStore: configStore || {}, // if the contract type is not a perp this will be null.
           },
-          { expirationTimestamp: (await timer.getCurrentTime()).toNumber() + 100 } // config override expiration time.
+          { expirationTimestamp: Number(await timer.methods.getCurrentTime().call()) + 100 } // config override expiration time.
         );
-        financialContract = await FinancialContract.new(constructorParams);
-        await syntheticToken.addMinter(financialContract.address);
-        await syntheticToken.addBurner(financialContract.address);
+        financialContract = await FinancialContract.new(constructorParams).send({ from: contractCreator });
+        await syntheticToken.methods.addMinter(financialContract.options.address).send({ from: contractCreator });
+        await syntheticToken.methods.addBurner(financialContract.options.address).send({ from: contractCreator });
 
-        syntheticToken = await Token.at(await financialContract.tokenCurrency());
+        syntheticToken = await Token.at(await financialContract.methods.tokenCurrency().call());
 
         defaultPriceFeedConfig = { type: "test", currentPrice: "1", historicalPrice: "1" };
       });
@@ -169,27 +203,29 @@ contract("index.js", function (accounts) {
           transports: [new SpyTransport({ level: "debug" }, { spy: spy })],
         });
 
-        collateralToken = await Token.new("BTC", "BTC", 8, { from: contractCreator });
-        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18, { from: contractCreator });
+        collateralToken = await Token.new("BTC", "BTC", 8).send({ from: contractCreator });
+        syntheticToken = await SyntheticToken.new("Test Synthetic Token", "SYNTH", 18).send({ from: contractCreator });
         // For this test we are using a lower decimal identifier, USDBTC. First we need to add it to the whitelist.
-        await identifierWhitelist.addSupportedIdentifier(padRight(utf8ToHex("USDBTC"), 64));
+        await identifierWhitelist.methods
+          .addSupportedIdentifier(padRight(utf8ToHex("USDBTC"), 64))
+          .send({ from: contractCreator });
         const decimalTestConstructorParams = JSON.parse(
           JSON.stringify({
             ...constructorParams,
-            collateralAddress: collateralToken.address,
-            tokenAddress: syntheticToken.address,
+            collateralAddress: collateralToken.options.address,
+            tokenAddress: syntheticToken.options.address,
             priceFeedIdentifier: padRight(utf8ToHex("USDBTC"), 64),
           })
         );
-        financialContract = await FinancialContract.new(decimalTestConstructorParams);
-        await syntheticToken.addMinter(financialContract.address);
-        await syntheticToken.addBurner(financialContract.address);
+        financialContract = await FinancialContract.new(decimalTestConstructorParams).send({ from: contractCreator });
+        await syntheticToken.methods.addMinter(financialContract.options.address).send({ from: contractCreator });
+        await syntheticToken.methods.addBurner(financialContract.options.address).send({ from: contractCreator });
 
         // Note the execution below does not have a price feed included. It should be pulled from the default USDBTC config.
         await Poll.run({
           logger: spyLogger,
           web3,
-          financialContractAddress: financialContract.address,
+          financialContractAddress: financialContract.options.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
@@ -211,13 +247,16 @@ contract("index.js", function (accounts) {
         });
 
         if (contractVersion.contractType == "ExpiringMultiParty")
-          await financialContract.setCurrentTime(await financialContract.expirationTimestamp());
-        if (contractVersion.contractType == "Perpetual") await financialContract.emergencyShutdown();
+          await financialContract.methods
+            .setCurrentTime(await financialContract.methods.expirationTimestamp().call())
+            .send({ from: contractCreator });
+        if (contractVersion.contractType == "Perpetual")
+          await financialContract.methods.emergencyShutdown().send({ from: contractCreator });
 
         await Poll.run({
           logger: spyLogger,
           web3,
-          financialContractAddress: financialContract.address,
+          financialContractAddress: financialContract.options.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
@@ -250,24 +289,26 @@ contract("index.js", function (accounts) {
         // Create 2 positions, 1 undercollateralized and 1 sufficiently collateralized.
         // Liquidate the sufficiently collateralized one, and dispute the liquidation.
         // We'll assume that the dispute will resolve to a price of 1, so there must be 1.2 units of collateral for every 1 unit of synthetic.
-        await collateralToken.mint(sponsorUndercollateralized, toWei("110"), { from: contractCreator });
-        await collateralToken.mint(sponsorOvercollateralized, toWei("130"), { from: contractCreator });
-        await collateralToken.approve(financialContract.address, toWei("110"), { from: sponsorUndercollateralized });
-        await collateralToken.approve(financialContract.address, toWei("130"), { from: sponsorOvercollateralized });
-        await financialContract.create(
-          { rawValue: toWei("110") },
-          { rawValue: toWei("100") },
-          { from: sponsorUndercollateralized }
-        );
-        await financialContract.create(
-          { rawValue: toWei("130") },
-          { rawValue: toWei("100") },
-          { from: sponsorOvercollateralized }
-        );
+        await collateralToken.methods.mint(sponsorUndercollateralized, toWei("110")).send({ from: contractCreator });
+        await collateralToken.methods.mint(sponsorOvercollateralized, toWei("130")).send({ from: contractCreator });
+        await collateralToken.methods
+          .approve(financialContract.options.address, toWei("110"))
+          .send({ from: sponsorUndercollateralized });
+        await collateralToken.methods
+          .approve(financialContract.options.address, toWei("130"))
+          .send({ from: sponsorOvercollateralized });
+        await financialContract.methods
+          .create({ rawValue: toWei("110") }, { rawValue: toWei("100") })
+          .send({ from: sponsorUndercollateralized });
+        await financialContract.methods
+          .create({ rawValue: toWei("130") }, { rawValue: toWei("100") })
+          .send({ from: sponsorOvercollateralized });
 
         // Send liquidator enough synthetic to liquidate one position.
-        await syntheticToken.transfer(liquidator, toWei("100"), { from: sponsorOvercollateralized });
-        await syntheticToken.approve(financialContract.address, toWei("100"), { from: liquidator });
+        await syntheticToken.methods.transfer(liquidator, toWei("100")).send({ from: sponsorOvercollateralized });
+        await syntheticToken.methods
+          .approve(financialContract.options.address, toWei("100"))
+          .send({ from: liquidator });
 
         // Check that the liquidator is correctly detecting the undercollateralized position
         const empClientSpy = sinon.spy();
@@ -277,9 +318,9 @@ contract("index.js", function (accounts) {
         });
         const financialContractClient = new FinancialContractClient(
           empClientSpyLogger,
-          financialContract.abi,
+          FinancialContract.abi,
           web3,
-          financialContract.address
+          financialContract.options.address
         );
         await financialContractClient.update();
         assert.deepStrictEqual(
@@ -298,33 +339,40 @@ contract("index.js", function (accounts) {
         );
 
         // Liquidate the over collateralized position and dispute the liquidation.
-        const liquidationTime = await financialContract.getCurrentTime();
-        await financialContract.createLiquidation(
-          sponsorOvercollateralized,
-          { rawValue: toWei("1.3") },
-          { rawValue: toWei("1.3") },
-          { rawValue: toWei("100") },
-          MAX_UINT_VAL,
-          { from: liquidator }
-        );
+        const liquidationTime = await financialContract.methods.getCurrentTime().call();
+        await financialContract.methods
+          .createLiquidation(
+            sponsorOvercollateralized,
+            { rawValue: toWei("1.3") },
+            { rawValue: toWei("1.3") },
+            { rawValue: toWei("100") },
+            MAX_UINT_VAL
+          )
+          .send({ from: liquidator });
 
         // Next, expire or emergencyshutdown the contract.
         if (contractVersion.contractType == "ExpiringMultiParty")
-          await financialContract.setCurrentTime(await financialContract.expirationTimestamp());
-        if (contractVersion.contractType == "Perpetual") await financialContract.emergencyShutdown();
+          await financialContract.methods
+            .setCurrentTime(await financialContract.methods.expirationTimestamp().call())
+            .send({ from: contractCreator });
+        if (contractVersion.contractType == "Perpetual")
+          await financialContract.methods.emergencyShutdown().send({ from: contractCreator });
 
         // Dispute & push a dispute resolution price.
-        await collateralToken.mint(disputer, toWei("13"), { from: contractCreator });
-        await collateralToken.approve(financialContract.address, toWei("13"), { from: disputer });
-        await financialContract.dispute(0, sponsorOvercollateralized, { from: disputer });
-        await mockOracle.pushPrice(utf8ToHex("TEST_IDENTIFIER"), liquidationTime, toWei("1"));
+        await collateralToken.methods.mint(disputer, toWei("13")).send({ from: contractCreator });
+        await collateralToken.methods.approve(financialContract.options.address, toWei("13")).send({ from: disputer });
+
+        await financialContract.methods.dispute(0, sponsorOvercollateralized).send({ from: disputer });
+        await mockOracle.methods
+          .pushPrice(utf8ToHex("TEST_IDENTIFIER"), liquidationTime, toWei("1"))
+          .send({ from: contractCreator });
 
         // Running the liquidator now should settle and withdraw rewards from the successful dispute,
         // and ignore undercollateralized positions.
         await Poll.run({
           logger: spyLogger,
           web3,
-          financialContractAddress: financialContract.address,
+          financialContractAddress: financialContract.options.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
@@ -361,16 +409,20 @@ contract("index.js", function (accounts) {
         await Poll.run({
           logger: spyLogger,
           web3,
-          financialContractAddress: financialContract.address,
+          financialContractAddress: financialContract.options.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
           priceFeedConfig: defaultPriceFeedConfig,
         });
 
-        const collateralAllowance = await collateralToken.allowance(contractCreator, financialContract.address);
+        const collateralAllowance = await collateralToken.methods
+          .allowance(contractCreator, financialContract.options.address)
+          .call();
         assert.equal(collateralAllowance.toString(), MAX_UINT_VAL);
-        const syntheticAllowance = await syntheticToken.allowance(contractCreator, financialContract.address);
+        const syntheticAllowance = await syntheticToken.methods
+          .allowance(contractCreator, financialContract.options.address)
+          .call();
         assert.equal(syntheticAllowance.toString(), MAX_UINT_VAL);
       });
 
@@ -384,7 +436,7 @@ contract("index.js", function (accounts) {
         await Poll.run({
           logger: spyLogger,
           web3,
-          financialContractAddress: financialContract.address,
+          financialContractAddress: financialContract.options.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
@@ -410,7 +462,7 @@ contract("index.js", function (accounts) {
         await Poll.run({
           logger: spyLogger,
           web3,
-          financialContractAddress: financialContract.address,
+          financialContractAddress: financialContract.options.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
@@ -430,23 +482,36 @@ contract("index.js", function (accounts) {
       });
       it("Can correctly initialize using a DSProxy", async function () {
         // Deploy a reserve currency token.
-        const reserveToken = await Token.new("Reserve Token", "RTKN", 18);
-        await reserveToken.addMember(1, contractCreator);
+        const reserveToken = await Token.new("Reserve Token", "RTKN", 18).send({ from: contractCreator });
+        await reserveToken.methods.addMember(1, contractCreator).send({ from: contractCreator });
         // deploy Uniswap V2 Factory & router.
-        const factory = await createContractObjectFromJson(UniswapV2Factory, web3).new(contractCreator);
-        const router = await createContractObjectFromJson(UniswapV2Router02, web3).new(
-          factory.address,
-          collateralToken.address
-        );
+        const factory = (
+          await createContractObjectFromJson(UniswapV2Factory, web3).new(contractCreator, { from: contractCreator })
+        ).contract;
+        const router = (
+          await createContractObjectFromJson(UniswapV2Router02, web3).new(
+            factory.options.address,
+            collateralToken.options.address,
+            { from: contractCreator }
+          )
+        ).contract;
 
         // initialize the pair
-        await factory.createPair(reserveToken.address, collateralToken.address);
-        const pairAddress = await factory.getPair(reserveToken.address, collateralToken.address);
-        const pair = await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress);
+        await factory.methods
+          .createPair(reserveToken.options.address, collateralToken.options.address)
+          .send({ from: contractCreator });
+        const pairAddress = await factory.methods
+          .getPair(reserveToken.options.address, collateralToken.options.address)
+          .call();
+        const pair = (await createContractObjectFromJson(IUniswapV2Pair, web3).at(pairAddress)).contract;
 
-        await reserveToken.mint(pairAddress, toBN(toWei("1000")).muln(10000000));
-        await collateralToken.mint(pairAddress, toBN(toWei("1")).muln(10000000));
-        await pair.sync();
+        await reserveToken.methods
+          .mint(pairAddress, toBN(toWei("1000")).muln(10000000))
+          .send({ from: contractCreator });
+        await collateralToken.methods
+          .mint(pairAddress, toBN(toWei("1")).muln(10000000))
+          .send({ from: contractCreator });
+        await pair.methods.sync().send({ from: contractCreator });
 
         spy = sinon.spy();
         spyLogger = winston.createLogger({
@@ -456,27 +521,28 @@ contract("index.js", function (accounts) {
 
         // In order for some of the proxy transaction methods to work correctly, we require that the contract has a PFC
         // and some amount of tokens outstanding. Mint a position to enable this.
-        await collateralToken.mint(sponsorOvercollateralized, toWei("130"), { from: contractCreator });
-        await collateralToken.approve(financialContract.address, toWei("130"), { from: sponsorOvercollateralized });
-        await financialContract.create(
-          { rawValue: toWei("130") },
-          { rawValue: toWei("100") },
-          { from: sponsorOvercollateralized }
-        );
+        await collateralToken.methods.mint(sponsorOvercollateralized, toWei("130")).send({ from: contractCreator });
+        await collateralToken.methods
+          .approve(financialContract.options.address, toWei("130"))
+          .send({ from: sponsorOvercollateralized });
+        await financialContract.methods
+          .create({ rawValue: toWei("130") }, { rawValue: toWei("100") })
+          .send({ from: sponsorOvercollateralized });
 
         await Poll.run({
           logger: spyLogger,
           web3,
-          financialContractAddress: financialContract.address,
+          financialContractAddress: financialContract.options.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
           priceFeedConfig: defaultPriceFeedConfig,
           proxyTransactionWrapperConfig: {
+            dsProxyFactoryAddress: dsProxyFactory.options.address,
             useDsProxyToLiquidate: true,
-            liquidatorReserveCurrencyAddress: reserveToken.address,
-            uniswapRouterAddress: router.address,
-            uniswapFactoryAddress: factory.address,
+            liquidatorReserveCurrencyAddress: reserveToken.options.address,
+            uniswapRouterAddress: router.options.address,
+            uniswapFactoryAddress: factory.options.address,
           },
         });
 
@@ -487,7 +553,7 @@ contract("index.js", function (accounts) {
         // A log of a deployed DSProxy should be included.
         assert.isTrue(spyLogIncludes(spy, 6, "No DSProxy found for EOA. Deploying new DSProxy"));
         assert.isTrue(spyLogIncludes(spy, 8, "DSProxy deployed for your EOA"));
-        const createdEvents = await dsProxyFactory.getPastEvents("Created", { fromBlock: 0 });
+        const createdEvents = await dsProxyFactory.getPastEvents("Created");
 
         assert.equal(createdEvents.length, 1);
         assert.equal(createdEvents[0].returnValues.owner, liquidator);
@@ -506,7 +572,7 @@ contract("index.js", function (accounts) {
         await Poll.run({
           logger: spyLogger,
           web3,
-          financialContractAddress: financialContract.address,
+          financialContractAddress: financialContract.options.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
@@ -538,7 +604,7 @@ contract("index.js", function (accounts) {
           await Poll.run({
             logger: spyLogger,
             web3,
-            financialContractAddress: finder.address,
+            financialContractAddress: finder.options.address,
             pollingDelay,
             errorRetries,
             errorRetriesTimeout,
@@ -556,10 +622,12 @@ contract("index.js", function (accounts) {
         // To create an error within the liquidator bot we can create a price feed that we know will throw an error.
         // Specifically, creating a uniswap feed with no `sync` events will generate an error. We can then check
         // the execution loop re-tries an appropriate number of times and that the associated logs are generated.
-        const uniswap = await UniswapMock.new();
+        const uniswap = await UniswapMock.new().send({ from: contractCreator });
         // token0 and token1 don't matter here so we just arbitrarily set them to an existing token
         // that is already created, like `collateralToken`.
-        await uniswap.setTokens(collateralToken.address, collateralToken.address);
+        await uniswap.methods
+          .setTokens(collateralToken.options.address, collateralToken.options.address)
+          .send({ from: contractCreator });
 
         // We will also create a new spy logger, listening for debug events to validate the re-tries.
         spyLogger = winston.createLogger({
@@ -569,7 +637,7 @@ contract("index.js", function (accounts) {
 
         defaultPriceFeedConfig = {
           type: "uniswap",
-          uniswapAddress: uniswap.address,
+          uniswapAddress: uniswap.options.address,
           twapLength: 1,
           lookback: 1,
           getTimeOverride: { useBlockTime: true }, // enable tests to run in hardhat
@@ -581,7 +649,7 @@ contract("index.js", function (accounts) {
           await Poll.run({
             logger: spyLogger,
             web3,
-            financialContractAddress: financialContract.address,
+            financialContractAddress: financialContract.options.address,
             pollingDelay,
             errorRetries,
             errorRetriesTimeout,
@@ -610,7 +678,7 @@ contract("index.js", function (accounts) {
         await Poll.run({
           logger: spyLogger,
           web3,
-          financialContractAddress: financialContract.address,
+          financialContractAddress: financialContract.options.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,
@@ -638,7 +706,7 @@ contract("index.js", function (accounts) {
         await Poll.run({
           logger: spyLogger,
           web3,
-          financialContractAddress: financialContract.address,
+          financialContractAddress: financialContract.options.address,
           pollingDelay,
           errorRetries,
           errorRetriesTimeout,

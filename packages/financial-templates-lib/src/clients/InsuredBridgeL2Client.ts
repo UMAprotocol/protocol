@@ -17,6 +17,7 @@ export interface Deposit {
   slowRelayFeePct: string;
   instantRelayFeePct: string;
   quoteTimestamp: number;
+  depositContract: string;
 }
 
 export class InsuredBridgeL2Client {
@@ -76,6 +77,7 @@ export class InsuredBridgeL2Client {
         slowRelayFeePct: depositRelayedEvent.returnValues.slowRelayFeePct,
         instantRelayFeePct: depositRelayedEvent.returnValues.instantRelayFeePct,
         quoteTimestamp: Number(depositRelayedEvent.returnValues.quoteTimestamp),
+        depositContract: depositRelayedEvent.address,
       };
       depositData.depositHash = this.generateDepositHash(depositData);
       this.deposits[depositRelayedEvent.returnValues.depositId] = depositData;
