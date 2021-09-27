@@ -99,7 +99,12 @@ export class InsuredBridgePriceFeed extends PriceFeedInterface {
     // Validate relays proposed realized fee percentage.
     const expectedRealizedFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(matchedDeposit[0]);
     if (expectedRealizedFeePct.toString() !== parsedAncillaryData.realizedLpFeePct.toString()) {
-      this.logger.debug({ at: "InsuredBridgePriceFeed", message: "Matched deposit realized fee % is incorrect" });
+      this.logger.debug({
+        at: "InsuredBridgePriceFeed",
+        message: "Matched deposit realized fee % is incorrect",
+        expectedRealizedFeePct: expectedRealizedFeePct.toString(),
+        relayRealizedLpFeePct: parsedAncillaryData.realizedLpFeePct.toString(),
+      });
       return toBNWei(isRelayValid.No);
     }
 
