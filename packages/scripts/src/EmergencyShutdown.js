@@ -27,12 +27,16 @@ async function main() {
   await run(account, argv.derivative, finder, adminAbi);
 }
 
-main().then(
-  () => {
-    process.exit(0);
-  },
-  (error) => {
-    console.error(error.stack);
-    process.exit(1);
-  }
-);
+if (require.main === module) {
+  main().then(
+    () => {
+      process.exit(0);
+    },
+    (error) => {
+      console.error(error.stack);
+      process.exit(1);
+    }
+  );
+} else {
+  module.exports = { run };
+}
