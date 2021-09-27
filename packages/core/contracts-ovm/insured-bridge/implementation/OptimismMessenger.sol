@@ -14,14 +14,16 @@ contract OptimismMessenger is OVM_CrossDomainEnabled, MessengerInterface {
      * @notice Sends a message to an account on L2.
      * @param target The intended recipient on L2.
      * @param gasLimit The gasLimit for the receipt of the message on L2.
+     * @param gasPrice Unused for sending messages to Optimism.
      * @param message The data to send to the target (usually calldata to a function with
      *  `onlyFromCrossDomainAccount()`)
      */
     function relayMessage(
         address target,
-        uint32 gasLimit,
+        uint256 gasLimit,
+        uint256 gasPrice,
         bytes memory message
     ) external override {
-        sendCrossDomainMessage(target, gasLimit, message);
+        sendCrossDomainMessage(target, uint32(gasLimit), message);
     }
 }

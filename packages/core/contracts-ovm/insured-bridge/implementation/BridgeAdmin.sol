@@ -126,16 +126,19 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
      * @param _chainId L2 network ID where Deposit contract is deployed.
      * @param _admin New admin address to set on L2.
      * @param _l2Gas Gas limit to set for relayed message on L2.
+     * @param _l2GasPrice Gas price bid to set for relayed message on L2.
      */
     function setBridgeAdmin(
         uint256 _chainId,
         address _admin,
-        uint32 _l2Gas
+        uint32 _l2Gas,
+        uint256 _l2GasPrice
     ) public onlyOwner canRelay(_chainId) nonReentrant() {
         require(_admin != address(0), "Admin cannot be zero address");
         MessengerInterface(_depositContracts[_chainId].messengerContract).relayMessage(
             _depositContracts[_chainId].depositContract,
             _l2Gas,
+            _l2GasPrice,
             abi.encodeWithSignature("setBridgeAdmin(address)", _admin)
         );
         emit SetBridgeAdmin(_chainId, _admin);
@@ -147,15 +150,18 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
      * @param _chainId L2 network ID where Deposit contract is deployed.
      * @param _minimumBridgingDelay the new minimum delay.
      * @param _l2Gas Gas limit to set for relayed message on L2.
+     * @param _l2GasPrice Gas price bid to set for relayed message on L2.
      */
     function setMinimumBridgingDelay(
         uint256 _chainId,
         uint64 _minimumBridgingDelay,
-        uint32 _l2Gas
+        uint32 _l2Gas,
+        uint256 _l2GasPrice
     ) public onlyOwner canRelay(_chainId) nonReentrant() {
         MessengerInterface(_depositContracts[_chainId].messengerContract).relayMessage(
             _depositContracts[_chainId].depositContract,
             _l2Gas,
+            _l2GasPrice,
             abi.encodeWithSignature("setMinimumBridgingDelay(uint64)", _minimumBridgingDelay)
         );
         emit SetMinimumBridgingDelay(_chainId, _minimumBridgingDelay);
@@ -169,16 +175,19 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
      * @param _l2Token address of L2 token to enable/disable deposits for.
      * @param _depositsEnabled bool to set if the deposit box should accept/reject deposits.
      * @param _l2Gas Gas limit to set for relayed message on L2.
+     * @param _l2GasPrice Gas price bid to set for relayed message on L2.
      */
     function setEnableDeposits(
         uint256 _chainId,
         address _l2Token,
         bool _depositsEnabled,
-        uint32 _l2Gas
+        uint32 _l2Gas,
+        uint256 _l2GasPrice
     ) public onlyOwner canRelay(_chainId) nonReentrant() {
         MessengerInterface(_depositContracts[_chainId].messengerContract).relayMessage(
             _depositContracts[_chainId].depositContract,
             _l2Gas,
+            _l2GasPrice,
             abi.encodeWithSignature("setEnableDeposits(address,bool)", _l2Token, _depositsEnabled)
         );
         emit DepositsEnabled(_chainId, _l2Token, _depositsEnabled);
@@ -193,14 +202,16 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
      * @param _l1Token Address of L1 token that can be used to relay L2 token deposits.
      * @param _l2Token Address of L2 token whose deposits are fulfilled by `_l1Token`.
      * @param _bridgePool Address of BridgePool which manages liquidity to fulfill L2-->L1 relays.
-     * @param _l2Gas Gas limit to set for relayed message on L2
+     * @param _l2Gas Gas limit to set for relayed message on L2.
+     * @param _l2GasPrice Gas price bid to set for relayed message on L2.
      */
     function whitelistToken(
         uint256 _chainId,
         address _l1Token,
         address _l2Token,
         address _bridgePool,
-        uint32 _l2Gas
+        uint32 _l2Gas,
+        uint256 _l2GasPrice
     ) public onlyOwner canRelay(_chainId) nonReentrant() {
         require(_bridgePool != address(0), "BridgePool cannot be zero address");
         require(_l2Token != address(0), "L2 token cannot be zero address");
@@ -213,6 +224,7 @@ contract BridgeAdmin is BridgeAdminInterface, Ownable, Lockable {
         MessengerInterface(_depositContracts[_chainId].messengerContract).relayMessage(
             _depositContracts[_chainId].depositContract,
             _l2Gas,
+            _l2GasPrice,
             abi.encodeWithSignature("whitelistToken(address,address,address)", _l1Token, _l2Token, _bridgePool)
         );
         emit WhitelistToken(_chainId, _l1Token, _l2Token, _bridgePool);

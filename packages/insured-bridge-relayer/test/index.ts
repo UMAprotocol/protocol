@@ -40,6 +40,7 @@ let mockOracle: any;
 
 // Hard-coded test params:
 const defaultGasLimit = 1_000_000;
+const defaultGasPrice = toWei("1", "gwei");
 const defaultIdentifier = utf8ToHex("IS_CROSS_CHAIN_RELAY_VALID");
 const defaultLiveness = 100;
 const lpFeeRatePerSecond = toWei("0.0000015");
@@ -135,7 +136,14 @@ describe("index.js", function () {
 
     // Add L1-L2 token mapping
     await bridgeAdmin.methods
-      .whitelistToken(chainId, l1Token.options.address, l2Token, bridgePool.options.address, defaultGasLimit)
+      .whitelistToken(
+        chainId,
+        l1Token.options.address,
+        l2Token,
+        bridgePool.options.address,
+        defaultGasLimit,
+        defaultGasPrice
+      )
       .send({ from: owner });
 
     spy = sinon.spy();

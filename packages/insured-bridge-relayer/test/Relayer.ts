@@ -53,6 +53,7 @@ let mockOracle: any;
 
 // Hard-coded test params:
 const defaultGasLimit = 1_000_000;
+const defaultGasPrice = toWei("1", "gwei");
 const defaultIdentifier = utf8ToHex("IS_CROSS_CHAIN_RELAY_VALID");
 const defaultLiveness = 100;
 const lpFeeRatePerSecond = toWei("0.0000015");
@@ -178,7 +179,8 @@ describe("Relayer.ts", function () {
         l1Token.options.address,
         l2Token.options.address,
         bridgePool.options.address,
-        defaultGasLimit
+        defaultGasLimit,
+        defaultGasPrice
       )
       .send({ from: l1Owner });
 

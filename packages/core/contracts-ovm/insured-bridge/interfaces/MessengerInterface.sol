@@ -8,7 +8,8 @@ pragma solidity ^0.8.0;
 interface MessengerInterface {
     function relayMessage(
         address target,
-        uint32 gasLimit,
+        uint256 gasLimit,
+        uint256 gasPrice,
         bytes memory message
     ) external;
 }
