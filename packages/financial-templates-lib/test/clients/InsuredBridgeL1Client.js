@@ -121,7 +121,6 @@ describe("InsuredBridgeL1Client", function () {
       quoteTimestamp: Number(depositData.quoteTimestamp),
       realizedLpFeePct: relayData.realizedLpFeePct,
       depositHash: depositHash,
-      depositContract: depositContractImpersonator,
       relayState: 0, // pending
     };
   };

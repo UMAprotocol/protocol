@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.3.0](https://github.com/UMAprotocol/protocol/compare/@uma/merkle-distributor@1.2.4...@uma/merkle-distributor@1.3.0) (2021-09-28)
+
+### Bug Fixes
+
+- make unused variables an error in the typescript linter ([#3279](https://github.com/UMAprotocol/protocol/issues/3279)) ([1d26dfc](https://github.com/UMAprotocol/protocol/commit/1d26dfcd500cc4f84dc5672de0c8f9a7c5592e43))
+
+### Features
+
+- **core:** add tasks to manage artifacts and deployments ([#3229](https://github.com/UMAprotocol/protocol/issues/3229)) ([15a8f31](https://github.com/UMAprotocol/protocol/commit/15a8f31e3d3ce0df9b68b03ae56f8df789ae481a))
+
 ## [1.2.4](https://github.com/UMAprotocol/protocol/compare/@uma/merkle-distributor@1.2.3...@uma/merkle-distributor@1.2.4) (2021-07-19)
 
 **Note:** Version bump only for package @uma/merkle-distributor

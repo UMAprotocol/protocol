@@ -6,16 +6,16 @@
 pragma solidity ^0.8.0;
 
 /* Interface Imports */
-import "./iOVM_CrossDomainMessenger.sol";
+import "./iOptimism_CrossDomainMessenger.sol";
 
 /**
- * @title OVM_CrossDomainEnabled
+ * @title Optimism_CrossDomainEnabled
  * @dev Helper contract for contracts performing cross-domain communications
  *
  * Compiler used: defined by inheriting contract
  * Runtime target: defined by inheriting contract
  */
-contract OVM_CrossDomainEnabled {
+contract Optimism_CrossDomainEnabled {
     /*************
      * Variables *
      *************/
@@ -63,8 +63,8 @@ contract OVM_CrossDomainEnabled {
      * needs to override.
      * @return The address of the cross-domain messenger contract which should be used.
      */
-    function getCrossDomainMessenger() internal virtual returns (iOVM_CrossDomainMessenger) {
-        return iOVM_CrossDomainMessenger(messenger);
+    function getCrossDomainMessenger() internal virtual returns (iOptimism_CrossDomainMessenger) {
+        return iOptimism_CrossDomainMessenger(messenger);
     }
 
     /**

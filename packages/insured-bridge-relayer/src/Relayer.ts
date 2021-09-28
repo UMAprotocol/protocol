@@ -130,8 +130,7 @@ export class Relayer {
   private async isRelayValid(relay: Relay, deposit: Deposit): Promise<boolean> {
     return (
       relay.realizedLpFeePct.toString() ===
-        (await this.l1Client.calculateRealizedLpFeePctForDeposit(deposit)).toString() &&
-      relay.depositContract === deposit.depositContract
+      (await this.l1Client.calculateRealizedLpFeePctForDeposit(deposit)).toString()
     );
   }
 
@@ -204,7 +203,6 @@ export class Relayer {
           quoteTimestamp: receipt.events.DepositRelayed.returnValues.quoteTimestamp,
           realizedLpFeePct: receipt.events.DepositRelayed.returnValues.realizedLpFeePct,
           depositHash: receipt.events.DepositRelayed.returnValues.depositHash,
-          depositContract: receipt.events.DepositRelayed.returnValues.depositContract,
           transactionConfig,
         });
       else throw receipt;

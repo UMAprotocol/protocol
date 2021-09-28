@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.5.0](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.4.1...@uma/serverless-orchestration@2.5.0) (2021-09-28)
+
+### Bug Fixes
+
+- **serverless-infrastructure:** Add additional error modes to serverless hub ([#3299](https://github.com/UMAprotocol/protocol/issues/3299)) ([a9dcfc1](https://github.com/UMAprotocol/protocol/commit/a9dcfc1f0cd3f89a34437c3a2ddc31ee79625ce9))
+
+### Features
+
+- **core:** add tasks to manage artifacts and deployments ([#3229](https://github.com/UMAprotocol/protocol/issues/3229)) ([15a8f31](https://github.com/UMAprotocol/protocol/commit/15a8f31e3d3ce0df9b68b03ae56f8df789ae481a))
+
 ## [2.4.1](https://github.com/UMAprotocol/protocol/compare/@uma/serverless-orchestration@2.4.0...@uma/serverless-orchestration@2.4.1) (2021-07-19)
 
 **Note:** Version bump only for package @uma/serverless-orchestration

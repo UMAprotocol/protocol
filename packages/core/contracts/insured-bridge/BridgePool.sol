@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../interfaces/BridgeAdminInterface.sol";
-import "../interfaces/BridgePoolInterface.sol";
+import "./interfaces/BridgeAdminInterface.sol";
+import "./interfaces/BridgePoolInterface.sol";
 
-import "../../../contracts/oracle/interfaces/OptimisticOracleInterface.sol";
-import "../../../contracts/oracle/interfaces/StoreInterface.sol";
-import "../../../contracts/oracle/interfaces/FinderInterface.sol";
-import "../../../contracts/oracle/implementation/Constants.sol";
+import "../oracle/interfaces/OptimisticOracleInterface.sol";
+import "../oracle/interfaces/StoreInterface.sol";
+import "../oracle/interfaces/FinderInterface.sol";
+import "../oracle/implementation/Constants.sol";
 
-import "../../../contracts/common/implementation/AncillaryData.sol";
-import "../../../contracts/common/implementation/Testable.sol";
-import "../../../contracts/common/implementation/FixedPoint.sol";
-import "../../../contracts/common/implementation/MultiCaller.sol";
-import "../../../contracts/common/implementation/Lockable.sol";
-import "../../../contracts/common/implementation/ExpandedERC20.sol";
+import "../common/implementation/AncillaryData.sol";
+import "../common/implementation/Testable.sol";
+import "../common/implementation/FixedPoint.sol";
+import "../common/implementation/MultiCaller.sol";
+import "../common/implementation/Lockable.sol";
+import "../common/implementation/ExpandedERC20.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -103,8 +103,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         uint64 instantRelayFeePct,
         uint64 quoteTimestamp,
         uint64 realizedLpFeePct,
-        bytes32 indexed depositHash,
-        address depositContract
+        bytes32 indexed depositHash
     );
     event RelaySpedUp(bytes32 indexed depositHash, address indexed instantRelayer);
     event RelaySettled(
@@ -288,8 +287,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         pendingReserves += amount; // Book off maximum liquidity used by this relay in the pending reserves.
 
         // We use an internal method to emit this event to overcome Solidity's "stack too deep" error.
-        address _depositContract = bridgeAdmin.depositContracts(chainId).depositContract;
-        _emitDepositRelayedEvent(depositData, realizedLpFeePct, depositHash, _depositContract);
+        _emitDepositRelayedEvent(depositData, realizedLpFeePct, depositHash);
 
         numberOfRelays += 1;
     }
@@ -564,12 +562,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             "l1Token",
             address(l1Token)
         );
-        intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
-            intermediateAncillaryData,
-            "depositContract",
-            bridgeAdmin.depositContracts(_depositData.chainId).depositContract
-        );
-
         return intermediateAncillaryData;
     }
 
@@ -702,8 +694,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     function _emitDepositRelayedEvent(
         DepositData memory _depositData,
         uint64 realizedLpFeePct,
-        bytes32 _depositHash,
-        address _depositContract
+        bytes32 _depositHash
     ) private {
         // Emit only information that is not stored in this contract. The relay data associated with the `_depositHash`
         // can be queried on-chain via the `relays` mapping keyed by `_depositHash`.
@@ -720,8 +711,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             _depositData.instantRelayFeePct,
             _depositData.quoteTimestamp,
             realizedLpFeePct,
-            _depositHash,
-            _depositContract
+            _depositHash
         );
     }
 }

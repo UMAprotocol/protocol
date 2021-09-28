@@ -8,8 +8,8 @@ const { deployContractMock } = require("./helpers/SmockitHelper");
 const { assert } = require("chai");
 
 // Tested contracts
-const AVM_InboxMock = getContract("AVM_InboxMock");
-const ArbitrumMessenger = getContract("ArbitrumMessenger");
+const Arbitrum_InboxMock = getContract("Arbitrum_InboxMock");
+const Arbitrum_Messenger = getContract("Arbitrum_Messenger");
 const BridgeAdmin = getContract("BridgeAdmin");
 const BridgePool = getContract("BridgePool");
 const Timer = getContract("Timer");
@@ -57,9 +57,9 @@ describe("ArbitrumMessenger integration with BridgeAdmin", () => {
     await identifierWhitelist.methods.addSupportedIdentifier(defaultIdentifier).send({ from: owner });
   });
   beforeEach(async function () {
-    l1InboxMock = await deployContractMock("AVM_InboxMock", {}, AVM_InboxMock);
+    l1InboxMock = await deployContractMock("AVM_InboxMock", {}, Arbitrum_InboxMock);
 
-    arbitrumMessenger = await ArbitrumMessenger.new(l1InboxMock.options.address).send({ from: owner });
+    arbitrumMessenger = await Arbitrum_Messenger.new(l1InboxMock.options.address).send({ from: owner });
 
     bridgeAdmin = await BridgeAdmin.new(
       finder.options.address,
