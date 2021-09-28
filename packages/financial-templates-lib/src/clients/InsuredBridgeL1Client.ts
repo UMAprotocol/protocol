@@ -39,7 +39,6 @@ export interface Relay {
   quoteTimestamp: number;
   realizedLpFeePct: string;
   depositHash: string;
-  depositContract: string;
   relayState: RelayState;
 }
 
@@ -186,7 +185,6 @@ export class InsuredBridgeL1Client {
           quoteTimestamp: Number(depositRelayedEvent.returnValues.quoteTimestamp),
           realizedLpFeePct: depositRelayedEvent.returnValues.realizedLpFeePct,
           depositHash: depositRelayedEvent.returnValues.depositHash,
-          depositContract: depositRelayedEvent.returnValues.depositContract,
           relayState: RelayState.Pending,
         };
 
