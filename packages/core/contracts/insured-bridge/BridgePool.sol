@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../interfaces/BridgeAdminInterface.sol";
-import "../interfaces/BridgePoolInterface.sol";
+import "./interfaces/BridgeAdminInterface.sol";
+import "./interfaces/BridgePoolInterface.sol";
 
-import "../../../contracts/oracle/interfaces/OptimisticOracleInterface.sol";
-import "../../../contracts/oracle/interfaces/StoreInterface.sol";
-import "../../../contracts/oracle/interfaces/FinderInterface.sol";
-import "../../../contracts/oracle/implementation/Constants.sol";
+import "../oracle/interfaces/OptimisticOracleInterface.sol";
+import "../oracle/interfaces/StoreInterface.sol";
+import "../oracle/interfaces/FinderInterface.sol";
+import "../oracle/implementation/Constants.sol";
 
-import "../../../contracts/common/implementation/AncillaryData.sol";
-import "../../../contracts/common/implementation/Testable.sol";
-import "../../../contracts/common/implementation/FixedPoint.sol";
-import "../../../contracts/common/implementation/MultiCaller.sol";
-import "../../../contracts/common/implementation/Lockable.sol";
-import "../../../contracts/common/implementation/ExpandedERC20.sol";
+import "../common/implementation/AncillaryData.sol";
+import "../common/implementation/Testable.sol";
+import "../common/implementation/FixedPoint.sol";
+import "../common/implementation/MultiCaller.sol";
+import "../common/implementation/Lockable.sol";
+import "../common/implementation/ExpandedERC20.sol";
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
