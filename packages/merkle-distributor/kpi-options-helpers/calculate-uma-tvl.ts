@@ -1,6 +1,6 @@
 import nodeFetch from "node-fetch";
 
-import { getAbi, getAddress } from "@uma/core";
+import { getAbi, getAddress } from "@uma/contracts-node";
 import { getWeb3, ConvertDecimals } from "@uma/common";
 const web3 = getWeb3();
 const { toWei, toBN, fromWei } = web3.utils;
@@ -84,7 +84,7 @@ export async function getCollateralInfo(collateralAddresses: Array<string>, regi
 // in this list, such as the Optimistic oracle. These will have `null` values for their collateral type, balance and price.
 // They are filtered out later on in the `getAllFinancialContractsData` method.
 export async function getAllRegisteredContracts() {
-  const mainnetRegistry = new web3.eth.Contract(getAbi("Registry"), getAddress("Registry", 1));
+  const mainnetRegistry = new web3.eth.Contract(getAbi("Registry"), await getAddress("Registry", 1));
   const events = await mainnetRegistry.getPastEvents("NewContractRegistered", { fromBlock: 0, toBlock: "latest" });
   return events.map((event: any) => event.returnValues.contractAddress);
 }
