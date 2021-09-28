@@ -221,12 +221,18 @@ export default async (env: ProcessEnv) => {
   console.log("Started Express Server, API accessible");
 
   async function detectNewContracts(startBlock: number, endBlock: number) {
+    // ignore case when startblock == endblock, this can happen when loop is run before a new block has changed
+    if (startBlock === endBlock) return;
+    assert(startBlock < endBlock, "Startblock must be lower than endBlock");
     await services.registry(startBlock, endBlock);
     await services.lspCreator.update(startBlock, endBlock);
   }
 
   // break all state updates by block events into a cleaner function
   async function updateContractState(startBlock: number, endBlock: number) {
+    // ignore case when startblock == endblock, this can happen when loop is run before a new block has changed
+    if (startBlock === endBlock) return;
+    assert(startBlock < endBlock, "Startblock must be lower than endBlock");
     await services.blocks.handleNewBlock(endBlock);
     // update everyting
     await services.emps.update(startBlock, endBlock);
