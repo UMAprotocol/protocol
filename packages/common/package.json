@@ -1,6 +1,6 @@
 {
   "name": "@uma/common",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "description": "Common js utilities used by other UMA packages",
   "homepage": "http://umaproject.org",
   "license": "AGPL-3.0-or-later",
@@ -61,10 +61,10 @@
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@tsconfig/node14": "^1.0.0",
     "@types/ethereum-protocol": "^1.0.0",
+    "@types/lodash.uniqby": "^4.7.6",
     "@types/mocha": "^5.2.7",
-    "web3-core": "^1.5.0",
-    "web3-eth-contract": "^1.5.0",
     "ethers": "^5.4.2",
-    "@types/lodash.uniqby": "^4.7.6"
+    "web3-core": "^1.5.0",
+    "web3-eth-contract": "^1.5.0"
   }
 }

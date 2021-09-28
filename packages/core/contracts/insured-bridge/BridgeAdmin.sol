@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 pragma solidity ^0.8.0;
 
-import "../interfaces//BridgePoolInterface.sol";
-import "../interfaces/BridgeAdminInterface.sol";
-import "../interfaces/MessengerInterface.sol";
-import "../../../contracts/oracle/interfaces/IdentifierWhitelistInterface.sol";
-import "../../../contracts/oracle/interfaces/FinderInterface.sol";
-import "../../../contracts/oracle/implementation/Constants.sol";
-import "../../../contracts/common/interfaces/AddressWhitelistInterface.sol";
-import "../../../contracts/common/implementation/Lockable.sol";
+import "./interfaces//BridgePoolInterface.sol";
+import "./interfaces/BridgeAdminInterface.sol";
+import "./interfaces/MessengerInterface.sol";
+import "../oracle/interfaces/IdentifierWhitelistInterface.sol";
+import "../oracle/interfaces/FinderInterface.sol";
+import "../oracle/implementation/Constants.sol";
+import "../common/interfaces/AddressWhitelistInterface.sol";
+import "../common/implementation/Lockable.sol";
 
 import "@openzeppelin/contracts/access/Ownable.sol";
 

@@ -32,7 +32,7 @@ const factory__L1StandardBridge = createOptimismEthersFactory("OVM_L1StandardBri
 const factory__L2StandardBridge = createOptimismEthersFactory("OVM_L2StandardBridge", true);
 
 // Insured bridge contract factories
-const factory__L1_OptimismMessenger = createLocalEthersFactory("OptimismMessenger");
+const factory__L1_OptimismMessenger = createLocalEthersFactory("Optimism_Messenger");
 const factory__L1_BridgeAdmin = createLocalEthersFactory("BridgeAdmin");
 const factory__L1_BridgePool = createLocalEthersFactory("BridgePool");
 const factory__L2_BridgeDepositBox = createLocalEthersFactory("OVM_BridgeDepositBox", true);

@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [1.1.5](https://github.com/UMAprotocol/protocol/compare/@uma/reporters@1.1.4...@uma/reporters@1.1.5) (2021-09-28)
+
+### Bug Fixes
+
+- make unused variables an error in the typescript linter ([#3279](https://github.com/UMAprotocol/protocol/issues/3279)) ([1d26dfc](https://github.com/UMAprotocol/protocol/commit/1d26dfcd500cc4f84dc5672de0c8f9a7c5592e43))
+
 ## [1.1.4](https://github.com/UMAprotocol/protocol/compare/@uma/reporters@1.1.3...@uma/reporters@1.1.4) (2021-07-19)
 
 **Note:** Version bump only for package @uma/reporters
