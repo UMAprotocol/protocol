@@ -57,10 +57,8 @@ const defaultInstantRelayFeePct = toWei("0.01");
 const lpFeeRatePerSecond = toWei("0.0000015");
 const finalFee = toWei("1");
 const defaultGasLimit = 1_000_000;
-
 const defaultGasPrice = toWei("1", "gwei");
 const rateModel = { UBar: toBNWei("0.65"), R0: toBNWei("0.00"), R1: toBNWei("0.08"), R2: toBNWei("1.00") };
-
 
 describe("InsuredBridgeL1Client", function () {
   let accounts,

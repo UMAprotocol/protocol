@@ -3,11 +3,14 @@ pragma solidity ^0.8.0;
 
 import "../external/AVM_CrossDomainEnabled.sol";
 import "../interfaces/MessengerInterface.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 /**
  * @notice Sends cross chain messages Arbitrum L2 network.
+ * @dev This contract's owner should be set to the BridgeAdmin deployed on the same L1 network so that only the
+ * BridgeAdmin can call cross-chain administrative functions on the L2 DepositBox via this messenger.
  */
-contract ArbitrumMessenger is AVM_CrossDomainEnabled, MessengerInterface {
+contract ArbitrumMessenger is Ownable, AVM_CrossDomainEnabled, MessengerInterface {
     /**
      * @param _inbox Contract that sends generalized messages to the Arbitrum chain.
      */
@@ -26,7 +29,7 @@ contract ArbitrumMessenger is AVM_CrossDomainEnabled, MessengerInterface {
         uint256 gasLimit,
         uint256 gasPrice,
         bytes memory message
-    ) external override {
+    ) external override onlyOwner {
         // Since we know the L2 target's address in advance, we don't need to alias an L1 address.
         sendTxToL2NoAliassing(
             target,

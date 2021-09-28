@@ -1,9 +1,11 @@
 import * as uma from "@uma/sdk";
 import { Data, makeId } from "./utils";
-const { JsMap } = uma.tables.generic;
+const Base = uma.tables.base;
+const { JsMap } = uma.stores;
 
 export const Table = (type = "LSP") => {
-  const table = JsMap<string, Data>(type, makeId);
+  const store = JsMap<string, Data>();
+  const table = Base<string, Data, uma.stores.Store<string, Data>>({ type, makeId }, store);
 
   async function addSponsors(id: string, sponsors: string[]) {
     const data = await table.get(id);

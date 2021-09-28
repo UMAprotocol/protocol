@@ -41,8 +41,8 @@ describe("lsp-state service", function () {
       longAddresses: new Set<string>(),
       shortAddresses: new Set<string>(),
       lsps: {
-        active: lsps.JsMap("Active LSP"),
-        expired: lsps.JsMap("Expired LSP"),
+        active: lsps.Table("Active LSP"),
+        expired: lsps.Table("Expired LSP"),
       },
       registeredLspsMetadata: new Map(),
     };

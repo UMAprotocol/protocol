@@ -1,5 +1,5 @@
 import assert from "assert";
-import { Table } from "./sorted-js-map";
+import { Table } from "./table";
 import type { Data } from "./utils";
 
 describe("emp history", function () {

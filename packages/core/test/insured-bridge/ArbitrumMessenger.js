@@ -1,5 +1,5 @@
 const hre = require("hardhat");
-const { runDefaultFixture, ZERO_ADDRESS } = require("@uma/common");
+const { runDefaultFixture, ZERO_ADDRESS, didContractThrow } = require("@uma/common");
 const { getContract } = hre;
 const { utf8ToHex, toWei } = web3.utils;
 
@@ -81,7 +81,20 @@ describe("ArbitrumMessenger integration with BridgeAdmin", () => {
       from: owner,
     });
   });
+  it("relayMessage only callable by owner", async function () {
+    const relayMessageTxn = arbitrumMessenger.methods.relayMessage(
+      depositBox.options.address,
+      defaultGasLimit,
+      defaultGasPrice,
+      "0x"
+    );
+    assert(await didContractThrow(relayMessageTxn.send({ from: rando })));
+    assert.ok(await relayMessageTxn.send({ from: owner }));
+  });
   describe("Cross domain Admin functions", () => {
+    beforeEach(async function () {
+      await arbitrumMessenger.methods.transferOwnership(bridgeAdmin.options.address).send({ from: owner });
+    });
     describe("Whitelist tokens", () => {
       it("Sends xchain message", async () => {
         await bridgeAdmin.methods

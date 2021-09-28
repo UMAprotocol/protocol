@@ -5,10 +5,10 @@ This table is meant to store emp state data. It will use typescript to ensure yo
 ## Usage
 
 ```js
-import * as uma from '@uma/sdk'
-const empTable:uma.table.emps.JsMap = uma.tables.emps.JsMap()
+import { stores, tables } from '@uma/sdk'
+const empTable:table.emps.Table = tables.emps.Table()
 
-const data:uma.table.emps.Data = await empTable.create({
+const data:table.emps.Data = await empTable.create({
   address:// ...emp address
 })
 // returns data = { id:address, address }

@@ -1,2 +1,2 @@
-export { Table as JsMap } from "./js-map";
+export { Table } from "./table";
 export * from "./utils";
