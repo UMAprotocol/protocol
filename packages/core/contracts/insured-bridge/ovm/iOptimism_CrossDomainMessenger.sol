@@ -6,9 +6,9 @@
 pragma solidity ^0.8.0;
 
 /**
- * @title iOVM_CrossDomainMessenger
+ * @title iOptimism_CrossDomainMessenger
  */
-interface iOVM_CrossDomainMessenger {
+interface iOptimism_CrossDomainMessenger {
     /**********
      * Events *
      **********/
