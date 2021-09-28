@@ -19,8 +19,6 @@ import "../common/implementation/ExpandedERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "hardhat/console.sol";
-
 /**
  * @notice Contract deployed on L1 that provides methods for "Relayers" to fulfill deposit orders that originated on L2.
  * The Relayers can either post capital to fulfill the deposit (instant relay), or request that the funds are taken out
@@ -94,25 +92,15 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     event LiquidityRemoved(address indexed token, uint256 amount, uint256 lpTokensBurnt, address liquidityProvider);
     event DepositRelayed(
         uint256 indexed relayId,
-        uint8 chainId,
-        uint64 depositId,
-        address indexed l2Sender,
+        DepositData depositData,
         address slowRelayer,
-        address l1Recipient,
         address l1Token,
-        uint256 amount,
-        uint64 slowRelayFeePct,
-        uint64 instantRelayFeePct,
-        uint64 quoteTimestamp,
         uint64 realizedLpFeePct,
-        bytes32 indexed depositHash
+        bytes32 indexed depositHash,
+        bytes32 indexed ancillaryDataHash
     );
     event RelaySpedUp(bytes32 indexed depositHash, address indexed instantRelayer);
-    event RelaySettled(
-        bytes32 indexed depositHash,
-        bytes32 indexed priceRequestAncillaryDataHash,
-        address indexed caller
-    );
+    event RelaySettled(bytes32 indexed depositHash, bytes32 indexed relayHash, address indexed caller);
 
     modifier onlyFromOptimisticOracle() {
         require(msg.sender == address(_getOptimisticOracle()), "Caller must be OptimisticOracle");
@@ -247,7 +235,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
                     address(this),
                     bridgeAdmin.identifier(),
                     relays[depositHash].priceRequestTime,
-                    _getRelayAncillaryData(depositData, relays[depositHash])
+                    _getRelayAncillaryData(_getRelayHash(depositData, relays[depositHash]))
                 ) ==
                 OptimisticOracleInterface.State.Disputed,
             "Pending relay exists"
@@ -277,14 +265,15 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         // instead of default setting to equal to the `depositTimestamp`, which is dependent on the L2 VM on which the
         // DepositContract is deployed. Imagine if the timestamps on the L2 have an offset that are always "in the
         // future" relative to L1 blocks, then the OptimisticOracle would always reject requests.
-        bytes memory ancillaryData = _getRelayAncillaryData(depositData, relayData);
+        bytes32 relayHash = _getRelayHash(depositData, relayData);
+        bytes memory ancillaryData = _getRelayAncillaryData(relayHash);
         _requestOraclePriceRelay(amount, priceRequestTime, ancillaryData);
         _proposeOraclePriceRelay(amount, priceRequestTime, ancillaryData);
 
         pendingReserves += amount; // Book off maximum liquidity used by this relay in the pending reserves.
 
         // We use an internal method to emit this event to overcome Solidity's "stack too deep" error.
-        _emitDepositRelayedEvent(depositData, realizedLpFeePct, depositHash);
+        _emitDepositRelayedEvent(depositData, realizedLpFeePct, depositHash, relayHash);
     }
 
     /**
@@ -343,7 +332,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         // been settled, then this will not revert and still return the price. If the dispute was successful (i.e. the
         // dispute resolved to a price of 0), then the disputer needs to go through OptimisticOracle to settle their
         // payout.
-        bytes memory ancillaryData = _getRelayAncillaryData(_depositData, relay);
+        bytes32 relayHash = _getRelayHash(_depositData, relay);
+        bytes memory ancillaryData = _getRelayAncillaryData(relayHash);
         require(
             _getOptimisticOracle().settleAndGetPrice(bridgeAdmin.identifier(), relay.priceRequestTime, ancillaryData) ==
                 int256(1e18), // Canonical value representing "True"; i.e. the proposed relay is valid.
@@ -384,7 +374,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         updateAccumulatedLpFees();
         allocateLpFees(_getAmountFromPct(relay.realizedLpFeePct, _depositData.amount));
 
-        emit RelaySettled(depositHash, keccak256(ancillaryData), msg.sender);
+        emit RelaySettled(depositHash, relayHash, msg.sender);
     }
 
     /**
@@ -514,29 +504,30 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     // Note: this method is identical to the one above, but it allows storage to be passed in, which saves some gas (3-4k)
     // when called internally due to solidity not needing to copy the entire data structure and just lazily read data
     // when requested.
-    function _getRelayAncillaryData(DepositData memory _depositData, RelayData storage _relayData)
+    function _getRelayAncillaryData(bytes32 relayHash) private view returns (bytes memory) {
+        // TODO: Consider adding BridgePool address to the ancillary data packet.
+        return AncillaryData.getKeyValueBytes32("relayHash", relayHash);
+    }
+
+    function _getRelayHash(DepositData memory _depositData, RelayData storage _relayData)
         private
         view
-        returns (bytes memory)
+        returns (bytes32)
     {
-        // TODO: Consider adding BridgePool address to the ancillary data packet.
         return
-            AncillaryData.getKeyValueBytes32(
-                "hash",
-                keccak256(
-                    abi.encode(
-                        _depositData.chainId,
-                        _depositData.depositId,
-                        _depositData.l1Recipient,
-                        _depositData.l2Sender,
-                        _depositData.amount,
-                        _depositData.slowRelayFeePct,
-                        _depositData.instantRelayFeePct,
-                        _depositData.quoteTimestamp,
-                        _relayData.relayId,
-                        _relayData.realizedLpFeePct,
-                        address(l1Token)
-                    )
+            keccak256(
+                abi.encode(
+                    _depositData.chainId,
+                    _depositData.depositId,
+                    _depositData.l1Recipient,
+                    _depositData.l2Sender,
+                    _depositData.amount,
+                    _depositData.slowRelayFeePct,
+                    _depositData.instantRelayFeePct,
+                    _depositData.quoteTimestamp,
+                    _relayData.relayId,
+                    _relayData.realizedLpFeePct,
+                    address(l1Token)
                 )
             );
     }
@@ -670,24 +661,21 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     function _emitDepositRelayedEvent(
         DepositData memory _depositData,
         uint64 realizedLpFeePct,
-        bytes32 _depositHash
+        bytes32 _depositHash,
+        bytes32 relayHash
     ) private {
         // Emit only information that is not stored in this contract. The relay data associated with the `_depositHash`
         // can be queried on-chain via the `relays` mapping keyed by `_depositHash`.
+        // TODO: had to put deposit data into a struct to avoid stack too deep. Should we consider constructing the
+        // hash on L2 along with the deposit data so it doesn't need to be emitted on mainnet?
         emit DepositRelayed(
             numberOfRelays,
-            _depositData.chainId,
-            _depositData.depositId,
-            _depositData.l2Sender,
+            _depositData,
             msg.sender,
-            _depositData.l1Recipient,
             address(l1Token),
-            _depositData.amount,
-            _depositData.slowRelayFeePct,
-            _depositData.instantRelayFeePct,
-            _depositData.quoteTimestamp,
             realizedLpFeePct,
-            _depositHash
+            _depositHash,
+            relayHash
         );
     }
 }
