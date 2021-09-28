@@ -16,10 +16,10 @@ const func = async function (hre) {
     10: 1, // optimism mainnet -> mainnet
   };
 
-  const brideAdminAddress = await getAddress("BridgeAdmin", l2ChainIdToL1[chainId]);
+  const bridgeAdminAddress = await getAddress("BridgeAdmin", l2ChainIdToL1[chainId]);
 
   const args = [
-    brideAdminAddress,
+    bridgeAdminAddress,
     1800, // minimumBridgingDelay of 30 mins
     ZERO_ADDRESS, // timer address
   ];

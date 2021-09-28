@@ -40,7 +40,7 @@ export function getHardhatConfig(
   // Some tests should not be tested using hardhat. Define all tests that end with *e2e.js to be ignored.
   const testBlacklist = [".e2e.js"];
 
-  const optimismCompileWhitelist = ["OVM_BridgeDepositBox", "Legacy_Timer"];
+  const optimismCompileWhitelist = ["OVM_BridgeDepositBox", "Legacy_Timer", "Legacy_Lockable", "Legacy_Testable"];
 
   const defaultConfig = ({
     solidity: {
