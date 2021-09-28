@@ -21,6 +21,7 @@ const func = async function (hre) {
   const args = [
     bridgeAdminAddress,
     1800, // minimumBridgingDelay of 30 mins
+    chainId, // chainId of the L2 being deployed on
     ZERO_ADDRESS, // timer address
   ];
 

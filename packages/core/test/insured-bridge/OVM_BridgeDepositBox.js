@@ -32,6 +32,7 @@ const depositAmount = toWei("50");
 const slowRelayFeePct = toWei("0.005");
 const instantRelayFeePct = toWei("0.005");
 const quoteTimestampOffset = 60; // 60 seconds into the past.
+const chainId = 10; // Optimism mainnet chain ID.
 
 describe("OVM_BridgeDepositBox", () => {
   // Account objects
@@ -52,7 +53,7 @@ describe("OVM_BridgeDepositBox", () => {
     });
     await web3.eth.sendTransaction({ from: deployer, to: predeploys.OVM_L2CrossDomainMessenger, value: toWei("1") });
 
-    depositBox = await BridgeDepositBox.new(bridgeAdmin, minimumBridgingDelay, timer.options.address).send({
+    depositBox = await BridgeDepositBox.new(bridgeAdmin, minimumBridgingDelay, chainId, timer.options.address).send({
       from: deployer,
     });
 
