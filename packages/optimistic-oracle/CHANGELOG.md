@@ -3,6 +3,13 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.6.0](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.5.1...@uma/optimistic-oracle@2.6.0) (2021-09-28)
+
+### Features
+
+- **financial-templates-lib:** convert src to typescript ([#3315](https://github.com/UMAprotocol/protocol/issues/3315)) ([3955d80](https://github.com/UMAprotocol/protocol/commit/3955d80038df1c54663a59b44d6e23bd09c7dcdc))
+- **financial-templates-lib:** Stub for InsuredBridgePriceFeed ([#3356](https://github.com/UMAprotocol/protocol/issues/3356)) ([8abd36f](https://github.com/UMAprotocol/protocol/commit/8abd36f0c938d85985661245f2fd51f465601df4))
+
 ## [2.5.1](https://github.com/UMAprotocol/protocol/compare/@uma/optimistic-oracle@2.5.0...@uma/optimistic-oracle@2.5.1) (2021-07-19)
 
 **Note:** Version bump only for package @uma/optimistic-oracle

@@ -3,6 +3,40 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.7.0](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.6.1...@uma/financial-templates-lib@2.7.0) (2021-09-28)
+
+### Bug Fixes
+
+- **cross-package:** Fixed typo of "ballance"->"balance" in a few packages ([#3265](https://github.com/UMAprotocol/protocol/issues/3265)) ([f48cd48](https://github.com/UMAprotocol/protocol/commit/f48cd48f74aefec1b348f2d8ea1cf4e787810809))
+- **cryptowatch-pricefeed:** Optimistically match price period without buffer first before resorting to buffer ([#3374](https://github.com/UMAprotocol/protocol/issues/3374)) ([01a6d2d](https://github.com/UMAprotocol/protocol/commit/01a6d2d646c7be566616e863ab5dcf59c9515515))
+- **financial-templates-lib:** include ts in mocha config ([#3350](https://github.com/UMAprotocol/protocol/issues/3350)) ([d72d1b0](https://github.com/UMAprotocol/protocol/commit/d72d1b0eb1bedbb0d93d14142dd56b7ae6808539))
+- **GasEstimator:** quick fix for EIP1559 ([#3305](https://github.com/UMAprotocol/protocol/issues/3305)) ([0c58613](https://github.com/UMAprotocol/protocol/commit/0c58613ccb6c3a017097e46a5d53c1992e2e6da2))
+- **insured-bridge:** clean unit tests and simplify param injection ([#3335](https://github.com/UMAprotocol/protocol/issues/3335)) ([564f2a8](https://github.com/UMAprotocol/protocol/commit/564f2a8d7f170bd472f2e11bf69df9102c82eec7))
+- **pf-configs:** Use chainId in default price feed ([#3355](https://github.com/UMAprotocol/protocol/issues/3355)) ([d56b1b2](https://github.com/UMAprotocol/protocol/commit/d56b1b2c1a39f340713238979786e77eaa8428e4))
+- fix gas estimator on polygon ([#3322](https://github.com/UMAprotocol/protocol/issues/3322)) ([e8b860a](https://github.com/UMAprotocol/protocol/commit/e8b860a02a328876641d0a1ebcaf91ba62836026))
+
+### Features
+
+- **core:** add tasks to manage artifacts and deployments ([#3229](https://github.com/UMAprotocol/protocol/issues/3229)) ([15a8f31](https://github.com/UMAprotocol/protocol/commit/15a8f31e3d3ce0df9b68b03ae56f8df789ae481a))
+- **df-pf-configs:** Add GASETH-0921 default price feed config ([#3330](https://github.com/UMAprotocol/protocol/issues/3330)) ([e5d6002](https://github.com/UMAprotocol/protocol/commit/e5d600280094d2ffeca110a32727650b1a91f192))
+- **financial-templates-lib:** convert src to typescript ([#3315](https://github.com/UMAprotocol/protocol/issues/3315)) ([3955d80](https://github.com/UMAprotocol/protocol/commit/3955d80038df1c54663a59b44d6e23bd09c7dcdc))
+- **financial-templates-lib:** improve the way alternative nodes are handled in the price feeds ([#3345](https://github.com/UMAprotocol/protocol/issues/3345)) ([ddaf9e7](https://github.com/UMAprotocol/protocol/commit/ddaf9e782ed3315fd799ae06cd4ada162c1343de))
+- **financial-templates-lib:** Stub for InsuredBridgePriceFeed ([#3356](https://github.com/UMAprotocol/protocol/issues/3356)) ([8abd36f](https://github.com/UMAprotocol/protocol/commit/8abd36f0c938d85985661245f2fd51f465601df4))
+- **insured-bridge:** add arbitrum contract support to deposit box inheritance path ([#3385](https://github.com/UMAprotocol/protocol/issues/3385)) ([c77cce7](https://github.com/UMAprotocol/protocol/commit/c77cce7e5a0c37b9880cad045403f7b79dabc626))
+- **insured-bridge:** Add ArbitrumMessenger ([#3392](https://github.com/UMAprotocol/protocol/issues/3392)) ([fa56d3c](https://github.com/UMAprotocol/protocol/commit/fa56d3c02c40fc72fe2288a286ea7849f14754f2))
+- **insured-bridge:** Add realized LP fee pct computation ([#3373](https://github.com/UMAprotocol/protocol/issues/3373)) ([95abd8d](https://github.com/UMAprotocol/protocol/commit/95abd8d2d6e481a54e234bda6c7f8585babaa5eb))
+- **insured-bridge:** AVM bridge deposit box ([#3391](https://github.com/UMAprotocol/protocol/issues/3391)) ([7d73fde](https://github.com/UMAprotocol/protocol/commit/7d73fde9cf062c50a599166a0fe52f3f2a817ddb))
+- **insured-bridge:** BridgeAdmin supports multiple L2s ([#3390](https://github.com/UMAprotocol/protocol/issues/3390)) ([96cb0a4](https://github.com/UMAprotocol/protocol/commit/96cb0a4afd9b2f78a44d2cb481ec25c6e069cf58))
+- **insured-bridge:** Modify relay ancillary data to enhance off-chain bots ([#3363](https://github.com/UMAprotocol/protocol/issues/3363)) ([1c2ea19](https://github.com/UMAprotocol/protocol/commit/1c2ea19af1d586c79ba0fe51a7be6cdbd25bea7c))
+- **insured-bridge:** Refactoring for gas savings ([#3369](https://github.com/UMAprotocol/protocol/issues/3369)) ([1568cd9](https://github.com/UMAprotocol/protocol/commit/1568cd91406f38f8b69ba48753f1a7d094b8ea18))
+- **insured-bridge-relayer:** Add additional relay logic, should relay and slow relay implementation ([#3359](https://github.com/UMAprotocol/protocol/issues/3359)) ([2a81888](https://github.com/UMAprotocol/protocol/commit/2a81888934594815a5d85a7358c357397083ea23))
+- **insured-bridge-relayer:** add speed up bridging and additional standardization ([#3362](https://github.com/UMAprotocol/protocol/issues/3362)) ([dfb578a](https://github.com/UMAprotocol/protocol/commit/dfb578a1008a4954534fa87b3f7752ef3c8fa9b1))
+- **insured-bridge-relayer:** initial relayer logic implementation ([#3351](https://github.com/UMAprotocol/protocol/issues/3351)) ([a350bd9](https://github.com/UMAprotocol/protocol/commit/a350bd9d1fc9a8c58b4a57f58fee62e7cfd75141))
+- **insured-bridge-relayer:** Stub imports of L1 and L2 Bridge clients ([#3333](https://github.com/UMAprotocol/protocol/issues/3333)) ([1cf7925](https://github.com/UMAprotocol/protocol/commit/1cf792523acf9393b352df25d0428f48c22e31f1))
+- **insured-oracle:** Added initial client implementation and tests ([#3324](https://github.com/UMAprotocol/protocol/issues/3324)) ([877e204](https://github.com/UMAprotocol/protocol/commit/877e2042cd317fe1a1e8d1a1be036b2a738daaf9))
+- add multichain support for price feeds ([#3277](https://github.com/UMAprotocol/protocol/issues/3277)) ([2e5052b](https://github.com/UMAprotocol/protocol/commit/2e5052b198f44398c8bd52d68df6f900543037df))
+- **liquidator,disputer,monitor:** remove unnecessary unit conversion helpers in tests ([#3215](https://github.com/UMAprotocol/protocol/issues/3215)) ([77993f4](https://github.com/UMAprotocol/protocol/commit/77993f4d8ffa5ba821f66d5ff5d7c0cac7813009))
+
 ## [2.6.1](https://github.com/UMAprotocol/protocol/compare/@uma/financial-templates-lib@2.6.0...@uma/financial-templates-lib@2.6.1) (2021-07-19)
 
 **Note:** Version bump only for package @uma/financial-templates-lib

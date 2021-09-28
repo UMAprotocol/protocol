@@ -1,19 +1,18 @@
 {
   "name": "@uma/scripts",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "UMA Core Peripheral Scripts",
   "dependencies": {
     "@ethersproject/units": "^5.0.3",
-    "@uma/common": "^2.6.0",
-    "@uma/core": "^2.7.0",
-    "@uma/financial-templates-lib": "^2.6.1",
+    "@uma/common": "^2.7.0",
+    "@uma/core": "^2.8.0",
+    "@uma/financial-templates-lib": "^2.7.0",
     "dotenv": "^6.2.0",
     "hardhat": "^2.4.3",
     "minimist": "^1.2.0",
-    "winston": "^3.2.1",
-    "web3": "^1.5.0"
+    "web3": "^1.5.0",
+    "winston": "^3.2.1"
   },
-  "devDependencies": {},
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
   "private": true,
