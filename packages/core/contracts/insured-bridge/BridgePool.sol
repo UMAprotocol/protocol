@@ -19,6 +19,8 @@ import "../common/implementation/ExpandedERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import "hardhat/console.sol";
+
 /**
  * @notice Contract deployed on L1 that provides methods for "Relayers" to fulfill deposit orders that originated on L2.
  * The Relayers can either post capital to fulfill the deposit (instant relay), or request that the funds are taken out
@@ -221,9 +223,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     ) public nonReentrant() {
         // The realizedLPFeePct should never be greater than 0.5e18 and the slow and instant relay fees should never be
         // more than 0.25e18 each. Therefore, the sum of all fee types can never exceed 1e18 (or 100%).
-        require(slowRelayFeePct < 0.25e18);
-        require(instantRelayFeePct < 0.25e18);
-        require(realizedLpFeePct < 0.5e18);
+        require(slowRelayFeePct < 0.25e18 && instantRelayFeePct < 0.25e18 && realizedLpFeePct < 0.5e18);
 
         // Check if there is a pending relay for this deposit.
         DepositData memory depositData =
@@ -247,7 +247,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
                     address(this),
                     bridgeAdmin.identifier(),
                     relays[depositHash].priceRequestTime,
-                    getRelayAncillaryData(depositData, relays[depositHash])
+                    _getRelayAncillaryData(depositData, relays[depositHash])
                 ) ==
                 OptimisticOracleInterface.State.Disputed,
             "Pending relay exists"
@@ -257,22 +257,18 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         // instant relayer so that the l1Recipient cannot receive double payments. This means that once a relay is
         // disputed, it cant be sped up a second time (must finalize via the slow relay).
         uint256 priceRequestTime = getCurrentTime();
-        RelayData memory relayData =
-            RelayData({
-                relayId: numberOfRelays,
-                relayState: RelayState.Pending,
-                priceRequestTime: priceRequestTime,
-                realizedLpFeePct: realizedLpFeePct,
-                slowRelayer: msg.sender,
-                instantRelayer: relays[depositHash].instantRelayer
-            });
-        relays[depositHash] = relayData;
+        RelayData storage relayData = relays[depositHash];
+        relayData.relayId = numberOfRelays++;
+        relayData.relayState = RelayState.Pending;
+        relayData.priceRequestTime = priceRequestTime;
+        relayData.realizedLpFeePct = realizedLpFeePct;
+        relayData.slowRelayer = msg.sender;
 
         // Sanity check that pool has enough balance to cover relay amount + proposer reward. Reward amount will be
         // paid on settlement after the OptimisticOracle price request has passed the challenge period.
+        uint256 proposerBond = _getProposerBond(amount);
         require(
-            l1Token.balanceOf(address(this)) >= amount + _getProposerBond(amount) &&
-                liquidReserves >= amount + _getProposerBond(amount),
+            l1Token.balanceOf(address(this)) >= amount + proposerBond && liquidReserves >= amount + proposerBond,
             "Insufficient pool balance"
         );
 
@@ -281,15 +277,14 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         // instead of default setting to equal to the `depositTimestamp`, which is dependent on the L2 VM on which the
         // DepositContract is deployed. Imagine if the timestamps on the L2 have an offset that are always "in the
         // future" relative to L1 blocks, then the OptimisticOracle would always reject requests.
-        _requestOraclePriceRelay(amount, priceRequestTime, getRelayAncillaryData(depositData, relayData));
-        _proposeOraclePriceRelay(amount, priceRequestTime, getRelayAncillaryData(depositData, relayData));
+        bytes memory ancillaryData = _getRelayAncillaryData(depositData, relayData);
+        _requestOraclePriceRelay(amount, priceRequestTime, ancillaryData);
+        _proposeOraclePriceRelay(amount, priceRequestTime, ancillaryData);
 
         pendingReserves += amount; // Book off maximum liquidity used by this relay in the pending reserves.
 
         // We use an internal method to emit this event to overcome Solidity's "stack too deep" error.
         _emitDepositRelayedEvent(depositData, realizedLpFeePct, depositHash);
-
-        numberOfRelays += 1;
     }
 
     /**
@@ -348,12 +343,10 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         // been settled, then this will not revert and still return the price. If the dispute was successful (i.e. the
         // dispute resolved to a price of 0), then the disputer needs to go through OptimisticOracle to settle their
         // payout.
+        bytes memory ancillaryData = _getRelayAncillaryData(_depositData, relay);
         require(
-            _getOptimisticOracle().settleAndGetPrice(
-                bridgeAdmin.identifier(),
-                relay.priceRequestTime,
-                getRelayAncillaryData(_depositData, relay)
-            ) == int256(1e18), // Canonical value representing "True"; i.e. the proposed relay is valid.
+            _getOptimisticOracle().settleAndGetPrice(bridgeAdmin.identifier(), relay.priceRequestTime, ancillaryData) ==
+                int256(1e18), // Canonical value representing "True"; i.e. the proposed relay is valid.
             "Relay request was not valid"
         );
 
@@ -391,7 +384,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         updateAccumulatedLpFees();
         allocateLpFees(_getAmountFromPct(relay.realizedLpFeePct, _depositData.amount));
 
-        emit RelaySettled(depositHash, keccak256(getRelayAncillaryData(_depositData, relay)), msg.sender);
+        emit RelaySettled(depositHash, keccak256(ancillaryData), msg.sender);
     }
 
     /**
@@ -497,72 +490,55 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         view
         returns (bytes memory)
     {
+        return
+            AncillaryData.getKeyValueBytes32(
+                "hash",
+                keccak256(
+                    abi.encode(
+                        _depositData.chainId,
+                        _depositData.depositId,
+                        _depositData.l1Recipient,
+                        _depositData.l2Sender,
+                        _depositData.amount,
+                        _depositData.slowRelayFeePct,
+                        _depositData.instantRelayFeePct,
+                        _depositData.quoteTimestamp,
+                        _relayData.relayId,
+                        _relayData.realizedLpFeePct,
+                        address(l1Token)
+                    )
+                )
+            );
+    }
+
+    // Note: this method is identical to the one above, but it allows storage to be passed in, which saves some gas (3-4k)
+    // when called internally due to solidity not needing to copy the entire data structure and just lazily read data
+    // when requested.
+    function _getRelayAncillaryData(DepositData memory _depositData, RelayData storage _relayData)
+        private
+        view
+        returns (bytes memory)
+    {
         // TODO: Consider adding BridgePool address to the ancillary data packet.
-        // TODO: Consider hashing all of the params that can be compared against the L2 Deposit contract into a single
-        // "relay ancillary data hash" to reduce storage costs.
-        bytes memory intermediateAncillaryData = "";
-
-        // Add data inferred from the original deposit on L2:
-        intermediateAncillaryData = AncillaryData.appendKeyValueUint(
-            intermediateAncillaryData,
-            "chainId",
-            uint256(_depositData.chainId)
-        );
-        intermediateAncillaryData = AncillaryData.appendKeyValueUint(
-            intermediateAncillaryData,
-            "depositId",
-            uint256(_depositData.depositId)
-        );
-        intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
-            intermediateAncillaryData,
-            "l1Recipient",
-            _depositData.l1Recipient
-        );
-        intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
-            intermediateAncillaryData,
-            "l2Sender",
-            _depositData.l2Sender
-        );
-        intermediateAncillaryData = AncillaryData.appendKeyValueUint(
-            intermediateAncillaryData,
-            "amount",
-            _depositData.amount
-        );
-        intermediateAncillaryData = AncillaryData.appendKeyValueUint(
-            intermediateAncillaryData,
-            "slowRelayFeePct",
-            uint256(_depositData.slowRelayFeePct)
-        );
-        intermediateAncillaryData = AncillaryData.appendKeyValueUint(
-            intermediateAncillaryData,
-            "instantRelayFeePct",
-            uint256(_depositData.instantRelayFeePct)
-        );
-        intermediateAncillaryData = AncillaryData.appendKeyValueUint(
-            intermediateAncillaryData,
-            "quoteTimestamp",
-            uint256(_depositData.quoteTimestamp)
-        );
-
-        // Add relay data.
-        intermediateAncillaryData = AncillaryData.appendKeyValueUint(
-            intermediateAncillaryData,
-            "relayId",
-            uint256(_relayData.relayId)
-        );
-        intermediateAncillaryData = AncillaryData.appendKeyValueUint(
-            intermediateAncillaryData,
-            "realizedLpFeePct",
-            uint256(_relayData.realizedLpFeePct)
-        );
-
-        // Add global state data stored by this contract:
-        intermediateAncillaryData = AncillaryData.appendKeyValueAddress(
-            intermediateAncillaryData,
-            "l1Token",
-            address(l1Token)
-        );
-        return intermediateAncillaryData;
+        return
+            AncillaryData.getKeyValueBytes32(
+                "hash",
+                keccak256(
+                    abi.encode(
+                        _depositData.chainId,
+                        _depositData.depositId,
+                        _depositData.l1Recipient,
+                        _depositData.l2Sender,
+                        _depositData.amount,
+                        _depositData.slowRelayFeePct,
+                        _depositData.instantRelayFeePct,
+                        _depositData.quoteTimestamp,
+                        _relayData.relayId,
+                        _relayData.realizedLpFeePct,
+                        address(l1Token)
+                    )
+                )
+            );
     }
 
     /**************************************
