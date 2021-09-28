@@ -8,7 +8,10 @@ const func = async function (hre) {
   const { deployer } = await getNamedAccounts();
   const chainId = await web3.eth.net.getId();
 
-  if (chainId != "69" || chainId != "10") throw new Error("This deploy only works on optimism chains");
+  if (chainId != "69" || chainId != "10") {
+    console.log("This deploy only works on optimism chains");
+    return;
+  }
 
   // Map L2 chain IDs to L1 chain IDs to find associated bridgeAdmin addresses for a given L2 chain ID.
   const l2ChainIdToL1 = {
@@ -28,3 +31,4 @@ const func = async function (hre) {
 };
 module.exports = func;
 func.tags = ["OVM_BridgeDepositBox"];
+func.dependencies = ["BridgeAdmin"];
