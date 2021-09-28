@@ -63,20 +63,28 @@ export class Relayer {
       return;
     }
     for (const l1Token of Object.keys(relayableDeposits)) {
-      this.logger.debug({ at: "Relayer", message: "Processing relayable deposits for L1Token", l1Token });
+      this.logger.debug({
+        at: "Relayer",
+        message: `Processing ${relayableDeposits[l1Token].length} relayable deposits for L1Token`,
+        l1Token,
+      });
       for (const relayableDeposit of relayableDeposits[l1Token]) {
         // If deposit has a pending relay, then validate its relay params (i.e. any data not included in the deposit
         // hash). If relay params are invalid, then we should skip it so that we don't speed up an invalid relay.
         // If we cannot find the relay, then we should not skip it because we can still slow/instant relay it.
         const pendingRelay: Relay | undefined = this.l1Client.getRelayForDeposit(l1Token, relayableDeposit.deposit);
-        if (pendingRelay && !(await this.isRelayValid(pendingRelay, relayableDeposit.deposit))) {
-          this.logger.debug({
-            at: "Relayer",
-            message: "Pending relay is invalid, ignoring",
-            pendingRelay,
-            relayableDeposit,
-          });
-          return;
+        if (pendingRelay) {
+          const isRelayValid = await this.isRelayValid(pendingRelay, relayableDeposit.deposit);
+          if (!isRelayValid.isValid) {
+            this.logger.debug({
+              at: "Relayer",
+              message: "Pending relay is invalid, ignoring",
+              pendingRelay,
+              relayableDeposit,
+              reason: isRelayValid.reason,
+            });
+            continue;
+          }
         }
         // If relay is valid, then account for profitability and bot token balance when deciding how to relay.
         const realizedLpFeePct = await this.l1Client.calculateRealizedLpFeePctForDeposit(relayableDeposit.deposit);
@@ -127,12 +135,21 @@ export class Relayer {
   // Deposit params are incorrect, then the BridgePool's computed deposit hash will be different and the relay won't be
   // found. So, assuming that the relay contains a matching deposit hash, this bot's job is to only consider speeding up
   // relays that are valid, otherwise the bot might lose money without recourse on the relay.
-  private async isRelayValid(relay: Relay, deposit: Deposit): Promise<boolean> {
-    return (
-      relay.realizedLpFeePct.toString() ===
-        (await this.l1Client.calculateRealizedLpFeePctForDeposit(deposit)).toString() &&
-      relay.depositContract === deposit.depositContract
-    );
+  private async isRelayValid(relay: Relay, deposit: Deposit): Promise<{ isValid: boolean; reason: string }> {
+    const relayRealizedLpFeePct = relay.realizedLpFeePct.toString();
+    const expectedRelayRealizedLpFeePct = (await this.l1Client.calculateRealizedLpFeePctForDeposit(deposit)).toString();
+    if (relayRealizedLpFeePct !== expectedRelayRealizedLpFeePct)
+      return {
+        isValid: false,
+        reason: `relayRealizedLpFeePct: ${relayRealizedLpFeePct}!=expectedRelayRealizedLpFeePct: ${expectedRelayRealizedLpFeePct}`,
+      };
+    if (relay.depositContract !== deposit.depositContract)
+      return {
+        isValid: false,
+        reason: `relay.depositContract: ${relay.depositContract}!=deposit.depositContract: ${deposit.depositContract}`,
+      };
+
+    return { isValid: true, reason: "" };
   }
 
   private async shouldRelay(

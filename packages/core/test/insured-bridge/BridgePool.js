@@ -1376,7 +1376,6 @@ describe("BridgePool", () => {
 
     it("Rate updates as expected with multiple relays and instant relay", async () => {
       // Before any relays (nothing in flight and none finalized) the rate should be 0 (no utilization).
-
       assert.equal((await bridgePool.methods.liquidityUtilizationCurrent().call()).toString(), toWei("0"));
 
       // Next, relay the deposit and check the utilization updates.
