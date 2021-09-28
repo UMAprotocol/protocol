@@ -18,7 +18,6 @@ task("deploy-across-pool", "Deploys an L1 across pool and whitelists it within t
     const BridgeAdmin = await deployments.get("BridgeAdmin");
     const bridgeAdmin = new web3.eth.Contract(BridgeAdmin.abi, BridgeAdmin.address);
     console.log(`Loaded BridgeAdmin @ ${bridgeAdmin.options.address}`);
-
     console.log(`Deploying bridgePool`);
 
     const args = [
@@ -31,8 +30,6 @@ task("deploy-across-pool", "Deploys an L1 across pool and whitelists it within t
     ];
 
     const bridgePool = await deploy("BridgePool", { from: deployer, args, log: true });
-
-    console.log(bridgePool.abi);
 
     console.log("Bridge pool deployed @ ", bridgePool.address);
   });

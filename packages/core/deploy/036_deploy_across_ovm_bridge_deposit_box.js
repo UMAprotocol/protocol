@@ -1,28 +1,30 @@
-// The L2 br
-
-const argv = require("minimist")(process.argv.slice(), { string: ["bridgeadmin"] });
-
+// This deploy script should be run on an optimism provider.
+const { getAddress } = require("@uma/contracts-node");
 const { ZERO_ADDRESS } = require("@uma/common");
 const func = async function (hre) {
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
 
   const { deployer } = await getNamedAccounts();
+  const chainId = await web3.eth.net.getId();
 
-  // const BridgeAdmin = await deployments.get("BridgeAdmin");
+  if (chainId != "69" || chainId != "10") throw new Error("This deploy only works on optimism chains");
+
+  // Map L2 chain IDs to L1 chain IDs to find associated bridgeAdmin addresses for a given L2 chain ID.
+  const l2ChainIdToL1 = {
+    69: 42, // optimism testnet -> kovan
+    10: 1, // optimism mainnet -> mainnet
+  };
+
+  const brideAdminAddress = await getAddress("BridgeAdmin", l2ChainIdToL1[chainId]);
 
   const args = [
-    "0xC2cd5064Bbe7173E095a2d410CBc95fB6e5E3321", // _bridgeAdmin on L1
+    brideAdminAddress,
     1800, // minimumBridgingDelay of 30 mins
     ZERO_ADDRESS, // timer address
   ];
 
-  console.log("deployer", deployer);
-  console.log("args", args);
-
-  console.log("argv", argv);
-
-  // await deploy("OVM_BridgeDepositBox", { from: deployer, args, log: true });
+  await deploy("OVM_BridgeDepositBox", { from: deployer, args, log: true });
 };
 module.exports = func;
 func.tags = ["OVM_BridgeDepositBox"];
