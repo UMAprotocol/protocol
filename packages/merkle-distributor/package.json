@@ -3,6 +3,7 @@
   "version": "1.3.0",
   "description": "Simple script for dealing with Merkle distribution contracts and proofs hosted on IPFS",
   "dependencies": {
+    "@uma/common": "^2.7.0",
     "@uma/contracts-node": "^0.1.1",
     "chai": "^4.3.0",
     "commander": "^7.1.0",
