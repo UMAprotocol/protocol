@@ -5,6 +5,7 @@
   "author": "David Adams",
   "license": "AGPL-3.0-or-later",
   "devDependencies": {
+    "@types/cors": "^2.8.12",
     "@types/isomorphic-fetch": "^0.0.35",
     "@types/minimist": "^1.2.1",
     "@types/mocha": "^8.2.0",
