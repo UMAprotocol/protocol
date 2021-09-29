@@ -16,7 +16,7 @@ yarn add @uma/core
 
 ## Deploying the contracts
 
-To deploy the contracts, we use the `hardhat-deploy` package. This may be failiar to users of `hardhat`. The deployment
+To deploy the contracts, we use the `hardhat-deploy` package. This may be familiar to users of `hardhat`. The deployment
 process is faily simple, as a result.
 
 To deploy the entire UMA system on a network of your choice:
