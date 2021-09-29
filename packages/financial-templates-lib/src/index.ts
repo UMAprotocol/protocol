@@ -11,6 +11,7 @@ export * from "./helpers/multicall";
 export * from "./helpers/allowances";
 export * from "./helpers/math";
 export * from "./helpers/GasEstimator";
+export * from "./helpers/AbiUtils";
 export * from "./helpers/acrossFeesCalculator";
 export * from "./logger/Logger";
 export * from "./logger/SpyTransport";

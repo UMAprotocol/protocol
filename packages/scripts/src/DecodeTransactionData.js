@@ -1,14 +1,16 @@
+#!/usr/bin/env node
+
 // This script allows you to decode a transaction data blob revealing the method that the transaction is calling and
 // the parameters.
 // Example:
-// yarn truffle exec --network test ./scripts/DecodeTransactionData.js --data 0x10a7e2014554482f55534400000000000000000000000000000000000000000000000000
+// ./src/DecodeTransactionData.js --data 0x10a7e2014554482f55534400000000000000000000000000000000000000000000000000
 
-const { getAbiDecoder } = require("@uma/common");
+const { TransactionDataDecoder } = require("@uma/financial-templates-lib");
 
 const argv = require("minimist")(process.argv.slice(), { string: ["data"] });
 
 function _decodeData(data) {
-  return getAbiDecoder().decodeMethod(data);
+  return TransactionDataDecoder.getInstance().decodeTransaction(data);
 }
 
 const _printTransactionDataRecursive = function (txnObj) {
@@ -40,33 +42,27 @@ const _printTransactionDataRecursive = function (txnObj) {
   }
 };
 
-const decodeTransactionData = function (callback) {
-  try {
-    if (!argv.data) {
-      callback("You must provide the transaction data using the --data argument, e.g. --data 0x1234");
-    } else if (!argv.data.startsWith("0x")) {
-      callback("The --data argument must be a hex string starting with `0x`, e.g. --data 0x1234");
-    }
-
-    const txnData = _decodeData(argv.data);
-
-    if (!txnData) {
-      console.log(
-        "Could not identify the method that this transaction is calling.",
-        "Are you sure it corresponds to a contract in the UMAprotocol/protocol repository?"
-      );
-    } else {
-      console.log("Your decoded transaction information:");
-      _printTransactionDataRecursive(txnData);
-    }
-  } catch (e) {
-    // Forces the script to return a nonzero error code so failure can be detected in bash.
-    callback(e);
-    return;
+function main() {
+  if (!argv.data) {
+    throw new Error("You must provide the transaction data using the --data argument, e.g. --data 0x1234");
+  } else if (!argv.data.startsWith("0x")) {
+    throw new Error("The --data argument must be a hex string starting with `0x`, e.g. --data 0x1234");
   }
 
-  callback();
-};
+  const txnData = _decodeData(argv.data);
 
-decodeTransactionData.run = _decodeData;
-module.exports = decodeTransactionData;
+  if (!txnData) {
+    console.log(
+      "Could not identify the method that this transaction is calling.",
+      "Are you sure it corresponds to a contract in the UMAprotocol/protocol repository?"
+    );
+  } else {
+    console.log("Your decoded transaction information:");
+    _printTransactionDataRecursive(txnData);
+  }
+}
+if (require.main === module) {
+  main();
+} else {
+  module.exports = _decodeData;
+}

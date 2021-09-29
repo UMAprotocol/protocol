@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const { getContract, web3 } = require("hardhat");
 const assert = require("assert");
 const path = require("path");
@@ -25,7 +27,6 @@ async function main() {
     const contractHash = await buildHashes(contractType);
     versionMap[contractHash] = { contractType, contractVersion: buildVersion };
   }
-  console.log("versionMap", versionMap);
   saveContractHashArtifacts(versionMap);
 }
 

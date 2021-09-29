@@ -4,8 +4,8 @@
   "description": "UMA Core Peripheral Scripts",
   "dependencies": {
     "@ethersproject/units": "^5.0.3",
+    "@google-cloud/bigquery": "^5.3.0",
     "@uma/common": "^2.7.0",
-    "@uma/core": "^2.8.0",
     "@uma/financial-templates-lib": "^2.7.0",
     "dotenv": "^6.2.0",
     "hardhat": "^2.4.3",
@@ -22,5 +22,8 @@
   },
   "bugs": {
     "url": "https://github.com/UMAprotocol/protocol/issues"
+  },
+  "scripts": {
+    "test": "mocha 'test/**/*.js'"
   }
 }
