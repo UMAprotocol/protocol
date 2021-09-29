@@ -1,6 +1,6 @@
 // This helper includes a set of useful functions when dealing with merkle trees and payout claims.
 import { ethers } from "ethers";
-import { getAbi } from "@uma/core";
+import { getAbi } from "@uma/contracts-node";
 
 import MerkleTree from "./MerkleTree";
 import CloudflareHelper from "./CloudflareKVHelper";
