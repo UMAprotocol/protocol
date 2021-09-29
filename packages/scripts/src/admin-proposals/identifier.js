@@ -81,7 +81,7 @@ async function run() {
     polygon_netId = await crossChainWeb3.eth.net.getId();
     polygon_whitelist = new crossChainWeb3.eth.Contract(
       IdentifierWhitelist.abi,
-      _getContractAddressByName("IdentifierWhitelist", polygon_netId)
+      await _getContractAddressByName("IdentifierWhitelist", polygon_netId)
     );
     count = polygonIdentifiers.length;
   } else if (identifier) {
@@ -98,7 +98,7 @@ async function run() {
   // Initialize Eth contracts by grabbing deployed addresses from networks/1.json file.
   const whitelist = new web3.eth.Contract(
     IdentifierWhitelist.abi,
-    _getContractAddressByName("IdentifierWhitelist", netId)
+    await _getContractAddressByName("IdentifierWhitelist", netId)
   );
   const gasEstimator = new GasEstimator(
     winston.createLogger({ silent: true }),
@@ -112,15 +112,15 @@ async function run() {
       "gwei"
     )} gwei`
   );
-  const governor = new web3.eth.Contract(Governor.abi, _getContractAddressByName("Governor", netId));
-  const finder = new web3.eth.Contract(Finder.abi, _getContractAddressByName("Finder", netId));
+  const governor = new web3.eth.Contract(Governor.abi, await _getContractAddressByName("Governor", netId));
+  const finder = new web3.eth.Contract(Finder.abi, await _getContractAddressByName("Finder", netId));
   const oracleAddress = await finder.methods
     .getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
     .call();
   const oracle = new web3.eth.Contract(Voting.abi, oracleAddress);
   const governorRootTunnel = new web3.eth.Contract(
     GovernorRootTunnel.abi,
-    _getContractAddressByName("GovernorRootTunnel", netId)
+    await _getContractAddressByName("GovernorRootTunnel", netId)
   );
   if (polygonIdentifiers) {
     console.group("\nℹ️  Relayer infrastructure for Polygon transactions:");

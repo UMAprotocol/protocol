@@ -81,16 +81,16 @@ async function run() {
     polygon_netId = await crossChainWeb3.eth.net.getId();
     polygon_registry = new crossChainWeb3.eth.Contract(
       Registry.abi,
-      _getContractAddressByName("Registry", polygon_netId)
+      await _getContractAddressByName("Registry", polygon_netId)
     );
     polygon_governor = new crossChainWeb3.eth.Contract(
       GovernorChildTunnel.abi,
-      _getContractAddressByName("GovernorChildTunnel", polygon_netId)
+      await _getContractAddressByName("GovernorChildTunnel", polygon_netId)
     );
   }
 
   // Initialize Eth contracts by grabbing deployed addresses from networks/1.json file.
-  const registry = new web3.eth.Contract(Registry.abi, _getContractAddressByName("Registry", netId));
+  const registry = new web3.eth.Contract(Registry.abi, await _getContractAddressByName("Registry", netId));
   const gasEstimator = new GasEstimator(
     winston.createLogger({ silent: true }),
     60, // Time between updates.
@@ -103,12 +103,12 @@ async function run() {
       "gwei"
     )} gwei`
   );
-  const governor = new web3.eth.Contract(Governor.abi, _getContractAddressByName("Governor", netId));
+  const governor = new web3.eth.Contract(Governor.abi, await _getContractAddressByName("Governor", netId));
   const governorRootTunnel = new web3.eth.Contract(
     GovernorRootTunnel.abi,
-    _getContractAddressByName("GovernorRootTunnel", netId)
+    await _getContractAddressByName("GovernorRootTunnel", netId)
   );
-  const finder = new web3.eth.Contract(Finder.abi, _getContractAddressByName("Finder", netId));
+  const finder = new web3.eth.Contract(Finder.abi, await _getContractAddressByName("Finder", netId));
   const oracleAddress = await finder.methods
     .getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
     .call();

@@ -45,7 +45,7 @@ async function run() {
       "gwei"
     )} gwei`
   );
-  const governor = new web3.eth.Contract(Governor.abi, _getContractAddressByName("Governor", netId));
+  const governor = new web3.eth.Contract(Governor.abi, await _getContractAddressByName("Governor", netId));
   console.group("\nℹ️  DVM infrastructure for Ethereum transactions:");
   console.log(`- Governor @ ${governor.options.address}`);
   console.groupEnd();

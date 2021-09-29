@@ -88,9 +88,9 @@ async function run() {
     polygon_netId = await crossChainWeb3.eth.net.getId();
     polygon_whitelist = new crossChainWeb3.eth.Contract(
       AddressWhitelist.abi,
-      _getContractAddressByName("AddressWhitelist", polygon_netId)
+      await _getContractAddressByName("AddressWhitelist", polygon_netId)
     );
-    polygon_store = new crossChainWeb3.eth.Contract(Store.abi, _getContractAddressByName("Store", polygon_netId));
+    polygon_store = new crossChainWeb3.eth.Contract(Store.abi, await _getContractAddressByName("Store", polygon_netId));
   } else if (collateral) {
     collaterals = collateral.split(",");
   } else {
@@ -105,8 +105,11 @@ async function run() {
   }
 
   // Initialize Eth contracts by grabbing deployed addresses from networks/1.json file.
-  const whitelist = new web3.eth.Contract(AddressWhitelist.abi, _getContractAddressByName("AddressWhitelist", netId));
-  const store = new web3.eth.Contract(Store.abi, _getContractAddressByName("Store", netId));
+  const whitelist = new web3.eth.Contract(
+    AddressWhitelist.abi,
+    await _getContractAddressByName("AddressWhitelist", netId)
+  );
+  const store = new web3.eth.Contract(Store.abi, await _getContractAddressByName("Store", netId));
   const gasEstimator = new GasEstimator(
     winston.createLogger({ silent: true }),
     60, // Time between updates.
@@ -119,15 +122,15 @@ async function run() {
       "gwei"
     )} gwei`
   );
-  const governor = new web3.eth.Contract(Governor.abi, _getContractAddressByName("Governor", netId));
-  const finder = new web3.eth.Contract(Finder.abi, _getContractAddressByName("Finder", netId));
+  const governor = new web3.eth.Contract(Governor.abi, await _getContractAddressByName("Governor", netId));
+  const finder = new web3.eth.Contract(Finder.abi, await _getContractAddressByName("Finder", netId));
   const oracleAddress = await finder.methods
     .getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
     .call();
   const oracle = new web3.eth.Contract(Voting.abi, oracleAddress);
   const governorRootTunnel = new web3.eth.Contract(
     GovernorRootTunnel.abi,
-    _getContractAddressByName("GovernorRootTunnel", netId)
+    await _getContractAddressByName("GovernorRootTunnel", netId)
   );
   if (polygonCollaterals) {
     console.group("\nℹ️  Relayer infrastructure for Polygon transactions:");
