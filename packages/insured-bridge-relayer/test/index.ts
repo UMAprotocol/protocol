@@ -164,6 +164,7 @@ describe("index.js", function () {
         R2: toBNWei("1.00"),
       },
     });
+    process.env.CHAIN_IDS = JSON.stringify([69]);
 
     // Must not throw.
     await run(spyLogger, web3);
