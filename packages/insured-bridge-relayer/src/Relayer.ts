@@ -135,6 +135,7 @@ export class Relayer {
   // Deposit params are incorrect, then the BridgePool's computed deposit hash will be different and the relay won't be
   // found. So, assuming that the relay contains a matching deposit hash, this bot's job is to only consider speeding up
   // relays that are valid, otherwise the bot might lose money without recourse on the relay.
+
   private async isRelayValid(relay: Relay, deposit: Deposit): Promise<{ isValid: boolean; reason: string }> {
     const relayRealizedLpFeePct = relay.realizedLpFeePct.toString();
     const expectedRelayRealizedLpFeePct = (await this.l1Client.calculateRealizedLpFeePctForDeposit(deposit)).toString();
@@ -221,7 +222,6 @@ export class Relayer {
           quoteTimestamp: receipt.events.DepositRelayed.returnValues.quoteTimestamp,
           realizedLpFeePct: receipt.events.DepositRelayed.returnValues.realizedLpFeePct,
           depositHash: receipt.events.DepositRelayed.returnValues.depositHash,
-          depositContract: receipt.events.DepositRelayed.returnValues.depositContract,
           transactionConfig,
         });
       else throw receipt;

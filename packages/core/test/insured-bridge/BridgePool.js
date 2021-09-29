@@ -330,8 +330,7 @@ describe("BridgePool", () => {
         }
       }
     });
-    expectedAncillaryDataUtf8 += `l1Token:${l1Token.options.address.substr(2).toLowerCase()},`;
-    expectedAncillaryDataUtf8 += `depositContract:${depositContractImpersonator.substr(2).toLowerCase()}`;
+    expectedAncillaryDataUtf8 += `l1Token:${l1Token.options.address.substr(2).toLowerCase()}`;
     assert.equal(hexToUtf8(relayAncillaryData), expectedAncillaryDataUtf8);
   });
   describe("Relay deposit", () => {
@@ -430,8 +429,7 @@ describe("BridgePool", () => {
           ev.instantRelayFeePct === depositData.instantRelayFeePct &&
           ev.quoteTimestamp === depositData.quoteTimestamp &&
           ev.realizedLpFeePct === relayData.realizedLpFeePct &&
-          ev.depositHash === depositHash &&
-          ev.depositContract === depositContractImpersonator
+          ev.depositHash === depositHash
         );
       });
 

@@ -1,6 +1,6 @@
 // This script a withdrawal transaction that will pull funds out of a DSProxy contract. The wallet you run the script
 // from should be the owner (or have sufficient permissions).
-// To execute the script, run: truffle exec ./scripts/WithdrawTokensFromDSProxy.ts --network kovan_mnemonic --dsProxyAddress 0x... --tokenAddress 0x... --amount max --recipientAddress 0x...
+// To execute the script, run: ts-node ./scripts/WithdrawTokensFromDSProxy.ts --network kovan_mnemonic --dsProxyAddress 0x... --tokenAddress 0x... --amount max --recipientAddress 0x...
 // Note:
 // 1) if you do not provide the dsProxyAddress the script will try find one deployed at the unlocked wallet account.
 // 2) if you provide max for amount then the script will take all tokens. If you provide a specific number, it is assumed
@@ -8,7 +8,7 @@
 // 3) if you don't provide recipientAddress then the script will send them to your currently unlocked account.
 // You can also optionally override the dsProxyFactoryAddress by providing it as a param
 
-async function WithdrawTokensFromDSProxy() {
+async function main() {
   const winston = require("winston");
   const assert = require("assert");
   const argv = require("minimist")(process.argv.slice(), {
@@ -18,7 +18,7 @@ async function WithdrawTokensFromDSProxy() {
   const { getWeb3 } = require("@uma/common");
   const web3 = getWeb3();
 
-  const { getAbi, getAddress, getTruffleContract } = require("@uma/core");
+  const { getAbi, getAddress, getBytecode } = require("@uma/contracts-node");
   const { DSProxyManager, GasEstimator } = require("@uma/financial-templates-lib");
 
   assert(
@@ -43,7 +43,7 @@ async function WithdrawTokensFromDSProxy() {
     web3,
     gasEstimator,
     account: accounts[0],
-    dsProxyFactoryAddress: argv.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
+    dsProxyFactoryAddress: argv.dsProxyFactoryAddress || (await getAddress("DSProxyFactory", networkId)),
     dsProxyFactoryAbi: getAbi("DSProxyFactory"),
     dsProxyAbi: getAbi("DSProxy"),
   });
@@ -66,14 +66,13 @@ async function WithdrawTokensFromDSProxy() {
   const tokenRecipient = argv.recipientAddress ? argv.recipientAddress : accounts[0];
 
   // Create the callData as the encoded tx against the tokenSender contract
-  const TokenSender = getTruffleContract("TokenSender", web3);
-  const tokenSenderInstance = new web3.eth.Contract(TokenSender.abi);
+  const tokenSenderInstance = new web3.eth.Contract(getAbi("TokenSender"));
   const callData = tokenSenderInstance.methods
     .transferERC20(argv.tokenAddress, tokenRecipient, amountToWithdraw)
     .encodeABI();
 
   // The library also needs the code of the contract to deploy.
-  const callCode = TokenSender.bytecode;
+  const callCode = getBytecode("TokenSender");
 
   // Send the transaction against the DSProxy manager.
   const dsProxyCallReturn = await dsProxyManager.callFunctionOnNewlyDeployedLibrary(callCode, callData);
@@ -81,16 +80,12 @@ async function WithdrawTokensFromDSProxy() {
   console.log("TX executed!", dsProxyCallReturn.transactionHash);
 }
 
-const run = async function (callback) {
-  try {
-    await WithdrawTokensFromDSProxy();
-  } catch (err) {
-    console.error(err);
-    callback(err);
-    return;
+main().then(
+  () => {
+    process.exit(0);
+  },
+  (error) => {
+    console.error(error.stack);
+    process.exit(1);
   }
-  callback();
-};
-
-run.WithdrawTokensFromDSProxy = WithdrawTokensFromDSProxy;
-module.exports = run;
+);

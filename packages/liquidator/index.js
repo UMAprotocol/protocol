@@ -28,7 +28,7 @@ const {
 
 // Contract ABIs and network Addresses.
 const { findContractVersion } = require("@uma/core");
-const { getAddress } = require("@uma/contracts-node");
+const { getAddress, getAbi } = require("@uma/contracts-node");
 
 /**
  * @notice Continuously attempts to liquidate positions in the Financial Contract contract.
@@ -111,8 +111,13 @@ async function run({
       );
 
     // Setup contract instances. This uses the contract version pulled in from previous step.
-    const { getAbi } = require(getContractsNodePackageAliasForVerion(liquidatorConfig.contractVersion));
-    const financialContract = new web3.eth.Contract(getAbi(liquidatorConfig.contractType), financialContractAddress);
+    const { getAbi: getVersionedAbi } = require(getContractsNodePackageAliasForVerion(
+      liquidatorConfig.contractVersion
+    ));
+    const financialContract = new web3.eth.Contract(
+      getVersionedAbi(liquidatorConfig.contractType),
+      financialContractAddress
+    );
 
     // Returns whether the Financial Contract has expired yet
     const checkIsExpiredOrShutdownPromise = async () => {

@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.6.0](https://github.com/UMAprotocol/protocol/compare/@uma/disputer@2.5.1...@uma/disputer@2.6.0) (2021-09-28)
+
+### Bug Fixes
+
+- **cross-package:** Fixed typo of "ballance"->"balance" in a few packages ([#3265](https://github.com/UMAprotocol/protocol/issues/3265)) ([f48cd48](https://github.com/UMAprotocol/protocol/commit/f48cd48f74aefec1b348f2d8ea1cf4e787810809))
+
+### Features
+
+- **liquidator,disputer,monitor:** remove unnecessary unit conversion helpers in tests ([#3215](https://github.com/UMAprotocol/protocol/issues/3215)) ([77993f4](https://github.com/UMAprotocol/protocol/commit/77993f4d8ffa5ba821f66d5ff5d7c0cac7813009))
+
 ## [2.5.1](https://github.com/UMAprotocol/protocol/compare/@uma/disputer@2.5.0...@uma/disputer@2.5.1) (2021-07-19)
 
 **Note:** Version bump only for package @uma/disputer
