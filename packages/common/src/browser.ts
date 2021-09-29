@@ -1,10 +1,8 @@
 // Only the browser-safe modules.
-export * from "./AbiUtils";
 export * from "./AncillaryDataParser";
 export * from "./AdminUtils";
 export * from "./Constants";
 export * from "./Constants";
-export * from "./AbiUtils";
 export * from "./AdminUtils";
 export * from "./ContractUtils";
 export * from "./TransactionUtils";
@@ -16,7 +14,6 @@ export * from "./FormattingUtils";
 export * from "./ObjectUtils";
 export * from "./PublicNetworks";
 export * from "./Random";
-export * from "./SolcoverConfig";
 export * from "./SolidityTestUtils";
 export * from "./TimeUtils";
 export * from "./PriceIdentifierUtils";

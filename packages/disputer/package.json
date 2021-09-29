@@ -13,7 +13,6 @@
   },
   "devDependencies": {
     "sinon": "^9.0.2",
-    "truffle": "^5.2.3",
     "winston": "^3.2.1"
   },
   "homepage": "https://umaproject.org",

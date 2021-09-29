@@ -1,6 +1,6 @@
 import { HardhatConfig } from "hardhat/types";
 
-const { getNodeUrl, mnemonic } = require("./TruffleConfig");
+import { getNodeUrl, getMnemonic } from "./ProviderUtils";
 import { HRE } from "./hardhat/plugins/ExtendedWeb3";
 export type { HRE };
 
@@ -10,6 +10,7 @@ export function getHardhatConfig(
   _workingDir = "./",
   includeTruffle = true
 ): Partial<HardhatConfig> {
+  const mnemonic = getMnemonic();
   // Hardhat plugins. These are imported inside `getHardhatConfig` so that other packages importing this function
   // get access to the plugins as well.
   if (includeTruffle) require("@nomiclabs/hardhat-truffle5");

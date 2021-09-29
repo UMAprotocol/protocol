@@ -3,10 +3,10 @@
 
 // This script enables a DSProxy to settle expired positions from an EMP. This should be used after a DSProxy opens a
 // position due to liquidation and needs to settle the position at contract expiration. To execute the script, run:
-// truffle exec ./scripts/SettleExpiredPositionWithDSProxy.ts --financialContractAddress 0x123 --dsProxyAddress 0x456 --network mainnet_mnemonic
+// ts-node ./scripts/SettleExpiredPositionWithDSProxy.ts --financialContractAddress 0x123 --dsProxyAddress 0x456 --network mainnet_mnemonic
 // Note: if you do not provide the dsProxyAddress the script will try find one deployed at the unlocked wallet account.
 
-async function SettleExpiredPositionWithDSProxy() {
+async function main() {
   const winston = require("winston");
   const assert = require("assert");
   const argv = require("minimist")(process.argv.slice(), {
@@ -16,7 +16,7 @@ async function SettleExpiredPositionWithDSProxy() {
   const { getWeb3 } = require("@uma/common");
   const web3 = getWeb3();
 
-  const { getAbi, getAddress, getTruffleContract } = require("@uma/core");
+  const { getAbi, getAddress, getBytecode } = require("@uma/contracts-node");
   const { DSProxyManager, GasEstimator } = require("@uma/financial-templates-lib");
 
   assert(web3.utils.isAddress(argv.financialContractAddress), "`financialContractAddress` needs to be a valid address");
@@ -37,7 +37,7 @@ async function SettleExpiredPositionWithDSProxy() {
     web3,
     gasEstimator,
     account: accounts[0],
-    dsProxyFactoryAddress: getAddress("DSProxyFactory", networkId),
+    dsProxyFactoryAddress: await getAddress("DSProxyFactory", networkId),
     dsProxyFactoryAbi: getAbi("DSProxyFactory"),
     dsProxyAbi: getAbi("DSProxy"),
   });
@@ -50,12 +50,11 @@ async function SettleExpiredPositionWithDSProxy() {
   if (!dsProxyAddress) throw new Error("DSProxy Address was not found or not parameterized");
 
   // Create the callData as the encoded tx against the PositionSettler contract.
-  const PositionSettler = getTruffleContract("PositionSettler", web3);
-  const PositionSettlerInstance = new web3.eth.Contract(PositionSettler.abi);
+  const PositionSettlerInstance = new web3.eth.Contract(getAbi("PositionSettler"));
   const callData = PositionSettlerInstance.methods.settleExpired(argv.financialContractAddress).encodeABI();
 
   // The library also needs the code of the contract to deploy.
-  const callCode = PositionSettler.bytecode;
+  const callCode = getBytecode("PositionSettler");
 
   // Send the transaction against the DSProxy manager.
   const dsProxyCallReturn = await dsProxyManager.callFunctionOnNewlyDeployedLibrary(callCode, callData);
@@ -63,16 +62,12 @@ async function SettleExpiredPositionWithDSProxy() {
   console.log("TX executed!", dsProxyCallReturn.transactionHash);
 }
 
-const run = async function (callback) {
-  try {
-    await SettleExpiredPositionWithDSProxy();
-  } catch (err) {
-    console.error(err);
-    callback(err);
-    return;
+main().then(
+  () => {
+    process.exit(0);
+  },
+  (error) => {
+    console.error(error.stack);
+    process.exit(1);
   }
-  callback();
-};
-
-run.SettleExpiredPositionWithDSProxy = SettleExpiredPositionWithDSProxy;
-module.exports = run;
+);

@@ -4,7 +4,7 @@ import retry from "async-retry";
 import { config } from "dotenv";
 
 import { getWeb3 } from "@uma/common";
-import { getAbi, getAddress } from "@uma/core";
+import { getAbi, getAddress } from "@uma/contracts-node";
 import {
   GasEstimator,
   Networker,
@@ -53,7 +53,8 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
       web3,
       gasEstimator,
       account: accounts[0],
-      dsProxyFactoryAddress: config.dsProxyConfig?.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
+      dsProxyFactoryAddress:
+        config.dsProxyConfig?.dsProxyFactoryAddress || (await getAddress("DSProxyFactory", networkId)),
       dsProxyFactoryAbi: getAbi("DSProxyFactory"),
       dsProxyAbi: getAbi("DSProxy"),
       availableAccounts: config.dsProxyConfig?.availableAccounts || 1,
