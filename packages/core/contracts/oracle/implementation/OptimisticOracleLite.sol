@@ -159,7 +159,7 @@ contract OptimisticOracleLite is Testable, Lockable {
             _currency.safeTransferFrom(msg.sender, address(this), _reward);
         }
 
-        _storeRequestHash(msg.sender, _identifier, _timestamp, _ancillaryData, request);
+        _storeRequestHash(requestId, request);
         emit RequestPrice(msg.sender, _identifier, _timestamp, _ancillaryData, address(_currency), _reward, finalFee);
 
         // This function returns the initial proposal bond for this request, which can be customized by calling
@@ -191,7 +191,9 @@ contract OptimisticOracleLite is Testable, Lockable {
             _getState(msg.sender, _identifier, _timestamp, _ancillaryData, _request) == State.Requested,
             "Can only modify State.Requested"
         );
-        _validateRequestHash(msg.sender, _identifier, _timestamp, _ancillaryData, _request);
+        bytes32 requestId = _getId(msg.sender, _identifier, _timestamp, _ancillaryData);
+
+        _validateRequestHash(requestId, _request);
 
         // Associate new request params with ID
         Request memory request =
@@ -208,7 +210,7 @@ contract OptimisticOracleLite is Testable, Lockable {
                 bond: _bond, // Modified
                 customLiveness: _customLiveness // Modified
             });
-        _storeRequestHash(msg.sender, _identifier, _timestamp, _ancillaryData, request);
+        _storeRequestHash(requestId, request);
 
         // Total bond is the final fee + the newly set bond.
         return _bond.add(request.finalFee);
@@ -242,7 +244,8 @@ contract OptimisticOracleLite is Testable, Lockable {
             _getState(_requester, _identifier, _timestamp, _ancillaryData, _request) == State.Requested,
             "proposePriceFor: Requested"
         );
-        _validateRequestHash(_requester, _identifier, _timestamp, _ancillaryData, _request);
+        bytes32 requestId = _getId(_requester, _identifier, _timestamp, _ancillaryData);
+        _validateRequestHash(requestId, _request);
 
         // Associate newly proposed request params with ID
         Request memory proposedRequest =
@@ -267,7 +270,7 @@ contract OptimisticOracleLite is Testable, Lockable {
             proposedRequest.currency.safeTransferFrom(msg.sender, address(this), totalBond);
         }
 
-        _storeRequestHash(_requester, _identifier, _timestamp, _ancillaryData, proposedRequest);
+        _storeRequestHash(requestId, proposedRequest);
         emit ProposePrice(
             _requester,
             _proposer,
@@ -330,7 +333,8 @@ contract OptimisticOracleLite is Testable, Lockable {
             _getState(_requester, _identifier, _timestamp, _ancillaryData, _request) == State.Proposed,
             "disputePriceFor: Proposed"
         );
-        _validateRequestHash(_requester, _identifier, _timestamp, _ancillaryData, _request);
+        bytes32 requestId = _getId(_requester, _identifier, _timestamp, _ancillaryData);
+        _validateRequestHash(requestId, _request);
 
         // Associate newly disputed request params with ID
         Request memory disputedRequest =
@@ -375,7 +379,7 @@ contract OptimisticOracleLite is Testable, Lockable {
 
         _getOracle().requestPrice(_identifier, _timestamp, _stampAncillaryData(_ancillaryData, _requester));
 
-        _storeRequestHash(_requester, _identifier, _timestamp, _ancillaryData, disputedRequest);
+        _storeRequestHash(requestId, disputedRequest);
         emit DisputePrice(_requester, _disputer, _identifier, _timestamp, _ancillaryData);
     }
 
@@ -460,7 +464,8 @@ contract OptimisticOracleLite is Testable, Lockable {
         bytes memory _ancillaryData,
         Request memory _request
     ) public nonReentrant() returns (bool) {
-        _validateRequestHash(_requester, _identifier, _timestamp, _ancillaryData, _request);
+        bytes32 requestId = _getId(_requester, _identifier, _timestamp, _ancillaryData);
+        _validateRequestHash(requestId, _request);
         State state = _getState(_requester, _identifier, _timestamp, _ancillaryData, _request);
         return state == State.Settled || state == State.Resolved || state == State.Expired;
     }
@@ -516,7 +521,8 @@ contract OptimisticOracleLite is Testable, Lockable {
         bytes memory _ancillaryData,
         Request memory _request
     ) private returns (uint256 payout, int256 resolvedPrice) {
-        _validateRequestHash(_requester, _identifier, _timestamp, _ancillaryData, _request);
+        bytes32 requestId = _getId(_requester, _identifier, _timestamp, _ancillaryData);
+        _validateRequestHash(requestId, _request);
 
         // Associate settled request params with ID.
         Request memory settledRequest =
@@ -569,7 +575,7 @@ contract OptimisticOracleLite is Testable, Lockable {
             revert("_settle: not settleable");
         }
 
-        _storeRequestHash(_requester, _identifier, _timestamp, _ancillaryData, settledRequest);
+        _storeRequestHash(requestId, settledRequest);
         emit Settle(_requester, _identifier, _timestamp, _ancillaryData, settledRequest.resolvedPrice, payout);
     }
 
@@ -583,29 +589,15 @@ contract OptimisticOracleLite is Testable, Lockable {
         require(_liveness > 0, "Liveness cannot be 0");
     }
 
-    function _validateRequestHash(
-        address _requester,
-        bytes32 _identifier,
-        uint256 _timestamp,
-        bytes memory _ancillaryData,
-        Request memory _request
-    ) private view {
-        bytes32 requestId = _getId(_requester, _identifier, _timestamp, _ancillaryData);
-        bytes32 requestHash = requests[requestId];
+    function _validateRequestHash(bytes32 _requestId, Request memory _request) private view {
+        bytes32 requestHash = requests[_requestId];
         bytes32 requestHashToValidate = _getRequestHash(_request);
         require(requestHash == requestHashToValidate, "Hashed request params do not match existing request hash");
     }
 
-    function _storeRequestHash(
-        address _requester,
-        bytes32 _identifier,
-        uint256 _timestamp,
-        bytes memory _ancillaryData,
-        Request memory _request
-    ) internal {
+    function _storeRequestHash(bytes32 _requestId, Request memory _request) internal {
         bytes32 requestHash = _getRequestHash(_request);
-        bytes32 requestId = _getId(_requester, _identifier, _timestamp, _ancillaryData);
-        requests[requestId] = requestHash;
+        requests[_requestId] = requestHash;
     }
 
     function _getState(
