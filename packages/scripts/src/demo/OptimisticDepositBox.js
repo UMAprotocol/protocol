@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 /**
  * @notice Deploys a toy financial contract and goes through a simple user flow.
  * @dev OptimisticDepositBox is an example financial contract that integrates the Optimistic Oracle for on-chain price discovery.
@@ -15,30 +17,29 @@
  * to withdraw USD-denominated amounts of ETH.
  *
  * How to run:
- * - Run a local Ganache instance (i.e. not Kovan/Ropsten/Rinkeby/Mainnet) with `ganache-cli --port 9545`.
- * - In a separate terminal window, compile the contracts via `yarn truffle compile`.
- * - Migrate the contracts via `yarn truffle migrate --reset --network test`.
- * - The migration step ensures that the user is the owner of the Finder, IdentifierWhitelist,
+ * - Run a blockchain instance (i.e. not Kovan/Ropsten/Rinkeby/Mainnet) with `hardhat node --port 9545`.
+ * - Initialize the contracts via `HARDHAT_NETWORK=localhost ./src/helpers/Deploy.js`.
+ * - The initialization step ensures that the user is the owner of the Finder, IdentifierWhitelist,
  *   Registry, and other important system contracts and can therefore modify their configurations.
- * - Run `yarn truffle exec ./scripts/demo/OptimisticDepositBox.js --network test`.
+ * - Run `HARDHAT_NETWORK=localhost ./scripts/demo/OptimisticDepositBox.js`.
  * Assumptions:
- * - User is running this script in the web3 environment injected by Truffle.
  * - User is sending transactions from accounts[0] of the injected web3.
  * - User is using wETH as the collateral ERC20.
  * - User is referencing the ETH/USD pricefeed identifier.
  */
 
 // Helper modules
+const { getContract, web3, deployments } = require("hardhat");
 const { toBN, toWei, fromWei, utf8ToHex, hexToUtf8 } = web3.utils;
 const { interfaceName } = require("@uma/common");
 
-const OptimisticDepositBox = artifacts.require("OptimisticDepositBox");
-const WETH9 = artifacts.require("WETH9");
-const IdentifierWhitelist = artifacts.require("IdentifierWhitelist");
-const AddressWhitelist = artifacts.require("AddressWhitelist");
-const Finder = artifacts.require("Finder");
-const Timer = artifacts.require("Timer");
-const OptimisticOracle = artifacts.require("OptimisticOracle");
+const OptimisticDepositBox = getContract("OptimisticDepositBox");
+const WETH9 = getContract("WETH9");
+const IdentifierWhitelist = getContract("IdentifierWhitelist");
+const AddressWhitelist = getContract("AddressWhitelist");
+const Finder = getContract("Finder");
+const Timer = getContract("Timer");
+const OptimisticOracle = getContract("OptimisticOracle");
 
 // Constants
 const priceFeedIdentifier = utf8ToHex("ETH/USD");
@@ -47,18 +48,26 @@ const emptyAncillaryData = "0x";
 
 // Deploy contract and return its address.
 const deploy = async () => {
+  const [deployer] = await web3.eth.getAccounts();
   console.group("1. Deploying new OptimisticDepositBox");
-  const collateral = await WETH9.deployed();
   console.log("- Using wETH as collateral token");
+
+  let collateral;
+  if (await deployments.getOrNull("WETH9")) {
+    collateral = await WETH9.deployed();
+  } else {
+    collateral = await WETH9.new().send({ from: deployer });
+    await deployments.save("WETH9", { abi: WETH9.abi, address: collateral.options.options.address });
+  }
 
   // Pricefeed identifier must be whitelisted so the DVM can be used to settle disputes.
   const identifierWhitelist = await IdentifierWhitelist.deployed();
-  await identifierWhitelist.addSupportedIdentifier(priceFeedIdentifier);
+  await identifierWhitelist.methods.addSupportedIdentifier(priceFeedIdentifier).send({ from: deployer });
   console.log(`- Pricefeed identifier for ${hexToUtf8(priceFeedIdentifier)} is whitelisted`);
 
   // Collateral must be whitelisted for payment of final fees.
   const collateralWhitelist = await AddressWhitelist.deployed();
-  await collateralWhitelist.addToWhitelist(collateral.address);
+  await collateralWhitelist.methods.addToWhitelist(collateral.options.address).send({ from: deployer });
   console.log("- Collateral address for wETH is whitelisted");
 
   // The following steps would differ if the user is on a testnet like Kovan in the following ways:
@@ -66,9 +75,14 @@ const deploy = async () => {
   // - The user should pass in the zero address (i.e. 0x0) for the Timer, but using the deployed Timer
   // for testing purposes is convenient because they can advance time as needed.
   const finder = await Finder.deployed();
-  const optimisticOracle = await OptimisticOracle.new(liveness, finder.address, Timer.address);
+  const timer = await Timer.deployed();
+  const optimisticOracle = await OptimisticOracle.new(liveness, finder.options.address, timer.options.address).send({
+    from: deployer,
+  });
   const optimisticOracleInterfaceName = utf8ToHex(interfaceName.OptimisticOracle);
-  await finder.changeImplementationAddress(optimisticOracleInterfaceName, optimisticOracle.address);
+  await finder.methods
+    .changeImplementationAddress(optimisticOracleInterfaceName, optimisticOracle.options.address)
+    .send({ from: deployer });
   console.log("- Deployed an OptimisticOracle");
 
   // Deploy a new OptimisticDepositBox contract. We pass in the collateral token address (i.e. the token
@@ -77,35 +91,35 @@ const deploy = async () => {
   // our collateral (denominated in some other asset), and a Timer contract address, which is a contract
   // deployed specifically to aid time-dependent testing.
   const optimisticDepositBox = await OptimisticDepositBox.new(
-    collateral.address,
-    finder.address,
+    collateral.options.address,
+    finder.options.address,
     priceFeedIdentifier,
-    Timer.address,
-    { gas: 4712388, gasPrice: 100000000000 }
-  );
+    timer.options.address
+  ).send({ from: deployer, gas: 4712388, gasPrice: 100000000000 });
   console.log("- Deployed a new OptimisticDepositBox");
   console.groupEnd();
-  return optimisticDepositBox.address;
+  return optimisticDepositBox.options.address;
 };
 
 // Set up allowances and mint collateral tokens.
 const setupWallets = async (optimisticDepositBoxAddress, amountOfWethToMint) => {
   const accounts = await web3.eth.getAccounts();
+  const [deployer] = accounts;
 
   console.group("2. Minting ERC20 to user and giving OptimisticDepositBox allowance to transfer collateral");
   // This wETH contract is copied from the officially deployed wETH contract on mainnet.
   const collateral = await WETH9.deployed();
 
   // wETH must be converted from ETH via `deposit()`.
-  await collateral.deposit({ value: amountOfWethToMint });
+  await collateral.methods.deposit().send({ from: deployer, value: amountOfWethToMint });
   console.log(`- Converted ${fromWei(amountOfWethToMint)} ETH into wETH`);
-  const postBalance = await collateral.balanceOf(accounts[0]);
+  const postBalance = await collateral.methods.balanceOf(accounts[0]).call();
   console.log(`- User's wETH balance: ${fromWei(postBalance.toString())}`);
 
   // OptimisticDepositBox needs to be able to transfer collateral on behalf of user.
-  await collateral.approve(optimisticDepositBoxAddress, amountOfWethToMint);
+  await collateral.methods.approve(optimisticDepositBoxAddress, amountOfWethToMint).send({ from: deployer });
   console.log("- Increased OptimisticDepositBox allowance to spend wETH");
-  const postAllowance = await collateral.allowance(accounts[0], optimisticDepositBoxAddress);
+  const postAllowance = await collateral.methods.allowance(accounts[0], optimisticDepositBoxAddress).call();
   console.log(`- Contract's wETH allowance: ${fromWei(postAllowance.toString())}`);
 
   console.groupEnd();
@@ -117,18 +131,19 @@ const deposit = async (optimisticDepositBoxAddress, amountOfWethToDeposit) => {
   const collateral = await WETH9.deployed();
   const optimisticDepositBox = await OptimisticDepositBox.at(optimisticDepositBoxAddress);
   const accounts = await web3.eth.getAccounts();
+  const [deployer] = accounts;
 
   console.group("3. Depositing ERC20 into the OptimisticDepositBox");
-  await optimisticDepositBox.deposit(amountOfWethToDeposit);
+  await optimisticDepositBox.methods.deposit(amountOfWethToDeposit).send({ from: deployer });
   console.log(`- Deposited ${fromWei(amountOfWethToDeposit)} wETH into the OptimisticDepositBox`);
 
   // Let's check our deposited balance. Note that multiple users can deploy collateral into the same deposit
   // box contract, but each user (i.e. each address) has its own token balance. So, because we will be
   // depositing collateral for only one user, the "total collateral" in the OptimisticDepositBox will be equal
   // to the user's individual collateral balance.
-  const userCollateral = await optimisticDepositBox.getCollateral(accounts[0]);
-  const totalCollateral = await optimisticDepositBox.totalOptimisticDepositBoxCollateral();
-  const userBalance = await collateral.balanceOf(accounts[0]);
+  const userCollateral = await optimisticDepositBox.methods.getCollateral(accounts[0]).call();
+  const totalCollateral = await optimisticDepositBox.methods.totalOptimisticDepositBoxCollateral().call();
+  const userBalance = await collateral.methods.balanceOf(accounts[0]).call();
 
   console.log(`- User's deposit balance: ${fromWei(userCollateral.toString())}`);
   console.log(`- Total deposit balance: ${fromWei(totalCollateral.toString())}`);
@@ -143,9 +158,10 @@ const withdraw = async (optimisticDepositBoxAddress, mockPrice, amountOfUsdToWit
   const collateral = await WETH9.deployed();
   const optimisticDepositBox = await OptimisticDepositBox.at(optimisticDepositBoxAddress);
   const accounts = await web3.eth.getAccounts();
+  const [deployer] = accounts;
   const finder = await Finder.deployed();
   const optimisticOracle = await OptimisticOracle.at(
-    await finder.getImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle))
+    await finder.methods.getImplementationAddress(utf8ToHex(interfaceName.OptimisticOracle)).call()
   );
 
   console.group("4. Withdrawing ERC20 from OptimisticDepositBox");
@@ -164,40 +180,42 @@ const withdraw = async (optimisticDepositBoxAddress, mockPrice, amountOfUsdToWit
   // The user wants to withdraw a USD-denominated amount of wETH.
   // Note: If the USD amount is greater than the user's deposited balance, the contract will simply withdraw
   // the full user balance.
-  const requestTimestamp = await optimisticDepositBox.getCurrentTime();
-  await optimisticDepositBox.requestWithdrawal(amountOfUsdToWithdraw);
+  const requestTimestamp = await optimisticDepositBox.methods.getCurrentTime().call();
+  await optimisticDepositBox.methods.requestWithdrawal(amountOfUsdToWithdraw).send({ from: deployer });
   console.log(`- Submitted a withdrawal request for ${fromWei(amountOfUsdToWithdraw)} USD of wETH`);
 
   // Propose a price to the Optimistic Oracle for the OptimisticDepositBox contract. This price must be a
   // positive integer.
-  await optimisticOracle.proposePriceFor(
-    accounts[0],
-    optimisticDepositBox.address,
-    priceFeedIdentifier,
-    requestTimestamp.toNumber(),
-    emptyAncillaryData,
-    mockPrice
-  );
+  await optimisticOracle.methods
+    .proposePriceFor(
+      accounts[0],
+      optimisticDepositBox.options.address,
+      priceFeedIdentifier,
+      parseInt(requestTimestamp),
+      emptyAncillaryData,
+      mockPrice
+    )
+    .send({ from: deployer });
   console.log(`- Proposed a price of ${mockPrice} ETH/USD`);
 
   // Fast-forward until after the liveness window. This only works in test mode.
-  await optimisticOracle.setCurrentTime(requestTimestamp.toNumber() + 7200);
-  await optimisticDepositBox.setCurrentTime(requestTimestamp.toNumber() + 7200);
+  await optimisticOracle.methods.setCurrentTime(parseInt(requestTimestamp) + 7200).send({ from: deployer });
+  await optimisticDepositBox.methods.setCurrentTime(parseInt(requestTimestamp) + 7200).send({ from: deployer });
   console.log(
     "- Fast-forwarded the Optimistic Oracle and Optimistic Deposit Box to after the liveness window so we can settle."
   );
-  console.log(`- New OO time is ${await optimisticOracle.getCurrentTime()}`);
-  console.log(`- New ODB time is ${await optimisticDepositBox.getCurrentTime()}`);
+  console.log(`- New OO time is ${await optimisticOracle.methods.getCurrentTime().call()}`);
+  console.log(`- New ODB time is ${await optimisticDepositBox.methods.getCurrentTime().call()}`);
 
   // The user can withdraw their requested USD amount.
-  await optimisticDepositBox.executeWithdrawal();
+  await optimisticDepositBox.methods.executeWithdrawal().send({ from: deployer });
   console.log("- Executed withdrawal. This also settles and gets the resolved price within the withdrawal function.");
 
   // Let's check the token balances. At an exchange rate of (1 ETH = $2000 USD) and given a requested
   // withdrawal amount of $10,000, the OptimisticDepositBox should have withdrawn ($10,000/$2000) 5 wETH.
-  const userCollateral = await optimisticDepositBox.getCollateral(accounts[0]);
-  const totalCollateral = await optimisticDepositBox.totalOptimisticDepositBoxCollateral();
-  const userBalance = await collateral.balanceOf(accounts[0]);
+  const userCollateral = await optimisticDepositBox.methods.getCollateral(accounts[0]).call();
+  const totalCollateral = await optimisticDepositBox.methods.totalOptimisticDepositBoxCollateral().call();
+  const userBalance = await collateral.methods.balanceOf(accounts[0]).call();
 
   console.log(`- User's deposit balance: ${fromWei(userCollateral.toString())}`);
   console.log(`- Total deposit balance: ${fromWei(totalCollateral.toString())}`);
@@ -210,33 +228,34 @@ const withdraw = async (optimisticDepositBoxAddress, mockPrice, amountOfUsdToWit
 };
 
 // Main script.
-const main = async (callback) => {
-  try {
-    // Deploy
-    const deployedContract = await deploy();
-    console.log("\n");
+const main = async () => {
+  // Deploy
+  const deployedContract = await deploy();
+  console.log("\n");
 
-    // Mint collateral
-    const amountOfWethToMint = toWei(toBN(10));
-    await setupWallets(deployedContract, amountOfWethToMint);
-    console.log("\n");
+  // Mint collateral
+  const amountOfWethToMint = toWei(toBN(10));
+  await setupWallets(deployedContract, amountOfWethToMint);
+  console.log("\n");
 
-    // Deposit collateral
-    const amountOfWethToDeposit = toWei(toBN(10));
-    await deposit(deployedContract, amountOfWethToDeposit);
-    console.log("\n");
+  // Deposit collateral
+  const amountOfWethToDeposit = toWei(toBN(10));
+  await deposit(deployedContract, amountOfWethToDeposit);
+  console.log("\n");
 
-    // Withdraw USD denominated collateral
-    const amountInUsdToWithdraw = toWei(toBN(10000)); // $10,000
-    const exchangeRate = toWei(toBN(2000)); // 1 ETH = $2000
-    await withdraw(deployedContract, exchangeRate, amountInUsdToWithdraw);
-    console.log("\n");
-
-    // Done!
-  } catch (err) {
-    console.error(err);
-  }
-  callback();
+  // Withdraw USD denominated collateral
+  const amountInUsdToWithdraw = toWei(toBN(10000)); // $10,000
+  const exchangeRate = toWei(toBN(2000)); // 1 ETH = $2000
+  await withdraw(deployedContract, exchangeRate, amountInUsdToWithdraw);
+  console.log("\n");
 };
 
-module.exports = main;
+main().then(
+  () => {
+    process.exit(0);
+  },
+  (error) => {
+    console.error(error.stack);
+    process.exit(1);
+  }
+);

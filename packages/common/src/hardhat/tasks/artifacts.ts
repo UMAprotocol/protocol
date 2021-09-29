@@ -130,6 +130,18 @@ export type { ${normalizeClassName(contractName)}Web3Events };\n`
       const endStatement = `    default:\n      throw new Error(\`No address found for deployment ${name} on chainId \${chainId}\`)\n  }\n}\n`;
       fs.appendFileSync(out, declaration.concat(...cases, endStatement));
     }
+
+    fs.appendFileSync(out, "const contractNames = [\n");
+    artifacts.forEach(({ contractName }) => {
+      fs.appendFileSync(out, `  "${contractName}",\n`);
+    });
+
+    // Function to get all of the contract names.
+    fs.appendFileSync(
+      out,
+      `];
+export function getContractNames() { return contractNames; }\n`
+    );
   });
 
 task("generate-contracts-node", "Generate typescipt for the contracts-node package")
@@ -187,7 +199,7 @@ export type { ${normalizeClassName(contractName)}Web3Events };\n`
     artifacts.forEach(({ contractName, relativePath }) =>
       fs.appendFileSync(out, `  ${contractName}: "${relativePath}",\n`)
     );
-    fs.appendFileSync(out, "};\n");
+    fs.appendFileSync(out, "} as const;\n");
     fs.appendFileSync(out, "type ContractName = keyof typeof artifactPaths;\n");
 
     // Use object to import the correct artifact for each contract name and return to the user.
@@ -267,6 +279,12 @@ export async function getAddress(name: DeploymentName | ContractName, chainId: n
         `export function get${name}Address(chainId: number): Promise<string> { return getAddress("${name}", chainId); }\n`
       );
     }
+
+    // Function to get contract names.
+    fs.appendFileSync(
+      out,
+      `export function getContractNames() { return Object.keys(artifactPaths) as ContractName[]; }\n`
+    );
   });
 
 task("load-addresses", "Load addresses from the networks folder into the hardhat deployments folder").setAction(

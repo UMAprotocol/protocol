@@ -1,5 +1,5 @@
 const { getWeb3 } = require("@uma/common");
-const { getAddress } = require("@uma/core");
+const { getAddress } = require("@uma/contracts-node");
 const { PROD_NET_ID } = require("./constants");
 
 // Resolves the decimals for a collateral token. A decimals override is optionally passed in to override
