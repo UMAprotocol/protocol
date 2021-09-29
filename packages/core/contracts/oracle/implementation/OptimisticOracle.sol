@@ -159,7 +159,8 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
         IERC20 currency,
         uint256 reward
     ) external override nonReentrant() returns (uint256 totalBond) {
-        require(_getState(msg.sender, identifier, timestamp, ancillaryData) == State.Invalid, "requestPrice: Invalid");
+        Request storage newRequest = _getRequest(msg.sender, identifier, timestamp, ancillaryData);
+        require(address(newRequest.currency) == address(0), "requestPrice: Invalid");
         require(_getIdentifierWhitelist().isIdentifierSupported(identifier), "Unsupported identifier");
         require(_getCollateralWhitelist().isOnWhitelist(address(currency)), "Unsupported currency");
         require(timestamp <= getCurrentTime(), "Timestamp in future");
@@ -168,7 +169,6 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             "Ancillary Data too long"
         );
         uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
-        Request storage newRequest = requests[_getId(msg.sender, identifier, timestamp, ancillaryData)];
         newRequest.currency = currency;
         newRequest.reward = reward;
         newRequest.finalFee = finalFee;
