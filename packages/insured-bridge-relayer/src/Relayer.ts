@@ -144,12 +144,6 @@ export class Relayer {
         isValid: false,
         reason: `relayRealizedLpFeePct: ${relayRealizedLpFeePct} != expectedRelayRealizedLpFeePct: ${expectedRelayRealizedLpFeePct}`,
       };
-    else if (relay.depositContract !== deposit.depositContract)
-      return {
-        isValid: false,
-        reason: `relay.depositContract: ${relay.depositContract} != deposit.depositContract: ${deposit.depositContract}`,
-      };
-
     return { isValid: true, reason: "" };
   }
 
