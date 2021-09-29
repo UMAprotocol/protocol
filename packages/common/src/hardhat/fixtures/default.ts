@@ -4,6 +4,24 @@ import { RegistryRolesEnum } from "../../Enums";
 import { CombinedHRE } from "../tasks/types";
 import { DeploymentsExtension } from "hardhat-deploy/types";
 
+const defaultFixtureWhitelist = [
+  "VotingToken",
+  "FinancialContractsAdmin",
+  "Finder",
+  "dvm",
+  "Registry",
+  "Store",
+  "IdentifierWhitelist",
+  "AddressWhitelist",
+  "OptimisticOracle",
+  "Bridge",
+  "GenericHandler",
+  "OptimisticOracle",
+  "Governor",
+  "PerpetualCreator",
+  "ExpiringMultiPartyCreator",
+];
+
 export async function runDefaultFixture(
   { deployments }: { deployments: DeploymentsExtension },
   runInitialDeployment = true
@@ -11,7 +29,7 @@ export async function runDefaultFixture(
   const setup = deployments.createFixture(async (hre: HardhatRuntimeEnvironment) => {
     const { deployments, getNamedAccounts, web3 } = hre as CombinedHRE; // Cast because hardhat extension isn't well-typed.
     const { padRight, toWei, utf8ToHex } = web3.utils;
-    if (runInitialDeployment) await deployments.fixture();
+    if (runInitialDeployment) await deployments.fixture(defaultFixtureWhitelist);
     const { deployer } = await getNamedAccounts();
 
     const getDeployment = async (name: string) => {
