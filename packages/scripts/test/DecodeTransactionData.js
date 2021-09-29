@@ -1,8 +1,9 @@
 const hre = require("hardhat");
 const { runDefaultFixture } = require("@uma/common");
 const { getContract } = hre;
-const DecodeTransactionData = require("../../scripts/DecodeTransactionData");
+const DecodeTransactionData = require("../src/DecodeTransactionData");
 const { getRandomSignedInt, getRandomUnsignedInt } = require("@uma/common");
+const Web3 = require("web3");
 const { assert } = require("chai");
 
 const Registry = getContract("Registry");
@@ -14,7 +15,7 @@ describe("scripts/DecodeTransactionData.js", function () {
     await runDefaultFixture(hre);
   });
   it("Decode registerContract", async function () {
-    const contractAddress = web3.utils.randomHex(20);
+    const contractAddress = Web3.utils.randomHex(20);
 
     const registry = await Registry.deployed();
     const txnData = registry.methods.registerContract([], contractAddress).encodeABI();
@@ -22,7 +23,7 @@ describe("scripts/DecodeTransactionData.js", function () {
     const expectedObject = { name: "registerContract", params: { parties: [], contractAddress: contractAddress } };
 
     assert.equal(
-      JSON.stringify(DecodeTransactionData.run(txnData)).toLowerCase(),
+      JSON.stringify(DecodeTransactionData(txnData)).toLowerCase(),
       JSON.stringify(expectedObject).toLowerCase()
     );
   });
@@ -34,7 +35,7 @@ describe("scripts/DecodeTransactionData.js", function () {
     const revealArray = [];
     for (let i = 0; i < 5; i++) {
       revealArray.push({
-        identifier: web3.utils.randomHex(32),
+        identifier: Web3.utils.randomHex(32),
         time: getRandomUnsignedInt().toString(),
         price: getRandomSignedInt().toString(),
         salt: getRandomSignedInt().toString(),
@@ -45,7 +46,7 @@ describe("scripts/DecodeTransactionData.js", function () {
     const expectedObject = { name: "batchReveal", params: { reveals: revealArray } };
 
     assert.equal(
-      JSON.stringify(DecodeTransactionData.run(txnData)).toLowerCase(),
+      JSON.stringify(DecodeTransactionData(txnData)).toLowerCase(),
       JSON.stringify(expectedObject).toLowerCase()
     );
   });

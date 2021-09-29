@@ -186,26 +186,6 @@ describe("ServerlessSpoke.js", function () {
     ); // Check the process logger contained the error.
     assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error")); // Check the process logger contains exit error.
   });
-  it("Serverless Spoke can correctly returns errors over http calls(invalid network identifier)", async function () {
-    // Invalid price feed config should error out before entering main while loop
-    const invalidPriceFeed = {
-      serverlessCommand: "yarn --silent monitors --network INVALID",
-      environmentVariables: {
-        CUSTOM_NODE_URL: web3.currentProvider.host,
-        POLLING_DELAY: 0,
-        EMP_ADDRESS: emp.options.address,
-        TOKEN_PRICE_FEED_CONFIG: defaultPricefeedConfig,
-        MONITOR_CONFIG: { contractVersion: "2.0.1", contractType: "ExpiringMultiParty" },
-      },
-    };
-
-    const invalidPriceFeedResponse = await sendRequest(invalidPriceFeed);
-    assert.equal(invalidPriceFeedResponse.res.statusCode, 500); // error code
-    // Expected error text from a null price feed
-    assert.isTrue(invalidPriceFeedResponse.res.text.includes("Cannot read property 'provider' of undefined"));
-    assert.isTrue(lastSpyLogIncludes(spy, "Cannot read property 'provider' of undefined")); // Check the process logger contained the error.
-    assert.isTrue(lastSpyLogIncludes(spy, "Process exited with error")); // Check the process logger contains exit error.
-  });
   it("Serverless Spoke can correctly returns errors over http calls(invalid emp)", async function () {
     // Invalid EMP address should error out when trying to retrieve on-chain data.
     const invalidEMPAddressBody = {

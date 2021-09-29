@@ -1,9 +1,9 @@
 // This script enables a DSProxy to redeem tokens from a contract. This should be used after a swap/mint/liquidate transaction
 // to close out a bots position. To execute the script, run:
-// truffle exec ./scripts/RedeemTokensWithDSProxy.ts--financialContractAddress 0x123 --numTokens 100000000000000000000 --dsProxyFactoryAddress 0x123 --network mainnet_mnemonic
+// ts-node ./scripts/RedeemTokensWithDSProxy.ts --financialContractAddress 0x123 --numTokens 100000000000000000000 --dsProxyFactoryAddress 0x123 --network mainnet_mnemonic
 // Note if you do not provide the dsProxyAddress the script will try find one deployed at the unlocked wallet account.
 
-async function RedeemTokensWithDSProxy() {
+async function main() {
   const winston = require("winston");
   const assert = require("assert");
   const argv = require("minimist")(process.argv.slice(), {
@@ -13,7 +13,7 @@ async function RedeemTokensWithDSProxy() {
   const { getWeb3 } = require("@uma/common");
   const web3 = getWeb3();
 
-  const { getAbi, getAddress, getTruffleContract } = require("@uma/core");
+  const { getAbi, getAddress, getBytecode } = require("@uma/contracts-node");
   const { DSProxyManager, GasEstimator } = require("@uma/financial-templates-lib");
 
   assert(argv.numTokens, "Must provide the number of tokens to redeem");
@@ -36,7 +36,7 @@ async function RedeemTokensWithDSProxy() {
     web3,
     gasEstimator,
     account: accounts[0],
-    dsProxyFactoryAddress: argv.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
+    dsProxyFactoryAddress: argv.dsProxyFactoryAddress || (await getAddress("DSProxyFactory", networkId)),
     dsProxyFactoryAbi: getAbi("DSProxyFactory"),
     dsProxyAbi: getAbi("DSProxy"),
   });
@@ -49,14 +49,13 @@ async function RedeemTokensWithDSProxy() {
   if (!dsProxyAddress) throw new Error("DSProxy Address was not found or parameterized");
 
   // Create the callData as the encoded tx against the TokenRedeemer contract.
-  const TokenRedeemer = getTruffleContract("TokenRedeemer", web3);
-  const TokenRedeemerInstance = new web3.eth.Contract(TokenRedeemer.abi);
+  const TokenRedeemerInstance = new web3.eth.Contract(getAbi("TokenRedeemer"));
   const callData = TokenRedeemerInstance.methods
     .redeem(argv.financialContractAddress, { rawValue: argv.numTokens })
     .encodeABI();
 
   // The library also needs the code of the contract to deploy.
-  const callCode = TokenRedeemer.bytecode;
+  const callCode = getBytecode("TokenRedeemer");
 
   // Send the transaction against the DSProxy manager.
   const dsProxyCallReturn = await dsProxyManager.callFunctionOnNewlyDeployedLibrary(callCode, callData);
@@ -64,16 +63,12 @@ async function RedeemTokensWithDSProxy() {
   console.log("TX executed!", dsProxyCallReturn.transactionHash);
 }
 
-const run = async function (callback) {
-  try {
-    await RedeemTokensWithDSProxy();
-  } catch (err) {
-    console.error(err);
-    callback(err);
-    return;
+main().then(
+  () => {
+    process.exit(0);
+  },
+  (error) => {
+    console.error(error.stack);
+    process.exit(1);
   }
-  callback();
-};
-
-run.RedeemTokensWithDSProxy = RedeemTokensWithDSProxy;
-module.exports = run;
+);

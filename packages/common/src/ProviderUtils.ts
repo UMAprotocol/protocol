@@ -3,7 +3,6 @@
 // syntax mimics that of the main UMA Truffle implementation to make this backwards compatible.
 
 import Web3 from "web3";
-import { getTruffleConfig, getNodeUrl } from "./TruffleConfig";
 import minimist from "minimist";
 import Url from "url";
 import { RetryProvider, RetryConfig } from "./RetryProvider";
@@ -11,6 +10,7 @@ import { AbstractProvider } from "web3-core";
 import HDWalletProvider from "@truffle/hdwallet-provider";
 import { ManagedSecretProvider } from "./gckms/ManagedSecretProvider";
 import { getGckmsConfig } from "./gckms/GckmsConfig";
+import { isPublicNetwork } from "./PublicNetworks";
 import assert from "assert";
 
 const argv = minimist(process.argv.slice(), { string: ["network"] });
@@ -32,6 +32,20 @@ const { NODE_RETRY_CONFIG } = process.env;
 
 // Set web3 to null
 let web3: Web3 | null = null;
+
+function getNodeUrl(networkName: string, useHttps = false): string {
+  if (isPublicNetwork(networkName) && !networkName.includes("fork")) {
+    const infuraApiKey = process.env.INFURA_API_KEY || "e34138b2db5b496ab5cc52319d2f0299";
+    const name = networkName.split("_")[0];
+    return (
+      process.env.CUSTOM_NODE_URL ||
+      (useHttps ? `https://${name}.infura.io/v3/${infuraApiKey}` : `wss://${name}.infura.io/ws/v3/${infuraApiKey}`)
+    );
+  }
+
+  const port = process.env.CUSTOM_LOCAL_NODE_PORT || "9545";
+  return `http://127.0.0.1:${port}`;
+}
 
 export function createBasicProvider(nodeRetryConfig: RetryConfig[]): RetryProvider {
   return new RetryProvider(
@@ -155,18 +169,7 @@ export function getWeb3(parameterizedNetwork = "test"): Web3 {
     : [{ url: getNodeUrl(network), retries: 0 }];
   const basicProvider = createBasicProvider(nodeRetryConfig);
 
-  // Use the basic provider to create a provider with an unlocked wallet. This piggybacks off the UMA common TruffleConfig
-  // implementing all networks & wallet types. EG: mainnet_mnemonic, kovan_gckms. Errors if no argv.network.
-  const provider = getTruffleConfig().networks[network].provider;
-
-  function isCallable(
-    input: typeof provider
-  ): input is (inputProviderOrUrl?: AbstractProvider | string) => AbstractProvider {
-    return input instanceof Function;
-  }
-
-  if (!isCallable(provider)) throw new Error(`Null or string provider for network ${network}`);
-  const providerWithWallet = provider(basicProvider);
+  const providerWithWallet = addDefaultKeysToProvider(basicProvider);
 
   // Lastly, create a web3 instance with the wallet-based provider. This can be used to query the chain via the
   // a basic web3 provider & has access to the users wallet based on the kind of connection they created.

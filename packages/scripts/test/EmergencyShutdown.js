@@ -1,7 +1,7 @@
 const hre = require("hardhat");
 const { runDefaultFixture } = require("@uma/common");
-const { getContract } = hre;
-const EmergencyShutdown = require("../../scripts/EmergencyShutdown");
+const { getContract, web3 } = hre;
+const EmergencyShutdown = require("../src/EmergencyShutdown");
 const { assert } = require("chai");
 
 const MockAdministratee = getContract("MockAdministratee");
