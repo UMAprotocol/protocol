@@ -2,7 +2,7 @@
 const { getAddress } = require("@uma/contracts-node");
 const { ZERO_ADDRESS } = require("@uma/common");
 const func = async function (hre) {
-  const chainId = await web3.eth.net.getId();
+  const chainId = await hre.web3.eth.net.getId();
 
   if (chainId == 69 || chainId == 10) {
     const { deployments, getNamedAccounts } = hre;

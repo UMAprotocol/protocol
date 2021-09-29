@@ -1,7 +1,7 @@
 const func = async function (hre) {
   // This migration will fail if contracts the bridge admin depend on are not registered in the Finder. No tests depend
   // on this migration so we can continue in this case enabling us to use this in production and skipping in tests.
-  const chainId = await web3.eth.net.getId();
+  const chainId = await hre.web3.eth.net.getId();
   if (chainId == 1 || chainId == 42) {
     const { deployments, getNamedAccounts } = hre;
     const { deploy } = deployments;
