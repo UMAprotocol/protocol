@@ -11,6 +11,27 @@ pragma solidity ^0.8.0;
  */
 library AncillaryData {
     /**
+     * @notice Returns utf8-encoded bytes32 string that can be read via web3.utils.hexToUtf8.
+     * Source: https://ethereum.stackexchange.com/questions/8346/convert-address-to-string/8447#8447
+     * @dev Will return bytes32 in all lower case hex characters and without the leading 0x.
+     * This has minor changes from the toUtf8BytesAddress to control for the size of the input.
+     * @param x bytes32 to encode.
+     * @return utf8 encoded bytes32.
+     */
+    function toUtf8Bytes(bytes32 x) internal pure returns (bytes memory) {
+        bytes memory s = new bytes(64);
+
+        for (uint256 i = 0; i < 32; i++) {
+            bytes1 b = bytes1(uint8(uint256(x) / (2**(8 * (31 - i)))));
+            bytes1 hi = bytes1(uint8(b) / 16);
+            bytes1 lo = bytes1(uint8(b) - 16 * uint8(hi));
+            s[2 * i] = char(hi);
+            s[2 * i + 1] = char(lo);
+        }
+        return s;
+    }
+
+    /**
      * @notice Returns utf8-encoded address that can be read via web3.utils.hexToUtf8.
      * Source: https://ethereum.stackexchange.com/questions/8346/convert-address-to-string/8447#8447
      * @dev Will return address in all lower case characters and without the leading 0x.
@@ -21,18 +42,6 @@ library AncillaryData {
         bytes memory s = new bytes(40);
         for (uint256 i = 0; i < 20; i++) {
             bytes1 b = bytes1(uint8(uint256(uint160(x)) / (2**(8 * (19 - i)))));
-            bytes1 hi = bytes1(uint8(b) / 16);
-            bytes1 lo = bytes1(uint8(b) - 16 * uint8(hi));
-            s[2 * i] = char(hi);
-            s[2 * i + 1] = char(lo);
-        }
-        return s;
-    }
-
-    function toUtf8Bytes(bytes32 x) internal pure returns (bytes memory) {
-        bytes memory s = new bytes(64);
-        for (uint256 i = 0; i < 20; i++) {
-            bytes1 b = bytes1(uint8(uint256(x) / (2**(8 * (19 - i)))));
             bytes1 hi = bytes1(uint8(b) / 16);
             bytes1 lo = bytes1(uint8(b) - 16 * uint8(hi));
             s[2 * i] = char(hi);
@@ -72,8 +81,12 @@ library AncillaryData {
         return bstr;
     }
 
-    function getKeyValueBytes32(bytes memory key, bytes32 value) internal pure returns (bytes memory) {
-        bytes memory prefix = abi.encodePacked(key, ":");
+    function appendKeyValueBytes32(
+        bytes memory currentAncillaryData,
+        bytes memory key,
+        bytes32 value
+    ) internal pure returns (bytes memory) {
+        bytes memory prefix = constructPrefix(currentAncillaryData, key);
         return abi.encodePacked(prefix, toUtf8Bytes(value));
     }
 

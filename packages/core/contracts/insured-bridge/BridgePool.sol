@@ -102,11 +102,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     event RelaySpedUp(bytes32 indexed depositHash, address indexed instantRelayer);
     event RelaySettled(bytes32 indexed depositHash, bytes32 indexed relayHash, address indexed caller);
 
-    modifier onlyFromOptimisticOracle() {
-        require(msg.sender == address(_getOptimisticOracle()), "Caller must be OptimisticOracle");
-        _;
-    }
-
     /**
      * @notice Construct the Bridge Pool
      * @param _lpTokenName Name of the LP token to be deployed by this contract.
@@ -229,6 +224,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
         // If relay exists for deposit, check if it is disputed. If its disputed, then we can relay again, otherwise
         // the relay is pending valid and we cannot re-relay.
+        // Note: everything after the || gets called _only_ in the case that this relay comes after a previously
+        // disputed relay. Because of this, the getState call doesn't impact the gas usage in the happy path.
         require(
             relays[depositHash].relayState == RelayState.Uninitialized ||
                 _getOptimisticOracle().getState(
@@ -237,15 +234,18 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
                     relays[depositHash].priceRequestTime,
                     _getRelayAncillaryData(_getRelayHash(depositData, relays[depositHash]))
                 ) ==
-                OptimisticOracleInterface.State.Disputed,
-            "Pending relay exists"
+                OptimisticOracleInterface.State.Disputed
         );
 
         // If no pending relay for this deposit, then associate the caller's relay attempt with it. Copy over the
         // instant relayer so that the l1Recipient cannot receive double payments. This means that once a relay is
         // disputed, it cant be sped up a second time (must finalize via the slow relay).
         uint256 priceRequestTime = getCurrentTime();
+
+        // Relay data is pulled out and set field-by-field because we're not setting _all_ fields.
         RelayData storage relayData = relays[depositHash];
+
+        // This increments the storage variable at the same time as setting relayId.
         relayData.relayId = numberOfRelays++;
         relayData.relayState = RelayState.Pending;
         relayData.priceRequestTime = priceRequestTime;
@@ -481,8 +481,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         returns (bytes memory)
     {
         return
-            AncillaryData.getKeyValueBytes32(
-                "hash",
+            AncillaryData.appendKeyValueBytes32(
+                "",
+                "relayHash",
                 keccak256(
                     abi.encode(
                         _depositData.chainId,
@@ -504,9 +505,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     // Note: this method is identical to the one above, but it allows storage to be passed in, which saves some gas (3-4k)
     // when called internally due to solidity not needing to copy the entire data structure and just lazily read data
     // when requested.
-    function _getRelayAncillaryData(bytes32 relayHash) private view returns (bytes memory) {
-        // TODO: Consider adding BridgePool address to the ancillary data packet.
-        return AncillaryData.getKeyValueBytes32("relayHash", relayHash);
+    function _getRelayAncillaryData(bytes32 relayHash) private pure returns (bytes memory) {
+        return AncillaryData.appendKeyValueBytes32("", "relayHash", relayHash);
     }
 
     function _getRelayHash(DepositData memory _depositData, RelayData storage _relayData)
