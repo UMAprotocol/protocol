@@ -28,7 +28,7 @@ const {
 
 // Contract ABIs and network Addresses.
 const { findContractVersion } = require("@uma/core");
-const { getAddress } = require("@uma/contracts-node");
+const { getAddress, getAbi } = require("@uma/contracts-node");
 
 /**
  * @notice Continuously attempts to dispute liquidations in the Financial Contract contract.
@@ -104,8 +104,11 @@ async function run({
       );
 
     // Setup contract instances.
-    const { getAbi } = require(getContractsNodePackageAliasForVerion(disputerConfig.contractVersion));
-    const financialContract = new web3.eth.Contract(getAbi(disputerConfig.contractType), financialContractAddress);
+    const { getAbi: getVersionedAbi } = require(getContractsNodePackageAliasForVerion(disputerConfig.contractVersion));
+    const financialContract = new web3.eth.Contract(
+      getVersionedAbi(disputerConfig.contractType),
+      financialContractAddress
+    );
 
     // Generate Financial Contract properties to inform bot of important on-chain state values that we only want to query once.
     const [collateralTokenAddress, syntheticTokenAddress] = await Promise.all([
