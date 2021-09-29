@@ -168,20 +168,11 @@ contract OptimisticOracle is OptimisticOracleInterface, Testable, Lockable {
             "Ancillary Data too long"
         );
         uint256 finalFee = _getStore().computeFinalFee(address(currency)).rawValue;
-        requests[_getId(msg.sender, identifier, timestamp, ancillaryData)] = Request({
-            proposer: address(0),
-            disputer: address(0),
-            currency: currency,
-            settled: false,
-            refundOnDispute: false,
-            proposedPrice: 0,
-            resolvedPrice: 0,
-            expirationTime: 0,
-            reward: reward,
-            finalFee: finalFee,
-            bond: finalFee,
-            customLiveness: 0
-        });
+        Request storage newRequest = requests[_getId(msg.sender, identifier, timestamp, ancillaryData)];
+        newRequest.currency = currency;
+        newRequest.reward = reward;
+        newRequest.finalFee = finalFee;
+        newRequest.bond = finalFee;
 
         if (reward > 0) {
             currency.safeTransferFrom(msg.sender, address(this), reward);
