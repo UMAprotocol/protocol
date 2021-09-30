@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "./interfaces/BridgeAdminInterface.sol";
 import "./interfaces/BridgePoolInterface.sol";
 
-import "../oracle/interfaces/OptimisticOracleInterface.sol";
+import "../oracle/interfaces/SkinnyOptimisticOracleInterface.sol";
 import "../oracle/interfaces/StoreInterface.sol";
 import "../oracle/interfaces/FinderInterface.sol";
 import "../oracle/implementation/Constants.sol";
@@ -276,13 +276,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             "Insufficient pool balance"
         );
 
-        // Request a price for the relay identifier and propose "true" optimistically. These methods will pull the
+        // Request a price for the relay identifier and propose "true" optimistically. This method will pull the
         // (proposer reward + proposer bond + final fee) from the caller. We need to set a new price request timestamp
         // instead of default setting to equal to the `depositTimestamp`, which is dependent on the L2 VM on which the
         // DepositContract is deployed. Imagine if the timestamps on the L2 have an offset that are always "in the
         // future" relative to L1 blocks, then the OptimisticOracle would always reject requests.
-        _requestOraclePriceRelay(amount, priceRequestTime, getRelayAncillaryData(depositData, relayData));
-        _proposeOraclePriceRelay(amount, priceRequestTime, getRelayAncillaryData(depositData, relayData));
+        _requestAndProposeOraclePriceRelay(amount, priceRequestTime, getRelayAncillaryData(depositData, relayData));
 
         pendingReserves += amount; // Book off maximum liquidity used by this relay in the pending reserves.
 
@@ -590,10 +589,10 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         }
     }
 
-    function _getOptimisticOracle() private view returns (OptimisticOracleInterface) {
+    function _getOptimisticOracle() private view returns (SkinnyOptimisticOracleInterface) {
         return
-            OptimisticOracleInterface(
-                FinderInterface(bridgeAdmin.finder()).getImplementationAddress(OracleInterfaces.OptimisticOracle)
+            SkinnyOptimisticOracleInterface(
+                FinderInterface(bridgeAdmin.finder()).getImplementationAddress(OracleInterfaces.SkinnyOptimisticOracle)
             );
     }
 
@@ -631,63 +630,43 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             );
     }
 
-    function _requestOraclePriceRelay(
+    function _requestAndProposeOraclePriceRelay(
         uint256 amount,
         uint256 requestTimestamp,
         bytes memory customAncillaryData
     ) private {
-        OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
+        SkinnyOptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
 
-        // Set reward to 0, since we'll settle proposer reward payouts directly from this contract after a relay
-        // proposal has passed the challenge period.
-        optimisticOracle.requestPrice(
-            bridgeAdmin.identifier(),
-            requestTimestamp,
-            customAncillaryData,
-            IERC20(l1Token),
-            0
-        );
-
-        // Set the Optimistic oracle liveness for the price request.
-        optimisticOracle.setCustomLiveness(
-            bridgeAdmin.identifier(),
-            requestTimestamp,
-            customAncillaryData,
-            uint256(bridgeAdmin.optimisticOracleLiveness())
-        );
-
-        // Set the Optimistic oracle proposer bond for the price request.
-        uint256 proposerBond = _getProposerBond(amount);
-        optimisticOracle.setBond(bridgeAdmin.identifier(), requestTimestamp, customAncillaryData, proposerBond);
-    }
-
-    function _proposeOraclePriceRelay(
-        uint256 amount,
-        uint256 requestTimestamp,
-        bytes memory customAncillaryData
-    ) private {
-        OptimisticOracleInterface optimisticOracle = _getOptimisticOracle();
+        // Compute total proposal bond and pull from caller so that the OptimisticOracle can subsequently pull it from
+        // here.
         uint256 proposerBondPct =
             FixedPoint.Unsigned(uint256(bridgeAdmin.proposerBondPct())).div(FixedPoint.fromUnscaledUint(1)).rawValue;
         uint256 finalFee = _getStore().computeFinalFee(address(l1Token)).rawValue;
-
         uint256 totalBond =
             FixedPoint
                 .Unsigned(proposerBondPct)
                 .mul(FixedPoint.Unsigned(amount))
                 .add(FixedPoint.Unsigned(finalFee))
                 .rawValue;
-
-        // Pull the total bond from the caller so that the OptimisticOracle can subsequently pull it from here.
         l1Token.safeTransferFrom(msg.sender, address(this), totalBond);
         l1Token.safeApprove(address(optimisticOracle), totalBond);
-        optimisticOracle.proposePriceFor(
-            msg.sender,
-            address(this),
+
+        optimisticOracle.requestAndProposePriceFor(
             bridgeAdmin.identifier(),
             requestTimestamp,
             customAncillaryData,
-            1e18 // Canonical value representing "True"; i.e. the proposed relay is valid.
+            IERC20(l1Token),
+            // Set reward to 0, since we'll settle proposer reward payouts directly from this contract after a relay
+            // proposal has passed the challenge period.
+            0,
+            // Set the Optimistic oracle proposer bond for the price request.
+            _getProposerBond(amount),
+            // Set the Optimistic oracle liveness for the price request.
+            uint256(bridgeAdmin.optimisticOracleLiveness()),
+            // Caller is proposer.
+            msg.sender,
+            // Canonical value representing "True"; i.e. the proposed relay is valid.
+            1e18
         );
     }
 

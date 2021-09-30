@@ -14,4 +14,5 @@ library OracleInterfaces {
     bytes32 public constant OptimisticOracle = "OptimisticOracle";
     bytes32 public constant Bridge = "Bridge";
     bytes32 public constant GenericHandler = "GenericHandler";
+    bytes32 public constant SkinnyOptimisticOracle = "SkinnyOptimisticOracle";
 }
