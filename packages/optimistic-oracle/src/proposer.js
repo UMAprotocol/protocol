@@ -414,6 +414,7 @@ class OptimisticOracleProposer {
       .getUnproposedPriceRequests()
       .concat(this.optimisticOracleClient.getUndisputedProposals());
     for (let priceRequest of allPriceRequests) {
+      if (await this._shouldIgnorePriceRequest(priceRequest)) continue;
       const receipt = await setAllowance(
         this.web3,
         this.gasEstimator,
