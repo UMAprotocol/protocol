@@ -15,7 +15,9 @@ const func = async function (hre) {
     10: 1, // optimism mainnet -> mainnet
   };
 
-  const bridgeAdminAddress = await getAddress("BridgeAdmin", l2ChainIdToL1[chainId]);
+  const bridgeAdminAddress = l2ChainIdToL1[chainId]
+    ? await getAddress("BridgeAdmin", l2ChainIdToL1[chainId])
+    : (await deployments.get("BridgeAdmin")).address;
 
   const args = [
     bridgeAdminAddress,
