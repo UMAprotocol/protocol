@@ -6,7 +6,7 @@ const { assert } = require("chai");
 
 const { toWei, toBN, hexToUtf8, utf8ToHex } = web3.utils;
 
-const OptimisticOracleLite = getContract("OptimisticOracleLite");
+const SkinnyOptimisticOracle = getContract("SkinnyOptimisticOracle");
 const Finder = getContract("Finder");
 const Timer = getContract("Timer");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
@@ -15,7 +15,7 @@ const Token = getContract("ExpandedERC20");
 const Store = getContract("Store");
 const MockOracle = getContract("MockOracleAncillary");
 
-describe("OptimisticOracleLite", function () {
+describe("SkinnyOptimisticOracle", function () {
   let optimisticOracle;
   let finder;
   let timer;
@@ -121,7 +121,7 @@ describe("OptimisticOracleLite", function () {
       customLiveness: "0",
     };
 
-    optimisticOracle = await OptimisticOracleLite.new(liveness, finder.options.address, timer.options.address).send({
+    optimisticOracle = await SkinnyOptimisticOracle.new(liveness, finder.options.address, timer.options.address).send({
       from: accounts[0],
     });
 
@@ -156,14 +156,16 @@ describe("OptimisticOracleLite", function () {
     // Liveness too large.
     assert(
       await didContractThrow(
-        OptimisticOracleLite.new(toWei("1"), finder.options.address, timer.options.address).send({ from: accounts[0] })
+        SkinnyOptimisticOracle.new(toWei("1"), finder.options.address, timer.options.address).send({
+          from: accounts[0],
+        })
       )
     );
 
     // Liveness too small.
     assert(
       await didContractThrow(
-        OptimisticOracleLite.new(0, finder.options.address, timer.options.address).send({ from: accounts[0] })
+        SkinnyOptimisticOracle.new(0, finder.options.address, timer.options.address).send({ from: accounts[0] })
       )
     );
   });

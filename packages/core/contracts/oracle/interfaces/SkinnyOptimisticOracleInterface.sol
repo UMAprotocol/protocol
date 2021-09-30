@@ -8,7 +8,7 @@ import "../interfaces/OptimisticOracleInterface.sol";
  * @title Interface for the gas-cost-reduced version of the OptimisticOracle
  * @dev Interface used by financial contracts to interact with the Oracle. Voters will use a different interface.
  */
-abstract contract OptimisticOracleLiteInterface {
+abstract contract SkinnyOptimisticOracleInterface {
     // Struct representing a price request. Note that this differs from the OptimisticOracleInterface's Request struct
     // in that refundOnDispute is removed.
     struct Request {

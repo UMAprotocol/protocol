@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "../interfaces/StoreInterface.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
 import "../interfaces/OptimisticOracleInterface.sol";
-import "../interfaces/OptimisticOracleLiteInterface.sol";
+import "../interfaces/SkinnyOptimisticOracleInterface.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "./Constants.sol";
@@ -24,7 +24,7 @@ import "../../common/implementation/AddressWhitelist.sol";
  * @title Optimistic Oracle with a different interface and fewer features that emphasizes gas cost reductions.
  * @notice Pre-DVM escalation contract that allows faster settlement.
  */
-contract OptimisticOracleLite is OptimisticOracleLiteInterface, Testable, Lockable {
+contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lockable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using Address for address;
