@@ -1,11 +1,8 @@
 // Taken from https://github.com/UMAprotocol/protocol/blob/master/packages/financial-templates-lib/src/helpers/acrossFeesCalculator.ts
-import BN from "bn.js";
 import Decimal from "decimal.js";
-import Web3 from "web3";
-
-const { toBN, toWei, fromWei } = Web3.utils;
-const toBNWei = (number: string | number) => toBN(toWei(number.toString()).toString());
-const fixedPointAdjustment = toBNWei("1");
+import { BigNumber, utils } from "ethers";
+type BigNumberish = string | number | BigNumber;
+type BN = BigNumber;
 
 export interface RateModel {
   UBar: BN; // denote the utilization kink along the rate model where the slope of the interest rate model changes.
@@ -14,10 +11,28 @@ export interface RateModel {
   R2: BN; // R_0+R_1+R_2 is the interest rate charged at 100% utilization
 }
 
+export const toBN = (num: BigNumberish) => BigNumber.from(num.toString());
+export const toBNWei = (num: BigNumberish) => utils.parseEther(num.toString());
+export const toWei = (num: BigNumberish) => toBNWei(num).toString();
+export const fromWei = (num: BigNumberish) => utils.formatEther(num.toString());
+
+function min(a: BigNumberish, b: BigNumberish) {
+  const bna = toBN(a);
+  const bnb = toBN(b);
+  return bna.lte(bnb) ? bna : bnb;
+}
+function max(a: BigNumberish, b: BigNumberish) {
+  const bna = toBN(a);
+  const bnb = toBN(b);
+  return bna.gte(bnb) ? bna : bnb;
+}
+
+const fixedPointAdjustment = toBNWei("1");
+
 // Calculate the rate for a 0 sized deposit (infinitesimally small).
 function calculateInstantaneousRate(rateModel: RateModel, utilization: BN) {
-  const beforeKink = BN.min(utilization, rateModel.UBar).mul(rateModel.R1).div(rateModel.UBar);
-  const afterKink = BN.max(toBN("0"), utilization.sub(rateModel.UBar))
+  const beforeKink = min(utilization, rateModel.UBar).mul(rateModel.R1).div(rateModel.UBar);
+  const afterKink = max(toBN("0"), utilization.sub(rateModel.UBar))
     .mul(rateModel.R2)
     .div(toBNWei("1").sub(rateModel.UBar));
 
@@ -27,7 +42,7 @@ function calculateInstantaneousRate(rateModel: RateModel, utilization: BN) {
 //  Compute area under curve of the piece-wise linear rate model.
 function calculateAreaUnderRateCurve(rateModel: RateModel, utilization: BN) {
   // Area under first piecewise component
-  const utilizationBeforeKink = BN.min(utilization, rateModel.UBar);
+  const utilizationBeforeKink = min(utilization, rateModel.UBar);
   const rectangle1Area = utilizationBeforeKink.mul(rateModel.R0).div(fixedPointAdjustment);
   const triangle1Area = toBNWei("0.5")
     .mul(calculateInstantaneousRate(rateModel, utilizationBeforeKink).sub(rateModel.R0))
@@ -36,7 +51,7 @@ function calculateAreaUnderRateCurve(rateModel: RateModel, utilization: BN) {
     .div(fixedPointAdjustment);
 
   // Area under second piecewise component
-  const utilizationAfter = BN.max(toBN("0"), utilization.sub(rateModel.UBar));
+  const utilizationAfter = max(toBN("0"), utilization.sub(rateModel.UBar));
   const rectangle2Area = utilizationAfter.mul(rateModel.R0.add(rateModel.R1)).div(fixedPointAdjustment);
   const triangle2Area = toBNWei("0.5")
     .mul(calculateInstantaneousRate(rateModel, utilization).sub(rateModel.R0.add(rateModel.R1)))
