@@ -248,6 +248,76 @@ contract OptimisticOracleLite is Testable, Lockable {
     }
 
     /**
+     * @notice Combines logic of requestPrice and proposePrice while taking advantage of gas savings from not having to
+     * overwrite Request params that a normal requestPrice() => proposePrice() flow would entail. Note: The proposer
+     * will receive any rewards that come from this proposal. However, any bonds are pulled from the caller.
+     * @dev The caller is the requester, but the proposer can be customized.
+     * @param _identifier price identifier to identify the existing request.
+     * @param _timestamp timestamp to identify the existing request.
+     * @param _ancillaryData ancillary data of the price being requested.
+     * @param _currency ERC20 token used for payment of rewards and fees. Must be approved for use with the DVM.
+     * @param _reward reward offered to a successful proposer. Will be pulled from the caller. Note: this can be 0,
+     *               which could make sense if the contract requests and proposes the value in the same call or
+     *               provides its own reward system.
+     * @param _bond custom proposal bond to set for request. If set to 0, defaults to the final fee.
+     * @param _customLiveness custom proposal liveness to set for request.
+     * @param _proposer address to set as the proposer.
+     * @param _proposedPrice price being proposed.
+     * @return totalBond the amount that's pulled from the caller's wallet as a bond. The bond will be returned to
+     * the proposer once settled if the proposal is correct.
+     */
+    function requestAndProposePriceFor(
+        bytes32 _identifier,
+        uint256 _timestamp,
+        bytes memory _ancillaryData,
+        IERC20 _currency,
+        uint256 _reward,
+        uint256 _bond,
+        uint256 _customLiveness,
+        address _proposer,
+        int256 _proposedPrice
+    ) external returns (uint256 totalBond) {
+        bytes32 requestId = _getId(msg.sender, _identifier, _timestamp, _ancillaryData);
+        require(requests[requestId] == bytes32(0), "Request already initialized");
+        require(_proposer != address(0), "proposer address must be non 0");
+        require(_getIdentifierWhitelist().isIdentifierSupported(_identifier), "Unsupported identifier");
+        require(_getCollateralWhitelist().isOnWhitelist(address(_currency)), "Unsupported currency");
+        require(_timestamp <= getCurrentTime(), "Timestamp in future");
+        require(
+            _stampAncillaryData(_ancillaryData, msg.sender).length <= ancillaryBytesLimit,
+            "Ancillary Data too long"
+        );
+        uint256 finalFee = _getStore().computeFinalFee(address(_currency)).rawValue;
+
+        // Associate new request with ID
+        Request memory request;
+        request.currency = _currency;
+        request.reward = _reward;
+        request.finalFee = finalFee;
+        request.bond = _bond != 0 ? _bond : finalFee;
+        request.customLiveness = _customLiveness;
+        request.proposer = _proposer;
+        request.proposedPrice = _proposedPrice;
+        request.expirationTime = getCurrentTime().add(_customLiveness != 0 ? _customLiveness : defaultLiveness);
+
+        // Pull reward from requester, who is the caller.
+        if (_reward > 0) {
+            _currency.safeTransferFrom(msg.sender, address(this), _reward);
+        }
+        // Pull proposal bond from caller.
+        totalBond = request.bond.add(request.finalFee);
+        if (totalBond > 0) {
+            _currency.safeTransferFrom(msg.sender, address(this), totalBond);
+        }
+
+        _storeRequestHash(requestId, request);
+        emit RequestPrice(msg.sender, _identifier, _timestamp, _ancillaryData, request);
+        emit ProposePrice(msg.sender, _identifier, _timestamp, _ancillaryData, request);
+
+        return request.bond.add(request.finalFee);
+    }
+
+    /**
      * @notice Disputes a price request with an active proposal on another address' behalf. Note: this address will
      * receive any rewards that come from this dispute. However, any bonds are pulled from the caller.
      * @param _identifier price identifier to identify the existing request.
