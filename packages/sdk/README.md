@@ -10,6 +10,7 @@ This is meant to be modular and add features as needed. This was bootstraped wit
 - [**stores**](./src/stores/README.md): are meant to be data shape agnostic classes for persistence or caching
 - [**tables**](./src/tables/README.md): are classes which store tabular data, understand data shape and rely on stores for low level persistence
 - [**utils**](./src/utils.ts): are meant to hold and expose useful utilities which can be shared and eventually promoted to their own modules
+- [**across**](./src/across/README.md): supporting libraries for applications built on the across cross platform token transfer project.
 
 Each folder should contain a README, index.ts and index.d.ts if needed which expose any code to the root of the SDK.
 
@@ -23,9 +24,9 @@ Then inside your project type `yarn link @uma/sdk` to link to your local copy.
 ## Quick Start
 
 ```js
-import uma from '@uma/sdk'
+import * as uma from '@uma/sdk'
 
-const { clients,stores,tables utils } = uma
+const { clients,stores,tables utils, across} = uma
 
 const {Registry} = clients
 const {JsMap, GoogleDatastore} = stores
