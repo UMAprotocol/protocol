@@ -153,7 +153,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      * @dev Reentrancy guard not added to this function because this indirectly calls sync() which is guarded.
      * @param l1TokenAmount Number of l1Token to add as liquidity.
      */
-    function addLiquidity(uint256 l1TokenAmount) public {
+    function addLiquidity(uint256 l1TokenAmount) public nonReentrant() {
         l1Token.safeTransferFrom(msg.sender, address(this), l1TokenAmount);
 
         uint256 lpTokensToMint =
@@ -173,7 +173,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
      * @dev Reentrancy guard not added to this function because this indirectly calls sync() which is guarded.
      * @param lpTokenAmount Number of lpTokens to redeem for underlying.
      */
-    function removeLiquidity(uint256 lpTokenAmount) public {
+    function removeLiquidity(uint256 lpTokenAmount) public nonReentrant() {
         uint256 l1TokensToReturn =
             FixedPoint.Unsigned(lpTokenAmount).mul(FixedPoint.Unsigned(exchangeRateCurrent())).rawValue;
 
