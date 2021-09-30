@@ -43,8 +43,6 @@ describe("OptimisticOracleLite", function () {
   const halfDefaultBond = toWei("0.5"); // Default bond = final fee = 1e18.
   const defaultBond = toWei("1");
   const totalDefaultBond = toWei("2"); // Total default bond = final fee + default bond = 2e18
-  const customBond = toWei("5");
-  const totalCustomBond = toWei("6");
   const correctPrice = toWei("-17");
   const incorrectPrice = toWei("10");
   const initialUserBalance = toWei("100");
@@ -183,14 +181,14 @@ describe("OptimisticOracleLite", function () {
 
     // Request for current time is okay.
     await optimisticOracle.methods
-      .requestPrice(identifier, currentTime, "0x", collateral.options.address, 0)
+      .requestPrice(identifier, currentTime, "0x", collateral.options.address, 0, 0, 0)
       .send({ from: accounts[0] });
 
     // 1 second in the future is not okay.
     assert(
       await didContractThrow(
         optimisticOracle.methods
-          .requestPrice(identifier, currentTime + 1, "0x", collateral.options.address, 0)
+          .requestPrice(identifier, currentTime + 1, "0x", collateral.options.address, 0, 0, 0)
           .send({ from: accounts[0] })
       )
     );
@@ -198,7 +196,7 @@ describe("OptimisticOracleLite", function () {
 
   it("No fee request", async function () {
     await optimisticOracle.methods
-      .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0)
+      .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0, 0, 0)
       .send({ from: accounts[0] });
     await verifyState(
       OptimisticOracleRequestStatesEnum.REQUESTED,
@@ -214,7 +212,7 @@ describe("OptimisticOracleLite", function () {
     assert(
       await didContractThrow(
         optimisticOracle.methods
-          .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward)
+          .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward, 0, 0)
           .send({ from: accounts[0] })
       )
     );
@@ -229,7 +227,9 @@ describe("OptimisticOracleLite", function () {
       requestTime,
       "0x",
       collateral.options.address,
-      reward
+      reward,
+      0,
+      0
     );
     const returnValue = await requestTxn.call({ from: requester });
     assert.equal(returnValue, totalDefaultBond);
@@ -268,25 +268,14 @@ describe("OptimisticOracleLite", function () {
   it("Bond burned when final fee == 0", async function () {
     // Set final fee and prep request.
     await store.methods.setFinalFee(collateral.options.address, { rawValue: "0" }).send({ from: accounts[0] });
-    let modifiedRequestParams = { ...requestParams, finalFee: "0", bond: "0" };
     await collateral.methods.transfer(requester, reward).send({ from: accounts[0] });
     await collateral.methods.increaseAllowance(optimisticOracle.options.address, reward).send({ from: requester });
-    await optimisticOracle.methods
-      .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward)
-      .send({ from: requester });
-    // Must set the bond because it defaults to the final fee, which is 0.
 
+    // Must set the bond because it defaults to the final fee, which is 0.
     await optimisticOracle.methods
-      .customizeRequest(
-        identifier,
-        requestTime,
-        "0x",
-        modifiedRequestParams,
-        defaultBond,
-        "0" // Default customLiveness value
-      )
+      .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward, defaultBond, 0)
       .send({ from: requester });
-    modifiedRequestParams = { ...modifiedRequestParams, bond: defaultBond };
+    let modifiedRequestParams = { ...requestParams, finalFee: "0", bond: defaultBond };
 
     // Note: defaultBond does _not_ include the final fee.
     await collateral.methods.approve(optimisticOracle.options.address, defaultBond).send({ from: proposer });
@@ -321,7 +310,7 @@ describe("OptimisticOracleLite", function () {
   describe("hasPrice", function () {
     beforeEach(async function () {
       await optimisticOracle.methods
-        .requestPrice(identifier, requestTime, "0x", collateral.options.address, "0")
+        .requestPrice(identifier, requestTime, "0x", collateral.options.address, 0, 0, 0)
         .send({ from: requester });
     });
 
@@ -441,234 +430,215 @@ describe("OptimisticOracleLite", function () {
     beforeEach(async function () {
       await collateral.methods.transfer(requester, reward).send({ from: accounts[0] });
       await collateral.methods.increaseAllowance(optimisticOracle.options.address, reward).send({ from: requester });
-      await optimisticOracle.methods
-        .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward)
-        .send({ from: requester });
     });
+    describe("Default bond and liveness", function () {
+      beforeEach(async function () {
+        await optimisticOracle.methods
+          .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward, 0, 0)
+          .send({ from: requester });
+      });
 
-    it("Cannot re-request", async function () {
-      assert(
-        await didContractThrow(
-          optimisticOracle.methods
-            .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward)
-            .send({ from: requester })
-        )
-      );
-    });
-
-    it("Default proposal", async function () {
-      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
-      const proposeTxn = optimisticOracle.methods.proposePrice(
-        requester,
-        identifier,
-        requestTime,
-        "0x",
-        requestParams,
-        correctPrice
-      );
-      const returnValue = await proposeTxn.call({ from: proposer });
-      assert.equal(returnValue, totalDefaultBond);
-
-      await assertEventEmitted(await proposeTxn.send({ from: proposer }), optimisticOracle, "ProposePrice", (ev) => {
-        return (
-          ev.requester === requester &&
-          hexToUtf8(ev.identifier) == hexToUtf8(identifier) &&
-          ev.timestamp.toString() === requestTime.toString() &&
-          ev.ancillaryData === null &&
-          ev.request.proposer === postProposalParams(requestParams).proposer &&
-          ev.request.disputer === postProposalParams(requestParams).disputer &&
-          ev.request.currency === postProposalParams(requestParams).currency &&
-          ev.request.settled === postProposalParams(requestParams).settled &&
-          ev.request.proposedPrice === postProposalParams(requestParams).proposedPrice &&
-          ev.request.resolvedPrice === postProposalParams(requestParams).resolvedPrice &&
-          ev.request.expirationTime === postProposalParams(requestParams).expirationTime &&
-          ev.request.reward === postProposalParams(requestParams).reward &&
-          ev.request.finalFee === postProposalParams(requestParams).finalFee &&
-          ev.request.bond === postProposalParams(requestParams).bond &&
-          ev.request.customLiveness === postProposalParams(requestParams).customLiveness
+      it("Cannot re-request", async function () {
+        assert(
+          await didContractThrow(
+            optimisticOracle.methods
+              .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward, 0, 0)
+              .send({ from: requester })
+          )
         );
       });
 
-      await verifyState(
-        OptimisticOracleRequestStatesEnum.PROPOSED,
-        requester,
-        identifier,
-        requestTime,
-        "0x",
-        postProposalParams(requestParams)
-      );
-      await verifyBalanceSum(optimisticOracle.options.address, reward, totalDefaultBond);
-    });
-
-    it("Customize request params", async function () {
-      let modifiedRequestParams = { ...requestParams, bond: customBond, customLiveness };
-      const customizeRequestTxn = optimisticOracle.methods.customizeRequest(
-        identifier,
-        requestTime,
-        "0x",
-        requestParams,
-        // Customize the following params:
-        modifiedRequestParams.bond,
-        modifiedRequestParams.customLiveness
-      );
-
-      // Only requester can call, otherwise caller address won't match request hash.
-      assert(await didContractThrow(customizeRequestTxn.send({ from: accounts[0] })));
-      assert.ok(await customizeRequestTxn.send({ from: requester }));
-
-      await collateral.methods.approve(optimisticOracle.options.address, totalCustomBond).send({ from: proposer });
-      await optimisticOracle.methods
-        .proposePrice(requester, identifier, requestTime, "0x", modifiedRequestParams, correctPrice)
-        .send({ from: proposer });
-      await verifyState(
-        OptimisticOracleRequestStatesEnum.PROPOSED,
-        requester,
-        identifier,
-        requestTime,
-        "0x",
-        postProposalParams(modifiedRequestParams)
-      );
-      await verifyBalanceSum(optimisticOracle.options.address, reward, totalCustomBond);
-    });
-
-    it("Burned bond rounding", async function () {
-      // Set bond such that rounding will occur: 1e18 + 1.
-      const bond = toBN(toWei("1")).addn(1);
-      const totalBond = bond.add(toBN(finalFee));
-      const halfBondCeil = bond.divn(2).addn(1);
-      const halfBondFloor = bond.divn(2);
-
-      let modifiedRequestParams = { ...requestParams, bond: bond.toString() };
-      await optimisticOracle.methods
-        .customizeRequest(
-          identifier,
-          requestTime,
-          "0x",
-          requestParams,
-          modifiedRequestParams.bond,
-          requestParams.customLiveness
-        )
-        .send({ from: requester });
-      await collateral.methods.approve(optimisticOracle.options.address, totalBond).send({ from: proposer });
-      await optimisticOracle.methods
-        .proposePrice(requester, identifier, requestTime, "0x", modifiedRequestParams, correctPrice)
-        .send({ from: proposer });
-
-      await collateral.methods.approve(optimisticOracle.options.address, totalBond).send({ from: disputer });
-      await optimisticOracle.methods
-        .disputePrice(requester, identifier, requestTime, "0x", postProposalParams(modifiedRequestParams))
-        .send({ from: disputer });
-
-      // Verify that the bonds have been paid in and the loser's bond and the final fee have been sent to the store.
-      await verifyBalanceSum(
-        optimisticOracle.options.address,
-        totalBond,
-        totalBond,
-        reward,
-        `-${halfBondFloor}`,
-        `-${finalFee}`
-      );
-      await pushPrice(correctPrice);
-      await optimisticOracle.methods
-        .settle(requester, identifier, requestTime, "0x", postDisputeParams(postProposalParams(modifiedRequestParams)))
-        .send({ from: accounts[0] });
-
-      // Proposer should net half of the disputer's bond (ceiled) and the reward.
-      await verifyBalanceSum(proposer, initialUserBalance, halfBondCeil, reward);
-
-      // Disputer should have lost their bond.
-      await verifyBalanceSum(disputer, initialUserBalance, `-${totalBond}`);
-
-      // Contract should contain nothing.
-      await verifyBalanceSum(optimisticOracle.options.address);
-
-      // Store should have a final fee plus half of the bond floored (the "burned" portion).
-      await verifyBalanceSum(store.options.address, finalFee, halfBondFloor);
-    });
-
-    it("Should Revert When Proposed For With 0 Address", async function () {
-      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
-      const request = optimisticOracle.methods
-        .proposePriceFor(
+      it("Default proposal", async function () {
+        await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
+        const proposeTxn = optimisticOracle.methods.proposePrice(
           requester,
           identifier,
           requestTime,
           "0x",
           requestParams,
-          "0x0000000000000000000000000000000000000000",
           correctPrice
-        )
-        .send({ from: proposer });
-      assert(await didContractThrow(request));
-    });
+        );
+        const returnValue = await proposeTxn.call({ from: proposer });
+        assert.equal(returnValue, totalDefaultBond);
 
-    it("Propose For", async function () {
-      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
-      await optimisticOracle.methods
-        .proposePriceFor(requester, identifier, requestTime, "0x", requestParams, rando, correctPrice)
-        .send({ from: proposer });
-      await optimisticOracle.methods.setCurrentTime(defaultExpiryTime).send({ from: accounts[0] });
-      await optimisticOracle.methods
-        .settle(requester, identifier, requestTime, "0x", { ...postProposalParams(requestParams), proposer: rando })
-        .send({ from: accounts[0] });
+        await assertEventEmitted(await proposeTxn.send({ from: proposer }), optimisticOracle, "ProposePrice", (ev) => {
+          return (
+            ev.requester === requester &&
+            hexToUtf8(ev.identifier) == hexToUtf8(identifier) &&
+            ev.timestamp.toString() === requestTime.toString() &&
+            ev.ancillaryData === null &&
+            ev.request.proposer === postProposalParams(requestParams).proposer &&
+            ev.request.disputer === postProposalParams(requestParams).disputer &&
+            ev.request.currency === postProposalParams(requestParams).currency &&
+            ev.request.settled === postProposalParams(requestParams).settled &&
+            ev.request.proposedPrice === postProposalParams(requestParams).proposedPrice &&
+            ev.request.resolvedPrice === postProposalParams(requestParams).resolvedPrice &&
+            ev.request.expirationTime === postProposalParams(requestParams).expirationTime &&
+            ev.request.reward === postProposalParams(requestParams).reward &&
+            ev.request.finalFee === postProposalParams(requestParams).finalFee &&
+            ev.request.bond === postProposalParams(requestParams).bond &&
+            ev.request.customLiveness === postProposalParams(requestParams).customLiveness
+          );
+        });
 
-      // Note: rando should receive a BIGGER bonus over their initial balance because the initial bond didn't come out of their wallet.
-      await verifyBalanceSum(rando, initialUserBalance, totalDefaultBond, reward);
-    });
-
-    it("Custom liveness", async function () {
-      let modifiedRequestParams = { ...requestParams, customLiveness };
-      await optimisticOracle.methods
-        .customizeRequest(
+        await verifyState(
+          OptimisticOracleRequestStatesEnum.PROPOSED,
+          requester,
           identifier,
           requestTime,
           "0x",
-          requestParams,
-          requestParams.bond,
-          modifiedRequestParams.customLiveness
-        )
-        .send({ from: requester });
+          postProposalParams(requestParams)
+        );
+        await verifyBalanceSum(optimisticOracle.options.address, reward, totalDefaultBond);
+      });
 
-      await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
+      it("Should Revert When Proposed For With 0 Address", async function () {
+        await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
+        const request = optimisticOracle.methods
+          .proposePriceFor(
+            requester,
+            identifier,
+            requestTime,
+            "0x",
+            requestParams,
+            "0x0000000000000000000000000000000000000000",
+            correctPrice
+          )
+          .send({ from: proposer });
+        assert(await didContractThrow(request));
+      });
 
-      await optimisticOracle.methods
-        .proposePrice(requester, identifier, requestTime, "0x", modifiedRequestParams, correctPrice)
-        .send({ from: proposer });
-      await optimisticOracle.methods.setCurrentTime(customExpiryTime - 1).send({ from: accounts[0] });
-      await verifyState(
-        OptimisticOracleRequestStatesEnum.PROPOSED,
-        requester,
-        identifier,
-        requestTime,
-        "0x",
-        postProposalParams(modifiedRequestParams, customExpiryTime)
-      );
-      assert(
-        await didContractThrow(
-          optimisticOracle.methods
-            .settle(
-              requester,
-              identifier,
-              requestTime,
-              "0x",
-              postProposalParams(modifiedRequestParams, customExpiryTime)
-            )
-            .send({ from: accounts[0] })
-        )
-      );
+      it("Propose For", async function () {
+        await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
+        await optimisticOracle.methods
+          .proposePriceFor(requester, identifier, requestTime, "0x", requestParams, rando, correctPrice)
+          .send({ from: proposer });
+        await optimisticOracle.methods.setCurrentTime(defaultExpiryTime).send({ from: accounts[0] });
+        await optimisticOracle.methods
+          .settle(requester, identifier, requestTime, "0x", { ...postProposalParams(requestParams), proposer: rando })
+          .send({ from: accounts[0] });
 
-      await optimisticOracle.methods.setCurrentTime(customExpiryTime).send({ from: accounts[0] });
-      await verifyState(
-        OptimisticOracleRequestStatesEnum.EXPIRED,
-        requester,
-        identifier,
-        requestTime,
-        "0x",
-        postProposalParams(modifiedRequestParams, customExpiryTime)
-      );
-      await optimisticOracle.methods
-        .settle(requester, identifier, requestTime, "0x", postProposalParams(modifiedRequestParams, customExpiryTime))
-        .send({ from: accounts[0] });
+        // Note: rando should receive a BIGGER bonus over their initial balance because the initial bond didn't come out of their wallet.
+        await verifyBalanceSum(rando, initialUserBalance, totalDefaultBond, reward);
+      });
+    });
+    describe("Custom bond and liveness", function () {
+      it("Burned bond rounding", async function () {
+        // Set bond such that rounding will occur: 1e18 + 1.
+        const bond = toBN(toWei("1")).addn(1);
+        const totalBond = bond.add(toBN(finalFee));
+        const halfBondCeil = bond.divn(2).addn(1);
+        const halfBondFloor = bond.divn(2);
+
+        let modifiedRequestParams = { ...requestParams, bond: bond.toString() };
+        await optimisticOracle.methods
+          .requestPrice(
+            identifier,
+            requestTime,
+            "0x",
+            collateral.options.address,
+            reward,
+            modifiedRequestParams.bond,
+            0
+          )
+          .send({ from: requester });
+        await collateral.methods.approve(optimisticOracle.options.address, totalBond).send({ from: proposer });
+        await optimisticOracle.methods
+          .proposePrice(requester, identifier, requestTime, "0x", modifiedRequestParams, correctPrice)
+          .send({ from: proposer });
+
+        await collateral.methods.approve(optimisticOracle.options.address, totalBond).send({ from: disputer });
+        await optimisticOracle.methods
+          .disputePrice(requester, identifier, requestTime, "0x", postProposalParams(modifiedRequestParams))
+          .send({ from: disputer });
+
+        // Verify that the bonds have been paid in and the loser's bond and the final fee have been sent to the store.
+        await verifyBalanceSum(
+          optimisticOracle.options.address,
+          totalBond,
+          totalBond,
+          reward,
+          `-${halfBondFloor}`,
+          `-${finalFee}`
+        );
+        await pushPrice(correctPrice);
+        await optimisticOracle.methods
+          .settle(
+            requester,
+            identifier,
+            requestTime,
+            "0x",
+            postDisputeParams(postProposalParams(modifiedRequestParams))
+          )
+          .send({ from: accounts[0] });
+
+        // Proposer should net half of the disputer's bond (ceiled) and the reward.
+        await verifyBalanceSum(proposer, initialUserBalance, halfBondCeil, reward);
+
+        // Disputer should have lost their bond.
+        await verifyBalanceSum(disputer, initialUserBalance, `-${totalBond}`);
+
+        // Contract should contain nothing.
+        await verifyBalanceSum(optimisticOracle.options.address);
+
+        // Store should have a final fee plus half of the bond floored (the "burned" portion).
+        await verifyBalanceSum(store.options.address, finalFee, halfBondFloor);
+      });
+      it("Custom liveness", async function () {
+        let modifiedRequestParams = { ...requestParams, customLiveness };
+        await optimisticOracle.methods
+          .requestPrice(
+            identifier,
+            requestTime,
+            "0x",
+            collateral.options.address,
+            reward,
+            0,
+            modifiedRequestParams.customLiveness
+          )
+          .send({ from: requester });
+
+        await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
+
+        await optimisticOracle.methods
+          .proposePrice(requester, identifier, requestTime, "0x", modifiedRequestParams, correctPrice)
+          .send({ from: proposer });
+        await optimisticOracle.methods.setCurrentTime(customExpiryTime - 1).send({ from: accounts[0] });
+        await verifyState(
+          OptimisticOracleRequestStatesEnum.PROPOSED,
+          requester,
+          identifier,
+          requestTime,
+          "0x",
+          postProposalParams(modifiedRequestParams, customExpiryTime)
+        );
+        assert(
+          await didContractThrow(
+            optimisticOracle.methods
+              .settle(
+                requester,
+                identifier,
+                requestTime,
+                "0x",
+                postProposalParams(modifiedRequestParams, customExpiryTime)
+              )
+              .send({ from: accounts[0] })
+          )
+        );
+
+        await optimisticOracle.methods.setCurrentTime(customExpiryTime).send({ from: accounts[0] });
+        await verifyState(
+          OptimisticOracleRequestStatesEnum.EXPIRED,
+          requester,
+          identifier,
+          requestTime,
+          "0x",
+          postProposalParams(modifiedRequestParams, customExpiryTime)
+        );
+        await optimisticOracle.methods
+          .settle(requester, identifier, requestTime, "0x", postProposalParams(modifiedRequestParams, customExpiryTime))
+          .send({ from: accounts[0] });
+      });
     });
   });
 
@@ -677,7 +647,7 @@ describe("OptimisticOracleLite", function () {
       await collateral.methods.transfer(requester, reward).send({ from: accounts[0] });
       await collateral.methods.increaseAllowance(optimisticOracle.options.address, reward).send({ from: requester });
       await optimisticOracle.methods
-        .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward)
+        .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward, 0, 0)
         .send({ from: requester });
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
       await optimisticOracle.methods
@@ -859,7 +829,7 @@ describe("OptimisticOracleLite", function () {
       await collateral.methods.transfer(requester, reward).send({ from: accounts[0] });
       await collateral.methods.increaseAllowance(optimisticOracle.options.address, reward).send({ from: requester });
       await optimisticOracle.methods
-        .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward)
+        .requestPrice(identifier, requestTime, "0x", collateral.options.address, reward, 0, 0)
         .send({ from: requester });
       await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: proposer });
       await optimisticOracle.methods
@@ -1000,7 +970,7 @@ describe("OptimisticOracleLite", function () {
       await collateral.methods.transfer(requester, reward).send({ from: accounts[0] });
       await collateral.methods.increaseAllowance(optimisticOracle.options.address, reward).send({ from: requester });
       await optimisticOracle.methods
-        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, reward)
+        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, reward, 0, 0)
         .send({ from: requester });
       await verifyState(
         OptimisticOracleRequestStatesEnum.REQUESTED,
@@ -1083,7 +1053,7 @@ describe("OptimisticOracleLite", function () {
       await collateral.methods.transfer(requester, reward).send({ from: accounts[0] });
       await collateral.methods.increaseAllowance(optimisticOracle.options.address, reward).send({ from: requester });
       await optimisticOracle.methods
-        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, reward)
+        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, reward, 0, 0)
         .send({ from: requester });
 
       // Proposed.
@@ -1123,7 +1093,7 @@ describe("OptimisticOracleLite", function () {
       await collateral.methods.transfer(requester, reward).send({ from: accounts[0] });
       await collateral.methods.increaseAllowance(optimisticOracle.options.address, reward).send({ from: requester });
       await optimisticOracle.methods
-        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, reward)
+        .requestPrice(identifier, requestTime, ancillaryData, collateral.options.address, reward, 0, 0)
         .send({ from: requester });
 
       // Proposed.
@@ -1174,7 +1144,9 @@ describe("OptimisticOracleLite", function () {
               requestTime,
               web3.utils.randomHex(MAX_ANCILLARY_DATA_LENGTH + 1),
               collateral.options.address,
-              reward
+              reward,
+              0,
+              0
             )
             .send({ from: requester })
         )
@@ -1187,7 +1159,9 @@ describe("OptimisticOracleLite", function () {
           requestTime,
           web3.utils.randomHex(MAX_ANCILLARY_DATA_LENGTH),
           collateral.options.address,
-          reward
+          reward,
+          0,
+          0
         )
         .send({ from: requester });
     });

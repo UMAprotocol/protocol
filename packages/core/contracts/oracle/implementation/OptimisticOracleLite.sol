@@ -122,15 +122,18 @@ contract OptimisticOracleLite is Testable, Lockable {
      * @param _reward reward offered to a successful proposer. Will be pulled from the caller. Note: this can be 0,
      *               which could make sense if the contract requests and proposes the value in the same call or
      *               provides its own reward system.
-     * @return totalBond default bond (final fee) + final fee that the proposer and disputer will be required to pay.
-     * This can be changed with a subsequent call to customizeRequest().
+     * @param _bond custom proposal bond to set for request. If set to 0, defaults to the final fee.
+     * @param _customLiveness custom proposal liveness to set for request.
+     * @return totalBond default bond + final fee that the proposer and disputer will be required to pay.
      */
     function requestPrice(
         bytes32 _identifier,
         uint256 _timestamp,
         bytes memory _ancillaryData,
         IERC20 _currency,
-        uint256 _reward
+        uint256 _reward,
+        uint256 _bond,
+        uint256 _customLiveness
     ) external nonReentrant() returns (uint256 totalBond) {
         bytes32 requestId = _getId(msg.sender, _identifier, _timestamp, _ancillaryData);
         require(requests[requestId] == bytes32(0), "Request already initialized");
@@ -148,7 +151,8 @@ contract OptimisticOracleLite is Testable, Lockable {
         request.currency = _currency;
         request.reward = _reward;
         request.finalFee = finalFee;
-        request.bond = finalFee;
+        request.bond = _bond != 0 ? _bond : finalFee;
+        request.customLiveness = _customLiveness;
 
         if (_reward > 0) {
             _currency.safeTransferFrom(msg.sender, address(this), _reward);
@@ -157,58 +161,7 @@ contract OptimisticOracleLite is Testable, Lockable {
         _storeRequestHash(requestId, request);
         emit RequestPrice(msg.sender, _identifier, _timestamp, _ancillaryData, request);
 
-        // This function returns the initial proposal bond for this request, which can be customized by calling
-        // setBond() with the same identifier and timestamp.
-        return finalFee.mul(2);
-    }
-
-    /**
-     * @notice Set price request parameters assuming that request has not been proposed to yet.
-     * @dev Must be called by original requester of price request.
-     * @param _identifier price identifier of request.
-     * @param _timestamp timestamp of the price of request.
-     * @param _ancillaryData ancillary data representing additional args included in price request.
-     * @param _request price request parameters whose hash must match the request that the caller wants to
-     * customize.
-     * @param _bond custom proposal bond to set for request.
-     * @param _customLiveness custom proposal liveness to set for request. Overrides defaultLiveness.
-     * @return totalBond the total bond that a proposer needs to lock up.
-     */
-    function customizeRequest(
-        bytes32 _identifier,
-        uint256 _timestamp,
-        bytes memory _ancillaryData,
-        Request memory _request,
-        uint256 _bond,
-        uint256 _customLiveness
-    ) external nonReentrant() returns (uint256 totalBond) {
-        require(
-            _getState(msg.sender, _identifier, _timestamp, _ancillaryData, _request) == State.Requested,
-            "Can only modify State.Requested"
-        );
-        bytes32 requestId = _getId(msg.sender, _identifier, _timestamp, _ancillaryData);
-
-        _validateRequestHash(requestId, _request);
-
-        // Associate new request params with ID
-        Request memory request =
-            Request({
-                proposer: _request.proposer,
-                disputer: _request.disputer,
-                currency: _request.currency,
-                settled: _request.settled,
-                proposedPrice: _request.proposedPrice,
-                resolvedPrice: _request.resolvedPrice,
-                expirationTime: _request.expirationTime,
-                reward: _request.reward,
-                finalFee: _request.finalFee,
-                bond: _bond, // Modified
-                customLiveness: _customLiveness // Modified
-            });
-        _storeRequestHash(requestId, request);
-
-        // Total bond is the final fee + the newly set bond.
-        return _bond.add(request.finalFee);
+        return request.bond.add(request.finalFee);
     }
 
     /**
