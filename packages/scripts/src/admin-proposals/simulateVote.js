@@ -58,8 +58,8 @@ async function run() {
       "gwei"
     )} gwei`
   );
-  const governor = new web3.eth.Contract(Governor.abi, _getContractAddressByName("Governor", netId));
-  const finder = new web3.eth.Contract(Finder.abi, _getContractAddressByName("Finder", netId));
+  const governor = new web3.eth.Contract(Governor.abi, await _getContractAddressByName("Governor", netId));
+  const finder = new web3.eth.Contract(Finder.abi, await _getContractAddressByName("Finder", netId));
   const oracleAddress = await finder.methods
     .getImplementationAddress(web3.utils.utf8ToHex(interfaceName.Oracle))
     .call();
