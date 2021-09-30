@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interfaces/OptimisticOracleInterface.sol";
 
 /**
- * @title Interface for the gas-cost-reduced version of the OptimisticOracle
+ * @title Interface for the gas-cost-reduced version of the OptimisticOracle.
  * @dev Interface used by financial contracts to interact with the Oracle. Voters will use a different interface.
  */
 abstract contract SkinnyOptimisticOracleInterface {
