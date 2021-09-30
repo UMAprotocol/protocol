@@ -344,10 +344,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
         // Attempt to settle OptimisticOracle price as a convenience for the slow relayer who will receive their
         // dispute bond back if the relay was disputed unsuccessfully (i.e. the dispute resolved to a price of 1).
-        // If the price is not settleable, then this call will revert. If the price has already
-        // been settled, then this will not revert and still return the price. If the dispute was successful (i.e. the
-        // dispute resolved to a price of 0), then the disputer needs to go through OptimisticOracle to settle their
-        // payout.
+        // If the price is not settleable, then this call will revert. If the price has already been settled, then this
+        // will not revert and still return the price. If the dispute was successful (i.e. the dispute resolved to a
+        // price of 0), then the disputer needs to go through OptimisticOracle to settle their payout.
         require(
             _getOptimisticOracle().settleAndGetPrice(
                 bridgeAdmin.identifier(),
@@ -421,7 +420,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         updateAccumulatedLpFees(); // Accumulate all allocated fees from the last time this method was called.
         sync(); // Fetch any balance changes due to token bridging finalization and factor them in.
 
-        // ExchangeRate := (liquidReserves+utilizedReserves-undistributedLpFees)/lpTokenSupply
+        // ExchangeRate := (liquidReserves + utilizedReserves - undistributedLpFees) / lpTokenSupply
         // Note to accommodate negative utilizedReserves without using FixedPoint.Signed we need to do a bit of
         // branching logic. This is a gas optimization so we don't need to import this extra library logic.
         FixedPoint.Unsigned memory numerator =
