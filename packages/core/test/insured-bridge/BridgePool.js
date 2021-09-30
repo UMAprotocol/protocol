@@ -1285,7 +1285,8 @@ describe("BridgePool", () => {
     });
     it("Fees & Exchange rate can correctly handel gifted tokens", async () => {
       // We cant control when funds are sent to the contract, just like we cant control when the bridging action
-      // concludes. If someone was to randomly send the contract tokens the exchange rate should ignore this.
+      // concludes. If someone was to randomly send the contract tokens the exchange rate should ignore this. The
+      // contract should ignore the exchange rate if someone was to randomly send tokens.
 
       // Advance time by a 2 days (172800s). Exchange rate should be (1000+10*172800*0.0000015)/1000=1.002592
       await advanceTime(172800);
