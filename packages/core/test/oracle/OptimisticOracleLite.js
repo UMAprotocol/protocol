@@ -139,7 +139,11 @@ describe("OptimisticOracleLite", function () {
 
     // These are request parameter structs that are reused in this file.
     noFeeRequestParams = { ...requestParams, reward: "0" };
-    postProposalParams = (_requestParams, _expirationTime = defaultExpiryTime, _proposedPrice = correctPrice) => {
+    postProposalParams = (
+      _requestParams,
+      _expirationTime = defaultExpiryTime.toString(),
+      _proposedPrice = correctPrice
+    ) => {
       return { ..._requestParams, expirationTime: _expirationTime, proposer, proposedPrice: _proposedPrice };
     };
     postDisputeParams = (_requestParams) => {
@@ -236,9 +240,17 @@ describe("OptimisticOracleLite", function () {
         hexToUtf8(ev.identifier) == hexToUtf8(identifier) &&
         ev.timestamp.toString() === requestTime.toString() &&
         ev.ancillaryData === null &&
-        ev.currency === collateral.options.address &&
-        ev.reward.toString() === reward &&
-        ev.finalFee.toString() === finalFee
+        ev.request.proposer === requestParams.proposer &&
+        ev.request.disputer === requestParams.disputer &&
+        ev.request.currency === requestParams.currency &&
+        ev.request.settled === requestParams.settled &&
+        ev.request.proposedPrice === requestParams.proposedPrice &&
+        ev.request.resolvedPrice === requestParams.resolvedPrice &&
+        ev.request.expirationTime === requestParams.expirationTime &&
+        ev.request.reward === requestParams.reward &&
+        ev.request.finalFee === requestParams.finalFee &&
+        ev.request.bond === requestParams.bond &&
+        ev.request.customLiveness === requestParams.customLiveness
       );
     });
 
@@ -460,12 +472,20 @@ describe("OptimisticOracleLite", function () {
       await assertEventEmitted(await proposeTxn.send({ from: proposer }), optimisticOracle, "ProposePrice", (ev) => {
         return (
           ev.requester === requester &&
-          ev.proposer === proposer &&
           hexToUtf8(ev.identifier) == hexToUtf8(identifier) &&
           ev.timestamp.toString() === requestTime.toString() &&
           ev.ancillaryData === null &&
-          ev.proposedPrice.toString() === correctPrice &&
-          ev.expirationTimestamp.toString() === defaultExpiryTime.toString()
+          ev.request.proposer === postProposalParams(requestParams).proposer &&
+          ev.request.disputer === postProposalParams(requestParams).disputer &&
+          ev.request.currency === postProposalParams(requestParams).currency &&
+          ev.request.settled === postProposalParams(requestParams).settled &&
+          ev.request.proposedPrice === postProposalParams(requestParams).proposedPrice &&
+          ev.request.resolvedPrice === postProposalParams(requestParams).resolvedPrice &&
+          ev.request.expirationTime === postProposalParams(requestParams).expirationTime &&
+          ev.request.reward === postProposalParams(requestParams).reward &&
+          ev.request.finalFee === postProposalParams(requestParams).finalFee &&
+          ev.request.bond === postProposalParams(requestParams).bond &&
+          ev.request.customLiveness === postProposalParams(requestParams).customLiveness
         );
       });
 
@@ -711,8 +731,17 @@ describe("OptimisticOracleLite", function () {
           hexToUtf8(ev.identifier) == hexToUtf8(identifier) &&
           ev.timestamp.toString() === requestTime.toString() &&
           ev.ancillaryData === null &&
-          ev.price.toString() === correctPrice &&
-          ev.payout.toString() === toBN(totalDefaultBond).add(toBN(reward)).toString()
+          ev.request.proposer === postSettleExpiryParams(postProposalParams(requestParams)).proposer &&
+          ev.request.disputer === postSettleExpiryParams(postProposalParams(requestParams)).disputer &&
+          ev.request.currency === postSettleExpiryParams(postProposalParams(requestParams)).currency &&
+          ev.request.settled === postSettleExpiryParams(postProposalParams(requestParams)).settled &&
+          ev.request.proposedPrice === postSettleExpiryParams(postProposalParams(requestParams)).proposedPrice &&
+          ev.request.resolvedPrice === postSettleExpiryParams(postProposalParams(requestParams)).resolvedPrice &&
+          ev.request.expirationTime === postSettleExpiryParams(postProposalParams(requestParams)).expirationTime &&
+          ev.request.reward === postSettleExpiryParams(postProposalParams(requestParams)).reward &&
+          ev.request.finalFee === postSettleExpiryParams(postProposalParams(requestParams)).finalFee &&
+          ev.request.bond === postSettleExpiryParams(postProposalParams(requestParams)).bond &&
+          ev.request.customLiveness === postSettleExpiryParams(postProposalParams(requestParams)).customLiveness
         );
       });
 
@@ -743,10 +772,20 @@ describe("OptimisticOracleLite", function () {
       await assertEventEmitted(await disputeTxn.send({ from: disputer }), optimisticOracle, "DisputePrice", (ev) => {
         return (
           ev.requester === requester &&
-          ev.disputer === disputer &&
           hexToUtf8(ev.identifier) == hexToUtf8(identifier) &&
           ev.timestamp.toString() === requestTime.toString() &&
-          ev.ancillaryData === null
+          ev.ancillaryData === null &&
+          ev.request.proposer === postDisputeParams(postProposalParams(requestParams)).proposer &&
+          ev.request.disputer === postDisputeParams(postProposalParams(requestParams)).disputer &&
+          ev.request.currency === postDisputeParams(postProposalParams(requestParams)).currency &&
+          ev.request.settled === postDisputeParams(postProposalParams(requestParams)).settled &&
+          ev.request.proposedPrice === postDisputeParams(postProposalParams(requestParams)).proposedPrice &&
+          ev.request.resolvedPrice === postDisputeParams(postProposalParams(requestParams)).resolvedPrice &&
+          ev.request.expirationTime === postDisputeParams(postProposalParams(requestParams)).expirationTime &&
+          ev.request.reward === postDisputeParams(postProposalParams(requestParams)).reward &&
+          ev.request.finalFee === postDisputeParams(postProposalParams(requestParams)).finalFee &&
+          ev.request.bond === postDisputeParams(postProposalParams(requestParams)).bond &&
+          ev.request.customLiveness === postDisputeParams(postProposalParams(requestParams)).customLiveness
         );
       });
 

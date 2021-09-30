@@ -32,33 +32,28 @@ contract OptimisticOracleLite is Testable, Lockable {
         bytes32 indexed identifier,
         uint256 timestamp,
         bytes ancillaryData,
-        address currency,
-        uint256 reward,
-        uint256 finalFee
+        Request request
     );
     event ProposePrice(
         address indexed requester,
-        address indexed proposer,
-        bytes32 identifier,
+        bytes32 indexed identifier,
         uint256 timestamp,
         bytes ancillaryData,
-        int256 proposedPrice,
-        uint256 expirationTimestamp
+        Request request
     );
     event DisputePrice(
         address indexed requester,
-        address indexed disputer,
         bytes32 indexed identifier,
         uint256 timestamp,
-        bytes ancillaryData
+        bytes ancillaryData,
+        Request request
     );
     event Settle(
         address indexed requester,
         bytes32 indexed identifier,
         uint256 timestamp,
         bytes ancillaryData,
-        int256 price,
-        uint256 payout
+        Request request
     );
 
     // Struct representing the state of a price request.
@@ -160,7 +155,7 @@ contract OptimisticOracleLite is Testable, Lockable {
         }
 
         _storeRequestHash(requestId, request);
-        emit RequestPrice(msg.sender, _identifier, _timestamp, _ancillaryData, address(_currency), _reward, finalFee);
+        emit RequestPrice(msg.sender, _identifier, _timestamp, _ancillaryData, request);
 
         // This function returns the initial proposal bond for this request, which can be customized by calling
         // setBond() with the same identifier and timestamp.
@@ -271,15 +266,7 @@ contract OptimisticOracleLite is Testable, Lockable {
         }
 
         _storeRequestHash(requestId, proposedRequest);
-        emit ProposePrice(
-            _requester,
-            _proposer,
-            _identifier,
-            _timestamp,
-            _ancillaryData,
-            _proposedPrice,
-            proposedRequest.expirationTime
-        );
+        emit ProposePrice(_requester, _identifier, _timestamp, _ancillaryData, proposedRequest);
     }
 
     /**
@@ -380,7 +367,7 @@ contract OptimisticOracleLite is Testable, Lockable {
         _getOracle().requestPrice(_identifier, _timestamp, _stampAncillaryData(_ancillaryData, _requester));
 
         _storeRequestHash(requestId, disputedRequest);
-        emit DisputePrice(_requester, _disputer, _identifier, _timestamp, _ancillaryData);
+        emit DisputePrice(_requester, _identifier, _timestamp, _ancillaryData, disputedRequest);
     }
 
     /**
@@ -576,7 +563,7 @@ contract OptimisticOracleLite is Testable, Lockable {
         }
 
         _storeRequestHash(requestId, settledRequest);
-        emit Settle(_requester, _identifier, _timestamp, _ancillaryData, settledRequest.resolvedPrice, payout);
+        emit Settle(_requester, _identifier, _timestamp, _ancillaryData, settledRequest);
     }
 
     function _computeBurnedBond(Request memory _request) private pure returns (uint256) {
