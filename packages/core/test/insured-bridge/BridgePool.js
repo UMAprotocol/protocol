@@ -1429,7 +1429,7 @@ describe("BridgePool", () => {
       );
     });
   });
-  describe("Slow bridging edge cases", () => {
+  describe("Canonical bridge finalizing before insured bridge settlement edge cases", () => {
     beforeEach(async function () {
       await l1Token.methods.mint(liquidityProvider, initialPoolLiquidity).send({ from: owner });
       await l1Token.methods.approve(bridgePool.options.address, MAX_UINT_VAL).send({ from: liquidityProvider });
