@@ -8,6 +8,8 @@ import "@openzeppelin/contracts/utils/Address.sol";
 
 import "../interfaces/StoreInterface.sol";
 import "../interfaces/OracleAncillaryInterface.sol";
+import "../interfaces/OptimisticOracleInterface.sol";
+import "../interfaces/OptimisticOracleLiteInterface.sol";
 import "../interfaces/FinderInterface.sol";
 import "../interfaces/IdentifierWhitelistInterface.sol";
 import "./Constants.sol";
@@ -22,7 +24,7 @@ import "../../common/implementation/AddressWhitelist.sol";
  * @title Optimistic Oracle with a different interface and fewer features that emphasizes gas cost reductions.
  * @notice Pre-DVM escalation contract that allows faster settlement.
  */
-contract OptimisticOracleLite is Testable, Lockable {
+contract OptimisticOracleLite is OptimisticOracleLiteInterface, Testable, Lockable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using Address for address;
@@ -55,37 +57,6 @@ contract OptimisticOracleLite is Testable, Lockable {
         bytes ancillaryData,
         Request request
     );
-
-    // Struct representing the state of a price request.
-    enum State {
-        Invalid, // Never requested.
-        Requested, // Requested, no other actions taken.
-        Proposed, // Proposed, but not expired or disputed yet.
-        Expired, // Proposed, not disputed, past liveness.
-        Disputed, // Disputed, but no DVM price returned yet.
-        Resolved, // Disputed and DVM price is available.
-        Settled // Final price has been set in the contract (can get here from Expired or Resolved).
-    }
-
-    // Struct representing a price request.
-    struct Request {
-        address proposer; // Address of the proposer.
-        address disputer; // Address of the disputer.
-        IERC20 currency; // ERC20 token used to pay rewards and fees.
-        bool settled; // True if the request is settled.
-        int256 proposedPrice; // Price that the proposer submitted.
-        int256 resolvedPrice; // Price resolved once the request is settled.
-        uint256 expirationTime; // Time at which the request auto-settles without a dispute.
-        uint256 reward; // Amount of the currency to pay to the proposer on settlement.
-        uint256 finalFee; // Final fee to pay to the Store upon request to the DVM.
-        uint256 bond; // Bond that the proposer and disputer must pay on top of the final fee.
-        uint256 customLiveness; // Custom liveness value set by the requester.
-    }
-
-    // This value must be <= the Voting contract's `ancillaryBytesLimit` value otherwise it is possible
-    // that a price can be requested to this contract successfully, but cannot be disputed because the DVM refuses
-    // to accept a price request made with ancillary data length over a certain size.
-    uint256 public constant ancillaryBytesLimit = 8192;
 
     // Maps hash of unique request params {identifier, timestamp, ancillary data} to customizable variables such as
     // reward and bond amounts.
@@ -134,7 +105,7 @@ contract OptimisticOracleLite is Testable, Lockable {
         uint256 _reward,
         uint256 _bond,
         uint256 _customLiveness
-    ) external nonReentrant() returns (uint256 totalBond) {
+    ) external override nonReentrant() returns (uint256 totalBond) {
         bytes32 requestId = _getId(msg.sender, _identifier, _timestamp, _ancillaryData);
         require(requests[requestId] == bytes32(0), "Request already initialized");
         require(_getIdentifierWhitelist().isIdentifierSupported(_identifier), "Unsupported identifier");
@@ -186,10 +157,11 @@ contract OptimisticOracleLite is Testable, Lockable {
         Request memory _request,
         address _proposer,
         int256 _proposedPrice
-    ) public nonReentrant() returns (uint256 totalBond) {
+    ) public override nonReentrant() returns (uint256 totalBond) {
         require(_proposer != address(0), "proposer address must be non 0");
         require(
-            _getState(_requester, _identifier, _timestamp, _ancillaryData, _request) == State.Requested,
+            _getState(_requester, _identifier, _timestamp, _ancillaryData, _request) ==
+                OptimisticOracleInterface.State.Requested,
             "proposePriceFor: Requested"
         );
         bytes32 requestId = _getId(_requester, _identifier, _timestamp, _ancillaryData);
@@ -241,7 +213,7 @@ contract OptimisticOracleLite is Testable, Lockable {
         bytes memory _ancillaryData,
         Request memory _request,
         int256 _proposedPrice
-    ) external returns (uint256 totalBond) {
+    ) external override returns (uint256 totalBond) {
         // Note: re-entrancy guard is done in the inner call.
         return
             proposePriceFor(_requester, _identifier, _timestamp, _ancillaryData, _request, msg.sender, _proposedPrice);
@@ -276,7 +248,7 @@ contract OptimisticOracleLite is Testable, Lockable {
         uint256 _customLiveness,
         address _proposer,
         int256 _proposedPrice
-    ) external returns (uint256 totalBond) {
+    ) external override returns (uint256 totalBond) {
         bytes32 requestId = _getId(msg.sender, _identifier, _timestamp, _ancillaryData);
         require(requests[requestId] == bytes32(0), "Request already initialized");
         require(_proposer != address(0), "proposer address must be non 0");
@@ -337,10 +309,11 @@ contract OptimisticOracleLite is Testable, Lockable {
         Request memory _request,
         address _disputer,
         address _requester
-    ) public nonReentrant() returns (uint256 totalBond) {
+    ) public override nonReentrant() returns (uint256 totalBond) {
         require(_disputer != address(0), "disputer address must be non 0");
         require(
-            _getState(_requester, _identifier, _timestamp, _ancillaryData, _request) == State.Proposed,
+            _getState(_requester, _identifier, _timestamp, _ancillaryData, _request) ==
+                OptimisticOracleInterface.State.Proposed,
             "disputePriceFor: Proposed"
         );
         bytes32 requestId = _getId(_requester, _identifier, _timestamp, _ancillaryData);
@@ -410,7 +383,7 @@ contract OptimisticOracleLite is Testable, Lockable {
         uint256 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
-    ) external returns (uint256 totalBond) {
+    ) external override returns (uint256 totalBond) {
         // Note: re-entrancy guard is done in the inner call.
         return disputePriceFor(_identifier, _timestamp, _ancillaryData, _request, msg.sender, _requester);
     }
@@ -433,7 +406,7 @@ contract OptimisticOracleLite is Testable, Lockable {
         uint256 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
-    ) external nonReentrant() returns (uint256 payout, int256 resolvedPrice) {
+    ) external override nonReentrant() returns (uint256 payout, int256 resolvedPrice) {
         return _settle(_requester, _identifier, _timestamp, _ancillaryData, _request);
     }
 
@@ -452,7 +425,7 @@ contract OptimisticOracleLite is Testable, Lockable {
         uint256 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
-    ) public nonReentrant() returns (State) {
+    ) external override nonReentrant() returns (OptimisticOracleInterface.State) {
         return _getState(_requester, _identifier, _timestamp, _ancillaryData, _request);
     }
 
@@ -473,11 +446,15 @@ contract OptimisticOracleLite is Testable, Lockable {
         uint256 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
-    ) public nonReentrant() returns (bool) {
+    ) public override nonReentrant() returns (bool) {
         bytes32 requestId = _getId(_requester, _identifier, _timestamp, _ancillaryData);
         _validateRequestHash(requestId, _request);
-        State state = _getState(_requester, _identifier, _timestamp, _ancillaryData, _request);
-        return state == State.Settled || state == State.Resolved || state == State.Expired;
+        OptimisticOracleInterface.State state =
+            _getState(_requester, _identifier, _timestamp, _ancillaryData, _request);
+        return
+            state == OptimisticOracleInterface.State.Settled ||
+            state == OptimisticOracleInterface.State.Resolved ||
+            state == OptimisticOracleInterface.State.Expired;
     }
 
     /**
@@ -486,7 +463,12 @@ contract OptimisticOracleLite is Testable, Lockable {
      * @param _requester sender of the initial price request.
      * @return the stamped ancillary bytes.
      */
-    function stampAncillaryData(bytes memory _ancillaryData, address _requester) public pure returns (bytes memory) {
+    function stampAncillaryData(bytes memory _ancillaryData, address _requester)
+        public
+        pure
+        override
+        returns (bytes memory)
+    {
         return _stampAncillaryData(_ancillaryData, _requester);
     }
 
@@ -550,14 +532,15 @@ contract OptimisticOracleLite is Testable, Lockable {
                 customLiveness: _request.customLiveness
             });
 
-        State state = _getState(_requester, _identifier, _timestamp, _ancillaryData, _request);
-        if (state == State.Expired) {
+        OptimisticOracleInterface.State state =
+            _getState(_requester, _identifier, _timestamp, _ancillaryData, _request);
+        if (state == OptimisticOracleInterface.State.Expired) {
             // In the expiry case, just pay back the proposer's bond and final fee along with the reward.
             resolvedPrice = settledRequest.proposedPrice;
             settledRequest.resolvedPrice = resolvedPrice;
             payout = settledRequest.bond.add(settledRequest.finalFee).add(settledRequest.reward);
             settledRequest.currency.safeTransfer(settledRequest.proposer, payout);
-        } else if (state == State.Resolved) {
+        } else if (state == OptimisticOracleInterface.State.Resolved) {
             // In the Resolved case, pay either the disputer or the proposer the entire payout (+ bond and reward).
             resolvedPrice = _getOracle().getPrice(
                 _identifier,
@@ -616,31 +599,34 @@ contract OptimisticOracleLite is Testable, Lockable {
         uint256 _timestamp,
         bytes memory _ancillaryData,
         Request memory _request
-    ) internal view returns (State) {
+    ) internal view returns (OptimisticOracleInterface.State) {
         // Note: This function does not check whether all of the _request parameter values are correct. For example,
         // the _request.reward could be any value and it would not impact this function's return value. Therefore, it
         // is the caller's responsibility to check that _request matches with the expected ID corresponding to
         // {requester, identifier, timestamp, ancillaryData} via _validateRequestHash().
         if (address(_request.currency) == address(0)) {
-            return State.Invalid;
+            return OptimisticOracleInterface.State.Invalid;
         }
 
         if (_request.proposer == address(0)) {
-            return State.Requested;
+            return OptimisticOracleInterface.State.Requested;
         }
 
         if (_request.settled) {
-            return State.Settled;
+            return OptimisticOracleInterface.State.Settled;
         }
 
         if (_request.disputer == address(0)) {
-            return _request.expirationTime <= getCurrentTime() ? State.Expired : State.Proposed;
+            return
+                _request.expirationTime <= getCurrentTime()
+                    ? OptimisticOracleInterface.State.Expired
+                    : OptimisticOracleInterface.State.Proposed;
         }
 
         return
             _getOracle().hasPrice(_identifier, _timestamp, _stampAncillaryData(_ancillaryData, _requester))
-                ? State.Resolved
-                : State.Disputed;
+                ? OptimisticOracleInterface.State.Resolved
+                : OptimisticOracleInterface.State.Disputed;
     }
 
     function _getOracle() internal view returns (OracleAncillaryInterface) {
