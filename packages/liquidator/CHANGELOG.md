@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [2.6.1](https://github.com/UMAprotocol/protocol/compare/@uma/liquidator@2.6.0...@uma/liquidator@2.6.1) (2021-10-01)
+
+### Bug Fixes
+
+- **bots:** fix minor versioning and test inconsistencies in bots ([#3405](https://github.com/UMAprotocol/protocol/issues/3405)) ([f67f751](https://github.com/UMAprotocol/protocol/commit/f67f751b0e0658812795c1025ac5219177bd06ec))
+
 # [2.6.0](https://github.com/UMAprotocol/protocol/compare/@uma/liquidator@2.5.1...@uma/liquidator@2.6.0) (2021-09-28)
 
 ### Bug Fixes
