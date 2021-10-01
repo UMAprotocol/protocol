@@ -111,6 +111,7 @@ export class InsuredBridgeL1Client {
       bridgePool.methods.liquidityUtilizationCurrent().call(undefined, quoteBlockNumber),
       bridgePool.methods.liquidityUtilizationPostRelay(deposit.amount.toString()).call(undefined, quoteBlockNumber),
     ]);
+
     return calculateRealizedLpFeePct(
       this.rateModels[deposit.l1Token],
       toBN(liquidityUtilizationCurrent),
@@ -149,9 +150,6 @@ export class InsuredBridgeL1Client {
     const whitelistedTokenEvents = await this.bridgeAdmin.getPastEvents("WhitelistToken", blockSearchConfig);
     for (const whitelistedTokenEvent of whitelistedTokenEvents) {
       const l1Token = whitelistedTokenEvent.returnValues.l1Token;
-      // If the data structure already contains information on this l1Token( re-whitelist of an existing token) continue.
-      if (this.bridgePools[l1Token]) continue;
-      // Else, we set the bridge pool to be a contract instance at the address of the bridge pool.
       this.bridgePools[l1Token] = (new this.l1Web3.eth.Contract(
         getAbi("BridgePool"),
         whitelistedTokenEvent.returnValues.bridgePool

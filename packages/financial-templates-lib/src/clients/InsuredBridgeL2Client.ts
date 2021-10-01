@@ -31,6 +31,7 @@ export class InsuredBridgeL2Client {
     private readonly logger: Logger,
     readonly l2Web3: Web3,
     readonly bridgeDepositAddress: string,
+    readonly chainId: number = 0,
     readonly startingBlockNumber: number = 0,
     readonly endingBlockNumber: number | null = null
   ) {
@@ -85,7 +86,11 @@ export class InsuredBridgeL2Client {
 
     this.firstBlockToSearch = blockSearchConfig.toBlock + 1;
 
-    this.logger.debug({ at: "InsuredBridgeL2Client", message: "Insured bridge l2 client updated" });
+    this.logger.debug({
+      at: "InsuredBridgeL2Client",
+      message: "Insured bridge l2 client updated",
+      chainId: this.chainId,
+    });
   }
 
   generateDepositHash = (depositData: Deposit): string => {

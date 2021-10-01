@@ -41,6 +41,8 @@ export function getHardhatConfig(
   // Some tests should not be tested using hardhat. Define all tests that end with *e2e.js to be ignored.
   const testBlacklist = [".e2e.js"];
 
+  const optimismCompileWhitelist = ["OVM_BridgeDepositBox", "Legacy_Timer", "Legacy_Lockable", "Legacy_Testable"];
+
   const defaultConfig = ({
     solidity: {
       compilers: [
@@ -71,13 +73,30 @@ export function getHardhatConfig(
         testBlacklist,
       },
       localhost: { url: "http://127.0.0.1:9545", timeout: 1800000, testBlacklist },
-      rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true), accounts: { mnemonic } },
-      kovan: { chainId: 42, url: getNodeUrl("kovan", true), accounts: { mnemonic } },
-      goerli: { chainId: 5, url: getNodeUrl("goerli", true), accounts: { mnemonic } },
-      mumbai: { chainId: 80001, url: getNodeUrl("polygon-mumbai", true), accounts: { mnemonic } },
-      matic: { chainId: 137, url: getNodeUrl("polygon-matic", true), accounts: { mnemonic } },
       mainnet: { chainId: 1, url: getNodeUrl("mainnet", true), accounts: { mnemonic } },
+      rinkeby: { chainId: 4, url: getNodeUrl("rinkeby", true), accounts: { mnemonic } },
+      goerli: { chainId: 5, url: getNodeUrl("goerli", true), accounts: { mnemonic } },
+
+      kovan: { chainId: 42, url: getNodeUrl("kovan", true), accounts: { mnemonic } },
       optimism: {
+        ovm: true,
+        chainId: 10,
+        url: getNodeUrl("optimism", true),
+        accounts: { mnemonic },
+        gasPrice: 15000000,
+        compileWhitelist: optimismCompileWhitelist,
+      },
+      matic: { chainId: 137, url: getNodeUrl("polygon-matic", true), accounts: { mnemonic } },
+      "optimism-kovan": {
+        ovm: true,
+        chainId: 69,
+        url: getNodeUrl("optimism-kovan", true),
+        accounts: { mnemonic },
+        gasPrice: 15000000,
+        compileWhitelist: optimismCompileWhitelist,
+      },
+      mumbai: { chainId: 80001, url: getNodeUrl("polygon-mumbai", true), accounts: { mnemonic } },
+      "optimism-test": {
         ovm: true,
         url: "http://127.0.0.1:8545",
         accounts: { mnemonic: "test test test test test test test test test test test junk" },
@@ -86,7 +105,7 @@ export function getHardhatConfig(
         gasPrice: 0,
         // We use custom logic to only compile contracts within the listed directories, as opposed to choosing which
         // ones to ignore, because there are more contracts to ignore than to include.
-        compileWhitelist: ["OVM_BridgeDepositBox", "Legacy_Timer"],
+        compileWhitelist: optimismCompileWhitelist,
         testWhitelist: ["oracle/Finder"],
         testBlacklist,
       },
