@@ -1,5 +1,5 @@
 import * as uma from "@uma/sdk";
-import { BatchRead, toString, toNumber, parseBytes, nowS } from "../libs/utils";
+import { BatchRead, toString, toNumber, parseBytes, nowS, Profile } from "../libs/utils";
 import { AppState, BaseConfig } from "..";
 import { lsps } from "../tables";
 import { BigNumber } from "ethers";
@@ -8,11 +8,28 @@ type Instance = uma.clients.lsp.Instance;
 type Config = BaseConfig;
 type Dependencies = Pick<
   AppState,
-  "lsps" | "registeredLsps" | "provider" | "collateralAddresses" | "shortAddresses" | "longAddresses" | "multicall"
+  | "lsps"
+  | "registeredLsps"
+  | "provider"
+  | "collateralAddresses"
+  | "shortAddresses"
+  | "longAddresses"
+  | "multicall2"
+  | "registeredLspsMetadata"
 >;
 
 export default (config: Config, appState: Dependencies) => {
-  const { lsps, registeredLsps, provider, collateralAddresses, shortAddresses, longAddresses, multicall } = appState;
+  const {
+    lsps,
+    registeredLsps,
+    registeredLspsMetadata,
+    provider,
+    collateralAddresses,
+    shortAddresses,
+    longAddresses,
+    multicall2,
+  } = appState;
+  const profile = Profile(config.debug);
 
   // default props we want to query on contract
   const staticProps: [string, (x: any) => any][] = [
@@ -35,7 +52,7 @@ export default (config: Config, appState: Dependencies) => {
   ];
 
   async function batchRead(calls: [string, (x: any) => any][], instance: Instance, address: string) {
-    const result = await BatchRead(multicall)(calls, instance);
+    const result = await BatchRead(multicall2)(calls, instance);
     return {
       address,
       updated: nowS(),
@@ -74,7 +91,7 @@ export default (config: Config, appState: Dependencies) => {
       .catch(() => "0");
   }
 
-  async function updateLsp(address: string, startBlock?: number | "latest", endBlock?: number) {
+  async function updateLsp(address: string, startBlock?: number, endBlock?: number) {
     // ignored expired lsps
     if (await lsps.expired.has(address)) return;
     const instance = uma.clients.lsp.connect(address, provider);
@@ -105,10 +122,10 @@ export default (config: Config, appState: Dependencies) => {
         // delete it from active
         await lsps.active.delete(address);
       } else {
-        // have to make sure we get static state if we have never seen this expired emp before
+        // have to make sure we get static state if we have never seen this expired lsp before
         staticState = await getStaticProps(instance, address);
         optionalState = await getOptionalProps(instance, address);
-        // if it was never active, just create an expired emp
+        // if it was never active, just create an expired lsp
         await lsps.expired.create({
           ...optionalState,
           ...staticState,
@@ -118,29 +135,56 @@ export default (config: Config, appState: Dependencies) => {
           expired: true,
         });
       }
-      // handle the case wehre emp is not yet expired
+      // handle the case wehre lsp is not yet expired
+
+      // set created timestamp if needed
+      await updateCreatedTimestamp(address, lsps.expired);
     } else {
       // if it doesnt exist we need to create it
       if (!(await lsps.active.has(address))) {
         // get static state once if it does not exist (optimizes network calls)
         staticState = await getStaticProps(instance, address);
         optionalState = await getOptionalProps(instance, address);
-        // create active emp with static/dynamic state
+        // create active lsp with static/dynamic state
         await lsps.active.create({
           ...optionalState,
           ...staticState,
           ...dynamicState,
           totalPositionCollateral,
         });
+      } else {
+        await lsps.active.update(address, {
+          ...optionalState,
+          ...dynamicState,
+          totalPositionCollateral,
+        });
       }
       // add any new sponsors
       await lsps.active.addSponsors(address, eventState.sponsors || []);
+
+      // set created timestamp if needed
+      await updateCreatedTimestamp(address, lsps.active);
     }
   }
-  async function updateLsps(addresses: string[], startBlock?: number | "latest", endBlock?: number) {
+  async function updateCreatedTimestamp(address: string, table: lsps.Table) {
+    const lsp = await table.get(address);
+    if (lsp.createdTimestamp) return;
+
+    const blockMetadata = registeredLspsMetadata.get(address);
+    if (!blockMetadata) return;
+
+    const block = await provider.getBlock(blockMetadata.blockNumber);
+    await table.setCreatedTimestamp(address, block.timestamp);
+  }
+  async function updateLsps(addresses: string[], startBlock?: number, endBlock?: number) {
     return Promise.allSettled(
       addresses.map(async (address) => {
-        return updateLsp(address, startBlock, endBlock);
+        const end = profile(`Update LSP state for ${address}`);
+        try {
+          return updateLsp(address, startBlock, endBlock);
+        } finally {
+          end();
+        }
       })
     );
   }
@@ -153,7 +197,7 @@ export default (config: Config, appState: Dependencies) => {
     });
   }
 
-  async function update(startBlock?: number | "latest", endBlock?: number) {
+  async function update(startBlock?: number, endBlock?: number) {
     const addresses = Array.from(await registeredLsps.values());
     await updateLsps(addresses, startBlock, endBlock).then((results) => {
       results.forEach((result) => {
@@ -165,9 +209,9 @@ export default (config: Config, appState: Dependencies) => {
 
   return {
     update,
+    updateLsps,
     utils: {
       updateTokenAddresses,
-      updateLsps,
       updateLsp,
       dynamicProps,
       staticProps,

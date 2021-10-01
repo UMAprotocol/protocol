@@ -4,8 +4,12 @@ require("dotenv").config();
 const retry = require("async-retry");
 
 // Helpers
-const { SUPPORTED_CONTRACT_VERSIONS } = require("@uma/common");
-
+const {
+  getWeb3,
+  PublicNetworks,
+  SUPPORTED_CONTRACT_VERSIONS,
+  getContractsNodePackageAliasForVerion,
+} = require("@uma/common");
 // JS libs
 const { Disputer } = require("./src/disputer");
 const { ProxyTransactionWrapper } = require("./src/proxyTransactionWrapper");
@@ -22,9 +26,9 @@ const {
   DSProxyManager,
 } = require("@uma/financial-templates-lib");
 
-// Truffle contracts.
-const { getAbi, findContractVersion, getAddress } = require("@uma/core");
-const { getWeb3, PublicNetworks } = require("@uma/common");
+// Contract ABIs and network Addresses.
+const { findContractVersion } = require("@uma/core");
+const { getAddress, getAbi } = require("@uma/contracts-node");
 
 /**
  * @notice Continuously attempts to dispute liquidations in the Financial Contract contract.
@@ -100,8 +104,9 @@ async function run({
       );
 
     // Setup contract instances.
+    const { getAbi: getVersionedAbi } = require(getContractsNodePackageAliasForVerion(disputerConfig.contractVersion));
     const financialContract = new web3.eth.Contract(
-      getAbi(disputerConfig.contractType, disputerConfig.contractVersion),
+      getVersionedAbi(disputerConfig.contractType),
       financialContractAddress
     );
 
@@ -159,7 +164,7 @@ async function run({
         gasEstimator,
         account: accounts[0],
         dsProxyFactoryAddress:
-          proxyTransactionWrapperConfig?.dsProxyFactoryAddress || getAddress("DSProxyFactory", networkId),
+          proxyTransactionWrapperConfig?.dsProxyFactoryAddress || (await getAddress("DSProxyFactory", networkId)),
         dsProxyFactoryAbi: getAbi("DSProxyFactory"),
         dsProxyAbi: getAbi("DSProxy"),
         availableAccounts: proxyTransactionWrapperConfig.availableAccounts || 1,

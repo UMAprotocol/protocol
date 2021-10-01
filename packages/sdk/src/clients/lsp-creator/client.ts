@@ -1,24 +1,19 @@
-import assert from "assert";
-import { EthersContracts } from "@uma/core";
-import Artifacts from "@uma/core/build/contracts/LongShortPairCreator.json";
+import {
+  LongShortPairCreatorEthers,
+  LongShortPairCreatorEthers__factory,
+  getLongShortPairCreatorAbi as getAbi,
+  getLongShortPairCreatorAddress as getAddress,
+} from "@uma/contracts-node";
 import type { SignerOrProvider, GetEventType } from "../..";
 import { Event } from "ethers";
 
 // exporting Registry type in case its needed
-export type Instance = EthersContracts.LongShortPairCreator;
-const Factory = EthersContracts.LongShortPairCreator__factory;
+export type Instance = LongShortPairCreatorEthers;
+const Factory = LongShortPairCreatorEthers__factory;
 
-export type Network = keyof typeof Artifacts.networks;
+export type Network = string | number;
 
-export function getAddress(network: Network): string {
-  const address = Artifacts?.networks?.[network]?.address;
-  assert(address, "no address found for network: " + network);
-  return address;
-}
-
-export function getAbi() {
-  return Artifacts?.abi;
-}
+export { getAddress, getAbi };
 
 export function connect(address: string, provider: SignerOrProvider): Instance {
   return Factory.connect(address, provider);
@@ -28,7 +23,7 @@ export type CreatedLongShortPair = GetEventType<Instance, "CreatedLongShortPair"
 
 export interface EventState {
   contracts?: {
-    [lspAddress: string]: CreatedLongShortPair["args"];
+    [lspAddress: string]: CreatedLongShortPair;
   };
 }
 
@@ -41,7 +36,7 @@ export function reduceEvents(state: EventState, event: Event): EventState {
         ...state,
         contracts: {
           ...contracts,
-          [typedEvent.args.longShortPair]: typedEvent.args,
+          [typedEvent.args.longShortPair]: typedEvent,
         },
       };
     }

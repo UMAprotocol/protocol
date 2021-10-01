@@ -2,16 +2,18 @@ export * as clients from "./clients";
 export * as stores from "./stores";
 export * as tables from "./tables";
 export * as utils from "./utils";
+export * as across from "./across";
 export { default as Coingecko } from "./coingecko";
 export { default as Multicall } from "./multicall";
+export { default as Multicall2 } from "./multicall2";
 
 // types
-import type { TypedEventFilter, TypedEvent } from "@uma/core/types/contract-types/ethers/commons";
-import { Contract } from "ethers";
-import { Result } from "@ethersproject/abi";
-import { Signer } from "@ethersproject/abstract-signer";
-import { Provider } from "@ethersproject/abstract-provider";
-export type SignerOrProvider = Signer | Provider;
+import type { TypedEventFilterEthers as TypedEventFilter, TypedEventEthers as TypedEvent } from "@uma/contracts-node";
+import { Contract, ethers, Signer, providers } from "ethers";
+
+type Result = ethers.utils.Result;
+
+export type SignerOrProvider = providers.BaseProvider | Signer | providers.Provider;
 
 export interface MakeId<I, D> {
   (d: D): I;

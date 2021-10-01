@@ -181,10 +181,68 @@ export const getPendingTransactionCount = async (web3: Web3, account: string): P
  * @param {number} blockerBlockNumber block execution until this block number is mined.
  */
 export const blockUntilBlockMined = async (web3: Web3, blockerBlockNumber: number, delay = 500): Promise<void> => {
-  if (argv._.indexOf("test") !== -1) return;
+  // If called from tests, exit early.
+  if (argv._.indexOf("test") !== -1 || argv._.filter((arg) => arg.includes("mocha")).length > 0) return;
   for (;;) {
     const currentBlockNumber = await web3.eth.getBlockNumber();
     if (currentBlockNumber >= blockerBlockNumber) break;
     await new Promise((r) => setTimeout(r, delay));
   }
 };
+export async function findBlockNumberAtTimestamp(
+  web3: Web3,
+  targetTimestamp: number,
+  higherLimitMax = 15,
+  lowerLimitMax = 15
+): Promise<{ blockNumber: number; error: number }> {
+  const higherLimitStamp = targetTimestamp + higherLimitMax;
+  const lowerLimitStamp = targetTimestamp - lowerLimitMax;
+  // Decreasing average block size will decrease precision and also decrease the amount of requests made in order to
+  // find the closest block.
+  const averageBlockTime = 13;
+
+  // get current block number
+  const currentBlockNumber = await web3.eth.getBlockNumber();
+  let block = await web3.eth.getBlock(currentBlockNumber);
+  let blockNumber = currentBlockNumber;
+
+  while (block.timestamp > targetTimestamp) {
+    const decreaseBlocks = Math.floor((parseInt(block.timestamp.toString()) - targetTimestamp) / averageBlockTime);
+
+    if (decreaseBlocks < 1) break;
+
+    blockNumber -= decreaseBlocks;
+    block = await web3.eth.getBlock(blockNumber);
+  }
+
+  if (lowerLimitStamp && block.timestamp < lowerLimitStamp) {
+    while (block.timestamp < lowerLimitStamp) {
+      blockNumber += 1;
+      block = await web3.eth.getBlock(blockNumber);
+    }
+  }
+
+  // If we ended with a block higher than we can walk block by block to find the correct one.
+  if (higherLimitStamp) {
+    if (block.timestamp >= higherLimitStamp) {
+      while (block.timestamp >= higherLimitStamp) {
+        blockNumber -= 1;
+        block = await web3.eth.getBlock(blockNumber);
+      }
+    }
+
+    // If we ended up with a block lower than the upper limit walk block by block to make sure it's the correct one.
+    if (block.timestamp < higherLimitStamp) {
+      while (block.timestamp < higherLimitStamp) {
+        blockNumber += 1;
+        if (blockNumber > currentBlockNumber) break;
+        const tempBlock = await web3.eth.getBlock(blockNumber);
+        // Can't be equal or higher than upper limit as we want to find the last block before that limit.
+        if (tempBlock.timestamp >= higherLimitStamp) break;
+
+        block = tempBlock;
+      }
+    }
+  }
+  return { blockNumber: block.number, error: Math.abs(targetTimestamp - parseInt(block.timestamp.toString())) };
+}

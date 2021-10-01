@@ -1,10 +1,11 @@
+const { web3, getContract } = require("hardhat");
+const { assert } = require("chai");
 const { toWei, toBN } = web3.utils;
 
 const winston = require("winston");
 const sinon = require("sinon");
 
 const { parseFixed, TEST_DECIMAL_COMBOS } = require("@uma/common");
-const { getTruffleContract } = require("@uma/core");
 
 // Tested module
 const { SyntheticPegMonitor } = require("../src/SyntheticPegMonitor");
@@ -19,11 +20,11 @@ const {
   FinancialContractClient,
 } = require("@uma/financial-templates-lib");
 
-const PerpetualMock = getTruffleContract("PerpetualMock", web3);
+const PerpetualMock = getContract("PerpetualMock");
 
 const Convert = (decimals) => (number) => toBN(parseFixed(number.toString(), decimals).toString());
 
-contract("SyntheticPegMonitor", function () {
+describe("SyntheticPegMonitor", function () {
   for (let testConfig of TEST_DECIMAL_COMBOS) {
     describe(`${testConfig.priceFeedDecimals} pricefeed decimals`, function () {
       let uniswapPriceFeedMock;
@@ -213,7 +214,8 @@ contract("SyntheticPegMonitor", function () {
         });
 
         it("Adjusts for CFRM if financial contract client is passed in and connected to a Perpetual contract", async function () {
-          const perpetualMock = await PerpetualMock.new();
+          const [owner] = await web3.eth.getAccounts();
+          const perpetualMock = await PerpetualMock.new().send({ from: owner });
           const createFundingRateStructWithMultiplier = (multiplier, rate = "0") => {
             return {
               rate: { rawValue: rate },
@@ -228,9 +230,9 @@ contract("SyntheticPegMonitor", function () {
 
           const financialContractClient = new FinancialContractClient(
             spyLogger,
-            perpetualMock.abi,
+            PerpetualMock.abi,
             web3,
-            perpetualMock.address,
+            perpetualMock.options.address,
             null,
             18,
             18,
@@ -250,7 +252,9 @@ contract("SyntheticPegMonitor", function () {
           });
 
           // Set CFRM to 2, should produce 50% deviation with the two price feeds being otherwise equal:
-          await perpetualMock.setFundingRate(createFundingRateStructWithMultiplier(toWei("2")));
+          await perpetualMock.methods
+            .setFundingRate(createFundingRateStructWithMultiplier(toWei("2")))
+            .send({ from: owner });
           medianizerPriceFeedMock.setCurrentPrice(convertPrice("1"));
           uniswapPriceFeedMock.setCurrentPrice(convertPrice("1"));
           await financialContractClient.update();

@@ -3,6 +3,51 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [2.8.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.7.0...@uma/common@2.8.0) (2021-10-01)
+
+### Bug Fixes
+
+- **price-identifier-utils:** Blacklist stablespread identifier ([#3416](https://github.com/UMAprotocol/protocol/issues/3416)) ([4031ca5](https://github.com/UMAprotocol/protocol/commit/4031ca5153bd91b0003ad526ddd83621ce48c455))
+- **price-identifier-utils:** Blacklist uPunks identifiers from OO ([#3411](https://github.com/UMAprotocol/protocol/issues/3411)) ([f99813b](https://github.com/UMAprotocol/protocol/commit/f99813b4b1a76d46ff1eecd7f0c1d5352bff07a2))
+
+### Features
+
+- **core:** move all active scripts out of core and deprecate rest ([#3397](https://github.com/UMAprotocol/protocol/issues/3397)) ([f96b8c9](https://github.com/UMAprotocol/protocol/commit/f96b8c90b01002594bf44ac44f03f6d021bee460))
+
+# [2.7.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.6.0...@uma/common@2.7.0) (2021-09-28)
+
+### Bug Fixes
+
+- **common:** fix issues with gckms typescript conversion ([#3297](https://github.com/UMAprotocol/protocol/issues/3297)) ([d10f9f6](https://github.com/UMAprotocol/protocol/commit/d10f9f6051f71d1549e6e3f279e86e18a924b718))
+- **contracts-frontend:** remove surrounding quote characters from bytecode ([#3382](https://github.com/UMAprotocol/protocol/issues/3382)) ([db8b972](https://github.com/UMAprotocol/protocol/commit/db8b97271b61e9f425a09149d29c6d88a7b035f6))
+- **fx-tunnel-relayer:** Bump maticjs version and update RelayerConfig ([#3352](https://github.com/UMAprotocol/protocol/issues/3352)) ([286265c](https://github.com/UMAprotocol/protocol/commit/286265ca371fb8016c96c2875f75f44b86430e01))
+- **hardhat:** longer timeout for localhost ([#3319](https://github.com/UMAprotocol/protocol/issues/3319)) ([f83a417](https://github.com/UMAprotocol/protocol/commit/f83a417f6f36afac1095cfee535102fa04b3b74b))
+- make unused variables an error in the typescript linter ([#3279](https://github.com/UMAprotocol/protocol/issues/3279)) ([1d26dfc](https://github.com/UMAprotocol/protocol/commit/1d26dfcd500cc4f84dc5672de0c8f9a7c5592e43))
+
+### Features
+
+- **ancillary:** first pass at an ancillary data parser in typescript ([#3320](https://github.com/UMAprotocol/protocol/issues/3320)) ([cc4f4ec](https://github.com/UMAprotocol/protocol/commit/cc4f4ecb24914da46ecab7b92a417a3a688b86dc))
+- **common:** add getWeb3 by chainId ([#3358](https://github.com/UMAprotocol/protocol/issues/3358)) ([88f4a21](https://github.com/UMAprotocol/protocol/commit/88f4a21aff9892978fcc86c526894d7529d84e34))
+- **common:** Ignore Optimistic Oracle requests for identifiers without price feeds ([#3338](https://github.com/UMAprotocol/protocol/issues/3338)) ([367395a](https://github.com/UMAprotocol/protocol/commit/367395abbe592c27059f87c0d00b6d8180e88f1c))
+- **common:** Initial PR adding Optimism plugin to Hardhat config ([#3154](https://github.com/UMAprotocol/protocol/issues/3154)) ([9e6eb07](https://github.com/UMAprotocol/protocol/commit/9e6eb078096c2c986ecfc3d014b7e45ee5e4be54))
+- **contracts-node:** export similar functions in contracts-node as contracts-frontend ([#3381](https://github.com/UMAprotocol/protocol/issues/3381)) ([57b8a9f](https://github.com/UMAprotocol/protocol/commit/57b8a9ff61a4ddb0fee2bd90c9247681e816b130))
+- **core:** add tasks to manage artifacts and deployments ([#3229](https://github.com/UMAprotocol/protocol/issues/3229)) ([15a8f31](https://github.com/UMAprotocol/protocol/commit/15a8f31e3d3ce0df9b68b03ae56f8df789ae481a))
+- **df-pf-configs:** Add GASETH-0921 default price feed config ([#3330](https://github.com/UMAprotocol/protocol/issues/3330)) ([e5d6002](https://github.com/UMAprotocol/protocol/commit/e5d600280094d2ffeca110a32727650b1a91f192))
+- **financial-templates-lib:** convert src to typescript ([#3315](https://github.com/UMAprotocol/protocol/issues/3315)) ([3955d80](https://github.com/UMAprotocol/protocol/commit/3955d80038df1c54663a59b44d6e23bd09c7dcdc))
+- **financial-templates-lib:** Stub for InsuredBridgePriceFeed ([#3356](https://github.com/UMAprotocol/protocol/issues/3356)) ([8abd36f](https://github.com/UMAprotocol/protocol/commit/8abd36f0c938d85985661245f2fd51f465601df4))
+- **fx-tunnel-relayer:** Implement bot that can relay messages from Polygon ChildTunnel to Ethereum RootTunnel ([#3314](https://github.com/UMAprotocol/protocol/issues/3314)) ([dc1a6b0](https://github.com/UMAprotocol/protocol/commit/dc1a6b08202444e0c97ff84dc7b3cd3d66e2de48))
+- **insured-bridge:** add arbitrum contract support to deposit box inheritance path ([#3385](https://github.com/UMAprotocol/protocol/issues/3385)) ([c77cce7](https://github.com/UMAprotocol/protocol/commit/c77cce7e5a0c37b9880cad045403f7b79dabc626))
+- **insured-bridge:** Add realized LP fee pct computation ([#3373](https://github.com/UMAprotocol/protocol/issues/3373)) ([95abd8d](https://github.com/UMAprotocol/protocol/commit/95abd8d2d6e481a54e234bda6c7f8585babaa5eb))
+- **insured-bridge:** Change internal relay data structures ([#3276](https://github.com/UMAprotocol/protocol/issues/3276)) ([07d083e](https://github.com/UMAprotocol/protocol/commit/07d083e1da49e94e5886c2ab1496a5b3bef3b1e0))
+- **insured-bridge:** end to end testing stub ([#3255](https://github.com/UMAprotocol/protocol/issues/3255)) ([dda6f10](https://github.com/UMAprotocol/protocol/commit/dda6f108e6e5c023c0324988d79fc7eabef97039))
+- **insured-bridge:** whitelist collateral cross-chain end to end tests ([#3269](https://github.com/UMAprotocol/protocol/issues/3269)) ([3780fb7](https://github.com/UMAprotocol/protocol/commit/3780fb7c00993dabde2b70b12dcc4033c024f446))
+- **Insured-Bridge:** initial contract interfaces & smocking ([#3249](https://github.com/UMAprotocol/protocol/issues/3249)) ([aeea8ae](https://github.com/UMAprotocol/protocol/commit/aeea8ae30c6f7d5065e3857d25c75b8d69005d81))
+- **insured-bridge-relayer:** Add additional relay logic, should relay and slow relay implementation ([#3359](https://github.com/UMAprotocol/protocol/issues/3359)) ([2a81888](https://github.com/UMAprotocol/protocol/commit/2a81888934594815a5d85a7358c357397083ea23))
+- **insured-bridge-relayer:** Stub imports of L1 and L2 Bridge clients ([#3333](https://github.com/UMAprotocol/protocol/issues/3333)) ([1cf7925](https://github.com/UMAprotocol/protocol/commit/1cf792523acf9393b352df25d0428f48c22e31f1))
+- Add cross-chain governance to UMIP collateral and identifier scripts ([#3234](https://github.com/UMAprotocol/protocol/issues/3234)) ([247a367](https://github.com/UMAprotocol/protocol/commit/247a367d7967a8673b05d2f4fb3e2bb4c35a2b02))
+- Upgrade hardhat to 2.5 to be compatible with London hardfork ([#3248](https://github.com/UMAprotocol/protocol/issues/3248)) ([b1524ce](https://github.com/UMAprotocol/protocol/commit/b1524ce868fc17c7486872a8ef632497f757288d))
+- **liquidator,disputer,monitor:** remove unnecessary unit conversion helpers in tests ([#3215](https://github.com/UMAprotocol/protocol/issues/3215)) ([77993f4](https://github.com/UMAprotocol/protocol/commit/77993f4d8ffa5ba821f66d5ff5d7c0cac7813009))
+
 # [2.6.0](https://github.com/UMAprotocol/protocol/compare/@uma/common@2.5.0...@uma/common@2.6.0) (2021-07-19)
 
 ### Features

@@ -30,13 +30,13 @@ export class FallBackPriceFeed extends PriceFeedInterface {
     return null;
   }
 
-  public async getHistoricalPrice(time: number, verbose = false): Promise<BN> {
+  public async getHistoricalPrice(time: number, ancillaryData: string, verbose = false): Promise<BN> {
     // If failure to fetch any constituent historical prices, then throw
     // array of errors.
     const errors = [];
     for (const _priceFeed of this.priceFeeds) {
       try {
-        const price = await _priceFeed.getHistoricalPrice(time, verbose);
+        const price = await _priceFeed.getHistoricalPrice(time, ancillaryData, verbose);
         if (!price)
           throw new Error(
             `Feed at index ${this.priceFeeds.findIndex(

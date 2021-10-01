@@ -1,52 +1,54 @@
 // Script to test
 const AncillaryDataParser = require("../dist/AncillaryDataParser");
+const Web3 = require("web3");
+const { assert } = require("chai");
 
-contract("AncillaryDataParser.js", function () {
+describe("AncillaryDataParser.js", function () {
   describe("parseAncillaryData", function () {
     it("parses simple key-value data correctly", async function () {
-      const data = web3.utils.utf8ToHex("key:value");
+      const data = Web3.utils.utf8ToHex("key:value");
       const expectedObject = { key: "value" };
       const parsedData = AncillaryDataParser.parseAncillaryData(data);
       assert.equal(JSON.stringify(parsedData), JSON.stringify(expectedObject));
     });
     it("removes excess whitespace", async function () {
-      const data = web3.utils.utf8ToHex("  key1  :  value1  , key2 : value2 ");
+      const data = Web3.utils.utf8ToHex("  key1  :  value1  , key2 : value2 ");
       const expectedObject = { key1: "value1", key2: "value2" };
       const parsedData = AncillaryDataParser.parseAncillaryData(data);
       assert.equal(JSON.stringify(parsedData), JSON.stringify(expectedObject));
     });
     it("leaves quoted whitespace", async function () {
-      const data = web3.utils.utf8ToHex('"  key " :"  value  "');
+      const data = Web3.utils.utf8ToHex('"  key " :"  value  "');
       const expectedObject = { "  key ": "  value  " };
       const parsedData = AncillaryDataParser.parseAncillaryData(data);
       assert.equal(JSON.stringify(parsedData), JSON.stringify(expectedObject));
     });
     it("leaves unclosed quotes", async function () {
-      const data = web3.utils.utf8ToHex('"  key  :  value  "');
+      const data = Web3.utils.utf8ToHex('"  key  :  value  "');
       const expectedObject = { '"  key': 'value  "' };
       const parsedData = AncillaryDataParser.parseAncillaryData(data);
       assert.equal(JSON.stringify(parsedData), JSON.stringify(expectedObject));
     });
     it("parses json values as an object", async function () {
-      const data = web3.utils.utf8ToHex('key:{"nestedKey": "nestedValue"}');
+      const data = Web3.utils.utf8ToHex('key:{"nestedKey": "nestedValue"}');
       const expectedObject = { key: { nestedKey: "nestedValue" } };
       const parsedData = AncillaryDataParser.parseAncillaryData(data);
       assert.equal(JSON.stringify(parsedData), JSON.stringify(expectedObject));
     });
     it("parses non-compliant json enclosed in {} or [] as a string", async function () {
-      const data = web3.utils.utf8ToHex('key:{nestedKey: "nestedValue",}');
+      const data = Web3.utils.utf8ToHex('key:{nestedKey: "nestedValue",}');
       const expectedObject = { key: '{nestedKey: "nestedValue",}' };
       const parsedData = AncillaryDataParser.parseAncillaryData(data);
       assert.equal(JSON.stringify(parsedData), JSON.stringify(expectedObject));
     });
     it("parses json array with different types as values correctly", async function () {
-      const data = web3.utils.utf8ToHex('key:[1, "a", null, true, { }, []]');
+      const data = Web3.utils.utf8ToHex('key:[1, "a", null, true, { }, []]');
       const expectedObject = { key: [1, "a", null, true, {}, []] };
       const parsedData = AncillaryDataParser.parseAncillaryData(data);
       assert.equal(JSON.stringify(parsedData), JSON.stringify(expectedObject));
     });
     it("parses no value after column delimiter as an empty string", async function () {
-      const data = web3.utils.utf8ToHex("key:");
+      const data = Web3.utils.utf8ToHex("key:");
       const expectedObject = { key: "" };
       const parsedData = AncillaryDataParser.parseAncillaryData(data);
       assert.equal(JSON.stringify(parsedData), JSON.stringify(expectedObject));
@@ -123,25 +125,25 @@ contract("AncillaryDataParser.js", function () {
       });
     });
     it("json object as key should throw error", async function () {
-      const data = web3.utils.utf8ToHex('{"nestedKey":"nestedValue"}:value');
+      const data = Web3.utils.utf8ToHex('{"nestedKey":"nestedValue"}:value');
       assert.throw(() => {
         AncillaryDataParser.parseAncillaryData(data);
       });
     });
     it("key with no column delimiter should throw error", async function () {
-      const data = web3.utils.utf8ToHex("key");
+      const data = Web3.utils.utf8ToHex("key");
       assert.throw(() => {
         AncillaryDataParser.parseAncillaryData(data);
       });
     });
     it("empty key before column delimiter should throw error", async function () {
-      const data = web3.utils.utf8ToHex(":value");
+      const data = Web3.utils.utf8ToHex(":value");
       assert.throw(() => {
         AncillaryDataParser.parseAncillaryData(data);
       });
     });
     it("multiple column delimiters in a key-value pair should throw error", async function () {
-      const data = web3.utils.utf8ToHex("key:value1:value2");
+      const data = Web3.utils.utf8ToHex("key:value1:value2");
       assert.throw(() => {
         AncillaryDataParser.parseAncillaryData(data);
       });

@@ -1,19 +1,19 @@
-import { EthersContracts } from "@uma/core";
-import assert from "assert";
-import RegistryArtifacts from "@uma/core/build/contracts/Registry.json";
+import {
+  RegistryEthers,
+  RegistryEthers__factory,
+  getRegistryAddress as getAbi,
+  getRegistryAddress as getAddress,
+} from "@uma/contracts-node";
+
 import type { SignerOrProvider, GetEventType } from "../..";
 import { Event } from "ethers";
 
-export type Instance = EthersContracts.Registry;
-const Factory = EthersContracts.Registry__factory;
+export type Instance = RegistryEthers;
+const Factory = RegistryEthers__factory;
 
-export type Network = keyof typeof RegistryArtifacts.networks;
+export type Network = string | number;
 
-export function getAddress(network: Network): string {
-  const address = RegistryArtifacts?.networks?.[network]?.address;
-  assert(address, "no address found for network: " + network);
-  return address;
-}
+export { getAddress, getAbi };
 
 export function connect(address: string, provider: SignerOrProvider): Instance {
   return Factory.connect(address, provider);

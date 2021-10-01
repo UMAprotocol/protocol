@@ -1,3 +1,5 @@
+const { web3 } = require("hardhat");
+const { assert } = require("chai");
 const { ForexDailyPriceFeed } = require("../../dist/price-feed/ForexDailyPriceFeed");
 const { NetworkerMock } = require("../../dist/price-feed/NetworkerMock");
 const { spyLogIncludes, SpyTransport } = require("../../dist/logger/SpyTransport");
@@ -6,7 +8,7 @@ const moment = require("moment-timezone");
 const { parseFixed } = require("@uma/common");
 const sinon = require("sinon");
 
-contract("ForexDailyPriceFeed.js", function () {
+describe("ForexDailyPriceFeed.js", function () {
   let forexPriceFeed;
   // Keep test timezone consistent with price feed's. The API uses data published daily by the
   // ECB at 16:00 CET. Therefore, to convert from datestring to unix,

@@ -8,23 +8,37 @@ interface Config extends BaseConfig {
   network?: number;
   address?: string;
 }
-type Dependencies = Pick<AppState, "registeredLsps" | "provider">;
+type Dependencies = Pick<AppState, "registeredLsps" | "provider" | "registeredLspsMetadata">;
 
-export default (config: Config, appState: Dependencies) => {
-  const { network = 1, address = lspCreator.getAddress(network) } = config;
-  const { registeredLsps, provider } = appState;
+export type EmitData = {
+  blockNumber: number;
+  address: string;
+  startBlock?: number;
+  endBlock?: number;
+};
+
+export type Events = "created";
+
+export default async (config: Config, appState: Dependencies, emit: (event: Events, data: EmitData) => void) => {
+  const { network = 1, address = await lspCreator.getAddress(network) } = config;
+  const { registeredLsps, provider, registeredLspsMetadata } = appState;
 
   const contract = lspCreator.connect(address, provider);
 
-  async function update(startBlock?: number | "latest", endBlock?: number) {
+  async function update(startBlock?: number, endBlock?: number) {
     const events = await contract.queryFilter(
       contract.filters.CreatedLongShortPair(null, null, null, null),
       startBlock,
       endBlock
     );
     const { contracts } = lspCreator.getEventState(events);
-    await bluebird.map(Object.keys(contracts || {}), (x) => {
-      return registeredLsps.add(x);
+    if (!contracts) return;
+    await bluebird.map(Object.keys(contracts), (address) => {
+      const blockNumber = contracts[address].blockNumber;
+      registeredLspsMetadata.set(address, { blockNumber });
+      registeredLsps.add(address);
+      // emit that a new contract was found. Must be done after saving meta data
+      emit("created", { address, blockNumber, startBlock, endBlock });
     });
   }
 

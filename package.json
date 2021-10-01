@@ -15,7 +15,7 @@
     "load-addresses": "yarn workspace @uma/core load-addresses",
     "create-release": "lerna version --no-git-tag-version --conventional-commits --no-push",
     "publish-release": "./scripts/run_release.sh",
-    "qbuild": "yarn workspace @uma/common build && yarn workspace @uma/core build && yarn lerna run build --stream --ignore '*/*dapp*' --ignore '@uma/common' --ignore '@uma/core'",
+    "qbuild": "yarn lerna run build --stream",
     "build": "yarn qbuild",
     "clean": "yarn lerna run clean --stream",
     "clean-packages": "yarn lerna clean --yes && rm -rf node_modules",
@@ -56,7 +56,6 @@
     "pretty-quick": "^2.0.1",
     "secp256k1": "^3.7.1",
     "solc-0.8": "npm:solc@^0.8.4",
-    "truffle": "^5.2.3",
     "typescript": "^4.3.5",
     "web3": "^1.5.2"
   },

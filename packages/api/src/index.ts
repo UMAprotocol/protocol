@@ -33,16 +33,16 @@ export type CurrencySymbol = "usd";
 export type PriceSample = [timestamp: number, price: string];
 // These are library dependencies to all services
 export type AppState = {
-  blocks: uma.tables.blocks.JsMap;
+  blocks: uma.tables.blocks.Table;
   coingecko: uma.Coingecko;
   zrx: Zrx;
   emps: {
-    active: uma.tables.emps.JsMap;
-    expired: uma.tables.emps.JsMap;
+    active: uma.tables.emps.Table;
+    expired: uma.tables.emps.Table;
   };
   lsps: {
-    active: lsps.JsMap;
-    expired: lsps.JsMap;
+    active: lsps.Table;
+    expired: lsps.Table;
   };
   prices: {
     usd: {
@@ -50,7 +50,7 @@ export type AppState = {
         [key: string]: PriceSample;
       };
       history: {
-        [key: string]: uma.tables.historicalPrices.SortedJsMap;
+        [key: string]: uma.tables.historicalPrices.Table;
       };
     };
   };
@@ -59,38 +59,38 @@ export type AppState = {
       [empAddress: string]: PriceSample;
     };
     history: {
-      [empAddress: string]: uma.tables.historicalPrices.SortedJsMap;
+      [empAddress: string]: uma.tables.historicalPrices.Table;
     };
   };
   marketPrices: {
     // note this is in usdc since these are fetched from amms using usdc as the quote currency
     usdc: {
       latest: { [tokenAddress: string]: PriceSample };
-      history: empStatsHistory.SortedJsMap;
+      history: empStatsHistory.Table;
     };
   };
-  erc20s: uma.tables.erc20s.JsMap;
+  erc20s: uma.tables.erc20s.Table;
   stats: {
     emp: {
       usd: {
         latest: {
-          tvl: empStats.JsMap;
-          tvm: empStats.JsMap;
+          tvl: empStats.Table;
+          tvm: empStats.Table;
         };
         history: {
-          tvl: empStatsHistory.SortedJsMap;
-          tvm: empStatsHistory.SortedJsMap;
+          tvl: empStatsHistory.Table;
+          tvm: empStatsHistory.Table;
         };
       };
     };
     lsp: {
       usd: {
         latest: {
-          tvl: empStats.JsMap;
-          tvm: empStats.JsMap;
+          tvl: empStats.Table;
+          tvm: empStats.Table;
         };
         history: {
-          tvl: empStatsHistory.SortedJsMap;
+          tvl: empStatsHistory.Table;
         };
       };
     };
@@ -100,20 +100,21 @@ export type AppState = {
           tvl: PriceSample;
         };
         history: {
-          tvl: empStatsHistory.SortedJsMap;
+          tvl: empStatsHistory.Table;
         };
       };
     };
   };
   registeredEmps: Set<string>;
+  registeredEmpsMetadata: Map<string, { blockNumber: number }>;
   registeredLsps: Set<string>;
+  registeredLspsMetadata: Map<string, { blockNumber: number }>;
   provider: Provider;
   web3: Web3;
-  lastBlock: number;
   lastBlockUpdate: number;
   collateralAddresses: Set<string>;
   syntheticAddresses: Set<string>;
   longAddresses: Set<string>;
   shortAddresses: Set<string>;
-  multicall: uma.Multicall;
+  multicall2: uma.Multicall2;
 };

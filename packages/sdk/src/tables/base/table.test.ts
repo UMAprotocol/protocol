@@ -1,6 +1,7 @@
 import Table from ".";
-import Store from "../../stores/js-map";
+import { default as JsMapStore } from "../../stores/js-map";
 import assert from "assert";
+import type { Store } from "../../stores";
 
 type D = {
   id: string;
@@ -10,8 +11,8 @@ describe("basic table", function () {
   let table: any;
   let store: any;
   test("init", function () {
-    store = Store<string, D>();
-    table = Table<string, D>({ makeId: (x: D) => x.id, type: "test" }, store);
+    store = JsMapStore<string, D>();
+    table = Table<string, D, Store<string, D>>({ makeId: (x: D) => x.id, type: "test" }, store);
     assert.ok(table);
   });
   test("create", async function () {

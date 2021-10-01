@@ -1,13 +1,13 @@
 {
   "name": "@uma/affiliates",
-  "version": "1.5.1",
+  "version": "1.6.1",
   "main": "index.js",
   "license": "MIT",
   "dependencies": {
     "@google-cloud/bigquery": "^5.3.0",
-    "@uma/common": "^2.6.0",
-    "@uma/core": "^2.7.0",
-    "@uma/financial-templates-lib": "^2.6.1",
+    "@uma/common": "^2.8.0",
+    "@uma/contracts-node": "^0.1.2",
+    "@uma/financial-templates-lib": "^2.8.0",
     "@uniswap/v3-core": "1.0.0-rc.2",
     "@uniswap/v3-periphery": "1.0.0-beta.23",
     "cli-progress": "^3.8.2",
@@ -20,19 +20,21 @@
     "prompt": "^1.1.0"
   },
   "devDependencies": {
-    "mocha": "^8.2.0",
-    "tape": "^5.0.1",
-    "@openzeppelin/contracts": "4.1.0"
+    "@openzeppelin/contracts": "4.1.0",
+    "@uma/core-1-2-0": "npm:@uma/core@1.2.0",
+    "chai": "^4.3.4",
+    "mocha": "^9.1.1",
+    "tape": "^5.0.1"
   },
   "publishConfig": {
     "registry": "https://registry.npmjs.com/",
     "access": "public"
   },
   "scripts": {
-    "test": "yarn test-mocha && yarn test-truffle",
-    "test-mocha": "mocha test test/mocha/*.js --network mainnet_mnemonic --exit",
-    "test-truffle": "truffle test ./test/truffle/*.js test/truffle/liquidity-mining/*.js --network test && truffle test ./test/truffle/gas-rebate/*.js --network mainnet_mnemonic --migrations_directory migrations_null",
-    "test-e2e": "mocha test/e2e/*.js --network=mainnet_mnemonic --exit",
+    "test": "yarn test-local && yarn test-mainnet",
+    "test-mainnet": "mocha 'test/mocha-mainnet/**/*.js' --network mainnet_mnemonic",
+    "test-local": "mocha 'test/mocha-local/**/*.js'",
+    "test-e2e": "mocha 'test/e2e/*.js' --network=mainnet_mnemonic",
     "build": "tsc -b",
     "watch": "tsc -w"
   }

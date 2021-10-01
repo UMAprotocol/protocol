@@ -1,12 +1,13 @@
 import assert from "assert";
 
 import { getFromBlock, runTransaction } from "@uma/common";
-import type { Logger } from "winston";
+import { TransactionReceipt } from "web3-eth";
 import Web3 from "web3";
+import type { Logger } from "winston";
 import type { GasEstimator } from "../helpers/GasEstimator";
 import type { Abi } from "../types";
 import type { DSProxyFactoryWeb3, DSProxyWeb3, DSProxyFactoryWeb3Events } from "@uma/contracts-node";
-import { TransactionReceipt } from "web3-eth";
+import type { TransactionType } from "@uma/common";
 
 interface Params {
   logger: Logger;
@@ -18,8 +19,6 @@ interface Params {
   dsProxyAbi: Abi;
   availableAccounts?: number;
 }
-
-type TransactionType = Parameters<typeof runTransaction>[0]["transaction"];
 
 export class DSProxyManager {
   private readonly logger: Logger;

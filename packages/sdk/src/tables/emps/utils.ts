@@ -8,7 +8,7 @@ export type Data = {
   address: string;
   priceIdentifier?: string | null;
   expirationTimestamp?: string | null;
-  withdrawLiveness?: string | null;
+  withdrawalLiveness?: string | null;
   tokenCurrency?: string | null;
   collateralCurrency?: string | null;
   collateralRequirement?: string | null;
@@ -25,4 +25,5 @@ export type Data = {
   sponsors?: string[] | null;
   gcr?: string | null;
   expired?: boolean | null;
+  createdTimestamp?: number | null;
 };

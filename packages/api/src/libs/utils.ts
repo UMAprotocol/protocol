@@ -3,6 +3,7 @@ import { Obj } from "..";
 import * as uma from "@uma/sdk";
 import { utils, BigNumber, Contract } from "ethers";
 import assert from "assert";
+import Web3 from "web3";
 const { parseUnits, parseBytes32String } = utils;
 
 export const SCALING_MULTIPLIER: BigNumber = parseUnits("1");
@@ -106,7 +107,7 @@ export function parseBytes(x: any) {
   return parseBytes32String(x);
 }
 
-export const BatchRead = (multicall: uma.Multicall) => async (
+export const BatchRead = (multicall: uma.Multicall2) => async (
   calls: [string, (x: any) => any][],
   contract: Contract
 ) => {
@@ -130,6 +131,28 @@ export const BatchRead = (multicall: uma.Multicall) => async (
   );
 };
 
+export const BatchReadWithErrors = (multicall2: uma.Multicall2) => async (
+  calls: [string, (x: any) => any][],
+  contract: Contract
+) => {
+  // multicall batch takes array of {method} objects
+  const results = await multicall2
+    .batch(
+      contract,
+      calls.map(([method]) => ({ method }))
+    )
+    .readWithErrors();
+  // convert results of multicall, an array of responses, into an object keyed by contract method
+  return Object.fromEntries(
+    lodash.zip(calls, results).map(([call, result]) => {
+      if (call == null) return [];
+      const [method, cb] = call;
+      if (!result?.result) return [method, undefined];
+      return [method, cb(result.result)];
+    })
+  );
+};
+
 export const Profile = (enabled: boolean | undefined) => {
   return (msg: string) => {
     // if not enabled, dont do anything
@@ -147,4 +170,59 @@ export function parseEnvArray(str: string, delimiter = ","): string[] {
   if (str.length == 0) return [];
   if (!str.includes(delimiter)) return [];
   return str.split(delimiter).map((x) => x.trim());
+}
+
+export function getWeb3Websocket(url: string, options: Obj = {}) {
+  // pulled from common/src/ProviderUtils.ts
+  const defaults = {
+    clientConfig: {
+      maxReceivedFrameSize: 100000000, // Useful if requests result are large bytes - default: 1MiB
+      maxReceivedMessageSize: 100000000, // bytes - default: 8MiB
+    },
+    reconnect: {
+      auto: true, // Enable auto reconnection
+      delay: 5000, // ms
+      maxAttempts: 10,
+      onTimeout: false,
+    },
+  };
+  return new Web3(
+    new Web3.providers.WebsocketProvider(url, {
+      ...options,
+      ...defaults,
+    })
+  );
+}
+
+export function getWeb3(url: string, options: Obj = {}) {
+  if (url.startsWith("ws")) return getWeb3Websocket(url, options);
+  throw new Error("Only supporting websocket provider URLs for Web3");
+}
+
+// this just maintains the start/endblock given sporadic updates with a latest block number
+export function BlockInterval(update: (startBlock: number, endBlock: number) => Promise<void>, startBlock = 0) {
+  return async (endBlock: number) => {
+    const params = {
+      startBlock,
+      endBlock,
+    };
+    await update(startBlock, endBlock);
+    startBlock = endBlock;
+    return params;
+  };
+}
+
+// rejects after a timeout period
+export function rejectAfterDelay(ms: number, message = "Call timed out") {
+  return new Promise((res, rej) => {
+    const to = setTimeout(() => {
+      clearTimeout(to);
+      rej(message);
+    }, ms);
+  });
+}
+
+// races a promise against a timeout to reject if it takes too long
+export function expirePromise(promise: () => Promise<any>, timeoutms: number, errorMessage?: string) {
+  return Promise.race([promise(), rejectAfterDelay(timeoutms, errorMessage)]);
 }

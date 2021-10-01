@@ -1,5 +1,5 @@
 const { ethers } = require("ethers");
-const { getAbi } = require("@uma/core");
+const { getAbi } = require("@uma/contracts-node");
 const argv = require("minimist")(process.argv.slice(), { string: ["emp", "tag", "tokens", "collateral"] });
 
 const {

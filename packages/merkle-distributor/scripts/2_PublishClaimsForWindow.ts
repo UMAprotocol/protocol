@@ -33,7 +33,7 @@ import assert from "assert";
 import { program } from "commander";
 import fs from "fs";
 import path from "path";
-import { getAbi } from "@uma/core";
+import { getAbi } from "@uma/contracts-node";
 import { getWeb3, MAX_UINT_VAL } from "@uma/common";
 const web3 = getWeb3();
 const { toBN } = web3.utils;

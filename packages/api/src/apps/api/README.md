@@ -10,8 +10,14 @@ Add these to a .env file in the root of the `protocol/packages/api` folder.
 CUSTOM_NODE_URL=wss://mainnet.infura.io/ws/v3/${your project key}
 EXPRESS_PORT=8282
 
-# defaults to 1: represents the number of block elapsed before rechecking contract states
-UPDATE_BLOCKS=1
+# Optional, defaults to 600 (10 minutes): number of seconds before rechecking contract states
+UPDATE_RATE_S=600
+
+# Optional update rate for price updates, defaults to 900 (15 minutes)
+PRICE_UPDATE_RATE_S=900
+
+# Optional update rate for detecting new contracts, defaults to 60 (1 minute)
+DETECT_CONTRACTS_UPDATE_RATE_S=60
 
 # defaults to 864,000,000 ( 10 days): represents the max age a block will stay cached
 OLDEST_BLOCK_MS=1
@@ -28,8 +34,8 @@ zrxBaseUrl=https://api.0x.org
 # how many days of price history we should query on startup, leave empty to disable, history will start at the time app is started
 backfillDays=
 
-# required for lsp state updates. this is a valid multicall address on mainnet.
-MULTI_CALL_ADDRESS=0xeefBa1e63905eF1D7ACbA5a8513c70307C1cE441
+# required for lsp and emp state updates. this is a valid multicall2 address on mainnet.
+MULTI_CALL_2_ADDRESS=0x5ba1e12693dc8f9c48aad8770482f4739beed696
 
 # any non null value will turn on debugging. This adds additional logs and time profiles for key calls.
 debug=1

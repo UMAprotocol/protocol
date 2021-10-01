@@ -2,16 +2,24 @@ import winston from "winston";
 import Web3 from "web3";
 import retry from "async-retry";
 import { config } from "dotenv";
+import assert from "assert";
 
-import { getWeb3 } from "@uma/common";
-import { GasEstimator, Logger, waitForLogger, delay } from "@uma/financial-templates-lib";
+import { getWeb3, getWeb3ByChainId } from "@uma/common";
+import {
+  GasEstimator,
+  Logger,
+  waitForLogger,
+  delay,
+  InsuredBridgeL1Client,
+  InsuredBridgeL2Client,
+} from "@uma/financial-templates-lib";
 
+import { approveL1Tokens, getL2DepositBoxAddress } from "./RelayerHelpers";
 import { Relayer } from "./Relayer";
-
 import { RelayerConfig } from "./RelayerConfig";
 config();
 
-export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
+export async function run(logger: winston.Logger, l1Web3: Web3): Promise<void> {
   try {
     const config = new RelayerConfig(process.env);
 
@@ -20,23 +28,54 @@ export async function run(logger: winston.Logger, web3: Web3): Promise<void> {
     logger[config.pollingDelay === 0 ? "debug" : "info"]({
       at: "InsuredBridgeRelayer#index",
       message: "Relayer started 🌉",
-      bridgePoolFactoryAddress: config.bridgePoolFactoryAddress,
+      config,
     });
 
-    const [accounts, networkId] = await Promise.all([web3.eth.getAccounts(), web3.eth.net.getId()]);
-    console.log(`connected to ${accounts[0]} on ${networkId}`); // just show web3 connection works.
+    const [accounts] = await Promise.all([l1Web3.eth.getAccounts()]);
 
     const gasEstimator = new GasEstimator(logger);
 
-    const relayer = new Relayer(logger, web3);
+    // Create L1/L2 clients to pull data to inform the relayer.
+    // todo: add in start and ending block numbers (if need be).
+    const l1Client = new InsuredBridgeL1Client(logger, l1Web3, config.bridgeAdmin, config.rateModels);
+
+    // TODO: Add a method to fetch all registered chainIDs from bridge admin to let the bot default to all chains when
+    // the config does not include activatedChainIds.
+
+    // For now, this bot only supports 1 L2 chain. In future we need to update the bot to create n number l2Clients for
+    // each L2 client. Then, create n instances of `Relayer`.
+    assert(config.activatedChainIds.length == 1, "bot only supports running on 1 l2 at a time for now");
+
+    // Construct a web3 instance running on L2.
+    const l2Web3 = getWeb3ByChainId(config.activatedChainIds[0]);
+
+    const l2Client = new InsuredBridgeL2Client(
+      logger,
+      l2Web3,
+      await getL2DepositBoxAddress(l1Web3, config.activatedChainIds[0], config.bridgeAdmin),
+      config.activatedChainIds[0]
+    );
+
+    // For all specified whitelisted L1 tokens that this relayer supports, approve the bridge pool to spend them. This
+    // method will error if the bot runner has specified a L1 tokens that is not part of the Bridge Admin whitelist.
+    await approveL1Tokens(
+      logger,
+      l1Web3,
+      gasEstimator,
+      accounts[0],
+      config.bridgeAdmin,
+      config.whitelistedRelayL1Tokens
+    );
+
+    const relayer = new Relayer(logger, gasEstimator, l1Client, l2Client, config.whitelistedRelayL1Tokens, accounts[0]);
 
     for (;;) {
       await retry(
         async () => {
           // Update state.
-          await Promise.all([gasEstimator.update()]);
+          await Promise.all([gasEstimator.update(), l1Client.update(), l2Client.update()]);
 
-          await relayer.relayPendingDeposits();
+          await relayer.checkForPendingDepositsAndRelay();
         },
         {
           retries: config.errorRetries,

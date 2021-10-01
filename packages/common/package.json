@@ -1,6 +1,6 @@
 {
   "name": "@uma/common",
-  "version": "2.6.0",
+  "version": "2.8.0",
   "description": "Common js utilities used by other UMA packages",
   "homepage": "http://umaproject.org",
   "license": "AGPL-3.0-or-later",
@@ -18,7 +18,7 @@
     "url": "git+https://github.com/UMAprotocol/protocol.git"
   },
   "scripts": {
-    "test": "hardhat test ./test/*",
+    "test": "mocha 'test/**/*.js'",
     "build": "rm -rf dist && tsc && (cp src/gckms/.GckmsOverride.js dist/gckms/.GckmsOverride.js || echo 'No override file found, continuing')"
   },
   "bugs": {
@@ -31,8 +31,8 @@
     "@ethersproject/bignumber": "^5.0.5",
     "@google-cloud/kms": "^2.3.1",
     "@google-cloud/storage": "^5.8.5",
-    "@maticnetwork/maticjs": "^2.0.40",
-    "@truffle/hdwallet-provider": "^1.5.0",
+    "@truffle/contract": "^4.2.20",
+    "@truffle/hdwallet-provider": "^1.2.3",
     "@umaprotocol/truffle-ledger-provider": "^1.0.5",
     "@umaprotocol/ynatm": "^0.0.1",
     "abi-decoder": "github:UMAprotocol/abi-decoder",
@@ -56,15 +56,15 @@
   "devDependencies": {
     "@eth-optimism/hardhat-ovm": "^0.2.2",
     "@nomiclabs/hardhat-ethers": "^2.0.2",
-    "@nomiclabs/hardhat-etherscan": "^2.1.4",
+    "@nomiclabs/hardhat-etherscan": "^2.1.6",
     "@nomiclabs/hardhat-truffle5": "^2.0.0",
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@tsconfig/node14": "^1.0.0",
     "@types/ethereum-protocol": "^1.0.0",
+    "@types/lodash.uniqby": "^4.7.6",
     "@types/mocha": "^5.2.7",
-    "web3-core": "^1.5.0",
-    "web3-eth-contract": "^1.5.2",
-    "ethers": "^5.4.2",
-    "@types/lodash.uniqby": "^4.7.6"
+    "web3-core": "^1.6.0",
+    "web3-eth-contract": "^1.6.0",
+    "ethers": "^5.4.2"
   }
 }
