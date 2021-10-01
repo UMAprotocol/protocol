@@ -386,7 +386,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
     /**
      * @notice Callback for disputes, marks relay as disputed.
-     * @dev _timestamp and _identifier are unused Unused because _ancillaryData contains a relay nonce and uniquely
+     * @dev Reverts if relay is not pending.
+     * @dev _timestamp and _identifier are unused because _ancillaryData contains a relay nonce and uniquely
      * identifies a relay request.
      * @param _identifier price identifier for relay request.
      * @param _timestamp timestamp for relay request.
@@ -401,12 +402,14 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     ) external onlyFromOptimisticOracle {
         bytes32 depositHash = relayRequestAncillaryData[_ancillaryData];
         RelayData storage relay = relays[depositHash];
+        require(relay.relayState == RelayState.Pending);
         relay.relayState = RelayState.Disputed;
     }
 
     /**
      * @notice Callback for settlements, marks relay as ready for finalization if the relay was resolved as valid.
-     * @dev _timestamp and _identifier are unused Unused because _ancillaryData contains a relay nonce and uniquely
+     * @dev Reverts if relay is uninitialized or already settled.
+     * @dev _timestamp and _identifier are unused because _ancillaryData contains a relay nonce and uniquely
      * identifies a relay request.
      * @param _identifier price identifier for relay request.
      * @param _timestamp timestamp for relay request.
@@ -421,6 +424,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     ) external onlyFromOptimisticOracle {
         bytes32 depositHash = relayRequestAncillaryData[_ancillaryData];
         RelayData storage relay = relays[depositHash];
+        require(relay.relayState == RelayState.Pending || relay.relayState == RelayState.Disputed);
         // 1e18 = Canonical value representing "True"; i.e. the proposed relay is valid.
         if (_request.resolvedPrice == int256(1e18)) {
             relay.relayState = RelayState.PendingFinalization;
