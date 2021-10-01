@@ -59,7 +59,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     BridgeAdminInterface public bridgeAdmin;
 
     // A Relay represents an attempt to finalize a cross-chain transfer that originated on an L2 DepositBox contract.
-    enum RelayState { Uninitialized, Pending, Finalized }
+    enum RelayState { Uninitialized, Pending, Disputed, PendingFinalization, Finalized }
 
     // Data from L2 deposit transaction.
     struct DepositData {
@@ -87,6 +87,11 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     // this deposit. Contains information necessary to pay out relayers on successful relay. Deposits get reset to the
     // "Uninitialized" state when they are disputed on the OptimisticOracle.
     mapping(bytes32 => RelayData) public relays;
+
+    // Associates a relay request's ancillary data with the deposit hash that the relay request was linked with. This
+    // mapping is used by the OptimisticOracle callback functions (i.e. priceDisputed, priceSettled) to identify the
+    // relay request that was disputed or settled.
+    mapping(bytes => bytes32) public relayRequestAncillaryData;
 
     event LiquidityAdded(address indexed token, uint256 amount, uint256 lpTokensMinted, address liquidityProvider);
     event LiquidityRemoved(address indexed token, uint256 amount, uint256 lpTokensBurnt, address liquidityProvider);
@@ -243,13 +248,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         // the relay is pending valid and we cannot re-relay.
         require(
             relays[depositHash].relayState == RelayState.Uninitialized ||
-                _getOptimisticOracle().getState(
-                    address(this),
-                    bridgeAdmin.identifier(),
-                    relays[depositHash].priceRequestTime,
-                    getRelayAncillaryData(depositData, relays[depositHash])
-                ) ==
-                OptimisticOracleInterface.State.Disputed,
+                relays[depositHash].relayState == RelayState.Disputed,
             "Pending relay exists"
         );
 
@@ -268,6 +267,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             });
         relays[depositHash] = relayData;
 
+        bytes memory ancillaryData = getRelayAncillaryData(depositData, relayData);
+        relayRequestAncillaryData[ancillaryData] = depositHash;
+
         // Sanity check that pool has enough balance to cover relay amount + proposer reward. Reward amount will be
         // paid on settlement after the OptimisticOracle price request has passed the challenge period.
         require(
@@ -281,7 +283,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         // instead of default setting to equal to the `depositTimestamp`, which is dependent on the L2 VM on which the
         // DepositContract is deployed. Imagine if the timestamps on the L2 have an offset that are always "in the
         // future" relative to L1 blocks, then the OptimisticOracle would always reject requests.
-        _requestAndProposeOraclePriceRelay(amount, priceRequestTime, getRelayAncillaryData(depositData, relayData));
+        _requestAndProposeOraclePriceRelay(amount, priceRequestTime, ancillaryData);
 
         pendingReserves += amount; // Book off maximum liquidity used by this relay in the pending reserves.
 
@@ -312,7 +314,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         bytes32 depositHash = _getDepositHash(_depositData);
         RelayData storage relay = relays[depositHash];
         require(
-            relays[depositHash].relayState == RelayState.Pending && relays[depositHash].instantRelayer == address(0),
+            (relays[depositHash].relayState != RelayState.Uninitialized ||
+                relays[depositHash].relayState != RelayState.Finalized) &&
+                relays[depositHash].instantRelayer == address(0),
             "Relay can not be sped up"
         );
         relay.instantRelayer = msg.sender;
@@ -338,22 +342,9 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     function settleRelay(DepositData memory _depositData) public nonReentrant() {
         bytes32 depositHash = _getDepositHash(_depositData);
         RelayData storage relay = relays[depositHash];
-
-        require(relays[depositHash].relayState == RelayState.Pending, "Relay state must be pending");
-
-        // Attempt to settle OptimisticOracle price as a convenience for the slow relayer who will receive their
-        // dispute bond back if the relay was disputed unsuccessfully (i.e. the dispute resolved to a price of 1).
-        // If the price is not settleable, then this call will revert. If the price has already
-        // been settled, then this will not revert and still return the price. If the dispute was successful (i.e. the
-        // dispute resolved to a price of 0), then the disputer needs to go through OptimisticOracle to settle their
-        // payout.
         require(
-            _getOptimisticOracle().settleAndGetPrice(
-                bridgeAdmin.identifier(),
-                relay.priceRequestTime,
-                getRelayAncillaryData(_depositData, relay)
-            ) == int256(1e18), // Canonical value representing "True"; i.e. the proposed relay is valid.
-            "Relay request was not valid"
+            relays[depositHash].relayState == RelayState.PendingFinalization,
+            "Can only settle relay if price is resolved True on OptimisticOracle"
         );
 
         // Update the relay state to Finalized. This prevents any re-settling of a relay.
@@ -391,6 +382,49 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         allocateLpFees(_getAmountFromPct(relay.realizedLpFeePct, _depositData.amount));
 
         emit RelaySettled(depositHash, keccak256(getRelayAncillaryData(_depositData, relay)), msg.sender);
+    }
+
+    /**
+     * @notice Callback for disputes, marks relay as disputed.
+     * @dev _timestamp and _identifier are unused Unused because _ancillaryData contains a relay nonce and uniquely
+     * identifies a relay request.
+     * @param _identifier price identifier for relay request.
+     * @param _timestamp timestamp for relay request.
+     * @param _ancillaryData ancillary data for relay request.
+     * @param _request disputed relay request params.
+     */
+    function priceDisputed(
+        bytes32 _identifier,
+        uint256 _timestamp,
+        bytes memory _ancillaryData,
+        SkinnyOptimisticOracleInterface.Request memory _request
+    ) external onlyFromOptimisticOracle {
+        bytes32 depositHash = relayRequestAncillaryData[_ancillaryData];
+        RelayData storage relay = relays[depositHash];
+        relay.relayState = RelayState.Disputed;
+    }
+
+    /**
+     * @notice Callback for settlements, marks relay as ready for finalization if the relay was resolved as valid.
+     * @dev _timestamp and _identifier are unused Unused because _ancillaryData contains a relay nonce and uniquely
+     * identifies a relay request.
+     * @param _identifier price identifier for relay request.
+     * @param _timestamp timestamp for relay request.
+     * @param _ancillaryData ancillary data for relay request.
+     * @param _request settled relay request params.
+     */
+    function priceSettled(
+        bytes32 _identifier,
+        uint256 _timestamp,
+        bytes memory _ancillaryData,
+        SkinnyOptimisticOracleInterface.Request memory _request
+    ) external onlyFromOptimisticOracle {
+        bytes32 depositHash = relayRequestAncillaryData[_ancillaryData];
+        RelayData storage relay = relays[depositHash];
+        // 1e18 = Canonical value representing "True"; i.e. the proposed relay is valid.
+        if (_request.resolvedPrice == int256(1e18)) {
+            relay.relayState = RelayState.PendingFinalization;
+        }
     }
 
     /**

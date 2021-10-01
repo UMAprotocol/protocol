@@ -44,5 +44,6 @@ export const InsuredBridgeRelayStateEnum = {
   UNINITIALIZED: "0",
   PENDING: "1",
   DISPUTED: "2",
-  FINALIZED: "3",
+  PENDING_FINALIZATION: "3",
+  FINALIZED: "4",
 };
