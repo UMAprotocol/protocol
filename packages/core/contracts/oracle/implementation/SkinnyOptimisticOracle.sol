@@ -552,22 +552,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
 
     // Returns hash of request parameters. These are mapped to the unique request ID to track a request's lifecycle.
     function _getRequestHash(Request memory _request) private pure returns (bytes32) {
-        return
-            keccak256(
-                abi.encode(
-                    _request.proposer,
-                    _request.disputer,
-                    _request.currency,
-                    _request.settled,
-                    _request.proposedPrice,
-                    _request.resolvedPrice,
-                    _request.expirationTime,
-                    _request.reward,
-                    _request.finalFee,
-                    _request.bond,
-                    _request.customLiveness
-                )
-            );
+        return keccak256(abi.encode(_request));
     }
 
     // Resolves a price request that has expired or been disputed and a price is available from the DVM. This will
