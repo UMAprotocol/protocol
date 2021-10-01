@@ -373,7 +373,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         //      the full bridging amount, minus the realized LP fee and minus the slow relay fee. When the instant
         //      relayer called speedUpRelay they were docked this same amount, minus the instant relayer fee. As a
         //      result, they are effectively paid what they spent when speeding up the relay + the instantRelayFee.
-
         uint256 feesTotal =
             _getAmountFromPct(
                 relay.realizedLpFeePct + _depositData.slowRelayFeePct + _depositData.instantRelayFeePct,
@@ -387,20 +386,20 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         if (relay.instantRelayer != address(0)) {
             // Now that we know the correct relay amount net fees, evaluate whether the instant relayer sent the correct
             // amount.
-            // - If the instant relayed amount was incorrect, then send the user the difference if the user was
+            // - If the instant relayed amount was too little, then send the user the difference if the user was
             // underpaid. In this case, credit the user back the instant relay fee.
+            // - If instant relayed amount was too high, then send instant relayer the correct amount. The instant
+            // relayer therefore loses only how much they over paid.
             // - If the instant relayed amount was correct, then refund the instant relayer
-            if (relayAmount != relay.instantRelayedAmount) {
-                if (relayAmount > relay.instantRelayedAmount) {
-                    l1Token.safeTransfer(
-                        _depositData.l1Recipient,
-                        // TODO: Should we send the user the forfeited instant relay fee, or keep in the bridge pool?
-                        relayAmountWithInstantRelayFee - relay.instantRelayedAmount
-                    );
-                }
+            if (relayAmount > relay.instantRelayedAmount) {
+                l1Token.safeTransfer(
+                    _depositData.l1Recipient,
+                    // TODO: Should we send the user the forfeited instant relay fee, or keep in the bridge pool?
+                    relayAmountWithInstantRelayFee - relay.instantRelayedAmount
+                );
             } else {
-                // If instant relayed sent recipient the correct amount, send them the full relay amount + the instant
-                // relay fee.
+                // If instant relayed sent recipient at least the correct amount, send them the full relay amount +
+                // the instant relay fee.
                 l1Token.safeTransfer(relay.instantRelayer, relayAmountWithInstantRelayFee);
             }
         }

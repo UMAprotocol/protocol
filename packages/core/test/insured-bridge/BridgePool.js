@@ -694,6 +694,101 @@ describe("BridgePool", () => {
           .toString()
       );
     });
+    it("Invalid instant relay (amount >= expected amount), disputed correctly, followed by valid relay", async () => {
+      // Propose new invalid relay where realizedFee is too small.
+      const invalidRealizedLpFee = toWei("0.05");
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
+      await bridgePool.methods
+        .relayDeposit(...generateRelayParams({}, { realizedLpFeePct: invalidRealizedLpFee }))
+        .send({ from: relayer });
+
+      // Grab OO price request information from Relay struct.
+      const relayStatus = await bridgePool.methods.relays(depositHash).call();
+
+      // Invalid instant relay with incorrect fee sends smaller amount (net fees) to user than expected.
+      const invalidRealizedLpFeeAmount = toBN(invalidRealizedLpFee)
+        .mul(toBN(relayAmount))
+        .div(toBN(toWei("1")));
+      const invalidInstantRelayAmountSubFee = toBN(relayAmount)
+        .sub(invalidRealizedLpFeeAmount)
+        .sub(realizedSlowRelayFeeAmount)
+        .sub(realizedInstantRelayFeeAmount)
+        .toString();
+      const diff = toBN(invalidInstantRelayAmountSubFee)
+        .sub(toBN((await l1Token.methods.balanceOf(instantRelayer).call()).toString()))
+        .toString();
+      await l1Token.methods.mint(instantRelayer, diff.toString()).send({ from: owner });
+      await l1Token.methods
+        .approve(bridgePool.options.address, invalidInstantRelayAmountSubFee)
+        .send({ from: instantRelayer });
+      await bridgePool.methods.speedUpRelay(depositData).send({ from: instantRelayer });
+
+      // User receives invalid instant relay amount, which is more than they are due.
+      assert.equal(
+        (await l1Token.methods.balanceOf(depositData.l1Recipient).call()).toString(),
+        invalidInstantRelayAmountSubFee
+      );
+
+      // Before slow relay expires, it is disputed correctly.
+      const _relayAncillaryData = await bridgePool.methods
+        .getRelayAncillaryData(depositData, { ...relayData, realizedLpFeePct: invalidRealizedLpFee })
+        .call();
+      await l1Token.methods.approve(optimisticOracle.options.address, totalRelayBond).send({ from: disputer });
+      await optimisticOracle.methods
+        .disputePrice(
+          bridgePool.options.address,
+          defaultIdentifier,
+          relayStatus.priceRequestTime.toString(),
+          _relayAncillaryData
+        )
+        .send({ from: disputer });
+
+      // While dispute is pending resolution, a valid relay is resubmitted. Advance time so that
+      // price request data is different.
+      await l1Token.methods.mint(rando, totalRelayBond).send({ from: owner });
+      await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: rando });
+      await advanceTime(1);
+      const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
+      await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
+
+      // Expire this valid relay and check payouts.
+      const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
+      await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
+      await bridgePool.methods.settleRelay(depositData).send({ from: rando });
+
+      // User should still have the invalid instant relayed amount.
+      assert.equal(
+        (await l1Token.methods.balanceOf(depositData.l1Recipient).call()).toString(),
+        invalidInstantRelayAmountSubFee
+      );
+
+      // Invalid instant relayer should get back the expected relayed amount.
+      assert.equal(
+        (await l1Token.methods.balanceOf(instantRelayer).call()).toString(),
+        toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount).toString()
+      );
+
+      // Slow relayer gets slow relay reward
+      assert.equal(
+        (await l1Token.methods.balanceOf(rando).call()).toString(),
+        toBN(totalRelayBond).add(realizedSlowRelayFeeAmount).toString()
+      );
+
+      // OptimisticOracle should still hold dispute refund since dispute has not resolved yet
+      assert.equal(
+        (await l1Token.methods.balanceOf(optimisticOracle.options.address).call()).toString(),
+        totalDisputeRefund.toString()
+      );
+
+      // BridgePool should have balance reduced relayed amount and realized fees.
+      assert.equal(
+        (await l1Token.methods.balanceOf(bridgePool.options.address).call()).toString(),
+        toBN(initialPoolLiquidity)
+          .sub(toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount).add(realizedSlowRelayFeeAmount))
+          .toString(),
+        "BridgePool should have balance reduced by relayed amount to l1Recipient"
+      );
+    });
   });
   describe("Dispute pending relay", () => {
     beforeEach(async function () {
