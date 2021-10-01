@@ -9,7 +9,6 @@
     "@uma/common": "^2.8.0",
     "@uma/contracts-node": "^0.1.2",
     "@uniswap/sdk": "^2.0.5",
-    "@types/bn.js": "^4.11.6",
     "bn.js": "^4.11.9",
     "bluebird": "^3.7.2",
     "dotenv": "^9.0.0",
@@ -27,14 +26,15 @@
   "devDependencies": {
     "@openzeppelin/contracts": "4.1.0",
     "@tsconfig/node14": "^1.0.0",
+    "@types/bn.js": "^5.1.0",
     "@uma/contracts-node-0-1-0": "npm:@uma/contracts-node@0.1.0",
     "bignumber.js": "^9.0.1",
     "chai": "^4.3.4",
     "mocha": "^9.1.1",
     "sinon": "^9.0.2",
-    "web3-core": "^1.5.1",
-    "web3-eth-contract": "^1.5.1",
-    "web3-utils": "^1.5.1"
+    "web3-core": "^1.6.0",
+    "web3-eth-contract": "^1.6.0",
+    "web3-utils": "^1.6.0"
   },
   "homepage": "https://umaproject.org",
   "license": "AGPL-3.0-or-later",
