@@ -5,6 +5,7 @@ import { computeTWAP } from "./utils";
 import { ConvertDecimals, averageBlockTimeSeconds, parseFixed } from "@uma/common";
 import type { Logger } from "winston";
 import Web3 from "web3";
+const { toBN } = Web3.utils;
 import { UniswapV2Web3, UniswapV3Web3, ERC20Web3 } from "@uma/contracts-frontend";
 import { BN, Abi } from "../types";
 import { EventData } from "web3-eth-contract";
@@ -28,7 +29,6 @@ export abstract class UniswapPriceFeed extends PriceFeedInterface {
   private token1: ERC20Web3 | null = null;
   protected readonly uuid: string;
   private readonly bufferBlockPercent: number = 1.1;
-  protected readonly toBN = Web3.utils.toBN;
   private currentTwap: BN | null = null;
   private convertToPriceFeedDecimals: ReturnType<typeof ConvertDecimals> | null = null;
   private lastUpdateTime: number | null = null;
@@ -216,7 +216,7 @@ export abstract class UniswapPriceFeed extends PriceFeedInterface {
     const events = eventsIn.map((e) => {
       return [e.timestamp, e.price] as [number, BN];
     });
-    return computeTWAP(events, startTime, endTime, this.toBN("0"));
+    return computeTWAP(events, startTime, endTime, toBN("0"));
   }
 
   protected abstract _getSortedEvents(fromBlock: number, toBlock: number | "latest"): Promise<EventData[]>;
@@ -247,12 +247,12 @@ export class UniswapV2PriceFeed extends UniswapPriceFeed {
     if (this.token1Precision === null || this.token0Precision === null)
       throw new Error(`${this.uuid} -- update was not called`);
     // Fixed point adjustment should use same precision as token0, unless price is inverted.
-    const fixedPointAdjustment = this.toBN(
+    const fixedPointAdjustment = toBN(
       parseFixed("1", this.invertPrice ? this.token1Precision : this.token0Precision).toString()
     );
 
-    const reserve0 = this.toBN(event.returnValues.reserve0);
-    const reserve1 = this.toBN(event.returnValues.reserve1);
+    const reserve0 = toBN(event.returnValues.reserve0);
+    const reserve1 = toBN(event.returnValues.reserve1);
 
     if (reserve1.isZero() || reserve0.isZero()) return null;
 
@@ -288,12 +288,12 @@ export class UniswapV3PriceFeed extends UniswapPriceFeed {
     if (this.token1Precision === null || this.token0Precision === null)
       throw new Error(`${this.uuid} -- update was not called`);
     // Fixed point adjustment should use same precision as token0, unless price is inverted.
-    const fixedPointAdjustment = this.toBN(
+    const fixedPointAdjustment = toBN(
       parseFixed("1", this.invertPrice ? this.token1Precision : this.token0Precision).toString()
     );
 
-    const X96Adjustment = this.toBN(2).pow(this.toBN(96));
-    const rawSqrtPrice = this.toBN(event.returnValues.sqrtPriceX96);
+    const X96Adjustment = toBN(2).pow(toBN(96));
+    const rawSqrtPrice = toBN(event.returnValues.sqrtPriceX96);
     // This effectively computes the price by squaring the value, multiplying it up by our intended precision, then dividing out both X96 fixed point multipliers.
     const nonInvertedPrice = rawSqrtPrice
       .mul(rawSqrtPrice)
