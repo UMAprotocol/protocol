@@ -1,5 +1,5 @@
 const hre = require("hardhat");
-const { web3 } = require("hardhat");
+const { web3 } = hre;
 const { interfaceName, TokenRolesEnum, InsuredBridgeRelayStateEnum, ZERO_ADDRESS } = require("@uma/common");
 const { getContract } = hre;
 const { utf8ToHex, toWei, toBN, soliditySha3 } = web3.utils;
