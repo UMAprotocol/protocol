@@ -54,4 +54,7 @@ export const OPTIMISTIC_ORACLE_IGNORE = [
   "XSUSHI_APY",
   "V2migration_KPI_Aragon",
   "General_KPI",
+  "PUNKETH",
+  "PUNKETH_TWAP",
+  "STABLESPREAD/USDC_18DEC",
 ];

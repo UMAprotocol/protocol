@@ -1,4 +1,7 @@
 const func = async function (hre) {
+  // This migration will fail if contracts the bridge admin depend on are not registered in the Finder. No tests depend
+  // on this migration so we can continue in this case enabling us to use this in production and skipping in tests.
+
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
 
@@ -17,3 +20,4 @@ const func = async function (hre) {
 };
 module.exports = func;
 func.tags = ["BridgeAdmin"];
+func.dependencies = ["Finder"];

@@ -136,11 +136,15 @@ export class Relayer {
   // found. So, assuming that the relay contains a matching deposit hash, this bot's job is to only consider speeding up
   // relays that are valid, otherwise the bot might lose money without recourse on the relay.
 
-  private async isRelayValid(relay: Relay, deposit: Deposit): Promise<boolean> {
-    return (
-      relay.realizedLpFeePct.toString() ===
-      (await this.l1Client.calculateRealizedLpFeePctForDeposit(deposit)).toString()
-    );
+  private async isRelayValid(relay: Relay, deposit: Deposit): Promise<{ isValid: boolean; reason: string }> {
+    const relayRealizedLpFeePct = relay.realizedLpFeePct.toString();
+    const expectedRelayRealizedLpFeePct = (await this.l1Client.calculateRealizedLpFeePctForDeposit(deposit)).toString();
+    if (relayRealizedLpFeePct !== expectedRelayRealizedLpFeePct)
+      return {
+        isValid: false,
+        reason: `relayRealizedLpFeePct: ${relayRealizedLpFeePct} != expectedRelayRealizedLpFeePct: ${expectedRelayRealizedLpFeePct}`,
+      };
+    return { isValid: true, reason: "" };
   }
 
   private async shouldRelay(

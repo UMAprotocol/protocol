@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.7.0](https://github.com/UMAprotocol/protocol/compare/@uma/trader@1.6.0...@uma/trader@1.7.0) (2021-10-01)
+
+### Features
+
+- **core:** move all active scripts out of core and deprecate rest ([#3397](https://github.com/UMAprotocol/protocol/issues/3397)) ([f96b8c9](https://github.com/UMAprotocol/protocol/commit/f96b8c90b01002594bf44ac44f03f6d021bee460))
+
 # [1.6.0](https://github.com/UMAprotocol/protocol/compare/@uma/trader@1.5.3...@uma/trader@1.6.0) (2021-09-28)
 
 ### Bug Fixes

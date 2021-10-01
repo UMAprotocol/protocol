@@ -2,13 +2,12 @@
 const { getAddress } = require("@uma/contracts-node");
 const { ZERO_ADDRESS } = require("@uma/common");
 const func = async function (hre) {
+  const chainId = await hre.web3.eth.net.getId();
+
   const { deployments, getNamedAccounts } = hre;
   const { deploy } = deployments;
 
   const { deployer } = await getNamedAccounts();
-  const chainId = await web3.eth.net.getId();
-
-  if (chainId != "69" || chainId != "10") throw new Error("This deploy only works on optimism chains");
 
   // Map L2 chain IDs to L1 chain IDs to find associated bridgeAdmin addresses for a given L2 chain ID.
   const l2ChainIdToL1 = {
@@ -16,12 +15,13 @@ const func = async function (hre) {
     10: 1, // optimism mainnet -> mainnet
   };
 
-  const bridgeAdminAddress = await getAddress("BridgeAdmin", l2ChainIdToL1[chainId]);
+  const bridgeAdminAddress = l2ChainIdToL1[chainId]
+    ? await getAddress("BridgeAdmin", l2ChainIdToL1[chainId])
+    : (await deployments.get("BridgeAdmin")).address;
 
   const args = [
     bridgeAdminAddress,
     1800, // minimumBridgingDelay of 30 mins
-    chainId, // chainId of the L2 being deployed on
     ZERO_ADDRESS, // timer address
   ];
 
@@ -29,3 +29,4 @@ const func = async function (hre) {
 };
 module.exports = func;
 func.tags = ["OVM_BridgeDepositBox"];
+func.dependencies = ["BridgeAdmin"];

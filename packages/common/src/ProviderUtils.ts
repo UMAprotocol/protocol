@@ -33,7 +33,7 @@ const { NODE_RETRY_CONFIG } = process.env;
 // Set web3 to null
 let web3: Web3 | null = null;
 
-function getNodeUrl(networkName: string, useHttps = false): string {
+export function getNodeUrl(networkName: string, useHttps = false): string {
   if (isPublicNetwork(networkName) && !networkName.includes("fork")) {
     const infuraApiKey = process.env.INFURA_API_KEY || "e34138b2db5b496ab5cc52319d2f0299";
     const name = networkName.split("_")[0];
@@ -92,10 +92,13 @@ function getDefaultKeyType(): typeof KEY_TYPES[number] {
   return "none";
 }
 
+export function getMnemonic(): string {
+  return process.env.MNEMONIC || "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat";
+}
+
 function addMnemonicToProvider(
   provider: AbstractProvider,
-  mnemonic: string = process.env.MNEMONIC ||
-    "candy maple cake sugar pudding cream honey rich smooth crumble sweet treat",
+  mnemonic: string = getMnemonic(),
   numKeys = parseInt(process.env.NUM_KEYS || "2"),
   keyOffset = process.env.KEY_OFFSET ? parseInt(process.env.KEY_OFFSET) : 0
 ): HDWalletProvider {
