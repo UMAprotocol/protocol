@@ -24,18 +24,14 @@
     "eslint": "eslint './src/**/*.ts'",
     "prettier": "prettier './**/*.md' './src/**/*.ts'",
     "lint": "yarn prettier --write && yarn eslint --fix",
-    "prepare": "tsdx build",
+    "prepare": "yarn build",
     "size": "size-limit",
     "analyze": "size-limit --why"
   },
   "size-limit": [
     {
-      "path": "dist/sdk.cjs.production.min.js",
-      "limit": "10 KB"
-    },
-    {
-      "path": "dist/sdk.esm.js",
-      "limit": "10 KB"
+      "path": "dist/web/index.js",
+      "limit": "500 KB"
     }
   ],
   "dependencies": {
