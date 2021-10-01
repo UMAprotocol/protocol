@@ -3,6 +3,16 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [1.2.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.1.0...@uma/scripts@1.2.0) (2021-10-01)
+
+### Bug Fixes
+
+- **scripts:** add some awaits and fix directory link ([#3408](https://github.com/UMAprotocol/protocol/issues/3408)) ([4f2ac25](https://github.com/UMAprotocol/protocol/commit/4f2ac25623c7b75a023246fed74f658c02a2ea88))
+
+### Features
+
+- **core:** move all active scripts out of core and deprecate rest ([#3397](https://github.com/UMAprotocol/protocol/issues/3397)) ([f96b8c9](https://github.com/UMAprotocol/protocol/commit/f96b8c90b01002594bf44ac44f03f6d021bee460))
+
 # [1.1.0](https://github.com/UMAprotocol/protocol/compare/@uma/scripts@1.0.0...@uma/scripts@1.1.0) (2021-09-28)
 
 ### Bug Fixes

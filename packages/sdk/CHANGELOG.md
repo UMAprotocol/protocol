@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+# [0.6.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.5.0...@uma/sdk@0.6.0) (2021-10-01)
+
+### Features
+
+- **sdk:** add direct port of fee calculators and add docs ([#3410](https://github.com/UMAprotocol/protocol/issues/3410)) ([7c21f75](https://github.com/UMAprotocol/protocol/commit/7c21f75d681f0e9a7dbcdc31dcfaa875d16cf9be))
+
 # [0.5.0](https://github.com/UMAprotocol/protocol/compare/@uma/sdk@0.4.1...@uma/sdk@0.5.0) (2021-09-28)
 
 ### Bug Fixes

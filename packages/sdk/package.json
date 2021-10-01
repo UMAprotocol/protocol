@@ -1,5 +1,5 @@
 {
-  "version": "0.5.0",
+  "version": "0.6.0",
   "license": "MIT",
   "name": "@uma/sdk",
   "author": "David Adams",
@@ -39,8 +39,8 @@
     }
   ],
   "dependencies": {
-    "@uma/contracts-frontend": "^0.1.1",
-    "@uma/contracts-node": "^0.1.1",
+    "@uma/contracts-frontend": "^0.1.2",
+    "@uma/contracts-node": "^0.1.2",
     "axios": "^0.21.4",
     "bn.js": "^5.2.0",
     "decimal.js": "^10.3.1",

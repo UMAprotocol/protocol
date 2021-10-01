@@ -3,6 +3,12 @@
 All notable changes to this project will be documented in this file.
 See [Conventional Commits](https://conventionalcommits.org) for commit guidelines.
 
+## [0.5.1](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.5.0...@uma/api@0.5.1) (2021-10-01)
+
+### Bug Fixes
+
+- **api:** discovery events and block interval check ([#3394](https://github.com/UMAprotocol/protocol/issues/3394)) ([b384689](https://github.com/UMAprotocol/protocol/commit/b384689e6925b1c9c6c34fbc42c5cfdd83ea8d18))
+
 # [0.5.0](https://github.com/UMAprotocol/protocol/compare/@uma/api@0.4.1...@uma/api@0.5.0) (2021-09-28)
 
 ### Bug Fixes
