@@ -2,6 +2,7 @@ export * as clients from "./clients";
 export * as stores from "./stores";
 export * as tables from "./tables";
 export * as utils from "./utils";
+export * as across from "./across";
 export { default as Coingecko } from "./coingecko";
 export { default as Multicall } from "./multicall";
 export { default as Multicall2 } from "./multicall2";
