@@ -21,6 +21,57 @@ import "../../common/implementation/AncillaryData.sol";
 import "../../common/implementation/AddressWhitelist.sol";
 
 /**
+ * @title Optimistic Requester.
+ * @notice Optional interface that requesters can implement to receive callbacks.
+ * @dev this contract does _not_ work with ERC777 collateral currencies or any others that call into the receiver on
+ * transfer(). Using an ERC777 token would allow a user to maliciously grief other participants (while also losing
+ * money themselves).
+ */
+interface OptimisticRequester {
+    /**
+     * @notice Callback for proposals.
+     * @param _identifier price identifier being requested.
+     * @param _timestamp timestamp of the price being requested.
+     * @param _ancillaryData ancillary data of the price being requested.
+     * @param _request request params after proposal.
+     */
+    function priceProposed(
+        bytes32 _identifier,
+        uint256 _timestamp,
+        bytes memory _ancillaryData,
+        SkinnyOptimisticOracleInterface.Request memory _request
+    ) external;
+
+    /**
+     * @notice Callback for disputes.
+     * @param _identifier price identifier being requested.
+     * @param _timestamp timestamp of the price being requested.
+     * @param _ancillaryData ancillary data of the price being requested.
+     * @param _request request params after dispute.
+     */
+    function priceDisputed(
+        bytes32 _identifier,
+        uint256 _timestamp,
+        bytes memory _ancillaryData,
+        SkinnyOptimisticOracleInterface.Request memory _request
+    ) external;
+
+    /**
+     * @notice Callback for settlement.
+     * @param _identifier price identifier being requested.
+     * @param _timestamp timestamp of the price being requested.
+     * @param _ancillaryData ancillary data of the price being requested.
+     * @param _request request params after settlement.
+     */
+    function priceSettled(
+        bytes32 _identifier,
+        uint256 _timestamp,
+        bytes memory _ancillaryData,
+        SkinnyOptimisticOracleInterface.Request memory _request
+    ) external;
+}
+
+/**
  * @title Optimistic Oracle with a different interface and fewer features that emphasizes gas cost reductions.
  * @notice Pre-DVM escalation contract that allows faster settlement.
  */
@@ -192,6 +243,12 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
 
         _storeRequestHash(requestId, proposedRequest);
         emit ProposePrice(_requester, _identifier, _timestamp, _ancillaryData, proposedRequest);
+
+        // Callback.
+        if (address(msg.sender).isContract())
+            try
+                OptimisticRequester(msg.sender).priceProposed(_identifier, _timestamp, _ancillaryData, proposedRequest)
+            {} catch {}
     }
 
     /**
@@ -266,7 +323,7 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         request.currency = _currency;
         request.reward = _reward;
         request.finalFee = finalFee;
-        request.bond = _bond != 0 ? _bond : finalFee;
+        request.bond = _bond;
         request.customLiveness = _customLiveness;
         request.proposer = _proposer;
         request.proposedPrice = _proposedPrice;
@@ -286,7 +343,11 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
         emit RequestPrice(msg.sender, _identifier, _timestamp, _ancillaryData, request);
         emit ProposePrice(msg.sender, _identifier, _timestamp, _ancillaryData, request);
 
-        return request.bond.add(request.finalFee);
+        // Callback.
+        if (address(msg.sender).isContract())
+            try
+                OptimisticRequester(msg.sender).priceProposed(_identifier, _timestamp, _ancillaryData, request)
+            {} catch {}
     }
 
     /**
@@ -364,6 +425,12 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
 
         _storeRequestHash(requestId, disputedRequest);
         emit DisputePrice(_requester, _identifier, _timestamp, _ancillaryData, disputedRequest);
+
+        // Callback.
+        if (address(_requester).isContract())
+            try
+                OptimisticRequester(_requester).priceDisputed(_identifier, _timestamp, _ancillaryData, disputedRequest)
+            {} catch {}
     }
 
     /**
@@ -570,6 +637,12 @@ contract SkinnyOptimisticOracle is SkinnyOptimisticOracleInterface, Testable, Lo
 
         _storeRequestHash(requestId, settledRequest);
         emit Settle(_requester, _identifier, _timestamp, _ancillaryData, settledRequest);
+
+        // Callback.
+        if (address(_requester).isContract())
+            try
+                OptimisticRequester(_requester).priceSettled(_identifier, _timestamp, _ancillaryData, settledRequest)
+            {} catch {}
     }
 
     function _computeBurnedBond(Request memory _request) private pure returns (uint256) {
