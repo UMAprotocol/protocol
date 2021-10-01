@@ -56,4 +56,5 @@ export const OPTIMISTIC_ORACLE_IGNORE = [
   "General_KPI",
   "PUNKETH",
   "PUNKETH_TWAP",
+  "STABLESPREAD/USDC_18DEC",
 ];
