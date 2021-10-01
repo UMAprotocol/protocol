@@ -7,6 +7,7 @@ const { assert } = require("chai");
 const { toWei, toBN, hexToUtf8, utf8ToHex } = web3.utils;
 
 const SkinnyOptimisticOracle = getContract("SkinnyOptimisticOracle");
+const OptimisticRequester = getContract("SkinnyOptimisticRequesterTest");
 const Finder = getContract("Finder");
 const Timer = getContract("Timer");
 const IdentifierWhitelist = getContract("IdentifierWhitelist");
@@ -17,6 +18,7 @@ const MockOracle = getContract("MockOracleAncillary");
 
 describe("SkinnyOptimisticOracle", function () {
   let optimisticOracle;
+  let optimisticRequester;
   let finder;
   let timer;
   let identifierWhitelist;
@@ -122,6 +124,10 @@ describe("SkinnyOptimisticOracle", function () {
     };
 
     optimisticOracle = await SkinnyOptimisticOracle.new(liveness, finder.options.address, timer.options.address).send({
+      from: accounts[0],
+    });
+
+    optimisticRequester = await OptimisticRequester.new(optimisticOracle.options.address, finder.options.address).send({
       from: accounts[0],
     });
 
@@ -952,9 +958,16 @@ describe("SkinnyOptimisticOracle", function () {
   });
 
   describe("requestAndProposeFor multicall", function () {
+    // Test that custom bond can be set to 0.
+    let customBond = "0";
+    let customTotalDefaultBond = toBN(finalFee).add(toBN(customBond)).toString();
+    let customHalfTotalDefaultBond = toBN(customBond).div(toBN(2)).toString();
+    let customPostProposalParams;
     beforeEach(async function () {
+      customPostProposalParams = { ...postProposalParams(requestParams), bond: customBond };
+
       // Caller must post reward + proposal bond.
-      const totalStake = toBN(reward).add(toBN(totalDefaultBond)).toString();
+      const totalStake = toBN(reward).add(toBN(finalFee)).add(toBN(customBond)).toString();
       await collateral.methods.transfer(requester, totalStake).send({ from: accounts[0] });
       await collateral.methods
         .increaseAllowance(optimisticOracle.options.address, totalStake)
@@ -968,13 +981,13 @@ describe("SkinnyOptimisticOracle", function () {
         "0x",
         collateral.options.address,
         reward,
-        0,
+        customBond,
         0,
         proposer,
         correctPrice
       );
       const returnValue = await txn.call({ from: requester });
-      assert.equal(returnValue, totalDefaultBond);
+      assert.equal(returnValue, customTotalDefaultBond);
       const txnResult = await txn.send({ from: requester });
 
       // RequestPrice and ProposePrice should contain the same request params, which is different from the two-step
@@ -985,17 +998,17 @@ describe("SkinnyOptimisticOracle", function () {
           hexToUtf8(ev.identifier) == hexToUtf8(identifier) &&
           ev.timestamp.toString() === requestTime.toString() &&
           ev.ancillaryData === null &&
-          ev.request.proposer === postProposalParams(requestParams).proposer &&
-          ev.request.disputer === postProposalParams(requestParams).disputer &&
-          ev.request.currency === postProposalParams(requestParams).currency &&
-          ev.request.settled === postProposalParams(requestParams).settled &&
-          ev.request.proposedPrice === postProposalParams(requestParams).proposedPrice &&
-          ev.request.resolvedPrice === postProposalParams(requestParams).resolvedPrice &&
-          ev.request.expirationTime === postProposalParams(requestParams).expirationTime &&
-          ev.request.reward === postProposalParams(requestParams).reward &&
-          ev.request.finalFee === postProposalParams(requestParams).finalFee &&
-          ev.request.bond === postProposalParams(requestParams).bond &&
-          ev.request.customLiveness === postProposalParams(requestParams).customLiveness
+          ev.request.proposer === customPostProposalParams.proposer &&
+          ev.request.disputer === customPostProposalParams.disputer &&
+          ev.request.currency === customPostProposalParams.currency &&
+          ev.request.settled === customPostProposalParams.settled &&
+          ev.request.proposedPrice === customPostProposalParams.proposedPrice &&
+          ev.request.resolvedPrice === customPostProposalParams.resolvedPrice &&
+          ev.request.expirationTime === customPostProposalParams.expirationTime &&
+          ev.request.reward === customPostProposalParams.reward &&
+          ev.request.finalFee === customPostProposalParams.finalFee &&
+          ev.request.bond === customPostProposalParams.bond &&
+          ev.request.customLiveness === customPostProposalParams.customLiveness
         );
       });
       await assertEventEmitted(txnResult, optimisticOracle, "RequestPrice", (ev) => {
@@ -1004,17 +1017,17 @@ describe("SkinnyOptimisticOracle", function () {
           hexToUtf8(ev.identifier) == hexToUtf8(identifier) &&
           ev.timestamp.toString() === requestTime.toString() &&
           ev.ancillaryData === null &&
-          ev.request.proposer === postProposalParams(requestParams).proposer &&
-          ev.request.disputer === postProposalParams(requestParams).disputer &&
-          ev.request.currency === postProposalParams(requestParams).currency &&
-          ev.request.settled === postProposalParams(requestParams).settled &&
-          ev.request.proposedPrice === postProposalParams(requestParams).proposedPrice &&
-          ev.request.resolvedPrice === postProposalParams(requestParams).resolvedPrice &&
-          ev.request.expirationTime === postProposalParams(requestParams).expirationTime &&
-          ev.request.reward === postProposalParams(requestParams).reward &&
-          ev.request.finalFee === postProposalParams(requestParams).finalFee &&
-          ev.request.bond === postProposalParams(requestParams).bond &&
-          ev.request.customLiveness === postProposalParams(requestParams).customLiveness
+          ev.request.proposer === customPostProposalParams.proposer &&
+          ev.request.disputer === customPostProposalParams.disputer &&
+          ev.request.currency === customPostProposalParams.currency &&
+          ev.request.settled === customPostProposalParams.settled &&
+          ev.request.proposedPrice === customPostProposalParams.proposedPrice &&
+          ev.request.resolvedPrice === customPostProposalParams.resolvedPrice &&
+          ev.request.expirationTime === customPostProposalParams.expirationTime &&
+          ev.request.reward === customPostProposalParams.reward &&
+          ev.request.finalFee === customPostProposalParams.finalFee &&
+          ev.request.bond === customPostProposalParams.bond &&
+          ev.request.customLiveness === customPostProposalParams.customLiveness
         );
       });
 
@@ -1024,9 +1037,9 @@ describe("SkinnyOptimisticOracle", function () {
         identifier,
         requestTime,
         "0x",
-        postProposalParams(requestParams)
+        customPostProposalParams
       );
-      await verifyBalanceSum(optimisticOracle.options.address, reward, totalDefaultBond);
+      await verifyBalanceSum(optimisticOracle.options.address, reward, customTotalDefaultBond);
     });
 
     it("Should be able to settle expired normally", async function () {
@@ -1037,7 +1050,7 @@ describe("SkinnyOptimisticOracle", function () {
           "0x",
           collateral.options.address,
           reward,
-          0,
+          customBond,
           0,
           proposer,
           correctPrice
@@ -1050,12 +1063,12 @@ describe("SkinnyOptimisticOracle", function () {
         identifier,
         requestTime,
         "0x",
-        postProposalParams(requestParams)
+        customPostProposalParams
       );
       assert(
         await didContractThrow(
           optimisticOracle.methods
-            .settle(requester, identifier, requestTime, "0x", postProposalParams(requestParams))
+            .settle(requester, identifier, requestTime, "0x", customPostProposalParams)
             .send({ from: accounts[0] })
         )
       );
@@ -1067,7 +1080,7 @@ describe("SkinnyOptimisticOracle", function () {
         identifier,
         requestTime,
         "0x",
-        postProposalParams(requestParams)
+        customPostProposalParams
       );
 
       // Settle contract and check results.
@@ -1076,11 +1089,11 @@ describe("SkinnyOptimisticOracle", function () {
         identifier,
         requestTime,
         "0x",
-        postProposalParams(requestParams)
+        customPostProposalParams
       );
       const returnValues = await settleTxn.call({ from: accounts[0] });
       assert.equal(returnValues.resolvedPrice, correctPrice);
-      assert.equal(returnValues.payout, toBN(totalDefaultBond).add(toBN(reward)).toString());
+      assert.equal(returnValues.payout, toBN(customTotalDefaultBond).add(toBN(reward)).toString());
 
       await assertEventEmitted(await settleTxn.send({ from: accounts[0] }), optimisticOracle, "Settle", (ev) => {
         return (
@@ -1088,29 +1101,29 @@ describe("SkinnyOptimisticOracle", function () {
           hexToUtf8(ev.identifier) == hexToUtf8(identifier) &&
           ev.timestamp.toString() === requestTime.toString() &&
           ev.ancillaryData === null &&
-          ev.request.proposer === postSettleExpiryParams(postProposalParams(requestParams)).proposer &&
-          ev.request.disputer === postSettleExpiryParams(postProposalParams(requestParams)).disputer &&
-          ev.request.currency === postSettleExpiryParams(postProposalParams(requestParams)).currency &&
-          ev.request.settled === postSettleExpiryParams(postProposalParams(requestParams)).settled &&
-          ev.request.proposedPrice === postSettleExpiryParams(postProposalParams(requestParams)).proposedPrice &&
-          ev.request.resolvedPrice === postSettleExpiryParams(postProposalParams(requestParams)).resolvedPrice &&
-          ev.request.expirationTime === postSettleExpiryParams(postProposalParams(requestParams)).expirationTime &&
-          ev.request.reward === postSettleExpiryParams(postProposalParams(requestParams)).reward &&
-          ev.request.finalFee === postSettleExpiryParams(postProposalParams(requestParams)).finalFee &&
-          ev.request.bond === postSettleExpiryParams(postProposalParams(requestParams)).bond &&
-          ev.request.customLiveness === postSettleExpiryParams(postProposalParams(requestParams)).customLiveness
+          ev.request.proposer === postSettleExpiryParams(customPostProposalParams).proposer &&
+          ev.request.disputer === postSettleExpiryParams(customPostProposalParams).disputer &&
+          ev.request.currency === postSettleExpiryParams(customPostProposalParams).currency &&
+          ev.request.settled === postSettleExpiryParams(customPostProposalParams).settled &&
+          ev.request.proposedPrice === postSettleExpiryParams(customPostProposalParams).proposedPrice &&
+          ev.request.resolvedPrice === postSettleExpiryParams(customPostProposalParams).resolvedPrice &&
+          ev.request.expirationTime === postSettleExpiryParams(customPostProposalParams).expirationTime &&
+          ev.request.reward === postSettleExpiryParams(customPostProposalParams).reward &&
+          ev.request.finalFee === postSettleExpiryParams(customPostProposalParams).finalFee &&
+          ev.request.bond === postSettleExpiryParams(customPostProposalParams).bond &&
+          ev.request.customLiveness === postSettleExpiryParams(customPostProposalParams).customLiveness
         );
       });
 
       // Proposer should receive reward + total proposal bond.
-      await verifyBalanceSum(proposer, initialUserBalance, reward, totalDefaultBond);
+      await verifyBalanceSum(proposer, initialUserBalance, reward, customTotalDefaultBond);
       await verifyState(
         OptimisticOracleRequestStatesEnum.SETTLED,
         requester,
         identifier,
         requestTime,
         "0x",
-        postSettleExpiryParams(postProposalParams(requestParams))
+        postSettleExpiryParams(customPostProposalParams)
       );
     });
 
@@ -1122,7 +1135,7 @@ describe("SkinnyOptimisticOracle", function () {
           "0x",
           collateral.options.address,
           reward,
-          0,
+          customBond,
           0,
           proposer,
           correctPrice
@@ -1135,27 +1148,27 @@ describe("SkinnyOptimisticOracle", function () {
         identifier,
         requestTime,
         "0x",
-        postProposalParams(requestParams)
+        customPostProposalParams
       );
       const returnValue = await disputeTxn.call({ from: disputer });
-      assert.equal(returnValue, totalDefaultBond);
+      assert.equal(returnValue, customTotalDefaultBond);
       await assertEventEmitted(await disputeTxn.send({ from: disputer }), optimisticOracle, "DisputePrice", (ev) => {
         return (
           ev.requester === requester &&
           hexToUtf8(ev.identifier) == hexToUtf8(identifier) &&
           ev.timestamp.toString() === requestTime.toString() &&
           ev.ancillaryData === null &&
-          ev.request.proposer === postDisputeParams(postProposalParams(requestParams)).proposer &&
-          ev.request.disputer === postDisputeParams(postProposalParams(requestParams)).disputer &&
-          ev.request.currency === postDisputeParams(postProposalParams(requestParams)).currency &&
-          ev.request.settled === postDisputeParams(postProposalParams(requestParams)).settled &&
-          ev.request.proposedPrice === postDisputeParams(postProposalParams(requestParams)).proposedPrice &&
-          ev.request.resolvedPrice === postDisputeParams(postProposalParams(requestParams)).resolvedPrice &&
-          ev.request.expirationTime === postDisputeParams(postProposalParams(requestParams)).expirationTime &&
-          ev.request.reward === postDisputeParams(postProposalParams(requestParams)).reward &&
-          ev.request.finalFee === postDisputeParams(postProposalParams(requestParams)).finalFee &&
-          ev.request.bond === postDisputeParams(postProposalParams(requestParams)).bond &&
-          ev.request.customLiveness === postDisputeParams(postProposalParams(requestParams)).customLiveness
+          ev.request.proposer === postDisputeParams(customPostProposalParams).proposer &&
+          ev.request.disputer === postDisputeParams(customPostProposalParams).disputer &&
+          ev.request.currency === postDisputeParams(customPostProposalParams).currency &&
+          ev.request.settled === postDisputeParams(customPostProposalParams).settled &&
+          ev.request.proposedPrice === postDisputeParams(customPostProposalParams).proposedPrice &&
+          ev.request.resolvedPrice === postDisputeParams(customPostProposalParams).resolvedPrice &&
+          ev.request.expirationTime === postDisputeParams(customPostProposalParams).expirationTime &&
+          ev.request.reward === postDisputeParams(customPostProposalParams).reward &&
+          ev.request.finalFee === postDisputeParams(customPostProposalParams).finalFee &&
+          ev.request.bond === postDisputeParams(customPostProposalParams).bond &&
+          ev.request.customLiveness === postDisputeParams(customPostProposalParams).customLiveness
         );
       });
 
@@ -1165,16 +1178,16 @@ describe("SkinnyOptimisticOracle", function () {
         identifier,
         requestTime,
         "0x",
-        postDisputeParams(postProposalParams(requestParams))
+        postDisputeParams(customPostProposalParams)
       );
 
       await verifyBalanceSum(
         optimisticOracle.options.address,
-        totalDefaultBond,
-        totalDefaultBond,
+        customTotalDefaultBond,
+        customTotalDefaultBond,
         reward,
         `-${finalFee}`,
-        `-${halfDefaultBond}`
+        `-${customHalfTotalDefaultBond}`
       );
 
       // Push price.
@@ -1185,7 +1198,7 @@ describe("SkinnyOptimisticOracle", function () {
         identifier,
         requestTime,
         "0x",
-        postDisputeParams(postProposalParams(requestParams))
+        postDisputeParams(customPostProposalParams)
       );
 
       // Settle and check price and payouts.
@@ -1194,11 +1207,14 @@ describe("SkinnyOptimisticOracle", function () {
         identifier,
         requestTime,
         "0x",
-        postDisputeParams(postProposalParams(requestParams))
+        postDisputeParams(customPostProposalParams)
       );
       const returnValues = await settleTxn.call({ from: accounts[0] });
       assert.equal(returnValues.resolvedPrice, correctPrice);
-      assert.equal(returnValues.payout, toBN(totalDefaultBond).add(toBN(halfDefaultBond)).add(toBN(reward)).toString());
+      assert.equal(
+        returnValues.payout,
+        toBN(customTotalDefaultBond).add(toBN(customHalfTotalDefaultBond)).add(toBN(reward)).toString()
+      );
 
       await settleTxn.send({ from: accounts[0] });
       await verifyState(
@@ -1207,20 +1223,204 @@ describe("SkinnyOptimisticOracle", function () {
         identifier,
         requestTime,
         "0x",
-        postSettleExpiryParams(postDisputeParams(postProposalParams(requestParams)))
+        postSettleExpiryParams(postDisputeParams(customPostProposalParams))
       );
 
       // Proposer should net half the disputer's bond plus the reward and receive their proposal bond back.
-      await verifyBalanceSum(proposer, initialUserBalance, halfDefaultBond, reward, totalDefaultBond);
+      await verifyBalanceSum(proposer, initialUserBalance, customHalfTotalDefaultBond, reward, customTotalDefaultBond);
 
       // Disputer should have lost their bond.
-      await verifyBalanceSum(disputer, initialUserBalance, `-${totalDefaultBond}`);
+      await verifyBalanceSum(disputer, initialUserBalance, `-${customTotalDefaultBond}`);
 
       // Contract should be empty.
       await verifyBalanceSum(optimisticOracle.options.address);
 
       // Store should have a final fee.
-      await verifyBalanceSum(store.options.address, finalFee, halfDefaultBond);
+      await verifyBalanceSum(store.options.address, finalFee, customHalfTotalDefaultBond);
+    });
+  });
+
+  describe("Callbacks", function () {
+    beforeEach(async function () {
+      // Caller must post reward + proposal bond.
+      const totalStake = toBN(reward).add(toBN(totalDefaultBond)).toString();
+      await collateral.methods.transfer(optimisticRequester.options.address, totalStake).send({ from: accounts[0] });
+    });
+    describe("Verify propose callback", function () {
+      it("Returns data to requesting contract", async function () {
+        await optimisticRequester.methods
+          .requestAndProposePriceFor(
+            identifier,
+            requestTime,
+            "0x01",
+            collateral.options.address,
+            reward,
+            finalFee,
+            0,
+            proposer,
+            correctPrice
+          )
+          .send({ from: requester });
+
+        assert.equal(hexToUtf8(await optimisticRequester.methods.identifier().call()), hexToUtf8(identifier));
+        assert.equal((await optimisticRequester.methods.timestamp().call()).toString(), requestTime.toString());
+        assert.equal((await optimisticRequester.methods.ancillaryData().call()).toString(), "0x01");
+        const savedRequest = await optimisticRequester.methods.request().call();
+        assert.isTrue(
+          savedRequest.proposer === proposer &&
+            savedRequest.disputer === ZERO_ADDRESS &&
+            savedRequest.currency === collateral.options.address &&
+            !savedRequest.settled &&
+            savedRequest.proposedPrice === correctPrice &&
+            savedRequest.resolvedPrice === "0" &&
+            savedRequest.expirationTime === defaultExpiryTime.toString() &&
+            savedRequest.reward === reward &&
+            savedRequest.bond === finalFee &&
+            savedRequest.finalFee === finalFee &&
+            savedRequest.customLiveness === "0"
+        );
+      });
+      it("Reverting callback implementation does not cause dispute to revert", async function () {
+        await optimisticRequester.methods.setRevert(true).send({ from: accounts[0] });
+        assert.ok(
+          await optimisticRequester.methods
+            .requestAndProposePriceFor(
+              identifier,
+              requestTime,
+              "0x01",
+              collateral.options.address,
+              reward,
+              finalFee,
+              0,
+              proposer,
+              correctPrice
+            )
+            .send({ from: requester })
+        );
+      });
+    });
+    describe("Verify dispute callback", function () {
+      beforeEach(async function () {
+        await optimisticRequester.methods
+          .requestAndProposePriceFor(
+            identifier,
+            requestTime,
+            "0x01",
+            collateral.options.address,
+            reward,
+            finalFee,
+            0,
+            proposer,
+            correctPrice
+          )
+          .send({ from: requester });
+        await collateral.methods.approve(optimisticOracle.options.address, totalDefaultBond).send({ from: disputer });
+      });
+      it("Returns data to requesting contract", async function () {
+        await optimisticOracle.methods
+          .disputePrice(
+            optimisticRequester.options.address,
+            identifier,
+            requestTime,
+            "0x01",
+            postProposalParams(requestParams)
+          )
+          .send({ from: disputer });
+
+        assert.equal(hexToUtf8(await optimisticRequester.methods.identifier().call()), hexToUtf8(identifier));
+        assert.equal((await optimisticRequester.methods.timestamp().call()).toString(), requestTime.toString());
+        assert.equal((await optimisticRequester.methods.ancillaryData().call()).toString(), "0x01");
+        const savedRequest = await optimisticRequester.methods.request().call();
+        assert.isTrue(
+          savedRequest.proposer === proposer &&
+            savedRequest.disputer === disputer &&
+            savedRequest.currency === collateral.options.address &&
+            !savedRequest.settled &&
+            savedRequest.proposedPrice === correctPrice &&
+            savedRequest.resolvedPrice === "0" &&
+            savedRequest.expirationTime === defaultExpiryTime.toString() &&
+            savedRequest.reward === reward &&
+            savedRequest.bond === finalFee &&
+            savedRequest.finalFee === finalFee &&
+            savedRequest.customLiveness === "0"
+        );
+      });
+      it("Reverting callback implementation does not cause dispute to revert", async function () {
+        await optimisticRequester.methods.setRevert(true).send({ from: accounts[0] });
+        assert.ok(
+          await optimisticOracle.methods
+            .disputePrice(
+              optimisticRequester.options.address,
+              identifier,
+              requestTime,
+              "0x01",
+              postProposalParams(requestParams)
+            )
+            .send({ from: disputer })
+        );
+      });
+    });
+
+    describe("Verify settle callback", function () {
+      beforeEach(async function () {
+        await optimisticRequester.methods
+          .requestAndProposePriceFor(
+            identifier,
+            requestTime,
+            "0x01",
+            collateral.options.address,
+            reward,
+            finalFee,
+            0,
+            proposer,
+            correctPrice
+          )
+          .send({ from: requester });
+        await optimisticOracle.methods.setCurrentTime(defaultExpiryTime).send({ from: accounts[0] });
+      });
+      it("Returns data to requesting contract", async function () {
+        await optimisticOracle.methods
+          .settle(
+            optimisticRequester.options.address,
+            identifier,
+            requestTime,
+            "0x01",
+            postProposalParams(requestParams)
+          )
+          .send({ from: accounts[0] });
+
+        assert.equal(hexToUtf8(await optimisticRequester.methods.identifier().call()), hexToUtf8(identifier));
+        assert.equal((await optimisticRequester.methods.timestamp().call()).toString(), requestTime.toString());
+        assert.equal((await optimisticRequester.methods.ancillaryData().call()).toString(), "0x01");
+        const savedRequest = await optimisticRequester.methods.request().call();
+        assert.isTrue(
+          savedRequest.proposer === proposer &&
+            savedRequest.disputer === ZERO_ADDRESS &&
+            savedRequest.currency === collateral.options.address &&
+            savedRequest.settled &&
+            savedRequest.proposedPrice === correctPrice &&
+            savedRequest.resolvedPrice === correctPrice &&
+            savedRequest.expirationTime === defaultExpiryTime.toString() &&
+            savedRequest.reward === reward &&
+            savedRequest.bond === finalFee &&
+            savedRequest.finalFee === finalFee &&
+            savedRequest.customLiveness === "0"
+        );
+      });
+      it("Reverting callback implementation does not cause dispute to revert", async function () {
+        await optimisticRequester.methods.setRevert(true).send({ from: accounts[0] });
+        assert.ok(
+          await optimisticOracle.methods
+            .settle(
+              optimisticRequester.options.address,
+              identifier,
+              requestTime,
+              "0x01",
+              postProposalParams(requestParams)
+            )
+            .send({ from: accounts[0] })
+        );
+      });
     });
   });
 
