@@ -35,7 +35,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     IERC20 public override l1Token;
 
     // Track the total number of relays and uniquely identifies relays.
-    uint256 public numberOfRelays;
+    uint32 public numberOfRelays;
 
     // Reserves that are unutilized and withdrawable.
     uint256 public liquidReserves;
@@ -75,12 +75,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
     // A Relay is linked to a L2 Deposit.
     struct RelayData {
-        uint256 relayId;
         RelayState relayState;
-        uint256 priceRequestTime;
-        uint64 realizedLpFeePct;
         address slowRelayer;
+        uint32 relayId;
+        uint64 realizedLpFeePct;
         address instantRelayer;
+        uint256 priceRequestTime;
     }
 
     // Associate deposits with pending relay data. When RelayState is Uninitialized, new relay attempts can be made for
@@ -91,7 +91,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     event LiquidityAdded(address indexed token, uint256 amount, uint256 lpTokensMinted, address liquidityProvider);
     event LiquidityRemoved(address indexed token, uint256 amount, uint256 lpTokensBurnt, address liquidityProvider);
     event DepositRelayed(
-        uint256 indexed relayId,
+        uint32 indexed relayId,
         DepositData depositData,
         address slowRelayer,
         address l1Token,
@@ -246,7 +246,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         RelayData storage relayData = relays[depositHash];
 
         // This increments the storage variable at the same time as setting relayId.
-        relayData.relayId = numberOfRelays++;
+        uint32 relayId = numberOfRelays++;
+        relayData.relayId = relayId;
         relayData.relayState = RelayState.Pending;
         relayData.priceRequestTime = priceRequestTime;
         relayData.realizedLpFeePct = realizedLpFeePct;
@@ -273,7 +274,15 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         pendingReserves += amount; // Book off maximum liquidity used by this relay in the pending reserves.
 
         // We use an internal method to emit this event to overcome Solidity's "stack too deep" error.
-        _emitDepositRelayedEvent(depositData, realizedLpFeePct, depositHash, relayHash);
+        emit DepositRelayed(
+            relayId,
+            depositData,
+            msg.sender,
+            address(l1Token),
+            realizedLpFeePct,
+            depositHash,
+            relayHash
+        );
     }
 
     /**
@@ -312,6 +321,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
 
         l1Token.safeTransferFrom(msg.sender, _depositData.l1Recipient, _depositData.amount - feesTotal);
 
+        // TODO: does this need more info?
         emit RelaySpedUp(depositHash, msg.sender);
     }
 
@@ -324,7 +334,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         bytes32 depositHash = _getDepositHash(_depositData);
         RelayData storage relay = relays[depositHash];
 
-        require(relays[depositHash].relayState == RelayState.Pending, "Relay state must be pending");
+        require(relay.relayState == RelayState.Pending, "Relay state must be pending");
 
         // Attempt to settle OptimisticOracle price as a convenience for the slow relayer who will receive their
         // dispute bond back if the relay was disputed unsuccessfully (i.e. the dispute resolved to a price of 1).
@@ -375,6 +385,10 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         allocateLpFees(_getAmountFromPct(relay.realizedLpFeePct, _depositData.amount));
 
         emit RelaySettled(depositHash, relayHash, msg.sender);
+
+        delete relay.realizedLpFeePct;
+        delete relay.instantRelayer;
+        delete relay.priceRequestTime;
     }
 
     /**
@@ -655,27 +669,6 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             requestTimestamp,
             customAncillaryData,
             1e18 // Canonical value representing "True"; i.e. the proposed relay is valid.
-        );
-    }
-
-    function _emitDepositRelayedEvent(
-        DepositData memory _depositData,
-        uint64 realizedLpFeePct,
-        bytes32 _depositHash,
-        bytes32 relayHash
-    ) private {
-        // Emit only information that is not stored in this contract. The relay data associated with the `_depositHash`
-        // can be queried on-chain via the `relays` mapping keyed by `_depositHash`.
-        // TODO: had to put deposit data into a struct to avoid stack too deep. Should we consider constructing the
-        // hash on L2 along with the deposit data so it doesn't need to be emitted on mainnet?
-        emit DepositRelayed(
-            numberOfRelays,
-            _depositData,
-            msg.sender,
-            address(l1Token),
-            realizedLpFeePct,
-            _depositHash,
-            relayHash
         );
     }
 }
