@@ -468,6 +468,7 @@ async function Poll(callback) {
     };
 
     await run({ logger: Logger, web3: getWeb3(), ...executionParameters });
+    await waitForLogger(Logger);
   } catch (error) {
     Logger.error({
       at: "Monitor#index",
