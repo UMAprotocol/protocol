@@ -18,7 +18,7 @@ const exec = require("child_process").exec;
 const { Logger, delay } = require("@uma/financial-templates-lib");
 let logger;
 
-const waitForLogsS = 2;
+const waitForLogsS = 5;
 spoke.post("/", async (req, res) => {
   try {
     logger.debug({
