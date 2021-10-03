@@ -497,7 +497,7 @@ describe("BridgePool", () => {
       await l1Token.methods.approve(bridgePool.options.address, initialPoolLiquidity).send({ from: liquidityProvider });
       await bridgePool.methods.addLiquidity(initialPoolLiquidity).send({ from: liquidityProvider });
     });
-    it("Can add instant relayer to pending relay, even if disputed", async () => {
+    it("Valid instant relay, disputed, instant relayer should receive refund following subsequent valid relay", async () => {
       // Propose new relay:
       await l1Token.methods.approve(bridgePool.options.address, totalRelayBond).send({ from: relayer });
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: relayer });
@@ -565,7 +565,9 @@ describe("BridgePool", () => {
 
       // Cannot repeatedly speed relay up.
       await l1Token.methods.mint(instantRelayer, instantRelayAmountSubFee).send({ from: owner });
-      await l1Token.methods.approve(bridgePool.options.address, slowRelayAmountSubFee).send({ from: instantRelayer });
+      await l1Token.methods
+        .approve(bridgePool.options.address, instantRelayAmountSubFee)
+        .send({ from: instantRelayer });
       assert(await didContractThrow(bridgePool.methods.speedUpRelay(depositData).call({ from: instantRelayer })));
 
       // Burn newly minted tokens to make accounting simpler.
@@ -610,7 +612,7 @@ describe("BridgePool", () => {
         "BridgePool should have balance reduced by relayed amount to l1Recipient"
       );
     });
-    it("Invalid instant relay, disputed correctly, instant relayer receives no refund following subsequent valid relay", async function () {
+    it("Invalid instant relay, disputed, instant relayer receives no refund following subsequent valid relay", async function () {
       // Propose new invalid relay where realizedFee is too large.
       const invalidRealizedLpFee = toWei("0.4");
       const invalidRelayData = { ...relayData, realizedLpFeePct: invalidRealizedLpFee };
@@ -663,22 +665,36 @@ describe("BridgePool", () => {
       const requestTimestamp = (await bridgePool.methods.getCurrentTime().call()).toString();
       await bridgePool.methods.relayDeposit(...generateRelayParams()).send({ from: rando });
 
+      // Instant relayer address should be empty for most recent relay with valid params.
+      const instantRelayHash = generateInstantRelayHash(depositHash, relayData);
+      assert.equal(await bridgePool.methods.instantRelays(instantRelayHash).call(), ZERO_ADDRESS);
+
+      // Can speed up relay with new (valid) params.
+      await l1Token.methods.mint(instantRelayer, instantRelayAmountSubFee).send({ from: owner });
+      await l1Token.methods
+        .approve(bridgePool.options.address, instantRelayAmountSubFee)
+        .send({ from: instantRelayer });
+      await bridgePool.methods.speedUpRelay(depositData).send({ from: instantRelayer });
+
       // Expire this valid relay and check payouts.
       const expectedExpirationTimestamp = (Number(requestTimestamp) + defaultLiveness).toString();
       await timer.methods.setCurrentTime(expectedExpirationTimestamp).send({ from: owner });
       await bridgePool.methods.settleRelay(depositData).send({ from: rando });
 
-      // User should receive correct relay amount + the amount they received from invalid instant relay.
+      // User should receive correct instant relay amount + the amount they received from invalid instant relay.
       assert.equal(
         (await l1Token.methods.balanceOf(depositData.l1Recipient).call()).toString(),
-        toBN(instantRelayAmountSubFee)
-          .add(toBN(realizedInstantRelayFeeAmount))
-          .add(toBN(invalidInstantRelayAmountSubFee))
-          .toString()
+        toBN(instantRelayAmountSubFee).add(toBN(invalidInstantRelayAmountSubFee)).toString()
       );
 
-      // Invalid instant relayer receives nothing further from settlement.
-      assert.equal((await l1Token.methods.balanceOf(instantRelayer).call()).toString(), startingInstantRelayerAmount);
+      // Invalid instant relayer receives a refund from their correct instant relay, but nothing from their first
+      // invalid relay that they sped up.
+      assert.equal(
+        (await l1Token.methods.balanceOf(instantRelayer).call()).toString(),
+        toBN(startingInstantRelayerAmount)
+          .add(toBN(instantRelayAmountSubFee).add(realizedInstantRelayFeeAmount))
+          .toString()
+      );
 
       // Slow relayer gets slow relay reward
       assert.equal(
