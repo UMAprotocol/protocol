@@ -80,13 +80,16 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         uint256 priceRequestTime;
         uint64 realizedLpFeePct;
         address slowRelayer;
-        address instantRelayer;
     }
 
     // Associate deposits with pending relay data. When RelayState is Uninitialized, new relay attempts can be made for
     // this deposit. Contains information necessary to pay out relayers on successful relay. Deposits get reset to the
     // "Uninitialized" state when they are disputed on the OptimisticOracle.
     mapping(bytes32 => RelayData) public relays;
+
+    // Map hash of deposit and realized-relay fee to instant relayers. This mapping is checked at settlement time
+    // to determine if there was a valid instant relayer.
+    mapping(bytes32 => address) public instantRelays;
 
     event LiquidityAdded(address indexed token, uint256 amount, uint256 lpTokensMinted, address liquidityProvider);
     event LiquidityRemoved(address indexed token, uint256 amount, uint256 lpTokensBurnt, address liquidityProvider);
@@ -253,9 +256,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             "Pending relay exists"
         );
 
-        // If no pending relay for this deposit, then associate the caller's relay attempt with it. Copy over the
-        // instant relayer so that the l1Recipient cannot receive double payments. This means that once a relay is
-        // disputed, it cant be sped up a second time (must finalize via the slow relay).
+        // If no pending relay for this deposit, then associate the caller's relay attempt with it.
         uint256 priceRequestTime = getCurrentTime();
         RelayData memory relayData =
             RelayData({
@@ -263,8 +264,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
                 relayState: RelayState.Pending,
                 priceRequestTime: priceRequestTime,
                 realizedLpFeePct: realizedLpFeePct,
-                slowRelayer: msg.sender,
-                instantRelayer: relays[depositHash].instantRelayer
+                slowRelayer: msg.sender
             });
         relays[depositHash] = relayData;
 
@@ -312,11 +312,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
     function speedUpRelay(DepositData memory _depositData) public nonReentrant() {
         bytes32 depositHash = _getDepositHash(_depositData);
         RelayData storage relay = relays[depositHash];
+        bytes32 instantRelayHash = keccak256(abi.encode(depositHash, relay.realizedLpFeePct));
         require(
-            relays[depositHash].relayState == RelayState.Pending && relays[depositHash].instantRelayer == address(0),
-            "Relay can not be sped up"
+            relays[depositHash].relayState == RelayState.Pending && instantRelays[instantRelayHash] == address(0),
+            "Relay cannot be sped up"
         );
-        relay.instantRelayer = msg.sender;
+        instantRelays[instantRelayHash] = msg.sender;
 
         // Pull relay amount minus fees from caller and send to the deposit l1Recipient. The total fees paid is the sum
         // of the LP fees, the relayer fees and the instant relay fee.
@@ -373,8 +374,12 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
             _depositData.amount -
                 _getAmountFromPct(relay.realizedLpFeePct + _depositData.slowRelayFeePct, _depositData.amount);
 
+        // Refund the instant relayer iff the instant relay params match the approved relay.
+        bytes32 instantRelayHash = keccak256(abi.encode(depositHash, relay.realizedLpFeePct));
+        address instantRelayer = instantRelays[instantRelayHash];
+
         l1Token.safeTransfer(
-            relay.instantRelayer != address(0) ? relay.instantRelayer : _depositData.l1Recipient,
+            instantRelayer != address(0) ? instantRelayer : _depositData.l1Recipient,
             instantRelayerOrRecipientAmount
         );
 
