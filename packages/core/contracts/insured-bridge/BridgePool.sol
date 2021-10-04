@@ -100,7 +100,8 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         address slowRelayer,
         address l1Token,
         uint64 realizedLpFeePct,
-        bytes32 indexed depositHash
+        bytes32 indexed depositHash,
+        bytes32 indexed relayHash
     );
     event RelaySpedUp(bytes32 indexed depositHash, address indexed instantRelayer, uint64 realizedLpFeePct);
     event RelaySettled(bytes32 indexed depositHash, bytes32 indexed relayHash);
@@ -390,7 +391,7 @@ contract BridgePool is Testable, BridgePoolInterface, ExpandedERC20, MultiCaller
         updateAccumulatedLpFees();
         allocateLpFees(_getAmountFromPct(relay.realizedLpFeePct, _depositData.amount));
 
-        emit RelaySettled(depositHash, relayHash, msg.sender);
+        emit RelaySettled(depositHash, relayHash);
 
         delete relay.realizedLpFeePct;
         delete relay.instantRelayer;
