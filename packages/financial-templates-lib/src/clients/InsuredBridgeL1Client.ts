@@ -40,6 +40,7 @@ export interface Relay {
   realizedLpFeePct: string;
   depositHash: string;
   relayState: RelayState;
+  relayHash: string;
 }
 
 export class InsuredBridgeL1Client {
@@ -169,21 +170,22 @@ export class InsuredBridgeL1Client {
       for (const depositRelayedEvent of depositRelayedEvents) {
         const relayData: Relay = {
           relayId: Number(depositRelayedEvent.returnValues.relayId),
-          chainId: Number(depositRelayedEvent.returnValues.chainId),
-          depositId: Number(depositRelayedEvent.returnValues.depositId),
-          l2Sender: depositRelayedEvent.returnValues.l2Sender,
+          chainId: Number(depositRelayedEvent.returnValues.depositData.chainId),
+          depositId: Number(depositRelayedEvent.returnValues.depositData.depositId),
+          l2Sender: depositRelayedEvent.returnValues.depositData.l2Sender,
           slowRelayer: depositRelayedEvent.returnValues.slowRelayer,
           disputedSlowRelayers: [],
           instantRelayer: ZERO_ADDRESS,
-          l1Recipient: depositRelayedEvent.returnValues.l1Recipient,
+          l1Recipient: depositRelayedEvent.returnValues.depositData.l1Recipient,
           l1Token: depositRelayedEvent.returnValues.l1Token,
-          amount: depositRelayedEvent.returnValues.amount,
-          slowRelayFeePct: depositRelayedEvent.returnValues.slowRelayFeePct,
-          instantRelayFeePct: depositRelayedEvent.returnValues.instantRelayFeePct,
-          quoteTimestamp: Number(depositRelayedEvent.returnValues.quoteTimestamp),
+          amount: depositRelayedEvent.returnValues.depositData.amount,
+          slowRelayFeePct: depositRelayedEvent.returnValues.depositData.slowRelayFeePct,
+          instantRelayFeePct: depositRelayedEvent.returnValues.depositData.instantRelayFeePct,
+          quoteTimestamp: Number(depositRelayedEvent.returnValues.depositData.quoteTimestamp),
           realizedLpFeePct: depositRelayedEvent.returnValues.realizedLpFeePct,
           depositHash: depositRelayedEvent.returnValues.depositHash,
           relayState: RelayState.Pending,
+          relayHash: depositRelayedEvent.returnValues.relayHash,
         };
 
         // If the local data contains this deposit ID then this is a re-relay of a disputed relay. In this case, we need

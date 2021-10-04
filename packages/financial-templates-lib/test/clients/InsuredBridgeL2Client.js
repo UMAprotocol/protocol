@@ -2,7 +2,7 @@ const { assert } = require("chai");
 const winston = require("winston");
 const hre = require("hardhat");
 const { getContract } = hre;
-const { web3 } = require("hardhat");
+const { web3 } = hre;
 const { toWei } = web3.utils;
 
 // Client to test
